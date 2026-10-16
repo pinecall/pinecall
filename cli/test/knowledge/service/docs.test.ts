@@ -101,10 +101,10 @@ describe("attach and detach", () => {
     expect(done).toEqual({ agent: "front-desk", base: "front-desk", corner: "your corner", version: 1 });
   });
 
-  it("detach of a base the corner does not read is a failed check, and nothing is written", async () => {
+  it("detach of a base the corner does not read is a name typed wrong, and nothing is written", async () => {
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const { ctx } = testContext();
-    await expect(service.detachBase(ctx, service.DetachBaseInput.parse({ base: "faq" }))).rejects.toThrow(new PinecallError(service.NOT_ATTACHED("front-desk", "faq")));
+    await expect(service.detachBase(ctx, service.DetachBaseInput.parse({ base: "faq" }))).rejects.toThrow(new UsageError(service.NOT_ATTACHED("front-desk", "faq")));
   });
 
   it("detach keeps an empty list, so the corner does not fall back to the team's", async () => {

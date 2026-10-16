@@ -75,9 +75,9 @@ describe("pinecall runs", () => {
     expect((await run(["runs", "diff", "run_1", "run_2"])).out).toBe("run_1 → run_2\n  books-thursday  tools  held → broken  never booked\n");
   });
 
-  it("drift needs --agent and a window it can read", async () => {
-    expect((await run(["runs", "drift"])).code).toBe(2);
-    expect((await run(["runs", "drift", "--agent", "front-desk", "--window", "a week"])).err).toContain("a window is a number and one of s, m, h, d");
+  it("drift takes the project's agent, needs one outside a project, and a window it can read", async () => {
+    expect((await run(["runs", "drift"], { cwd: folder() })).code).toBe(2);
+    expect((await run(["runs", "drift", "--window", "a week"])).err).toContain("a window is a number and one of s, m, h, d");
   });
 });
 

@@ -60,6 +60,7 @@ describe("pinecall deploy", () => {
   });
 
   it("logs prints the fresh lines", async () => {
+    answer("get", "/v1/hosted/:name/releases", { releases: [] });
     stream("/v1/hosted/:name/logs", [{ name: "clinica", host: "runner-1", lines: "registered front-desk\n", at: Date.now() / 1000 + 60 }]);
     const ran = await run(["deploy", "logs", "--name", "clinica"]);
     expect(ran.code).toBe(0);

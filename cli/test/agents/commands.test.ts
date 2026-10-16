@@ -49,17 +49,20 @@ describe("pinecall agent", () => {
     expect((await run(["agent", "set", "--llm-option", "no-equals"])).err).toContain("is not key=value");
   });
 
-  it("clear takes the fields named", async () => {
-    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+  it("clear takes the fields named out of your own row, and a bare clear is refused", async () => {
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 2, { greeting: { say: "Hi" }, memory: { remember: ["x"], forget: [] }, voice: "v" }) });
     const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
     await run(["agent", "clear", "greeting", "memory"]);
-    expect((sent[0]!.body as { config: Record<string, unknown> }).config).not.toHaveProperty("greeting");
+    expect((sent[0]!.body as { config: Record<string, unknown> }).config).toEqual({ voice: "v" });
+    const bare = await run(["agent", "clear"]);
+    expect(bare.code).toBe(2);
+    expect(bare.err).toContain("name the fields to clear, or --all");
   });
 
-  it("pull prints the corner as a file", async () => {
-    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+  it("pull prints your own row as a file", async () => {
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 2, { voice: "v" }) });
     const ran = await run(["agent", "pull"]);
-    expect(JSON.parse(ran.out)).toEqual({ agent: "front-desk", world: "sandbox", holder: "", version: 3, config: SETTINGS.team.config });
+    expect(JSON.parse(ran.out)).toEqual({ agent: "front-desk", world: "sandbox", holder: "mem_ana", version: 2, config: { voice: "v" } });
   });
 
   it("knowledge says when nothing is known by heart", async () => {

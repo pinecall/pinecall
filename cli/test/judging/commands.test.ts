@@ -25,7 +25,7 @@ describe("pinecall judges", () => {
     expect(shown.out).toContain("asks     The caller consented to being recorded.");
     const missing = await run(["judges", "show", "nope"]);
     expect(missing.code).toBe(2);
-    expect(missing.err).toContain("no judge nope in this list");
+    expect(missing.err).toContain("front-desk has no judge called nope");
   });
 
   it("--org lists the org's, from any folder", async () => {

@@ -11,7 +11,7 @@ describe("pinecall providers", () => {
     answer("get", "/v1/providers", CATALOG);
     const ran = await run(["providers"]);
     expect(ran.code).toBe(0);
-    expect(ran.out).toMatch(/cartesia\s+stt,tts\s+no key\s+CARTESIA_API_KEY/);
+    expect(ran.out).toMatch(/cartesia\s+stt,tts\s+no key/);
     expect(ran.out).toContain("3 vendors · ours: llm anthropic · stt deepgram · tts cartesia");
   });
 

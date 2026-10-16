@@ -77,12 +77,14 @@ describe("where a release stands", () => {
 
 describe("the logs", () => {
   it("are the first read sent after the ask", async () => {
+    answer("get", "/v1/hosted/:name/releases", { releases: [] });
     stream("/v1/hosted/:name/logs", [{ name: "clinica", host: "runner-1", lines: "registered front-desk\nlistening\n", at: Date.now() / 1000 + 60 }]);
     const { ctx } = testContext();
     expect(await service.readLogs(ctx, "clinica", 5_000)).toEqual({ name: "clinica", lines: "registered front-desk\nlistening\n", staleBy: null, none: false });
   });
 
   it("are said stale when only an older read came within the wait", async () => {
+    answer("get", "/v1/hosted/:name/releases", { releases: [] });
     stream("/v1/hosted/:name/logs", [{ name: "clinica", host: "runner-1", lines: "old\n", at: Date.now() / 1000 - 30 }]);
     const { ctx } = testContext();
     const found = await service.readLogs(ctx, "clinica", 100);
@@ -91,6 +93,7 @@ describe("the logs", () => {
   });
 
   it("are none when the runner never sent any", async () => {
+    answer("get", "/v1/hosted/:name/releases", { releases: [] });
     stream("/v1/hosted/:name/logs", [{ name: "clinica", host: null, lines: "", at: null }]);
     const { ctx } = testContext();
     expect((await service.readLogs(ctx, "clinica", 100)).none).toBe(true);
