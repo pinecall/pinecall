@@ -34,8 +34,10 @@ describe("what a run sends", () => {
   });
 
   it("a run the gateway answered running is followed until its row says it is over", async () => {
+    stream("/v1/events");
     answer("post", "/v1/evals/run", { ...aRun(), status: "running", matrix: null });
     answer("get", "/v1/evals/runs/run_1", aRun());
+    answer("get", "/v1/calls/:call/events", { entries: [], next: null });
     const { ctx } = testContext();
     const seen: string[] = [];
     const report = await suite.runSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse({}), undefined, { onChanged: (run) => seen.push(run.status) });

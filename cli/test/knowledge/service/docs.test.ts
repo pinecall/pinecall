@@ -85,7 +85,14 @@ describe("eval", () => {
 });
 
 describe("attach and detach", () => {
+  it("attach refuses a base the env has not, before anything is written", async () => {
+    answer("get", "/v1/knowledge", { bases: [] });
+    const { ctx } = testContext();
+    await expect(service.attachBase(ctx, service.AttachBaseInput.parse({ base: "faq" }))).rejects.toThrow(/no base faq in this env/);
+  });
+
   it("attach replaces the base's entry, keeps the others, guarded like any settings write", async () => {
+    answer("get", "/v1/knowledge", { bases: [{ base: "front-desk", chunks: 9, model: "acme-embed", pushed_at: 0 }] });
     answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: tuningRow("", 3, { bases: [{ base: "faq", k: 2 }, { base: "front-desk", k: 8 }] }) });
     const sent = answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 1, {}) });
     const { ctx } = testContext();

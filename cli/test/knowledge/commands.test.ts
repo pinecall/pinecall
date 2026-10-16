@@ -32,6 +32,7 @@ describe("pinecall docs", () => {
   });
 
   it("attach says which corner and version it landed in", async () => {
+    answer("get", "/v1/knowledge", { bases: [{ base: "front-desk", chunks: 9, model: "acme-embed", pushed_at: 0 }] });
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: { holder: "mem_ana", version: 1, author: "ana", note: null, set_at: 0, config: {} } });
     expect((await run(["docs", "attach", "front-desk", "--k", "4"])).out).toBe("front-desk · front-desk attached · your corner v1\n");
