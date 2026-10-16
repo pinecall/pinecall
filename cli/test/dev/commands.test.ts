@@ -1,4 +1,4 @@
-/** `pinecall prompt` runs offline, in no env: --prod is refused before anything is loaded. */
+/** `pinecall start | console | prompt` as typed: prompt runs offline, in no env, so --prod is refused before anything is loaded. */
 
 import { describe, expect, it } from "vitest";
 
