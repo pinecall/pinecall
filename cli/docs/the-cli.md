@@ -359,7 +359,8 @@ is passed to the agent's process once, which sends `agent.drain` for every agent
 the live calls to another process holding the agent, or keeps them for the next one that
 registers, and the tools running now are let finish, up to 30 s. One line on stderr says what
 happened — `draining · 1 live call kept for the next process · 1 tool finished` — and then both
-processes exit. A second signal kills the agent's process at once, and so does one it has not left
+processes exit. A kept call waits two minutes for the next process; none coming, the gateway ends it
+(`app_detached`), since a caller left talking to nobody for longer has been let down already. A second signal kills the agent's process at once, and so does one it has not left
 by in 40 s. If `start` itself is killed, the agent's process sees its stdin close and drains on its
 own. Give it that long under its manager ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md#a-deploy)).
 
@@ -1235,9 +1236,10 @@ is on — the same change the production console's Settings tab makes. There is 
 the corners: what guards production is the goldens in CI before a deploy
 ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md)), and the history after it.
 
-**Versions.** Every `set` is a new row; nothing is updated, nothing deleted. The whole set travels
-with the version it was read at, so two people saving at once never write over each other: the
-second is told `this corner is at v4 now, not the version you read`. `history` prints every version
+**Versions.** Every `set` that changes something is a new row; nothing is updated, nothing deleted,
+and a `set` that changes nothing writes none. A write puts in your corner only the fields it moved,
+and travels with the version the corner was read at, so two people saving at once never write over
+each other: the second is told `this corner is at v4 now, not the version you read`. `history` prints every version
 with who set it, why, and what it changed; `diff` reads this corner against the team's or
 production's; `rollback <n>` brings one back as the next version — `rollback <n> --prod` is how a
 production change that went wrong is undone, in one line.
@@ -1596,7 +1598,8 @@ bring. Any of these names — or any of its aliases — is what `agent set --stt
 `--tts` take: the six knobs are the agent's settings, and `pipeline` only reads them back.
 
 A key added here is this org's own account with that vendor, and every call of this org runs on it
-from the next one. A vendor nobody brought runs on the deployment's own key **when the deployment
+from the next one. It is tried before it is kept — the vendor is asked one small thing on it, as a
+call would ask — and one the vendor turns away is refused in the vendor's words, with nothing kept. A vendor nobody brought runs on the deployment's own key **when the deployment
 lends it** to the org — every vendor, some, or none, set by its operator per environment — and is
 refused before the call starts when it does not; [`limits`](#limits) prints which. `add` reads the key from
 **stdin** — typed with nothing echoed on a terminal, one piped line off one — and never from a

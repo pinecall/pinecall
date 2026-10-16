@@ -8,6 +8,37 @@ moves through them. Every fact of a call is an entry appended to the call's log,
 else (the app socket, the console, the reducer, the usage feed) reads entries. The media side is
 LiveKit's `AgentSession`, used as is.
 
+## If you know Rails
+
+The same shape, with the names Python and FastAPI give things. One app, one database, convention
+over configuration: a file is where its name says, and does one thing.
+
+| in Rails | here | one example |
+|---|---|---|
+| `config/routes.rb` | `api.py` mounts each domain's router; the paths are on the endpoints | `@router.get("/v1/agents/{slug}/settings")` |
+| `app/controllers/` | `<domain>/endpoints.py`: a dependency, a body, one service call, a schema back | `agents/endpoints/settings.py` |
+| `app/models/` (the tables) | `<domain>/models.py`: one SQLAlchemy class per table, declaring and never querying | `agents/models.py` · `AgentConfig` |
+| ActiveRecord queries, scopes | `<domain>/repository.py`: every query on the domain's tables, returning models | `AgentConfigRepository.newest_version` |
+| `app/services/`, the model's business methods | `<domain>/service.py`: the rules and the use cases, as functions; the domain's errors | `settings.write_tuning` |
+| strong parameters, serializers | `<domain>/schemas.py` (pydantic): what an endpoint reads and answers; `wire/` for what the SDKs implement | `PutSettingsRequest`, `SettingsResponse` |
+| `before_action`, Pundit | `<domain>/auth.py`: which scopes open which endpoints, as dependencies | `WordsKey`, `KnownAgent` |
+| ActiveJob, cron | `<domain>/tasks.py`: the loops the lifespan starts; a run or a simulation is a task of the gateway | `calls/tasks.py` · the reaper |
+| `db/migrate/` | `migrations/` (Alembic), shipped in the wheel; an applied revision is never edited | `20261016_000001_call_facts_hold_the_line.py` |
+| `config/application.rb`, credentials | `config.py` (every variable, one place), the vault for every secret the box holds | `PINECALL_DB_POOL` |
+| `lib/` | `kit/`: generic code with no business noun in it | `kit/sse.py`, `kit/websockets.py` |
+| `bin/rails`, rake tasks | `cli/`: the operator's terminal, a Typer app, one module per group of verbs | `pinecall-runtime facts rebuild` |
+| the application record | **the call's log**: every fact of a call is an entry appended to it; summaries, facts, usage and state are read models folded from it | `calls/store.py`, `calls/facts.py` |
+
+Where Rails has one process, this has three: the **gateway** (`app.py`, the API and every socket),
+the **worker** (`worker.py`, one LiveKit job per spoken call) and the **runner** (`runner.py`, the
+apps the box hosts). They share the database and talk through it, through Redis's signal and
+through the gateway's own endpoints; a worker never opens the database.
+
+A request's path, in five lines: `api.py` finds the route → `auth.py`'s dependency verifies the
+key and its scopes → `endpoints.py` reads the body as a `schemas` shape → one `service.py` function
+decides, reading and writing through `repository.py` → the answer is a `schemas` shape, and a
+refusal is a `PinecallError` with its status, answered by the one handler in `app.py`.
+
 ## The layout
 
 ```
@@ -51,7 +82,7 @@ but `api.py`.
 | `judging/` | what a judge and a persona are, Pinecall's library of both (`library/`), a finished call as a judge reads it, the hang-up panel, calibration, cases grouped and a fix proposed, a golden's turns and their checks |
 | `alerts/` | an alert of the org's — a monitor fired, the spend unusual, a quota out — on the agent's log and posted to its webhook |
 | `calls/` | the log, which is the record: the store and its writer (`store.py`, `writer.py`), the relay between gateways, the logs open in this process and their readers, the facts folded at write and read back, the reducer and the two read projections, the metering; and the call as the gateway serves it: opened, served, bound to a socket, sealed (memory, the bill, the judges), reaped when nobody ends it, a written call and a WhatsApp thread, the desk, the dev relay, usage and insights, `/metrics` |
-| `evals/` | the harness above the calls: a run of goldens and its matrix, the simulated caller (written or spoken, its ambience and tempo), a replay, the eval suites |
+| `evals/` | the harness above the calls: a run of goldens and its matrix — answered as it starts and played on a task of the gateway, its row rewritten as each golden is judged — the simulated caller (written or spoken, its ambience and tempo), a replay, the eval suites |
 | `hosting/` | the apps the box runs for an org: releases, secrets, the runner's beats and the cluster it starts pods on |
 | `retention/` | what the box keeps and forgets across every domain: the nightly run, erasure (a call, a contact, an org, an agent) and its trail, the export, the vault key rotated over every sealed column |
 | `jobs/` | the worker's side of the box: its client to the gateway (every endpoint it calls, its batches down one socket per call), its heartbeat and the last minute it carries, the job that runs one call, the overflow's sentence, the recorder, the traces, the load lab |
@@ -108,7 +139,7 @@ is an answer and is never retried.
 | a batch of a call's entries, every one a worker writes | without limit, the same batch after the same `after` | a call has one writer from its open to its seal, and the head counts what it took, so a retry is answered with the seqs it was given; an entry dropped is a hole in the log | `jobs/service/client.py` `append_many`, `session/writing.py`, `jobs/service/ending.py` `open_writer`, `calls/store.py` |
 | a tool call | while the gateway is away, up to the tool's `timeout_s` (30 s unless declared) plus 5 s | the gateway runs one round trip per call id: a retry joins the one still running, and one already finished is answered with the `tool.result` the log holds and never sent to the app again, since a tool may book or charge | `jobs/service/client.py` `tool`, `session/tools.py`, `calls/repository/entries.py` `tool_answered` |
 | the seal | within 30 s | a call is sealed once: the gateway that takes the head's lease seals it, a second request on any gateway waits for the head to say sealed | `jobs/service/client.py` `sealed`, `calls/service/seal.py` |
-| a call nothing sealed | every 60 s: a spoken call silent 5 min with no agent in its room, a written one quiet 5 min (2 h on WhatsApp) | a worker that dies writes no `call.ended` | `calls/tasks.py`, `calls/service/reaper.py` |
+| a call nothing sealed | every 60 s: a spoken call silent 5 min with no agent in its room, a written one quiet 5 min (2 h on WhatsApp), a written one parked by a process that drained and taken by no other within 2 min (`app_detached`) | a worker that dies writes no `call.ended`; a process that left promised the next one, which never came | `calls/tasks.py`, `calls/service/reaper.py` |
 | the commands stream | reopened without limit; a `4xx` ends it | commands have no seq: a worker that loses the stream asks again | `jobs/service/job.py` |
 | the heartbeat | every 5 s, whatever the last one answered | the worker keeps its calls while the gateway is away | `jobs/service/heartbeat.py` |
 | a tool call whose app's socket went | sent again to the socket that takes the call over | the model is still waiting on that call id | `calls/service/binding.py`, `session/tools.py` |

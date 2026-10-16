@@ -1,7 +1,6 @@
 """A simulated caller on a call: a new call claimed for it, its model, its voice, its lines, spoken or written."""
 
 import asyncio
-import contextlib
 import dataclasses
 import logging
 from collections.abc import AsyncGenerator, Coroutine
@@ -220,10 +219,16 @@ async def on_the_line(
 
 async def _hung_up(serving: calls.Serving, call: str) -> None:
     """Wait, briefly, for the worker to write the call's end once its caller left."""
-    with contextlib.suppress(TimeoutError):
+    log = serving.logs.reading(call)
+    subscription = await log.follow()
+    try:
         async with asyncio.timeout(HANGS_UP_WITHIN_S):
-            while not any(entry.type == "call.ended" for entry in await serving.logs.store.whole(call)):
-                await asyncio.sleep(0.5)
+            while (await log.snapshot()).status != "ended":
+                await anext(subscription, None)
+    except TimeoutError:
+        logger.info("%s: the worker wrote no call.ended within %.0f s; its room is closed", call, HANGS_UP_WITHIN_S)
+    finally:
+        subscription.close()
 
 
 # Asked before each line: the line that crosses the ceiling is the last one said, and a call the

@@ -195,7 +195,7 @@ def free_slots(day:, how_many: 3, slot: nil)
 ## What is refused, at load
 
 Every one of these raises `DeclarationRefused` when the file is loaded — never in the middle of a
-call, and never as a 1008 from a gateway:
+call, and never as a gateway's refusal of the socket:
 
 | refused | the sentence |
 |---|---|

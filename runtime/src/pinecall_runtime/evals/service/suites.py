@@ -125,18 +125,26 @@ async def start_suite(
     suite = await _suite_of(session_, serving, body, registration)
     where = registration.scope
     await runner.hold(suite.run.id, body.agent)
-    await _stored(serving, where, suite.run)
+    try:
+        await _stored(serving, where, suite.run)
+    except Exception:
+        # The row could not be written: the agent is let go, or the lease would be renewed for ever.
+        await runner.let_go(suite.run.id, body.agent)
+        raise
     runner.play(suite.run.id, _played(serving, runner, suite))
     return suite.run
 
 
-# Whatever happens to the run, its row says how it ended and the agent is let go.
+# Whatever happens to the run, its row says how it ended and the agent is let go. A cancellation
+# (the gateway stopping) is written down, then raised again: the task ends cancelled, as asked.
 async def _played(serving: calls.Serving, runner: runs.Runner, suite: Suite) -> None:
     where = suite.registration.scope
+    cancelled = False
     try:
         why = await _judged_suite(serving, suite, where)
         done = runs.finished(suite.now) if why is None else runs.stopped(suite.now, why)
     except asyncio.CancelledError:
+        cancelled = True
         done = runs.stopped(suite.now, GATEWAY_STOPPED)
     except Exception as broke:
         logger.exception("run %s of %s broke", suite.run.id, suite.body.agent)
@@ -145,6 +153,8 @@ async def _played(serving: calls.Serving, runner: runs.Runner, suite: Suite) -> 
         await _stored(serving, where, done)
     finally:
         await runner.let_go(suite.run.id, suite.body.agent)
+    if cancelled:
+        raise asyncio.CancelledError
 
 
 # The run's calls run on what a real caller's would: the config tuned where the app holds it.

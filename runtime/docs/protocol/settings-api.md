@@ -38,7 +38,8 @@ an absent knob falls through. The version a call records is the nearest scope th
 
 **Versions.** Every set is a new row; nothing is updated, nothing deleted. The body carries the
 version it was read at, and a scope that moved on since answers `409 this corner is at v{n} now`.
-A rollback is a new version equal to an old one, and the history says so.
+A rollback is a new version equal to an old one, and the history says so. A `PUT` identical to the
+scope's newest version writes none and answers the one standing: a version says what moved.
 
 ## `GET /v1/agents/{slug}/settings` — `pipeline` or `words`
 
