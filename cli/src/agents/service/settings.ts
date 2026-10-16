@@ -9,7 +9,7 @@ import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
 import * as providers from "../../providers/service.js";
-import { cornerName, cornerWritten, readSettings, rowToStartFrom, writeCorner, type CornerWritten, type TuningAnswer, type TuningBody } from "./corners.js";
+import { cornerName, type CornerWritten, cornerWritten, readSettings, rowToStartFrom, sameSettings, type TuningAnswer, type TuningBody, writeCorner } from "./corners.js";
 
 /** Settings fields in display order, as typed on the command line. */
 export const FIELDS = [
@@ -155,8 +155,9 @@ export async function rollbackSettings(ctx: Context, version: number, options: W
 export async function pullSettings(ctx: Context, agent: string | undefined, team: boolean): Promise<Pulled> {
   const name = agentNamed(ctx, agent);
   const answer = await readSettings(ctx, name);
-  const row = rowToStartFrom(answer, team);
-  if (row === null) throw new PinecallError(`nothing set for ${name} in ${team ? "the team's" : "your"} corner of ${answer.world}`);
+  // The corner's own row, what a push sends back to it: a field it never set follows the team's.
+  const row = cornerWritten(answer, team, ctx.gateway());
+  if (row === null || Object.keys(row.config).length === 0) throw new PinecallError(`nothing set for ${name} in ${cornerName(answer, team, ctx.gateway())} of ${answer.world}`);
   return { agent: name, world: answer.world, holder: row.holder, version: row.version, config: row.config };
 }
 
@@ -166,6 +167,8 @@ export async function pushSettings(ctx: Context, file: string, options: WriteOpt
   const read = JSON.parse(await readFile(file, "utf8")) as Partial<Pulled>;
   const config = read.config ?? (read as TuningBody);
   const gw = ctx.gateway();
+  const standing = await readSettings(ctx, name);
+  if (sameSettings(config, cornerWritten(standing, options.team, gw)?.config ?? {})) throw new UsageError(`nothing changes in ${cornerName(standing, options.team, gw)}: it already reads as ${file}`);
   const answer = await api.putSettings(gw, name, { config, if_version: null, note: `pushed from ${file}`, team: options.team });
   return { agent: name, corner: cornerName(answer, options.team, gw), version: cornerWritten(answer, options.team, gw)?.version ?? null, answer, file };
 }

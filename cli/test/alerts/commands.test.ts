@@ -100,7 +100,7 @@ describe("pinecall webhook", () => {
 describe("pinecall telemetry", () => {
   it("set reads each header's value off stdin, in the order named", async () => {
     const sent = answer("put", "/v1/telemetry");
-    const ran = await run(["telemetry", "set", "https://cloud.langfuse.com/api/public/otel/v1/traces", "--header", "Authorization", "x-langfuse-ingestion-version", "--pii"], { stdin: "Basic abc\n4\n" });
+    const ran = await run(["telemetry", "set", "https://cloud.langfuse.com/api/public/otel/v1/traces", "--header", "Authorization", "--header", "x-langfuse-ingestion-version", "--pii"], { stdin: "Basic abc\n4\n" });
     expect(ran.code).toBe(0);
     expect(sent[0]!.body).toEqual({ endpoint: "https://cloud.langfuse.com/api/public/otel/v1/traces", headers: { Authorization: "Basic abc", "x-langfuse-ingestion-version": "4" }, pii: true });
     expect(ran.out).toContain("headers Authorization, x-langfuse-ingestion-version · with what was said");

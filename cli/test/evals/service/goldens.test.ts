@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { goldensIn, goldensInFolder, matching } from "../../../src/evals/service/goldens.js";
+import { goldenPath, goldensIn, goldensInFolder, matching } from "../../../src/evals/service/goldens.js";
 import { folder, write } from "../../support/project.js";
 
 describe("goldens", () => {
@@ -27,5 +27,17 @@ describe("goldens", () => {
 
   it("are kept by a part of their name, any case", () => {
     expect(matching([{ name: "Books Thursday" }, { name: "asks" }], "THURS")).toEqual([{ name: "Books Thursday" }]);
+  });
+});
+
+describe("a path typed to test", () => {
+  it("is the file when there is one, else a golden of the agent by its name, with or without .json", () => {
+    const root = folder();
+    const goldens = `${root}/agents/front-desk/test/goldens`;
+    const file = write(root, "agents/front-desk/test/goldens/books-thursday.json", "{}");
+    expect(goldenPath(file, goldens)).toBe(file);
+    expect(goldenPath("books-thursday", goldens)).toBe(`${goldens}/books-thursday.json`);
+    expect(goldenPath("books-thursday.json", goldens)).toBe(`${goldens}/books-thursday.json`);
+    expect(() => goldenPath("nope", goldens)).toThrow(/no golden nope: not a file here, nor one of/);
   });
 });

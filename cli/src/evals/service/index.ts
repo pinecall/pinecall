@@ -1,7 +1,7 @@
 /** Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. */
 
 export type { CallScore, Cell, EvalRun, Matrix, Score } from "../../api/evals.js";
-export { goldensIn, goldensInFolder, matching, type Expect, type Golden, type Turn } from "./goldens.js";
+export { goldenPath, goldensIn, goldensInFolder, matching, type Expect, type Golden, type Turn } from "./goldens.js";
 export {
   A_NOTE_ALONE,
   applyFix,

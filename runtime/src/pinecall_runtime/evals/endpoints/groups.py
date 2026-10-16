@@ -3,10 +3,11 @@
 from dataclasses import replace
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path
 
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents import schemas as agents
+from pinecall_runtime.agents.auth import KnownFilter
 from pinecall_runtime.agents.service import settings
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
@@ -43,9 +44,7 @@ WRONG_ONLY_WHEN_DISMISSED = (
 
 
 @router.get("/v1/evals/groups")
-async def list_groups(
-    actor: EvalsKey, session: Session, agent: Annotated[str | None, Query()] = None
-) -> judged.GroupList:
+async def list_groups(actor: EvalsKey, session: Session, agent: KnownFilter) -> judged.GroupList:
     """The org's case groups, one agent's or every one, the pending first and newest first."""
     return judged.GroupList(groups=await judging.list_groups(session, actor.org, agent))
 

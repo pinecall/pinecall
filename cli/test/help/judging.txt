@@ -5,15 +5,15 @@ whether this org's calls are judged at hang-up, and the model the judges run on:
 Pinecall's, or one of yours
 
 Arguments:
-  on|off                   judging on or off for every agent, from the next
-                           call; the model is kept
+  on|off                  judging on or off for every agent, from the next call;
+                          the model is kept
 
 Options:
-  --model <vendor/model>   a model of yours, or haiku · sonnet · opus
-  --option <key=value...>  one keyword argument of the model's plugin; the value
-                           read as JSON
-  --platform               Pinecall's judge model again
-  -h, --help               display help for command
+  --model <vendor/model>  a model of yours, or haiku · sonnet · opus
+  --option <key=value>    one keyword argument of the model's plugin, its value
+                          read as JSON; again for another
+  --platform              Pinecall's judge model again
+  -h, --help              display help for command
 
 Every finished call of the org is judged at hang-up unless judging is off. The judges run on
 Pinecall's judge model, and each judge that answers is one eval on your bill — unless you name a

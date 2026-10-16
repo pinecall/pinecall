@@ -30,6 +30,8 @@ EARS = "acme-ears"
 VOICE = "acme-voice"
 # What it streams back with no script: the caller's last line, so a test reads the reply off it.
 HEARD = "acme heard: {said}"
+# A key the vendor turns away, as a real one answers a wrong key: 401.
+A_REFUSED_KEY = "acme-refused-key"
 # What every reply counts, so a call's usage and its cost are numbers a test can name.
 PROMPT_TOKENS = 20
 COMPLETION_TOKENS = 5
@@ -348,6 +350,8 @@ class _Streamed(llm.LLMStream):
     async def _run(self) -> None:
         if self.refusing:
             raise APIConnectionError(self.refusing)
+        if self.scripted.given["api_key"] == A_REFUSED_KEY:
+            raise APIStatusError("invalid api key", status_code=401)
         if self.scripted.model == UNKNOWN:
             raise APIStatusError("no such model", status_code=404)
         await asyncio.sleep(self.scripted.thinks_s)

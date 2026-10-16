@@ -9,11 +9,11 @@ from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from livekit.agents import APIError, APIStatusError
+from livekit.agents import APIConnectionError, APIError, APIStatusError, APITimeoutError
 from livekit.agents.tts import SynthesizedAudio
 from livekit.agents.utils import http_context
 
-from pinecall_runtime.exceptions import NotFound, UpstreamError
+from pinecall_runtime.exceptions import NotFound, UpstreamError, ValidationError
 from pinecall_runtime.kit.text import a_list, a_mapping
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service.plugins import Running
@@ -85,8 +85,15 @@ def listed_in_catalog(catalog: Catalog, vendor: str, language: str | None) -> li
     return found
 
 
+# A status at or past it is the vendor failing, not the voice asked for.
+THE_VENDORS_OWN = 500
+
+
+# A vendor that turns the voice down (a typo in its id, a model it does not run, silence for a
+# voice it has not) is the request's fault, refused as the settings refuse it; a vendor that does
+# not answer, or fails on its side, is the vendor's.
 async def sample(running: Running, line: str) -> Sample:
-    """The line spoken by the stage's voice, built as a call builds it, or the vendor's words."""
+    """The line spoken by the stage's voice, built as a call builds it; its refusal in the vendor's words."""
     async with http_context.open():
         speech = tts_of(running)
         try:
@@ -97,8 +104,12 @@ async def sample(running: Running, line: str) -> Sample:
                     return await _heard(stream)
             async with speech.synthesize(line) as chunks:
                 return await _heard(chunks)
+        except (APIConnectionError, APITimeoutError) as silent:
+            raise _refused(running.vendor, "did not answer", silent) from silent
         except APIError as refused:
-            raise _refused(running.vendor, "did not say it", refused) from refused
+            if isinstance(refused, APIStatusError) and refused.status_code >= THE_VENDORS_OWN:
+                raise _refused(running.vendor, "failed on its side", refused) from refused
+            raise ValidationError(f"{running.vendor} refused the voice: {refused.message}") from refused
         finally:
             await speech.aclose()
 

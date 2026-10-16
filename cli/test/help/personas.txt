@@ -8,8 +8,10 @@ Options:
   -h, --help              display help for command
 
 Commands:
-  list [options]
-  show [options] <name>
+  list [options]          the agent's callers: Pinecall's, on or off, and its
+                          own
+  show [options] <name>   one caller whole: goal, style, facts, what they
+                          expect, how they act
   add [options] <name>    write one: --goal and --style are needed
   edit [options] <name>   change what is named and leave the rest
   rm [options] <name>     the caller dropped; one of Pinecall's is switched off
@@ -38,6 +40,8 @@ Examples
 $ pinecall personas list --help
 Usage: pinecall personas list [options]
 
+the agent's callers: Pinecall's, on or off, and its own
+
 Options:
   --agent <name>
   --file <agent.tsx>
@@ -45,6 +49,8 @@ Options:
 
 $ pinecall personas show --help
 Usage: pinecall personas show [options] <name>
+
+one caller whole: goal, style, facts, what they expect, how they act
 
 Options:
   --agent <name>
@@ -62,9 +68,9 @@ Options:
   --goal <goal>            what they want
   --style <style>          how they talk
   --about <about>          who they are, in a line
-  --fact <what=said...>    what they know and say when asked
-  --expect <line...>       what the agent should do, one line each
-  --tag <tag...>
+  --fact <what=said>       what they know and say when asked; again for another
+  --expect <line>          what the agent should do; again for another
+  --tag <tag>              again for another
   --llm <model>            the model that plays them
   --tts <vendor>
   --voice <voice>
@@ -88,9 +94,9 @@ Options:
   --goal <goal>            what they want
   --style <style>          how they talk
   --about <about>          who they are, in a line
-  --fact <what=said...>    what they know and say when asked
-  --expect <line...>       what the agent should do, one line each
-  --tag <tag...>
+  --fact <what=said>       what they know and say when asked; again for another
+  --expect <line>          what the agent should do; again for another
+  --tag <tag>              again for another
   --llm <model>            the model that plays them
   --tts <vendor>
   --voice <voice>

@@ -11,8 +11,9 @@ from livekit.agents.utils import http_context
 
 from pinecall_runtime.agents.declaration import Modality, Turn
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
-from pinecall_runtime.providers.service import voices
-from pinecall_runtime.providers.service.plugins import Running
+from pinecall_runtime.providers.schemas import Catalog
+from pinecall_runtime.providers.service import keyring, voices
+from pinecall_runtime.providers.service.plugins import Credentials, Running, Vendor
 from pinecall_runtime.providers.service.stages import llm_of, stt_of
 
 # A vendor slower than this to say a word is not refusing the setting, it is not answering.
@@ -23,14 +24,16 @@ LISTENED_S = 4.0
 # Half a second of silence at the rate every plugin takes, to open the ears and close them.
 RATE = 16_000
 STAGE_NAMES: dict[Modality, str] = {"llm": "model", "stt": "ears", "tts": "voice"}
+# The job a key is tried on, the first the vendor does: a model's answer is the cheapest to ask.
+JOBS: tuple[Modality, ...] = ("llm", "tts", "stt")
 # Once, at once: a setting is not worth livekit's retries, and a person is waiting on the answer.
 ONCE = APIConnectOptions(max_retry=0, timeout=10.0)
 SILENCE = rtc.AudioFrame(data=bytes(RATE), sample_rate=RATE, num_channels=1, samples_per_channel=RATE // 2)
 
 
-async def try_stage(stage: Modality, running: Running, turn: Turn | None = None) -> None:
+async def try_stage(stage: Modality, running: Running, turn: Turn | None = None, *, what: str | None = None) -> None:
     """The stage asked one small thing; the vendor's no is ValidationError, its silence UpstreamError."""
-    named = STAGE_NAMES[stage]
+    named = what or f"the {STAGE_NAMES[stage]} this sets"
     try:
         # Outside a call there is no job to lend the plugins its HTTP session: it is opened here.
         async with asyncio.timeout(TRY_S), http_context.open():
@@ -45,16 +48,31 @@ async def try_stage(stage: Modality, running: Running, turn: Turn | None = None)
     except (APIConnectionError, APITimeoutError) as silent:
         raise UpstreamError(_unanswered(running, named, silent.message)) from silent
     except APIError as refused:
-        raise ValidationError(f"{running.vendor} refused the {named} this sets: {refused.message}") from refused
+        raise ValidationError(f"{running.vendor} refused {named}: {refused.message}") from refused
+    except ValidationError as said:
+        # The voice's sample says its own refusal; here it is named after what was tried.
+        cause = said.__cause__
+        words = cause.message if isinstance(cause, APIError) else str(said)
+        raise ValidationError(f"{running.vendor} refused {named}: {words}") from said
     except UpstreamError as failed:
         cause = failed.__cause__
         if isinstance(cause, APIConnectionError | APITimeoutError):
             raise UpstreamError(_unanswered(running, named, cause.message)) from cause
-        raise ValidationError(f"{running.vendor} refused the {named} this sets: {failed}") from failed
+        raise ValidationError(f"{running.vendor} refused {named}: {failed}") from failed
+
+
+# A key is tried as a call would run it, on the first job the vendor does: a key that cannot answer
+# one small request would fail every call it is kept for.
+async def try_key(vendor: Vendor, credentials: Credentials, catalog: Catalog) -> None:
+    """The vendor asked one small thing on these credentials; refused in its words, nothing kept."""
+    for stage in JOBS:
+        if stage in vendor.does:
+            await try_stage(stage, keyring.vendor_on(stage, vendor.name, credentials, catalog), what="this key")
+            return
 
 
 def _unanswered(running: Running, named: str, why: str) -> str:
-    return f"{running.vendor} did not answer while the {named} this sets was tried: {why}; nothing was kept, try again"
+    return f"{running.vendor} did not answer while {named} was tried: {why}; nothing was kept, try again"
 
 
 async def _answered(running: Running) -> None:

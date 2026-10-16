@@ -116,20 +116,24 @@ export function register(program: Command, ctx: Context): void {
   const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp").addHelpText("after", CARRIERS);
   carriers
     .command("list", { isDefault: true })
+    .description("every carrier account of the org, oldest first")
     .action(async () => ctx.io.result(await service.listCarriers(ctx), render.carriers));
   carriers
     .command("show")
+    .description("one account, named, never its secret")
     .argument("[account]", "the org's only one when left out")
     .action(async (account) => ctx.io.result(await service.showCarrier(ctx, account), render.carrier));
   const add = carriers.command("add").description("keep an account: its fields from the flags, its secrets from stdin");
   add
     .command("twilio")
+    .description("a Twilio account: its SID, an API key and its secret on stdin")
     .requiredOption("--account-sid <AC…>")
     .requiredOption("--user <SK…>", "an API key SID, or the account SID again")
     .option("--label <name>")
     .action(async (flags) => addCarrier({ kind: "twilio", accountSid: flags.accountSid, user: flags.user, label: flags.label }));
   add
     .command("sip")
+    .description("a SIP peer: who calls from where, and how calls go out; the password on stdin")
     .requiredOption("--username <user>")
     .requiredOption("--address <ip or network...>", "the networks it calls from")
     .option("--outbound-host <host>")
@@ -149,17 +153,20 @@ export function register(program: Command, ctx: Context): void {
     );
   add
     .command("whatsapp")
+    .description("a WhatsApp Business number: its id, and Meta's token on stdin")
     .requiredOption("--phone-number-id <id>")
     .option("--label <name>")
     .action(async (flags) => addCarrier({ kind: "whatsapp", phoneNumberId: flags.phoneNumberId, label: flags.label }));
   carriers
     .command("drop")
+    .description("an account let go; its numbers stop ringing here")
     .argument("[account]")
     .action(async (account) => ctx.io.result(await service.dropCarrier(ctx, account), render.carrierDropped));
 
   const line = program.command("line").description("which phone is yours, and whose terminal anybody else's call rings in").addHelpText("after", LINE);
   line
     .command("show", { isDefault: true })
+    .description("where the agent's line rings, and whose phones reach this terminal")
     .argument("[agent.tsx]")
     .option("--agent <name>")
     .action(async (file, flags) => ctx.io.result(await service.showLine(ctx, { file, agent: flags.agent }), render.line));

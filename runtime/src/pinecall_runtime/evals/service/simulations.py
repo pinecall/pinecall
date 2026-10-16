@@ -1,6 +1,7 @@
 """A simulated caller on a call: a new call claimed for it, its model, its voice, its lines, spoken or written."""
 
 import asyncio
+import contextlib
 import dataclasses
 import logging
 from collections.abc import AsyncGenerator, Coroutine
@@ -185,8 +186,12 @@ async def caller_voice(
     return dataclasses.replace(stage, voice=chosen, language=config.language)
 
 
-# The room is deleted whatever happens: that ends the agent's job, and its job seals the log. The
-# call lasts minutes, and holds no connection: the fleet is read and the transaction is over.
+# The caller leaving ends the call as a hang-up, which the worker writes; the room is deleted after,
+# whatever happened, so a worker that never noticed still ends its job and seals the log. The call
+# lasts minutes, and holds no connection: the fleet is read and the transaction is over.
+HANGS_UP_WITHIN_S = 10.0
+
+
 async def on_the_line(
     serving: calls.Serving,
     dispatch: Dispatch,
@@ -203,11 +208,22 @@ async def on_the_line(
     joined = dataclasses.replace(line, url=serving.handles.settings.livekit_url_of(env), token=token)
     try:
         await serving.offering.offer(line.call, the_fleet, dispatch)
-        return await spoken.run_spoken(joined, speech, serving.logs, next_line)
+        said = await spoken.run_spoken(joined, speech, serving.logs, next_line)
     except (TimeoutError, rtc.ConnectError) as broke:
         raise ServiceUnavailable(NO_LINE.format(broke=broke)) from broke
+    else:
+        await _hung_up(serving, line.call)
+        return said
     finally:
         await fleet.close_room(serving.handles.servers[env], line.call)
+
+
+async def _hung_up(serving: calls.Serving, call: str) -> None:
+    """Wait, briefly, for the worker to write the call's end once its caller left."""
+    with contextlib.suppress(TimeoutError):
+        async with asyncio.timeout(HANGS_UP_WITHIN_S):
+            while not any(entry.type == "call.ended" for entry in await serving.logs.store.whole(call)):
+                await asyncio.sleep(0.5)
 
 
 # Asked before each line: the line that crosses the ceiling is the last one said, and a call the

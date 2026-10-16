@@ -37,9 +37,10 @@ export function settings({ agent, answer }: { agent: string; answer: TuningAnswe
   };
   const widths = corners.map((corner) => Math.max(corner.name.length, ...FIELDS.map((field) => cell(corner, field).length)) + 2);
   const lines = [`${agent} · ${answer.world}`, ""];
-  lines.push(`  ${"".padEnd(14)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
+  const label = Math.max(...FIELDS.map((field) => field.length)) + 2;
+  lines.push(`  ${"".padEnd(label)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
   for (const field of FIELDS) {
-    lines.push(`  ${field.replace("-", " ").padEnd(14)}${corners.map((corner, at) => cell(corner, field).padEnd(widths[at]!)).join("")}`.trimEnd());
+    lines.push(`  ${field.replaceAll("-", " ").padEnd(label)}${corners.map((corner, at) => cell(corner, field).padEnd(widths[at]!)).join("")}`.trimEnd());
   }
   lines.push("");
   lines.push(`  ${corners.map((corner) => `${corner.name}: ${corner.row === null ? "nothing set" : versionLine(corner.row)}`).join(" · ")}`);

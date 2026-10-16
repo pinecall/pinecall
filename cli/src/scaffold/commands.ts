@@ -7,6 +7,7 @@ import type { Command } from "@commander-js/extra-typings";
 import type { Context } from "../context.js";
 import * as render from "./render.js";
 import * as service from "./service.js";
+import { repeated } from "../kit/flags.js";
 
 const NEW = `
 Writes ./<name>/, the project: its toolchain (package.json, Gemfile or pyproject.toml), a README and
@@ -51,6 +52,7 @@ export function register(program: Command, ctx: Context): void {
   const generate = program.command("generate").alias("g").description("an agent in this project, or one more golden for one of its agents").addHelpText("after", GENERATE);
   generate
     .command("agent")
+    .description("one more agent in this project: its class, its test, one golden, its docs folder")
     .argument("<name>")
     .option("--typescript")
     .option("--ruby")
@@ -58,9 +60,10 @@ export function register(program: Command, ctx: Context): void {
     .action((name, flags) => ctx.io.result(service.createAgent(ctx.cwd, name, service.templateOf(flags)), render.wrote));
   generate
     .command("golden")
+    .description("a conversation the agent must hold, written as a file to fill in")
     .argument("<name>")
-    .requiredOption("--say <line...>", "what the caller says, one line a turn, in order (required)")
-    .option("--tool <name...>", "a tool the call must make")
+    .requiredOption("--say <line>", "what the caller says, one turn; again for the next, in order (required)", repeated)
+    .option("--tool <name>", "a tool the call must make; again for another", repeated)
     .option("--agent <name>")
     .action((name, flags) => {
       const file = service.createGolden(ctx.cwd, service.GoldenInput.parse({ name, says: flags.say, tools: flags.tool ?? [], agent: flags.agent }));

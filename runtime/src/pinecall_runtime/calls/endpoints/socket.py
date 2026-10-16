@@ -30,7 +30,7 @@ async def apps_socket(websocket: WebSocket) -> None:
             raise Unauthorized(TAKES_A_KEY)
         check_scopes(actor, (KeyScope.app,))
     except PinecallError as refused:
-        await refuse_socket(websocket, str(refused))
+        await refuse_socket(websocket, refused)
         return
     await websocket.accept()
     serving: Serving = websocket.app.state.serving

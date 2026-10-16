@@ -10,6 +10,14 @@ export function numberOf(flag: string, text: string | undefined): number | undef
   return value;
 }
 
+/**
+ * A flag said again for each value (`--model a --model b`), collected in order: what a verb with
+ * positional arguments takes, where a flag of several values would swallow the path after it.
+ */
+export function repeated(value: string, previous: string[] | undefined): string[] {
+  return [...(previous ?? []), value];
+}
+
 /** `--types a.b,c.d` as a list, blanks dropped; undefined when the flag was left out. */
 export function listOf(text: string | undefined): string[] | undefined {
   if (text === undefined) return undefined;

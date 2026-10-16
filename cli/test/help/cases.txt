@@ -8,18 +8,27 @@ Options:
   -h, --help                      display help for command
 
 Commands:
-  list [options]
-  groups [options]
-  show [options] <name|group>
-  propose <group>
-  apply <group>
-  persona <group>
-  approve [options] <name|group>
-  dismiss [options] <name|group>
-  reopen [options] <name>
-  forget [options] <name>
-  pull [options] <name>
-  keep [options] <call-id>
+  list [options]                  the agent's cases, the pending first; --status
+                                  keeps one
+  groups [options]                the agent's case groups: the calls one judge
+                                  broke on, together
+  show [options] <name|group>     one case whole, or one group with its cases
+  propose <group>                 the judge model's diagnosis of a group: the
+                                  cause and the smallest fix
+  apply <group>                   the group's proposed setting, written as a new
+                                  version of yours
+  persona <group>                 a caller like the group's, kept as the agent's
+                                  own persona
+  approve [options] <name|group>  a case or a whole group approved: the nightly
+                                  plays it from now on
+  dismiss [options] <name|group>  a case or a whole group dismissed: the agent
+                                  was right, or the judge was wrong
+  reopen [options] <name>         a decided case pending again
+  forget [options] <name>         a case gone; the call it came from stays
+  pull [options] <name>           the case's golden as a file in the agent's
+                                  goldens, to keep in the repository
+  keep [options] <call-id>        a finished call kept as an approved case, by
+                                  name
   help [command]                  display help for command
 
 A call a judge broke on is kept at hang-up as a PENDING case: its turns, the state it opened in,
@@ -35,6 +44,8 @@ whole group. pull writes a case's golden into the repository; keep makes a finis
 $ pinecall cases list --help
 Usage: pinecall cases list [options]
 
+the agent's cases, the pending first; --status keeps one
+
 Options:
   --status <status>  pending | approved | dismissed
   --agent <name>
@@ -43,12 +54,16 @@ Options:
 $ pinecall cases groups --help
 Usage: pinecall cases groups [options]
 
+the agent's case groups: the calls one judge broke on, together
+
 Options:
   --agent <name>
   -h, --help      display help for command
 
 $ pinecall cases show --help
 Usage: pinecall cases show [options] <name|group>
+
+one case whole, or one group with its cases
 
 Options:
   --agent <name>
@@ -57,11 +72,15 @@ Options:
 $ pinecall cases propose --help
 Usage: pinecall cases propose [options] <group>
 
+the judge model's diagnosis of a group: the cause and the smallest fix
+
 Options:
   -h, --help  display help for command
 
 $ pinecall cases apply --help
 Usage: pinecall cases apply [options] <group>
+
+the group's proposed setting, written as a new version of yours
 
 Options:
   -h, --help  display help for command
@@ -69,11 +88,15 @@ Options:
 $ pinecall cases persona --help
 Usage: pinecall cases persona [options] <group>
 
+a caller like the group's, kept as the agent's own persona
+
 Options:
   -h, --help  display help for command
 
 $ pinecall cases approve --help
 Usage: pinecall cases approve [options] <name|group>
+
+a case or a whole group approved: the nightly plays it from now on
 
 Options:
   --agent <name>
@@ -81,6 +104,8 @@ Options:
 
 $ pinecall cases dismiss --help
 Usage: pinecall cases dismiss [options] <name|group>
+
+a case or a whole group dismissed: the agent was right, or the judge was wrong
 
 Options:
   --judge-was-wrong <judge>  the judge that broke and should have held
@@ -91,12 +116,16 @@ Options:
 $ pinecall cases reopen --help
 Usage: pinecall cases reopen [options] <name>
 
+a decided case pending again
+
 Options:
   --agent <name>
   -h, --help      display help for command
 
 $ pinecall cases forget --help
 Usage: pinecall cases forget [options] <name>
+
+a case gone; the call it came from stays
 
 Options:
   --agent <name>
@@ -105,6 +134,8 @@ Options:
 $ pinecall cases pull --help
 Usage: pinecall cases pull [options] <name>
 
+the case's golden as a file in the agent's goldens, to keep in the repository
+
 Options:
   --out <dir>     the agent's goldens folder when left out
   --agent <name>
@@ -112,6 +143,8 @@ Options:
 
 $ pinecall cases keep --help
 Usage: pinecall cases keep [options] <call-id>
+
+a finished call kept as an approved case, by name
 
 Options:
   --name <x>

@@ -23,7 +23,7 @@ from pinecall_runtime.providers.schemas import (
     VoiceSampleRequest,
     VoicesListed,
 )
-from pinecall_runtime.providers.service import catalog, keyring, plugins, stages, voices
+from pinecall_runtime.providers.service import catalog, keyring, plugins, stages, trials, voices
 
 router = APIRouter()
 
@@ -63,6 +63,7 @@ async def bring_key(
     named = plugins.installed_vendor(vendor)
     credentials = keyring.credentials_from(body)
     stages.check_credentials(named, credentials)
+    await trials.try_key(plugins.installed()[named], credentials, await catalog.get_catalog(session))
     await keyring.put_own_credentials(session, _vault(request), actor.org, named, credentials)
 
 
@@ -94,6 +95,8 @@ async def list_voices(
         keys = await keyring.keys_of(session, _vault(request), actor.scope)
         stage = keyring.stage_on_its_key("tts", Voice(provider=named), configured, keys)
         listed = await voices.listed_by_vendor(dataclasses.replace(stage, language=spoken))
+    if not listed and spoken is not None:
+        raise NotFound(f"{named} lists no voice in {language}: drop --language to see every one")
     return VoicesListed(
         tts=tts,
         language=language,
@@ -165,9 +168,9 @@ async def put_box_key(
     vendor: str, body: ProviderKeyRequest, _actor: TheOperator, request: Request, session: Session
 ) -> None:
     """The box's own credentials for a vendor; orgs it lends to run on them from the next call."""
-    await keyring.put_box_credentials(
-        session, _vault(request), plugins.installed_vendor(vendor), keyring.credentials_from(body)
-    )
+    named, credentials = plugins.installed_vendor(vendor), keyring.credentials_from(body)
+    await trials.try_key(plugins.installed()[named], credentials, await catalog.get_catalog(session))
+    await keyring.put_box_credentials(session, _vault(request), named, credentials)
 
 
 @router.delete("/v1/ops/provider-keys/{vendor}", status_code=204)
@@ -196,6 +199,7 @@ async def put_org_vendor_key(
     """The org's own credentials for a vendor, set for it; its calls run on them next."""
     named_vendor, credentials = plugins.installed_vendor(vendor), keyring.credentials_from(body)
     stages.check_credentials(named_vendor, credentials)
+    await trials.try_key(plugins.installed()[named_vendor], credentials, await catalog.get_catalog(session))
     with box_wide():
         org = await orgs.get_org(session, named)
         await keyring.put_own_credentials(session, _vault(request), org.id, named_vendor, credentials)

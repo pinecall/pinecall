@@ -29,10 +29,12 @@ export const PushDocsInput = z.object({
 export type PushDocsInput = z.infer<typeof PushDocsInput>;
 
 /** What `docs eval` takes: a golden and a base, or the agent whose `goldens/docs.json` and slug they default to; `k` left out is the attachment's. */
+const A_K = { error: "--k takes a whole number of chunks, 1 or more" };
+
 export const EvalDocsInput = z.object({
   golden: z.string().min(1).optional(),
   base: z.string().min(1).optional(),
-  k: z.number().int().min(1).optional(),
+  k: z.number(A_K).int(A_K).min(1, A_K).optional(),
   agent: z.string().min(1).optional(),
   file: z.string().min(1).optional(),
 });
@@ -158,7 +160,7 @@ export async function detachBase(ctx: Context, input: DetachBaseInput): Promise<
     (config) => ({ ...config, bases: (config.bases ?? []).filter((one) => one.base !== input.base) }),
     `detached ${input.base}`,
     (row) => {
-      if (!(row?.config.bases ?? []).some((one) => one.base === input.base)) throw new PinecallError(NOT_ATTACHED(agent, input.base));
+      if (!(row?.config.bases ?? []).some((one) => one.base === input.base)) throw new UsageError(NOT_ATTACHED(agent, input.base));
     },
   );
   return { agent, base: input.base, corner: written.corner, version: written.version };

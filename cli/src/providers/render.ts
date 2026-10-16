@@ -8,8 +8,8 @@ export const NO_PROVIDER_KEYS = "no provider key brought: every call runs on the
 /** The vendors, one row each, then how many and which the platform runs each job on. */
 export function catalog(found: Catalog): string[] {
   const rows = table(
-    ["vendor", "does", "standing", "variable", "also known as"],
-    found.providers.map((one) => [one.name, one.does.join(","), one.standing, one.env ?? "", one.aliases.join(" ")]),
+    ["vendor", "does", "standing"],
+    found.providers.map((one) => [one.name, one.does.join(","), one.standing]),
   );
   const ours = Object.entries(found.defaults).map(([job, vendor]) => `${job} ${vendor}`);
   return [...rows, "", `${found.providers.length} vendors · ours: ${ours.join(" · ")}`];

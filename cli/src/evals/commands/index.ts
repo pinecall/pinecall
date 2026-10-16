@@ -14,7 +14,7 @@ import * as service from "../service/index.js";
 import { HELP } from "../help.js";
 
 import { registerCases, registerPersonas, registerRuns } from "./dataset.js";
-import { numberOf } from "../../kit/flags.js";
+import { numberOf, repeated } from "../../kit/flags.js";
 import { simulateAtTheTerminal, test } from "./terminal.js";
 
 export function register(program: Command, ctx: Context): void {
@@ -24,14 +24,14 @@ export function register(program: Command, ctx: Context): void {
     .argument("[paths...]", "files or directories of goldens; the agent's agents/<name>/test/goldens when none")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
-    .option("--model <m...>", "a column of the matrix: vendor/model, repeatable")
+    .option("--model <m>", "a column of the matrix: vendor/model; say it again for another", repeated)
     .option("--grep <x>", "only the goldens whose name matches")
     .option("--watch", "run again whenever a golden changes")
     .option("--voice", "ring 2: the same goldens said out loud on a real line")
     .option("--background-noise <dB>", "dB under the caller, on a spoken run")
     .option("--ambience <what>", service.AMBIENCES.join(" | "))
     .option("--packet-loss <share>", "the share of the caller's packets lost, 0 to 1")
-    .option("--case <name...>", "a case of the org's dataset, by name, whatever its status")
+    .option("--case <name>", "a case of the org's dataset, by name, whatever its status; again for another", repeated)
     .option("--dataset", "every case a person approved: the nightly")
     .option("--version <n>", "every call on that version of the agent's settings")
     .addHelpText("after", HELP.test)

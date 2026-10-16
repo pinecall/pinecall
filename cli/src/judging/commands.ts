@@ -4,7 +4,7 @@ import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
 import { GatewayError, UsageError } from "../errors.js";
-import { listOf } from "../kit/flags.js";
+import { listOf, repeated } from "../kit/flags.js";
 import { parseKeyValues } from "../kit/keyvalue.js";
 import * as render from "./render.js";
 import * as service from "./service.js";
@@ -73,7 +73,7 @@ export function register(program: Command, ctx: Context): void {
     .action(async (name, flags) => {
       const list = await service.listJudges(ctx, owner(flags));
       const found = list.judges.find((row) => row.name === name);
-      if (found === undefined) throw new UsageError(`no judge ${name} in this list: \`pinecall judges\` names the ones there are`);
+      if (found === undefined) throw new UsageError(`${owner(flags) ?? "the org"} has no judge called ${name}: \`pinecall judges\` names the ones there are`);
       ctx.io.result(found, render.judge);
     });
   judges
@@ -130,7 +130,7 @@ export function register(program: Command, ctx: Context): void {
     .description("whether this org's calls are judged at hang-up, and the model the judges run on: Pinecall's, or one of yours")
     .argument("[on|off]", "judging on or off for every agent, from the next call; the model is kept")
     .option("--model <vendor/model>", "a model of yours, or haiku · sonnet · opus")
-    .option("--option <key=value...>", "one keyword argument of the model's plugin; the value read as JSON")
+    .option("--option <key=value>", "one keyword argument of the model's plugin, its value read as JSON; again for another", repeated)
     .option("--platform", "Pinecall's judge model again")
     .addHelpText("after", JUDGING)
     .action(async (verb, flags) => {

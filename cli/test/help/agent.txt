@@ -139,12 +139,14 @@ Options:
   -h, --help      display help for command
 
 Commands:
-  show [options]
-  edit [options]
+  show [options]  what the agent knows by heart, in its three corners
+  edit [options]  the text in your editor; what you leave is the next version
   help [command]  display help for command
 
 $ pinecall agent knowledge show --help
 Usage: pinecall agent knowledge show [options]
+
+what the agent knows by heart, in its three corners
 
 Options:
   --agent <slug>
@@ -153,6 +155,8 @@ Options:
 
 $ pinecall agent knowledge edit --help
 Usage: pinecall agent knowledge edit [options]
+
+the text in your editor; what you leave is the next version
 
 Options:
   --agent <slug>

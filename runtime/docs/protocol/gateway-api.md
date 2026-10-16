@@ -59,7 +59,7 @@ extraction runs of 50 cases at most, per org), or a minute's requests
 spent (below); `502` a vendor or a
 carrier that did not answer, in its own words; `503` the request was right and this deployment cannot
 honour it, or not now: a database too busy to answer within its timeouts is a `503` to retry. A
-socket closes with **1008** and the sentence. A key past its expiry is `401` saying
+socket closes with **4000 plus the status** it would have answered over HTTP (`4404` for a name nothing answers to, `4403` for a scope the key lacks) and the sentence. A key past its expiry is `401` saying
 when it expired, never the silence of a key nobody made.
 
 **A minute's requests.** Every endpoint a key opens by its scopes counts the org's requests in the

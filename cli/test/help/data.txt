@@ -13,7 +13,8 @@ Commands:
   reads [call-id|number]      who read the org's calls
   policy [options]            the org's compliance settings, one row; a flag
                               changes one field
-  consent [options] <number>
+  consent [options] <number>  what stands for a number, or a consent given or an
+                              opt-out recorded
   dnc                         the do-not-call list
   export [options]            the org's env whole as JSON Lines
   help [command]              display help for command
@@ -36,12 +37,16 @@ Options:
   -h, --help                     display help for command
 
 Commands:
-  call [options] <call-id>
-  contact [options] <number|id>
+  call [options] <call-id>       one ended call: its log, facts, memories and
+                                 recording
+  contact [options] <number|id>  everything about one contact: their calls and
+                                 every fact kept of them
   help [command]                 display help for command
 
 $ pinecall data erase call --help
 Usage: pinecall data erase call [options] <call-id>
+
+one ended call: its log, facts, memories and recording
 
 Options:
   --yes       an erasure cannot be undone
@@ -49,6 +54,8 @@ Options:
 
 $ pinecall data erase contact --help
 Usage: pinecall data erase contact [options] <number|id>
+
+everything about one contact: their calls and every fact kept of them
 
 Options:
   --yes
@@ -94,6 +101,8 @@ Options:
 $ pinecall data consent --help
 Usage: pinecall data consent [options] <number>
 
+what stands for a number, or a consent given or an opt-out recorded
+
 Options:
   --give <kind>      express | written
   --source <where>
@@ -111,13 +120,16 @@ Options:
   -h, --help                  display help for command
 
 Commands:
-  list [options]
-  add [options] <numbers...>
-  import [options] <file>
+  list [options]              the numbers never to call, newest first, a page
+  add [options] <numbers...>  numbers put on the list, with where the request
+                              came from
+  import [options] <file>     a file of numbers, one a line, put on the list
   help [command]              display help for command
 
 $ pinecall data dnc list --help
 Usage: pinecall data dnc list [options]
+
+the numbers never to call, newest first, a page
 
 Options:
   --after <cursor>
@@ -126,12 +138,16 @@ Options:
 $ pinecall data dnc add --help
 Usage: pinecall data dnc add [options] <numbers...>
 
+numbers put on the list, with where the request came from
+
 Options:
   --source <where>
   -h, --help        display help for command
 
 $ pinecall data dnc import --help
 Usage: pinecall data dnc import [options] <file>
+
+a file of numbers, one a line, put on the list
 
 Arguments:
   file              one number a line

@@ -98,7 +98,8 @@ export function carrierDropped({ account }: { account: string | undefined }): st
 
 /** Where the line rings and how to change it. Names people by email, never member id. */
 export function line(said: TheLine): string {
-  if (!said.held) return `nobody is answering ${said.agent}: run \`pinecall start\``;
+  if (!said.held && said.waiting.length === 0) return `nobody is answering ${said.agent}: run \`pinecall start\``;
+  if (!said.held) return `nobody holds the line of ${said.agent}, so a call from a number nobody said was theirs rings nowhere · running: ${said.waiting.map((one) => one.name ?? "the org's own key").join(", ")} · \`pinecall line claim\` takes it`;
   // Routing by number takes precedence over holding the line.
   const mine = said.calling.length > 0 ? `your calls from ${said.calling.join(", ")}` : undefined;
   if (said.yours) {

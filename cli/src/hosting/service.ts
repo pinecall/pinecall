@@ -160,6 +160,8 @@ export interface LogListeners {
  * what comes after is handed on, until `signal` aborts.
  */
 export async function readLogs(ctx: Context, name: string, withinMs: number, follow?: LogListeners, signal?: AbortSignal): Promise<Logs> {
+  // The stream refuses an app the box has not with its raw body: the app is asked for first, in words.
+  await api.listReleases(ctx.gateway(), name);
   const askedAt = Date.now() / 1000;
   const stop = new AbortController();
   signal?.addEventListener("abort", () => stop.abort(), { once: true });

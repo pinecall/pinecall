@@ -1,6 +1,7 @@
 /** The org's data: erasures and their trail, who read what, the policy, consent, the do-not-call list, export. */
 
-import { createWriteStream } from "node:fs";
+import { dirname } from "node:path";
+import { createWriteStream, existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { Readable, type Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -18,14 +19,16 @@ export const SAY_YES = (what: string, who: string): string => `erasing ${what} $
 const ONE_OR_THE_OTHER = (a: string, b: string): string => `${a} and ${b} say two things about one field`;
 const ONE_DISCLOSURE = "one of --disclosure '<your words>', --platform-disclosure or --no-disclosure";
 const HOURS = /^(\d{1,2})-(\d{1,2})$/;
+const DAYS = { error: "--retention-days takes a whole number of days, 1 or more; --keep-all keeps every call" };
+const PER_DAY = { error: "--per-number-day takes a whole number of calls, 1 or more; --no-per-number lifts it" };
 
 /** What `data policy` takes: each flag one field; the rest stay. */
 export const PolicyInput = z.object({
-  retentionDays: z.number().int().min(1).optional(),
+  retentionDays: z.number(DAYS).int(DAYS).min(1, DAYS).optional(),
   keepAll: z.boolean().default(false),
   callingHours: z.string().regex(HOURS, "two hours of the day, from-until, like 9-20").optional(),
   anyHours: z.boolean().default(false),
-  perNumberDay: z.number().int().min(1).optional(),
+  perNumberDay: z.number(PER_DAY).int(PER_DAY).min(1, PER_DAY).optional(),
   noPerNumber: z.boolean().default(false),
   consentEverywhere: z.boolean().default(false),
   consentByLaw: z.boolean().default(false),
@@ -109,6 +112,7 @@ export async function exportOrg(ctx: Context, into: string | Writable): Promise<
   if (body === null) return { file: null };
   const stream = Readable.fromWeb(body as WebStream<Uint8Array>);
   if (typeof into === "string") {
+    if (!existsSync(dirname(into))) throw new UsageError(`cannot write ${into}: no folder ${dirname(into)}`);
     await pipeline(stream, createWriteStream(into));
     return { file: into };
   }

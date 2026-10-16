@@ -55,8 +55,8 @@ export function versionGuarded(answer: { yours: { version: number } | null; team
   return cornerWritten(answer, team, gw)?.version ?? 0;
 }
 
-// Key order is nothing: a field set to the value it holds is the same row.
-function sameSettings(one: TuningBody, other: TuningBody): boolean {
+/** Whether two rows set the same: key order is nothing, a field set to the value it holds is the same row. */
+export function sameSettings(one: TuningBody, other: TuningBody): boolean {
   const sorted = (body: TuningBody): string =>
     JSON.stringify(body, (_key, value: unknown) => (value !== null && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))) : value));
   return sorted(one) === sorted(other);

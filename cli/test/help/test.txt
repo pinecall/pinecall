@@ -10,15 +10,16 @@ Arguments:
 Options:
   --agent <name>
   --file <agent.tsx>
-  --model <m...>           a column of the matrix: vendor/model, repeatable
+  --model <m>              a column of the matrix: vendor/model; say it again
+                           for another
   --grep <x>               only the goldens whose name matches
   --watch                  run again whenever a golden changes
   --voice                  ring 2: the same goldens said out loud on a real line
   --background-noise <dB>  dB under the caller, on a spoken run
   --ambience <what>        television | cafe | office | street
   --packet-loss <share>    the share of the caller's packets lost, 0 to 1
-  --case <name...>         a case of the org's dataset, by name, whatever its
-                           status
+  --case <name>            a case of the org's dataset, by name, whatever its
+                           status; again for another
   --dataset                every case a person approved: the nightly
   --version <n>            every call on that version of the agent's settings
   -h, --help               display help for command

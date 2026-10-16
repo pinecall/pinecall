@@ -7,7 +7,8 @@ Options:
   -h, --help                     display help for command
 
 Commands:
-  show [options] [agent.tsx]
+  show [options] [agent.tsx]     where the agent's line rings, and whose phones
+                                 reach this terminal
   from <number>                  which phone is yours: its calls reach your own
                                  agent
   forget                         your phone no longer routed to you
@@ -36,6 +37,8 @@ Examples
 
 $ pinecall line show --help
 Usage: pinecall line show [options] [agent.tsx]
+
+where the agent's line rings, and whose phones reach this terminal
 
 Options:
   --agent <name>

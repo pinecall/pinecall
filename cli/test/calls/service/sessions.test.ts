@@ -70,4 +70,12 @@ describe("a page of the log", () => {
     expect((await service.readLog(ctx, service.ReadLogInput.parse({ call: "call_1", after: 10, types: ["turn.user", "tool.call"] }))).entries).toEqual([]);
     expect(sent[0]!.query).toEqual({ after: "10", limit: "200", types: "turn.user,tool.call" });
   });
+
+  it("shows only the types asked for, though the gateway sends the call's end to every reader", async () => {
+    answer("get", "/v1/calls/:call/state", { live: false, last_seq: 3 });
+    answer("get", "/v1/calls/:call/events", { entries: [{ seq: 1, type: "turn.user", data: {} }, { seq: 2, type: "call.ended", data: {} }, { seq: 3, type: "call.score", data: {} }], next: null });
+    const { ctx } = testContext();
+    const page = await service.readLog(ctx, service.ReadLogInput.parse({ call: "call_1", types: ["turn.user"] }));
+    expect(page.entries.map((entry) => entry.type)).toEqual(["turn.user"]);
+  });
 });

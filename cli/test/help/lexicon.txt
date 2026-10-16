@@ -7,11 +7,13 @@ Options:
   -h, --help                 display help for command
 
 Commands:
-  show [options]
+  show [options]             the words and how they are said and heard, in the
+                             three corners
   add [options] <word>       how a word is spoken
   hear [options] <words...>  the words the ears must know
   rm [options] <words...>    words taken out of both
-  history [options]
+  history [options]          every version of a corner's lexicon, who set it and
+                             why
   help [command]             display help for command
 
 The lexicon is the agent's says and hears, which the class never sets. add says how a word is
@@ -26,6 +28,8 @@ Examples
 
 $ pinecall lexicon show --help
 Usage: pinecall lexicon show [options]
+
+the words and how they are said and heard, in the three corners
 
 Options:
   --agent <slug>
@@ -66,6 +70,8 @@ Options:
 
 $ pinecall lexicon history --help
 Usage: pinecall lexicon history [options]
+
+every version of a corner's lexicon, who set it and why
 
 Options:
   --agent <slug>

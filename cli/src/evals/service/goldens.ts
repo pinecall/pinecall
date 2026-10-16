@@ -1,8 +1,10 @@
 /** Golden files on the tenant's disk and the schema the runner accepts. */
 
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, extname, join, resolve } from "node:path";
+import { basename, extname, join, resolve, sep } from "node:path";
 
+import { UsageError } from "../../errors.js";
 import { DOCS_GOLDEN, MEMORY_GOLDEN } from "../../project/layout.js";
 
 /** A fact of the tenant's backend, sent as the app's own `call.event` at its turn. */
@@ -51,6 +53,17 @@ export interface Golden {
   expect?: Expect;
   /** Source call id when created by `runs promote`; not read by judges. */
   promoted_from?: string;
+}
+
+/**
+ * What a path typed to `test` names: the file or folder when it is one, else a golden of the agent
+ * by its name (`no-reserva-antes-del-si`, with or without `.json`); neither is refused by name.
+ */
+export function goldenPath(typed: string, goldens: string): string {
+  if (existsSync(typed)) return typed;
+  const named = join(goldens, typed.endsWith(".json") ? typed : `${typed}.json`);
+  if (!typed.includes(sep) && existsSync(named)) return named;
+  throw new UsageError(`no golden ${typed}: not a file here, nor one of ${goldens}`);
 }
 
 /** Every golden under the paths, sorted by file name; none for no paths. */

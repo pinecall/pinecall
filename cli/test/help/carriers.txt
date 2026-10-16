@@ -8,11 +8,11 @@ Options:
   -h, --help      display help for command
 
 Commands:
-  list
-  show [account]
+  list            every carrier account of the org, oldest first
+  show [account]  one account, named, never its secret
   add             keep an account: its fields from the flags, its secrets from
                   stdin
-  drop [account]
+  drop [account]  an account let go; its numbers stop ringing here
   help [command]  display help for command
 
 An account is where the org's numbers live: a Twilio account, a SIP peer (its own PBX or a
@@ -32,11 +32,15 @@ Examples
 $ pinecall carriers list --help
 Usage: pinecall carriers list [options]
 
+every carrier account of the org, oldest first
+
 Options:
   -h, --help  display help for command
 
 $ pinecall carriers show --help
 Usage: pinecall carriers show [options] [account]
+
+one account, named, never its secret
 
 Arguments:
   account     the org's only one when left out
@@ -53,13 +57,18 @@ Options:
   -h, --help          display help for command
 
 Commands:
-  twilio [options]
-  sip [options]
-  whatsapp [options]
+  twilio [options]    a Twilio account: its SID, an API key and its secret on
+                      stdin
+  sip [options]       a SIP peer: who calls from where, and how calls go out;
+                      the password on stdin
+  whatsapp [options]  a WhatsApp Business number: its id, and Meta's token on
+                      stdin
   help [command]      display help for command
 
 $ pinecall carriers add twilio --help
 Usage: pinecall carriers add twilio [options]
+
+a Twilio account: its SID, an API key and its secret on stdin
 
 Options:
   --account-sid <AC…>
@@ -69,6 +78,8 @@ Options:
 
 $ pinecall carriers add sip --help
 Usage: pinecall carriers add sip [options]
+
+a SIP peer: who calls from where, and how calls go out; the password on stdin
 
 Options:
   --username <user>
@@ -82,6 +93,8 @@ Options:
 $ pinecall carriers add whatsapp --help
 Usage: pinecall carriers add whatsapp [options]
 
+a WhatsApp Business number: its id, and Meta's token on stdin
+
 Options:
   --phone-number-id <id>
   --label <name>
@@ -89,6 +102,8 @@ Options:
 
 $ pinecall carriers drop --help
 Usage: pinecall carriers drop [options] [account]
+
+an account let go; its numbers stop ringing here
 
 Options:
   -h, --help  display help for command

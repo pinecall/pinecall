@@ -42,10 +42,10 @@ Usage: pinecall telemetry set [options] <url>
 an OTLP collector; each header's value on stdin
 
 Options:
-  --header <name...>  a header to send; its value is read from stdin, one line
-                      per header, in order
-  --pii               let a span carry what was said and what a tool got
-  -h, --help          display help for command
+  --header <name>  a header to send, its value read from stdin; again for
+                   another, one line each, in order
+  --pii            let a span carry what was said and what a tool got
+  -h, --help       display help for command
 
 $ pinecall telemetry clear --help
 Usage: pinecall telemetry clear [options]

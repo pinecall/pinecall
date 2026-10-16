@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.enums import KeyScope
@@ -49,3 +49,11 @@ async def known_agent(slug: str, request: Request) -> str:
 
 
 KnownAgent = Annotated[str, Depends(known_agent)]
+
+
+async def known_filter(request: Request, agent: Annotated[str | None, Query()] = None) -> str | None:
+    """A list's `?agent=`: none is every agent; one the org never held is 404, never an empty page."""
+    return None if agent is None else await known_agent(agent, request)
+
+
+KnownFilter = Annotated[str | None, Depends(known_filter)]

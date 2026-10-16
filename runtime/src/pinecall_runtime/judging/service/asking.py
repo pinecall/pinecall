@@ -1,7 +1,7 @@
 """One judge asked of one finished call: its trigger first, then its question, as a tool call."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Never
 
@@ -40,6 +40,8 @@ JUDGE = (
 )
 
 NO_ANSWER = "the judge model answered without calling {tool}"
+# Said once to a model that answered in words: what it said stays in front of it.
+ONLY_THE_TOOL = "Answer by calling {tool}, and nothing else."
 SCORES = ("1", "2", "3", "4", "5")
 POSITIONS = TypeAdapter(list[int])
 
@@ -103,14 +105,35 @@ async def forced(
     chat = ChatContext.empty()
     chat.add_message(role="system", content=system)
     chat.add_message(role="user", content=question)
-    response = await model.chat(
-        chat_ctx=chat, tools=[llm.function_tool(_never_run, raw_schema=tool)], tool_choice="required"
-    ).collect()
+    tools: list[llm.Tool] = [llm.function_tool(_never_run, raw_schema=tool)]
+    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+    spent = [response.usage]
+    # A model that thinks before it answers cannot be held to a tool (Anthropic's thinking takes
+    # `auto` alone), and now and then answers in words: it is asked once more, its words in front of it.
+    if not response.tool_calls:
+        chat.add_message(role="assistant", content=response.text or "…")
+        chat.add_message(role="user", content=ONLY_THE_TOOL.format(tool=tool["name"]))
+        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+        spent.append(response.usage)
     if not response.tool_calls:
         raise UpstreamError(NO_ANSWER.format(tool=tool["name"]))
     answered: object = json.loads(response.tool_calls[0].arguments or "{}")
     fields: Mapping[str, object] = answered if a_mapping(answered) else {}
-    return fields, providers.completion_usage(model, response.usage)
+    return fields, providers.completion_usage(model, _summed(spent))
+
+
+def _summed(spent: Sequence[llm.CompletionUsage | None]) -> llm.CompletionUsage | None:
+    used = [one for one in spent if one is not None]
+    if not used:
+        return None
+    return llm.CompletionUsage(
+        completion_tokens=sum(one.completion_tokens for one in used),
+        prompt_tokens=sum(one.prompt_tokens for one in used),
+        prompt_cached_tokens=sum(one.prompt_cached_tokens for one in used),
+        cache_creation_tokens=sum(one.cache_creation_tokens for one in used),
+        cache_read_tokens=sum(one.cache_read_tokens for one in used),
+        total_tokens=sum(one.total_tokens for one in used),
+    )
 
 
 async def _applies(spec: JudgeSpec, case: Case, model: llm.LLM[Never]) -> tuple[bool, str, LLMModelUsage | None]:

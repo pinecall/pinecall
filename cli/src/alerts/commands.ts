@@ -7,6 +7,7 @@ import { UsageError } from "../errors.js";
 import { secretReader } from "../kit/stdin.js";
 import * as render from "./render.js";
 import * as service from "./service.js";
+import { repeated } from "../kit/flags.js";
 
 const MONITORS = `
 A monitor watches one number of the observability series over a window of days, for every agent
@@ -139,7 +140,7 @@ export function register(program: Command, ctx: Context): void {
     .command("set")
     .description("an OTLP collector; each header's value on stdin")
     .argument("<url>")
-    .option("--header <name...>", "a header to send; its value is read from stdin, one line per header, in order")
+    .option("--header <name>", "a header to send, its value read from stdin; again for another, one line each, in order", repeated)
     .option("--pii", "let a span carry what was said and what a tool got")
     .action(async (endpoint, flags) => {
       const read = secretReader(ctx.io);

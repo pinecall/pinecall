@@ -10,6 +10,7 @@ from pinecall_runtime.judging.service.asking import Answered, Context, ask
 from pinecall_runtime.judging.service.case import Called, Case, conversation_of
 from pinecall_runtime.judging.service.specs import JudgeSpec
 from pinecall_runtime.kit.text import a_mapping
+from tests.fakes import acme
 from tests.fakes.acme import AcmeLLM
 from tests.judging.factories import (
     a_judge,
@@ -116,6 +117,17 @@ def names_of(properties: object) -> list[str]:
     """The fields of a tool's parameters, in the order the model fills them."""
     assert a_mapping(properties)
     return list(properties)
+
+
+async def test_a_judge_model_that_answers_in_words_is_asked_once_more_and_both_requests_are_counted() -> None:
+    model = AcmeLLM(api_key="k", replies=[["déjame pensar"], [submitted("submit_verdict", verdict="held")]])
+    answered = await ask(SLOT, offered(), Context(), model)
+    assert answered.verdict == "held"
+    assert len(model.requests) == 2
+    last = model.requests[1].items[-1]
+    assert "submit_verdict" in str(getattr(last, "text_content", ""))
+    (spent,) = answered.spent
+    assert spent.output_tokens == 2 * acme.COMPLETION_TOKENS
 
 
 async def test_a_judge_model_that_calls_no_tool_is_a_vendor_that_failed() -> None:

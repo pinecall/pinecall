@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **A refused socket closes with 4000 plus the status** it would have answered (`4404` for an agent
+  nobody holds), so a terminal reads the refusal as the 404 it is; it closed with 1008 for every one.
+- **A vendor key is tried before it is kept.** `pinecall providers add` (and the operator's box keys)
+  ask the vendor one small thing on the key, on the first job it does, as a call would run it; a
+  key the vendor turns away is refused in its words and nothing is kept. A fake key was kept before.
+- **A voice the vendor has not is a 400 in one sentence**, as the settings refuse it; the vendor's
+  own failure stays a 502. `GET /v1/voices` with a language the vendor has no voice in says so.
+- **A judge model that answers in words is asked once more**, its words in front of it, before the
+  request is given up as the vendor's failure; both requests are counted. `personas generate` and
+  a judge on a thinking model failed now and then with "answered without calling …".
+- **A spoken simulation needs the agent held** (`POST /v1/evals/voice`): refused as every other
+  verb refuses it, instead of forty seconds waiting for an agent that never joins. Its call ends
+  `caller_hung_up` when the simulated caller leaves, not `drained`: the room is closed after the
+  worker wrote the end.
+- **`?agent=` on the lists of cases, groups and callbacks** is a known agent of the org or a 404,
+  as every `/v1/agents/{slug}` door is.
+
 - **A case decision that moves nothing is refused** (`409 case x is already dismissed`), as a settings
   write that changes nothing writes no version; it answered the case again before.
 - **Every sealed call counts into its day's drift again.** Since the rewrite the fold crashed

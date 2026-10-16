@@ -213,6 +213,11 @@ def stage_on_its_key(modality: Modality, declared: Model | Voice | None, catalog
     return _over(chosen, *backups)
 
 
+def vendor_on(modality: Modality, vendor: str, credentials: Credentials, catalog: Catalog) -> Running:
+    """The vendor's stage on these credentials, with the row's model and options for it: as a call runs it."""
+    return _on_its_key(modality, vendor, None, catalog, Keyring(own={vendor: credentials}))
+
+
 def running_on(keys: Keyring, vendor: str, model: str | None) -> Running:
     """The vendor on the org's own key, else on a key the box lends; refused before the call."""
     own = keys.own.get(vendor)

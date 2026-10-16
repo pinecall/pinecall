@@ -939,7 +939,7 @@ endpoint's own ceiling, so a window wider than that is counted over those 200.
 pinecall cases [list] [--status pending|approved|dismissed] [--agent <name>] [--json]
 pinecall cases groups · propose <group> · apply <group> · persona <group>
 pinecall cases show <name|group> · approve <name|group> · reopen <name> · forget <name>
-pinecall cases dismiss <name> [--judge-was-wrong <judge>] [--note '…']
+pinecall cases dismiss <name> [--judge-was-wrong <judge> [--note '…']]
 pinecall cases pull <name> [--out agents/<agent>/test/goldens]
 pinecall cases keep <call-id> --name x [--held-out]
 ```
@@ -1258,10 +1258,11 @@ again, so a process kept that way is stopped where it is supervised. An app on t
 `pc.onStopped(why => …)`. The Overview's Processes card is the same list, with a Stop per row.
 
 **Git, for whoever wants it.** `pinecall agent pull > pinecall/clinica-norte.json` writes the corner's
-config as a file; `pinecall agent push pinecall/clinica-norte.json --team` sends it back as the next
+own row as a file — the fields it sets, not what it reads from the team's; `pinecall agent push pinecall/clinica-norte.json --team` sends it back as the next
 version, with no version check — it is what CI applies, and `push … --prod` is what a release
 applies to production. A corner that set nothing has nothing to pull: `pull` says so on stderr,
-prints nothing and exits 1, so `pull > file` in a script fails rather than keeping an empty file.
+prints nothing and exits 1, so `pull > file` in a script fails rather than keeping an empty file. A
+`push` of what the corner already holds writes nothing and exits 2.
 
 ### `agent knowledge`
 
@@ -1394,7 +1395,7 @@ human did to a call is read the same way as what the agent did. The **audio** of
 the console's Live screen, which has a room; this is the transcript and the desk.
 
 A desk opens on a call that is **happening**: one that has ended, and an id this gateway has no
-log for, are refused before the prompt — what a finished call was is `pinecall sessions show`.
+log for, are refused before the prompt — what a finished call was is `pinecall sessions <call>`.
 
 An assistant has the same desk as the MCP's `supervise` tool ([Supervising a live call](mcp/supervising.md)).
 
@@ -1470,7 +1471,7 @@ the verb ends with the count:
 $ pinecall numbers buy --country ES --area 91 --agent clinica-norte --dry-run --prod
   Twilio: buy +34915550000: to do
   …
-  bought numbers in this world: 0 of 2
+  bought numbers in this env: 0 of 2
   nothing bought: drop --dry-run to buy +34915550000
 ```
 
@@ -1578,15 +1579,15 @@ pinecall providers list             # only the ones this org brought
 
 ```console
 $ pinecall providers --does tts
-vendor        does         standing   variable              also known as
-livekit       llm,stt,tts  ready                            inference lk
-cartesia      stt,tts      no key     CARTESIA_API_KEY
-elevenlabs    stt,tts      ready      ELEVEN_API_KEY        11labs eleven elevenlab
-rime          tts          no key     RIME_API_KEY
-speechmatics  stt,tts      no plugin  SPEECHMATICS_API_KEY
+VENDOR        DOES         STANDING
+livekit       llm,stt,tts  ready
+cartesia      stt,tts      no key
+elevenlabs    stt,tts      ready
+rime          tts          no key
+speechmatics  stt,tts      no plugin
 ```
 
-With nothing after it: every vendor this build runs — forty-five, every one LiveKit ships a plugin
+With nothing after it: every vendor this build runs — every one LiveKit ships a plugin
 for, plus `livekit` itself, which is LiveKit Inference and fronts most of them on the platform's own
 project with no vendor key at all. `standing` is the one word for what each is still waiting for:
 `ready` is the only one that runs a call, `no plugin` and `no key` are the operator's to fix, and
@@ -1714,7 +1715,9 @@ What the org keeps in the environment the key acts in (`--prod` for production),
 in one transaction (`DELETE /v1/calls/{call}`); a call still running is refused. `erase contact` is
 a person's "delete my data": every call they were on in the environment and every fact kept of them
 (`DELETE /v1/contacts/{contact}`), by the number or the id the call carried. Neither can be undone,
-so both ask for `--yes`. The dial ledger keeps the numbers and the time of a call, never what was
+so both ask for `--yes`. What the law asks the org to keep stays: a consent recorded and a place on
+the do-not-call list are the org's records about the number, not facts about the person, and
+`data consent <number>` reads them after the erasure as before. The dial ledger keeps the numbers and the time of a call, never what was
 said: a carrier's traceback asks for it.
 
 ```

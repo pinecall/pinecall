@@ -113,6 +113,7 @@ export function register(program: Command, ctx: Context): void {
   const erase = data.command("erase").description("one ended call, or everything about a contact, gone");
   erase
     .command("call")
+    .description("one ended call: its log, facts, memories and recording")
     .argument("<call-id>")
     .option("--yes", "an erasure cannot be undone")
     .action(async (call, flags) => {
@@ -121,6 +122,7 @@ export function register(program: Command, ctx: Context): void {
     });
   erase
     .command("contact")
+    .description("everything about one contact: their calls and every fact kept of them")
     .argument("<number|id>")
     .option("--yes")
     .action(async (who, flags) => {
@@ -133,7 +135,7 @@ export function register(program: Command, ctx: Context): void {
     .description("who read the org's calls")
     .argument("[call-id|number]")
     .action(async (subject) => ctx.io.result(await service.listReads(ctx, subject), render.reads));
-  data
+  const policy = data
     .command("policy")
     .description("the org's compliance settings, one row; a flag changes one field")
     .option("--retention-days <n>")
@@ -148,8 +150,12 @@ export function register(program: Command, ctx: Context): void {
     .option("--platform-disclosure")
     .option("--no-disclosure")
     .option("--recording-notice")
-    .option("--no-recording-notice")
-    .action(async (flags) => {
+    .option("--no-recording-notice");
+  // commander keeps one value for `--x` and `--no-x`, the last said; both said is two answers to one
+  // field, which the service refuses. Each flag is heard as it is read, so both are known.
+  const said = new Map<string, unknown>();
+  for (const name of ["disclosure", "no-disclosure", "recording-notice", "no-recording-notice"]) policy.on(`option:${name}`, (value: unknown) => said.set(name, value));
+  policy.action(async (flags) => {
       const input = service.PolicyInput.parse({
         retentionDays: numberOf("--retention-days", flags.retentionDays),
         keepAll: flags.keepAll === true,
@@ -159,16 +165,17 @@ export function register(program: Command, ctx: Context): void {
         noPerNumber: flags.perNumber === false,
         consentEverywhere: flags.consentEverywhere === true,
         consentByLaw: flags.consentByLaw === true,
-        disclosure: typeof flags.disclosure === "string" ? flags.disclosure : undefined,
+        disclosure: typeof said.get("disclosure") === "string" ? (said.get("disclosure") as string) : undefined,
         platformDisclosure: flags.platformDisclosure === true,
-        noDisclosure: flags.disclosure === false,
-        recordingNotice: flags.recordingNotice === true,
-        noRecordingNotice: flags.recordingNotice === false,
+        noDisclosure: said.has("no-disclosure"),
+        recordingNotice: said.has("recording-notice"),
+        noRecordingNotice: said.has("no-recording-notice"),
       });
       ctx.io.result(await service.policy(ctx, input), render.policy);
     });
   data
     .command("consent")
+    .description("what stands for a number, or a consent given or an opt-out recorded")
     .argument("<number>")
     .option("--give <kind>", "express | written")
     .option("--source <where>")
@@ -179,15 +186,18 @@ export function register(program: Command, ctx: Context): void {
   const dnc = data.command("dnc").description("the do-not-call list");
   dnc
     .command("list", { isDefault: true })
+    .description("the numbers never to call, newest first, a page")
     .option("--after <cursor>")
     .action(async (flags) => ctx.io.result(await service.listDoNotCall(ctx, flags.after), render.doNotCall));
   dnc
     .command("add")
+    .description("numbers put on the list, with where the request came from")
     .argument("<numbers...>")
     .requiredOption("--source <where>")
     .action(async (numbers, flags) => ctx.io.result(await service.addDoNotCall(ctx, numbers, flags.source), render.doNotCallAdded));
   dnc
     .command("import")
+    .description("a file of numbers, one a line, put on the list")
     .argument("<file>", "one number a line")
     .requiredOption("--source <where>")
     .action(async (file, flags) => ctx.io.result(await service.importDoNotCall(ctx, file, flags.source), render.doNotCallAdded));

@@ -168,7 +168,7 @@ def consent_of(gate: Iterable[case.GateLine]) -> ConsentRead:
         return ConsentRead("undeclared", NOTHING_DECLARED.format(count=len(tool_calls)))
     ran = tuple(line for line in tool_calls if line.side_effect == "irreversible")
     if not ran:
-        return ConsentRead("kept", f"no irreversible tool ran in this call; {len(tool_calls)} tool call(s) did")
+        return ConsentRead("kept", f"none of the {len(tool_calls)} tool call(s) in this call was irreversible")
     confirmations = tuple(line for line in lines if line.kind in CONFIRMATIONS)
     if not confirmations:
         return ConsentRead("ungated", UNGATED.format(count=len(ran)))

@@ -2,8 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
+from pinecall_runtime.agents.auth import known_agent
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import CallsKey, TheServing, WorkerKey
 from pinecall_runtime.calls.service import callbacks
@@ -22,7 +23,12 @@ async def request_callback(
 
 @router.get("/v1/callbacks", response_model_exclude_unset=True)
 async def list_callbacks(
-    actor: CallsKey, serving: TheServing, session: Session, query: Annotated[schemas.CallbackQuery, Query()]
+    actor: CallsKey,
+    serving: TheServing,
+    session: Session,
+    request: Request,
+    query: Annotated[schemas.CallbackQuery, Query()],
 ) -> schemas.CallbackList:
-    """The org's callbacks in the key's env, oldest first, a page at a time."""
-    return await callbacks.list_callbacks(session, serving.logs, actor, after=query.after, agent=query.agent)
+    """The org's callbacks in the key's env, oldest first, a page at a time; one agent's, a known one."""
+    agent = None if query.agent is None else await known_agent(query.agent, request)
+    return await callbacks.list_callbacks(session, serving.logs, actor, after=query.after, agent=agent)

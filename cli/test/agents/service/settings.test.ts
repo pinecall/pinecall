@@ -125,15 +125,17 @@ describe("clear, history, rollback", () => {
 });
 
 describe("pull, push and knowledge", () => {
-  it("pull answers the corner read as a file, and refuses an empty one", async () => {
-    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+  it("pull answers the corner's own row as a file, and refuses one that sets nothing", async () => {
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 2, { voice: "cartesia-luis" }) });
     const { ctx } = testContext();
-    expect(await service.pullSettings(ctx, undefined, false)).toEqual({ agent: "front-desk", world: "sandbox", holder: "", version: 3, config: SETTINGS.team.config });
-    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: null });
+    expect(await service.pullSettings(ctx, undefined, false)).toEqual({ agent: "front-desk", world: "sandbox", holder: "mem_ana", version: 2, config: { voice: "cartesia-luis" } });
+    expect(await service.pullSettings(ctx, undefined, true)).toEqual({ agent: "front-desk", world: "sandbox", holder: "", version: 3, config: SETTINGS.team.config });
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 5, {}) });
     await expect(service.pullSettings(ctx, undefined, false)).rejects.toBeInstanceOf(PinecallError);
   });
 
   it("push sends a pulled file's config unguarded, as CI applies it", async () => {
+    answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const sent = answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, team: tuningRow("", 4, { voice: "x" }) });
     const file = join(folder(), "settings.json");
     writeFileSync(file, JSON.stringify({ agent: "front-desk", world: "sandbox", holder: "", version: 3, config: { voice: "x" } }));
@@ -141,6 +143,14 @@ describe("pull, push and knowledge", () => {
     const pushed = await service.pushSettings(ctx, file, service.WriteOptions.parse({ team: true }));
     expect(sent[0]!.body).toEqual({ config: { voice: "x" }, if_version: null, note: `pushed from ${file}`, team: true });
     expect(pushed).toMatchObject({ corner: "the team's corner", version: 4 });
+  });
+
+  it("push of what the corner already holds writes nothing", async () => {
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: tuningRow("", 4, { voice: "x" }) });
+    const file = join(folder(), "settings.json");
+    writeFileSync(file, JSON.stringify({ config: { voice: "x" } }));
+    const { ctx } = testContext({ key: "pc_test_ci" });
+    await expect(service.pushSettings(ctx, file, service.WriteOptions.parse({ team: true }))).rejects.toThrow(/nothing changes in the team's corner/);
   });
 
   it("knowledge kept empty takes the field out, so the default stands again", async () => {

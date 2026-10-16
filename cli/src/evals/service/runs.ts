@@ -33,13 +33,15 @@ export const PromoteInput = z.object({
 });
 export type PromoteInput = z.infer<typeof PromoteInput>;
 
+const DRIFT_LIMIT = { error: `--limit takes a whole number of calls from 1 to ${DRIFT_CALLS}` };
+
 /** What `runs drift` takes; the windows in seconds, the baseline the time BEFORE the window. */
 export const DriftInput = z.object({
   agent: z.string().min(1),
   window: z.number().positive(),
   baseline: z.number().positive(),
   threshold: z.number().min(0).default(THRESHOLD),
-  limit: z.number().int().min(1).max(DRIFT_CALLS).default(DRIFT_CALLS),
+  limit: z.number(DRIFT_LIMIT).int(DRIFT_LIMIT).min(1, DRIFT_LIMIT).max(DRIFT_CALLS, DRIFT_LIMIT).default(DRIFT_CALLS),
 });
 export type DriftInput = z.infer<typeof DriftInput>;
 

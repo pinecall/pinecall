@@ -7,8 +7,10 @@ Options:
   -h, --help               display help for command
 
 Commands:
-  agent [options] <name>
-  golden [options] <name>
+  agent [options] <name>   one more agent in this project: its class, its test,
+                           one golden, its docs folder
+  golden [options] <name>  a conversation the agent must hold, written as a file
+                           to fill in
   help [command]           display help for command
 
 Run at the project's root, the folder that holds agents/. It writes files and nothing else: no
@@ -26,6 +28,8 @@ Examples
 $ pinecall generate agent --help
 Usage: pinecall generate agent [options] <name>
 
+one more agent in this project: its class, its test, one golden, its docs folder
+
 Options:
   --typescript
   --ruby
@@ -35,8 +39,11 @@ Options:
 $ pinecall generate golden --help
 Usage: pinecall generate golden [options] <name>
 
+a conversation the agent must hold, written as a file to fill in
+
 Options:
-  --say <line...>   what the caller says, one line a turn, in order (required)
-  --tool <name...>  a tool the call must make
+  --say <line>    what the caller says, one turn; again for the next, in order
+                  (required)
+  --tool <name>   a tool the call must make; again for another
   --agent <name>
-  -h, --help        display help for command
+  -h, --help      display help for command

@@ -197,10 +197,13 @@ export class Chat {
       });
       // An error is followed by a close, and the close decides.
       socket.on("error", () => undefined);
-      socket.on("close", (_code: number, reason: Buffer) => {
+      socket.on("close", (code: number, reason: Buffer) => {
         const why = reason.toString();
         if (this.call === null) {
-          settle(() => refused(new GatewayError(502, why === "" ? "the gateway closed the call before it opened" : why)));
+          // The gateway closes a refused socket with 4000 + the status it would have answered: a 404
+          // is a name typed wrong here as anywhere; any other close before the call opened is its failure.
+          const status = code >= 4400 && code < 4600 ? code - 4000 : 502;
+          settle(() => refused(new GatewayError(status, why === "" ? "the gateway closed the call before it opened" : why)));
           this.finish(why);
           return;
         }

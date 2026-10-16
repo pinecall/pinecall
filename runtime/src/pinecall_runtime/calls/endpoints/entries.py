@@ -34,7 +34,7 @@ async def entries_socket(websocket: WebSocket, call: str) -> None:
         async with serving.handles.sessions.begin() as session:
             served = await get_served(session, serving, actor, call)
     except PinecallError as refused:
-        await refuse_socket(websocket, str(refused))
+        await refuse_socket(websocket, refused)
         return
     await websocket.accept()
     try:

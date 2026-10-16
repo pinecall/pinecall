@@ -1,5 +1,5 @@
 $ pinecall pipeline --help
-Usage: pinecall pipeline [options]
+Usage: pinecall pipeline [options] [command]
 
 what the agent hears, decides and speaks with, as the next call would be built
 
@@ -11,3 +11,15 @@ The three legs of the pipeline as the NEXT call would be built — the vendor, t
 one knob worth showing — the opening, and the medians livekit measured over the agent's recent
 calls. Setting them is `pinecall agent set`.
 
+
+$ pinecall pipeline set --help
+Usage: pinecall pipeline set [options]
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall pipeline clear --help
+Usage: pinecall pipeline clear [options]
+
+Options:
+  -h, --help  display help for command

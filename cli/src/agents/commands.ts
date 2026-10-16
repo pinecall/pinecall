@@ -118,11 +118,13 @@ export function register(program: Command, ctx: Context): void {
   const knowledge = agent.command("knowledge").description("what the agent knows by heart: printed, or edited and kept as the next version");
   knowledge
     .command("show", { isDefault: true })
+    .description("what the agent knows by heart, in its three corners")
     .option("--agent <slug>")
     .option("--team")
     .action(async (flags) => ctx.io.result(await service.readKnowledge(ctx, flags.agent, flags.team === true), render.knowledge));
   knowledge
     .command("edit")
+    .description("the text in your editor; what you leave is the next version")
     .option("--agent <slug>")
     .option("--team")
     .option("--note <note>")
@@ -183,6 +185,7 @@ export function register(program: Command, ctx: Context): void {
   const lexicon = program.command("lexicon").description("an agent's words: how the voice says them and what the ears must know").addHelpText("after", LEXICON);
   lexicon
     .command("show", { isDefault: true })
+    .description("the words and how they are said and heard, in the three corners")
     .option("--agent <slug>")
     .action(async (flags) => ctx.io.result(await service.showLexicon(ctx, flags.agent), render.lexicon));
   lexicon
@@ -211,20 +214,24 @@ export function register(program: Command, ctx: Context): void {
     .action(async (words, flags) => ctx.io.result(await service.removeWords(ctx, service.WordsInput.parse({ words, ...flags })), render.lexicon));
   lexicon
     .command("history")
+    .description("every version of a corner's lexicon, who set it and why")
     .option("--agent <slug>")
     .option("--team")
     .action(async (flags) => ctx.io.result(await service.lexiconHistory(ctx, flags.agent, flags.team === true), render.lexiconHistory));
 
-  program
+  const pipeline = program
     .command("pipeline")
     .description("what the agent hears, decides and speaks with, as the next call would be built")
     .option("--agent <slug>")
     .addHelpText("after", PIPELINE)
     .action(async (flags) => ctx.io.result(await service.showPipeline(ctx, flags.agent), render.pipeline));
+  // The six knobs moved into the settings: the old verbs name where, instead of "too many arguments".
+  for (const moved of ["set", "clear"]) pipeline.command(moved, { hidden: true }).allowUnknownOption().allowExcessArguments().action(() => { throw new UsageError(`pipeline ${moved} is \`pinecall agent ${moved}\` now: the stages are fields of the settings`); });
 
   const voices = program.command("voices").description("a voice vendor's voices, and any one of them heard on this machine before it is chosen").addHelpText("after", VOICES);
   voices
     .command("list", { isDefault: true })
+    .description("a vendor's voices, by language and country")
     .option("--tts <vendor>")
     .option("--language <tag>")
     .option("--country <XX>")

@@ -30,7 +30,7 @@ from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Actor, Scope, check_scopes
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.kit.time import today_in
-from pinecall_runtime.kit.websockets import POLICY_VIOLATION, close_reason, refuse_socket
+from pinecall_runtime.kit.websockets import close_reason, code_of, refuse_socket
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.session import service as session
 
@@ -62,7 +62,7 @@ async def chat(websocket: WebSocket) -> None:
                 context = await _chat_context(session_, websocket, serving, registration)
                 running = await open_text(session_, serving, registration, context)
     except PinecallError as refused:
-        await refuse_socket(websocket, str(refused))
+        await refuse_socket(websocket, refused)
         return
     await websocket.accept()
     served = serving.live.calls.get(running.call.context.call)
@@ -171,7 +171,7 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
                         session_, serving.handles, serving.logs, scope, running.call.config.slug, refused
                     )
                     await session.end_text(running, "timeout", "platform")
-                    await websocket.close(code=POLICY_VIOLATION, reason=close_reason(str(refused)))
+                    await websocket.close(code=code_of(refused), reason=close_reason(str(refused)))
                     return
             await session.hear_text(running, data)
     except WebSocketDisconnect as gone:

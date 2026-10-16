@@ -8,9 +8,10 @@ Options:
   -h, --help                   display help for command
 
 Commands:
-  list [options]
-  show <id>
-  diff <before> <after>
+  list [options]               the newest runs, with how each ended
+  show <id>                    one run whole: its matrix, each golden's verdicts
+                               and latencies
+  diff <before> <after>        which goldens moved between two runs
   promote [options] <call-id>  the golden a real call makes, written as a
                                candidate
   drift [options]              each judge's held-rate over two windows of
@@ -27,6 +28,8 @@ judge fell further than --threshold allows.
 $ pinecall runs list --help
 Usage: pinecall runs list [options]
 
+the newest runs, with how each ended
+
 Options:
   --limit <n>  how many, newest first, 1 to 200 (default: "20")
   -h, --help   display help for command
@@ -34,11 +37,15 @@ Options:
 $ pinecall runs show --help
 Usage: pinecall runs show [options] <id>
 
+one run whole: its matrix, each golden's verdicts and latencies
+
 Options:
   -h, --help  display help for command
 
 $ pinecall runs diff --help
 Usage: pinecall runs diff [options] <before> <after>
+
+which goldens moved between two runs
 
 Options:
   -h, --help  display help for command
@@ -62,7 +69,8 @@ Usage: pinecall runs drift [options]
 each judge's held-rate over two windows of finished calls
 
 Options:
-  --agent <slug>
+  --agent <slug>        the agent, from any folder; the one beside you when left
+                        out
   --window <span>       90m, 24h, 7d (default: "7d")
   --baseline <span>     the time before the window (default: "30d")
   --threshold <points>  the drop that fails (default: "10")

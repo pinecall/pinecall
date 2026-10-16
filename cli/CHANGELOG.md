@@ -6,6 +6,32 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`chat` and `simulate` on an agent nobody holds exit 2**, as `test` and `remember` do: the gateway
+  closes the socket with 4000 plus the status it would have answered, and the terminal reads it.
+- **`line` says who is running the agent when nobody holds its line**, and `claim` to take it; it
+  said "nobody is answering: run pinecall start" while a `start` was running.
+- **`pipeline set` and `clear` say where they went** (`agent set`, `agent clear`), as the page
+  promised, instead of "too many arguments".
+- **`test <golden-name>`** runs that golden of the agent, with or without `.json`, beside a path.
+- **`agent pull` prints the corner's own row** — what `push` sends back — and refuses a corner that
+  sets nothing; `push` of what the corner holds writes nothing. `runs drift` takes the project's
+  agent when none is named. `data export --out` into a folder that is not there is refused by name.
+  `docs detach` of a base the corner does not read exits 2, as `attach` does. `deploy logs` of an app
+  the box has not is the gateway's sentence, not the stream's raw body.
+- **Every verb has a line in `--help`**, and the settings table's labels read whole (`end-of-turn`).
+  The providers catalog drops two columns the gateway never filled (`variable`, `also known as`).
+- **A new agent gets its `docs/` folder**, with a note on what goes there, as the layout promises.
+- **`data policy --disclosure x --no-disclosure`** (and the recording-notice pair) is refused as
+  the other contradicting pairs are; it changed the policy before. Its numbers name their flag when
+  refused, as `runs drift --limit` and `docs eval --k` do now.
+
+- **A flag said again for each value no longer swallows the path after it.** `test --model haiku
+  agents/x/test/goldens/a.json` ran every golden with the path as a second model; `--model`,
+  `--case`, `generate golden --say|--tool`, `personas --fact|--expect|--tag`, `judging --option` and
+  `telemetry set --header` take one value each time they are said, as the page always wrote them.
+- **`sessions log --types` shows those types alone**: the gateway sends every reader the call's end
+  (`call.ended`, `call.score`), and a page asked for by type printed them too.
+
 - **A settings write puts only what it moved in your corner.** The first `agent set` (or `docs
   attach`, `memory policy`, `knowledge edit`) on an empty corner copied the team's whole row into
   it, so every field you never touched stopped following the team's. The gateway reads a call's

@@ -90,5 +90,9 @@ export async function readLog(ctx: Context, input: ReadLogInput): Promise<LogPag
   const state = await callState(ctx, input.call);
   const page = await api.listCallEntries(ctx.gateway(), input.call, { after: input.after, limit: input.limit, types: input.types });
   const next = page.next !== null && (state.live || page.next < state.lastSeq) ? page.next : null;
-  return { call: input.call, entries: page.entries, next, live: state.live };
+  // The gateway sends a call's end whatever a reader filters, so a live one learns it ended; a page
+  // asked for by type shows those types alone.
+  const types = input.types;
+  const wanted = types === undefined ? page.entries : page.entries.filter((entry) => types.includes(entry.type));
+  return { call: input.call, entries: wanted, next, live: state.live };
 }

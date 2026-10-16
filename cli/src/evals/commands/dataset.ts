@@ -7,17 +7,19 @@ import { PinecallError, UsageError } from "../../errors.js";
 import { HELP } from "../help.js";
 import * as render from "../render/index.js";
 import * as service from "../service/index.js";
-import { numberOf } from "../../kit/flags.js";
+import { numberOf, repeated } from "../../kit/flags.js";
 import { simulateAtTheTerminal } from "./terminal.js";
 
 export function registerRuns(program: Command, ctx: Context): void {
   const runs = program.command("runs").description("the runs this gateway has done: list, show, diff, promote a call, watch the drift").addHelpText("after", HELP.runs);
   runs
     .command("list", { isDefault: true })
+    .description("the newest runs, with how each ended")
     .option("--limit <n>", `how many, newest first, 1 to ${service.RUNS_MOST}`, "20")
     .action(async (flags) => ctx.io.result(await service.listRuns(ctx, service.RunsLimit.parse(numberOf("--limit", flags.limit) ?? 20)), render.runs));
   runs
     .command("show")
+    .description("one run whole: its matrix, each golden's verdicts and latencies")
     .argument("<id>")
     .action(async (id) => {
       const shown = await service.showRun(ctx, id);
@@ -26,6 +28,7 @@ export function registerRuns(program: Command, ctx: Context): void {
     });
   runs
     .command("diff")
+    .description("which goldens moved between two runs")
     .argument("<before>")
     .argument("<after>")
     .action(async (before, after) => {
@@ -49,7 +52,7 @@ export function registerRuns(program: Command, ctx: Context): void {
   runs
     .command("drift")
     .description("each judge's held-rate over two windows of finished calls")
-    .requiredOption("--agent <slug>")
+    .option("--agent <slug>", "the agent, from any folder; the one beside you when left out")
     .option("--window <span>", "90m, 24h, 7d", "7d")
     .option("--baseline <span>", "the time before the window", "30d")
     .option("--threshold <points>", "the drop that fails", String(service.THRESHOLD))
@@ -58,7 +61,7 @@ export function registerRuns(program: Command, ctx: Context): void {
       const window = service.secondsOf(flags.window);
       const baseline = service.secondsOf(flags.baseline);
       if (window === null || baseline === null) throw new UsageError("a window is a number and one of s, m, h, d — 90m, 24h, 7d");
-      const found = await service.driftOf(ctx, service.DriftInput.parse({ agent: flags.agent, window, baseline, threshold: numberOf("--threshold", flags.threshold), limit: numberOf("--limit", flags.limit) }));
+      const found = await service.driftOf(ctx, service.DriftInput.parse({ agent: ctx.slug("runs drift", { agent: flags.agent }), window, baseline, threshold: numberOf("--threshold", flags.threshold), limit: numberOf("--limit", flags.limit) }));
       ctx.io.result(found, render.drift);
       if (service.drifted(found)) throw new PinecallError("a judge fell further than the threshold allows");
     });
@@ -70,6 +73,7 @@ export function registerCases(program: Command, ctx: Context): void {
   const agentOf = (flags: { agent?: string | undefined }): service.EvalCase["agent"] => ctx.slug("cases", { agent: flags.agent });
   cases
     .command("list", { isDefault: true })
+    .description("the agent's cases, the pending first; --status keeps one")
     .option("--status <status>", service.STATUSES.join(" | "))
     .option("--agent <name>")
     .action(async (flags) => {
@@ -77,23 +81,29 @@ export function registerCases(program: Command, ctx: Context): void {
       const status = flags.status as service.CaseStatus | undefined;
       ctx.io.result(await service.listCases(ctx, agentOf(flags), status), (list) => render.cases(list, status));
     });
-  cases.command("groups").option("--agent <name>").action(async (flags) => {
+  cases.command("groups")
+    .description("the agent's case groups: the calls one judge broke on, together").option("--agent <name>").action(async (flags) => {
     const agent = agentOf(flags);
     ctx.io.result(await service.listGroups(ctx, agent), (found) => render.groups(agent, found));
   });
   cases
     .command("show")
+    .description("one case whole, or one group with its cases")
     .argument("<name|group>")
     .option("--agent <name>")
     .action(async (named, flags) => {
       if (service.isGroup(named)) ctx.io.result(await service.getGroup(ctx, named), render.group);
       else ctx.io.result(await service.getCase(ctx, agentOf(flags), named), render.oneCase);
     });
-  cases.command("propose").argument("<group>").action(async (id) => ctx.io.result(await service.proposeFix(ctx, id), render.proposed));
-  cases.command("apply").argument("<group>").action(async (id) => ctx.io.result(await service.applyFix(ctx, id), () => render.APPLIED));
-  cases.command("persona").argument("<group>").action(async (id) => ctx.io.result(await service.personaOfGroup(ctx, id), (written) => written.personas.map((one) => `${one.name} kept · ${one.goal}`)));
+  cases.command("propose")
+    .description("the judge model's diagnosis of a group: the cause and the smallest fix").argument("<group>").action(async (id) => ctx.io.result(await service.proposeFix(ctx, id), render.proposed));
+  cases.command("apply")
+    .description("the group's proposed setting, written as a new version of yours").argument("<group>").action(async (id) => ctx.io.result(await service.applyFix(ctx, id), () => render.APPLIED));
+  cases.command("persona")
+    .description("a caller like the group's, kept as the agent's own persona").argument("<group>").action(async (id) => ctx.io.result(await service.personaOfGroup(ctx, id), (written) => written.personas.map((one) => `${one.name} kept · ${one.goal}`)));
   cases
     .command("approve")
+    .description("a case or a whole group approved: the nightly plays it from now on")
     .argument("<name|group>")
     .option("--agent <name>")
     .action(async (named, flags) => {
@@ -102,6 +112,7 @@ export function registerCases(program: Command, ctx: Context): void {
     });
   cases
     .command("dismiss")
+    .description("a case or a whole group dismissed: the agent was right, or the judge was wrong")
     .argument("<name|group>")
     .option("--judge-was-wrong <judge>", "the judge that broke and should have held")
     .option("--note <why>")
@@ -114,10 +125,13 @@ export function registerCases(program: Command, ctx: Context): void {
       const input = service.DismissInput.parse({ judgeWasWrong: flags.judgeWasWrong, note: flags.note });
       ctx.io.result(await service.dismissCase(ctx, agentOf(flags), named, input), (one) => render.caseDecided(one, input.judgeWasWrong));
     });
-  cases.command("reopen").argument("<name>").option("--agent <name>").action(async (name, flags) => ctx.io.result(await service.reopenCase(ctx, agentOf(flags), name), (one) => render.caseDecided(one)));
-  cases.command("forget").argument("<name>").option("--agent <name>").action(async (name, flags) => ctx.io.result(await service.forgetCase(ctx, agentOf(flags), name), render.caseForgotten));
+  cases.command("reopen")
+    .description("a decided case pending again").argument("<name>").option("--agent <name>").action(async (name, flags) => ctx.io.result(await service.reopenCase(ctx, agentOf(flags), name), (one) => render.caseDecided(one)));
+  cases.command("forget")
+    .description("a case gone; the call it came from stays").argument("<name>").option("--agent <name>").action(async (name, flags) => ctx.io.result(await service.forgetCase(ctx, agentOf(flags), name), render.caseForgotten));
   cases
     .command("pull")
+    .description("the case's golden as a file in the agent's goldens, to keep in the repository")
     .argument("<name>")
     .option("--out <dir>", "the agent's goldens folder when left out")
     .option("--agent <name>")
@@ -127,6 +141,7 @@ export function registerCases(program: Command, ctx: Context): void {
     });
   cases
     .command("keep")
+    .description("a finished call kept as an approved case, by name")
     .argument("<call-id>")
     .requiredOption("--name <x>")
     .option("--held-out", "played only when a run names it")
@@ -138,6 +153,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
   const agentOf = (flags: { agent?: string | undefined; file?: string | undefined }): string => ctx.agent("personas", { agent: flags.agent, file: flags.file }).name;
   personas
     .command("list", { isDefault: true })
+    .description("the agent's callers: Pinecall's, on or off, and its own")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .action(async (flags) => {
@@ -148,6 +164,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
     });
   personas
     .command("show")
+    .description("one caller whole: goal, style, facts, what they expect, how they act")
     .argument("<name>")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
@@ -162,9 +179,9 @@ export function registerPersonas(program: Command, ctx: Context): void {
       .option("--goal <goal>", "what they want")
       .option("--style <style>", "how they talk")
       .option("--about <about>", "who they are, in a line")
-      .option("--fact <what=said...>", "what they know and say when asked")
-      .option("--expect <line...>", "what the agent should do, one line each")
-      .option("--tag <tag...>")
+      .option("--fact <what=said>", "what they know and say when asked; again for another", repeated)
+      .option("--expect <line>", "what the agent should do; again for another", repeated)
+      .option("--tag <tag>", "again for another", repeated)
       .option("--llm <model>", "the model that plays them")
       .option("--tts <vendor>")
       .option("--voice <voice>")

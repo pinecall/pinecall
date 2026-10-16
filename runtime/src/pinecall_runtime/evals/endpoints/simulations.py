@@ -75,6 +75,9 @@ async def place_voice_call(
     persona = body.persona
     if persona.name and await judging.get_persona(session, actor.org, body.agent, persona.name) is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=persona.name, agent=body.agent))
+    # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
+    if serving.registry.serving(scope, body.agent, None) is None:
+        raise registry.NoApp(body.agent)
     await service.admit_simulation(session, serving, scope, body.agent)
     await service.claim_new_call(session, serving, body.call, body.agent, scope)
     line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)

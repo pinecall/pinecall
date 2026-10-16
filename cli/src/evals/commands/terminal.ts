@@ -34,7 +34,7 @@ export async function test(ctx: Context, paths: string[], choice: { file?: strin
     return;
   }
   const home = homes[0]!;
-  const read = paths.length > 0 ? paths : onlyCases ? [] : [home.goldens];
+  const read = paths.length > 0 ? paths.map((path) => service.goldenPath(path, home.goldens)) : onlyCases ? [] : [home.goldens];
   if (paths.length === 0 && !onlyCases && !existsSync(home.goldens)) throw new UsageError(`no goldens at ${home.goldens}: write one, or name the file or directory to run`);
   const held = await suiteAtTheTerminal(ctx, home.name, read, choice.grep, input);
   if (!choice.watch) {

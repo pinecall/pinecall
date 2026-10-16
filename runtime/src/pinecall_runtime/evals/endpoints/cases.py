@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 
 from pinecall_runtime.accounts.service import keys
+from pinecall_runtime.agents.auth import KnownFilter
 from pinecall_runtime.calls.auth import Reader, TheServing, check_readable
 from pinecall_runtime.enums import CaseStatus
 from pinecall_runtime.evals import schemas
@@ -68,7 +69,7 @@ async def golden_of_call(
 async def list_cases(
     actor: EvalsKey,
     session: Session,
-    agent: Annotated[str | None, Query()] = None,
+    agent: KnownFilter,
     status: Annotated[CaseStatus | None, Query()] = None,
 ) -> judged.CaseList:
     """The org's cases, one agent's or every one, the pending first; how many wait, of how many."""
