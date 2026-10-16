@@ -13,8 +13,11 @@
 - **Switching a judge nobody wrote is 404**, not a 409 calling it the org's own.
 - **A run that broke says why in words.** A vendor's refusal (a model it does not have) is read in
   the vendor's words, never its SDK's repr with the request id in it.
-- **A judge model that answers in words instead of calling its tool is quoted** in the 502, so a
-  prompt it keeps refusing (`personas generate` with nothing to steer it) can be read and fixed.
+- **The box's judge runs with the row's options and request.** On the box's key the judge was
+  built bare: the row's `llm/<vendor>/<model>` entry (its caching, its output ceiling, its effort)
+  never reached it, so `personas generate` hit the plugin's default ceiling of 1024 output tokens
+  and came back empty two times in three. A judge model that answers in words instead of calling
+  its tool is quoted in the 502.
 - **Refusals name `pinecall` verbs, never a route or a body.** The webhook and telemetry doors,
   the judges' and personas' switches, a monitor nobody has, a group with no proposal, a vendor
   nobody installed, an agent nobody holds, and the desk's line-holding refusals.

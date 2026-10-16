@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import orgs
-from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.agents.declaration import AgentConfig, Model
 from pinecall_runtime.agents.service import prompts, tuning
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
@@ -236,7 +236,10 @@ async def judge_of(
         return judging.JudgeModel(None, 0.0, NO_CEILING)
     box = await providers.box_credentials(session, vault)
     row = catalog.judge.llm
-    stage = providers.running_on(providers.Keyring(box=box), row.vendor, row.model or None)
+    # On the box's key as any stage is: with the row's options and request for that model, not bare.
+    stage = providers.stage_on_its_key(
+        "llm", Model(provider=row.vendor, model=row.model or ""), catalog, providers.Keyring(box=box)
+    )
     return judging.JudgeModel(stage, catalog.judge.ceiling_usd, evals_left=await _evals_left(session, scope))
 
 
