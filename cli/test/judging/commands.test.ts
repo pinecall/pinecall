@@ -17,6 +17,17 @@ describe("pinecall judges", () => {
     expect(ran.out).toMatch(/offers-next-slot\s+front-desk\s+on\s+verdict/);
   });
 
+  it("show prints one judge whole; a name the list has not is exit 2", async () => {
+    answer("get", "/v1/agents/:slug/judges", { judges: [A_LIBRARY_JUDGE, A_JUDGE] });
+    const shown = await run(["judges", "show", "consent"]);
+    expect(shown.code).toBe(0);
+    expect(shown.out).toMatch(/^consent · pinecall · off · recommended\n/);
+    expect(shown.out).toContain("asks     The caller consented to being recorded.");
+    const missing = await run(["judges", "show", "nope"]);
+    expect(missing.code).toBe(2);
+    expect(missing.err).toContain("no judge nope in this list");
+  });
+
   it("--org lists the org's, from any folder", async () => {
     answer("get", "/v1/org/judges", { judges: [] });
     const ran = await run(["judges", "--org"], { cwd: folder() });

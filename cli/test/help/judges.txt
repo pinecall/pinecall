@@ -5,20 +5,22 @@ every judge a call meets: Pinecall's, switched on or off; the org's own and the
 agent's own; one tried on calls
 
 Options:
-  -h, --help            display help for command
+  -h, --help             display help for command
 
 Commands:
-  list [options]        every judge the list meets: whose, on or off, how it
-                        answers, when it runs
-  add [options] <name>  write one of your own; the same name again replaces it
-  on [options] <name>   one of Pinecall's judges switched on for the org (--org)
-                        or the agent
-  off [options] <name>  one of Pinecall's judges switched off for the org
-                        (--org) or the agent
-  rm [options] <name>   one of your own dropped; Pinecall's are never dropped,
-                        only switched off
-  try [options] <name>  ask one judge of finished calls and write nothing
-  help [command]        display help for command
+  list [options]         every judge the list meets: whose, on or off, how it
+                         answers, when it runs
+  show [options] <name>  one judge whole: whose, its switch, how and when it
+                         answers, what it reads, its question
+  add [options] <name>   write one of your own; the same name again replaces it
+  on [options] <name>    one of Pinecall's judges switched on for the org
+                         (--org) or the agent
+  off [options] <name>   one of Pinecall's judges switched off for the org
+                         (--org) or the agent
+  rm [options] <name>    one of your own dropped; Pinecall's are never dropped,
+                         only switched off
+  try [options] <name>   ask one judge of finished calls and write nothing
+  help [command]         display help for command
 
 Every judge is one question a model answers about a finished call, with the whole call in front
 of it — the turns, the tool calls, the positions it cites. Three lists, in the order a call meets
@@ -50,6 +52,17 @@ every judge the list meets: whose, on or off, how it answers, when it runs
 Options:
   --org           the org's list
   --agent <name>  one agent's, when the project holds more
+  -h, --help      display help for command
+
+$ pinecall judges show --help
+Usage: pinecall judges show [options] <name>
+
+one judge whole: whose, its switch, how and when it answers, what it reads, its
+question
+
+Options:
+  --org           the org's list
+  --agent <slug>  an agent's list
   -h, --help      display help for command
 
 $ pinecall judges add --help
