@@ -3,7 +3,7 @@
 import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
-import { PinecallError } from "../errors.js";
+import { PinecallError, UsageError } from "../errors.js";
 import { openInBrowser } from "../kit/browser.js";
 import { stateOfCase } from "../calls/service/chat.js";
 import { runOnce, serveStart } from "./child.js";
@@ -44,6 +44,8 @@ file describes.
 Examples
   $ pinecall prompt --state agents/clinica-norte/test/goldens/identifica-al-paciente.json
 `;
+
+const NO_PROD = "prompt runs offline, in no env: run it without --prod";
 
 export function register(program: Command, ctx: Context): void {
   program
@@ -90,6 +92,8 @@ export function register(program: Command, ctx: Context): void {
     .option("--medium <how>", "voice | text; the channel's when left out")
     .addHelpText("after", PROMPT)
     .action(async (file, flags) => {
+      // It asks nobody anything: --prod is refused rather than taken and ignored.
+      if (ctx.env === "production") throw new UsageError(NO_PROD);
       const home = ctx.agent("prompt", { file, agent: flags.agent });
       // No file is the state the class opens a call in.
       const state = flags.state === undefined ? {} : stateOfCase(flags.state, Number(flags.case));

@@ -202,10 +202,11 @@ export function register(program: Command, ctx: Context): void {
 // Each typed line is one turn; each frame is one log entry, printed as it lands. Input that ends
 // (a pipe) leaves only once every line sent was heard and answered.
 async function chatAtTheTerminal(ctx: Context, options: service.ChatOptions, events: boolean): Promise<void> {
-  const input = process.stdin;
-  const lines = createInterface({ input, output: ctx.io.stdout, prompt: `${render.CALLER} ` });
+  // stdin is read only once the call is open: a pipe's lines arrive at once, and one read before
+  // the socket is up would be said to nobody and the pipe's end would hang up a call never spoken to.
+  let lines: Interface | undefined;
   const prompt = (): void => {
-    if (ctx.io.interactive) lines.prompt();
+    if (ctx.io.interactive) lines?.prompt();
   };
   let closed = false;
   const chat = await service.Chat.open(ctx, options, {
@@ -219,6 +220,7 @@ async function chatAtTheTerminal(ctx: Context, options: service.ChatOptions, eve
     onLost: () => ctx.io.info("\rthe gateway went away — the call is kept, reconnecting…"),
     onBack: () => ctx.io.info("\rthe gateway is back: the call goes on"),
   });
+  lines = createInterface({ input: process.stdin, output: ctx.io.stdout, prompt: `${render.CALLER} ` });
   prompt();
   lines.on("line", (line) => {
     if (line.trim() !== "") chat.say(line.trim());

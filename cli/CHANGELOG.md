@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`printf 'hello\n' | pinecall chat` answers.** The pipe's lines were read before the call was
+  open, said to nobody, and its end hung up a call never spoken to: `chat` printed nothing and left
+  the call live. stdin is read once the call is open.
+- **`prompt --prod` is refused**, as its page always said: it runs offline, in no env.
+
 - **An agent is one folder.** Its documents and its tests live in it: `agents/<name>/docs/` and
   `agents/<name>/test/` (goldens, memory cases, personas, and the candidates `runs promote` writes)
   instead of `docs/<name>/` and `test/<name>/` beside `agents/`. Move a project's with
