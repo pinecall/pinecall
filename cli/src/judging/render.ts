@@ -46,7 +46,7 @@ export function judge(row: JudgeRow): string[] {
     `${row.name} · ${row.owner} · ${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`,
     `  answers  ${answerLabel(row)}`,
     `  when     ${whenLabel(row)}${row.when === "trigger" ? `: ${row.trigger}` : ""}`,
-    `  reads    ${row.reads.join(", ")}`,
+    `  reads    ${row.reads.length === 0 ? "the call alone" : row.reads.join(", ")}`,
   ];
   if (row.owner === "pinecall" && row.why) lines.push(`  why      ${row.why}`);
   lines.push(`  asks     ${row.question}`);

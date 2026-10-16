@@ -6,6 +6,16 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A settings write puts only what it moved in your corner.** The first `agent set` (or `docs
+  attach`, `memory policy`, `knowledge edit`) on an empty corner copied the team's whole row into
+  it, so every field you never touched stopped following the team's. The gateway reads a call's
+  settings field by field, and now so does a write.
+- **A name the gateway has nothing for exits 2**, as a name typed wrong here always did: a second
+  `judges rm x`, `monitors rm <id>`, `runs show <typo>`, `--agent nobody` answered the gateway's 404
+  with exit 1.
+- **`agent clear` names its fields, or takes `--all`.** With nothing named it cleared the whole
+  corner without a word; it is refused now. The MCP's `agent clear` takes `all` the same way.
+
 - **`judges show <name>`** prints one judge whole: whose, its switch, how and when it answers, what
   it reads, its question.
 - **What is not there is refused by name, before anything travels**: `agent set` with no field;

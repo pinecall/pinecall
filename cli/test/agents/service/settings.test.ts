@@ -1,4 +1,4 @@
-/** An agent's settings against the gateway: a write is the whole set from the corner read, guarded by the corner it lands on. */
+/** An agent's settings against the gateway: a write puts what it moved in the corner it lands on, guarded by that corner. */
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,13 +16,13 @@ import { folder } from "../../support/project.js";
 const WRITE = { team: false };
 
 describe("set", () => {
-  it("starts from the team's row for a person with nothing of their own, guarded by their empty corner", async () => {
+  it("writes only what it moved into a person's empty corner: the rest keeps following the team's", async () => {
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const sent = answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 1, {}) });
     const { ctx } = testContext();
     await service.setSettings(ctx, service.SettingsInput.parse({ temperature: 0.3 }), service.WriteOptions.parse({ note: "warmer" }));
     expect(sent[0]!.path).toBe("/v1/agents/front-desk/settings");
-    expect(sent[0]!.body).toEqual({ config: { ...SETTINGS.team.config, temperature: 0.3 }, if_version: 0, note: "warmer", team: false });
+    expect(sent[0]!.body).toEqual({ config: { temperature: 0.3 }, if_version: 0, note: "warmer", team: false });
   });
 
   it("a server's token writes the team's corner and is guarded by its version", async () => {
@@ -86,14 +86,20 @@ describe("the fields as the wire takes them", () => {
 });
 
 describe("clear, history, rollback", () => {
-  it("clear takes the fields named out of the row that stands, and every field with none named", async () => {
+  it("clear of a field only the team's corner sets changes nothing in yours, and says so", async () => {
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    const { ctx } = testContext();
+    await expect(service.clearSettings(ctx, ["voice"], WRITE)).rejects.toThrow(/nothing changes in your corner/);
+  });
+
+  it("clear takes the fields named out of the corner's own row, and every field with none named", async () => {
+    const mine = { voice: "cartesia-luis", turn: { endpointing_ms: 300 }, language: "es" };
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 2, mine) });
     const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
     const { ctx } = testContext();
     await service.clearSettings(ctx, ["voice", "turn"], WRITE);
     await service.clearSettings(ctx, [], WRITE);
-    const { voice: _voice, turn: _turn, ...rest } = SETTINGS.team.config;
-    expect(sent.map((one) => (one.body as { config: unknown; note: string }).config)).toEqual([rest, {}]);
+    expect(sent.map((one) => (one.body as { config: unknown; note: string }).config)).toEqual([{ language: "es" }, {}]);
     expect(sent.map((one) => (one.body as { note: string }).note)).toEqual(["cleared voice, turn", "cleared"]);
   });
 
@@ -138,7 +144,7 @@ describe("pull, push and knowledge", () => {
   });
 
   it("knowledge kept empty takes the field out, so the default stands again", async () => {
-    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: tuningRow("", 3, { knowledge: "Open 9 to 5." }) });
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 1, { knowledge: "Open 9 to 5." }) });
     const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
     const { ctx } = testContext();
     await service.writeKnowledge(ctx, "  \n", WRITE);

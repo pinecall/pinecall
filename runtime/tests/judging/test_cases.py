@@ -243,8 +243,12 @@ async def test_a_person_decides_a_case_and_the_nightly_plays_only_what_was_appro
         approved = await cases.decide_case(
             session, tenant.org, first.id, CaseDecision(status=CaseStatus.approved), by="m_ana"
         )
-        await cases.decide_case(session, tenant.org, second.id, CaseDecision(status=CaseStatus.dismissed), by="m_ana")
+        dismissed = await cases.decide_case(
+            session, tenant.org, second.id, CaseDecision(status=CaseStatus.dismissed), by="m_ana"
+        )
     assert (approved.status, approved.decided_by) == (CaseStatus.approved, "m_ana")
+    with pytest.raises(Conflict, match="is already dismissed"):
+        cases.check_decision(dismissed, CaseDecision(status=CaseStatus.dismissed))
     async with sessions() as session:
         assert await cases.waiting_cases(session, tenant.org, AGENT) == 1
         nightly = await cases.pick_cases(session, tenant.org, AGENT, [], every=True)

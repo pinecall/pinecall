@@ -11,8 +11,8 @@ Commands:
   show [options]                the settings in their three corners
   set [options]                 write the fields named as the next version of a
                                 corner
-  clear [options] [fields...]   take fields out of the corner's own row; with no
-                                name, every field
+  clear [options] [fields...]   take fields out of the corner's own row, so the
+                                corner below holds again; --all takes every one
   knowledge                     what the agent knows by heart: printed, or
                                 edited and kept as the next version
   history [options]             every version of a corner, who set it and why
@@ -114,7 +114,8 @@ Options:
 $ pinecall agent clear --help
 Usage: pinecall agent clear [options] [fields...]
 
-take fields out of the corner's own row; with no name, every field
+take fields out of the corner's own row, so the corner below holds again; --all
+takes every one
 
 Arguments:
   fields          voice · tts · tts-model · tts-builds · tts-options · stt ·
@@ -124,6 +125,7 @@ Arguments:
                   record · max-duration · knowledge · bases
 
 Options:
+  --all           every field of the corner's own row
   --agent <slug>
   --team
   -h, --help      display help for command

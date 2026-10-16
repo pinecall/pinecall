@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A case decision that moves nothing is refused** (`409 case x is already dismissed`), as a settings
+  write that changes nothing writes no version; it answered the case again before.
 - **Every sealed call counts into its day's drift again.** Since the rewrite the fold crashed
   on the env it was handed (text where the column takes the enum), and every seal logged "was not
   counted into its day's drift".

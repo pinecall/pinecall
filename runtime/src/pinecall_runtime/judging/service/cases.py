@@ -54,6 +54,8 @@ WRONG_ONLY_WHEN_DISMISSED = (
 NOT_WHAT_BROKE = "case {name} did not break on {judge}: it broke on {broke}"
 # The note is kept on the judge's calibration label: with no judge it would be dropped unsaid.
 A_NOTE_ALONE = "note is kept on the calibration label of the judge that was wrong: send judge_was_wrong"
+# A decision that moves nothing is said so, as a settings write that changes nothing is.
+ALREADY = "case {name} is already {status}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,11 +246,13 @@ async def get_case(session: AsyncSession, org: str, case: str) -> CaseRow:
 
 
 def check_decision(case: CaseRow, decision: CaseDecision) -> None:
-    """Refuse a judge called wrong on a case not dismissed or not broken on, and a note alone."""
+    """Refuse a decision that moves nothing, a judge wrongly named as wrong, and a note alone."""
     wrong = decision.judge_was_wrong
     if wrong is None:
         if decision.note is not None:
             raise ValidationError(A_NOTE_ALONE)
+        if _moves_nothing(case, decision):
+            raise Conflict(ALREADY.format(name=case.name, status=case.status))
         return
     if decision.status is not CaseStatus.dismissed:
         raise ValidationError(WRONG_ONLY_WHEN_DISMISSED)
@@ -274,6 +278,15 @@ async def decide_case(session: AsyncSession, org: str, case: str, decision: Case
 async def delete_case(session: AsyncSession, org: str, case: str) -> None:
     """Forget one of the org's cases; another org's, or nobody's, is a 404."""
     await CaseRepository(session).delete(await _found(session, org, case))
+
+
+def _moves_nothing(case: CaseRow, decision: CaseDecision) -> bool:
+    return (
+        decision.status is not None
+        and decision.status == case.status
+        and decision.held_out in (None, case.held_out)
+        and decision.kept_in_repo in (None, case.kept_in_repo)
+    )
 
 
 async def _found(session: AsyncSession, org: str, case: str) -> EvalCase:

@@ -14,15 +14,21 @@ export class UsageError extends PinecallError {
   override readonly exit = 2;
 }
 
-/** Exit 1: the gateway answered outside 2xx; the message is the gateway's own `detail`. */
+/**
+ * The gateway answered outside 2xx; the message is the gateway's own `detail`. A 404 is a name the
+ * gateway has nothing for — an agent, a judge, a monitor, a run typed wrong — so exit 2, as every
+ * name typed wrong is; any other refusal is exit 1.
+ */
 export class GatewayError extends PinecallError {
   override readonly name = "GatewayError";
+  override readonly exit: number;
 
   constructor(
     readonly status: number,
     readonly detail: string,
   ) {
     super(`the gateway answered ${status}: ${detail}`);
+    this.exit = status === 404 ? 2 : 1;
   }
 }
 

@@ -62,6 +62,18 @@ function sameSettings(one: TuningBody, other: TuningBody): boolean {
   return sorted(one) === sorted(other);
 }
 
+// The corner's own row with what the change moved: a field the change set to something else than
+// it reads is the corner's now; one it took out leaves the corner's row; the rest is left as it is.
+function movedOnto(own: TuningBody, read: TuningBody, changed: TuningBody): TuningBody {
+  const next: Record<string, unknown> = { ...own };
+  const fields = new Set([...Object.keys(read), ...Object.keys(changed)]) as Set<keyof TuningBody>;
+  for (const field of fields) {
+    if (!(field in changed)) delete next[field];
+    else if (!sameSettings({ [field]: changed[field] } as TuningBody, { [field]: read[field] } as TuningBody)) next[field] = changed[field];
+  }
+  return next as TuningBody;
+}
+
 /** The name of the corner a write lands on, for output. */
 export function cornerName(answer: { world: string }, team: boolean, gw: GatewayClient): string {
   if (answer.world === "production") return "production";
@@ -69,20 +81,22 @@ export function cornerName(answer: { world: string }, team: boolean, gw: Gateway
 }
 
 /**
- * Write one change as the next version of a corner. The row it starts from is the team's on
- * `--team`, else what this key reads, so the whole set travels; the version it is guarded by is the
- * newest of the corner it lands on, 0 when that corner is empty. `before` sees the starting row
- * first, for a check that writes nothing.
+ * Write one change as the next version of a corner. The change is made to what this key reads (the
+ * team's on `--team`), and only the fields it moved are written into the corner it lands on: the
+ * gateway reads a call's settings field by field from the nearest corner that sets each, so a
+ * field copied down from the team's would stop following the team's. The version it is guarded by
+ * is the newest of that corner, 0 when it is empty. `before` sees the row read first, for a check
+ * that writes nothing.
  */
 export async function writeCorner(ctx: Context, agent: string, team: boolean, change: Change, note: string | null, before?: (row: TuningRow | null) => void): Promise<CornerWritten> {
   const gw = ctx.gateway();
   const standing = await api.getSettings(gw, agent);
-  const row = rowToStartFrom(standing, team);
-  before?.(row);
-  const current = row?.config ?? {};
-  const next = change(current);
+  const read = rowToStartFrom(standing, team);
+  before?.(read);
+  const own = cornerWritten(standing, team, gw)?.config ?? {};
+  const next = movedOnto(own, read?.config ?? {}, change(read?.config ?? {}));
   // The gateway writes no version for it either; said here, before anything travels.
-  if (sameSettings(next, current)) throw new UsageError(`nothing changes in ${cornerName(standing, team, gw)}: it already reads so`);
+  if (sameSettings(next, own)) throw new UsageError(`nothing changes in ${cornerName(standing, team, gw)}: it already reads so`);
   const answer = await api.putSettings(gw, agent, { config: next, if_version: versionGuarded(standing, team, gw), note, team });
   // Name the corner the gateway actually wrote, which differs from the flag for a key with no corner.
   return { agent, corner: cornerName(answer, team, gw), version: cornerWritten(answer, team, gw)?.version ?? null, answer };

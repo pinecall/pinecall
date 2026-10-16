@@ -1100,16 +1100,20 @@ pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--
                    [--max-duration 1-60|off]
                    [--remember '…' …] [--forget '…' …] [--team] [--note '…']
 pinecall agent knowledge [--team] · knowledge edit [--team] [--note '…']
-pinecall agent clear [voice|tts|tts-model|stt|end-of-turn|llm|temperature|llm-builds|llm-options|stt-builds|stt-options|tts-builds|tts-options
-                      |judge|judge-builds|judge-options|language|greeting|hangup|turn|memory|record|max-duration|knowledge|bases …] [--team]
+pinecall agent clear <voice|tts|tts-model|stt|end-of-turn|llm|temperature|llm-builds|llm-options|stt-builds|stt-options|tts-builds|tts-options
+                      |judge|judge-builds|judge-options|language|greeting|hangup|turn|memory|record|max-duration|knowledge|bases …> [--team]
+pinecall agent clear --all [--team]
 pinecall agent history [--team] · diff [--against team|production] · rollback <version> [--team]
 pinecall agent pull [--team] · push <file> [--team]
                                         … and any of them with --prod, in production
 ```
 
 A version says what moved, so a write that changes nothing writes none: `set` with no field, or
-with the values the corner holds, and `clear` of a field nobody set are refused with exit 2 before
-anything travels.
+with the values the corner holds, and `clear` of a field your corner does not set are refused with
+exit 2 before anything travels. **A write puts only what it moved in your corner**: the gateway
+builds a call field by field from the nearest corner that sets each, so the fields you never
+touched keep following the team's. `clear` takes fields out of your corner, so the team's hold
+again for them; a whole corner is `clear --all`, never a `clear` that forgot to name a field.
 
 ```console
 $ pinecall agent
@@ -2185,7 +2189,7 @@ verification snippet per language.
 |---|---|
 | `0` | it did what it says |
 | `1` | the thing being measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold — or the gateway refused, in its own words |
-| `2` | this command cannot run: no key, a flag that is not a flag, a persona nobody wrote, a verb that moved (`pipeline set` is `agent set` now) |
+| `2` | this command cannot run: no key, a flag that is not a flag, a name nothing answers to (an agent, a persona, a judge, a monitor, a run — the gateway's 404 too), a verb that moved (`pipeline set` is `agent set` now) |
 
 A call **nobody judged** is not a pass: `simulate --judge` exits non-zero for it, because "nobody
 looked at this" must never open a gate.

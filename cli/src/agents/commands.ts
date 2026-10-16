@@ -104,11 +104,17 @@ export function register(program: Command, ctx: Context): void {
   });
   agent
     .command("clear")
-    .description("take fields out of the corner's own row; with no name, every field")
+    .description("take fields out of the corner's own row, so the corner below holds again; --all takes every one")
     .argument("[fields...]", service.FIELDS.join(" · "))
+    .option("--all", "every field of the corner's own row")
     .option("--agent <slug>")
     .option("--team")
-    .action(async (fields, flags) => ctx.io.result(await service.clearSettings(ctx, fields, service.WriteOptions.parse(flags)), render.settings));
+    .action(async (fields, flags) => {
+      // A whole corner gone is said in a word of its own, never by forgetting to name a field.
+      if (fields.length === 0 && flags.all !== true) throw new UsageError("name the fields to clear, or --all for every one: `pinecall agent` shows what your corner sets");
+      if (fields.length > 0 && flags.all === true) throw new UsageError("--all clears every field: name fields, or --all, not both");
+      ctx.io.result(await service.clearSettings(ctx, fields, service.WriteOptions.parse(flags)), render.settings);
+    });
   const knowledge = agent.command("knowledge").description("what the agent knows by heart: printed, or edited and kept as the next version");
   knowledge
     .command("show", { isDefault: true })

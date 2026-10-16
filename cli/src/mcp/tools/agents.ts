@@ -16,7 +16,8 @@ export const agent = tool({
     action: z.enum(["show", "set", "clear", "history", "diff", "rollback", "knowledge"]).describe("show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart"),
     agent: AGENT,
     settings: service.SettingsInput.optional().describe("`set`: the fields to set, named as `pinecall agent set` names its flags"),
-    fields: z.array(z.enum(service.FIELDS)).optional().describe("`clear`: the fields to take out; every one when left out"),
+    fields: z.array(z.enum(service.FIELDS)).optional().describe("`clear`: the fields to take out of your corner (the team's holds again for each)"),
+    all: z.boolean().optional().describe("`clear`: every field of the corner, instead of `fields`"),
     team: z.boolean().optional().describe("write the team's settings (the org's own) instead of your own"),
     against: z.enum(["team", "production"]).optional().describe("`diff`: what yours are compared with; production when left out"),
     version: z.number().int().min(1).optional().describe("`rollback`: the version to bring back"),
@@ -31,7 +32,8 @@ export const agent = tool({
       case "set":
         return (await service.setSettings(ctx, args.settings ?? {}, options)).answer;
       case "clear":
-        return (await service.clearSettings(ctx, args.fields ?? [], options)).answer;
+        if ((args.fields ?? []).length === 0 && args.all !== true) throw new ToolRefused("clear names the `fields` to take out, or `all` for every one");
+        return (await service.clearSettings(ctx, args.all === true ? [] : (args.fields ?? []), options)).answer;
       case "history":
         return (await service.settingsHistory(ctx, args.agent, options.team)).history;
       case "diff":
