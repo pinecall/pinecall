@@ -213,10 +213,16 @@ export async function settledRun(ctx: Context, started: api.EvalRun, signal: Abo
     settle = done;
     broke = failed;
   });
+  let over = false;
   const look = async (): Promise<void> => {
+    if (over) return;
     const run = await api.getRun(ctx.gateway(), started.id);
+    if (over) return;
     onChanged?.(run);
-    if (run.status !== "running") settle(run);
+    if (run.status !== "running") {
+      over = true;
+      settle(run);
+    }
     else if (Date.now() - started.started_at * 1000 > A_RUN_MAY_TAKE_MS) throw new PinecallError(`${started.id} is still running past the gateway's deadline: the gateway that played it stopped — \`pinecall runs show ${started.id}\` reads what it judged`);
   };
   // One read at a time, in the order the feed spoke; a read that fails ends the wait with its reason.
