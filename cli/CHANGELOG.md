@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.0] — an agent is one folder; a run followed on the feed; every verb walked, and what is not there refused by name
+
 - **`chat` and `simulate` on an agent nobody holds exit 2**, as `test` and `remember` do: the gateway
   closes the socket with 4000 plus the status it would have answered, and the terminal reads it.
 - **`line` says who is running the agent when nobody holds its line**, and `claim` to take it; it

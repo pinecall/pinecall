@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — The runtime rewritten as one Rails-shaped application; a run that answers as it starts; a key tried before it is kept (2026-10-16)
 
 - **A vendor's refusal is its own sentence** (`cerebras refused this key: Wrong API Key`), read off the
   body the vendor answered, never the SDK's repr of that body. `GET /v1/voices` with a language the

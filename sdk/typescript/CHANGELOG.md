@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## [0.11.0] — released with every other package
+
+- Nothing of the framework changed: published at 0.11.0 with every other package. A project's agents
+  live one folder each (`agents/<name>/`, its `docs/` and `test/` inside it): the CLI 0.11.0 reads
+  that layout, and the framework reads the class wherever the CLI points it.
+
 ## [0.10.1] — the wire carries a golden by turns, a judge's why and recommended, and run, release and worker events
 
 - `observe` follows the org's feed too (`{ feed: true }`, `GET /v1/events`), asks the gateway for
