@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.1 — Every verb walked again: the feed takes types, refusals name verbs, a broken run says why (2026-10-17)
+
 - **The org's feed takes `?types=`.** `GET /v1/events` sent every entry of the floor whatever a
   reader asked for, and a reader following one type (a release going live, a run finishing) met
   entries it had no shape for. The feed filters as a log's stream does.

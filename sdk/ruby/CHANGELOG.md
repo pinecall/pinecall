@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.1] — Released with every other package (2026-10-17)
+
+- Nothing of the Ruby SDK changed: published at 0.11.1 with every other package.
+
 ## [0.11.0] — Released with every other package (2026-10-16)
 
 - Nothing of the Ruby SDK changed: published at 0.11.0 with every other package.

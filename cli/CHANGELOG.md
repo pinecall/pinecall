@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.1] — every verb walked again: a deploy followed to the end, every flag refused by name, a broken run says why
+
 - **`deploy up` and `deploy rollback` follow a release to the end.** The follow read the org's whole
   feed and left with a validator's text on the first entry that was not a release's (the gateway
   now filters the feed by type).
