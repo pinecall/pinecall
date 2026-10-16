@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A chat that ends from two sides at once closes its socket once.** The caller's hang-up and the
+  call's own end each closed the socket; the second close was a traceback in the gateway's log.
 - **A call reaches its app on every gateway.** With two gateways, a call opened on one for an agent
   whose socket is on the other was told to that gateway before its opening row was committed; the
   gateway found nothing to serve it from and dropped the word in silence, so every tool the call

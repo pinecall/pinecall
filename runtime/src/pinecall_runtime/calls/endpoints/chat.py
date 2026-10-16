@@ -1,11 +1,12 @@
 """A written call over a WebSocket: a message in, every entry of the call out."""
 
 import asyncio
+import contextlib
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
-from starlette.websockets import WebSocketState
+from starlette.websockets import WebSocketDisconnected, WebSocketState
 
 from pinecall_runtime.accounts.service.keys import check_agent
 from pinecall_runtime.agents.service import registry
@@ -44,6 +45,8 @@ OVER = "the call ended: {reason}"
 # What uvicorn closes with on a stop; a caller never sends it, so the call is left for the next
 # process to take up.
 SERVICE_RESTART = 1012
+# RFC 6455 §7.4.1: the code of a close that ends nothing wrong.
+NORMAL_CLOSURE = 1000
 
 
 # The org's key, never a room token (`pinecall chat`, `test`, `simulate`).
@@ -83,8 +86,16 @@ async def chat(websocket: WebSocket) -> None:
 async def _hung_up(websocket: WebSocket, running: session.Session) -> None:
     await running.over.wait()
     reason, _ = running.ended or ("error", "platform")
-    if websocket.application_state is WebSocketState.CONNECTED:
-        await websocket.close(reason=close_reason(OVER.format(reason=reason)))
+    await _closed(websocket, OVER.format(reason=reason))
+
+
+# A call ends from two sides at once — the caller's hangup, and the desk's or the model's end that
+# `_hung_up` hears — and each would close the socket: the second close finds it closed.
+async def _closed(websocket: WebSocket, reason: str, code: int = NORMAL_CLOSURE) -> None:
+    if websocket.application_state is not WebSocketState.CONNECTED:
+        return
+    with contextlib.suppress(WebSocketDisconnected):
+        await websocket.close(code=code, reason=close_reason(reason))
 
 
 def _chatting(websocket: WebSocket, serving: Serving) -> tuple[Registration, str | None]:
@@ -151,7 +162,7 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
                 # Ended before the socket closes, so the caller hears the call is over before it
                 # stops whatever served it.
                 await session.end_text(running, "caller_hung_up", "caller")
-                await websocket.close(reason=close_reason(OVER.format(reason="caller_hung_up")))
+                await _closed(websocket, OVER.format(reason="caller_hung_up"))
                 return
             data = _text_of(frame)
             if not data:
@@ -171,7 +182,7 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
                         session_, serving.handles, serving.logs, scope, running.call.config.slug, refused
                     )
                     await session.end_text(running, "timeout", "platform")
-                    await websocket.close(code=code_of(refused), reason=close_reason(str(refused)))
+                    await _closed(websocket, str(refused), code_of(refused))
                     return
             await session.hear_text(running, data)
     except WebSocketDisconnect as gone:
@@ -184,8 +195,10 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
 
 
 async def _send(websocket: WebSocket, heard: Subscription) -> None:
-    async for entry in heard:
-        await websocket.send_json(entry.dump())
+    # The socket closes under the sender when the call ends: what was left to send is not sent.
+    with contextlib.suppress(WebSocketDisconnected):
+        async for entry in heard:
+            await websocket.send_json(entry.dump())
 
 
 def _hangs_up(data: Json) -> bool:
