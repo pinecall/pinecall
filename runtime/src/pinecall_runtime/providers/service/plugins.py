@@ -11,11 +11,12 @@ from functools import cache
 from types import ModuleType
 from typing import Any, Never
 
-from livekit.agents import llm, stt, tts
+from livekit.agents import APIError, llm, stt, tts
 from livekit.agents.language import LanguageCode
 
 from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.exceptions import ServiceUnavailable, ValidationError
+from pinecall_runtime.kit.text import a_mapping
 from pinecall_runtime.providers.schemas import TurnModel
 
 # A key alone, or the object a plugin's constructor takes (`speech_key` and `speech_region`).
@@ -191,3 +192,21 @@ def _vendor(name: str, module: str) -> Vendor:
         logger.warning("the %s plugin does not import, so it builds nothing", name, exc_info=True)
         return Vendor(name, frozenset(), broken=str(broken))
     return Vendor(name, frozenset(m for m in MODALITIES if hasattr(imported, CLASS_OF[m])))
+
+
+# A vendor SDK puts its whole body in the message (`Error code: 401 - {'message': …}`): the
+# vendor's own sentence is the body's `message`, at its top or under `error`, when it has one.
+def words_of(refused: APIError) -> str:
+    """What the vendor said, in its words."""
+    body = refused.body
+    holders: list[Mapping[str, object]] = []
+    if a_mapping(body):
+        holders.append(body)
+        nested = body.get("error")
+        if a_mapping(nested):
+            holders.append(nested)
+    for holder in holders:
+        said = holder.get("message")
+        if isinstance(said, str) and said.strip():
+            return said.strip()
+    return refused.message

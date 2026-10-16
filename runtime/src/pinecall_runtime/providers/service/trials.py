@@ -13,7 +13,7 @@ from pinecall_runtime.agents.declaration import Modality, Turn
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service import keyring, voices
-from pinecall_runtime.providers.service.plugins import Credentials, Running, Vendor
+from pinecall_runtime.providers.service.plugins import Credentials, Running, Vendor, words_of
 from pinecall_runtime.providers.service.stages import llm_of, stt_of
 
 # A vendor slower than this to say a word is not refusing the setting, it is not answering.
@@ -48,11 +48,11 @@ async def try_stage(stage: Modality, running: Running, turn: Turn | None = None,
     except (APIConnectionError, APITimeoutError) as silent:
         raise UpstreamError(_unanswered(running, named, silent.message)) from silent
     except APIError as refused:
-        raise ValidationError(f"{running.vendor} refused {named}: {refused.message}") from refused
+        raise ValidationError(f"{running.vendor} refused {named}: {words_of(refused)}") from refused
     except ValidationError as said:
         # The voice's sample says its own refusal; here it is named after what was tried.
         cause = said.__cause__
-        words = cause.message if isinstance(cause, APIError) else str(said)
+        words = words_of(cause) if isinstance(cause, APIError) else str(said)
         raise ValidationError(f"{running.vendor} refused {named}: {words}") from said
     except UpstreamError as failed:
         cause = failed.__cause__

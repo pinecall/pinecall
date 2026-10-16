@@ -89,14 +89,15 @@ async def list_voices(
     named = plugins.installed_vendor(tts)
     spoken = plugins.primary_language(language)
     listed = voices.listed_in_catalog(configured, named, spoken)
+    # The row lists this vendor's voices by language: one it lists none in is said as that.
+    if not listed and spoken is not None and voices.listed_in_catalog(configured, named, None):
+        raise NotFound(f"{named} lists no voice in {language}: drop --language to see every one")
     if not listed and not keyring.lists_voices(named, ("tts",)):
         raise voices.NotListed(named)
     if not listed:
         keys = await keyring.keys_of(session, _vault(request), actor.scope)
         stage = keyring.stage_on_its_key("tts", Voice(provider=named), configured, keys)
         listed = await voices.listed_by_vendor(dataclasses.replace(stage, language=spoken))
-    if not listed and spoken is not None:
-        raise NotFound(f"{named} lists no voice in {language}: drop --language to see every one")
     return VoicesListed(
         tts=tts,
         language=language,

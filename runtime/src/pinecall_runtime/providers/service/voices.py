@@ -16,7 +16,7 @@ from livekit.agents.utils import http_context
 from pinecall_runtime.exceptions import NotFound, UpstreamError, ValidationError
 from pinecall_runtime.kit.text import a_list, a_mapping
 from pinecall_runtime.providers.schemas import Catalog
-from pinecall_runtime.providers.service.plugins import Running
+from pinecall_runtime.providers.service.plugins import Running, words_of
 from pinecall_runtime.providers.service.stages import tts_of
 
 SAMPLE_WIDTH = 2  # 16-bit PCM, as every plugin emits it
@@ -109,7 +109,7 @@ async def sample(running: Running, line: str) -> Sample:
         except APIError as refused:
             if isinstance(refused, APIStatusError) and refused.status_code >= THE_VENDORS_OWN:
                 raise _refused(running.vendor, "failed on its side", refused) from refused
-            raise ValidationError(f"{running.vendor} refused the voice: {refused.message}") from refused
+            raise ValidationError(f"{running.vendor} refused the voice: {words_of(refused)}") from refused
         finally:
             await speech.aclose()
 
@@ -117,7 +117,7 @@ async def sample(running: Running, line: str) -> Sample:
 # The vendor's own words, and its status where it answered with one.
 def _refused(vendor: str, what: str, error: APIError) -> UpstreamError:
     status = f" ({error.status_code})" if isinstance(error, APIStatusError) else ""
-    return UpstreamError(f"{vendor} {what}{status}: {error.message}")
+    return UpstreamError(f"{vendor} {what}{status}: {words_of(error)}")
 
 
 # A listing is a list of rows, each a dataclass or a mapping; one that is a mapping of names

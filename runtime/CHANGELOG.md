@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A vendor's refusal is its own sentence** (`cerebras refused this key: Wrong API Key`), read off the
+  body the vendor answered, never the SDK's repr of that body. `GET /v1/voices` with a language the
+  providers row lists none of the vendor's voices in says so.
 - **A refused socket closes with 4000 plus the status** it would have answered (`4404` for an agent
   nobody holds), so a terminal reads the refusal as the 404 it is; it closed with 1008 for every one.
 - **A vendor key is tried before it is kept.** `pinecall providers add` (and the operator's box keys)
