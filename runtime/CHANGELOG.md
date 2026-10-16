@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A call reaches its app on every gateway.** With two gateways, a call opened on one for an agent
+  whose socket is on the other was told to that gateway before its opening row was committed; the
+  gateway found nothing to serve it from and dropped the word in silence, so every tool the call
+  made waited out its deadline (`lookUp did not answer within 8s`), about half the time, written
+  and spoken calls alike. The opening is committed before any gateway is told, and a bind this
+  gateway cannot serve is logged.
+
 ## 0.11.0 — The runtime rewritten as one Rails-shaped application; a run that answers as it starts; a key tried before it is kept (2026-10-16)
 
 - **A vendor's refusal is its own sentence** (`cerebras refused this key: Wrong API Key`), read off the

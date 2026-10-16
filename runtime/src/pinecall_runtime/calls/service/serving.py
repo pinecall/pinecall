@@ -114,6 +114,17 @@ def serve_call(
     return serving.live.calls[context.call]
 
 
+# Committed on its own, before the call is served: `Live.serve` tells the gateway holding the
+# agent's socket of the call at once, and that gateway reads the opening to take it (`known_here`).
+# A row still in the opener's transaction is not there yet, the word is dropped, and the call
+# never reaches its app: every tool it calls waits out its deadline.
+async def kept_before_served(serving: Serving, org: str, context: CallContext, config: AgentConfig) -> None:
+    """The call's opening and its prompt, written and committed before any gateway is told of it."""
+    async with serving.handles.sessions.begin() as session_:
+        await openings.keep_opening(session_, org, context, config)
+        await serving.prompts.keep(session_, org, config.knowledge or "")
+
+
 # Parked and not counted: the socket holding its agent and the quota are its opener's.
 def first_seen(serving: Serving, context: CallContext, config: AgentConfig, kept: CallHead, now: float) -> Served:
     """Serve a call another gateway opened, from what was kept when it opened."""

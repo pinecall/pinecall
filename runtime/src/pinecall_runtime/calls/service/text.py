@@ -16,7 +16,7 @@ from pinecall_runtime.calls.service import openings
 from pinecall_runtime.calls.service.binding import attach
 from pinecall_runtime.calls.service.live import Served
 from pinecall_runtime.calls.service.seal import seal
-from pinecall_runtime.calls.service.serving import Serving, look_up, serve_call
+from pinecall_runtime.calls.service.serving import Serving, kept_before_served, look_up, serve_call
 from pinecall_runtime.enums import Channel, Direction, Opener
 from pinecall_runtime.exceptions import Conflict
 from pinecall_runtime.judging import service as judging
@@ -80,8 +80,7 @@ async def open_text_as(
         context.call, registration.slug, scope.org, Claim(scope, setup.versions, opened_by=Opener.gateway)
     )
     # Kept as a phone call's is: the gateway holding the app's socket serves it from this.
-    await openings.keep_opening(session_, scope.org, context, setup.config)
-    await serving.prompts.keep(session_, scope.org, setup.config.knowledge or "")
+    await kept_before_served(serving, scope.org, context, setup.config)
     served = serve_call(serving, registration.owner, context, setup.config, scope)
     serving.live.set_opener(context.call, Opener.gateway)
     await serving.live.commands_heard(context.call)

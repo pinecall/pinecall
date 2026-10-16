@@ -321,7 +321,14 @@ class AppSocket:
     async def _bound(self, bound: Bound) -> None:
         async with self.serving.handles.sessions.begin() as session:
             served = await known_here(session, self.serving, bound.call)
-        if served is None or self.id not in self.live.sockets or bound.call in self.live.pumps:
+        if served is None:
+            # Never silent: a call bound here that this gateway cannot serve is a call whose app
+            # will not hear it, and its opener's fault (the opening must be committed before it is told).
+            logger.warning(
+                "call %s was bound to socket %s, and this gateway has no opening to serve it from", bound.call, self.id
+            )
+            return
+        if self.id not in self.live.sockets or bound.call in self.live.pumps:
             return
         self.live.attach(bound.call, self.id)
         then = unanswered_tools(await served.log.whole()) if bound.after else []

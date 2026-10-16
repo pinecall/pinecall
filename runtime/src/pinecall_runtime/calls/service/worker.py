@@ -21,6 +21,7 @@ from pinecall_runtime.calls.service.serving import (
     SEALED,
     Serving,
     is_the_fleet,
+    kept_before_served,
     serve_call,
     serving_agent,
     write_arrival,
@@ -75,8 +76,7 @@ async def open_call(session_: AsyncSession, serving: Serving, actor: Actor, body
     await serving.logs.store.claim(context.call, body.agent, scope.org, Claim(scope, versions, opened_by=opener))
     # A worker opened the room's call: nothing is left to offer it to another.
     await serving.offering.forget(context.call)
-    await openings.keep_opening(session_, scope.org, context, config)
-    await serving.prompts.keep(session_, scope.org, config.knowledge or "")
+    await kept_before_served(serving, scope.org, context, config)
     served = serve_call(serving, None if registration is None else registration.owner, context, config, scope)
     serving.live.set_opener(context.call, opener)
     await serving.live.commands_heard(context.call)
@@ -110,7 +110,7 @@ async def reopen_call(session_: AsyncSession, serving: Serving, actor: Actor, ca
         raise Conflict(SEALED.format(call=call))
     registration = serving.registry.serving(scope, body.agent, None)
     config, _ = await _tuned(session_, serving, scope, body.agent, registration, call)
-    await openings.keep_opening(session_, scope.org, body.context, config)
+    await kept_before_served(serving, scope.org, body.context, config)
     serve_call(serving, None, body.context, config, scope)
     serving.live.set_opener(call, kept.opened_by)
     if registration is not None:
