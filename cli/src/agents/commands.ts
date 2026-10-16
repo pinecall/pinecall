@@ -97,7 +97,9 @@ export function register(program: Command, ctx: Context): void {
   for (const stage of ["llm", "stt", "tts", "judge"]) set.option(`--${stage}-option <key=value...>`);
   set.option("--remember <phrase...>").option("--forget <phrase...>");
   set.action(async (flags) => {
-    const input = service.SettingsInput.parse(settingsOf(flags as Record<string, unknown>));
+    const named = settingsOf(flags as Record<string, unknown>);
+    if (Object.keys(named).length === 0) throw new UsageError("nothing to set: name a field (--voice, --llm, --greeting, …); `pinecall agent clear` takes one out");
+    const input = service.SettingsInput.parse(named);
     ctx.io.result(await service.setSettings(ctx, input, service.WriteOptions.parse(flags)), render.settings);
   });
   agent

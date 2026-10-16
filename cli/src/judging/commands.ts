@@ -62,6 +62,18 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <name>", "one agent's, when the project holds more")
     .action(async (flags) => {
       const whose = owner(flags);
+  judges
+    .command("show")
+    .description("one judge whole: whose, its switch, how and when it answers, what it reads, its question")
+    .argument("<name>")
+    .option("--org", "the org's list")
+    .option("--agent <slug>", "an agent's list")
+    .action(async (name, flags) => {
+      const list = await service.listJudges(ctx, owner(flags));
+      const found = list.judges.find((row) => row.name === name);
+      if (found === undefined) throw new UsageError(`no judge ${name} in this list: \`pinecall judges\` names the ones there are`);
+      ctx.io.result(found, render.judge);
+    });
       ctx.io.result(await service.listJudges(ctx, whose), (list) => render.judges(whose, list));
     });
   judges

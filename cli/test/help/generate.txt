@@ -36,7 +36,7 @@ $ pinecall generate golden --help
 Usage: pinecall generate golden [options] <name>
 
 Options:
-  --say <line...>   what the caller says, one line a turn, in order
+  --say <line...>   what the caller says, one line a turn, in order (required)
   --tool <name...>  a tool the call must make
   --agent <name>
   -h, --help        display help for command

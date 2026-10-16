@@ -5,6 +5,7 @@ import type { TuningAnswer, TuningBody, TuningRow } from "@pinecall/agents/wire"
 import * as api from "../../api/agents.js";
 import type { GatewayClient } from "../../api/client.js";
 import type { Context } from "../../context.js";
+import { UsageError } from "../../errors.js";
 
 export type { TuningAnswer, TuningBody, TuningRow } from "@pinecall/agents/wire";
 
@@ -54,6 +55,13 @@ export function versionGuarded(answer: { yours: { version: number } | null; team
   return cornerWritten(answer, team, gw)?.version ?? 0;
 }
 
+// Key order is nothing: a field set to the value it holds is the same row.
+function sameSettings(one: TuningBody, other: TuningBody): boolean {
+  const sorted = (body: TuningBody): string =>
+    JSON.stringify(body, (_key, value: unknown) => (value !== null && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))) : value));
+  return sorted(one) === sorted(other);
+}
+
 /** The name of the corner a write lands on, for output. */
 export function cornerName(answer: { world: string }, team: boolean, gw: GatewayClient): string {
   if (answer.world === "production") return "production";
@@ -71,7 +79,11 @@ export async function writeCorner(ctx: Context, agent: string, team: boolean, ch
   const standing = await api.getSettings(gw, agent);
   const row = rowToStartFrom(standing, team);
   before?.(row);
-  const answer = await api.putSettings(gw, agent, { config: change(row?.config ?? {}), if_version: versionGuarded(standing, team, gw), note, team });
+  const current = row?.config ?? {};
+  const next = change(current);
+  // The gateway writes no version for it either; said here, before anything travels.
+  if (sameSettings(next, current)) throw new UsageError(`nothing changes in ${cornerName(standing, team, gw)}: it already reads so`);
+  const answer = await api.putSettings(gw, agent, { config: next, if_version: versionGuarded(standing, team, gw), note, team });
   // Name the corner the gateway actually wrote, which differs from the flag for a key with no corner.
   return { agent, corner: cornerName(answer, team, gw), version: cornerWritten(answer, team, gw)?.version ?? null, answer };
 }

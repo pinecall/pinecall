@@ -15,7 +15,7 @@ export const AddMonitorInput = z.object({
   /** True fires when the number is over the line, false when it is under (a held_rate floor). */
   above: z.boolean(),
   threshold: z.number().finite(),
-  windowDays: z.union([z.literal(1), z.literal(7), z.literal(30)]).default(7),
+  windowDays: z.union([z.literal(1), z.literal(7), z.literal(30)], { error: "--days takes 1, 7 or 30" }).default(7),
   agent: z.string().min(1).optional(),
 });
 export type AddMonitorInput = z.infer<typeof AddMonitorInput>;

@@ -1,6 +1,6 @@
 /** `pinecall runs | cases | personas`: the runs the gateway kept, the org's dataset, the agent's simulated callers. */
 
-import type { Command } from "@commander-js/extra-typings";
+import { Option, type Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
@@ -14,14 +14,14 @@ export function registerRuns(program: Command, ctx: Context): void {
   const runs = program.command("runs").description("the runs this gateway has done: list, show, diff, promote a call, watch the drift").addHelpText("after", HELP.runs);
   runs
     .command("list", { isDefault: true })
-    .option("--limit <n>", "how many, newest first", "20")
-    .action(async (flags) => ctx.io.result(await service.listRuns(ctx, numberOf("--limit", flags.limit) ?? 20), render.runs));
+    .option("--limit <n>", `how many, newest first, 1 to ${service.RUNS_MOST}`, "20")
+    .action(async (flags) => ctx.io.result(await service.listRuns(ctx, service.RunsLimit.parse(numberOf("--limit", flags.limit) ?? 20)), render.runs));
   runs
     .command("show")
     .argument("<id>")
     .action(async (id) => {
       const shown = await service.showRun(ctx, id);
-      ctx.io.result(shown, (one) => render.matrix(one.run, one.latencies, service.DECLARED));
+      ctx.io.result(shown, (one) => render.matrix(one.run, one.latencies, service.DECLARED_AS));
       if ((shown.run.matrix?.failures.length ?? 0) > 0) throw new PinecallError("a golden broke in that run");
     });
   runs
@@ -74,7 +74,8 @@ export function registerCases(program: Command, ctx: Context): void {
     .option("--agent <name>")
     .action(async (flags) => {
       if (flags.status !== undefined && !(service.STATUSES as readonly string[]).includes(flags.status)) throw new UsageError(`--status ${flags.status}: ${service.STATUSES.join(", ")}`);
-      ctx.io.result(await service.listCases(ctx, agentOf(flags), flags.status as service.CaseStatus | undefined), (list) => render.cases(list));
+      const status = flags.status as service.CaseStatus | undefined;
+      ctx.io.result(await service.listCases(ctx, agentOf(flags), status), (list) => render.cases(list, status));
     });
   cases.command("groups").option("--agent <name>").action(async (flags) => {
     const agent = agentOf(flags);
@@ -96,7 +97,7 @@ export function registerCases(program: Command, ctx: Context): void {
     .argument("<name|group>")
     .option("--agent <name>")
     .action(async (named, flags) => {
-      if (service.isGroup(named)) ctx.io.result(await service.decideGroup(ctx, named, true), render.groupLine);
+      if (service.isGroup(named)) ctx.io.result(await service.decideGroup(ctx, named, true), render.groupLines);
       else ctx.io.result(await service.approveCase(ctx, agentOf(flags), named), (one) => render.caseDecided(one));
     });
   cases
@@ -107,7 +108,7 @@ export function registerCases(program: Command, ctx: Context): void {
     .option("--agent <name>")
     .action(async (named, flags) => {
       if (service.isGroup(named)) {
-        ctx.io.result(await service.decideGroup(ctx, named, false, { judgeWasWrong: flags.judgeWasWrong !== undefined, note: flags.note }), render.groupLine);
+        ctx.io.result(await service.decideGroup(ctx, named, false, { judgeWasWrong: flags.judgeWasWrong !== undefined, note: flags.note }), render.groupLines);
         return;
       }
       const input = service.DismissInput.parse({ judgeWasWrong: flags.judgeWasWrong, note: flags.note });
@@ -141,7 +142,9 @@ export function registerPersonas(program: Command, ctx: Context): void {
     .option("--file <agent.tsx>")
     .action(async (flags) => {
       const agent = agentOf(flags);
-      ctx.io.result(await service.listPersonas(ctx, agent), (found) => render.personas(agent, found));
+      const found = await service.listPersonas(ctx, agent);
+      const unsent = await service.personasNotPushed(ctx, flags, found);
+      ctx.io.result({ personas: found, not_pushed: unsent }, () => render.personas(agent, found, unsent));
     });
   personas
     .command("show")
@@ -171,7 +174,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
       .option("--speed <0.5-2>")
       .option("--ambience <what>", service.AMBIENCES.join(" | "))
       .option("--background-noise <dB>", "dB under them it plays at; empty for a quiet room")
-      .option("--rename <name>", "edit: move it to another name")
+      .addOption(new Option("--rename <name>", "move it to another name").hideHelp(verb === "add"))
       .action(async (name, flags) => {
         const input = service.WritePersonaInput.parse({
           goal: flags.goal,

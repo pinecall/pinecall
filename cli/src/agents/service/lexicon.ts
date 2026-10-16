@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
+import { UsageError } from "../../errors.js";
 import { rowToStartFrom, versionGuarded } from "./corners.js";
 import { agentNamed, WriteOptions } from "./settings.js";
 
@@ -37,10 +38,14 @@ export async function hearWords(ctx: Context, input: WordsInput): Promise<Lexico
 }
 
 export async function removeWords(ctx: Context, input: WordsInput): Promise<LexiconAnswer> {
-  return changed(ctx, input, (words) => ({
-    said: Object.fromEntries(Object.entries(words.said).filter(([word]) => !input.words.includes(word))),
-    heard: words.heard.filter((word) => !input.words.includes(word)),
-  }));
+  return changed(ctx, input, (words) => {
+    const absent = input.words.filter((word) => !(word in words.said) && !words.heard.includes(word));
+    if (absent.length > 0) throw new UsageError(`no word ${absent.join(", ")} in this lexicon: \`pinecall lexicon\` prints it`);
+    return {
+      said: Object.fromEntries(Object.entries(words.said).filter(([word]) => !input.words.includes(word))),
+      heard: words.heard.filter((word) => !input.words.includes(word)),
+    };
+  });
 }
 
 export async function lexiconHistory(ctx: Context, agent: string | undefined, team: boolean): Promise<LexiconHistory> {

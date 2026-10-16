@@ -91,6 +91,11 @@ interface Judged {
   score: CallScore | null;
 }
 
+/** The most runs one list asks for: the gateway's own ceiling. */
+export const RUNS_MOST = 200;
+const A_LIMIT = { error: `--limit takes a whole number from 1 to ${RUNS_MOST}` };
+export const RunsLimit = z.number(A_LIMIT).int(A_LIMIT).min(1, A_LIMIT).max(RUNS_MOST, A_LIMIT);
+
 export async function listRuns(ctx: Context, limit: number, agent?: string): Promise<api.EvalRun[]> {
   return api.listRuns(ctx.gateway(), limit, agent);
 }

@@ -40,6 +40,20 @@ export function judges(owner: JudgeOwner, list: JudgeList): string[] {
   );
 }
 
+/** One judge whole: the line the list prints, then how and when it answers, what it reads, and its question. */
+export function judge(row: JudgeRow): string[] {
+  const lines = [
+    `${row.name} · ${row.owner} · ${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`,
+    `  answers  ${answerLabel(row)}`,
+    `  when     ${whenLabel(row)}${row.when === "trigger" ? `: ${row.trigger}` : ""}`,
+    `  reads    ${row.reads.join(", ")}`,
+  ];
+  if (row.owner === "pinecall" && row.why) lines.push(`  why      ${row.why}`);
+  lines.push(`  asks     ${row.question}`);
+  if (row.author) lines.push(`  set by   ${row.author}`);
+  return lines;
+}
+
 export function changed(list: JudgeListChanged): string {
   return `${list.done} · ${list.judges.length} judge(s)`;
 }

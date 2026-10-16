@@ -59,7 +59,7 @@ export function register(program: Command, ctx: Context): void {
   generate
     .command("golden")
     .argument("<name>")
-    .requiredOption("--say <line...>", "what the caller says, one line a turn, in order")
+    .requiredOption("--say <line...>", "what the caller says, one line a turn, in order (required)")
     .option("--tool <name...>", "a tool the call must make")
     .option("--agent <name>")
     .action((name, flags) => {

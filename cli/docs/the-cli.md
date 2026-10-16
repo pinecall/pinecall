@@ -771,6 +771,7 @@ undone, and pushing again once it is fixed finishes the migration.
 pinecall judges [list] [--org | --agent <name>] [--json]
 pinecall judges add <name> --asks '…' [--answer verdict|score|choice:a,b,c] [--when always|simulations|trigger:'…']
                     [--reads prompt,evidence,facts] [--org | --agent <name>] [--json]
+pinecall judges show <name> [--org | --agent <name>] [--json]
 pinecall judges on|off <name> [--org | --agent <name>] [--json]
 pinecall judges rm <name> [--org | --agent <name>] [--json]
 pinecall judges try <name> (--last <n> | --calls <id,id…>) [--asks '…' and add's flags] [--agent <name>] [--json]
@@ -786,7 +787,8 @@ prints what each saves you from, and marks `recommended` the eight to switch on 
 `relevance`, `repetition` and `sentiment`, which grade a call rather than guard it; **the org's own**
 (`--org`), asked of every agent's calls; and **an agent's own**, about its job alone. The gateway
 keeps all of it for both environments: the console's Judges shows the same, and a change needs no
-deploy.
+deploy. `show <name>` prints one judge whole — whose, its switch, how and when it answers, what it
+reads, its question; a name the list has not is refused with exit 2.
 
 ```console
 $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
@@ -1105,6 +1107,10 @@ pinecall agent pull [--team] · push <file> [--team]
                                         … and any of them with --prod, in production
 ```
 
+A version says what moved, so a write that changes nothing writes none: `set` with no field, or
+with the values the corner holds, and `clear` of a field nobody set are refused with exit 2 before
+anything travels.
+
 ```console
 $ pinecall agent
 clinica-norte · sandbox
@@ -1265,8 +1271,9 @@ hours, prices, what needs an authorisation, what to say when asked for the docto
 is one field of the settings, versioned like the rest, and the runtime reads it **whole** into
 the prompt's static `knowledge` block on every call — so it is read once and cached, and never
 searched. Alone, the verb prints the corner's text; `edit` opens it in `$VISUAL` or `$EDITOR`,
-the way `git commit` does, and what you leave is the next version. An unchanged file writes
-nothing; an empty one takes the field out. The console's Settings ▸ Knowledge is the same
+the way `git commit` does (`$VISUAL` wins over `$EDITOR`), and what you leave is the next version. An unchanged file writes
+nothing; an empty one takes the field out. It needs a terminal: piped, it is refused with exit 2
+rather than left waiting on an editor nobody can type at. The console's Settings ▸ Knowledge is the same
 textarea, and a **supervisor's or a manager's key opens it** (`words`) — the person who knows
 the prices changes them, without a developer and without a deploy.
 
@@ -1291,6 +1298,9 @@ pinecall lexicon rm <word> [<word> …] [--agent <slug>] [--team]
 pinecall lexicon history [--agent <slug>] [--team]
                                         … and any of them with --prod, in production
 ```
+
+A write that changes nothing writes no version: `rm` of a word the lexicon has not is refused by
+name, with exit 2, before anything travels.
 
 ```console
 $ pinecall lexicon add DKV --say "de ka uve"
@@ -1892,6 +1902,9 @@ pinecall docs detach <base> [--agent <slug>] [--team]
 pinecall docs attached
                                         … and any of them with --prod, in production
 ```
+
+`attach` names a base the env has (`pinecall docs` lists them): one it has not is refused with
+exit 2, naming the `push` that would write it.
 
 **The documents a turn searches** — the RAG, and only that. `push` reads every `*.md` under the
 directory — a local `agents/<name>/docs/` of the agent when none is named, never tracked by the

@@ -10,6 +10,8 @@ export type { CallState, Entry, EntryPage, SessionLine } from "../../api/calls.j
 
 /** The page a log is read in when `--limit` is left out. */
 export const A_PAGE = 200;
+const A_HUNDRED = { error: "--limit takes a whole number from 1 to 100" };
+const A_PAGE_LIMIT = { error: `--limit takes a whole number from 1 to ${api.PAGE_MOST}` };
 
 // Filtered server-side, so `show` is usually a single request; at most PAGES pages (about an hour of call).
 const THE_ENDING = ["call.summary", "call.score"];
@@ -20,7 +22,7 @@ export const NO_SUCH_CALL = (call: string): string => `no call ${call} on this g
 /** What `sessions` takes with no call named: the agent, and how many calls, newest first. */
 export const ListSessionsInput = z.object({
   agent: z.string().min(1).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
+  limit: z.number(A_HUNDRED).int(A_HUNDRED).min(1, A_HUNDRED).max(100, A_HUNDRED).optional(),
 });
 export type ListSessionsInput = z.infer<typeof ListSessionsInput>;
 
@@ -28,7 +30,7 @@ export type ListSessionsInput = z.infer<typeof ListSessionsInput>;
 export const ReadLogInput = z.object({
   call: z.string().min(1),
   after: z.number().int().min(0).default(0),
-  limit: z.number().int().min(1).max(api.PAGE_MOST).default(A_PAGE),
+  limit: z.number(A_PAGE_LIMIT).int(A_PAGE_LIMIT).min(1, A_PAGE_LIMIT).max(api.PAGE_MOST, A_PAGE_LIMIT).default(A_PAGE),
   types: z.array(z.string().min(1)).optional(),
 });
 export type ReadLogInput = z.infer<typeof ReadLogInput>;

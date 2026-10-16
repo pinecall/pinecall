@@ -47,8 +47,9 @@ export function drift(found: Drift): string[] {
 }
 
 /** The inbox: how many wait, then one line a case — status, name, what broke, the env it came from, its age. */
-export function cases(list: CaseList, now = Date.now() / 1000): string[] {
+export function cases(list: CaseList, status?: string, now = Date.now() / 1000): string[] {
   const waiting = `${list.pending} waiting of at most ${list.pending_at_most}`;
+  if (list.cases.length === 0 && status !== undefined) return [waiting, `${list.agent} has no ${status} case`];
   if (list.cases.length === 0) return [waiting, `${list.agent} has no cases here: a call a judge broke on is kept at hang-up, or \`pinecall cases keep <call> --name x\``];
   return [waiting, ...table(["status", "name", "broke", "env", "age"], list.cases.map((one) => [one.status, one.name, brokeOf(one), one.source_env, ageOf(one.created_at, now)])).slice(1)];
 }
@@ -99,22 +100,23 @@ export function casePulled({ path, case: marked }: { path: string; case: EvalCas
 }
 
 /** One line a group: status, judge, how many calls and simulations, its cause, its id. */
-export function groupLine(group: CaseGroup): string {
+/** A group in two lines: its status, judge, size, fix and id; under them, the cause the calls share. */
+export function groupLines(group: CaseGroup): string[] {
   const sims = group.simulations === 0 ? "" : ` (${group.simulations} simulated)`;
   const fix = group.proposal ? ` · fix: ${group.proposal.kind} ${group.proposal.where}` : "";
-  return `${group.status.padEnd(9)} ${group.judge.padEnd(16)} ${String(group.cases).padStart(3)} call(s)${sims} · ${group.cause}${fix}  ${group.id}`;
+  return [`${group.status.padEnd(9)} ${group.judge.padEnd(16)} ${String(group.cases).padStart(3)} call(s)${sims}${fix}  ${group.id}`, `          ${group.cause}`];
 }
 
 export function groups(agent: string, found: CaseGroup[]): string[] {
-  return found.length === 0 ? [`${agent} has no case groups: nothing a judge broke on is waiting`] : found.map(groupLine);
+  return found.length === 0 ? [`${agent} has no case groups: nothing a judge broke on is waiting`] : found.flatMap(groupLines);
 }
 
 export function group({ group: one, cases: within }: { group: CaseGroup; cases: EvalCase[] }): string[] {
-  return [groupLine(one), ...within.map((each) => `  ${each.name} · ${each.source ?? "call"}${each.persona ? ` (${each.persona})` : ""} · ${each.source_call}`), ...nextForGroup(one)];
+  return [...groupLines(one), ...within.map((each) => `  ${each.name} · ${each.source ?? "call"}${each.persona ? ` (${each.persona})` : ""} · ${each.source_call}`), ...nextForGroup(one)];
 }
 
 export function proposed(one: CaseGroup): string[] {
-  return [groupLine(one), ...nextForGroup(one)];
+  return [...groupLines(one), ...nextForGroup(one)];
 }
 
 export const APPLIED = "applied as a new version of your settings · `pinecall test --case` replays the group's calls on it";
@@ -130,10 +132,12 @@ export function nextForGroup(one: CaseGroup): string[] {
 }
 
 /** Pinecall's first, then the agent's own; and a line when it has none of its own. */
-export function personas(agent: string, found: Persona[]): string[] {
+export function personas(agent: string, found: Persona[], notPushed: string[] = []): string[] {
   const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : "yours");
   const rows = table(["name", "whose", "goal"], found.map((one) => [one.name, whose(one), one.owner === "pinecall" ? (one.summary ?? one.goal) : one.goal])).slice(1);
-  return found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
+  const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
+  if (notPushed.length > 0) lines.push(`${notPushed.length} written here and not pushed: ${notPushed.join(", ")} — \`pinecall personas push\` sends them`);
+  return lines;
 }
 
 /** One persona whole: goal, style, models, what it expects, how it acts, facts. */

@@ -131,6 +131,8 @@ export async function evalDocs(ctx: Context, input: EvalDocsInput): Promise<(api
 /** Attach a base in a corner as a new settings version; an entry already there for it is replaced. */
 export async function attachBase(ctx: Context, input: AttachBaseInput): Promise<BaseAttached> {
   const agent = ctx.slug("docs attach", { agent: input.agent });
+  const known = (await api.listBases(ctx.gateway())).bases.map((one) => one.base);
+  if (!known.includes(input.base)) throw new UsageError(`no base ${input.base} in this env: \`pinecall docs\` lists them, \`pinecall docs push --base ${input.base}\` writes one`);
   const docs: api.DocsConfig = { base: input.base };
   if (input.k !== undefined) docs.k = input.k;
   if (input.mode !== undefined) docs.mode = input.mode;

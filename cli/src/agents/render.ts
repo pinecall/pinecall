@@ -46,6 +46,12 @@ export function settings({ agent, answer }: { agent: string; answer: TuningAnswe
   return lines;
 }
 
+// `clinica-norte (k 4 · tool · min 0.3)`: what the attachment sets, nothing it leaves to the default.
+function baseLine(one: { base: string; k?: number | null | undefined; mode?: string | null | undefined; min_score?: number | null | undefined }): string {
+  const set = [one.k == null ? null : `k ${one.k}`, one.mode ?? null, one.min_score == null ? null : `min ${one.min_score}`].filter((word) => word !== null);
+  return set.length === 0 ? one.base : `${one.base} (${set.join(" · ")})`;
+}
+
 /** One field of one config, as a cell of the page; undefined when the config does not set it. */
 export function shown(config: TuningBody, field: Field): string | undefined {
   // The wire sends either absent or null for "not set".
@@ -103,7 +109,7 @@ export function shown(config: TuningBody, field: Field): string | undefined {
   if (field === "bases") {
     const bases = config.bases ?? undefined;
     if (bases === undefined || bases.length === 0) return undefined;
-    return bases.map((one) => `${one.base}${one.k === undefined || one.k === null ? "" : ` (k ${one.k})`}`).join(" · ");
+    return bases.map(baseLine).join(" · ");
   }
   const value = config[WIRE[field]];
   return typeof value === "string" ? value : undefined;

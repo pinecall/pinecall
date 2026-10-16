@@ -75,7 +75,6 @@ Options:
   --speed <0.5-2>
   --ambience <what>        television | cafe | office | street
   --background-noise <dB>  dB under them it plays at; empty for a quiet room
-  --rename <name>          edit: move it to another name
   -h, --help               display help for command
 
 $ pinecall personas edit --help
@@ -102,7 +101,7 @@ Options:
   --speed <0.5-2>
   --ambience <what>        television | cafe | office | street
   --background-noise <dB>  dB under them it plays at; empty for a quiet room
-  --rename <name>          edit: move it to another name
+  --rename <name>          move it to another name
   -h, --help               display help for command
 
 $ pinecall personas rm --help

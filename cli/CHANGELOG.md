@@ -6,6 +6,22 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`judges show <name>`** prints one judge whole: whose, its switch, how and when it answers, what
+  it reads, its question.
+- **What is not there is refused by name, before anything travels**: `agent set` with no field;
+  a settings write that changes nothing (`agent clear` of a field nobody set); `lexicon rm` of a
+  word the lexicon has not; `docs attach` of a base the env has not; `runs list --limit` outside 1
+  to 200; `monitors add --days` other than 1, 7 or 30, which said only "Invalid input"; `agent
+  knowledge edit` with no terminal, which hung on an editor nobody could type at. `sessions log
+  --limit` is read at last: the flag went to `sessions`, which has one of its own, and the page
+  was always 200 entries.
+- **Lists read truer.** `personas` names the files written here and not pushed; `cases list
+  --status approved` with none says so instead of "no cases here"; `cases groups` puts the cause
+  on its own line; `agent show` prints a base's mode and floor beside its k; `runs show` names the
+  agent's own model as `test` does; `test` prints its header once; `supervise` acknowledges each
+  move it sent (`end sent`). `--rename` is `personas edit`'s and no longer appears in `add --help`;
+  `generate golden --help` marks `--say` required.
+
 - **`test` follows the run instead of holding a request open for it.** The gateway answers the
   run as it starts it and plays it after; the terminal reads the row on each `run.changed` of the
   org's feed (and every twenty seconds besides) until it is over. Ctrl-C leaves the run going on the

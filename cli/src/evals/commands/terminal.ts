@@ -91,7 +91,8 @@ async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], 
       },
     });
     block.erase();
-    ctx.io.result(report, (one) => render.suite(one, service.DECLARED_AS));
+    // The header went out as the run started; the matrix is not headed again.
+    ctx.io.result(report, (one) => render.suite(one, service.DECLARED_AS).slice(told ? 1 : 0));
     return report.held;
   } finally {
     clearInterval(clock);

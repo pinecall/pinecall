@@ -141,6 +141,21 @@ export async function generatePersonas(ctx: Context, agent: string, input: Gener
  * The personas still in files (`agents/<agent>/test/personas/*.ts`, each default-exporting one) sent to the
  * gateway once, as that agent's: the migration. A refusal names what landed and what is left.
  */
+/**
+ * The personas written under the agent's `test/personas/` that the gateway does not list: for a
+ * list that says what `personas push` would send. None outside a project, or for a bare slug.
+ */
+export async function personasNotPushed(ctx: Context, choice: { agent?: string | undefined; file?: string | undefined }, listed: api.Persona[]): Promise<string[]> {
+  let folder: string;
+  try {
+    folder = ctx.agent("personas", choice).personas;
+  } catch {
+    return [];
+  }
+  const names = new Set(listed.map((one) => one.name));
+  return (await personasInFiles(folder)).map((one) => one.name).filter((name) => !names.has(name));
+}
+
 export async function pushPersonaFiles(ctx: Context, agent: string, folder: string): Promise<{ pushed: string[]; personas: api.Persona[] }> {
   const inFiles = await personasInFiles(folder);
   if (inFiles.length === 0) throw new UsageError(`no personas in ${folder}`);

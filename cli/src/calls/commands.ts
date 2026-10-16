@@ -75,7 +75,9 @@ export function register(program: Command, ctx: Context): void {
     .option("--limit <n>", `entries a page, at most 500; ${service.A_PAGE} when left out`)
     .option("--types <a.b,c.d>", "only these entry types")
     .action(async (call, flags) => {
-      const input = service.ReadLogInput.parse({ call, after: numberOf("--after", flags.after), limit: numberOf("--limit", flags.limit), types: listOf(flags.types) });
+      // `sessions` has a --limit of its own, and commander hands a flag both have to the group: read it there too.
+      const limit = flags.limit ?? sessions.opts().limit;
+      const input = service.ReadLogInput.parse({ call, after: numberOf("--after", flags.after), limit: numberOf("--limit", limit), types: listOf(flags.types) });
       ctx.io.result(await service.readLog(ctx, input), (page) => render.log(page, input.after));
     });
 
@@ -257,7 +259,7 @@ async function atTheDesk(ctx: Context, call: string): Promise<void> {
     const move = service.moveOf(typed.trim());
     if (move === "leave") break;
     if (move === null) ctx.io.info(`\rnot a move. ${service.MOVES.map(([key]) => key.split(" ")[0]).join(" · ")}`);
-    else await service.sendMove(ctx, call, move).catch((refused: unknown) => ctx.io.info(`\r${errorMessage(refused)}`));
+    else await service.sendMove(ctx, call, move).then(() => ctx.io.info(`\r${move.verb} sent`), (refused: unknown) => ctx.io.info(`\r${errorMessage(refused)}`));
     prompting(lines, ctx, left);
   }
   // Abort the tail rather than awaiting it: it may be waiting on an entry that never comes.
