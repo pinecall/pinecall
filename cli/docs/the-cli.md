@@ -1003,7 +1003,7 @@ The inbox lists the agent's cases, the pending first, newest first: status, name
 broke, the world the call ran in, its age — and above them how many wait of the most that may
 (past it a broken call is judged as ever and not kept until a person decides some). `--status`
 lists one. A case is addressed by its **name** within the agent — the project's one, or the one
-`--agent` names; a name the agent has none of is said and **exit 1**.
+`--agent` names; a name the agent has none of is said and **exit 2**, as every name typed wrong is.
 
 `approve` puts it in the nightly (`pinecall test --dataset`). `dismiss` takes it out:
 `--judge-was-wrong <judge>` says the judge that broke should have held, which the gateway keeps as
