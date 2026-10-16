@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The feed's `?types=` keeps those types alone.** A call's ending passed every filter, which a
+  call's reader needs and the org's feed does not: `deploy up` followed on the feed still met another
+  call's `call.ended` and left on it.
+
 ## 0.11.1 — Every verb walked again: the feed takes types, refusals name verbs, a broken run says why (2026-10-17)
 
 - **The org's feed takes `?types=`.** `GET /v1/events` sent every entry of the floor whatever a

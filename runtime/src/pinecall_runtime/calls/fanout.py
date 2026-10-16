@@ -18,14 +18,17 @@ ALWAYS_PASS = frozenset({"log.gap", "log.caught_up", "call.ended", TERMINAL_EVEN
 
 @dataclass(frozen=True, slots=True)
 class Filter:
-    """One reader's filter: the types it wants (None for every one), and whether only durable."""
+    """One reader's filter: the types it wants (None for every one), whether only durable, and whether strictly so."""
 
     types: frozenset[str] | None = None
     durable: bool = False
+    # A call's reader is told the call ended whatever it asked for; the org's feed never ends, and a
+    # reader of one type there has no shape for another call's ending.
+    strict: bool = False
 
     def passes(self, entry: Entry) -> bool:
         """Whether the entry reaches this reader."""
-        if entry.type in ALWAYS_PASS:
+        if not self.strict and entry.type in ALWAYS_PASS:
             return True
         if self.durable and entry.ephemeral:
             return False

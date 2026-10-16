@@ -54,16 +54,16 @@ PUBLIC_SEAT = frozenset({"identity", "kind", "name", "joined_at", "speaking"})
 PUBLIC_CONFIRM = frozenset({"phrase", "status"})
 
 
-def parse_filter(types: str | None, *, durable: bool) -> Filter:
+def parse_filter(types: str | None, *, durable: bool, strict: bool = False) -> Filter:
     """The filter a query string asks for (`types=a.b,c.d`), refusing a bad type name."""
     if types is None:
-        return Filter(durable=durable)
+        return Filter(durable=durable, strict=strict)
     wanted = [name.strip() for name in types.split(",") if name.strip()]
     if len(wanted) > MAX_TYPES:
         raise ValidationError(f"a filter names at most {MAX_TYPES} types, not {len(wanted)}")
     if bad := [name for name in wanted if not _A_TYPE_NAME.match(name)]:
         raise ValidationError(f"an event type is lowercase words joined by dots: {bad}")
-    return Filter(types=frozenset(wanted), durable=durable)
+    return Filter(types=frozenset(wanted), durable=durable, strict=strict)
 
 
 def project_state(

@@ -143,7 +143,7 @@ async def stream_org_events(
     """The org's calls and agents changing, as they change; `types=a.b,c.d` keeps those alone."""
     if reader.actor is None:
         raise Forbidden(NOT_YOURS)
-    only = parse_filter(types, durable=False)
+    only = parse_filter(types, durable=False, strict=True)
     feed = await serving.logs.feed_reader(reader.actor.org, reader.actor.env)
     return sse.streamed(
         sse.paced(_projected(feed, reader, None, ends=False, only=only), closing=request.app.state.closing)
