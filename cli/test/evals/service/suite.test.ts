@@ -33,6 +33,16 @@ describe("what a run sends", () => {
     expect(sent[0]!.body).toEqual({ agent: "front-desk", goldens: [], cases: ["double-booked"], version: 3, voice: true, interferer_db: 15, ambience: "cafe", packet_loss: 0.05 });
   });
 
+  it("a run the gateway answered running is followed until its row says it is over", async () => {
+    answer("post", "/v1/evals/run", { ...aRun(), status: "running", matrix: null });
+    answer("get", "/v1/evals/runs/run_1", aRun());
+    const { ctx } = testContext();
+    const seen: string[] = [];
+    const report = await suite.runSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse({}), undefined, { onChanged: (run) => seen.push(run.status) });
+    expect(seen).toEqual(["running", "done"]);
+    expect(report.run.status).toBe("done");
+  });
+
   it("refuses a run of nothing, a model that names none, and packet loss that is no share", async () => {
     const { ctx } = testContext();
     await expect(suite.startSuite(ctx, "front-desk", [], suite.SuiteInput.parse({}))).rejects.toBeInstanceOf(UsageError);

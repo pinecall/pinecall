@@ -120,12 +120,6 @@ export async function busyWith(ctx: Context, agent: string, refused: GatewayErro
   return `a run is already going on ${agent} (${newest.id}) — pinecall runs show ${newest.id} to watch it`;
 }
 
-/** The id of the agent's run in flight: the runner admits one per agent, stored before the first call. */
-export async function runInFlight(ctx: Context, agent: string): Promise<string | undefined> {
-  const newest = (await api.listRuns(ctx.gateway(), 1, agent))[0];
-  return newest?.status === "running" ? newest.id : undefined;
-}
-
 /** Whether every golden held. */
 export function held(run: api.EvalRun): boolean {
   return run.status === "done" && (run.matrix?.failures.length ?? 0) === 0;
@@ -200,14 +194,50 @@ export function writeReproductions(run: api.EvalRun, goldens: Golden[], logs: Re
   });
 }
 
-/** A run that ends on the gateway after this side stopped waiting (a long spoken suite): its row once it stops. */
-export async function settledRun(ctx: Context, id: string, signal: AbortSignal): Promise<api.EvalRun> {
-  for await (const entry of calls.followEntries(ctx.gateway(), { feed: true }, { types: ["run.changed"], signal })) {
-    if ((entry.data as { run?: string })["run"] !== id) continue;
-    const run = await api.getRun(ctx.gateway(), id);
-    if (run.status !== "running") return run;
+// The row is read again on each `run.changed` of the run, and every so often besides: a feed that
+// dropped a frame never leaves a terminal waiting on a run that ended.
+const LOOK_AGAIN_MS = 20_000;
+// The gateway stops a run at fifteen minutes; a row still running past that is a gateway that
+// died with it, and the terminal says so instead of waiting on.
+const A_RUN_MAY_TAKE_MS = 16 * 60_000;
+
+/** The run's row once it is no longer running: followed on the feed and read again on each change. */
+export async function settledRun(ctx: Context, started: api.EvalRun, signal: AbortSignal, onChanged?: (run: api.EvalRun) => void): Promise<api.EvalRun> {
+  if (started.status !== "running") return started;
+  const stop = new AbortController();
+  const stopped = (): void => stop.abort();
+  signal.addEventListener("abort", stopped, { once: true });
+  let settle: (run: api.EvalRun) => void = () => undefined;
+  let broke: (why: unknown) => void = () => undefined;
+  const settled = new Promise<api.EvalRun>((done, failed) => {
+    settle = done;
+    broke = failed;
+  });
+  const look = async (): Promise<void> => {
+    const run = await api.getRun(ctx.gateway(), started.id);
+    onChanged?.(run);
+    if (run.status !== "running") settle(run);
+    else if (Date.now() - started.started_at * 1000 > A_RUN_MAY_TAKE_MS) throw new PinecallError(`${started.id} is still running past the gateway's deadline: the gateway that played it stopped — \`pinecall runs show ${started.id}\` reads what it judged`);
+  };
+  // One read at a time, in the order the feed spoke; a read that fails ends the wait with its reason.
+  let reading = Promise.resolve();
+  const ask = (): void => void (reading = reading.then(look).catch(broke));
+  // Read once now: a run over before the feed opened is not waited on.
+  ask();
+  const every = setInterval(ask, LOOK_AGAIN_MS);
+  const following = (async () => {
+    for await (const entry of calls.followEntries(ctx.gateway(), { feed: true }, { types: ["run.changed"], onOpen: ask, signal: stop.signal })) {
+      if ((entry.data as { run?: string })["run"] === started.id) ask();
+    }
+  })().catch(() => undefined);
+  try {
+    return await settled;
+  } finally {
+    clearInterval(every);
+    signal.removeEventListener("abort", stopped);
+    stop.abort();
+    await following;
   }
-  throw new PinecallError(`stopped waiting for ${id}: \`pinecall runs show ${id}\` reads it`);
 }
 
 function median(values: number[]): number {
@@ -223,41 +253,22 @@ export interface SuiteListeners {
 }
 
 /**
- * Run a suite to its end: started on the gateway, followed on the org's feed (`run.changed` of this
- * agent) so a front can draw it, answered as its report. A 409 is the agent's run already going, told
- * by its id. Node's fetch drops a response not started within five minutes, which a long spoken suite
- * passes: the run goes on on the gateway, and its row is read once it stops.
+ * Run a suite to its end: the gateway answers the run as it starts it, stored and `running`, and
+ * plays it after; this side follows it on the org's feed (`run.changed`) until its row says it is
+ * over, so a front can draw each golden as it lands. A 409 is the agent's run already going, told
+ * by its id.
  */
 export async function runSuite(ctx: Context, agent: string, goldens: Golden[], input: SuiteInput, app: string | undefined, listeners: SuiteListeners = {}): Promise<SuiteReport> {
-  const stop = new AbortController();
-  let id: string | undefined;
-  const look = async (): Promise<void> => {
-    id ??= await runInFlight(ctx, agent);
-    if (id === undefined) return;
-    listeners.onStarted?.(id);
-    listeners.onChanged?.(await api.getRun(ctx.gateway(), id));
-  };
-  // One read at a time, in the order the feed spoke.
-  let reading = Promise.resolve();
-  const ask = (): void => void (reading = reading.then(look, look));
-  const following = (async () => {
-    for await (const entry of calls.followEntries(ctx.gateway(), { feed: true }, { types: ["run.changed"], onOpen: ask, signal: stop.signal })) {
-      const change = entry.data as { run?: string; agent?: string };
-      if (change.agent === agent && (id === undefined || change.run === id)) ask();
-    }
-  })().catch(() => undefined);
-  let run: api.EvalRun;
+  let started: api.EvalRun;
   try {
-    run = await startSuite(ctx, agent, goldens, input, app);
+    started = await startSuite(ctx, agent, goldens, input, app);
   } catch (failed) {
     if (failed instanceof GatewayError && failed.status === 409) throw new PinecallError(await busyWith(ctx, agent, failed));
-    if (id === undefined || failed instanceof GatewayError) throw failed;
-    run = await settledRun(ctx, id, ctx.signal);
-  } finally {
-    stop.abort();
-    await reading.catch(() => undefined);
-    await following;
+    throw failed;
   }
+  listeners.onStarted?.(started.id);
+  listeners.onChanged?.(started);
+  const run = await settledRun(ctx, started, ctx.signal, listeners.onChanged);
   return reportOf(ctx, run, goldens);
 }
 

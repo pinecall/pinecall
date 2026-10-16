@@ -127,6 +127,8 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     # Pushed after the wiring, so the calls stop before the logs and the engine close under them.
     simulations = evals.Simulations()
     stack.push_async_callback(simulations.stop)
+    runner = evals.Runner(sessions)
+    stack.push_async_callback(runner.stop)
     # The loops that never end, which /metrics reports dead if one does.
     loops = {
         "reaper": box_task(reap_forever(serving)),
@@ -152,7 +154,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         "sign_ins": signin.SignIns(sessions, vault, signal),
         "outbox": outbox,
         "samples": attempts.AttemptThrottle(sessions, providers.SAMPLES_A_MINUTE),
-        "runner": evals.Runner(sessions),
+        "runner": runner,
         "simulations": simulations,
         "closing": asyncio.Event(),
         "loops": loops,

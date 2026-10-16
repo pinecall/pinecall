@@ -17,15 +17,15 @@ NO_AGENT = "no app is holding agent {slug}"
 
 
 @router.post("/v1/evals/run", response_model_exclude_unset=True)
-async def run_suite(
+async def start_suite(
     body: schemas.RunSuiteRequest, actor: EvalsKey, serving: TheServing, runner: TheRunner, session: Session
 ) -> schemas.RunRow:
-    """Every golden under every model through the app that holds the agent, judged and stored."""
+    """Start a run: every golden under every model through the app that holds the agent; the run, `running`."""
     keys.check_agent(actor, body.agent)
     registration = serving.registry.serving(actor.scope, body.agent, body.app)
     if registration is None:
         raise NotFound(NO_AGENT.format(slug=body.agent))
-    return await service.run_suite(session, serving, runner, body, actor.scope, registration)
+    return await service.start_suite(session, serving, runner, body, actor.scope, registration)
 
 
 @router.get("/v1/evals/runs", response_model_exclude_unset=True)

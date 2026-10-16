@@ -1,8 +1,7 @@
 """An eval run: one agent, every golden under every model, judged into a matrix as it goes."""
 
 import asyncio
-from collections.abc import AsyncGenerator, Iterable, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Coroutine, Iterable, Sequence
 from typing import Never
 
 from livekit.agents import llm
@@ -35,34 +34,53 @@ TOOK_TOO_LONG = "the run passed its {minutes} minute deadline and was stopped"
 NO_SUCH_RUN = "no eval run {id} in this key's org and env"
 
 
-# Not durable on purpose: a run is coroutines of this process, gone with it. The lease is in
-# Postgres, so a run on one gateway holds the agent on every one.
+# The run itself is coroutines of this process, gone with it; the lease is in Postgres, so a run on
+# one gateway holds the agent on every one, and a gateway that died mid-run leaves a lease another
+# run takes once it ran out.
 class Runner:
-    """The run each agent is under, on any gateway of the box, and this process's own."""
+    """The runs this gateway plays, each on a task of its own, and the agent each one holds."""
 
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
-        """No agent under a run of this process."""
+        """No agent under a run of this process, nothing playing."""
         self.sessions = sessions
         self.running: dict[str, str] = {}
+        self.renewing: dict[str, asyncio.Task[None]] = {}
+        self.playing: dict[str, asyncio.Task[None]] = {}
 
     # Refused, not queued: the refusal names the run to follow instead.
-    @asynccontextmanager
-    async def alone(self, run: str, agent: str) -> AsyncGenerator[None]:
-        """Hold the agent for this run; Conflict while another run holds it."""
+    async def hold(self, run: str, agent: str) -> None:
+        """Hold the agent for this run, renewed while it plays; Conflict while another run holds it."""
         if not await self._leased(run, agent):
             async with self.sessions.begin() as session:
                 holding = await RunLeaseRepository(session).holder(agent)
             raise Conflict(ALREADY_RUNNING.format(id=holding or "another run", agent=agent))
         self.running[agent] = run
-        renewing = asyncio.create_task(self._renewed(run, agent))
-        try:
-            yield
-        finally:
+        self.renewing[run] = asyncio.create_task(self._renewed(run, agent))
+
+    async def let_go(self, run: str, agent: str) -> None:
+        """Let the agent go: the lease released, its renewal stopped."""
+        renewing = self.renewing.pop(run, None)
+        if renewing is not None:
             renewing.cancel()
             await asyncio.gather(renewing, return_exceptions=True)
+        if self.running.get(agent) == run:
             del self.running[agent]
-            async with self.sessions.begin() as session:
-                await RunLeaseRepository(session).release(agent, run)
+        async with self.sessions.begin() as session:
+            await RunLeaseRepository(session).release(agent, run)
+
+    # The request's context goes with the task, so the run plays as the org that asked for it.
+    def play(self, run: str, played: Coroutine[object, object, None]) -> None:
+        """Play the run on a task of its own, kept until it ends."""
+        task = asyncio.create_task(played)
+        self.playing[run] = task
+        task.add_done_callback(lambda _done: self.playing.pop(run, None))
+
+    async def stop(self) -> None:
+        """Stop every run still playing: each one writes itself stopped as its task is cancelled."""
+        playing = list(self.playing.values())
+        for task in playing:
+            task.cancel()
+        await asyncio.gather(*playing, return_exceptions=True)
 
     async def _leased(self, run: str, agent: str) -> bool:
         async with self.sessions.begin() as session:

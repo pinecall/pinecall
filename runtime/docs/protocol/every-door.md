@@ -129,7 +129,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PATCH` | `/v1/evals/cases/{id}` | evals | Approve, dismiss, hold out or mark a case as kept in the repository. |
 | `POST` | `/v1/evals/judge/{call}` | evals | Judge a finished call, write the verdict on its log, and answer it. |
 | `POST` | `/v1/evals/replay/{call}` | evals | The six code checks over a finished call, the barge-ins it answered among them. |
-| `POST` | `/v1/evals/run` | evals | Every golden under every model through the app that holds the agent, judged and stored. |
+| `POST` | `/v1/evals/run` | evals | Start a run: every golden under every model through the app that holds the agent; the run, `running`. |
 | `GET` | `/v1/evals/runs` | evals | The runs of the key's org in its environment, newest first. |
 | `GET` | `/v1/evals/runs/{id}` | evals | One run; another org's, or one nobody ran, is the same 404. |
 | `POST` | `/v1/evals/voice` | evals | Dispatch the agent into a room, play the persona as a spoken caller, and hang up. |

@@ -23,7 +23,7 @@ from pinecall_runtime.evals.service.simulations import (
     written_turns,
 )
 from pinecall_runtime.evals.service.spoken import Line, described, line_of
-from pinecall_runtime.evals.service.suites import run_suite
+from pinecall_runtime.evals.service.suites import start_suite
 
 __all__ = [
     "Line",
@@ -49,8 +49,8 @@ __all__ = [
     "new_run",
     "put_run",
     "replay",
-    "run_suite",
     "spoken_call",
+    "start_suite",
     "written_call",
     "written_turns",
 ]

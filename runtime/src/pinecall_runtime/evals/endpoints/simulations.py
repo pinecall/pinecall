@@ -58,13 +58,11 @@ async def simulate(
 
 # The gateway holds the vendors' keys: the org's own when it brought one, else the box's lent.
 @router.post("/v1/evals/caller")
-async def next_line(
-    body: schemas.NextLineRequest, actor: EvalsKey, serving: TheServing, session: Session
-) -> schemas.NextLineResponse:
+async def next_line(body: schemas.NextLineRequest, actor: EvalsKey, serving: TheServing) -> schemas.NextLineResponse:
     """The persona's next line on the call so far, improvised by its model."""
     throttle = AttemptThrottle(serving.handles.sessions, LINES_A_MINUTE)
     await throttle.check(f"{actor.org} evals/caller", TOO_MANY_LINES)
-    async with service.caller_model(session, serving, actor.scope, body.persona) as model:
+    async with service.caller_model(serving, actor.scope, body.persona) as model:
         return (await service.improvise_line(model, body)).answer
 
 
@@ -84,7 +82,9 @@ async def place_voice_call(
     await service.claim_new_call(session, serving, body.call, body.agent, scope)
     line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)
     placed = service.Placed(body.call, body.agent, persona, body.turns, line, dict(body.state))
-    turns, spending = await service.spoken_call(session, serving, scope, placed)
+    # The request's writes are done: the call is played with no connection of the pool held for it.
+    await session.commit()
+    turns, spending = await service.spoken_call(serving, scope, placed)
     return schemas.PlaceVoiceCallResponse(
         call=body.call,
         turns=turns,
@@ -94,12 +94,10 @@ async def place_voice_call(
     )
 
 
-# Played after the endpoint answered, on sessions of their own: the request's is closed by then.
+# Played after the endpoint answered: the request's session is closed by then, and a call holds none.
 async def _spoken(serving: calls.Serving, scope: Scope, placed: service.Placed) -> None:
-    async with serving.handles.sessions.begin() as session:
-        await service.spoken_call(session, serving, scope, placed)
+    await service.spoken_call(serving, scope, placed)
 
 
 async def _written(serving: calls.Serving, running: session_.Session, placed: service.Placed) -> None:
-    async with serving.handles.sessions.begin() as session:
-        await service.written_turns(session, serving, running, placed)
+    await service.written_turns(serving, running, placed)

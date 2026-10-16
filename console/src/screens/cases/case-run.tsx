@@ -4,11 +4,12 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
+import { useFed } from "@pinecall/core/use-fed";
 import type { TuningRow } from "@pinecall/core/wire/rest-org";
 import { ago } from "../../lib/format";
 import { inTheWorld, WORLD } from "../../lib/mode";
 import { Button, Select, SelectItem } from "../../ui";
-import { readGolden, runCases, StateMark, Transcript, type EvalRun } from "../evals";
+import { readGolden, readRun, runCases, StateMark, Transcript, type EvalRun } from "../evals";
 import { readHistory } from "../settings";
 import type { EvalCase } from "./door";
 import { Section } from "./section";
@@ -36,9 +37,20 @@ function RunInTheSandbox({ agent, kept }: { agent: string; kept: EvalCase }): Re
   const credentials = useCredentials();
   const [versions, setVersions] = useState<TuningRow[]>([]);
   const [version, setVersion] = useState(AS_IT_STANDS);
-  const [running, setRunning] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [run, setRun] = useState<EvalRun | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
+  const running = starting || run?.status === "running";
+
+  // The gateway answers the run as it starts it: the row is read again on each change until it is over.
+  useFed(
+    () => {
+      if (run?.status !== "running") return;
+      readRun(credentials, run.id).then(setRun, (failed: unknown) => setRefused(saidBy(failed)));
+    },
+    { types: ["run.changed"] },
+    [run?.id, run?.status],
+  );
 
   // Your own corner's versions: what a fix in the settings is saved as before anybody else hears it.
   useEffect(() => {
@@ -52,7 +64,7 @@ function RunInTheSandbox({ agent, kept }: { agent: string; kept: EvalCase }): Re
   }, [credentials, agent]);
 
   const play = async (): Promise<void> => {
-    setRunning(true);
+    setStarting(true);
     setRefused(null);
     setRun(null);
     try {
@@ -60,7 +72,7 @@ function RunInTheSandbox({ agent, kept }: { agent: string; kept: EvalCase }): Re
     } catch (failed) {
       setRefused(saidBy(failed));
     } finally {
-      setRunning(false);
+      setStarting(false);
     }
   };
   const cell = run?.matrix?.runs[0];

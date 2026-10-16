@@ -68,6 +68,11 @@ export async function readEveryRun(credentials: Credentials): Promise<EvalRun[]>
   return EvalRunListSchema.parse(await read(credentials, "/v1/evals/runs", { limit: AS_MANY_AS_IT_MAY })).runs;
 }
 
+/** One run by its id: its calls so far, and its matrix once judged. */
+export async function readRun(credentials: Credentials, id: string): Promise<EvalRun> {
+  return EvalRunSchema.parse(await read(credentials, `/v1/evals/runs/${encodeURIComponent(id)}`));
+}
+
 /** One agent's runs, newest first. */
 export async function readRuns(credentials: Credentials, agent: string): Promise<EvalRun[]> {
   const listed = EvalRunListSchema.parse(
@@ -78,7 +83,8 @@ export async function readRuns(credentials: Credentials, agent: string): Promise
 
 /**
  * Play cases of the org's dataset as a run, through the app holding the agent in this world, on a
- * version of its settings or the one standing; the gateway answers once every case is judged.
+ * version of its settings or the one standing; the gateway answers the run as it starts it, and the
+ * row is read again (`readRun`) on each `run.changed` until it is over.
  */
 export async function runCases(credentials: Credentials, agent: string, cases: string[], version: number | undefined): Promise<EvalRun> {
   return EvalRunSchema.parse(await post(credentials, "/v1/evals/run", { agent, cases, ...(version === undefined ? {} : { version }) }));

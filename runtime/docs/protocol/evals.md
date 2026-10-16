@@ -64,8 +64,12 @@ second of the same name in a turn is `#2`); an `intent` is one judge call.
 (code), `says`, `says_any` and `not` (code, reported as `says`, `says_any` and `silence`),
 `register` (code), `grounded` and `judges` (the judge model).
 
-Each entry of `models` is a column; none is the agent's own, named `declared`. The answer is the
-run, finished:
+Each entry of `models` is a column; none is the agent's own, named `declared`. **The answer is the
+run as it starts**, stored and `running`, with `calls` and `matrix` empty: the gateway plays it
+after answering, so no request is held for the minutes a suite takes. Follow it at
+`GET /v1/evals/runs/{id}` — its row is rewritten before each call opens and after each is judged —
+on each `run.changed` of the org's feed (`GET /v1/events`), which names the run and its agent. Done,
+the row reads:
 
 ```json
 {"id": "run_3f0c…", "agent": "recepcion", "started_at": 1790000000.1, "finished_at": 1790000031.4,
@@ -82,13 +86,14 @@ run, finished:
 ```
 
 A cell carries its call's own `call.summary`, never a number of its own; a cell where a judge did
-not hold carries `asked`, every request the model was sent, to reproduce it. The row is written
-before each call opens (so its log can be tailed) and after each call is judged.
+not hold carries `asked`, every request the model was sent, to reproduce it. A golden that gives
+`memory` on an agent whose policy keeps none is a cell that broke on the metric `memory`, with no
+call opened for it: its facts had nowhere to go, and the rest of the run plays.
 
 `status: "failed"` is the run stopping early, and `error` says why: the app let go of the agent
 (`the app detached after 1 of 3 goldens`), the org ran out of a quota (and `credits.exhausted` is
-on the agent's log), or the fifteen-minute deadline passed. The cells judged so far stay. A
-failing golden is a score, never a status.
+on the agent's log), the fifteen-minute deadline passed, or the gateway playing it stopped. The
+cells judged so far stay. A failing golden is a score, never a status.
 
 One run per agent at a time: a second is `409` naming the run in flight.
 

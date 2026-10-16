@@ -8,6 +8,15 @@
 - **A case kept before 0.10.1 lists again.** Its golden held the caller's lines as `input`; a
   migration rewrites them as `turns`, so `GET /v1/evals/cases` and `cases show` no longer answer
   500 for an agent that has one.
+- **A run holds no connection, and `POST /v1/evals/run` answers as it starts.** The run is stored
+  `running` and played on a task of the gateway; its row is rewritten as each golden is judged, for
+  `GET /v1/evals/runs/{id}` and the feed's `run.changed`, and a gateway stopping writes it `failed`
+  saying so. Nothing of a run — nor of a simulated call, written or spoken — holds a session of the
+  pool past the statement it needs: a run or a simulation held one of the pool's ten for its whole
+  length before, one per tenant testing, which is where the 503s under several runs came from.
+- **A golden that gives `memory` on an agent that keeps none breaks alone**, as a cell on the
+  metric `memory` saying what policy to set, and the rest of the run plays; it refused the whole
+  run with a 400 before.
 - **A run is listed while it runs.** Its row was written inside the request's own transaction,
   committed only when the run ended: a second `pinecall test` was refused naming a run that
   `runs show` could not find, for up to fifteen minutes after a terminal had let go of the first.

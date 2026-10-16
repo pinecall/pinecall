@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Never
@@ -9,7 +10,7 @@ from typing import Never
 from livekit.agents import llm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.agents.declaration import AgentConfig, Model
+from pinecall_runtime.agents.declaration import Model
 from pinecall_runtime.agents.service import registry, settings
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
@@ -26,6 +27,8 @@ from pinecall_runtime.wire.dispatch import Dispatch
 from pinecall_runtime.wire.feed import RunChanged
 from pinecall_runtime.wire.goldens import Golden
 from pinecall_runtime.wire.parts import ModelConfig
+
+logger = logging.getLogger(__name__)
 
 # Without the app the rest would run against a bare model: no view, no tools.
 THE_APP_LEFT = (
@@ -51,11 +54,15 @@ NO_PINNED_DAY_OUT_LOUD = (
     "golden {name} pins today={day}, and a spoken call runs on the real day: the worker seeds its "
     "clock when the room opens. Run this golden without --voice."
 )
-# A golden's facts are answered to recall, which runs only on an agent that keeps memory.
+# A golden's facts are answered to recall, which runs only on an agent that keeps memory: the
+# golden breaks on that alone, and the rest of the run plays.
 NOT_REMEMBERED = (
     "golden {name} gives memory, and agent {slug} keeps none: its memory policy names nothing to "
     "keep (pinecall memory policy --remember '…')"
 )
+KEEPS_MEMORY = "the agent keeps memory, so the golden's facts can be recalled"
+GATEWAY_STOPPED = "the gateway stopped mid-run"
+RUN_BROKE = "the run broke on the gateway: {error}"
 CASES_IN_THE_SANDBOX = (
     "cases are real callers' words played again: they run in the sandbox, against the app a "
     "developer holds there, never through production's, whose tools act for real"
@@ -96,8 +103,12 @@ class Suite:
         return runs.judged(opened, self.cells) if self.cells else opened
 
 
-# One per agent at a time: a run drives the app that answers the agent's real calls.
-async def run_suite(
+# One per agent at a time: a run drives the app that answers the agent's real calls. The request
+# answers the run as written, `running`: its goldens play on a task of this gateway after, and the
+# row is rewritten as each is judged, so `GET /v1/evals/runs/{id}` and the feed follow it. Nothing
+# of the request outlives the answer — a run held one of the pool's connections for its fifteen
+# minutes before, one per tenant testing.
+async def start_suite(
     session_: AsyncSession,
     serving: calls.Serving,
     runner: runs.Runner,
@@ -105,21 +116,35 @@ async def run_suite(
     scope: Scope,
     registration: registry.Registration,
 ) -> RunRow:
-    """Every golden under every model through the app that holds the agent, judged and stored."""
+    """The run refused, or stored and started: every golden under every model, played after this answers."""
     if body.voice:
         _refuse_out_loud(body)
     if body.cases or body.dataset:
         body = await _with_cases(session_, body, scope)
     _refuse_past_the_ceiling(body)
     suite = await _suite_of(session_, serving, body, registration)
-    _refuse_unremembered(body, suite.setup.config)
     where = registration.scope
-    async with runner.alone(suite.run.id, body.agent):
-        await _stored(serving, where, suite.run)
-        why = await _judged_suite(session_, serving, suite, registration.scope)
+    await runner.hold(suite.run.id, body.agent)
+    await _stored(serving, where, suite.run)
+    runner.play(suite.run.id, _played(serving, runner, suite))
+    return suite.run
+
+
+# Whatever happens to the run, its row says how it ended and the agent is let go.
+async def _played(serving: calls.Serving, runner: runs.Runner, suite: Suite) -> None:
+    where = suite.registration.scope
+    try:
+        why = await _judged_suite(serving, suite, where)
         done = runs.finished(suite.now) if why is None else runs.stopped(suite.now, why)
+    except asyncio.CancelledError:
+        done = runs.stopped(suite.now, GATEWAY_STOPPED)
+    except Exception as broke:
+        logger.exception("run %s of %s broke", suite.run.id, suite.body.agent)
+        done = runs.stopped(suite.now, RUN_BROKE.format(error=broke))
+    try:
         await _stored(serving, where, done)
-    return done
+    finally:
+        await runner.let_go(suite.run.id, suite.body.agent)
 
 
 # The run's calls run on what a real caller's would: the config tuned where the app holds it.
@@ -150,15 +175,17 @@ async def _with_cases(session_: AsyncSession, body: RunSuiteRequest, scope: Scop
     return body.model_copy(update={"goldens": [*body.goldens, *played]})
 
 
-async def _judged_suite(session_: AsyncSession, serving: calls.Serving, suite: Suite, scope: Scope) -> str | None:
+async def _judged_suite(serving: calls.Serving, suite: Suite, scope: Scope) -> str | None:
     config = suite.setup.config
-    judge = (await calls.judge_of(session_, serving, suite.configured, scope, config)).running
+    async with serving.handles.sessions.begin() as session_:
+        judge = (await calls.judge_of(session_, serving, suite.configured, scope, config)).running
     model = None if judge is None else providers.llm_of(judge)
     try:
         async with asyncio.timeout(runs.A_RUN_MAY_TAKE_S):
-            return await _every_golden(session_, serving, dataclasses.replace(suite, judge=model))
+            return await _every_golden(serving, dataclasses.replace(suite, judge=model))
     except QuotaExceeded as refused:
-        await alerts.credits_exhausted(session_, serving.handles, serving.logs, scope, suite.body.agent, refused)
+        async with serving.handles.sessions.begin() as session_:
+            await alerts.credits_exhausted(session_, serving.handles, serving.logs, scope, suite.body.agent, refused)
         return str(refused)
     except TimeoutError:
         return runs.TOOK_TOO_LONG.format(minutes=runs.A_RUN_MAY_TAKE_S // 60)
@@ -169,7 +196,7 @@ async def _judged_suite(session_: AsyncSession, serving: calls.Serving, suite: S
 
 # The row is written before each call (so it can be tailed) and after it is judged. A golden whose
 # turn broke is not held to its final expect: the conversation it describes never happened.
-async def _every_golden(session_: AsyncSession, serving: calls.Serving, suite: Suite) -> str | None:
+async def _every_golden(serving: calls.Serving, suite: Suite) -> str | None:
     body, registration = suite.body, suite.registration
     total = len(body.goldens) * max(len(body.models), 1)
     models: list[ModelConfig | None] = list(body.models) or [None]
@@ -179,28 +206,44 @@ async def _every_golden(session_: AsyncSession, serving: calls.Serving, suite: S
         for golden in body.goldens:
             if not _holds(serving, registration):
                 return THE_APP_LEFT.format(done=len(suite.cells), total=total, slug=body.agent)
+            if golden.memory and setup.config.memory is None:
+                suite.cells.append(_unremembered(golden, column, body.agent))
+                continue
             opened = OpenedCall(golden=golden.name, model=column, call=calls.new_call_id())
             suite.calls.append(opened)
             await _stored(serving, registration.scope, suite.now)
             scores: list[judging.JudgeScore] = []
             judged = _turns_judged(golden, suite.judge, scores)
             played = await (
-                _said_out_loud(session_, serving, suite, golden, opened)
+                _said_out_loud(serving, suite, golden, opened)
                 if body.voice
-                else _written(session_, serving, suite, golden, opened, (setup, judged))
+                else _written(serving, suite, golden, opened, (setup, judged))
             )
             if played is None:
                 return THE_APP_LEFT.format(done=len(suite.cells), total=total, slug=body.agent)
             entries = await serving.logs.store.whole(opened.call)
             case = judging.case_of(entries, setup.config)
             if played.broke_at is None:
-                panel = await _judges_of(session_, suite, case, entries)
+                panel = await _judges_of(serving, suite, case, entries)
                 final = judging.golden_judges(golden, case, panel)
                 scores += await runs.score(final, case, suite.judge)
             requests = None if body.voice else played.requests
             suite.cells.append(runs.cell_of(opened, case, scores, requests))
             await _stored(serving, registration.scope, suite.now)
     return None
+
+
+# No call is opened for it: there is nothing to answer its facts with.
+def _unremembered(golden: Golden, column: str, slug: str) -> ScoreRow:
+    broke = judging.JudgeScore(
+        metric="memory",
+        score=0.0,
+        passed=False,
+        reason=NOT_REMEMBERED.format(name=golden.name, slug=slug),
+        criteria=KEEPS_MEMORY,
+        judge_calls=0,
+    )
+    return ScoreRow(model=column, golden=golden.name, scores=[broke], summary=None)
 
 
 # Each line's steps asserted as its run ends, their scores kept in `scores`: True to play on.
@@ -217,9 +260,10 @@ def _turns_judged(golden: Golden, judge: llm.LLM[Never] | None, scores: list[jud
 # Every judge a real call of the agent may meet: a golden's grounded and `expect.judges` are
 # asked from it.
 async def _judges_of(
-    session_: AsyncSession, suite: Suite, case: judging.Case, entries: Sequence[Entry]
+    serving: calls.Serving, suite: Suite, case: judging.Case, entries: Sequence[Entry]
 ) -> dict[str, judging.AskedJudge]:
-    panel = await calls.panel_for(session_, suite.registration.scope.org, entries, suite.setup.config)
+    async with serving.handles.sessions.begin() as session_:
+        panel = await calls.panel_for(session_, suite.registration.scope.org, entries, suite.setup.config)
     return judging.asked_judges(case, panel)
 
 
@@ -235,7 +279,6 @@ def _column_setup(suite: Suite, model: ModelConfig | None) -> calls.TextSetup:
 
 
 async def _written(
-    session_: AsyncSession,
     serving: calls.Serving,
     suite: Suite,
     golden: Golden,
@@ -257,9 +300,10 @@ async def _written(
         holder=scope.holder or None,
         state=dict(golden.state),
     )
-    running = await calls.open_text_as(
-        session_, serving, registration, context, dataclasses.replace(setup, recalled=tuple(golden.memory))
-    )
+    async with serving.handles.sessions.begin() as session_:
+        running = await calls.open_text_as(
+            session_, serving, registration, context, dataclasses.replace(setup, recalled=tuple(golden.memory))
+        )
     heard = await serving.logs.writing(opened.call, registration.slug).follow()
     try:
         played = await playing.drive(running, golden, heard, judged, is_held=lambda: _holds(serving, registration))
@@ -269,12 +313,14 @@ async def _written(
 
 
 async def _said_out_loud(
-    session_: AsyncSession, serving: calls.Serving, suite: Suite, golden: Golden, opened: OpenedCall
+    serving: calls.Serving, suite: Suite, golden: Golden, opened: OpenedCall
 ) -> playing.Played | None:
     registration, body = suite.registration, suite.body
     scope = registration.scope
-    # Refused, the run stops where it is, as for any quota (_judged_suite).
-    await simulations.admit_simulation(session_, serving, scope, registration.slug)
+    async with serving.handles.sessions.begin() as session_:
+        # Refused, the run stops where it is, as for any quota (_judged_suite).
+        await simulations.admit_simulation(session_, serving, scope, registration.slug)
+        voice = await simulations.caller_voice(session_, serving, scope, registration.slug, None)
     lines = [turn.say for turn in golden.turns if turn.say is not None]
     dispatch = Dispatch(
         agent=registration.slug,
@@ -290,13 +336,13 @@ async def _said_out_loud(
     async def scripted(turns_left: int) -> tuple[str, bool]:
         return (lines[len(lines) - turns_left], False) if turns_left <= len(lines) else ("", False)
 
-    speech = providers.tts_of(await simulations.caller_voice(session_, serving, scope, registration.slug, None))
+    speech = providers.tts_of(voice)
     line = spoken.Line(
         interferer_db=body.interferer_db, packet_loss=body.packet_loss, ambience=body.ambience or "television"
     )
     placed = spoken.SpokenLine("", "", opened.call, len(lines), line)
     try:
-        await simulations.on_the_line(session_, serving, dispatch, speech, placed, scripted)
+        await simulations.on_the_line(serving, dispatch, speech, placed, scripted)
     finally:
         await speech.aclose()
     await _until_sealed(serving, opened.call)
@@ -342,14 +388,6 @@ def _refuse_out_loud(body: RunSuiteRequest) -> None:
                 raise ValidationError(NO_EVENT_OUT_LOUD.format(name=golden.name, event=turn.event.name, number=number))
             if turn.then:
                 raise ValidationError(NO_STEPS_OUT_LOUD.format(name=golden.name, number=number))
-
-
-def _refuse_unremembered(body: RunSuiteRequest, config: AgentConfig) -> None:
-    if config.memory is not None:
-        return
-    for golden in body.goldens:
-        if golden.memory:
-            raise ValidationError(NOT_REMEMBERED.format(name=golden.name, slug=body.agent))
 
 
 def _holds(serving: calls.Serving, registration: registry.Registration) -> bool:

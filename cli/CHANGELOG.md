@@ -6,6 +6,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`test` follows the run instead of holding a request open for it.** The gateway answers the
+  run as it starts it and plays it after; the terminal reads the row on each `run.changed` of the
+  org's feed (and every twenty seconds besides) until it is over. Ctrl-C leaves the run going on the
+  gateway, as before; `runs show <id>` reads it. A row still running past the gateway's deadline
+  is named as a gateway that stopped, instead of waited on.
+- **A golden that gives `memory` on an agent that keeps none breaks alone**, its cell saying what
+  policy to set; the rest of the suite plays. It aborted the whole run with a 400 before.
+
 - **`printf 'hello\n' | pinecall chat` answers.** The pipe's lines were read before the call was
   open, said to nobody, and its end hung up a call never spoken to: `chat` printed nothing and left
   the call live. stdin is read once the call is open.

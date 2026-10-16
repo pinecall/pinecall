@@ -139,17 +139,19 @@ async def refuse_an_opened_call(session_: AsyncSession, call: str) -> None:
 # ── the caller ──
 
 
+# Read in a transaction of its own: the model is held for a whole call, and no connection is.
 @asynccontextmanager
 async def caller_model(
-    session_: AsyncSession, serving: calls.Serving, scope: Scope, persona: judging.CallerPersona
+    serving: calls.Serving, scope: Scope, persona: judging.CallerPersona
 ) -> AsyncGenerator[llm.LLM[Never]]:
     """The model that improvises the caller's lines: the persona's, else the box's caller's."""
-    configured = await providers.get_catalog(session_)
+    async with serving.handles.sessions.begin() as session_:
+        configured = await providers.get_catalog(session_)
+        keys = await providers.keys_of(session_, serving.handles.vault, scope)
     row = None if configured.caller is None else configured.caller.llm
     declared = tuning.model_named(persona.llm or None, "llm", in_use=configured.default_vendors["llm"]) or (
         None if row is None else Model(provider=row.vendor, model=row.model or "")
     )
-    keys = await providers.keys_of(session_, serving.handles.vault, scope)
     model = providers.llm_of(providers.stage_on_its_key("llm", declared, configured, keys))
     try:
         yield model
@@ -183,9 +185,9 @@ async def caller_voice(
     return dataclasses.replace(stage, voice=chosen, language=config.language)
 
 
-# The room is deleted whatever happens: that ends the agent's job, and its job seals the log.
+# The room is deleted whatever happens: that ends the agent's job, and its job seals the log. The
+# call lasts minutes, and holds no connection: the fleet is read and the transaction is over.
 async def on_the_line(
-    session_: AsyncSession,
     serving: calls.Serving,
     dispatch: Dispatch,
     speech: tts.TTS[Never],
@@ -194,7 +196,8 @@ async def on_the_line(
 ) -> int:
     """Offer the agent the room, put the caller on it, and play its lines; the lines said."""
     env = dispatch.env or Env.sandbox
-    the_fleet = await fleet.fleet_of_env(session_, env)
+    async with serving.handles.sessions.begin() as session_:
+        the_fleet = await fleet.fleet_of_env(session_, env)
     visitor = tokens.Visitor(expires_at=epoch() + A_CALL_MAY_LAST_S, identity=judging.A_SIMULATED_CALLER)
     token = tokens.room_token(serving.signer, line.call, "talk", visitor)
     joined = dataclasses.replace(line, url=serving.handles.settings.livekit_url_of(env), token=token)
@@ -226,9 +229,7 @@ def improvising(serving: calls.Serving, call: str, caller: Caller) -> NextLine:
 
 # The agent is dispatched into a room whoever holds it — a process deployed or a developer's —
 # and the caller speaks there in a voice of its own; the room going ends the job, which seals it.
-async def spoken_call(
-    session_: AsyncSession, serving: calls.Serving, scope: Scope, placed: Placed
-) -> tuple[int, Spending]:
+async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> tuple[int, Spending]:
     """Play the persona out loud on the agent's line; the lines said, and what they cost."""
     persona = placed.persona
     dispatch = Dispatch(
@@ -241,18 +242,17 @@ async def spoken_call(
         expects=list(persona.expects),
         state=dict(placed.state),
     )
-    spending = Spending(await providers.get_catalog(session_))
-    async with caller_model(session_, serving, scope, persona) as model:
+    async with serving.handles.sessions.begin() as session_:
+        spending = Spending(await providers.get_catalog(session_))
         running = await caller_voice(session_, serving, scope, placed.agent, persona)
+    async with caller_model(serving, scope, persona) as model:
         speech = providers.tts_of(running)
         caller = Caller(persona, model, spending, speech)
         # The caller murmurs in the language it speaks: the line learns it here, with the voice.
         localised = dataclasses.replace(placed.line, language=running.language)
         line = spoken.SpokenLine("", "", placed.call, placed.turns, localised)
         try:
-            turns = await on_the_line(
-                session_, serving, dispatch, speech, line, improvising(serving, placed.call, caller)
-            )
+            turns = await on_the_line(serving, dispatch, speech, line, improvising(serving, placed.call, caller))
         finally:
             await speech.aclose()
     return turns, spending
@@ -281,13 +281,12 @@ async def written_call(
     return await calls.open_text(session_, serving, registration, context)
 
 
-async def written_turns(
-    session_: AsyncSession, serving: calls.Serving, running: session.Session, placed: Placed
-) -> tuple[int, Spending]:
+async def written_turns(serving: calls.Serving, running: session.Session, placed: Placed) -> tuple[int, Spending]:
     """The persona's lines said on the written call, until it hangs up; and what they cost."""
     route = running.call.context.route
-    spending = Spending(await providers.get_catalog(session_))
-    async with caller_model(session_, serving, Scope(route.org, route.env), placed.persona) as model:
+    async with serving.handles.sessions.begin() as session_:
+        spending = Spending(await providers.get_catalog(session_))
+    async with caller_model(serving, Scope(route.org, route.env), placed.persona) as model:
         caller = Caller(placed.persona, model, spending)
         lines = await playing.converse(running, serving.logs, improvising(serving, placed.call, caller), placed.turns)
     return lines, spending

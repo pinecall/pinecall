@@ -582,6 +582,12 @@ in a project, an agent with none is named and skipped. Every broken golden is
 written whole to `.pinecall/evals/<run>/<golden>.json` — the golden as written, the verdicts, and
 **the requests the model answered**, which the log deliberately keeps only a hash of.
 
+The gateway answers the run as it starts it and plays it on; the terminal follows it on the org's
+feed and prints the matrix once it is over. Ctrl-C leaves the run going on the gateway — `runs show
+<id>` reads it, and a second `test` on the same agent is refused naming it until it ends. A golden
+that gives `memory` to an agent whose policy keeps none breaks alone, on the metric `memory`, saying
+which policy to set; the rest of the suite plays.
+
 ```console
 $ pinecall test --grep reserva
 clinica-norte · 2 goldens · haiku · run_7ed3ace9352d

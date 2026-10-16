@@ -59,7 +59,6 @@ export {
   playsCases,
   reportOf,
   REPRODUCTIONS,
-  runInFlight,
   settledRun,
   SpokenInput,
   startSuite,
