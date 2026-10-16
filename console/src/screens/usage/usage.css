@@ -1,0 +1,23 @@
+/* Usage: the metered rows' cells and the table's foot. */
+
+.usage-call {
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 0;
+}
+
+.usage-right {
+  text-align: right;
+}
+
+.usage-cost {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.usage-bar {
+  padding: 0 14px;
+  align-self: center;
+}

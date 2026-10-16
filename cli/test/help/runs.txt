@@ -1,0 +1,70 @@
+$ pinecall runs --help
+Usage: pinecall runs [options] [command]
+
+the runs this gateway has done: list, show, diff, promote a call, watch the
+drift
+
+Options:
+  -h, --help                   display help for command
+
+Commands:
+  list [options]
+  show <id>
+  diff <before> <after>
+  promote [options] <call-id>  the golden a real call makes, written as a
+                               candidate
+  drift [options]              each judge's held-rate over two windows of
+                               finished calls
+  help [command]               display help for command
+
+list is one line per run, newest first; show is one run as `pinecall test` printed it; diff is
+what moved between two runs. promote writes the golden the gateway derives from one real call as
+a CANDIDATE in agents/<agent>/test/candidates: for the call that BROKE, its expect says what must
+not happen again. drift is each judge's held-rate over two windows of finished calls; it exits 1 when a
+judge fell further than --threshold allows.
+
+
+$ pinecall runs list --help
+Usage: pinecall runs list [options]
+
+Options:
+  --limit <n>  how many, newest first (default: "20")
+  -h, --help   display help for command
+
+$ pinecall runs show --help
+Usage: pinecall runs show [options] <id>
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall runs diff --help
+Usage: pinecall runs diff [options] <before> <after>
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall runs promote --help
+Usage: pinecall runs promote [options] <call-id>
+
+the golden a real call makes, written as a candidate
+
+Options:
+  --name <x>
+  --agent <name>  whose candidates; the project's only agent when left out
+  --out <dir>     the agent's test/candidates when left out
+  --from-seq <n>  cut the call there: the state as it stood, every caller turn
+                  after it
+  -h, --help      display help for command
+
+$ pinecall runs drift --help
+Usage: pinecall runs drift [options]
+
+each judge's held-rate over two windows of finished calls
+
+Options:
+  --agent <slug>
+  --window <span>       90m, 24h, 7d (default: "7d")
+  --baseline <span>     the time before the window (default: "30d")
+  --threshold <points>  the drop that fails (default: "10")
+  --limit <n>           the newest calls read, at most 200
+  -h, --help            display help for command

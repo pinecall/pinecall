@@ -1,0 +1,120 @@
+/* Team: the invite inside the people card, a cell that turns into a control, the link's moves. */
+
+.team-invite {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--ground-side);
+}
+
+.team-roles {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+
+.team-invite-close {
+  margin-left: auto;
+}
+
+.team-editable {
+  justify-self: start;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  background: none;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.team-editable:hover {
+  border-bottom-color: var(--line-hover);
+}
+
+.team-sure {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.team-role {
+  color: var(--ink-2);
+}
+
+.team-agents {
+  color: var(--ink-4);
+}
+
+.team-link-moves {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.team-role-opens {
+  line-height: 1.5;
+}
+
+.team-sso-values {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.team-sso-form {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-sso-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.team-sso-required {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+}
+
+.team-sso-required-words {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.team-sso-moves {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.team-sso-redirect {
+  border-top: 1px solid var(--line-2);
+}
+
+.team-sso-redirect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+@media (max-width: 720px) {
+  .team-sso-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

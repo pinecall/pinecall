@@ -1,0 +1,22 @@
+$ pinecall new --help
+Usage: pinecall new [options] <name>
+
+a new project, in TypeScript, Ruby or Python, and its first agent with --agent
+
+Options:
+  --agent <name>  the first agent too, under agents/<name>/
+  --typescript    the class in TypeScript (agent.tsx, vitest); the default
+  --ruby          the class in Ruby (agent.rb, a view in ERB, minitest)
+  --python        the class in Python (agent.py, a view in Jinja, pytest, uv)
+  -h, --help      display help for command
+
+Writes ./<name>/, the project: its toolchain (package.json, Gemfile or pyproject.toml), a README and
+an empty agents/. A project is the business; its agents are the folders under agents/, each named
+by its slug on the gateway. --agent writes the first one too: agents/<agent>/ holding the class — a
+receptionist that takes a message — its ring-0 test and one golden. Names are lowercase letters,
+digits and dashes, starting with a letter.
+
+Examples
+  $ pinecall new clinica-dental --agent sofia
+  $ pinecall new clinica-dental --ruby && cd clinica-dental && pinecall generate agent sofia
+

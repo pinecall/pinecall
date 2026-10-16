@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# What gets published: src/ into dist/. Nothing here is needed to lint or test a checkout — the
+# package exports its sources — so this is only what `pnpm pack` ships. Idempotent.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+rm -rf dist
+pnpm exec tsc -p tsconfig.json

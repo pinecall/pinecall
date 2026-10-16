@@ -1,0 +1,149 @@
+# The cluster's Postgres under CloudNativePG. pg_textsearch keeps BM25 statistics in shared memory,
+# so it is preloaded by the operator's own setting; the two extensions are made once, at initdb, by
+# the superuser, as local/postgres/extensions.sql does on a laptop (the migrations make none). Its
+# WAL goes to the bucket as it is written and a base backup each night, by the Barman Cloud plugin,
+# as the identity terraform/modules/backups made: a restore reaches any minute of the window.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pinecall-postgres
+spec:
+  instances: {{ .Values.postgres.instances }}
+  imageName: {{ required "postgres.image" .Values.postgres.image }}
+  # No superuser secret: initdb makes the two extensions as postgres whatever this says
+  # (postInitTemplateSQL), the application connects as the database's owner, and an operator's
+  # psql goes through `kubectl exec` as the pod's own postgres, by peer.
+  enableSuperuserAccess: false
+  # One instance: a stop waits 15 s for the gateways' pooled sessions, not the default 180, during
+  # which no new connection opens (measured on staging, 2026-10-03: three minutes without one).
+  smartShutdownTimeout: 15
+  postgresql:
+    shared_preload_libraries:
+      - pg_textsearch
+  bootstrap:
+    initdb:
+      database: pinecall
+      owner: pinecall
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector
+        - CREATE EXTENSION IF NOT EXISTS pg_textsearch
+  # The gateway's role, made and kept by the operator from its secret below; what it may do is
+  # granted by the runtime's own `migrate up` (PINECALL_DB_APP_ROLE), each release.
+  managed:
+    roles:
+      - name: {{ .Values.postgres.appRole }}
+        ensure: present
+        login: true
+        passwordSecret:
+          name: {{ .Values.postgres.appSecret }}
+  storage:
+    size: {{ .Values.postgres.size }}
+    {{- with .Values.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+  {{- with .Values.postgres.backups.serviceAccountAnnotations }}
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        {{- toYaml . | nindent 8 }}
+  {{- end }}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: pinecall-postgres
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: pinecall-postgres
+spec:
+  retentionPolicy: {{ .Values.postgres.backups.retention | quote }}
+  configuration:
+    destinationPath: {{ required "postgres.backups.destination" .Values.postgres.backups.destination | quote }}
+    {{- if not .Values.postgres.backups.credentials }}
+    {{- fail "postgres.backups.credentials: the ObjectStore's credentials block (googleCredentials, s3Credentials, azureCredentials)" }}
+    {{- end }}
+    {{- toYaml .Values.postgres.backups.credentials | nindent 4 }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pinecall-postgres
+spec:
+  schedule: {{ .Values.postgres.backups.schedule | quote }}
+  # No first backup at install: it would run before the plugin is in the Postgres pod, and fail.
+  # A database restored or written to for the first time is backed up by hand (infra/README.md).
+  backupOwnerReference: self
+  cluster:
+    name: pinecall-postgres
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+    parameters:
+      barmanObjectName: pinecall-postgres
+---
+# The cloud's secret store, read as the identity External Secrets runs as. A store of this chart's own, not
+# charts/pinecall's: this chart is released first, and charts/pinecall's migrations (a pre-install
+# hook, run before any of its resources exist) wait for the role the secret below makes.
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: pinecall-postgres
+spec:
+  {{- if not .Values.secrets.provider }}
+  {{- fail "secrets.provider: the secret store's provider block (gcpsm, aws, vault…), as External Secrets takes it" }}
+  {{- end }}
+  provider:
+    {{- toYaml .Values.secrets.provider | nindent 4 }}
+---
+# The gateway's role's password, from the secret store, as CloudNativePG reads a managed role's
+# (basic-auth: username, password) and with the URI the gateway connects by beside it.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ .Values.postgres.appSecret }}
+spec:
+  refreshInterval: {{ .Values.secrets.refresh }}
+  secretStoreRef: { kind: ClusterSecretStore, name: pinecall-postgres }
+  target:
+    name: {{ .Values.postgres.appSecret }}
+    template:
+      type: kubernetes.io/basic-auth
+      # CloudNativePG watches a secret so labelled: the role is made the moment this one lands
+      # (on 2026-10-07 it waited for a nudge to the Cluster), and a new password is applied by it.
+      metadata:
+        labels: { cnpg.io/reload: "true" }
+      data:
+        username: {{ .Values.postgres.appRole }}
+        password: "{{`{{ .password }}`}}"
+        uri: "postgresql://{{ .Values.postgres.appRole }}:{{`{{ .password }}`}}@pinecall-postgres-rw:5432/pinecall"
+  data:
+    - secretKey: password
+      remoteRef: { key: {{ printf "%spostgres-app-password" .Values.secrets.prefix | quote }} }
+---
+# Each instance's metrics (CloudNativePG's exporter, on 9187: whether Postgres answers, its WAL
+# archiver), collected by whichever Prometheus the environment names (`monitoring`, as
+# charts/pinecall reads it), for the rules of charts/pinecall/alerts.yaml.
+{{- $collector := required "monitoring.collector: gmp, prometheus-operator or none" .Values.monitoring.collector }}
+{{- if eq $collector "gmp" }}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: pinecall-postgres
+spec:
+  selector: { matchLabels: { cnpg.io/cluster: pinecall-postgres } }
+  endpoints:
+    - { port: 9187, path: /metrics, interval: 30s }
+{{- else if eq $collector "prometheus-operator" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: pinecall-postgres
+spec:
+  selector: { matchLabels: { cnpg.io/cluster: pinecall-postgres } }
+  podMetricsEndpoints:
+    - { port: metrics, path: /metrics, interval: 30s }
+{{- else if ne $collector "none" }}
+{{- fail (printf "monitoring.collector is gmp, prometheus-operator or none, not %q" $collector) }}
+{{- end }}

@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""The one version every published package carries: printed and checked, or written to all six."""
+
+import json
+import re
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parent.parent
+NPM = {"sdk/typescript": "@pinecall/agents", "cli": "pinecall", "packages/room": "@pinecall/room"}
+RUBY = ROOT / "sdk/ruby/lib/pinecall/version.rb"
+PYTHON = ROOT / "sdk/python/src/pinecall/_version.py"
+RUNTIME = ROOT / "runtime/pyproject.toml"
+SEMVER = re.compile(r"\d+\.\d+\.\d+")
+RUBY_LINE = re.compile(r'VERSION = "([^"]+)"')
+PYTHON_LINE = re.compile(r'__version__ = "([^"]+)"')
+RUNTIME_LINE = re.compile(r'^version = "([^"]+)"$', re.M)
+
+
+def declared() -> dict[str, str]:
+    """Each manifest's version, by the file that holds it."""
+    found = {f"{folder}/package.json": _manifest(folder)["version"] for folder in NPM}
+    found["runtime/pyproject.toml"] = tomllib.loads(RUNTIME.read_text())["project"]["version"]
+    found["sdk/python/src/pinecall/_version.py"] = _match(PYTHON_LINE, PYTHON)
+    found["sdk/ruby/lib/pinecall/version.rb"] = _match(RUBY_LINE, RUBY)
+    return found
+
+
+def _match(pattern: re.Pattern[str], path: Path) -> str:
+    """The one version a file's line declares."""
+    hit = pattern.search(path.read_text())
+    if hit is None:
+        sys.exit(f"{path.relative_to(ROOT)} declares no version")
+    return hit.group(1)
+
+
+def _manifest(folder: str) -> dict[str, Any]:
+    """A package's package.json, read."""
+    return json.loads((ROOT / folder / "package.json").read_text())
+
+
+def unpublishable() -> list[str]:
+    """Dependencies no registry resolves: a path, or a workspace package this tag leaves out."""
+    found: list[str] = []
+    for folder in NPM:
+        manifest = _manifest(folder)
+        for field in ("dependencies", "optionalDependencies", "peerDependencies"):
+            for name, spec in manifest.get(field, {}).items():
+                linked = spec.startswith("workspace:") and name not in NPM.values()
+                if spec.startswith(("file:", "link:")) or linked:
+                    found.append(f"{folder}/package.json {field}.{name} = {spec}")
+    return found
+
+
+def write(version: str) -> None:
+    """The version, into all six manifests, each written the way it already reads."""
+    for folder in NPM:
+        path = ROOT / folder / "package.json"
+        text = path.read_text()
+        path.write_text(re.sub(r'("version":\s*)"[^"]+"', rf'\g<1>"{version}"', text, count=1))
+    RUNTIME.write_text(RUNTIME_LINE.sub(f'version = "{version}"', RUNTIME.read_text(), count=1))
+    PYTHON.write_text(PYTHON_LINE.sub(f'__version__ = "{version}"', PYTHON.read_text(), count=1))
+    RUBY.write_text(RUBY_LINE.sub(f'VERSION = "{version}"', RUBY.read_text(), count=1))
+    # The runtime's uv.lock names the project's own version; the SDK's is dynamic, not in its lock.
+    subprocess.run(["uv", "lock", "--quiet", "--directory", str(RUNTIME.parent)], check=True)
+
+
+def main() -> None:
+    """Prints the version or says why there is none; with X.Y.Z, sets it first."""
+    if len(sys.argv) == 2:
+        if not SEMVER.fullmatch(sys.argv[1]):
+            sys.exit(f"{sys.argv[1]} is not X.Y.Z")
+        write(sys.argv[1])
+    versions = declared()
+    if len(set(versions.values())) != 1:
+        lines = "\n".join(f"  {path}: {v}" for path, v in versions.items())
+        sys.exit("the packages declare different versions:\n" + lines)
+    if bad := unpublishable():
+        sys.exit("dependencies no registry resolves:\n" + "\n".join(f"  {b}" for b in bad))
+    print(next(iter(versions.values())))
+
+
+main()

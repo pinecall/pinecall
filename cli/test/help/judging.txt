@@ -1,0 +1,31 @@
+$ pinecall judging --help
+Usage: pinecall judging [options] [on|off]
+
+whether this org's calls are judged at hang-up, and the model the judges run on:
+Pinecall's, or one of yours
+
+Arguments:
+  on|off                   judging on or off for every agent, from the next
+                           call; the model is kept
+
+Options:
+  --model <vendor/model>   a model of yours, or haiku · sonnet · opus
+  --option <key=value...>  one keyword argument of the model's plugin; the value
+                           read as JSON
+  --platform               Pinecall's judge model again
+  -h, --help               display help for command
+
+Every finished call of the org is judged at hang-up unless judging is off. The judges run on
+Pinecall's judge model, and each judge that answers is one eval on your bill — unless you name a
+model of your own: --model is the model every agent's calls are judged on (an agent's own
+`pinecall agent set --judge` wins over it), tried on your org's keys before it is kept. On your
+org's own key for its vendor (`pinecall providers add`) the model's bill is yours and its evals
+are never billed; a local model is your vendor's plugin pointed at your server, --option
+base_url=… --platform goes back to Pinecall's model.
+
+Examples
+  $ pinecall judging
+  judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call
+  $ pinecall judging --model openai/qwen3-32b --option base_url=http://gpu.internal:8000/v1
+  $ pinecall judging off
+

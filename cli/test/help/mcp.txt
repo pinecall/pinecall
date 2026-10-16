@@ -1,0 +1,42 @@
+$ pinecall mcp --help
+Usage: pinecall mcp [options] [command]
+
+the MCP server an assistant runs this CLI as, and `install`, which adds it to
+every assistant here
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  install [options]  Pinecall written into every assistant on this machine
+  help [command]     display help for command
+
+With nothing after it, the MCP server on stdin and stdout, for an assistant to launch: the tools
+sign this machine in, link a project, hold the agent, chat with it, test it. It starts no process
+of its own. Every tool acts in the sandbox, and in production when asked with prod: true; your
+org's switch still decides.
+
+install writes `npx -y pinecall@latest mcp` into every assistant installed here — Claude Code,
+Claude Desktop, Codex, Cursor, Windsurf, Antigravity, Gemini CLI — replacing an older entry,
+copying each file to .bak first, and leaving every other setting and comment as it was. No key
+is written: the server reads the project's .env.
+
+Examples
+  $ pinecall mcp install --list
+
+
+$ pinecall mcp serve --help
+Usage: pinecall mcp serve [options]
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall mcp install --help
+Usage: pinecall mcp install [options]
+
+Pinecall written into every assistant on this machine
+
+Options:
+  --list      every assistant, and whether Pinecall is in it; changes nothing
+  --remove    take Pinecall out of every assistant
+  -h, --help  display help for command

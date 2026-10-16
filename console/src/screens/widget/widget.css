@@ -1,0 +1,133 @@
+/* Widget: the embed, the look beside the preview, and the blank page the preview opens. */
+
+.widget-copy {
+  margin-left: auto;
+}
+
+.widget-endpoints {
+  padding: 11px 16px 13px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12.5px;
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+
+.widget-endpoints a {
+  color: var(--accent);
+}
+
+.widget-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 14px;
+  align-items: start;
+}
+
+.widget-fields {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.widget-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.widget-accent-label {
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.widget-accents {
+  display: flex;
+  gap: 7px;
+}
+
+.widget-accent {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  /* An edge, so the near-black accent still reads on a dark page. */
+  box-shadow: inset 0 0 0 1px var(--line-hover);
+}
+
+.widget-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.widget-toggle-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.widget-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: var(--ground-side);
+  min-width: 0;
+}
+
+.widget-preview-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.widget-stage {
+  width: 100%;
+  min-height: 120px;
+  display: flex;
+  justify-content: center;
+}
+
+.widget-open {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* The blank page: white, empty, the button where a site would have it — a customer's site, so daylight in either theme. */
+.widget-blank {
+  background: var(--site-ground);
+  height: 100vh;
+  position: relative;
+}
+
+.widget-blank-mark {
+  color: var(--site-ink);
+  font-size: 11px;
+  left: 16px;
+  position: absolute;
+  top: 12px;
+}
+
+.widget-blank-refused {
+  position: absolute;
+  top: 36px;
+  left: 16px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--site-red);
+}
+
+@media (max-width: 760px) {
+  .widget-split,
+  .widget-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

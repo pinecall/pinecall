@@ -1,0 +1,115 @@
+$ pinecall deploy --help
+Usage: pinecall deploy [options] [command]
+
+run this project on Pinecall: uploaded as a release, installed and started there
+
+Options:
+  -h, --help                    display help for command
+
+Commands:
+  up [options]                  upload this folder as the app's next release,
+                                and follow it until it is live
+  list                          the org's hosted apps: the newest release, the
+                                one serving, and why one failed
+  releases [options]            one app's releases, newest first
+  rollback [options] <release>  release n's sources kept again as the next
+                                release, and followed
+  logs [options]                the last lines of the app's process, fresh from
+                                Pinecall
+  stop [options]                the process drains and nothing runs; its
+                                releases and token stay
+  start [options]               a stopped app runs again, its newest release
+  rm [options]                  stop hosting the app: its releases go, and its
+                                token is revoked
+  help [command]                display help for command
+
+Pinecall runs the project the way `pinecall start` would, in a container of its own: it installs
+the dependencies from the lockfile, starts the agents on a token it minted for the app, and hands
+them the org's secrets (`pinecall secrets`) as environment variables. The release it replaces keeps
+answering until the new one's agents register, so a deploy cuts no call; one that does not install,
+exits, or registers nothing is reported with its last lines, and the one before keeps serving.
+
+What travels is every file the project's .gitignore files leave in — read where each sits, no git
+asked — never node_modules, .git, dist or any .env. The sandbox's unless --prod.
+
+Examples
+  ~/acme-support $ pinecall deploy --prod --note "reads the order's eta back"
+  acme-support: release 4 sent · 38 KB · 3b507661b052
+  acme-support: Pinecall installs and starts it; the release before keeps answering meanwhile
+  acme-support: release 4 is live
+
+
+$ pinecall deploy up --help
+Usage: pinecall deploy up [options]
+
+upload this folder as the app's next release, and follow it until it is live
+
+Options:
+  --name <app>  this folder's name unless given
+  --note <why>  kept with the release (default: "")
+  --no-follow   upload and return, without waiting for it to go live
+  -h, --help    display help for command
+
+$ pinecall deploy list --help
+Usage: pinecall deploy list [options]
+
+the org's hosted apps: the newest release, the one serving, and why one failed
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall deploy releases --help
+Usage: pinecall deploy releases [options]
+
+one app's releases, newest first
+
+Options:
+  --name <app>
+  -h, --help    display help for command
+
+$ pinecall deploy rollback --help
+Usage: pinecall deploy rollback [options] <release>
+
+release n's sources kept again as the next release, and followed
+
+Options:
+  --name <app>
+  --no-follow
+  -h, --help    display help for command
+
+$ pinecall deploy logs --help
+Usage: pinecall deploy logs [options]
+
+the last lines of the app's process, fresh from Pinecall
+
+Options:
+  --name <app>
+  --follow      keep printing the lines that come, until Ctrl-C
+  -h, --help    display help for command
+
+$ pinecall deploy stop --help
+Usage: pinecall deploy stop [options]
+
+the process drains and nothing runs; its releases and token stay
+
+Options:
+  --name <app>
+  -h, --help    display help for command
+
+$ pinecall deploy start --help
+Usage: pinecall deploy start [options]
+
+a stopped app runs again, its newest release
+
+Options:
+  --name <app>
+  -h, --help    display help for command
+
+$ pinecall deploy rm --help
+Usage: pinecall deploy rm [options]
+
+stop hosting the app: its releases go, and its token is revoked
+
+Options:
+  --name <app>
+  -h, --help    display help for command

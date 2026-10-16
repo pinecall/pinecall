@@ -1,0 +1,40 @@
+$ pinecall test --help
+Usage: pinecall test [options] [paths...]
+
+the goldens, run through the agent wherever it is held
+
+Arguments:
+  paths                    files or directories of goldens; the agent's
+                           agents/<name>/test/goldens when none
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --model <m...>           a column of the matrix: vendor/model, repeatable
+  --grep <x>               only the goldens whose name matches
+  --watch                  run again whenever a golden changes
+  --voice                  ring 2: the same goldens said out loud on a real line
+  --background-noise <dB>  dB under the caller, on a spoken run
+  --ambience <what>        television | cafe | office | street
+  --packet-loss <share>    the share of the caller's packets lost, 0 to 1
+  --case <name...>         a case of the org's dataset, by name, whatever its
+                           status
+  --dataset                every case a person approved: the nightly
+  --version <n>            every call on that version of the agent's settings
+  -h, --help               display help for command
+
+Ring 1: every golden through the agent whoever holds it — your `pinecall start`, a colleague's,
+production's with --prod; nothing is started here — scored by the gateway's judges, printed as a
+matrix. Exits 1 when a golden did not hold, and writes every broken one to .pinecall/evals/<run>/
+with the requests the model answered. With --case or --dataset and no paths, only the cases are
+played; cases play in the sandbox only.
+
+Whose settings a run plays on is the key's: from a laptop, YOUR corner of the sandbox; in CI, a
+sandbox server token, the TEAM's. A settings fix only you have is green at your desk and red in CI
+until `pinecall agent push --team` gives it to the team.
+
+Examples
+  $ pinecall test --grep reserva
+  $ pinecall test --voice --background-noise 15 --ambience cafe
+  $ pinecall test --case promises-youll-call-me-tomorrow-29d7c7
+

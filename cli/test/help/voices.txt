@@ -1,0 +1,53 @@
+$ pinecall voices --help
+Usage: pinecall voices [options] [command]
+
+a voice vendor's voices, and any one of them heard on this machine before it is
+chosen
+
+Options:
+  -h, --help                      display help for command
+
+Commands:
+  list [options]
+  play [options] <voice> [words]  the words said in that voice, played here
+  help [command]                  display help for command
+
+The vendor is --tts, or Pinecall's own voice when none is named (`pinecall providers` says which).
+With nothing after it: the vendor's voices in that language, one per line — the id the agent's
+voice setting takes, the name, gender, and where the accent is from. --country keeps only the
+voices from there.
+
+play says the words in that voice, through the vendor's own plugin exactly as a call would, and
+plays them here — afplay, ffplay, play, aplay or pw-play, whichever this machine has. With no
+words, the gateway reads one line in the language. --save keeps the WAV where you say.
+
+Examples
+  $ pinecall voices --language es --country ES
+  $ pinecall voices play de38f545-c574-44e8-9b54-a7d6fec1c6b1 "Hi, this is Clínica Norte's assistant." --language en
+
+
+$ pinecall voices list --help
+Usage: pinecall voices list [options]
+
+Options:
+  --tts <vendor>
+  --language <tag>
+  --country <XX>
+  -h, --help        display help for command
+
+$ pinecall voices play --help
+Usage: pinecall voices play [options] <voice> [words]
+
+the words said in that voice, played here
+
+Arguments:
+  voice              the voice's id
+  words              what to say; the gateway's own line in the language when
+                     left out
+
+Options:
+  --tts <vendor>
+  --model <model>
+  --language <tag>
+  --save <file.wav>  keep the WAV
+  -h, --help         display help for command

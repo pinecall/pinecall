@@ -1,0 +1,3 @@
+#!/bin/sh
+# The MCP tool pages under docs/mcp/, written from the tools themselves and docs/mcp/examples.json.
+exec node --import tsx "$(dirname "$0")/mcp-pages.ts"

@@ -1,0 +1,66 @@
+/* Test's overview: the six stations of the harness as a row of cards, and the last run's time. */
+
+.tov-last {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tov-stations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: station;
+}
+
+.tov-station-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--ground);
+}
+
+.tov-station-link:hover {
+  border-color: var(--line-hover);
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.tov-station-n {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ground-side);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.tov-station-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tov-station-does {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.tov-station-now {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}

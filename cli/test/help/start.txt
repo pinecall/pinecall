@@ -1,0 +1,35 @@
+$ pinecall start --help
+Usage: pinecall start [options] [agent.tsx]
+
+the agents served and the console answered: the process you deploy
+
+Options:
+  --agent <name>
+  --show-prompt              the prompt a fresh instance would produce, then
+                             exit; no key, no gateway
+  --events                   the agent's process's lines as it prints them, one
+                             JSON entry each, for a pipe
+  --ui                       the full-screen terminal view; keys: p pause · c
+                             clear · e events · q quit
+  --inspect [host:port]      Node's own flag, given to a TypeScript agent's
+                             process
+  --inspect-brk [host:port]  Node's own flag, given to a TypeScript agent's
+                             process
+  -h, --help                 display help for command
+
+With nothing after it: the agent served by its language's serve entry, a process this one starts and
+watches, one line per log entry on stdout, no port bound and no page served. Beside it this process
+holds a socket of its own that answers the console's screens and takes no call. Without --prod it
+registers in the sandbox and answers the sandbox's console; with --prod, in production and its console.
+
+At the root of a project of several agents — agents/<name>/agent.tsx — every agent at once, in one
+process, each line prefixed by its slug; --agent <name> runs one of them.
+
+Ctrl-C or SIGTERM: the agent's process drains its calls to the next holder and leaves; a second
+signal kills it. --inspect is Node's own flag, given to a TypeScript agent's process.
+
+Examples
+  $ pinecall start
+  clinica-norte · clinica · sandbox · connected to https://cloud.pinecall.io · key from .env · tools 4
+  talk to it  https://cloud.pinecall.io/sandbox/a/clinica-norte/playground?login=lc_9f2   (opens within five minutes, once)
+

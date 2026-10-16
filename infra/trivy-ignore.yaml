@@ -1,0 +1,46 @@
+# What trivy finds in infra/ and in the charts as released (check.yml, `supply chain`) and is let
+# stand, each by its path and with why. A finding not here fails the check. Those with a date are
+# owed, not accepted: past it the check fails again until they are fixed or a reason replaces it.
+misconfigurations:
+  # By design.
+  - id: KSV-0009
+    paths:
+      - pinecall/templates/livekit.yaml
+      - pinecall/templates/sip.yaml
+    statement: >-
+      A world's LiveKit and SIP hold its media node's ports and announce the node's one address
+      (charts/pinecall livekit.yaml, sip.yaml): a pod network would put NAT between them and the
+      caller's media.
+  - id: GCP-0048
+    paths:
+      - terraform/modules/gke/main.tf
+    statement: >-
+      The legacy metadata endpoints (v0.1, v1beta1) are disabled on every GKE node since 1.12 and
+      were turned down for all of Compute Engine in 2020; setting the key by hand recreates the
+      node pools for no change.
+  - id: KSV-0014
+    paths:
+      - manifests/suite.yaml
+    statement: >-
+      The suite's Job writes its caches beside the checkout, and runs on a cluster that is not
+      production's alone (`make suite` refuses ENV=production).
+  - id: KSV-0118
+    paths:
+      - manifests/suite.yaml
+    statement: The suite's Job, never on production's cluster (`make suite` refuses ENV=production).
+  - id: DS-0002
+    paths:
+      - images/suite/Containerfile
+      - local/postgres/Dockerfile
+    statement: >-
+      The suite's image (never on production's cluster) and the laptop's Postgres, whose
+      entrypoint starts as root to own its data directory and drops to postgres itself.
+
+  # The operator's call, owed by the date below: a list that is wrong locks them out.
+  - id: GCP-0061
+    paths:
+      - terraform/modules/gke/main.tf
+    statement: >-
+      The Kubernetes API is reached by IAM alone until authorized networks are chosen: a list
+      that forgets the place the operator works from locks them out.
+    expired_at: 2026-11-07

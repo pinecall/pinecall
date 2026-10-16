@@ -1,0 +1,21 @@
+$ pinecall whoami --help
+Usage: pinecall whoami [options]
+
+which org and which key this terminal is holding, and which envs it opens
+
+Options:
+  -h, --help  display help for command
+
+Prints the one gateway every verb talks to — PINECALL_URL, with the key from the environment or
+the project's .env — and what the gateway says the key is in the env asked: the org, the
+key's id, the env, the label it was issued under, and whether you may act in production.
+Then which envs the key opens there: a person's key opens the sandbox without --prod and
+production with it, while their production switch is on; a server's token opens the one env
+its prefix names. The key itself is neither printed nor sent anywhere else.
+
+Examples
+  $ pinecall whoami
+  gateway https://cloud.pinecall.io · key from .env · sandbox
+    org clinica · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
+    a person's key: the sandbox without --prod, production with it
+

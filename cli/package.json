@@ -1,0 +1,54 @@
+{
+  "name": "pinecall",
+  "version": "0.10.1",
+  "description": "The pinecall CLI: an agent's project in any language — prompt, chat, test, simulate, start, deploy — against the Pinecall gateway",
+  "license": "Apache-2.0",
+  "author": "Pinecall <hello@pinecall.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinecall/pinecall.git",
+    "directory": "cli"
+  },
+  "type": "module",
+  "bin": {
+    "pinecall": "./bin/pinecall.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "scripts/build",
+    "lint": "tsc -p tsconfig.lint.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@pinecall/agents": "workspace:^",
+    "commander": "^14.0.0",
+    "ignore": "^7.0.12",
+    "tsx": "^4.20.6",
+    "ws": "^8.21.3",
+    "zod": "^4.6.5"
+  },
+  "optionalDependencies": {
+    "@livekit/rtc-node": "^0.13.35"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/ws": "^8.18.1",
+    "msw": "^3.0.3",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "publishConfig": {
+    "bin": {
+      "pinecall": "./dist/main.js"
+    }
+  },
+  "packageManager": "pnpm@11.2.2",
+  "engines": {
+    "node": ">=24"
+  }
+}

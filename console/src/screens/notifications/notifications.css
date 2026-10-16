@@ -1,0 +1,14 @@
+/* Notifications: one line of moves under the browser's standing; the rest is the ui kit's. */
+
+.notices-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+}
+
+.notices-done {
+  font-size: 13px;
+  color: var(--green);
+}

@@ -1,0 +1,103 @@
+/* Memory: the lookup in the card's head, a fact's row, the two goldens side by side. */
+
+.mem-look {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mem-look .ui-input {
+  width: 260px;
+  max-width: 100%;
+}
+
+.mem-caller {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.mem-fact {
+  font-size: 13px;
+  color: var(--ink-2);
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.mem-gone .mem-fact,
+.mem-gone .mem-caller {
+  color: var(--ink-6);
+}
+
+.mem-superseded {
+  font-size: 12px;
+  color: var(--ink-6);
+}
+
+.mem-category {
+  text-align: right;
+}
+
+.mem-goldens {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.mem-run {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mem-say {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+.mem-figures {
+  display: flex;
+  gap: 22px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line-2);
+}
+
+.mem-figure-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-bottom: 4px;
+}
+
+.mem-figure {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.mem-miss {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-3);
+}
+
+.mem-miss-asks {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.mem-miss-why {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+@media (max-width: 720px) {
+  .mem-goldens {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

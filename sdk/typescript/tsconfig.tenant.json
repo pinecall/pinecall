@@ -1,0 +1,24 @@
+{
+  // The tsconfig a tenant extends, and the only place the framework's compiler flags are written.
+  // An agent is a class with `@tool` methods and a `.tsx` view, and both need the compiler told
+  // something: `@tool` and `@state` are LEGACY TypeScript decorators (docs/decisions/agent.md has
+  // the measurement — vite 8 / rolldown-oxc transforms no other kind), and a view compiles against
+  // our own text runtime instead of React's. A tenant should not have to know either fact, so it
+  // inherits both from here:
+  //
+  //     { "extends": "@pinecall/agents/tsconfig.tenant.json", "include": ["agents", "test"] }
+  //
+  // Nothing here is about the framework's own build; that lives in tsconfig.json beside it.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@pinecall/agents/views"
+  }
+}

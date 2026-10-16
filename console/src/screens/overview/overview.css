@@ -1,0 +1,536 @@
+/* Overview: who is on the line, the numbers across, calls a day beside what needs a look, two cards of shares, and the agents. */
+
+/* The three channels, the dataviz method's categorical slots 7, 3 and 2 — violet, aqua, orange —
+   validated for colour-blind separation on both surfaces; dark steps of their own, not a flip.
+   Set once on the page's contents, which the page lays out as if this box were not there. */
+.ovw {
+  display: contents;
+  --ovw-phone: light-dark(#4a3aa7, #9085e9);
+  --ovw-web: light-dark(#1baf7a, #199e70);
+  --ovw-whatsapp: light-dark(#eb6834, #d95926);
+}
+
+.ovw-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ovw-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .ovw-split,
+  .ovw-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── on the line now ──────────────────────────────────────────────────────── */
+
+.ovw-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ovw-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-3);
+}
+
+.ovw-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-7);
+}
+
+.ovw-pulse-on {
+  background: var(--green-dot);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+
+.ovw-quiet {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-4);
+}
+
+.ovw-quiet-card {
+  padding: 4px 18px 18px;
+  line-height: 1.55;
+}
+
+.ovw-live {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.ovw-call {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+  min-width: 0;
+}
+
+.ovw-call-asking {
+  border-color: light-dark(#f3dfa0, rgb(245 158 11 / 0.34));
+  background: var(--amber-tint);
+}
+
+.ovw-call-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ovw-call-words {
+  min-width: 0;
+}
+
+.ovw-call-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.ovw-call-sub {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.ovw-call-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+.ovw-call-said {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ovw-call-said-asking {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.ovw-call-moves {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* ── needs a look ─────────────────────────────────────────────────────────── */
+
+.ovw-looks {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 6px;
+}
+
+.ovw-look {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.ovw-look:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.ovw-look-mark {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--amber-dot);
+}
+
+.ovw-look-mark-severe {
+  background: var(--red);
+}
+
+.ovw-look-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ovw-look-title {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.ovw-look-why {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ovw-look-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.ovw-look-go {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.ovw-look:hover .ovw-look-go,
+.ovw-look:focus-visible .ovw-look-go {
+  opacity: 1;
+}
+
+.ovw-look-when {
+  font-size: 11.5px;
+  color: var(--ink-5);
+  white-space: nowrap;
+}
+
+/* ── charts ───────────────────────────────────────────────────────────────── */
+
+.ovw-chart {
+  position: relative;
+  padding: 6px 18px 12px;
+}
+
+.ovw-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.ovw-grid {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+
+.ovw-tick {
+  font-size: 10.5px;
+  fill: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.ovw-hit {
+  fill: transparent;
+}
+
+.ovw-bar-on .ovw-hit {
+  fill: var(--ground-4);
+}
+
+.ovw-fill-phone {
+  fill: var(--ovw-phone);
+  background: var(--ovw-phone);
+}
+
+.ovw-fill-web {
+  fill: var(--ovw-web);
+  background: var(--ovw-web);
+}
+
+.ovw-fill-whatsapp {
+  fill: var(--ovw-whatsapp);
+  background: var(--ovw-whatsapp);
+}
+
+.ovw-tip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  min-width: 128px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-control);
+  border-radius: 9px;
+  background: var(--ground);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ovw-tip-head {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ovw-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.ovw-tip-value {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ovw-legend {
+  display: inline-flex;
+  gap: 12px;
+}
+
+.ovw-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.ovw-key {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.ovw-key-phone {
+  background: var(--ovw-phone);
+}
+
+.ovw-key-web {
+  background: var(--ovw-web);
+}
+
+.ovw-key-whatsapp {
+  background: var(--ovw-whatsapp);
+}
+
+/* A labelled bar per row. */
+.ovw-shares {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 18px 18px;
+}
+
+.ovw-share {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ovw-share-name {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ovw-share-name::first-letter {
+  text-transform: uppercase;
+}
+
+.ovw-share-track {
+  height: 6px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ground-4);
+  overflow: hidden;
+}
+
+.ovw-share-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.ovw-share-count {
+  font-size: 12.5px;
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ovw-share-pct {
+  color: var(--ink-5);
+}
+
+/* ── how fast it answers ──────────────────────────────────────────────────── */
+
+.ovw-speed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px 12px;
+  padding: 6px 18px 18px;
+}
+
+.ovw-speed-one {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ovw-speed-value {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ovw-speed-name {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* ── the agents ───────────────────────────────────────────────────────────── */
+
+.ovw-agent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ovw-agent-words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ovw-held {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.ovw-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── finish setting up ────────────────────────────────────────────────────── */
+
+.ovw-welcome {
+  padding: 0 18px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.ovw-steps {
+  display: flex;
+  flex-direction: column;
+  padding: 0 8px 8px;
+}
+
+.ovw-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 10px;
+  border-top: 1px solid var(--line-3);
+}
+
+.ovw-step-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ovw-step-name { font-size: 13.5px; font-weight: 550; }
+.ovw-step-name-done { font-weight: 400; color: var(--ink-4); }
+.ovw-step-why { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+
+.ovw-step-command {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ground-3);
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ovw-step-done,
+.ovw-step-num {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+.ovw-step-done { color: var(--green); background: var(--green-soft); }
+.ovw-step-num { border: 1.5px solid var(--line-hover); color: var(--ink-3); }
+
+.ovw-step-action {
+  flex: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* The limits card: the meters, then whose keys a call runs on, with the way to bring one. */
+.ovw-limits {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.ovw-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ovw-keys-link {
+  color: var(--accent);
+}

@@ -1,0 +1,276 @@
+# A `v*` tag is the publication: `git push origin vX.Y.Z` publishes every package at X.Y.Z —
+# pinecall-runtime and pinecall on PyPI, @pinecall/agents, @pinecall/room and pinecall on npm, the
+# pinecall gem — and a GitHub Release whose notes are each package's CHANGELOG.md section for X.Y.Z.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  # A rehearsal that burns no number: guard, gates and every build run, every publish is skipped.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # A version on PyPI, npm or RubyGems is permanent: an artifact whose number lies cannot be taken
+  # back. Every package declares the same number, and the tag says it.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.declared.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Two lines, not one: `echo "version=$(scripts/version)"` swallows the script's exit code.
+      - id: declared
+        run: |
+          version=$(scripts/version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: the tag and the declared version are the same number
+        if: github.ref_type == 'tag'
+        env:
+          DECLARED: ${{ steps.declared.outputs.version }}
+        run: |
+          if [ "${GITHUB_REF_NAME#v}" != "$DECLARED" ]; then
+            echo "the tag says ${GITHUB_REF_NAME#v} and the packages declare $DECLARED" >&2
+            exit 1
+          fi
+      # Every package is published at this version, so every package's CHANGELOG says what it changed.
+      - name: every published package's CHANGELOG.md has a section for it
+        env:
+          DECLARED: ${{ steps.declared.outputs.version }}
+        run: |
+          for package in runtime sdk/typescript sdk/python sdk/ruby cli packages/room; do
+            if ! grep -qE "^## \[?${DECLARED//./\\.}\]?( |$)" "$package/CHANGELOG.md"; then
+              echo "$package/CHANGELOG.md has no section for $DECLARED" >&2
+              exit 1
+            fi
+          done
+
+  # A tag matches no `push: branches`, so without this line the release would run no gate at all.
+  gates:
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      all: true
+
+  build-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.2.2
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.13"
+      - run: pnpm install --frozen-lockfile
+      # The console and the widget of this same commit, into runtime/build/public/.
+      - run: scripts/console
+        working-directory: runtime
+      - run: uv build --wheel --out-dir dist
+        working-directory: runtime
+      # A wheel without the pages installs a gateway that answers every screen with a refusal.
+      - name: the wheel carries the console and the widget
+        working-directory: runtime
+        run: |
+          unzip -l dist/pinecall_runtime-*.whl | grep -q 'pinecall_runtime/public/console/index.html'
+          unzip -l dist/pinecall_runtime-*.whl | grep -q 'pinecall_runtime/public/widget/pinecall-widget.js'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: runtime
+          path: runtime/dist/
+
+  build-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.11"
+      - run: make build
+        working-directory: sdk/python
+      # A wheel without the marker installs a package every type checker reads as untyped.
+      - name: the wheel carries py.typed
+        working-directory: sdk/python
+        run: unzip -l dist/pinecall-*.whl | grep -q 'pinecall/py.typed'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: python
+          path: sdk/python/dist/
+
+  # pnpm packs because `npm pack` applies no publishConfig (the manifest would still point at src/,
+  # which `files` does not ship) and because it writes workspace:^ as the range npm resolves; npm
+  # publishes, below, because npm speaks OIDC with the registry.
+  build-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.2.2
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: build and pack agents, room and cli
+        run: |
+          for folder in sdk/typescript packages/room cli; do
+            (cd "$folder" && scripts/build && pnpm pack --pack-destination "$GITHUB_WORKSPACE/npm/$(basename "$folder")")
+          done
+      - name: no tarball names a workspace or a path
+        run: |
+          for tarball in npm/*/*.tgz; do
+            if tar -xOzf "$tarball" package/package.json | grep -qE '"(workspace|file|link):'; then
+              echo "$tarball depends on a workspace or a path the registry does not have" >&2
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm
+          path: npm/
+
+  build-ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: "3.4"
+      - run: gem build pinecall.gemspec
+        working-directory: sdk/ruby
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ruby
+          path: sdk/ruby/pinecall-*.gem
+
+  # Trusted Publishing works only in a top-level job: the gates are reused, the publishes stay here.
+  # Each registry mints a short-lived credential for its job; nothing is stored anywhere.
+  publish-pypi:
+    needs: [guard, gates, build-runtime, build-python]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: runtime
+          path: dist/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: python
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          skip-existing: true   # a workflow run again is not an error
+
+  publish-npm:
+    needs: [guard, gates, build-npm]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: npm
+          path: npm/
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # setup-node's npm does not know the registry's OIDC exchange and falls back, silently, to an
+      # anonymous publish: a 404 on the PUT after saying it signed the provenance.
+      - run: npm install -g npm@latest
+      # The framework first: the CLI's tarball asks for it, and an install of the CLI before it is
+      # on the registry would not resolve.
+      - name: publish each package, unless this version is already on npm
+        env:
+          VERSION: ${{ needs.guard.outputs.version }}
+        run: |
+          for package in typescript room cli; do
+            tarball=$(ls npm/$package/*.tgz)
+            name=$(tar -xOzf "$tarball" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')
+            if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+              echo "$name@$VERSION is already on npm: nothing to publish"
+              continue
+            fi
+            npm publish --provenance --access public "$tarball"
+          done
+
+  publish-rubygems:
+    needs: [guard, gates, build-ruby]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ruby
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: "3.4"
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - name: push, unless this version is already on RubyGems
+        env:
+          VERSION: ${{ needs.guard.outputs.version }}
+        run: |
+          if curl -sf "https://rubygems.org/api/v2/rubygems/pinecall/versions/$VERSION.json" >/dev/null; then
+            echo "pinecall $VERSION is already on RubyGems: nothing to push"
+            exit 0
+          fi
+          gem push "pinecall-$VERSION.gem"
+
+  # One GitHub Release per tag, its notes each package's CHANGELOG.md section, every artifact attached.
+  github-release:
+    needs: [guard, publish-pypi, publish-npm, publish-rubygems]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts/
+      - name: the release, unless the tag already has one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.guard.outputs.version }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "$GITHUB_REF_NAME already has a release"
+            exit 0
+          fi
+          # Each published package keeps its own CHANGELOG.md; the console and the widget ship inside
+          # the runtime's wheel and its CHANGELOG says what of them changed.
+          for entry in "pinecall-runtime:runtime" "@pinecall/agents:sdk/typescript" "pinecall (Python):sdk/python" \
+                       "pinecall (Ruby):sdk/ruby" "pinecall (CLI):cli" "@pinecall/room:packages/room"; do
+            name="${entry%%:*}"; package="${entry#*:}"
+            section=$(awk -v v="$VERSION" '
+              index($0, "## " v " ") == 1 || index($0, "## [" v "]") == 1 || $0 == "## " v {on=1; print; next}
+              on && /^## / {exit}
+              on {print}' "$package/CHANGELOG.md")
+            [ -n "$section" ] || { echo "$package/CHANGELOG.md has no section for $VERSION" >&2; exit 1; }
+            printf '# %s\n\n%s\n\n' "$name" "$section" >> "$RUNNER_TEMP/notes.md"
+          done
+          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" \
+            $(find artifacts -type f \( -name '*.whl' -o -name '*.tar.gz' -o -name '*.tgz' -o -name '*.gem' \))

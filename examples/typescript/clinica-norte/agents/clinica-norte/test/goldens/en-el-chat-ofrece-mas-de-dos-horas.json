@@ -1,0 +1,26 @@
+{
+  "today": "2026-09-17",
+  "state": {
+    "stage": "choose",
+    "patient": {
+      "id": "p-1041",
+      "name": "Ana García",
+      "phone": "+34 600 000 001",
+      "cita": "jueves a las diez",
+      "doctor": "la doctora Vidal",
+      "specialty": "medicina de familia"
+    }
+  },
+  "turns": [
+    {
+      "say": "¿Qué tiene libre el lunes?"
+    }
+  ],
+  "expect": {
+    "says": [
+      "nueve",
+      "once y media",
+      "cinco de la tarde"
+    ]
+  }
+}

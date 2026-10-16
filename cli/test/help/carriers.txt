@@ -1,0 +1,94 @@
+$ pinecall carriers --help
+Usage: pinecall carriers [options] [command]
+
+list | show | add | drop the org's carrier accounts: Twilio, a SIP peer,
+WhatsApp
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  list
+  show [account]
+  add             keep an account: its fields from the flags, its secrets from
+                  stdin
+  drop [account]
+  help [command]  display help for command
+
+An account is where the org's numbers live: a Twilio account, a SIP peer (its own PBX or a
+carrier with no API here), a WhatsApp number at Meta. It is the org's, one for both envs, and
+`pinecall numbers import` then routes a number it owns to an agent.
+
+Every secret is read on stdin and never from the command line: typed with nothing echoed on a
+terminal, or piped one per line — a SIP peer's password, then its outbound password when
+--outbound-username is given. `add` with an account the org already holds replaces its secret.
+A peer's networks wait for Pinecall's operator before 5060 opens to them; `show` says where each
+one stands. `drop` forgets an account and leaves its numbers routed until each is dropped.
+
+Examples
+  $ pinecall carriers add twilio --account-sid AC0123… --user SK4567… --label Clínica
+
+
+$ pinecall carriers list --help
+Usage: pinecall carriers list [options]
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall carriers show --help
+Usage: pinecall carriers show [options] [account]
+
+Arguments:
+  account     the org's only one when left out
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall carriers add --help
+Usage: pinecall carriers add [options] [command]
+
+keep an account: its fields from the flags, its secrets from stdin
+
+Options:
+  -h, --help          display help for command
+
+Commands:
+  twilio [options]
+  sip [options]
+  whatsapp [options]
+  help [command]      display help for command
+
+$ pinecall carriers add twilio --help
+Usage: pinecall carriers add twilio [options]
+
+Options:
+  --account-sid <AC…>
+  --user <SK…>         an API key SID, or the account SID again
+  --label <name>
+  -h, --help           display help for command
+
+$ pinecall carriers add sip --help
+Usage: pinecall carriers add sip [options]
+
+Options:
+  --username <user>
+  --address <ip or network...>             the networks it calls from
+  --outbound-host <host>
+  --outbound-transport <auto|udp|tcp|tls>
+  --outbound-username <user>
+  --label <name>
+  -h, --help                               display help for command
+
+$ pinecall carriers add whatsapp --help
+Usage: pinecall carriers add whatsapp [options]
+
+Options:
+  --phone-number-id <id>
+  --label <name>
+  -h, --help              display help for command
+
+$ pinecall carriers drop --help
+Usage: pinecall carriers drop [options] [account]
+
+Options:
+  -h, --help  display help for command

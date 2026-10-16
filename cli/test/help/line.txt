@@ -1,0 +1,79 @@
+$ pinecall line --help
+Usage: pinecall line [options] [command]
+
+which phone is yours, and whose terminal anybody else's call rings in
+
+Options:
+  -h, --help                     display help for command
+
+Commands:
+  show [options] [agent.tsx]
+  from <number>                  which phone is yours: its calls reach your own
+                                 agent
+  forget                         your phone no longer routed to you
+  claim [options] [agent.tsx]    take the line for this terminal
+  release [options] [agent.tsx]  give the line to another terminal running the
+                                 agent
+  help [command]                 display help for command
+
+With nothing after it: who is answering this agent's number right now, and who else is running
+it and could take it.
+
+`from <+number>` says which phone is YOURS, once, and every call you make reaches your own
+agent — while you are running the agent your phone reaches your copy, and everybody else
+reaches production. It is kept in ~/.pinecall/session.json under the gateway's URL, and re-sent
+by every `pinecall start`. `forget` undoes it.
+
+`claim` and `release` are the fallback, for a call from a number nobody said was theirs. The
+first terminal to hold the agent has it.
+
+Examples
+  $ pinecall line from +59899111111
+  calls from +59899111111 reach this terminal
+  $ pinecall line
+  rings in berna@clinica.test · `pinecall line from <+your-number>` routes yours, or `claim` takes it
+
+
+$ pinecall line show --help
+Usage: pinecall line show [options] [agent.tsx]
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall line from --help
+Usage: pinecall line from [options] <number>
+
+which phone is yours: its calls reach your own agent
+
+Arguments:
+  number      +E.164
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall line forget --help
+Usage: pinecall line forget [options]
+
+your phone no longer routed to you
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall line claim --help
+Usage: pinecall line claim [options] [agent.tsx]
+
+take the line for this terminal
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall line release --help
+Usage: pinecall line release [options] [agent.tsx]
+
+give the line to another terminal running the agent
+
+Options:
+  --agent <name>
+  -h, --help      display help for command

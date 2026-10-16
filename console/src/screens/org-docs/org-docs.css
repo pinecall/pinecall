@@ -1,0 +1,298 @@
+/* The org's Docs: a base's files, the editor under them, and the two ways a file arrives. */
+
+.od-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* A file input dressed as the button beside it: the input is there for the click and unseen. */
+.od-upload {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.od-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.od-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.od-row-end {
+  text-align: right;
+}
+
+.od-open {
+  color: var(--accent);
+}
+
+.od-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.od-path {
+  max-width: 420px;
+}
+
+.od-text {
+  min-height: 420px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.od-editor-foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.od-said {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* A base begun from the page: its name, and its first documents. */
+
+.nb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 18px;
+}
+
+.nb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+}
+
+.nb-field .ui-segmented {
+  align-self: flex-start;
+  margin: 4px 0;
+}
+
+.nb-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.nb-hint {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.nb-bad {
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.nb-drop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+  padding: 16px;
+  border: 1px dashed var(--line-control);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+  text-align: center;
+  cursor: pointer;
+}
+
+.nb-drop:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.nb-drop input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.nb-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line-2);
+}
+
+/* What a half-made base says: the gateway's refusal, and which files are already under the name. */
+.nb-landed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 18px 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-4);
+}
+
+/* Read or Edit: two words in the file's head, the one in force raised. */
+.od-mode {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 10px;
+  border-radius: 8px;
+  background: var(--ground-4);
+}
+
+.od-mode-one {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+
+.od-mode-on {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.od-editor[hidden] {
+  display: none;
+}
+
+/* The file as a page: a reading measure, headings that step down, code and tables boxed. */
+.od-read {
+  padding: 8px 28px 28px;
+}
+
+.md {
+  max-width: 760px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-2, var(--ink));
+}
+
+.md > * {
+  margin: 0 0 12px;
+}
+
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin: 22px 0 8px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.md h2 {
+  font-size: 22px;
+}
+
+.md h3 {
+  font-size: 18px;
+}
+
+.md h4 {
+  font-size: 16px;
+}
+
+.md h5,
+.md h6 {
+  font-size: 14.5px;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md ul,
+.md ol {
+  padding-left: 22px;
+}
+
+.md li + li {
+  margin-top: 4px;
+}
+
+.md a {
+  color: var(--accent);
+}
+
+.md code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--ground-4);
+}
+
+.md pre {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ground-4);
+  overflow-x: auto;
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.md blockquote {
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--line);
+  color: var(--ink-4);
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}
+
+.md-table {
+  overflow-x: auto;
+}
+
+.md table {
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.md th,
+.md td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.md th {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.md-empty {
+  color: var(--ink-4);
+}

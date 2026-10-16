@@ -1,0 +1,72 @@
+$ pinecall monitors --help
+Usage: pinecall monitors [options] [command]
+
+the numbers this org watches — latency, the judges, escalations, tools, spend —
+and the line each must not cross
+
+Options:
+  -h, --help            display help for command
+
+Commands:
+  list                  what this org watches, and when each monitor last fired
+  add [options] <name>  watch a number: fires when it crosses the line
+  rm <id>               forget a monitor
+  help [command]        display help for command
+
+A monitor watches one number of the observability series over a window of days, for every agent
+or one, and fires — once a day, as monitor.fired on the agent's log, where the console and
+`sessions` show it — the first seal of a call that finds it on the wrong side of the line:
+
+  e2e_median_s       the caller's wait from their last word to the agent's first, median, seconds
+  llm_median_s       the model's time to its first token, median, seconds
+  held_rate          the share of the judges' verdicts that held, 0 to 1 (--below)
+  escalated_rate     the share of calls a person took over, 0 to 1
+  tool_failure_rate  the share of tool calls that failed, 0 to 1
+  spend_usd          what the calls cost, dollars
+  calls              how many calls there were
+
+--above fires when the number is over the line, --below when it is under; --days is the window
+(7 when left out). The list says, per monitor, the last day it fired and the value that crossed.
+
+Examples
+  $ pinecall monitors add "slow answers" --metric e2e_median_s --above 2 --days 7
+  $ pinecall monitors add "judges slipping" --metric held_rate --below 0.9 --agent front-desk
+  $ pinecall monitors
+  $ pinecall monitors rm mon_8b1d2e3f4a5c
+
+
+$ pinecall monitors list --help
+Usage: pinecall monitors list [options]
+
+what this org watches, and when each monitor last fired
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall monitors add --help
+Usage: pinecall monitors add [options] <name>
+
+watch a number: fires when it crosses the line
+
+Arguments:
+  name               the monitor's name, as the alert will read
+
+Options:
+  --metric <metric>  one of e2e_median_s, llm_median_s, held_rate,
+                     escalated_rate, tool_failure_rate, spend_usd, calls
+  --above <n>        fire when the number is over the line
+  --below <n>        fire when the number is under the line
+  --days <days>      the window: 1, 7 or 30 (default: "7")
+  --agent <name>     one agent's calls alone; every agent's when left out
+  -h, --help         display help for command
+
+$ pinecall monitors rm --help
+Usage: pinecall monitors rm [options] <id>
+
+forget a monitor
+
+Arguments:
+  id          the monitor's id, as the list shows it
+
+Options:
+  -h, --help  display help for command

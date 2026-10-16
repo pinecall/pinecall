@@ -1,0 +1,11 @@
+{
+  "turns": [
+    {
+      "say": "Hi, this is Ana Lopez. Please tell the manager my last order arrived broken.",
+      "then": [
+        { "tool": "takeMessage" },
+        { "reply": { "intent": "tells the caller the message reached the team" } }
+      ]
+    }
+  ]
+}

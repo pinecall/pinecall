@@ -1,0 +1,81 @@
+[
+  {
+    "state": {
+      "stage": "identify"
+    }
+  },
+  {
+    "state": {
+      "stage": "book",
+      "patient": {
+        "id": "p1",
+        "name": "Ana García",
+        "phone": "+34 600 000 001",
+        "cita": "el jueves a las diez",
+        "doctor": "la doctora Vidal"
+      },
+      "day": "2026-09-15",
+      "specialty": "medicina de familia",
+      "slots": [
+        {
+          "id": "s-20260915-1600-ev",
+          "startsAt": "2026-09-15T16:00:00+02:00",
+          "when": "el martes a las cuatro de la tarde",
+          "professional": "la doctora Elena Vidal",
+          "specialty": "medicina de familia"
+        },
+        {
+          "id": "s-20260915-1700-rs",
+          "startsAt": "2026-09-15T17:00:00+02:00",
+          "when": "el martes a las cinco de la tarde",
+          "professional": "el doctor Ramón Sáez",
+          "specialty": "medicina de familia"
+        }
+      ]
+    }
+  },
+  {
+    "state": {
+      "stage": "done",
+      "patient": {
+        "id": "p1",
+        "name": "Ana García",
+        "phone": "+34 600 000 001",
+        "cita": "el jueves a las diez",
+        "doctor": "la doctora Vidal"
+      },
+      "day": "2026-09-15",
+      "specialty": "medicina de familia",
+      "slots": [
+        {
+          "id": "s-20260915-1600-ev",
+          "startsAt": "2026-09-15T16:00:00+02:00",
+          "when": "el martes a las cuatro de la tarde",
+          "professional": "la doctora Elena Vidal",
+          "specialty": "medicina de familia"
+        },
+        {
+          "id": "s-20260915-1700-rs",
+          "startsAt": "2026-09-15T17:00:00+02:00",
+          "when": "el martes a las cinco de la tarde",
+          "professional": "el doctor Ramón Sáez",
+          "specialty": "medicina de familia"
+        }
+      ],
+      "slot": {
+        "id": "s-20260915-1600-ev",
+        "startsAt": "2026-09-15T16:00:00+02:00",
+        "when": "el martes a las cuatro de la tarde",
+        "professional": "la doctora Elena Vidal",
+        "specialty": "medicina de familia"
+      },
+      "booking": {
+        "id": "b-p1",
+        "startsAt": "2026-09-15T16:00:00+02:00",
+        "when": "el martes a las cuatro de la tarde",
+        "professional": "la doctora Elena Vidal",
+        "specialty": "medicina de familia"
+      }
+    }
+  }
+]

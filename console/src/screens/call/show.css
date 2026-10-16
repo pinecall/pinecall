@@ -1,0 +1,11 @@
+/* A call's own page: the console's page and cards; only what a pane's panel needs to sit in a card. */
+
+.show-conversation {
+  max-height: 560px;
+  overflow: auto;
+}
+
+/* A panel written for the pane beside a call keeps the pane's own spacing inside a card. */
+.show-panel .ui-section-label {
+  padding: 16px 20px 8px;
+}

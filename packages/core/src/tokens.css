@@ -1,0 +1,126 @@
+/* The console's palette, type and measures: the redesign's values, named once. The only colours in the console.
+ *
+ * Every colour is a pair — light-dark(daylight, dark) — so a token is still defined once and a theme is only which
+ * half the page reads. The page follows the system through color-scheme before any script runs; theme.ts
+ * stamps data-theme when a person flipped it, and color-scheme follows the stamp. Dark is the landing's palette a step deeper,
+ * Nocturne's — the ground #10111b, a deep blue-grey with a breath of indigo, the sidebar and panes a step up, a card at
+ * #1c1e2b — hairlines instead of shadows, the accent the landing's blurple #9184d9, tints that glow rather than
+ * sit on the page like stickers. */
+
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+:root {
+  /* ink, darkest to faintest */
+  --ink: light-dark(#101014, #e9e9ed);
+  --ink-2: light-dark(#3c3a47, #cfd3e5);
+  --ink-3: light-dark(#6b6975, #b2b6ca);
+  --ink-4: light-dark(#8a8895, #9397ab);
+  --ink-5: light-dark(#9d9baa, #75798c);
+  --ink-6: light-dark(#a3a1ad, #676b7d);
+  --ink-7: light-dark(#c0bdc9, #3f424d);
+
+  /* lines — lifted with the grounds above, so a hairline still reads on them */
+  --line: light-dark(#eeedf2, #232533);
+  --line-2: light-dark(#f2f1f5, #1f2130);
+  --line-3: light-dark(#f7f6fa, #1b1d2b);
+  --line-control: light-dark(#e8e6ee, #2c2f42);
+  --line-field: light-dark(#e4e2ea, #3f424d);
+  --line-hover: light-dark(#d6d3df, #4b4e5c);
+  --line-hover-2: light-dark(#cfccd8, #595d6c);
+  --line-muted: light-dark(#d8d4e4, #3a3c4a);
+
+  /* grounds — the dark ladder is the landing's (Nocturne): page, pane, card, each a step up on blue-grey */
+  --ground: light-dark(#fff, #10111b);
+  --ground-side: light-dark(#fbfafc, #151624);
+  --ground-3: light-dark(#f7f6fa, #181a27);
+  --ground-4: light-dark(#f4f3f7, #1c1e2b);
+  --ground-5: light-dark(#f1f0f5, #232533);
+  --ground-tint: light-dark(#faf9ff, #1a192e);
+
+  /* the accent */
+  --accent: light-dark(#5b3df5, #9184d9);
+  --on-accent: light-dark(#fff, #10111b);
+  --accent-hover: light-dark(#4c2fe0, #b5abfc);
+  --accent-soft: light-dark(#ede9fe, rgb(145 132 217 / 0.16));
+  --accent-selected: light-dark(#efeafe, rgb(145 132 217 / 0.2));
+  --accent-2: light-dark(#8b6bff, #b5abfc);
+  --accent-3: light-dark(#c4b5fd, #5d5294);
+  --accent-line: light-dark(#cfc7fb, rgb(145 132 217 / 0.42));
+  --accent-tint-line: light-dark(#e6e0fd, rgb(145 132 217 / 0.26));
+  --accent-ink: light-dark(#6b5fd0, #d2cefd);
+  --accent-ring: 0 0 0 3px light-dark(rgba(91, 61, 245, 0.12), rgb(145 132 217 / 0.3));
+  --selection: light-dark(#ddd6fe, rgb(145 132 217 / 0.3));
+
+  /* the solid: a filled chip, a picked choice, an avatar — ink turned into a ground, and what is written on it */
+  --solid: light-dark(#101014, #e9e9ed);
+  --on-solid: light-dark(#fff, #10111b);
+
+  /* the tints a pill, an avatar or a row wears */
+  --green: light-dark(#15803d, #3ecf9a);
+  --green-dot: light-dark(#16a34a, #1ebc89);
+  --green-soft: light-dark(#dcfce7, rgb(30 188 137 / 0.14));
+  --amber: light-dark(#a16207, #fbbf24);
+  --amber-dot: #f59e0b;
+  --amber-soft: light-dark(#fef3c7, rgb(245 158 11 / 0.14));
+  --amber-tint: light-dark(#fffdf5, rgb(245 158 11 / 0.05));
+  --red: light-dark(#b91c1c, #f87171);
+  --red-soft: light-dark(#fee2e2, rgb(239 68 68 / 0.15));
+  --red-line: light-dark(#f3c8c8, rgb(239 68 68 / 0.38));
+  --indigo: light-dark(#4338ca, #a5b4fc);
+  --indigo-soft: light-dark(#e0e7ff, rgb(99 102 241 / 0.18));
+  --pink: light-dark(#be185d, #f472b6);
+  --pink-soft: light-dark(#fce7f3, rgb(236 72 153 / 0.15));
+  --teal: light-dark(#0f766e, #2dd4bf);
+
+  /* A chart's series, in order: six hues far enough apart to tell on either ground — the accent,
+     then teal, amber, pink, sky and slate — each a step brighter on dark, as the tints above. */
+  --chart-1: light-dark(#5b3df5, #a99cf5);
+  --chart-2: light-dark(#0d9488, #2dd4bf);
+  --chart-3: light-dark(#d97706, #fbbf24);
+  --chart-4: light-dark(#db2777, #f472b6);
+  --chart-5: light-dark(#0284c7, #38bdf8);
+  --chart-6: light-dark(#94a3b8, #64748b);
+
+  /* On black a shadow barely reads, so the dark half deepens it and lights the top edge instead. */
+  --shadow-pop:
+    0 16px 40px -16px light-dark(rgba(16, 16, 20, 0.26), rgb(0 0 0 / 0.7)),
+    0 2px 6px light-dark(rgba(16, 16, 20, 0.05), rgb(0 0 0 / 0.4)),
+    inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 0.05));
+  --shadow-card: 0 1px 2px light-dark(rgba(16, 16, 20, 0.04), rgb(0 0 0 / 0.3));
+  --shadow-raised: 0 1px 2px light-dark(rgba(16, 16, 20, 0.08), rgb(0 0 0 / 0.5));
+  --shadow-talk: 0 10px 24px -12px light-dark(rgba(91, 61, 245, 0.9), rgb(124 99 255 / 0.7));
+  --shadow-preview: 0 8px 20px -14px light-dark(rgba(16, 16, 20, 0.3), rgb(0 0 0 / 0.7));
+  --shadow-toast:
+    0 1px 2px light-dark(rgba(16, 16, 20, 0.04), rgb(0 0 0 / 0.3)),
+    0 12px 32px -8px light-dark(rgba(16, 16, 20, 0.18), rgb(0 0 0 / 0.65)),
+    inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 0.05));
+  --shadow-nub: 0 2px 6px light-dark(rgba(16, 16, 20, 0.12), rgb(0 0 0 / 0.5));
+  --shadow-room:
+    0 1px 2px light-dark(rgba(16, 16, 20, 0.04), rgb(0 0 0 / 0.3)),
+    0 26px 60px -28px light-dark(rgba(16, 16, 20, 0.35), rgb(0 0 0 / 0.8)),
+    inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 0.05));
+  /* a customer's site, where the widget is previewed: theirs and not ours, so daylight in either theme */
+  --site-ground: #fff;
+  --site-ink: #a3a1ad;
+  --site-red: #b91c1c;
+
+  /* what dims the page behind ⌘K */
+  --scrim: light-dark(rgba(16, 16, 20, 0.24), rgb(0 0 0 / 0.6));
+
+  --face: Inter, system-ui, -apple-system, sans-serif;
+  --face-fixed: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --side: 252px;
+  --side-folded: 62px;
+  --head: 52px;
+}

@@ -1,0 +1,10 @@
+{
+  "turns": [
+    { "say": "Hi, this is Ana Lopez. Please tell the manager my last order arrived broken." }
+  ],
+  "expect": {
+    "tools": [
+      "take_message"
+    ]
+  }
+}

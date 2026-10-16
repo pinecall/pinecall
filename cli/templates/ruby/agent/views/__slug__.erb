@@ -1,0 +1,7 @@
+<%# The view: the one block of the prompt that changes between two turns, and the last one the model reads. %>
+<% if stage == :ask -%>
+Greet the caller. A question the documents answer, answer; otherwise ask for their name and what the call is about.
+<% end -%>
+<% if stage == :done -%>
+The message is written down: <%= message[:name] %>, about <%= message[:about] %>. Tell them it reached the team, say goodbye and hang up.
+<% end -%>

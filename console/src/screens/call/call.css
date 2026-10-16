@@ -1,0 +1,782 @@
+/* One conversation: the head, the log's rows, and the desk and panes beside them. */
+
+.call {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pane, 360px);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.call-middle {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── the head ─────────────────────────────────────────────────────────────── */
+
+.call-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.call-who {
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.call-who-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.call-who-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.call-who-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.call-connection {
+  color: var(--amber);
+}
+
+.call-connection-bad {
+  color: var(--red);
+}
+
+.call-head-moves {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── the desk ─────────────────────────────────────────────────────────────── */
+
+.call-desk {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+.call-desk-say {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 100%;
+  order: 2;
+  min-width: 0;
+}
+
+.call-desk-text {
+  flex: 1;
+  min-width: 120px;
+}
+
+.call-desk-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-muted);
+}
+
+.call-desk-dot-warm {
+  background: var(--amber-dot);
+}
+
+.call-desk-dot-on {
+  background: var(--green-dot);
+}
+
+.call-desk-armed,
+.call-desk-armed:hover {
+  border-color: var(--red-line);
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.call-desk-holding,
+.call-desk-holding:hover {
+  border-color: var(--amber-dot);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.call-desk-number {
+  width: 150px;
+}
+
+.call-desk-refused {
+  flex-basis: 100%;
+  order: 3;
+  font-size: 12.5px;
+  color: var(--red);
+  line-height: 1.5;
+}
+
+/* The ask sits above the verbs and takes the whole row: it is the reason the desk is open. */
+.call-desk-asked {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--amber-tint);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.call-desk-waiting {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-6);
+  white-space: nowrap;
+}
+
+.call-desk-note {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* ── the rows ─────────────────────────────────────────────────────────────── */
+
+.call-rows {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.call-recording {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line-3);
+}
+
+.call-row {
+  display: block;
+  border-top: 1px solid var(--line-3);
+}
+
+.call-row:first-child {
+  border-top: 0;
+}
+
+.call-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 9px 14px;
+  list-style: none;
+}
+
+.call-line::-webkit-details-marker {
+  display: none;
+}
+
+details.call-row > .call-line {
+  cursor: pointer;
+}
+
+.call-state {
+  background: var(--ground-tint);
+}
+
+.call-tool,
+.call-confirm {
+  background: var(--amber-tint);
+}
+
+.call-supervisor {
+  background: var(--pink-soft);
+}
+
+/* What happened to the line itself reads as the same kind of event as a person at the desk. */
+.call-handing {
+  background: var(--pink-soft);
+}
+
+.call-seq {
+  flex: none;
+  width: 26px;
+  font-size: 12px;
+  color: var(--ink-7);
+  text-align: right;
+  padding-top: 1px;
+}
+
+.call-kind {
+  flex: none;
+  min-width: 46px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink);
+  padding-top: 1px;
+}
+
+.call-kind-state {
+  color: var(--accent-hover);
+}
+
+.call-kind-tool,
+.call-kind-confirm {
+  color: var(--amber);
+}
+
+.call-kind-quiet {
+  color: var(--ink-6);
+}
+
+.call-kind-event,
+.call-kind-lookup {
+  color: var(--indigo);
+}
+
+.call-kind-supervisor,
+.call-kind-handing {
+  color: var(--pink);
+}
+
+.call-text {
+  flex: 1 1 150px;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  word-break: break-word;
+}
+
+.call-text-turn {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.call-text-quiet {
+  color: var(--ink-6);
+}
+
+.call-who {
+  display: inline-block;
+  margin-right: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-4);
+}
+
+.call-who-agent {
+  color: var(--accent-hover);
+}
+
+.call-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.call-failed {
+  color: var(--red);
+}
+
+.call-more {
+  padding: 2px 14px 12px 106px;
+}
+
+.call-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.call-data {
+  margin: 0;
+  font: 12px var(--face-fixed);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.call-block-name {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-6);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The turn being said, as the row it is about to become: words arrive one by one, the newest lit. */
+.call-saying {
+  background: var(--ground-tint);
+}
+
+.call-word {
+  animation: call-arrive 0.2s ease-out;
+  transition: color 0.25s ease-out;
+}
+
+.call-word-now {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.call-caret {
+  display: inline-block;
+  width: 6px;
+  height: 13px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--accent);
+  animation: call-blink 1s steps(2) infinite;
+}
+
+@keyframes call-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes call-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── the pane beside ──────────────────────────────────────────────────────── */
+
+.call-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+/* The pane breathes more than a card does: it is read at a glance, beside a call that moves. */
+.call-pane .ui-section-label {
+  padding: 18px 20px 10px;
+}
+
+.call-pane .ui-kv-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One block of the prompt on one line: its name, the start of its hash, how long it is. */
+.call-prompt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.call-prompt-name {
+  color: var(--ink-3);
+}
+
+.call-prompt-hash {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-6);
+}
+
+.call-prompt-chars {
+  margin-left: auto;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.call-pane-body {
+  padding: 0 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.call-pane-body-tight {
+  gap: 9px;
+}
+
+.call-pane-text {
+  padding: 0 20px 18px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+.call-seen {
+  margin-left: 5px;
+  font-size: 11px;
+  color: var(--ink-6);
+}
+
+.call-seen-pii {
+  color: var(--pink);
+}
+
+.call-people {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.call-person {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.call-person summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.call-person summary::-webkit-details-marker {
+  display: none;
+}
+
+.call-person-kind {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-6);
+}
+
+.call-speaking {
+  background: var(--green-dot);
+}
+
+.call-meter {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.call-meter-name {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.call-meter-value {
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.call-blocks {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.call-blocks summary {
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.call-readings {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 12px;
+}
+
+/* One measurement: the name keeps its line, the value takes what is left and breaks only when it
+   must — an id or a model's name — never in the middle of a number. */
+.call-reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-3);
+  font-size: 12.5px;
+}
+
+.call-reading:last-child {
+  border-bottom: 0;
+}
+
+.call-reading-name {
+  flex: none;
+  color: var(--ink-4);
+}
+
+.call-reading-value {
+  min-width: 0;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .call {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: auto;
+  }
+
+  .call-pane {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    max-height: 40vh;
+  }
+}
+
+/* ── a call that is over ──────────────────────────────────────────────────── */
+
+/* What a finished call adds at the foot of its own log: the two moves, and the proof, folded. */
+.call-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+/* What Details opens: the cards, inside the log's own gutter. */
+.call-foot > .ui-card {
+  margin: 0 14px;
+}
+
+/* And in the pane beside it, first: what it came to, how it was judged, how fast, what it cost. */
+.call-over {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Chat, transcript, log or trace: four words in the head, the one in force raised. */
+.call-view {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ground-4);
+}
+
+.call-view-one {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.call-view-one:hover {
+  color: var(--ink);
+}
+
+.call-view-on {
+  background: var(--ground);
+  color: var(--ink);
+  font-weight: 550;
+  box-shadow: var(--shadow-raised);
+}
+
+/* ── the call read as a chat ─────────────────────────────────────────────── */
+
+.call-chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.call-chat-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 24px 28px;
+}
+
+.call-chat-line {
+  display: flex;
+}
+
+.call-chat-line-caller {
+  justify-content: flex-end;
+}
+
+.call-chat-bubble {
+  max-width: 78%;
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.call-chat-agent {
+  background: var(--ground-4);
+  color: var(--ink);
+  border-bottom-left-radius: 6px;
+}
+
+.call-chat-caller {
+  background: var(--accent-selected);
+  color: var(--ink);
+  border-bottom-right-radius: 6px;
+}
+
+.call-chat-unsettled {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.call-chat-tool {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-control);
+  border-radius: 99px;
+  font-family: var(--face-fixed);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.call-chat-tool-name {
+  color: var(--ink-2);
+}
+
+.call-chat-tool-ok {
+  color: var(--green);
+}
+
+.call-chat-tool-bad {
+  color: var(--red);
+}
+
+.call-chat-tool-running {
+  color: var(--amber);
+}
+
+.call-chat-note {
+  align-self: center;
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 12px;
+}
+
+/* The trace id: one line, the id clipped and a copy beside it, the collector's host under it. */
+.call-trace-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.call-trace-code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* A row a judge broke on: red down its left, the judge's creature and why under it. */
+.call-broken {
+  border-left: 3px solid var(--red);
+  background: var(--red-soft);
+}
+
+.call-broken .call-row {
+  background: transparent;
+}
+
+.call-broken-by {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 14px 10px;
+}
+
+.call-broken-judge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--red);
+}
+
+.call-broken-judge img {
+  display: block;
+  flex: none;
+  border-radius: 50%;
+}
+
+.call-broken-name {
+  flex: none;
+  font-weight: 600;
+}
+
+.call-broken-why {
+  color: var(--ink-2);
+}
+
+/* In the chat, a bubble or a tool and, under it, the judges that broke on it. */
+.call-chat-said {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.call-chat-broken > .call-chat-line .call-chat-bubble,
+.call-chat-broken > .call-chat-tool {
+  box-shadow: 0 0 0 2px var(--red-line);
+}
+
+.call-chat-broken > .call-broken-by {
+  padding: 0 4px;
+}
+

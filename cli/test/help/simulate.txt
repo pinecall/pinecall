@@ -1,0 +1,32 @@
+$ pinecall simulate --help
+Usage: pinecall simulate [options]
+
+a model plays one persona against the agent, live, and the call is scored at
+hang-up
+
+Options:
+  --persona <name>         one of the agent's personas: pinecall personas lists
+                           them
+  --judge                  read back the call.score the log seals on, and print
+                           every judge
+  --turns <n>              how many turns the caller improvises before hanging
+                           up (default: "15")
+  --voice                  a real line: a room, and the caller in a person's
+                           voice
+  --listen                 the call on this machine's speakers while it happens;
+                           turns --voice on
+  --background-noise <dB>
+  --ambience <what>
+  --packet-loss <share>
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help               display help for command
+
+A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
+and its own facts — there is no script. The agent is whoever holds it — your `pinecall start`, a
+colleague's, production's with --prod; nothing is started here. The call lands in the log like
+any other. --background-noise, --ambience and --packet-loss are spoken runs only.
+
+Examples
+  $ pinecall simulate --persona hurried --listen --turns 2
+

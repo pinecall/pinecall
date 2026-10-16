@@ -1,0 +1,16 @@
+[
+  { "asks": "¿cuánto tengo que pagar de copago en la consulta?",
+    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Copagos" },
+  { "asks": "¿hace falta autorización para una resonancia?",
+    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Qué necesita autorización previa" },
+  { "asks": "¿trabajáis con Asisa?",
+    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Compañías concertadas" },
+  { "asks": "¿tengo que ir en ayunas para el análisis de sangre?",
+    "expects": "preparacion-de-pruebas.md › Preparación de las pruebas › Analíticas" },
+  { "asks": "¿cómo me preparo para una ecografía?",
+    "expects": "preparacion-de-pruebas.md › Preparación de las pruebas › Imagen" },
+  { "asks": "¿qué llevo para la prueba de esfuerzo?",
+    "expects": "preparacion-de-pruebas.md › Preparación de las pruebas › Funcionales" },
+  { "asks": "¿me mandáis la factura por correo?",
+    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Facturación" }
+]

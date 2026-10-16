@@ -1,0 +1,9 @@
+# The key `pinecall link` writes: never in the repository.
+.env
+.env.*
+!.env.example
+
+# What `pinecall test` writes while it runs.
+.pinecall/
+
+node_modules/

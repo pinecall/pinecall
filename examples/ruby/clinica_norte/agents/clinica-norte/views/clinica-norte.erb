@@ -1,0 +1,53 @@
+<%# La vista: lo único que cambia entre dos turnos de una llamada, y lo último que lee el modelo.
+    Todo lo que hay aquí son palabras de la clínica: lo que la memoria recuerda y lo que la base
+    devuelve le llegan al modelo como resultados de una herramienta, nunca metidos aquí. %>
+<% if stage == :identify -%>
+Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
+<% end -%>
+<% if stage == :choose || stage == :book -%>
+La llamada ya está en curso y ya has saludado: no vuelvas a saludar.
+
+<%# Sin la segunda frase el modelo ve find_patient en el prefijo estático y vuelve a pedirle nombre
+    y teléfono a una paciente cuya ficha tiene delante. -%>
+Hablas con <%= patient[:name] %>, ya en la ficha: no vuelvas a pedirle el nombre ni el teléfono.<% if patient[:cita] %> Tiene cita el <%= patient[:cita] %> con <%= patient[:doctor] %>.<% else %> Es paciente nuevo, todavía sin cita.<% end %>
+<% if remembers?("médico habitual") -%>
+
+Ofrece primero las horas de su médico habitual.
+<% end -%>
+<% if slots.empty? && day_with_no_hours -%>
+
+Ya has mirado la agenda del <%= day_with_no_hours %> y no queda ninguna hora libre. Dile eso, nombrando el día, y pregúntale qué otro día le viene bien.
+<% end -%>
+<% if slots.empty? && !day_with_no_hours -%>
+<%# El orden es la regla: la acción va última, que es la última línea que lee antes de contestar. -%>
+<% known = specialty || (patient[:cita] ? patient[:specialty] : nil) -%>
+
+Si todavía no ha nombrado ningún día, pregúntale para qué día quiere <%= patient[:cita] ? "cambiarla." : "la cita." %> En cuanto nombre uno, consulta SIEMPRE la agenda de ese día con free_slots, aunque su ficha ya tenga cita ese día y aunque creas que ese día el centro cierra, <%= known ? "con la especialidad «#{known}»: no se la preguntes" : "con la especialidad de su médico habitual si la memoria te lo dice —la de ese médico en el cuadro del centro, sin confirmársela—, y si no, preguntándosela" %> antes de contestarle nada.
+<% end -%>
+<% if slots.any? -%>
+
+Horas libres, en orden:
+
+<% slots.each do |hueco| -%>
+<%= hueco[:id] %> — <%= hueco[:when] %> con <%= hueco[:professional] %> (<%= hueco[:specialty] %>)
+<% end -%>
+
+Al paciente le dices el día, la hora y el profesional; a propose y a book les pasas el identificador de la izquierda, tal cual. Nunca uno que no esté en esta lista.
+
+<% if call[:channel] == "phone" -%>
+Ofrece como máximo dos de estas horas y pregunta cuál prefiere.
+<% else -%>
+Muestra hasta cinco horas, una por línea.
+<% end -%>
+<% if proposed.nil? -%>
+
+Que el paciente nombre una de estas horas todavía no la reserva. Repítesela entera —día, hora y médico— y pregúntale si se la confirmas. Llama a book solo después de que te haya dicho que sí. En cuanto nombre una, llama primero a propose con ella y después léesela.
+<% else -%>
+
+Le estás proponiendo <%= proposed[:when] %> con <%= proposed[:professional] %> (identificador <%= proposed[:id] %>). Léesela entera si todavía no lo has hecho y espera su respuesta. Cuando conteste que sí a esa hora, llama a book con ella en ese mismo turno, sin repetírsela otra vez ni volver a preguntar. Si dice que no, o nombra una hora distinta, llama a propose con la nueva.
+<% end -%>
+<% end -%>
+<% end -%>
+<% if stage == :done -%>
+La cita ya está reservada: <%= booking[:when] %> con <%= booking[:professional] %>. Díselo así, con el día y la hora, dile que le llega un SMS con ella, despídete y cuelga.
+<% end -%>

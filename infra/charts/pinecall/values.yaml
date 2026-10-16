@@ -1,0 +1,116 @@
+# One release per world-pair: production and sandbox share a cluster, one gateway and one database.
+
+# The registry's runtime image (the operator's values); the tag is the commit `make deploy` gives.
+image:
+  repository: ""
+  tag: ""
+
+# The one name both worlds are served at (PINECALL_DOMAIN): the world of a request is its key's
+# or its header's, never the name's.
+domain: ""
+
+fleets:
+  production: pinecall
+  sandbox: pinecall-sandbox
+
+# The cloud's secret store, synced by External Secrets Operator: `provider` is its
+# ClusterSecretStore's provider block as External Secrets takes it, whichever cloud
+# (`gcpsm: { projectID: … }` for Google's Secret Manager, terraform/modules/secrets; `aws: { service:
+# SecretsManager, region: … }`; `vault: …`), and every secret is read as <prefix><name>. On GKE the
+# store names its identity (`auth.workloadIdentity`, infra/values/example.yaml): a store that
+# leans on the node's metadata server probes it once at start, and a node pool upgrade starts
+# the operator seconds before the server answers (2026-10-11) — the store stays broken until the
+# pod is restarted.
+secrets:
+  provider: {}
+  prefix: ""
+  refresh: 1h
+
+# The class of the disks this chart claims (each world's media Redis); unset, the cluster's default.
+storageClass: ""
+
+# CloudNativePG's application secret of the cluster's Postgres (charts/postgres).
+postgres:
+  secret: pinecall-postgres-app
+  # charts/postgres's role for the gateway: rows, never a table's shape. The migrations grant it
+  # and run as the owner above, with the nightly retention and the fleets' keys at install.
+  appRole: pinecall_app
+  appSecret: pinecall-postgres-runtime
+
+media:
+  livekit: docker.io/livekit/livekit-server:v1.13.7@sha256:6fd3b7088874c4d119160dd688798dfec852bc014786d392caad15f6f63912a3
+  sip: docker.io/livekit/sip:v1.17.0@sha256:d3c6441eb0918a81ab9e48ba7df6f02c1eebbeace42c963b2c6a6e5418675671
+  redis: docker.io/library/redis:8.10.2-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+  kubectl: registry.k8s.io/kubectl:v1.35.0
+  kubeip: docker.io/doitintl/kubeip-agent:2.2.1@sha256:a0e4bc33b2027644bd952042e913453365caf2a69179a06482c1ad2673983749
+  rtpPorts: 10000-10199
+  # The nodes' subnet (terraform/modules/gke, nodes_range): LiveKit on the node's network sees the
+  # cluster's virtual interfaces too (the pods' bridge, the DNS cache's address) and takes its port
+  # on these alone. Required.
+  nodeNetwork: ""
+  # Each world's media address (terraform/modules/edge, media_addresses): kubeip gives it to the
+  # world's media node by the address's label (pinecall-media=<cluster>-<world>), and the world's
+  # LiveKit and SIP announce it. Unset, they announce the node's ephemeral address.
+  addresses:
+    production: ""
+    sandbox: ""
+
+gateway:
+  replicas: 2
+  # The load balancer's addresses, the only X-Forwarded-For believed (comma-separated CIDRs: on
+  # Google Cloud, 35.191.0.0/16,130.211.0.0/22 and the ingress's own address). Unset, none is, and
+  # every request is counted by the address that reached the pod.
+  trustedProxies: ""
+  # The cluster's pods (terraform/modules/gke, pods_range): /metrics answers them (a forwarded
+  # request never). Required.
+  podNetwork: ""
+
+# Each world's workers on its media node, and the ones KEDA scales on its own workers pool from 0
+# on the gateway's own number (GET /v1/fleet/wanted); `most` is the pool's ceiling
+# (terraform/modules/gke, workers_max).
+workers:
+  core:
+    production: { replicas: 2, seats: 2 }
+    sandbox: { replicas: 2, seats: 1 }
+  scaled:
+    production: { seats: 32, most: 10 }
+    sandbox: { seats: 32, most: 3 }
+
+# staging or production: the cluster this release is (modules/edge labels its addresses by it).
+cluster: ""
+
+# Who collects the gateways' and Postgres's metrics and evaluates alerts.yaml, said by the
+# environment, never guessed: `gmp`, Google's Managed Prometheus (the alerts are then
+# terraform/modules/alerts'); `prometheus-operator`, any cluster that runs it (a PodMonitor each, and
+# alerts.yaml as this chart's PrometheusRule); `none`. `namespace` is where the collector runs,
+# which the Postgres policy admits to the metrics' port.
+monitoring:
+  collector: ""
+  namespace: ""
+
+# The identity kubeip acts as (terraform/modules/kubeip). Unset, kubeip is not installed.
+kubeip:
+  identity: ""
+
+# The names a carrier sends each world's calls to (PINECALL_SIP_DOMAIN, ..._SANDBOX_SIP_DOMAIN):
+# each world's media address, since the box's name is Google's HTTPS load balancer, which carries
+# no SIP. Unset, the box's name.
+sipDomains:
+  production: ""
+  sandbox: ""
+
+# The object store a finished recording moves to (docs/the-environment.md): unset, recordings stay
+# on the pod's disk and go with it. Its key is the world's `s3-access-key-id` and
+# `s3-secret-access-key` in Secret Manager, put by the operator (terraform/modules/secrets, `given`).
+store:
+  endpoint: ""
+  region: ""
+  bucket: ""
+
+# Where this runtime's orgs pay (PINECALL_BILLING_URL, docs/charging-for-it.md): GET /v1/limits
+# answers it and the console's Upgrade opens it. Unset, the runtime bills nobody.
+billingUrl: ""
+
+overflow:
+  says: ""
+

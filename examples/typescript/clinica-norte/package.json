@@ -1,0 +1,18 @@
+{
+  "name": "@pinecall/example-clinica-norte",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Clínica Norte: one class that renders its own prompt, and the folder it searches — the tenant the design writes",
+  "type": "module",
+  "scripts": {
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pinecall/agents": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "vitest": "^5.0.0"
+  }
+}

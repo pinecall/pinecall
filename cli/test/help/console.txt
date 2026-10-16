@@ -1,0 +1,14 @@
+$ pinecall console --help
+Usage: pinecall console [options] [agent]
+
+the console in a browser, signed in: the sandbox's, or production's with --prod
+
+Options:
+  --no-open   print the URL and do not open a browser
+  -h, --help  display help for command
+
+Opens the console of the env this verb acts in, signed in. The key itself never travels: the
+gateway mints a one-use code for it, good for five minutes, and the page spends the code for a
+key of that browser's own. Without --prod it is the SANDBOX's console; with --prod, production's.
+With no agent it opens the org's floor; name one and it opens that agent's screens.
+

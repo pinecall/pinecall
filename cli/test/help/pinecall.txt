@@ -1,0 +1,100 @@
+Usage: pinecall [options] [command]
+
+An agent's project in any language, against the Pinecall gateway.
+
+Options:
+  -v, --version                  output the version number
+  --prod                         act in production for this one command (the
+                                 sandbox otherwise)
+  --json                         answer with one JSON object on stdout
+  -h, --help                     display help for command
+
+Commands:
+  new [options] <name>           a new project, in TypeScript, Ruby or Python,
+                                 and its first agent with --agent
+  generate|g                     an agent in this project, or one more golden
+                                 for one of its agents
+  login [options] [gateway]      sign this machine in through a browser; `link`
+                                 asks for it when it is needed
+  link [options]                 this project's folder to one of your orgs: your
+                                 key, in its .env
+  whoami                         which org and which key this terminal is
+                                 holding, and which envs it opens
+  secrets                        the org's secrets: what its hosted apps are
+                                 started with, as environment variables
+  start [options] [agent.tsx]    the agents served and the console answered: the
+                                 process you deploy
+  console [options] [agent]      the console in a browser, signed in: the
+                                 sandbox's, or production's with --prod
+  prompt [options] [agent.tsx]   the exact prompt a state would produce, offline
+  sessions [options] [call]      an agent's calls; one call whole, with what it
+                                 cost and how it was judged; or its log
+  chat [options] [agent]         a written caller against the agent, wherever it
+                                 is held
+  supervise <call>               listen in: whisper, say, takeover, transfer,
+                                 end
+  data                           the org's data: erasures, the policy, consent,
+                                 the do-not-call list, export
+  test [options] [paths...]      the goldens, run through the agent wherever it
+                                 is held
+  simulate [options]             a model plays one persona against the agent,
+                                 live, and the call is scored at hang-up
+  eval [options] <call-id>       ring 3: one real call, re-evaluated by the
+                                 runtime's code checks
+  runs                           the runs this gateway has done: list, show,
+                                 diff, promote a call, watch the drift
+  cases                          the org's dataset: real calls kept as cases —
+                                 read, approve, dismiss, pull into the
+                                 repository
+  personas                       an agent's synthetic callers: Pinecall's
+                                 switched on or off, its own written, generated,
+                                 tried
+  agent                          what the org set over the class — yours, the
+                                 team's, production's — setting it, and the
+                                 processes that hold it
+  lexicon                        an agent's words: how the voice says them and
+                                 what the ears must know
+  pipeline [options]             what the agent hears, decides and speaks with,
+                                 as the next call would be built
+  voices                         a voice vendor's voices, and any one of them
+                                 heard on this machine before it is chosen
+  docs                           the documents the agent searches: pushed as a
+                                 base, listed, dropped, held to a golden,
+                                 attached
+  memory                         what memory kept about a contact, forget it on
+                                 request, and what a golden says of recall
+  remember [options] [paths...]  the goldens memory.remember is held to: what a
+                                 call teaches, and what it never keeps
+  numbers                        list | available | import | buy | drop the
+                                 numbers the org answers at
+  carriers                       list | show | add | drop the org's carrier
+                                 accounts: Twilio, a SIP peer, WhatsApp
+  line                           which phone is yours, and whose terminal
+                                 anybody else's call rings in
+  callbacks [options]            the numbers people left when every seat was
+                                 taken: who to call back
+  limits                         what the org may use in this env, what it used
+                                 this month, and whose keys its calls run on
+  judges                         every judge a call meets: Pinecall's, switched
+                                 on or off; the org's own and the agent's own;
+                                 one tried on calls
+  judging [options] [on|off]     whether this org's calls are judged at hang-up,
+                                 and the model the judges run on: Pinecall's, or
+                                 one of yours
+  providers                      every vendor this build runs, and the provider
+                                 keys this org brought of its own
+  deploy                         run this project on Pinecall: uploaded as a
+                                 release, installed and started there
+  monitors                       the numbers this org watches — latency, the
+                                 judges, escalations, tools, spend — and the
+                                 line each must not cross
+  webhook                        where this org's alerts are posted: a webhook
+                                 of its own, set with a secret, proven with a
+                                 test, cleared
+  telemetry                      where this org's calls' traces go: its own
+                                 OpenTelemetry collector, set, read and taken
+                                 back
+  mcp                            the MCP server an assistant runs this CLI as,
+                                 and `install`, which adds it to every assistant
+                                 here
+  help [command]                 display help for command

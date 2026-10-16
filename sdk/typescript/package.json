@@ -1,0 +1,123 @@
+{
+  "name": "@pinecall/agents",
+  "version": "0.10.1",
+  "description": "Write an agent as a class: its fields are the state, its @tool methods are the model's verbs, and its docstrings are the prompt. The pinecall CLI serves it",
+  "license": "Apache-2.0",
+  "author": "Pinecall <hello@pinecall.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinecall/pinecall.git",
+    "directory": "sdk/typescript"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./panels": {
+      "types": "./src/views/panels.ts",
+      "import": "./src/views/panels.ts",
+      "default": "./src/views/panels.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    "./client/testing": {
+      "types": "./src/client/testing/index.ts",
+      "import": "./src/client/testing/index.ts",
+      "default": "./src/client/testing/index.ts"
+    },
+    "./serve": {
+      "types": "./src/serve/index.ts",
+      "import": "./src/serve/index.ts",
+      "default": "./src/serve/index.ts"
+    },
+    "./wire": {
+      "types": "./src/wire/index.ts",
+      "import": "./src/wire/index.ts",
+      "default": "./src/wire/index.ts"
+    },
+    "./views/jsx-runtime": {
+      "types": "./src/views/jsx-runtime.ts",
+      "import": "./src/views/jsx-runtime.ts",
+      "default": "./src/views/jsx-runtime.ts"
+    },
+    "./views/jsx-dev-runtime": {
+      "types": "./src/views/jsx-dev-runtime.ts",
+      "import": "./src/views/jsx-dev-runtime.ts",
+      "default": "./src/views/jsx-dev-runtime.ts"
+    },
+    "./tsconfig.tenant.json": "./tsconfig.tenant.json"
+  },
+  "files": [
+    "dist",
+    "tsconfig.tenant.json"
+  ],
+  "scripts": {
+    "build": "scripts/build",
+    "lint": "tsc -p tsconfig.lint.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "oxc-parser": "^0.148.0",
+    "tsx": "^4.20.6",
+    "ws": "^8.21.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/ws": "^8.18.1",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "packageManager": "pnpm@11.2.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./panels": {
+        "types": "./dist/views/panels.d.ts",
+        "import": "./dist/views/panels.js"
+      },
+      "./client": {
+        "types": "./dist/client/index.d.ts",
+        "import": "./dist/client/index.js"
+      },
+      "./client/testing": {
+        "types": "./dist/client/testing/index.d.ts",
+        "import": "./dist/client/testing/index.js"
+      },
+      "./serve": {
+        "types": "./dist/serve/index.d.ts",
+        "import": "./dist/serve/index.js",
+        "default": "./dist/serve/index.js"
+      },
+      "./wire": {
+        "types": "./dist/wire/index.d.ts",
+        "import": "./dist/wire/index.js"
+      },
+      "./views/jsx-runtime": {
+        "types": "./dist/views/jsx-runtime.d.ts",
+        "import": "./dist/views/jsx-runtime.js"
+      },
+      "./views/jsx-dev-runtime": {
+        "types": "./dist/views/jsx-dev-runtime.d.ts",
+        "import": "./dist/views/jsx-dev-runtime.js"
+      },
+      "./tsconfig.tenant.json": "./tsconfig.tenant.json"
+    }
+  }
+}

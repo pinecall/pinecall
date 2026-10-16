@@ -1,0 +1,13 @@
+$ pinecall pipeline --help
+Usage: pinecall pipeline [options]
+
+what the agent hears, decides and speaks with, as the next call would be built
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+The three legs of the pipeline as the NEXT call would be built — the vendor, the model and the
+one knob worth showing — the opening, and the medians livekit measured over the agent's recent
+calls. Setting them is `pinecall agent set`.
+

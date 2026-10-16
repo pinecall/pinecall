@@ -1,0 +1,132 @@
+/* Tiles: a grid of cards — a face or a creature on each, a name, a line, a foot. The card opens through one link laid over it; the
+   switch sits above the link so a click on it is a switch and never an open. */
+
+.ui-tiles-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ui-tiles-title {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.ui-tiles-title span {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-4);
+}
+
+.ui-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
+}
+
+.ui-tiles-none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ui-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+
+.ui-tile:hover {
+  border-color: var(--accent-line);
+  box-shadow: var(--accent-ring);
+}
+
+.ui-tile-off .ui-tile-mark {
+  opacity: 0.72;
+}
+
+.ui-tile-open {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.ui-tile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.ui-tile-top .ui-switch,
+.ui-tile-top .ui-pill {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-tile-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ui-tile-sub {
+  margin: 0;
+  min-height: 2.9em;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ui-tile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.ui-tile-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+/* A long tag is cut, not wrapped past the card: its whole is in the title. */
+.ui-tile-tags > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ui-tile-tags .ui-pill {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

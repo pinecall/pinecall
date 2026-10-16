@@ -1,0 +1,34 @@
+$ pinecall login --help
+Usage: pinecall login [options] [gateway]
+
+sign this machine in through a browser; `link` asks for it when it is needed
+
+Arguments:
+  gateway     the gateway to sign in to; https://cloud.pinecall.io when left out
+
+Options:
+  --no-open   print the link and do not open a browser
+  -h, --help  display help for command
+
+Prints a link and opens it. You sign in there — in a browser, where a password belongs — and
+the page hands this terminal a key of its OWN, minted for you and labelled as this machine, so
+it is revoked on its own from Tokens. Nothing types a password into a shell, and the day your
+org signs in with Google this verb does not change.
+
+With no URL it is https://cloud.pinecall.io, and it says so before anything is kept.
+
+The key is the machine's sign-in, kept in ~/.pinecall/session.json (0600; PINECALL_HOME moves
+it), and no verb runs on it: a project runs on the key `pinecall link` writes into its own
+.env. `link` signs the machine in itself when it is not, so this is rarely typed. A server has
+no login at all: a server's token from Tokens, in its secrets as PINECALL_KEY.
+
+Examples
+  $ pinecall login
+  gateway  https://cloud.pinecall.io   (the default — `pinecall login <url>` for your own)
+
+  open this to sign in:
+  https://cloud.pinecall.io/cli?c=cli_…
+
+  waiting…
+  signed in to https://cloud.pinecall.io as Ana García
+

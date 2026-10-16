@@ -1,0 +1,413 @@
+/* Quality: the week's numbers, the held line beside what broke, the agents, and every judge in one table — and the form a judge is written in. */
+
+.qly-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .qly-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.qly-quiet {
+  margin: 0;
+  padding: 4px 18px 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-4);
+}
+
+.qly-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.qly-held {
+  display: grid;
+  grid-template-columns: minmax(0, 140px) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── the held line ────────────────────────────────────────────────────────── */
+
+.qly-chart {
+  position: relative;
+  padding: 6px 18px 12px;
+}
+
+.qly-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.qly-grid {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+
+.qly-tick {
+  font-size: 10.5px;
+  fill: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.qly-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.qly-dot {
+  fill: var(--accent);
+  stroke: var(--ground);
+  stroke-width: 2;
+}
+
+.qly-cross {
+  stroke: var(--line-hover);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.qly-hit {
+  fill: transparent;
+}
+
+.qly-tip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  padding: 7px 10px;
+  border: 1px solid var(--line-control);
+  border-radius: 9px;
+  background: var(--ground);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.qly-tip-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qly-tip-row {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── what broke ───────────────────────────────────────────────────────────── */
+
+.qly-broke {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 6px;
+}
+
+.qly-broke-one {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.qly-broke-one:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.qly-broke-mark {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.qly-broke-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qly-broke-who {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.qly-broke-agent {
+  font-weight: 400;
+  color: var(--ink-4);
+}
+
+.qly-broke-why {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.qly-broke-when {
+  font-size: 11.5px;
+  color: var(--ink-5);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── the judges ───────────────────────────────────────────────────────────── */
+
+.qly-asks {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* A judge's creature: soft shapes with two small eyes, drawn on nothing. */
+.qly-creature {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.qly-creature img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.qly-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.qly-bar-meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.qly-tile-stand {
+  margin-top: auto;
+  display: flex;
+  gap: 18px;
+  min-height: 36px;
+}
+
+.qly-stand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qly-stand-label {
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.qly-tile-actions {
+  margin-top: 0;
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.qly-rate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.qly-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qly-pct-bad {
+  color: var(--amber);
+}
+
+.qly-pct-faint {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.qly-drift-bad {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ── the form a judge is written in ───────────────────────────────────────── */
+
+.qly-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  max-width: 640px;
+}
+
+.qly-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.qly-form-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qly-bad {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--red);
+}
+.qly-bridge { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 5; stroke-linecap: round; opacity: .7; }
+
+/* ── what turning a judge on costs, its switch, and a try ─────────────────── */
+
+.qly-bill {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.qly-try {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 18px 14px;
+}
+
+.qly-try-count {
+  width: 56px;
+}
+
+.qly-tried {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qly-tried-row {
+  display: grid;
+  grid-template-columns: 180px 90px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.qly-tried-call {
+  font-family: var(--face-fixed);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qly-tried-answer {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── the judge model: one slim row, its form only when asked for ──────────── */
+
+.qly-model {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+}
+
+.qly-model-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.qly-model-words {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.qly-model-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.qly-model-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qly-model-meta {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.qly-model-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qly-model-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.qly-model-foot {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .qly-model-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A library judge's tile: what it saves you from first, what it asks under it, smaller. */
+.qly-tile-why { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.qly-tile-asks { margin: 4px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink-4); }

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Every rule is a test; a failing rule fails a commit that touches runtime/.
+git diff --cached --quiet -- runtime/ && exit 0
+cd "$(git rev-parse --show-toplevel)/runtime" && exec make -s check

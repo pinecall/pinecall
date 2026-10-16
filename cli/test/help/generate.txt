@@ -1,0 +1,42 @@
+$ pinecall generate --help
+Usage: pinecall generate|g [options] [command]
+
+an agent in this project, or one more golden for one of its agents
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  agent [options] <name>
+  golden [options] <name>
+  help [command]           display help for command
+
+Run at the project's root, the folder that holds agents/. It writes files and nothing else: no
+key, no gateway, and never over a file that is there.
+
+agent <name> is agents/<name>/: the class, its ring-0 test and one golden, in the project's
+language. golden <name> is agents/<agent>/test/goldens/<name>.json: a turn for each caller's line
+(--say, in order), and the tools the whole call must make (--tool, its expect). What must follow
+each turn and the rest of expect are added by hand (docs.pinecall.io/concepts/golden-expectations).
+
+Examples
+  $ pinecall g golden asks-for-a-refund --say "Hi, I want a refund." --say "It's Ana Ruiz." --tool takeMessage
+
+
+$ pinecall generate agent --help
+Usage: pinecall generate agent [options] <name>
+
+Options:
+  --typescript
+  --ruby
+  --python
+  -h, --help    display help for command
+
+$ pinecall generate golden --help
+Usage: pinecall generate golden [options] <name>
+
+Options:
+  --say <line...>   what the caller says, one line a turn, in order
+  --tool <name...>  a tool the call must make
+  --agent <name>
+  -h, --help        display help for command

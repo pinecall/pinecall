@@ -1,0 +1,98 @@
+# The open stack: three model servers on one NVIDIA GPU, all OpenAI-shaped, so the box runs them
+# through the livekit plugin it already has and names no vendor in code.
+#   ollama   the LLM (Gemma 4 12B) and the embedder (bge-m3), :11434
+#   kokoro   the voice (Kokoro-82M), /v1/audio/speech, :8880
+#   whisper  the ears (Whisper large-v3-turbo on Speaches), /v1/audio/transcriptions, :8000
+# Needs the NVIDIA driver and the container toolkit, and no account anywhere. MODELS_BIND is the
+# address the box reaches: 127.0.0.1 when the box is this machine, a private address when it is
+# another. About 10 GB of GPU memory with everything loaded; the volumes keep the models.
+
+name: pinecall-models
+
+services:
+  ollama:
+    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    environment:
+      # A phone call's prompt is short: at 8k the model and its cache stay whole on the GPU.
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      # Loaded once and kept: a cold load is ~20 s, longer than any caller waits.
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_FLASH_ATTENTION: "1"
+    volumes: [ollama:/root/.ollama]
+    ports: ["${MODELS_BIND:-127.0.0.1}:11434:11434"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+
+  # Pulls the two models once and loads the LLM, then exits; a restart of the stack re-runs it.
+  ollama-models:
+    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    environment: {OLLAMA_HOST: "ollama:11434"}
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull gemma4:12b
+        ollama pull bge-m3
+        ollama run gemma4:12b "" >/dev/null
+    depends_on: [ollama]
+    restart: "no"
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:v0.9.0@sha256:9ba150465c6b8f5d6b1c62b54de83eb9aa0a1444aad8a1a9c8948eed60564b76
+    ports: ["${MODELS_BIND:-127.0.0.1}:8880:8880"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+
+  whisper:
+    image: ghcr.io/speaches-ai/speaches@sha256:6ec12ebf890a17e0d4b242a8ba9e0eb1fb836e60e8a3c857aea9838d541579ac
+    environment:
+      # Loaded once and kept: loading Whisper takes ~7 s, which the first caller would wait.
+      WHISPER__TTL: "-1"
+    volumes: [whisper:/home/ubuntu/.cache/huggingface/hub]
+    ports: ["${MODELS_BIND:-127.0.0.1}:8000:8000"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+
+  # Downloads the Whisper model into the volume once and loads it with one transcription, then exits.
+  whisper-model:
+    image: ghcr.io/speaches-ai/speaches@sha256:6ec12ebf890a17e0d4b242a8ba9e0eb1fb836e60e8a3c857aea9838d541579ac
+    entrypoint:
+      - python
+      - -c
+      - |
+        import random, time, urllib.request
+        url = "http://whisper:8000/v1/models/deepdml/faster-whisper-large-v3-turbo-ct2"
+        for _ in range(120):
+            try:
+                urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=900)
+                break
+            except OSError:
+                time.sleep(5)
+        # A second of noise, transcribed once, puts the model on the GPU before any call (silence is
+        # answered without it).
+        wav = b"RIFF" + (36 + 32000).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+        wav += (1).to_bytes(2, "little") * 2 + (16000).to_bytes(4, "little") + (32000).to_bytes(4, "little")
+        wav += (2).to_bytes(2, "little") + (16).to_bytes(2, "little") + b"data" + (32000).to_bytes(4, "little")
+        wav += bytes(random.getrandbits(8) for _ in range(32000))
+        body = (b"--x\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n"
+                b"deepdml/faster-whisper-large-v3-turbo-ct2\r\n--x\r\nContent-Disposition: form-data; "
+                b"name=\"file\"; filename=\"warm.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + wav + b"\r\n--x--\r\n")
+        urllib.request.urlopen(urllib.request.Request(
+            "http://whisper:8000/v1/audio/transcriptions", body,
+            {"Content-Type": "multipart/form-data; boundary=x"}), timeout=300)
+    depends_on: [whisper]
+    restart: "no"
+
+volumes:
+  ollama:
+  whisper:

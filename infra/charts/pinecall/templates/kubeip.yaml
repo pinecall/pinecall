@@ -1,0 +1,59 @@
+{{- if .Values.kubeip.identity }}
+# kubeip on each world's media node: it gives the node the world's static address modules/edge
+# reserved (found by its label), and gives it again to a node that replaces it; the world's LiveKit
+# and SIP announce that address.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pinecall-kubeip
+  annotations:
+    iam.gke.io/gcp-service-account: {{ .Values.kubeip.identity | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pinecall-kubeip
+rules:
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create, get, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pinecall-kubeip
+subjects:
+  - { kind: ServiceAccount, name: pinecall-kubeip, namespace: {{ .Release.Namespace }} }
+roleRef: { kind: ClusterRole, name: pinecall-kubeip, apiGroup: rbac.authorization.k8s.io }
+{{- range $world, $fleet := .Values.fleets }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: pinecall-kubeip-{{ $world }}
+spec:
+  selector: { matchLabels: { app: pinecall-kubeip, world: {{ $world }} } }
+  template:
+    metadata: { labels: { app: pinecall-kubeip, world: {{ $world }} } }
+    spec:
+      serviceAccountName: pinecall-kubeip
+      {{- include "pinecall.onMedia" $world | nindent 6 }}
+      terminationGracePeriodSeconds: 30
+      # The image's own user (distroless, 1001), said here so the cluster holds it to it.
+      {{- include "pinecall.podSecurityAs" 1001 | nindent 6 }}
+      containers:
+        - name: kubeip
+          image: {{ $.Values.media.kubeip }}
+          {{- include "pinecall.containerSecurity" $ | nindent 10 }}
+          env:
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+            - name: FILTER
+              value: {{ printf "labels.pinecall-media=%s-%s" (required "cluster" $.Values.cluster) $world | quote }}
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+{{- end }}
+{{- end }}

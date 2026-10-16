@@ -1,0 +1,56 @@
+{
+  "name": "@pinecall/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "What a Pinecall supervisor app stands on: the gateway client, the key, the floor, the call, the palette.",
+  "license": "UNLICENSED",
+  "exports": {
+    "./api": "./src/api.ts",
+    "./credentials": "./src/credentials.tsx",
+    "./the-floor": "./src/the-floor.ts",
+    "./theme": "./src/theme.ts",
+    "./stream": "./src/stream.ts",
+    "./log-pages": "./src/log-pages.ts",
+    "./use-call": "./src/use-call.ts",
+    "./use-floor": "./src/use-floor.ts",
+    "./use-fed": "./src/use-fed.ts",
+    "./feed": "./src/feed.ts",
+    "./seat": "./src/seat.ts",
+    "./use-listen": "./src/use-listen.ts",
+    "./use-room-open": "./src/use-room-open.ts",
+    "./use-supervise": "./src/use-supervise.ts",
+    "./verbs": "./src/verbs.ts",
+    "./calls": "./src/calls.ts",
+    "./calls-search": "./src/calls-search.ts",
+    "./compact-json": "./src/compact-json.ts",
+    "./wire/*": "./src/wire/*.ts",
+    "./metrics": "./src/metrics.ts",
+    "./score": "./src/score.ts",
+    "./scopes": "./src/scopes.ts",
+    "./login": "./src/login.ts",
+    "./session-key": "./src/session-key.ts",
+    "./whoami": "./src/whoami.ts",
+    "./members": "./src/members.ts",
+    "./agents": "./src/agents.ts",
+    "./initials": "./src/initials.ts",
+    "./notify": "./src/notify.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "lint": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm test"
+  },
+  "dependencies": {
+    "livekit-client": "^2.22.3",
+    "react": "^19.2.8",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

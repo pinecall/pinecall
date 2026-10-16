@@ -1,0 +1,15 @@
+$ pinecall callbacks --help
+Usage: pinecall callbacks [options]
+
+the numbers people left when every seat was taken: who to call back
+
+Options:
+  --agent <slug>
+  --after <cursor>
+  -h, --help        display help for command
+
+Every callback.requested this org's agents wrote — a phone caller the overflow agent answered,
+one the agent's own tool promised a call back, or a web visitor who left a number at the widget
+— oldest first, with the cursor the next page starts at. The runtime records them; dialing back
+is your app's.
+

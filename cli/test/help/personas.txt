@@ -1,0 +1,174 @@
+$ pinecall personas --help
+Usage: pinecall personas [options] [command]
+
+an agent's synthetic callers: Pinecall's switched on or off, its own written,
+generated, tried
+
+Options:
+  -h, --help              display help for command
+
+Commands:
+  list [options]
+  show [options] <name>
+  add [options] <name>    write one: --goal and --style are needed
+  edit [options] <name>   change what is named and leave the rest
+  rm [options] <name>     the caller dropped; one of Pinecall's is switched off
+                          instead
+  on [options] <name>     one of Pinecall's switched on for the agent
+  off [options] <name>    one of Pinecall's switched off for the agent
+  try [options] <name>    one call against the agent: simulate, without the
+                          judge
+  generate [options] [n]  callers written by the judge model from the agent;
+                          printed, and kept with --save
+  push [options]          the personas still in files, sent to the gateway once
+  help [command]          display help for command
+
+A persona is a caller a model plays: a goal, a style, the facts they may state about themselves,
+what they expect of the agent — and, on a spoken line, how they act. There is no script. Pinecall's
+library comes first — realism and a red team — each off until switched on; then the agent's own.
+
+add needs --goal and --style; edit changes what is named and leaves the rest. generate writes N
+callers (3 unless said) from the agent's prompt, tools and knowledge — printed, and kept with
+--save; one eval each, none on your own judge key. push sends the personas still in files once.
+
+Examples
+  $ pinecall personas add price-shopper --goal "get a price for a deep clean" --style "blunt, impatient" --fact "their name=Tom Baker"
+
+
+$ pinecall personas list --help
+Usage: pinecall personas list [options]
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas show --help
+Usage: pinecall personas show [options] <name>
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas add --help
+Usage: pinecall personas add [options] <name>
+
+write one: --goal and --style are needed
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --goal <goal>            what they want
+  --style <style>          how they talk
+  --about <about>          who they are, in a line
+  --fact <what=said...>    what they know and say when asked
+  --expect <line...>       what the agent should do, one line each
+  --tag <tag...>
+  --llm <model>            the model that plays them
+  --tts <vendor>
+  --voice <voice>
+  --interrupts <0-1>       on a spoken call, the share of the agent's answers
+                           they talk over
+  --pause <s>              seconds of silence before each line
+  --backchannels <0-1>
+  --speed <0.5-2>
+  --ambience <what>        television | cafe | office | street
+  --background-noise <dB>  dB under them it plays at; empty for a quiet room
+  --rename <name>          edit: move it to another name
+  -h, --help               display help for command
+
+$ pinecall personas edit --help
+Usage: pinecall personas edit [options] <name>
+
+change what is named and leave the rest
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --goal <goal>            what they want
+  --style <style>          how they talk
+  --about <about>          who they are, in a line
+  --fact <what=said...>    what they know and say when asked
+  --expect <line...>       what the agent should do, one line each
+  --tag <tag...>
+  --llm <model>            the model that plays them
+  --tts <vendor>
+  --voice <voice>
+  --interrupts <0-1>       on a spoken call, the share of the agent's answers
+                           they talk over
+  --pause <s>              seconds of silence before each line
+  --backchannels <0-1>
+  --speed <0.5-2>
+  --ambience <what>        television | cafe | office | street
+  --background-noise <dB>  dB under them it plays at; empty for a quiet room
+  --rename <name>          edit: move it to another name
+  -h, --help               display help for command
+
+$ pinecall personas rm --help
+Usage: pinecall personas rm [options] <name>
+
+the caller dropped; one of Pinecall's is switched off instead
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas on --help
+Usage: pinecall personas on [options] <name>
+
+one of Pinecall's switched on for the agent
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas off --help
+Usage: pinecall personas off [options] <name>
+
+one of Pinecall's switched off for the agent
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas try --help
+Usage: pinecall personas try [options] <name>
+
+one call against the agent: simulate, without the judge
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall personas generate --help
+Usage: pinecall personas generate [options] [n]
+
+callers written by the judge model from the agent; printed, and kept with --save
+
+Arguments:
+  n                   how many callers, 1 to 10 (default: "3")
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --about <theme>
+  --from-call <call>  callers like this call's caller
+  --template <name>   callers like one of Pinecall's
+  --save              keep every one as the agent's own
+  -h, --help          display help for command
+
+$ pinecall personas push --help
+Usage: pinecall personas push [options]
+
+the personas still in files, sent to the gateway once
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --from <folder>     agents/<agent>/test/personas when left out
+  -h, --help          display help for command

@@ -1,0 +1,231 @@
+$ pinecall agent --help
+Usage: pinecall agent [options] [command]
+
+what the org set over the class — yours, the team's, production's — setting it,
+and the processes that hold it
+
+Options:
+  -h, --help                    display help for command
+
+Commands:
+  show [options]                the settings in their three corners
+  set [options]                 write the fields named as the next version of a
+                                corner
+  clear [options] [fields...]   take fields out of the corner's own row; with no
+                                name, every field
+  knowledge                     what the agent knows by heart: printed, or
+                                edited and kept as the next version
+  history [options]             every version of a corner, who set it and why
+  diff [options]                this corner against the team's or production's
+  rollback [options] <version>  one version back as the next one
+  pull [options]                the corner's config as JSON
+  push [options] <file>         a file as the next version
+  list                          every process holding this org's agents in the
+                                env
+  stop <app>                    close one app's socket; a pinecall that hears it
+                                exits instead of dialling back
+  help [command]                display help for command
+
+With nothing after it: the agent's settings as your key sees them, three corners side by side —
+your own sandbox corner, the team's, and production's — a row per field, and which version each
+corner is at. A corner that set nothing reads as what it falls back to.
+
+set writes a NEW version in your own corner: what you set is yours, and a colleague's next call
+does not hear it. --team writes the org's own corner instead, which every corner falls back to.
+--prod writes production's, if your org lets you act there. The whole set travels with the
+version it was read at, so two people saving at once never write over each other. A model knob
+reads four ways — `--llm anthropic/claude-haiku-5-5`, `--llm cartesia` (a vendor), `--llm
+claude-haiku-5-5` (a model), and `--llm haiku` (a tier). --greeting sets the words said as the
+call opens; `--greeting improvise` has the model open on its prompt. --hangup any lets the model
+end the call whenever it judges it done. --end-of-turn is who says the caller's turn is over.
+--remember and --forget replace those lists whole. --llm-builds names a class of the vendor's
+plugin, and --llm-option key=value one of its keyword arguments; --stt-…, --tts-… and --judge-…
+are the same for the ears, the voice and the judge model. Those run only on your org's own key.
+
+A field the class declares itself (@voice, @llm, @stt, a static field) says `class` in every
+corner: the class wins, and a set or clear of it is refused naming the class.
+
+knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it
+prints the corner's text; `edit` opens it in $EDITOR and saves what you wrote as the next
+version (an empty file takes it out). It is not the RAG: the documents a turn searches are
+`pinecall docs`, attached as `bases`.
+
+clear takes fields out of the corner's own row, so the runtime's default stands for them again.
+history, diff and rollback are the versions. pull prints the corner's config as JSON; push sends
+a file as the next version. list prints every process holding this org's agents in the env;
+stop <app> closes that app's socket.
+
+Examples
+  $ pinecall agent
+  $ pinecall agent set --voice amelia --llm haiku --note "flat on the phone"
+  $ pinecall agent list --prod
+
+
+$ pinecall agent show --help
+Usage: pinecall agent show [options]
+
+the settings in their three corners
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall agent set --help
+Usage: pinecall agent set [options]
+
+write the fields named as the next version of a corner
+
+Options:
+  --agent <slug>
+  --team                             the org's own corner
+  --note <note>
+  --voice <value>
+  --tts <value>
+  --tts-model <value>
+  --stt <value>
+  --llm <value>
+  --llm-builds <value>
+  --stt-builds <value>
+  --tts-builds <value>
+  --judge <value>
+  --judge-builds <value>
+  --language <value>
+  --greeting <value>
+  --hangup <value>
+  --temperature <n>
+  --endpointing-ms <n>
+  --min-interruption-words <n>
+  --eot-threshold <n>
+  --eager-eot-threshold <n>
+  --max-duration <n>
+  --greeting-interruptible <on|off>
+  --record <on|off>
+  --end-of-turn <who>                who says the caller's turn is over: stt
+                                     (the ears themselves), livekit or
+                                     smart-turn
+  --llm-option <key=value...>
+  --stt-option <key=value...>
+  --tts-option <key=value...>
+  --judge-option <key=value...>
+  --remember <phrase...>
+  --forget <phrase...>
+  -h, --help                         display help for command
+
+$ pinecall agent clear --help
+Usage: pinecall agent clear [options] [fields...]
+
+take fields out of the corner's own row; with no name, every field
+
+Arguments:
+  fields          voice · tts · tts-model · tts-builds · tts-options · stt ·
+                  stt-builds · stt-options · end-of-turn · llm · temperature ·
+                  llm-builds · llm-options · judge · judge-builds ·
+                  judge-options · language · greeting · hangup · turn · memory ·
+                  record · max-duration · knowledge · bases
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent knowledge --help
+Usage: pinecall agent knowledge [options] [command]
+
+what the agent knows by heart: printed, or edited and kept as the next version
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  show [options]
+  edit [options]
+  help [command]  display help for command
+
+$ pinecall agent knowledge show --help
+Usage: pinecall agent knowledge show [options]
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent knowledge edit --help
+Usage: pinecall agent knowledge edit [options]
+
+Options:
+  --agent <slug>
+  --team
+  --note <note>
+  -h, --help      display help for command
+
+$ pinecall agent history --help
+Usage: pinecall agent history [options]
+
+every version of a corner, who set it and why
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent diff --help
+Usage: pinecall agent diff [options]
+
+this corner against the team's or production's
+
+Options:
+  --agent <slug>
+  --against <corner>  team or production (default: "production")
+  -h, --help          display help for command
+
+$ pinecall agent rollback --help
+Usage: pinecall agent rollback [options] <version>
+
+one version back as the next one
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent pull --help
+Usage: pinecall agent pull [options]
+
+the corner's config as JSON
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent push --help
+Usage: pinecall agent push [options] <file>
+
+a file as the next version
+
+Arguments:
+  file            the file `pinecall agent pull` wrote
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall agent list --help
+Usage: pinecall agent list [options]
+
+every process holding this org's agents in the env
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall agent stop --help
+Usage: pinecall agent stop [options] <app>
+
+close one app's socket; a pinecall that hears it exits instead of dialling back
+
+Arguments:
+  app         the first column of `pinecall agent list`
+
+Options:
+  -h, --help  display help for command

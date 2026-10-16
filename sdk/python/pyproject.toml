@@ -1,0 +1,129 @@
+# The Python SDK: the class a tenant writes an agent in, and the entry the one `pinecall` CLI
+# (npm) starts. A library: no executable, no runtime, no vendor.
+
+[project]
+name = "pinecall"
+dynamic = ["version"]
+description = "Write a Pinecall voice or chat agent as a Python class; the pinecall CLI serves it."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+# Each dependency arrives with the first module that imports it, never before (deptry holds it).
+dependencies = [
+    "httpx>=0.28,<1",
+    "jinja2>=3.1,<4",
+    "pydantic>=2.11,<3",
+    "typing-extensions>=4.12,<5",
+    "websockets>=15,<17",
+]
+
+[project.urls]
+Homepage = "https://pinecall.io"
+Documentation = "https://docs.pinecall.io"
+Repository = "https://github.com/pinecall/pinecall"
+
+[dependency-groups]
+dev = [
+  "aiohttp>=3.12,<4",
+  "deptry>=0.25,<1",
+  "pyright>=1.1.414,<2",
+  "pytest>=9,<10",
+  "pytest-asyncio>=1.4,<2",
+  "pytest-timeout>=2.4,<3",
+  "ruff>=0.16,<1",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+# The version is written once, in the module `pinecall.__version__` reads.
+[tool.hatch.version]
+path = "src/pinecall/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pinecall"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pinecall", "README.md", "LICENSE", "CHANGELOG.md"]
+
+# ── pytest ──
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--tb=short --strict-markers --strict-config --import-mode=importlib"
+xfail_strict = true
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# A socket that never answers fails its test instead of hanging the suite.
+timeout = 30
+filterwarnings = ["error"]
+
+# ── the checkers ──
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "D203",   # one of each incompatible pair; the Google convention keeps D211 and D212
+  "D213",
+  "COM812", # the formatter owns trailing commas
+  "EM101",  # the sentence a person reads is written where it is raised
+  "EM102",
+  "TRY003",
+  "N818",   # an error is named for what was refused, not with a suffix
+  "D105",   # dunder methods: the class docstring says it
+  "CPY001", # the LICENSE file is the notice
+  "TC001",  # pydantic reads annotations when a model is built: an import an annotation uses stays one
+  "TC002",
+  "TC003",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# A test's name is its sentence; asserts and literal numbers are what a test is made of.
+# A stand-in takes what the real one is given, and may not read it.
+"tests/**" = ["ARG001", "ARG002", "ARG005", "D103", "INP001", "PLR2004", "S101"]
+# The example is a tenant's project (the repository's examples/python): its folders are named by
+# their slugs, and it is no package.
+"../../examples/python/**" = ["INP001"]
+# A tool's docstring is the prompt the model reads, a paragraph of the tenant's prose: the same
+# words, line for line, as the TypeScript and Ruby examples, so the three prompts are one.
+"../../examples/python/**/agents/*/*.py" = ["D205", "E501"]
+"../../examples/python/**/agents/*/test/**" = ["ARG001", "ARG005", "D103", "INP001", "PLR2004", "S101", "ANN401"]
+"tests/rules/**" = ["S603", "S607"]  # the rules ask git which files the repository holds
+"tests/serve/test_main.py" = ["S603"]  # it runs the entry the way the CLI does: this interpreter
+"scripts/**" = ["INP001", "T201"]
+# The hooks are the tenant's to override: the base's take what they will be given and read none.
+"src/pinecall/agent.py" = ["ARG002"]  # run by path, and they print what they found
+
+[tool.ruff.lint.isort]
+known-first-party = ["pinecall", "tests"]
+
+[tool.pyright]
+include = ["src", "tests", "../../examples/python"]
+typeCheckingMode = "strict"
+pythonVersion = "3.11"
+reportImplicitOverride = true
+
+[tool.deptry]
+known_first_party = ["pinecall", "tests"]
+
+[tool.deptry.per_rule_ignores]
+DEP001 = ["annotationlib"]  # the standard library's from 3.14, imported only there

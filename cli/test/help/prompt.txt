@@ -1,0 +1,21 @@
+$ pinecall prompt --help
+Usage: pinecall prompt [options] [agent.tsx]
+
+the exact prompt a state would produce, offline
+
+Options:
+  --agent <name>
+  --state <file>       a goldens file: the state of one of its cases
+  --case <n>           which case of that file (default: "0")
+  --channel <channel>  phone | web | whatsapp (default: "phone")
+  --medium <how>       voice | text; the channel's when left out
+  -h, --help           display help for command
+
+The three regions of the prompt as the model would receive them — the static prefix, the history,
+the dynamic blocks at the end — and under them the stage and the tools that stage shows. No
+gateway, no key, no call: the agent's own serve entry loads the class and puts it in the state the
+file describes.
+
+Examples
+  $ pinecall prompt --state agents/clinica-norte/test/goldens/identifica-al-paciente.json
+

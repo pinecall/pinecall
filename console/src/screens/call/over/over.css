@@ -1,0 +1,701 @@
+/* What a call that is over adds to its page: its cards, the consent proof and the log by seq. */
+
+/* ── the head ────────────────────────────────────────────────── */
+
+.over-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.over-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.over-result {
+  flex-basis: 100%;
+  justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.over-result-lead {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+.over-result-note {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.over-result-line {
+  flex-basis: 100%;
+}
+
+.over-path {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* ── the cards ────────────────────────────────────────────────────────────── */
+
+.over-facts .ui-stat {
+  padding: 13px 15px;
+}
+
+.over-facts .ui-stat-value {
+  line-height: normal;
+}
+
+.over-outcome-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-bottom: 5px;
+}
+
+.over-outcome {
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 760px;
+}
+
+.over-latency {
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+}
+
+.over-latency-none {
+  padding: 14px 16px;
+}
+
+.over-latency-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-bottom: 4px;
+}
+
+.over-latency-value {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+}
+
+.over-latency-max {
+  font-size: 11.5px;
+  color: var(--ink-6);
+  margin-top: 2px;
+}
+
+.over-standing {
+  font-size: 13px;
+  font-weight: 550;
+  margin-bottom: 5px;
+}
+
+.over-standing-amber {
+  color: var(--amber);
+}
+
+.over-standing-green {
+  color: var(--green);
+}
+
+.over-standing-red {
+  color: var(--red);
+}
+
+.over-sentence {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+.over-sentence:last-child {
+  margin-bottom: 0;
+}
+
+.over-judges {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.over-judge-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.over-judge-name {
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.over-judge-reason {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.over-judge-said {
+  color: var(--ink-4);
+}
+
+.over-seq {
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+.over-total {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.over-cost {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-3);
+}
+
+.over-cost:first-child {
+  border-top: 0;
+}
+
+.over-cost-model {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.over-cost-kind {
+  color: var(--ink-4);
+}
+
+.over-cost-units {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.over-cost-usd {
+  flex: none;
+  width: 74px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.over-note {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line-3);
+  font-size: 12px;
+  color: var(--ink-4);
+  line-height: 1.55;
+}
+
+
+.over-consents {
+  padding: 4px 16px;
+}
+
+.over-consent {
+  padding: 11px 0;
+  border-top: 1px solid var(--line-3);
+}
+
+.over-consent:first-child {
+  border-top: 0;
+}
+
+.over-consent-join {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.over-consent-tool {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.over-consent-seqs {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.over-consent-id {
+  font-size: 11.5px;
+  color: var(--ink-6);
+}
+
+.over-consent-said {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.over-consent-audience {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.over-prompt {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.over-hash {
+  font-size: 12px;
+}
+
+/* ── the log, row by row ──────────────────────────────────────────────────── */
+
+.over-log-action {
+  margin-left: auto;
+}
+
+.over-log {
+  max-height: 720px;
+  overflow: auto;
+}
+
+.over-entry {
+  display: grid;
+  grid-template-columns: 34px 64px 128px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--line-3);
+  scroll-margin: 60px;
+}
+
+.over-entry:first-child {
+  border-top: 0;
+}
+
+.over-entry-opens {
+  cursor: pointer;
+}
+
+.over-entry-opens:hover {
+  background: var(--ground-side);
+}
+
+.over-entry-cited {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--ground-tint);
+}
+
+.over-entry-seq {
+  font-size: 12px;
+  color: var(--ink-7);
+  text-align: right;
+  padding-top: 1px;
+}
+
+.over-entry-since {
+  font: 11.5px var(--face-fixed);
+  color: var(--ink-6);
+  padding-top: 1px;
+}
+
+.over-entry-type {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-4);
+  word-break: break-word;
+}
+
+.over-entry-mark {
+  color: var(--ink-6);
+}
+
+.over-entry-turn .over-entry-type {
+  color: var(--ink);
+}
+
+.over-entry-state {
+  background: var(--ground-tint);
+}
+
+.over-entry-state .over-entry-type {
+  color: var(--accent-hover);
+}
+
+.over-entry-tool {
+  background: var(--amber-tint);
+}
+
+.over-entry-tool .over-entry-type {
+  color: var(--amber);
+}
+
+.over-entry-call .over-entry-type {
+  color: var(--green);
+}
+
+.over-entry-payload {
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  word-break: break-word;
+}
+
+.over-entry-turn .over-entry-payload {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.over-entry-quiet .over-entry-payload {
+  color: var(--ink-4);
+}
+
+.over-entry-caret {
+  color: var(--ink-6);
+}
+
+.over-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.over-chip {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  background: var(--ground-5);
+  padding: 1px 7px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.over-chip b {
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+.over-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.over-field {
+  display: flex;
+  gap: 10px;
+  font: 11.5px var(--face-fixed);
+}
+
+.over-field-name {
+  flex: none;
+  width: 220px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.over-field-value {
+  min-width: 0;
+  color: var(--ink-2);
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .over-entry {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .over-entry-since,
+  .over-entry-type {
+    grid-column: 2;
+  }
+
+  .over-entry-payload {
+    grid-column: 2;
+  }
+}
+
+.over-attach {
+  margin-top: 12px;
+}
+
+.over-refused-line {
+  color: var(--red);
+}
+
+/* The bar under a finished call's log: the proof, folded, on the left; the call's two moves on the right. */
+.over-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-3);
+}
+
+.over-details {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.over-details-caret {
+  width: 10px;
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.over-details-name {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.over-details-what {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.over-details:hover .over-details-what {
+  color: var(--ink-3);
+}
+
+/* The recording: play, where it is, a bar to drag — one slim line with the log's own gutter. */
+.over-tape {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--ground);
+}
+
+.over-tape-play {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.over-tape-play:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.over-tape-time {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.over-tape-bar {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--played, 0%), var(--line) var(--played, 0%));
+  cursor: pointer;
+}
+
+.over-tape-bar::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--ground);
+}
+
+.over-tape-bar::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--ground);
+}
+
+.over-tape-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* ── where the time went ──────────────────────────────────────────────────── */
+
+.over-spent {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.over-spent-bar {
+  display: flex;
+  height: 10px;
+  margin-bottom: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.over-spent-part {
+  flex-basis: 0;
+  min-width: 1px;
+}
+
+.over-spent-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.over-spent-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.over-spent-name {
+  color: var(--ink-3);
+}
+
+.over-spent-seconds {
+  margin-left: auto;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.over-spent-share {
+  width: 3.5em;
+  text-align: right;
+  color: var(--ink-6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The same colours as the Trace's bars, so a part reads as the bars it was cut from. */
+.over-spent-before {
+  background: var(--line-control);
+}
+
+.over-spent-caller {
+  background: var(--indigo);
+}
+
+.over-spent-agent {
+  background: var(--pink);
+}
+
+.over-spent-both {
+  background: var(--red);
+}
+
+.over-spent-on_the_agent {
+  background: var(--amber-dot);
+}
+
+.over-spent-tool {
+  background: var(--ink-4);
+}
+
+.over-spent-on_the_caller {
+  background: var(--line-muted);
+}
+
+.over-spent-person {
+  background: var(--teal);
+}
+
+/* Beside the call a judge is one line; its reason opens under it. */
+.over-judge-folded > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.over-judge-folded > summary::-webkit-details-marker {
+  display: none;
+}
+.over-judge-folded > summary::after {
+  content: "›";
+  margin-left: auto;
+  color: var(--ink-6);
+  transition: transform 0.15s;
+}
+.over-judge-folded[open] > summary::after {
+  transform: rotate(90deg);
+}
+.over-judge-folded .over-judge-reason {
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+
+/* The full page's judge: name, answer, then the reason, what the agent said, and where to find it. */
+.over-judge-full {
+  display: grid;
+  grid-template-columns: 170px 90px minmax(0, 1fr);
+  gap: 4px 14px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-3);
+}
+
+.over-judge-full .over-judge-reason { margin-top: 0; }
+.over-judge-body { display: flex; flex-direction: column; gap: 8px; }
+.over-judge-cited { font-size: 11.5px; color: var(--ink-4); }
+
+.over-judge-quote {
+  margin: 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--line-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+@media (max-width: 720px) {
+  .over-judge-full { grid-template-columns: 1fr; }
+}
+.over-judges:has(.over-judge-full) { gap: 0; }

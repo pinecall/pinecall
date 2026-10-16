@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Ring 0 for the whole repo: build, then lint, then test — in that order. What CI runs.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# The build first, because what is published is checked too. Nothing below needs it — the tests
+# read the sources — so a red build is a finding of its own.
+scripts/build
+pnpm lint
+pnpm test

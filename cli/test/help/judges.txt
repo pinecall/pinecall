@@ -1,0 +1,113 @@
+$ pinecall judges --help
+Usage: pinecall judges [options] [command]
+
+every judge a call meets: Pinecall's, switched on or off; the org's own and the
+agent's own; one tried on calls
+
+Options:
+  -h, --help            display help for command
+
+Commands:
+  list [options]        every judge the list meets: whose, on or off, how it
+                        answers, when it runs
+  add [options] <name>  write one of your own; the same name again replaces it
+  on [options] <name>   one of Pinecall's judges switched on for the org (--org)
+                        or the agent
+  off [options] <name>  one of Pinecall's judges switched off for the org
+                        (--org) or the agent
+  rm [options] <name>   one of your own dropped; Pinecall's are never dropped,
+                        only switched off
+  try [options] <name>  ask one judge of finished calls and write nothing
+  help [command]        display help for command
+
+Every judge is one question a model answers about a finished call, with the whole call in front
+of it — the turns, the tool calls, the positions it cites. Three lists, in the order a call meets
+them: PINECALL's library (consent, grounded, promises, disclosed, identified, honoured-stop,
+ended-well, expected-outcome, relevance, repetition, sentiment; every one off until switched on),
+switched on or off for the org (--org) or for one agent, the agent's switch winning; the ORG's
+own, asked of every agent's calls; and one AGENT's own, about its job alone.
+
+A judge answers a verdict (held or broken), a score from 1 to 5, or one of its choices; any of
+them may answer N/A — the question did not apply, never billed. It runs on every call, only on a
+simulated one, or on a trigger: a yes-or-no asked first, and a no is N/A. Each judge that answers
+is one eval; on a model of your org's own key (`pinecall judging --model`) evals are not billed.
+
+Examples
+  $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
+  offers-next-slot written · 12 judge(s)
+  $ pinecall judges off relevance --org
+  relevance off · 12 judge(s)
+  $ pinecall judges try offers-next-slot --last 3
+  CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  [seq 14]
+  3 evals · $0.0031 · nothing was written
+
+
+$ pinecall judges list --help
+Usage: pinecall judges list [options]
+
+every judge the list meets: whose, on or off, how it answers, when it runs
+
+Options:
+  --org           the org's list
+  --agent <name>  one agent's, when the project holds more
+  -h, --help      display help for command
+
+$ pinecall judges add --help
+Usage: pinecall judges add [options] <name>
+
+write one of your own; the same name again replaces it
+
+Options:
+  --asks <question>  one question about the whole call
+  --answer <how>     verdict (the default) · score · choice:a,b,c
+  --when <when>      always (the default) · simulations · trigger:'…'
+  --reads <what>     any of prompt, evidence, facts, comma-separated
+  --org
+  --agent <name>
+  -h, --help         display help for command
+
+$ pinecall judges on --help
+Usage: pinecall judges on [options] <name>
+
+one of Pinecall's judges switched on for the org (--org) or the agent
+
+Options:
+  --org
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall judges off --help
+Usage: pinecall judges off [options] <name>
+
+one of Pinecall's judges switched off for the org (--org) or the agent
+
+Options:
+  --org
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall judges rm --help
+Usage: pinecall judges rm [options] <name>
+
+one of your own dropped; Pinecall's are never dropped, only switched off
+
+Options:
+  --org
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall judges try --help
+Usage: pinecall judges try [options] <name>
+
+ask one judge of finished calls and write nothing
+
+Options:
+  --last <n>         the agent's newest n finished calls (1 to 50)
+  --calls <ids>      the calls named, comma-separated
+  --asks <question>  a judge not yet saved, written whole with add's flags
+  --answer <how>
+  --when <when>
+  --reads <what>
+  --org
+  --agent <name>
+  -h, --help         display help for command

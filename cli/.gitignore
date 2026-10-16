@@ -1,0 +1,13 @@
+node_modules/
+dist/
+
+.env
+.env.*
+!.env.example
+
+# What a tenant's `pinecall test` writes beside the agent while it runs.
+.pinecall/
+
+# The decision pages are this laptop's engineering notes — dates, names, the arguments as they
+# happened — and not documentation: they stay on disk and out of every clone.
+docs/decisions/

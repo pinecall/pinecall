@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Ring 0 for the package and its example (../../examples/typescript): build, then lint, then test.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# The build first, because what is published is checked too: dist/ has to compile. Nothing below
+# NEEDS it — every package in the workspace exports its sources — so a red build is a finding of
+# its own.
+scripts/build
+pnpm lint
+pnpm --filter "@pinecall/example-clinica-norte" lint
+pnpm test
+pnpm --filter "@pinecall/example-clinica-norte" test

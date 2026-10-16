@@ -1,0 +1,33 @@
+/* Telemetry: the rows of a card, the form's fields, and its hints. */
+
+.tel-rows {
+  padding: 14px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.tel-form {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.tel-fields {
+  align-self: stretch;
+}
+
+.tel-fields {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tel-hint {
+  font-size: 12px;
+  color: var(--ink-5);
+  line-height: 1.5;
+}

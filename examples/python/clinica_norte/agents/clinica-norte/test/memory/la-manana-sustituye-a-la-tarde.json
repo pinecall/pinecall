@@ -1,0 +1,14 @@
+{
+  "name": "la mañana sustituye a la tarde, no convive con ella",
+  "said": [
+    ["caller", "Hola, quería cambiar la cita del jueves."],
+    ["agent", "Claro. ¿Qué día le viene mejor?"],
+    ["caller", "El jueves me vale, pero por la tarde ya no puedo: he cambiado de turno y ahora solo me van las mañanas."],
+    ["agent", "Perfecto, le busco el jueves por la mañana."]
+  ],
+  "holds": ["Prefiere que le llamen por la tarde"],
+  "expect": {
+    "writes": ["cómo prefiere que le llamen"],
+    "invalidates": ["Prefiere que le llamen por la tarde"]
+  }
+}

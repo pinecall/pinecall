@@ -1,0 +1,19 @@
+[project]
+name = "{{project}}"
+version = "0.1.0"
+description = "{{ProjectTitle}}: Pinecall agents in Python."
+requires-python = ">=3.11"
+dependencies = ["pinecall>=0.1.6,<1"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+# An application, not a package: nothing here is built or published.
+[tool.uv]
+package = false
+
+# Each agent's tests live in its own folder, agents/<name>/test/, and two agents' test files may
+# share a name: importlib imports each by its path, never as a top-level module.
+[tool.pytest.ini_options]
+testpaths = ["agents"]
+addopts = ["--import-mode=importlib"]

@@ -1,0 +1,20 @@
+$ pinecall supervise --help
+Usage: pinecall supervise [options] <call>
+
+listen in: whisper, say, takeover, transfer, end
+
+Options:
+  -h, --help  display help for command
+
+The call's transcript as it happens, and one line to move on it:
+
+  w <text>    whisper to the agent — the caller never hears it
+  s <text>    say it to the caller, in the agent's voice, verbatim
+  t           take the line: the agent stops speaking and you are on it
+  x           give it back: the agent has the line again
+  e [reason]  end the call
+  q           leave the desk; the call goes on
+
+Every move lands in the caller's own log as its own `supervisor.*` entry with a seq. The audio of
+a live call is the console, which has a room — `pinecall start` prints its URL.
+

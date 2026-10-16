@@ -1,0 +1,73 @@
+$ pinecall lexicon --help
+Usage: pinecall lexicon [options] [command]
+
+an agent's words: how the voice says them and what the ears must know
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  show [options]
+  add [options] <word>       how a word is spoken
+  hear [options] <words...>  the words the ears must know
+  rm [options] <words...>    words taken out of both
+  history [options]
+  help [command]             display help for command
+
+The lexicon is the agent's says and hears, which the class never sets. add says how a word is
+spoken; hear names the words the ears must know; rm takes words out of both. Whole and
+versioned like the settings: the corner is yours (--team: the org's own).
+
+Examples
+  $ pinecall lexicon add DKV --say "de ka uve"
+  $ pinecall lexicon hear "Vidal Ferrán"
+  $ pinecall lexicon history
+
+
+$ pinecall lexicon show --help
+Usage: pinecall lexicon show [options]
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall lexicon add --help
+Usage: pinecall lexicon add [options] <word>
+
+how a word is spoken
+
+Options:
+  --say <spoken>
+  --agent <slug>
+  --team
+  --note <note>
+  -h, --help      display help for command
+
+$ pinecall lexicon hear --help
+Usage: pinecall lexicon hear [options] <words...>
+
+the words the ears must know
+
+Options:
+  --agent <slug>
+  --team
+  --note <note>
+  -h, --help      display help for command
+
+$ pinecall lexicon rm --help
+Usage: pinecall lexicon rm [options] <words...>
+
+words taken out of both
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall lexicon history --help
+Usage: pinecall lexicon history [options]
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command

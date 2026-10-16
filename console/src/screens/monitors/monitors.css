@@ -1,0 +1,51 @@
+/* Monitors: the table of what is watched, and the form a monitor is written in. */
+
+.mon-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mon-rule {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.mon-fired {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-drop {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mon-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mon-hint {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.mon-form-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mon-bad {
+  font-size: 12px;
+  color: var(--red);
+}

@@ -1,0 +1,652 @@
+/* Chat: a thin bar, the conversation in one centred column, and a dock while the call is on. The Inspector is its own. */
+
+.talk-grid {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pane, 330px);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.talk-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+}
+
+.talk-stage > .ui-refused {
+  margin: 10px 20px 0;
+}
+
+/* ── the bar ──────────────────────────────────────────────────────────────── */
+
+.talk-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 52px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.talk-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.talk-state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--ink-7);
+}
+
+.talk-state-connecting .talk-state-dot {
+  background: var(--amber-dot);
+}
+
+.talk-state-live .talk-state-dot {
+  background: var(--green-dot);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+
+.talk-state-failed {
+  color: var(--red);
+}
+
+.talk-state-failed .talk-state-dot {
+  background: var(--red);
+}
+
+.talk-clock {
+  color: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-open {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent-ink);
+}
+
+/* ── the bar's mode, once there is a call ───────────────────────────────── */
+
+.talk-state-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 8px;
+  margin-right: 1px;
+  border-right: 1px solid var(--line-control);
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/* ── the conversation ─────────────────────────────────────────────────────── */
+
+.talk-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.talk-column {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+}
+
+/* The agent's reply is plain text on the page; yours is a grey bubble on the right. */
+.talk-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.talk-reply-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.talk-reply-unsettled {
+  color: var(--ink-3);
+}
+
+.talk-yours {
+  align-self: flex-end;
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.talk-bubble {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: var(--accent-selected);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  transition:
+    opacity 0.25s ease,
+    background 0.25s ease;
+}
+
+.talk-bubble-pending {
+  opacity: 0.55;
+  background: var(--ground-5);
+}
+
+.talk-bubble-unsettled {
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+/* The row under a reply, and the correction it opens. */
+.talk-fb-row {
+  display: flex;
+  gap: 2px;
+  margin-left: -6px;
+}
+
+.talk-fb-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+
+.talk-fb-btn:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+}
+
+.talk-fb-on {
+  color: var(--green);
+}
+
+.talk-fb-on-bad {
+  color: var(--red);
+}
+
+.talk-fb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid var(--line-control);
+  border-radius: 14px;
+  background: var(--ground-3);
+}
+
+.talk-fb-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.talk-fb-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.talk-fb-chip {
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--line-control);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.talk-fb-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-hover);
+}
+
+.talk-fb-chip-on {
+  border-color: var(--red-line);
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.talk-fb-text {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.talk-fb-text:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--accent-ring);
+}
+
+.talk-fb-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.talk-fb-note {
+  flex: 1;
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.talk-word {
+  animation: talk-arrive 0.25s ease-out;
+}
+
+@keyframes talk-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.talk-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: talk-blink 1s steps(2, start) infinite;
+}
+
+@keyframes talk-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* One tool the model ran: a card under the agent's words, indented to where its messages start. */
+.talk-tool {
+  max-width: 100%;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  background: var(--ground-3);
+  overflow: hidden;
+}
+
+.talk-tool-failed {
+  border-color: var(--red-line);
+}
+
+.talk-tool-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.talk-tool-head:disabled {
+  cursor: default;
+}
+
+.talk-tool-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.talk-tool-call {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.talk-tool-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.talk-tool-paren {
+  color: var(--ink-5);
+}
+
+.talk-tool-key {
+  color: var(--ink-3);
+}
+
+.talk-tool-value {
+  color: var(--green);
+}
+
+.talk-tool-status {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.talk-tool-status-ok {
+  color: var(--green);
+}
+
+.talk-tool-status-failed {
+  color: var(--red);
+}
+
+.talk-tool-status-running {
+  color: var(--amber);
+}
+
+.talk-tool-time {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-tool-caret {
+  flex: none;
+  font-size: 10px;
+  color: var(--ink-5);
+  transition: transform 0.15s ease;
+}
+
+.talk-tool-caret-open {
+  transform: rotate(180deg);
+}
+
+.talk-tool-body {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+.talk-tool-label {
+  font-size: 11.5px;
+  color: var(--ink-5);
+}
+
+.talk-tool-result {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A supervisor stepping in, or an error: a quiet pill in the middle of the thread. */
+.talk-note-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.talk-note {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  background: var(--ground-4);
+  color: var(--ink-3);
+}
+
+.talk-note-supervisor {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.talk-note-error {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+/* ── the box ────────────────────────────────────────────────────────────── */
+
+/* Fresh: the heading and the box in the middle of the window, as a chat opens. */
+.talk-hello {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 24px 24px 12vh;
+}
+
+.talk-hello-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.talk-dock {
+  flex: none;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 10px 24px 22px;
+}
+
+.talk-hello .talk-dock {
+  padding: 0;
+}
+
+.talk-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 58px;
+  padding: 0 9px 0 22px;
+  border: 1px solid var(--line-control);
+  border-radius: 99px;
+  background: var(--ground-4);
+  box-shadow: var(--shadow-card);
+}
+
+.talk-composer:focus-within {
+  border-color: var(--line-hover);
+}
+
+.talk-write {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  outline: none;
+}
+
+.talk-write::placeholder {
+  color: var(--ink-5);
+}
+
+.talk-send,
+.talk-voice,
+.talk-hangup {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 99px;
+  cursor: pointer;
+}
+
+.talk-send {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.talk-voice {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.talk-voice:hover {
+  background: var(--accent-hover);
+}
+
+.talk-hangup {
+  background: var(--red);
+  color: var(--on-accent);
+}
+
+.talk-hangup svg {
+  transform: rotate(135deg);
+}
+
+.talk-hangup:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.talk-mic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-left: -12px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--ground-5);
+  cursor: pointer;
+}
+
+.talk-mic-off {
+  background: var(--amber-soft);
+}
+
+.talk-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.talk-bars > span {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--amber);
+  transform: scaleY(0.35);
+  transform-origin: bottom;
+}
+
+.talk-bars-on > span {
+  background: var(--green-dot);
+  animation: talk-level 0.9s ease-in-out infinite alternate;
+}
+
+.talk-bars-on > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.talk-bars-on > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.talk-bars-on > span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes talk-level {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .talk-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .talk-grid > .inspector {
+    display: none;
+  }
+}
+
+/* The small buttons say what they do on hover: a dark label over the button, the page's own, not
+   the browser's slow grey box. The words are the button's data-tip. */
+.talk-stage [data-tip] {
+  position: relative;
+}
+
+.talk-stage [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--solid);
+  color: var(--on-solid);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}

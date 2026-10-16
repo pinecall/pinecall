@@ -1,0 +1,13 @@
+# Every TypeScript package of the repository, one install and one lockfile. The Python packages are
+# not a workspace: pinecall-runtime and the SDK both ship the module `pinecall`, so they never share
+# an environment, and each keeps its own uv.lock. Ruby has its Gemfile.
+packages:
+  - cli
+  - console
+  - sdk/typescript
+  - packages/*
+  - examples/typescript/*
+
+# tsx is the tenant CLI's TypeScript loader; esbuild is its compiler, and it builds a binary.
+allowBuilds:
+  esbuild: true

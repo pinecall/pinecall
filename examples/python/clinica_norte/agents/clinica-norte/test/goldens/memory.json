@@ -1,0 +1,97 @@
+[
+  { "holds": [
+      "Prefiere que le llamen Marta, no María Marta",
+      "Es alérgica a la penicilina",
+      "Su médico habitual es la doctora Vidal",
+      "Prefiere las citas por la mañana, antes de las once",
+      "No puede los miércoles: trabaja fuera de Madrid",
+      "Viene acompañada de su madre, que va en silla de ruedas",
+      "Prefiere que le hablen de usted",
+      "Se marea al sacarse sangre y hay que tumbarla",
+      "Tiene seguro con Asisa"
+    ],
+    "asks": "¿le viene bien el miércoles a las nueve?",
+    "expects": ["No puede los miércoles"] },
+
+  { "holds": [
+      "Prefiere que le llamen Marta, no María Marta",
+      "Es alérgica a la penicilina",
+      "Su médico habitual es la doctora Vidal",
+      "Prefiere las citas por la mañana, antes de las once",
+      "No puede los miércoles: trabaja fuera de Madrid",
+      "Viene acompañada de su madre, que va en silla de ruedas",
+      "Prefiere que le hablen de usted",
+      "Se marea al sacarse sangre y hay que tumbarla",
+      "Tiene seguro con Asisa"
+    ],
+    "asks": "vengo a que me saquen sangre en ayunas",
+    "expects": ["Se marea al sacarse sangre"] },
+
+  { "holds": [
+      "Prefiere que le llamen Marta, no María Marta",
+      "Es alérgica a la penicilina",
+      "Su médico habitual es la doctora Vidal",
+      "Prefiere las citas por la mañana, antes de las once",
+      "No puede los miércoles: trabaja fuera de Madrid",
+      "Viene acompañada de su madre, que va en silla de ruedas",
+      "Prefiere que le hablen de usted",
+      "Se marea al sacarse sangre y hay que tumbarla",
+      "Tiene seguro con Asisa"
+    ],
+    "asks": "¿esto me lo cubre el seguro?",
+    "expects": ["Tiene seguro con Asisa"] },
+
+  { "holds": [
+      "Prefiere que le llamen don Julián",
+      "Es alérgico a la amoxicilina y al ibuprofeno",
+      "Su médico habitual es el doctor Sáez",
+      "Viene siempre con su hija, que es quien llama",
+      "Prefiere las tardes: por la mañana trabaja",
+      "Oye mal del oído derecho, hay que hablarle despacio",
+      "Le pusieron un marcapasos en 2023",
+      "Prefiere que le hablen de usted"
+    ],
+    "asks": "me han mandado una resonancia, ¿me la puedo hacer?",
+    "expects": ["Le pusieron un marcapasos en 2023"] },
+
+  { "holds": [
+      "Prefiere que le llamen don Julián",
+      "Es alérgico a la amoxicilina y al ibuprofeno",
+      "Su médico habitual es el doctor Sáez",
+      "Viene siempre con su hija, que es quien llama",
+      "Prefiere las tardes: por la mañana trabaja",
+      "Oye mal del oído derecho, hay que hablarle despacio",
+      "Le pusieron un marcapasos en 2023",
+      "Prefiere que le hablen de usted"
+    ],
+    "asks": "quería hora con mi médico de siempre",
+    "expects": ["Su médico habitual es el doctor Sáez"] },
+
+  { "holds": [
+      "Prefiere que le llamen Aixa",
+      "No tiene alergias conocidas",
+      "Su médico habitual es el doctor Ferrán",
+      "Está embarazada de cinco meses",
+      "Prefiere que le escriban por WhatsApp antes de llamarla",
+      "Trabaja de noche, no la llaméis antes de las doce",
+      "Vino por una lumbalgia en marzo",
+      "Tiene seguro con DKV",
+      "Prefiere el centro de Chamberí, que le queda cerca"
+    ],
+    "asks": "me han pedido una radiografía de la espalda",
+    "expects": ["Está embarazada de cinco meses"] },
+
+  { "holds": [
+      "Prefiere que le llamen Aixa",
+      "No tiene alergias conocidas",
+      "Su médico habitual es el doctor Ferrán",
+      "Está embarazada de cinco meses",
+      "Prefiere que le escriban por WhatsApp antes de llamarla",
+      "Trabaja de noche, no la llaméis antes de las doce",
+      "Vino por una lumbalgia en marzo",
+      "Tiene seguro con DKV",
+      "Prefiere el centro de Chamberí, que le queda cerca"
+    ],
+    "asks": "llamadme mañana a las nueve para confirmar",
+    "expects": ["Trabaja de noche", "Prefiere que le escriban por WhatsApp"] }
+]

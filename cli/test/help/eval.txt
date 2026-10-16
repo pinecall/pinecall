@@ -1,0 +1,18 @@
+$ pinecall eval --help
+Usage: pinecall eval [options] <call-id>
+
+ring 3: one real call, re-evaluated by the runtime's code checks
+
+Options:
+  --policy <file>  {"banned": […], "budget": {…}}
+  -h, --help       display help for command
+
+One finished call rebuilt from its log and answered by the runtime's six CODE checks — consent,
+register, errors, latency, talk, interruptions. Nothing is re-run and no model is asked; each
+answers held · broken · deferred · skipped. Exits 1 when a check is broken. --policy names the
+words this business will not have its agent say, the seconds each turn's worst latency may take
+(livekit's names) and the most of the talking the agent may do; a budget replaces the defaults whole.
+
+Examples
+  $ pinecall eval call_29d7c7b6cdd643de9c659984a0125c8c
+

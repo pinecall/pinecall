@@ -1,0 +1,26 @@
+$ pinecall link --help
+Usage: pinecall link [options]
+
+this project's folder to one of your orgs: your key, in its .env
+
+Options:
+  --org <slug>     which org, when you belong to several and do not want to be
+                   asked
+  --gateway <url>  another gateway than the one this machine last signed in to
+  --no-open        when signing in: print the link and do not open a browser
+  -h, --help       display help for command
+
+Run in the project's folder. Signs this machine in through a browser when it is not, asks
+which of your orgs this project is — --org names it — and writes your key for that org into
+./.env as PINECALL_KEY (and PINECALL_URL when the gateway is not https://cloud.pinecall.io). Every verb run
+in this folder, or under it, reads it from there: a project of another org is another folder
+with its own .env, and nothing is ever switched.
+
+The key is yours: your role decides what it may do, and --prod reaches production while your
+org lets you act there. A server does not link: a server's token from Tokens, in its secrets.
+
+Examples
+  ~/clinica $ pinecall link --org clinica
+  ▸ clinica · PINECALL_KEY written to .env
+  git would commit .env: add it to .gitignore before a commit carries your key
+

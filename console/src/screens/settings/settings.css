@@ -1,0 +1,390 @@
+/* Settings: the corners table's foot, the form's sections and its save bar, a kept version. */
+
+.set-corner-pick {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 2px 4px;
+}
+
+/* The form: the section tabs across the top, one section's fields with air around them, the
+   save bar at the foot. Every control has a label above and a sentence under, so a person who
+   has never seen the gateway knows what a value does before choosing it. */
+.set-tabs {
+  padding: 4px 18px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.set-tabs .ui-tabs {
+  border-bottom: 0;
+  margin-top: 0;
+}
+
+.set-section {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 22px 24px 26px;
+}
+
+.set-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 640px;
+}
+
+.set-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.set-section-blurb {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 24px;
+  max-width: 760px;
+}
+
+.set-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.set-wide {
+  max-width: 760px;
+}
+
+.set-field .ui-segmented {
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+
+.set-help {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-4);
+}
+
+/* The attached bases as a small table: the base picked from a list, how much of it a turn reads,
+   who searches it, and the floor its own chunks are kept above. */
+.set-bases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 1000px;
+}
+
+.set-bases-head,
+.set-bases-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 210px 140px auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.set-bases-head {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.set-save {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line-2);
+  background: var(--ground-4);
+}
+
+.set-save-note {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.set-save-said {
+  flex: 1 1 260px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.set-save-error {
+  color: var(--red);
+}
+
+.set-version {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-3);
+}
+
+.set-version-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.set-version-note {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.set-version-changes {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* The page and, beside it, a pane of the Inspector's kind: what is set now, and its history. */
+.set-grid {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pane, 340px);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.set-grid > .ui-page {
+  min-width: 0;
+}
+
+.set-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.set-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+/* In the pane the cards lose their frame: sections one under the other, as the Inspector's are. */
+.set-pane .ui-card {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.set-pane-empty {
+  margin: 0;
+  padding: 16px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.set-now-pick {
+  padding: 12px 16px 0;
+}
+
+.set-now {
+  margin: 0;
+  padding: 6px 16px 10px;
+}
+
+.set-now-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.set-now-row:last-child {
+  border-bottom: 0;
+}
+
+.set-now-row dt {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.set-now-row dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.set-now-row dd.set-now-none {
+  color: var(--ink-4);
+}
+
+.set-now-foot {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.set-pane .set-version-changes {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .set-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    overflow: auto;
+  }
+
+  .set-pane {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* The voice picked by ear: the filters, the line every voice says, and the voices as a list with a
+   play button, the wait before it spoke, and the one in use marked. */
+.set-voices {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.set-voices-now {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.set-voices-in-use {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* One row: the search takes what is left, the country and the gender their own width. */
+.set-voices-filters {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-columns: auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.set-voices-filters .ui-segmented {
+  margin: 0;
+}
+
+.set-voices-line {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-voices-by-id {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.set-voices-refused {
+  color: var(--red);
+}
+
+.set-voices-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+}
+
+.set-voice {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 64px 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.set-voice:last-child {
+  border-bottom: 0;
+}
+
+.set-voice.on {
+  background: var(--accent-soft);
+}
+
+.set-voice-play {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line-control);
+  border-radius: 50%;
+  background: var(--ground);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.set-voice-play:hover:not(:disabled),
+.set-voice-play[aria-pressed="true"] {
+  border-color: var(--accent-line);
+  color: var(--accent-ink);
+}
+
+.set-voice-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.set-voice-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.set-voice-about {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.set-voice-wait {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.set-voice-chosen {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-ink);
+  text-align: center;
+}

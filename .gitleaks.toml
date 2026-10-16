@@ -1,0 +1,11 @@
+# gitleaks' own rules, and the values of this repository they mistake for a key.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "RFC 6455's sample nonce ('the sample nonce' in base64), the Sec-WebSocket-Key sdk/typescript/test/client/fakes.test.ts sends by hand"
+regexes = ['''dGhlIHNhbXBsZSBub25jZQ==''']
+
+[[allowlists]]
+description = "The CLI suite's fake gateway key: hex counting 0 to f twice, opening nothing (cli/test/support/gateway.ts)"
+regexes = ['''pc_live_0123456789abcdef0123456789abcdef''']

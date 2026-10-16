@@ -1,0 +1,30 @@
+{
+  "name": "usa lo que recuerda de la paciente y no se lo vuelve a preguntar",
+  "memory": [
+    "Prefiere que le llamen por la mañana",
+    "Su médico habitual es la doctora Vidal"
+  ],
+  "today": "2026-09-17",
+  "state": {
+    "stage": "choose",
+    "patient": {
+      "id": "p-2001",
+      "name": "Marta Ruiz",
+      "phone": "600123456"
+    }
+  },
+  "turns": [
+    {
+      "say": "¿Tenéis algo el martes?"
+    }
+  ],
+  "expect": {
+    "tools": [
+      "freeSlots"
+    ],
+    "not": [
+      "¿cómo prefiere",
+      "¿a qué hora le viene"
+    ]
+  }
+}

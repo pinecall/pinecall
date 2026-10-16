@@ -1,0 +1,89 @@
+$ pinecall memory --help
+Usage: pinecall memory [options] [command]
+
+what memory kept about a contact, forget it on request, and what a golden says
+of recall
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  show <contact>              everything memory kept about a contact
+  forget [options] <contact>  erase everything memory kept about a contact: the
+                              right to be forgotten
+  policy [options]            what the agent keeps about a caller and what it
+                              never does; with nothing typed, the three corners'
+                              policy
+  eval [options] [golden]     recall@k and nDCG@10 of a golden's questions
+                              against memory
+  help [command]              display help for command
+
+With a contact — the caller's number, or the id the app named — prints everything memory ever
+kept about them: the current facts first, then the ones a later call superseded, with the date
+they stopped holding. forget erases all of it, the right to be forgotten; on a terminal it asks
+once, and it prints how many facts went. Without a terminal (a script, CI) it erases only with
+--yes, which also skips the question.
+
+eval asks recall every question of a golden — a JSON list of {holds, asks, expects}, where holds
+is what memory holds about that question's contact — and prints recall@k and nDCG@10, computed by
+code with no model in the loop, plus every question it did not answer whole. No contact of yours
+is read or written: each question's facts go to a scratch contact and are deleted again.
+
+policy is what the agent keeps about a caller and what it never does — the org's to say, set in
+the env beside the agent's other settings (`pinecall agent`), and a supervisor's or a
+manager's key opens it. With nothing typed it prints the policy of the three corners.
+
+Examples
+  $ pinecall memory policy --team --remember alergias --remember "médico habitual" --forget pagos
+  $ pinecall memory show +34600000001
+  nothing remembered about +34600000001
+
+
+$ pinecall memory show --help
+Usage: pinecall memory show [options] <contact>
+
+everything memory kept about a contact
+
+Arguments:
+  contact     the caller's number, or the id the app named
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall memory forget --help
+Usage: pinecall memory forget [options] <contact>
+
+erase everything memory kept about a contact: the right to be forgotten
+
+Options:
+  --yes       erase without asking; the only way without a terminal
+  -h, --help  display help for command
+
+$ pinecall memory policy --help
+Usage: pinecall memory policy [options]
+
+what the agent keeps about a caller and what it never does; with nothing typed,
+the three corners' policy
+
+Options:
+  --agent <slug>
+  --remember <phrase...>  what is worth keeping about a caller, one phrase each
+  --forget <phrase...>    what is never kept
+  --team                  in the team's corner instead of your own
+  --note <note>           why, kept with the version
+  -h, --help              display help for command
+
+$ pinecall memory eval --help
+Usage: pinecall memory eval [options] [golden]
+
+recall@k and nDCG@10 of a golden's questions against memory
+
+Arguments:
+  golden              the golden; agents/<name>/test/goldens/memory.json when
+                      left out
+
+Options:
+  --k <n>
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command

@@ -1,0 +1,41 @@
+$ pinecall sessions --help
+Usage: pinecall sessions [options] [command] [call]
+
+an agent's calls; one call whole, with what it cost and how it was judged; or
+its log
+
+Arguments:
+  call                  a call id: that call whole; every call of the agent when
+                        left out
+
+Options:
+  --agent <slug>        the agent, from any folder; the one beside you when left
+                        out
+  --limit <n>           how many calls, newest first
+  -h, --help            display help for command
+
+Commands:
+  log [options] <call>  the call's log as the runtime keeps it, an entry a line
+
+With nothing after it: every call this agent has run, newest first — when it came in, how long
+it lasted, why it ended, what it cost and the one line the agent left as its outcome. With a
+call id: that call whole — the same facts, and the SCORE, one line per judge that ran over it.
+log <call>: the call's log as the runtime keeps it, an entry a line, 200 entries a page.
+--agent names the agent from any folder; beside an agent's class it is that agent.
+
+Examples
+  $ pinecall sessions --limit 3
+  $ pinecall sessions call_5b1f0e9d2c7a4e8f9a1b3c5d7e9f1a2b
+  $ pinecall sessions log call_5b1f… --types turn.agent,tool.call
+
+
+$ pinecall sessions log --help
+Usage: pinecall sessions log [options] <call>
+
+the call's log as the runtime keeps it, an entry a line
+
+Options:
+  --after <seq>      read on from there
+  --limit <n>        entries a page, at most 500; 200 when left out
+  --types <a.b,c.d>  only these entry types
+  -h, --help         display help for command

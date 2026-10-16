@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+require "rake/testtask"
+
+# Ring 0, `rake`: every agent's agents/<name>/test/**/*_test.rb. The goldens are ring 1, `pinecall test`.
+Rake::TestTask.new(:test) do |task|
+  task.test_files = FileList["agents/*/test/**/*_test.rb"]
+end
+
+task default: :test

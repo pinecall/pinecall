@@ -1,0 +1,93 @@
+$ pinecall numbers --help
+Usage: pinecall numbers [options] [command]
+
+list | available | import | buy | drop the numbers the org answers at
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  list                       every number of this env, and the agent each
+                             reaches
+  available [options]        what the org's Twilio accounts own, and whether
+                             this env routes it
+  import [options] <number>  a number the org's carrier account owns, pointed at
+                             an agent
+  buy [options]              a number bought on the deployment's own account,
+                             pointed at an agent
+  drop <number>              forget the route; the carrier account keeps the
+                             number
+  help [command]             display help for command
+
+A number is one env's and reaches one agent: it is imported where it answers, and `list` shows
+that env's — the sandbox's, or production's with --prod. No verb here moves a number between the
+two; the console's Numbers screen does.
+
+`available` is every number the org's Twilio accounts own, and whether this env routes it.
+`import` takes a number the org's carrier account already owns and points it here — `--dry-run`
+prints the steps and writes nothing. An org with several accounts names the one that owns the
+number with `--account` (`pinecall carriers list` shows them). `drop` forgets the route and
+takes the number off the SFU trunk; the carrier account keeps it.
+
+`buy` is for an org with no number of its own: the deployment buys one in the country (and
+area code) on its own account and points it at the agent. A bought number counts against the
+org's `numbers` limit in that env (`pinecall limits`); an imported one never does.
+
+Examples
+  $ pinecall numbers import +34910000000 --agent clinica-norte
+  $ pinecall numbers buy --country ES --area 91 --agent clinica-norte --dry-run --prod
+  $ pinecall numbers available --prod
+
+
+$ pinecall numbers list --help
+Usage: pinecall numbers list [options]
+
+every number of this env, and the agent each reaches
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall numbers available --help
+Usage: pinecall numbers available [options]
+
+what the org's Twilio accounts own, and whether this env routes it
+
+Options:
+  --account <id>  one account of several
+  -h, --help      display help for command
+
+$ pinecall numbers import --help
+Usage: pinecall numbers import [options] <number>
+
+a number the org's carrier account owns, pointed at an agent
+
+Arguments:
+  number               +E.164
+
+Options:
+  --agent <slug>
+  --account <id>       the account that owns it, when the org has several
+  --channel <channel>  phone | whatsapp
+  --dry-run            print the steps and write nothing
+  -h, --help           display help for command
+
+$ pinecall numbers buy --help
+Usage: pinecall numbers buy [options]
+
+a number bought on the deployment's own account, pointed at an agent
+
+Options:
+  --country <XX>       two letters
+  --area <digits>      an area code
+  --agent <slug>
+  --channel <channel>  phone | whatsapp
+  --dry-run            name the number and buy nothing
+  -h, --help           display help for command
+
+$ pinecall numbers drop --help
+Usage: pinecall numbers drop [options] <number>
+
+forget the route; the carrier account keeps the number
+
+Options:
+  -h, --help  display help for command

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# What gets published, in the order it has to be made. Nothing here is needed to test, lint or
+# run a checkout — every package exports its sources — except the console, which a browser can
+# only read bundled. Idempotent; run it as often as you like.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# The package: src/ into dist/. Nothing else is built here — the console is a folder of its own
+# (../../console), built into the gateway by the runtime's scripts/console.
+# From nothing: a file whose source is gone would otherwise ship from an older build.
+rm -rf dist
+pnpm exec tsc -p tsconfig.json

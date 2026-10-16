@@ -1,0 +1,904 @@
+/* The console's frame: the sidebar — the org, its world, who is in view, the rows — the top bar, the tabs of the row on screen, and ⌘K. */
+
+.frame {
+  display: flex;
+  min-height: 100vh;
+  background: var(--ground);
+}
+
+.frame-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.frame-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── the sidebar ──────────────────────────────────────────────────────────── */
+
+.side {
+  width: var(--side);
+  flex: none;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px 10px;
+  background: var(--ground-side);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* The rows between the top and the person: they scroll, and the person stays at the foot. */
+.side-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 -10px;
+  padding: 0 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.side-folded {
+  width: var(--side-folded);
+}
+
+.side-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.side-org-wrap {
+  position: relative;
+}
+
+.side-org {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.side-org:disabled {
+  cursor: default;
+}
+
+.side-org:not(:disabled):hover {
+  background: var(--ground-5);
+}
+
+.side-tile {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--solid);
+  color: var(--on-solid);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.side-org-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-org-visit {
+  font-weight: 450;
+  color: var(--amber);
+}
+
+.side-caret {
+  flex: none;
+  color: var(--ink-5);
+  display: grid;
+}
+
+/* The sidebar scrolls, so it clips what is wider than itself: its menus are exactly its width. */
+.side-orgs {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 5px;
+  border: 1px solid var(--line-control);
+  border-radius: 11px;
+  background: var(--ground);
+  box-shadow: var(--shadow-pop);
+}
+
+.side-orgs-label {
+  padding: 8px 8px 4px;
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.side-orgs-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.side-orgs-row > .ui-clip {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.side-orgs-row:hover {
+  background: var(--ground-4);
+}
+
+.side-orgs-row:disabled {
+  cursor: default;
+}
+
+.side-orgs-role {
+  flex: none;
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.side-orgs-refused {
+  padding: 6px 8px;
+}
+
+/* The two worlds, one control: the one this page is, raised; its dot says which. */
+.side-worlds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ground-5);
+}
+
+.side-world {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-4);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.side-world:hover {
+  color: var(--ink);
+}
+
+.side-world-on {
+  background: var(--ground);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-raised);
+  cursor: default;
+}
+
+.side-world-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-7);
+}
+
+.side-world-production .side-world-dot {
+  background: var(--green-dot);
+}
+
+.side-world-sandbox .side-world-dot {
+  background: var(--amber-dot);
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The workspace follows the rows above it: pushed to the foot it left a hole in the middle of a short list. */
+.side-nav-foot {
+  padding-top: 4px;
+}
+
+.side-group {
+  padding: 14px 10px 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-5);
+  white-space: nowrap;
+}
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  font-weight: 450;
+  text-align: left;
+  cursor: pointer;
+}
+
+.side-link:hover {
+  background: var(--ground-5);
+  color: var(--ink);
+}
+
+.side-link-on,
+.side-link-on:hover {
+  background: var(--ground-5);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.side-icon {
+  flex: none;
+  width: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-4);
+}
+
+.side-link-on .side-icon {
+  color: var(--ink);
+}
+
+.side-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-search {
+  color: var(--ink-4);
+}
+
+.side-kbd {
+  font-size: 11px;
+  color: var(--ink-5);
+  font-family: var(--face);
+}
+
+.side-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.side-badge-asking {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.side-badge-asking::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber-dot);
+}
+
+.side-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 0;
+  border-top: 1px solid var(--line);
+}
+
+.side-user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.side-user-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ground-5);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.side-words {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-user-name {
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-user-role {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+/* The name is a link to the person's own screens: Notifications. */
+.side-user-link {
+  margin: -4px 0;
+  padding: 4px 6px 4px 4px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.side-user-link:hover,
+.side-user-on {
+  background: var(--ground-5);
+}
+
+.side-user-bell {
+  flex: none;
+  margin-left: auto;
+  display: grid;
+  color: var(--ink-4);
+}
+
+.side-fold {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+
+.side-fold:hover {
+  background: var(--ground-5);
+  color: var(--ink);
+}
+
+/* Folded: the icons alone, and the picker as the agent's letter. */
+.side-folded .side-org-name,
+.side-folded .side-caret,
+.side-folded .side-worlds,
+.side-folded .side-name,
+.side-folded .side-kbd,
+.side-folded .side-badge,
+.side-folded .side-group,
+.side-folded .side-words,
+.side-folded .view-words,
+.side-folded .view-caret {
+  display: none;
+}
+
+.side-folded .side-link {
+  justify-content: center;
+  padding: 0;
+}
+
+.side-folded .side-org,
+.side-folded .view-trigger {
+  justify-content: center;
+}
+
+.side-folded .side-nav-foot {
+  padding-top: 18px;
+}
+
+.side-folded .side-foot {
+  flex-direction: column;
+}
+
+/* ── viewing: whose calls are on screen ───────────────────────────────────── */
+
+.view {
+  position: relative;
+}
+
+.view-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.view-trigger:hover,
+.view-trigger-open {
+  border-color: var(--line-hover);
+}
+
+.view-all {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: var(--ground-5);
+  color: var(--ink-2);
+}
+
+.view-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-caret {
+  flex: none;
+  display: grid;
+  color: var(--ink-5);
+}
+
+.view-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 40;
+  padding: 5px;
+  border: 1px solid var(--line-control);
+  border-radius: 12px;
+  background: var(--ground);
+  box-shadow: var(--shadow-pop);
+}
+
+.view-find {
+  width: 100%;
+  height: 32px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border: 1px solid var(--line-control);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.view-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.view-row:hover {
+  background: var(--ground-4);
+}
+
+.view-row-on,
+.view-row-on:hover {
+  background: var(--ground-5);
+}
+
+.view-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.view-row-name {
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-row-sub {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-live {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.view-rule {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+
+.view-none {
+  padding: 8px 10px 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.view-corner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--amber-tint);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.view-corner > span {
+  flex: 1;
+}
+
+/* ── the top bar ──────────────────────────────────────────────────────────── */
+
+.top {
+  height: var(--head);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+  z-index: 5;
+}
+
+.top-crumb {
+  font-size: 13px;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.top-sep {
+  color: var(--ink-7);
+}
+
+.top-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.top-leave {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.top-leave:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+}
+
+.top-theme {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.top-theme:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+}
+
+/* The bell while this browser is not told: the accent, and the words, until it is. */
+.top-notices {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.top-notices-off {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.top-notices-off:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ── the tabs of the row on screen ────────────────────────────────────────── */
+
+.tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 4px 24px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+
+.tabs-tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 4px;
+  margin-right: 12px;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-weight: 450;
+}
+
+.tabs-tab:hover {
+  color: var(--ink);
+}
+
+.tabs-tab-on,
+.tabs-tab-on:hover {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+.missing {
+  padding: 26px 22px;
+  max-width: 640px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+/* ── ⌘K ───────────────────────────────────────────────────────────────────── */
+
+.palette-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--scrim);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+}
+
+.palette {
+  width: 560px;
+  max-width: 100%;
+  background: var(--ground);
+  border: 1px solid var(--line-control);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line-2);
+  color: var(--ink-4);
+}
+
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.palette-list {
+  max-height: 52vh;
+  overflow: auto;
+  padding: 6px;
+}
+
+.palette-group {
+  padding: 8px 10px 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-4);
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.palette-item-on {
+  background: var(--accent-selected);
+  color: var(--accent-hover);
+}
+
+.palette-item-sub {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.palette-none {
+  padding: 18px 12px;
+  font-size: 13px;
+  color: var(--ink-4);
+}
+
+@media (max-width: 720px) {
+  .side:not(.side-folded) {
+    width: var(--side-folded);
+  }
+
+  .side:not(.side-folded) .side-org-name,
+  .side:not(.side-folded) .side-caret,
+  .side:not(.side-folded) .side-worlds,
+  .side:not(.side-folded) .side-name,
+  .side:not(.side-folded) .side-kbd,
+  .side:not(.side-folded) .side-badge,
+  .side:not(.side-folded) .side-group,
+  .side:not(.side-folded) .side-words,
+  .side:not(.side-folded) .view-words,
+  .side:not(.side-folded) .view-caret {
+    display: none;
+  }
+
+  .side:not(.side-folded) .side-link {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .side:not(.side-folded) .side-foot {
+    flex-direction: column;
+  }
+
+  .top {
+    padding: 0 16px;
+  }
+
+  .top-crumb,
+  .top-sep {
+    display: none;
+  }
+}

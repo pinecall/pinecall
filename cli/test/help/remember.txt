@@ -1,0 +1,29 @@
+$ pinecall remember --help
+Usage: pinecall remember [options] [paths...]
+
+the goldens memory.remember is held to: what a call teaches, and what it never
+keeps
+
+Arguments:
+  paths               files or folders of cases; agents/<name>/test/memory/ when
+                      left out
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --grep <x>          only cases whose name holds this
+  -h, --help          display help for command
+
+A case is one call written down — both speakers, because nothing is re-run — the facts memory
+already holds, and what must come of it: which categories got a fact, which never did, which
+values must not survive in any fact's text, and which held facts the call contradicted.
+
+Each case costs ONE model call, the very one a hang-up makes, run by the gateway on the org's
+own keys against the agent whoever holds it declared — your `pinecall start`, a colleague's,
+production's with --prod; nothing is started here. Every answer is judged by code.
+
+Examples
+  $ pinecall remember
+  clinica-norte · anthropic/claude-haiku-5-5 · 3 cases · 3 held · 5445 ms
+    ✓ anota la alergia y nunca la tarjeta
+

@@ -1,0 +1,366 @@
+"""A finished call rebuilt from its log and checked by code alone, no model: the replay."""
+
+import dataclasses
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from typing import Literal
+
+from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.calls import service as calls
+from pinecall_runtime.evals.schemas import CheckVerdict
+from pinecall_runtime.judging.service import case
+from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.events import (
+    AgentTurnEnded,
+    CallEnded,
+    ConfirmDeclined,
+    ConfirmGranted,
+    ConfirmRequest,
+    ErrorEvent,
+    ToolCall,
+    UserTurnEnded,
+    event_of,
+)
+from pinecall_runtime.wire.parts import EndedBy, ScoreVerdict
+
+# ungated and undeclared are apart from kept, so neither is ever read as a pass.
+type ConsentOutcome = Literal["kept", "broken", "ungated", "undeclared"]
+
+CONFIRMATIONS: frozenset[str] = frozenset({"confirm.request", "confirm.granted", "confirm.declined"})
+# The entries the checks read, but the confirmations.
+READ: frozenset[str] = frozenset({"turn.agent", "turn.user", "tool.call", "error", "call.ended"})
+
+# This runtime writes no confirm.* yet: a call it wrote is reported, not failed.
+UNGATED = (
+    "the confirmation gate is not built yet: {count} irreversible tool call(s) ran and the log "
+    "carries no confirm.* at all"
+)
+NOTHING_DECLARED = (
+    "{count} tool call(s) and not one declared side effect, so nothing here says which of them are irreversible"
+)
+NO_DECLARATION = (
+    "agent {agent} is not registered on this gateway, so no tool's side effect is known: "
+    "run this while the app that declares the tools is connected"
+)
+NO_WORDS = (
+    "no words were declared for this call: send them as `banned` with the request, or point "
+    "`pinecall eval` at a policy file"
+)
+NOTHING_MEASURED = "no turn of this call carried any of {names}"
+# A budget may name it like any latency: the worst barge-in of the call, in seconds.
+INTERRUPTION_DELAY = "interruption_delay"
+# A share of the talking time, 0 to 1, judged by its own check and never as seconds.
+TALK_SHARE = "talk_share"
+NO_TALK_BUDGET = "no talk_share in the budget: send one, the most of the talking the agent may do (0 to 1)"
+NOTHING_TIMED = "no turn of this call said when anybody started and stopped speaking"
+NOTHING_CUT_OFF = "no reply of the agent's was cut off in this call"
+# A cut-off reply the caller said no words over (a cough, a false start) is livekit's to resume,
+# and one the caller hung up after has nothing left to answer: neither is judged.
+NOTHING_TO_ANSWER = "the caller cut the agent off {count} time(s) and said nothing it could answer, or hung up"
+# The agent that starts its cut-off reply over, rather than answering, opens with the same
+# words: four in a row is not a coincidence of Spanish or English.
+STARTED_OVER_WORDS = 4
+# Seconds, under livekit's own metric names; a request may bring its own.
+DEFAULT_BUDGET: Mapping[str, float] = {"e2e_latency": 2.0, "llm_node_ttft": 1.0, "tts_node_ttfb": 0.6}
+
+# ungated is deferred, not broken: the gate is missing from the runtime, not from the agent.
+AS_A_STATUS: Mapping[ConsentOutcome, ScoreVerdict] = {
+    "kept": "held",
+    "broken": "broken",
+    "ungated": "deferred",
+    "undeclared": "skipped",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ConsentRead:
+    """What the consent rule found, and the sentence that says it."""
+
+    outcome: ConsentOutcome
+    detail: str
+
+
+@dataclass(frozen=True, slots=True)
+class Failure:
+    """One error entry, and whether the session recovered from it."""
+
+    seq: int
+    code: str
+    message: str
+    recoverable: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Spoken:
+    """One finished turn in log order: whose, what, and whether the caller cut it off."""
+
+    seq: int
+    role: case.Role
+    text: str
+    interrupted: bool = False
+
+
+@dataclass(frozen=True)
+class Replayed:
+    """A call as the code checks read it."""
+
+    call: str
+    agent: str
+    said: tuple[str, ...] = ()
+    # Tool calls and confirmations in seq order: consent is about their order.
+    gate: tuple[case.GateLine, ...] = ()
+    failures: tuple[Failure, ...] = ()
+    turns: tuple[Spoken, ...] = ()
+    ended_by: EndedBy | None = None
+    # Each measure's values (latencies.MEASURES), per turn; talk_share is one value for the call,
+    # and interruption_delay one per reply the caller cut off.
+    latencies: Mapping[str, tuple[float, ...]] = field(default_factory=dict[str, tuple[float, ...]])
+
+
+def rebuild(entries: Sequence[Entry]) -> Replayed:
+    """The call the checks read, folded from its entries."""
+    spoken: list[str] = []
+    turns: list[Spoken] = []
+    gate: list[case.GateLine] = []
+    failures: list[Failure] = []
+    ended_by: EndedBy | None = None
+    for entry in entries:
+        if entry.type not in {*READ, *CONFIRMATIONS}:
+            continue
+        match event_of(entry):
+            case AgentTurnEnded() as turn:
+                spoken.append(turn.text)
+                turns.append(Spoken(entry.seq, case.AGENT, turn.text, turn.interrupted))
+            case UserTurnEnded() as heard:
+                turns.append(Spoken(entry.seq, case.CALLER, heard.text))
+            case CallEnded() as over:
+                ended_by = over.ended_by
+            case ToolCall() as tool:
+                gate.append(case.GateLine(entry.seq, "tool.call", tool.call_id, tool.name))
+            case ConfirmRequest() | ConfirmGranted() | ConfirmDeclined() as confirmation:
+                gate.append(case.gate_line(entry, confirmation))
+            case ErrorEvent() as failed:
+                failures.append(Failure(entry.seq, failed.code, failed.message, failed.recoverable))
+            case _:
+                continue
+    measured = calls.samples(calls.reduce(entries).turns)
+    barged = calls.interruption_delays(entries)
+    if barged:
+        measured[INTERRUPTION_DELAY] = barged
+    return Replayed(
+        call=next((entry.call for entry in entries if entry.call is not None), ""),
+        agent=entries[0].agent if entries else "",
+        said=tuple(spoken),
+        gate=tuple(gate),
+        failures=tuple(failures),
+        turns=tuple(turns),
+        ended_by=ended_by,
+        latencies={name: tuple(values) for name, values in measured.items()},
+    )
+
+
+# Grants match by call id, never by tool name: two calls of one tool each need their own yes.
+def consent_of(gate: Iterable[case.GateLine]) -> ConsentRead:
+    """Whether every irreversible tool call ran after its own granted confirmation, by seq."""
+    lines = tuple(gate)
+    tool_calls = tuple(line for line in lines if line.kind == "tool.call")
+    if tool_calls and all(line.side_effect is None for line in tool_calls):
+        return ConsentRead("undeclared", NOTHING_DECLARED.format(count=len(tool_calls)))
+    ran = tuple(line for line in tool_calls if line.side_effect == "irreversible")
+    if not ran:
+        return ConsentRead("kept", f"no irreversible tool ran in this call; {len(tool_calls)} tool call(s) did")
+    confirmations = tuple(line for line in lines if line.kind in CONFIRMATIONS)
+    if not confirmations:
+        return ConsentRead("ungated", UNGATED.format(count=len(ran)))
+    faults = [
+        fault
+        for tool in ran
+        if (fault := _ungranted(tool, [c for c in confirmations if c.call_id == tool.call_id])) is not None
+    ]
+    if faults:
+        return ConsentRead("broken", "; ".join(faults))
+    return ConsentRead("kept", f"{len(ran)} irreversible tool call(s), each after a granted confirmation")
+
+
+# The log carries no side effect: the irreversible tools are the agent's declaration.
+def consent(call: Replayed, irreversible: Collection[str] | None) -> CheckVerdict:
+    """Consent, from the gate trace and the tools the agent declares irreversible."""
+    if irreversible is None:
+        return CheckVerdict(check="consent", status="skipped", detail=NO_DECLARATION.format(agent=call.agent))
+    declared = [
+        dataclasses.replace(line, side_effect="irreversible" if line.tool in irreversible else "read")
+        if line.kind == "tool.call"
+        else line
+        for line in call.gate
+    ]
+    read = consent_of(declared)
+    return CheckVerdict(check="consent", status=AS_A_STATUS[read.outcome], detail=read.detail)
+
+
+# A lone word matches whole words (`tú` is not `tútem`); a phrase matches anywhere.
+def register(call: Replayed, banned: Sequence[str]) -> CheckVerdict:
+    """Whether the agent said none of the banned words, case-insensitively."""
+    if not banned:
+        return CheckVerdict(check="register", status="skipped", detail=NO_WORDS)
+    found = [
+        (turn, word)
+        for turn, text in enumerate(call.said, 1)
+        for word in banned
+        if (word.casefold() in text.casefold() if " " in word else word.casefold() in case.words_of(text))
+    ]
+    if found:
+        spoken = "; ".join(f"{word!r} in turn {turn}" for turn, word in found)
+        return CheckVerdict(check="register", status="broken", detail=f"the agent said {spoken}")
+    kept = f"none of the {len(banned)} declared word(s) was said in {len(call.said)} agent turns"
+    return CheckVerdict(check="register", status="held", detail=kept)
+
+
+def errors(call: Replayed) -> CheckVerdict:
+    """Broken on an error the session did not recover from; the recovered ones named."""
+    fatal = [failure for failure in call.failures if not failure.recoverable]
+    if fatal:
+        return CheckVerdict(check="errors", status="broken", detail="; ".join(_failed(failure) for failure in fatal))
+    if call.failures:
+        recovered = "; ".join(_failed(failure) for failure in call.failures)
+        return CheckVerdict(
+            check="errors", status="held", detail=f"recovered from {len(call.failures)} error(s): {recovered}"
+        )
+    return CheckVerdict(check="errors", status="held", detail="the call logged no error")
+
+
+# The worst turn, not the median: the caller who waited four seconds once heard four seconds.
+def latency(call: Replayed, budget: Mapping[str, float] = DEFAULT_BUDGET) -> CheckVerdict:
+    """Each budgeted measure's worst turn, against its limit."""
+    measured = {
+        name: max(values) for name, values in call.latencies.items() if name in budget and name != TALK_SHARE and values
+    }
+    if not measured:
+        return CheckVerdict(check="latency", status="skipped", detail=NOTHING_MEASURED.format(names=", ".join(budget)))
+    over = any(seconds > budget[name] for name, seconds in measured.items())
+    detail = "; ".join(
+        f"{name} {seconds:.3f}s {'>' if seconds > budget[name] else '<='} {budget[name]:.3f}s "
+        f"at its worst of {len(call.latencies[name])} turns"
+        for name, seconds in measured.items()
+    )
+    return CheckVerdict(check="latency", status="broken" if over else "held", detail=detail)
+
+
+def talk(call: Replayed, budget: Mapping[str, float]) -> CheckVerdict:
+    """Broken when the agent took more of the talking than the budget's talk_share allows."""
+    limit = budget.get(TALK_SHARE)
+    if limit is None:
+        return CheckVerdict(check="talk", status="skipped", detail=NO_TALK_BUDGET)
+    shares = call.latencies.get(TALK_SHARE)
+    if not shares:
+        return CheckVerdict(check="talk", status="skipped", detail=NOTHING_TIMED)
+    share = shares[0]
+    over = share > limit
+    detail = f"the agent spoke {share:.0%} of the talking time, {'>' if over else '<='} {limit:.0%}"
+    return CheckVerdict(check="talk", status="broken" if over else "held", detail=detail)
+
+
+# Only the replies the caller cut off with words are judged: those words want an answer.
+def interruptions(call: Replayed) -> CheckVerdict:
+    """Each reply the caller cut off, followed by the agent answering them, not starting over."""
+    cut = [index for index, line in enumerate(call.turns) if line.interrupted]
+    if not cut:
+        return CheckVerdict(check="interruptions", status="skipped", detail=NOTHING_CUT_OFF)
+    faults: list[str] = []
+    answered = unanswerable = 0
+    for index in cut:
+        found = _answer_to(call, index)
+        if found is None:
+            unanswerable += 1
+            continue
+        heard, answer = found
+        if answer is None:
+            faults.append(f"the caller cut in at seq {heard.seq} and the agent never answered")
+        elif _started_over(call.turns[index].text, answer.text):
+            faults.append(
+                f"the reply at seq {answer.seq} started over the one cut off at seq "
+                f"{call.turns[index].seq} instead of answering the caller at seq {heard.seq}"
+            )
+        else:
+            answered += 1
+    if faults:
+        return CheckVerdict(check="interruptions", status="broken", detail="; ".join(faults))
+    if not answered:
+        return CheckVerdict(
+            check="interruptions", status="skipped", detail=NOTHING_TO_ANSWER.format(count=unanswerable)
+        )
+    detail = f"the agent stopped and answered the caller each of the {answered} time(s) it was cut off"
+    return CheckVerdict(check="interruptions", status="held", detail=detail)
+
+
+def replay(
+    entries: Sequence[Entry],
+    *,
+    banned: Sequence[str],
+    budget: Mapping[str, float],
+    irreversible: Collection[str] | None,
+) -> list[CheckVerdict]:
+    """The six checks over a finished call: consent, register, errors, latency, talk, barge-ins."""
+    call = rebuild(entries)
+    return [
+        consent(call, irreversible),
+        register(call, banned),
+        errors(call),
+        latency(call, budget or DEFAULT_BUDGET),
+        talk(call, budget),
+        interruptions(call),
+    ]
+
+
+def irreversible_tools(declared: AgentConfig | None) -> frozenset[str] | None:
+    """The tools the agent declares irreversible; None when nothing is declared."""
+    if declared is None:
+        return None
+    return frozenset(tool.name for tool in declared.tools if tool.side_effect == "irreversible")
+
+
+def _ungranted(tool: case.GateLine, about: Sequence[case.GateLine]) -> str | None:
+    granted = _first(about, "confirm.granted")
+    if granted is None:
+        declined = _first(about, "confirm.declined")
+        if declined is not None:
+            return f"{tool.tool} ran at seq {tool.seq}, after its confirm.declined at seq {declined.seq}"
+        return f"{tool.tool} ran at seq {tool.seq} with no confirm.granted before it"
+    if granted.seq > tool.seq:
+        return f"{tool.tool} ran at seq {tool.seq}, before its confirm.granted at seq {granted.seq}"
+    request = _first(about, "confirm.request")
+    if request is not None and request.audience is not None and request.audience != granted.audience:
+        return (
+            f"{tool.tool} at seq {tool.seq} was confirmed by {granted.audience} "
+            f"and asked of {request.audience} at seq {request.seq}"
+        )
+    return None
+
+
+def _first(about: Sequence[case.GateLine], kind: case.GateKind) -> case.GateLine | None:
+    return next((line for line in about if line.kind == kind), None)
+
+
+def _failed(failure: Failure) -> str:
+    return f"seq {failure.seq} {failure.code}: {failure.message}"
+
+
+# The caller's next words after the cut, and the agent's next reply after them: None when the
+# agent spoke again before the caller said anything, or the caller hung up with no reply owed.
+def _answer_to(call: Replayed, index: int) -> tuple[Spoken, Spoken | None] | None:
+    after = call.turns[index + 1 :]
+    heard = next(iter(after), None)
+    if heard is None or heard.role != case.CALLER:
+        return None
+    answer = next((line for line in after if line.role == case.AGENT), None)
+    if answer is None and call.ended_by == "caller":
+        return None
+    return heard, answer
+
+
+def _started_over(cut_off: str, answer: str) -> bool:
+    opening = _words_in_order(cut_off)[:STARTED_OVER_WORDS]
+    return len(opening) == STARTED_OVER_WORDS and _words_in_order(answer)[:STARTED_OVER_WORDS] == opening
+
+
+def _words_in_order(text: str) -> list[str]:
+    return [word.strip(case.PUNCTUATION).casefold() for word in text.split() if word.strip(case.PUNCTUATION)]

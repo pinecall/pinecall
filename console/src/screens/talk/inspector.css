@@ -1,0 +1,230 @@
+/* The Inspector: the pane beside Talk and Chat, read off the call's log. */
+
+.inspector {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.inspector-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inspector-standing {
+  margin-left: auto;
+}
+
+.inspector-standing .ui-pill {
+  font-weight: 550;
+}
+
+.inspector-tabs {
+  padding: 4px 8px 12px;
+}
+
+.inspector-count {
+  font-size: 11px;
+  color: var(--ink-6);
+  font-weight: 500;
+}
+
+.inspector-quiet {
+  margin: 0;
+  padding: 14px 15px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  line-height: 1.55;
+}
+
+/* The call's six figures, two a row, as one ruled block: the lines between the tiles are its ground. */
+.inspector-figures {
+  margin: 0 15px 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.inspector-tile {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--ground);
+}
+
+.inspector-figure-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-bottom: 3px;
+}
+
+.inspector-figure {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Which call these are, and the way to it: its id, and the page that has all of it. */
+.inspector-call {
+  margin: 0 15px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  text-decoration: none;
+}
+
+.inspector-call-id {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-5);
+}
+
+.inspector-call-open {
+  flex: none;
+  font-weight: 550;
+  color: var(--accent);
+}
+
+.inspector-call:hover .inspector-call-open {
+  text-decoration: underline;
+}
+
+.inspector-turns,
+.inspector-tools {
+  padding: 0 15px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.inspector-turn {
+  display: flex;
+  gap: 9px;
+}
+
+.inspector-who {
+  flex: none;
+  width: 42px;
+  padding-top: 1px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-4);
+}
+
+.inspector-who-agent {
+  color: var(--accent-hover);
+}
+
+.inspector-turn-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspector-turn-text {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.inspector-turn-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--ink-6);
+}
+
+.inspector-tool {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.inspector-tool-name {
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.inspector-tool-args {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-4);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.inspector-tool-result {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--green);
+  word-break: break-word;
+}
+
+.inspector-tool-failed {
+  color: var(--red);
+}
+
+.inspector-tool-running {
+  color: var(--amber);
+}
+
+.inspector-state {
+  padding: 0 15px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspector-field {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.inspector-field-key {
+  flex: none;
+  width: 100px;
+  font-size: 12px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspector-field-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  word-break: break-word;
+}
+
+.inspector-none {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-6);
+}
+
+.inspector-refused {
+  margin: 0;
+  padding: 0 15px 16px;
+  font-size: 12px;
+  color: var(--red);
+}

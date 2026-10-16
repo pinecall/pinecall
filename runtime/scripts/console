@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# The console and the widget into build/public/, which the wheel carries as pinecall_runtime/public/.
+# Built outside src/ so the source tree holds code alone.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+CONSOLE=../console
+WIDGET=../widget
+OUT=build/public
+# A node_modules another workspace wrote (supervisor takes packages/core as a member of its own)
+# resolves react elsewhere, and a page bundled with two Reacts dies at its first hook. Every
+# react under the console must be this repository's.
+root="$(cd .. && pwd -P)"
+for link in "$CONSOLE"/node_modules/react ../packages/core/node_modules/react; do
+  real="$(cd "$link" && pwd -P)"
+  case "$real" in
+    "$root"/*) ;;
+    *) echo "$link resolves outside this repository ($real): rm -rf it and pnpm install from the root" >&2; exit 2 ;;
+  esac
+done
+pnpm --dir "$CONSOLE" exec vite build --logLevel error
+[ -f "$CONSOLE/dist/index.html" ] || { echo "vite built no page" >&2; exit 1; }
+rm -rf "$OUT" && mkdir -p "$OUT/widget"
+cp -R "$CONSOLE/dist" "$OUT/console"
+cp "$WIDGET/pinecall-widget.js" "$OUT/widget/pinecall-widget.js"
+echo "console and widget → $OUT ($(find "$OUT" -type f | wc -l | tr -d ' ') files)"

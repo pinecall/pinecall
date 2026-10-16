@@ -1,0 +1,119 @@
+$ pinecall cases --help
+Usage: pinecall cases [options] [command]
+
+the org's dataset: real calls kept as cases — read, approve, dismiss, pull into
+the repository
+
+Options:
+  -h, --help                      display help for command
+
+Commands:
+  list [options]
+  groups [options]
+  show [options] <name|group>
+  propose <group>
+  apply <group>
+  persona <group>
+  approve [options] <name|group>
+  dismiss [options] <name|group>
+  reopen [options] <name>
+  forget [options] <name>
+  pull [options] <name>
+  keep [options] <call-id>
+  help [command]                  display help for command
+
+A call a judge broke on is kept at hang-up as a PENDING case: its turns, the state it opened in,
+and an expect that says what must not happen again. A person reads it, reproduces it
+(`pinecall test --case <name>`), fixes the agent, and approves it into the nightly or dismisses it.
+
+A case kept at hang-up joins its agent's GROUP for the judge that broke it (grp_…): propose asks
+the judge model for the cause and the smallest fix; apply writes a proposed SETTING as a new
+version of your settings; persona keeps a caller like the group's; approve and dismiss decide a
+whole group. pull writes a case's golden into the repository; keep makes a finished call a case.
+
+
+$ pinecall cases list --help
+Usage: pinecall cases list [options]
+
+Options:
+  --status <status>  pending | approved | dismissed
+  --agent <name>
+  -h, --help         display help for command
+
+$ pinecall cases groups --help
+Usage: pinecall cases groups [options]
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases show --help
+Usage: pinecall cases show [options] <name|group>
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases propose --help
+Usage: pinecall cases propose [options] <group>
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall cases apply --help
+Usage: pinecall cases apply [options] <group>
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall cases persona --help
+Usage: pinecall cases persona [options] <group>
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall cases approve --help
+Usage: pinecall cases approve [options] <name|group>
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases dismiss --help
+Usage: pinecall cases dismiss [options] <name|group>
+
+Options:
+  --judge-was-wrong <judge>  the judge that broke and should have held
+  --note <why>
+  --agent <name>
+  -h, --help                 display help for command
+
+$ pinecall cases reopen --help
+Usage: pinecall cases reopen [options] <name>
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases forget --help
+Usage: pinecall cases forget [options] <name>
+
+Options:
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases pull --help
+Usage: pinecall cases pull [options] <name>
+
+Options:
+  --out <dir>     the agent's goldens folder when left out
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases keep --help
+Usage: pinecall cases keep [options] <call-id>
+
+Options:
+  --name <x>
+  --held-out  played only when a run names it
+  -h, --help  display help for command

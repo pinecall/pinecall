@@ -1,0 +1,36 @@
+/* /billing: one card while the hop to the billing page happens. */
+
+.billing-hop {
+  flex: 1;
+  padding: 18vh 22px 48px;
+}
+
+.billing-hop-card {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 26px 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: var(--shadow-card);
+}
+
+.billing-hop-mark {
+  display: block;
+  height: 22px;
+  width: auto;
+  margin-bottom: 18px;
+}
+
+.billing-hop-card h1 {
+  margin: 0 0 7px;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+
+.billing-hop-card p {
+  margin: 0;
+  color: var(--ink-3);
+  line-height: 1.5;
+}

@@ -1,0 +1,58 @@
+{
+  "today": "2026-09-17",
+  "state": {
+    "stage": "done",
+    "patient": {
+      "id": "p-1041",
+      "name": "Ana García",
+      "phone": "+34 600 000 001",
+      "cita": "jueves a las diez",
+      "doctor": "la doctora Vidal",
+      "specialty": "medicina de familia"
+    },
+    "slots": [
+      {
+        "id": "s-20260922-0900-ev",
+        "startsAt": "2026-09-22T09:00:00+02:00",
+        "when": "el martes a las nueve",
+        "professional": "la doctora Elena Vidal",
+        "specialty": "medicina de familia"
+      },
+      {
+        "id": "s-20260922-1700-ev",
+        "startsAt": "2026-09-22T17:00:00+02:00",
+        "when": "el martes a las cinco de la tarde",
+        "professional": "la doctora Elena Vidal",
+        "specialty": "medicina de familia"
+      }
+    ],
+    "slot": {
+      "id": "s-20260922-1700-ev",
+      "startsAt": "2026-09-22T17:00:00+02:00",
+      "when": "el martes a las cinco de la tarde",
+      "professional": "la doctora Elena Vidal",
+      "specialty": "medicina de familia"
+    },
+    "booking": {
+      "id": "CN-1041",
+      "startsAt": "2026-09-22T17:00:00+02:00",
+      "when": "el martes a las cinco de la tarde",
+      "professional": "la doctora Elena Vidal",
+      "specialty": "medicina de familia"
+    },
+    "day": "2026-09-22",
+    "specialty": "medicina de familia"
+  },
+  "turns": [
+    {
+      "say": "Perfecto, muchas gracias."
+    }
+  ],
+  "expect": {
+    "says": [
+      "martes"
+    ],
+    "grounded": true,
+    "register": "usted"
+  }
+}

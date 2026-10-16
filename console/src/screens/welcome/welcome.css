@@ -1,0 +1,107 @@
+/* The welcome guide: a progress bar, one step's words, and the commands to copy. */
+
+.wel { padding: 24px 0 48px; }
+.wel-progress { display: flex; gap: 6px; }
+.wel-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--line-3); }
+.wel-bar-done { background: var(--accent); }
+.wel-bar-now { background: var(--accent); opacity: 0.5; }
+.wel-count { margin-top: 14px; font-size: 12.5px; color: var(--ink-4); }
+.wel-title { margin: 6px 0 14px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.wel-body { display: flex; flex-direction: column; gap: 16px; }
+.wel-lead { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.wel-hint { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-4); }
+.wel-nav { margin-top: 28px; display: flex; align-items: center; gap: 14px; }
+
+.wel-facts, .wel-options { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.wel-fact, .wel-option { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line-3); border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
+.wel-fact strong, .wel-option strong { font-size: 14px; color: var(--ink); }
+
+.wel-parts { display: flex; flex-direction: column; border: 1px solid var(--line-3); border-radius: 12px; }
+.wel-part { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-3); }
+.wel-part:first-child { border-top: 0; }
+.wel-part-name { width: 160px; font-weight: 550; font-size: 13.5px; }
+.wel-part-vendor { flex: 1; font-size: 13px; color: var(--ink-3); }
+.wel-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+
+
+
+.wel-waiting { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 10px; background: var(--ground-3); font-size: 13.5px; color: var(--ink-3); }
+.wel-waiting-ok { background: var(--green-soft); color: var(--green); font-weight: 550; }
+.wel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: wel-pulse 1.4s ease-in-out infinite; }
+
+@keyframes wel-pulse { 50% { opacity: 0.25; } }
+
+.wel-reads { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
+
+.wel-block { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--line-3); border-radius: 12px; }
+.wel-block > strong { font-size: 14px; }
+.wel-block code { font-family: var(--face-fixed); font-size: 12px; }
+.wel-numbers { display: flex; flex-direction: column; gap: 6px; }
+.wel-number { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.wel-number-digits { font-family: var(--face-fixed); font-weight: 550; }
+.wel-number-arrow { color: var(--ink-4); }
+.wel-option-go { color: inherit; text-decoration: none; }
+.wel-option-go:hover { border-color: var(--accent); }
+.wel-go { font-size: 13px; font-weight: 500; color: var(--accent); }
+
+/* Code and terminal panels: dark whatever the page's theme, as an editor is. */
+.wel-panel { border-radius: 10px; overflow: hidden; background: #15171c; color: #d6dae2; box-shadow: 0 1px 2px rgb(0 0 0 / 0.18); }
+.wel-panel-head { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #1d2027; font-size: 12px; color: #8b93a3; }
+.wel-panel-dots { display: inline-flex; gap: 5px; }
+.wel-panel-dots i { width: 9px; height: 9px; border-radius: 50%; background: #3a3f4b; }
+.wel-panel-file { margin-left: auto; font-family: var(--face-fixed); font-size: 11.5px; }
+.wel-panel-tabs { display: inline-flex; gap: 2px; }
+.wel-panel-tab { font: inherit; font-size: 12px; padding: 4px 10px; border: 0; border-radius: 6px; background: none; color: #8b93a3; cursor: pointer; }
+.wel-panel-tab[aria-selected="true"] { background: #15171c; color: #e6e9ef; }
+.wel-panel-copy, .wel-term-copy { font: inherit; font-size: 11.5px; padding: 3px 9px; border: 1px solid #343946; border-radius: 6px; background: none; color: #a6adbb; cursor: pointer; }
+.wel-panel-copy { margin-left: auto; }
+.wel-panel-copy:hover, .wel-term-copy:hover { color: #fff; border-color: #4a5060; }
+.wel-panel-body { margin: 0; padding: 14px 16px; overflow-x: auto; font-family: var(--face-fixed); font-size: 12.5px; line-height: 1.6; }
+.wel-term-line { position: relative; display: block; }
+.wel-term-prompt { color: #6ee7b7; }
+.wel-term-copy { position: absolute; right: 0; top: 1.5em; opacity: 0; }
+.wel-term-line:hover .wel-term-copy { opacity: 1; }
+
+.wel-tok-comment { color: #7d8799; font-style: italic; }
+.wel-tok-string { color: #9ece6a; }
+.wel-tok-keyword { color: #c594f1; }
+.wel-tok-decorator { color: #e8c170; }
+.wel-tok-type { color: #7fb4ff; }
+.wel-tok-number { color: #ff9e64; }
+
+/* Two ways to run the agent, as tabs that read like cards. */
+.wel-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wel-way { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line-3); border-radius: 10px; background: none; font: inherit; text-align: left; color: var(--ink-3); cursor: pointer; }
+.wel-way strong { font-size: 13.5px; color: var(--ink); }
+.wel-way[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wel-quote { margin: 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--ground-3); border-radius: 0 8px 8px 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.wel-inline { font-family: var(--face-fixed); font-size: 12px; }
+
+/* The chat and the simulation on the page: a head, the conversation at a fixed height, the box. */
+.wel-chat { display: flex; flex-direction: column; border: 1px solid var(--line-3); border-radius: 12px; overflow: hidden; }
+.wel-chat-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line-3); font-size: 13px; }
+.wel-chat-head .ui-select { width: 200px; flex: none; }
+.wel-chat-head .wel-hint { white-space: nowrap; }
+.wel-chat-head .wel-go, .wel-chat-head .ui-button { margin-left: auto; }
+.wel-chat-head .wel-hint + .wel-go { margin-left: auto; }
+.wel-chat-body { height: 240px; display: flex; flex-direction: column; overflow: hidden; }
+.wel-chat-body .talk-stream, .wel-chat-body .call-chat { flex: 1; }
+.wel-chat-empty { margin: auto; padding: 0 24px; text-align: center; font-size: 13.5px; color: var(--ink-4); }
+.wel-chat-live .wel-chat-body { height: 360px; }
+.wel-chat .talk-composer { margin: 10px 12px 12px; }
+
+/* The ways to a number, one to a row. */
+.wel-ways-list { display: flex; flex-direction: column; border: 1px solid var(--line-3); border-radius: 12px; overflow: hidden; }
+.wel-way-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid var(--line-3); color: inherit; text-decoration: none; }
+.wel-way-row:first-child { border-top: 0; }
+.wel-way-row:hover { background: var(--ground-side); }
+.wel-way-text { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--ink-3); }
+.wel-way-text strong { font-size: 14px; color: var(--ink); }
+.wel-way-how { font-size: 12px; color: var(--ink-4); white-space: nowrap; }
+.wel-way-go { font-size: 13px; font-weight: 500; color: var(--accent); white-space: nowrap; }
+
+@media (max-width: 640px) { .wel-ways { grid-template-columns: 1fr; } .wel-way-how { display: none; } }
+
+.wel-needs { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; color: var(--ink-3); }
+.wel-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+

@@ -1,0 +1,150 @@
+$ pinecall data --help
+Usage: pinecall data [options] [command]
+
+the org's data: erasures, the policy, consent, the do-not-call list, export
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  erase                       one ended call, or everything about a contact,
+                              gone
+  erasures                    the trail: what was erased, when, and who asked
+  reads [call-id|number]      who read the org's calls
+  policy [options]            the org's compliance settings, one row; a flag
+                              changes one field
+  consent [options] <number>
+  dnc                         the do-not-call list
+  export [options]            the org's env whole as JSON Lines
+  help [command]              display help for command
+
+What the org keeps in the env this key acts in (--prod for production), and taking it out.
+
+erase call <id> is one ended call gone: its log, its facts, the memories it taught and its
+recording. erase contact <who> is a person's "delete my data". erasures is the trail. reads is
+who read the org's calls. policy is the org's compliance settings, one row; a flag changes one
+field. consent is what stands for a number. dnc is the do-not-call list. export is the org's
+env whole as JSON Lines. An erasure cannot be undone, so it asks for --yes.
+
+
+$ pinecall data erase --help
+Usage: pinecall data erase [options] [command]
+
+one ended call, or everything about a contact, gone
+
+Options:
+  -h, --help                     display help for command
+
+Commands:
+  call [options] <call-id>
+  contact [options] <number|id>
+  help [command]                 display help for command
+
+$ pinecall data erase call --help
+Usage: pinecall data erase call [options] <call-id>
+
+Options:
+  --yes       an erasure cannot be undone
+  -h, --help  display help for command
+
+$ pinecall data erase contact --help
+Usage: pinecall data erase contact [options] <number|id>
+
+Options:
+  --yes
+  -h, --help  display help for command
+
+$ pinecall data erasures --help
+Usage: pinecall data erasures [options]
+
+the trail: what was erased, when, and who asked
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall data reads --help
+Usage: pinecall data reads [options] [call-id|number]
+
+who read the org's calls
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall data policy --help
+Usage: pinecall data policy [options]
+
+the org's compliance settings, one row; a flag changes one field
+
+Options:
+  --retention-days <n>
+  --keep-all
+  --calling-hours <from-until>
+  --any-hours
+  --per-number-day <n>
+  --no-per-number
+  --consent-everywhere
+  --consent-by-law
+  --disclosure <words>
+  --platform-disclosure
+  --no-disclosure
+  --recording-notice
+  --no-recording-notice
+  -h, --help                    display help for command
+
+$ pinecall data consent --help
+Usage: pinecall data consent [options] <number>
+
+Options:
+  --give <kind>      express | written
+  --source <where>
+  --text <agreed>
+  --evidence <what>
+  --opt-out          put the number on the do-not-call list
+  -h, --help         display help for command
+
+$ pinecall data dnc --help
+Usage: pinecall data dnc [options] [command]
+
+the do-not-call list
+
+Options:
+  -h, --help                  display help for command
+
+Commands:
+  list [options]
+  add [options] <numbers...>
+  import [options] <file>
+  help [command]              display help for command
+
+$ pinecall data dnc list --help
+Usage: pinecall data dnc list [options]
+
+Options:
+  --after <cursor>
+  -h, --help        display help for command
+
+$ pinecall data dnc add --help
+Usage: pinecall data dnc add [options] <numbers...>
+
+Options:
+  --source <where>
+  -h, --help        display help for command
+
+$ pinecall data dnc import --help
+Usage: pinecall data dnc import [options] <file>
+
+Arguments:
+  file              one number a line
+
+Options:
+  --source <where>
+  -h, --help        display help for command
+
+$ pinecall data export --help
+Usage: pinecall data export [options]
+
+the org's env whole as JSON Lines
+
+Options:
+  --out <file.jsonl>  write a file; stdout when left out
+  -h, --help          display help for command

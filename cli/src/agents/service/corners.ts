@@ -1,0 +1,77 @@
+/** The three corners of an agent's settings — yours, the team's, production's — and how a write lands on one. */
+
+import type { TuningAnswer, TuningBody, TuningRow } from "@pinecall/agents/wire";
+
+import * as api from "../../api/agents.js";
+import type { GatewayClient } from "../../api/client.js";
+import type { Context } from "../../context.js";
+
+export type { TuningAnswer, TuningBody, TuningRow } from "@pinecall/agents/wire";
+
+/** Maps the corner's config to the next one; the whole set travels, so a field left out is erased. */
+export type Change = (config: TuningBody) => TuningBody;
+
+/** What a settings write answered, named for a terminal: the corner written and its new version. */
+export interface CornerWritten {
+  agent: string;
+  /** `your corner`, `the team's corner` or `production`. */
+  corner: string;
+  version: number | null;
+  answer: TuningAnswer;
+}
+
+/** The three corners as this key sees them: its own, the team's, production's. */
+export async function readSettings(ctx: Context, agent: string): Promise<TuningAnswer> {
+  return api.getSettings(ctx.gateway(), agent);
+}
+
+/** The corner this key reads: its own if it has one, else the team's. */
+export function cornerRead<Row>(answer: { yours: Row | null; team: Row | null }): Row | null {
+  return answer.yours ?? answer.team;
+}
+
+/**
+ * Whether this key writes a corner of its own: a person's key in the sandbox. A server's token
+ * (`pc_test_` is the sandbox's), and every key in production, writes the org's own. A person whose
+ * corner is still empty reads `yours: null` too, which is why the answer alone cannot say.
+ */
+export function holdsACorner(gw: GatewayClient): boolean {
+  return gw.env === "sandbox" && !gw.key.startsWith("pc_test_");
+}
+
+/** The row a write lands on: the team's on `--team` or for a key with no corner, else this key's own, null until its first write. */
+export function cornerWritten<Row>(answer: { yours: Row | null; team: Row | null }, team: boolean, gw: GatewayClient): Row | null {
+  return team || !holdsACorner(gw) ? answer.team : answer.yours;
+}
+
+/** The row a write starts from: the team's on `--team`, else what this key reads, so the whole set travels. */
+export function rowToStartFrom<Row>(answer: { yours: Row | null; team: Row | null }, team: boolean): Row | null {
+  return team ? answer.team : cornerRead(answer);
+}
+
+/** The version a write is guarded by: the newest of the corner it lands on, 0 when that corner is empty. */
+export function versionGuarded(answer: { yours: { version: number } | null; team: { version: number } | null }, team: boolean, gw: GatewayClient): number {
+  return cornerWritten(answer, team, gw)?.version ?? 0;
+}
+
+/** The name of the corner a write lands on, for output. */
+export function cornerName(answer: { world: string }, team: boolean, gw: GatewayClient): string {
+  if (answer.world === "production") return "production";
+  return team || !holdsACorner(gw) ? "the team's corner" : "your corner";
+}
+
+/**
+ * Write one change as the next version of a corner. The row it starts from is the team's on
+ * `--team`, else what this key reads, so the whole set travels; the version it is guarded by is the
+ * newest of the corner it lands on, 0 when that corner is empty. `before` sees the starting row
+ * first, for a check that writes nothing.
+ */
+export async function writeCorner(ctx: Context, agent: string, team: boolean, change: Change, note: string | null, before?: (row: TuningRow | null) => void): Promise<CornerWritten> {
+  const gw = ctx.gateway();
+  const standing = await api.getSettings(gw, agent);
+  const row = rowToStartFrom(standing, team);
+  before?.(row);
+  const answer = await api.putSettings(gw, agent, { config: change(row?.config ?? {}), if_version: versionGuarded(standing, team, gw), note, team });
+  // Name the corner the gateway actually wrote, which differs from the flag for a key with no corner.
+  return { agent, corner: cornerName(answer, team, gw), version: cornerWritten(answer, team, gw)?.version ?? null, answer };
+}

@@ -1,0 +1,12 @@
+.venv
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+.DS_Store
+# What `pinecall test` writes beside the agent while it runs.
+.pinecall/

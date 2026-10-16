@@ -1,0 +1,20 @@
+{
+  // Two parents: the tenant preset the package must compile under, then this repo's own
+  // strictness on top. The decorator and JSX flags live in tsconfig.tenant.json and nowhere else,
+  // so the framework is built under exactly the settings a tenant gets — if the preset ever stops
+  // being enough for the framework, this build is what says so first.
+  "extends": "./tsconfig.tenant.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

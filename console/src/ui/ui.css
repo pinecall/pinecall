@@ -1,0 +1,1235 @@
+/* The console's vocabulary: the page, the card, the stat, the table, the controls, the pill. Screens place them. */
+
+@import "@pinecall/core/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--face);
+  font-size: 14px;
+  line-height: normal;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+input,
+select,
+button,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+::placeholder {
+  color: var(--ink-6);
+}
+
+::selection {
+  background: var(--selection);
+}
+
+.ui-fixed {
+  font-family: var(--face-fixed);
+}
+
+/* ── the page ─────────────────────────────────────────────────────────────── */
+
+/* The page scrolls the whole width beside the sidebar, so its scrollbar sits at the window's edge;
+   the content keeps its measure (--ui-page) by the right padding growing with the window. */
+.ui-page {
+  --ui-page: 1240px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px max(32px, calc(100% - 32px - var(--ui-page))) 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ui-page > * {
+  flex: 0 0 auto;
+}
+
+.ui-page-tight {
+  gap: 16px;
+}
+
+.ui-page-1060 {
+  --ui-page: 1060px;
+}
+
+.ui-page-900 {
+  --ui-page: 900px;
+}
+
+.ui-page-760 {
+  --ui-page: 760px;
+}
+
+.ui-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ui-head-words {
+  min-width: 0;
+}
+
+.ui-head-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.ui-title {
+  margin: 0 0 4px;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.ui-lede {
+  margin: 0;
+  color: var(--ink-4);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.ui-lede-long {
+  line-height: 1.6;
+}
+
+.ui-back {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* ── the card ─────────────────────────────────────────────────────────────── */
+
+/* A card and the strip of numbers clip their corners, which would let a page's column squeeze them
+   to nothing: they keep their height wherever they are laid out. */
+.ui-card {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.ui-card-pad {
+  padding: 16px 18px;
+}
+
+/* A card's head sits on the card, not on a rule of its own: the content under it is its border. */
+.ui-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 18px 10px;
+  flex-wrap: wrap;
+}
+
+.ui-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+.ui-card-meta {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* What a card's head ends with — a link, a button — pushed to its right edge. */
+.ui-card-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ui-card-action {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 500;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ui-card-action:hover {
+  color: var(--accent-hover);
+}
+
+.ui-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.ui-card-body {
+  padding: 6px 18px 16px;
+}
+
+.ui-card-list {
+  padding: 6px 8px 10px;
+}
+
+.ui-note {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+
+.ui-empty {
+  padding: 6px 18px 18px;
+  font-size: 13px;
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+
+.ui-refused {
+  font-size: 12.5px;
+  color: var(--red);
+  line-height: 1.55;
+}
+
+/* A row of a list inside a card: an avatar or nothing, two lines, something at the end. */
+.ui-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line-2);
+  color: var(--ink);
+}
+
+.ui-row-link {
+  cursor: pointer;
+}
+
+.ui-row-link:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.ui-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ui-row-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ui-row-name {
+  font-size: 13.5px;
+  font-weight: 550;
+}
+
+.ui-row-sub {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-row-end {
+  flex: none;
+  text-align: right;
+}
+
+.ui-row-end-1 {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.ui-row-end-2 {
+  font-size: 11.5px;
+  color: var(--ink-6);
+}
+
+/* The compact row of a side card: Keys in use, Providers, Finish setting up. */
+.ui-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border-radius: 9px;
+  color: var(--ink);
+}
+
+.ui-item:hover {
+  background: var(--ground-3);
+}
+
+.ui-item-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ui-item-sub {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-section-label {
+  padding: 13px 15px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.ui-section-label-ruled {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.ui-kv {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.ui-kv-key {
+  flex: none;
+  width: 104px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.ui-kv-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+/* ── the stat ─────────────────────────────────────────────────────────────── */
+
+/* The numbers across: one strip, a hairline between each — never a card per number. Each stat draws
+   its own right and bottom rule, and the strip clips the ones that fall on its edge. */
+.ui-stats {
+  flex: none;
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.ui-stat {
+  background: var(--ground);
+  padding: 16px 18px;
+  min-width: 0;
+  box-shadow:
+    1px 0 0 var(--line),
+    0 1px 0 var(--line);
+}
+
+.ui-stat-label {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  margin-bottom: 8px;
+}
+
+.ui-stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-stat-of {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-4);
+}
+
+.ui-stat-big {
+  padding: 16px 18px;
+}
+
+.ui-stat-big .ui-stat-label {
+  margin-bottom: 8px;
+}
+
+.ui-stat-big .ui-stat-value {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+}
+
+.ui-stat-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.ui-stat-delta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-4);
+  padding-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-stat-delta a {
+  color: var(--accent-ink);
+}
+
+.ui-stat-delta-up {
+  color: var(--green);
+}
+
+.ui-stat-delta-down {
+  color: var(--red);
+}
+
+.ui-stat-small {
+  padding: 13px 15px;
+}
+
+.ui-stat-small .ui-stat-label {
+  font-size: 11.5px;
+  margin-bottom: 6px;
+}
+
+.ui-stat-small .ui-stat-value {
+  font-size: 21px;
+  letter-spacing: -0.6px;
+  line-height: normal;
+}
+
+.ui-stat-fact .ui-stat-label {
+  margin-bottom: 5px;
+}
+
+.ui-stat-fact .ui-stat-value {
+  font-size: 13.5px;
+  font-weight: 550;
+  letter-spacing: normal;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.ui-stat-accent .ui-stat-value {
+  color: var(--accent);
+}
+
+/* ── the table ────────────────────────────────────────────────────────────── */
+
+.ui-table-head,
+.ui-table-row {
+  display: grid;
+  gap: 12px;
+  padding: 8px 18px;
+}
+
+.ui-table-head {
+  border-top: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.ui-card > .ui-table-head:first-child {
+  border-top: 0;
+}
+
+.ui-table-head > span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-4);
+}
+
+.ui-table-row {
+  align-items: center;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line-2);
+  color: var(--ink);
+}
+
+.ui-table-head + .ui-table-row {
+  border-top: 0;
+}
+
+.ui-table-row:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.ui-table-row-link {
+  cursor: pointer;
+}
+
+.ui-cell-right {
+  text-align: right;
+  justify-self: stretch;
+}
+
+.ui-cell-end {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.ui-cell-strong {
+  font-size: 13.5px;
+  font-weight: 550;
+  min-width: 0;
+}
+
+.ui-cell {
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+}
+
+.ui-cell-ink {
+  font-size: 13px;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.ui-cell-faint {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  min-width: 0;
+}
+
+.ui-cell-link {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--accent);
+}
+
+.ui-clip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── the tabs ─────────────────────────────────────────────────────────────── */
+
+.ui-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-top: -4px;
+}
+
+.ui-tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  color: var(--ink-3);
+  font-weight: 450;
+  cursor: pointer;
+}
+
+.ui-tab:hover {
+  color: var(--ink);
+}
+
+.ui-tab-on,
+.ui-tab-on:hover {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+/* ── controls ─────────────────────────────────────────────────────────────── */
+
+.ui-button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.ui-button:hover {
+  background: var(--ground-3);
+  border-color: var(--line-hover);
+  color: var(--ink);
+}
+
+.ui-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The one move a screen leads with: ink, not the accent — the accent is for what is selected. */
+.ui-button-primary {
+  border-color: transparent;
+  background: var(--solid);
+  color: var(--on-solid);
+  font-weight: 550;
+  padding: 0 13px;
+}
+
+.ui-button-primary:hover {
+  background: var(--solid);
+  border-color: transparent;
+  color: var(--on-solid);
+  opacity: 0.86;
+}
+
+.ui-button-dashed {
+  border-style: dashed;
+  border-color: var(--line-hover);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.ui-button-dashed:hover {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+.ui-button-danger {
+  color: var(--red);
+}
+
+.ui-button-danger:hover {
+  border-color: var(--red-line);
+  color: var(--red);
+}
+
+.ui-button-pill {
+  border-radius: 99px;
+}
+
+.ui-button-xs {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.ui-button-sm {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.ui-button-md {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+
+.ui-button-form {
+  height: 36px;
+}
+
+.ui-button-lg {
+  height: 42px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.ui-text-action {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ui-text-action:disabled {
+  color: var(--ink-7);
+  cursor: default;
+}
+
+.ui-text-action-danger {
+  color: var(--red);
+}
+
+.ui-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.ui-input,
+.ui-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 8px;
+  background: var(--ground);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.ui-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-select:hover {
+  border-color: var(--line-hover);
+}
+
+.ui-select:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ui-select[data-placeholder] .ui-select-value {
+  color: var(--ink-5);
+}
+
+.ui-select-value {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-select-chevron {
+  flex: none;
+  display: grid;
+  color: var(--ink-4);
+}
+
+/* The menu: drawn by the page, not the system — a raised card of the palette, as wide as its trigger at least. */
+.ui-select-menu {
+  z-index: 60;
+  min-width: var(--radix-select-trigger-width);
+  max-height: min(360px, var(--radix-select-content-available-height));
+  overflow: hidden;
+  border: 1px solid var(--line-control);
+  border-radius: 11px;
+  background: var(--ground-3);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--face);
+}
+
+.ui-select-viewport {
+  padding: 5px;
+}
+
+.ui-select-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 32px 0 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.ui-select-item[data-highlighted] {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.ui-select-item[data-state="checked"] {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.ui-select-item[data-disabled] {
+  color: var(--ink-6);
+  cursor: default;
+}
+
+.ui-select-check {
+  position: absolute;
+  right: 10px;
+  display: grid;
+  color: var(--accent);
+}
+
+.ui-select-scroll {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  font-size: 10px;
+  color: var(--ink-4);
+  cursor: default;
+}
+
+.ui-input:focus,
+.ui-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--accent-ring);
+}
+
+.ui-input-sm,
+.ui-select-sm {
+  height: 34px;
+}
+
+.ui-input-lg {
+  height: 40px;
+  font-size: 14px;
+  border-color: var(--line-field);
+}
+
+.ui-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 9px;
+  background: var(--ground);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  resize: vertical;
+}
+
+.ui-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--accent-ring);
+}
+
+.ui-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.ui-form-grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ui-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.ui-check input {
+  accent-color: var(--accent);
+}
+
+.ui-segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--ground-4);
+  border-radius: 8px;
+}
+
+.ui-segment {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 450;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ui-segment-on {
+  background: var(--ground);
+  color: var(--ink);
+  font-weight: 550;
+  box-shadow: var(--shadow-raised);
+}
+
+.ui-chips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.ui-chip {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 99px;
+  background: var(--ground);
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 450;
+  cursor: pointer;
+}
+
+.ui-chip-on {
+  background: var(--solid);
+  border-color: var(--ink);
+  color: var(--on-solid);
+  font-weight: 550;
+}
+
+.ui-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--line-muted);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: 0;
+  cursor: pointer;
+}
+
+.ui-switch-on {
+  background: var(--accent);
+  justify-content: flex-end;
+}
+
+.ui-switch-knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--on-accent);
+}
+
+/* ── small things ─────────────────────────────────────────────────────────── */
+
+.ui-pill {
+  flex: none;
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  line-height: normal;
+}
+
+.ui-pill-small {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.ui-pill-green {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.ui-pill-amber {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.ui-pill-red {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.ui-pill-indigo {
+  color: var(--indigo);
+  background: var(--indigo-soft);
+}
+
+.ui-pill-violet {
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+}
+
+.ui-pill-gray {
+  color: var(--ink-3);
+  background: var(--ground-5);
+}
+
+.ui-pill-muted {
+  color: var(--ink-4);
+  background: var(--ground-5);
+}
+
+.ui-tag {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: var(--ground-5);
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.ui-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.ui-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-muted);
+  display: inline-block;
+}
+
+.ui-dot-small {
+  width: 6px;
+  height: 6px;
+}
+
+.ui-dot-green {
+  background: var(--green-dot);
+}
+
+.ui-dot-amber {
+  background: var(--amber-dot);
+}
+
+.ui-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--green-dot);
+}
+
+.ui-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ui-avatar-26 {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.ui-avatar-36 {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  font-size: 12.5px;
+}
+
+.ui-avatar-round {
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.ui-avatar-round.ui-avatar-38 {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+}
+
+.ui-tint-violet {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.ui-tint-green {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.ui-tint-pink {
+  background: var(--pink-soft);
+  color: var(--pink);
+}
+
+.ui-tint-amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.ui-tint-indigo {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.ui-tint-red {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.ui-tint-ink {
+  background: var(--solid);
+  color: var(--on-solid);
+}
+
+.ui-code {
+  padding: 14px 16px;
+  background: var(--ground-side);
+  font: 12.5px var(--face-fixed);
+  color: var(--ink-2);
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.ui-bar {
+  display: block;
+  height: 6px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ground-5);
+  overflow: hidden;
+}
+
+.ui-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+
+.ui-icon {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .ui-page {
+    padding: 20px 16px 40px;
+  }
+
+  .ui-stat {
+    padding: 14px 16px;
+  }
+
+  /* A table keeps its columns and scrolls sideways inside its card; the page never does. */
+  .ui-card {
+    overflow-x: auto;
+  }
+
+  .ui-table-head,
+  .ui-table-row {
+    min-width: 640px;
+  }
+}
+
+/* ── a pane's handle ──────────────────────────────────────────────────────── */
+
+/* The strip a pane is dragged by, laid over the line between the pane and the rest: invisible
+   until the pointer is near, then one accent hairline. It hangs from the GRID, which is
+   `position: relative` and sets `--pane` — a pane scrolls, and a handle inside it would scroll away. */
+.ui-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 3;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ui-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background 0.15s ease-out, width 0.15s ease-out;
+}
+
+.ui-resize:hover::after,
+.ui-resize:active::after {
+  background: var(--accent);
+  width: 2px;
+}
+
+.ui-resize-right {
+  right: calc(var(--pane) - 5px);
+}
+
+.ui-resize-left {
+  left: calc(var(--pane) - 5px);
+}
+
+@media (max-width: 1100px) {
+  .ui-resize {
+    display: none;
+  }
+}

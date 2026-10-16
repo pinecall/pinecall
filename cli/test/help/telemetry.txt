@@ -1,0 +1,56 @@
+$ pinecall telemetry --help
+Usage: pinecall telemetry [options] [command]
+
+where this org's calls' traces go: its own OpenTelemetry collector, set, read
+and taken back
+
+Options:
+  -h, --help           display help for command
+
+Commands:
+  show                 the collector, the headers' names, whether words travel
+  set [options] <url>  an OTLP collector; each header's value on stdin
+  clear                stop the export
+  help [command]       display help for command
+
+A copy of every spoken call's spans — the model's requests, speech in and out, every tool the
+agent ran — goes over OTLP to the collector named here: Langfuse, Datadog, Grafana, or one of
+yours. Off until set; a chat has no worker and so no spans.
+
+set takes the collector's URL on the command line and each header's VALUE from stdin, one per
+--header, in the order named — typed with nothing echoed on a terminal, or piped one line per
+header — never from a flag. --pii lets a span carry what was said and what a tool got; without
+it the words are stripped before export. The gateway keeps the headers sealed.
+
+Examples
+  $ printf %s "$DD_API_KEY" | pinecall telemetry set https://otlp.datadoghq.eu/v1/traces --header dd-api-key
+  $ printf 'Basic %s\n4\n' "$CREDS" | pinecall telemetry set https://cloud.langfuse.com/api/public/otel/v1/traces \
+      --header Authorization --header x-langfuse-ingestion-version
+
+
+$ pinecall telemetry show --help
+Usage: pinecall telemetry show [options]
+
+the collector, the headers' names, whether words travel
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall telemetry set --help
+Usage: pinecall telemetry set [options] <url>
+
+an OTLP collector; each header's value on stdin
+
+Options:
+  --header <name...>  a header to send; its value is read from stdin, one line
+                      per header, in order
+  --pii               let a span carry what was said and what a tool got
+  -h, --help          display help for command
+
+$ pinecall telemetry clear --help
+Usage: pinecall telemetry clear [options]
+
+stop the export
+
+Options:
+  -h, --help  display help for command

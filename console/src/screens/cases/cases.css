@@ -1,0 +1,388 @@
+/* Cases: a list of groups, one cause and one move each; a case open is the whole screen. */
+
+.cs-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 18px 0;
+}
+
+.cs-back {
+  display: inline-block;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.cs-back:hover {
+  color: var(--accent-hover);
+}
+
+.cs-empty {
+  margin: 0;
+  padding: 12px 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.cs-groups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A group: its judge's creature, the cause and what is known of it, and its one move at the end. */
+.cs-g {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+}
+
+.cs-g-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cs-g-cause {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cs-g-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.cs-g-meta b {
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.cs-g-fix {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.cs-g-fix span {
+  color: var(--ink-4);
+}
+
+.cs-g-said {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--green);
+}
+
+.cs-g-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cs-g-more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.cs-g-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-g-calls {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.cs-g-calls a {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.cs-g-calls a:hover .cs-g-said-line {
+  color: var(--accent-hover);
+}
+
+.cs-g-said-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.cs-g-from {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.cs-bad {
+  color: var(--red);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cs-doc {
+  max-width: 860px;
+  padding: 18px 0 40px;
+}
+
+.cs-doc-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cs-doc-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.cs-doc-head > :first-child {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.cs-doc-about {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.cs-decide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.cs-doc-actions,
+.cs-dismiss {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.cs-dismiss {
+  max-width: 420px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ground-side);
+}
+
+.cs-sec {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cs-sec-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cs-sec-hint {
+  margin: 4px 0 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.cs-none,
+.cs-memory {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.cs-broke {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs-broke li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.cs-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+}
+
+.cs-fact {
+  display: contents;
+}
+
+.cs-fact dt {
+  color: var(--ink-4);
+}
+
+.cs-fact dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--face-fixed);
+  word-break: break-word;
+}
+
+.cs-fix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.cs-fix-half {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cs-fix-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cs-fix-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.cs-fix-rows dt {
+  color: var(--ink-3);
+}
+
+.cs-fix-rows dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.cs-fix-how {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.cs-cmd {
+  align-self: stretch;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--ground-side);
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.cs-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cs-run > :first-child {
+  width: min(100%, 420px);
+}
+
+.cs-result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cs-result-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.cs-elsewhere {
+  font-size: 13px;
+}
+
+.cs-doc-foot {
+  padding-top: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}

@@ -1,0 +1,197 @@
+"""`GET /metrics`: what the gateway counted and holds, as Prometheus text, to the addresses it trusts alone."""
+
+import asyncio
+import ipaddress
+import time
+
+from fastapi import APIRouter, Request
+from fastapi.responses import PlainTextResponse
+
+from pinecall_runtime.calls.auth import TheServing
+from pinecall_runtime.calls.service.serving import Serving
+from pinecall_runtime.exceptions import Forbidden
+from pinecall_runtime.fleet import service as fleet
+from pinecall_runtime.kit.prometheus import family, histogram
+from pinecall_runtime.platform import service as platform
+from pinecall_runtime.postgres import DatabaseError, pool_measures
+from pinecall_runtime.providers import service as providers
+
+router = APIRouter()
+
+# The load balancer sets it on every request it passes on: a request that carries it came from off
+# the box.
+FORWARDED = "x-forwarded-for"
+NOT_HERE = (
+    "/metrics answers the addresses PINECALL_METRICS_FROM names (the box's loopback unless said), "
+    "never a forwarded request: curl http://127.0.0.1:8080/metrics from inside"
+)
+TEXT_FORMAT = "text/plain; version=0.0.4; charset=utf-8"
+
+
+# No key: the address is the fence, and a scraper inside the cluster holds none. A request through
+# the load balancer always carries X-Forwarded-For, and is refused whatever it says.
+@router.get("/metrics", include_in_schema=False)
+async def read_metrics(request: Request, serving: TheServing) -> PlainTextResponse:
+    """What the gateway counted since it started and what it holds now, in Prometheus's text."""
+    client = "" if request.client is None else request.client.host
+    if not is_from_any(client, serving.handles.settings.metrics_from) or FORWARDED in request.headers:
+        raise Forbidden(NOT_HERE)
+    now = time.time()
+    replicas = await _replicas(serving)
+    waiting = await _waiting(serving, now)
+    pool = pool_measures(request.app.state.engine)
+    loops: dict[str, asyncio.Task[None]] = request.app.state.loops
+    text = _measures_of(serving, pool, loops, now, replicas, waiting)
+    return PlainTextResponse(text, media_type=TEXT_FORMAT)
+
+
+def is_from_any(client: str, networks: str) -> bool:
+    """Whether the address is one of the comma-separated addresses or networks."""
+    try:
+        address = ipaddress.ip_address(client)
+    except ValueError:
+        return False
+    named = (part.strip() for part in networks.split(",") if part.strip())
+    return any(address in ipaddress.ip_network(network, strict=False) for network in named)
+
+
+# A database that cannot say leaves the family empty: the scrape still answers.
+async def _replicas(serving: Serving) -> list[tuple[str, float]]:
+    try:
+        async with serving.handles.sessions() as session:
+            return await platform.replica_lags(session)
+    except DatabaseError:
+        return []
+
+
+# The rooms with a caller no worker opened yet, per fleet: a call LiveKit or a worker dropped.
+async def _waiting(serving: Serving, now: float) -> dict[str, int]:
+    try:
+        return await serving.offering.waiting(now)
+    except DatabaseError:
+        return {}
+
+
+def _measures_of(
+    serving: Serving,
+    pool: tuple[int, int],
+    loops: dict[str, asyncio.Task[None]],
+    now: float,
+    replicas: list[tuple[str, float]],
+    waiting: dict[str, int],
+) -> str:
+    """Every family this gateway exposes, in the text format."""
+    counted = serving.counters
+    size, checked_out = pool
+    roster = serving.roster
+    fleets = sorted({named for named, _ in roster.seats})
+    totals = [roster.totals_of(named, now) for named in fleets]
+    workers = {named: roster.workers_of(named, now) for named in fleets}
+    failing = counted.failing(now)
+    vendors = sorted(set(providers.installed()) | failing)
+    return "".join(
+        (
+            histogram(
+                "pinecall_append_seconds",
+                "Time a worker's entry or batch took to be written, measured at the endpoint.",
+                counted.append_seconds,
+            ),
+            family(
+                "pinecall_entries_appended_total",
+                "Entries workers wrote through the append endpoints.",
+                "counter",
+                [({}, counted.appended)],
+            ),
+            family(
+                "pinecall_errors_total",
+                "Error entries workers wrote, by code and the vendor whose plugin failed.",
+                "counter",
+                [({"code": code, "vendor": vendor}, count) for (code, vendor), count in sorted(counted.errors.items())],
+            ),
+            family(
+                "pinecall_pool_connections",
+                "Connections the pool holds open, lent out now, and at most.",
+                "gauge",
+                [({"state": "open"}, size), ({"state": "in_use"}, checked_out), ({"state": "max"}, size)],
+            ),
+            family(
+                "pinecall_held",
+                "What the gateway holds now: live log readers, app sockets, calls served.",
+                "gauge",
+                [
+                    ({"what": "log_readers"}, serving.logs.readers),
+                    ({"what": "app_sockets"}, len(serving.live.sockets)),
+                    ({"what": "calls_live"}, len(serving.live.calls)),
+                ],
+            ),
+            family(
+                "pinecall_writer_waiting",
+                "Appends queued for the log's writer and not yet in a transaction.",
+                "gauge",
+                [({}, serving.logs.store.writer.waiting)],
+            ),
+            family(
+                "pinecall_fleet",
+                "Each fleet: workers, seats, calls held, accepting; rooms waiting for a worker.",
+                "gauge",
+                [
+                    ({"fleet": total.fleet, "what": what}, value)
+                    for total in totals
+                    for what, value in (
+                        ("workers", total.workers),
+                        ("seats", total.seats),
+                        ("busy", total.active),
+                        ("accepting", total.accepting),
+                        ("waiting", waiting.get(total.fleet, 0)),
+                    )
+                ],
+            ),
+            family(
+                "pinecall_vendor_failing",
+                "1 for a vendor over its error line in the last two minutes, as this gateway saw; "
+                "0 for every other vendor installed.",
+                "gauge",
+                [({"vendor": vendor}, int(vendor in failing)) for vendor in vendors],
+            ),
+            family(
+                "pinecall_replication_lag_seconds",
+                "How far behind each standby is in replaying the primary's WAL.",
+                "gauge",
+                [({"replica": replica}, lag) for replica, lag in replicas],
+            ),
+            family(
+                "pinecall_loop_running",
+                "Whether each loop the process must keep (the reaper, the sweep) still runs.",
+                "gauge",
+                [({"loop": name}, int(not task.done())) for name, task in sorted(loops.items())],
+            ),
+            family(
+                "pinecall_spend_unusual",
+                "How many times its usual day an org's calls cost today, while they do.",
+                "gauge",
+                [({"org": org}, multiple) for org, multiple in sorted(counted.unusual.items())],
+            ),
+            family(
+                "pinecall_worker_state",
+                "How the roster counts each worker: accepting, failing, full, draining, cordoned.",
+                "gauge",
+                [
+                    ({"fleet": named, "worker": seat.worker, "state": state}, 1)
+                    for named, seats in workers.items()
+                    for seat in seats
+                    if (state := fleet.worker_state(seat, seats, now)) != "gone"
+                ],
+            ),
+            family(
+                "pinecall_worker_first_audio_p95_seconds",
+                "Each worker's first audio at the p95 over its last minute, as its heartbeat says.",
+                "gauge",
+                [
+                    ({"fleet": named, "worker": seat.worker}, seat.first_audio_p95_s)
+                    for named, seats in workers.items()
+                    for seat in seats
+                    if seat.first_audio_p95_s is not None and fleet.heard_lately(seat, now)
+                ],
+            ),
+        )
+    )

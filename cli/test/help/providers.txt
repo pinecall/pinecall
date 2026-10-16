@@ -1,0 +1,83 @@
+$ pinecall providers --help
+Usage: pinecall providers [options] [command]
+
+every vendor this build runs, and the provider keys this org brought of its own
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  catalog [options]  every vendor this build runs: what each does, its standing,
+                     its variable, its other names
+  add <vendor>       bring this org's own key for a vendor; the key on stdin,
+                     never on the command line
+  rm <vendor>        give a vendor back to the deployment's key, where it lends
+                     one
+  list               only the vendors this org brought a key for, by name
+  help [command]     display help for command
+
+With nothing after it: every vendor this build runs — what each does, every other word it
+answers to, and the one word for what it is still waiting for on this box. `ready` is the only
+one that runs a call; `no plugin` and `no key` are the operator's to fix, and `its own` is a
+vendor whose credentials are a chain or a pair and never one key anybody could bring.
+
+A key added here is this org's own account with that vendor, and every call of this org runs
+on it from the next one; a vendor nobody brought runs on the deployment's key when it lends that
+vendor (`pinecall limits` says which), and is refused when it does not. add reads the
+key from stdin — typed with nothing echoed on a terminal, one piped line off one — and never
+from a flag: argv is visible in `ps` to every user on the machine, and a key pasted as an argument
+is a key in the shell history. rm gives that vendor back to the deployment's key, where it lends one.
+
+No endpoint a person reads ever answers with a provider key: list prints the vendors and nothing
+else, not a value, not a prefix, not a fingerprint. The one endpoint that does read a key back is
+the worker's — GET /v1/agents/<slug>/provider-keys, an org's own keys to an org's own process,
+on that org's key — and it is the whole reason the vault exists. A key that was lost is set
+again.
+
+Examples
+  $ pinecall providers --does tts
+  VENDOR        DOES         STANDING   VARIABLE              ALSO KNOWN AS
+  livekit       llm,stt,tts  ready                            inference lk
+  cartesia      stt,tts      no key     CARTESIA_API_KEY
+  elevenlabs    stt,tts      ready      ELEVEN_API_KEY        11labs eleven elevenlab
+  rime          tts          no key     RIME_API_KEY
+  speechmatics  stt,tts      no plugin  SPEECHMATICS_API_KEY
+
+
+$ pinecall providers catalog --help
+Usage: pinecall providers catalog [options]
+
+every vendor this build runs: what each does, its standing, its variable, its
+other names
+
+Options:
+  --does <job>  only the vendors that do one job: llm | stt | tts
+  -h, --help    display help for command
+
+$ pinecall providers add --help
+Usage: pinecall providers add [options] <vendor>
+
+bring this org's own key for a vendor; the key on stdin, never on the command
+line
+
+Arguments:
+  vendor      the vendor's name, as the catalog lists it
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall providers rm --help
+Usage: pinecall providers rm [options] <vendor>
+
+give a vendor back to the deployment's key, where it lends one
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall providers list --help
+Usage: pinecall providers list [options]
+
+only the vendors this org brought a key for, by name
+
+Options:
+  -h, --help  display help for command

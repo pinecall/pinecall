@@ -1,0 +1,284 @@
+/* Goldens: the goldens with where each stands, a run's cells, and a golden read as a transcript. */
+
+.ev-last {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  padding-top: 4px;
+}
+
+.ev-goldens > .ev-golden:first-child > .ui-table-row {
+  border-top: 0;
+}
+
+.ev-golden-open > .ui-table-row {
+  background: var(--ground-tint);
+}
+
+.ev-golden-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ev-golden-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ev-golden-says,
+.ev-golden-call {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.ev-golden-call:hover {
+  color: var(--accent);
+}
+
+.ev-golden-where {
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.ev-row-open,
+.ev-row-open:hover {
+  background: var(--ground-tint);
+}
+
+.ev-num {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.ev-num-faint {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+
+.ev-num-bad {
+  color: var(--red);
+}
+
+.ev-head-end {
+  margin-left: auto;
+}
+
+.ev-facts {
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 9px 22px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+/* A golden as a transcript: a block per turn, its input on the left and the steps under it. */
+
+.ev-tx {
+  padding: 4px 16px 16px 16px;
+  border-top: 1px solid var(--line-3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ev-tx-turns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ev-tx-turn {
+  border-left: 2px solid var(--line-2);
+  padding: 8px 0 6px 12px;
+}
+
+.ev-tx-turn-broke {
+  border-left-color: var(--red);
+}
+
+.ev-tx-turn-off {
+  opacity: 0.55;
+}
+
+.ev-tx-in {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.ev-tx-n {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-6);
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+}
+
+.ev-tx-say {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.ev-tx-event {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ev-tx-lines {
+  list-style: none;
+  margin: 6px 0 0 23px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ev-tx-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 9px;
+}
+
+.ev-tx-said {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.ev-tx-why {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.ev-tx-end {
+  border-top: 1px dashed var(--line-2);
+  padding-top: 10px;
+}
+
+.ev-tx-end-head {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.ev-tx-end .ev-tx-lines {
+  margin-left: 0;
+}
+
+.ev-reason {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  min-width: 0;
+}
+
+.ev-repro-body {
+  padding: 0 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ev-repro-open {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ev-repro-title {
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.ev-repro-verdict {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-3);
+}
+
+.ev-asked {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.ev-suite-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+}
+
+.ev-suite-models {
+  flex: 1;
+  min-width: 240px;
+}
+
+.ev-suite-number {
+  width: 120px;
+}
+
+.ev-suite-controls .ui-check {
+  height: 34px;
+}
+
+.ev-suite-go {
+  margin-left: auto;
+}
+
+.ev-suite-all {
+  padding: 9px 16px;
+  background: var(--ground-side);
+  border-top: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.ev-suite-golden {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-3);
+}
+
+.ev-suite-golden:first-of-type {
+  border-top: 0;
+}
+
+.ev-suite-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ev-suite-says {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ev-suite-expects {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+@media (max-width: 720px) {
+  .ev-suite-golden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

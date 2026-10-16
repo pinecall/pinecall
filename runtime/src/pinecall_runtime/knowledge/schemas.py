@@ -1,0 +1,323 @@
+"""The bodies of the knowledge and memory endpoints."""
+
+from typing import Self
+
+from pydantic import Field
+
+from pinecall_runtime.enums import Channel
+from pinecall_runtime.kit.schemas import Schema
+from pinecall_runtime.knowledge.models import ContactMemory as ContactMemoryRow
+from pinecall_runtime.wire.base import WireModel
+from pinecall_runtime.wire.parts import KnowledgeFile
+
+# ── knowledge bases ──
+
+
+# The base is replaced whole, never merged.
+class KnowledgePush(WireModel):
+    """PUT /v1/knowledge/{base}, the body: the tenant's folder as of now."""
+
+    files: list[KnowledgeFile]
+
+
+class KnowledgePushed(WireModel):
+    """PUT /v1/knowledge/{base}, the answer: the base, the chunks it became, how long it took."""
+
+    base: str
+    chunks: int
+    took_ms: float
+
+
+class KnowledgeBase(WireModel):
+    """One base as the list draws it: its size, the model that wrote it, when it was pushed."""
+
+    base: str
+    chunks: int
+    model: str
+    pushed_at: float
+
+
+class KnowledgeList(WireModel):
+    """GET /v1/knowledge: every base the key's scope reads."""
+
+    bases: list[KnowledgeBase]
+
+
+class KnowledgeUse(WireModel):
+    """One base and the agents whose settings attach it."""
+
+    base: str
+    agents: list[str]
+
+
+class KnowledgeUses(WireModel):
+    """GET /v1/knowledge/attached: which agents read each base, off their newest settings."""
+
+    bases: list[KnowledgeUse]
+
+
+class KnowledgeFileRow(WireModel):
+    """One file of a base as the list draws it."""
+
+    path: str
+    chars: int
+    chunks: int
+    pushed_at: float
+
+
+# `kept` is false for a base whose files were never stored, only its chunks.
+class KnowledgeFiles(WireModel):
+    """GET /v1/knowledge/{base}: every file of the base, never its text."""
+
+    base: str
+    kept: bool
+    files: list[KnowledgeFileRow]
+
+
+class KnowledgeFileRead(WireModel):
+    """GET /v1/knowledge/{base}/files/{path}: one file, text and all."""
+
+    path: str
+    text: str
+    chunks: int
+    pushed_at: float
+
+
+class KnowledgeFilePut(WireModel):
+    """PUT /v1/knowledge/{base}/files/{path}, the body: the file's whole text."""
+
+    text: str
+
+
+class KnowledgeFilePushed(WireModel):
+    """PUT /v1/knowledge/{base}/files/{path}, the answer: the file, its chunks, how long it took."""
+
+    base: str
+    path: str
+    chunks: int
+    took_ms: float
+
+
+# A chunk answers when its file and heading path start with `expects`, never by substring.
+class GoldenQuestion(WireModel):
+    """One question of a base's golden: what somebody asks, and the chunk that should answer."""
+
+    asks: str
+    expects: str
+
+
+class KnowledgeGolden(WireModel):
+    """POST /v1/knowledge/{base}/eval, the body: the questions a base is held to."""
+
+    questions: list[GoldenQuestion]
+    k: int | None = None
+
+
+class GoldenMiss(WireModel):
+    """One question whose chunk was not among the k returned, and what came back instead."""
+
+    asks: str
+    expects: str
+    found: list[str]
+
+
+class KnowledgeScore(WireModel):
+    """POST /v1/knowledge/{base}/eval, the answer: recall@k and nDCG@10, computed with no model."""
+
+    base: str
+    model: str
+    questions: int
+    k: int
+    recall_at_k: float
+    ndcg_at_10: float
+    took_ms: float
+    misses: list[GoldenMiss]
+
+
+class FoundChunk(WireModel):
+    """One chunk a search found: the file it came from, the heading it sits under, its body."""
+
+    path: str
+    heading: str | None
+    text: str
+
+
+class SearchFound(WireModel):
+    """What search answers a call and an app's `this.knowledge.search`: the best chunks first."""
+
+    chunks: list[FoundChunk]
+
+
+# ── memory ──
+
+
+class MemoryPage(Schema):
+    """A page of current facts: after which cursor, the words to look for, and how many."""
+
+    after: str | None = None
+    q: str | None = Field(default=None, max_length=200)
+    limit: int = Field(default=50, ge=1, le=200)
+
+
+# A fact is never updated, only superseded, so the history keeps every version.
+class ContactFact(WireModel):
+    """One fact of a contact's history, with the two dates that bound it."""
+
+    id: str | None = None
+    text: str
+    category: str | None = None
+    source: str | None = None
+    valid_from: float
+    invalidated_at: float | None
+
+    @classmethod
+    def of(cls, fact: ContactMemoryRow) -> Self:
+        """The fact as the memory endpoints send it."""
+        return cls(
+            id=str(fact.id),
+            text=fact.text,
+            category=fact.category,
+            source=fact.source_call,
+            valid_from=fact.valid_from.timestamp(),
+            invalidated_at=None if fact.invalidated_at is None else fact.invalidated_at.timestamp(),
+        )
+
+
+class ContactMemory(WireModel):
+    """GET /v1/contacts/{contact}/memory: every fact ever kept of the contact, current first."""
+
+    facts: list[ContactFact]
+
+
+class Forgotten(WireModel):
+    """DELETE /v1/contacts/{contact}/memory and /v1/memory/facts/{id}: how many facts went."""
+
+    forgotten: int
+
+
+class AgentFact(WireModel):
+    """One current fact, among the contacts an agent's calls taught."""
+
+    id: str
+    contact: str
+    text: str
+    category: str | None
+    written_at: float
+
+
+class AgentMemory(WireModel):
+    """GET /v1/agents/{slug}/memory: the facts the agent's calls taught, newest first, a page."""
+
+    facts: list[AgentFact]
+    next: str | None
+
+
+class OrgFact(WireModel):
+    """One current fact of the org, with the agent whose call taught it."""
+
+    id: str
+    agent: str
+    contact: str
+    text: str
+    category: str | None
+    written_at: float
+
+
+class OrgMemory(WireModel):
+    """GET /v1/memory: the org's current facts from every agent, newest first, a page."""
+
+    facts: list[OrgFact]
+    next: str | None = None
+
+
+# A question brings its own facts: written to a scratch contact, asked, and forgotten.
+class MemoryQuestion(WireModel):
+    """One question of a memory golden: what memory holds, what is asked, what should come back."""
+
+    holds: list[str]
+    asks: str
+    expects: list[str]
+
+
+class MemoryGolden(WireModel):
+    """POST /v1/contacts/memory/eval, the body: the questions memory is held to."""
+
+    questions: list[MemoryQuestion]
+    k: int | None = None
+
+
+class MemoryMiss(WireModel):
+    """One question memory did not answer whole: what it missed, and what came back instead."""
+
+    asks: str
+    missing: list[str]
+    found: list[str]
+
+
+class MemoryScore(WireModel):
+    """POST /v1/contacts/memory/eval, the answer: recall@k and nDCG@10, computed with no model."""
+
+    model: str
+    questions: int
+    k: int
+    recall_at_k: float
+    ndcg_at_10: float
+    took_ms: float
+    misses: list[MemoryMiss]
+
+
+# A category is the agent's own word, a value is a literal the caller said, a supersession an id:
+# nothing is judged by comparing two sentences.
+class ExtractionExpected(WireModel):
+    """What must come of one call's hang-up."""
+
+    writes: list[str] = Field(default_factory=list[str])
+    never: list[str] = Field(default_factory=list[str])
+    never_says: list[str] = Field(default_factory=list[str])
+    invalidates: list[str] = Field(default_factory=list[str])
+
+
+class ExtractionGolden(WireModel):
+    """One call written down, what memory holds before it, and what memory must make of it."""
+
+    name: str
+    said: list[tuple[str, str]]
+    holds: list[str] = Field(default_factory=list[str])
+    plants: list[str] = Field(default_factory=list[str])
+    channel: Channel = Channel.phone
+    expect: ExtractionExpected = Field(default_factory=ExtractionExpected)
+
+
+class ExtractionCases(WireModel):
+    """POST /v1/agents/{slug}/memory/extraction, the body: one model call per case."""
+
+    # Fifty model calls in one request at most, on keys the box may lend.
+    cases: list[ExtractionGolden] = Field(max_length=50)
+
+
+class ExtractionBroke(WireModel):
+    """One check a case did not hold, and the evidence in a sentence."""
+
+    check: str
+    detail: str
+
+
+class ExtractionJudged(WireModel):
+    """One case run: what memory would have kept, what admission refused, what did not hold."""
+
+    name: str
+    held: bool
+    wrote: list[str] = Field(default_factory=list[str])
+    refused: list[str] = Field(default_factory=list[str])
+    broke: list[ExtractionBroke] = Field(default_factory=list[ExtractionBroke])
+
+
+class ExtractionRun(WireModel):
+    """POST /v1/agents/{slug}/memory/extraction, the answer: the model, how many held, each case."""
+
+    agent: str
+    model: str
+    cases: int
+    held: int
+    took_ms: float
+    results: list[ExtractionJudged]

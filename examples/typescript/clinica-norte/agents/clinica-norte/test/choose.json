@@ -1,0 +1,22 @@
+[
+  {
+    "state": { "stage": "choose", "patient": { "name": "Ana García", "cita": "jueves a las diez", "doctor": "la doctora Vidal" } },
+    "memory": ["prefiere a la doctora Vidal"],
+    "input": "¿tiene algo el martes?",
+    "expect": { "tools": ["freeSlots"], "says": ["Vidal"] }
+  },
+  {
+    "state": {
+      "stage": "book",
+      "patient": { "name": "Ana García", "cita": "jueves a las diez", "doctor": "la doctora Vidal" },
+      "slots": [{ "when": "martes a las cuatro de la tarde", "doctor": "la doctora Vidal" }]
+    },
+    "input": "la de las cuatro me viene bien",
+    "expect": { "not": ["book"] }
+  },
+  {
+    "state": { "stage": "choose", "patient": { "name": "Ana García", "cita": "jueves a las diez", "doctor": "la doctora Vidal" } },
+    "input": "¿cuánto cuesta una primera consulta?",
+    "expect": { "tools": [], "grounded": "knowledge" }
+  }
+]

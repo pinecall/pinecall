@@ -1,0 +1,458 @@
+# The public surface, as types. Ruby's answer to the `.d.ts` the TypeScript package ships.
+#
+# The state a class declares is generated at load, so it cannot be typed here — that is what a
+# tenant's own `sig/` is for, one line per `state`. Everything the framework itself offers is.
+
+module Pinecall
+  VERSION: String
+
+  type state = Hash[Symbol, untyped]
+  type spec = Hash[Symbol, untyped]
+  type line = { channel: String, ?from: String?, ?claimed: String? }
+
+  class Error < StandardError
+  end
+
+  class Refused < Error
+    attr_reader refusal: Hash[Symbol, untyped]
+    def code: () -> String
+  end
+
+  class UnauthoredWrite < Error
+  end
+
+  class DeclarationRefused < Error
+  end
+
+  class DevRefused < Error
+    attr_reader status: Integer
+    attr_reader detail: String
+    def initialize: (Integer, String) -> void
+  end
+
+  class ToolFailed < Error
+  end
+
+  class NotConnected < Error
+  end
+
+  class Reading
+    def initialize: (state, ?Array[String]) -> void
+    def to_h: () -> state
+    def []: (String | Symbol) -> untyped
+    def key?: (String | Symbol) -> bool
+    def fetch: (String | Symbol, *untyped) -> untyped
+    def remembers?: (String) -> bool
+  end
+
+  type block_spec = { name: String, region: String }
+
+  class Block
+    attr_reader name: String
+    attr_reader region: String
+    attr_reader text: String
+  end
+
+  class Blocks
+    attr_reader blocks: Array[Block]
+    attr_reader history: String
+    def []: (String | Symbol) -> String?
+    def static: () -> Array[Block]
+    def dynamic: () -> Array[Block]
+    def instructions: () -> String
+  end
+
+  class View
+    def self.beside: (String, String) -> String
+    def self.file: (String) -> View
+    def self.inline: (String, ?String) -> View
+    attr_reader path: String
+    def render: (Reading) -> String
+    def tidy: (String) -> String
+  end
+
+  class Agent
+    def self.written: () -> Array[Class]
+
+    # config, declared on the class
+    def self.phone: (?String) -> untyped
+    def self.whatsapp: (?String) -> untyped
+    def self.web: (?bool) -> untyped
+    def self.channel_rules: (?bool) -> untyped
+
+    # the console's panel, drawn by `view.render`
+    def self.panel: (?String) { (Panel::Who) -> void } -> Panel::Declared
+    def self.declared_panel: () -> Panel::Declared?
+
+    # the environment the class declares, each over the agent's settings
+    def self.voice: (?String, ?String?, ?model: String?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.llm: (?String, ?temperature: Float?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?, ?end_of_turn: (String | Symbol)?) -> untyped
+    def self.judge: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.language: (?String) -> untyped
+    def self.says: (?Array[Hash[Symbol, String]]) -> untyped
+    def self.record: (?bool) -> untyped
+    def self.hears: (*String | Array[String]) -> untyped
+    def self.greeting: (?(String | Symbol | untyped), ?interruptible: bool?) -> untyped
+    def self.improvise: (?String, ?interruptible: bool?) -> untyped
+    def self.hangup: (?(String | true)) -> untyped
+    def self.turn: (**untyped) -> untyped
+    def self.knowledge: (**untyped) -> untyped
+    def self.docs: (**untyped) -> untyped
+    def self.memory: (**untyped) -> untyped
+    def self.environment: () -> Hash[Symbol, untyped]
+
+    def self.doc: (?String) -> String?
+    def self.slug: (?String) -> String
+    def self.declared_slug: () -> String?
+    def self.accepts: (String | Symbol, from: Array[String | Symbol]) -> untyped
+    def self.wire_config: (?tools: Array[spec]?) -> Hash[Symbol, untyped]
+
+    # the state and the verbs
+    def self.state: (Symbol, ?untyped, ?visibility: Symbol?) ?{ () -> untyped } -> Symbol
+    def self.stage: (*Symbol) -> Array[Symbol]
+    def self.stages: () -> Array[Symbol]?
+    def self.declared_state: () -> Hash[Symbol, untyped]
+    def self.derived_state: () -> Hash[Symbol, untyped]
+    def self.state_names: () -> Array[Symbol]
+    def self.tool: (**untyped) -> untyped
+    def self.declared_tools: () -> Hash[Symbol, untyped]
+    def self.tool_named: (String | Symbol) -> untyped
+    def self.view: (?String?, ?template: String?) -> View?
+    def self.beside_this_file: (String) -> String
+    def self.source_file: () -> String?
+
+    def doc: () -> String?
+    def tools: () -> Array[spec]
+    def visible_tools: () -> Array[spec]
+    def run_tool: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+    def snapshot: () -> state
+    def restore: (state) -> Agent
+    def start_in: (state) -> Agent
+    def diff: (state, ?state) -> Array[Hash[Symbol, untyped]]
+    def collapse: (String) -> untyped
+    def changes: () -> Array[untyped]
+    def on_change: () { (untyped) -> void } -> ^() -> void
+    def on_log: () { (untyped) -> void } -> ^() -> void
+    def on_heard: () { (String, Hash[Symbol, untyped], Hash[Symbol, untyped]) -> void } -> ^() -> void
+    def seal: () -> Agent
+    def sealed?: () -> bool
+    def call: () -> CallWorld
+    def call?: () -> bool
+    def knowledge: () -> Agent::Knowledge
+    def say: (String, **untyped) -> bool
+    def reply: (String, **untyped) -> bool
+    def log: (String | Symbol, ?untyped) -> untyped
+    def logged: () -> Array[untyped]
+    def last: (String) -> state?
+    def on_call: (CallWorld) -> void
+    def on_end: (CallWorld) -> void
+    def on_event: (String, Hash[Symbol, untyped], Hash[Symbol, untyped]) -> void
+    def on_memory: (Array[untyped], CallWorld) -> void
+    def run_hook: (Symbol, *untyped) -> untyped
+    def serving: (CallWorld?) -> Agent
+    def reads_last_from: (^(String) -> state?) -> Agent
+    def notify_heard: (String, Hash[Symbol, untyped], Hash[Symbol, untyped]) -> void
+
+    module Author
+      KEY: Symbol
+      def self?.current: () -> String?
+      def self?.with: [T] (String) { () -> T } -> T
+    end
+
+    module Doc
+      def self.for_class: (Class) -> String?
+      def self.for_method: (Class, Symbol) -> String?
+      def self.above: (String, Integer) -> String?
+      def self.one_line: (Array[String]) -> String?
+      def self.forget: () -> untyped
+    end
+  end
+
+  class Agent
+    class Knowledge
+      def initialize: (Agent) -> void
+      def search: (String, ?k: Integer?) -> Array[CallWorld::Found]
+    end
+
+    module Searching
+      SEARCHES: Array[Array[String]]
+      def self.searches?: (Class) -> bool
+      def self.in_source?: (String) -> bool
+    end
+  end
+
+  class CallWorld
+    LANDS_WITHIN_S: Integer
+    TRANSFER_WITHIN_S: Integer
+    A_MOMENT_S: Integer
+    NO_ANSWER: String
+    THE_CALL_ENDED: String
+    NO_GATEWAY_TO_SEARCH: String
+
+    class Transferred
+      attr_reader to: String
+      attr_reader mode: String?
+      attr_reader ok: bool
+      attr_reader error: String?
+      def initialize: (to: String, mode: String?, ok: bool, error: String?) -> void
+    end
+
+    class Attended
+      attr_reader ok: bool
+      attr_reader by: Hash[Symbol, untyped]?
+      attr_reader error: String?
+      def initialize: (ok: bool, by: Hash[Symbol, untyped]?, error: String?) -> void
+    end
+
+    class Found
+      attr_reader path: String
+      attr_reader heading: String?
+      attr_reader text: String
+      def initialize: (path: String, heading: String?, text: String) -> void
+    end
+
+    class Waiting
+      def wait: [T] (Symbol, Numeric, T) { () -> void } -> T
+      def settle: (Symbol, untyped) -> void
+      def end_all: () -> void
+    end
+
+    attr_reader id: String
+    attr_reader contact: String?
+    attr_reader from: String?
+    attr_reader channel: String?
+    attr_reader medium: String
+    attr_reader today: String
+    attr_reader claimed: String?
+    attr_accessor cause: Hash[Symbol, untyped]?
+    def initialize: (id: String, ?contact: String?, ?from: String?, ?channel: String?, ?medium: String?, ?today: String, ?claimed: String?,
+                     ?searching: (^(String, Integer?) -> Array[Hash[Symbol, untyped]])?) { (String, Hash[Symbol, untyped]) -> untyped } -> void
+    def numbered: () -> Integer
+    def say: (String, **untyped) -> bool
+    def reply: (String, **untyped) -> bool
+    def search: (String, ?k: Integer?) -> Array[Found]
+    def transfer: (String, ?mode: (String | Symbol)?) -> Transferred
+    def attention: (String, wait_s: Numeric) -> Attended
+    def hold: () -> untyped
+    def unhold: () -> untyped
+    def dtmf: (String) -> untyped
+    def claim: (String) -> untyped
+    def callback: (String, ?at: String?, ?note: String?) -> untyped
+    def send_to: (String, untyped, ?to: Array[String]?) -> untyped
+    def participant: (String) -> untyped
+    def invite: (String, ?kind: String?) -> untyped
+    def log: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+    def opt_out: (?String?) -> untyped
+    def hangup: (?String?) -> untyped
+    def take: (String, Hash[Symbol, untyped], Float) -> untyped
+    def participants: () -> Array[untyped]
+    def caller_seat: () -> untyped
+    def last_turn: () -> untyped
+  end
+
+  class Client
+    attr_reader url: String
+    attr_reader api_key: String
+    STOPPED: String
+    TOOLS_FINISH_WITHIN_S: Integer
+
+    class Drained
+      attr_reader handed: Integer
+      attr_reader parked: Integer
+      attr_reader tools: Integer
+      attr_reader finished: Integer
+      def initialize: (handed: Integer, parked: Integer, tools: Integer, finished: Integer) -> void
+    end
+
+    attr_reader env: String?
+    def initialize: (url: String, api_key: String, ?env: String?, ?ping_every: Numeric, ?backoff: Hash[Symbol, Numeric]) -> void
+    def drain: (?answer_s: Numeric, ?tools_s: Numeric) -> Drained
+    def on_entries: () { (untyped) -> void } -> ^() -> void
+    def on_stopped: () { (String) -> void } -> ^() -> void
+    def sdk: () -> String
+    def agent: (String, **untyped) -> Client::Agent
+    def agents: () -> Hash[String, Client::Agent]
+    def connect: () -> Client
+    def close: () -> untyped
+    def connected?: () -> bool
+    def on: (String) { (Hash[Symbol, untyped], Client::Call?) -> void } -> ^() -> void
+    def on_any: () { (untyped, Client::Call?) -> void } -> ^() -> void
+    def on_errors: () { (StandardError) -> void } -> ^() -> void
+    def observe: (Hash[Symbol, String], **untyped) { (untyped) -> void } -> void
+    def history: (Hash[Symbol, String], **untyped) -> untyped
+    def search: (String, String, ?k: Integer?) -> Array[Hash[Symbol, untyped]]
+    def send_command: (type: String, agent: String, call: String?, data: Hash[Symbol, untyped], ?id: String?) -> untyped
+    def seen: (untyped, Client::Call?) -> void
+    def on_error: (StandardError) -> void
+    def on_connected: () { () -> void } -> ^() -> void
+
+    class Agent
+      NO_DEV_HANDLER: String
+      attr_reader slug: String
+      attr_reader calls: CallBook
+      attr_reader config: Hash[Symbol, untyped]
+      attr_reader app: String?
+      def on: (String) { (Hash[Symbol, untyped], Client::Call?) -> void } -> ^() -> void
+      def on_any: () { (untyped, Client::Call?) -> void } -> ^() -> void
+      def on_dev: () { (String, Hash[Symbol, untyped]) -> Hash[Symbol, untyped] } -> untyped
+      def declare: (Array[Hash[Symbol, untyped]]) -> void
+      def configure: (?Hash[Symbol, untyped]) -> Hash[Symbol, untyped]
+      def open: () -> Agent
+      def take: (untyped) -> void
+      def command: (String, String?, Hash[Symbol, untyped]) -> untyped
+      def ping: () -> untyped
+      def drain: (?answer_s: Numeric) -> Hash[Symbol, untyped]
+      def in_flight: () -> Integer
+      def settled: (?within_s: Numeric?) -> nil
+      def on_error: (StandardError) -> void
+    end
+
+    class Call
+      attr_reader id: String
+      attr_reader claimed: String?
+      attr_reader run: String?
+      attr_reader medium: String?
+      attr_reader today: String
+      attr_accessor status: String
+      attr_accessor channel: String?
+      attr_accessor from: String?
+      attr_accessor to: String?
+      attr_accessor contact: Hash[Symbol, untyped]?
+      attr_accessor state: Hash[Symbol, untyped]
+      def say: (String, **untyped) -> untyped
+      def reply: (String, **untyped) -> untyped
+      def set_prompt: (String | Symbol, String) -> untyped
+      def set_tools: (Array[Hash[Symbol, untyped]]) -> untyped
+      def set_state: (Hash[Symbol, untyped], ?Array[Symbol | String]?) -> untyped
+      def tool_result: (Hash[Symbol, untyped]) -> untyped
+      def event: (String, Hash[Symbol, untyped]) -> untyped
+      def hangup: (?String?) -> untyped
+      def log: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+      def command: (String, Hash[Symbol, untyped]) -> untyped
+      def take: (untyped) -> void
+      def on: (String) { (Hash[Symbol, untyped], Call) -> void } -> ^() -> void
+      def on_any: () { (untyped, Call) -> void } -> ^() -> void
+    end
+
+    class CallBook
+      def live: () -> Array[Call]
+      def of: (String, Float) -> Call
+      def forget: (Call) -> untyped
+    end
+
+    class Listeners
+      def on: (String | Symbol) { (untyped, untyped) -> void } -> ^() -> void
+      def on_any: () { (untyped, untyped) -> void } -> ^() -> void
+      def emit: (untyped, untyped) -> void
+    end
+
+    module Rest
+      def self?.get: (String, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.put: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.post: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.delete: (String, api_key: String) -> Hash[Symbol, untyped]?
+    end
+  end
+
+  module Prompt
+    FRAMEWORK: Array[block_spec]
+    def self?.render: (Agent, ?resumed: bool, ?remembered: Array[String], ?line: line?) -> Blocks
+    def self?.identity: (Agent) -> String
+    def self?.tools: (Agent) -> String
+    def self?.history: (Agent) -> String
+    def self?.collapsed: (Integer) -> String
+    def self?.show: (Agent, **untyped) -> String
+    def self?.header_for: (Symbol | String, ?String?) -> String
+  end
+
+  module Serve
+    USAGE: String
+    NO_DOOR: String
+    WORLDS: Array[String]
+
+    class CannotServe < Error
+    end
+
+    class Served
+      attr_reader file: String
+      attr_reader slug: String
+      def initialize: (file: String, slug: String) -> void
+    end
+
+    class Held
+      attr_reader client: Client
+      attr_reader mounted: Array[Bridge::Mounted]
+      def initialize: (Client, Array[Bridge::Mounted]) -> void
+      def stop: () -> Client::Drained
+      def close: () -> untyped
+      def join: () -> untyped
+    end
+
+    module Viewing
+      ONLY_THE_VIEW: String
+      def self?.answer: (Class, String, String, untyped) -> Hash[Symbol, untyped]
+      def self?.a_conversation: (String, untyped) -> Panel::Who
+    end
+
+    def self?.main: (Array[String], ?out: IO, ?err: IO, ?env: Hash[String, String], ?input: IO, ?signals: Thread::Queue?) -> Integer
+    def self?.drain_line: (Client::Drained) -> String
+  end
+
+  module Bridge
+    def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?takes_unclaimed: bool) -> Mounted
+
+    class Mounted
+      attr_reader slug: String
+      attr_reader agent: Client::Agent
+      attr_reader options: Hash[Symbol, untyped]
+      def serving: (String) -> Agent?
+    end
+  end
+
+  module Panel
+    TONES: Array[String]
+
+    class Who
+      attr_reader agent: String
+      attr_reader contact: String
+      attr_reader call: String
+      def initialize: (agent: String, contact: String, call: String) -> void
+    end
+
+    class Declared
+      attr_reader name: String
+      attr_reader draw: Proc
+      def initialize: (name: String, draw: Proc) -> void
+    end
+
+    class Drawing
+      attr_reader nodes: Array[Hash[Symbol, untyped]]
+      def initialize: (Class) -> void
+      def panel: (?untyped) ?{ () -> void } -> nil
+      def rows: () ?{ () -> void } -> nil
+      def row: (untyped, ?untyped) -> nil
+      def stat: (untyped, untyped) -> nil
+      def table: (columns: Array[untyped], rows: Array[untyped]) -> nil
+      def badge: (untyped, ?tone: String | Symbol) -> nil
+      def text: (untyped) -> nil
+    end
+
+    def self.said: (untyped) -> String
+    def self.draw: (Class, Panel::Who) -> Hash[Symbol, untyped]
+  end
+
+  module Rules
+    RULES: String
+    PROTOCOLS: String
+    SPOKEN: String
+    ON_A_WEBSITE: String
+    ON_WHATSAPP: String
+    def self?.channel_rules_for: (String | Symbol, String | Symbol) -> String
+  end
+
+  def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted
+  def self.render: (Agent, **untyped) -> Blocks
+  def self.show_prompt: (Agent, **untyped) -> String
+  def self.serve: (Class, ?client: Client?, ?url: String?, ?api_key: String?, ?env: String?, ?slug: String?, ?last: untyped) -> Serve::Held
+end

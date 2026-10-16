@@ -1,0 +1,571 @@
+/* Personas: the callers as a grid, the one chosen read or written, with its runs beside it. */
+
+.psn {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.psn-empty {
+  margin: 0;
+  padding: 16px 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.psn-bad {
+  color: var(--red, #c4314b);
+}
+
+/* The document, and — while one is being read — the runs beside it. */
+
+.psn-right {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.psn-right-runs {
+  grid-template-columns: minmax(0, 1fr) var(--pane, 340px);
+}
+
+/* The document, or its form. */
+
+.psn-main {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* The cells of the overview's own tables: the page around them is the console's `Page`. */
+
+.psn-over-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.psn-over-goal,
+.psn-over-when {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.psn-over-count {
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: right;
+}
+
+.psn-doc {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 36px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.psn-doc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.psn-doc-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.psn-doc-about {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.psn-doc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.psn-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.psn-sec-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.psn-sec-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.psn-doc-text {
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  background: var(--ground);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.psn-doc-none {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.psn-facts {
+  margin: 4px 0 0;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.psn-fact {
+  display: grid;
+  grid-template-columns: minmax(120px, 220px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-2);
+}
+
+.psn-fact:first-child {
+  border-top: 0;
+}
+
+.psn-fact dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.psn-fact dd {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.psn-doc-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2);
+}
+
+.psn-doc-note {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.psn-refused,
+.psn-bad {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+/* The form: each field with the sentence that says what it does to the call. */
+
+.psn-form {
+  gap: 22px;
+}
+
+.psn-field {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.psn-field-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.psn-field-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The three knobs of how a caller is played, side by side as the agent's settings name them. */
+.psn-acts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.psn-acts-one {
+  margin-top: 12px;
+  grid-template-columns: minmax(0, 320px);
+}
+
+.psn-act {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.psn-act-name {
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.psn-fact-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.psn-fact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.psn-x,
+.psn-add {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.psn-x {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  color: var(--ink-4);
+}
+
+.psn-x:hover {
+  background: var(--ground-5);
+  color: var(--ink);
+}
+
+.psn-add {
+  align-self: flex-start;
+  padding: 4px 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.psn-form-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-2);
+}
+
+.psn-form-need {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+@media (max-width: 820px) {
+  .psn-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
+.psn code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--ground-5);
+}
+
+/* ── the runs: what this caller has actually done ─────────────────────────── */
+
+.psn-runs {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: var(--ground-side);
+}
+
+.psn-runs-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 14px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.psn-runs-list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+}
+
+.psn-runs-more {
+  padding: 10px 14px 14px;
+}
+
+.psn-run {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.psn-run:hover {
+  background: var(--ground-5);
+}
+
+.psn-run-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.psn-run-agent {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.psn-run-when {
+  margin-left: auto;
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.psn-run-marks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.psn-run-fact {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.psn-run-outcome {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.psn-run-broke {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--red);
+}
+
+.psn-runs .psn-empty a {
+  color: var(--accent);
+}
+
+/* ── Pinecall's first, and callers generated ── */
+.psn-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.psn-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.psn-count {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.psn-lede {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.psn-row-sub {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.psn-expects {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+/* Generate callers: two questions in a card, the cost beside the button, then the callers written as tiles. */
+.psn-gen-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 18px 20px;
+  align-items: start;
+  margin: 20px 0 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+}
+
+.psn-gen-form .ui-textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.psn-gen-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-4);
+}
+
+.psn-gen-go {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-3);
+}
+
+.psn-gen-cost {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.psn-gen-wait {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.psn-gen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.psn-gen-said {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.psn-gen-about {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.psn-gen-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.psn-gen-facts dt {
+  font-weight: 600;
+  color: var(--ink-4);
+}
+
+.psn-gen-facts dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.psn-gen-label {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.psn-gen-kept {
+  border-color: var(--green);
+}
+
+@media (max-width: 720px) {
+  .psn-gen-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* How one of Pinecall's is played for the agent: the pickers, and the button that saves them. */
+.psn-model {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.psn-played {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 640px;
+}

@@ -1,0 +1,88 @@
+/* Starting a simulation: one slim bar of options above the callers, each a tile that starts it. */
+
+.sim-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sim-turns {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.sim-turns .ui-input {
+  width: 64px;
+}
+
+.sim-prompt {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.sim-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.sim-refused {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+/* The tile is a button laid over the card; the pointer says it starts a call. */
+.sim-tile .ui-tile-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sim-tile .ui-tile-open:disabled {
+  cursor: progress;
+}
+
+.sim-tile-asked {
+  border-color: var(--accent-line);
+  background: var(--accent-selected);
+}
+
+/* A caller's whole description, and what it wants: read before choosing who calls. */
+.sim-tile-about {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.sim-tile-goal {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.sim-tile-goal span {
+  font-weight: 600;
+  color: var(--ink-4);
+}
+
+/* Switched off for the agent: the same card on a sunken ground, still a call away. */
+.sim-tile-off {
+  background: var(--ground-4);
+  border-style: dashed;
+}
+
+.sim-prompt-pick { display: flex; align-items: center; gap: 10px; }
+.sim-prompt-pick .ui-select { width: 180px; }

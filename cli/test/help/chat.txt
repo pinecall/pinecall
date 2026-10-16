@@ -1,0 +1,28 @@
+$ pinecall chat --help
+Usage: pinecall chat [options] [agent]
+
+a written caller against the agent, wherever it is held
+
+Arguments:
+  agent               the agent's slug; the agent of this directory when left
+                      out
+
+Options:
+  --agent <name>
+  --file <agent.tsx>
+  --as <contact>      who is calling: the id memory files this call under
+  --state <file>      the state the call opens in: a goldens file
+  --case <n>          which case of that file
+  --events            one JSON line per log entry instead of the lines, for a
+                      pipe
+  -h, --help          display help for command
+
+A written call at the agent whoever holds it — your own `pinecall start` in another terminal,
+a colleague's, production's with --prod. Nothing is started here. With nothing after it, the
+agent of this directory; with a slug, that agent.
+
+Examples
+  $ pinecall chat --as +34600000001
+  ‹ hi, I'd like to change my Thursday appointment
+  › Of course. Could I have your full name and phone number?
+

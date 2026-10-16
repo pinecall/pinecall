@@ -1,0 +1,43 @@
+# Each world's livekit-sip on its media node's own network: 5060 and the RTP ports are the node's
+# (the firewall, by Terraform, opens them), reached at the world's SIP name; LiveKit publishes no
+# chart for it, so it is this one. Its config holds the API pair and Redis's password: a Secret
+# (secrets.yaml).
+{{- range $world, $fleet := .Values.fleets }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinecall-sip-{{ $world }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: pinecall-sip, world: {{ $world }} } }
+  template:
+    metadata:
+      labels: { app: pinecall-sip, world: {{ $world }} }
+      # One instance holds every call of its world, so a release never restarts it on its own: its
+      # config is read at start and applied by `kubectl rollout restart` at an hour with no call.
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- include "pinecall.onMedia" $world | nindent 6 }}
+      terminationGracePeriodSeconds: 600
+      # 5060, its health port and the RTP range are all above 1024: no capability; it writes no file.
+      {{- include "pinecall.podSecurityAs" 10001 | nindent 6 }}
+      containers:
+        - name: sip
+          image: {{ $.Values.media.sip }}
+          args: ["--config", "/sip/config.yaml"]
+          {{- include "pinecall.containerSecurity" $ | nindent 10 }}
+          readinessProbe:
+            httpGet: { path: /, port: 8081 }
+          volumeMounts:
+            - { name: config, mountPath: /sip, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+      volumes:
+        - name: config
+          secret:
+            secretName: pinecall-media
+            items: [{ key: sip-{{ $world }}.yaml, path: config.yaml }]
+{{- end }}

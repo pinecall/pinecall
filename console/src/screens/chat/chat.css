@@ -1,0 +1,268 @@
+/* Chat: the head, the bubbles on the tinted ground, the composer. The Inspector is Talk's. */
+
+.chat-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 300px);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.chat-column {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-head-words {
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+
+.chat-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.chat-head-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-whole {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.chat-lines {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  background: var(--ground-side);
+}
+
+.chat-line {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.chat-line-user {
+  justify-content: flex-end;
+}
+
+.chat-line-tool {
+  justify-content: center;
+}
+
+.chat-line-pending {
+  opacity: 0.6;
+}
+
+.chat-bubble {
+  max-width: 74%;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  background: var(--ground-4);
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-bubble-you {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.chat-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: chat-blink 1s steps(2, start) infinite;
+}
+
+@keyframes chat-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.chat-typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 14px 15px;
+}
+
+.chat-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-6);
+  animation: chat-dots 1.2s ease-in-out infinite;
+}
+
+.chat-typing i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chat-typing i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes chat-dots {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.chat-tool {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--ground-5);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-tool-failed {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.chat-tool-running {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.chat-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.chat-refused {
+  flex: none;
+  padding: 8px 16px 0;
+}
+
+.chat-composer {
+  flex: none;
+  display: flex;
+  gap: 9px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--ground);
+}
+
+.chat-say {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  font-size: 13.5px;
+  background: var(--ground-side);
+  color: var(--ink);
+}
+
+.chat-say:focus {
+  border-color: var(--accent);
+  background: var(--ground);
+  box-shadow: var(--accent-ring);
+}
+
+.chat-send {
+  flex: none;
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.chat-send:hover {
+  background: var(--accent-hover);
+}
+
+.chat-send:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.chat-start {
+  width: 100%;
+  max-width: 520px;
+  margin: 12px auto 0;
+}
+
+.chat-start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.chat-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .chat-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+.chat-over {
+  flex: none;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--ground);
+  font-size: 12.5px;
+  color: var(--ink-4);
+}

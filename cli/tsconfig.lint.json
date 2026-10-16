@@ -1,0 +1,11 @@
+{
+  // `pnpm lint`: the sources and the tests, type-checked and nothing written.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["src", "test"]
+}

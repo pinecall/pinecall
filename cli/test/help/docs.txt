@@ -1,0 +1,129 @@
+$ pinecall docs --help
+Usage: pinecall docs [options] [command]
+
+the documents the agent searches: pushed as a base, listed, dropped, held to a
+golden, attached
+
+Options:
+  -h, --help               display help for command
+
+Commands:
+  push [options] [dir]     every *.md under a directory sent as a base, replaced
+                           whole
+  list                     every base this org pushed in the env
+  drop <base>              remove a base
+  eval [options] [golden]  recall@k and nDCG@10 of a golden's questions against
+                           a base
+  attach [options] <base>  the agent reads a base: one field of its settings,
+                           written as the next version
+  detach [options] <base>  the agent stops reading a base
+  attached                 which agents read which base in the env
+  help [command]           display help for command
+
+push reads every *.md under the directory (agents/<name>/docs/ of the project when none is named) and
+sends the folder whole to the gateway: the base is replaced, never merged. The base is the
+agent's slug unless --base says otherwise. list prints every base this org has pushed in the env
+asked; drop removes one. These are the documents a turn SEARCHES — the RAG. What the agent knows
+by heart is not a document: it is its settings' knowledge (`pinecall agent knowledge`), read
+whole on every call.
+
+attach says an agent reads a base — in your own corner, or the team's with --team, or in
+production with --prod — with how a turn reads it: --k chunks, --mode (retrieved: the platform
+searches before the turn; tool: the model decides when), --min-score. It is one field of the
+agent's settings (`pinecall agent`), written as the next version. detach takes it out;
+attached prints which agents read which base in the env asked.
+
+eval asks the base every question of a golden — agents/<name>/test/goldens/docs.json, a JSON list of
+{asks, expects}, where expects is the heading path the answer should carry — and prints
+recall@k and nDCG@10, computed by code with no model in the loop, plus every question it
+missed and what came back instead. A golden is fixed and the index is the variable: never
+soften a question so a change can pass.
+
+Examples
+  $ pinecall docs push
+  clinica-norte · 7 files · 41 chunks · 812 ms      # base · sent · became · took
+
+  $ pinecall docs attach clinica-norte --k 4
+  clinica-norte · clinica-norte attached · your corner v4
+  $ pinecall docs attached
+  clinica-norte · read by clinica-norte
+
+
+$ pinecall docs push --help
+Usage: pinecall docs push [options] [dir]
+
+every *.md under a directory sent as a base, replaced whole
+
+Arguments:
+  dir                 the folder; agents/<name>/docs/ of the agent when left out
+
+Options:
+  --base <name>       the base's name; the agent's slug when left out
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall docs list --help
+Usage: pinecall docs list [options]
+
+every base this org pushed in the env
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall docs drop --help
+Usage: pinecall docs drop [options] <base>
+
+remove a base
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall docs eval --help
+Usage: pinecall docs eval [options] [golden]
+
+recall@k and nDCG@10 of a golden's questions against a base
+
+Arguments:
+  golden              the golden; agents/<name>/test/goldens/docs.json when left
+                      out
+
+Options:
+  --base <name>
+  --k <n>             how many chunks a turn reads; the attachment's when left
+                      out
+  --agent <name>
+  --file <agent.tsx>
+  -h, --help          display help for command
+
+$ pinecall docs attach --help
+Usage: pinecall docs attach [options] <base>
+
+the agent reads a base: one field of its settings, written as the next version
+
+Options:
+  --k <n>          how many chunks a turn reads
+  --mode <mode>    retrieved: searched before the turn; tool: the model decides
+                   when
+  --min-score <x>  chunks under this share of the best one are dropped
+  --agent <slug>
+  --team           in the team's corner instead of your own
+  -h, --help       display help for command
+
+$ pinecall docs detach --help
+Usage: pinecall docs detach [options] <base>
+
+the agent stops reading a base
+
+Options:
+  --agent <slug>
+  --team
+  -h, --help      display help for command
+
+$ pinecall docs attached --help
+Usage: pinecall docs attached [options]
+
+which agents read which base in the env
+
+Options:
+  -h, --help  display help for command

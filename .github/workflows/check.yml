@@ -1,0 +1,285 @@
+# Every package's own check, one job each, run when its folder or a root it stands on changed.
+# release.yml calls this file with all: true as its gates, so a tag runs every job.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      all:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Per calling workflow too: release.yml's gates never queue behind, or cancel, a push's check.
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      runtime: ${{ inputs.all || github.event_name == 'workflow_dispatch' || steps.filter.outputs.runtime == 'true' }}
+      python: ${{ inputs.all || github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
+      ruby: ${{ inputs.all || github.event_name == 'workflow_dispatch' || steps.filter.outputs.ruby == 'true' }}
+      typescript: ${{ steps.typescript.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          # Each TypeScript package also stands on the root's workspace and lockfile, cli on the
+          # framework it imports, console on core, and each SDK on its example. A change to this
+          # file runs everything.
+          filters: |
+            workflow: &workflow
+              - .github/workflows/check.yml
+            node: &node
+              - .github/workflows/check.yml
+              - package.json
+              - pnpm-workspace.yaml
+              - pnpm-lock.yaml
+            runtime:
+              - *workflow
+              - runtime/**
+              - infra/**
+            console:
+              - *node
+              - console/**
+              - packages/core/**
+            core:
+              - *node
+              - packages/core/**
+            agents:
+              - *node
+              - sdk/typescript/**
+              - examples/typescript/**
+            cli:
+              - *node
+              - sdk/typescript/**
+              - cli/**
+            room:
+              - *node
+              - packages/room/**
+            python:
+              - *workflow
+              - sdk/python/**
+              - examples/python/**
+            ruby:
+              - *workflow
+              - sdk/ruby/**
+              - examples/ruby/**
+      # The TypeScript packages to check, each with the command its folder writes its check in.
+      - id: typescript
+        env:
+          ALL: ${{ inputs.all || github.event_name == 'workflow_dispatch' }}
+          CONSOLE: ${{ steps.filter.outputs.console }}
+          CORE: ${{ steps.filter.outputs.core }}
+          AGENTS: ${{ steps.filter.outputs.agents }}
+          CLI: ${{ steps.filter.outputs.cli }}
+          ROOM: ${{ steps.filter.outputs.room }}
+        run: |
+          rows=()
+          row() {
+            if [ "$ALL" = true ] || [ "$3" = true ]; then
+              rows+=("{\"package\":\"$1\",\"folder\":\"$2\",\"check\":\"$4\"}")
+            fi
+          }
+          row console console "$CONSOLE" "pnpm check"
+          row core packages/core "$CORE" "pnpm check"
+          row agents sdk/typescript "$AGENTS" scripts/check
+          row cli cli "$CLI" scripts/check
+          row room packages/room "$ROOM" scripts/check
+          echo "matrix=[$(IFS=,; echo "${rows[*]}")]" >> "$GITHUB_OUTPUT"
+
+  runtime-rules:
+    name: runtime · the rules and the suites with no database
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.13"
+      - run: uv sync --locked
+      - run: make check
+
+  # What ships and what is written down, against what is known: the image's locked dependencies
+  # against the advisories, every commit for a secret, the infrastructure and the charts as an
+  # operator releases them (infra/values/example.yaml) for a misconfiguration
+  # (infra/trivy-ignore.yaml says what stands and why). Each tool at a version and its
+  # release's checksum.
+  runtime-supply-chain:
+    name: runtime · dependencies, secrets and configuration, scanned
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.13"
+      - name: the image's dependencies, as uv.lock pins them (pip-audit)
+        run: |
+          uv export --locked --extra voice --no-dev --no-emit-project --quiet -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit@2.9.0 -r "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --progress-spinner off
+      - name: every commit of the repository, for a secret (gitleaks)
+        working-directory: .
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact .
+      - name: the infrastructure and the charts as an operator releases them (trivy)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tgz" \
+            https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz
+          echo "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a  $RUNNER_TEMP/trivy.tgz" | sha256sum -c
+          tar -xzf "$RUNNER_TEMP/trivy.tgz" -C "$RUNNER_TEMP" trivy
+          rendered="$RUNNER_TEMP/rendered"
+          for chart in edge postgres pinecall; do
+            helm template "$chart" "../infra/charts/$chart" -f ../infra/values/example.yaml \
+              --set image.tag=ci --output-dir "$rendered"
+          done
+          helm template hosting ../infra/charts/hosting -f ../infra/values/hosting-example.yaml \
+            --set image.tag=ci --output-dir "$rendered"
+          # The same charts on a cluster that runs the Prometheus Operator, not Google's collector.
+          operator="$RUNNER_TEMP/rendered-operator"
+          for chart in postgres pinecall; do
+            helm template "$chart" "../infra/charts/$chart" -f ../infra/values/example.yaml \
+              --set image.tag=ci --set monitoring.collector=prometheus-operator \
+              --set monitoring.namespace=monitoring --output-dir "$operator"
+          done
+          for target in ../infra "$rendered" "$operator"; do
+            "$RUNNER_TEMP/trivy" config --quiet --severity HIGH,CRITICAL --exit-code 1 \
+              --ignorefile ../infra/trivy-ignore.yaml "$target"
+          done
+
+  runtime-terraform:
+    name: runtime · terraform, formatted and valid
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.5.7
+      - run: make tf-check
+
+  runtime-suites:
+    name: runtime · every suite, on Postgres
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.13"
+      - run: uv sync --locked
+      - name: the Postgres of infra/local/postgres, on tmpfs
+        run: |
+          docker build -t pinecall/postgres ../infra/local/postgres
+          docker run -d --name postgres -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=pinecall -e POSTGRES_PASSWORD=pinecall -e POSTGRES_DB=pinecall \
+            pinecall/postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+          until docker exec postgres pg_isready -U pinecall -d pinecall; do sleep 1; done
+      - run: uv run pytest -q -n auto
+        env:
+          DATABASE_URL: postgresql://pinecall:pinecall@127.0.0.1:5432/pinecall
+
+  # The TypeScript packages: one install from the root, then each package's own check — build,
+  # lint, test, in the order its scripts/check (console's and core's `pnpm check`) writes.
+  typescript:
+    name: ${{ matrix.package }} · build, lint, test
+    needs: changes
+    if: needs.changes.outputs.typescript != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.typescript) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.2.2
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - working-directory: ${{ matrix.folder }}
+        run: ${{ matrix.check }}
+
+  python:
+    name: python · make check on Python ${{ matrix.python }}
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor a tenant's server may run, and every version above it.
+        python: ["3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked
+      - run: make check
+
+  # What `rake` runs locally, on every Ruby the gemspec allows: the tests, the example's own suite,
+  # the signatures.
+  ruby:
+    name: ruby · rake on Ruby ${{ matrix.ruby }}
+    needs: changes
+    if: needs.changes.outputs.ruby == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.2", "3.3", "3.4"]
+    defaults:
+      run:
+        working-directory: sdk/ruby
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: sdk/ruby
+      - run: bundle exec rake

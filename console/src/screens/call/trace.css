@@ -1,0 +1,197 @@
+/* The call read as a trace: the axis, one group of bars per exchange, and the step the pane shows. */
+
+.trace {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.trace-nothing {
+  padding: 18px 16px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* Every line is the same grid: the name stays put on the left, the lane is the call's axis. */
+.trace-sheet {
+  --trace-name: 140px;
+  min-width: calc(var(--trace-name) + var(--trace-width, 0px) + 72px);
+  padding-bottom: 12px;
+}
+
+.trace-line {
+  display: grid;
+  grid-template-columns: var(--trace-name) minmax(0, 1fr);
+  padding-right: 72px;
+  height: 22px;
+  align-items: center;
+}
+
+.trace-name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  height: 100%;
+  padding: 0 10px 0 16px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--ink-4);
+  background: var(--ground);
+}
+
+.trace-lane {
+  position: relative;
+  height: 100%;
+}
+
+.trace-picked .trace-name {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+/* ── the axis ─────────────────────────────────────────────────────────────── */
+
+.trace-axis {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+
+.trace-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+  border-left: 1px solid var(--line-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-6);
+  white-space: nowrap;
+}
+
+/* ── an exchange ──────────────────────────────────────────────────────────── */
+
+.trace-exchange {
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--line-3);
+}
+
+.trace-exchange:first-of-type {
+  border-top: 0;
+}
+
+.trace-said {
+  position: sticky;
+  left: 0;
+  max-width: 60ch;
+  padding: 2px 16px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* ── a bar ────────────────────────────────────────────────────────────────── */
+
+.trace-bar {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.trace-bar:hover,
+.trace-picked .trace-bar {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+.trace-caller {
+  background: var(--indigo);
+}
+
+.trace-agent {
+  background: var(--pink);
+}
+
+.trace-eou {
+  background: var(--amber-dot);
+}
+
+.trace-llm {
+  background: var(--accent);
+}
+
+.trace-voice {
+  background: var(--green-dot);
+}
+
+.trace-tool {
+  background: var(--ink-4);
+}
+
+/* Cancelled, interrupted or failed: the bar is still where it ran, drawn hollow. */
+.trace-cut {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--red);
+}
+
+/* The first token, the first byte, the final transcript. */
+.trace-tick {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+
+.trace-took {
+  position: absolute;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-6);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── the step, in the pane ────────────────────────────────────────────────── */
+
+.trace-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+}
+
+.trace-step-name {
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.trace-step-when {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-4);
+}
+
+.trace-step-said {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}

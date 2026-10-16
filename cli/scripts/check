@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Ring 0 for the CLI: build, then lint, then test — in that order.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+scripts/build
+pnpm lint
+pnpm test

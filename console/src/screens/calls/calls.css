@@ -1,0 +1,175 @@
+/* Calls: the bar of chips and views over the screen, and the table — its filters, its cells, and the day that heads each run of rows. */
+
+.calls {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calls-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.calls-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.calls-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.calls-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.calls-chip:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+}
+
+.calls-chip-on,
+.calls-chip-on:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.calls-chip-count {
+  font-size: 11.5px;
+  color: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.calls-chip-count-asking {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.calls-grow {
+  flex: 1;
+}
+
+.calls-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.calls-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.calls-search {
+  flex: 1;
+  min-width: 220px;
+  width: auto;
+}
+
+.calls-select {
+  width: auto;
+  color: var(--ink-2);
+}
+
+/* The row's lead: the person, and under them the last thing said. */
+.calls-who-avatar {
+  position: relative;
+  display: inline-flex;
+}
+
+/* A call up right now wears a green dot on its avatar, the way the sidebar's agent does. */
+.calls-who-avatar-live::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 2px var(--ground);
+}
+
+.calls-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.calls-who-name {
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.calls-who-said {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.calls-out {
+  color: var(--ink-4);
+}
+
+.calls-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.calls-more {
+  margin-left: auto;
+}
+
+/* A day of calls: its name and how many, above its rows. */
+.calls-day {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 18px 6px;
+  border-top: 1px solid var(--line-2);
+}
+
+.calls-day:first-of-type {
+  border-top: 0;
+}
+
+.calls-day-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.calls-day-count {
+  font-size: 12px;
+  color: var(--ink-4);
+}
