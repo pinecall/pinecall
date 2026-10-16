@@ -52,10 +52,12 @@ class StringEnum[E: StrEnum](TypeDecorator[E]):
         super().__init__()
         self.enum = enum
 
+    # The enum's text is taken too, checked against the enum: a wrong word fails here, naming it,
+    # not inside the driver as an attribute error.
     @override
-    def process_bind_param(self, value: E | None, dialect: Dialect) -> str | None:
-        """The enum's value to the column."""
-        return None if value is None else str(value.value)
+    def process_bind_param(self, value: E | str | None, dialect: Dialect) -> str | None:
+        """The enum's value to the column; its text is read as the enum first."""
+        return None if value is None else str(self.enum(value).value)
 
     @override
     def process_result_value(self, value: str | None, dialect: Dialect) -> E | None:

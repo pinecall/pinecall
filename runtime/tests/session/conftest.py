@@ -13,6 +13,7 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel, Direction
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.providers.service.plugins import Running
+from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.call import Call, Platform, ToolUse
 from pinecall_runtime.session.session import Session
 from pinecall_runtime.session.text import text_session
@@ -114,9 +115,9 @@ def a_session(
 
 def model_of(session: Session) -> AcmeLLM:
     """The scripted model the session runs."""
-    (model,) = session.built
-    assert isinstance(model, AcmeLLM)
-    return model
+    (staged,) = session.built
+    assert isinstance(staged, LLMWithRequest) and isinstance(staged.built, AcmeLLM)
+    return staged.built
 
 
 def heard_live(box: Box) -> list[Entry]:

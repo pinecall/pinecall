@@ -44,10 +44,17 @@ from pinecall_runtime.wire.metrics import LLMModelUsage
 logger = logging.getLogger(__name__)
 
 
+# How a model samples is the stage's: the row's request fields and the agent's temperature, set
+# where the model is named. A caller's own sampling never rides a request: livekit's intent judge
+# asks every model for temperature 0 (`run_result.py`), which a vendor's SDK may no longer take
+# at all, and the operator chose the model's own.
+SAMPLING = frozenset({"temperature", "top_p", "top_k"})
+
+
 # A plugin's constructor takes no field for every request (a model's thinking, its effort), and
 # livekit hands each request extra_kwargs: the row's ride every one, a caller's own over them.
 class LLMWithRequest(llm.LLM[Never]):
-    """A plugin's LLM whose every request also carries the operator's fields for its model."""
+    """A plugin's LLM whose every request carries the operator's fields for its model, and no caller's sampling."""
 
     def __init__(self, built: llm.LLM[Never], request: Mapping[str, Any]) -> None:
         super().__init__()
@@ -80,8 +87,12 @@ class LLMWithRequest(llm.LLM[Never]):
         tool_choice: NotGivenOr[ToolChoice] = NOT_GIVEN,
         extra_kwargs: NotGivenOr[dict[str, Any]] = NOT_GIVEN,
     ) -> llm.LLMStream:
-        """The built LLM's request, with the row's fields and the caller's over them."""
-        given = extra_kwargs if is_given(extra_kwargs) else {}
+        """The built LLM's request, with the row's fields and the caller's over them, its sampling aside."""
+        given = {
+            name: value
+            for name, value in (extra_kwargs if is_given(extra_kwargs) else {}).items()
+            if name not in SAMPLING
+        }
         return self.built.chat(
             chat_ctx=chat_ctx,
             tools=tools,
@@ -115,8 +126,7 @@ class LLMWithRequest(llm.LLM[Never]):
 
 def llm_of(running: Running) -> llm.LLM[Never]:
     """The LLM a stage runs: the plugin's class called with the key, the model and the options."""
-    built = _built("llm", AN_LLM, running, {})
-    return LLMWithRequest(built, running.request) if running.request else built
+    return LLMWithRequest(_built("llm", AN_LLM, running, {}), running.request)
 
 
 def tts_of(running: Running) -> tts.TTS[Never]:

@@ -9,6 +9,7 @@ from sqlalchemy import Row, bindparam, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB, insert
 
 from pinecall_runtime.calls.models import CallLogHead, DriftCall
+from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
 
@@ -77,7 +78,7 @@ class Where:
     """Which day's row a call is counted on: its scope, its agent, its day, its version."""
 
     org: str
-    env: str
+    env: Env
     holder: str
     agent: str
     day: date
@@ -87,7 +88,7 @@ class Where:
         """As the statements take it."""
         return {
             "org": self.org,
-            "env": self.env,
+            "env": self.env.value,
             "holder": self.holder,
             "agent": self.agent,
             "day": self.day,

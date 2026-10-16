@@ -10,6 +10,7 @@ import pinecall_runtime.session.text as text
 from pinecall_runtime.agents.declaration import AgentConfig, Turn
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
@@ -60,11 +61,9 @@ async def test_a_spoken_call_is_built_with_the_ears_the_voice_and_the_model_it_a
     box: Box,
 ) -> None:
     session = spoken_call(box, AgentConfig(slug="clinica-norte"))
-    assert [type(built_one).__name__ for built_one in session.built] == [
-        "AcmeLLM",
-        "AcmeSTT",
-        "AcmeTTS",
-    ]
+    model, ears, voice = session.built
+    assert isinstance(model, LLMWithRequest)
+    assert [type(stage).__name__ for stage in (model.built, ears, voice)] == ["AcmeLLM", "AcmeSTT", "AcmeTTS"]
 
 
 @needs_the_database
@@ -129,7 +128,8 @@ async def test_a_written_call_hears_nothing_speaks_nothing_and_takes_its_turns_b
     box: Box,
 ) -> None:
     session = a_session(box, NOBODY)
-    assert [type(built_one).__name__ for built_one in session.built] == ["AcmeLLM"]
+    (model,) = session.built
+    assert isinstance(model, LLMWithRequest) and type(model.built).__name__ == "AcmeLLM"
     assert session.live.options.turn_handling.get("turn_detection") == "manual"
 
 

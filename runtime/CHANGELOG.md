@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Every sealed call counts into its day's drift again.** Since the rewrite the fold crashed
+  on the env it was handed (text where the column takes the enum), and every seal logged "was not
+  counted into its day's drift".
+- **A case kept before 0.10.1 lists again.** Its golden held the caller's lines as `input`; a
+  migration rewrites them as `turns`, so `GET /v1/evals/cases` and `cases show` no longer answer
+  500 for an agent that has one.
+- **A run is listed while it runs.** Its row was written inside the request's own transaction,
+  committed only when the run ended: a second `pinecall test` was refused naming a run that
+  `runs show` could not find, for up to fifteen minutes after a terminal had let go of the first.
+  Each write of the row is now its own, committed, transaction.
+- **A caller's own sampling never rides a request.** Every stage's LLM carries the row's request
+  fields, and drops `temperature`, `top_p` and `top_k` a caller hands it: livekit's intent judge
+  asked every model for temperature 0, which the Anthropic SDK no longer takes, so every golden
+  with an `intent` step failed on a Claude judge.
+
 - **A list of calls folds no log.** The seal writes what a list shows of the call (`call_facts.line`)
   and `GET /v1/sessions` and `GET /v1/agents/{slug}/calls` read it; only a live call is still folded. A page
   of 200 calls took 7 s and could starve the pool (503) before. A migration adds the column;

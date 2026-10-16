@@ -19,7 +19,7 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.providers.service.plugins import Running
-from pinecall_runtime.providers.service.stages import llm_of
+from pinecall_runtime.providers.service.stages import LLMWithRequest, llm_of
 from pinecall_runtime.session.call import Call, ToolUse
 from pinecall_runtime.session.lookups import RECALL, SEARCH, Lookups, platform_tools
 from pinecall_runtime.session.prompt import Blocks, request
@@ -27,6 +27,7 @@ from pinecall_runtime.session.tools import SAY_PARAMETER, as_livekit_tools, date
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.parts import PlatformTool, ToolResult
 from tests.conftest import needs_the_database
+from tests.fakes.acme import ACME, AcmeLLM
 from tests.session.conftest import Box, context_of
 
 BOOK = ToolSpec("book", "Book a table.", {"type": "object", "properties": {}}, timeout_s=0.1)
@@ -511,3 +512,21 @@ def test_every_other_model_opens_on_the_clock_alone() -> None:
     claude = llm_of(Running("anthropic", "k", model="claude-haiku-5-5"))
     opened = opening(date(2026, 10, 11), (claude,))
     assert [item.type for item in opened] == ["function_call", "function_call_output"]
+
+
+# livekit's own intent judge (`run_result.py`) asks every model for temperature 0; the operator
+# chose the model's own, and a vendor's SDK may take no such argument at all.
+async def test_a_callers_sampling_never_rides_a_request_and_the_rows_fields_always_do() -> None:
+    staged = llm_of(Running(ACME, "k", request={"thinking": {"effort": "low"}}))
+    history = llm.ChatContext.empty()
+    history.add_message(role="user", content="¿Abren el sábado?")
+    async with staged.chat(chat_ctx=history, extra_kwargs={"temperature": 0.0, "top_p": 0.1, "seed": 7}):
+        pass
+    assert isinstance(staged, LLMWithRequest) and isinstance(staged.built, AcmeLLM)
+    assert staged.built.requests[0].extra == {"thinking": {"effort": "low"}, "seed": 7}
+
+    bare = llm_of(Running(ACME, "k"))
+    async with bare.chat(chat_ctx=history, extra_kwargs={"temperature": 0.0}):
+        pass
+    assert isinstance(bare, LLMWithRequest) and isinstance(bare.built, AcmeLLM)
+    assert bare.built.requests[0].extra == {}

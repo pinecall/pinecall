@@ -115,10 +115,10 @@ async def run_suite(
     _refuse_unremembered(body, suite.setup.config)
     where = registration.scope
     async with runner.alone(suite.run.id, body.agent):
-        await _stored(session_, serving, where, suite.run)
+        await _stored(serving, where, suite.run)
         why = await _judged_suite(session_, serving, suite, registration.scope)
         done = runs.finished(suite.now) if why is None else runs.stopped(suite.now, why)
-        await _stored(session_, serving, where, done)
+        await _stored(serving, where, done)
     return done
 
 
@@ -181,7 +181,7 @@ async def _every_golden(session_: AsyncSession, serving: calls.Serving, suite: S
                 return THE_APP_LEFT.format(done=len(suite.cells), total=total, slug=body.agent)
             opened = OpenedCall(golden=golden.name, model=column, call=calls.new_call_id())
             suite.calls.append(opened)
-            await _stored(session_, serving, registration.scope, suite.now)
+            await _stored(serving, registration.scope, suite.now)
             scores: list[judging.JudgeScore] = []
             judged = _turns_judged(golden, suite.judge, scores)
             played = await (
@@ -199,7 +199,7 @@ async def _every_golden(session_: AsyncSession, serving: calls.Serving, suite: S
                 scores += await runs.score(final, case, suite.judge)
             requests = None if body.voice else played.requests
             suite.cells.append(runs.cell_of(opened, case, scores, requests))
-            await _stored(session_, serving, registration.scope, suite.now)
+            await _stored(serving, registration.scope, suite.now)
     return None
 
 
@@ -303,9 +303,11 @@ async def _said_out_loud(
     return playing.Played(held=True, requests=())
 
 
-# The row is written, then the org's feed says it changed: a screen following the run reads it then.
-async def _stored(session_: AsyncSession, serving: calls.Serving, scope: Scope, run: RunRow) -> None:
-    await runs.put_run(session_, scope, run)
+# The row is written and committed on its own, then the org's feed says it changed: a screen
+# following the run reads it then, and `runs show` finds the run the lease names while it runs.
+async def _stored(serving: calls.Serving, scope: Scope, run: RunRow) -> None:
+    async with serving.handles.sessions.begin() as session_:
+        await runs.put_run(session_, scope, run)
     changed = RunChanged(run=run.id, agent=run.agent, finished=run.finished_at is not None)
     serving.logs.announce(scope, "run.changed", changed)
 

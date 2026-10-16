@@ -6,7 +6,10 @@ import secrets
 import time
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.calls.models.drift import DriftCall
+from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.text import JsonObject
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
 from tests.fakes import acme
@@ -35,7 +38,9 @@ def agent() -> str:
 
 
 @needs_the_services
-async def test_a_written_call_is_answered_sealed_and_metered(gateway: Gateway, tenant: Tenant, agent: str) -> None:
+async def test_a_written_call_is_answered_sealed_and_metered(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
     """Two lines answered by the model, the call ended by the caller, its log sealed with its cost."""
     async with holding(gateway, tenant, agent), gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat:
         call = str((await received(chat, "call.started"))["call"])
@@ -54,3 +59,7 @@ async def test_a_written_call_is_answered_sealed_and_metered(gateway: Gateway, t
     replies = kinds.count("turn.agent")
     spent = replies * (acme.PROMPT_TOKENS * 1.0 + acme.COMPLETION_TOKENS * 2.0) / 1_000_000
     assert summary["cost"]["usd"] == pytest.approx(spent)
+    # The seal counts the call into its day's drift; a fold that breaks is only logged, so it is asked here.
+    async with sessions() as session:
+        counted = await session.get(DriftCall, call)
+    assert counted is not None and counted.env is Env.sandbox

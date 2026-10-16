@@ -322,7 +322,7 @@ def _key(stage: Stage, metadata: TurnMetadata | None) -> StageKey:
 
 
 def _where(scope: Scope, agent: str, day: date, version: int | None) -> Where:
-    return Where(scope.org, scope.env.value, scope.holder, agent, day, NO_VERSION if version is None else version)
+    return Where(scope.org, scope.env, scope.holder, agent, day, NO_VERSION if version is None else version)
 
 
 def _tallied(verdicts: Iterable[Verdict], *, sign: int) -> dict[JudgeKey, tuple[int, int]]:
