@@ -3,7 +3,7 @@
 import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
-import { GatewayError, UsageError } from "../errors.js";
+import { UsageError } from "../errors.js";
 import { listOf, repeated } from "../kit/flags.js";
 import { parseKeyValues } from "../kit/keyvalue.js";
 import * as render from "./render.js";
@@ -86,7 +86,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--reads <what>", `any of ${service.READS.join(", ")}, comma-separated`)
     .option("--org")
     .option("--agent <name>")
-    .action(async (name, flags) => withHint("add", name, async () => ctx.io.result(await service.addJudge(ctx, owner(flags), name, service.JudgeFlags.parse(flags)), render.changed)));
+    .action(async (name, flags) => ctx.io.result(await service.addJudge(ctx, owner(flags), name, service.JudgeFlags.parse(flags)), render.changed));
   for (const verb of ["on", "off"] as const) {
     judges
       .command(verb)
@@ -94,7 +94,7 @@ export function register(program: Command, ctx: Context): void {
       .argument("<name>")
       .option("--org")
       .option("--agent <name>")
-      .action(async (name, flags) => withHint(verb, name, async () => ctx.io.result(await service.switchJudge(ctx, owner(flags), name, verb === "on"), render.changed)));
+      .action(async (name, flags) => ctx.io.result(await service.switchJudge(ctx, owner(flags), name, verb === "on"), render.changed));
   }
   judges
     .command("rm")
@@ -102,7 +102,7 @@ export function register(program: Command, ctx: Context): void {
     .argument("<name>")
     .option("--org")
     .option("--agent <name>")
-    .action(async (name, flags) => withHint("rm", name, async () => ctx.io.result(await service.removeJudge(ctx, owner(flags), name), render.changed)));
+    .action(async (name, flags) => ctx.io.result(await service.removeJudge(ctx, owner(flags), name), render.changed));
   judges
     .command("try")
     .description("ask one judge of finished calls and write nothing")
@@ -143,15 +143,4 @@ export function register(program: Command, ctx: Context): void {
       });
       ctx.io.result(await service.setJudging(ctx, input), render.judging);
     });
-
-  // A 409 names the CLI's own verb for what was asked of the wrong list.
-  async function withHint(verb: string, name: string, run: () => Promise<void>): Promise<void> {
-    try {
-      await run();
-    } catch (failed) {
-      const hint = failed instanceof GatewayError && failed.status === 409 ? render.hintFor(verb, name) : undefined;
-      if (hint !== undefined) ctx.io.info(hint);
-      throw failed;
-    }
-  }
 }

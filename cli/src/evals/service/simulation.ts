@@ -17,6 +17,8 @@ import { AMBIENCES, allEntries, mediansOf, type Medians } from "./suite.js";
 /** Default caller turns; long enough for a full booking flow, not just the opening. */
 export const TURNS = 15;
 export const ONLY_ON_A_LINE = "--background-noise, --ambience and --packet-loss are about audio: add --voice";
+const A_TURNS = "--turns is how many turns the caller gets, 1 to 40";
+const A_LOSS = "--packet-loss is a share of the caller's packets: a number from 0 to 1, such as 0.05";
 
 // Background TV at 15 dB below the caller: measured to leak into `turn.user`.
 const DEFAULT_NOISE_DB = 15;
@@ -31,10 +33,10 @@ export const SimulateInput = z.object({
   persona: z.string().min(1),
   judge: z.boolean().default(false),
   voice: z.boolean().default(false),
-  turns: z.number().int().min(1).max(40).default(TURNS),
+  turns: z.number().int(A_TURNS).min(1, A_TURNS).max(40, A_TURNS).default(TURNS),
   backgroundNoise: z.number().optional(),
-  ambience: z.enum(AMBIENCES).optional(),
-  packetLoss: z.number().min(0).max(1).optional(),
+  ambience: z.enum(AMBIENCES, { error: `--ambience takes ${AMBIENCES.join(", ")}` }).optional(),
+  packetLoss: z.number().min(0, A_LOSS).max(1, A_LOSS).optional(),
 });
 export type SimulateInput = z.infer<typeof SimulateInput>;
 

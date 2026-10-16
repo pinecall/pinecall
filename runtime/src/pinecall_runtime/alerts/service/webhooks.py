@@ -9,7 +9,7 @@ from pinecall_runtime.exceptions import NotFound, ValidationError
 from pinecall_runtime.kit.crypto import Vault
 
 NOT_A_URL = "a webhook is an http(s) URL an alert can be posted to, not {said!r}"
-ALERTS_GO_NOWHERE = "this org posts its alerts nowhere: PUT /v1/webhook names a URL"
+ALERTS_GO_NOWHERE = "this org posts its alerts nowhere: `pinecall webhook set <url>` names a URL"
 
 
 @dataclass(frozen=True, slots=True)

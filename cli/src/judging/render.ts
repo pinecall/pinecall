@@ -22,14 +22,6 @@ const NO_REASON = "no reason was written down";
 export const NO_JUDGES = (owner: JudgeOwner): string =>
   `${owner ?? "the org"} has no judges yet: \`pinecall judges add <name> --asks '…'\` (--org for every agent's), or the console's Judges`;
 
-/** The gateway's 409 on these says what the CLI's own verb is; the hint says it in the CLI's words. */
-export function hintFor(verb: string, name: string): string | undefined {
-  if (verb === "rm") return `  pinecall judges off ${name} turns it off`;
-  if (verb === "on" || verb === "off") return `  pinecall judges rm ${name} stops one of your own`;
-  if (verb === "add") return `  ${name} is Pinecall's: \`pinecall judges on|off ${name}\`, or give yours a name of its own`;
-  return undefined;
-}
-
 /** One line per judge: name, whose, on or off, how it answers, when it runs, and what it holds a call to. */
 export function judges(owner: JudgeOwner, list: JudgeList): string[] {
   if (list.judges.length === 0) return [NO_JUDGES(owner)];

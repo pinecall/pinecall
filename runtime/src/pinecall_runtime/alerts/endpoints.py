@@ -2,8 +2,10 @@
 
 from fastapi import APIRouter
 
+from pinecall_runtime.agents.auth import NO_SUCH_AGENT, TheRegistry
 from pinecall_runtime.alerts import schemas, service
 from pinecall_runtime.alerts.auth import EvalsKey, ProvidersKey
+from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit.auth import Actor
 from pinecall_runtime.kit.handles import TheHandles
 from pinecall_runtime.postgres import Session
@@ -28,8 +30,13 @@ async def list_monitors(actor: EvalsKey, session: Session) -> schemas.MonitorLis
 
 
 @router.post("/v1/monitors", status_code=201)
-async def create_monitor(body: schemas.MonitorRequest, actor: EvalsKey, session: Session) -> schemas.MonitorRow:
+async def create_monitor(
+    body: schemas.MonitorRequest, actor: EvalsKey, registry: TheRegistry, session: Session
+) -> schemas.MonitorRow:
     """Watch a number: it fires, once a day, when it crosses the line over the window."""
+    # A monitor of one agent watches an agent the org has; a slug typed wrong would never fire.
+    if body.agent is not None and not await registry.is_known(actor.org, body.agent):
+        raise NotFound(NO_SUCH_AGENT.format(slug=body.agent))
     return schemas.MonitorRow.of(await service.create_monitor(session, actor.scope, body, by=_asked_by(actor)))
 
 

@@ -51,7 +51,7 @@ NO_ANSWER = "the cluster {verb}: no answer in {seconds:.0f}s"
 # The `pinecall` a hosted project is started with: the platform's own, never a dependency of the
 # project. A range, so a CLI release reaches hosted projects on their next start with no runtime
 # release; a CLI that breaks its contract bumps the minor, and this line with it.
-CLI_VERSION = "^0.9.40"
+CLI_VERSION = "^0.11.0"
 # Where that CLI is installed, on a volume of its own: the project's folder holds the project.
 CLI_HOME = "/opt/pinecall"
 # Where a pod's service account finds what it calls the cluster's API with.

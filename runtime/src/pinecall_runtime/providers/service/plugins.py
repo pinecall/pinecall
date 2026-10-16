@@ -142,7 +142,9 @@ def vendor_doing(vendor: str, modality: Modality) -> str:
     """The vendor's name, once it is installed and does that stage; refused if not."""
     found = installed().get(vendor)
     if found is None:
-        raise ValidationError(f"no vendor named {vendor!r} is installed here; GET /v1/providers lists every one")
+        raise ValidationError(
+            f"no vendor named {vendor!r} is installed here: `pinecall providers catalog` lists every one"
+        )
     if found.broken is None and modality not in found.does:
         raise ValidationError(f"{vendor} has no {modality}: it does {', '.join(sorted(found.does))}")
     return vendor

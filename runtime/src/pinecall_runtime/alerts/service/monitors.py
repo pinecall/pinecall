@@ -19,7 +19,7 @@ from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.time import day_of
 from pinecall_runtime.wire.events import MonitorFired
 
-NO_SUCH_MONITOR = "no monitor {id} in this env: GET /v1/monitors lists them"
+NO_SUCH_MONITOR = "no monitor {id} in this env: `pinecall monitors` lists them"
 LLM = "llm"
 
 

@@ -43,7 +43,7 @@ export type PolicyInput = z.infer<typeof PolicyInput>;
 /** What `data consent` takes: the number, and a consent given, or an opt-out. */
 export const ConsentInput = z.object({
   number: z.string().min(1),
-  give: z.enum(["express", "written"]).optional(),
+  give: z.enum(["express", "written"], { error: "--give takes express or written: how the consent was given" }).optional(),
   source: z.string().optional(),
   text: z.string().optional(),
   evidence: z.string().optional(),
@@ -101,6 +101,7 @@ export async function addDoNotCall(ctx: Context, numbers: string[], source: stri
 
 /** A file of numbers, one a line, put on the list; read before the gateway is asked. */
 export async function importDoNotCall(ctx: Context, file: string, source: string): Promise<api.DoNotCallImported> {
+  if (!existsSync(file)) throw new UsageError(`no file ${file}: a text file with one number a line`);
   const numbers = readFileSync(file, "utf8").split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "");
   if (numbers.length === 0) throw new UsageError(`nothing in ${file}: one number a line`);
   return addDoNotCall(ctx, numbers, source);

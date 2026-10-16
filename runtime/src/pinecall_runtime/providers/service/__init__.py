@@ -41,6 +41,7 @@ from pinecall_runtime.providers.service.plugins import (
     primary_language,
     vendor_doing,
     vendor_named_in,
+    words_of,
 )
 from pinecall_runtime.providers.service.prices import RatesChange, cost_of, rates_changed, rates_from_csv
 from pinecall_runtime.providers.service.stages import (
@@ -121,4 +122,5 @@ __all__ = [
     "tuning_of",
     "vendor_doing",
     "vendor_named_in",
+    "words_of",
 ]

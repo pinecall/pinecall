@@ -132,7 +132,7 @@ async def test_a_judge_model_that_answers_in_words_is_asked_once_more_and_both_r
 
 async def test_a_judge_model_that_calls_no_tool_is_a_vendor_that_failed() -> None:
     model = AcmeLLM(api_key="k", replies=[["no pienso"]])
-    with pytest.raises(UpstreamError, match="without calling submit_verdict"):
+    with pytest.raises(UpstreamError, match="without calling submit_verdict: it said 'no pienso'"):
         await ask(SLOT, offered(), Context(), model)
 
 

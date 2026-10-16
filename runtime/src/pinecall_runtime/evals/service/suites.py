@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Never
 
-from livekit.agents import llm
+from livekit.agents import APIError, llm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.agents.declaration import Model
@@ -68,6 +68,13 @@ CASES_IN_THE_SANDBOX = (
     "developer holds there, never through production's, whose tools act for real"
 )
 CASES_WRITTEN = "cases are played as written calls: drop --voice, or play only goldens out loud"
+
+
+# A vendor's refusal is read in its words; anything else says what it is.
+def _why_broke(broke: Exception) -> str:
+    return providers.words_of(broke) if isinstance(broke, APIError) else str(broke)
+
+
 # Every call of a run is a simulated caller and an agent the box may pay for: goldens and cases,
 # each played once under every model.
 CALLS_A_RUN = 200
@@ -148,7 +155,7 @@ async def _played(serving: calls.Serving, runner: runs.Runner, suite: Suite) -> 
         done = runs.stopped(suite.now, GATEWAY_STOPPED)
     except Exception as broke:
         logger.exception("run %s of %s broke", suite.run.id, suite.body.agent)
-        done = runs.stopped(suite.now, RUN_BROKE.format(error=broke))
+        done = runs.stopped(suite.now, RUN_BROKE.format(error=_why_broke(broke)))
     try:
         await _stored(serving, where, done)
     finally:

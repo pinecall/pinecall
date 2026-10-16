@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.agents.service import tuning
-from pinecall_runtime.exceptions import Conflict, NotFound
+from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
 from pinecall_runtime.judging.models import AgentPersona
 from pinecall_runtime.judging.repository import PersonaRepository, PersonaSwitchRepository
 from pinecall_runtime.judging.schemas import CallerBehavior, PersonaRequest, PersonaRow, ProposedPersona
@@ -20,11 +20,12 @@ NOBODY = "no persona called {name} for {agent}"
 TAKEN = "{agent} has a persona called {name} already"
 ONLY_ON = (
     "{name} is one of Pinecall's personas: only whether the agent's runs play it and how it is "
-    'played are written, as {{"on": true}}, {{"llm": "vendor/model"}}, {{"tts": "vendor"}} and '
-    '{{"voice": "id"}}; a caller of your own takes a name of your own'
+    "played are written (on or off, the model, the voice's vendor and the voice); a caller of your "
+    "own takes a name of your own"
 )
 NOT_A_SWITCH = "{name} is a persona of the agent's own: it is played while it is written"
-NOT_YOURS = '{name} is one of Pinecall\'s personas and is never deleted: PUT {{"on": false}} turns it off'
+NOT_YOURS = "{name} is one of Pinecall's personas and is never deleted: `pinecall personas off {name}` turns it off"
+NO_SUCH_VOICE = "{vendor} lists no voice {voice}: `pinecall voices list --tts {vendor}` names the ones it has"
 
 # What a PUT may write of one of Pinecall's: its switch, and how it is played.
 PLAYED_FIELDS = frozenset({"llm", "tts", "voice"})
@@ -161,11 +162,16 @@ async def write_library_persona(
     await repository.play(org, agent, name, is_on=is_on, llm=chosen.llm, tts=chosen.tts, voice=chosen.voice, author=by)
 
 
-async def check_persona_models(session: AsyncSession, llm: str | None, tts: str | None) -> None:
-    """Refuse a model or a vendor this box lacks when a persona is written, not on the call that plays it."""
-    defaults = (await providers.get_catalog(session)).default_vendors
-    tuning.model_named(llm or None, "llm", in_use=defaults["llm"])
-    tuning.model_named(tts or None, "tts", in_use=defaults["tts"])
+def check_persona_models(configured: providers.Catalog, llm: str | None, tts: str | None, voice: str | None) -> None:
+    """Refuse a model, a vendor or a voice this box lacks when a persona is written, not on the call that plays it."""
+    tuning.model_named(llm or None, "llm", in_use=configured.default_vendors["llm"])
+    # The caller's `tts` names a vendor, never a model: a word that is no vendor is refused as one.
+    vendor = configured.default_vendors["tts"] if not tts else providers.vendor_doing(tts, "tts")
+    # A vendor whose voices the catalog lists has the voice there or not at all; one it lists none
+    # for (every voice is the vendor's own) takes the id as given.
+    listed = providers.listed_in_catalog(configured, vendor, None)
+    if voice and listed and all(one.id != voice for one in listed):
+        raise ValidationError(NO_SUCH_VOICE.format(vendor=vendor, voice=voice))
 
 
 def persona_of(name: str, body: PersonaRequest) -> Persona:

@@ -1,7 +1,7 @@
 $ pinecall supervise --help
 Usage: pinecall supervise [options] <call>
 
-listen in: whisper, say, takeover, transfer, end
+listen in: whisper, say, take the line, give it back, end
 
 Options:
   -h, --help  display help for command

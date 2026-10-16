@@ -8,7 +8,6 @@ from fastapi import APIRouter, Query, Request, Response
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
 from pinecall_runtime.agents.declaration import Voice
-from pinecall_runtime.agents.service import tuning
 from pinecall_runtime.exceptions import NotFound, TooManyRequests, ValidationError
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import handles_of
@@ -126,13 +125,9 @@ async def voice_sample(body: VoiceSampleRequest, actor: PipelineKey, request: Re
     text = body.text or configured.lines.get(language or "", A_LINE)
     if len(text) > LONGEST_SAMPLE:
         raise ValidationError(f"a sample says a sentence: {len(text)} characters, and the ceiling is {LONGEST_SAMPLE}")
-    default = configured.defaults["tts"].vendor
-    named = tuning.model_named(body.tts, "tts", in_use=default)
-    voice = Voice(
-        provider=default if named is None else named.provider,
-        model=body.model or (None if named is None else named.model or None),
-        voice_id=body.voice,
-    )
+    # `tts` names a vendor, never a model: a word that is no vendor is refused as one, not tried as a model.
+    vendor = configured.defaults["tts"].vendor if not body.tts else plugins.vendor_doing(body.tts, "tts")
+    voice = Voice(provider=vendor, model=body.model or None, voice_id=body.voice)
     keys = await keyring.keys_of(session, _vault(request), actor.scope)
     stage = keyring.stage_on_its_key("tts", voice, configured, keys)
     heard = await voices.sample(dataclasses.replace(stage, voice=voice.voice_id, language=language), text)

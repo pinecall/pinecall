@@ -6,6 +6,24 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`deploy up` and `deploy rollback` follow a release to the end.** The follow read the org's whole
+  feed and left with a validator's text on the first entry that was not a release's (the gateway
+  now filters the feed by type).
+- **A flag out of range is refused in words that name it**: `--interrupts`, `--pause`, `--speed`,
+  `--backchannels`, `--turns`, `--packet-loss`, `--ambience`, `--give`, `--end-of-turn`, `--record`,
+  `--greeting-interruptible`, `--max-duration`, `--endpointing-ms`, `--min-interruption-words`,
+  the thresholds, `--k`, `--mode`, `--min-score`, a webhook's URL and a collector's URL. `prompt
+  --channel` and `--medium` are checked before the child is started.
+- **A file that is not there is refused by name, exit 2**: `agent push`, `remember` and `data dnc
+  import` printed Node's own error, exit 1; a settings file that is not JSON says so.
+- **`test` says why a run broke.** A run that failed before its matrix (a model the vendor has
+  not, a vendor with no key) printed `a golden broke` and nothing else; its reason stayed in
+  `--json`. The reason is printed, and the exit says `the run broke`.
+- **`supervise`'s one-line description names its moves** (take the line, give it back); it named a
+  `transfer` the desk has not.
+- **`judges add|on|off|rm` print the gateway's refusal alone**, which now names the verb to type;
+  the hint printed above it could call the org's judge Pinecall's.
+
 ## [0.11.0] — an agent is one folder; a run followed on the feed; every verb walked, and what is not there refused by name
 
 - **`chat` and `simulate` on an agent nobody holds exit 2**, as `test` and `remember` do: the gateway

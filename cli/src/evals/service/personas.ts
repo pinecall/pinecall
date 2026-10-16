@@ -16,6 +16,10 @@ export type { Behavior, GeneratedPersonas, Persona, ProposedPersona } from "../.
 
 // Mirrors the gateway's name rule so a bad name gets a readable error.
 const A_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// What a caller's numbers mean, in the refusal of one out of range.
+const A_SHARE = (flag: string): string => `${flag} is a share of the agent's answers: a number from 0 to 1`;
+const A_PAUSE = "--pause is seconds of silence before each line, 0 to 10";
+const A_SPEED = "--speed is a multiple of the caller's usual pace, 0.5 to 2";
 
 export const NOBODY = (name: string, agent: string): string => `no persona called ${name} for ${agent}: \`pinecall personas add ${name} --goal '…' --style '…'\`, or the console's Personas`;
 export const PINECALLS = (name: string): string => `${name} is one of Pinecall's personas: \`pinecall personas on|off ${name}\` switches it; write your own under another name`;
@@ -32,10 +36,10 @@ export const WritePersonaInput = z.object({
   voice: z.string().optional(),
   expects: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  interrupts: z.number().min(0).max(1).optional(),
-  pauseS: z.number().min(0).max(10).optional(),
-  backchannels: z.number().min(0).max(1).optional(),
-  speed: z.number().min(0.5).max(2).optional(),
+  interrupts: z.number().min(0, A_SHARE("--interrupts")).max(1, A_SHARE("--interrupts")).optional(),
+  pauseS: z.number().min(0, A_PAUSE).max(10, A_PAUSE).optional(),
+  backchannels: z.number().min(0, A_SHARE("--backchannels")).max(1, A_SHARE("--backchannels")).optional(),
+  speed: z.number().min(0.5, A_SPEED).max(2, A_SPEED).optional(),
   ambience: z.enum(AMBIENCES).optional(),
   backgroundNoise: z.number().nullable().optional(),
 });

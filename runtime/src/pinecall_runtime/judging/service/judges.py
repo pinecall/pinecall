@@ -19,11 +19,11 @@ THE_ORG = "org"
 NOBODY = "{whose} has no judge called {name}"
 TAKEN = "{name} is {whose} judge already: one name asks one question of a call"
 ONLY_ON = (
-    '{name} is one of Pinecall\'s judges: only whether it runs is written, as {{"on": true}} or '
-    '{{"on": false}}; a question of your own takes a name of your own'
+    "{name} is one of Pinecall's judges: it is switched on or off (`pinecall judges on|off {name}`), "
+    "never rewritten; a question of your own takes a name of your own"
 )
-NOT_A_SWITCH = "{name} is a judge of your own: it runs while it is written, and DELETE stops it"
-NOT_YOURS = '{name} is one of Pinecall\'s judges and is never deleted: PUT {{"on": false}} turns it off'
+NOT_A_SWITCH = "{name} is a judge of your own: it runs while it is written, and `pinecall judges rm {name}` stops it"
+NOT_YOURS = "{name} is one of Pinecall's judges and is never deleted: `pinecall judges off {name}` turns it off"
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +66,8 @@ async def write_judge(session: AsyncSession, org: str, agent: str, name: str, bo
         await JudgeSwitchRepository(session).switch(org, agent, (name,), on=body.on, author=by)
         return
     if body.on is not None:
+        # A switch of a name nobody wrote is a name typed wrong, not a judge of the org's.
+        await judge_named(session, org, agent, name)
         raise Conflict(NOT_A_SWITCH.format(name=name))
     await put_judge(session, org, agent, spec_of(name, body), by=by)
 

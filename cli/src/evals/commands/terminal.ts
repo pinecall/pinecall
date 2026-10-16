@@ -13,6 +13,18 @@ import * as service from "../service/index.js";
 // Debounce for --watch; each run costs real calls.
 const SETTLE_MS = 150;
 
+/** How one agent's suite ended: every golden held, or the run itself broke before it could say. */
+interface Ended {
+  held: boolean;
+  broke: boolean;
+}
+
+// The run's own error was printed with its report; the exit says which of the two it was.
+function refuseUnlessHeld(ended: Ended[]): void {
+  if (ended.some((one) => one.broke)) throw new PinecallError("the run broke");
+  if (ended.some((one) => !one.held)) throw new PinecallError("a golden broke");
+}
+
 // Every agent of the project with goldens, or the one named; with paths, those goldens of one agent.
 export async function test(ctx: Context, paths: string[], choice: { file?: string | undefined; agent?: string | undefined; grep?: string | undefined; watch: boolean }, input: service.SuiteInput): Promise<void> {
   const onlyCases = service.playsCases(input) && paths.length === 0;
@@ -22,23 +34,23 @@ export async function test(ctx: Context, paths: string[], choice: { file?: strin
     if (paths.length > 0 || choice.watch || input.cases !== undefined || input.version !== undefined) {
       throw new UsageError(`paths, --watch, --case and --version are for one agent: add --agent ${homes.map((home) => home.name).join(" or --agent ")}`);
     }
-    let broke = false;
+    const ended: Ended[] = [];
     for (const home of homes) {
       if (!onlyCases && !isDirectory(home.goldens)) {
         ctx.io.print(`${home.name} · no goldens at ${home.goldens}`);
         continue;
       }
-      broke = !(await suiteAtTheTerminal(ctx, home.name, onlyCases ? [] : [home.goldens], choice.grep, input)) || broke;
+      ended.push(await suiteAtTheTerminal(ctx, home.name, onlyCases ? [] : [home.goldens], choice.grep, input));
     }
-    if (broke) throw new PinecallError("a golden broke");
+    refuseUnlessHeld(ended);
     return;
   }
   const home = homes[0]!;
   const read = paths.length > 0 ? paths.map((path) => service.goldenPath(path, home.goldens)) : onlyCases ? [] : [home.goldens];
   if (paths.length === 0 && !onlyCases && !existsSync(home.goldens)) throw new UsageError(`no goldens at ${home.goldens}: write one, or name the file or directory to run`);
-  const held = await suiteAtTheTerminal(ctx, home.name, read, choice.grep, input);
+  const one = await suiteAtTheTerminal(ctx, home.name, read, choice.grep, input);
   if (!choice.watch) {
-    if (!held) throw new PinecallError("a golden broke");
+    refuseUnlessHeld([one]);
     return;
   }
   // Re-runs on golden changes; a change to the class is the holder's to pick up (`start` reloads on save).
@@ -60,7 +72,7 @@ export async function test(ctx: Context, paths: string[], choice: { file?: strin
 }
 
 // The suite drawn as it goes on a terminal, its header alone otherwise; the report or its JSON at the end.
-async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], grep: string | undefined, input: service.SuiteInput): Promise<boolean> {
+async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], grep: string | undefined, input: service.SuiteInput): Promise<Ended> {
   // No paths is no goldens: reading test/goldens is the caller's choice, made above.
   const goldens = paths.length === 0 ? [] : service.matching(await service.goldensIn(paths), grep);
   if (goldens.length === 0 && !service.playsCases(input)) throw new UsageError(`no golden matched${grep === undefined ? "" : ` --grep ${grep}`}`);
@@ -91,9 +103,11 @@ async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], 
       },
     });
     block.erase();
-    // The header went out as the run started; the matrix is not headed again.
-    ctx.io.result(report, (one) => render.suite(one, service.DECLARED_AS).slice(told ? 1 : 0));
-    return report.held;
+    // The header went out as the run started, and a matrix heads itself with the same line; a run
+    // that broke before its matrix has only the line that says so.
+    const headed = told && report.run.matrix !== null;
+    ctx.io.result(report, (one) => render.suite(one, service.DECLARED_AS).slice(headed ? 1 : 0));
+    return { held: report.held, broke: report.run.status === "failed" };
   } finally {
     clearInterval(clock);
     block.giveBack();

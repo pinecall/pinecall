@@ -31,8 +31,8 @@ Commands:
                                  cost and how it was judged; or its log
   chat [options] [agent]         a written caller against the agent, wherever it
                                  is held
-  supervise <call>               listen in: whisper, say, takeover, transfer,
-                                 end
+  supervise <call>               listen in: whisper, say, take the line, give it
+                                 back, end
   data                           the org's data: erasures, the policy, consent,
                                  the do-not-call list, export
   test [options] [paths...]      the goldens, run through the agent wherever it

@@ -36,7 +36,7 @@ NOT_A_SETTING = (
     "assistant (`pinecall mcp`, the cases tool), knowledge to the agent's base"
 )
 NO_SUCH_SETTING = "group {id} proposes changing {where}, which is not one of the agent's settings"
-NOT_DIAGNOSED = "group {id} has no proposal yet: POST /v1/evals/groups/{id}/propose first"
+NOT_DIAGNOSED = "group {id} has no proposal yet: `pinecall cases propose {id}` writes one first"
 WRONG_ONLY_WHEN_DISMISSED = (
     "judge_was_wrong says the group's judge broke where it should have held, so it dismisses the "
     "group: send it with status dismissed"

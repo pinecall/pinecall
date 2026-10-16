@@ -36,7 +36,7 @@ OPERATOR = "operator"
 
 NOT_AN_ENDPOINT = "a telemetry endpoint is an http(s) URL an OTLP exporter can post to, not {said!r}"
 NOT_A_HEADER_NAME = "a telemetry header has a name"
-TRACES_GO_NOWHERE = "this org sends its traces nowhere: PUT /v1/telemetry names a collector"
+TRACES_GO_NOWHERE = "this org sends its traces nowhere: `pinecall telemetry set <url>` names a collector"
 
 # The platform's sentences, by the first part of the agent's language; English for any other.
 CALLING_FOR = {

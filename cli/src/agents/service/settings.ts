@@ -1,13 +1,12 @@
 /** An agent's settings: the fields, set and cleared as the next version of a corner, their versions, and a corner as a file. */
 
-import { readFile } from "node:fs/promises";
-
 import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 import { z } from "zod";
 
 import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
+import { readJsonFile } from "../../kit/json-file.js";
 import * as providers from "../../providers/service.js";
 import { cornerName, type CornerWritten, cornerWritten, readSettings, rowToStartFrom, sameSettings, type TuningAnswer, type TuningBody, writeCorner } from "./corners.js";
 
@@ -48,7 +47,11 @@ const IMPROVISE = "improvise";
 export const NO_LANGUAGE = "--language needs a tag, such as en, es or pt-BR: pinecall agent clear language takes it out";
 
 // The checks a flag passes before anything is read or written, in the CLI's words.
-const fraction = z.number().gt(0).max(1);
+const A_THRESHOLD = "a threshold is a number above 0 and up to 1, such as 0.7";
+const fraction = z.number().gt(0, A_THRESHOLD).max(1, A_THRESHOLD);
+const ON_OR_OFF = (flag: string): { error: string } => ({ error: `${flag} takes on or off` });
+const A_COUNT = (flag: string, of: string): string => `${flag} is a whole number of ${of}, 0 or more`;
+const A_DURATION = `--max-duration is minutes, 1 to ${LONGEST_MINUTES}, or off`;
 
 /** What `set` takes, under the CLI's own flag names, so the terminal and the MCP turn either into a version. */
 export const SettingsInput = z
@@ -58,7 +61,7 @@ export const SettingsInput = z
     "tts-model": z.string(),
     stt: z.string(),
     llm: z.string(),
-    temperature: z.number().min(0),
+    temperature: z.number().min(0, "--temperature is 0 or more"),
     "llm-builds": z.string(),
     "llm-options": z.record(z.string(), z.unknown()),
     "stt-builds": z.string(),
@@ -70,15 +73,15 @@ export const SettingsInput = z
     "judge-options": z.record(z.string(), z.unknown()),
     language: z.string().trim().min(1, NO_LANGUAGE),
     greeting: z.string(),
-    "greeting-interruptible": z.enum(["on", "off"]),
-    "end-of-turn": z.enum(END_OF_TURN),
+    "greeting-interruptible": z.enum(["on", "off"], ON_OR_OFF("--greeting-interruptible")),
+    "end-of-turn": z.enum(END_OF_TURN, { error: `--end-of-turn takes ${END_OF_TURN.join(", ")}` }),
     hangup: z.string(),
-    "endpointing-ms": z.number().int().min(0),
-    "min-interruption-words": z.number().int().min(0),
+    "endpointing-ms": z.number().int(A_COUNT("--endpointing-ms", "milliseconds")).min(0, A_COUNT("--endpointing-ms", "milliseconds")),
+    "min-interruption-words": z.number().int(A_COUNT("--min-interruption-words", "words")).min(0, A_COUNT("--min-interruption-words", "words")),
     "eot-threshold": fraction,
     "eager-eot-threshold": fraction,
-    record: z.enum(["on", "off"]),
-    "max-duration": z.union([z.number().int().min(1).max(LONGEST_MINUTES), z.literal("off")]),
+    record: z.enum(["on", "off"], ON_OR_OFF("--record")),
+    "max-duration": z.union([z.number().int(A_DURATION).min(1, A_DURATION).max(LONGEST_MINUTES, A_DURATION), z.literal("off")], { error: A_DURATION }),
     remember: z.array(z.string()),
     forget: z.array(z.string()),
   })
@@ -164,7 +167,7 @@ export async function pullSettings(ctx: Context, agent: string | undefined, team
 /** A file sent as the next version; no version guard: CI applies the file as the source of truth. */
 export async function pushSettings(ctx: Context, file: string, options: WriteOptions): Promise<CornerWritten & { file: string }> {
   const name = agentNamed(ctx, options.agent);
-  const read = JSON.parse(await readFile(file, "utf8")) as Partial<Pulled>;
+  const read = readJsonFile<Partial<Pulled>>("the settings file", file);
   const config = read.config ?? (read as TuningBody);
   const gw = ctx.gateway();
   const standing = await readSettings(ctx, name);

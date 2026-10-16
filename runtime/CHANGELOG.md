@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The org's feed takes `?types=`.** `GET /v1/events` sent every entry of the floor whatever a
+  reader asked for, and a reader following one type (a release going live, a run finishing) met
+  entries it had no shape for. The feed filters as a log's stream does.
+- **A monitor watches an agent the org has.** `POST /v1/monitors` with an agent no app of the org
+  ever held is 404, as every other door naming an agent is, instead of a monitor that never fires.
+- **A persona's vendor and voice are checked when written.** `tts` names a vendor, and one this box
+  lacks is refused; a voice the vendor's catalog does not list is refused, as the page said.
+  `POST /v1/voices/sample` reads `tts` as a vendor the same way.
+- **Switching a judge nobody wrote is 404**, not a 409 calling it the org's own.
+- **A run that broke says why in words.** A vendor's refusal (a model it does not have) is read in
+  the vendor's words, never its SDK's repr with the request id in it.
+- **A judge model that answers in words instead of calling its tool is quoted** in the 502, so a
+  prompt it keeps refusing (`personas generate` with nothing to steer it) can be read and fixed.
+- **Refusals name `pinecall` verbs, never a route or a body.** The webhook and telemetry doors,
+  the judges' and personas' switches, a monitor nobody has, a group with no proposal, a vendor
+  nobody installed, an agent nobody holds, and the desk's line-holding refusals.
+- **A hosted app starts on the platform's `pinecall` 0.11.** The runner installed `^0.9.40`.
+- **A release whose process printed nothing says so**, instead of ending its report with a colon.
 - **A chat that ends from two sides at once closes its socket once.** The caller's hang-up and the
   call's own end each closed the socket; the second close was a traceback in the gateway's log.
 - **A call reaches its app on every gateway.** With two gateways, a call opened on one for an agent

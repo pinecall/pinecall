@@ -92,7 +92,7 @@ async def put_persona(
     slug: KnownAgent, name: str, body: judged.PersonaRequest, actor: EvalsKey, session: Session
 ) -> judged.PersonaList:
     """Write one of the agent's callers whole, or rename one from `was`; or switch Pinecall's."""
-    await judging.check_persona_models(session, body.llm, body.tts)
+    judging.check_persona_models(await providers.get_catalog(session), body.llm, body.tts, body.voice)
     if name in judging.library_personas():
         await judging.write_library_persona(session, actor.org, slug, name, body, by=asked_by(actor))
     else:

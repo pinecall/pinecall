@@ -43,8 +43,9 @@ from pinecall_runtime.hosting.service.plan import (
 logger = logging.getLogger(__name__)
 
 BEAT_S = 5.0
-# What a failure says of the process's own output: its last lines.
+# What a failure says of the process's own output: its last lines, or that there were none.
 LAST_LINES = 20
+PRINTED_NOTHING = "(the process printed nothing)"
 # What a person asking for an app's logs is sent: its process's last lines.
 SENT_LINES = 300
 LONGEST_WHY = 2000
@@ -270,4 +271,5 @@ async def run_runner(settings: Settings) -> int:
 
 
 def _tail(output: str) -> str:
-    return "\n".join(output.strip().splitlines()[-LAST_LINES:])
+    lines = output.strip().splitlines()
+    return "\n".join(lines[-LAST_LINES:]) if lines else PRINTED_NOTHING

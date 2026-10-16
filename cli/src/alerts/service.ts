@@ -22,14 +22,14 @@ export type AddMonitorInput = z.infer<typeof AddMonitorInput>;
 
 /** What `webhook set` takes: the URL, and the secret read off stdin, never a flag. */
 export const SetWebhookInput = z.object({
-  url: z.string().url(),
+  url: z.url({ error: "a webhook is an http(s) URL alerts are posted to, like https://hooks.example.com/pinecall" }),
   secret: z.string().min(1).nullable().default(null),
 });
 export type SetWebhookInput = z.infer<typeof SetWebhookInput>;
 
 /** What `telemetry set` takes: the collector, each header's value read off stdin, and whether words travel. */
 export const SetCollectorInput = z.object({
-  endpoint: z.string().url(),
+  endpoint: z.url({ error: "a collector is an http(s) URL an OTLP exporter posts to, like https://otlp.example.com/v1/traces" }),
   headers: z.record(z.string().min(1), z.string().min(1)).default({}),
   pii: z.boolean().default(false),
 });

@@ -100,7 +100,7 @@ export function register(program: Command, ctx: Context): void {
 
   program
     .command("supervise")
-    .description("listen in: whisper, say, takeover, transfer, end")
+    .description("listen in: whisper, say, take the line, give it back, end")
     .argument("<call>")
     .addHelpText("after", SUPERVISE)
     .action(async (call) => {

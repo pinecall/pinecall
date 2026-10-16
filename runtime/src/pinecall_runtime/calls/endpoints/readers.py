@@ -21,7 +21,7 @@ from pinecall_runtime.calls.auth import (
     check_readable,
     record_read,
 )
-from pinecall_runtime.calls.fanout import Filter
+from pinecall_runtime.calls.fanout import EVERYTHING, Filter
 from pinecall_runtime.calls.readers import parse_filter, project_entry, project_state
 from pinecall_runtime.calls.service import lists
 from pinecall_runtime.enums import ReadKind
@@ -137,12 +137,17 @@ async def call_prompt(
 
 # Live only, no cursor: every entry of the feed is also in a log, which is where to resume.
 @router.get("/v1/events", response_model=None)
-async def stream_org_events(reader: ReaderDep, serving: TheServing, request: Request) -> StreamingResponse:
-    """The org's calls and agents changing, as they change."""
+async def stream_org_events(
+    reader: ReaderDep, serving: TheServing, request: Request, types: Annotated[str | None, Query()] = None
+) -> StreamingResponse:
+    """The org's calls and agents changing, as they change; `types=a.b,c.d` keeps those alone."""
     if reader.actor is None:
         raise Forbidden(NOT_YOURS)
+    only = parse_filter(types, durable=False)
     feed = await serving.logs.feed_reader(reader.actor.org, reader.actor.env)
-    return sse.streamed(sse.paced(_projected(feed, reader, None, ends=False), closing=request.app.state.closing))
+    return sse.streamed(
+        sse.paced(_projected(feed, reader, None, ends=False, only=only), closing=request.app.state.closing)
+    )
 
 
 def _page(
@@ -156,10 +161,12 @@ def _page(
 
 
 async def _projected(
-    entries: AsyncIterator[Entry], reader: Reader, config: AgentConfig | None, *, ends: bool
+    entries: AsyncIterator[Entry], reader: Reader, config: AgentConfig | None, *, ends: bool, only: Filter = EVERYTHING
 ) -> AsyncIterator[str]:
     yield f"retry: {RETRY_MS}\n\n"
     async for entry in entries:
+        if not only.passes(entry):
+            continue
         data = project_entry(entry, reader.projection, config, reader.viewer)
         if data is not None:
             yield sse.frame(json.dumps(data, separators=(",", ":")), event=entry.type, id_=str(entry.seq))

@@ -100,7 +100,10 @@ class NoApp(NotFound):
     """No socket holds the agent."""
 
     def __init__(self, slug: str) -> None:
-        super().__init__(f"no app holds agent {slug}: start one, or deploy it")
+        super().__init__(
+            f"no app holds agent {slug}: `pinecall start` holds it from a terminal, "
+            "`pinecall deploy` runs it on Pinecall"
+        )
 
 
 class NotThatApp(Conflict):

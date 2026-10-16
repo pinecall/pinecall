@@ -10,6 +10,10 @@ import { runOnce, serveStart } from "./child.js";
 import * as render from "./render.js";
 import { consoleLink, start, StartInput } from "./start.js";
 
+// What `prompt` renders the prompt for: a door, and how the call is held on it.
+const CHANNELS: readonly string[] = ["phone", "web", "whatsapp"];
+const MEDIA: readonly string[] = ["voice", "text"];
+
 const START = `
 With nothing after it: the agent served by its language's serve entry, a process this one starts and
 watches, one line per log entry on stdout, no port bound and no page served. Beside it this process
@@ -95,6 +99,9 @@ export function register(program: Command, ctx: Context): void {
       // It asks nobody anything: --prod is refused rather than taken and ignored.
       if (ctx.env === "production") throw new UsageError(NO_PROD);
       const home = ctx.agent("prompt", { file, agent: flags.agent });
+      // Checked here, in the CLI's words: the child would refuse them with its own exit code.
+      if (!CHANNELS.includes(flags.channel)) throw new UsageError(`--channel takes ${CHANNELS.join(", ")}`);
+      if (flags.medium !== undefined && !MEDIA.includes(flags.medium)) throw new UsageError(`--medium takes ${MEDIA.join(" or ")}`);
       // No file is the state the class opens a call in.
       const state = flags.state === undefined ? {} : stateOfCase(flags.state, Number(flags.case));
       const pairs = Object.entries(state).flatMap(([field, value]) => ["--state", `${field}=${JSON.stringify(value)}`]);

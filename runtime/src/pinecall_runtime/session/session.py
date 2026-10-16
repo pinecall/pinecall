@@ -66,9 +66,9 @@ HOW_IT_ENDED: dict[CloseReason, tuple[EndReason, EndedBy]] = {
 }
 A_PLATFORM_ERROR: tuple[EndReason, EndedBy] = ("error", "platform")
 NOTHING_SAID = "no reply"
-ALREADY_HELD = "supervisor.verb: {id} already holds the line; they release it, or nobody does"
-NOBODY_HOLDS = "supervisor.verb: nobody holds the line, so there is nothing to release"
-ALREADY_WAITING = "call.attention: the caller is already waiting for a person"
+ALREADY_HELD = "{id} already holds the line; they release it, or nobody does"
+NOBODY_HOLDS = "nobody holds the line, so there is nothing to give back"
+ALREADY_WAITING = "the caller is already waiting for a person"
 # The app's tool timeout must outlast the wait it asks for; the runtime does not extend it.
 NOBODY_TOOK_IT = "nobody took the line within {wait_s:g}s"
 NOT_HERE = "{command} is not something this call does"

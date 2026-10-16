@@ -39,7 +39,9 @@ JUDGE = (
     "other line."
 )
 
-NO_ANSWER = "the judge model answered without calling {tool}"
+# Its words are kept in the refusal: what a model says instead of calling is what fixes the prompt.
+NO_ANSWER = "the judge model answered without calling {tool}: it said {said!r}"
+SAID_AT_MOST = 200
 # Said once to a model that answered in words: what it said stays in front of it.
 ONLY_THE_TOOL = "Answer by calling {tool}, and nothing else."
 SCORES = ("1", "2", "3", "4", "5")
@@ -110,13 +112,15 @@ async def forced(
     spent = [response.usage]
     # A model that thinks before it answers cannot be held to a tool (Anthropic's thinking takes
     # `auto` alone), and now and then answers in words: it is asked once more, its words in front of it.
+    said = response.text or ""
     if not response.tool_calls:
-        chat.add_message(role="assistant", content=response.text or "…")
+        chat.add_message(role="assistant", content=said or "…")
         chat.add_message(role="user", content=ONLY_THE_TOOL.format(tool=tool["name"]))
         response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
         spent.append(response.usage)
+        said = response.text or said
     if not response.tool_calls:
-        raise UpstreamError(NO_ANSWER.format(tool=tool["name"]))
+        raise UpstreamError(NO_ANSWER.format(tool=tool["name"], said=said.strip()[:SAID_AT_MOST]))
     answered: object = json.loads(response.tool_calls[0].arguments or "{}")
     fields: Mapping[str, object] = answered if a_mapping(answered) else {}
     return fields, providers.completion_usage(model, _summed(spent))

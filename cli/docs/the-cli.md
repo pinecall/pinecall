@@ -615,7 +615,7 @@ goldens out loud on a real line, which rings the agent as a phone does: at whoev
 ([`line`](#line)) — the `pinecall start` that holds the agent, or production's process with `--prod`;
 `--background-noise` puts an ambience behind the caller at that many dB under it — a television unless `--ambience` names a `cafe`, an `office` or a `street` —
 at that many dB under them, and `--packet-loss` drops that share of their packets — a fraction
-from 0 to 1 here (`0.05` is one in twenty), where `simulate` takes a percent. A spoken call has
+from 0 to 1 (`0.05` is one in twenty), as `simulate` takes it. A spoken call has
 no test run to assert steps on: `--voice` refuses a golden with an `event` turn or a `then`, and
 judges the final `expect` alone.
 
@@ -826,8 +826,8 @@ did not apply — and N/A is never billed. Each judge that answers is one **eval
 of your org's own key ([`judging`](#judging)) evals are not billed.
 
 `on` and `off` switch one of Pinecall's; one of your own runs while it is written, and the gateway
-refuses a switch of it with **exit 1**, the hint naming `rm`. `rm` drops one of your own; Pinecall's
-are never dropped, and the hint names `off`. `try` asks one judge of the agent's newest finished
+refuses a switch of it with **exit 1**, naming `rm`; a name nobody wrote is **exit 2**. `rm` drops one
+of your own; Pinecall's are never dropped, and the refusal names `off`. `try` asks one judge of the agent's newest finished
 calls (`--last`, 1 to 50) or of the calls named (`--calls`), and writes nothing: a judge already
 written, or Pinecall's, by its name alone; one not yet saved, written whole with `--asks` and
 `add`'s flags. Each line is a call and what the judge answered; the last, the evals and what they
@@ -2194,7 +2194,7 @@ verification snippet per language.
 | | |
 |---|---|
 | `0` | it did what it says |
-| `1` | the thing being measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold — or the gateway refused, in its own words |
+| `1` | the thing being measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold, the run itself broke (its reason printed with the report) — or the gateway refused, in its own words |
 | `2` | this command cannot run: no key, a flag that is not a flag, a name nothing answers to (an agent, a persona, a judge, a monitor, a run — the gateway's 404 too), a verb that moved (`pipeline set` is `agent set` now) |
 
 A call **nobody judged** is not a pass: `simulate --judge` exits non-zero for it, because "nobody

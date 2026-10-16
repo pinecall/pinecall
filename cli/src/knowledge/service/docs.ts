@@ -43,9 +43,9 @@ export type EvalDocsInput = z.infer<typeof EvalDocsInput>;
 /** What `docs attach` takes: the base, how a turn reads it, and whose corner it is written in. */
 export const AttachBaseInput = z.object({
   base: z.string().min(1),
-  k: z.number().int().min(1).optional(),
-  mode: z.enum(["retrieved", "tool"]).optional(),
-  minScore: z.number().min(0).optional(),
+  k: z.number(A_K).int(A_K).min(1, A_K).optional(),
+  mode: z.enum(["retrieved", "tool"], { error: "--mode takes retrieved (chunks in every turn) or tool (the agent looks things up)" }).optional(),
+  minScore: z.number().min(0, "--min-score is a score a chunk must reach, 0 or more").optional(),
   agent: z.string().min(1).optional(),
   team: z.boolean().default(false),
 });

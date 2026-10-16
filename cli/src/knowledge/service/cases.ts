@@ -1,6 +1,6 @@
 /** The goldens on the tenant's disk: a retrieval or recall golden's questions, and memory's extraction cases. */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 
 import { UsageError } from "../../errors.js";
@@ -28,7 +28,10 @@ export function questionsOf(golden: string, shape: string): unknown[] {
  */
 export function casesIn<T extends { name?: string }>(paths: string[]): T[] {
   const found: T[] = [];
-  for (const path of paths) for (const file of filesUnder(resolve(path))) found.push(...casesOf<T>(file));
+  for (const path of paths) {
+    if (!existsSync(path)) throw new UsageError(`no cases at ${path}: a JSON file of extraction cases, or a folder of them`);
+    for (const file of filesUnder(resolve(path))) found.push(...casesOf<T>(file));
+  }
   return found;
 }
 
@@ -40,7 +43,7 @@ export function matching<T extends { name: string }>(cases: T[], grep: string | 
 }
 
 function casesOf<T extends { name?: string }>(file: string): T[] {
-  const read = JSON.parse(readFileSync(file, "utf8")) as unknown;
+  const read = readJsonFile<unknown>("the cases file", file);
   const written = Array.isArray(read) ? (read as T[]) : [read as T];
   const stem = basename(file, extname(file));
   return written.map((one, index) => ({

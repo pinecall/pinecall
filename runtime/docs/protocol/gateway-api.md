@@ -170,7 +170,7 @@ it, it is that org's alone.
 | `GET /v1/agents/{slug}/sessions` · `GET /v1/sessions` | one line per call, filtered, counted and paged, in the reader's scope |
 | `GET /v1/calls/{call}/settings` | the exact settings the call was built on |
 | `GET /v1/calls/{call}/prompt` | the exact prompt the call was told: `{call, blocks: [{seq, name, hash, chars, text}]}`, one per `prompt.changed` in order, each block's words as the org kept them under its hash the first time a gateway met them (a call's knowledge when it opened, an app's `prompt.set`), once per distinct text and never per call; `text` is null for a block nobody kept (a call from before they were kept). A key's read, never a page's token |
-| `GET /v1/events` | the org's floor as it changes, in the environment the key acts in: agents registered and detached, calls ringing, starting and ending, sealed and judged (`call.summary` · `call.score`, with `data` empty), a person asked for and taken, an eval run changing (`run.changed`) and a hosted app's release changing (`release.changed`), each with only its ids — the run and the release are read at their own doors |
+| `GET /v1/events` | the org's floor as it changes, in the environment the key acts in: agents registered and detached, calls ringing, starting and ending, sealed and judged (`call.summary` · `call.score`, with `data` empty), a person asked for and taken, an eval run changing (`run.changed`) and a hosted app's release changing (`release.changed`), each with only its ids — the run and the release are read at their own doors. `?types=a.b,c.d` keeps those types alone, as a log's stream takes it |
 
 What each reader receives is its projection: [projections.md](projections.md).
 
