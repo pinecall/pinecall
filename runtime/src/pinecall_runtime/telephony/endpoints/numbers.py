@@ -5,6 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 
 from pinecall_runtime.accounts.service import tokens
+from pinecall_runtime.agents.auth import KnownAgent
+from pinecall_runtime.agents.service import registry
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable
 from pinecall_runtime.kit.auth import Actor, Scope
@@ -269,12 +271,12 @@ async def provision_outbound(
 
 @router.post("/v1/agents/{slug}/dial", status_code=202)
 async def dial_out(
-    slug: str, body: schemas.DialRequest, actor: TalkKey, request: Request, handles: TheHandles, session: Session
+    slug: KnownAgent, body: schemas.DialRequest, actor: TalkKey, request: Request, handles: TheHandles, session: Session
 ) -> schemas.DialResponse:
     """Place a call as the agent, after its guards: the call it became, before anything rings."""
     serving: calls.Serving = request.app.state.serving
     if serving.registry.serving(actor.scope, slug, None) is None:
-        raise Conflict(f"nobody holds agent {slug} in this scope: a phone would ring with no app to serve it")
+        raise Conflict(f"{registry.NoApp(slug)}: a phone would ring with no app to serve it")
     who = _asked_by(actor)
     placement = calls.Placement(
         scope=actor.scope,
@@ -304,7 +306,11 @@ async def dial_out(
 # The worker's, for a leg into a live call and for the leg a dial placed.
 @router.get("/v1/agents/{slug}/outbound-trunk")
 async def get_leg_trunk(
-    slug: str, actor: WorkerKey, handles: TheHandles, session: Session, query: Annotated[schemas.LegTrunkQuery, Query()]
+    slug: KnownAgent,
+    actor: WorkerKey,
+    handles: TheHandles,
+    session: Session,
+    query: Annotated[schemas.LegTrunkQuery, Query()],
 ) -> schemas.LegTrunkResponse:
     """The leg's trunk inline, after the shape and the pace; a dial's own first leg passes."""
     dial = Dial(actor.scope, slug, query.to, query.shown, _asked_by(actor), query.call, now())
@@ -315,7 +321,7 @@ async def get_leg_trunk(
 # dials it on the org's bill, so it passes the same guards as a warm transfer's leg.
 @router.post("/v1/agents/{slug}/cold-transfer", status_code=204)
 async def judge_cold_transfer(
-    slug: str, actor: WorkerKey, session: Session, query: Annotated[schemas.ColdTransferQuery, Query()]
+    slug: KnownAgent, actor: WorkerKey, session: Session, query: Annotated[schemas.ColdTransferQuery, Query()]
 ) -> None:
     """A cold transfer's leg, past the shape and the pace, its ledger row written."""
     await dial_policy.guard_second_leg(

@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.agents.service import prompts
 from pinecall_runtime.agents.service.registry import NoApp
@@ -68,7 +69,11 @@ async def stream_events(
 
 @router.get("/v1/agents/{slug}/calls", response_model=None)
 async def stream_agent_events(
-    slug: str, reader: ReaderDep, serving: TheServing, request: Request, query: Annotated[schemas.LogQuery, Query()]
+    slug: KnownAgent,
+    reader: ReaderDep,
+    serving: TheServing,
+    request: Request,
+    query: Annotated[schemas.LogQuery, Query()],
 ) -> StreamingResponse | schemas.LogPage:
     """An agent's own log: its registrations, its declarations, its errors. It never ends."""
     if reader.actor is None:

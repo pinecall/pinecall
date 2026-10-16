@@ -7,7 +7,7 @@ import time
 from livekit import api
 from sqlalchemy.exc import SQLAlchemyError
 
-from pinecall_runtime.calls.service.reaper import let_go, reap
+from pinecall_runtime.calls.service.reaper import end_parked, let_go, reap
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.exceptions import PinecallError
 from pinecall_runtime.postgres import is_cancellation
@@ -24,6 +24,7 @@ async def reap_forever(serving: Serving) -> None:
     while True:
         try:
             await reap(serving, time.time())
+            end_parked(serving, time.monotonic())
             await let_go(serving, time.monotonic())
         except (PinecallError, api.TwirpError, OSError, SQLAlchemyError) as failed:
             if is_cancellation(failed):

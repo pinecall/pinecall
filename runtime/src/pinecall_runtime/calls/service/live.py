@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field, replace
 
@@ -98,6 +99,8 @@ class Live:
         self.calls: dict[str, Served] = {}
         # The calls first seen here, by when an endpoint last asked for one: let go once idle.
         self.seen: dict[str, float] = {}
+        # When each parked call lost its socket: a call nobody takes back is ended, not kept for ever.
+        self.parked_since: dict[str, float] = {}
         self.pending_answers: dict[str, asyncio.Future[DevAnswer]] = {}
         # Each bound call's pump to its socket, and each call's listener for its commands, by
         # call: held here, since asyncio keeps weak references to tasks, and cancelled at the end.
@@ -214,7 +217,19 @@ class Live:
         self._stop_pump(call)
         moved = replace(served, app=app)
         self.calls[call] = moved
+        if app is None:
+            self.parked_since[call] = time.monotonic()
+        else:
+            self.parked_since.pop(call, None)
         return moved
+
+    def parked_past(self, now: float, patience_s: float) -> list[Served]:
+        """The written calls parked here that no socket took within the patience."""
+        return [
+            self.calls[call]
+            for call, since in self.parked_since.items()
+            if now - since > patience_s and call in self.calls and self.calls[call].running is not None
+        ]
 
     # What any gateway writes to the call reaches its socket here, in seq order, from `after`;
     # `then` goes down right after the first entry (the tools still waiting, after call.attached).
@@ -281,6 +296,7 @@ class Live:
     def close_call(self, call: str) -> None:
         """Forget a finished call: its entries end, and its worker's command stream."""
         self.seen.pop(call, None)
+        self.parked_since.pop(call, None)
         served = self.calls.pop(call, None)
         if served is None:
             return

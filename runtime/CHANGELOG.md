@@ -8,6 +8,19 @@
 - **A case kept before 0.10.1 lists again.** Its golden held the caller's lines as `input`; a
   migration rewrites them as `turns`, so `GET /v1/evals/cases` and `cases show` no longer answer
   500 for an agent that has one.
+- **An agent the org never held is a 404 on every `/v1/agents/{slug}` door**, naming the slug:
+  a slug typed wrong (`--agent nobody`) was answered a plausible empty page before. An agent is
+  the org's once an app of the org held it; another org's slug is the same 404.
+- **A written call parked by a process that left is ended two minutes later** by the platform
+  (`app_detached`) when no process takes it back: it stayed live with nobody to answer it, for
+  ever, before.
+- **A settings or lexicon write that changes nothing writes no version.** `pinecall agent set` with
+  the same values, `agent clear` of a field nobody set, `lexicon rm` of an absent word all
+  answered a new version before.
+- **One sentence for nobody holding the agent**, wherever a verb needs one held: `no app holds
+  agent x: start one, or deploy it`. The run, the simulation, the chat and the dial each said it
+  their own way. A slug another org holds is refused naming the way out (rename the agent's
+  folder, or hold it with that org's key).
 - **A run holds no connection, and `POST /v1/evals/run` answers as it starts.** The run is stored
   `running` and played on a task of the gateway; its row is rewritten as each golden is judged, for
   `GET /v1/evals/runs/{id}` and the feed's `run.changed`, and a gateway stopping writes it `failed`

@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import Reader, TheServing, reading
@@ -47,7 +48,7 @@ async def list_simulations(
 
 # One list for both envs: a persona is test data, never heard by a customer.
 @router.get("/v1/agents/{slug}/personas")
-async def list_personas(slug: str, actor: EvalsKey, session: Session) -> judged.PersonaList:
+async def list_personas(slug: KnownAgent, actor: EvalsKey, session: Session) -> judged.PersonaList:
     """Pinecall's personas as switched for the agent, then the agent's own, by name."""
     return judged.PersonaList(personas=await judging.list_personas(session, actor.org, slug))
 
@@ -56,7 +57,7 @@ async def list_personas(slug: str, actor: EvalsKey, session: Session) -> judged.
 # org's own key. Nothing is saved; a person keeps the ones worth keeping with PUT.
 @router.post("/v1/agents/{slug}/personas/generate")
 async def generate_personas(
-    slug: str, body: judged.GeneratePersonas, actor: EvalsKey, serving: TheServing, session: Session
+    slug: KnownAgent, body: judged.GeneratePersonas, actor: EvalsKey, serving: TheServing, session: Session
 ) -> judged.GeneratedPersonas:
     """Callers written for the agent from its prompt, tools, knowledge, a call or a template."""
     scope = actor.scope
@@ -88,7 +89,7 @@ async def generate_personas(
 # A model or a vendor this box lacks is refused when written, not on the call that plays it.
 @router.put("/v1/agents/{slug}/personas/{name}")
 async def put_persona(
-    slug: str, name: str, body: judged.PersonaRequest, actor: EvalsKey, session: Session
+    slug: KnownAgent, name: str, body: judged.PersonaRequest, actor: EvalsKey, session: Session
 ) -> judged.PersonaList:
     """Write one of the agent's callers whole, or rename one from `was`; or switch Pinecall's."""
     await judging.check_persona_models(session, body.llm, body.tts)
@@ -103,7 +104,7 @@ async def put_persona(
 
 
 @router.delete("/v1/agents/{slug}/personas/{name}")
-async def delete_persona(slug: str, name: str, actor: EvalsKey, session: Session) -> judged.PersonaList:
+async def delete_persona(slug: KnownAgent, name: str, actor: EvalsKey, session: Session) -> judged.PersonaList:
     """Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's."""
     await judging.delete_persona(session, actor.org, slug, name)
     return judged.PersonaList(personas=await judging.list_personas(session, actor.org, slug))
@@ -112,7 +113,11 @@ async def delete_persona(slug: str, name: str, actor: EvalsKey, session: Session
 # A name nobody wrote for the agent is a 404, not an empty page.
 @router.get("/v1/agents/{slug}/personas/{name}/runs")
 async def list_persona_runs(
-    slug: str, name: str, reader: EvalsReader, session: Session, query: Annotated[schemas.PersonaRunQuery, Query()]
+    slug: KnownAgent,
+    name: str,
+    reader: EvalsReader,
+    session: Session,
+    query: Annotated[schemas.PersonaRunQuery, Query()],
 ) -> schemas.PersonaRunList:
     """The calls the persona made to the agent in the key's env and scope, newest first."""
     scope = reader.scope

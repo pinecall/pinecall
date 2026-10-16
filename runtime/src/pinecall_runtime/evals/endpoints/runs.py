@@ -5,15 +5,13 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 
 from pinecall_runtime.accounts.service import keys
+from pinecall_runtime.agents.service import registry
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey, TheRunner
-from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.postgres import Session
 
 router = APIRouter()
-
-NO_AGENT = "no app is holding agent {slug}"
 
 
 @router.post("/v1/evals/run", response_model_exclude_unset=True)
@@ -24,7 +22,7 @@ async def start_suite(
     keys.check_agent(actor, body.agent)
     registration = serving.registry.serving(actor.scope, body.agent, body.app)
     if registration is None:
-        raise NotFound(NO_AGENT.format(slug=body.agent))
+        raise registry.NoApp(body.agent)
     return await service.start_suite(session, serving, runner, body, actor.scope, registration)
 
 

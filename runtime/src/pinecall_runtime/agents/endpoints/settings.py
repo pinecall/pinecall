@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query, Request
 
 from pinecall_runtime.agents import schemas
-from pinecall_runtime.agents.auth import CallsKey, PipelineKey, WordsKey
+from pinecall_runtime.agents.auth import CallsKey, KnownAgent, PipelineKey, WordsKey
 from pinecall_runtime.agents.declaration import Lexicon, Tuning, Version
 from pinecall_runtime.agents.service import canaries, settings
 from pinecall_runtime.agents.service.canaries import Canary
@@ -27,7 +27,9 @@ router = APIRouter()
 
 
 @router.get("/v1/agents/{slug}/settings", response_model_exclude_unset=True)
-async def get_settings(slug: str, actor: WordsKey, request: Request, session: Session) -> schemas.SettingsResponse:
+async def get_settings(
+    slug: KnownAgent, actor: WordsKey, request: Request, session: Session
+) -> schemas.SettingsResponse:
     """The agent's settings as this key sees them: yours, the team's and production's."""
     return await _side_by_side(request, session, actor.scope, slug)
 
@@ -37,7 +39,7 @@ async def get_settings(slug: str, actor: WordsKey, request: Request, session: Se
 # nobody set is left out of the answer, never sent as null: the body's fields are optional.
 @router.put("/v1/agents/{slug}/settings", response_model_exclude_unset=True)
 async def put_settings(
-    slug: str, body: schemas.PutSettingsRequest, actor: WordsKey, request: Request, session: Session
+    slug: KnownAgent, body: schemas.PutSettingsRequest, actor: WordsKey, request: Request, session: Session
 ) -> schemas.SettingsResponse:
     """The agent's next version in this scope or the team's, checked as a call would build it."""
     target = settings.written_to(actor.scope, team=body.team)
@@ -59,7 +61,7 @@ async def put_settings(
 
 @router.get("/v1/agents/{slug}/settings/history", response_model_exclude_unset=True)
 async def settings_history(
-    slug: str, actor: WordsKey, session: Session, query: Annotated[schemas.HistoryQuery, Query()]
+    slug: KnownAgent, actor: WordsKey, session: Session, query: Annotated[schemas.HistoryQuery, Query()]
 ) -> schemas.SettingsHistoryResponse:
     """One scope's versions of the agent's settings, newest first."""
     target = settings.written_to(actor.scope, team=query.team)
@@ -71,7 +73,7 @@ async def settings_history(
 
 @router.get("/v1/agents/{slug}/settings/diff", response_model_exclude_unset=True)
 async def settings_diff(
-    slug: str,
+    slug: KnownAgent,
     actor: WordsKey,
     session: Session,
     against: Annotated[Literal["team", "production"], Query()] = "production",
@@ -90,7 +92,7 @@ async def settings_diff(
 # A rollback writes a new version copying an old one; nothing is ever deleted.
 @router.post("/v1/agents/{slug}/settings/rollback", response_model_exclude_unset=True)
 async def rollback_settings(
-    slug: str, body: schemas.RollbackSettingsRequest, actor: PipelineKey, request: Request, session: Session
+    slug: KnownAgent, body: schemas.RollbackSettingsRequest, actor: PipelineKey, request: Request, session: Session
 ) -> schemas.SettingsResponse:
     """An old version brought back as the scope's next one."""
     target = settings.written_to(actor.scope, team=body.team)
@@ -105,7 +107,7 @@ async def rollback_settings(
 
 @router.get("/v1/agents/{slug}/settings/canary", response_model_exclude_unset=True)
 async def get_canary(
-    slug: str, actor: WordsKey, session: Session, query: Annotated[schemas.CanaryQuery, Query()]
+    slug: KnownAgent, actor: WordsKey, session: Session, query: Annotated[schemas.CanaryQuery, Query()]
 ) -> schemas.CanaryResponse:
     """The version this scope, or the team's, runs on a share of the agent's calls, or none."""
     return await _canary_of(session, settings.written_to(actor.scope, team=query.team), slug, env=actor.env)
@@ -114,7 +116,7 @@ async def get_canary(
 # The pipeline's alone, as the vendors are: a canary decides what a share of the calls runs.
 @router.put("/v1/agents/{slug}/settings/canary", response_model_exclude_unset=True)
 async def put_canary(
-    slug: str, body: schemas.PutCanaryRequest, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.PutCanaryRequest, actor: PipelineKey, session: Session
 ) -> schemas.CanaryResponse:
     """One of the scope's versions on a share of the agent's calls; the rest run the others."""
     target = settings.written_to(actor.scope, team=body.team)
@@ -127,7 +129,7 @@ async def put_canary(
 # Cleared, every call runs the scope's newest version again, the canary's included.
 @router.delete("/v1/agents/{slug}/settings/canary", response_model_exclude_unset=True)
 async def clear_canary(
-    slug: str, actor: PipelineKey, session: Session, query: Annotated[schemas.CanaryQuery, Query()]
+    slug: KnownAgent, actor: PipelineKey, session: Session, query: Annotated[schemas.CanaryQuery, Query()]
 ) -> schemas.CanaryResponse:
     """The scope's canary cleared: one version for every call."""
     target = settings.written_to(actor.scope, team=query.team)
@@ -164,7 +166,7 @@ async def call_settings(call: str, actor: CallsKey, session: Session) -> schemas
 
 
 @router.get("/v1/agents/{slug}/lexicon")
-async def get_lexicon(slug: str, actor: WordsKey, request: Request, session: Session) -> schemas.LexiconResponse:
+async def get_lexicon(slug: KnownAgent, actor: WordsKey, request: Request, session: Session) -> schemas.LexiconResponse:
     """The agent's words as this key sees them: yours, the team's and production's."""
     return await _lexicon_side_by_side(request, session, actor.scope, slug)
 
@@ -172,7 +174,7 @@ async def get_lexicon(slug: str, actor: WordsKey, request: Request, session: Ses
 # A supervisor's key may write it: the words are theirs to fix.
 @router.put("/v1/agents/{slug}/lexicon")
 async def put_lexicon(
-    slug: str, body: schemas.PutLexiconRequest, actor: WordsKey, request: Request, session: Session
+    slug: KnownAgent, body: schemas.PutLexiconRequest, actor: WordsKey, request: Request, session: Session
 ) -> schemas.LexiconResponse:
     """The agent's next lexicon in this scope or the team's."""
     target = settings.written_to(actor.scope, team=body.team)
@@ -186,15 +188,17 @@ async def put_lexicon(
         if is_new
     ]
     settings.refuse_what_the_class_sets(_registry(request).declared(slug), slug, changed)
-    await settings.put_lexicon(
-        session, target, slug, wanted, Written(author=actor.name, note=body.note, if_version=body.if_version)
-    )
+    # Nothing changes, nothing is written: a version says what moved.
+    if changed or newest is None:
+        await settings.put_lexicon(
+            session, target, slug, wanted, Written(author=actor.name, note=body.note, if_version=body.if_version)
+        )
     return await _lexicon_side_by_side(request, session, actor.scope, slug)
 
 
 @router.get("/v1/agents/{slug}/lexicon/history")
 async def lexicon_history(
-    slug: str, actor: WordsKey, session: Session, query: Annotated[schemas.HistoryQuery, Query()]
+    slug: KnownAgent, actor: WordsKey, session: Session, query: Annotated[schemas.HistoryQuery, Query()]
 ) -> schemas.LexiconHistoryResponse:
     """One scope's versions of the agent's lexicon, newest first."""
     target = settings.written_to(actor.scope, team=query.team)

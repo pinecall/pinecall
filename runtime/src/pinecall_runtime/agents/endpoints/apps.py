@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 
 from pinecall_runtime.agents import schemas
-from pinecall_runtime.agents.auth import AppKey, CallsKey, FleetKey, sees_every_scope
+from pinecall_runtime.agents.auth import AppKey, CallsKey, FleetKey, KnownAgent, sees_every_scope
 from pinecall_runtime.agents.service.registry import AgentRegistry, named_holder
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
@@ -64,20 +64,20 @@ async def stop_app(app: str, actor: AppKey, request: Request) -> schemas.StopApp
 
 
 @router.get("/v1/agents/{slug}/line")
-async def get_line(slug: str, actor: CallsKey, request: Request, session: Session) -> schemas.RingTarget:
+async def get_line(slug: KnownAgent, actor: CallsKey, request: Request, session: Session) -> schemas.RingTarget:
     """Who holds the agent's line, and who else could take it."""
     return await _line(_registry(request), session, actor.scope, slug)
 
 
 @router.post("/v1/agents/{slug}/line")
-async def take_line(slug: str, actor: AppKey, request: Request, session: Session) -> schemas.RingTarget:
+async def take_line(slug: KnownAgent, actor: AppKey, request: Request, session: Session) -> schemas.RingTarget:
     """Take the agent's line for this scope."""
     _registry(request).take_the_line(actor.scope, slug)
     return await _line(_registry(request), session, actor.scope, slug)
 
 
 @router.delete("/v1/agents/{slug}/line")
-async def drop_line(slug: str, actor: AppKey, request: Request, session: Session) -> schemas.RingTarget:
+async def drop_line(slug: KnownAgent, actor: AppKey, request: Request, session: Session) -> schemas.RingTarget:
     """Let the line go, to the newest other scope that could take it."""
     _registry(request).drop_the_line(actor.scope, slug)
     return await _line(_registry(request), session, actor.scope, slug)
@@ -118,7 +118,7 @@ async def list_test_numbers(actor: AppKey, request: Request, session: Session) -
 # ring is dialled there over SIP, through the trunk the answer carries.
 @router.get("/v1/agents/{slug}/rings-for")
 async def rings_for(
-    slug: str,
+    slug: KnownAgent,
     _actor: FleetKey,
     request: Request,
     session: Session,

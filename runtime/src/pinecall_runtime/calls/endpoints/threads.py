@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import CallsKey, TalkKey, TheServing
 from pinecall_runtime.calls.facts import facts_of
@@ -28,7 +29,7 @@ NOTHING_OPEN = "{contact}'s conversation went quiet and is sealed: their next me
 
 @router.get("/v1/agents/{slug}/threads")
 async def list_threads(
-    slug: str, actor: CallsKey, session: Session, page: Annotated[schemas.ThreadQuery, Query()]
+    slug: KnownAgent, actor: CallsKey, session: Session, page: Annotated[schemas.ThreadQuery, Query()]
 ) -> schemas.ThreadList:
     """The agent's contacts, the one that moved last first, with what this reader has not read."""
     found = await lists.inbox_page(
@@ -43,7 +44,7 @@ async def list_threads(
 
 @router.get("/v1/agents/{slug}/threads/{contact}")
 async def get_thread(
-    slug: str, contact: str, actor: CallsKey, serving: TheServing, session: Session
+    slug: KnownAgent, contact: str, actor: CallsKey, serving: TheServing, session: Session
 ) -> schemas.ThreadResponse:
     """A contact's calls with the agent merged into one thread, oldest first."""
     calls = await _thread_of(session, actor.scope, slug, contact)
@@ -58,7 +59,7 @@ async def get_thread(
 
 # The read cursor is the person's; a server's key keeps its own.
 @router.post("/v1/agents/{slug}/threads/{contact}/read", status_code=204)
-async def mark_thread_read(slug: str, contact: str, actor: CallsKey, session: Session) -> None:
+async def mark_thread_read(slug: KnownAgent, contact: str, actor: CallsKey, session: Session) -> None:
     """This reader has read the thread up to now."""
     await _thread_of(session, actor.scope, slug, contact)
     await lists.mark_thread_read(session, Inbox(actor.scope, slug, _reader_of(actor)), contact, time.time())
@@ -68,7 +69,12 @@ async def mark_thread_read(slug: str, contact: str, actor: CallsKey, session: Se
 # a business write freely only within 24 h of the contact's last message.
 @router.post("/v1/agents/{slug}/threads/{contact}/messages", status_code=202)
 async def send_thread_message(
-    slug: str, contact: str, body: schemas.ThreadMessageRequest, actor: TalkKey, serving: TheServing, session: Session
+    slug: KnownAgent,
+    contact: str,
+    body: schemas.ThreadMessageRequest,
+    actor: TalkKey,
+    serving: TheServing,
+    session: Session,
 ) -> schemas.ThreadMessageResponse:
     """Say something as the agent on the contact's open WhatsApp conversation."""
     newest = (await _thread_of(session, actor.scope, slug, contact))[0]

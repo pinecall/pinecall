@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import ReaderDep, TheServing
 from pinecall_runtime.calls.service import ListFilters, lists
@@ -15,7 +16,11 @@ router = APIRouter()
 
 @router.get("/v1/agents/{slug}/sessions")
 async def list_agent_calls(
-    slug: str, reader: ReaderDep, serving: TheServing, session: Session, query: Annotated[schemas.ListQuery, Query()]
+    slug: KnownAgent,
+    reader: ReaderDep,
+    serving: TheServing,
+    session: Session,
+    query: Annotated[schemas.ListQuery, Query()],
 ) -> schemas.CallList:
     """The agent's newest calls, one row each."""
     wanted = ListFilters(agent=slug, q=query.q or None, channel=query.channel, before=query.before)

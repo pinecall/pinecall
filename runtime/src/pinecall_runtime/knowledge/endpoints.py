@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query, Request
 
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.agents.declaration import DEFAULT_CHUNKS_PER_TURN
 from pinecall_runtime.agents.service import settings
 from pinecall_runtime.agents.service.registry import AgentRegistry
@@ -222,7 +223,7 @@ async def memory_eval(
 
 @router.get("/v1/agents/{slug}/memory")
 async def agent_memory(
-    slug: str, actor: MemoryKey, session: Session, page: Annotated[schemas.MemoryPage, Query()]
+    slug: KnownAgent, actor: MemoryKey, session: Session, page: Annotated[schemas.MemoryPage, Query()]
 ) -> schemas.AgentMemory:
     """The current facts the agent's calls taught, across contacts, newest first, a page."""
     await compliance.record_read(session, actor.scope, slug, ReadKind.memory, by=_asked_by(actor))
@@ -280,7 +281,7 @@ async def forget_fact(
 # Here and not in the CLI: the agent's model, the org's keys and the tuned policy live here.
 @router.post("/v1/agents/{slug}/memory/extraction")
 async def memory_extraction(
-    slug: str, body: schemas.ExtractionCases, actor: MemoryKey, request: Request, session: Session
+    slug: KnownAgent, body: schemas.ExtractionCases, actor: MemoryKey, request: Request, session: Session
 ) -> schemas.ExtractionRun:
     """One hang-up per case on the agent's own model and keys, each answer judged by code."""
     await AttemptThrottle(request.app.state.sessions, RUNS_A_MINUTE).check(

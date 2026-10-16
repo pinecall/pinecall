@@ -322,6 +322,9 @@ async def write_tuning(
     kept = await tuning_side_by_side(session, scope, agent)
     newest_row = kept.team if scope.holder == THE_ORGS_OWN else kept.yours
     newest = Tuning() if newest_row is None else newest_row.value
+    # Nothing changes, nothing is written: a version says what moved.
+    if newest_row is not None and wanted == newest:
+        return newest_row.version
     changed = [knob for knob in TUNING_KNOBS if _changes(wanted, newest, knob)]
     refuse_what_the_class_sets(declared, agent, changed)
     opens_the_pipeline = KeyScope.pipeline in actor.scopes

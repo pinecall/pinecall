@@ -6,7 +6,10 @@ from fastapi import Depends, Request
 
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.enums import KeyScope
-from pinecall_runtime.kit.auth import Actor, Authenticator, the_operator
+from pinecall_runtime.exceptions import NotFound
+from pinecall_runtime.kit.auth import Actor, Authenticator, actor_of, the_operator
+
+NO_SUCH_AGENT = "no agent {slug} in this org: `pinecall agent list` names the ones there are"
 
 # A supervisor's key opens the words of an agent; the pipeline's key opens everything of it.
 WordsKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline, KeyScope.words))]
@@ -34,3 +37,15 @@ def registry_of(request: Request) -> AgentRegistry:
 
 
 TheRegistry = Annotated[AgentRegistry, Depends(registry_of)]
+
+
+# A slug typed wrong answered a plausible empty page before; another org's slug is the same 404.
+async def known_agent(slug: str, request: Request) -> str:
+    """The path's agent, one the key's org has: held now, or held once. Any other slug is 404."""
+    actor = actor_of(request)
+    if actor is None or await registry_of(request).is_known(actor.org, slug):
+        return slug
+    raise NotFound(NO_SUCH_AGENT.format(slug=slug))
+
+
+KnownAgent = Annotated[str, Depends(known_agent)]

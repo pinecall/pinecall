@@ -8,6 +8,7 @@ from pydantic import ValidationError as PydanticValidationError
 from starlette.websockets import WebSocketState
 
 from pinecall_runtime.accounts.service.keys import check_agent
+from pinecall_runtime.agents.service import registry
 from pinecall_runtime.agents.service.registry import Registration
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
@@ -203,4 +204,4 @@ def _why_not(serving: Serving, scope: Scope, slug: str, app: str | None) -> str:
         return f"app {app} does not hold agent {slug}"
     if serving.registry.holder_of(scope, slug) is not None:
         return f"every app holding agent {slug} takes only the calls that name it"
-    return f"no app holds agent {slug}: start the app that serves it, then chat again"
+    return str(registry.NoApp(slug))

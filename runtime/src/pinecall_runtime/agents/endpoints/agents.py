@@ -11,6 +11,7 @@ from pinecall_runtime.agents import schemas
 from pinecall_runtime.agents.auth import (
     CallsKey,
     DeclarationKey,
+    KnownAgent,
     PipelineKey,
     TalkKey,
     WorkerKey,
@@ -54,7 +55,7 @@ OGG = "audio/ogg"
 # (an older one) is answered the version every call off the canary runs.
 @router.get("/v1/agents/{slug}/config")
 async def agent_config(
-    slug: str,
+    slug: KnownAgent,
     actor: DeclarationKey,
     request: Request,
     session: Session,
@@ -71,7 +72,11 @@ async def agent_config(
 # keys leave it only for its own workers: an org's process is handed the org's keys alone.
 @router.get("/v1/agents/{slug}/provider-keys")
 async def agent_credentials(
-    slug: str, actor: WorkerKey, request: Request, session: Session, for_call: Annotated[str | None, Query()] = None
+    slug: KnownAgent,
+    actor: WorkerKey,
+    request: Request,
+    session: Session,
+    for_call: Annotated[str | None, Query()] = None,
 ) -> schemas.PipelineKeys:
     """The three stages a call of the agent runs, each on its key, and the org's collector."""
     found = _registration_of(request, actor.scope, slug)
@@ -96,13 +101,13 @@ async def agent_credentials(
 
 
 @router.get("/v1/agents/{slug}/hold-audio")
-async def worker_hold_audio(slug: str, actor: WorkerKey, session: Session) -> schemas.HoldAudio:
+async def worker_hold_audio(slug: KnownAgent, actor: WorkerKey, session: Session) -> schemas.HoldAudio:
     """What a caller of the agent hears while a tool runs."""
     return schemas.HoldAudio.of(await widgets.get_hold_audio(session, actor.org, actor.env, slug))
 
 
 @router.get("/v1/agents/{slug}/hold-audio/audio")
-async def worker_hold_clip(slug: str, actor: WorkerKey, session: Session) -> Response:
+async def worker_hold_clip(slug: KnownAgent, actor: WorkerKey, session: Session) -> Response:
     """The org's own clip, Ogg Opus."""
     audio = await widgets.get_hold_clip(session, actor.org, actor.env, slug)
     if audio is None:
@@ -136,7 +141,9 @@ async def list_agents(actor: CallsKey, request: Request, session: Session) -> sc
 
 # Nothing is built: a vendor without a key is a reason, not a failure.
 @router.get("/v1/agents/{slug}/pipeline")
-async def pipeline_report(slug: str, actor: PipelineKey, request: Request, session: Session) -> schemas.PipelineReport:
+async def pipeline_report(
+    slug: KnownAgent, actor: PipelineKey, request: Request, session: Session
+) -> schemas.PipelineReport:
     """The agent's three stages, the catalogue, and the latencies of its last calls."""
     registration = _registry(request).holder_of(actor.scope, slug)
     declared = AgentConfig(slug=slug) if registration is None else registration.config
@@ -169,7 +176,7 @@ async def pipeline_report(slug: str, actor: PipelineKey, request: Request, sessi
 
 # The melody and the widget are the agent's in an env, whoever holds it.
 @router.get("/v1/agents/{slug}/pipeline/hold-audio")
-async def hold_audio_of(slug: str, actor: PipelineKey, session: Session) -> schemas.HoldAudio:
+async def hold_audio_of(slug: KnownAgent, actor: PipelineKey, session: Session) -> schemas.HoldAudio:
     """What the agent plays while a tool runs: the box's melody, silence, or a clip of its own."""
     return schemas.HoldAudio.of(await widgets.get_hold_audio(session, actor.org, actor.env, slug))
 
@@ -178,7 +185,7 @@ async def hold_audio_of(slug: str, actor: PipelineKey, session: Session) -> sche
 # worker decodes a tenant's upload in the middle of a call.
 @router.put("/v1/agents/{slug}/pipeline/hold-audio")
 async def upload_hold_audio(
-    slug: str,
+    slug: KnownAgent,
     request: Request,
     actor: PipelineKey,
     session: Session,
@@ -192,7 +199,7 @@ async def upload_hold_audio(
 
 
 @router.get("/v1/agents/{slug}/pipeline/hold-audio/audio")
-async def hold_audio_clip(slug: str, actor: PipelineKey, session: Session) -> Response:
+async def hold_audio_clip(slug: KnownAgent, actor: PipelineKey, session: Session) -> Response:
     """The agent's own clip, Ogg Opus, to hear before a caller does."""
     audio = await widgets.get_hold_clip(session, actor.org, actor.env, slug)
     if audio is None:
@@ -202,7 +209,7 @@ async def hold_audio_clip(slug: str, actor: PipelineKey, session: Session) -> Re
 
 @router.put("/v1/agents/{slug}/pipeline/hold-audio/played")
 async def choose_hold_audio(
-    slug: str, body: schemas.PlayedRequest, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.PlayedRequest, actor: PipelineKey, session: Session
 ) -> schemas.HoldAudio:
     """The box's melody back, or silence; an uploaded clip is forgotten either way."""
     if body.played == "default":
@@ -217,7 +224,7 @@ async def choose_hold_audio(
 
 # `talk`: whoever may mint the widget's token may read how it looks.
 @router.get("/v1/agents/{slug}/widget")
-async def get_widget(slug: str, actor: TalkKey, session: Session) -> schemas.WidgetSettings:
+async def get_widget(slug: KnownAgent, actor: TalkKey, session: Session) -> schemas.WidgetSettings:
     """How the agent's widget looks in the key's env; the widget's own defaults when unset."""
     return _widget_row(await widgets.get_look(session, actor.org, actor.env, slug))
 
@@ -225,7 +232,7 @@ async def get_widget(slug: str, actor: TalkKey, session: Session) -> schemas.Wid
 # `pipeline`: the same key that sets the agent's greeting and voice.
 @router.put("/v1/agents/{slug}/widget")
 async def put_widget(
-    slug: str, body: schemas.WidgetSettings, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.WidgetSettings, actor: PipelineKey, session: Session
 ) -> schemas.WidgetSettings:
     """Replace how the widget looks, whole; a null field is the widget's own default."""
     look = Look(

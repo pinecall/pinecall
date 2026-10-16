@@ -19,7 +19,7 @@ WITHIN_S = 5.0
 # What these writes answer on a test box, and why it is right: each is closed, or opened by
 # something other than a tenant's key.
 ANSWERED_HERE = {
-    ("POST", "/v1/agents/{slug}/personas/generate"): (503, "the suite's catalog names no judge model"),
+    ("POST", "/v1/agents/{slug}/personas/generate"): (404, "the sweep's slug is nobody's agent"),
     ("POST", "/v1/livekit/webhook"): (401, "LiveKit signs its events; a key opens nothing here"),
     ("POST", "/v1/whatsapp/webhook"): (503, "no Meta app on a test box"),
 }

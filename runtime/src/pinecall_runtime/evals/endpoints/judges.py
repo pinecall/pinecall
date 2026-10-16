@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from pinecall_runtime.agents.auth import KnownAgent
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals.auth import EvalsKey
@@ -43,14 +44,14 @@ async def delete_org_judge(name: str, actor: EvalsKey, session: Session) -> sche
 
 
 @router.get("/v1/agents/{slug}/judges")
-async def list_judges(slug: str, actor: EvalsKey, session: Session) -> schemas.JudgeList:
+async def list_judges(slug: KnownAgent, actor: EvalsKey, session: Session) -> schemas.JudgeList:
     """Every judge the agent's calls may meet: Pinecall's, the org's own, the agent's own."""
     return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug))
 
 
 @router.put("/v1/agents/{slug}/judges/{name}")
 async def put_judge(
-    slug: str, name: str, body: schemas.JudgeRequest, actor: EvalsKey, session: Session
+    slug: KnownAgent, name: str, body: schemas.JudgeRequest, actor: EvalsKey, session: Session
 ) -> schemas.JudgeList:
     """One of Pinecall's switched for this agent, or one of its own written whole."""
     await judging.write_judge(session, actor.org, slug, name, body, by=asked_by(actor))
@@ -58,7 +59,7 @@ async def put_judge(
 
 
 @router.delete("/v1/agents/{slug}/judges/{name}")
-async def delete_judge(slug: str, name: str, actor: EvalsKey, session: Session) -> schemas.JudgeList:
+async def delete_judge(slug: KnownAgent, name: str, actor: EvalsKey, session: Session) -> schemas.JudgeList:
     """Forget one of the agent's own judges; 404 for a name nobody wrote, 409 for Pinecall's."""
     await judging.delete_judge(session, actor.org, slug, name)
     return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug))
@@ -67,7 +68,7 @@ async def delete_judge(slug: str, name: str, actor: EvalsKey, session: Session) 
 # Asked as the seal asks it, on the model the seal would judge the call on, and written on no log.
 @router.post("/v1/agents/{slug}/judges/try")
 async def try_judge(
-    slug: str, body: schemas.JudgeTry, actor: EvalsKey, serving: TheServing, session: Session
+    slug: KnownAgent, body: schemas.JudgeTry, actor: EvalsKey, serving: TheServing, session: Session
 ) -> schemas.JudgeTried:
     """Ask one judge, written or only in the body, of finished calls of the agent."""
     if body.last is not None and body.calls:

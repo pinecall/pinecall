@@ -83,7 +83,10 @@ class AnotherOrgs(ValidationError):
     """A slug is one org's."""
 
     def __init__(self, slug: str) -> None:
-        super().__init__(f"agent {slug} belongs to another org: a slug is one org's")
+        super().__init__(
+            f"agent {slug} belongs to another org: a slug is one org's. Rename the agent's folder, or hold "
+            "it with a key of the org it belongs to"
+        )
 
 
 class NotHolding(ValidationError):
@@ -275,6 +278,12 @@ class AgentRegistry:
     def slugs_of(self, org: str) -> frozenset[str]:
         """Every slug the org holds, in any env and scope: the agents quota counts these."""
         return frozenset(slug for (owner, slug), kept in self.holders.items() if owner.org == org and kept)
+
+    async def is_known(self, org: str, slug: str) -> bool:
+        """Whether the agent is the org's: held now, or its own log claimed by the org when it first was."""
+        if self.is_held(org, slug):
+            return True
+        return await self.logs.store.owner(slug) == org
 
     def is_held(self, org: str, slug: str) -> bool:
         """Whether a process holds the agent in the org now, in either env."""

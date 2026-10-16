@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
+from pinecall_runtime.agents.service import registry
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals import schemas, service
@@ -16,10 +17,6 @@ from pinecall_runtime.session import service as session_
 
 router = APIRouter()
 
-NOBODY_HOLDS = (
-    "nobody holds {agent} in this env: a simulation calls the agent as a caller would, so a "
-    "process must be answering it — deployed, or `pinecall start` in its directory"
-)
 # A caller's line is a model call: a call of forty turns says forty, and several run side by side.
 LINES_A_MINUTE = 120
 TOO_MANY_LINES = "more than 120 caller lines this minute from this org: try again in a minute"
@@ -42,7 +39,7 @@ async def simulate(
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=body.persona, agent=body.agent))
     registration = serving.registry.serving(scope, body.agent, None)
     if registration is None:
-        raise NotFound(NOBODY_HOLDS.format(agent=body.agent))
+        raise registry.NoApp(body.agent)
     await service.admit_simulation(session, serving, scope, body.agent)
     caller = service.calling_as(persona)
     line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)

@@ -29,6 +29,10 @@ QUIET_S = 5 * 60.0
 AT_MOST = 100
 # How long a WhatsApp thread waits for its contact before it is closed.
 A_THREAD_WAITS_S = 2 * 60 * 60.0
+# How long a written call parked by a process that left waits for the next one: a reload of
+# `pinecall start` is seconds, a release registers within two minutes (hosting), and a caller left
+# talking to nobody for longer than that has been let down already.
+PARKED_WAITS_S = 120.0
 
 
 # A killed job writes no call.ended, and nothing else would close its log. A call's room is
@@ -65,6 +69,23 @@ async def reap(serving: Serving, now: float) -> list[str]:
         if await _finish(serving, orphan, "timeout"):
             sealed_now.append(orphan.call)
     return sealed_now
+
+
+# A process that drained parked its written calls for the next one; none came. The session runs
+# here, so it is hung up as a platform would: the seal follows as for any ended call.
+def end_parked(serving: Serving, now: float) -> list[str]:
+    """End the written calls parked here that no socket took back in PARKED_WAITS_S; which."""
+    ended: list[str] = []
+    for served in serving.live.parked_past(now, PARKED_WAITS_S):
+        if served.running is None:
+            continue
+        served.running.hang_up("app_detached", "platform", at_once=True)
+        serving.live.parked_since.pop(served.call, None)
+        logger.warning(
+            "ended %s: parked by a process that left, and no socket took it in %.0f s", served.call, PARKED_WAITS_S
+        )
+        ended.append(served.call)
+    return ended
 
 
 # A call sealed on another gateway ends its readers there; here it is only let go of, so it no
