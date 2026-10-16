@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A list of calls folds no log.** The seal writes what a list shows of the call (`call_facts.line`)
+  and `GET /v1/sessions` and `GET /v1/agents/{slug}/calls` read it; only a live call is still folded. A page
+  of 200 calls took 7 s and could starve the pool (503) before. A migration adds the column;
+  `pinecall-runtime facts rebuild` writes it for the calls sealed before it existed.
 - **`cryptography` 50**, which the vault seals with: 46.0.7 carried four published advisories
   (PYSEC-2026-3552, -3553, -3554, GHSA-537c-gmf6-5ccf).
 - **The runtime is rewritten from zero as one Rails-shaped application**, `pinecall_runtime`

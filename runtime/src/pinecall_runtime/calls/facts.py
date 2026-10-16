@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pinecall_runtime.calls.models import CallFact
 from pinecall_runtime.calls.repository.facts import COLUMNS, FactsRepository
 from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.wire.base import Entry, WireModel
 from pinecall_runtime.wire.events import (
     EVENTS,
@@ -24,6 +25,7 @@ from pinecall_runtime.wire.events import (
 from pinecall_runtime.wire.parts import PLATFORM, Cost
 from pinecall_runtime.wire.room import RoomOpened
 from pinecall_runtime.wire.scores import CallScore
+from pinecall_runtime.wire.state import State
 
 # The judge whose broken verdict raises the promise flag (evals' library).
 PROMISES = "promises"
@@ -46,6 +48,25 @@ A_PERSON_TOOK_PART = frozenset(
 
 # A web call is spoken only once a room opens.
 SPOKEN_CHANNEL = "phone"
+
+# What a list shows of a call, read off its state: the fields of a CallRow the log decides. Written
+# to the facts row at the seal, so a list of two hundred sealed calls folds no log; the cursor
+# (`seq`) rides along as the row's last_seq.
+LINE_FIELDS = (
+    "seq",
+    "status",
+    "channel",
+    "direction",
+    "from",
+    "to",
+    "caller",
+    "started_at",
+    "ended_at",
+    "end_reason",
+    "outcome",
+    "cost",
+    "attention",
+)
 
 # What a summary's cost is folded by: a row's unit says its stage, and the box's own rows
 # (PLATFORM) are the platform's, whatever their unit.
@@ -120,6 +141,8 @@ class CallFacts:
     last_at: float | None = None
     last_in: bool | None = None
     lent: tuple[str, ...] = ()
+    # Not a fold either: the state's line, written at the seal (`line_of`), None while the call is live.
+    line: JsonObject | None = None
 
     @property
     def score(self) -> dict[str, object] | None:
@@ -143,6 +166,12 @@ class CallFacts:
         """As the call_facts row is written."""
         row = {name: getattr(self, name) for name in COLUMNS}
         return {**row, "e2e": list(self.e2e), "heard_at": list(self.heard_at), "lent": list(self.lent)}
+
+
+def line_of(state: State) -> JsonObject:
+    """What a list shows of the call, as its state says it now."""
+    dumped = state.dump()
+    return {name: dumped.get(name) for name in LINE_FIELDS}
 
 
 def facts_of(model: CallFact) -> CallFacts:

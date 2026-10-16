@@ -5,9 +5,10 @@ from collections.abc import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.agents.declaration import AgentConfig
-from pinecall_runtime.calls.facts import CallFacts, facts_of
+from pinecall_runtime.calls.facts import LINE_FIELDS, CallFacts, facts_of, line_of
 from pinecall_runtime.calls.latencies import Median, medians
 from pinecall_runtime.calls.logs import Logs
+from pinecall_runtime.calls.models import CallLogHead
 from pinecall_runtime.calls.readers import project_state
 from pinecall_runtime.calls.repository.facts import (
     FactsRepository,
@@ -29,25 +30,12 @@ from pinecall_runtime.calls.schemas import (
 )
 from pinecall_runtime.enums import Channel, Env
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.postgres import box_wide
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.parts import ThreadKind
-from pinecall_runtime.wire.state import Turn
-
-LINE_FROM_STATE = (
-    "status",
-    "channel",
-    "direction",
-    "to",
-    "caller",
-    "started_at",
-    "ended_at",
-    "end_reason",
-    "outcome",
-    "cost",
-    "attention",
-)
+from pinecall_runtime.wire.state import State, Turn
 
 # The calls merged into one thread, newest first: each costs a log read.
 CALLS_IN_A_THREAD = 20
@@ -69,37 +57,51 @@ async def facts_of_calls(session: AsyncSession, calls: Sequence[str]) -> dict[st
     return {call: facts_of(row) for call, (row, _) in found.items()}
 
 
-# One row per call as a list draws it, from the state the log reduces to and its facts.
+# One row per call as a list draws it. A sealed call's line was written with its seal and is read
+# off its facts row; a live one, or one sealed before the line existed, is folded from its log.
 async def call_rows(
     session: AsyncSession, logs: Logs, calls: Sequence[str], declared: dict[str, AgentConfig | None]
 ) -> list[CallRow]:
     """The calls as a list shows them, the ones nothing was written to left out."""
+    heads = await HeadRepository(session).among(calls)
     facts = await facts_of_calls(session, calls)
     rows: list[CallRow] = []
     for call in calls:
-        state = await logs.reading(call).snapshot()
-        if state.seq == 0:
+        head, fact = heads.get(call), facts.get(call)
+        if head is None:
             continue
-        text = project_state(state, "tenant", declared.get(state.agent or ""))
-        fact = facts.get(call)
-        score = None
-        if fact is not None and fact.judged is not None and fact.passed is not None:
-            score = SessionScore(held=fact.held or 0, judged=fact.judged, passed=fact.passed, reason=fact.reason)
-        rows.append(
-            CallRow.model_validate(
-                {
-                    **{name: text.get(name) for name in LINE_FROM_STATE},
-                    "from": text.get("from"),
-                    "call": call,
-                    "agent": state.agent or "",
-                    "last_seq": state.seq,
-                    "live": not await logs.store.is_sealed(call),
-                    "score": None if score is None else score.dump(),
-                    "flags": [] if fact is None else fact.flags,
-                }
-            )
-        )
+        line = fact.line if fact is not None and head.sealed else None
+        if line is None:
+            state = await logs.reading(call).snapshot()
+            line = line_of(state) if state.seq else None
+            line = None if line is None else {**line, **_masked(state, declared)}
+        if line is None or not line.get("seq"):
+            continue
+        rows.append(_row(call, head, line, fact))
     return rows
+
+
+def _row(call: str, head: CallLogHead, line: JsonObject, fact: CallFacts | None) -> CallRow:
+    score = None
+    if fact is not None and fact.judged is not None and fact.passed is not None:
+        score = SessionScore(held=fact.held or 0, judged=fact.judged, passed=fact.passed, reason=fact.reason)
+    return CallRow.model_validate(
+        {
+            **{name: line.get(name) for name in LINE_FIELDS if name != "seq"},
+            "call": call,
+            "agent": head.agent or "",
+            "last_seq": line["seq"],
+            "live": not head.sealed,
+            "score": None if score is None else score.dump(),
+            "flags": [] if fact is None else fact.flags,
+        }
+    )
+
+
+# A live call's line is read through the tenant's projection, as every reader of its state is.
+def _masked(state: State, declared: dict[str, AgentConfig | None]) -> JsonObject:
+    projected = project_state(state, "tenant", declared.get(state.agent or ""))
+    return {name: projected.get(name) for name in LINE_FIELDS if name in projected}
 
 
 # The agent's last calls, each reduced: what the pipeline report says of its speed.

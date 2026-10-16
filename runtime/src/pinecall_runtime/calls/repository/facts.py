@@ -142,6 +142,15 @@ class FactsRepository(Repository[CallFact]):
         )
         await self.session.execute(statement)
 
+    # Not a fold: the state's line at the seal, kept so a list reads it instead of folding the log.
+    async def set_line(self, call: str, line: Mapping[str, Any]) -> None:
+        """Keep what a list shows of the call with its facts."""
+        statement = insert(CallFact).values(call=call, line=dict(line))
+        statement = statement.on_conflict_do_update(
+            index_elements=[CallFact.call], set_={"line": statement.excluded.line}
+        )
+        await self.session.execute(statement)
+
     async def get(self, call: str) -> CallFact | None:
         """The facts of one call, or None while nothing folded into them."""
         return await self.one_or_none(self.statement().where(CallFact.call == call))

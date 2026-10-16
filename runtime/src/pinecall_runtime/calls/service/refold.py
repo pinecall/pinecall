@@ -1,13 +1,15 @@
 """The facts folded again from the log: rebuilt a call at a time, and a sample checked by doctor."""
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.calls.context import A_CALL
-from pinecall_runtime.calls.facts import CallFacts, facts_of, fold
+from pinecall_runtime.calls.facts import CallFacts, facts_of, fold, line_of
+from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.calls.repository.facts import COLUMNS, FactsRepository
+from pinecall_runtime.calls.repository.heads import HeadRepository
 from pinecall_runtime.calls.repository.refold import Refolding, RefoldRepository
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.wire.base import Entry
@@ -93,10 +95,14 @@ async def _refolded(session: AsyncSession, call: str) -> tuple[CallFacts | None,
     row = await FactsRepository(session).get(call)
     stored = None if row is None else facts_of(row)
     folded = CallFacts(call=call)
-    for entry in await RefoldRepository(session).entries_of(call):
+    entries = await RefoldRepository(session).entries_of(call)
+    for entry in entries:
         if _refused(entry):
             return stored, None
         folded = fold(folded, entry)
+    # A sealed call's line is the state's at the seal: folded again from the same log.
+    if await HeadRepository(session).is_sealed(call):
+        folded = replace(folded, line=line_of(reduce(entries)))
     return stored, folded
 
 

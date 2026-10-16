@@ -243,7 +243,9 @@ starts from, once: after it, the console edits it at `/v1/ops/providers`. `provi
 and the models only the platform holds, which it keeps) and writes nothing until `--apply`; the
 repository ships `infra/seed/prices.csv`. `facts rebuild [--call <call>] [--org <org id>] [--since
 YYYY-MM-DD]` folds each call's facts row (what the lists, the inbox and the insights read) again
-from its log, every call's when no flag is given, and writes the row where it differs: one call at
+from its log — for a sealed call, the line a list shows of it too, which the seal writes and a list
+reads instead of folding the log — every call's when no flag is given, and writes the row where it
+differs: one call at
 a time, each in a transaction of its own under the lock its appends take, so a live call waits
 milliseconds and nothing holds a long transaction; it prints how many calls it read, how many
 rows it rewrote, and how many it left as they were: a log holding an entry this release's wire

@@ -1,9 +1,12 @@
 """A call's facts: the row its log folds to, entry by entry, for the lists and the series to read."""
 
-from pinecall_runtime.calls.facts import CallFacts, fold
+from dataclasses import replace
+
+from pinecall_runtime.calls.facts import LINE_FIELDS, CallFacts, fold, line_of
+from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import Entry
-from tests.calls.factories import AGENT
+from tests.calls.factories import AGENT, EXPECTED, GOLDEN
 
 
 def logged(kind: str, data: JsonObject, *, ephemeral: bool = False) -> Entry:
@@ -152,3 +155,13 @@ def test_a_web_call_is_spoken_once_a_room_opens_and_a_phone_call_always() -> Non
         "Ana",
         "inbound",
     )
+
+
+def test_the_line_a_list_shows_is_the_states_own_fields_and_a_fold_leaves_it() -> None:
+    """The golden log's line is the golden state's fields, cursor included; folding entries keeps it."""
+    line = line_of(reduce(GOLDEN))
+    assert set(line) == set(LINE_FIELDS)
+    assert {name: EXPECTED.get(name) for name in LINE_FIELDS} == line
+    assert line["seq"] == EXPECTED["seq"]
+    kept = replace(CallFacts(call="CA_x"), line=line)
+    assert fold(kept, logged("call.ended", {"reason": "caller_hung_up", "duration_s": 2.0})).line == line

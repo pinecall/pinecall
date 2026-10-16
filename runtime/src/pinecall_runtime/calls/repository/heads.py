@@ -240,6 +240,13 @@ class HeadRepository(Repository[CallLogHead]):
         statement = update(CallLogHead).where(CallLogHead.agent == agent).values(org=org)
         return await self.changed(statement)
 
+    async def among(self, calls: Sequence[str]) -> dict[str, CallLogHead]:
+        """The heads of these calls, by call; a call never written has none."""
+        if not calls:
+            return {}
+        statement = self.statement().where(CallLogHead.log.in_(list(calls)))
+        return {str(head.log): head for head in await self.all(statement)}
+
     async def sealed_among(self, calls: Sequence[str]) -> set[str]:
         """The ones of these calls whose log is sealed, wherever it was sealed."""
         if not calls:

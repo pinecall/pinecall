@@ -7,8 +7,11 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.calls.facts import line_of
 from pinecall_runtime.calls.models import log_name
+from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.calls.repository.entries import EntryRepository, Positioned
+from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.repository.heads import Claim, Claimant, HeadRepository
 from pinecall_runtime.calls.repository.openings import PrivateRepository
 from pinecall_runtime.calls.schemas import DEFAULT_LIMIT
@@ -123,10 +126,13 @@ class Store:
 
     # ── the head's writes ──
 
+    # The line is written with the seal: the list reads it from then on, and never folds this log.
     async def seal(self, call: str) -> None:
-        """Seal the call's log; sealing twice changes nothing."""
+        """Seal the call's log and keep what a list shows of it; sealing twice changes nothing."""
         async with self.sessions.begin() as session:
             await HeadRepository(session).seal(call)
+            entries = await EntryRepository(session).whole(call)
+            await FactsRepository(session).set_line(call, line_of(reduce(entries)))
 
     async def lease_seal(self, call: str, seconds: float) -> bool:
         """Take the right to seal the call for so long; False when another holds it, or it ended."""

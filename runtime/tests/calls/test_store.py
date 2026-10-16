@@ -13,9 +13,12 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pinecall_runtime.agents.declaration import Versions
+from pinecall_runtime.calls.facts import line_of
+from pinecall_runtime.calls.logs import Logs
 from pinecall_runtime.calls.models import CallLogHead, log_name
 from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.calls.repository.entries import Positioned
+from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.repository.heads import Claim, Claimant
 from pinecall_runtime.calls.schemas import DEFAULT_LIMIT
 from pinecall_runtime.calls.service import lists
@@ -295,6 +298,33 @@ async def test_a_verdict_is_the_one_entry_a_sealed_log_still_takes(store: Store,
         await store.rescore(f"{call}-nobody", agent, {})
 
 
+# The line is what a list shows: written at the seal, so the list of a sealed call folds no log.
+async def test_the_seal_writes_the_line_a_list_shows_and_the_list_reads_it_instead_of_folding(
+    sessions: async_sessionmaker[AsyncSession], call: str
+) -> None:
+    """Before the seal the row is folded from the log; after it, read off the facts, and the same row but live."""
+    ticks = iter(entry.ts for entry in GOLDEN)
+    store = Store(sessions, clock=lambda: next(ticks))
+    for entry in GOLDEN:
+        await store.append(call, entry.agent, entry.type, entry.data, ephemeral=entry.ephemeral)
+    await store.writer.drain()
+    logs = Logs(store)
+    async with sessions() as session:
+        (folded,) = await lists.call_rows(session, logs, [call], {})
+        before = await FactsRepository(session).get(call)
+    assert before is not None and before.line is None
+    await store.seal(call)
+    async with sessions() as session:
+        kept = await FactsRepository(session).get(call)
+        (read,) = await lists.call_rows(session, logs, [call], {})
+    state = reduce(await store.whole(call))
+    assert kept is not None
+    assert kept.line == line_of(state)
+    assert folded.live and not read.live
+    assert read.model_copy(update={"live": True}).dump() == folded.dump()
+    assert (read.status, read.last_seq, read.caller) == ("ended", state.seq, state.caller)
+
+
 # ── paging ──
 
 
@@ -455,13 +485,16 @@ async def fed_by_batch(store: Store, call: str, agent: str) -> None:
     await store.append_many(call, agent, [Unnumbered("call.summary", A_SUMMARY, ephemeral=False, ts=1.0)], after=0)
 
 
+# A verdict lands on a sealed log, and the seal itself writes the facts row (the line a list
+# shows), so the log is sealed before the test holds that row.
 async def fed_by_rescore(store: Store, call: str, agent: str) -> None:
-    await store.seal(call)
     await store.rescore(call, agent, {"judges": [], "judge_calls": 0})
 
 
 # The skip: a row numbered first and committed last, after a reader's cursor passed its number.
-@pytest.mark.parametrize("fed", [fed_by_append, fed_by_batch, fed_by_rescore])
+@pytest.mark.parametrize(
+    ("fed", "sealed_first"), [(fed_by_append, False), (fed_by_batch, False), (fed_by_rescore, True)]
+)
 async def test_a_feed_read_by_cursor_never_passes_a_row_that_commits_late(
     engine: AsyncEngine,
     sessions: async_sessionmaker[AsyncSession],
@@ -469,11 +502,14 @@ async def test_a_feed_read_by_cursor_never_passes_a_row_that_commits_late(
     call: str,
     agent: str,
     fed: Callable[[Store, str, str], Coroutine[None, None, None]],
+    sealed_first: bool,
 ) -> None:
     """A billing reader resuming from its cursor reads every fed row once, however late it commits."""
     early, late = f"{call}-early", f"{call}-late"
     for each in (early, late):
         await store.append(each, agent, "call.started", A_START, ephemeral=False)
+    if sealed_first:
+        await store.seal(early)
     async with engine.connect() as holder, holder.begin():
         # The early summary is numbered, then waits on its facts row before it can commit.
         await holder.execute(text("select 1 from call_facts where call = :call for update"), {"call": early})

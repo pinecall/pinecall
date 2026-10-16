@@ -1,7 +1,9 @@
 """What is known of every call without folding its log: one row, folded as entries land."""
 
+from typing import Any
+
 from sqlalchemy import Boolean, Float, Index, Integer, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pinecall_runtime.kit.db import Model
@@ -48,3 +50,7 @@ class CallFact(Model):
     last_in: Mapped[bool | None] = mapped_column(Boolean)
     # The vendors the call ran on the box's own key: the operator's to bill.
     lent: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    # What a list shows of the call, as its state said at the seal (`facts.line_of`): a list reads
+    # it instead of folding the log. NULL while the call is live, and for a call sealed before this
+    # column existed, until `facts rebuild` writes it.
+    line: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
