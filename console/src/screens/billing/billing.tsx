@@ -41,7 +41,7 @@ export function BillingHop(): ReactNode {
   return (
     <div className="billing-hop">
       <div className="billing-hop-card">
-        <img className="billing-hop-mark" src="/pinecall-mark.png" alt="" />
+        <img className="billing-hop-mark" src="/pinecall-mark-b219dacb.png" alt="" />
         <h1>{refused === null ? "Opening billing…" : "Billing did not open"}</h1>
         <p>{refused ?? "Taking you to your plan, signed in as you."}</p>
       </div>

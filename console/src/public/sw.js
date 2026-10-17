@@ -9,7 +9,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(notice.title || "Pinecall", {
       body: notice.body || "",
-      icon: "/pinecall-mark.png",
+      icon: "/pinecall-mark-b219dacb.png",
       // One notification per call; a newer one replaces it and alerts again.
       tag: notice.call || notice.kind || "pinecall",
       renotify: true,

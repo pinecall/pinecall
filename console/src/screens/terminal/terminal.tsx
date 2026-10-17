@@ -84,7 +84,7 @@ function Card({ title, lede, children }: { title: string; lede: string; children
   return (
     <div className="terminal">
       <div className="terminal-card">
-        <img className="terminal-mark" src="/pinecall-mark.png" alt="" />
+        <img className="terminal-mark" src="/pinecall-mark-b219dacb.png" alt="" />
         <h1 className="terminal-title">{title}</h1>
         <p className="terminal-lede">{lede}</p>
         {children}
