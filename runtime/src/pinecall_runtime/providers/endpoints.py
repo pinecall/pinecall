@@ -14,15 +14,18 @@ from pinecall_runtime.kit.handles import handles_of
 from pinecall_runtime.postgres import Session, box_wide
 from pinecall_runtime.providers.auth import PipelineKey, ProvidersKey, TheOperator
 from pinecall_runtime.providers.schemas import (
+    Advice,
+    AdvisedStage,
     Catalog,
     Catalogue,
     ListedVoice,
     ProviderKeyRequest,
+    Stage,
     VendorsResponse,
     VoiceSampleRequest,
     VoicesListed,
 )
-from pinecall_runtime.providers.service import catalog, keyring, plugins, stages, trials, voices
+from pinecall_runtime.providers.service import advice, catalog, keyring, machine, plugins, stages, trials, voices
 
 router = APIRouter()
 
@@ -72,6 +75,29 @@ async def take_key_back(vendor: str, actor: ProvidersKey, session: Session) -> N
     named = plugins.installed_vendor(vendor)
     if not await keyring.drop_own_credentials(session, actor.org, named):
         raise NotFound(f"this org brought no key for {named}")
+
+
+# `pinecall setup` on a project whose gateway is on another host asks this instead of reading the
+# laptop: the host advises from what it serves and lends, and the org's own keys. The machine is
+# its operator's to see, and only where the row's open-model servers are on this same host.
+@router.get("/v1/providers/advice")
+async def advise(actor: ProvidersKey, request: Request, session: Session) -> Advice:
+    """What this host advises the org to run, stage by stage, and whose key each runs on."""
+    configured = await catalog.get_catalog(session)
+    keys = await keyring.keys_of(session, _vault(request), actor.scope)
+    served = await advice.served_by(configured)
+    operator = actor.person is not None and actor.person.operator
+    read = machine.recommendation() if operator and served.on_this_host else None
+    return Advice(
+        stages=[
+            AdvisedStage(stage=one.stage, choice=one.choice, runs_on=one.runs_on, served=list(one.served))
+            for one in advice.advise(configured, keys, served)
+        ],
+        lends=None if keys.lends is None else sorted(keys.lends),
+        judge=_stage_name(configured.judge.llm) if configured.judge else None,
+        caller=_stage_name(configured.caller.llm) if configured.caller and configured.caller.llm else None,
+        machine=read,
+    )
 
 
 # Built as a call builds the stage: the operator's options, on the key a call would use.
@@ -227,3 +253,7 @@ def _listed_voice(item: voices.ListedVoice) -> ListedVoice | None:
         country=str(detail.get("country") or ""),
         accent=str(detail.get("accent") or ""),
     )
+
+
+def _stage_name(stage: Stage) -> str:
+    return f"{stage.vendor}/{stage.model}" if stage.model else stage.vendor

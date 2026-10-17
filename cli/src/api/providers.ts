@@ -32,6 +32,29 @@ export async function listProviderKeys(gw: GatewayClient): Promise<string[]> {
   return (await gw.get<{ vendors: string[] }>("/v1/provider-keys")).vendors;
 }
 
+/** One stage of `GET /v1/providers/advice`: the choice an agent names, and whose key it runs on. */
+export interface AdvisedStage {
+  stage: Modality;
+  choice: string;
+  /** `served here`, `lent by the host`, `your org's key` or `needs a key`. */
+  runs_on: string;
+  /** The open models the host's server for this stage lists. */
+  served: string[];
+}
+
+/** `GET /v1/providers/advice`: what the host advises the org to run; the machine for its operator only. */
+export interface Advice {
+  stages: AdvisedStage[];
+  lends: string[] | null;
+  judge: string | null;
+  caller: string | null;
+  machine: Record<string, unknown> | null;
+}
+
+export function getAdvice(gw: GatewayClient): Promise<Advice> {
+  return gw.get<Advice>("/v1/providers/advice");
+}
+
 export async function putProviderKey(gw: GatewayClient, vendor: string, key: string): Promise<void> {
   await gw.put(`/v1/provider-keys/${seg(vendor)}`, { key });
 }

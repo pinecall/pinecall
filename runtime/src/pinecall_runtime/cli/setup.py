@@ -15,12 +15,12 @@ from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys, members, orgs
 from pinecall_runtime.cli import local
 from pinecall_runtime.cli import orgs as orgs_cli
-from pinecall_runtime.cli import setup_machine as machine_
 from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli import setup_servers as servers
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.enums import Role
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
+from pinecall_runtime.providers import service as providers
 
 # Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it); the key setup makes is
 # handed to it there, in a file of its own, read by the CLI when a project has no key of its own.
@@ -111,7 +111,7 @@ async def setup(
     context = context_of(ctx)
     out = context.out
     if recommend:
-        out.data(machine_.recommendation(os.environ))
+        out.data(providers.recommendation(os.environ))
         return OK
     asking = sys.stdin.isatty() and not yes
     local.docker_or_refuse()

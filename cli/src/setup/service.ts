@@ -7,6 +7,8 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import { getAdvice, putProviderKey, type Advice } from "../api/providers.js";
+import type { Context } from "../context.js";
 import { PinecallError } from "../errors.js";
 import type { Credentials } from "../project/credentials.js";
 
@@ -14,8 +16,25 @@ export const NOT_INSTALLED =
   'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then run this again';
 /** Where a gateway on this machine answers: anything else is another host's. */
 const THIS_MACHINE = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-export const ANOTHER_HOST = (url: string, source: string): string =>
-  `this project talks to ${url} (its key from ${source}): that runtime runs on another host, so this machine is neither scanned nor set up. Its models are that host's: \`pinecall-runtime setup\` there, or the console's providers.`;
+/** One stage of a host's advice, and where the key it needs is on this machine when the org has none. */
+export interface RemoteStage {
+  stage: string;
+  choice: string;
+  runsOn: string;
+  served: string[];
+  /** For a stage that needs a key: its variable, and where it is here (never its value). */
+  key?: { variable: string; where: string; inEnvironment: boolean };
+}
+
+/** What a host on another machine advises: its stages, what it lends, its judge and caller, its machine for its operator. */
+export interface RemoteAdvice {
+  url: string;
+  stages: RemoteStage[];
+  lends: string[] | null;
+  judge: string | null;
+  caller: string | null;
+  machine: Record<string, unknown> | null;
+}
 /** The word for an open model on this machine, alone or before a model: `local`, `local/gemma4:12b`. */
 export const LOCAL = "local";
 export const STAGES = ["stt", "turn", "llm", "tts", "judge", "caller"] as const;
@@ -99,6 +118,31 @@ export function anotherHost(credentials: Credentials): string | undefined {
   if (credentials.key === undefined || credentials.source.startsWith("the local runtime")) return undefined;
   const host = new URL(credentials.url).hostname;
   return THIS_MACHINE.has(host) ? undefined : credentials.url;
+}
+
+/** The advice of the host the project talks to: read there, from what it serves and lends and the org's keys. */
+export async function remoteAdvice(ctx: Context, url: string, inFiles: Record<string, string>): Promise<RemoteAdvice> {
+  const advice: Advice = await getAdvice(ctx.gateway());
+  const stages = advice.stages.map((one) => {
+    const stage: RemoteStage = { stage: one.stage, choice: one.choice, runsOn: one.runs_on, served: one.served };
+    if (one.runs_on !== "needs a key" || one.choice === "") return stage;
+    const variable = keyVariable(one.choice.split("/")[0]!);
+    const inEnvironment = (ctx.processEnv[variable] ?? "").trim() !== "";
+    return { ...stage, key: { variable, where: whereKeyIs(variable, ctx.processEnv, inFiles), inEnvironment } };
+  });
+  return { url, stages, lends: advice.lends, judge: advice.judge, caller: advice.caller, machine: advice.machine };
+}
+
+/** A key this shell exports, given to the org on that host: tried there before it is kept, never printed here. */
+export async function addKeyFromEnvironment(ctx: Context, vendor: string): Promise<void> {
+  const value = (ctx.processEnv[keyVariable(vendor)] ?? "").trim();
+  if (value === "") throw new PinecallError(`${keyVariable(vendor)} is not set in this shell`);
+  await putProviderKey(ctx.gateway(), vendor, value);
+}
+
+/** The variable a vendor's key is read from: `DEEPGRAM_API_KEY`. */
+export function keyVariable(vendor: string): string {
+  return `${vendor.toUpperCase().replace(/-/g, "_")}_API_KEY`;
 }
 
 /** The runtime's reading of this machine and the stack it recommends. */

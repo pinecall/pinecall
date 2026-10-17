@@ -4,6 +4,7 @@ import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
 import { PinecallError } from "../errors.js";
+import { confirm } from "../kit/confirm.js";
 import * as render from "./render/index.js";
 import * as service from "./service.js";
 
@@ -21,9 +22,12 @@ runtime reads it or asks. Enter runs \`pinecall-runtime setup --yes\` with the a
 leaves it running: Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by
 itself in ~/.pinecall/local.json, the models pulled once, the gateway and a worker.
 
-It is this machine's runtime only: in a project whose key points at a gateway on another host
-(the cloud, a server), nothing here is scanned or set up, and it says so; that host's models are
-set there, with pinecall-runtime setup, or in the console.
+In a project whose key points at a gateway on another host (the cloud, a server), this machine is
+neither scanned nor set up: the host advises, from what it serves and what it lends, a stage at a
+time — an open model it serves (no key), a vendor it lends (none of yours), your org's own key,
+or one your org must bring — and its operator also sees its machine. A key it needs that this
+shell exports is offered to your org on that host (tried there before it is kept, never printed);
+the stack is then an agent's, with pinecall agent set.
 
 A flag names a stage and that stage is not asked; --yes asks nothing and runs the recommended
 stack as the flags amend it, as a pipe or a script does; --recommend prints the reading and
@@ -52,9 +56,20 @@ export function register(program: Command, ctx: Context): void {
     .option("--recommend", "read this machine and print what fits it; set nothing up")
     .addHelpText("after", SETUP)
     .action(async (flags) => {
-      const credentials = ctx.credentials();
-      const remote = service.anotherHost(credentials);
-      if (remote !== undefined) throw new PinecallError(service.ANOTHER_HOST(remote, credentials.source));
+      const remote = service.anotherHost(ctx.credentials());
+      if (remote !== undefined) {
+        const advice = await service.remoteAdvice(ctx, remote, service.keysInShellFiles());
+        ctx.io.result(advice, render.adviceLines);
+        if (flags.recommend === true || !ctx.io.interactive || ctx.io.json) return;
+        for (const one of advice.stages) {
+          const vendor = one.choice.split("/")[0]!;
+          if (one.key?.inEnvironment !== true) continue;
+          if (!(await confirm(`give ${one.key.variable} from this shell to your org on ${remote}, for ${one.stage}? [y/N] `, ctx.io))) continue;
+          await service.addKeyFromEnvironment(ctx, vendor);
+          ctx.io.info(`${vendor}: key tried on ${remote} and kept, sealed there; never printed here`);
+        }
+        return;
+      }
       const read = service.readMachine(ctx.processEnv);
       if (flags.recommend === true) {
         ctx.io.result(read, render.recommendationLines);

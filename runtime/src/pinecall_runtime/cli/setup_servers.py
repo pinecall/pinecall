@@ -2,7 +2,6 @@
 
 import json
 import os
-import socket
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -89,15 +88,6 @@ def pull_on_host(models: list[str]) -> None:
             raise UpstreamError(PULL_FAILED.format(output=(pulled.stderr or pulled.stdout).strip()[-2000:]))
 
 
-def answers(port: int) -> bool:
-    """Whether something accepts a connection on that loopback port."""
-    try:
-        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
-            return True
-    except OSError:
-        return False
-
-
 # A turn's lookup waits 3 s for its search; the embedder's first request after a start loads the
 # model (3.4 s for bge-m3 on an L4, longer on a CPU), so the first caller's search would miss.
 def warm_embedder() -> None:
@@ -121,7 +111,7 @@ def warm_embedder() -> None:
 async def models(runtime: Context, where: Path, choices: Choices, *, asking: bool, out: Printer) -> None:
     """The servers the choices need up, the keys they need kept, the row written: what `setup` does for the models."""
     keys, read = keys_for(choices, asking=asking)
-    served = models_up(where, choices, host_ollama=answers(MODEL_PORTS["Ollama"]))
+    served = models_up(where, choices, host_ollama=providers.answers(MODEL_PORTS["Ollama"]))
     out.line("models     " + " · ".join(served) + " — open models, no account")
     chosen = " · ".join(
         f"{choice} {stage}"

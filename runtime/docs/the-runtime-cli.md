@@ -87,7 +87,7 @@ the ears' own endpointing, `--models none` leaves the row to `providers seed`.
 up: the cards and their memory (`nvidia-smi`), Apple silicon and its unified memory, the cores
 and the RAM, whether Docker and an Ollama are here, and which vendors' key variables are set
 (their values are never read into it). The thinking is the best model of those measured
-(`cli/local/measured.json`: a message taken, a question the documents answer, small talk, the
+(`providers/service/machine.py`: a message taken, a question the documents answer, small talk, the
 time to the first token) whose memory fits the card beside the ears, the voice and the embedder,
 with a margin for the conversations a call runs at once; a machine with no GPU is handed the
 three vendors instead, and a Mac the thinking on its own Ollama (Metal) with the ears and the

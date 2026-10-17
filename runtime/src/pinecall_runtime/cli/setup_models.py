@@ -12,7 +12,7 @@ from pinecall_runtime.providers import service as providers
 
 # The word for an open model on this machine, in any stage's answer: `local`, or `local/<model>`
 # naming the one Ollama runs (`local/gemma4:12b`) or the one Whisper loads.
-LOCAL = "local"
+LOCAL = providers.LOCAL
 SLASH = "/"
 type Turn = Literal["stt", "smart-turn", "livekit"]
 # How the end of the caller's turn is read: the ears' own endpointing, or a model on the worker's CPU.
@@ -21,7 +21,7 @@ TURN_MODELS: dict[Turn, str | None] = {"stt": None, "smart-turn": "smart-turn-v3
 
 # Open models on this machine, through the `openai` plugin and a `base_url` per stage (DEV-FIRST.md).
 # The thinking's default is the one that took a message, read the documents and made small talk on
-# a 24 GB card (`local/measured.json`); `setup --recommend` names a larger one where it fits.
+# a 24 GB card (providers/service/machine.py); `setup --recommend` names a larger one where it fits.
 LOCAL_LLM = "gemma4:12b"
 LOCAL_STT = "deepdml/faster-whisper-large-v3-turbo-ct2"
 LOCAL_TTS = "kokoro"
@@ -165,11 +165,6 @@ def _ask(question: str, stage: str, default: str = LOCAL) -> str:
 # ── the keys ──
 
 
-def key_variable(vendor: str) -> str:
-    """The environment variable a vendor's key is read from: `DEEPGRAM_API_KEY`."""
-    return f"{vendor.upper().replace('-', '_')}_API_KEY"
-
-
 def keys_for(choices: Choices, *, asking: bool) -> tuple[dict[str, str], list[str]]:
     """Each chosen vendor's key, from its variable or asked once; and which came from the environment."""
     given: dict[str, str] = {}
@@ -177,7 +172,7 @@ def keys_for(choices: Choices, *, asking: bool) -> tuple[dict[str, str], list[st
     for vendor in sorted(choices.vendors):
         if not providers.takes_a_key(vendor):
             continue
-        variable = key_variable(vendor)
+        variable = providers.key_variable(vendor)
         found = os.environ.get(variable, "").strip()
         if found:
             given[vendor] = found

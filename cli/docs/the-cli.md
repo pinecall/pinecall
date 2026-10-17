@@ -249,9 +249,27 @@ without echo. Enter runs `pinecall-runtime setup --yes` with the answers and lea
 Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by itself in
 `~/.pinecall/local.json`, the models pulled once, the gateway and a worker.
 
-It is this machine's runtime only. In a project whose key points at a gateway on another host —
-the cloud, a server — nothing here is scanned or set up, and it says so: that host's models are
-set there, with `pinecall-runtime setup` on it, or in the console's providers.
+In a project whose key points at a gateway on another host — the cloud, a server — this machine
+is neither scanned nor set up. The host advises instead (`GET /v1/providers/advice`), a stage at a
+time, from what it has: an open model its own servers list (no key at all), else a vendor it lends
+(none of yours), else your org's own key, else one your org must bring. Its judge and simulated
+caller are its own, on its keys; its operator also gets its machine, where its model servers run on
+it. A key a stage needs that this shell exports is offered to your org on that host — tried there
+before it is kept, never printed here — and one that sits in a shell file not yet sourced is named
+by file. The stack is then an agent's: the line it ends with is the `pinecall agent set` to run.
+
+```console
+$ pinecall setup --recommend
+this runtime  https://gpu.example.com · lends nothing
+
+ears         openai/deepdml/faster-whisper-large-v3-turbo-ct2  served here
+             served there: deepdml/faster-whisper-large-v3-turbo-ct2
+thinking     openai/qwen3:30b-a3b-instruct-2507-q4_K_M         served here
+             served there: qwen3:30b-a3b-instruct-2507-q4_K_M, gemma4:12b, bge-m3
+voice        openai/kokoro                                     served here
+
+for an agent pinecall agent set --agent <name> --stt openai/deepdml/faster-whisper-large-v3-turbo-ct2 --llm openai/qwen3:30b-a3b-instruct-2507-q4_K_M --tts openai/kokoro
+```
 
 A flag names a stage and that stage is not asked. `--yes` asks nothing and runs the recommended
 stack as the flags amend it — what a pipe or a script gets, since the screen needs a terminal.

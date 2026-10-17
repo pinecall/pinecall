@@ -178,6 +178,28 @@ class Catalogue(WireModel):
     models: dict[str, list[str]]
 
 
+class AdvisedStage(WireModel):
+    """One stage of GET /v1/providers/advice: the choice an agent names, whose key it runs on, what is served."""
+
+    stage: Modality
+    choice: str
+    runs_on: str
+    served: list[str]
+
+
+class Advice(WireModel):
+    """GET /v1/providers/advice: what this host advises the org to run, and, for its operator, the machine."""
+
+    stages: list[AdvisedStage]
+    # What the host lends: None lends every vendor whose key it holds, empty lends nothing.
+    lends: list[str] | None
+    judge: str | None
+    caller: str | None
+    # The machine the gateway runs on, as `setup --recommend` reads it: for the box's operator, and
+    # only where the row's open-model servers are on this same host.
+    machine: dict[str, Any] | None
+
+
 class VendorsResponse(WireModel):
     """GET /v1/provider-keys: the vendors the org brought its own credentials for, never one."""
 

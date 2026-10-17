@@ -6,7 +6,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- `pinecall setup` is this machine's runtime only: in a project whose key points at a gateway on another host it neither scans this machine nor sets it up, and names that host instead.
+- `pinecall setup` on a project whose key points at another host asks that host instead of reading this machine: it advises a stage at a time from what it serves and what it lends, then the org's own keys (`GET /v1/providers/advice`), offers to give the org a key this shell exports, and ends with the `pinecall agent set` line for the stack.
 
 ## [0.11.4] — the agent pinecall new writes greets once and takes the message the moment it has both
 

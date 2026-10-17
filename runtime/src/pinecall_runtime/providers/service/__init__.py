@@ -1,6 +1,7 @@
 """The providers rules, one module per noun; what other domains use is named here once."""
 
 from pinecall_runtime.providers.schemas import Catalog, Embedding, TurnModel
+from pinecall_runtime.providers.service.advice import Advised, Served, advise, served_by
 from pinecall_runtime.providers.service.catalog import (
     get_catalog,
     judge_ceiling,
@@ -28,6 +29,7 @@ from pinecall_runtime.providers.service.keyring import (
     stage_on_its_key,
     thinking_of,
 )
+from pinecall_runtime.providers.service.machine import LOCAL, answers, detect, key_variable, recommend, recommendation
 from pinecall_runtime.providers.service.plugins import (
     Credentials,
     Ears,
@@ -67,7 +69,9 @@ from pinecall_runtime.providers.service.voices import (
 )
 
 __all__ = [
+    "LOCAL",
     "SAMPLES_A_MINUTE",
+    "Advised",
     "Catalog",
     "Credentials",
     "Ears",
@@ -77,10 +81,13 @@ __all__ = [
     "Pipeline",
     "RatesChange",
     "Running",
+    "Served",
     "Speaking",
     "Thinking",
     "TurnModel",
     "Vendor",
+    "advise",
+    "answers",
     "box_credentials",
     "build_ears",
     "build_pipeline",
@@ -92,6 +99,7 @@ __all__ = [
     "cost_of",
     "credentials_from",
     "default_voice",
+    "detect",
     "drop_box_credentials",
     "drop_own_credentials",
     "ends_turns",
@@ -100,6 +108,7 @@ __all__ = [
     "installed_vendor",
     "is_installed",
     "judge_ceiling",
+    "key_variable",
     "keys_of",
     "listed_by_vendor",
     "listed_in_catalog",
@@ -113,10 +122,13 @@ __all__ = [
     "put_own_credentials",
     "rates_changed",
     "rates_from_csv",
+    "recommend",
+    "recommendation",
     "refuse_untaken_knobs",
     "refuse_what_cannot_run",
     "running_on",
     "seed_catalog",
+    "served_by",
     "stage_on_its_key",
     "stt_of",
     "takes_a_key",

@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from pinecall_runtime.cli import setup_machine as machine_
+from pinecall_runtime.providers.service import machine as machine_
 
 THE_30B = "qwen3:30b-a3b-instruct-2507-q4_K_M"
 

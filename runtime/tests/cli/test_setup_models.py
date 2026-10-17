@@ -4,6 +4,7 @@ import pytest
 
 from pinecall_runtime.cli import setup_models as models
 from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.providers import service as providers
 
 
 def test_a_choice_is_local_a_local_model_or_a_vendor_with_or_without_its_model() -> None:
@@ -41,7 +42,7 @@ def test_the_keys_a_mix_needs_and_where_each_came_from(monkeypatch: pytest.Monke
     given, read = models.keys_for(models.Choices(stt=models.LOCAL, llm="anthropic", tts="acme"), asking=False)
     assert given == {"acme": "ak-x", "anthropic": "sk-ant-x", "openai": "local"}
     assert read == ["ACME_API_KEY", "ANTHROPIC_API_KEY"]
-    assert models.key_variable("assemblyai") == "ASSEMBLYAI_API_KEY"
+    assert providers.key_variable("assemblyai") == "ASSEMBLYAI_API_KEY"
     # A judge on a vendor of yours needs that vendor's key as the thinking would.
     judged, _ = models.keys_for(models.Choices(judge="anthropic"), asking=False)
     assert judged == {"anthropic": "sk-ant-x", "openai": "local"}

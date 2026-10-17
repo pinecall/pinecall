@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **A host advises an org what to run: `GET /v1/providers/advice`.** A stage at a time, from what
+  the host has: an open model its own servers list (asked at the row's `base_url`, the
+  OpenAI-compatible `/models`; the best measured one first), else a vendor it lends, else the org's
+  own key, else one the org must bring; the judge and the caller are the host's. The box's operator
+  also gets its machine (the card, the memory, what fits), where the row's servers run on it.
+  `pinecall setup` on a project on another host asks this instead of reading the laptop. The
+  machine's reading moved into the providers domain (`providers/service/machine.py`) so the
+  gateway can answer it; the measured table is its constants.
+
 ## 0.11.4 — Noise never reaches the ears, the ears' loops never take the floor; a golden the vendor fails breaks alone (2026-10-17)
 
 - **A breath or a sigh no longer reaches the ears.** livekit's Silero opens a segment for the ears on
