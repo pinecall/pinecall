@@ -1246,6 +1246,14 @@ runtime's own ears: `--eot-threshold` is how sure it must be before it ends one,
 `--eager-eot-threshold` the lower bar at which it says a turn MIGHT be over, which is what lets
 the model start on an answer that is thrown away if the caller carries on.
 
+**What never takes the floor**, whatever the numbers. While the agent speaks, a turn that only
+agrees ("mm-hm", "sí"), or that is all one of the phrases Whisper-family ears write on a breath
+("Thank you.", "Thanks for watching"), is dropped before it can interrupt; so is, for a second and
+a half after the agent stops, a turn whose words are mostly its own of the last seconds — its
+voice heard back from a visitor's speakers. On a web call (the playground, the widget) the
+runtime also cancels that echo in the audio, with WebRTC's canceller fed what the agent plays,
+before the ears hear it; a phone cancels its own.
+
 The first of those is the knob that decides whether an agent answers half a sentence. Deepgram's
 own measurement of its default, 0.7, is that as much as a fifth of the turns it ends were ended
 before the person had finished speaking — on a line, an agent that replies to the first half of

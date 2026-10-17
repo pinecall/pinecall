@@ -14,7 +14,7 @@ from pinecall_runtime.calls.context import CallContext
 from pinecall_runtime.enums import Channel, Direction, Medium
 from pinecall_runtime.exceptions import Forbidden, ValidationError
 from pinecall_runtime.kit.text import JsonObject
-from pinecall_runtime.session import prompt, recording
+from pinecall_runtime.session import echo, prompt, recording
 from pinecall_runtime.session.agent import CallAgent
 from pinecall_runtime.session.hearing import keyterms
 from pinecall_runtime.session.hold import HoldMusic
@@ -422,6 +422,7 @@ class Session:
         room = NOT_GIVEN if self.room is None else self.room.room
         self.listener.listen(self.built)
         await self.live.start(self.agent, room=room, room_options=options, record=False)  # pyright: ignore[reportUnknownMemberType]
+        echo.cancel(self.live, self.call.context.channel)
         if self.room is not None:
             self.recorder = await recording.record(self.live, self.call.recording, self.room.room, self.room.kind_of)
         given = history.copy()

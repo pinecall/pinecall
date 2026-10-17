@@ -11,7 +11,7 @@ from pinecall_runtime.agents.service import declared
 from pinecall_runtime.calls.context import CallContext
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import JsonObject
-from pinecall_runtime.session.hearing import TurnPolicy, policy_for
+from pinecall_runtime.session.hearing import AgentWords, TurnPolicy, policy_for
 from pinecall_runtime.session.writing import AppendMany, Writing
 from pinecall_runtime.wire.commands import (
     CallCallback,
@@ -98,6 +98,8 @@ class Call:
         self.waiting_for_a_person = False
         # As the session's agent_state events say, not as livekit's internals hold it.
         self.agent_speaking = False
+        # What it said lately, so its own voice heard back is not taken for the caller's.
+        self.agent_words = AgentWords()
         self.open_tools = frozenset(tool.name for tool in config.tools)
         # Every request the model was sent, kept on a call an eval run opened and on no other.
         self.requests: list[JsonObject] = []

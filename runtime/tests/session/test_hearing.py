@@ -2,7 +2,7 @@
 
 import pinecall_runtime.session.text as text
 from pinecall_runtime.agents.declaration import Turn
-from pinecall_runtime.session.hearing import policy_for
+from pinecall_runtime.session.hearing import AgentWords, policy_for
 from pinecall_runtime.wire.commands import TakeoverVerb
 from tests.conftest import needs_the_database
 from tests.session.conftest import (
@@ -55,3 +55,31 @@ async def test_a_takeover_with_nothing_to_interrupt_still_takes_the_line(box: Bo
     await session.apply(supervised(TakeoverVerb()))
     assert session.call.taken_by == A_SUPERVISOR
     await text.end_text(session, "caller_hung_up", "caller")
+
+
+def test_what_the_ears_invent_is_known_whole_and_only_whole() -> None:
+    """Whisper's "Thank you." on a breath is made up; a turn that goes on is the caller's."""
+    english = policy_for("en-US")
+    assert english.is_made_up("Thank you.")
+    assert english.is_made_up("thanks for watching!")
+    assert not english.is_made_up("Thank you, and the invoice?")
+    assert policy_for("es").is_made_up("Gracias.")
+    assert policy_for(None).is_made_up("muchas gracias")
+
+
+def test_the_agents_own_words_heard_back_are_an_echo_for_a_while() -> None:
+    """Most of a turn's words among what the agent said lately is its voice played back; old words are not."""
+    now = [100.0]
+    words = AgentWords(clock=lambda: now[0])
+    words.spoke("Good day, Bernardo. How can I help")
+    words.spoke(" you today?")
+    assert words.echoes("How can I help you")
+    assert not words.echoes("I want a replacement lamp")
+    assert not words.echoes("")
+    words.stopped()
+    now[0] += 1.0
+    assert words.just_stopped()
+    now[0] += 1.0
+    assert not words.just_stopped()
+    now[0] += 20.0
+    assert not words.echoes("How can I help you")

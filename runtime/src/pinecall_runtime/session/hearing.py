@@ -1,6 +1,9 @@
-"""What the ears are told: the words that only agree, the pause before a barge-in, the keyterms."""
+"""What the ears are told: the words that only agree, what the ears make up, the agent heard back, the keyterms."""
 
 import re
+import time
+from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from pinecall_runtime.agents.declaration import AgentConfig, Turn
@@ -69,6 +72,48 @@ BACKCHANNELS: dict[str, frozenset[str]] = {
     "ca": frozenset({"sí", "vale", "d'acord", "clar", "entesos", "ok", "mm", "aha", "eh"}),
 }
 
+# What Whisper-family ears write on a breath, a cough or the agent's own voice played back: whole
+# turns of nothing else, heard while the agent speaks, are not the caller's. A turn that goes on
+# ("thank you, and the invoice?") is. Their training's subtitles end in these, hence the credits.
+HALLUCINATIONS: dict[str, frozenset[str]] = {
+    "en": frozenset(
+        {
+            "thank you",
+            "thank you very much",
+            "thanks",
+            "thanks for watching",
+            "thank you for watching",
+            "bye",
+            "bye bye",
+            "goodbye",
+            "you",
+            "i'm sorry",
+            "subtitles by the amara org community",
+        }
+    ),
+    "es": frozenset(
+        {
+            "gracias",
+            "muchas gracias",
+            "gracias por ver",
+            "chau",
+            "adiós",
+            "subtítulos realizados por la comunidad de amara org",
+            "subtítulos por la comunidad de amara org",
+        }
+    ),
+    "pt": frozenset({"obrigado", "obrigada", "tchau", "legendas pela comunidade amara org"}),
+    "ca": frozenset({"gràcies", "adéu", "moltes gràcies"}),
+}
+
+# The agent's own words heard back: most of a turn's words among what it said in the last
+# seconds. A caller who repeats a date back says other words around it.
+ECHO_SHARE = 0.7
+ECHO_WINDOW_S = 12.0
+# The echo of the agent's last words reaches the ears after it stops: the room's queue and the
+# network both ways, then the ears' own delay.
+ECHO_TAIL_S = 1.5
+
 _A_WORD = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*")
 
 # Keyterms are names, not sentences: longer text dilutes them. The cap is ours, since the ears'
@@ -83,6 +128,7 @@ class TurnPolicy:
     """What the caller must say to take the floor, in the agent's language."""
 
     backchannels: frozenset[str]
+    hallucinations: frozenset[str] = frozenset()
     min_words: int = MIN_WORDS
     false_interruption_s: float = FALSE_INTERRUPTION_TIMEOUT_S
     # How long the caller speaks over the agent before it stops; None leaves livekit's own.
@@ -90,17 +136,60 @@ class TurnPolicy:
 
     def is_a_backchannel(self, text: str) -> bool:
         """Whether every word said is somebody agreeing."""
-        words = [str(found.group(0)).lower() for found in _A_WORD.finditer(text)]
+        words = words_of(text)
         return bool(words) and all(word in self.backchannels for word in words)
+
+    def is_made_up(self, text: str) -> bool:
+        """Whether the whole turn is one of the phrases the ears write on no speech."""
+        return " ".join(words_of(text)) in self.hallucinations
+
+
+class AgentWords:
+    """What the agent said in the last seconds, to tell its own voice heard back from the caller's."""
+
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
+        """Nothing said yet."""
+        self.clock = clock
+        self.said: deque[tuple[float, list[str]]] = deque()
+        self.stopped_at: float | None = None
+
+    def spoke(self, text: str) -> None:
+        """A piece of the agent's reply, as it played."""
+        now = self.clock()
+        self.said.append((now, words_of(text)))
+        while self.said and now - self.said[0][0] > ECHO_WINDOW_S:
+            self.said.popleft()
+
+    def stopped(self) -> None:
+        """The agent's voice stopped: its echo may still be on its way."""
+        self.stopped_at = self.clock()
+
+    def just_stopped(self) -> bool:
+        """Whether the agent stopped speaking so lately its echo may still come."""
+        return self.stopped_at is not None and self.clock() - self.stopped_at <= ECHO_TAIL_S
+
+    def echoes(self, text: str) -> bool:
+        """Whether most of the turn's words are the agent's own of the last seconds."""
+        heard = words_of(text)
+        now = self.clock()
+        recent = {word for at, words in self.said if now - at <= ECHO_WINDOW_S for word in words}
+        return bool(heard) and sum(word in recent for word in heard) / len(heard) >= ECHO_SHARE
+
+
+def words_of(text: str) -> list[str]:
+    """The words of a text, lowered, its punctuation dropped."""
+    return [str(found.group(0)).lower() for found in _A_WORD.finditer(text)]
 
 
 def policy_for(language: str | None, turn: Turn | None = None) -> TurnPolicy:
     """The policy of the agent's language (`es-ES` is `es`) and its turn knobs; else every list."""
     tag = (language or "").split("-", 1)[0].lower()
     words = BACKCHANNELS.get(tag) or frozenset[str]().union(*BACKCHANNELS.values())
+    made_up = HALLUCINATIONS.get(tag) or frozenset[str]().union(*HALLUCINATIONS.values())
     declared = turn or Turn()
     return TurnPolicy(
         backchannels=words,
+        hallucinations=made_up,
         min_words=MIN_WORDS if declared.min_interruption_words is None else declared.min_interruption_words,
         min_speech_s=None if declared.min_interruption_ms is None else declared.min_interruption_ms / 1000,
     )

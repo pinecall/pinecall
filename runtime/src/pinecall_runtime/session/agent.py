@@ -114,19 +114,26 @@ class CallAgent(Agent):
         async for delta in Agent.default.transcription_node(self, written, model_settings):
             if str(delta):
                 self.call.writing.write("agent.transcript", transcript_of(self.live, delta))
+                self.call.agent_words.spoke(str(delta))
             yield delta
 
-    # Before the turn detector: the last point to drop a backchannel at no cost of a model.
+    # Before the turn detector, and before livekit counts the words that interrupt: the last point
+    # to drop what is not the caller's at no cost of a model. The echo the canceller left (echo.py)
+    # is caught here by its words; the agreement and the ears' inventions only while the agent
+    # speaks, since after it stops "ok" and "thank you" are answers.
     @override
     async def stt_node(self, audio: AsyncIterable[rtc.AudioFrame], model_settings: ModelSettings) -> Heard:
-        """What the ears heard, but agreement said over the agent's voice."""
+        """What the ears heard, but agreement, inventions and the agent's own voice heard back."""
         async for event in Agent.default.stt_node(self, audio, model_settings):
-            if not self._agreement(event):
+            if not self._not_the_callers(event):
                 yield event
 
-    def _agreement(self, event: stt.SpeechEvent) -> bool:
+    def _not_the_callers(self, event: stt.SpeechEvent) -> bool:
         text = event.alternatives[0].text if event.alternatives else ""
-        return self.call.agent_speaking and self.call.turn_policy.is_a_backchannel(text)
+        call, policy = self.call, self.call.turn_policy
+        if call.agent_speaking and (policy.is_a_backchannel(text) or policy.is_made_up(text)):
+            return True
+        return (call.agent_speaking or call.agent_words.just_stopped()) and call.agent_words.echoes(text)
 
 
 class Unsaying:

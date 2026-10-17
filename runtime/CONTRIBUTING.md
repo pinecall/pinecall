@@ -43,7 +43,7 @@ the same name, one module per noun (`calls/service/seal.py`, `knowledge/reposito
 (`store`, `writer`, `relay`, `fanout`, `logs`, `facts`, `reducer`, `readers`, `private`,
 `histogram`, `latencies`, `metering`, `recordings`, `context`); `session/` the call on LiveKit
 (`call`, `writing`, `session`, `agent`, `prompt`, `tools`, `lookups`, `hearing`, `voice`, `text`,
-`room`, `widget`, `hold`, `recording`, `clock`, `listener`). An engine module imports
+`room`, `widget`, `hold`, `recording`, `clock`, `listener`, `echo`). An engine module imports
 `repository`, `models`, `kit`, `wire` and the services of the domains below its own, never its
 own `service`. `jobs/` is the worker's side of the box: its client to the gateway, its
 heartbeat, and the job that runs one call; nothing in the gateway imports it. `retention/` is

@@ -119,6 +119,8 @@ class Listener:
             case UserStateChangedEvent():
                 writing.write("user.state", wire.UserStateChanged(state=event.new_state))
             case AgentStateChangedEvent():
+                if self.call.agent_speaking and event.new_state != "speaking":
+                    self.call.agent_words.stopped()
                 self.call.agent_speaking = event.new_state == "speaking"
                 if self.hold is not None:
                     self.hold.floor(speaking=self.call.agent_speaking)

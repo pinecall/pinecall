@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The agent no longer hears itself.** On a web call the caller's audio passes WebRTC's echo
+  canceller (AEC3, in livekit's SDK) fed with what the agent plays, before the VAD and the ears hear
+  it (`session/echo.py`); a phone cancels its own. What the canceller leaves is caught by its words:
+  while the agent speaks, a turn that is all one of the phrases Whisper writes on no speech ("Thank
+  you.") is dropped like a backchannel, and until 1.5 s after it stops, a turn whose words are mostly
+  the agent's own of the last seconds. A visitor on laptop speakers made the agent answer its own
+  sentences in a loop (11 caller turns of which 2 were real); with both, 3 turns, all real, and the
+  real barge-in still stops the agent.
+
 - **`setup` takes any open model, per stage and per role.** `--llm local/<ollama tag>` and
   `--stt local/<whisper model>` name the model itself; `--judge` and `--caller` choose who judges a
   finished call and who plays the simulated caller (the thinking's model unless named); Ollama
