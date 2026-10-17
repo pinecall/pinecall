@@ -2,6 +2,9 @@
 
 import json
 
+import pytest
+from websockets.exceptions import ConnectionClosed
+
 from pinecall_runtime.wire.commands import AgentRegister
 from tests.conftest import BOX, Gateway, Tenant, needs_the_services, received
 
@@ -45,3 +48,21 @@ async def test_the_app_socket_opens_on_a_key(gateway: Gateway, tenant: Tenant) -
         register = AgentRegister(routes=[]).model_dump(mode="json")
         await app.send(json.dumps({"type": "agent.register", "agent": "a-socket-test", "call": None, "data": register}))
         assert (await received(app, "agent.registered"))["agent"] == "a-socket-test"
+
+
+# A key that asks for an env it does not open is refused while its actor is resolved, in the
+# middleware, outside the app's exception handlers: it answered 500 there (2026-10-17, `pinecall
+# whoami` on a sandbox server token that asked for production).
+@needs_the_services
+async def test_a_key_asking_for_an_env_it_does_not_open_is_refused_by_name(gateway: Gateway, tenant: Tenant) -> None:
+    """403 with its sentence over HTTP, and the socket closed with 4403 and the same sentence."""
+    asking = {**tenant.server, "pinecall-env": "production"}
+    answer = await gateway.http.get("/v1/whoami", headers=asking)
+    assert answer.status_code == 403, answer.text
+    assert "a server's token opens the env it was made in" in answer.json()["detail"]
+    async with gateway.socket("/v1/apps", asking) as app:
+        with pytest.raises(ConnectionClosed) as closed:
+            await app.recv()
+    assert closed.value.rcvd is not None
+    assert closed.value.rcvd.code == 4403
+    assert "server's token" in closed.value.rcvd.reason

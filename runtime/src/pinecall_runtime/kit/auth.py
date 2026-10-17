@@ -5,15 +5,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from hmac import compare_digest
 
-from fastapi import Request
+from fastapi import Request, Response, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Receive, Send
 from starlette.types import Scope as ASGIScope
 
 from pinecall_runtime.enums import Env, KeyScope, Role
-from pinecall_runtime.exceptions import Forbidden, Unauthorized
+from pinecall_runtime.exceptions import Forbidden, PinecallError, Unauthorized
 from pinecall_runtime.kit.handles import handles_of
+from pinecall_runtime.kit.websockets import refuse_socket
 
 # The header a person's key names the env it acts in with; a server's key is its own env.
 ENV_HEADER = "pinecall-env"
@@ -92,15 +93,20 @@ def authorization_of(request: HTTPConnection) -> str | None:
 
 
 type Resolver = Callable[[HTTPConnection, AsyncSession], Awaitable[Actor | None]]
+type Refuser = Callable[[Request, Exception], Awaitable[Response]]
 
 
-# Built before the lifespan opens the engine, so the sessions are found on the app per request.
+# Built before the lifespan opens the engine, so the sessions are found on the app per request. A
+# key that asks for what it may not (production without the switch, another env's server token) is
+# refused here, before any endpoint: outside the app's exception handlers, so the refusal is
+# answered by the same function they use, or the socket closed with its code.
 class ActorMiddleware:
     """Resolves the request's actor once and keeps it on the request's state."""
 
-    def __init__(self, app: ASGIApp, *, resolve: Resolver) -> None:
+    def __init__(self, app: ASGIApp, *, resolve: Resolver, refuse: Refuser) -> None:
         self.app = app
         self.resolve = resolve
+        self.refuse = refuse
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Resolve on http and websocket requests; pass everything else through."""
@@ -110,8 +116,15 @@ class ActorMiddleware:
         # A websocket's scope is no Request's (Starlette asserts http): both are connections.
         request = HTTPConnection(scope, receive)
         sessions: async_sessionmaker[AsyncSession] = request.app.state.sessions
-        async with sessions() as session:
-            scope.setdefault("state", {})["actor"] = await self.resolve(request, session)
+        try:
+            async with sessions() as session:
+                scope.setdefault("state", {})["actor"] = await self.resolve(request, session)
+        except PinecallError as refused:
+            if scope["type"] == "websocket":
+                await refuse_socket(WebSocket(scope, receive, send), refused)
+            else:
+                await (await self.refuse(Request(scope, receive), refused))(scope, receive, send)
+            return
         await self.app(scope, receive, send)
 
 

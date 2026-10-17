@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A key asking for an env it does not open is refused by name, not with a 500.** The refusal
+  (a person without production access asking for production, a server's token asking for the
+  other env) was raised while the request's actor was resolved, in a middleware outside the app's
+  exception handlers, so it answered `500 Internal Server Error`. It now answers 403 with its
+  sentence, and a socket closes with 4403 and the same sentence.
+
 ## 0.11.2 — A streamed answer holds no database connection; the feed keeps the types asked for (2026-10-17)
 
 - **A streamed answer no longer holds a database connection.** The request's session was handed

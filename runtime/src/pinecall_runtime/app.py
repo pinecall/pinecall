@@ -201,7 +201,7 @@ def origins_allowed(settings: Settings) -> tuple[str, ...]:
 def create_app() -> FastAPI:
     """The gateway's endpoints, its refusals, the widget and the console, on a new app."""
     app = FastAPI(title="Pinecall gateway", lifespan=lifespan, docs_url="/v1/docs", redoc_url="/v1/redoc")
-    app.add_middleware(ActorMiddleware, resolve=resolve_actor)
+    app.add_middleware(ActorMiddleware, resolve=resolve_actor, refuse=answer_refusal)
     app.add_middleware(
         AllowedOrigins, prefix=API_PREFIX, origins=_origins_of, headers=ALLOWED_HEADERS, any_page=A_PAGES_READS
     )
