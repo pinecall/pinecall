@@ -22,13 +22,6 @@
 
 <br>
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/how-it-works-dark.png">
-    <img src=".github/assets/how-it-works-light.png" alt="Phone, browser, chat and WhatsApp reach the Pinecall runtime; its worker runs speech to text, the model and text to speech, its gateway asks your agent.tsx to run a tool, and every step is an entry in the call's log" width="100%">
-  </picture>
-</p>
-
 **Pinecall runs voice and chat agents that you write as a class.** The class's fields are the
 call's state, its `@tool` methods are what the model may do, and its docstrings and `render()` are
 the prompt. Everything else is Pinecall's job: the phone line, the browser call, WhatsApp, speech
@@ -170,8 +163,8 @@ Everything acts in the **sandbox** first. `--prod` acts in production for one co
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
-    <img src=".github/assets/architecture-light.svg" alt="The doors reach LiveKit or the gateway; the worker runs the speech pipeline and writes every turn to the call's log; the gateway asks your app to run its tools over the app socket" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/how-it-works-dark.png">
+    <img src=".github/assets/how-it-works-light.png" alt="Phone, browser, chat and WhatsApp reach the Pinecall runtime. Its worker runs LiveKit's AgentSession, speech to text, the model and text to speech; its gateway asks your agent.tsx to run a tool; every step is an entry in the call's log, kept in Postgres, with Redis as the signal; the console, the CLI and the MCP server read the log live" width="100%">
   </picture>
 </p>
 
