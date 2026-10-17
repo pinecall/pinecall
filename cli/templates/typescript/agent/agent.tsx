@@ -28,8 +28,8 @@ export default class {{Class}} extends Agent {
       <>
         {this.stage === "ask" && (
           <p>
-            Greet the caller. A question the documents answer, answer; otherwise ask for their name and what the call is
-            about.
+            A question the documents answer, answer. Otherwise take a message: ask only for what the caller has not said
+            yet, their name or what the call is about, and call takeMessage the moment you have both. Greet nobody twice.
           </p>
         )}
         {this.message && (

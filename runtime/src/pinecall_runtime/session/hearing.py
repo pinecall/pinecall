@@ -106,6 +106,12 @@ HALLUCINATIONS: dict[str, frozenset[str]] = {
     "ca": frozenset({"gràcies", "adéu", "moltes gràcies"}),
 }
 
+# Whisper's other invention: on a fraction of a second of noise it writes one phrase over and over
+# ("I'm going to make sure that" forty times, gpu.pinecall.io 2026-10-17). A phrase of three words
+# or more said three times running is not a caller, whoever is speaking.
+LOOPED_WORDS = 3
+LOOPED_TIMES = 3
+
 # The agent's own words heard back: most of a turn's words among what it said in the last
 # seconds. A caller who repeats a date back says other words around it.
 ECHO_SHARE = 0.7
@@ -142,6 +148,17 @@ class TurnPolicy:
     def is_made_up(self, text: str) -> bool:
         """Whether the whole turn is one of the phrases the ears write on no speech."""
         return " ".join(words_of(text)) in self.hallucinations
+
+
+def loops(text: str) -> bool:
+    """Whether a phrase of LOOPED_WORDS words or more comes LOOPED_TIMES times running: the ears looping."""
+    words = words_of(text)
+    for size in range(LOOPED_WORDS, len(words) // LOOPED_TIMES + 1):
+        for start in range(len(words) - size * LOOPED_TIMES + 1):
+            phrase = words[start : start + size]
+            if all(words[start + size * n : start + size * (n + 1)] == phrase for n in range(1, LOOPED_TIMES)):
+                return True
+    return False
 
 
 class AgentWords:

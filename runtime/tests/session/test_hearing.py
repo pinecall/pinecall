@@ -2,7 +2,8 @@
 
 import pinecall_runtime.session.text as text
 from pinecall_runtime.agents.declaration import Turn
-from pinecall_runtime.session.hearing import AgentWords, policy_for
+from pinecall_runtime.session.hearing import AgentWords, loops, policy_for
+from pinecall_runtime.session.voice import MIN_SPEECH_S, speech_detector
 from pinecall_runtime.wire.commands import TakeoverVerb
 from tests.conftest import needs_the_database
 from tests.session.conftest import (
@@ -83,3 +84,21 @@ def test_the_agents_own_words_heard_back_are_an_echo_for_a_while() -> None:
     assert not words.just_stopped()
     now[0] += 20.0
     assert not words.echoes("How can I help you")
+
+
+def test_the_ears_looping_on_one_phrase_is_never_a_caller() -> None:
+    """Whisper's loop on a breath of noise is dropped whoever speaks; a caller who repeats a word is not."""
+    assert loops("I'm going to make sure that " * 12)
+    assert loops("so the thing is, and then the order and then the order and then the order came")
+    # Two words said over and over is a person stuck on a word, not the ears' loop.
+    assert not loops("the order the order the order")
+    assert not loops("no, no, no, I said Tuesday")
+    assert not loops("I'm going to make sure that I'm going to call you")
+    assert not loops("")
+
+
+@needs_the_database
+async def test_the_ears_hear_only_speech_that_lasts(box: Box) -> None:
+    """A breath opens no segment: Silero waits a quarter second of speech, where livekit's own waits 0.05."""
+    assert spoken_call(box, NOBODY).live.vad is speech_detector()
+    assert MIN_SPEECH_S == 0.25

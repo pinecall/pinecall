@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **A breath or a sigh no longer reaches the ears.** livekit's Silero opens a segment for the ears on
+  0.05 s of speech, and Whisper-family ears write each breath as words ("Thank you.", "Mm-hmm.",
+  "We'll be right back."), which went to the model as the caller's. The session's detector now waits
+  0.25 s: calibrated on a real call, where 0.05 s opened 8 segments for the caller's 4 sentences and
+  0.25 s exactly the 4, while "Sí." and "No." alone (0.35 s of speech, the shortest measured) still open one.
+
+- **The ears looping is never the caller.** On a fraction of a second of noise Whisper writes one
+  phrase over and over ("I'm going to make sure that" forty times); it took the floor from the agent
+  and the turn went to the model. A turn in which a phrase of three words or more comes three times
+  running is dropped, whoever is speaking.
+
 - **A golden's reply is the agent's answer, not the line that covers a tool's wait.** A `reply` step
   reads past the lines said around a tool — the announcement or `say` while a call has no output yet,
   and a line that leads straight into a call in the same answer ("Dejame chequear…") — to the message

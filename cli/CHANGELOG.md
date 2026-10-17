@@ -4,6 +4,10 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- The agent `pinecall new` writes asks only for what the caller has not said and takes the message the moment it has both; its view no longer says "Greet the caller" on every turn, which a model that follows the view to the letter did, greeting again at each one.
+
 ## [0.11.3] — pinecall setup on a screen; a model with its own slash reaches the gateway whole; pinecall team
 
 - **`pinecall setup`**: the runtime on this machine chosen on a screen (Ink). It reads the machine through `pinecall-runtime setup --recommend` — the card and its memory, Apple silicon, RAM, Docker, an Ollama already running, the key variables set — shows every model measured for a voice agent with whether it fits and how it did, and offers five ways: recommended, all local, with keys, stage by stage (the ears, the end of turn, the thinking, the voice, the judge, the simulated caller — each a list narrowed as you type, `local/<tag>` taking any Ollama model) or chat only. It says where each key is (the environment, an unsourced shell file, nowhere) and never takes one; then runs `pinecall-runtime setup --yes` with the answers. `--yes` and a pipe run the recommended stack as the flags amend it; `--recommend` prints the reading.

@@ -11,6 +11,7 @@ from livekit.agents import llm, stt
 from livekit.agents.types import NOT_GIVEN, TimedString
 from livekit.agents.voice import Agent, AgentSession, ModelSettings
 
+from pinecall_runtime.session.hearing import loops
 from pinecall_runtime.session.listener import transcript_of
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.prompt import Blocks, as_asked, request
@@ -118,9 +119,9 @@ class CallAgent(Agent):
             yield delta
 
     # Before the turn detector, and before livekit counts the words that interrupt: the last point
-    # to drop what is not the caller's at no cost of a model. The echo the canceller left (echo.py)
-    # is caught here by its words; the agreement and the ears' inventions only while the agent
-    # speaks, since after it stops "ok" and "thank you" are answers.
+    # to drop what is not the caller's at no cost of a model. The ears looping is never the caller;
+    # the echo the canceller left (echo.py) is caught by its words; the agreement and the ears'
+    # inventions only while the agent speaks, since after it stops "ok" and "thank you" are answers.
     @override
     async def stt_node(self, audio: AsyncIterable[rtc.AudioFrame], model_settings: ModelSettings) -> Heard:
         """What the ears heard, but agreement, inventions and the agent's own voice heard back."""
@@ -131,6 +132,8 @@ class CallAgent(Agent):
     def _not_the_callers(self, event: stt.SpeechEvent) -> bool:
         text = event.alternatives[0].text if event.alternatives else ""
         call, policy = self.call, self.call.turn_policy
+        if loops(text):
+            return True
         if call.agent_speaking and (policy.is_a_backchannel(text) or policy.is_made_up(text)):
             return True
         return (call.agent_speaking or call.agent_words.just_stopped()) and call.agent_words.echoes(text)
