@@ -35,6 +35,7 @@ def test_a_vendor_whose_plugin_takes_no_key_runs_on_none(monkeypatch: pytest.Mon
     assert keyring.takes_a_key("acme") is True
     with pytest.raises(ServiceUnavailable, match="acme has no key"):
         keyring.running_on(keyring.Keyring(), "acme", None)
+
     def never(_vendor: str) -> bool:
         return False
 
