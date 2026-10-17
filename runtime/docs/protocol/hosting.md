@@ -15,10 +15,10 @@ the minor the runtime names (`^0.11.0`), installed when the pod starts: a hosted
 project with `@pinecall/agents` in its dependencies, and the CLI is never one of them. A Ruby or a Python project is not hosted: it runs `pinecall start --prod` on a
 server of its own, and `pinecall deploy` says so.
 
-From a terminal, the endpoints are two verbs of the `pinecall` CLI (0.9.10 and later):
+From a terminal, the endpoints are two verbs of the `pinecall` CLI:
 `pinecall deploy` packs the folder (never `node_modules` or a `.env`), uploads it and follows it
 until it is live or failed, with `list`, `releases`, `rollback <n>` and `rm`; `pinecall secrets`
-sets, lists and drops the org's secrets. Their page is the CLI repo's (`pinecall/cli`) `docs/the-cli.md`.
+sets, lists and drops the org's secrets. Their page is `cli/docs/the-cli.md`.
 
 ## An app and its releases
 

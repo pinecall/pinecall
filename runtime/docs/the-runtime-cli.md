@@ -3,7 +3,7 @@
 The operator's terminal: the two processes, the database, the tenants and the fleet. One verb per
 group; `pinecall-runtime --help` prints them all, `<group> --help` that group's verbs, and
 `--json` before any verb answers as one JSON document, for a script. The tenant's
-terminal is `pinecall`, the CLI repo's (`pinecall/cli`) `docs/the-cli.md`, and they never overlap: nothing here
+terminal is `pinecall`, whose page is `cli/docs/the-cli.md`, and they never overlap: nothing here
 writes an agent, nothing there issues a key.
 
 ## What each group speaks to
@@ -131,12 +131,12 @@ in Secret Manager for the hosting cluster ([protocol/hosting.md](protocol/hostin
 
 ```
 routes list [--org] [--env] · routes add <number> <agent> [--channel phone|whatsapp] [--org] [--env]
-routes rm <number> [--org] · routes seed [--file infra/seed/routes.json]
+routes rm <number> [--org] · routes seed <file>
 ```
 
 `seed` reads a JSON list of routes, each the body `routes add` sends (`number`, `agent`,
-`channel`, `org`, `env`), and adds them one by one. Its default, `infra/seed/routes.json`, is not in
-the repository: name your own file with `--file`.
+`channel`, `org`, `env`), and adds them one by one: how a box comes up from a checkout. The file
+is yours; the repository ships none.
 
 ## `fence`
 
