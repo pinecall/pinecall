@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`setup` chooses a stage at a time**: `--stt`, `--llm` and `--tts` each `local` or a vendor of
+  yours, `--turn` who ends the caller's turn (the ears' own, Smart Turn or LiveKit's), a vendor's
+  key read from `<VENDOR>_API_KEY` or asked once; `--password-stdin` for the CLI's screen.
+  `providers installed` lists what the build runs with no database. A plugin whose classes take
+  no key (an open model in this process) runs on none.
+
 - **A person's password set with no link.** `PUT /v1/members/{id}/password` for an admin of the org,
   `pinecall-runtime orgs password <org> <email>` for the operator (typed twice, or read from stdin);
   an invited person becomes active by it. `setup` makes the console's person with a password in

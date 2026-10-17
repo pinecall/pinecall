@@ -1,146 +1,236 @@
-"""What `setup` runs a call on: open models on this machine, or the vendors' own keys; the row seeded for either."""
+"""What `setup` runs a call on, stage by stage: an open model on this machine or a vendor of yours; the row for it."""
 
 import json
 import os
 import socket
 import subprocess
 import urllib.request
-from enum import StrEnum
+from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 from shutil import which
+from typing import Literal
 
 import typer
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import orgs
+from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.cli.command import Context
 from pinecall_runtime.cli.output import Printer
 from pinecall_runtime.exceptions import Conflict, UpstreamError, ValidationError
 from pinecall_runtime.providers import service as providers
 
+# The word for an open model on this machine, in any stage's answer.
+LOCAL = "local"
+type Turn = Literal["stt", "smart-turn", "livekit"]
+# How the end of the caller's turn is read: the ears' own endpointing, or a model on the worker's CPU.
+TURNS: tuple[Turn, ...] = ("stt", "smart-turn", "livekit")
+TURN_MODELS: dict[Turn, str | None] = {"stt": None, "smart-turn": "smart-turn-v3", "livekit": "v1-mini"}
 
-class Models(StrEnum):
-    """Where a call's ears, model and voice come from."""
-
-    local = "local"
-    keys = "keys"
-    none = "none"
-
-
-# Open models on this machine, through the `openai` plugin and a `base_url` per stage. Provisional
-# until the P0 measurements name them (DEV-FIRST.md): the LLM must call tools, in Spanish, on a CPU.
+# Open models on this machine, through the `openai` plugin and a `base_url` per stage (DEV-FIRST.md).
 LOCAL_LLM = "qwen3:4b"
 LOCAL_STT = "deepdml/faster-whisper-large-v3-turbo-ct2"
+LOCAL_TTS = "kokoro"
+# The embedder is always local: changing it would blind every base and every memory.
+LOCAL_EMBEDDER = "bge-m3"
 # The three servers, on loopback, as `providers.local.json` reaches them.
 MODEL_PORTS = {"Ollama": 11434, "Whisper": 8000, "Kokoro": 8880}
-# What the servers ask for a key: nothing; the plugin wants one, so the org holds this word.
+# What the local servers ask for a key: nothing; the plugin wants one, so the org holds this word.
 NO_KEY_NEEDED = "local"
-# The vendors `--models keys` runs on, and the variable each key is read from.
-KEY_VARIABLES = {
-    "anthropic": "ANTHROPIC_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "deepgram": "DEEPGRAM_API_KEY",
-    "cartesia": "CARTESIA_API_KEY",
-}
-
+# The vendors `--models keys` means when no stage is named.
+KEYS_DEFAULTS = {"stt": "deepgram", "llm": "anthropic", "tts": "cartesia"}
 MODELS_FAILED = "docker compose could not bring the models up:\n{output}"
 PULL_FAILED = "pulling the models did not finish:\n{output}"
 ROW_THERE = "row        the providers row is there already: left as it is (the console edits it)"
-ASK_MODELS = (
-    "models: local (open models on this machine, no account, ~4 GB pulled once) · "
-    "keys (your vendors' keys) · none (the row is yours)"
-)
-NO_KEY_GIVEN = (
-    "no key given: set OPENAI_API_KEY or ANTHROPIC_API_KEY (and DEEPGRAM_API_KEY, CARTESIA_API_KEY "
-    "for voice), or answer the questions"
-)
+NO_KEY_FOR = "{vendor} needs a key: set {variable}, or answer when asked at a terminal"
+WHISPER_ENDS_NO_TURN = "the local ears (Whisper) end no turn themselves: --turn smart-turn or livekit"
 
 
-def ask_models() -> Models:
-    """The one question `setup` asks, at a terminal."""
-    answer = typer.prompt(ASK_MODELS, default=Models.local.value)
-    try:
-        return Models(answer.strip().lower())
-    except ValueError:
-        raise ValidationError(f"models is local, keys or none, not {answer!r}") from None
+@dataclass(frozen=True)
+class Choices:
+    """One vendor or `local` per stage, and who reads the end of the caller's turn."""
+
+    stt: str = LOCAL
+    turn: Turn = "smart-turn"
+    llm: str = LOCAL
+    tts: str = LOCAL
+
+    @property
+    def vendors(self) -> frozenset[str]:
+        """The vendors of yours among the choices."""
+        return frozenset(vendor_of(choice) for choice in (self.stt, self.llm, self.tts) if choice != LOCAL)
 
 
-# ── open models on this machine ──
+# A choice names a vendor, or a vendor and the model it runs: `hf/Qwen/Qwen2.5-3B-Instruct`.
+def vendor_of(choice: str) -> str:
+    """The vendor a choice names."""
+    return choice.partition("/")[0]
 
 
-async def local_models(runtime: Context, where: Path, llm: str, chat_only: bool, out: Printer) -> None:
-    """The servers up, the models pulled once, the row written for them, the org given the one word they take."""
-    host_ollama = answers(MODEL_PORTS["Ollama"])
-    models_up(where, llm, chat_only=chat_only, host_ollama=host_ollama)
-    if host_ollama:
-        pull_on_host(llm)
-    served = [f"Ollama :{MODEL_PORTS['Ollama']} ({llm}, bge-m3){' on this machine' if host_ollama else ''}"]
-    if not chat_only:
-        served += [f"Whisper :{MODEL_PORTS['Whisper']}", f"Kokoro :{MODEL_PORTS['Kokoro']}"]
-    out.line("models     " + " · ".join(served) + " — open models, no account")
-    await seed(runtime, local_row(llm, LOCAL_STT, chat_only=chat_only), {"openai": NO_KEY_NEEDED}, out)
-    warm_embedder()
+def model_of(choice: str) -> str | None:
+    """The model a choice names after its vendor, if any."""
+    _, _, model = choice.partition("/")
+    return model or None
 
 
-# A turn's lookup waits 3 s for its search; the embedder's first request after a start loads the
-# model (3.4 s for bge-m3 on an L4, longer on a CPU), so the first caller's search would miss.
-# Measured on the GPU test machine, 2026-10-17.
-def warm_embedder() -> None:
-    """One embedding asked of Ollama, so bge-m3 is loaded before the first call searches."""
-    body = json.dumps({"model": "bge-m3", "input": ["warm"], "encoding_format": "float", "dimensions": 1024})
-    asked = urllib.request.Request(
-        f"http://127.0.0.1:{MODEL_PORTS['Ollama']}/v1/embeddings",
-        data=body.encode(),
-        headers={"content-type": "application/json"},
+ALL_LOCAL = Choices()
+ALL_KEYS = Choices(stt=KEYS_DEFAULTS["stt"], turn="stt", llm=KEYS_DEFAULTS["llm"], tts=KEYS_DEFAULTS["tts"])
+
+
+def turn_of(text: str) -> Turn:
+    """The turn a flag or an answer names, one of three."""
+    named = text.strip().lower()
+    if named not in TURNS:
+        raise ValidationError(f"--turn is one of {', '.join(TURNS)}, not {text!r}")
+    return named
+
+
+def check_choices(choices: Choices) -> Choices:
+    """Each vendor installed and doing its stage; the turn one the ears can read."""
+    stages: tuple[tuple[Modality, str], ...] = (("stt", choices.stt), ("llm", choices.llm), ("tts", choices.tts))
+    for stage, choice in stages:
+        if choice != LOCAL:
+            providers.vendor_doing(vendor_of(choice), stage)
+    if choices.turn not in TURNS:
+        raise ValidationError(f"--turn is one of {', '.join(TURNS)}, not {choices.turn!r}")
+    if choices.turn == "stt" and (choices.stt == LOCAL or not providers.ends_turns(vendor_of(choices.stt))):
+        who = "the local ears (Whisper)" if choices.stt == LOCAL else choices.stt
+        raise ValidationError(f"{who} end no turn themselves: --turn smart-turn or livekit")
+    return choices
+
+
+def ask_choices() -> Choices:
+    """The four questions, at a terminal: each stage's list is what this build runs."""
+    stt = _ask("ears: who hears the caller?", "stt")
+    turns = [turn for turn in TURNS if turn != "stt" or (stt != LOCAL and providers.ends_turns(stt))]
+    turn = typer.prompt(f"end of turn: {' · '.join(turns)}", default="stt" if "stt" in turns else "smart-turn")
+    llm = _ask("thinking: which model?", "llm")
+    tts = _ask("voice: who speaks?", "tts")
+    return check_choices(Choices(stt=stt, turn=turn.strip(), llm=llm, tts=tts))
+
+
+def _ask(question: str, stage: str) -> str:
+    listed = sorted(
+        name for name, vendor in providers.installed().items() if vendor.broken is None and stage in vendor.does
     )
-    try:
-        with urllib.request.urlopen(asked, timeout=120):
-            pass
-    except OSError as failed:
-        raise UpstreamError(f"Ollama did not embed with bge-m3: {failed}") from failed
+    answer: str = typer.prompt(f"{question}  {LOCAL} · {' · '.join(listed)}", default=LOCAL)
+    return answer.strip().lower()
 
 
-def local_row(llm: str, stt: str, *, chat_only: bool) -> providers.Catalog:
-    """The row the package ships for the local models, these two named; chat alone keeps no ears and no voice."""
+# ── the row ──
+
+
+def row_of(choices: Choices) -> providers.Catalog:
+    """The providers row for the choices: local stages on the openai plugin and a base_url each, vendors bare."""
     text = files("pinecall_runtime.cli").joinpath("local", "providers.local.json").read_text(encoding="utf-8")
-    row = json.loads(text.replace("LOCAL_LLM", llm).replace("LOCAL_STT", stt))
-    if chat_only:
-        row["defaults"] = {"llm": row["defaults"]["llm"]}
-        row["tuning"] = {"llm/openai": row["tuning"]["llm/openai"]}
-        row.pop("voices", None)
+    shipped = json.loads(text.replace("LOCAL_LLM", LOCAL_LLM).replace("LOCAL_STT", LOCAL_STT))
+    row: dict[str, object] = {"rates": shipped["rates"], "embedding": shipped["embedding"]}
+    defaults: dict[str, dict[str, str]] = {}
+    tuning: dict[str, dict[str, object]] = {}
+    for stage, choice in (("stt", choices.stt), ("llm", choices.llm), ("tts", choices.tts)):
+        if choice == LOCAL:
+            defaults[stage] = shipped["defaults"][stage]
+            tuning[f"{stage}/openai"] = dict(shipped["tuning"][f"{stage}/openai"])
+        else:
+            defaults[stage] = {"vendor": vendor_of(choice), **({"model": model} if (model := model_of(choice)) else {})}
+    model = TURN_MODELS[choices.turn]
+    stt_key = f"stt/{'openai' if choices.stt == LOCAL else vendor_of(choices.stt)}"
+    turned = {k: v for k, v in tuning.get(stt_key, {}).items() if k != "turn_model"}
+    if model is not None:
+        turned["turn_model"] = model
+    if turned:
+        tuning[stt_key] = turned
+    elif stt_key in tuning:
+        del tuning[stt_key]
+    thinking = defaults["llm"]
+    row.update(
+        defaults=defaults,
+        tuning=tuning,
+        voices=shipped["voices"] if choices.tts == LOCAL else {},
+        judge={"llm": thinking, "ceiling_usd": shipped["judge"]["ceiling_usd"]},
+        caller={"llm": thinking, "ceiling_usd": shipped["caller"]["ceiling_usd"]},
+    )
     return providers.Catalog.model_validate(row)
 
 
-def models_up(where: Path, llm: str, *, chat_only: bool, host_ollama: bool) -> None:
-    """The servers up and their models pulled once: no Ollama where the machine has its own, no voice for chat alone."""
-    profiles = [*([] if host_ollama else ["--profile", "ollama"]), *([] if chat_only else ["--profile", "voice"])]
-    if not profiles:
-        return
-    compose = ["docker", "compose", "-f", str(where / "models.yaml"), *profiles]
-    environment = {**os.environ, "LOCAL_LLM": llm, "LOCAL_STT": LOCAL_STT}
-    serving = [*([] if host_ollama else ["ollama"]), *([] if chat_only else ["whisper", "kokoro"])]
-    up = subprocess.run(
-        [*compose, "up", "-d", "--wait", *serving], capture_output=True, text=True, check=False, env=environment
-    )
-    if up.returncode != 0:
-        raise UpstreamError(MODELS_FAILED.format(output=(up.stderr or up.stdout).strip()[-2000:]))
-    pulls = [*([] if host_ollama else ["ollama-models"]), *([] if chat_only else ["whisper-model"])]
+# ── the keys ──
+
+
+def key_variable(vendor: str) -> str:
+    """The environment variable a vendor's key is read from: `DEEPGRAM_API_KEY`."""
+    return f"{vendor.upper().replace('-', '_')}_API_KEY"
+
+
+def keys_for(choices: Choices, *, asking: bool) -> tuple[dict[str, str], list[str]]:
+    """Each chosen vendor's key, from its variable or asked once; and which came from the environment."""
+    given: dict[str, str] = {}
+    read: list[str] = []
+    for vendor in sorted(choices.vendors):
+        if not providers.takes_a_key(vendor):
+            continue
+        variable = key_variable(vendor)
+        found = os.environ.get(variable, "").strip()
+        if found:
+            given[vendor] = found
+            read.append(variable)
+        elif asking:
+            typed = typer.prompt(variable, hide_input=True, show_default=False).strip()
+            if not typed:
+                raise ValidationError(NO_KEY_FOR.format(vendor=vendor, variable=variable))
+            given[vendor] = typed
+        else:
+            raise ValidationError(NO_KEY_FOR.format(vendor=vendor, variable=variable))
+    # The embedder is local, on the openai plugin, whatever the stages: the plugin wants a key.
+    given.setdefault("openai", NO_KEY_NEEDED)
+    return given, read
+
+
+# ── the servers ──
+
+
+def models_up(where: Path, choices: Choices, *, host_ollama: bool) -> list[str]:
+    """The local servers up and their models pulled once; the lines that say what runs where."""
+    voice = [name for name, choice in (("whisper", choices.stt), ("kokoro", choices.tts)) if choice == LOCAL]
+    on_ollama = LOCAL_EMBEDDER + (f", {LOCAL_LLM}" if choices.llm == LOCAL else "")
+    served = [f"Ollama :{MODEL_PORTS['Ollama']} ({on_ollama}){' on this machine' if host_ollama else ''}"]
+    compose = ["docker", "compose", "-f", str(where / "models.yaml")]
+    profiles = [*([] if host_ollama else ["--profile", "ollama"]), *(["--profile", "voice"] if voice else [])]
+    environment = {**os.environ, "LOCAL_LLM": LOCAL_LLM, "LOCAL_STT": LOCAL_STT}
+    serving = [*([] if host_ollama else ["ollama"]), *voice]
+    if serving:
+        up = subprocess.run(
+            [*compose, *profiles, "up", "-d", "--wait", *serving],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=environment,
+        )
+        if up.returncode != 0:
+            raise UpstreamError(MODELS_FAILED.format(output=(up.stderr or up.stdout).strip()[-2000:]))
+    pulls = [*([] if host_ollama else ["ollama-models"]), *(["whisper-model"] if "whisper" in voice else [])]
     for puller in pulls:
         pulled = subprocess.run(
-            [*compose, "run", "--rm", puller], capture_output=True, text=True, check=False, env=environment
+            [*compose, *profiles, "run", "--rm", puller], capture_output=True, text=True, check=False, env=environment
         )
         if pulled.returncode != 0:
             raise UpstreamError(PULL_FAILED.format(output=(pulled.stderr or pulled.stdout).strip()[-2000:]))
+    if host_ollama:
+        pull_on_host([LOCAL_EMBEDDER, *([LOCAL_LLM] if choices.llm == LOCAL else [])])
+    if "whisper" in voice:
+        served.append(f"Whisper :{MODEL_PORTS['Whisper']}")
+    if "kokoro" in voice:
+        served.append(f"Kokoro :{MODEL_PORTS['Kokoro']}")
+    return served
 
 
-def pull_on_host(llm: str) -> None:
-    """The two models pulled by the Ollama this machine already runs."""
+def pull_on_host(models: list[str]) -> None:
+    """The models pulled by the Ollama this machine already runs."""
     if which("ollama") is None:
         raise UpstreamError(
-            f"something answers on :{MODEL_PORTS['Ollama']} but `ollama` is not on PATH: pull {llm} and bge-m3 there"
+            f"something answers on :{MODEL_PORTS['Ollama']} but `ollama` is not on PATH: pull {', '.join(models)} there"
         )
-    for model in (llm, "bge-m3"):
+    for model in models:
         pulled = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, check=False)
         if pulled.returncode != 0:
             raise UpstreamError(PULL_FAILED.format(output=(pulled.stderr or pulled.stdout).strip()[-2000:]))
@@ -155,49 +245,41 @@ def answers(port: int) -> bool:
         return False
 
 
-# ── the vendors' own keys ──
+# A turn's lookup waits 3 s for its search; the embedder's first request after a start loads the
+# model (3.4 s for bge-m3 on an L4, longer on a CPU), so the first caller's search would miss.
+def warm_embedder() -> None:
+    """One embedding asked of Ollama, so bge-m3 is loaded before the first call searches."""
+    body = json.dumps({"model": LOCAL_EMBEDDER, "input": ["warm"], "encoding_format": "float", "dimensions": 1024})
+    asked = urllib.request.Request(
+        f"http://127.0.0.1:{MODEL_PORTS['Ollama']}/v1/embeddings",
+        data=body.encode(),
+        headers={"content-type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(asked, timeout=120):
+            pass
+    except OSError as failed:
+        raise UpstreamError(f"Ollama did not embed with {LOCAL_EMBEDDER}: {failed}") from failed
 
 
-async def vendor_keys(runtime: Context, asking: bool, out: Printer) -> None:
-    """The keys read from the environment, the missing ones asked at a terminal, the row written for those keyed."""
-    given = {vendor: os.environ[variable] for vendor, variable in KEY_VARIABLES.items() if os.environ.get(variable)}
-    if asking:
-        for vendor, variable in KEY_VARIABLES.items():
-            if vendor not in given:
-                typed = typer.prompt(f"{variable} (blank to skip)", default="", hide_input=True, show_default=False)
-                if typed.strip():
-                    given[vendor] = typed.strip()
-    if not given:
-        raise ValidationError(NO_KEY_GIVEN)
-    row = keys_row(frozenset(given))
-    out.line("keys       " + " · ".join(sorted(given)) + (f" — {missing}" if (missing := missing_stages(row)) else ""))
-    await seed(runtime, row, given, out)
+# ── all of it ──
 
 
-def keys_row(vendors: frozenset[str]) -> providers.Catalog:
-    """The row for the vendors keyed: Anthropic thinks when keyed, else OpenAI; Deepgram hears; Cartesia speaks."""
-    defaults: dict[str, dict[str, str]] = {}
-    if "anthropic" in vendors:
-        defaults["llm"] = {"vendor": "anthropic"}
-    elif "openai" in vendors:
-        defaults["llm"] = {"vendor": "openai"}
-    if "deepgram" in vendors:
-        defaults["stt"] = {"vendor": "deepgram"}
-    if "cartesia" in vendors:
-        defaults["tts"] = {"vendor": "cartesia"}
-    return providers.Catalog.model_validate({"defaults": defaults})
-
-
-def missing_stages(row: providers.Catalog) -> str:
-    """What the row cannot do yet, in one clause; empty when it can hear, think and speak."""
-    missing = [stage for stage in ("llm", "stt", "tts") if stage not in row.defaults]
-    if not missing:
-        return ""
-    words = {"llm": "no model to think with: chat needs one", "stt": "no ears", "tts": "no voice"}
-    return "; ".join(words[stage] for stage in missing)
-
-
-# ── the row ──
+async def models(runtime: Context, where: Path, choices: Choices, *, asking: bool, out: Printer) -> None:
+    """The servers the choices need up, the keys they need kept, the row written: what `setup` does for the models."""
+    keys, read = keys_for(choices, asking=asking)
+    served = models_up(where, choices, host_ollama=answers(MODEL_PORTS["Ollama"]))
+    out.line("models     " + " · ".join(served) + " — open models, no account")
+    chosen = " · ".join(
+        f"{vendor} {stage}"
+        for stage, vendor in (("hears", choices.stt), ("thinks", choices.llm), ("speaks", choices.tts))
+        if vendor != LOCAL
+    )
+    if chosen:
+        out.line(f"vendors    {chosen}" + (f" — read from the environment: {', '.join(read)}" if read else ""))
+    out.line(f"turn       {choices.turn}")
+    await seed(runtime, row_of(choices), keys, out)
+    warm_embedder()
 
 
 async def seed(runtime: Context, row: providers.Catalog, credentials: dict[str, str], out: Printer) -> None:

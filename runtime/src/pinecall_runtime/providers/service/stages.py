@@ -254,6 +254,21 @@ def check_credentials(vendor: str, credentials: Credentials) -> None:
             )
 
 
+# A plugin whose classes take no key (an open model run in this process) runs on none: the keyring
+# asks nothing of the org or the box for it.
+def takes_a_key(vendor: str) -> bool:
+    """Whether any class of the vendor's plugin takes a key."""
+    return bool(_every_parameter(vendor) & set(THE_KEY))
+
+
+# The ears that close a turn themselves take the agent's endpointing: a vendor whose STT takes none
+# needs a turn model beside it (Smart Turn, LiveKit's) to say when the caller finished.
+def ends_turns(vendor: str) -> bool:
+    """Whether the vendor's ears take an endpointing of their own."""
+    made = getattr(plugin(vendor), CLASS_OF["stt"], None)
+    return isinstance(made, type) and bool(_parameters(made) & set(KNOB_NAMES["endpointing_ms"]))
+
+
 # ── private ──
 
 

@@ -40,6 +40,34 @@ async def providers_list(
     return OK
 
 
+# No database: what this build can run, for a setup that has not brought the services up yet.
+@app.command("installed")
+@verb
+async def providers_installed(ctx: typer.Context) -> int:
+    """Every vendor this build runs, what it does, and whether its ears end the caller's turn themselves."""
+    context = context_of(ctx)
+    vendors = sorted(providers.installed().values(), key=lambda vendor: vendor.name)
+    rows = [
+        {
+            "vendor": vendor.name,
+            "does": sorted(vendor.does),
+            "ends_turns": vendor.broken is None and "stt" in vendor.does and providers.ends_turns(vendor.name),
+            "broken": vendor.broken,
+        }
+        for vendor in vendors
+    ]
+    context.out.rows(
+        rows,
+        (
+            ("vendor", lambda row: row["vendor"]),
+            ("does", lambda row: row["does"]),
+            ("ends turns", lambda row: "yes" if row["ends_turns"] else "no"),
+            ("state", lambda row: "broken" if row["broken"] else "ready"),
+        ),
+    )
+    return OK
+
+
 # Once: a box that has a row is edited from the console, and a second seed is refused.
 @app.command("seed")
 @verb

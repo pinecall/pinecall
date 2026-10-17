@@ -51,9 +51,11 @@ from pinecall_runtime.providers.service.stages import (
     check_credentials,
     completion_usage,
     default_voice,
+    ends_turns,
     llm_of,
     refuse_untaken_knobs,
     stt_of,
+    takes_a_key,
     tts_of,
 )
 from pinecall_runtime.providers.service.trials import try_stage
@@ -92,6 +94,7 @@ __all__ = [
     "default_voice",
     "drop_box_credentials",
     "drop_own_credentials",
+    "ends_turns",
     "get_catalog",
     "installed",
     "installed_vendor",
@@ -116,6 +119,7 @@ __all__ = [
     "seed_catalog",
     "stage_on_its_key",
     "stt_of",
+    "takes_a_key",
     "thinking_of",
     "try_stage",
     "tts_of",

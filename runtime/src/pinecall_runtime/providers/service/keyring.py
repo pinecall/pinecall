@@ -36,6 +36,7 @@ from pinecall_runtime.providers.service.plugins import (
     Vendor,
     primary_language,
 )
+from pinecall_runtime.providers.service.stages import takes_a_key
 from pinecall_runtime.wire.parts import EndOfTurn
 
 logger = logging.getLogger(__name__)
@@ -225,6 +226,8 @@ def running_on(keys: Keyring, vendor: str, model: str | None) -> Running:
         return Running(vendor=vendor, credentials=own, model=model)
     box = keys.box.get(vendor)
     if box is None:
+        if not takes_a_key(vendor):
+            return Running(vendor=vendor, credentials="", model=model)
         raise ServiceUnavailable(f"{vendor} has no key: the org brought none and the box holds none")
     if not is_lent(keys.lends, vendor, model):
         raise Forbidden(lending_refusal(keys.lends or frozenset(), vendor, model))

@@ -31,44 +31,49 @@ variable they read is
 ## `setup`
 
 ```
-pinecall-runtime setup [--dir <path>] [--org] [--email <address>] [--person "…"] [--models local|keys|none] [--chat-only]
-                       [--llm <model>] [--yes] [--services-only]
+pinecall-runtime setup [--dir <path>] [--email <address>] [--person "…"] [--password-stdin]
+                       [--stt local|<vendor>] [--turn stt|smart-turn|livekit] [--llm local|<vendor>] [--tts local|<vendor>]
+                       [--models local|keys|none] [--chat-only] [--org] [--yes] [--services-only]
 ```
 
 This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
 again. It is `local up` and every decision a first run asks, in order, each printed as one line
 and skipped when already done: Docker found (else the sentence that says what to install), the
-services up and the schema at this release, a key, the models, and the gateway and a worker
-running as `local up` runs them.
+services up and the schema at this release, the console's person, this machine's key, the
+models, and the gateway and a worker running as `local up` runs them. `pinecall setup`, the CLI's,
+asks the same with a screen and runs this with its answers.
 
-**The person.** Every run makes sure somebody signs in to the console: the address `--email` names,
-or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an admin and an
-operator of the org `default`, with a password and no invitation link — typed twice without echo
-at a terminal, else drawn and printed this once. Run again, a person who has a password keeps it;
-`orgs password default <email>` changes it, and `pinecall team password` does from the CLI.
+**The person.** Every run makes sure somebody signs in to the console: the address `--email`
+names, or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an admin and
+an operator of the org `default`, with a password and no invitation link — typed twice without
+echo at a terminal, one line of stdin with `--password-stdin`, else drawn and printed this once.
+Run again, a person who has a password keeps it; `orgs password default <email>` changes it, and
+`pinecall team password` does from the CLI.
 
 **The key.** Without `--org`, this machine is an org of one: the person's own key, drawn once into
 `<dir>/env` as `PINECALL_DEV_KEY` and handed to the CLI in `~/.pinecall/local.json`
 (`PINECALL_HOME` moves it; owner-only). A person's key, not a server's, because in the sandbox a
 person's console shows that person's own copy of the agents: what `pinecall start` holds on it is
-what the console they sign in to shows. A `pinecall` verb
-run in a project with no `PINECALL_KEY` of its own acts on that key at `http://127.0.0.1:8080`:
-no `login` and no `link`. `--org` is a team's runtime instead: no key is handed over, and the CLI
-signs in as the person, with `pinecall login <url>` and `pinecall link`.
+what the console they sign in to shows. `--org` is a team's runtime instead: no key is handed
+over, and the CLI signs in as the person, with `pinecall login <url>` and `pinecall link`.
 
-**The models.** `--models local` (the answer `--yes` gives) runs open models on this machine
-through the `openai` plugin, each with a `base_url` of its own, the same three servers
-`infra/models/` runs on a card, in their CPU images: Ollama (`--llm`, `qwen3:4b` unless named,
-and `bge-m3` for memory and knowledge, :11434), Whisper on Speaches (:8000) and Kokoro (:8880),
-every port on loopback, the models pulled once into Docker volumes. An Ollama already answering
-on :11434 is used instead of the container (a Mac runs it on its GPU, which Docker cannot), its
-two models pulled there. The providers row is written for them, the org `default` given the word
-`local` as its `openai` key (the servers ask for none; the plugin wants one), and the console
-edits the row from then on — a row already there is left as it is. `--models keys` runs on the
-vendors' own keys: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` to think, `DEEPGRAM_API_KEY` to hear,
-`CARTESIA_API_KEY` to speak, read from the environment and asked for, one at a time, when a
-terminal is there (blank skips one); the row names the vendors keyed, and the line says what is
-still missing. `--models none` leaves the row to `providers seed`.
+**The models, a stage at a time.** Each of the ears (`--stt`), the thinking (`--llm`) and the
+voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
+build runs (`providers installed` lists them); `--turn` says who ends the caller's turn: `stt`,
+the ears' own endpointing (only for ears that have one: Whisper does not), `smart-turn` (Smart
+Turn v3) or `livekit` (its v1-mini), both read off the audio on the worker's CPU. A terminal with
+no stage named is asked the four. A local stage runs through the `openai` plugin with a
+`base_url` of its own, the same three servers `infra/models/` runs on a card, in their CPU images:
+Ollama (`qwen3:4b`, :11434), Whisper on Speaches (:8000), Kokoro (:8880), every port on loopback,
+the models pulled once into Docker volumes; an Ollama already answering on :11434 is used instead
+of the container. Memory and documents embed on `bge-m3`, on Ollama, always: the embedder is
+never a choice, since changing it would blind every base and every memory. A vendor's key is read
+from its variable (`DEEPGRAM_API_KEY`, `<VENDOR>_API_KEY`), else asked once without echo, and
+held sealed by the org `default` and by the box — the judges at hang-up and the simulated caller
+run on the box's keys, on the model chosen to think. The providers row is written for the choices
+and the console edits it from then on; a row already there is left as it is. `--models local` is
+every stage local (what `--yes` answers), `--models keys` deepgram, anthropic and cartesia with
+the ears' own endpointing, `--models none` leaves the row to `providers seed`.
 
 **`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
 nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,
@@ -286,6 +291,7 @@ with its record, and every dial to it placed or refused, with the org, the envir
 and who asked — 24 months back unless `--since` says a day. `migrate up` applies what the
 database lacks, `migrate status` says what it lacks (exit 1 while behind), `migrate plan` names
 every migration on the disk. `providers list [--does llm|stt|tts]` lists every vendor this build
+(`providers installed` the same with no database, and whether each vendor's ears end the turn)
 runs and whether the platform holds its key; `providers seed <file>` writes the providers row a deployment
 starts from, once: after it, the console edits it at `/v1/ops/providers`. `providers prices
 <file.csv> [--apply]` says what a prices file changes in the row's rates (new, changed, the same,

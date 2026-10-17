@@ -18,7 +18,7 @@ from pinecall_runtime.cli import orgs as orgs_cli
 from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.enums import Role
-from pinecall_runtime.exceptions import UpstreamError
+from pinecall_runtime.exceptions import UpstreamError, ValidationError
 
 # Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it); the key setup makes is
 # handed to it there, in a file of its own, read by the CLI when a project has no key of its own.
@@ -57,12 +57,24 @@ async def setup(
         ),
     ] = False,
     models: Annotated[
-        models_.Models | None, typer.Option("--models", help="local · keys · none; asked when a terminal is there.")
+        str | None,
+        typer.Option(
+            "--models",
+            help="local: every stage on this machine · keys: deepgram, anthropic, cartesia · none: the row is yours.",
+        ),
     ] = None,
+    stt: Annotated[str | None, typer.Option("--stt", help="Who hears the caller: local, or a vendor of yours.")] = None,
+    turn: Annotated[
+        str | None, typer.Option("--turn", help="Who ends the caller's turn: stt, smart-turn or livekit.")
+    ] = None,
+    llm: Annotated[str | None, typer.Option("--llm", help="Who thinks: local, or a vendor of yours.")] = None,
+    tts: Annotated[str | None, typer.Option("--tts", help="Who speaks: local, or a vendor of yours.")] = None,
     chat_only: Annotated[
         bool, typer.Option("--chat-only", help="Written calls alone: no LiveKit, no worker, no ears, no voice.")
     ] = False,
-    llm: Annotated[str, typer.Option("--llm", help="The Ollama model `local` thinks with.")] = models_.LOCAL_LLM,
+    password_stdin: Annotated[
+        bool, typer.Option("--password-stdin", help="The console person's password read as one line of stdin.")
+    ] = False,
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Ask nothing: local models, this machine's key.")] = False,
     services_only: Annotated[
         bool, typer.Option("--services-only", help="Everything but running the gateway and the worker.")
@@ -93,16 +105,14 @@ async def setup(
     out.line("schema     at this release")
     runtime = Context(local.settings_of(values), out)
     async with runtime.stack:
-        said, member = await _the_person(runtime, email, person, asking)
+        said, member = await _the_person(runtime, email, person, asking, password_stdin)
         out.line(said)
         if not org_mode:
             handed = await _this_machines_key(runtime, values, env, member)
             out.line(f"key        this machine's, in {handed}: the CLI finds this runtime by itself")
-        chosen = models if models is not None else (models_.ask_models() if asking else models_.Models.local)
-        if chosen is models_.Models.local:
-            await models_.local_models(runtime, where, llm, chat_only, out)
-        elif chosen is models_.Models.keys:
-            await models_.vendor_keys(runtime, asking, out)
+        choices = _choices(models, stt, turn, llm, tts, asking=asking, chat_only=chat_only)
+        if choices is not None:
+            await models_.models(runtime, where, choices, asking=asking, out=out)
     out.line(f"ready      console {local.GATEWAY_URL}/sandbox/")
     out.line(NEXT_ORG.format(url=local.GATEWAY_URL) if org_mode else NEXT)
     if services_only:
@@ -112,6 +122,35 @@ async def setup(
         if chat_only
         else local.run_both(context, values, ["gateway"], ["worker", "start"])
     )
+
+
+# What the flags say, else the four questions at a terminal, else every stage on this machine.
+def _choices(
+    models: str | None,
+    stt: str | None,
+    turn: str | None,
+    llm: str | None,
+    tts: str | None,
+    *,
+    asking: bool,
+    chat_only: bool,
+) -> models_.Choices | None:
+    if models == "none":
+        return None
+    if models not in (None, "local", "keys"):
+        raise ValidationError(f"--models is local, keys or none, not {models!r}")
+    base = models_.ALL_KEYS if models == "keys" else models_.ALL_LOCAL
+    if models is None and asking and not any((stt, turn, llm, tts)):
+        base = models_.ask_choices()
+    chosen = models_.Choices(
+        stt=(stt or base.stt).strip().lower(),
+        turn=models_.turn_of(turn or base.turn),
+        llm=(llm or base.llm).strip().lower(),
+        tts=(tts or base.tts).strip().lower(),
+    )
+    if chat_only:
+        chosen = models_.Choices(stt=models_.LOCAL, turn="smart-turn", llm=chosen.llm, tts=models_.LOCAL)
+    return models_.check_choices(chosen)
 
 
 # ── this machine's key ──
@@ -160,7 +199,9 @@ def hand_to_cli(secret: str, home: Path) -> Path:
 
 # The person the console signs in as, with a password and no link: asked at a terminal, drawn and
 # shown once where nobody is. Run again, a person who has a password keeps it.
-async def _the_person(runtime: Context, email: str | None, person: str | None, asking: bool) -> tuple[str, str]:
+async def _the_person(
+    runtime: Context, email: str | None, person: str | None, asking: bool, password_stdin: bool
+) -> tuple[str, str]:
     address = email or (typer.prompt("console sign-in: your email") if asking else NOBODY_ASKED)
     name = person or address.split("@", 1)[0]
     shortest = runtime.settings.min_password
@@ -174,8 +215,8 @@ async def _the_person(runtime: Context, email: str | None, person: str | None, a
             invitee = members.Invitee(address, name, Role.admin)
             await members.invite(session, org.id, invitee, seats=None, vouched=True)
             found = await members.member_by_email(session, org.id, address)
-        drawn = None if asking else secrets.token_urlsafe(DRAWN_BYTES)
-        password = drawn or orgs_cli.new_password(asking=True)
+        drawn = None if asking or password_stdin else secrets.token_urlsafe(DRAWN_BYTES)
+        password = drawn or (orgs_cli.read_secret_line() if password_stdin else orgs_cli.new_password(asking=True))
         await members.set_password(session, org.id, found.id, password, shortest)
         await members.set_operator(session, org.id, found.id, on=True)
     if drawn is None:
