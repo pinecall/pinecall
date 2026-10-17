@@ -16,7 +16,14 @@ class {{Class}}Test < Minitest::Test
   def view = Pinecall.render(@agent, line: { channel: "phone" })[:view]
 
   def test_until_there_is_a_message_the_view_asks_for_one
-    assert_includes view, "ask for their name and what the call is about"
+    assert_includes view, "ask only for what the caller has not said yet"
+  end
+
+  def test_nothing_is_written_down_on_a_blank_or_a_guess
+    error = assert_raises(ArgumentError) { @agent.run_tool("take_message", { name: "Ana", about: "not specified" }) }
+
+    assert_includes error.message, "Nothing was written down"
+    assert_equal :ask, @agent.stage
   end
 
   def test_a_message_taken_ends_the_call_with_it

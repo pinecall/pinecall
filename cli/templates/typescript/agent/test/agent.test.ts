@@ -22,7 +22,7 @@ function view(): string {
 }
 
 it("asks for a message until there is one", () => {
-  expect(view()).toContain("ask for their name and what the call is about");
+  expect(view()).toContain("ask only for what the caller has not said yet");
 });
 
 it("ends the call with the message it took", async () => {
@@ -30,4 +30,11 @@ it("ends the call with the message it took", async () => {
 
   expect(agent.stage).toBe("done");
   expect(view()).toContain("Ana, about a refund");
+});
+
+it("writes nothing down on a blank or a guess", async () => {
+  await expect(runTool(agent, toolNamed(agent, "takeMessage") as ToolDeclaration, { name: "Ana", about: "not specified" })).rejects.toThrow(
+    "Nothing was written down",
+  );
+  expect(agent.stage).toBe("ask");
 });

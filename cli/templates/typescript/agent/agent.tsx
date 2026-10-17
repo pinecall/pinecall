@@ -2,6 +2,9 @@
 
 import { Agent, tool, type Stages } from "@pinecall/agents";
 
+// What a model in a hurry writes where the caller said nothing: never a message.
+const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|provided|said)|tbd|-)?$/i;
+
 /**
  * You answer the phone for the business. Short sentences: everything you say is read aloud.
  * You answer what the business's documents say. For anything else you take a message: who is calling
@@ -17,6 +20,9 @@ export default class {{Class}} extends Agent {
    */
   @tool({ stage: "ask", pii: ["name"] })
   async takeMessage(name: string, about: string): Promise<{ name: string; about: string }> {
+    if ([name, about].some((said) => NOTHING_SAID.test(said.trim()))) {
+      throw new Error("Nothing was written down: ask the caller for what they have not said yet, their name or what the call is about.");
+    }
     this.message = { name, about };
     this.stage = "done";
     return this.message;
@@ -34,8 +40,8 @@ export default class {{Class}} extends Agent {
         )}
         {this.message && (
           <p>
-            The message is written down: {this.message.name}, about {this.message.about}. Tell them it reached the
-            team, say goodbye and hang up.
+            The message is written down: {this.message.name}, about {this.message.about}, and it reached the team.
+            Answer anything else the documents answer; when the caller wants nothing more, say goodbye and hang up.
           </p>
         )}
       </>

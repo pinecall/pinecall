@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- The agent `pinecall new` writes takes no message on a blank or a guess: `takeMessage` refuses an `about` (or a name) that says nothing — `not specified`, `unknown`, `n/a` — and tells the model to ask for it; once the message is taken it still answers what the documents answer, and says goodbye when the caller wants nothing more instead of repeating it. Its ring-0 tests say so in the three languages.
+
 - **MCP: a held agent whose thread dies says so.** A tool or a hook throwing where nothing caught it ended the agent's thread, and `status` kept answering `held: thread` while every `chat` and `test` waited out its timeout. The thread's end is now the sentence `status` leads with and every tool refuses with — its exit code and the last lines it printed — until a save loads a version that lives.
 - `pinecall setup` on a project whose key points at another host asks that host instead of reading this machine: it advises a stage at a time from what it serves and what it lends, then the org's own keys (`GET /v1/providers/advice`), offers to give the org a key this shell exports, and ends with the `pinecall agent set` line for the stack.
 
