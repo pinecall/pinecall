@@ -29,6 +29,11 @@ pinecall --version
 One command, installed once per machine. It serves an agent in any of the three languages.
 :::
 
+> [!NOTE]
+> No account, and nothing sent to a cloud? `pinecall-runtime setup` runs the whole runtime on your
+> machine, open models included, and the CLI finds it by itself: skip `pinecall link` below.
+> [On your machine](/self-hosting/laptop/) walks it.
+
 ### Create a project
 
 Pick a language. The project is the same shape in all three: one folder per agent under

@@ -85,7 +85,10 @@ runs from any folder; beside an agent's class, both read as that agent.
 **The project's, the way any app reads its own secrets** (`src/env.ts`). Every verb reads
 `PINECALL_KEY` and `PINECALL_URL` from the process's environment — a server's secrets, a CI job's
 — else from the nearest `.env` walking up from the directory it runs in, which
-[`pinecall link`](#link) wrote. `PINECALL_URL` is `https://cloud.pinecall.io` unless one of the two
+[`pinecall link`](#link) wrote, else from `~/.pinecall/local.json`, which `pinecall-runtime setup`
+writes when it runs the runtime on this machine: your key there, and `http://127.0.0.1:8080`. So on
+your own machine no verb needs `login` or `link`, and a project with a key of its own (a Cloud
+project beside it) keeps its own. `PINECALL_URL` is `https://cloud.pinecall.io` unless one of these
 names another. Nothing else is read: v1's `PINECALL_API_KEY` never is, because a shell that still
 had v1's key exported once pointed every verb at another org with every line reading the same.
 
@@ -138,7 +141,9 @@ was made in``). [production.md](https://github.com/pinecall/pinecall/blob/main/s
 `whoami` and `callbacks` open by printing where they went: `gateway <url> · key from <where> ·
 <environment>`. The rest get on with the answer. With no key anywhere every one of them is refused:
 ``no PINECALL_KEY here: `pinecall link` in the project's folder writes it to .env (a server keeps
-it in its secrets)``, and the exit code is 2. **`pinecall whoami` is the first thing to run when an
+it in its secrets), or `pinecall-runtime setup` runs a runtime on this machine the CLI finds by
+itself``, and the exit code is 2. A key from the runtime on this machine reads `key from the local
+runtime (~/.pinecall/local.json)`. **`pinecall whoami` is the first thing to run when an
 endpoint refuses you and will not say why.**
 
 ## `~/.pinecall/`
@@ -146,6 +151,7 @@ endpoint refuses you and will not say why.**
 | file | what it holds |
 |---|---|
 | `session.json` | `{ "gateways": { "<url>": { key?, calling? } }, "last": … }` — this machine, one row per gateway it knows (`src/signed-in.ts`): `key`, this machine signed in as a person (`login`), which `link` mints a project's key from; `calling`, the phone `pinecall line from` said, re-sent by every `start`. No project reads it for its own key: that is the `.env` |
+| `local.json` | `{ "url", "key", "org", "written_by" }` — written by `pinecall-runtime setup` on this machine: the runtime's address and your key there, read by a project that has no key of its own. Run `setup` again and it is written again |
 
 The directory is `0700` and the file `0600`; `PINECALL_HOME` moves it. A key is never printed,
 never logged, and never put in a URL. A `.env` that `link` creates is `0600` too.
