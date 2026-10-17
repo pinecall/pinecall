@@ -1,32 +1,214 @@
-# Pinecall
+<p align="center">
+  <a href="https://docs.pinecall.io/start/quickstart/">
+    <img src=".github/assets/banner.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
+  </a>
+</p>
 
-[![check](https://img.shields.io/github/actions/workflow/status/pinecall/pinecall/check.yml?branch=main&label=check&logo=github&style=flat-square)](https://github.com/pinecall/pinecall/actions/workflows/check.yml)
-[![release](https://img.shields.io/github/v/tag/pinecall/pinecall?label=release&color=9184d9&style=flat-square)](https://github.com/pinecall/pinecall/tags)
-[![docs](https://img.shields.io/badge/docs-docs.pinecall.io-9184d9?style=flat-square)](https://docs.pinecall.io)
+<p align="center">
+  <a href="https://github.com/pinecall/pinecall/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/pinecall/pinecall/check.yml?branch=main&label=check&logo=github&style=for-the-badge&labelColor=0d1117"></a>
+  <a href="https://github.com/pinecall/pinecall/tags"><img alt="release" src="https://img.shields.io/github/v/tag/pinecall/pinecall?label=release&color=9184d9&style=for-the-badge&labelColor=0d1117"></a>
+  <a href="https://www.npmjs.com/package/pinecall"><img alt="npm" src="https://img.shields.io/npm/v/pinecall?label=cli&color=5eead4&style=for-the-badge&labelColor=0d1117&logo=npm"></a>
+  <a href="https://pypi.org/project/pinecall-runtime/"><img alt="pypi" src="https://img.shields.io/pypi/v/pinecall-runtime?label=runtime&color=5eead4&style=for-the-badge&labelColor=0d1117&logo=python&logoColor=white"></a>
+</p>
 
-Voice and chat agents written as a class, on the phone, in the browser, in chat and on WhatsApp.
-This repository holds the runtime that runs the calls, the console it serves, the SDKs an agent is
-written with, and the CLI that drives them. Every package is released together, at one version, by
-one tag.
+<p align="center">
+  <a href="https://docs.pinecall.io/start/quickstart/"><b>Quickstart</b></a> ·
+  <a href="https://docs.pinecall.io">Docs</a> ·
+  <a href="https://docs.pinecall.io/cli/overview/">CLI</a> ·
+  <a href="https://docs.pinecall.io/self-hosting/overview/">Self-hosting</a> ·
+  <a href="https://docs.pinecall.io/api/gateway/">Gateway API</a> ·
+  <a href="https://cloud.pinecall.io/sandbox/">Console</a>
+</p>
+
+<br>
+
+```text
+ ┌─ phone ─┐  ┌─ browser ─┐  ┌─ chat ─┐  ┌─ WhatsApp ─┐
+ └────┬────┘  └─────┬─────┘  └───┬────┘  └─────┬──────┘
+      └─────────────┴─────┬──────┴─────────────┘
+                     one agent ── one class ── one log
+```
+
+**Pinecall runs voice and chat agents that you write as a class.** The class's fields are the
+call's state, its `@tool` methods are what the model may do, and its docstrings and `render()` are
+the prompt. Everything else is Pinecall's job: the phone line, the browser call, WhatsApp, speech
+in and out, turn-taking, memory, retrieval, judges at hang-up, the console and the bill.
+
+This repository holds all of it: the runtime that runs the calls, the console it serves, the SDKs
+an agent is written with, and the CLI that drives them. Every package is released together, at one
+version, by one tag.
+
+## ▸ The agent is a class
+
+```tsx
+import { Agent, tool, type Stages } from "@pinecall/agents";
+
+/**
+ * You answer the phone for the business. Short sentences: everything you say is read aloud.
+ * For anything the documents do not answer you take a message: who is calling and what about.
+ */
+export default class FrontDesk extends Agent {
+  stage: Stages<"ask" | "done"> = "ask";          // state: plain fields, kept per call
+  message?: { name: string; about: string } | undefined;
+
+  /** Writes down the caller's message, once they have said their name and what it is about. */
+  @tool({ stage: "ask", pii: ["name"] })           // a verb the model may call, in this stage
+  async takeMessage(name: string, about: string) {
+    this.message = { name, about };
+    this.stage = "done";
+    return this.message;
+  }
+
+  override render() {                               // the prompt's last block, a function of state
+    return this.message
+      ? <p>The message is written down: {this.message.name}. Say goodbye and hang up.</p>
+      : <p>Greet the caller, and ask for their name and what the call is about.</p>;
+  }
+}
+```
+
+<details>
+<summary><b>The same agent in Python</b></summary>
+
+```python
+from typing import Literal
+
+from pinecall import Agent, tool
+
+
+class FrontDesk(Agent):
+    """You answer the phone for the business. Short sentences: everything you say is read aloud."""
+
+    stage: Literal["ask", "done"] = "ask"
+    message: dict[str, str] | None = None
+
+    @tool(stage="ask", pii=("name",))
+    def take_message(self, name: str, about: str) -> dict[str, str]:
+        """Writes down the caller's message, once they have said their name and what it is about."""
+        self.message = {"name": name, "about": about}
+        self.stage = "done"
+        return self.message
+```
+
+</details>
+
+<details>
+<summary><b>The same agent in Ruby</b></summary>
+
+```ruby
+require "pinecall"
+
+# You answer the phone for the business. Short sentences: everything you say is read aloud.
+class FrontDesk < Pinecall::Agent
+  stage :ask, :done
+  state :message
+
+  # Writes down the caller's message, once they have said their name and what it is about.
+  tool stage: :ask, pii: %i[name]
+  def take_message(name:, about:)
+    self.message = { name:, about: }
+    self.stage = :done
+    message
+  end
+end
+```
+
+</details>
+
+The voice, the model, the greeting, the words it must pronounce and the documents it searches are
+not in the class. They are settings of the agent, per environment and versioned, set with
+`pinecall agent set` or in the console.
+
+## ▸ From an empty folder to a phone call
+
+```console
+$ npm i -g pinecall
+$ pinecall new acme --agent front-desk        # --python or --ruby for the other SDKs
+$ cd acme && npm install
+$ pinecall link                               # sign in, pick the org: its key goes to .env
+$ pinecall prompt                             # the exact prompt the model will read, offline
+$ pinecall chat                               # a written call against your class, here
+$ pinecall start                              # hold the agent: calls reach your process
+$ pinecall test                               # the goldens, judged against a real model
+$ pinecall deploy up                          # run it on Pinecall, without your laptop
+```
+
+Everything runs in your org's **sandbox** first, where nothing reaches a real caller. `--prod`
+acts in production for one command.
+
+## ▸ How a call moves
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
+    <img src=".github/assets/architecture-light.svg" alt="The doors reach LiveKit or the gateway; the worker runs the speech pipeline and writes every turn to the call's log; the gateway asks your app to run its tools over the app socket" width="100%">
+  </picture>
+</p>
+
+1. **A caller comes in** by a carrier, the browser widget, a written chat or WhatsApp.
+2. **A worker takes the call.** It runs LiveKit's `AgentSession`, with speech-to-text, the model
+   and text-to-speech built from the org's providers.
+3. **The gateway asks your class to act.** When the model calls a tool, the gateway sends
+   `tool.call` down your process's app socket, and your method's answer comes back as
+   `tool.result`.
+4. **Everything is an entry in the call's log.** Turns, tool calls, latencies, costs and scores are
+   appended, never rewritten. The console, the CLI, the bill and the judges all read that log.
+
+The runtime is one Python package shaped like a Rails app. Each domain has its models, schemas,
+repository, service and endpoints, in a fixed bottom-up order that a test enforces. The
+[architecture page](https://docs.pinecall.io/self-hosting/architecture/) walks every folder.
+
+## ▸ Test it like software
+
+| ring | what runs | command |
+|---|---|---|
+| `0` | the class as plain code: tools, state, the prompt, no network | `npm test` |
+| `1` | goldens: a conversation the model must hold, judged turn by turn | `pinecall test` |
+| `2` | a persona calls the agent over a real line, scored at hang-up | `pinecall simulate --voice` |
+| `3` | one real call re-checked: latency, errors, consent, talk share | `pinecall eval <call>` |
+| `4` | every finished call, judged at hang-up: the verdict is an entry in its log | nothing to run |
+
+A broken call becomes a **case**: kept, fixed, then approved or dismissed (`pinecall cases`).
+Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monitors`).
+
+## ▸ What is inside
 
 | folder | what it is | published as |
 |---|---|---|
-| [`runtime/`](runtime) | the gateway that answers every door of the API and the worker that runs the calls, on LiveKit | [`pinecall-runtime`](https://pypi.org/project/pinecall-runtime/) on PyPI |
-| [`cli/`](cli) | the `pinecall` CLI, the same for every language | [`pinecall`](https://www.npmjs.com/package/pinecall) on npm |
+| [`runtime/`](runtime) | the gateway that answers every door of the API, and the worker that runs the calls on LiveKit | [`pinecall-runtime`](https://pypi.org/project/pinecall-runtime/) · PyPI |
+| [`cli/`](cli) | the `pinecall` CLI and its MCP server, the same for every language | [`pinecall`](https://www.npmjs.com/package/pinecall) · npm |
 | [`console/`](console) | the page the gateway serves, both environments in it | inside `pinecall-runtime` |
 | [`widget/`](widget) | one agent as one button on any page | inside `pinecall-runtime` |
-| [`sdk/typescript/`](sdk/typescript) | the TypeScript framework an agent is written in | [`@pinecall/agents`](https://www.npmjs.com/package/@pinecall/agents) on npm |
-| [`sdk/python/`](sdk/python) | the Python SDK | [`pinecall`](https://pypi.org/project/pinecall/) on PyPI |
-| [`sdk/ruby/`](sdk/ruby) | the Ruby SDK | [`pinecall`](https://rubygems.org/gems/pinecall) on RubyGems |
-| [`packages/room/`](packages/room) | the caller's side of a call, for a page's own UI | [`@pinecall/room`](https://www.npmjs.com/package/@pinecall/room) on npm |
-| [`packages/core/`](packages/core) | what the console and Pinecall's supervisor app stand on | nothing: taken as source |
-| [`examples/`](examples) | the one example agent, Clínica Norte, in each language | nothing: what the nightly drives |
-| [`infra/`](infra) | the charts, the images and the Terraform a runtime is deployed with | nothing: `make deploy` from `runtime/` releases them |
+| [`sdk/typescript/`](sdk/typescript) | the TypeScript framework an agent is written in | [`@pinecall/agents`](https://www.npmjs.com/package/@pinecall/agents) · npm |
+| [`sdk/python/`](sdk/python) | the Python SDK | [`pinecall`](https://pypi.org/project/pinecall/) · PyPI |
+| [`sdk/ruby/`](sdk/ruby) | the Ruby SDK | [`pinecall`](https://rubygems.org/gems/pinecall) · RubyGems |
+| [`packages/room/`](packages/room) | the caller's side of a call, for a page's own UI | [`@pinecall/room`](https://www.npmjs.com/package/@pinecall/room) · npm |
+| [`packages/core/`](packages/core) | what the console and Pinecall's supervisor app stand on | taken as source |
+| [`examples/`](examples) | Clínica Norte, the one example agent, in each language | what the nightly drives |
+| [`infra/`](infra) | the charts, the images and the Terraform a runtime is deployed with | `make deploy` from `runtime/` |
 
-Each folder's `README.md` says what it is and how to use it; the docs are at
-[docs.pinecall.io](https://docs.pinecall.io).
+Each folder's `README.md` says what it is and how to use it.
 
-## Working on it
+<details>
+<summary><b>Every CLI verb</b></summary>
+
+| stage | verbs |
+|---|---|
+| start | `new` · `generate` · `login` · `link` · `whoami` |
+| hold and talk | `start` · `chat` · `prompt` · `console` · `supervise` |
+| the agent's settings | `agent` · `lexicon` · `voices` · `pipeline` · `providers` |
+| testing | `test` · `simulate` · `eval` · `runs` · `cases` · `personas` · `judges` · `judging` |
+| knowledge and memory | `docs` · `memory` · `remember` |
+| the phone | `numbers` · `carriers` · `line` · `callbacks` |
+| production | `deploy` · `secrets` · `sessions` · `monitors` · `webhook` · `telemetry` · `limits` · `data` |
+| assistants | `mcp`: the CLI as an MCP server, and `mcp install` for every assistant on the machine |
+
+`pinecall <verb> --help` explains each one, and the
+[CLI reference](https://docs.pinecall.io/cli/overview/) has a page per verb.
+
+</details>
+
+## ▸ Working on it
 
 ```console
 $ git clone https://github.com/pinecall/pinecall && cd pinecall
@@ -39,13 +221,19 @@ The TypeScript packages share the root's workspace (`pnpm-workspace.yaml`). `run
 own `uv.lock`. `sdk/ruby/` has its Gemfile. Each package's own check is what CI runs for it
 (`.github/workflows/check.yml`), only when its folder changed.
 
-## Releasing
+## ▸ Releasing
 
 Every published package carries the same version. `scripts/version` prints it, or says which
 package disagrees; `scripts/version X.Y.Z` writes it into all six. A `v*` tag publishes them all
 (`.github/workflows/release.yml`), each registry by Trusted Publishing, and a GitHub Release whose
 notes are each package's `CHANGELOG.md` section for that version.
 
-## Security
+## ▸ Security
 
-[SECURITY.md](SECURITY.md).
+Report a vulnerability as [SECURITY.md](SECURITY.md) says.
+
+<br>
+
+<p align="center">
+  <sub><code>$ pinecall --help</code> · <a href="https://docs.pinecall.io">docs.pinecall.io</a> · <a href="https://pinecall.io">pinecall.io</a></sub>
+</p>
