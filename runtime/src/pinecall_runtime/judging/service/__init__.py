@@ -12,7 +12,7 @@ from pinecall_runtime.judging.schemas import (
     JudgeScore,
     ProposalRow,
 )
-from pinecall_runtime.judging.service.asking import summed_usage
+from pinecall_runtime.judging.service.asking import ASKED_WITHIN, summed_usage
 from pinecall_runtime.judging.service.calibration import (
     AGREES_AT_LEAST,
     LABELS_TO_JUDGE,
@@ -123,6 +123,7 @@ from pinecall_runtime.judging.service.turn_checks import TurnRun, turn_scores
 
 __all__ = [
     "AGREES_AT_LEAST",
+    "ASKED_WITHIN",
     "A_GROUP",
     "A_SIMULATED_CALLER",
     "LABELS_TO_JUDGE",

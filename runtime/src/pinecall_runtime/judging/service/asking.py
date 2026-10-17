@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Never
 
-from livekit.agents import llm
+from livekit.agents import APIConnectOptions, llm
 from livekit.agents.llm import ChatContext
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
@@ -42,6 +42,9 @@ JUDGE = (
 # Its words are kept in the refusal: what a model says instead of calling is what fixes the prompt.
 NO_ANSWER = "the judge model answered without calling {tool}: it said {said!r}"
 SAID_AT_MOST = 200
+# A forced answer is given longer than livekit's 10 s: a local model asked for a whole verdict or a
+# whole line takes it (gemma4:12b on an L4 took 16.6 s once, and the simulated call broke on it).
+ASKED_WITHIN = APIConnectOptions(max_retry=1, timeout=30.0)
 # Said once to a model that answered in words: what it said stays in front of it.
 ONLY_THE_TOOL = "Answer by calling {tool}, and nothing else."
 SCORES = ("1", "2", "3", "4", "5")
@@ -108,7 +111,7 @@ async def forced(
     chat.add_message(role="system", content=system)
     chat.add_message(role="user", content=question)
     tools: list[llm.Tool] = [llm.function_tool(_never_run, raw_schema=tool)]
-    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=ASKED_WITHIN).collect()
     spent = [response.usage]
     # A model that thinks before it answers cannot be held to a tool (Anthropic's thinking takes
     # `auto` alone), and now and then answers in words: it is asked once more, its words in front of it.
@@ -116,7 +119,9 @@ async def forced(
     if not response.tool_calls:
         chat.add_message(role="assistant", content=said or "…")
         chat.add_message(role="user", content=ONLY_THE_TOOL.format(tool=tool["name"]))
-        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+        response = await model.chat(
+            chat_ctx=chat, tools=tools, tool_choice="required", conn_options=ASKED_WITHIN
+        ).collect()
         spent.append(response.usage)
         said = response.text or said
     if not response.tool_calls:

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A judge's verdict and a simulated caller's line are given 30 s, not livekit's 10: a local model
+  asked for a whole tool call takes longer now and then (gemma4:12b took 16.6 s on an L4), and the
+  simulated call broke on it with nobody speaking after the greeting.
+
 - **`setup` chooses a stage at a time**: `--stt`, `--llm` and `--tts` each `local` or a vendor of
   yours, `--turn` who ends the caller's turn (the ears' own, Smart Turn or LiveKit's), a vendor's
   key read from `<VENDOR>_API_KEY` or asked once; `--password-stdin` for the CLI's screen.

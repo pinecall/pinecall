@@ -109,13 +109,14 @@ async def improvise_line(model: llm.LLM[Never], request: NextLineRequest) -> Imp
     """The caller's next turn: the persona, the call so far, and how many turns are left."""
     chat = _call_so_far(request)
     tools: list[llm.Tool] = [llm.function_tool(_never_run, raw_schema=SAY_NEXT_LINE)]
-    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+    asked = judging.ASKED_WITHIN
+    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=asked).collect()
     spent = [response.usage]
     said = response.text or ""
     if not response.tool_calls:
         chat.add_message(role="assistant", content=said or "…")
         chat.add_message(role="user", content=ONLY_THE_LINE)
-        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=asked).collect()
         spent.append(response.usage)
         said = response.text or said
     if not response.tool_calls:
