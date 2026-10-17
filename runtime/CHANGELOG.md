@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A command the session refuses no longer cuts the call off from its app.** A `room.send` on a
+  written call, or any command the session refuses, that reached the gateway serving the call through
+  another gateway (the app's socket on one, the call on the other) raised out of the call's command
+  listener and ended it: every command after it — `state.set`, `prompt.set`, `tools.set` — was lost in
+  silence, the agent read a stale state and an old view, and a tool just run "did not happen". The same
+  command on the socket's own gateway was answered as a refusal and the call went on, so it struck one
+  call in two. The refusal is now answered to the app from either gateway, and the listener goes on.
+
 - **A host advises an org what to run: `GET /v1/providers/advice`.** A stage at a time, from what
   the host has: an open model its own servers list (asked at the row's `base_url`, the
   OpenAI-compatible `/models`; the best measured one first), else a vendor it lends, else the org's

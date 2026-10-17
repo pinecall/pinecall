@@ -27,13 +27,14 @@ from pinecall_runtime.calls.service.peers import (
 from pinecall_runtime.calls.service.pump import Send, pump
 from pinecall_runtime.calls.service.tool_calls import ToolCalls
 from pinecall_runtime.enums import Env, Opener
-from pinecall_runtime.exceptions import ServiceUnavailable
+from pinecall_runtime.exceptions import PinecallError, ServiceUnavailable, ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.shared_state import SharedState
 from pinecall_runtime.redis import Listener, LocalSignal, Signal
 from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.base import Command, Entry, WireModel
 from pinecall_runtime.wire.commands import DevAnswer, SessionConfigure, SupervisorVerb, command_of
+from pinecall_runtime.wire.events import ErrorEvent
 from pinecall_runtime.wire.signal import Bound, ForApp
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ _RUNNING: TypeAdapter[dict[str, int]] = TypeAdapter(dict[str, int])
 
 # How long a call another gateway opened stays served here with no endpoint asking for it.
 FIRST_SEEN_IDLE_S = 600.0
+# How a refused command is answered, as the socket names it (calls/service/socket.py).
+REFUSED = "refused"
+BAD_SHAPE = "bad_shape"
 
 
 # A call belongs to its agent, not to a socket: `app` is None while it waits for one.
@@ -325,18 +329,32 @@ class Live:
         finally:
             listener.close()
 
+    # A command the session refuses (a room.send on a written call, a bad shape) is answered to the
+    # app as the socket answers one it applies itself, and the stream goes on: an exception out of
+    # this loop would end the listener, and every command after it would be lost in silence.
     async def _apply(self, call: str, command: Command) -> None:
         served = self.calls.get(call)
         if served is None or served.agent != command.agent:
             return
         if served.running is None:
             served.commands.put_nowait(command)
-        elif command.type == SUPERVISOR_VERB:
-            await served.running.supervise(SupervisorVerb.model_validate(command.data))
-        else:
-            model = command_of(command)
-            declare_for_the_call(served, model)
-            await served.running.apply(model)
+            return
+        try:
+            if command.type == SUPERVISOR_VERB:
+                await served.running.supervise(SupervisorVerb.model_validate(command.data))
+            else:
+                model = command_of(command)
+                declare_for_the_call(served, model)
+                await served.running.apply(model)
+        except PinecallError as refused:
+            await self._refused(served, command, refused)
+
+    async def _refused(self, served: Served, command: Command, refused: PinecallError) -> None:
+        code = BAD_SHAPE if isinstance(refused, ValidationError) else REFUSED
+        why = ErrorEvent(code=code, message=str(refused), command=command.type, id=command.id, recoverable=True)
+        logger.warning("call %s: %s refused: %s", served.call, command.type, refused)
+        if served.app is not None:
+            await self.tell(served.app, Entry.unstored(command.agent, "error", why.dump()))
 
     def _running_here(self) -> dict[str, int]:
         counts: dict[str, int] = {}
