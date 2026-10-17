@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://docs.pinecall.io/start/quickstart/">
-    <img src=".github/assets/banner-ab4f8b6a.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
+    <img src=".github/assets/banner-9f2718f3.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
   </a>
 </p>
 
@@ -150,12 +150,33 @@ runtime instead of one person's. `pinecall team password <email>` changes anyone
 
 ### On Pinecall Cloud
 
+Nothing to run: the runtime is already at `cloud.pinecall.io`. Sign up at
+[cloud.pinecall.io](https://cloud.pinecall.io/sandbox/), then:
+
 ```console
 $ pinecall login
+gateway  https://cloud.pinecall.io   (the default — `pinecall login <url>` for your own)
+
+open this to sign in:
+https://cloud.pinecall.io/cli?c=cli_…
+
+waiting…
+signed in to https://cloud.pinecall.io as You
+$ pinecall new acme --agent front-desk && cd acme && npm install
+$ pinecall link
+▸ acme · PINECALL_KEY written to .env
+$ pinecall chat
+› Hello. How can I help you today?
+$ pinecall deploy up --prod
+acme: release 1 sent · 38 KB · 3b507661b052
+acme: the box installs and starts it; the release before keeps answering meanwhile
+acme: release 1 is live
 ```
 
-The runtime is already running at `cloud.pinecall.io`. Your org gets a sandbox, where nothing
-reaches a real caller, and production. In a project, `pinecall link` writes its key to `.env`.
+`login` signs this machine in through the browser, once. `link` writes the project's key to its
+`.env`. Your org gets a **sandbox**, where nothing reaches a real caller, and **production**:
+`deploy up` runs the project on Pinecall's machines, `--prod` for production, the release before
+answering until the new one is live.
 
 ### Then, in either case
 

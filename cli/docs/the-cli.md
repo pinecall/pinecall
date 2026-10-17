@@ -2044,7 +2044,7 @@ ways of writing one fact are one fact.
 ## `deploy`
 
 ```console
-~/acme-support $ pinecall deploy --prod --note "reads the order's eta back"
+~/acme-support $ pinecall deploy up --prod --note "reads the order's eta back"
 acme-support: release 4 sent · 38 KB · 3b507661b052
 acme-support: the box installs and starts it; the release before keeps answering meanwhile
 acme-support: release 4 is live
