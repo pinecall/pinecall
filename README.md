@@ -22,12 +22,9 @@
 
 <br>
 
-```text
- ┌─ phone ─┐  ┌─ browser ─┐  ┌─ chat ─┐  ┌─ WhatsApp ─┐
- └────┬────┘  └─────┬─────┘  └───┬────┘  └─────┬──────┘
-      └─────────────┴─────┬──────┴─────────────┘
-                     one agent ── one class ── one log
-```
+<p align="center">
+  <img src=".github/assets/how-it-works.png" alt="Phone, browser, chat and WhatsApp reach the Pinecall runtime; its worker runs speech to text, the model and text to speech, its gateway asks your agent.tsx to run a tool, and every step is an entry in the call's log" width="100%">
+</p>
 
 **Pinecall runs voice and chat agents that you write as a class.** The class's fields are the
 call's state, its `@tool` methods are what the model may do, and its docstrings and `render()` are
@@ -121,20 +118,50 @@ not in the class. They are settings of the agent, per environment and versioned,
 
 ## ▸ From an empty folder to a phone call
 
+The runtime is open source. Run it on your own machine, with no account and nothing sent to a
+cloud, or skip it and use Pinecall Cloud. The agent is the same either way.
+
+<table>
+<tr><th>on your machine</th><th>on Pinecall Cloud</th></tr>
+<tr><td>
+
+```console
+$ uv tool install "pinecall-runtime[voice]"
+$ pinecall-runtime local up
+$ pinecall-runtime local init --email you@example.com --person "You"
+```
+
+Postgres, Redis and LiveKit in Docker, then the gateway with its console and a worker.
+[On your machine](https://docs.pinecall.io/self-hosting/laptop/) walks it.
+
+</td><td>
+
+```console
+$ pinecall login
+```
+
+The runtime is already running at `cloud.pinecall.io`. Your org gets a sandbox, where nothing
+reaches a real caller, and production.
+
+</td></tr>
+</table>
+
+Then, in either case:
+
 ```console
 $ npm i -g pinecall
 $ pinecall new acme --agent front-desk        # --python or --ruby for the other SDKs
 $ cd acme && npm install
-$ pinecall link                               # sign in, pick the org: its key goes to .env
+$ pinecall link                               # pick the org: its key goes to .env
 $ pinecall prompt                             # the exact prompt the model will read, offline
 $ pinecall chat                               # a written call against your class, here
 $ pinecall start                              # hold the agent: calls reach your process
 $ pinecall test                               # the goldens, judged against a real model
-$ pinecall deploy up                          # run it on Pinecall, without your laptop
+$ pinecall deploy up                          # run it there, without your laptop
 ```
 
-Everything runs in your org's **sandbox** first, where nothing reaches a real caller. `--prod`
-acts in production for one command.
+On your machine, `pinecall login http://127.0.0.1:8080` signs the CLI in to your own runtime.
+Everything acts in the **sandbox** first. `--prod` acts in production for one command.
 
 ## ▸ How a call moves
 
@@ -157,6 +184,33 @@ acts in production for one command.
 The runtime is one Python package shaped like a Rails app. Each domain has its models, schemas,
 repository, service and endpoints, in a fixed bottom-up order that a test enforces. The
 [architecture page](https://docs.pinecall.io/self-hosting/architecture/) walks every folder.
+
+## ▸ Many orgs, one runtime
+
+One runtime serves many businesses, and each one is an **org**: its own people and roles, keys,
+numbers and carriers, vendor keys, quotas, usage and data. Each org writes its own agents as
+classes, in its own repository, and each agent is a folder with its tests beside it.
+
+- **Your code never runs inside the runtime.** The worker runs the speech pipeline; the class runs
+  in the org's own process, or in a gVisor-sandboxed pod of its own when the runtime hosts it, and the gateway asks it
+  to act over its app socket. One shared fleet of workers serves every org, and no two orgs' code
+  share a process.
+- **The database holds the line.** Every request is scoped to its key's org, and Postgres
+  row-level security shows each connection that org's rows alone, a query that forgot its `WHERE`
+  included.
+- **Two environments per org.** The sandbox and production share the gateway and the database,
+  never the workers: each has its own fleet. In the sandbox every person gets a copy of the agents
+  of their own.
+- **Settings live per org, per environment, versioned.** The voice, the model, the greeting, the
+  lexicon, what the agent knows and remembers, its numbers and its routes. Quotas say what an org
+  may use, and an org may bring its own vendor keys.
+
+Pinecall stands on LiveKit: its media server, its SIP bridge and its Agents framework, whose
+`AgentSession` runs every call. In that framework the agent's code runs inside the worker. Pinecall
+adds the platform around it: the orgs, the people and their keys, the agent's code kept in the
+tenant's process, the settings, the log, the judges, the console and the bill.
+[Orgs, keys and the two environments](https://docs.pinecall.io/self-hosting/multi-tenancy/) has
+the whole model.
 
 ## ▸ Test it like software
 
