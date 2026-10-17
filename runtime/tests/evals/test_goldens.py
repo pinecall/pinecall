@@ -39,7 +39,7 @@ from tests.judging.factories import (
     verdict,
     with_no_gate,
 )
-from tests.session.conftest import AGENT, Box, a_session
+from tests.session.conftest import AGENT, Box, a_session, model_of
 
 A_FACT = "Prefiere que le llamen por la mañana"
 
@@ -248,6 +248,23 @@ async def test_a_turn_that_broke_ends_the_golden_there_and_plays_no_line_after_i
     assert (result.held, result.broke_at) == (True, 1)
     lines = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.user"]
     assert lines == ["hola"]
+
+
+@needs_the_database
+async def test_a_turn_the_vendor_refused_breaks_the_golden_there_says_why_and_ends_its_call(
+    store: Store, call: str
+) -> None:
+    box = Box(Log(store, call, AGENT))
+    session = a_session(box, FREED, ["Buenos días."], run="run_1")
+    model_of(session).refusal = "blocked"
+    golden = a_golden(turns=[{"say": "hola"}, {"say": "¿a qué hora?"}])
+    result = await drive(session, golden, box.log.fanout.subscribe(), Turns().judged, is_held=lambda: True)
+    assert (result.held, result.broke_at) == (True, 1)
+    assert result.vendor_failed is not None and "PROHIBITED_CONTENT" in result.vendor_failed
+    entries = await store.whole(call)
+    assert [entry.data["text"] for entry in entries if entry.type == "turn.user"] == ["hola"]
+    ended = [entry for entry in entries if entry.type == "call.ended"]
+    assert [(entry.data["reason"], entry.data["ended_by"]) for entry in ended] == [("error", "platform")]
 
 
 # ── what a golden expects at the end ──

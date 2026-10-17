@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A golden the model's vendor fails breaks alone.** A line the vendor answers with an error — an
+  outage past livekit's retries, a content filter's refusal such as Gemini's `PROHIBITED_CONTENT` —
+  breaks that golden at that turn (`t<n>.model`, with the vendor's words), and the run plays the next
+  one; it used to end the whole run (`the run broke on the gateway`), leaving the goldens after it
+  unplayed. Whatever stops a golden's play, the call it opened is ended (`error`, `platform`): one
+  left open held the org's only sandbox line, and every run after it was refused `429`.
+
 ## 0.11.3 — Setup reads the machine and takes any open model, pinecall setup chooses it on a screen, the agent no longer hears itself, a visitor's room reaches a worker (2026-10-17)
 
 - **The agent no longer hears itself.** On a web call the caller's audio passes WebRTC's echo

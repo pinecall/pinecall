@@ -348,6 +348,9 @@ class _Streamed(llm.LLMStream):
 
     @override
     async def _run(self) -> None:
+        if self.refusing == "blocked":
+            # A content filter's answer: final, nothing a retry changes.
+            raise APIStatusError("blocked: PROHIBITED_CONTENT", status_code=400, retryable=False)
         if self.refusing:
             raise APIConnectionError(self.refusing)
         if self.scripted.given["api_key"] == A_REFUSED_KEY:

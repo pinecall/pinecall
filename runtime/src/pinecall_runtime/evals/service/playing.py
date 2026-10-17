@@ -5,11 +5,14 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from livekit.agents import APIError
+
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.evals.service.turns import Landed, NextLine, answered, speak_turns
 from pinecall_runtime.exceptions import PinecallError
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.commands import CallEvent
 from pinecall_runtime.wire.goldens import Golden
@@ -25,6 +28,9 @@ APP_DETACHED: tuple[EndReason, EndedBy] = ("app_detached", "platform")
 HUNG_UP: tuple[EndReason, EndedBy] = ("caller_hung_up", "caller")
 # A golden the call refused (an event nobody declared) ends the call it opened.
 BROKE: tuple[EndReason, EndedBy] = ("error", "platform")
+# A line the model's vendor failed (an outage past its retries, a content filter's refusal) breaks
+# that golden, not the run: the next golden plays on, and this one says what the vendor answered.
+VENDOR_FAILED = "the model's vendor failed turn {number}: {error}"
 
 # One line just run: its number from 1 and livekit's run of it. True when the turn held.
 type TurnJudged = Callable[[int, judging.TurnRun], Awaitable[bool]]
@@ -39,6 +45,8 @@ class Played:
     requests: tuple[JsonObject, ...]
     # The turn that broke, from 1; None when every turn played held.
     broke_at: int | None = None
+    # Why the vendor failed the turn that broke, when it was the vendor and not a step.
+    vendor_failed: str | None = None
 
 
 # The call opens with no greeting (a run starts mid-conversation); the facts go through the
@@ -54,16 +62,17 @@ async def drive(
     """Start the call, play each turn and judge it, stop at the first that broke, then hang up."""
     await running.start()
     try:
-        kept_on, broke_at = await _played(running, golden, heard, judged, is_held)
-    except PinecallError:
+        kept_on, broke_at, failed = await _played(running, golden, heard, judged, is_held)
+    except Exception:
+        # Whatever broke the run, the call it opened ends: left open, it holds the org's line.
         await session.end_text(running, *BROKE)
         raise
     # An agent that ended the call already wrote why: hanging up again would overwrite it.
     if running.ended is None:
-        await session.end_text(running, *(HUNG_UP if kept_on else APP_DETACHED))
+        await session.end_text(running, *(BROKE if failed else HUNG_UP if kept_on else APP_DETACHED))
     else:
         await running.close()
-    return Played(held=kept_on, requests=tuple(running.call.requests), broke_at=broke_at)
+    return Played(held=kept_on, requests=tuple(running.call.requests), broke_at=broke_at, vendor_failed=failed)
 
 
 async def settled(heard: calls.Subscription, *, quiet_s: float = QUIET_S) -> None:
@@ -112,21 +121,25 @@ async def converse(running: session.Session, logs: calls.Logs, next_line: NextLi
 # is the only sign the app is done. A call the agent ended plays no further turn.
 async def _played(
     running: session.Session, golden: Golden, heard: calls.Subscription, judged: TurnJudged, is_held: Callable[[], bool]
-) -> tuple[bool, int | None]:
+) -> tuple[bool, int | None, str | None]:
     await settled(heard)
     for number, turn in enumerate(golden.turns, 1):
         if not is_held():
-            return False, None
+            return False, None, None
         if turn.event is not None:
             await running.apply(CallEvent(name=turn.event.name, data=dict(turn.event.data)))
             await settled(heard)
             continue
         began = time.time()
-        run = await session.run_text(running, turn.say or "")
+        try:
+            run = await session.run_text(running, turn.say or "")
+        except APIError as failed:
+            await settled(heard)
+            return True, number, VENDOR_FAILED.format(number=number, error=providers.words_of(failed))
         await settled(heard)
         ended_by = None if running.ended is None else running.ended[1]
         if not await judged(number, judging.TurnRun(run, began, ended_by)):
-            return True, number
+            return True, number, None
         if ended_by is not None:
             break
-    return True, None
+    return True, None, None

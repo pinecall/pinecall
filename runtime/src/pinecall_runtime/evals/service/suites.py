@@ -63,6 +63,7 @@ NOT_REMEMBERED = (
 KEEPS_MEMORY = "the agent keeps memory, so the golden's facts can be recalled"
 GATEWAY_STOPPED = "the gateway stopped mid-run"
 RUN_BROKE = "the run broke on the gateway: {error}"
+MODEL_ANSWERS = "The model's vendor answers the turn."
 CASES_IN_THE_SANDBOX = (
     "cases are real callers' words played again: they run in the sandbox, against the app a "
     "developer holds there, never through production's, whose tools act for real"
@@ -238,6 +239,8 @@ async def _every_golden(serving: calls.Serving, suite: Suite) -> str | None:
             )
             if played is None:
                 return THE_APP_LEFT.format(done=len(suite.cells), total=total, slug=body.agent)
+            if played.vendor_failed is not None:
+                scores.append(_vendor_failed(played.broke_at, played.vendor_failed))
             entries = await serving.logs.store.whole(opened.call)
             case = judging.case_of(entries, setup.config)
             if played.broke_at is None:
@@ -248,6 +251,13 @@ async def _every_golden(serving: calls.Serving, suite: Suite) -> str | None:
             suite.cells.append(runs.cell_of(opened, case, scores, requests))
             await _stored(serving, registration.scope, suite.now)
     return None
+
+
+# The turn's steps were never asked: the vendor answered nothing they could be checked on.
+def _vendor_failed(number: int | None, why: str) -> judging.JudgeScore:
+    return judging.JudgeScore(
+        metric=f"t{number}.model", score=0.0, passed=False, reason=why, criteria=MODEL_ANSWERS, judge_calls=0
+    )
 
 
 # No call is opened for it: there is nothing to answer its facts with.
