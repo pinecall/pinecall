@@ -14,6 +14,7 @@ export type Register = (program: Command, ctx: Context) => void;
 // Order is the help order: first-day verbs first. Each domain imports only what its verbs need.
 const DOMAINS: (() => Promise<{ register: Register }>)[] = [
   () => import("./scaffold/commands.js"),
+  () => import("./setup/commands.js"),
   () => import("./accounts/commands.js"),
   () => import("./dev/commands.js"),
   () => import("./calls/commands.js"),

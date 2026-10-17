@@ -6,11 +6,11 @@ import { z } from "zod";
 
 import { homeOf } from "../../accounts/service/home.js";
 import { readLocalRuntime } from "../../project/credentials.js";
+import { NOT_INSTALLED } from "../../setup/service.js";
 import { tool, ToolRefused } from "../tool.js";
 import { WAIT, WAIT_S } from "./fields.js";
 
-export const NO_RUNTIME =
-  'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then call runtime again';
+export const NO_RUNTIME = NOT_INSTALLED;
 /** The line `setup` prints when the runtime answers and the processes are about to run. */
 const READY = "ready";
 /** How many of the runtime's lines an answer carries. */

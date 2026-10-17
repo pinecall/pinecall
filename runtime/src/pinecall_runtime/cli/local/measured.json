@@ -1,0 +1,44 @@
+{
+  "measured_on": "NVIDIA L4 24 GB, 2026-10-17: front-desk's own prompt, three turns (a message left, a question the documents answer, small talk), three runs each; what each stage holds on a card",
+  "voice_gib": {"whisper": 2.3, "kokoro": 1.1, "embedder": 0.9},
+  "headroom_gib": 1.5,
+  "llms": [
+    {
+      "model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+      "needs_gib": 18.3,
+      "first_token_s": 0.4,
+      "message": "3/3",
+      "documents": "3/3",
+      "talk": "3/3",
+      "note": "30B of knowledge, 3B active per token: the fastest that did everything; whole on a card only with 40 GB beside the voice"
+    },
+    {
+      "model": "gemma4:12b",
+      "needs_gib": 9.0,
+      "first_token_s": 0.9,
+      "message": "3/3",
+      "documents": "3/3",
+      "talk": "3/3",
+      "note": "did everything on 24 GB; reads the whole prompt every turn (no prefix cache), so 1.3-1.7 s to the first token on a call"
+    },
+    {
+      "model": "gemma4:e4b",
+      "needs_gib": 7.5,
+      "first_token_s": 0.8,
+      "message": "2/3",
+      "documents": "3/3",
+      "talk": "3/3",
+      "note": "the model the Pipecat local stack ships; missed the message once in three"
+    }
+  ],
+  "not_recommended": [
+    {"model": "qwen3:8b", "why": "0.31 s to the first token, but never called the tool: it asks the caller's name again"},
+    {"model": "qwen3:14b", "why": "never called the tool"},
+    {"model": "qwen3:4b", "why": "thinks aloud with thinking off (\"Okay, let's see…\"), 130 words of it"},
+    {"model": "llama3.1:8b", "why": "calls the tool on a question and on a greeting"},
+    {"model": "llama3.2:3b", "why": "calls the tool on everything"},
+    {"model": "gpt-oss:20b", "why": "calls the tool on a question and on a greeting; 1.5 s to the first token"},
+    {"model": "gemma4:26b", "why": "3 s to the first token on 24 GB, part of it on the CPU"}
+  ],
+  "keys": {"stt": "deepgram", "llm": "anthropic", "tts": "cartesia"}
+}

@@ -1,4 +1,4 @@
-"""What `setup` runs a call on: the row for each mix of local stages and vendors, the keys each needs, the turn."""
+"""What `setup` runs a call on: a choice per stage, local or a vendor's, the judge, the caller, the keys, the turn."""
 
 import pytest
 
@@ -6,49 +6,32 @@ from pinecall_runtime.cli import setup_models as models
 from pinecall_runtime.exceptions import ValidationError
 
 
-def test_every_stage_local_names_the_three_servers_on_loopback() -> None:
-    """Every stage on the openai plugin, each with its server's base_url; Smart Turn ends the turn; nothing priced."""
-    row = models.row_of(models.ALL_LOCAL)
-    assert {stage: (one.vendor, one.model) for stage, one in row.defaults.items()} == {
-        "llm": ("openai", models.LOCAL_LLM),
-        "stt": ("openai", models.LOCAL_STT),
-        "tts": ("openai", models.LOCAL_TTS),
-    }
-    urls = {key: options.options["base_url"] for key, options in row.tuning.items()}
-    assert urls == {
-        "llm/openai": "http://127.0.0.1:11434/v1",
-        "tts/openai": "http://127.0.0.1:8880/v1",
-        "stt/openai": "http://127.0.0.1:8000/v1",
-    }
-    assert row.tuning["stt/openai"].turn_model == "smart-turn-v3"
-    assert row.judge is not None and row.judge.llm.model == models.LOCAL_LLM
-    assert row.caller is not None and row.caller.llm is not None and row.caller.llm.model == models.LOCAL_LLM
-    assert row.embedding is not None and row.embedding.model == models.LOCAL_EMBEDDER
-    assert models.LOCAL_LLM in row.rates and models.LOCAL_STT in row.rates
+def test_a_choice_is_local_a_local_model_or_a_vendor_with_or_without_its_model() -> None:
+    """`local`, `local/gemma4:12b`, `hf/Qwen/Qwen2.5-3B-Instruct` and a bare `anthropic` each read as what they name."""
+    assert models.is_local("local") and models.is_local("local/gemma4:12b") and not models.is_local("anthropic")
+    assert (models.vendor_of("hf/Qwen/Qwen2.5-3B-Instruct"), models.model_of("hf/Qwen/Qwen2.5-3B-Instruct")) == (
+        "hf",
+        "Qwen/Qwen2.5-3B-Instruct",
+    )
+    assert (models.vendor_of("anthropic"), models.model_of("anthropic")) == ("anthropic", None)
+    # A vendor's name is lowered; a model's case is the registry's.
+    assert models.local_or_vendor(" Local/Qwen3:8B ") == "local/Qwen3:8B"
+    assert models.local_or_vendor("Anthropic") == "anthropic"
 
 
-def test_a_mix_keeps_the_local_stages_servers_and_names_the_vendors_bare() -> None:
-    """Anthropic thinks and judges; the local ears keep their base_url and Smart Turn; the local voice its voices."""
-    row = models.row_of(models.Choices(stt=models.LOCAL, turn="smart-turn", llm="anthropic", tts=models.LOCAL))
-    assert row.defaults["llm"].vendor == "anthropic" and row.defaults["llm"].model is None
-    assert "llm/openai" not in row.tuning and "stt/openai" in row.tuning and "tts/openai" in row.tuning
-    assert row.judge is not None and row.judge.llm.vendor == "anthropic"
-    assert row.caller is not None and row.caller.llm is not None and row.caller.llm.vendor == "anthropic"
-    assert row.voices == {"openai/es": "ef_dora", "openai/en": "af_heart"}
-
-
-def test_every_stage_on_a_vendor_leaves_the_ears_own_endpointing_and_the_embedder_local() -> None:
-    """No turn model when the ears end the turn; no voices listed for a vendor; bge-m3 stays for memory and bases."""
-    row = models.row_of(models.ALL_KEYS)
-    assert {stage: one.vendor for stage, one in row.defaults.items()} == {
-        "stt": "deepgram",
-        "llm": "anthropic",
-        "tts": "cartesia",
-    }
-    assert row.tuning == {} and row.voices == {}
-    assert row.embedding is not None and row.embedding.url == "http://127.0.0.1:11434/v1"
-    livekit = models.row_of(models.Choices(stt="deepgram", turn="livekit", llm="anthropic", tts="cartesia"))
-    assert livekit.tuning["stt/deepgram"].turn_model == "v1-mini"
+def test_the_judge_and_the_caller_follow_the_thinking_unless_named() -> None:
+    """Unnamed, both run on the thinking's model; named, each on its own; Ollama pulls each local model once."""
+    chosen = models.Choices(llm="local/gemma4:12b")
+    assert (chosen.judging, chosen.calling) == ("local/gemma4:12b", "local/gemma4:12b")
+    assert chosen.local_models == ("gemma4:12b",)
+    mixed = models.Choices(llm="anthropic", judge="local/gemma4:e4b", caller="local")
+    assert (mixed.judging, mixed.calling) == ("local/gemma4:e4b", "local")
+    assert mixed.local_models == ("gemma4:e4b", models.LOCAL_LLM)
+    assert mixed.vendors == frozenset({"anthropic"})
+    assert models.Choices(llm="local", judge="local/gemma4:e4b", caller="local/gemma4:e4b").local_models == (
+        models.LOCAL_LLM,
+        "gemma4:e4b",
+    )
 
 
 def test_the_keys_a_mix_needs_and_where_each_came_from(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -59,6 +42,9 @@ def test_the_keys_a_mix_needs_and_where_each_came_from(monkeypatch: pytest.Monke
     assert given == {"acme": "ak-x", "anthropic": "sk-ant-x", "openai": "local"}
     assert read == ["ACME_API_KEY", "ANTHROPIC_API_KEY"]
     assert models.key_variable("assemblyai") == "ASSEMBLYAI_API_KEY"
+    # A judge on a vendor of yours needs that vendor's key as the thinking would.
+    judged, _ = models.keys_for(models.Choices(judge="anthropic"), asking=False)
+    assert judged == {"anthropic": "sk-ant-x", "openai": "local"}
     monkeypatch.delenv("ACME_API_KEY")
     with pytest.raises(ValidationError, match="acme needs a key: set ACME_API_KEY"):
         models.keys_for(models.Choices(tts="acme"), asking=False)
@@ -73,13 +59,10 @@ def test_the_turn_is_one_of_three_and_the_local_ears_cannot_end_it() -> None:
         models.check_choices(models.Choices(turn="stt"))
 
 
-def test_a_choice_may_name_the_model_after_its_vendor() -> None:
-    """`hf/Qwen/Qwen2.5-3B-Instruct` is the vendor hf running that model; a bare vendor runs its plugin's own."""
-    assert (models.vendor_of("hf/Qwen/Qwen2.5-3B-Instruct"), models.model_of("hf/Qwen/Qwen2.5-3B-Instruct")) == (
-        "hf",
-        "Qwen/Qwen2.5-3B-Instruct",
-    )
-    assert (models.vendor_of("anthropic"), models.model_of("anthropic")) == ("anthropic", None)
-    row = models.row_of(models.Choices(stt="deepgram", turn="stt", llm="anthropic/claude-haiku-5-5", tts="cartesia"))
-    assert (row.defaults["llm"].vendor, row.defaults["llm"].model) == ("anthropic", "claude-haiku-5-5")
-    assert row.judge is not None and row.judge.llm.model == "claude-haiku-5-5"
+def test_what_is_checked_a_vendor_installed_doing_its_stage_and_one_local_voice() -> None:
+    """A judge on a vendor nobody installed is refused as the thinking would be; the local voice takes no model."""
+    with pytest.raises(ValidationError, match="no vendor named 'nobody'"):
+        models.check_choices(models.Choices(judge="nobody"))
+    with pytest.raises(ValidationError, match="the local voice is Kokoro"):
+        models.check_choices(models.Choices(tts="local/piper"))
+    assert models.check_choices(models.Choices(llm="local/gemma4:12b", caller="acme")).calling == "acme"

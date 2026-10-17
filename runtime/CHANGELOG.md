@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`setup` takes any open model, per stage and per role.** `--llm local/<ollama tag>` and
+  `--stt local/<whisper model>` name the model itself; `--judge` and `--caller` choose who judges a
+  finished call and who plays the simulated caller (the thinking's model unless named); Ollama
+  pulls each once and the row prices each at nothing. The local thinking's default is `gemma4:12b`,
+  the model that took a message, answered from the documents and made small talk on a 24 GB card;
+  `qwen3:4b` thought aloud and never called the tool.
+- **`setup --recommend`** reads the machine — cards and their memory, Apple silicon, RAM, cores,
+  Docker, an Ollama already running, which key variables are set — and prints the stack that fits
+  it as JSON, from `cli/local/measured.json`: every measured model with whether it fits beside the
+  ears, the voice and the embedder, and by how much it is short.
+
 - **A visitor's call reaches a worker again.** LiveKit's webhook names its LiveKit `?world=`, as the
   chart and the operator's page say; the gateway read `?env=` and took every event as production's.
   On Linux, `local up` and `setup` make the gateway listen on every interface: Docker's

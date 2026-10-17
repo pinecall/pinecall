@@ -33,8 +33,10 @@ variable they read is
 
 ```
 pinecall-runtime setup [--dir <path>] [--email <address>] [--person "…"] [--password-stdin]
-                       [--stt local|<vendor>] [--turn stt|smart-turn|livekit] [--llm local|<vendor>] [--tts local|<vendor>]
-                       [--models local|keys|none] [--chat-only] [--org] [--yes] [--services-only]
+                       [--stt local[/<model>]|<vendor>] [--turn stt|smart-turn|livekit]
+                       [--llm local[/<model>]|<vendor>[/<model>]] [--tts local|<vendor>]
+                       [--judge …] [--caller …] [--models local|keys|none] [--chat-only] [--org] [--yes]
+                       [--services-only] [--recommend]
 ```
 
 This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
@@ -60,12 +62,17 @@ over, and the CLI signs in as the person, with `pinecall login <url>` and `pinec
 
 **The models, a stage at a time.** Each of the ears (`--stt`), the thinking (`--llm`) and the
 voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
-build runs (`providers installed` lists them); `--turn` says who ends the caller's turn: `stt`,
+build runs (`providers installed` lists them). `local/<model>` names the open model itself: any
+tag Ollama pulls for the thinking (`--llm local/qwen3:30b-a3b-instruct-2507-q4_K_M`), any model
+Speaches loads for the ears; the voice is Kokoro. `--judge` and `--caller` choose, the same way,
+who judges a finished call and who improvises the simulated caller's lines; left out, both run on
+the thinking's model. `--turn` says who ends the caller's turn: `stt`,
 the ears' own endpointing (only for ears that have one: Whisper does not), `smart-turn` (Smart
 Turn v3) or `livekit` (its v1-mini), both read off the audio on the worker's CPU. A terminal with
 no stage named is asked the four. A local stage runs through the `openai` plugin with a
 `base_url` of its own, the same three servers `infra/models/` runs on a card, in their CPU images:
-Ollama (`qwen3:4b`, :11434), Whisper on Speaches (:8000), Kokoro (:8880), every port on loopback,
+Ollama (`gemma4:12b` unless `local/<model>` says otherwise, :11434), Whisper on Speaches (:8000),
+Kokoro (:8880), every port on loopback,
 the models pulled once into Docker volumes; an Ollama already answering on :11434 is used instead
 of the container. Memory and documents embed on `bge-m3`, on Ollama, always: the embedder is
 never a choice, since changing it would blind every base and every memory. A vendor's key is read
@@ -75,6 +82,17 @@ run on the box's keys, on the model chosen to think. The providers row is writte
 and the console edits it from then on; a row already there is left as it is. `--models local` is
 every stage local (what `--yes` answers), `--models keys` deepgram, anthropic and cartesia with
 the ears' own endpointing, `--models none` leaves the row to `providers seed`.
+
+**`--recommend`** reads this machine and prints, as JSON, the stack that fits it, setting nothing
+up: the cards and their memory (`nvidia-smi`), Apple silicon and its unified memory, the cores
+and the RAM, whether Docker and an Ollama are here, and which vendors' key variables are set
+(their values are never read into it). The thinking is the best model of those measured
+(`cli/local/measured.json`: a message taken, a question the documents answer, small talk, the
+time to the first token) whose memory fits the card beside the ears, the voice and the embedder,
+with a margin for the conversations a call runs at once; a machine with no GPU is handed the
+three vendors instead, and a Mac the thinking on its own Ollama (Metal) with the ears and the
+voice in CPU containers. Each candidate says whether it fits and by how much it is short, so a
+screen — `pinecall setup`, the CLI's — can show the whole list with the reasons.
 
 **`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
 nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,

@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall setup`**: the runtime on this machine chosen on a screen (Ink). It reads the machine through `pinecall-runtime setup --recommend` — the card and its memory, Apple silicon, RAM, Docker, an Ollama already running, the key variables set — shows every model measured for a voice agent with whether it fits and how it did, and offers five ways: recommended, all local, with keys, stage by stage (the ears, the end of turn, the thinking, the voice, the judge, the simulated caller — each a list narrowed as you type, `local/<tag>` taking any Ollama model) or chat only. It says where each key is (the environment, an unsourced shell file, nowhere) and never takes one; then runs `pinecall-runtime setup --yes` with the answers. `--yes` and a pipe run the recommended stack as the flags amend it; `--recommend` prints the reading.
+
 - `--llm hf/Qwen/Qwen2.5-3B-Instruct` and `--llm livekit/openai/gpt-5-mini` reach the gateway whole: a model with a slash of its own lost everything after it (`split("/", 2)`), and the gateway was asked for `Qwen`.
 
 - **`pinecall team`**: the org's people, `team password <email>` sets anyone's password (typed twice without echo, or piped), `team reset <email>` makes a one-use link to choose it. The MCP server's `team` tool lists them and answers that link: no password passes through the assistant.

@@ -15,7 +15,9 @@ from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys, members, orgs
 from pinecall_runtime.cli import local
 from pinecall_runtime.cli import orgs as orgs_cli
+from pinecall_runtime.cli import setup_machine as machine_
 from pinecall_runtime.cli import setup_models as models_
+from pinecall_runtime.cli import setup_servers as servers
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.enums import Role
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
@@ -63,11 +65,24 @@ async def setup(
             help="local: every stage on this machine · keys: deepgram, anthropic, cartesia · none: the row is yours.",
         ),
     ] = None,
-    stt: Annotated[str | None, typer.Option("--stt", help="Who hears the caller: local, or a vendor of yours.")] = None,
+    stt: Annotated[
+        str | None,
+        typer.Option("--stt", help="Who hears the caller: local, local/<whisper model>, or a vendor of yours."),
+    ] = None,
     turn: Annotated[
         str | None, typer.Option("--turn", help="Who ends the caller's turn: stt, smart-turn or livekit.")
     ] = None,
-    llm: Annotated[str | None, typer.Option("--llm", help="Who thinks: local, or a vendor of yours.")] = None,
+    llm: Annotated[
+        str | None, typer.Option("--llm", help="Who thinks: local, local/<ollama model>, or a vendor of yours.")
+    ] = None,
+    judge: Annotated[
+        str | None,
+        typer.Option("--judge", help="Who judges a finished call: as --llm; the thinking's model when not given."),
+    ] = None,
+    caller: Annotated[
+        str | None,
+        typer.Option("--caller", help="Who plays the simulated caller: as --llm; the thinking's model when not given."),
+    ] = None,
     tts: Annotated[str | None, typer.Option("--tts", help="Who speaks: local, or a vendor of yours.")] = None,
     chat_only: Annotated[
         bool, typer.Option("--chat-only", help="Written calls alone: no LiveKit, no worker, no ears, no voice.")
@@ -79,6 +94,12 @@ async def setup(
     services_only: Annotated[
         bool, typer.Option("--services-only", help="Everything but running the gateway and the worker.")
     ] = False,
+    recommend: Annotated[
+        bool,
+        typer.Option(
+            "--recommend", help="Read this machine and say the stack that fits it, as JSON; nothing is set up."
+        ),
+    ] = False,
     email: Annotated[
         str | None, typer.Option("--email", help="Who signs in to the console; asked when not given.")
     ] = None,
@@ -89,6 +110,9 @@ async def setup(
     """This machine's runtime, from nothing to a class that answers: run once, safe to run again."""
     context = context_of(ctx)
     out = context.out
+    if recommend:
+        out.data(machine_.recommendation(os.environ))
+        return OK
     asking = sys.stdin.isatty() and not yes
     local.docker_or_refuse()
     out.line(f"docker     {_compose_version()}")
@@ -110,9 +134,9 @@ async def setup(
         if not org_mode:
             handed = await _this_machines_key(runtime, values, env, member)
             out.line(f"key        this machine's, in {handed}: the CLI finds this runtime by itself")
-        choices = _choices(models, stt, turn, llm, tts, asking=asking, chat_only=chat_only)
+        choices = _choices(models, stt, turn, llm, tts, judge, caller, asking=asking, chat_only=chat_only)
         if choices is not None:
-            await models_.models(runtime, where, choices, asking=asking, out=out)
+            await servers.models(runtime, where, choices, asking=asking, out=out)
     out.line(f"ready      console {local.GATEWAY_URL}/sandbox/")
     out.line(NEXT_ORG.format(url=local.GATEWAY_URL) if org_mode else NEXT)
     if services_only:
@@ -124,13 +148,15 @@ async def setup(
     )
 
 
-# What the flags say, else the four questions at a terminal, else every stage on this machine.
+# What the flags say, else the questions at a terminal, else every stage on this machine.
 def _choices(
     models: str | None,
     stt: str | None,
     turn: str | None,
     llm: str | None,
     tts: str | None,
+    judge: str | None,
+    caller: str | None,
     *,
     asking: bool,
     chat_only: bool,
@@ -140,16 +166,25 @@ def _choices(
     if models not in (None, "local", "keys"):
         raise ValidationError(f"--models is local, keys or none, not {models!r}")
     base = models_.ALL_KEYS if models == "keys" else models_.ALL_LOCAL
-    if models is None and asking and not any((stt, turn, llm, tts)):
+    if models is None and asking and not any((stt, turn, llm, tts, judge, caller)):
         base = models_.ask_choices()
     chosen = models_.Choices(
-        stt=(stt or base.stt).strip().lower(),
+        stt=models_.local_or_vendor(stt or base.stt),
         turn=models_.turn_of(turn or base.turn),
-        llm=(llm or base.llm).strip().lower(),
-        tts=(tts or base.tts).strip().lower(),
+        llm=models_.local_or_vendor(llm or base.llm),
+        tts=models_.local_or_vendor(tts or base.tts),
+        judge=models_.local_or_vendor(judge) if judge else base.judge,
+        caller=models_.local_or_vendor(caller) if caller else base.caller,
     )
     if chat_only:
-        chosen = models_.Choices(stt=models_.LOCAL, turn="smart-turn", llm=chosen.llm, tts=models_.LOCAL)
+        chosen = models_.Choices(
+            stt=models_.LOCAL,
+            turn="smart-turn",
+            llm=chosen.llm,
+            tts=models_.LOCAL,
+            judge=chosen.judge,
+            caller=chosen.caller,
+        )
     return models_.check_choices(chosen)
 
 

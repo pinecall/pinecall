@@ -217,6 +217,56 @@ of this project, by its folder's name. In a verb that only asks the gateway — 
 `runs drift`, `numbers import`, `callbacks`, `docs attach` — it is a slug, because there is no
 class to find. `--file` is always a file.
 
+## `setup`
+
+```
+pinecall setup [--stt <choice>] [--turn stt|smart-turn|livekit] [--llm <choice>] [--tts <choice>]
+               [--judge <choice>] [--caller <choice>] [--email <address>] [--chat-only] [--yes] [--recommend]
+```
+
+The runtime on this machine, chosen on a screen and run: `pinecall-runtime setup` with its
+decisions made here. It needs the runtime installed (`uv tool install "pinecall-runtime[voice]"`)
+and Docker. First it reads the machine through the runtime (`pinecall-runtime setup --recommend`):
+the card and its memory, Apple silicon and its unified memory, RAM and cores, whether Docker and
+an Ollama are here, which vendors' key variables are set. Then it shows every model measured
+for a voice agent — whether it fits beside the ears, the voice and the embedder and by how much
+it is short, the time to its first token, whether it took a message, answered from the documents
+and made small talk — with the stack this machine runs best already picked.
+
+Five ways, one chosen with the arrows: **recommended** (what the machine runs best), **all
+local** (every stage an open model here, no account anywhere), **with keys** (deepgram hears,
+anthropic thinks, cartesia speaks), **stage by stage** and **chat only**. Stage by stage asks
+six questions — the ears, the end of turn, the thinking, the voice, the judge of a finished call,
+the model that plays the simulated caller — each a list typed into and narrowed as you type:
+`local` (the server on this machine), `local/<model>` for every measured model marked ✓ or ✗
+for this machine, and any model Ollama has by its tag, then every vendor this build runs that
+does the stage. The judge and the caller follow the thinking until picked on their own.
+
+A key is never typed on this screen. Before running, it says where each vendor's key is: in the
+environment, in a shell file this shell has not sourced (`~/.zshrc`, `~/.bashrc`, fish's
+`config.fish` — read by name, never by value), or nowhere, in which case the runtime asks for it
+without echo. Enter runs `pinecall-runtime setup --yes` with the answers and leaves it running:
+Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by itself in
+`~/.pinecall/local.json`, the models pulled once, the gateway and a worker.
+
+A flag names a stage and that stage is not asked. `--yes` asks nothing and runs the recommended
+stack as the flags amend it — what a pipe or a script gets, since the screen needs a terminal.
+`--recommend` prints the reading and stops; `--json` makes it the runtime's own JSON.
+
+```console
+$ pinecall setup --recommend
+this machine  NVIDIA L4 · 22.5 GB · 22.5 GB for the models
+here          docker ✓ · ollama the container · linux x86_64
+keys set      none
+
+measured                                fits       first token  message  docs  talk
+qwen3:30b-a3b-instruct-2507-q4_K_M      ✗ -1.6 GB  0.4s         3/3      3/3   3/3
+gemma4:12b                              ✓          0.9s         3/3      3/3   3/3
+gemma4:e4b                              ✓          0.8s         2/3      3/3   3/3
+
+recommended   stt local · turn smart-turn · llm local/gemma4:12b · tts local
+```
+
 ## `new`
 
 ```

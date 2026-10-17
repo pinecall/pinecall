@@ -33,7 +33,7 @@ The domains, bottom up, each importing only the domains below it (their `service
 for a mark two terminals write the same way):
 
 ```
-billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · alerts · scaffold · dev · mcp
+setup · billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · alerts · scaffold · dev · mcp
 ```
 
 ## 3. The tree
@@ -217,6 +217,18 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `alerts/commands.ts` | 159 | `pinecall monitors \| webhook \| telemetry`: what the org watches, where its alerts go, where its traces go. |
 | `alerts/render.ts` | 56 | Alerts as a terminal reads them: the monitors table, one monitor, the webhook, the collector. |
 | `alerts/service.ts` | 92 | Alerts: the monitors the org watches, where its alerts are posted, and where its traces go. |
+
+### `setup/`
+
+| file | lines | what it is |
+|---|---|---|
+| `setup/commands.ts` | 75 | `pinecall setup`: the runtime on this machine, chosen on a screen — what it can run, each stage, the keys — and run. |
+| `setup/service.ts` | 180 | `pinecall setup`'s use cases: this machine as the runtime reads it, the build's vendors, where each key is, the answers as the runtime's flags, the runtime run. |
+| `setup/render/index.ts` | 50 | What `pinecall setup` shows: the wizard on a terminal, and the lines for one that is not. |
+| `setup/render/wizard.tsx` | 150 | The setup screen: the machine read, a way chosen, each stage picked where asked, the keys' whereabouts, the answers confirmed. |
+| `setup/render/machine.tsx` | 55 | The machine as the runtime read it, drawn: its card or its silicon, the memory and the budget, what is here, every model measured and whether it fits. |
+| `setup/render/pick.tsx` | 80 | One stage's picker: a line typed into, the options that match it listed under, arrows to move, enter to take one or what was typed. |
+| `setup/render/choose.tsx` | 50 | One question with a few answers: ↑↓ move, ⏎ takes the lit one, esc goes back. |
 
 ### `scaffold/`
 

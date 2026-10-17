@@ -14,6 +14,8 @@ Commands:
                                  and its first agent with --agent
   generate|g                     an agent in this project, or one more golden
                                  for one of its agents
+  setup [options]                the runtime on this machine, chosen on a screen
+                                 and run
   login [options] [gateway]      sign this machine in through a browser; `link`
                                  asks for it when it is needed
   link [options]                 this project's folder to one of your orgs: your
