@@ -20,7 +20,7 @@ const A_USAGE_PAGE = {
 };
 
 // runtime api/routes.py: `Answering` — the domain's Route and which table put it there.
-const A_DOOR = { route: { org: "clinica", agent: "clinica-norte", channel: "phone", number: "+34910000000", label: null, env: "production" } };
+const A_DOOR = { route: { org: "clinica", agent: "clinica-norte", channel: "phone", number: "+34910000000", env: "production" } };
 
 // runtime api/members.py: one member as the wire says it.
 const A_MEMBER = { id: "m_1", email: "ana@clinica.uy", name: "Ana", role: "supervisor", agents: ["clinica-norte"], status: "active", scopes: ["calls", "evals", "supervise", "talk"], production: true };

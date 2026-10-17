@@ -16,7 +16,7 @@ const CATALOG: Catalog = {
 };
 
 const row = (changes: Partial<Answering> = {}): Answering => ({
-  route: { org: "org_a", agent: "recepcion", channel: "phone", number: "+59829001199", label: null, env: "production", managed: false },
+  route: { org: "org_a", agent: "recepcion", channel: "phone", number: "+59829001199", env: "production", managed: false },
   origin: "imported",
   rings: "ok",
   last_call_at: null,

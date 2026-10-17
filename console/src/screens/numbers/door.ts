@@ -9,7 +9,6 @@ const RouteSchema = z.object({
   agent: z.string(),
   channel: z.enum(["phone", "web", "whatsapp"]),
   number: z.string().nullable(),
-  label: z.string().nullable(),
   env: z.enum(["production", "sandbox"]),
   managed: z.boolean().default(false),
 });
