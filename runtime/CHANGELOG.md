@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A visitor's call reaches a worker again.** LiveKit's webhook names its LiveKit `?world=`, as the
+  chart and the operator's page say; the gateway read `?env=` and took every event as production's.
+  On Linux, `local up` and `setup` make the gateway listen on every interface: Docker's
+  `host.docker.internal` is the bridge's address there, and a gateway on loopback never heard LiveKit,
+  so the playground's and the widget's rooms were never offered to a worker ("no worker is available").
+  The local LiveKit's webhook names `?world=sandbox`.
+
 - A judge's verdict and a simulated caller's line are given 30 s, not livekit's 10: a local model
   asked for a whole tool call takes longer now and then (gemma4:12b took 16.6 s on an L4), and the
   simulated call broke on it with nobody speaking after the greeting.

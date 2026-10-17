@@ -33,8 +33,7 @@ app = typer.Typer(help="the runtime whole on this machine, for developing an age
 # Where one machine keeps its local runtime: the compose files, the database's name, the secrets.
 DEFAULT_DIR = Path.home() / ".pinecall-runtime" / "local"
 # What the package ships for Docker, written into that directory as they are here. Read as files of
-# the `cli` package under `local/`: the module `cli/local.py` has that name too, and importlib would
-# resolve `cli.local` to the module, whose folder is `cli/` (found on a clean machine, 2026-10-17).
+# the `cli` package under `local/`: `cli.local` is this module to importlib (found on a clean machine, 2026-10-17).
 SHIPPED = (
     "compose.yaml",
     "livekit.yaml",
@@ -62,8 +61,7 @@ NO_DOCKER = (
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 NOT_ANSWERING = "{service} did not answer on 127.0.0.1:{port} within {seconds:.0f} s: `docker compose ps`"
 
-# The settings the gateway and the worker run on here: the three services the compose publishes
-# on loopback, a development LiveKit pair that exists only on this machine, and secrets drawn once.
+# The settings the gateway and the worker run on here: the services on loopback, a dev LiveKit pair, secrets drawn once.
 SETTINGS = """DATABASE_URL=postgresql://pinecall:pinecall@127.0.0.1:55433/pinecall
 PINECALL_REDIS_URL=redis://127.0.0.1:56380/0
 LIVEKIT_URL=ws://127.0.0.1:7880
@@ -77,11 +75,13 @@ PINECALL_WORKER_HTTP_PORT=8182
 PINECALL_VAULT_KEY={vault}
 PINECALL_OPS_KEY=pc_ops_{ops}
 PINECALL_TOKEN_KEY={token}
-"""
+{listen}"""
+# On Linux, host.docker.internal is Docker's bridge, not loopback: LiveKit's webhooks need a gateway on every interface.
+LISTEN_EVERYWHERE = "PINECALL_GATEWAY_LISTEN=0.0.0.0:8080\n" if sys.platform == "linux" else ""
 UP = "local · Postgres :55433 · Redis :56380 · LiveKit :7880 · settings in {env}\nconsole   {gateway}/sandbox/"
 FIRST = (
     "  the first time, in another terminal:\n"
-    '    pinecall-runtime local init --email you@example.com --person "Your Name"'
+    "    pinecall-runtime local init --email you@example.com --person 'Your Name'"
 )
 RUNNING = "gateway and a sandbox worker running; Ctrl-C stops them, the services stay (local down)"
 DOWN = "local: the services stopped; the database and {env} are kept"
@@ -141,9 +141,8 @@ def services_up(compose: Path, services: Sequence[str]) -> None:
 
 async def prepare_database(values: dict[str, str], env: Path) -> platform.History:
     """The schema brought to this release, and the sandbox fleet's key drawn once into the env file."""
-    # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local
-    # settings become the process's here, as they are the children's. Found on a clean machine, where
-    # nothing else named the database and the upgrade reached for localhost:5432 (2026-10-17).
+    # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local settings
+    # become the process's here, as they are the children's (a clean machine reached for localhost:5432, 2026-10-17).
     os.environ.update(values)
     engine = create_engine(settings_of(values), pool_size=3)
     try:
@@ -222,6 +221,7 @@ def write_shipped(where: Path) -> Path:
                 vault=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
                 ops=secrets.token_hex(24),
                 token=secrets.token_hex(32),
+                listen=LISTEN_EVERYWHERE,
             ),
             encoding="utf-8",
         )

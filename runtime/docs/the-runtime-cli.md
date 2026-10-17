@@ -19,7 +19,8 @@ writes an agent, nothing there issues a key.
 
 `gateway` serves both environments: in a pod on the address `PINECALL_GATEWAY_LISTEN` names, behind the
 cluster's load balancer; elsewhere on the loopback address `PINECALL_GATEWAY_URL` names, and a URL
-that is not loopback is refused in one sentence. `worker start` is a worker of the fleet
+that is not loopback is refused in one sentence (on Linux, `setup` sets `PINECALL_GATEWAY_LISTEN` to
+every interface, so the LiveKit container's webhooks reach it; the machine's firewall is the fence). `worker start` is a worker of the fleet
 `PINECALL_FLEET` names, until told to stop or cordoned; `worker overflow` the one that answers when
 the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
 opens running, one gVisor pod each: the runner is itself a pod of the hosting cluster

@@ -62,7 +62,11 @@ async def wanted_workers(
 # config sends to, so the room is asked of the LiveKit it lives on.
 @router.post("/v1/livekit/webhook", status_code=204)
 async def receive_livekit_event(
-    request: Request, handles: TheHandles, session: Session, env: Annotated[Env, Query()] = Env.production
+    request: Request,
+    handles: TheHandles,
+    session: Session,
+    # `?world=` names the LiveKit that sent it, as the chart and the operator's page spell it.
+    env: Annotated[Env, Query(alias="world")] = Env.production,
 ) -> None:
     """A room event LiveKit signed: a caller alone is offered a worker; an agent lost, told."""
     token = request.headers.get("Authorization")

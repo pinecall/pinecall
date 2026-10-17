@@ -14,6 +14,6 @@ keys:
 webhook:
   api_key: devkey
   urls:
-    - http://host.docker.internal:8080/v1/livekit/webhook
+    - http://host.docker.internal:8080/v1/livekit/webhook?world=sandbox
 logging:
   level: info
