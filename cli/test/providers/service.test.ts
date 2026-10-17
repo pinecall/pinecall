@@ -69,6 +69,7 @@ describe("naming a model", () => {
     expect(service.modelFieldOf("opus")).toBe("anthropic/claude-opus-5");
     expect(service.modelFieldOf("openai")).toBe("openai");
     expect(service.modelFieldOf("openai/gpt-5.4")).toBe("openai/gpt-5.4");
+    expect(service.modelFieldOf("hf/Qwen/Qwen2.5-3B-Instruct")).toBe("hf/Qwen/Qwen2.5-3B-Instruct");
     expect(service.modelFieldOf("")).toBeUndefined();
   });
 });

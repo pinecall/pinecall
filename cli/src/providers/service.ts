@@ -68,12 +68,16 @@ export interface NamedModel {
   model: string;
 }
 
-/** `vendor/model`, or a short name, as provider and model id; undefined when it names none. */
+/**
+ * `vendor/model`, or a short name, as provider and model id; undefined when it names none. The
+ * model keeps every slash after the vendor's (`hf/Qwen/Qwen2.5-3B-Instruct`, `livekit/openai/gpt-5-mini`).
+ */
 export function parseModel(value: string): NamedModel | undefined {
   if (value === "") return undefined;
-  const [provider, name] = value.includes("/") ? value.split("/", 2) : ["anthropic", value];
+  const slash = value.indexOf("/");
+  const [provider, name] = slash >= 0 ? [value.slice(0, slash), value.slice(slash + 1)] : ["anthropic", value];
   if (provider === "" || name === "") return undefined;
-  return { provider: provider!, model: SHORT_NAMES[name!] ?? name! };
+  return { provider, model: SHORT_NAMES[name] ?? name };
 }
 
 /** `vendor/model` with every slash after the vendor's kept (`livekit/openai/gpt-5-mini`); a short name is Anthropic's. */
