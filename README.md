@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://docs.pinecall.io/start/quickstart/">
-    <img src=".github/assets/banner-4138dfff.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
+    <img src=".github/assets/banner-ab4f8b6a.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
   </a>
 </p>
 
@@ -114,50 +114,64 @@ not in the class. They are settings of the agent, per environment and versioned,
 
 ## ▸ From an empty folder to a phone call
 
-The runtime is open source. Run it on your own machine, with no account and nothing sent to a
-cloud, or skip it and use Pinecall Cloud. The agent is the same either way.
+The runtime is open source. Run it on your own machine, with no account, no vendor and nothing
+sent to a cloud, or skip it and use Pinecall Cloud. The agent is the same either way.
 
-<table>
-<tr><th>on your machine</th><th>on Pinecall Cloud</th></tr>
-<tr><td>
+### On your machine: `pinecall-runtime setup`
 
 ```console
 $ uv tool install "pinecall-runtime[voice]"
-$ pinecall-runtime local up
-$ pinecall-runtime local init --email you@example.com --person "You"
+$ pinecall-runtime setup
+docker     compose 2.39.1
+services   Postgres :55433 · Redis :56380 · LiveKit :7880
+schema     at this release
+console sign-in: your email: you@acme.dev
+password:
+Repeat for confirmation:
+console    you@acme.dev signs in with the password typed
+key        this machine's, in ~/.pinecall/local.json: the CLI finds this runtime by itself
+models: local (open models on this machine, no account, ~4 GB pulled once) · keys (your vendors' keys) · none [local]: local
+models     Ollama :11434 (qwen3:4b, bge-m3) · Whisper :8000 · Kokoro :8880 — open models, no account
+row        the providers row written: the console edits it from now on
+ready      console http://127.0.0.1:8080/sandbox/
 ```
 
-Postgres, Redis and LiveKit in Docker, then the gateway with its console and a worker.
-[On your machine](https://docs.pinecall.io/self-hosting/laptop/) walks it.
+One verb, run once and safe to run again. It needs Docker, and asks two things:
 
-</td><td>
+| it asks | what it does with it |
+|---|---|
+| **who signs in to the console**, and a password typed twice | makes you the admin of the org `default`, and hands your key to the `pinecall` CLI: no `login`, no `link` |
+| **where the models come from** | `local`: Ollama thinks, Whisper hears, Kokoro speaks, bge-m3 embeds memory and documents, all on your machine. `keys`: your vendors' keys (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY`), read from the environment or asked |
+
+`--yes` asks nothing: local models, and a password drawn and shown once. `--chat-only` runs
+written calls alone, with no LiveKit and no voice, the cheapest first run. `--org` makes a team's
+runtime instead of one person's. `pinecall team password <email>` changes anyone's password later.
+[On your machine](https://docs.pinecall.io/self-hosting/laptop/) walks every line.
+
+### On Pinecall Cloud
 
 ```console
 $ pinecall login
 ```
 
 The runtime is already running at `cloud.pinecall.io`. Your org gets a sandbox, where nothing
-reaches a real caller, and production.
+reaches a real caller, and production. In a project, `pinecall link` writes its key to `.env`.
 
-</td></tr>
-</table>
-
-Then, in either case:
+### Then, in either case
 
 ```console
 $ npm i -g pinecall
 $ pinecall new acme --agent front-desk        # --python or --ruby for the other SDKs
 $ cd acme && npm install
-$ pinecall link                               # pick the org: its key goes to .env
 $ pinecall prompt                             # the exact prompt the model will read, offline
 $ pinecall chat                               # a written call against your class, here
-$ pinecall start                              # hold the agent: calls reach your process
-$ pinecall test                               # the goldens, judged against a real model
-$ pinecall deploy up                          # run it there, without your laptop
+$ pinecall start                              # hold the agent: the console's calls reach your process
+$ pinecall test                               # the goldens, judged by a model
+$ pinecall deploy up                          # run it on the runtime, without your laptop
 ```
 
-On your machine, `pinecall login http://127.0.0.1:8080` signs the CLI in to your own runtime.
-Everything acts in the **sandbox** first. `--prod` acts in production for one command.
+`pinecall whoami` says which runtime and which key the folder acts on. Everything acts in the
+**sandbox** first; `--prod` acts in production for one command.
 
 ## ▸ How a call moves
 
