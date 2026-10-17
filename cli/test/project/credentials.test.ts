@@ -14,6 +14,20 @@ describe("the credentials", () => {
     expect(readCredentials({}, root)).toEqual({ url: CLOUD_URL, key: "from-dotenv", source: ".env" });
   });
 
+  it("the runtime on this machine is read last, and never over a project's own key", () => {
+    const home = folder();
+    write(home, "local.json", JSON.stringify({ url: "http://127.0.0.1:8080", key: "pc_test_local", org: "default" }));
+    const bare = folder();
+    expect(readCredentials({}, bare, home)).toEqual({ url: "http://127.0.0.1:8080", key: "pc_test_local", source: `the local runtime (${home}/local.json)` });
+    const linked = folder();
+    write(linked, ".env", "PINECALL_KEY=from-dotenv\n");
+    expect(readCredentials({}, linked, home).key).toBe("from-dotenv");
+    expect(readCredentials({ PINECALL_KEY: "from-env" }, bare, home).source).toBe("the environment");
+    expect(readCredentials({}, bare, folder())).toEqual({ url: CLOUD_URL, key: undefined, source: "nowhere" });
+    write(home, "local.json", "{not json");
+    expect(readCredentials({}, bare, home).source).toBe("nowhere");
+  });
+
   it("only the sandbox's prefix says a token's env", () => {
     expect([serverEnvOf("pc_test_x"), serverEnvOf("pc_live_x")]).toEqual(["sandbox", undefined]);
   });

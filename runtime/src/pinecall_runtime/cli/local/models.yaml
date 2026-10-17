@@ -1,0 +1,86 @@
+# Open models on this machine, with no GPU: the same three servers `infra/models/compose.yaml` runs
+# on a card, in their CPU images, so the runtime reaches them through the `openai` plugin it
+# already has and names no vendor in code.
+#   ollama   the LLM (LOCAL_LLM) and the embedder (bge-m3), :11434 — profile `ollama`, skipped when
+#            Ollama already runs on this machine (a Mac runs it on Metal, which Docker cannot)
+#   whisper  the ears (LOCAL_STT on Speaches), /v1/audio/transcriptions, :8000 — profile `voice`
+#   kokoro   the voice (Kokoro-82M), /v1/audio/speech, :8880 — profile `voice`
+# `pinecall-runtime setup --models local` writes this file beside the services' compose and brings
+# it up; the one-shot services pull the models once into the volumes. Every port is loopback.
+
+name: pinecall-models-local
+
+services:
+  ollama:
+    profiles: [ollama]
+    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      OLLAMA_KEEP_ALIVE: "-1"
+    volumes: [ollama:/root/.ollama]
+    ports: ["127.0.0.1:11434:11434"]
+    restart: unless-stopped
+
+  # Pulls the two models once and loads the LLM, then exits.
+  ollama-models:
+    profiles: [ollama]
+    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    environment: {OLLAMA_HOST: "ollama:11434"}
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull ${LOCAL_LLM}
+        ollama pull bge-m3
+        ollama run ${LOCAL_LLM} "" >/dev/null
+    depends_on: [ollama]
+    restart: "no"
+
+  kokoro:
+    profiles: [voice]
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c
+    ports: ["127.0.0.1:8880:8880"]
+    restart: unless-stopped
+
+  whisper:
+    profiles: [voice]
+    image: ghcr.io/speaches-ai/speaches:latest-cpu@sha256:21e3df06d842fb7802ab470dd77c25f0e8c0d22950e8d8c6ae886e851af53ef8
+    environment:
+      WHISPER__TTL: "-1"
+    volumes: [whisper:/home/ubuntu/.cache/huggingface/hub]
+    ports: ["127.0.0.1:8000:8000"]
+    restart: unless-stopped
+
+  # Downloads the Whisper model into the volume once and loads it with one transcription, then exits.
+  whisper-model:
+    profiles: [voice]
+    image: ghcr.io/speaches-ai/speaches:latest-cpu@sha256:21e3df06d842fb7802ab470dd77c25f0e8c0d22950e8d8c6ae886e851af53ef8
+    entrypoint:
+      - python
+      - -c
+      - |
+        import random, time, urllib.request
+        url = "http://whisper:8000/v1/models/${LOCAL_STT}"
+        for _ in range(120):
+            try:
+                urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=900)
+                break
+            except OSError:
+                time.sleep(5)
+        wav = b"RIFF" + (36 + 32000).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+        wav += (1).to_bytes(2, "little") * 2 + (16000).to_bytes(4, "little") + (32000).to_bytes(4, "little")
+        wav += (2).to_bytes(2, "little") + (16).to_bytes(2, "little") + b"data" + (32000).to_bytes(4, "little")
+        wav += bytes(random.getrandbits(8) for _ in range(32000))
+        body = (b"--x\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n"
+                b"${LOCAL_STT}\r\n--x\r\nContent-Disposition: form-data; "
+                b"name=\"file\"; filename=\"warm.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + wav + b"\r\n--x--\r\n")
+        urllib.request.urlopen(urllib.request.Request(
+            "http://whisper:8000/v1/audio/transcriptions", body,
+            {"Content-Type": "multipart/form-data; boundary=x"}), timeout=300)
+    depends_on: [whisper]
+    restart: "no"
+
+volumes:
+  ollama:
+  whisper:

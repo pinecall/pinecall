@@ -10,6 +10,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Sequence
 from importlib.resources import files
 from pathlib import Path
 from shutil import which
@@ -31,12 +32,26 @@ app = typer.Typer(help="the runtime whole on this machine, for developing an age
 
 # Where one machine keeps its local runtime: the compose files, the database's name, the secrets.
 DEFAULT_DIR = Path.home() / ".pinecall-runtime" / "local"
-# What the package ships for Docker, written into that directory as they are here.
-SHIPPED = ("compose.yaml", "livekit.yaml", "sip.yaml", "postgres/Dockerfile", "postgres/extensions.sql")
+# What the package ships for Docker, written into that directory as they are here. Read as files of
+# the `cli` package under `local/`: the module `cli/local.py` has that name too, and importlib would
+# resolve `cli.local` to the module, whose folder is `cli/` (found on a clean machine, 2026-10-17).
+SHIPPED = (
+    "compose.yaml",
+    "livekit.yaml",
+    "sip.yaml",
+    "postgres/Dockerfile",
+    "postgres/extensions.sql",
+    "models.yaml",
+    "providers.local.json",
+)
 SERVICES = ("postgres", "redis", "livekit")
 GATEWAY_URL = "http://127.0.0.1:8080"
-# The ports the compose publishes on loopback, as the settings name them.
-PUBLISHED = {"Postgres": 55433, "Redis": 56380, "LiveKit": 7880}
+# The ports the compose publishes on loopback, as the settings name them, by the service's name.
+PORTS: dict[str, tuple[int, str]] = {
+    "Postgres": (55433, "postgres"),
+    "Redis": (56380, "redis"),
+    "LiveKit": (7880, "livekit"),
+}
 # Docker says a container is healthy before the host's side of its port answers: a moment, on a Mac.
 PORTS_WITHIN_S = 60.0
 
@@ -96,21 +111,41 @@ async def local_up(
     context = context_of(ctx)
     where = _where(ctx)
     compose = write_shipped(where)
-    _docker_or_refuse()
+    docker_or_refuse()
+    services_up(compose, SERVICES)
+    env = where / "env"
+    values = read_env(env)
+    history = await prepare_database(values, env)
+    context.out.line(UP.format(env=env, gateway=GATEWAY_URL))
+    if history.applied:
+        context.out.line(FIRST)
+    if services_only:
+        return OK
+    return run_both(context, values, ["gateway"], ["worker", "start"])
+
+
+def services_up(compose: Path, services: Sequence[str]) -> None:
+    """`docker compose up` of those services, waited for, and each one's loopback port answering."""
     up = subprocess.run(
-        ["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait", *SERVICES],
+        ["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait", *services],
         capture_output=True,
         text=True,
         check=False,
     )
     if up.returncode != 0:
         raise UpstreamError(COMPOSE_FAILED.format(output=(up.stderr or up.stdout).strip()[-2000:]))
-    for service, port in PUBLISHED.items():
-        wait_for_port(service, port)
-    env = where / "env"
-    values = read_env(env)
-    settings = settings_of(values)
-    engine = create_engine(settings, pool_size=3)
+    for name, (port, service) in PORTS.items():
+        if service in services:
+            wait_for_port(name, port)
+
+
+async def prepare_database(values: dict[str, str], env: Path) -> platform.History:
+    """The schema brought to this release, and the sandbox fleet's key drawn once into the env file."""
+    # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local
+    # settings become the process's here, as they are the children's. Found on a clean machine, where
+    # nothing else named the database and the upgrade reached for localhost:5432 (2026-10-17).
+    os.environ.update(values)
+    engine = create_engine(settings_of(values), pool_size=3)
     try:
         history = await platform.apply_history(engine)
         await asyncio.to_thread(platform.upgrade_schema, tracked=history.tracked)
@@ -124,12 +159,7 @@ async def local_up(
                 out.write(f"PINECALL_WORKER_KEY={values['PINECALL_WORKER_KEY']}\n")
     finally:
         await engine.dispose()
-    context.out.line(UP.format(env=env, gateway=GATEWAY_URL))
-    if history.applied:
-        context.out.line(FIRST)
-    if services_only:
-        return OK
-    return run_both(context, values, ["gateway"], ["worker", "start"])
+    return history
 
 
 @app.command("down")
@@ -140,7 +170,7 @@ async def local_down(
 ) -> int:
     """Stop the services; the database's volume stays unless `--volumes`."""
     where = _where(ctx)
-    _docker_or_refuse()
+    docker_or_refuse()
     wiped = ["-v"] if volumes else []
     subprocess.run(["docker", "compose", "-f", str(where / "compose.yaml"), "down", *wiped], check=True)
     context_of(ctx).out.line((WIPED if volumes else DOWN).format(env=where / "env"))
@@ -174,7 +204,7 @@ async def local_env(ctx: typer.Context) -> int:
 
 def write_shipped(where: Path) -> Path:
     """Write the compose files the package ships and the settings once; the compose file's path."""
-    shipped = files("pinecall_runtime.cli.local")
+    shipped = files("pinecall_runtime.cli").joinpath("local")
     for name in SHIPPED:
         target = where / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -256,7 +286,8 @@ def run_both(context: Context, values: dict[str, str], *verbs: list[str]) -> int
     return OK if all(code in (0, -signal.SIGTERM) for code in codes) else FOUND_WRONG
 
 
-def _docker_or_refuse() -> None:
+def docker_or_refuse() -> None:
+    """Docker on PATH, or the sentence that says what to install."""
     if which("docker") is None:
         raise ConfigurationError(NO_DOCKER)
 

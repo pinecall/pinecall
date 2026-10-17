@@ -12,6 +12,7 @@ from pinecall_runtime.judging.schemas import (
     JudgeScore,
     ProposalRow,
 )
+from pinecall_runtime.judging.service.asking import summed_usage
 from pinecall_runtime.judging.service.calibration import (
     AGREES_AT_LEAST,
     LABELS_TO_JUDGE,
@@ -220,6 +221,7 @@ __all__ = [
     "put_judge",
     "put_persona",
     "spec_of",
+    "summed_usage",
     "switch_judges",
     "switch_personas",
     "switched_at",

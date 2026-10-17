@@ -28,6 +28,46 @@ opens running, one gVisor pod each: the runner is itself a pod of the hosting cl
 variable they read is
 [the-environment.md](the-environment.md).
 
+## `setup`
+
+```
+pinecall-runtime setup [--dir <path>] [--org] [--models local|keys|none] [--chat-only] [--llm <model>] [--yes] [--services-only]
+```
+
+This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
+again. It is `local up` and every decision a first run asks, in order, each printed as one line
+and skipped when already done: Docker found (else the sentence that says what to install), the
+services up and the schema at this release, a key, the models, and the gateway and a worker
+running as `local up` runs them.
+
+**The key.** Without `--org`, this machine is an org of one: a key of the org `default`'s in the
+sandbox, every scope of the org's, drawn once into `<dir>/env` as `PINECALL_DEV_KEY` and handed
+to the CLI in `~/.pinecall/local.json` (`PINECALL_HOME` moves it; owner-only). A `pinecall` verb
+run in a project with no `PINECALL_KEY` of its own acts on that key at `http://127.0.0.1:8080`:
+no `login`, no `link`, no person, no password. `--org` is a team's runtime instead: the first org
+and person as `init` makes them, asked for (`--email`, `--person` when there is no terminal), and
+the invitation link printed once; the CLI then signs in with `pinecall login <url>` as the page
+says.
+
+**The models.** `--models local` (the answer `--yes` gives) runs open models on this machine
+through the `openai` plugin, each with a `base_url` of its own, the same three servers
+`infra/models/` runs on a card, in their CPU images: Ollama (`--llm`, `qwen3:4b` unless named,
+and `bge-m3` for memory and knowledge, :11434), Whisper on Speaches (:8000) and Kokoro (:8880),
+every port on loopback, the models pulled once into Docker volumes. An Ollama already answering
+on :11434 is used instead of the container (a Mac runs it on its GPU, which Docker cannot), its
+two models pulled there. The providers row is written for them, the org `default` given the word
+`local` as its `openai` key (the servers ask for none; the plugin wants one), and the console
+edits the row from then on — a row already there is left as it is. `--models keys` runs on the
+vendors' own keys: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` to think, `DEEPGRAM_API_KEY` to hear,
+`CARTESIA_API_KEY` to speak, read from the environment and asked for, one at a time, when a
+terminal is there (blank skips one); the row names the vendors keyed, and the line says what is
+still missing. `--models none` leaves the row to `providers seed`.
+
+**`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
+nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,
+a spoken call does not. `--services-only` stops before running the two processes, as `local up`'s
+does.
+
 ## `local`
 
 ```

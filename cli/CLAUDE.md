@@ -60,9 +60,11 @@ what it is.
   test whose run broke would write into the checkout. Test `writeReproductions` with a folder of
   its own.
 
-- **The CLI reads `PINECALL_KEY` and `PINECALL_URL`, and nothing else** (`project/credentials.ts`):
-  from the process's environment, else from the nearest `.env` up from the cwd. v1's
-  `PINECALL_API_KEY` is never read, and there are no profiles: another org is another folder.
+- **The CLI reads `PINECALL_KEY` and `PINECALL_URL`, and the local runtime's file** (`project/credentials.ts`):
+  from the process's environment, else from the nearest `.env` up from the cwd, else
+  `~/.pinecall/local.json`, which `pinecall-runtime setup` writes (a key of the org `default` on
+  `http://127.0.0.1:8080`). v1's `PINECALL_API_KEY` is never read, and there are no profiles:
+  another org is another folder.
   `--prod` on any verb acts in production for that one command; the `pinecall-env` header says which.
 - **The child gets its door in its environment, never its argv** (`dev/child.ts`): an argv is read
   by every process on the machine.

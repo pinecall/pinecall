@@ -171,6 +171,15 @@ async def test_a_judge_whose_model_failed_is_skipped_and_the_call_still_scored(a
     assert score.not_judged == "every judge run over this call failed and not one of them answered"
 
 
+# A panel with nobody on it was said as "every judge run failed" (2026-10-17, a new org on a laptop,
+# where no judge is on until somebody switches one): the sentence names the verb instead.
+async def test_a_call_with_no_judge_on_says_so_and_names_the_verb(acme: str) -> None:
+    score = await judged(Panel(switches=only()), JudgeModel(judge_model_of(acme, []), 0.01))
+    assert score.judges == [] and score.judge_calls == 0
+    assert score.not_judged is not None and score.not_judged.startswith("no judge is on for this agent")
+    assert "`pinecall judges on <name>`" in score.not_judged
+
+
 async def test_a_judge_asked_past_the_ceiling_is_skipped_and_the_ones_before_it_stand(
     acme: str,
 ) -> None:

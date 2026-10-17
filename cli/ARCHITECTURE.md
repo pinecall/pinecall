@@ -42,7 +42,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `context.ts` | 94 | What a verb runs with: its IO, its env, and the project and gateway it asks for, resolved once on first use. |
+| `context.ts` | 95 | What a verb runs with: its IO, its env, and the project and gateway it asks for, resolved once on first use. |
 | `errors.ts` | 42 | Every error the CLI throws, each carrying the exit code `main.ts` answers with. |
 | `main.ts` | 82 | The entry: the program is run, and every error becomes one sentence and an exit code. |
 | `program.ts` | 56 | The command tree on one screen: the global flags, and one `register` call per domain. |
@@ -61,6 +61,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `kit/format.ts` | 55 | The one way a date, an amount, a duration, a count or a verdict's mark is written for a terminal. |
 | `kit/git.ts` | 14 | What git says about a file: the one place the CLI asks it. |
 | `kit/hostname.ts` | 12 | The machine label shown on keys minted for this terminal. |
+| `kit/home.ts` | 12 | The CLI's home folder on this machine: `PINECALL_HOME`, else `~/.pinecall`; where its sign-in and the local runtime's file live. |
 | `kit/io.ts` | 124 | Where a verb writes: results on stdout, everything a person reads while waiting on stderr. |
 | `kit/json-file.ts` | 21 | A JSON file named on the command line, read with errors that name the flag and the file. |
 | `kit/keyvalue.ts` | 23 | `key=value` pairs as a repeated flag names them, each value read as JSON when it parses and as text otherwise. |
@@ -93,7 +94,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `project/credentials.ts` | 58 | Where a project's key and gateway URL come from: the environment, else the nearest `.env`. |
+| `project/credentials.ts` | 87 | Where a project's key and gateway URL come from: the environment, else the nearest `.env`, else the runtime on this machine. |
 | `project/language.ts` | 83 | Which language an agent is written in, and the command that starts its serve entry. |
 | `project/layout.ts` | 138 | The tenant's project: one folder per agent under `agents/`, holding its class, its documents and its tests. |
 
@@ -111,7 +112,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 |---|---|---|
 | `accounts/commands.ts` | 169 | `pinecall login \| link \| whoami \| secrets`: this machine signed in, the project tied to an org, who the key is, the org's secrets. |
 | `accounts/render.ts` | 69 | Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets table. |
-| `accounts/service/home.ts` | 93 | `~/.pinecall/session.json`: this machine's sign-in per gateway, and the phone it calls from. |
+| `accounts/service/home.ts` | 90 | `~/.pinecall/session.json`: this machine's sign-in per gateway, and the phone it calls from. |
 | `accounts/service/index.ts` | 8 | Accounts: signing this machine in, linking a project to an org, who a key is, the org's secrets. |
 | `accounts/service/link.ts` | 69 | Tying the project's folder to one of the person's orgs: their orgs, the key minted in the one chosen, the `.env` it is written to. |
 | `accounts/service/secrets.ts` | 40 | The org's secrets: what its hosted apps are started with, per env, set and dropped, never read back. |
@@ -258,7 +259,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/instructions.ts` | 34 | The server's instructions: the journey from nothing to an agent answering, and the tools by stage. Each tool's manual rides its own description. |
 | `mcp/scrub.ts` | 15 | No secret crosses a model: every answer and every refusal of the MCP server passes here first. |
 | `mcp/server.ts` | 89 | The MCP server: every tool registered on one stdio connection, each answer scrubbed, each failure one sentence. |
-| `mcp/session.ts` | 173 | One MCP server's state — the project it works in, what it holds, what is in flight — and the Context each tool call runs with. |
+| `mcp/session.ts` | 176 | One MCP server's state — the project it works in, what it holds, what is in flight — and the Context each tool call runs with. |
 | `mcp/site.ts` | 97 | Pinecall's own docs as the MCP server reads them: the site's one file cut into pages and sections, searched here. |
 | `mcp/tool.ts` | 60 | A tool of the MCP server: what a model reads about it, what it takes, and the service it calls. |
 | `mcp/tools/accounts.ts` | 88 | The `login`, `link` and `whoami` tools: the accounts domain, over its service. |
@@ -269,10 +270,11 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/tools/evals.ts` | 267 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
 | `mcp/tools/fields.ts` | 22 | The fields many tools take, declared once so every schema says them in the same words. |
 | `mcp/tools/hosting.ts` | 55 | The `deploy` tool: the hosting domain, over its service. |
-| `mcp/tools/index.ts` | 38 | Every tool the MCP server offers, by the stage a person meets it at. |
+| `mcp/tools/index.ts` | 39 | Every tool the MCP server offers, by the stage a person meets it at. |
 | `mcp/tools/judging.ts` | 93 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
 | `mcp/tools/knowledge.ts` | 71 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
 | `mcp/tools/providers.ts` | 13 | The `providers` tool: the providers domain, over its service. |
+| `mcp/tools/runtime.ts` | 128 | The `runtime` tool: the runtime on this machine — `pinecall-runtime setup` run from here, what it printed, and stopped. |
 | `mcp/tools/scaffold.ts` | 66 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
 | `mcp/tools/site.ts` | 50 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
 | `mcp/tools/telephony.ts` | 77 | The `line`, `numbers`, `carriers` and `callbacks` tools: the telephony domain, over its service. |

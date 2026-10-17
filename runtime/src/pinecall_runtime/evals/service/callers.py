@@ -31,7 +31,10 @@ NO_FACTS = "  (you were given none: do not make any up)"
 # The last turn is announced, so the caller says goodbye instead of being cut mid-sentence.
 TURNS_LEFT = "You have {left} turn(s) left in this call."
 THE_LAST_TURN = "This is your last turn: finish what you are saying and hang up."
-NOTHING_SAID = "the model playing the caller answered without calling say_next_line"
+NOTHING_SAID = "the model playing the caller answered without calling say_next_line: it said {said!r}"
+# Asked once more, its words in front of it, as a judge is: a small model now and then answers in words.
+ONLY_THE_LINE = "Answer by calling say_next_line, and nothing else."
+SAID_AT_MOST = 200
 
 # The line is read off the call's arguments; the tool itself never runs.
 SAY_NEXT_LINE: JsonObject = {
@@ -104,19 +107,25 @@ def heard_in(entries: Sequence[Entry]) -> list[Spoken]:
 # What the caller expects of the agent is the judge's alone: a caller that knew it would play to it.
 async def improvise_line(model: llm.LLM[Never], request: NextLineRequest) -> Improvised:
     """The caller's next turn: the persona, the call so far, and how many turns are left."""
-    response = await model.chat(
-        chat_ctx=_call_so_far(request),
-        tools=[llm.function_tool(_never_run, raw_schema=SAY_NEXT_LINE)],
-        tool_choice="required",
-    ).collect()
+    chat = _call_so_far(request)
+    tools: list[llm.Tool] = [llm.function_tool(_never_run, raw_schema=SAY_NEXT_LINE)]
+    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+    spent = [response.usage]
+    said = response.text or ""
     if not response.tool_calls:
-        raise UpstreamError(NOTHING_SAID)
+        chat.add_message(role="assistant", content=said or "…")
+        chat.add_message(role="user", content=ONLY_THE_LINE)
+        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required").collect()
+        spent.append(response.usage)
+        said = response.text or said
+    if not response.tool_calls:
+        raise UpstreamError(NOTHING_SAID.format(said=said.strip()[:SAID_AT_MOST]))
     answered: object = json.loads(response.tool_calls[0].arguments or "{}")
     fields: Mapping[str, object] = answered if a_mapping(answered) else {}
     line = str(fields.get("line", "")).strip()
     # An empty line is a caller who has hung up.
     answer = NextLineResponse(say=line, hangup=bool(fields.get("hanging_up", False)) or not line)
-    return Improvised(answer=answer, usage=providers.completion_usage(model, response.usage))
+    return Improvised(answer=answer, usage=providers.completion_usage(model, judging.summed_usage(spent)))
 
 
 # The model is the caller: its turns are the assistant's, the business's are the user's.

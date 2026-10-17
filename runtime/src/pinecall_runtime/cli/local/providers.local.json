@@ -1,0 +1,31 @@
+{
+  "defaults": {
+    "llm": {"vendor": "openai", "model": "LOCAL_LLM"},
+    "stt": {"vendor": "openai", "model": "LOCAL_STT"},
+    "tts": {"vendor": "openai", "model": "kokoro"}
+  },
+  "voices": {"openai/es": "ef_dora", "openai/en": "af_heart"},
+  "tuning": {
+    "llm/openai": {"options": {"base_url": "http://127.0.0.1:11434/v1", "reasoning_effort": "none"}},
+    "tts/openai": {"options": {"base_url": "http://127.0.0.1:8880/v1"}},
+    "stt/openai": {
+      "options": {"base_url": "http://127.0.0.1:8000/v1", "use_realtime": false},
+      "turn_model": "smart-turn-v3"
+    }
+  },
+  "rates": {
+    "LOCAL_LLM": {"input": 0, "output": 0, "as_of": "2026-10-17"},
+    "kokoro": {"characters": 0, "as_of": "2026-10-17"},
+    "LOCAL_STT": {"audio_seconds": 0, "as_of": "2026-10-17"},
+    "bge-m3": {"input": 0, "as_of": "2026-10-17"}
+  },
+  "judge": {"llm": {"vendor": "openai", "model": "LOCAL_LLM"}, "ceiling_usd": 0.05},
+  "caller": {"llm": {"vendor": "openai", "model": "LOCAL_LLM"}, "ceiling_usd": 0.05},
+  "embedding": {
+    "vendor": "openai",
+    "url": "http://127.0.0.1:11434/v1",
+    "model": "bge-m3",
+    "shape": "embeddings",
+    "dimensions": 1024
+  }
+}

@@ -102,10 +102,21 @@ async def test_the_callers_own_rule_is_never_told_to_the_model_playing_it() -> N
     assert "SECRET" not in str([item.text_content for item in model.requests[0].items if isinstance(item, ChatMessage)])
 
 
-async def test_a_model_that_called_nothing_is_a_vendor_failure_and_not_a_line_nobody_said() -> None:
-    model = AcmeLLM(api_key="k", replies=[["no pienso llamar a la herramienta"]])
-    with pytest.raises(UpstreamError, match="say_next_line"):
+async def test_a_model_that_called_nothing_twice_is_a_vendor_failure_and_says_what_it_said() -> None:
+    model = AcmeLLM(api_key="k", replies=[["no pienso llamar a la herramienta"], ["tampoco ahora"]])
+    with pytest.raises(UpstreamError, match="say_next_line: it said 'tampoco ahora'"):
         await improvise_line(model, request_of())
+    assert len(model.requests) == 2
+
+
+# A local model (gemma4:12b on Ollama, 2026-10-17) now and then answers a caller's line in words:
+# asked once more, as a judge is, it calls the tool.
+async def test_a_model_that_answered_in_words_is_asked_once_more_and_its_line_said() -> None:
+    next_line: dict[str, object] = {"name": "say_next_line", "arguments": {"line": "Mi pedido llegó roto."}}
+    model = AcmeLLM(api_key="k", replies=[["Hola, llamo por un pedido"], [next_line]])
+    improvised = await improvise_line(model, request_of())
+    assert improvised.answer.say == "Mi pedido llegó roto."
+    assert len(model.requests) == 2
 
 
 def test_both_sides_of_a_log_are_read_in_order_as_the_caller_heard_them() -> None:

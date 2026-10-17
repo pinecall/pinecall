@@ -15,6 +15,7 @@ import type { SitePage } from "./site.js";
 import { ToolRefused, type ToolContext } from "./tool.js";
 import type { Talk } from "./tools/calls.js";
 import type { InFlight } from "./tools/evals.js";
+import type { LocalRuntimeProcess } from "./tools/runtime.js";
 
 export const NO_PROJECT = "no project open: call `project` with action `open` and the folder's path, or `new` to write one";
 export const NO_KEY_HERE = (root: string): string => `no PINECALL_KEY for ${root}: call \`link\` to write one into its .env (it asks you to \`login\` first when this machine is not signed in)`;
@@ -41,6 +42,8 @@ export class Session {
   /** A golden run, and a simulation, in flight by agent: each outlives one tool call. */
   readonly runs = new Map<string, InFlight>();
   readonly simulations = new Map<string, InFlight>();
+  /** `pinecall-runtime setup`, when this server started it. */
+  runtime: LocalRuntimeProcess | undefined;
 
   constructor(
     readonly processEnv: NodeJS.ProcessEnv,
@@ -113,7 +116,7 @@ export class Session {
   /** Every secret this session could print: the environment's key, the project's, and the machine's sign-in, to be scrubbed from any answer. */
   secrets(): string[] {
     const exported = this.processEnv[KEY_VARIABLE];
-    const project = this.root === undefined ? undefined : readCredentials(this.processEnv, this.root).key;
+    const project = this.root === undefined ? undefined : readCredentials(this.processEnv, this.root, pinecallHome(this.processEnv)).key;
     const machine = readSignIn(pinecallHome(this.processEnv))?.key;
     return [exported, project, machine].filter((one): one is string => one !== undefined && one !== "");
   }

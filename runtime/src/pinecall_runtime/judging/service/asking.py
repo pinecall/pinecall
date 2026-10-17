@@ -123,10 +123,11 @@ async def forced(
         raise UpstreamError(NO_ANSWER.format(tool=tool["name"], said=said.strip()[:SAID_AT_MOST]))
     answered: object = json.loads(response.tool_calls[0].arguments or "{}")
     fields: Mapping[str, object] = answered if a_mapping(answered) else {}
-    return fields, providers.completion_usage(model, _summed(spent))
+    return fields, providers.completion_usage(model, summed_usage(spent))
 
 
-def _summed(spent: Sequence[llm.CompletionUsage | None]) -> llm.CompletionUsage | None:
+def summed_usage(spent: Sequence[llm.CompletionUsage | None]) -> llm.CompletionUsage | None:
+    """What several requests of one answer used, summed; None when none said."""
     used = [one for one in spent if one is not None]
     if not used:
         return None

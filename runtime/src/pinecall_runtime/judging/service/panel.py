@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 OVER_THE_CEILING = "judging this call reached its ceiling of ${ceiling} before this judge asked"
 OUT_OF_EVALS = "the org's evals for the month are used up: this judge was not asked"
 NOTHING_ANSWERED = "every judge run over this call failed and not one of them answered"
+NO_JUDGE_ON = "no judge is on for this agent: `pinecall judges` lists them, `pinecall judges on <name>` switches one on"
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,6 +281,8 @@ def _scored(
         scored["own_key"] = True
     if settled:
         scored["passed"] = not any(judgment.verdict == "broken" for judgment in settled)
+    elif not seated:
+        scored["not_judged"] = NO_JUDGE_ON
     elif not answered:
         scored["not_judged"] = NOTHING_ANSWERED if running is not None else _why_not(judged)
     if cost_usd:

@@ -2,6 +2,7 @@
 
 import { GatewayClient, type Env } from "./api/client.js";
 import { UsageError } from "./errors.js";
+import { homeOf } from "./kit/home.js";
 import type { IO } from "./kit/io.js";
 import { anotherEnvsToken, NO_KEY, readCredentials, serverEnvOf, type Credentials } from "./project/credentials.js";
 import { agentsOf, oneAgentOf, slugOf, type AgentChoice, type AgentHome } from "./project/layout.js";
@@ -59,7 +60,7 @@ class ProcessContext implements Context {
   }
 
   credentials(): Credentials {
-    this.#credentials ??= readCredentials(this.processEnv, this.cwd);
+    this.#credentials ??= readCredentials(this.processEnv, this.cwd, homeOf(this.processEnv));
     return this.#credentials;
   }
 

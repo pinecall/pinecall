@@ -23,6 +23,7 @@ from pinecall_runtime.cli import (
     routes,
     schema,
     sessions,
+    setup,
     traceback,
 )
 from pinecall_runtime.cli.command import MISCONFIGURED, Context
@@ -54,6 +55,7 @@ app.add_typer(rebuild.facts_app, name="facts")
 app.add_typer(rebuild.drift_app, name="drift")
 app.add_typer(rebuild.usage_app, name="usage")
 app.command("traceback")(traceback.traceback)
+app.command("setup")(setup.setup)
 app.command("init")(orgs.init)
 app.add_typer(orgs.app, name="orgs")
 for name, limit in limits.VERBS.items():

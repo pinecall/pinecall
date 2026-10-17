@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **A call with no judge on says so.** A panel with nobody on it was reported as "every judge run
+  over this call failed"; it now says no judge is on for the agent and names `pinecall judges on`.
+- **A simulated caller whose model answers in words is asked once more**, as a judge is, and the
+  refusal says what the model said. A local model (gemma 4 on Ollama) now and then answered a line
+  in words, and the simulation stopped with a 502.
+- **`local up` runs on a machine with no checkout.** The compose files the package ships were looked
+  for beside the module `cli/local.py` instead of in `cli/local/`, and the schema upgrade read the
+  process's settings instead of the local ones (it reached for Postgres on :5432).
+
+- **`pinecall-runtime setup`: this machine's runtime in one verb, with no login, no link and no
+  vendor keys.** Docker, the services, the schema, a key of the org `default`'s handed to the CLI in
+  `~/.pinecall/local.json` (which the CLI reads when a project has no key of its own), and the
+  models: `--models local` runs Ollama, Whisper and Kokoro on this machine through the `openai`
+  plugin, in CPU images, the row written for them; `--models keys` runs on the vendors' keys read
+  from the environment or asked; `--org` is a team's runtime, as `init` makes it. `--chat-only`
+  runs written calls alone, with no LiveKit and no worker. `local up` is unchanged.
+
 - **A key asking for an env it does not open is refused by name, not with a 500.** The refusal
   (a person without production access asking for production, a server's token asking for the
   other env) was raised while the request's actor was resolved, in a middleware outside the app's

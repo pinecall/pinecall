@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **The runtime on this machine, with no `login` and no `link`.** A project with no key of its own acts on the runtime `pinecall-runtime setup` left in `~/.pinecall/local.json` (read after the environment and `.env`, never over them); `whoami` says `key from the local runtime`. The MCP server's `runtime` tool runs that setup from an assistant (`up`, `status`, `down`).
+
 ## [0.11.2] — released with every other package
 
 - Nothing of the CLI changed: published at 0.11.2 with every other package. `deploy logs` gets fresh lines from a gateway at 0.11.2.

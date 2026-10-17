@@ -1,16 +1,15 @@
 /** `~/.pinecall/session.json`: this machine's sign-in per gateway, and the phone it calls from. */
 
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+
+import { HOME_VARIABLE, homeOf } from "../../kit/home.js";
 
 // Owner-only: other accounts on the machine can neither list the directory nor read the file.
 const DIRECTORY_MODE = 0o700;
 const FILE_MODE = 0o600;
 const SESSION_FILE = "session.json";
 
-/** The variable that moves the home folder away from `~/.pinecall`. */
-export const HOME_VARIABLE = "PINECALL_HOME";
 
 /** What this machine keeps for one gateway. */
 export interface SignedGateway {
@@ -38,10 +37,8 @@ export interface MachineSignIn {
   key: string;
 }
 
-/** The home folder: `PINECALL_HOME`, else `~/.pinecall`. */
-export function homeOf(env: NodeJS.ProcessEnv): string {
-  return env[HOME_VARIABLE] ?? join(homedir(), ".pinecall");
-}
+/** The home folder and the variable that moves it, as `kit/home.ts` has them: this module keeps their names for its readers. */
+export { HOME_VARIABLE, homeOf };
 
 /** Read the file, or an empty one when there is none. */
 export function readHome(home: string): HomeFile {

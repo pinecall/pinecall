@@ -154,3 +154,18 @@ The project the tools act on (`show`), another folder opened (`open`), a new pro
   "next": "uv sync in /Users/you/front-desk, then `link` writes its key"
 }
 ```
+
+## `runtime`
+
+The runtime on this machine: `up` runs `pinecall-runtime setup` (Docker, the schema, a key the CLI finds by itself, open models), `status` says what it printed and whether it answers, `down` stops it.
+
+`runtime` is for a person with no Pinecall account who wants the runtime on their own machine: `up` runs `pinecall-runtime setup --yes`, which brings Postgres, Redis and LiveKit up in Docker, writes the schema, hands a key to this CLI in `~/.pinecall/local.json` (so `whoami`, `chat`, `test` and `start` work with no `login` and no `link`) and, with local models, pulls Ollama, Whisper and Kokoro once — minutes, the first time. It answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway and the worker and the services; the database and the key are kept. A project with a key of its own (`.env`) keeps using it: the local runtime is read last.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `action` | `status` · `up` · `down` | required | status reads the runtime this server started, or the one setup left; up runs setup and keeps it running; down stops it |
+| `models` | `local` · `keys` · `none` |  | up: local runs open models on this machine, no account (the default); keys reads the vendors' keys from the environment; none leaves the providers row |
+| `chat_only` | true or false |  | up: written calls alone — no LiveKit, no worker, no ears, no voice; the cheapest first run |
+| `llm` | text |  | up, with local models: the Ollama model to think with |
+| `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |

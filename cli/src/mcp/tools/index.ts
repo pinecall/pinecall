@@ -11,6 +11,7 @@ import { deploy } from "./hosting.js";
 import { judges, judging, usage } from "./judging.js";
 import { docs, memory, remember } from "./knowledge.js";
 import { providers } from "./providers.js";
+import { runtime } from "./runtime.js";
 import { project } from "./scaffold.js";
 import { docsSearch, getDoc } from "./site.js";
 import { callbacks, carriers, line, numbers } from "./telephony.js";
@@ -24,7 +25,7 @@ export interface Stage {
 }
 
 export const STAGES: readonly Stage[] = [
-  { stage: "Getting started", page: "getting-started", tools: [whoami, login, link, project] },
+  { stage: "Getting started", page: "getting-started", tools: [whoami, login, link, project, runtime] },
   { stage: "Holding the agent, and talking to it", page: "holding-and-talking", tools: [start, stop, status, chat, prompt, consoleUrl] },
   { stage: "The agent's settings", page: "settings", tools: [agent, lexicon, voices, voiceSample] },
   { stage: "Calls, and what they run on", page: "calls", tools: [calls, call, pipeline, providers, telemetry, monitors, webhook, usage] },
