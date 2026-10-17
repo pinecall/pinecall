@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall team`**: the org's people, `team password <email>` sets anyone's password (typed twice without echo, or piped), `team reset <email>` makes a one-use link to choose it. The MCP server's `team` tool lists them and answers that link: no password passes through the assistant.
+
 - **The runtime on this machine, with no `login` and no `link`.** A project with no key of its own acts on the runtime `pinecall-runtime setup` left in `~/.pinecall/local.json` (read after the environment and `.env`, never over them); `whoami` says `key from the local runtime`. The MCP server's `runtime` tool runs that setup from an assistant (`up`, `status`, `down`).
 
 ## [0.11.2] — released with every other package

@@ -169,3 +169,15 @@ The runtime on this machine: `up` runs `pinecall-runtime setup` (Docker, the sch
 | `llm` | text |  | up, with local models: the Ollama model to think with |
 | `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+## `team`
+
+The org's people (`list`), or a one-use link that lets one of them choose a new password (`reset`).
+
+`team` lists the org's people, and for `reset` answers a one-use link the person opens to choose their own password: no password ever passes through you. Show the link to that person alone. Setting a password directly is `pinecall team password <email>` in a terminal, where it is typed without echo.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `action` | `list` · `reset` | required | list the org's people; reset makes a one-use link for one of them to choose their password |
+| `email` | text |  | reset: the person's address |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |

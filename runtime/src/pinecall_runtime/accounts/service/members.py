@@ -226,6 +226,30 @@ async def reset_link(session: AsyncSession, org: str, member_id: str, *, vouched
     return await _link(session, found, vouched=vouched, purpose=InvitationPurpose.reset)
 
 
+# A password typed for a person by an admin, by the operator, or by `setup` for the machine's
+# owner: no link is mailed, and an invited person becomes active by it, as accepting would.
+async def set_password(session: AsyncSession, org: str, member_id: str, password: str, shortest: int) -> Member:
+    """A member's password set; an invited member made active, a disabled one refused."""
+    members = MemberRepository(session)
+    found = await members.get(org, member_id)
+    if found is None:
+        raise NoSuchMember()
+    if found.status is MemberStatus.disabled:
+        raise Conflict(f"{found.email} is disabled: enable them before setting their password")
+    hashed = await hashed_password(password, shortest)
+    await InvitationRepository(session).spend_open_of(member_id)
+    await members.update(found, password_hash=hashed, status=MemberStatus.active)
+    return found
+
+
+async def member_by_email(session: AsyncSession, org: str, email: str) -> Member:
+    """The org's member with that address; NotFound naming it otherwise."""
+    found = await MemberRepository(session).get_by_email(org, parse_email(email))
+    if found is None:
+        raise NotFound(f"nobody with the address {email} in this org")
+    return found
+
+
 async def update_member(session: AsyncSession, org: str, member_id: str, change: Change) -> Member:
     """Change what was named; disabling revokes the member's keys."""
     members = MemberRepository(session)

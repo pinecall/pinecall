@@ -9,7 +9,7 @@ import * as service from "../../accounts/service/index.js";
 import { DOTENV } from "../../kit/dotenv.js";
 import { CLOUD_URL } from "../../project/credentials.js";
 import { tool, ToolRefused } from "../tool.js";
-import { WAIT, WAIT_S } from "./fields.js";
+import { needed, WAIT, WAIT_S } from "./fields.js";
 
 export const NOT_SIGNED_IN = "this machine is not signed in: call `login` with action start, and the person opens the link it answers";
 
@@ -77,6 +77,28 @@ export const whoami = tool({
       person: who.name ?? who.label ?? null,
       production_allowed_for_this_key: who.production === true,
     };
+  },
+});
+
+export const team = tool({
+  name: "team",
+  description: "The org's people (`list`), or a one-use link that lets one of them choose a new password (`reset`).",
+  schema: {
+    action: z.enum(["list", "reset"]).describe("list the org's people; reset makes a one-use link for one of them to choose their password"),
+    email: z.string().optional().describe("reset: the person's address"),
+  },
+  manual:
+    "`team` lists the org's people, and for `reset` answers a one-use link the person opens to choose their own password: no password ever passes through you. Show the link to that person alone. Setting a password directly is `pinecall team password <email>` in a terminal, where it is typed without echo.",
+  reveals: (result) => {
+    const link = (result as { link?: unknown }).link;
+    return typeof link === "string" ? [link] : [];
+  },
+  handler: async (args, ctx) => {
+    if (args.action === "list") return { people: (await service.listTeam(ctx)).map(({ email, name, role, status, operator }) => ({ email, name, role, status, runs_the_box: operator })) };
+    const reset = await service.resetLink(ctx, needed(args.email, "email"));
+    return reset.link !== null
+      ? { email: reset.email, link: reset.link, says: "Give this link to that person alone: it works once, and they choose their password there." }
+      : { email: reset.email, mailed: reset.mailed, says: reset.mailed ? "They were mailed a one-use link." : "No link was handed over: `pinecall team password` in a terminal sets it." };
   },
 });
 

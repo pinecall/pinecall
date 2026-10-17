@@ -2108,6 +2108,30 @@ shell would keep it. The gateway keeps it sealed and **nothing reads it back**: 
 who set each and when. Setting or dropping one starts every app of the org in that environment again,
 the old process answering until the new one registers. `rm <NAME>` drops one.
 
+## `team`
+
+```console
+$ pinecall team
+EMAIL              NAME  ROLE   STATUS   RUNS THE BOX
+ana@clinica.com    Ana   admin  active   yes
+luis@clinica.com   Luis  qa     invited  no
+$ pinecall team password luis@clinica.com
+password:
+again:
+luis@clinica.com signs in with the password typed, from their next sign-in · active
+$ pinecall team reset ana@clinica.com
+ana@clinica.com chooses their password here, once:
+https://cloud.pinecall.io/invitations/inv_…
+```
+
+The org's people. `password <email>` sets anyone's password, an admin's verb (the key needs
+`team`): typed twice without echo at a terminal, or piped (`printf %s "$NEW" | pinecall team
+password luis@clinica.com`), never a flag the shell would keep. An invited person given a password
+is active at once, with no link opened; a disabled one is enabled first. `reset <email>` makes a
+one-use link instead, for the person to choose their own: the gateway hands it over when the box
+sends no mail, and mails it otherwise. On a runtime of your own, `pinecall-runtime setup` makes the
+first person with a password, and `pinecall-runtime orgs password` is the operator's way to the same.
+
 ## `telemetry`
 
 ```console

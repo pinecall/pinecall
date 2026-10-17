@@ -1,4 +1,4 @@
-/** The accounts endpoints: who a key is, the sign-in pairing, the person's orgs, the console's login codes, the org's secrets. */
+/** The accounts endpoints: who a key is, the sign-in pairing, the person's orgs, the console's login codes, the org's secrets and its people. */
 
 import type { SecretList } from "@pinecall/agents/wire";
 
@@ -85,4 +85,36 @@ export function setSecret(gw: GatewayClient, name: string, value: string): Promi
 
 export function deleteSecret(gw: GatewayClient, name: string): Promise<SecretList> {
   return gw.delete<SecretList>(`/v1/secrets/${seg(name)}`);
+}
+
+/** One row of `GET /v1/members`: a person of the org, never a password nor a link. */
+export interface MemberRow {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: string;
+  operator: boolean;
+  production: boolean;
+}
+
+/** `POST /v1/members/{id}/reset`: the member, and the one-use link when the gateway hands it over. */
+export interface Invited {
+  member: MemberRow;
+  token: string | null;
+  link?: string | null;
+  mailed: boolean;
+}
+
+export function listMembers(gw: GatewayClient): Promise<{ members: MemberRow[] }> {
+  return gw.get<{ members: MemberRow[] }>("/v1/members");
+}
+
+/** `PUT /v1/members/{id}/password`: an admin sets a member's password; an invited member becomes active. */
+export function setMemberPassword(gw: GatewayClient, member: string, password: string): Promise<MemberRow> {
+  return gw.put<MemberRow>(`/v1/members/${seg(member)}/password`, { password });
+}
+
+export function resetMember(gw: GatewayClient, member: string): Promise<Invited> {
+  return gw.post<Invited>(`/v1/members/${seg(member)}/reset`, {});
 }

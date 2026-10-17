@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -11,13 +12,13 @@ from typing import Annotated
 import typer
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
-from pinecall_runtime.accounts.service import keys
+from pinecall_runtime.accounts.service import keys, members, orgs
 from pinecall_runtime.cli import local
 from pinecall_runtime.cli import orgs as orgs_cli
 from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
-from pinecall_runtime.enums import Env
-from pinecall_runtime.exceptions import UpstreamError, ValidationError
+from pinecall_runtime.enums import Env, Role
+from pinecall_runtime.exceptions import UpstreamError
 
 # Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it); the key setup makes is
 # handed to it there, in a file of its own, read by the CLI when a project has no key of its own.
@@ -34,9 +35,12 @@ NEXT = """
     pinecall start       # answer calls; pinecall test, pinecall simulate, pinecall console follow
 """
 NEXT_ORG = (
-    "\n  open the invitation link above to set a password; then, in an agent's folder:\n"
-    "    pinecall login {url}\n    pinecall link\n"
+    "\n  in an agent's folder, signed in with that address and password:\n    pinecall login {url}\n    pinecall link\n"
 )
+# Where nobody is asked: an address that reads as this machine's, and a password drawn and shown once.
+NOBODY_ASKED = "admin@pinecall.local"
+DRAWN_BYTES = 12
+CHANGES_IT = "`pinecall-runtime orgs password default {email}` changes it"
 
 
 @verb
@@ -61,8 +65,12 @@ async def setup(
     services_only: Annotated[
         bool, typer.Option("--services-only", help="Everything but running the gateway and the worker.")
     ] = False,
-    email: Annotated[str | None, typer.Option("--email", help="With --org: the first person's address.")] = None,
-    person: Annotated[str | None, typer.Option("--person", help="With --org: the first person's name.")] = None,
+    email: Annotated[
+        str | None, typer.Option("--email", help="Who signs in to the console; asked when not given.")
+    ] = None,
+    person: Annotated[
+        str | None, typer.Option("--person", help="Their name; the address's first part when not given.")
+    ] = None,
 ) -> int:
     """This machine's runtime, from nothing to a class that answers: run once, safe to run again."""
     context = context_of(ctx)
@@ -83,9 +91,8 @@ async def setup(
     out.line("schema     at this release")
     runtime = Context(local.settings_of(values), out)
     async with runtime.stack:
-        if org_mode:
-            await _the_first_person(runtime, email, person, asking)
-        else:
+        out.line(await _the_person(runtime, email, person, asking))
+        if not org_mode:
             handed = await _this_machines_key(runtime, values, env)
             out.line(f"key        this machine's, in {handed}: the CLI finds this runtime by itself")
         chosen = models if models is not None else (models_.ask_models() if asking else models_.Models.local)
@@ -136,19 +143,32 @@ def hand_to_cli(secret: str, home: Path) -> Path:
     return path
 
 
-# ── a team's runtime ──
+# ── who signs in to the console ──
 
 
-async def _the_first_person(runtime: Context, email: str | None, person: str | None, asking: bool) -> None:
-    if email is None and asking:
-        email = typer.prompt("the first person's email")
-    if person is None and asking:
-        person = typer.prompt("their name")
-    if email is None or person is None:
-        raise ValidationError("--org needs --email and --person, or a terminal to ask them in")
-    await orgs_cli.initialize(
-        runtime, org=DEFAULT_ORG, name=None, email=email, person=person, role=orgs_cli.THE_FIRST_ROLE
-    )
+# The person the console signs in as, with a password and no link: asked at a terminal, drawn and
+# shown once where nobody is. Run again, a person who has a password keeps it.
+async def _the_person(runtime: Context, email: str | None, person: str | None, asking: bool) -> str:
+    address = email or (typer.prompt("console sign-in: your email") if asking else NOBODY_ASKED)
+    name = person or address.split("@", 1)[0]
+    shortest = runtime.settings.min_password
+    async with runtime.sessions.begin() as session:
+        org = await orgs.get_org(session, DEFAULT_ORG)
+        kept = await members.memberships_of(session, address.strip().lower())
+        found = next((one for one in kept if one.org == org.id), None)
+        if found is not None and found.password_hash is not None:
+            return f"console    {found.email} keeps their password: {CHANGES_IT.format(email=found.email)}"
+        if found is None:
+            invitee = members.Invitee(address, name, Role.admin)
+            await members.invite(session, org.id, invitee, seats=None, vouched=True)
+            found = await members.member_by_email(session, org.id, address)
+        drawn = None if asking else secrets.token_urlsafe(DRAWN_BYTES)
+        password = drawn or orgs_cli.new_password(asking=True)
+        await members.set_password(session, org.id, found.id, password, shortest)
+        await members.set_operator(session, org.id, found.id, on=True)
+    if drawn is None:
+        return f"console    {found.email} signs in with the password typed: {CHANGES_IT.format(email=found.email)}"
+    return f"console    {found.email} · password {drawn} (shown this once: {CHANGES_IT.format(email=found.email)})"
 
 
 # ── docker ──

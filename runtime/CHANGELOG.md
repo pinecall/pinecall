@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A person's password set with no link.** `PUT /v1/members/{id}/password` for an admin of the org,
+  `pinecall-runtime orgs password <org> <email>` for the operator (typed twice, or read from stdin);
+  an invited person becomes active by it. `setup` makes the console's person with a password in
+  both modes — typed at a terminal, drawn and shown once where nobody is asked — instead of an
+  invitation link.
+- **The grounded judge sees what a turn's lookup read.** A lookup writes no speech id, so the
+  documents it found were filed under none and no agent turn carried them: the judge called facts
+  from the base made up. They are now the next agent turn's.
+
 - **A call with no judge on says so.** A panel with nobody on it was reported as "every judge run
   over this call failed"; it now says no judge is on for the agent and names `pinecall judges on`.
 - **A simulated caller whose model answers in words is asked once more**, as a judge is, and the

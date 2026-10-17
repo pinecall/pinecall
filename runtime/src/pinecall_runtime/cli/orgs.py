@@ -172,6 +172,29 @@ async def orgs_rm(ctx: typer.Context, org: str) -> int:
     return OK
 
 
+# A password is never an argument: argv is what `ps` shows and what a shell keeps.
+@app.command("password")
+@verb
+async def orgs_password(ctx: typer.Context, org: str, email: str) -> int:
+    """A person's password, asked twice at a terminal or read from stdin; an invited person becomes active."""
+    context = context_of(ctx)
+    password = new_password(sys.stdin.isatty())
+    async with context.sessions.begin() as session:
+        found = await orgs.get_org(session, org)
+        member = await members.member_by_email(session, found.id, email)
+        await members.set_password(session, found.id, member.id, password, context.settings.min_password)
+    context.out.line(f"{member.email} signs in to {org} with the password typed, from the next sign-in")
+    return OK
+
+
+def new_password(asking: bool) -> str:
+    """A password typed twice without echo at a terminal, else one line of stdin."""
+    if asking:
+        typed: str = typer.prompt("password", hide_input=True, confirmation_prompt=True)
+        return typed
+    return read_secret_line()
+
+
 # The key is read from stdin: argv is what `ps` shows.
 @vendor_keys_app.command("set")
 @verb

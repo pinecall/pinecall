@@ -31,7 +31,8 @@ variable they read is
 ## `setup`
 
 ```
-pinecall-runtime setup [--dir <path>] [--org] [--models local|keys|none] [--chat-only] [--llm <model>] [--yes] [--services-only]
+pinecall-runtime setup [--dir <path>] [--org] [--email <address>] [--person "…"] [--models local|keys|none] [--chat-only]
+                       [--llm <model>] [--yes] [--services-only]
 ```
 
 This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
@@ -40,14 +41,18 @@ and skipped when already done: Docker found (else the sentence that says what to
 services up and the schema at this release, a key, the models, and the gateway and a worker
 running as `local up` runs them.
 
+**The person.** Every run makes sure somebody signs in to the console: the address `--email` names,
+or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an admin and an
+operator of the org `default`, with a password and no invitation link — typed twice without echo
+at a terminal, else drawn and printed this once. Run again, a person who has a password keeps it;
+`orgs password default <email>` changes it, and `pinecall team password` does from the CLI.
+
 **The key.** Without `--org`, this machine is an org of one: a key of the org `default`'s in the
 sandbox, every scope of the org's, drawn once into `<dir>/env` as `PINECALL_DEV_KEY` and handed
 to the CLI in `~/.pinecall/local.json` (`PINECALL_HOME` moves it; owner-only). A `pinecall` verb
 run in a project with no `PINECALL_KEY` of its own acts on that key at `http://127.0.0.1:8080`:
-no `login`, no `link`, no person, no password. `--org` is a team's runtime instead: the first org
-and person as `init` makes them, asked for (`--email`, `--person` when there is no terminal), and
-the invitation link printed once; the CLI then signs in with `pinecall login <url>` as the page
-says.
+no `login` and no `link`. `--org` is a team's runtime instead: no key is handed over, and the CLI
+signs in as the person, with `pinecall login <url>` and `pinecall link`.
 
 **The models.** `--models local` (the answer `--yes` gives) runs open models on this machine
 through the `openai` plugin, each with a `base_url` of its own, the same three servers
@@ -110,6 +115,7 @@ printed once with the two lines to type next.
 ```
 orgs list · orgs add <slug> [--name] · orgs rm <org>
 orgs invite <org> <email> --name "…" [--role] · orgs operator <org> <email> [--revoke] · orgs remove-member <org> <email>
+orgs password <org> <email>                          # asked twice at a terminal, else read from stdin
 orgs move <agent> <org>
 orgs quota <org> --env production|sandbox [--minutes n] [--messages n] [--agents n] [--concurrent-calls n]
            [--memory-facts n] [--knowledge-chunks n] [--numbers n] [--seats n] [--llm-tokens n]
@@ -125,7 +131,8 @@ what the box lends the org there; `lends` is that alone — `all` every key the 
 or the vendors and `vendor/model` entries named — and keeps the limits. A call runs on the org's own
 key for a vendor, else on the box's where it is lent, else it is refused ([limits.md](limits.md)); `dialling` the whole
 set of guards; `sso --off` is the break-glass; `provider-key set` reads from stdin because argv is
-what `ps` shows.
+what `ps` shows. `password` sets a person's password the same way, with no link: an invited person
+becomes active by it, a disabled one is refused until enabled.
 
 ## `box`
 

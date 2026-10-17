@@ -194,6 +194,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `DELETE` | `/v1/members/{id}` | team | Take a member out for good, their keys revoked; never yourself, never the last admin. |
 | `PATCH` | `/v1/members/{id}` | team | Change a member's role, agents, standing or production access; disabling revokes keys. |
 | `POST` | `/v1/members/{id}/reset` | team | A one-use link that sets an active member's password, mailed to them. |
+| `PUT` | `/v1/members/{id}/password` | team | A member's password set by an admin, no link mailed; an invited member becomes active. |
 | `GET` | `/v1/memory` | memory | The current facts every agent's calls taught, each with its agent, newest first, a page. |
 | `DELETE` | `/v1/memory/facts/{id}` | memory | One current fact ended from now on; 404 when there is none by that id. |
 | `GET` | `/v1/numbers` | numbers | The org's numbers in the key's environment, and the agent each reaches. |

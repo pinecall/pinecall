@@ -1,8 +1,8 @@
-/** Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets table. */
+/** Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets and the people. */
 
 import { date, yesNo } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { Linked, SecretList, SignedIn, Whoami } from "./service/index.js";
+import type { Linked, MemberRow, ResetLink, SecretList, SignedIn, Whoami } from "./service/index.js";
 
 /** Said before the link when no gateway was named, so the assumption is seen before anything is kept. */
 export const DEFAULT_GATEWAY = (url: string): string => `gateway  ${url}   (the default — \`pinecall login <url>\` for your own)`;
@@ -66,4 +66,20 @@ export function secretKept({ name }: { name: string }): string {
 
 export function secretDropped({ name }: { name: string }): string {
   return `${name} dropped`;
+}
+
+export function team(people: MemberRow[]): string[] {
+  return table(
+    ["email", "name", "role", "status", "runs the box"],
+    people.map((one) => [one.email, one.name, one.role, one.status, yesNo(one.operator)]),
+  );
+}
+
+export function passwordSet(member: MemberRow): string {
+  return `${member.email} signs in with the password typed, from their next sign-in · ${member.status}`;
+}
+
+export function resetLinkFor(reset: ResetLink): string[] {
+  if (reset.link !== null) return [`${reset.email} chooses their password here, once:`, reset.link];
+  return [reset.mailed ? `${reset.email} was mailed a one-use link to choose their password` : `no link was handed over for ${reset.email}: the box sends no mail, so set it with \`pinecall team password ${reset.email}\``];
 }

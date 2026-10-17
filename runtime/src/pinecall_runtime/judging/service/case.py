@@ -3,7 +3,7 @@
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from livekit.agents.evals import Verdict
@@ -139,6 +139,9 @@ class _Filed:
     called: dict[str, list[ToolCall]] = field(default_factory=dict[str, list[ToolCall]])
     results: dict[str, ToolResult] = field(default_factory=dict[str, ToolResult])
     sources: dict[str, list[str]] = field(default_factory=dict[str, list[str]])
+    # What a turn's lookup read before the agent's turn had a speech id (every turn lookup does,
+    # written or spoken): the next agent turn's, by log position.
+    unclaimed: list[tuple[int, list[str]]] = field(default_factory=list[tuple[int, list[str]]])
     blocks: dict[str, list[JsonObject]] = field(default_factory=dict[str, list[JsonObject]])
     gate: list[GateLine] = field(default_factory=list[GateLine])
 
@@ -157,7 +160,7 @@ def case_of(entries: Sequence[Entry], declared: AgentConfig | None) -> Case:
     return Case(
         call=next((entry.call for entry in entries if entry.call is not None), ""),
         agent=entries[0].agent if entries else "",
-        turns=tuple(_turn(entry, data, filed) for entry, data in filed.said),
+        turns=_turns(filed),
         gate=tuple(filed.gate),
         arrived=tuple(
             Arrived(entry.seq, data.name, dict(data.data), data.source)
@@ -254,12 +257,30 @@ def _file(filed: _Filed, entry: Entry, data: object) -> None:
             filed.results[data.call_id] = data
         case ConfirmRequest() | ConfirmGranted() | ConfirmDeclined():
             filed.gate.append(gate_line(entry, data))
+        case DocsSources() if data.speech_id:
+            filed.sources.setdefault(data.speech_id, []).extend(_excerpts(data))
         case DocsSources():
-            filed.sources.setdefault(data.speech_id or "", []).extend(_excerpts(data))
+            filed.unclaimed.append((entry.seq, _excerpts(data)))
         case _ if entry.type.startswith(METRICS):
             filed.blocks.setdefault(str(entry.data.get("speech_id") or ""), []).append(entry.data)
         case _:
             return
+
+
+# An agent turn reads what its own speech looked up, and what a lookup with no speech id read
+# after the agent's turn before it: the grounded judge read those facts as made up (2026-10-17).
+def _turns(filed: _Filed) -> tuple[Said, ...]:
+    turns: list[Said] = []
+    claimed_up_to = -1
+    for entry, data in filed.said:
+        said = _turn(entry, data, filed)
+        if said.role == AGENT:
+            before = [chunk for seq, chunks in filed.unclaimed if claimed_up_to < seq < entry.seq for chunk in chunks]
+            if before:
+                said = replace(said, retrieved=(*before, *said.retrieved))
+            claimed_up_to = entry.seq
+        turns.append(said)
+    return tuple(turns)
 
 
 def _turn(entry: Entry, data: UserTurnEnded | AgentTurnEnded, filed: _Filed) -> Said:

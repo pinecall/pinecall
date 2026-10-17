@@ -150,7 +150,9 @@ Disabling revokes every key of theirs at once; the rows stay, since the log name
 `DELETE /v1/members/{id}` takes a member out for good, keys revoked, seat freed, `204`; never
 yourself and never the org's last active admin (`409`). `POST /v1/members/{id}/reset` is an
 admin's one-use link for an active member, handed and mailed as an invitation is; `409` for
-anybody not active.
+anybody not active. `PUT /v1/members/{id}/password {password}` sets the member's password with no
+link, the box's floor held (`400` under it): an invited member becomes active, a disabled one is
+`409`; the answer is the member's row, never the password.
 
 ## The org's keys — `/v1/keys`
 

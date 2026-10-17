@@ -74,7 +74,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `api/accounts.ts` | 88 | The accounts endpoints: who a key is, the sign-in pairing, the person's orgs, the console's login codes, the org's secrets. |
+| `api/accounts.ts` | 120 | The accounts endpoints: who a key is, the sign-in pairing, the person's orgs, the console's login codes, the org's secrets and its people. |
 | `api/agents.ts` | 159 | The agents endpoints: an agent's settings and their versions, its lexicon, its pipeline, the apps holding it, and a vendor's voices. |
 | `api/alerts.ts` | 90 | The alerts endpoints: monitors, the org's webhook, its telemetry collector. |
 | `api/billing.ts` | 32 | The billing endpoint: what the org may use in an env and what it used. |
@@ -110,12 +110,13 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `accounts/commands.ts` | 169 | `pinecall login \| link \| whoami \| secrets`: this machine signed in, the project tied to an org, who the key is, the org's secrets. |
-| `accounts/render.ts` | 69 | Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets table. |
+| `accounts/commands.ts` | 216 | `pinecall login | link | whoami | secrets`: this machine signed in, the project tied to an org, who the key is, the org's secrets. |
+| `accounts/render.ts` | 85 | Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets and the people. |
 | `accounts/service/home.ts` | 90 | `~/.pinecall/session.json`: this machine's sign-in per gateway, and the phone it calls from. |
-| `accounts/service/index.ts` | 8 | Accounts: signing this machine in, linking a project to an org, who a key is, the org's secrets. |
+| `accounts/service/index.ts` | 9 | Accounts: signing this machine in, linking a project to an org, who a key is, the org's secrets and its people. |
 | `accounts/service/link.ts` | 69 | Tying the project's folder to one of the person's orgs: their orgs, the key minted in the one chosen, the `.env` it is written to. |
 | `accounts/service/secrets.ts` | 40 | The org's secrets: what its hosted apps are started with, per env, set and dropped, never read back. |
+| `accounts/service/team.ts` | 47 | The org's people: listed, a password set for one by an admin, or a one-use link that lets them choose it. |
 | `accounts/service/signin.ts` | 101 | Signing this machine in: a pairing opened at the gateway, the key collected once a person approves it, proved and kept. |
 | `accounts/service/whoami.ts` | 24 | Who the project's key is at its gateway, and the console's one-use login code minted on it. |
 
@@ -262,7 +263,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/session.ts` | 176 | One MCP server's state — the project it works in, what it holds, what is in flight — and the Context each tool call runs with. |
 | `mcp/site.ts` | 97 | Pinecall's own docs as the MCP server reads them: the site's one file cut into pages and sections, searched here. |
 | `mcp/tool.ts` | 60 | A tool of the MCP server: what a model reads about it, what it takes, and the service it calls. |
-| `mcp/tools/accounts.ts` | 88 | The `login`, `link` and `whoami` tools: the accounts domain, over its service. |
+| `mcp/tools/accounts.ts` | 110 | The `login`, `link` and `whoami` tools: the accounts domain, over its service. |
 | `mcp/tools/agents.ts` | 121 | The `agent`, `lexicon`, `pipeline`, `voices` and `voice_sample` tools: the agents domain, over its service. |
 | `mcp/tools/alerts.ts` | 63 | The `monitors`, `webhook` and `telemetry` tools: the alerts domain, over its service. |
 | `mcp/tools/calls.ts` | 146 | The `calls`, `call`, `chat` and `supervise` tools: the calls domain, over its service. |

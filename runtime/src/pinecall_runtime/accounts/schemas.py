@@ -73,6 +73,12 @@ class Invited(Row):
     link: str | None = None
 
 
+class SetPassword(Schema):
+    """PUT /v1/members/{id}/password: the password, typed by an admin or by the member."""
+
+    password: str = Field(min_length=1)
+
+
 class ChangeMember(Schema):
     """PATCH /v1/members/{id}: what is named changes, what is left out stays."""
 

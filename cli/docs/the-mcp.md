@@ -73,6 +73,7 @@ Every parameter, and a real call of each: [Getting started](mcp/getting-started.
 | `link` | `orgs` · `write` | the person's orgs, and the key of one written into the project's `.env` (`PINECALL_KEY`, and `PINECALL_URL` when the gateway is not Pinecall Cloud); it warns when `.gitignore` does not name `.env` |
 | `project` | `show` · `open` · `new` · `generate` | the folder the tools act on, its agents and their language, whether it has a key; another folder opened (with nothing held: `stop` first); a new project of one agent written from `pinecall new`'s templates, in TypeScript, Ruby or Python, and opened; `generate` adds a second agent (`kind: agent`) or a golden from the caller's lines and the tools that must be called (`kind: golden`), as `pinecall generate` does |
 | `runtime` | `status` · `up` · `down` | the runtime on this machine, for a person with no account: `up` runs `pinecall-runtime setup --yes` — Docker, the schema, a key handed to this CLI in `~/.pinecall/local.json`, open models (Ollama, Whisper, Kokoro) pulled once — and keeps it running; `status` says what it printed and whether it said ready; `down` stops it, keeping the database and the key |
+| `team` | `list` · `reset` | the org's people, and a one-use link one of them opens to choose a new password; no password passes through the assistant, and setting one directly is `pinecall team password` in a terminal |
 
 ### Holding the agent, and talking to it
 

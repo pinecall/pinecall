@@ -65,6 +65,23 @@ Examples
     a person's key: the sandbox without --prod, production with it
 `;
 
+const TEAM = `
+An admin of the org sets anyone's password, theirs included: typed twice without echo, or piped
+(\`printf %s "$NEW" | pinecall team password ana@clinica.com\`), never a flag the shell would keep.
+An invited person given a password is active at once, with no link opened. \`reset\` makes a
+one-use link instead, for the person to choose their own; the gateway hands it over when the box
+sends no mail, and mails it otherwise.
+
+Examples
+  $ pinecall team
+  EMAIL              NAME  ROLE   STATUS  RUNS THE BOX
+  ana@clinica.com    Ana   admin  active  yes
+  $ pinecall team password luis@clinica.com
+  password:
+  again:
+  luis@clinica.com signs in with the password typed, from their next sign-in · active
+`;
+
 const SECRETS = `
 A secret is the org's, per env: every app \`pinecall deploy\` put on Pinecall starts with all of
 them. They are kept sealed, and nothing reads a value back — set, replace or drop. A change is a
@@ -148,6 +165,36 @@ export function register(program: Command, ctx: Context): void {
     .description("the secret dropped")
     .argument("<NAME>")
     .action(async (name) => ctx.io.result(await service.removeSecret(ctx, name), render.secretDropped));
+
+  const team = program
+    .command("team")
+    .description("the org's people: listed, a password set for one, or a one-use link to choose it")
+    .addHelpText("after", TEAM);
+  team
+    .command("list", { isDefault: true })
+    .description("every person of the org: address, name, role, whether they are active")
+    .action(async () => ctx.io.result(await service.listTeam(ctx), render.team));
+  team
+    .command("password")
+    .description("set a person's password: typed twice without echo, or piped in; an invited person becomes active")
+    .argument("<email>")
+    .action(async (email) => {
+      const password = ctx.io.interactive ? await typedTwice(ctx) : (await allOf()).replace(/\r?\n$/, "");
+      ctx.io.result(await service.setTeamPassword(ctx, service.SetPasswordInput.parse({ email, password })), render.passwordSet);
+    });
+  team
+    .command("reset")
+    .description("a one-use link the person opens to choose their own password")
+    .argument("<email>")
+    .action(async (email) => ctx.io.result(await service.resetLink(ctx, email), render.resetLinkFor));
+}
+
+// The same password twice, or nothing is sent: a typo would lock the person out.
+async function typedTwice(ctx: Context): Promise<string> {
+  const first = await typedInSilence("password: ", ctx.io);
+  const again = await typedInSilence("again: ", ctx.io);
+  if (first !== again) throw new UsageError("the two passwords differ: nothing was set");
+  return first;
 }
 
 // Browser sign-in, key verification and storage; shared by `login` and `link`.

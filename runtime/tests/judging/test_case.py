@@ -91,6 +91,26 @@ def test_what_retrieval_put_in_front_of_the_model_travels_with_the_turn_it_was_f
     assert case.turns[0].retrieved == ()
 
 
+# A turn's lookup runs before the agent's turn has a speech id, and writes none: what it read is the
+# next agent turn's, and not a turn's after that (2026-10-17, the grounded judge called the base's
+# facts made up because it never saw them).
+def test_what_a_lookup_with_no_speech_read_goes_to_the_next_agent_turn_alone() -> None:
+    def looked_up(heading: str) -> tuple[str, JsonObject]:
+        found: JsonObject = {"id": heading, "path": "a.md", "heading": heading, "score": 0.9, "excerpt": "x"}
+        return ("docs.sources", {"query": "q", "took_ms": 3.0, "speech_id": None, "sources": [found]})
+
+    log = a_log(
+        looked_up("Horario"),
+        caller("¿abren el sábado?", "sp_1"),
+        agent("Sí, hasta las dos.", "sp_2"),
+        caller("¿y el domingo?", "sp_3"),
+        looked_up("Festivos"),
+        agent("No, cerramos.", "sp_4"),
+    )
+    case = case_of(log, THE_CLINIC)
+    assert [turn.retrieved for turn in case.turns] == [(), ("Horario\nx",), (), ("Festivos\nx",)]
+
+
 def test_the_gate_trace_is_in_seq_order_and_says_what_each_tool_does() -> None:
     gate = case_of(confirmed(), THE_CLINIC).gate
     assert [(line.kind, line.tool, line.seq) for line in gate] == [

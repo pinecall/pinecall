@@ -22,6 +22,8 @@ Commands:
                                  holding, and which envs it opens
   secrets                        the org's secrets: what its hosted apps are
                                  started with, as environment variables
+  team                           the org's people: listed, a password set for
+                                 one, or a one-use link to choose it
   start [options] [agent.tsx]    the agents served and the console answered: the
                                  process you deploy
   console [options] [agent]      the console in a browser, signed in: the

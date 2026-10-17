@@ -1,7 +1,7 @@
 /** Every tool the MCP server offers, by the stage a person meets it at. */
 
 import type { Tool } from "../tool.js";
-import { link, login, whoami } from "./accounts.js";
+import { link, login, team, whoami } from "./accounts.js";
 import { agent, lexicon, pipeline, voiceSample, voices } from "./agents.js";
 import { monitors, telemetry, webhook } from "./alerts.js";
 import { call, calls, chat, supervise } from "./calls.js";
@@ -25,7 +25,7 @@ export interface Stage {
 }
 
 export const STAGES: readonly Stage[] = [
-  { stage: "Getting started", page: "getting-started", tools: [whoami, login, link, project, runtime] },
+  { stage: "Getting started", page: "getting-started", tools: [whoami, login, link, project, runtime, team] },
   { stage: "Holding the agent, and talking to it", page: "holding-and-talking", tools: [start, stop, status, chat, prompt, consoleUrl] },
   { stage: "The agent's settings", page: "settings", tools: [agent, lexicon, voices, voiceSample] },
   { stage: "Calls, and what they run on", page: "calls", tools: [calls, call, pipeline, providers, telemetry, monitors, webhook, usage] },

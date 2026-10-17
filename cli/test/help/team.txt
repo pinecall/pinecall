@@ -1,0 +1,56 @@
+$ pinecall team --help
+Usage: pinecall team [options] [command]
+
+the org's people: listed, a password set for one, or a one-use link to choose it
+
+Options:
+  -h, --help        display help for command
+
+Commands:
+  list              every person of the org: address, name, role, whether they
+                    are active
+  password <email>  set a person's password: typed twice without echo, or piped
+                    in; an invited person becomes active
+  reset <email>     a one-use link the person opens to choose their own password
+  help [command]    display help for command
+
+An admin of the org sets anyone's password, theirs included: typed twice without echo, or piped
+(`printf %s "$NEW" | pinecall team password ana@clinica.com`), never a flag the shell would keep.
+An invited person given a password is active at once, with no link opened. `reset` makes a
+one-use link instead, for the person to choose their own; the gateway hands it over when the box
+sends no mail, and mails it otherwise.
+
+Examples
+  $ pinecall team
+  EMAIL              NAME  ROLE   STATUS  RUNS THE BOX
+  ana@clinica.com    Ana   admin  active  yes
+  $ pinecall team password luis@clinica.com
+  password:
+  again:
+  luis@clinica.com signs in with the password typed, from their next sign-in · active
+
+
+$ pinecall team list --help
+Usage: pinecall team list [options]
+
+every person of the org: address, name, role, whether they are active
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall team password --help
+Usage: pinecall team password [options] <email>
+
+set a person's password: typed twice without echo, or piped in; an invited
+person becomes active
+
+Options:
+  -h, --help  display help for command
+
+$ pinecall team reset --help
+Usage: pinecall team reset [options] <email>
+
+a one-use link the person opens to choose their own password
+
+Options:
+  -h, --help  display help for command

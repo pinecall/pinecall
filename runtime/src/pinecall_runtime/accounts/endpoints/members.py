@@ -8,6 +8,7 @@ from pinecall_runtime.accounts import schemas
 from pinecall_runtime.accounts.auth import (
     BrandDep,
     KeyCacheDep,
+    MinPassword,
     OutboxDep,
     PublicUrl,
     TeamKey,
@@ -85,6 +86,15 @@ async def remove_member(member: MemberId, actor: TeamKey, session: Session, cach
         raise Conflict("you cannot remove yourself: another admin of this org removes you")
     await members.remove_member(session, actor.org, member)
     cache.forget(subject=member)
+
+
+@router.put("/v1/members/{id}/password")
+async def set_member_password(
+    member: MemberId, body: schemas.SetPassword, actor: TeamKey, shortest: MinPassword, session: Session
+) -> schemas.MemberRow:
+    """A member's password set by an admin of the org, no link mailed; an invited member becomes active."""
+    changed = await members.set_password(session, actor.org, member, body.password, shortest)
+    return schemas.MemberRow.of(changed)
 
 
 @router.post("/v1/members/{id}/reset", status_code=201)
