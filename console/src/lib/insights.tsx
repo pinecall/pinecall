@@ -1,6 +1,6 @@
 /** Insights over whole UTC days (GET /v1/insights), and the window a screen reads them over, kept in its URL. */
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { z } from "zod";
 
@@ -67,15 +67,22 @@ export const WHAT_MOVES_THE_NUMBERS = ["call.started", "call.ended", "call.summa
 export function useInsights({ day, days = 1, agent }: Asked = {}): Insights | null {
   const credentials = useCredentials();
   const [insights, setInsights] = useState<Insights | null>(null);
+  // The window last asked for: an answer to an earlier one that lands after it is dropped, or a
+  // screen that moved from today to the week would draw today's count and wait on it forever.
+  const latest = useRef("");
 
   useFed(
     () => {
       const params = { days, ...(day === undefined ? {} : { day }), ...(agent === undefined ? {} : { agent }) };
+      const asked = JSON.stringify(params);
+      latest.current = asked;
       read(credentials, "/v1/insights", params).then(
-        (answered) => setInsights(InsightsSchema.parse(answered)),
+        (answered) => {
+          if (latest.current === asked) setInsights(InsightsSchema.parse(answered));
+        },
         (refused: unknown) => {
           // Missing door or no permission: nothing to show.
-          if (refused instanceof GatewayError && [403, 404].includes(refused.status)) setInsights(null);
+          if (latest.current === asked && refused instanceof GatewayError && [403, 404].includes(refused.status)) setInsights(null);
         },
       );
     },
