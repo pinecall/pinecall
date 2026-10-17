@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.4 — Noise never reaches the ears, the ears' loops never take the floor; a golden the vendor fails breaks alone (2026-10-17)
 
 - **A breath or a sigh no longer reaches the ears.** livekit's Silero opens a segment for the ears on
   0.05 s of speech, and Whisper-family ears write each breath as words ("Thank you.", "Mm-hmm.",

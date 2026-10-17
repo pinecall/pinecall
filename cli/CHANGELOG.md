@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.11.4] — the agent pinecall new writes greets once and takes the message the moment it has both
 
 - The agent `pinecall new` writes asks only for what the caller has not said and takes the message the moment it has both; its view no longer says "Greet the caller" on every turn, which a model that follows the view to the letter did, greeting again at each one.
 
