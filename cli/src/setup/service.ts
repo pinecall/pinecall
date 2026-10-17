@@ -8,9 +8,14 @@ import { join } from "node:path";
 import { z } from "zod";
 
 import { PinecallError } from "../errors.js";
+import type { Credentials } from "../project/credentials.js";
 
 export const NOT_INSTALLED =
   'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then run this again';
+/** Where a gateway on this machine answers: anything else is another host's. */
+const THIS_MACHINE = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+export const ANOTHER_HOST = (url: string, source: string): string =>
+  `this project talks to ${url} (its key from ${source}): that runtime runs on another host, so this machine is neither scanned nor set up. Its models are that host's: \`pinecall-runtime setup\` there, or the console's providers.`;
 /** The word for an open model on this machine, alone or before a model: `local`, `local/gemma4:12b`. */
 export const LOCAL = "local";
 export const STAGES = ["stt", "turn", "llm", "tts", "judge", "caller"] as const;
@@ -86,6 +91,14 @@ export interface Option {
   hint: string;
   /** Whether this machine can run it, where that is known. */
   fits?: boolean;
+}
+
+/** The gateway a project's own key points at, when it is not on this machine; undefined when setup is this machine's. */
+export function anotherHost(credentials: Credentials): string | undefined {
+  // No key, or the key setup itself handed over: the runtime is, or is about to be, this machine's.
+  if (credentials.key === undefined || credentials.source.startsWith("the local runtime")) return undefined;
+  const host = new URL(credentials.url).hostname;
+  return THIS_MACHINE.has(host) ? undefined : credentials.url;
 }
 
 /** The runtime's reading of this machine and the stack it recommends. */

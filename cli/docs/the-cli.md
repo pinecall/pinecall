@@ -249,6 +249,10 @@ without echo. Enter runs `pinecall-runtime setup --yes` with the answers and lea
 Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by itself in
 `~/.pinecall/local.json`, the models pulled once, the gateway and a worker.
 
+It is this machine's runtime only. In a project whose key points at a gateway on another host —
+the cloud, a server — nothing here is scanned or set up, and it says so: that host's models are
+set there, with `pinecall-runtime setup` on it, or in the console's providers.
+
 A flag names a stage and that stage is not asked. `--yes` asks nothing and runs the recommended
 stack as the flags amend it — what a pipe or a script gets, since the screen needs a terminal.
 `--recommend` prints the reading and stops; `--json` makes it the runtime's own JSON.

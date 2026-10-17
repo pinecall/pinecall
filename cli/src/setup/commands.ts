@@ -21,6 +21,10 @@ runtime reads it or asks. Enter runs \`pinecall-runtime setup --yes\` with the a
 leaves it running: Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by
 itself in ~/.pinecall/local.json, the models pulled once, the gateway and a worker.
 
+It is this machine's runtime only: in a project whose key points at a gateway on another host
+(the cloud, a server), nothing here is scanned or set up, and it says so; that host's models are
+set there, with pinecall-runtime setup, or in the console.
+
 A flag names a stage and that stage is not asked; --yes asks nothing and runs the recommended
 stack as the flags amend it, as a pipe or a script does; --recommend prints the reading and
 stops, as JSON under --json.
@@ -48,6 +52,9 @@ export function register(program: Command, ctx: Context): void {
     .option("--recommend", "read this machine and print what fits it; set nothing up")
     .addHelpText("after", SETUP)
     .action(async (flags) => {
+      const credentials = ctx.credentials();
+      const remote = service.anotherHost(credentials);
+      if (remote !== undefined) throw new PinecallError(service.ANOTHER_HOST(remote, credentials.source));
       const read = service.readMachine(ctx.processEnv);
       if (flags.recommend === true) {
         ctx.io.result(read, render.recommendationLines);

@@ -88,3 +88,13 @@ describe("the keys", () => {
     expect(service.whereKeyIs("ANTHROPIC_API_KEY", {}, found)).toBe("not set: the runtime asks for it");
   });
 });
+
+describe("another host", () => {
+  it("is a project's key on a gateway that is not this machine's; no key, or setup's own, is this machine", () => {
+    expect(service.anotherHost({ url: "https://cloud.pinecall.io", key: "pc_live_x", source: ".env" })).toBe("https://cloud.pinecall.io");
+    expect(service.anotherHost({ url: "http://127.0.0.1:8080", key: "pc_live_x", source: ".env" })).toBeUndefined();
+    expect(service.anotherHost({ url: "http://localhost:8080", key: "pc_live_x", source: "the environment" })).toBeUndefined();
+    expect(service.anotherHost({ url: "https://cloud.pinecall.io", key: undefined, source: "nowhere" })).toBeUndefined();
+    expect(service.anotherHost({ url: "http://127.0.0.1:8080", key: "pc_live_x", source: "the local runtime (~/.pinecall/local.json)" })).toBeUndefined();
+  });
+});
