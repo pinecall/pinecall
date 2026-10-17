@@ -141,4 +141,7 @@ async def get_session(request: Request) -> AsyncGenerator[AsyncSession]:
             raise
 
 
-Session = Annotated[AsyncSession, Depends(get_session)]
+# "function": committed and handed back when the endpoint returns, before its response is sent. A
+# streamed answer (a log followed, an export) would otherwise hold the connection and an open
+# transaction for as long as its reader stays.
+Session = Annotated[AsyncSession, Depends(get_session, scope="function")]
