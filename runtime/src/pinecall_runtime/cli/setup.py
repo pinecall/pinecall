@@ -17,7 +17,7 @@ from pinecall_runtime.cli import local
 from pinecall_runtime.cli import orgs as orgs_cli
 from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
-from pinecall_runtime.enums import Env, Role
+from pinecall_runtime.enums import Role
 from pinecall_runtime.exceptions import UpstreamError
 
 # Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it); the key setup makes is
@@ -25,6 +25,8 @@ from pinecall_runtime.exceptions import UpstreamError
 CLI_HOME_VARIABLE = "PINECALL_HOME"
 CLI_LOCAL_FILE = "local.json"
 DEV_KEY = "PINECALL_DEV_KEY"
+# Whose key it is: the console's person, so what `pinecall start` holds is the copy their console shows.
+DEV_KEY_OF = "PINECALL_DEV_KEY_OF"
 DEV_KEY_LABEL = "this machine (pinecall-runtime setup)"
 
 NO_COMPOSE = "docker compose did not answer: start Docker and run this again"
@@ -91,9 +93,10 @@ async def setup(
     out.line("schema     at this release")
     runtime = Context(local.settings_of(values), out)
     async with runtime.stack:
-        out.line(await _the_person(runtime, email, person, asking))
+        said, member = await _the_person(runtime, email, person, asking)
+        out.line(said)
         if not org_mode:
-            handed = await _this_machines_key(runtime, values, env)
+            handed = await _this_machines_key(runtime, values, env, member)
             out.line(f"key        this machine's, in {handed}: the CLI finds this runtime by itself")
         chosen = models if models is not None else (models_.ask_models() if asking else models_.Models.local)
         if chosen is models_.Models.local:
@@ -114,14 +117,23 @@ async def setup(
 # ── this machine's key ──
 
 
-async def _this_machines_key(runtime: Context, values: dict[str, str], env: Path) -> Path:
-    """A key of `default`'s in the sandbox, drawn once into the env file, handed to the CLI every time."""
-    if DEV_KEY not in values:
-        issue = keys.Issue(org=DEFAULT_ORG, env=Env.sandbox, scopes=keys.KEY_SCOPES, label=DEV_KEY_LABEL)
+# A person's key, not a server's: in the sandbox a person's console shows that person's own copy of
+# the agents, and a server's key holds the org's, which nobody's console showed (2026-10-17).
+async def _this_machines_key(runtime: Context, values: dict[str, str], env: Path, member: str) -> Path:
+    """The console's person's key, drawn once into the env file, handed to the CLI every time."""
+    if values.get(DEV_KEY_OF) != member or DEV_KEY not in values:
         async with runtime.sessions.begin() as session:
-            _, values[DEV_KEY] = await keys.issue_key(session, issue)
-        with env.open("a", encoding="utf-8") as out:
-            out.write(f"{DEV_KEY}={values[DEV_KEY]}\n")
+            found = await members.get_member(session, DEFAULT_ORG, member)
+            _, values[DEV_KEY] = await keys.issue_person_key(session, found, label=DEV_KEY_LABEL)
+        values[DEV_KEY_OF] = member
+        kept = [
+            line
+            for line in env.read_text(encoding="utf-8").splitlines()
+            if not line.startswith((f"{DEV_KEY}=", f"{DEV_KEY_OF}="))
+        ]
+        env.write_text(
+            "\n".join([*kept, f"{DEV_KEY}={values[DEV_KEY]}", f"{DEV_KEY_OF}={member}"]) + "\n", encoding="utf-8"
+        )
     return hand_to_cli(values[DEV_KEY], cli_home(os.environ))
 
 
@@ -148,7 +160,7 @@ def hand_to_cli(secret: str, home: Path) -> Path:
 
 # The person the console signs in as, with a password and no link: asked at a terminal, drawn and
 # shown once where nobody is. Run again, a person who has a password keeps it.
-async def _the_person(runtime: Context, email: str | None, person: str | None, asking: bool) -> str:
+async def _the_person(runtime: Context, email: str | None, person: str | None, asking: bool) -> tuple[str, str]:
     address = email or (typer.prompt("console sign-in: your email") if asking else NOBODY_ASKED)
     name = person or address.split("@", 1)[0]
     shortest = runtime.settings.min_password
@@ -157,7 +169,7 @@ async def _the_person(runtime: Context, email: str | None, person: str | None, a
         kept = await members.memberships_of(session, address.strip().lower())
         found = next((one for one in kept if one.org == org.id), None)
         if found is not None and found.password_hash is not None:
-            return f"console    {found.email} keeps their password: {CHANGES_IT.format(email=found.email)}"
+            return f"console    {found.email} keeps their password: {CHANGES_IT.format(email=found.email)}", found.id
         if found is None:
             invitee = members.Invitee(address, name, Role.admin)
             await members.invite(session, org.id, invitee, seats=None, vouched=True)
@@ -167,8 +179,14 @@ async def _the_person(runtime: Context, email: str | None, person: str | None, a
         await members.set_password(session, org.id, found.id, password, shortest)
         await members.set_operator(session, org.id, found.id, on=True)
     if drawn is None:
-        return f"console    {found.email} signs in with the password typed: {CHANGES_IT.format(email=found.email)}"
-    return f"console    {found.email} · password {drawn} (shown this once: {CHANGES_IT.format(email=found.email)})"
+        return (
+            f"console    {found.email} signs in with the password typed: {CHANGES_IT.format(email=found.email)}",
+            found.id,
+        )
+    return (
+        f"console    {found.email} · password {drawn} (shown this once: {CHANGES_IT.format(email=found.email)})",
+        found.id,
+    )
 
 
 # ── docker ──

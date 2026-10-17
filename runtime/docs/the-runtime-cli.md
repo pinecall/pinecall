@@ -47,9 +47,11 @@ operator of the org `default`, with a password and no invitation link — typed 
 at a terminal, else drawn and printed this once. Run again, a person who has a password keeps it;
 `orgs password default <email>` changes it, and `pinecall team password` does from the CLI.
 
-**The key.** Without `--org`, this machine is an org of one: a key of the org `default`'s in the
-sandbox, every scope of the org's, drawn once into `<dir>/env` as `PINECALL_DEV_KEY` and handed
-to the CLI in `~/.pinecall/local.json` (`PINECALL_HOME` moves it; owner-only). A `pinecall` verb
+**The key.** Without `--org`, this machine is an org of one: the person's own key, drawn once into
+`<dir>/env` as `PINECALL_DEV_KEY` and handed to the CLI in `~/.pinecall/local.json`
+(`PINECALL_HOME` moves it; owner-only). A person's key, not a server's, because in the sandbox a
+person's console shows that person's own copy of the agents: what `pinecall start` holds on it is
+what the console they sign in to shows. A `pinecall` verb
 run in a project with no `PINECALL_KEY` of its own acts on that key at `http://127.0.0.1:8080`:
 no `login` and no `link`. `--org` is a team's runtime instead: no key is handed over, and the CLI
 signs in as the person, with `pinecall login <url>` and `pinecall link`.
