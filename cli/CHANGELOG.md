@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.2] — released with every other package
+
+- Nothing of the CLI changed: published at 0.11.2 with every other package. `deploy logs` gets fresh lines from a gateway at 0.11.2.
+
 ## [0.11.1] — every verb walked again: a deploy followed to the end, every flag refused by name, a broken run says why
 
 - **`deploy up` and `deploy rollback` follow a release to the end.** The follow read the org's whole

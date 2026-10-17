@@ -2,13 +2,14 @@
 
 ## Unreleased
 
+## 0.11.2 — A streamed answer holds no database connection; the feed keeps the types asked for (2026-10-17)
+
 - **A streamed answer no longer holds a database connection.** The request's session was handed
   back after the response was sent, which for a stream is when its reader leaves: every open
   `deploy logs`, every console following a live call, every export held one of the gateway's ten
   connections and an open transaction for as long as it stayed. `deploy logs` never got fresh
   lines because its ask to the runner sat uncommitted in that transaction. The session is now
   committed and handed back when the endpoint returns.
-
 - **The feed's `?types=` keeps those types alone.** A call's ending passed every filter, which a
   call's reader needs and the org's feed does not: `deploy up` followed on the feed still met another
   call's `call.ended` and left on it.
