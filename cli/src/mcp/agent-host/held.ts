@@ -52,6 +52,8 @@ export class Held {
   private companion: Beside | undefined;
   private timer: NodeJS.Timeout | undefined;
   private reloading: Promise<void> = Promise.resolve();
+  // Set while `stop` drains the thread: its exit then is the one asked for, never a death.
+  private stopping = false;
 
   constructor(
     asked: Context,
@@ -110,6 +112,7 @@ export class Held {
 
   /** Drain the thread and stop watching; an attached process is left as it was. */
   async stop(): Promise<void> {
+    this.stopping = true;
     this.watcher?.close();
     this.watcher = undefined;
     clearTimeout(this.timer);
@@ -157,12 +160,23 @@ export class Held {
     const thread = threadServing(serveOne(this.ctx.gateway(), this.home, { console: false, serve: lent?.entry }, this.ctx.processEnv), this.logs, undefined, lent);
     try {
       await thread.registered(this.home.name);
-      return thread;
     } catch (failed) {
       await thread.stop();
       throw failed;
     }
+    // A thread that dies later (a tool or a hook throwing where nothing catches it) leaves no app behind:
+    // every call to it would wait out its timeout. While it is the one answering, its death is the
+    // sentence `status` leads with and every tool refuses with, until a save loads a version that lives.
+    void thread.exited.then((code) => {
+      if (this.thread === thread && !this.stopping) this.broken = died(code, this.logs.last(5));
+    });
+    return thread;
   }
+}
+
+/** Why the thread answering is gone: its exit code and the last lines it printed, the stack among them. */
+export function died(code: number, lines: string[]): string {
+  return `the agent's thread ended (exit ${code}), so nothing answers its calls; save a fix to load it again: ${lines.join(" · ") || "no line said why"}`;
 }
 
 /** The app of this machine already holding the slug — the agent's own process, never a companion — so two windows never fight for the line. */

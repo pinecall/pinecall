@@ -53,7 +53,7 @@ Stop holding the agent: its thread drains its live calls and leaves.
 
 What this server holds: each agent, how (thread or attached), its app, the version answering, and why the newest save did not load.
 
-`status` leads with what is wrong, if anything: the sentence a save that does not load was refused with. Otherwise each agent held, its app id and the version answering, and `framework` when the agent runs on the one this server lent the project.
+`status` leads with what is wrong, if anything: the sentence a save that does not load was refused with, or how the thread answering ended when it died. Otherwise each agent held, its app id and the version answering, and `framework` when the agent runs on the one this server lent the project.
 
 | parameter | takes | | what it is |
 |---|---|---|---|

@@ -6,6 +6,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **MCP: a held agent whose thread dies says so.** A tool or a hook throwing where nothing caught it ended the agent's thread, and `status` kept answering `held: thread` while every `chat` and `test` waited out its timeout. The thread's end is now the sentence `status` leads with and every tool refuses with — its exit code and the last lines it printed — until a save loads a version that lives.
 - `pinecall setup` on a project whose key points at another host asks that host instead of reading this machine: it advises a stage at a time from what it serves and what it lends, then the org's own keys (`GET /v1/providers/advice`), offers to give the org a key this shell exports, and ends with the `pinecall agent set` line for the stack.
 
 ## [0.11.4] — the agent pinecall new writes greets once and takes the message the moment it has both

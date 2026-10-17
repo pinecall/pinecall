@@ -47,7 +47,7 @@ export const status = tool({
   name: "status",
   description: "What this server holds: each agent, how (thread or attached), its app, the version answering, and why the newest save did not load.",
   schema: {},
-  manual: "`status` leads with what is wrong, if anything: the sentence a save that does not load was refused with. Otherwise each agent held, its app id and the version answering, and `framework` when the agent runs on the one this server lent the project.",
+  manual: "`status` leads with what is wrong, if anything: the sentence a save that does not load was refused with, or how the thread answering ended when it died. Otherwise each agent held, its app id and the version answering, and `framework` when the agent runs on the one this server lent the project.",
   handler: async (_args, ctx) => ({ held: [...ctx.session.held.values()].map(statusOf) }),
 });
 
