@@ -7,7 +7,7 @@ from typing import Never
 
 from livekit.agents import llm
 from livekit.agents.evals import EvaluationResult, JudgmentResult
-from livekit.agents.voice.run_result import ChatMessageAssert, RunAssert, RunResult
+from livekit.agents.voice.run_result import ChatMessageAssert, RunAssert, RunEvent, RunResult
 
 from pinecall_runtime.judging.schemas import JudgeScore
 from pinecall_runtime.judging.service.panel import failing, passing
@@ -48,24 +48,27 @@ async def turn_scores(
 ) -> list[JudgeScore]:
     """Each step in order on the turn's run, up to and with the first that broke."""
     expect = played.run.expect
+    around = _around_a_tool(played.run.events)
     named: dict[str, int] = {}
     scores: list[JudgeScore] = []
     for step in steps:
-        for checked in await _checked(step, expect, played, model):
+        for checked in await _checked(step, expect, played, model, around):
             scores.append(_score(_numbered(f"t{number}.{checked.name}", named), checked))
             if not checked.ruling.passed:
                 return scores
     return scores
 
 
-async def _checked(step: Step, expect: RunAssert, played: TurnRun, model: llm.LLM[Never] | None) -> list[Checked]:
+async def _checked(
+    step: Step, expect: RunAssert, played: TurnRun, model: llm.LLM[Never] | None, around: frozenset[str]
+) -> list[Checked]:
     match step:
         case ToolStep():
             return [_tool(step, expect, played.began)]
         case NoToolStep():
             return [_no_tool(step, expect)]
         case ReplyStep():
-            return await _reply(step.reply, expect, played.began, model)
+            return await _reply(step.reply, expect, played.began, model, around)
         case EndStep():
             return [_end(step, played.ended_by)]
         case NothingElseStep():
@@ -103,10 +106,15 @@ def _no_tool(step: NoToolStep, expect: RunAssert) -> Checked:
     return _ruled(checked, failing(f"the turn forbids {step.no_tool}, and it ran"))
 
 
-async def _reply(reply: Reply, expect: RunAssert, began: float, model: llm.LLM[Never] | None) -> list[Checked]:
+# The line a tool's wait is covered with is not the reply: the step reads past it to the next one.
+async def _reply(
+    reply: Reply, expect: RunAssert, began: float, model: llm.LLM[Never] | None, around: frozenset[str]
+) -> list[Checked]:
     checked = Checked("reply", REPLY.format(parts=_parts_of(reply)), passing(""))
     try:
         message = expect.next_event(type="message")
+        while message.event().item.id in around:
+            message = expect.next_event(type="message")
     except AssertionError as broke:
         return [_ruled(checked, failing(_first_line(broke)))]
     item = message.event().item
@@ -114,6 +122,29 @@ async def _reply(reply: Reply, expect: RunAssert, began: float, model: llm.LLM[N
     if not replied.ruling.passed or reply.intent is None:
         return [replied]
     return [replied, await _intent(message, reply.intent, model)]
+
+
+# The agent's lines around a tool: one said while a call has no output yet (its announcement, its
+# `say`), and one that leads straight into a call in the same answer ("Let me look."). Neither is
+# the reply a caller waits for; both are the wait's.
+def _around_a_tool(events: Sequence[RunEvent]) -> frozenset[str]:
+    around: set[str] = set()
+    running: set[str] = set()
+    leading: list[str] = []
+    for event in events:
+        if event.type == "function_call":
+            running.add(event.item.call_id)
+            around.update(leading)
+            leading = []
+        elif event.type == "function_call_output":
+            running.discard(event.item.call_id)
+            leading = []
+        elif event.type == "message" and event.item.role == "assistant":
+            if running:
+                around.add(event.item.id)
+            else:
+                leading.append(event.item.id)
+    return frozenset(around)
 
 
 # livekit's own judge: the message and the intent, a forced yes or no, and why.

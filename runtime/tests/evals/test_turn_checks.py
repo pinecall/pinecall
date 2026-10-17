@@ -146,3 +146,27 @@ async def test_the_same_step_twice_in_a_turn_is_numbered(store: Store, call: str
         "t1.no_tool:book",
         "t1.no_tool:x",
     ]
+
+
+@needs_the_database
+async def test_a_reply_reads_past_the_line_said_while_the_tool_ran(store: Store, call: str) -> None:
+    announced: list[Json] = [
+        {"name": "find_slots", "arguments": {"day": "martes", "say": "Miro la agenda."}, "call_id": "t1"}
+    ]
+    steps: list[Json] = [{"tool": "find_slots"}, {"reply": {"says": ["cuatro"]}}]
+    scores = await scored(store, call, steps, announced, ["A las cuatro."])
+    assert scores["t1.reply"].passed, scores["t1.reply"].reason
+
+
+@needs_the_database
+async def test_a_reply_reads_past_the_line_that_led_into_the_tool(store: Store, call: str) -> None:
+    led: list[Json] = ["Ya te busco algo.", *FOUND]
+    scores = await scored(store, call, [{"reply": {"says": ["cuatro"]}}], led, ["A las cuatro."])
+    assert scores["t1.reply"].passed, scores["t1.reply"].reason
+
+
+@needs_the_database
+async def test_a_turn_whose_only_line_led_into_a_tool_has_no_reply(store: Store, call: str) -> None:
+    led: list[Json] = ["Ya te busco algo.", *FOUND]
+    scores = await scored(store, call, [ANY_REPLY], led)
+    assert not scores["t1.reply"].passed

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A golden's reply is the agent's answer, not the line that covers a tool's wait.** A `reply` step
+  reads past the lines said around a tool — the announcement or `say` while a call has no output yet,
+  and a line that leads straight into a call in the same answer ("Dejame chequear…") — to the message
+  after them. Every model announces before its tools, so a turn's first message was the filler, and
+  goldens broke on it whatever the model answered after.
+- **`make deploy`'s live suite is back** (`tests/live`, lost when the packages became one repo): the
+  console, the widget, the doors' refusals and the OpenAPI checked against the deployed domain.
+
 - **A golden the model's vendor fails breaks alone.** A line the vendor answers with an error — an
   outage past livekit's retries, a content filter's refusal such as Gemini's `PROHIBITED_CONTENT` —
   breaks that golden at that turn (`t<n>.model`, with the vendor's words), and the run plays the next
