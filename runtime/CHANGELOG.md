@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.3 — Setup reads the machine and takes any open model, pinecall setup chooses it on a screen, the agent no longer hears itself, a visitor's room reaches a worker (2026-10-17)
 
 - **The agent no longer hears itself.** On a web call the caller's audio passes WebRTC's echo
   canceller (AEC3, in livekit's SDK) fed with what the agent plays, before the VAD and the ears hear
