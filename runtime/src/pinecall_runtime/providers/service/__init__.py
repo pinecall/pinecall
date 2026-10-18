@@ -30,6 +30,7 @@ from pinecall_runtime.providers.service.keyring import (
     thinking_of,
 )
 from pinecall_runtime.providers.service.machine import LOCAL, answers, detect, key_variable, recommend, recommendation
+from pinecall_runtime.providers.service.notes import TRANSCRIPTIONS_A_MINUTE
 from pinecall_runtime.providers.service.plugins import (
     Credentials,
     Ears,
@@ -71,6 +72,7 @@ from pinecall_runtime.providers.service.voices import (
 __all__ = [
     "LOCAL",
     "SAMPLES_A_MINUTE",
+    "TRANSCRIPTIONS_A_MINUTE",
     "Advised",
     "Catalog",
     "Credentials",

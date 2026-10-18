@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **A voice note is said back as text, whole or as it is spoken.** Both are heard by the ears a call
+  hears with, built the same way: the box's default STT vendor, or the one `?stt=` names
+  (`&model=` too), with the operator's options, on the org's own key or one the box lends;
+  `?language=es` is the note's, as a call's, and `?hear=` (repeated) names the words to expect, as a
+  call's lexicon names them: a brand, a product, written back as given where the ears take terms.
+  - `POST /v1/transcriptions`: the note whole. The body is the audio, raw PCM as a browser records it
+    (`Content-Type: audio/L16; rate=16000; channels=1`) or a container decoded here; the answer is
+    `{text, language, audio_ms, vendor}`.
+  - `POST /v1/transcriptions/token`, then `WS /v1/transcriptions/stream?token=`: dictation. The org's
+    key mints a minute's token on its server; the page opens the socket with it, never holding the
+    key, sends raw 16 kHz PCM as it records and reads `{type: "interim" | "final", text}` as it is
+    heard; the text `end` closes the audio and `{type: "done"}` follows once the words are settled.
+    Two minutes a dictation; ears that do not stream are refused at the token.
+  A talk key or a pipeline key opens either; thirty a minute per key; eight megabytes a note.
 - **An agent can be killed: `POST /v1/agents/{slug}/kill`, an admin's, and
   `pinecall-runtime kill <agent> [--org]`, the operator's.** Every app that holds the agent in the
   env (the operator's: in both) lets go of it, on whichever gateway it is connected: it is sent an

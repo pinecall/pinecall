@@ -154,6 +154,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         "sign_ins": signin.SignIns(sessions, vault, signal),
         "outbox": outbox,
         "samples": attempts.AttemptThrottle(sessions, providers.SAMPLES_A_MINUTE),
+        "transcriptions": attempts.AttemptThrottle(sessions, providers.TRANSCRIPTIONS_A_MINUTE),
         "runner": runner,
         "simulations": simulations,
         "closing": asyncio.Event(),

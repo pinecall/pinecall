@@ -234,6 +234,24 @@ class VoicesListed(WireModel):
     voices: list[ListedVoice]
 
 
+class TranscriptionResponse(WireModel):
+    """POST /v1/transcriptions: the note's words, the language most of them were in, the audio heard."""
+
+    text: str
+    language: str | None
+    audio_ms: int
+    vendor: str
+
+
+class DictationTokenResponse(WireModel):
+    """POST /v1/transcriptions/token: what a page opens one dictation with, for a minute."""
+
+    token: str
+    path: str
+    expires_in: int
+    vendor: str
+
+
 class VoiceSampleRequest(WireModel):
     """POST /v1/voices/sample: which vendor, voice, model and words to hear; the answer is WAV."""
 

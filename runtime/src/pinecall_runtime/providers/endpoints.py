@@ -1,31 +1,54 @@
 """The providers endpoints: the catalogue, the org's and the box's vendor keys, voices, a sample."""
 
+import contextlib
 import dataclasses
+from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Query, Request, Response, WebSocket, WebSocketDisconnect
 
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
-from pinecall_runtime.agents.declaration import Voice
-from pinecall_runtime.exceptions import NotFound, TooManyRequests, ValidationError
+from pinecall_runtime.agents.declaration import Model, Voice
+from pinecall_runtime.exceptions import (
+    NotFound,
+    PayloadTooLarge,
+    PinecallError,
+    ServiceUnavailable,
+    TooManyRequests,
+    Unauthorized,
+    ValidationError,
+)
 from pinecall_runtime.kit.crypto import Vault
-from pinecall_runtime.kit.handles import handles_of
+from pinecall_runtime.kit.handles import Handles, handles_of
+from pinecall_runtime.kit.websockets import close_reason, code_of, refuse_socket
 from pinecall_runtime.postgres import Session, box_wide
-from pinecall_runtime.providers.auth import PipelineKey, ProvidersKey, TheOperator
+from pinecall_runtime.providers.auth import EarsKey, PipelineKey, ProvidersKey, TheOperator
 from pinecall_runtime.providers.schemas import (
     Advice,
     AdvisedStage,
     Catalog,
     Catalogue,
+    DictationTokenResponse,
     ListedVoice,
     ProviderKeyRequest,
     Stage,
+    TranscriptionResponse,
     VendorsResponse,
     VoiceSampleRequest,
     VoicesListed,
 )
-from pinecall_runtime.providers.service import advice, catalog, keyring, machine, plugins, stages, trials, voices
+from pinecall_runtime.providers.service import (
+    advice,
+    catalog,
+    keyring,
+    machine,
+    notes,
+    plugins,
+    stages,
+    trials,
+    voices,
+)
 
 router = APIRouter()
 
@@ -159,6 +182,136 @@ async def voice_sample(body: VoiceSampleRequest, actor: PipelineKey, request: Re
     heard = await voices.sample(dataclasses.replace(stage, voice=voice.voice_id, language=language), text)
     timing = f"first-audio;dur={heard.first_audio_ms}, total;dur={heard.total_ms}"
     return Response(content=heard.wav, media_type=WAV, headers={"Server-Timing": timing})
+
+
+# A voice note from a chat, said back as text by the ears a call hears with: the box's default
+# vendor, or the one `stt` names (`model` too), on the org's own key or one the box lends. The body
+# is the audio: raw PCM as a browser records it (`Content-Type: audio/L16; rate=16000; channels=1`),
+# or a container (WAV, WebM, Ogg, MP4, MP3) decoded here. `language` is the note's, as a call's.
+@router.post("/v1/transcriptions")
+async def transcribe_note(
+    actor: EarsKey,
+    request: Request,
+    session: Session,
+    stt: str | None = None,
+    model: str | None = None,
+    language: str | None = None,
+    hear: Annotated[list[str] | None, Query()] = None,
+) -> TranscriptionResponse:
+    """The note's words, heard on the keys the org's calls run on."""
+    throttle: AttemptThrottle = request.app.state.transcriptions
+    if not await throttle.is_allowed(actor.key_id):
+        raise TooManyRequests(
+            f"this key sent its {throttle.tries} notes this minute: the ceiling is {throttle.tries} a minute",
+            retry_after_s=60,
+        )
+    audio = await request.body()
+    if not audio:
+        raise ValidationError("the body is the audio, and it is empty")
+    if len(audio) > notes.LONGEST_NOTE:
+        raise PayloadTooLarge(f"a note is at most {notes.LONGEST_NOTE // (1024 * 1024)} MB of audio")
+    note = notes.note_of(audio, request.headers.get("content-type", ""))
+    configured = await catalog.get_catalog(session)
+    # `stt` names a vendor, never a model: a word that is no vendor is refused as one, not tried as a model.
+    declared = None if not stt else Model(provider=plugins.vendor_doing(stt, "stt"), model=model or "")
+    keys = await keyring.keys_of(session, _vault(request), actor.scope)
+    stage = keyring.stage_on_its_key("stt", declared, configured, keys)
+    heard = await notes.transcribe(
+        dataclasses.replace(stage, language=plugins.primary_language(language)), note, notes.terms_of(hear)
+    )
+    return TranscriptionResponse(text=heard.text, language=heard.language, audio_ms=heard.audio_ms, vendor=stage.vendor)
+
+
+# The words as they are spoken: a page asks its server for a token (the org's key mints it, the
+# page never holds the key), then opens the socket with it and sends raw 16 kHz PCM as it records.
+@router.post("/v1/transcriptions/token")
+async def dictation_token(
+    actor: EarsKey,
+    request: Request,
+    session: Session,
+    stt: str | None = None,
+    model: str | None = None,
+    language: str | None = None,
+    hear: Annotated[list[str] | None, Query()] = None,
+) -> DictationTokenResponse:
+    """A minute's token for one dictation on the org's keys, with the ears and language asked for."""
+    throttle: AttemptThrottle = request.app.state.transcriptions
+    if not await throttle.is_allowed(actor.key_id):
+        raise TooManyRequests(
+            f"this key asked for its {throttle.tries} dictations this minute: the ceiling is {throttle.tries} a minute",
+            retry_after_s=60,
+        )
+    configured = await catalog.get_catalog(session)
+    vendor = plugins.vendor_doing(stt, "stt") if stt else configured.defaults["stt"].vendor
+    # Refused now, not when the page opens the socket: the ears must run on a key this org may use.
+    keys = await keyring.keys_of(session, _vault(request), actor.scope)
+    keyring.stage_on_its_key("stt", Model(provider=vendor, model=model or "") if stt else None, configured, keys)
+    token = notes.dictation_token(
+        _own_key(handles_of(request)),
+        actor.scope,
+        stt and vendor,
+        model,
+        plugins.primary_language(language),
+        notes.terms_of(hear),
+    )
+    return DictationTokenResponse(
+        token=token,
+        path=f"/v1/transcriptions/stream?token={token}",
+        expires_in=notes.DICTATION_TOKEN_TTL_S,
+        vendor=vendor,
+    )
+
+
+@router.websocket("/v1/transcriptions/stream")
+async def dictation(websocket: WebSocket, token: str = "") -> None:
+    """Raw 16 kHz PCM frames in, `{type: interim|final, text}` out as it is heard; `end` closes the
+    audio and `{type: done}` follows once the words are settled."""
+    handles: Handles = websocket.app.state.handles
+    try:
+        asked = notes.dictation_of(_own_key(handles), token)
+        if asked is None:
+            raise Unauthorized("the token is no dictation token of this gateway's, or it expired: ask for a new one")
+        async with handles.sessions.begin() as session:
+            configured = await catalog.get_catalog(session)
+            keys = await keyring.keys_of(session, handles.vault, asked.scope)
+        declared = Model(provider=asked.stt, model=asked.model or "") if asked.stt else None
+        stage = keyring.stage_on_its_key("stt", declared, configured, keys)
+    except PinecallError as refused:
+        await refuse_socket(websocket, refused)
+        return
+    await websocket.accept()
+
+    async def heard() -> AsyncIterator[bytes | None]:
+        try:
+            while True:
+                message = await websocket.receive()
+                if message["type"] == "websocket.disconnect":
+                    return
+                if message.get("bytes"):
+                    yield message["bytes"]
+                elif message.get("text") == notes.END:
+                    yield None
+                    return
+        except WebSocketDisconnect:
+            return
+
+    async def said(kind: str, text: str) -> None:
+        await websocket.send_json({"type": kind, "text": text})
+
+    try:
+        await notes.dictate(dataclasses.replace(stage, language=asked.language), heard(), said, asked.hear)
+        await websocket.close()
+    except PinecallError as refused:
+        with contextlib.suppress(RuntimeError, WebSocketDisconnect):
+            await websocket.close(code=code_of(refused), reason=close_reason(str(refused)))
+    except (RuntimeError, WebSocketDisconnect):
+        return
+
+
+def _own_key(handles: Handles) -> str:
+    if handles.settings.token_key is None:
+        raise ServiceUnavailable("this gateway signs no tokens: PINECALL_TOKEN_KEY is unset")
+    return handles.settings.token_key.get_secret_value()
 
 
 # ── the box's ──
