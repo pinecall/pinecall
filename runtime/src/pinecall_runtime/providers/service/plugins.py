@@ -35,6 +35,9 @@ PLUGINS = "livekit.plugins"
 
 MODALITIES: tuple[Modality, ...] = ("llm", "stt", "tts")
 CLASS_OF: dict[Modality, str] = {"llm": "LLM", "stt": "STT", "tts": "TTS"}
+# Where a plugin puts each class, in the order looked for: at the top of its module, or an LLM on the
+# Responses API in its `responses` module, as xAI's Grok is (`livekit.plugins.xai.responses.LLM`).
+CLASS_PATHS: dict[Modality, tuple[str, ...]] = {"llm": ("LLM", "responses.LLM"), "stt": ("STT",), "tts": ("TTS",)}
 
 # livekit's three bases are generic in the extra events a subclass may emit; a plugin adds none.
 AN_LLM: type[llm.LLM[Never]] = llm.LLM
@@ -198,7 +201,18 @@ def _vendor(name: str, module: str) -> Vendor:
     except ImportError as broken:
         logger.warning("the %s plugin does not import, so it builds nothing", name, exc_info=True)
         return Vendor(name, frozenset(), broken=str(broken))
-    return Vendor(name, frozenset(m for m in MODALITIES if hasattr(imported, CLASS_OF[m])))
+    return Vendor(name, frozenset(m for m in MODALITIES if class_path(imported, m) is not None))
+
+
+def class_path(module: object, modality: Modality) -> str | None:
+    """Where the module keeps its class for that stage (`LLM`, `responses.LLM`), or None."""
+    for path in CLASS_PATHS[modality]:
+        found: object = module
+        for part in path.split("."):
+            found = getattr(found, part, None)
+        if isinstance(found, type):
+            return path
+    return None
 
 
 # A vendor SDK puts its whole body in the message (`Error code: 401 - {'message': …}`): the

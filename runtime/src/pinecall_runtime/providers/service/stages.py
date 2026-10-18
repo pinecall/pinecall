@@ -38,6 +38,7 @@ from pinecall_runtime.providers.service.plugins import (
     Running,
     Speaking,
     Thinking,
+    class_path,
     plugin,
     primary_language,
 )
@@ -298,8 +299,9 @@ def _refuse_untaken(modality: Modality, running: Running, knobs: list[str]) -> N
 
 # A class may sit in a module of the plugin: `responses.LLM` is its `responses` module's LLM.
 def _class_of(modality: Modality, running: Running) -> type:
-    name = running.builds or CLASS_OF[modality]
-    made: object = plugin(running.vendor)
+    module = plugin(running.vendor)
+    name = running.builds or class_path(module, modality) or CLASS_OF[modality]
+    made: object = module
     for part in name.split("."):
         made = getattr(made, part, None)
     if not isinstance(made, type):
@@ -310,8 +312,8 @@ def _class_of(modality: Modality, running: Running) -> type:
 def _built[T](
     modality: Modality, base: type[T], running: Running, knobs: Mapping[str, object], hear: tuple[str, ...] = ()
 ) -> T:
-    named = running.builds or CLASS_OF[modality]
     made = _class_of(modality, running)
+    named = running.builds or made.__name__
     if not issubclass(made, base):
         raise ValidationError(f"{running.vendor} exports no {CLASS_OF[modality]} named {named!r}")
     constructor: Callable[..., T] = made
