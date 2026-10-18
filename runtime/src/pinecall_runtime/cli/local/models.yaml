@@ -13,7 +13,7 @@ name: pinecall-models-local
 services:
   ollama:
     profiles: [ollama]
-    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
     environment:
       OLLAMA_CONTEXT_LENGTH: "8192"
       OLLAMA_KEEP_ALIVE: "-1"
@@ -24,7 +24,7 @@ services:
   # Pulls the two models once and loads the LLM, then exits.
   ollama-models:
     profiles: [ollama]
-    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
     environment: {OLLAMA_HOST: "ollama:11434"}
     entrypoint:
       - sh

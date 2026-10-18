@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The open models' Ollama is 0.40.6.** Up to 0.32 Ollama re-read a model's whole vocabulary on
+  every request before running it: ~0.25 s on the embedder and ~0.3 s on the thinking, every turn,
+  longer than a spoken turn's lookup budget. On 0.40.6 an embedding takes ~10 ms. On a GPU
+  (`infra/models/compose.yaml`) the CUDA kernels Ollama compiles on first use are kept in their own
+  volume, and the embedder is warmed on every sentence length up to forty words when the stack
+  comes up: a first call no longer waits 2 to 9 s for a kernel, and the 30B loads in 6 s instead of
+  90 once the cache is there.
+
 - **A spoken turn's search and recall are back before the turn ends, on ears that write no
   interims.** A lookup started on the first interim worth a query, and Whisper-family ears write
   none: every lookup started at the end of the turn and spent its 250 ms waiting on the embedder,

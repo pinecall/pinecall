@@ -10,15 +10,22 @@
 name: pinecall-models
 
 services:
+  # 0.40 and not older: up to 0.32 every request re-read the model's whole vocabulary before it ran,
+  # ~0.25 s on bge-m3 and ~0.3 s on a 30B (measured on an A100, 2026-10-18), longer than a turn's
+  # lookup budget; on 0.40.6 an embedding takes ~10 ms.
   ollama:
-    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
     environment:
       # A phone call's prompt is short: at 8k the model and its cache stay whole on the GPU.
       OLLAMA_CONTEXT_LENGTH: "8192"
       # Loaded once and kept: a cold load is ~20 s, longer than any caller waits.
       OLLAMA_KEEP_ALIVE: "-1"
       OLLAMA_FLASH_ATTENTION: "1"
-    volumes: [ollama:/root/.ollama]
+      # The CUDA kernels compiled for this card on first use, kept in their own volume: each new
+      # batch shape costs 2 to 9 s the first time (an A100, 2026-10-18), and a cache inside the
+      # container is lost with it. 4 GiB, as CUDA's own default of 256 MiB fills.
+      CUDA_CACHE_MAXSIZE: "4294967296"
+    volumes: [ollama:/root/.ollama, ollama-cuda:/root/.nv]
     ports: ["${MODELS_BIND:-127.0.0.1}:11434:11434"]
     restart: unless-stopped
     deploy:
@@ -26,9 +33,11 @@ services:
         reservations:
           devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
 
-  # Pulls the two models once and loads the LLM, then exits; a restart of the stack re-runs it.
+  # Pulls the two models once, loads the LLM, and embeds a sentence of every length up to forty words
+  # so the embedder's kernels are compiled before a caller's turn is (the first time on a card,
+  # about a minute; then read back from the cache), then exits; a restart of the stack re-runs it.
   ollama-models:
-    image: docker.io/ollama/ollama:0.32.1@sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
     environment: {OLLAMA_HOST: "ollama:11434"}
     entrypoint:
       - sh
@@ -38,6 +47,11 @@ services:
         ollama pull gemma4:12b
         ollama pull bge-m3
         ollama run gemma4:12b "" >/dev/null
+        words=""
+        for word in $(seq 1 40); do
+          words="$$words word$$word"
+          ollama run bge-m3 "$$words" >/dev/null
+        done
     depends_on: [ollama]
     restart: "no"
 
@@ -95,4 +109,5 @@ services:
 
 volumes:
   ollama:
+  ollama-cuda:
   whisper:
