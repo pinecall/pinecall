@@ -34,7 +34,7 @@ MIN_SPEECH_S = 0.25
 def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
     """A voice call: the three stages built for it, the turn taken as a phone line needs."""
     thinking = providers.build_thinking(stages.llm)
-    ears = providers.build_ears(stages.stt, call.config.turn)
+    ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}))
     voice = providers.build_voice(stages.tts)
     write_switches(call.writing, (thinking, ears, voice))
     live: AgentSession[None] = AgentSession(

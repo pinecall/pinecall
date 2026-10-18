@@ -6,7 +6,7 @@ import inspect
 import logging
 import types
 import typing
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Never, override
 
 from livekit.agents import llm, stt, tts
@@ -18,6 +18,7 @@ from pinecall_runtime.agents.declaration import Modality, Tuning, Turn
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping
 from pinecall_runtime.providers.service.plugins import (
+    A_CONTEXT,
     A_TTS,
     AN_LLM,
     AN_STT,
@@ -30,6 +31,7 @@ from pinecall_runtime.providers.service.plugins import (
     THE_HINTS,
     THE_KEY,
     THE_LANGUAGE,
+    THE_TERMS,
     THE_VOICE,
     Credentials,
     Ears,
@@ -134,9 +136,10 @@ def tts_of(running: Running) -> tts.TTS[Never]:
     return _built("tts", A_TTS, running, {})
 
 
-def stt_of(running: Running, turn: Turn | None) -> stt.STT[Never]:
-    """The ears a stage hears with; the agent's turn knobs reach them where they take them."""
-    return _built("stt", AN_STT, running, _turn_knobs(turn))
+def stt_of(running: Running, turn: Turn | None, hear: Sequence[str] = ()) -> stt.STT[Never]:
+    """The ears a stage hears with; the agent's turn knobs reach them where they take them, and the
+    words to expect under whatever name the plugin takes them."""
+    return _built("stt", AN_STT, running, _turn_knobs(turn), tuple(hear))
 
 
 # A call's three stages: with no fallback, exactly the plugin's object; with some, livekit's
@@ -151,14 +154,14 @@ def build_thinking(running: Running) -> Thinking:
 
 # livekit's adapter wraps ears that do not stream with a VAD the session does not hold, and refuses
 # voices of another channel count: such a fallback is left out and the call runs on the rest.
-def build_ears(running: Running, turn: Turn | None) -> Ears:
+def build_ears(running: Running, turn: Turn | None, hear: Sequence[str] = ()) -> Ears:
     """The ears a call hears with, over its fallbacks when the stage names any that stream."""
-    primary = stt_of(running, turn)
+    primary = stt_of(running, turn, hear)
     if not primary.capabilities.streaming:
         return primary
     backups: list[stt.STT[Never]] = []
     for fallback in running.fallbacks:
-        ears = stt_of(fallback, turn)
+        ears = stt_of(fallback, turn, hear)
         if ears.capabilities.streaming:
             backups.append(ears)
         else:
@@ -304,7 +307,9 @@ def _class_of(modality: Modality, running: Running) -> type:
     return made
 
 
-def _built[T](modality: Modality, base: type[T], running: Running, knobs: Mapping[str, object]) -> T:
+def _built[T](
+    modality: Modality, base: type[T], running: Running, knobs: Mapping[str, object], hear: tuple[str, ...] = ()
+) -> T:
     named = running.builds or CLASS_OF[modality]
     made = _class_of(modality, running)
     if not issubclass(made, base):
@@ -319,6 +324,8 @@ def _built[T](modality: Modality, base: type[T], running: Running, knobs: Mappin
     if not any(name in running.options for name in THE_LANGUAGE):
         given |= _first(accepts, THE_LANGUAGE, primary_language(running.language))
     given |= _first(accepts, THE_HINTS, list(running.hints) or None)
+    given |= _first(accepts, THE_TERMS, list(hear) or None)
+    given |= _inside_its_options(made, accepts, given, running, hear)
     if running.model is not None:
         given["model"] = running.model
     # A plugin raises what it likes when it refuses (SpitchError, a missing variable): each is
@@ -327,6 +334,48 @@ def _built[T](modality: Modality, base: type[T], running: Running, knobs: Mappin
         return constructor(**_shaped(made, given))
     except Exception as refused:
         raise ValidationError(f"{running.vendor} refused its {named}: {refused}") from refused
+
+
+# A plugin that takes its options as one object (Soniox's `params`) finds the language and the words to
+# expect there, not among its arguments: the call's language as its hints, the words as its context's
+# terms. What the row already put in that object stands.
+def _inside_its_options(
+    made: type, accepts: frozenset[str], given: Mapping[str, object], running: Running, hear: tuple[str, ...]
+) -> dict[str, object]:
+    found = _options_object(made)
+    if found is None:
+        return {}
+    name, fields = found
+    already = given.get(name)
+    if already is not None and not a_mapping(already):
+        return {}
+    inside: dict[str, object] = dict(already or {})
+    language = primary_language(running.language)
+    hints = list(running.hints) or ([language] if language else [])
+    if hints and not any(each in accepts for each in (*THE_HINTS, *THE_LANGUAGE)):
+        for field, value in _first(fields, THE_HINTS, hints).items():
+            inside.setdefault(field, value)
+    if hear and not any(each in accepts for each in THE_TERMS):
+        terms = _first(fields, THE_TERMS, list(hear))
+        if terms:
+            for field, value in terms.items():
+                inside.setdefault(field, value)
+        elif A_CONTEXT in fields and A_CONTEXT not in inside:
+            inside[A_CONTEXT] = {"terms": list(hear)}
+    return {name: inside} if inside else {}
+
+
+# The argument whose declared type is a dataclass, and that dataclass's fields.
+def _options_object(made: type) -> tuple[str, frozenset[str]] | None:
+    try:
+        declared = inspect.signature(made, eval_str=True).parameters
+    except (NameError, TypeError, ValueError):
+        return None
+    for name, parameter in declared.items():
+        shape = _dataclass_in(parameter.annotation)
+        if shape is not None:
+            return name, frozenset(field.name for field in dataclasses.fields(shape))
+    return None
 
 
 def _every_parameter(vendor: str) -> frozenset[str]:

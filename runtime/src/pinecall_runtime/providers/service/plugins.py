@@ -47,6 +47,11 @@ THE_KEY = ("api_key", "speech_key", "secret")
 THE_VOICE = ("voice_id", "voice_uuid", "voice", "speaker", "voice_name")
 THE_LANGUAGE = ("language", "language_code")
 THE_HINTS = ("language_hint", "language_hints")
+# The words the ears are told to expect: an argument of its own (Deepgram's and Cartesia's `keyterm`),
+# or, in a plugin that takes its options as one object, that object's `context` as `{terms: [...]}`
+# (Soniox's).
+THE_TERMS = ("keyterm",)
+A_CONTEXT = "context"
 
 # The org's own knobs and the names a plugin may take each under; one it takes under none is
 # refused where the org sets it, not dropped on the next call. `stt_of` gives the endpointing to

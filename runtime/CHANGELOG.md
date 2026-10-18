@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The words a call's ears are told to expect reach every vendor, under the name it takes them.**
+  The lexicon's words (`pinecall lexicon hear`) were livekit's session keyterms, which only the ears
+  that declare them take (Deepgram's): Soniox and Cartesia heard none. They are now given when the
+  ears are built: as `keyterm` to the ears that take it (Deepgram, Cartesia), and as the options
+  object's `context.terms` to one that takes its options as one object (Soniox's `params`), which
+  also takes the call's language there as its hints, as it never did. What the row puts in that
+  object stands. Dictation (`?hear=`) is given them the same way.
+
+- **`pinecall-runtime setup` runs the stack that fits the machine, and signs it in.** With nothing
+  after it, it reads the machine and shows the recommended stack at a terminal — Enter runs it, a
+  stage's name changes that stage — and asks only who signs in to the console; the flags are for
+  scripts. `--org` is gone: a runtime of one person and a team's are the same runtime, and people
+  are invited later. This machine is signed in to the runtime in the CLI's own
+  `~/.pinecall/session.json`, as `pinecall login` would sign it in, its other gateways kept;
+  `~/.pinecall/local.json` is no longer written and is taken away when found.
+
 - **A vendor key is kept when any job the vendor does answers on it.** A key was tried on the first
   job of `llm`, `tts`, `stt` the vendor does, alone: Soniox's speech-to-text key, refused by its
   text-to-speech, was turned away though every call would have heard on it. Each job is tried in

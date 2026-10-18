@@ -87,13 +87,6 @@ def note_of(audio: bytes, content_type: str) -> Note:
 
 # The plugin is built as a call builds it: the same vendor, model, key and operator's options. One
 # that streams is fed the note frame by frame and closed; one that does not hears it whole.
-# The framework's own hook for the words to expect, the one a call's session uses: ears that do not
-# take any ignore them.
-def _expecting(ears: stt.STT[Never], hear: tuple[str, ...]) -> None:
-    if hear and ears.capabilities.keyterms:
-        ears._update_session_keyterms(list(hear))  # pyright: ignore[reportPrivateUsage]
-
-
 async def transcribe(running: Running, note: Note, hear: tuple[str, ...] = ()) -> Transcript:
     """The note heard by the stage's ears; the vendor's refusal in its own words."""
     frames = [frame async for frame in _frames(note)]
@@ -101,8 +94,7 @@ async def transcribe(running: Running, note: Note, hear: tuple[str, ...] = ()) -
         raise ValidationError("the note holds no audio")
     audio_ms = round(sum(frame.duration for frame in frames) * 1000)
     async with http_context.open():
-        ears = stt_of(running, None)
-        _expecting(ears, hear)
+        ears = stt_of(running, None, hear)
         try:
             async with asyncio.timeout(WITHIN_S):
                 heard = await (
@@ -256,8 +248,7 @@ async def dictate(running: Running, heard: AsyncIterator[bytes | None], said: Sa
     """Raw 16 kHz PCM in, as it is spoken, until `heard` yields None or ends; each interim and final
     transcript out through `said(kind, text)`, then `done`. Ears that do not stream are refused."""
     async with http_context.open():
-        ears = stt_of(running, None)
-        _expecting(ears, hear)
+        ears = stt_of(running, None, hear)
         if not ears.capabilities.streaming:
             await ears.aclose()
             raise ValidationError(f"{running.vendor} does not stream: send the note whole to POST /v1/transcriptions")
