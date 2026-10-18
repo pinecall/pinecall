@@ -9,15 +9,18 @@
   verbatim (the recording notice, a greeting given as words, a read-back). A written call of such an
   agent is not served.
 
-- **`setup` shows the machine and the stack that fits it, and a stage is completed as it is typed.**
-  At a terminal, before anything is brought up: the card or the Mac's memory and what is left for
-  the models, Docker, the Ollama here and the models it holds, each measured model and whether it
-  fits; then the stack, a line per stage with what runs it, and Enter runs it. A stage's word asks
-  for that stage with completion (`prompt_toolkit`, a dependency new to the runtime) over `local`,
-  `local/<tag>` for every model Ollama holds and every measured one, and every installed vendor that
-  does the stage. A vendor's key is looked for in the environment and then in the shell's files
-  (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`); the stack says where
-  each one is, never its value, and asks only for one found nowhere. The measured table puts
+- **`setup` asks each stage in turn, listing what could run it, the one that fits marked.**
+  At a terminal, before anything is brought up: one line for the machine (the card or the Mac's
+  memory and what is left for the models, Docker, the Ollama here and the models it holds), then
+  the ears, the turn, the thinking, the voice, the judge and the caller, each a numbered list —
+  `local` (Whisper, Kokoro), each measured model with whether it fits, every other tag Ollama holds
+  but the embedder, each vendor whose key is found and the stage's usual one — with the recommended
+  one marked and taken by Enter; every other installed vendor is one line, picked by its name with
+  completion. The judge and the caller are one line each, on the thinking's model unless another is
+  named. A vendor's line says where its key is: looked for in the environment and then in the
+  shell's files (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`), never
+  its value; a vendor picked with no key is asked for it there, once, without echo
+  (`prompt_toolkit`, a dependency new to the runtime). The measured table puts
   `nemotron-3.5-lightning:30b-a3b` first (tool called 18/18 on the real voice turns, 0.45 s to the
   first token, on an A100); `qwen3:30b-a3b-2507`, which called it 1/18, is out. `--recommend` says
   `ollama_models`, `room_gib`, where each key is and what each candidate `did`.

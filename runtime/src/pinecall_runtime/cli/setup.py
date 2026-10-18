@@ -90,9 +90,9 @@ async def setup(
     asking = sys.stdin.isatty() and not yes
     local.docker_or_refuse()
     out.line(f"docker     {_compose_version()}")
-    # Decided before anything is brought up: a stage changed, a key missing, both say so here.
-    choices = _choices(models, stt, turn, llm, tts, judge, caller, asking=asking, chat_only=chat_only)
-    keys, found = models_.keys_for(choices, ask=ask.secret if asking else None) if choices else ({}, {})
+    # Decided before anything is brought up: a stage picked, a key missing, both say so here.
+    choices, typed = _choices(models, stt, turn, llm, tts, judge, caller, asking=asking, chat_only=chat_only)
+    keys, found = models_.keys_for(choices, ask=_asked(typed, asking)) if choices else ({}, {})
     compose = local.write_shipped(where)
     services = ("postgres", "redis") if chat_only else local.SERVICES
     local.services_up(compose, services)
@@ -136,9 +136,10 @@ def _choices(
     *,
     asking: bool,
     chat_only: bool,
-) -> models_.Choices | None:
+) -> tuple[models_.Choices | None, dict[str, str]]:
+    typed: dict[str, str] = {}
     if models == "none":
-        return None
+        return None, typed
     if models not in (None, "local", "keys"):
         raise ValidationError(f"--models is local, keys or none, not {models!r}")
     named = any((stt, turn, llm, tts, judge, caller))
@@ -151,7 +152,7 @@ def _choices(
         fits = providers.recommend(machine)
         base = models_.recommended(fits)
         if asking and not named:
-            base = ask.chosen(machine, fits, base)
+            base, typed = ask.chosen(machine, fits, base)
     chosen = models_.Choices(
         stt=models_.local_or_vendor(stt or base.stt),
         turn=models_.turn_of(turn or base.turn),
@@ -169,7 +170,14 @@ def _choices(
             judge=chosen.judge,
             caller=chosen.caller,
         )
-    return models_.check_choices(chosen)
+    return models_.check_choices(chosen), typed
+
+
+# A key typed as its vendor was picked is not asked again; one still missing is, at a terminal.
+def _asked(typed: dict[str, str], asking: bool) -> models_.Ask | None:
+    if not typed and not asking:
+        return None
+    return lambda variable: typed.get(variable) or (ask.secret(variable) if asking else "")
 
 
 def _compose_version() -> str:

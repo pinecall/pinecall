@@ -1,8 +1,8 @@
-"""What `setup` asks at a terminal: the machine, the stack that fits it, a stage changed with completion, the keys."""
+"""What `setup` asks at a terminal: a stage at a time, everything that could run it listed, a key as it is picked."""
 
 import os
-from collections.abc import Iterable, Mapping
-from dataclasses import replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import typer
@@ -10,128 +10,152 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
 
 from pinecall_runtime.cli.setup_models import (
+    KEYS_DEFAULTS,
     LOCAL,
-    LOCAL_STT,
+    LOCAL_EMBEDDER,
     TURNS,
     Choices,
+    Turn,
     check_choices,
     is_local,
     local_or_vendor,
-    model_of,
     turn_of,
     vendor_of,
 )
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers import service as providers
 
-# What a stage is called on the screen, and the field it is.
-STAGE_WORDS: dict[str, str] = {
-    "ears": "stt",
-    "turn": "turn",
-    "thinking": "llm",
-    "voice": "tts",
-    "judge": "judge",
-    "caller": "caller",
-}
-# The stage a field is checked against, for the vendors that do it.
+# The stages in the order they are asked: the field, the word on the screen, what it asks.
+STAGES: tuple[tuple[str, str, str], ...] = (
+    ("stt", "ears", "who hears the caller"),
+    ("turn", "turn", "who ends the caller's turn"),
+    ("llm", "thinking", "who thinks"),
+    ("tts", "voice", "who speaks"),
+    ("judge", "judge", "who judges a finished call"),
+    ("caller", "caller", "who plays the simulated caller"),
+)
+# The stage a field's vendors are looked up by.
 STAGE_OF = {"stt": "stt", "llm": "llm", "tts": "tts", "judge": "llm", "caller": "llm"}
-FOLLOWS = "the thinking's model"
-TURN_WORDS = {
+RECOMMENDED = "recommended"
+FOLLOWS = "the thinking's"
+ASKED_NOW = "asked now if you pick it"
+NO_KEY = "no key needed"
+BY_NAME = "type a name, Tab completes"
+TURN_WORDS: dict[Turn, str] = {
     "stt": "the ears' own endpointing",
     "smart-turn": "Smart Turn v3, on the worker's CPU",
     "livekit": "livekit's v1-mini, on the worker's CPU",
 }
-NOWHERE = "not found: asked when you press Enter"
+LOCAL_WORDS = {"stt": "Whisper large-v3 turbo, on this machine", "tts": "Kokoro, on this machine"}
 ONE_GIB = "{gib:.1f} GB"
+type Read = Callable[[str], str]
 
 
-def chosen(machine: providers.Machine, fits: providers.Recommendation, base: Choices) -> Choices:
-    """The screen: the machine and the stack; Enter runs it, a stage's word changes that stage; the choices checked."""
+@dataclass(frozen=True)
+class Option:
+    """One thing that could run a stage: its choice as `setup` takes it, and what the screen says beside it."""
+
+    choice: str
+    said: str
+    # The key variable a vendor needs and is missing: asked the moment the option is picked.
+    missing: str | None = None
+
+
+def chosen(
+    machine: providers.Machine,
+    fits: providers.Recommendation,
+    base: Choices,
+    *,
+    environ: Mapping[str, str] = os.environ,
+    home: Path | None = None,
+    read: Read | None = None,
+    hidden: Read | None = None,
+) -> tuple[Choices, dict[str, str]]:
+    """The stack asked a stage at a time; Enter takes the default. The choices, and the keys typed on the way."""
+    ask_secret = hidden or secret
+    typed: dict[str, str] = {}
     typer.echo(panel(machine, fits))
-    current = base
     while True:
-        typer.echo(stack(current, fits))
-        word = _line("  Enter runs it, or a stage to change: ", list(STAGE_WORDS)).lower()
-        if word == "":
-            try:
-                return check_choices(current)
-            except ValidationError as refused:
-                typer.echo(f"  {refused}")
+        current = base
+        for field, word, asks in STAGES:
+            options = options_for(field, current, machine, fits, environ, home)
+            follows = current.llm if field in ("judge", "caller") else None
+            reader = read or _completing([one.choice for one in options])
+            usual = KEYS_DEFAULTS.get(STAGE_OF.get(field, field))
+            picked = _pick(word, asks, options, getattr(current, field), reader, usual=usual, follows=follows)
+            if picked is None:
                 continue
-        field = STAGE_WORDS.get(word)
-        if field is None:
-            typer.echo(f"  {word!r} is no stage: {' · '.join(STAGE_WORDS)}")
-            continue
-        current = changed(current, field, machine, fits)
+            if picked.missing is not None and picked.missing not in typed:
+                typed[picked.missing] = ask_secret(picked.missing)
+            elif not is_local(picked.choice) and field != "turn" and providers.takes_a_key(vendor_of(picked.choice)):
+                variable = providers.key_variable(vendor_of(picked.choice))
+                typer.echo(f"  {variable} read from {providers.where_is_key(variable, environ, home)}")
+            current = _with(current, field, picked.choice)
+        typer.echo(stack(current))
+        (read or _line)("  Enter runs it: ")
+        try:
+            return check_choices(current), typed
+        except ValidationError as refused:
+            typer.echo(f"  {refused}")
 
 
 def panel(machine: providers.Machine, fits: providers.Recommendation) -> str:
-    """This machine in a few lines: what it computes on, Docker and Ollama, each measured model and whether it fits."""
-    lines = ["", "  this machine", f"    {_computes_on(machine, fits)}"]
+    """This machine in one line: what it computes on and what is left for the models, Docker, Ollama and its models."""
     held = f" ({', '.join(machine.ollama_models)})" if machine.ollama_models else ""
-    lines.append(
-        f"    Docker {'✓' if machine.docker else '✗ (needed)'} · Ollama {'✓' + held if machine.ollama_here else '✗'}"
-    )
-    lines.append("")
-    lines.append("  measured models")
-    for one in fits.candidates:
-        room = "fits" if one.fits else f"short by {ONE_GIB.format(gib=one.short_by_gib)}"
-        needs = ONE_GIB.format(gib=one.needs_gib)
-        lines.append(
-            f"    {one.model:<34} {needs:>8}   {room:<18} {one.first_token_s:.2f} s to first token · {one.did}"
-        )
-    for note in fits.notes:
-        lines.append(f"  {note}")
-    return "\n".join(lines)
+    ollama = f"Ollama ✓{held}" if machine.ollama_here else "Ollama ✗"
+    docker = "Docker ✓" if machine.docker else "Docker ✗ (needed)"
+    return f"\n  this machine   {_computes_on(machine, fits)} · {docker} · {ollama}"
 
 
-def stack(
+def stack(choices: Choices) -> str:
+    """The stack as chosen, on one line, before it runs."""
+    runs = {
+        "ears": choices.stt,
+        "turn": choices.turn,
+        "thinking": choices.llm,
+        "voice": choices.tts,
+        "judge": choices.judging,
+        "caller": choices.calling,
+    }
+    return "\n  the stack\n    " + " · ".join(f"{word} {choice}" for word, choice in runs.items())
+
+
+def options_for(
+    field: str,
     choices: Choices,
+    machine: providers.Machine,
     fits: providers.Recommendation,
     environ: Mapping[str, str] = os.environ,
     home: Path | None = None,
-) -> str:
-    """The stack, a line per stage: the choice, and beside it what runs it and where its key is."""
-    lines = ["", "  the stack that fits it"]
-    for word, field in STAGE_WORDS.items():
-        said = getattr(choices, field)
-        shown = said if said is not None else FOLLOWS
-        lines.append(f"    {word:<9} {shown:<40} {_beside(field, said, choices, fits, environ, home)}")
-    return "\n".join(lines)
-
-
-def changed(choices: Choices, field: str, machine: providers.Machine, fits: providers.Recommendation) -> Choices:
-    """One stage asked again, with completion over everything that could run it; the choices with that stage."""
+) -> list[Option]:
+    """Everything that could run a stage: the open models here first, then every installed vendor doing it."""
     if field == "turn":
-        turns = [
-            turn for turn in TURNS if turn != "stt" or (not is_local(choices.stt) and providers.ends_turns(choices.stt))
-        ]
-        return replace(choices, turn=turn_of(_line("  turn: ", turns, choices.turn)))
-    current = getattr(choices, field) or choices.llm
-    picked = local_or_vendor(_line(f"  {_word_of(field)}: ", words_for(field, machine, fits), current))
-    if field == "stt":
-        return replace(choices, stt=picked)
-    if field == "llm":
-        return replace(choices, llm=picked)
-    if field == "tts":
-        return replace(choices, tts=picked)
-    follows = None if picked == choices.llm else picked
-    return replace(choices, judge=follows) if field == "judge" else replace(choices, caller=follows)
-
-
-def words_for(field: str, machine: providers.Machine, fits: providers.Recommendation) -> list[str]:
-    """What completes a stage: `local`, the local models (Ollama's own, the measured), the vendors that do it."""
+        ears_end = not is_local(choices.stt) and providers.ends_turns(vendor_of(choices.stt))
+        return [Option(turn, TURN_WORDS[turn]) for turn in TURNS if turn != "stt" or ears_end]
     stage = STAGE_OF[field]
-    words: list[str] = [LOCAL]
-    if stage == "stt":
-        words.append(f"{LOCAL}/{LOCAL_STT}")
+    options: list[Option] = []
     if stage == "llm":
-        words.extend(f"{LOCAL}/{model}" for model in machine.ollama_models)
-        words.extend(f"{LOCAL}/{one.model}" for one in fits.candidates)
-    words.extend(
-        sorted(name for name, vendor in providers.installed().items() if vendor.broken is None and stage in vendor.does)
-    )
-    return list(dict.fromkeys(words))
+        for one in fits.candidates:
+            room = (
+                f"fits · {one.first_token_s:.2f} s to first token"
+                if one.fits
+                else f"short by {ONE_GIB.format(gib=one.short_by_gib)}"
+            )
+            options.append(Option(f"{LOCAL}/{one.model}", f"Ollama · {room}"))
+        # The embedder is pulled beside the models and thinks nothing: never offered as one. Ollama
+        # lists a tag pulled bare as `<name>:latest`.
+        listed = {one.model for one in fits.candidates} | {LOCAL_EMBEDDER}
+        options.extend(
+            Option(f"{LOCAL}/{tag}", "Ollama · pulled already")
+            for tag in machine.ollama_models
+            if tag.removesuffix(":latest") not in listed
+        )
+    else:
+        options.append(Option(LOCAL, LOCAL_WORDS[stage]))
+    for name, vendor in sorted(providers.installed().items()):
+        if vendor.broken is None and stage in vendor.does:
+            options.append(_vendor_option(name, environ, home))
+    return options
 
 
 def secret(variable: str) -> str:
@@ -159,15 +183,93 @@ def password() -> str:
 # ── private ──
 
 
-def _line(message: str, words: Iterable[str], default: str = "") -> str:
-    typed: str = prompt(
-        message, default=default, completer=WordCompleter(list(words), sentence=True), complete_while_typing=True
-    )
+# One stage on the screen, numbered, the default marked; Enter is the default, a number or a name
+# picks. A judge or caller following the thinking is one line: Enter leaves it following (None),
+# a name picks, anything else shows the list. The list is what can run with nothing more asked —
+# the open models, a vendor whose key is found — then the default and the stage's usual vendor;
+# every other vendor is one line, taken by its name.
+def _pick(
+    word: str,
+    asks: str,
+    options: list[Option],
+    default: str | None,
+    ask_line: Read,
+    *,
+    usual: str | None = None,
+    follows: str | None = None,
+) -> Option | None:
+    if default is None and follows is not None:
+        typer.echo("")
+        answer = ask_line(f"  {word} — {asks}   [{FOLLOWS}: {follows}]: ").strip()
+        if answer == "":
+            return None
+        found = _named(answer, options)
+        if found is not None:
+            return found
+    listed = [one for one in options if one.choice in (default, usual) or (one.missing is None and one.said != NO_KEY)]
+    more = [one.choice for one in options if one not in listed]
+    typer.echo(f"\n  {word} — {asks}")
+    default_n = next((n for n, one in enumerate(listed, 1) if one.choice == default), None)
+    for n, one in enumerate(listed, 1):
+        mark = f"   {RECOMMENDED}" if n == default_n else ""
+        typer.echo(f"    {n:<3}{one.choice:<40} {one.said}{mark}")
+    if more:
+        typer.echo(f"       … {len(more)} more: {', '.join(more[:3])} … — {BY_NAME}")
+    shown = str(default_n) if default_n is not None else FOLLOWS
+    while True:
+        answer = ask_line(f"  {word} [{shown}]: ").strip()
+        if answer == "":
+            return listed[default_n - 1] if default_n is not None else None
+        if answer.isdigit() and 1 <= int(answer) <= len(listed):
+            return listed[int(answer) - 1]
+        found = _named(answer, options)
+        if found is not None:
+            return found
+        typer.echo(f"  {answer!r} is none of them: a number from 1 to {len(listed)}, or a name")
+
+
+def _named(answer: str, options: list[Option]) -> Option | None:
+    named = local_or_vendor(answer)
+    return next((one for one in options if one.choice == named), None)
+
+
+def _with(choices: Choices, field: str, picked: str) -> Choices:
+    if field == "turn":
+        return replace(choices, turn=turn_of(picked))
+    if field == "stt":
+        return replace(choices, stt=picked)
+    if field == "llm":
+        return replace(choices, llm=picked)
+    if field == "tts":
+        return replace(choices, tts=picked)
+    follows = None if picked == choices.llm else picked
+    return replace(choices, judge=follows) if field == "judge" else replace(choices, caller=follows)
+
+
+def _vendor_option(name: str, environ: Mapping[str, str], home: Path | None) -> Option:
+    if not providers.takes_a_key(name):
+        return Option(name, NO_KEY)
+    variable = providers.key_variable(name)
+    where = providers.where_is_key(variable, environ, home)
+    if where is not None:
+        return Option(name, f"{variable} in {where}")
+    return Option(name, f"{variable} — {ASKED_NOW}", missing=variable)
+
+
+def _line(message: str) -> str:
+    typed: str = prompt(message)
     return typed.strip()
 
 
-def _word_of(field: str) -> str:
-    return next(word for word, named in STAGE_WORDS.items() if named == field)
+# A stage's answer, completed over every choice it has as it is typed.
+def _completing(words: list[str]) -> Read:
+    completer = WordCompleter(words, sentence=True)
+
+    def read(message: str) -> str:
+        typed: str = prompt(message, completer=completer, complete_while_typing=True)
+        return typed.strip()
+
+    return read
 
 
 def _computes_on(machine: providers.Machine, fits: providers.Recommendation) -> str:
@@ -178,30 +280,3 @@ def _computes_on(machine: providers.Machine, fits: providers.Recommendation) -> 
         unified, room = ONE_GIB.format(gib=machine.ram_gib), ONE_GIB.format(gib=fits.room_gib)
         return f"Apple silicon · {unified} unified — {room} for the models"
     return f"no GPU · {ONE_GIB.format(gib=machine.ram_gib)} RAM · {machine.cores} cores"
-
-
-def _beside(
-    field: str,
-    said: str | None,
-    choices: Choices,
-    fits: providers.Recommendation,
-    environ: Mapping[str, str],
-    home: Path | None,
-) -> str:
-    if field == "turn":
-        return TURN_WORDS[choices.turn]
-    if said is None:
-        return ""
-    if is_local(said):
-        if field == "stt":
-            return f"Whisper ({model_of(said) or LOCAL_STT}), on this machine"
-        if field == "tts":
-            return "Kokoro, on this machine"
-        measured = next((one for one in fits.candidates if one.model == model_of(said)), None)
-        return f"Ollama, {measured.first_token_s:.2f} s to first token" if measured else "Ollama"
-    vendor = vendor_of(said)
-    if not providers.takes_a_key(vendor):
-        return vendor
-    variable = providers.key_variable(vendor)
-    where = providers.where_is_key(variable, environ, home)
-    return f"{variable} in {where}" if where else f"{variable} {NOWHERE}"

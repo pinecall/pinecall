@@ -46,44 +46,71 @@ admin, this machine signed in, the models, and the gateway and a worker running 
 them. It is this machine's runtime, for the person at it: a runtime several people reach is a
 deployment ([on Kubernetes](../../infra/README.md)).
 
-**The machine, and the stack that fits it.** It reads the machine — the cards and their memory
+**The machine, and a stage at a time.** It reads the machine — the cards and their memory
 (`nvidia-smi`), Apple silicon and its unified memory, the cores and the RAM, whether Docker is
 here, whether an Ollama answers and which models it holds already, and where each vendor's key
 variable is: in the environment, or in a shell file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`,
 `~/.bash_profile`, `~/.profile`) not loaded into this terminal. A key's value is never shown; only
-where it is. Then it picks the stack: the thinking is the best model of those measured
-(`providers/service/machine.py`: what each did when measured, the time to the first token, the
-memory it needs) whose memory fits the card beside the ears, the voice and the embedder; a machine
-with no GPU runs the three vendors instead, and a Mac the thinking on its own Ollama (Metal) with
-the ears and the voice in CPU containers. At a terminal it shows all of it:
+where it is. From that it knows the stack that fits: the thinking is the best model of those
+measured (`providers/service/machine.py`: what each did when measured, the time to the first
+token, the memory it needs) whose memory fits the card beside the ears, the voice and the embedder;
+a machine with no GPU runs the three vendors instead, and a Mac the thinking on its own Ollama
+(Metal) with the ears and the voice in CPU containers. At a terminal it asks each stage in turn,
+listing everything that could run it with the one that fits marked:
 
 ```console
-  this machine
-    NVIDIA A100-SXM4-40GB · 40.0 GB — 34.2 GB for the models beside the voice
-    Docker ✓ · Ollama ✓ (bge-m3, gemma4:12b)
+  this machine   NVIDIA L4 · 23.0 GB — 17.2 GB for the models beside the voice · Docker ✓ · Ollama ✓ (bge-m3:latest, gemma4:12b)
 
-  measured models
-    nemotron-3.5-lightning:30b-a3b      25.0 GB   fits               0.45 s to first token · tool called 18/18 on voice turns · written goldens 5/5 · spoken 2/3
-    gemma4:12b                           9.0 GB   fits               0.90 s to first token · message 3/3 · documents 3/3 · talk 3/3
-    gemma4:e4b                           7.5 GB   fits               0.80 s to first token · message 2/3 · documents 3/3 · talk 3/3
+  ears — who hears the caller
+    1  local                                    Whisper large-v3 turbo, on this machine   recommended
+    2  deepgram                                 DEEPGRAM_API_KEY in the environment
+       … 30 more: assemblyai, aws, azure … — type a name, Tab completes
+  ears [1]:
 
-  the stack that fits it
-    ears      local                                    Whisper (deepdml/faster-whisper-large-v3-turbo-ct2), on this machine
-    turn      smart-turn                               Smart Turn v3, on the worker's CPU
-    thinking  local/nemotron-3.5-lightning:30b-a3b     Ollama, 0.45 s to first token
-    voice     local                                    Kokoro, on this machine
-    judge     the thinking's model
-    caller    the thinking's model
-  Enter runs it, or a stage to change:
+  turn — who ends the caller's turn
+    1  smart-turn                               Smart Turn v3, on the worker's CPU   recommended
+    2  livekit                                  livekit's v1-mini, on the worker's CPU
+  turn [1]:
+
+  thinking — who thinks
+    1  local/nemotron-3.5-lightning:30b-a3b     Ollama · short by 7.8 GB
+    2  local/gemma4:12b                         Ollama · fits · 0.90 s to first token   recommended
+    3  local/gemma4:e4b                         Ollama · fits · 0.80 s to first token
+    4  anthropic                                ANTHROPIC_API_KEY in ~/.zshrc
+       … 12 more: aws, azure, baseten … — type a name, Tab completes
+  thinking [2]: 4
+  ANTHROPIC_API_KEY read from ~/.zshrc
+
+  voice — who speaks
+    1  local                                    Kokoro, on this machine   recommended
+    2  cartesia                                 CARTESIA_API_KEY — asked now if you pick it
+    3  deepgram                                 DEEPGRAM_API_KEY in the environment
+       … 37 more: asyncai, aws, azure … — type a name, Tab completes
+  voice [1]: 2
+  CARTESIA_API_KEY: ••••••••••••
+
+  judge — who judges a finished call   [the thinking's: anthropic]:
+
+  caller — who plays the simulated caller   [the thinking's: anthropic]:
+
+  the stack
+    ears local · turn smart-turn · thinking anthropic · voice cartesia · judge anthropic · caller anthropic
+  Enter runs it:
 ```
 
-Enter runs it. A stage's word (`ears`, `turn`, `thinking`, `voice`, `judge`, `caller`) asks for that
-stage alone, completed as it is typed — Tab, or just typing — over everything that could run it:
-`local`, `local/<tag>` for every model the Ollama here holds and every measured one, and every
-installed vendor that does the stage; then the stack is shown again. A vendor's line says where its
-key is (`ANTHROPIC_API_KEY in ~/.zshrc`) or that it will be asked; on Enter, a key found in the
-environment or in a shell file is read from there, and one found nowhere is typed once without
-echo. `--yes`, or no terminal, runs the stack that fits without showing it, and a key that is nowhere
+A stage's list is what runs with nothing more asked: for the ears and the voice `local` (Whisper,
+Kokoro); for the thinking each measured model (whether it fits and by how much it is short) and
+every other tag the Ollama here holds, the embedder aside; for the turn the two models on the
+worker's CPU, and the ears' own endpointing when the ears chosen have one. Then each vendor whose
+key is found, and the stage's usual vendor (deepgram, anthropic, cartesia) whether or not it is.
+Every other installed vendor doing the stage is one line, `… 30 more` — its name picks it,
+completed as it is typed. The judge and the caller are one line each, on the thinking's model: Enter leaves
+them there, a name picks another, anything else lists what the thinking lists. Enter takes the
+marked default; a number or a name picks, a name from the rest too. A vendor's line says
+where its key is, and **a vendor picked with no key is asked for it there**, once, without echo —
+adding a provider is part of setup, not a verb typed after it; a key found in the environment or
+a shell file is read from there and the line says so. The stack is said on one line, and Enter runs
+it. `--yes`, or no terminal, runs the stack that fits without asking, and a key that is nowhere
 refuses. The flags are for a script: a flag names a stage and that stage is not asked.
 
 **The console's admin.** Every run makes sure somebody signs in to the console: the address
