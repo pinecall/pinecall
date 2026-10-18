@@ -4,6 +4,13 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **An agent no longer says it will check and then stops.** The first protocol every agent is given now
+  says to call the tool in the same reply, that saying it is about to act does not act, and never to ask
+  the caller to wait: once it stops talking nothing happens until the caller speaks. Open models said
+  "Let me check the details of your order. Please wait." and ended the turn (2026-10-18).
+
 ## [0.11.4] — Released with every other package (2026-10-17)
 
 - Nothing of the Ruby SDK changed: published at 0.11.4 with every other package.

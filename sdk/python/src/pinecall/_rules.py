@@ -12,7 +12,9 @@ RULES = (
 )
 
 PROTOCOLS = (
-    "- To act, call a tool; saying you have done something does not do it.\n"
+    "- To act, call a tool in the same reply; saying you have done something, or that you are"
+    " about to, does not do it. Never ask the caller to wait: once you stop talking, nothing"
+    " happens until they speak again.\n"
     "- Before an irreversible action read back what you are about to do"
     " and wait for an explicit yes.\n"
     "- If you cannot solve it, say so and offer to hand over to a person."
