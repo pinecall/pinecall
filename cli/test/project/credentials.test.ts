@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CLOUD_URL, NO_KEY, prepareProjectKey, readCredentials, serverEnvOf } from "../../src/project/credentials.js";
-import { readSession, SESSION_FILE } from "../../src/project/session.js";
+import { LOCAL_GATEWAY, readSession, SESSION_FILE } from "../../src/project/session.js";
 import { answer, GATEWAY } from "../support/gateway.js";
 import { folder, write } from "../support/project.js";
 
@@ -42,6 +42,10 @@ describe("the credentials", () => {
     const home = signedIn();
     expect(readCredentials({}, projectIn("dental"), home).missing).toContain("this machine has no key in dental at");
     expect(readCredentials({}, projectIn("clinica", "https://pinecall.example.com"), home).missing).toContain("sign in there, `pinecall login https://pinecall.example.com`");
+    // A project born beside a runtime on another machine: nobody signs in to localhost, a runtime is run or the file edited.
+    const local = readCredentials({}, projectIn("default", LOCAL_GATEWAY), home).missing;
+    expect(local).toContain("runs this project on a runtime on this machine, and there is none: `pinecall-runtime setup` runs one, or edit pinecall.json");
+    expect(local).not.toContain("pinecall login");
     const broken = folder();
     write(broken, "pinecall.json", "{not json");
     expect(readCredentials({}, broken, home).missing).toContain("pinecall.json is not JSON");

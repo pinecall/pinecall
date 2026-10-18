@@ -6,6 +6,19 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **The MCP's `runtime` tool shows the stack before running it, and takes every stage.** A new
+  action, `recommend`, answers what `pinecall-runtime setup --recommend` reads: the machine, where
+  each vendor's key is (never its value), each measured model and whether it fits, and the stack
+  that fits — for the assistant to show the person before `up`. `up` takes `stt`, `turn`, `llm`,
+  `tts`, `judge` and `caller` as `setup` does, and `email` for the console's admin; its description
+  no longer says the default is "local": it is the stack that fits the machine. No password passes
+  through the assistant: `setup --yes` makes none up, and the manual says what sets one.
+- **A project that names a runtime on this machine, where there is none, is told so.** Its
+  `pinecall.json` says `http://127.0.0.1:8080` (it was made beside a runtime of its author's); the
+  refusal said to sign in there, which nobody can. It now says `pinecall-runtime setup` runs one,
+  or that the file is edited to name your Pinecall. The page says how a project moves: editing
+  `pinecall.json`, nothing else.
+
 - **One way in: `pinecall login`, once per machine, and a project says where it runs in `pinecall.json`.**
   `pinecall link` and the CLI's `pinecall setup` are gone, and no key is written into a project
   any more. `login [url]` signs the machine in and says what the gateway gives your agents; it

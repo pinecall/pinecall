@@ -93,7 +93,10 @@ runs from any folder; beside an agent's class, both read as that agent.
 
 It holds no key, so whoever clones the project runs it there on their own sign-in.
 [`pinecall new`](#new) writes it — the gateway this machine signed in to last and your only org
-there, or the one you pick when you belong to several.
+there, or the one you pick when you belong to several. To move a project to another runtime or
+another org, edit the file: there is no verb for it, and nothing else is kept. A project made
+beside a runtime of your own names `http://127.0.0.1:8080`, so on another machine it needs a
+runtime of its own, or the file pointed at your Pinecall.
 
 **Every verb finds its key in this order, and nothing else is read:**
 
@@ -148,7 +151,10 @@ was made in``). [production.md](https://github.com/pinecall/pinecall/blob/main/s
 <where> · <environment>`. The rest get on with the answer. With no key, every one of them is refused
 with exit 2 and the sentence that says what to do: a project whose gateway this machine is not
 signed in to names it (``pinecall.json runs this project at <url>: sign in there, `pinecall login
-<url>```); an org you are no member of says so; a machine signed in nowhere hears ``this machine is
+<url>```), or, when the file names a runtime on this machine and there is none, says
+``pinecall.json runs this project on a runtime on this machine, and there is none: `pinecall-runtime
+setup` runs one, or edit pinecall.json to name your Pinecall``; an org you are no member of says so;
+a machine signed in nowhere hears ``this machine is
 signed in nowhere: `pinecall login [url]` (a server keeps PINECALL_KEY in its secrets), or
 `pinecall-runtime setup` runs a runtime here that the CLI uses by itself``. **`pinecall whoami` is
 the first thing to run when an endpoint refuses you and will not say why.**

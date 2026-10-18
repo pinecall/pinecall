@@ -7,7 +7,7 @@ import type { Env } from "../api/client.js";
 import { errorMessage } from "../errors.js";
 import { nearestDotenv, readDotenv } from "../kit/dotenv.js";
 import { findProjectConfig, PROJECT_FILE, type FoundConfig } from "./config.js";
-import { keepOrgKey, keyIn, readSignIn, SESSION_FILE } from "./session.js";
+import { keepOrgKey, keyIn, LOCAL_GATEWAY, readSignIn, SESSION_FILE } from "./session.js";
 
 /** Pinecall's cloud: the default gateway, serving both envs. */
 export const CLOUD_URL = "https://cloud.pinecall.io";
@@ -59,10 +59,13 @@ export function readCredentials(env: NodeJS.ProcessEnv, from: string, home: stri
     const { gateway, org } = project.config;
     const inOrg = keyIn(home, gateway, org);
     if (inOrg !== undefined) return { url: gateway, key: inOrg, source: session, org };
+    const file = relative(from, project.file) || PROJECT_FILE;
     const missing =
-      readSignIn(home, gateway) === undefined
-        ? `${relative(from, project.file) || PROJECT_FILE} runs this project at ${gateway}: sign in there, \`pinecall login ${gateway}\``
-        : `this machine has no key in ${org} at ${gateway}: you are no member of it there, or the gateway refused one (\`pinecall login ${gateway}\` again)`;
+      readSignIn(home, gateway) !== undefined
+        ? `this machine has no key in ${org} at ${gateway}: you are no member of it there, or the gateway refused one (\`pinecall login ${gateway}\` again)`
+        : gateway === LOCAL_GATEWAY
+          ? `${file} runs this project on a runtime on this machine, and there is none: \`pinecall-runtime setup\` runs one, or edit ${file} to name your Pinecall`
+          : `${file} runs this project at ${gateway}: sign in there, \`pinecall login ${gateway}\``;
     return { url: gateway, key: undefined, source: "nowhere", org, missing };
   }
   const signed = readSignIn(home);

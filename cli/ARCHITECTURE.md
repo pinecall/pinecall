@@ -275,7 +275,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/tools/judging.ts` | 93 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
 | `mcp/tools/knowledge.ts` | 71 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
 | `mcp/tools/providers.ts` | 13 | The `providers` tool: the providers domain, over its service. |
-| `mcp/tools/runtime.ts` | 128 | The `runtime` tool: the runtime on this machine — `pinecall-runtime setup` run from here, what it printed, and stopped. |
+| `mcp/tools/runtime.ts` | 155 | The `runtime` tool: the runtime on this machine — what fits it, `pinecall-runtime setup` run from here, what it printed, and stopped. |
 | `mcp/tools/scaffold.ts` | 78 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
 | `mcp/tools/site.ts` | 50 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
 | `mcp/tools/telephony.ts` | 77 | The `line`, `numbers`, `carriers` and `callbacks` tools: the telephony domain, over its service. |

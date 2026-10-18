@@ -1,31 +1,37 @@
 """What this machine can run: its card, memory and cores read, and the stack that fits them, from what was measured."""
 
+import json
 import os
 import platform
+import re
 import socket
 import subprocess
+import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from shutil import which
 from typing import Any
+
+from pinecall_runtime.kit.text import a_list, a_mapping
 
 # The word for an open model on a machine of one's own, in any stage's choice: `local/gemma4:12b`.
 LOCAL = "local"
 OLLAMA_PORT = 11434
 
-# What was measured, on an NVIDIA L4 (2026-10-17): front-desk's own prompt, three turns (a message
-# left, a question the documents answer, small talk), three runs each; what each server holds on a card.
+# What each server holds on a card, measured on an NVIDIA L4 (2026-10-17), and the margin kept.
 VOICE_GIB = {"whisper": 2.3, "kokoro": 1.1, "embedder": 0.9}
 HEADROOM_GIB = 1.5
-# The best first: the one that did everything fastest, then the one that did everything on 24 GB.
+# What was measured, the best first. The 30B on an A100 (2026-10-18) against the real voice turns
+# of the clinic's agent: the tool called, the written goldens, the spoken ones. The two Gemmas on
+# an L4 (2026-10-17) with front-desk's prompt, three turns three times each: a message left, a
+# question the documents answer, small talk.
 MEASURED: tuple[dict[str, Any], ...] = (
     {
-        "model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
-        "needs_gib": 18.3,
-        "first_token_s": 0.4,
-        "message": "3/3",
-        "documents": "3/3",
-        "talk": "3/3",
+        "model": "nemotron-3.5-lightning:30b-a3b",
+        "needs_gib": 25.0,
+        "first_token_s": 0.45,
+        "did": "tool called 18/18 on voice turns · written goldens 5/5 · spoken 2/3",
         "note": "30B of knowledge, 3B active per token: the fastest that did everything; whole on a card only with "
         "40 GB beside the voice",
     },
@@ -33,9 +39,7 @@ MEASURED: tuple[dict[str, Any], ...] = (
         "model": "gemma4:12b",
         "needs_gib": 9.0,
         "first_token_s": 0.9,
-        "message": "3/3",
-        "documents": "3/3",
-        "talk": "3/3",
+        "did": "message 3/3 · documents 3/3 · talk 3/3",
         "note": "did everything on 24 GB; reads the whole prompt every turn (no prefix cache), so 1.3-1.7 s to the "
         "first token on a call",
     },
@@ -43,17 +47,25 @@ MEASURED: tuple[dict[str, Any], ...] = (
         "model": "gemma4:e4b",
         "needs_gib": 7.5,
         "first_token_s": 0.8,
-        "message": "2/3",
-        "documents": "3/3",
-        "talk": "3/3",
+        "did": "message 2/3 · documents 3/3 · talk 3/3",
         "note": "the model the Pipecat local stack ships; missed the message once in three",
     },
 )
-# Not recommended, and why: qwen3:8b and 14b never called the tool; qwen3:4b thought aloud with
-# thinking off; llama3.1:8b, llama3.2:3b and gpt-oss:20b called the tool on a greeting; gemma4:26b
-# took 3 s to its first token, part of it on the CPU.
+# Not recommended, and why: qwen3:30b-a3b-2507 called the tool 1/18 on the real voice turns (it
+# says "Let me check…" and stops); qwen3.8:27b called it 18/18 but took 1.5-2.8 s to its first
+# token; qwen3:8b and 14b never called it; qwen3:4b thought aloud with thinking off; llama3.1:8b,
+# llama3.2:3b and gpt-oss:20b called it on a greeting; gemma4:26b took 3 s to its first token,
+# part of it on the CPU.
 # The vendors a machine with no GPU runs on, a stage each.
 ON_KEYS = {"stt": "deepgram", "llm": "anthropic", "tts": "cartesia"}
+
+# Where a key is looked for after the environment: the shell's own files, in the order a person
+# would name them. Only `export NAME=value` and `NAME=value` lines are read, and only the one
+# variable asked for; a value that is itself an expansion (`$OTHER`, `$(…)`) is left to the shell.
+SHELL_FILES = (".zshrc", ".zprofile", ".bashrc", ".bash_profile", ".profile")
+THE_ENVIRONMENT = "the environment"
+A_SHELL_LINE = re.compile(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)=(.*?)\s*$")
+EXPANDS = ("$", "`")
 
 # A GPU's memory is the whole budget; a Mac's unified memory is shared with everything else running.
 A_MACS_SHARE = 0.75
@@ -82,8 +94,11 @@ class Machine:
     apple_silicon: bool
     docker: bool
     ollama_here: bool
-    # The key variables set in the environment, by vendor; the values are never read into this.
-    keys_found: tuple[str, ...]
+    # The models the Ollama here holds already, by tag; none when no Ollama answers.
+    ollama_models: tuple[str, ...]
+    # Where each vendor's key variable was found, by vendor: the environment or a shell file's name;
+    # a vendor whose key is nowhere is not listed. The values are never read into this.
+    keys_found: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -95,9 +110,8 @@ class Candidate:
     fits: bool
     short_by_gib: float
     first_token_s: float
-    message: str
-    documents: str
-    talk: str
+    # What it did when measured, in the words of the test it ran.
+    did: str
     note: str
 
 
@@ -107,18 +121,24 @@ class Recommendation:
 
     on: str
     budget_gib: float
+    # What the budget leaves for the thinking's model, beside the voice and the margin.
+    room_gib: float
     stack: dict[str, str]
     candidates: tuple[Candidate, ...]
     keys: dict[str, dict[str, object]]
     notes: tuple[str, ...]
 
 
-def detect(environ: Mapping[str, str] = os.environ, run: Run | None = None) -> Machine:
+def detect(environ: Mapping[str, str] = os.environ, run: Run | None = None, home: Path | None = None) -> Machine:
     """This machine, read from the system: no model loaded, nothing written."""
     ask = run or _run
     cards = _cards(ask(NVIDIA_SMI))
     brand = ask(["sysctl", "-n", "machdep.cpu.brand_string"]) if platform.system() == "Darwin" else None
-    vendors = sorted(vendor for vendor in ON_KEYS.values() if environ.get(key_variable(vendor), "").strip())
+    found: dict[str, str] = {}
+    for vendor in sorted(ON_KEYS.values()):
+        where = where_is_key(key_variable(vendor), environ, home)
+        if where is not None:
+            found[vendor] = where
     return Machine(
         system=platform.system().lower(),
         arch=platform.machine(),
@@ -128,8 +148,43 @@ def detect(environ: Mapping[str, str] = os.environ, run: Run | None = None) -> M
         apple_silicon=brand is not None and "Apple" in brand,
         docker=which("docker") is not None,
         ollama_here=answers(OLLAMA_PORT) or which("ollama") is not None,
-        keys_found=tuple(vendors),
+        ollama_models=ollama_models(),
+        keys_found=found,
     )
+
+
+def where_is_key(variable: str, environ: Mapping[str, str] = os.environ, home: Path | None = None) -> str | None:
+    """Where a variable is set: `the environment`, else the shell file holding it, else None; its value is not read."""
+    if environ.get(variable, "").strip():
+        return THE_ENVIRONMENT
+    return next((name for name, _ in _shell_lines(variable, home)), None)
+
+
+def key_from_shell(variable: str, home: Path | None = None) -> str | None:
+    """A variable's value as a shell file sets it, when the line is plain text; None when it is nowhere or expands."""
+    for _, value in _shell_lines(variable, home):
+        plain = value.strip()
+        if len(plain) >= 2 and plain[0] == plain[-1] and plain[0] in "\"'":
+            plain = plain[1:-1]
+        if plain and not any(mark in plain for mark in EXPANDS):
+            return plain
+    return None
+
+
+def ollama_models() -> tuple[str, ...]:
+    """The tags the Ollama on this machine holds, from its own list; none when nothing answers."""
+    if not answers(OLLAMA_PORT):
+        return ()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{OLLAMA_PORT}/api/tags", timeout=3) as answer:
+            listed: object = json.load(answer)
+    except (OSError, ValueError):
+        return ()
+    models = listed.get("models") if a_mapping(listed) else None
+    if not a_list(models):
+        return ()
+    names = [one.get("name") for one in models if a_mapping(one)]
+    return tuple(sorted(name for name in names if isinstance(name, str)))
 
 
 def recommend(machine: Machine) -> Recommendation:
@@ -142,13 +197,15 @@ def recommend(machine: Machine) -> Recommendation:
         on, budget, taken = "apple", round(machine.ram_gib * A_MACS_SHARE, 1), headroom
     else:
         on, budget, taken = "cpu", 0.0, 0.0
-    candidates = tuple(_candidate(one, budget - taken) for one in MEASURED)
+    room = max(0.0, budget - taken)
+    candidates = tuple(_candidate(one, room) for one in MEASURED)
     keys: dict[str, dict[str, object]] = {}
     for stage, vendor in ON_KEYS.items():
         keys[str(stage)] = {
             "vendor": str(vendor),
             "variable": key_variable(str(vendor)),
             "found": vendor in machine.keys_found,
+            "where": machine.keys_found.get(vendor),
         }
     fitting = next((one for one in candidates if one.fits), None)
     notes: list[str] = []
@@ -165,7 +222,7 @@ def recommend(machine: Machine) -> Recommendation:
     if not machine.docker:
         notes.append("Docker is not installed: the local servers and LiveKit need it")
     stack = stack | {"judge": stack["llm"], "caller": stack["llm"]}
-    return Recommendation(on, round(budget, 1), stack, candidates, keys, tuple(notes))
+    return Recommendation(on, round(budget, 1), round(room, 1), stack, candidates, keys, tuple(notes))
 
 
 def recommendation(environ: Mapping[str, str] = os.environ) -> dict[str, Any]:
@@ -185,11 +242,24 @@ def _candidate(one: Mapping[str, Any], room: float) -> Candidate:
         fits=needs <= room,
         short_by_gib=round(max(0.0, needs - room), 1),
         first_token_s=float(one["first_token_s"]),
-        message=str(one["message"]),
-        documents=str(one["documents"]),
-        talk=str(one["talk"]),
+        did=str(one["did"]),
         note=str(one["note"]),
     )
+
+
+# Every line of the shell's files that sets the variable, as (file name, value), in file order.
+def _shell_lines(variable: str, home: Path | None) -> list[tuple[str, str]]:
+    lines: list[tuple[str, str]] = []
+    for name in SHELL_FILES:
+        try:
+            text = ((home or Path.home()) / name).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for line in text.splitlines():
+            matched = A_SHELL_LINE.match(line)
+            if matched and matched.group(1) == variable:
+                lines.append((f"~/{name}", matched.group(2)))
+    return lines
 
 
 def _cards(listed: str | None) -> tuple[Card, ...]:

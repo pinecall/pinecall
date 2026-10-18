@@ -51,6 +51,8 @@ dependencies = [
   "dnspython>=2.7,<3",
   # The operator's terminal: a verb is a typed function, as an endpoint is (cli/).
   "typer>=0.15,<1",
+  # `setup` at a terminal: a stage completed as it is typed, a secret typed without echo (cli/setup_ask.py).
+  "prompt-toolkit>=3.0,<4",
 ]
 
 [project.optional-dependencies]

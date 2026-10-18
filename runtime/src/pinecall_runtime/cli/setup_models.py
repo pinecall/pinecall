@@ -1,10 +1,10 @@
 """What `setup` runs a call on, stage by stage: an open model on this machine or a vendor of yours, and the keys."""
 
 import os
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
-
-import typer
 
 from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.exceptions import ValidationError
@@ -35,6 +35,10 @@ NO_KEY_NEEDED = "local"
 KEYS_DEFAULTS = {"stt": "deepgram", "llm": "anthropic", "tts": "cartesia"}
 NO_KEY_FOR = "{vendor} needs a key: set {variable}, or answer when asked at a terminal"
 ONE_LOCAL_VOICE = "the local voice is Kokoro: --tts local, with no model after it"
+# Where a key came from, when it was neither in the environment nor in a shell file.
+TYPED = "typed"
+# How a missing key is asked for at a terminal: the variable's name in, the secret out.
+type Ask = Callable[[str], str]
 
 
 @dataclass(frozen=True)
@@ -133,102 +137,46 @@ def check_choices(choices: Choices) -> Choices:
     return choices
 
 
-def recommended() -> Choices:
+def recommended(fits: providers.Recommendation) -> Choices:
     """The stack that fits this machine, as `setup --recommend` reads it; the judge and the caller follow it."""
-    stack = providers.recommendation(os.environ)["recommendation"]["stack"]
     return Choices(
-        stt=local_or_vendor(stack["stt"]),
-        turn=turn_of(stack["turn"]),
-        llm=local_or_vendor(stack["llm"]),
-        tts=local_or_vendor(stack["tts"]),
+        stt=local_or_vendor(fits.stack["stt"]),
+        turn=turn_of(fits.stack["turn"]),
+        llm=local_or_vendor(fits.stack["llm"]),
+        tts=local_or_vendor(fits.stack["tts"]),
     )
-
-
-# What a stage is called on the screen, and the field it is.
-STAGE_WORDS: dict[str, str] = {
-    "ears": "stt",
-    "turn": "turn",
-    "thinking": "llm",
-    "voice": "tts",
-    "judge": "judge",
-    "caller": "caller",
-}
-
-
-FOLLOWS = "the thinking's model"
-QUESTIONS = {
-    "stt": "ears",
-    "llm": "thinking",
-    "tts": "voice",
-    "judge": "judging a finished call",
-    "caller": "the simulated caller",
-}
-
-
-def confirmed(base: Choices) -> Choices:
-    """The stack shown at a terminal: Enter runs it, a stage's name changes that stage and shows it again."""
-    chosen = base
-    while True:
-        typer.echo("\n  the stack that fits this machine")
-        for word, field in STAGE_WORDS.items():
-            said = getattr(chosen, field)
-            typer.echo(f"    {word:<9} {said if said is not None else FOLLOWS}")
-        asked = f"\n  Enter runs it, or change a stage ({' · '.join(STAGE_WORDS)})"
-        answer = typer.prompt(asked, default="", show_default=False)
-        word = answer.strip().lower()
-        if word == "":
-            return check_choices(chosen)
-        field = STAGE_WORDS.get(word)
-        if field is None:
-            typer.echo(f"  {word!r} is no stage: {', '.join(STAGE_WORDS)}")
-            continue
-        chosen = _changed(chosen, field)
-
-
-def _changed(chosen: Choices, field: str) -> Choices:
-    if field == "turn":
-        stt = chosen.stt
-        turns = [turn for turn in TURNS if turn != "stt" or (not is_local(stt) and providers.ends_turns(stt))]
-        return replace(chosen, turn=turn_of(typer.prompt(f"end of turn: {' · '.join(turns)}", default=chosen.turn)))
-    stage = {"stt": "stt", "llm": "llm", "tts": "tts", "judge": "llm", "caller": "llm"}[field]
-    question = QUESTIONS[field]
-    current = getattr(chosen, field) or chosen.llm
-    picked = _ask(f"{question}: which?", stage, default=current)
-    if field in ("judge", "caller"):
-        return replace(chosen, **{field: None if picked == chosen.llm else picked})
-    return replace(chosen, **{field: picked})
-
-
-def _ask(question: str, stage: str, default: str = LOCAL) -> str:
-    listed = sorted(
-        name for name, vendor in providers.installed().items() if vendor.broken is None and stage in vendor.does
-    )
-    answer: str = typer.prompt(f"{question}  {LOCAL}[/model] · {' · '.join(listed)}", default=default)
-    return local_or_vendor(answer)
 
 
 # ── the keys ──
 
 
-def keys_for(choices: Choices, *, asking: bool) -> tuple[dict[str, str], list[str]]:
-    """Each chosen vendor's key, from its variable or asked once; and which came from the environment."""
+def keys_for(
+    choices: Choices,
+    *,
+    ask: Ask | None,
+    environ: Mapping[str, str] = os.environ,
+    home: Path | None = None,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Each chosen vendor's key, from its variable, else a shell file, else asked once; and where each one came from."""
     given: dict[str, str] = {}
-    read: list[str] = []
+    found: dict[str, str] = {}
     for vendor in sorted(choices.vendors):
         if not providers.takes_a_key(vendor):
             continue
         variable = providers.key_variable(vendor)
-        found = os.environ.get(variable, "").strip()
-        if found:
-            given[vendor] = found
-            read.append(variable)
-        elif asking:
-            typed = typer.prompt(variable, hide_input=True, show_default=False).strip()
-            if not typed:
-                raise ValidationError(NO_KEY_FOR.format(vendor=vendor, variable=variable))
-            given[vendor] = typed
-        else:
+        where = providers.where_is_key(variable, environ, home)
+        secret = (
+            environ.get(variable, "").strip()
+            if where == providers.THE_ENVIRONMENT
+            else providers.key_from_shell(variable, home)
+            if where is not None
+            else None
+        )
+        if not secret and ask is not None:
+            secret, where = ask(variable).strip(), TYPED
+        if not secret or where is None:
             raise ValidationError(NO_KEY_FOR.format(vendor=vendor, variable=variable))
+        given[vendor], found[variable] = secret, where
     # The embedder is local, on the openai plugin, whatever the stages: the plugin wants a key.
     given.setdefault("openai", NO_KEY_NEEDED)
-    return given, read
+    return given, found

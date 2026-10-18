@@ -120,6 +120,10 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+`PINECALL_KEY` here is a server's token, made in the console's API keys screen for the org and the
+environment the process runs in — not your own sign-in, which stays on your machine. On a runtime
+of your own the URL is its gateway's (`http://127.0.0.1:8080` on your machine).
+
 ## Testing it
 
 Agent tests run with no network, key, model or gateway, in a plain pytest:

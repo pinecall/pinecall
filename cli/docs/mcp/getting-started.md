@@ -127,16 +127,22 @@ The project the tools act on (`show`), another folder opened (`open`), a new pro
 
 ## `runtime`
 
-The runtime on this machine: `up` runs `pinecall-runtime setup` (Docker, the schema, a key the CLI finds by itself, open models), `status` says what it printed and whether it answers, `down` stops it.
+The runtime on this machine: `recommend` reads the machine and says the stack that fits it, `up` runs `pinecall-runtime setup` on that stack or the stages given (Docker, the schema, this machine signed in, open models), `status` says what it printed and whether it answers, `down` stops it.
 
-`runtime` is for a person with no Pinecall account who wants the runtime on their own machine: `up` runs `pinecall-runtime setup --yes`, which brings Postgres, Redis and LiveKit up in Docker, writes the schema, signs this machine in to it as its admin, in `~/.pinecall/session.json` (so `whoami`, `chat`, `test` and `start` work with no `login`) and, with local models, pulls Ollama, Whisper and Kokoro once — minutes, the first time. It answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway and the worker and the services; the database and the key are kept. A project runs where its pinecall.json says: a project made while the runtime runs here names it.
+`runtime` is for a person who wants the runtime on their own machine, with no account. Call `recommend` first: it reads the machine — its card or its Mac's memory and what is left for the models, Docker, the Ollama here and the models it holds, and where each vendor's key is (the environment or a shell file; never its value) — and answers the stack that fits it, each measured model with whether it fits and what it did. Show the person that stack and ask whether a stage should change; then `up` runs `pinecall-runtime setup --yes` on it, or on the stages given (`stt`, `turn`, `llm`, `tts`, `judge`, `caller`: `local`, `local/<model>` — any model Ollama holds — or a vendor). `up` brings Postgres, Redis and LiveKit up in Docker, writes the schema, makes the console's admin (`email`) with no password — none is made up where nobody is at a terminal: `pinecall-runtime orgs password default <email>` sets one in a terminal, and `console_url` opens the console signed in meanwhile — signs this machine in to the runtime in `~/.pinecall/session.json` (so `whoami`, `chat`, `test` and `start` work with no `login`) and pulls the local models once — minutes, the first time. A vendor's key is read from the environment or the person's shell files; one found nowhere refuses by name, and the person sets it in a terminal. `up` answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway, the worker and the services; the database and the sign-in are kept. A project made while the runtime runs here names it in its pinecall.json.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
-| `action` | `status` · `up` · `down` | required | status reads the runtime this server started, or the one `pinecall-runtime setup` left; up runs it and keeps it running; down stops it |
-| `models` | `local` · `keys` · `none` |  | up: local runs open models on this machine, no account (the default); keys reads the vendors' keys from the environment; none leaves the providers row |
+| `action` | `status` · `recommend` · `up` · `down` | required | status reads the runtime this server started, or the one `pinecall-runtime setup` left; recommend reads the machine and answers the stack that fits it, running nothing; up runs it and keeps it running; down stops it |
+| `stt` | text |  | up: who hears the caller — local, local/<model>, or a vendor of yours; the stack that fits this machine when left out |
+| `turn` | `stt` · `smart-turn` · `livekit` |  | up: who ends the caller's turn — the ears' own endpointing, Smart Turn v3 or livekit's model; the one that fits the ears when left out |
+| `llm` | text |  | up: who thinks — local, local/<model>, or a vendor of yours; the stack that fits this machine when left out |
+| `tts` | text |  | up: who speaks — local, local/<model>, or a vendor of yours; the stack that fits this machine when left out |
+| `judge` | text |  | up: who judges a finished call; the thinking's model when left out — local, local/<model>, or a vendor of yours; the stack that fits this machine when left out |
+| `caller` | text |  | up: who plays the simulated caller; the thinking's model when left out — local, local/<model>, or a vendor of yours; the stack that fits this machine when left out |
+| `models` | `local` · `keys` · `none` |  | up: local runs every stage on this machine; keys runs deepgram, anthropic and cartesia; none leaves the providers row to the person; the stack that fits this machine when left out |
 | `chat_only` | true or false |  | up: written calls alone — no LiveKit, no worker, no ears, no voice; the cheapest first run |
-| `llm` | text |  | up, with local models: the Ollama model to think with |
+| `email` | text |  | up: who signs in to the console, the org's admin; admin@pinecall.local when left out |
 | `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 

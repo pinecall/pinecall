@@ -38,43 +38,63 @@ pinecall-runtime setup [--dir <path>] [--email <address>] [--person "…"] [--pa
 ```
 
 This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
-again. Typed with nothing after it, it does the right thing and asks only who signs in to the
-console. Each step is one line, skipped when already done: Docker found (else the sentence that
-says what to install), the services up and the schema at this release, the console's admin, this
-machine signed in, the models, and the gateway and a worker running as `local up` runs them.
+again. Typed with nothing after it, it does the right thing: it shows what the machine is and the
+stack that fits it, Enter runs it, and it asks who signs in to the console. Nothing is brought up
+before that is decided. Each step is one line, skipped when already done: Docker found (else the
+sentence that says what to install), the services up and the schema at this release, the console's
+admin, this machine signed in, the models, and the gateway and a worker running as `local up` runs
+them. It is this machine's runtime, for the person at it: a runtime several people reach is a
+deployment ([on Kubernetes](../../infra/README.md)).
 
-**The stack that fits this machine, by default.** It reads the machine — the cards and their memory
-(`nvidia-smi`), Apple silicon and its unified memory, the cores and the RAM, whether Docker and an
-Ollama are here, which vendors' key variables are set (their values are never read into it) — and
-picks the stack: the thinking is the best model of those measured
-(`providers/service/machine.py`: a message taken, a question the documents answer, small talk, the
-time to the first token) whose memory fits the card beside the ears, the voice and the embedder;
-a machine with no GPU runs the three vendors instead, and a Mac the thinking on its own Ollama
-(Metal) with the ears and the voice in CPU containers. At a terminal it shows it, and Enter runs
-it:
+**The machine, and the stack that fits it.** It reads the machine — the cards and their memory
+(`nvidia-smi`), Apple silicon and its unified memory, the cores and the RAM, whether Docker is
+here, whether an Ollama answers and which models it holds already, and where each vendor's key
+variable is: in the environment, or in a shell file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`,
+`~/.bash_profile`, `~/.profile`) not loaded into this terminal. A key's value is never shown; only
+where it is. Then it picks the stack: the thinking is the best model of those measured
+(`providers/service/machine.py`: what each did when measured, the time to the first token, the
+memory it needs) whose memory fits the card beside the ears, the voice and the embedder; a machine
+with no GPU runs the three vendors instead, and a Mac the thinking on its own Ollama (Metal) with
+the ears and the voice in CPU containers. At a terminal it shows all of it:
 
 ```console
-  the stack that fits this machine
-    ears      local
-    turn      smart-turn
-    thinking  local/gemma4:12b
-    voice     local
+  this machine
+    NVIDIA A100-SXM4-40GB · 40.0 GB — 34.2 GB for the models beside the voice
+    Docker ✓ · Ollama ✓ (bge-m3, gemma4:12b)
+
+  measured models
+    nemotron-3.5-lightning:30b-a3b      25.0 GB   fits               0.45 s to first token · tool called 18/18 on voice turns · written goldens 5/5 · spoken 2/3
+    gemma4:12b                           9.0 GB   fits               0.90 s to first token · message 3/3 · documents 3/3 · talk 3/3
+    gemma4:e4b                           7.5 GB   fits               0.80 s to first token · message 2/3 · documents 3/3 · talk 3/3
+
+  the stack that fits it
+    ears      local                                    Whisper (deepdml/faster-whisper-large-v3-turbo-ct2), on this machine
+    turn      smart-turn                               Smart Turn v3, on the worker's CPU
+    thinking  local/nemotron-3.5-lightning:30b-a3b     Ollama, 0.45 s to first token
+    voice     local                                    Kokoro, on this machine
     judge     the thinking's model
     caller    the thinking's model
-
-  Enter runs it, or change a stage (ears · turn · thinking · voice · judge · caller):
+  Enter runs it, or a stage to change:
 ```
 
-A stage's name asks for that stage alone and shows the stack again. `--yes`, or no terminal, runs it
-without showing. The flags are for a script: a flag names a stage and that stage is not asked.
+Enter runs it. A stage's word (`ears`, `turn`, `thinking`, `voice`, `judge`, `caller`) asks for that
+stage alone, completed as it is typed — Tab, or just typing — over everything that could run it:
+`local`, `local/<tag>` for every model the Ollama here holds and every measured one, and every
+installed vendor that does the stage; then the stack is shown again. A vendor's line says where its
+key is (`ANTHROPIC_API_KEY in ~/.zshrc`) or that it will be asked; on Enter, a key found in the
+environment or in a shell file is read from there, and one found nowhere is typed once without
+echo. `--yes`, or no terminal, runs the stack that fits without showing it, and a key that is nowhere
+refuses. The flags are for a script: a flag names a stage and that stage is not asked.
 
 **The console's admin.** Every run makes sure somebody signs in to the console: the address
 `--email` names, or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an
-admin and an operator of the org `default`, with a password and no invitation link — typed twice
-without echo at a terminal, one line of stdin with `--password-stdin`, else drawn and printed this
-once. Run again, a person who has a password keeps it; `orgs password default <email>` changes it,
-and `pinecall team password` does from the CLI. More people are invited later, from the console's
-Team or with `orgs invite default <email>`: a runtime of one person and a team's are the same runtime.
+admin and an operator of the org `default`, with no invitation link. The password is typed twice
+without echo at a terminal, or read as one line of stdin with `--password-stdin`; where nobody is
+asked and no line is given (`--yes` in a script, the MCP's `runtime up`), no password is made up:
+the person has none until `orgs password default <email>` sets one, and `pinecall console` opens
+the console signed in from the CLI meanwhile. Run again, a person who has a password keeps it;
+`orgs password default <email>` changes it, and `pinecall team password` does from the CLI. More
+people are invited later, from the console's Team or with `orgs invite default <email>`.
 
 **This machine, signed in.** The admin's own key, drawn once into `<dir>/env` as
 `PINECALL_DEV_KEY`, is this machine's sign-in at `http://127.0.0.1:8080`, written into the CLI's
@@ -82,8 +102,7 @@ Team or with `orgs invite default <email>`: a runtime of one person and a team's
 the CLI's other gateways kept: the `pinecall` CLI here needs no login, and a project `pinecall new`
 makes here runs on this runtime, in `default`. A person's key, not a server's, because in the
 sandbox a person's console shows that person's own copy of the agents: what `pinecall start`
-holds is what the console they sign in to shows. From another machine it is `pinecall login
-http://<this machine>:8080`.
+holds is what the console they sign in to shows.
 
 **The models, a stage at a time.** Each of the ears (`--stt`), the thinking (`--llm`) and the
 voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
@@ -99,7 +118,8 @@ servers `infra/models/` runs on a card, in their CPU images: Ollama (:11434), Wh
 Ollama already answering on :11434 is used instead of the container. Memory and documents embed on
 `bge-m3`, on Ollama, always: the embedder is never a choice, since changing it would blind every
 base and every memory. A vendor's key is read from its variable (`DEEPGRAM_API_KEY`,
-`<VENDOR>_API_KEY`), else asked once without echo, and held sealed by the org `default` and by the
+`<VENDOR>_API_KEY`) in the environment, else from the shell file that exports it as plain text,
+else asked once without echo, and held sealed by the org `default` and by the
 box — the judges at hang-up and the simulated caller run on the box's keys, on the model chosen to
 think. The providers row is written for the choices and the console edits it from then on; a row
 already there is left as it is. `--models local` is every stage local, `--models keys` deepgram,
@@ -107,8 +127,10 @@ anthropic and cartesia with the ears' own endpointing, `--models none` leaves th
 `providers seed`.
 
 **`--recommend`** prints the machine's reading and the stack it fits, as JSON, setting nothing up:
-each candidate model with whether it fits and by how much it is short, for a script that wants the
-reasons.
+the machine (`cards`, `ram_gib`, `apple_silicon`, `docker`, `ollama_here`, `ollama_models`,
+`keys_found` by vendor with where each is), the `recommendation` (`stack`, `room_gib` for the
+thinking, each candidate with `fits`, `short_by_gib`, `first_token_s` and what it `did`, the
+`keys` by stage, the `notes`), for a script or an assistant that wants the reasons before running it.
 
 **`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
 nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,

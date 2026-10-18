@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **`setup` shows the machine and the stack that fits it, and a stage is completed as it is typed.**
+  At a terminal, before anything is brought up: the card or the Mac's memory and what is left for
+  the models, Docker, the Ollama here and the models it holds, each measured model and whether it
+  fits; then the stack, a line per stage with what runs it, and Enter runs it. A stage's word asks
+  for that stage with completion (`prompt_toolkit`, a dependency new to the runtime) over `local`,
+  `local/<tag>` for every model Ollama holds and every measured one, and every installed vendor that
+  does the stage. A vendor's key is looked for in the environment and then in the shell's files
+  (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`); the stack says where
+  each one is, never its value, and asks only for one found nowhere. The measured table puts
+  `nemotron-3.5-lightning:30b-a3b` first (tool called 18/18 on the real voice turns, 0.45 s to the
+  first token, on an A100); `qwen3:30b-a3b-2507`, which called it 1/18, is out. `--recommend` says
+  `ollama_models`, `room_gib`, where each key is and what each candidate `did`.
+- **`setup --yes` makes up no password.** Where nobody is at a terminal and no `--password-stdin`
+  line is given, the console's admin is made with no password; the line says
+  `orgs password default <email>` sets one and that `pinecall console` opens the console signed in
+  meanwhile. A drawn password printed once passed through whatever ran `setup` — an assistant, a
+  log — and a secret never does.
+- **`setup` is this machine's runtime and says so.** Its closing lines no longer offer
+  `pinecall login http://<this machine>:8080` from another machine: the services it brings up are
+  on loopback and LiveKit is told it is, so a call from another machine never worked. A runtime
+  several people reach is a deployment (`infra/`).
+
 - **A plugin's LLM on the Responses API is a vendor's LLM.** xAI's plugin keeps Grok as
   `responses.LLM`, not at the top of its module, so Pinecall saw xAI as ears and a voice alone:
   `xai/grok-4-1-fast-non-reasoning` was no model an agent could name. A vendor's LLM is looked for at

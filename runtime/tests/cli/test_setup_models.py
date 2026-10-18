@@ -1,5 +1,7 @@
 """What `setup` runs a call on: a choice per stage, local or a vendor's, the judge, the caller, the keys, the turn."""
 
+from pathlib import Path
+
 import pytest
 
 from pinecall_runtime.cli import setup_models as models
@@ -35,20 +37,29 @@ def test_the_judge_and_the_caller_follow_the_thinking_unless_named() -> None:
     )
 
 
-def test_the_keys_a_mix_needs_and_where_each_came_from(monkeypatch: pytest.MonkeyPatch) -> None:
-    """One variable per vendor of yours, read from the environment; the local servers' word for openai always."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-x")
-    monkeypatch.setenv("ACME_API_KEY", "ak-x")
-    given, read = models.keys_for(models.Choices(stt=models.LOCAL, llm="anthropic", tts="acme"), asking=False)
+def test_the_keys_a_mix_needs_and_where_each_came_from(tmp_path: Path) -> None:
+    """One key per vendor of yours: the environment, else a shell file, else typed; the local word for openai always."""
+    environ = {"ANTHROPIC_API_KEY": "sk-ant-x"}
+    (tmp_path / ".zshrc").write_text("export ACME_API_KEY=ak-x\n", encoding="utf-8")
+    mixed = models.Choices(stt=models.LOCAL, llm="anthropic", tts="acme")
+    given, found = models.keys_for(mixed, ask=None, environ=environ, home=tmp_path)
     assert given == {"acme": "ak-x", "anthropic": "sk-ant-x", "openai": "local"}
-    assert read == ["ACME_API_KEY", "ANTHROPIC_API_KEY"]
+    assert found == {"ACME_API_KEY": "~/.zshrc", "ANTHROPIC_API_KEY": "the environment"}
     assert providers.key_variable("assemblyai") == "ASSEMBLYAI_API_KEY"
     # A judge on a vendor of yours needs that vendor's key as the thinking would.
-    judged, _ = models.keys_for(models.Choices(judge="anthropic"), asking=False)
+    judged, _ = models.keys_for(models.Choices(judge="anthropic"), ask=None, environ=environ, home=tmp_path)
     assert judged == {"anthropic": "sk-ant-x", "openai": "local"}
-    monkeypatch.delenv("ACME_API_KEY")
+    # Nowhere, at a terminal: asked once; with nobody to ask, refused naming the variable.
+    typed, where = models.keys_for(
+        models.Choices(tts="acme"), ask=lambda _v: " ak-typed ", environ={}, home=tmp_path / "x"
+    )
+    assert typed["acme"] == "ak-typed" and where == {"ACME_API_KEY": "typed"}
     with pytest.raises(ValidationError, match="acme needs a key: set ACME_API_KEY"):
-        models.keys_for(models.Choices(tts="acme"), asking=False)
+        models.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path / "x")
+    # A shell line that expands is found but not read: asked as if it were nowhere.
+    (tmp_path / ".zshrc").write_text("export ACME_API_KEY=$(cat ~/k)\n", encoding="utf-8")
+    with pytest.raises(ValidationError, match="acme needs a key"):
+        models.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path)
 
 
 def test_the_turn_is_one_of_three_and_the_local_ears_cannot_end_it() -> None:

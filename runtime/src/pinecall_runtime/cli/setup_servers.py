@@ -11,15 +11,7 @@ from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.cli.command import Context
 from pinecall_runtime.cli.output import Printer
-from pinecall_runtime.cli.setup_models import (
-    LOCAL_EMBEDDER,
-    LOCAL_STT,
-    MODEL_PORTS,
-    Choices,
-    is_local,
-    keys_for,
-    model_of,
-)
+from pinecall_runtime.cli.setup_models import LOCAL_EMBEDDER, LOCAL_STT, MODEL_PORTS, Choices, is_local, model_of
 from pinecall_runtime.cli.setup_row import row_of
 from pinecall_runtime.exceptions import Conflict, UpstreamError
 from pinecall_runtime.providers import service as providers
@@ -108,9 +100,10 @@ def warm_embedder() -> None:
 # ── all of it ──
 
 
-async def models(runtime: Context, where: Path, choices: Choices, *, asking: bool, out: Printer) -> None:
+async def models(
+    runtime: Context, where: Path, choices: Choices, keys: dict[str, str], found: dict[str, str], *, out: Printer
+) -> None:
     """The servers the choices need up, the keys they need kept, the row written: what `setup` does for the models."""
-    keys, read = keys_for(choices, asking=asking)
     served = models_up(where, choices, host_ollama=providers.answers(MODEL_PORTS["Ollama"]))
     out.line("models     " + " · ".join(served) + " — open models, no account")
     chosen = " · ".join(
@@ -125,7 +118,8 @@ async def models(runtime: Context, where: Path, choices: Choices, *, asking: boo
         if not is_local(choice)
     )
     if chosen:
-        out.line(f"vendors    {chosen}" + (f" — read from the environment: {', '.join(read)}" if read else ""))
+        places = " · ".join(f"{variable} from {place}" for variable, place in found.items())
+        out.line(f"vendors    {chosen}" + (f" — keys: {places}" if places else ""))
     out.line(f"turn       {choices.turn}")
     if choices.judge is not None or choices.caller is not None:
         out.line(f"judge      {choices.judging} · caller {choices.calling}")

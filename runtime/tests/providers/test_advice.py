@@ -5,7 +5,7 @@ from pinecall_runtime.providers.service import Advised, Keyring, Served, advise,
 from tests.conftest import configured
 from tests.fakes import acme
 
-THE_30B = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+THE_30B = "nemotron-3.5-lightning:30b-a3b"
 
 
 def served_row() -> Catalog:
