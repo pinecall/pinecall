@@ -19,3 +19,5 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/python \
     PYTHONDONTWRITEBYTECODE=1
 RUN UV_PYTHON_DOWNLOADS=automatic uv python install 3.13 && chmod -R a+rX /opt/python
 ENV UV_PYTHON_DOWNLOADS=never
+# Node's image's own user, uid 1000: the one charts/hosting runs both containers as.
+USER node
