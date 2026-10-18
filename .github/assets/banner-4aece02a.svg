@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="703" viewBox="0 0 1200 703" role="img" aria-label="Pinecall: voice and chat agents written as a class. pinecall-runtime setup asks each stage, the open models that fit this machine first and each vendor with where its key is; then the terminal splits and the SDK runs an agent against it">
+<title>Pinecall</title>
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#b9adff"/><stop offset="0.5" stop-color="#9184d9"/><stop offset="1" stop-color="#5eead4"/>
+  </linearGradient>
+  <clipPath id="clip"><rect width="1200" height="703" rx="14"/></clipPath>
+  <clipPath id="term"><rect x="24" y="229" width="1152" height="444"/></clipPath>
+</defs>
+<style>
+  .px { fill: url(#g); opacity: 0; animation: on .4s ease-out forwards; }
+  .tag { font: 15px ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace; fill: #8b949e; letter-spacing: 3px; }
+  .title { font: 13px ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace; fill: #6e7681; }
+  .line { font: 14px ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace; white-space: pre; }
+  .dollar { fill: #7ee787; }
+  .cmd { fill: #e6edf3; }
+  .head { fill: #e6edf3; }
+  .opt { fill: #b9adff; }
+  .out { fill: #b9adff; }
+  .dim { fill: #8b949e; }
+  .ask { fill: #e3b341; }
+  .ok { fill: #5eead4; }
+  .note { fill: #6e7681; }
+  .cursor { fill: #7ee787; }
+  .scroll { animation: scroll 30.35s linear infinite; }
+  @keyframes on { to { opacity: 1; } }
+  @keyframes l0 { 0%, 3.262% { opacity: 0; } 3.295%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes cl0 { 0%, 3.262% { opacity: 0; transform: translateX(0); } 3.295%, 3.789% { opacity: 1; transform: translateX(0); animation-timing-function: steps(41, end); } 9.868%, 10.692% { opacity: 1; transform: translateX(349.6px); } 10.725%, 100% { opacity: 0; transform: translateX(349.6px); } }
+  @keyframes l1 { 0%, 10.988% { opacity: 0; } 11.021%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes cl1 { 0%, 10.988% { opacity: 0; transform: translateX(0); } 11.021%, 11.516% { opacity: 1; transform: translateX(0); animation-timing-function: steps(22, end); } 14.778%, 15.601% { opacity: 1; transform: translateX(189.5px); } 15.634%, 100% { opacity: 0; transform: translateX(189.5px); } }
+  @keyframes l2 { 0%, 15.898% { opacity: 0; } 15.931%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l3 { 0%, 16.129% { opacity: 0; } 16.161%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l5 { 0%, 16.590% { opacity: 0; } 16.623%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l6 { 0%, 16.820% { opacity: 0; } 16.853%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l7 { 0%, 17.051% { opacity: 0; } 17.084%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l8 { 0%, 17.282% { opacity: 0; } 17.315%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l9 { 0%, 17.512% { opacity: 0; } 17.545%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al9 { 0%, 19.325% { fill-opacity: 0; } 19.357%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l11 { 0%, 20.544% { opacity: 0; } 20.577%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l12 { 0%, 20.774% { opacity: 0; } 20.807%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l13 { 0%, 21.005% { opacity: 0; } 21.038%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l14 { 0%, 21.236% { opacity: 0; } 21.269%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al14 { 0%, 23.048% { fill-opacity: 0; } 23.081%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l16 { 0%, 24.267% { opacity: 0; } 24.300%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l17 { 0%, 24.498% { opacity: 0; } 24.530%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l18 { 0%, 24.728% { opacity: 0; } 24.761%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l19 { 0%, 24.959% { opacity: 0; } 24.992%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l20 { 0%, 25.189% { opacity: 0; } 25.222%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l21 { 0%, 25.420% { opacity: 0; } 25.453%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l22 { 0%, 25.651% { opacity: 0; } 25.684%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al22 { 0%, 27.463% { fill-opacity: 0; } 27.496%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l23 { 0%, 28.451% { opacity: 0; } 28.484%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l25 { 0%, 28.913% { opacity: 0; } 28.946%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l26 { 0%, 29.143% { opacity: 0; } 29.176%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l27 { 0%, 29.374% { opacity: 0; } 29.407%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l28 { 0%, 29.605% { opacity: 0; } 29.638%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l29 { 0%, 29.835% { opacity: 0; } 29.868%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l30 { 0%, 30.066% { opacity: 0; } 30.099%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al30 { 0%, 31.878% { fill-opacity: 0; } 31.911%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l31 { 0%, 32.867% { opacity: 0; } 32.900%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al31 { 0%, 34.679% { fill-opacity: 0; } 34.712%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l33 { 0%, 35.898% { opacity: 0; } 35.931%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al33 { 0%, 37.710% { fill-opacity: 0; } 37.743%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l35 { 0%, 38.929% { opacity: 0; } 38.962%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al35 { 0%, 40.741% { fill-opacity: 0; } 40.774%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l37 { 0%, 41.960% { opacity: 0; } 41.993%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l38 { 0%, 42.191% { opacity: 0; } 42.224%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l39 { 0%, 42.422% { opacity: 0; } 42.455%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al39 { 0%, 44.234% { fill-opacity: 0; } 44.267%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l40 { 0%, 45.222% { opacity: 0; } 45.255%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l41 { 0%, 45.453% { opacity: 0; } 45.486%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al41 { 0%, 47.265% { fill-opacity: 0; } 47.298%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l42 { 0%, 48.254% { opacity: 0; } 48.287%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al42 { 0%, 50.066% { fill-opacity: 0; } 50.099%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l43 { 0%, 51.054% { opacity: 0; } 51.087%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes al43 { 0%, 52.867% { fill-opacity: 0; } 52.900%, 59.160% { fill-opacity: 1; } 59.193%, 100% { fill-opacity: 0; } }
+  @keyframes l44 { 0%, 53.855% { opacity: 0; } 53.888%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l45 { 0%, 54.086% { opacity: 0; } 54.119%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes l46 { 0%, 54.316% { opacity: 0; } 54.349%, 59.160% { opacity: 1; } 59.193%, 100% { opacity: 0; } }
+  @keyframes scroll { 0% { transform: translateY(0px); } 24.728% { transform: translateY(0px); } 24.761% { transform: translateY(-24px); } 24.959% { transform: translateY(-24px); } 24.992% { transform: translateY(-48px); } 25.189% { transform: translateY(-48px); } 25.222% { transform: translateY(-72px); } 25.420% { transform: translateY(-72px); } 25.453% { transform: translateY(-96px); } 25.651% { transform: translateY(-96px); } 25.684% { transform: translateY(-120px); } 28.451% { transform: translateY(-120px); } 28.484% { transform: translateY(-144px); } 28.682% { transform: translateY(-144px); } 28.715% { transform: translateY(-168px); } 28.913% { transform: translateY(-168px); } 28.946% { transform: translateY(-192px); } 29.143% { transform: translateY(-192px); } 29.176% { transform: translateY(-216px); } 29.374% { transform: translateY(-216px); } 29.407% { transform: translateY(-240px); } 29.605% { transform: translateY(-240px); } 29.638% { transform: translateY(-264px); } 29.835% { transform: translateY(-264px); } 29.868% { transform: translateY(-288px); } 30.066% { transform: translateY(-288px); } 30.099% { transform: translateY(-312px); } 32.867% { transform: translateY(-312px); } 32.900% { transform: translateY(-336px); } 35.667% { transform: translateY(-336px); } 35.700% { transform: translateY(-360px); } 35.898% { transform: translateY(-360px); } 35.931% { transform: translateY(-384px); } 38.699% { transform: translateY(-384px); } 38.731% { transform: translateY(-408px); } 38.929% { transform: translateY(-408px); } 38.962% { transform: translateY(-432px); } 41.730% { transform: translateY(-432px); } 41.763% { transform: translateY(-456px); } 41.960% { transform: translateY(-456px); } 41.993% { transform: translateY(-480px); } 42.191% { transform: translateY(-480px); } 42.224% { transform: translateY(-504px); } 42.422% { transform: translateY(-504px); } 42.455% { transform: translateY(-528px); } 45.222% { transform: translateY(-528px); } 45.255% { transform: translateY(-552px); } 45.453% { transform: translateY(-552px); } 45.486% { transform: translateY(-576px); } 48.254% { transform: translateY(-576px); } 48.287% { transform: translateY(-600px); } 51.054% { transform: translateY(-600px); } 51.087% { transform: translateY(-624px); } 53.855% { transform: translateY(-624px); } 53.888% { transform: translateY(-648px); } 54.086% { transform: translateY(-648px); } 54.119% { transform: translateY(-672px); } 54.316% { transform: translateY(-672px); } 54.349% { transform: translateY(-696px); } 59.160% { transform: translateY(-696px); } 59.193%, 100% { transform: translateY(0px); } }
+  @keyframes t1 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t2 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t4 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t5 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t7 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t8 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t9 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t10 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t11 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t12 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t13 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t14 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t15 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t16 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes t17 { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes r0 { 0%, 60.807% { opacity: 0; } 60.840%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes cr0 { 0%, 60.807% { opacity: 0; transform: translateX(0); } 60.840%, 61.334% { opacity: 1; transform: translateX(0); animation-timing-function: steps(17, end); } 63.855%, 64.679% { opacity: 1; transform: translateX(147.3px); } 64.712%, 100% { opacity: 0; transform: translateX(147.3px); } }
+  @keyframes r1 { 0%, 64.975% { opacity: 0; } 65.008%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes cr1 { 0%, 64.975% { opacity: 0; transform: translateX(0); } 65.008%, 65.502% { opacity: 1; transform: translateX(0); animation-timing-function: steps(36, end); } 70.840%, 71.664% { opacity: 1; transform: translateX(307.5px); } 71.697%, 100% { opacity: 0; transform: translateX(307.5px); } }
+  @keyframes r2 { 0%, 71.960% { opacity: 0; } 71.993%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes r3 { 0%, 72.191% { opacity: 0; } 72.224%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes r4 { 0%, 72.422% { opacity: 0; } 72.455%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes cr4 { 0%, 72.422% { opacity: 0; transform: translateX(0); } 72.455%, 72.949% { opacity: 1; transform: translateX(0); animation-timing-function: steps(22, end); } 76.211%, 77.035% { opacity: 1; transform: translateX(189.5px); } 77.068%, 100% { opacity: 0; transform: translateX(189.5px); } }
+  @keyframes r5 { 0%, 77.331% { opacity: 0; } 77.364%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes cr5 { 0%, 77.331% { opacity: 0; transform: translateX(0); } 77.364%, 77.858% { opacity: 1; transform: translateX(0); animation-timing-function: steps(14, end); } 79.934%, 80.758% { opacity: 1; transform: translateX(122.0px); } 80.791%, 100% { opacity: 0; transform: translateX(122.0px); } }
+  @keyframes r6 { 0%, 81.054% { opacity: 0; } 81.087%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes r7 { 0%, 81.285% { opacity: 0; } 81.318%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+  @keyframes split { 0%, 59.160% { opacity: 0; } 59.193%, 97.990% { opacity: 1; } 98.023%, 100% { opacity: 0; } }
+</style>
+<g clip-path="url(#clip)">
+<rect width="1200" height="703" fill="#0d1117"/>
+<g><rect class="px" style="animation-delay:0.000s" x="308" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.018s" x="323" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.036s" x="338" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.054s" x="353" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.000s" x="308" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.054s" x="353" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.000s" x="308" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.018s" x="323" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.036s" x="338" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.054s" x="353" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.000s" x="308" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.000s" x="308" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.090s" x="383" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.108s" x="398" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.126s" x="413" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.108s" x="398" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.108s" x="398" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.108s" x="398" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.090s" x="383" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.108s" x="398" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.126s" x="413" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.162s" x="443" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.234s" x="503" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.162s" x="443" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.180s" x="458" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.234s" x="503" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.162s" x="443" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.198s" x="473" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.234s" x="503" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.162s" x="443" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.216s" x="488" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.234s" x="503" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.162s" x="443" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.234s" x="503" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.270s" x="533" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.288s" x="548" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.306s" x="563" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.324s" x="578" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.270s" x="533" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.270s" x="533" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.288s" x="548" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.306s" x="563" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.270s" x="533" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.270s" x="533" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.288s" x="548" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.306s" x="563" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.324s" x="578" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.360s" x="608" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.378s" x="623" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.396s" x="638" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.414s" x="653" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.360s" x="608" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.360s" x="608" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.360s" x="608" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.360s" x="608" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.378s" x="623" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.396s" x="638" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.414s" x="653" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.468s" x="698" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.486s" x="713" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.450s" x="683" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.504s" x="728" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.450s" x="683" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.468s" x="698" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.486s" x="713" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.504s" x="728" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.450s" x="683" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.504s" x="728" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.450s" x="683" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.504s" x="728" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.540s" x="758" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.540s" x="758" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.540s" x="758" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.540s" x="758" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.540s" x="758" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.558s" x="773" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.576s" x="788" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.594s" x="803" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.630s" x="833" y="64" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.630s" x="833" y="79" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.630s" x="833" y="94" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.630s" x="833" y="109" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.630s" x="833" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.648s" x="848" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.666s" x="863" y="124" width="13" height="13" rx="2"/><rect class="px" style="animation-delay:0.684s" x="878" y="124" width="13" height="13" rx="2"/></g>
+<text class="tag" x="600" y="169" text-anchor="middle">VOICE &amp; CHAT AGENTS, WRITTEN AS A CLASS</text>
+<rect x="24" y="199" width="1152" height="480" rx="8" fill="#0b0f14" stroke="#21262d"/>
+<circle cx="46" cy="217" r="5.5" fill="#ff5f57"/><circle cx="64" cy="217" r="5.5" fill="#febc2e"/><circle cx="82" cy="217" r="5.5" fill="#28c840"/>
+<text class="title" x="600" y="221" text-anchor="middle">~</text>
+<g clip-path="url(#term)"><g class="scroll">
+<g style="opacity:0;animation: l0 30.35s linear infinite"><text class="line" x="48" y="247"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="65" y="247">uv tool install "pinecall-runtime[voice]"</text></g><g style="opacity:0;animation: cl0 30.35s linear infinite"><rect x="65" y="231" width="374" height="22" fill="#0b0f14"/><rect class="cursor" x="65" y="232" width="9" height="19"/></g>
+<g style="opacity:0;animation: l1 30.35s linear infinite"><text class="line" x="48" y="271"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="65" y="271">pinecall-runtime setup</text></g><g style="opacity:0;animation: cl1 30.35s linear infinite"><rect x="65" y="255" width="213" height="22" fill="#0b0f14"/><rect class="cursor" x="65" y="256" width="9" height="19"/></g>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: l2 30.35s linear infinite" x="48.0" y="295">docker     compose 2.39.1</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: l3 30.35s linear infinite" x="64.9" y="319">this machine   NVIDIA L4 · 23.0 GB — 17.2 GB for the models beside the voice · Docker ✓ · Ollama ✓ (bge-m3:latest, gemma4:12b)</text>
+<text class="line head" xml:space="preserve" style="opacity:0;animation: l5 30.35s linear infinite" x="64.9" y="367">ears — who hears the caller</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l6 30.35s linear infinite" x="81.7" y="391">1  local                                    Whisper large-v3 turbo, on this machine   <tspan class="ok">recommended</tspan></text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l7 30.35s linear infinite" x="81.7" y="415">2  deepgram                                 DEEPGRAM_API_KEY in the environment</text>
+<text class="line note" xml:space="preserve" style="opacity:0;animation: l8 30.35s linear infinite" x="107.0" y="439">… 30 more: assemblyai, aws, azure … — type a name, Tab completes</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l9 30.35s linear infinite" x="64.9" y="463"><tspan class="ask">ears [1]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al9 30.35s linear infinite">⏎</tspan></text>
+<text class="line head" xml:space="preserve" style="opacity:0;animation: l11 30.35s linear infinite" x="64.9" y="511">turn — who ends the caller's turn</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l12 30.35s linear infinite" x="81.7" y="535">1  smart-turn                               Smart Turn v3, on the worker's CPU   <tspan class="ok">recommended</tspan></text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l13 30.35s linear infinite" x="81.7" y="559">2  livekit                                  livekit's v1-mini, on the worker's CPU</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l14 30.35s linear infinite" x="64.9" y="583"><tspan class="ask">turn [1]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al14 30.35s linear infinite">⏎</tspan></text>
+<text class="line head" xml:space="preserve" style="opacity:0;animation: l16 30.35s linear infinite" x="64.9" y="631">thinking — who thinks</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l17 30.35s linear infinite" x="81.7" y="655">1  local/nemotron-3.5-lightning:30b-a3b     Ollama · short by 7.8 GB</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l18 30.35s linear infinite" x="81.7" y="679">2  local/gemma4:12b                         Ollama · fits · 0.90 s to first token   <tspan class="ok">recommended</tspan></text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l19 30.35s linear infinite" x="81.7" y="703">3  local/gemma4:e4b                         Ollama · fits · 0.80 s to first token</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l20 30.35s linear infinite" x="81.7" y="727">4  anthropic                                ANTHROPIC_API_KEY in ~/.zshrc</text>
+<text class="line note" xml:space="preserve" style="opacity:0;animation: l21 30.35s linear infinite" x="107.0" y="751">… 12 more: aws, azure, baseten … — type a name, Tab completes</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l22 30.35s linear infinite" x="64.9" y="775"><tspan class="ask">thinking [2]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al22 30.35s linear infinite">4</tspan></text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: l23 30.35s linear infinite" x="64.9" y="799">ANTHROPIC_API_KEY read from ~/.zshrc</text>
+<text class="line head" xml:space="preserve" style="opacity:0;animation: l25 30.35s linear infinite" x="64.9" y="847">voice — who speaks</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l26 30.35s linear infinite" x="81.7" y="871">1  local                                    Kokoro, on this machine   <tspan class="ok">recommended</tspan></text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l27 30.35s linear infinite" x="81.7" y="895">2  cartesia                                 CARTESIA_API_KEY — asked now if you pick it</text>
+<text class="line opt" xml:space="preserve" style="opacity:0;animation: l28 30.35s linear infinite" x="81.7" y="919">3  deepgram                                 DEEPGRAM_API_KEY in the environment</text>
+<text class="line note" xml:space="preserve" style="opacity:0;animation: l29 30.35s linear infinite" x="107.0" y="943">… 37 more: asyncai, aws, azure … — type a name, Tab completes</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l30 30.35s linear infinite" x="64.9" y="967"><tspan class="ask">voice [1]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al30 30.35s linear infinite">2</tspan></text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l31 30.35s linear infinite" x="64.9" y="991"><tspan class="ask">CARTESIA_API_KEY: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al31 30.35s linear infinite">••••••••••••</tspan></text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l33 30.35s linear infinite" x="64.9" y="1039"><tspan class="ask">judge — who judges a finished call   [the thinking's: anthropic]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al33 30.35s linear infinite">⏎</tspan></text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l35 30.35s linear infinite" x="64.9" y="1087"><tspan class="ask">caller — who plays the simulated caller   [the thinking's: anthropic]: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al35 30.35s linear infinite">⏎</tspan></text>
+<text class="line head" xml:space="preserve" style="opacity:0;animation: l37 30.35s linear infinite" x="64.9" y="1135">the stack</text>
+<text class="line out" xml:space="preserve" style="opacity:0;animation: l38 30.35s linear infinite" x="81.7" y="1159">ears local · turn smart-turn · thinking anthropic · voice cartesia · judge anthropic · caller anthropic</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l39 30.35s linear infinite" x="64.9" y="1183"><tspan class="ask">Enter runs it: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al39 30.35s linear infinite">⏎</tspan></text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: l40 30.35s linear infinite" x="48.0" y="1207">services   Postgres :55433 · Redis :56380 · LiveKit :7880</text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l41 30.35s linear infinite" x="64.9" y="1231"><tspan class="ask">console sign-in, your email: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al41 30.35s linear infinite">you@acme.dev</tspan></text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l42 30.35s linear infinite" x="64.9" y="1255"><tspan class="ask">password: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al42 30.35s linear infinite">••••••••••</tspan></text>
+<text class="line" xml:space="preserve" style="opacity:0;animation: l43 30.35s linear infinite" x="64.9" y="1279"><tspan class="ask">again: </tspan><tspan class="cmd" style="fill-opacity:0;animation: al43 30.35s linear infinite">••••••••••</tspan></text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: l44 30.35s linear infinite" x="48.0" y="1303">signed in  this machine: the pinecall CLI here needs no login</text>
+<text class="line ok" xml:space="preserve" style="opacity:0;animation: l45 30.35s linear infinite" x="48.0" y="1327">ready      console http://127.0.0.1:8080/sandbox/</text>
+<text class="line note" xml:space="preserve" style="opacity:0;animation: l46 30.35s linear infinite" x="48.0" y="1351">gateway and a sandbox worker running; Ctrl-C stops them</text>
+</g></g>
+<g clip-path="url(#term)">
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t1 30.35s linear infinite" x="64.9" y="271">judge — who judges a finished call   [the thinking's:</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t2 30.35s linear infinite" x="64.9" y="295">anthropic]: ⏎</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t4 30.35s linear infinite" x="64.9" y="343">caller — who plays the simulated caller   [the thinking's:</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t5 30.35s linear infinite" x="64.9" y="367">anthropic]: ⏎</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t7 30.35s linear infinite" x="64.9" y="415">the stack</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t8 30.35s linear infinite" x="81.7" y="439">ears local · turn smart-turn · thinking anthropic · voice</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t9 30.35s linear infinite" x="81.7" y="463">cartesia · judge anthropic · caller anthropic</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t10 30.35s linear infinite" x="64.9" y="487">Enter runs it: ⏎</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t11 30.35s linear infinite" x="48.0" y="511">services   Postgres :55433 · Redis :56380 · LiveKit :7880</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t12 30.35s linear infinite" x="64.9" y="535">console sign-in, your email: you@acme.dev</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t13 30.35s linear infinite" x="64.9" y="559">password: ••••••••••</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t14 30.35s linear infinite" x="64.9" y="583">again: ••••••••••</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: t15 30.35s linear infinite" x="48.0" y="607">signed in  this machine: the pinecall CLI here needs no login</text>
+<text class="line ok" xml:space="preserve" style="opacity:0;animation: t16 30.35s linear infinite" x="48.0" y="631">ready      console http://127.0.0.1:8080/sandbox/</text>
+<text class="line note" xml:space="preserve" style="opacity:0;animation: t17 30.35s linear infinite" x="48.0" y="655">gateway and a sandbox worker running; Ctrl-C stops them</text>
+</g>
+<line style="opacity:0;animation: split 30.35s linear infinite" x1="600.0" y1="229" x2="600.0" y2="678" stroke="#7ee787" stroke-opacity="0.55"/>
+<g style="opacity:0;animation: r0 30.35s linear infinite"><text class="line" x="622.0" y="247"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="639.0" y="247">npm i -g pinecall</text></g><g style="opacity:0;animation: cr0 30.35s linear infinite"><rect x="639.0" y="231" width="171" height="22" fill="#0b0f14"/><rect class="cursor" x="639.0" y="232" width="9" height="19"/></g>
+<g style="opacity:0;animation: r1 30.35s linear infinite"><text class="line" x="622.0" y="271"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="639.0" y="271">pinecall new acme --agent front-desk</text></g><g style="opacity:0;animation: cr1 30.35s linear infinite"><rect x="639.0" y="255" width="331" height="22" fill="#0b0f14"/><rect class="cursor" x="639.0" y="256" width="9" height="19"/></g>
+<text class="line out" xml:space="preserve" style="opacity:0;animation: r2 30.35s linear infinite" x="622.0" y="295">▸ acme · a TypeScript project · agents/front-desk/</text>
+<text class="line dim" xml:space="preserve" style="opacity:0;animation: r3 30.35s linear infinite" x="638.9" y="319">runs in default at http://127.0.0.1:8080 (pinecall.json)</text>
+<g style="opacity:0;animation: r4 30.35s linear infinite"><text class="line" x="622.0" y="343"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="639.0" y="343">cd acme &amp;&amp; npm install</text></g><g style="opacity:0;animation: cr4 30.35s linear infinite"><rect x="639.0" y="327" width="213" height="22" fill="#0b0f14"/><rect class="cursor" x="639.0" y="328" width="9" height="19"/></g>
+<g style="opacity:0;animation: r5 30.35s linear infinite"><text class="line" x="622.0" y="367"><tspan class="dollar">$</tspan></text><text class="line cmd" xml:space="preserve" x="639.0" y="367">pinecall start</text></g><g style="opacity:0;animation: cr5 30.35s linear infinite"><rect x="639.0" y="351" width="146" height="22" fill="#0b0f14"/><rect class="cursor" x="639.0" y="352" width="9" height="19"/></g>
+<text class="line ok" xml:space="preserve" style="opacity:0;animation: r6 30.35s linear infinite" x="622.0" y="391">front-desk · default · sandbox · connected to</text>
+<text class="line ok" xml:space="preserve" style="opacity:0;animation: r7 30.35s linear infinite" x="622.0" y="415">http://127.0.0.1:8080 · tools 4</text>
+</g>
+<rect x="0.5" y="0.5" width="1199" height="702" rx="14" fill="none" stroke="#30363d"/>
+</svg>
