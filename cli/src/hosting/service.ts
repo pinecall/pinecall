@@ -8,7 +8,7 @@ import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 import { projectFiles, tarball } from "../kit/tarball.js";
 import { agentFilesOf } from "../project/layout.js";
-import { languageOf } from "../project/language.js";
+import { languageOf, type Language } from "../project/language.js";
 
 export type { AppLogs, HostedApp, Release } from "../api/hosting.js";
 
@@ -20,12 +20,16 @@ export const FOLLOW_WITHIN_MS = 8 * 60 * 1000;
 export const LOGS_WITHIN_MS = 15_000;
 // Pinecall installs the project and serves the agent through the framework the project pinned.
 const SERVED_BY = ["@pinecall/agents"] as const;
+// The languages Pinecall installs: a TypeScript project with npm, a Python one with uv.
+const HOSTED: readonly Language[] = ["typescript", "python"];
 
 export const NOT_A_NAME = (name: string): string => `${name} is no name for an app: lower-case letters and digits joined by dashes — pass --name support`;
 export const NOTHING_TO_SEND = "nothing to send: this folder holds no file a release would carry";
 export const NOT_SERVABLE = (missing: readonly string[]): string =>
   `Pinecall serves this project through its own ${missing.join(" and ")}, and its package.json does not list ${missing.join(" or ")} in dependencies: npm i ${missing.join(" ")}`;
-export const NOT_HOSTED = (file: string): string => `Pinecall hosts TypeScript projects, and ${file} is not one: run \`pinecall start\` on a server of your own, with a server's token in PINECALL_KEY`;
+export const NOT_HOSTED = (file: string): string => `Pinecall hosts TypeScript and Python projects, and ${file} is in neither: run \`pinecall start\` on a server of your own, with a server's token in PINECALL_KEY`;
+export const ONE_LANGUAGE = (languages: readonly string[]): string => `this project's agents are in ${languages.join(" and ")}, and a release runs one language: deploy each from a project of its own`;
+export const NO_PYPROJECT = "Pinecall installs a Python project with uv, from the pyproject.toml at its root, and this folder has none: `pinecall new --python` writes one";
 
 /** A release sent: the app, its number, its size and hash. */
 export interface Sent {
@@ -66,14 +70,22 @@ export async function listReleases(ctx: Context, name: string): Promise<api.Rele
 
 /**
  * This folder uploaded as the app's next release: every file its .gitignore files leave in, never
- * node_modules, .git, dist or any .env. Refused before anything is sent when the project is not
- * TypeScript, does not depend on the framework, or holds nothing to send.
+ * node_modules, .venv, .git, dist or any .env. Refused before anything is sent when its agents are
+ * in a language Pinecall does not install or in two, when Pinecall could not install it, or when it
+ * holds nothing to send.
  */
 export async function uploadRelease(ctx: Context, name: string, note: string): Promise<Sent> {
-  const foreign = agentFilesOf(ctx.cwd).find((file) => languageOf(file) !== "typescript");
+  const agents = agentFilesOf(ctx.cwd);
+  const foreign = agents.find((file) => !HOSTED.includes(languageOf(file)));
   if (foreign !== undefined) throw new UsageError(NOT_HOSTED(relative(ctx.cwd, foreign)));
-  const missing = notDependedOn(ctx.cwd);
-  if (missing.length > 0) throw new UsageError(NOT_SERVABLE(missing));
+  const languages = [...new Set(agents.map(languageOf))];
+  if (languages.length > 1) throw new UsageError(ONE_LANGUAGE(languages));
+  if (languages[0] === "python") {
+    if (!existsSync(join(ctx.cwd, "pyproject.toml"))) throw new UsageError(NO_PYPROJECT);
+  } else {
+    const missing = notDependedOn(ctx.cwd);
+    if (missing.length > 0) throw new UsageError(NOT_SERVABLE(missing));
+  }
   const files = projectFiles(ctx.cwd);
   if (files.length === 0) throw new UsageError(NOTHING_TO_SEND);
   const sent = await api.uploadRelease(ctx.gateway(), name, tarball(ctx.cwd, files), note);

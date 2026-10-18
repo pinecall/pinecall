@@ -24,6 +24,7 @@ made by hand and nothing is built on a laptop.
 | `images/pinecall/` | the runtime's image: one for every process, each a `pinecall-runtime` verb (`make image`) |
 | `images/postgres/` | the cluster's Postgres: CloudNativePG's operand image with pg_textsearch on it |
 | `images/suite/` | every suite, run as a Job inside a cluster (`make suite`) |
+| `images/app/` | a hosted app's pod: Node, uv and CPython 3.13, so a TypeScript or a Python project installs and runs (`charts/hosting`'s `appImage`) |
 | `images/cloudbuild.yaml` | how an image is built: by Cloud Build, as the builds' own identity |
 | `charts/postgres/` | the cluster's Postgres under CloudNativePG: its WAL to a bucket as it is written and a base backup each night (the Barman Cloud plugin), 35 days kept |
 | `manifests/suite.yaml` | the suites' Job, with a Redis made for the run |
@@ -204,6 +205,16 @@ The two runner keys are minted by the platform and put once, piped, never printe
 $ kubectl --context <the box's> exec deploy/pinecall-gateway -- pinecall-runtime keys runner production \
     | gcloud secrets versions add pinecall-<env>-runner-key-production --data-file=-
 $ make hosting ENV=<env> TAG=<commit>       # the runners, the namespace and its fence
+```
+
+An app's pod runs `appImage`. Node's own image installs a TypeScript project; a Python project is
+installed with uv onto the CPython 3.13 of `images/app`, built once into the registry and named in
+`$OPS/values/hosting-<env>.yaml` — on Node's image a Python release fails its install and says so:
+
+```console
+$ gcloud builds submit infra/images/app --config infra/images/cloudbuild.yaml \
+    --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
+    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/app:node24-py3.13"
 ```
 
 ## From a deployment (history)

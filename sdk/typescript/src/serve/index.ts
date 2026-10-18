@@ -14,7 +14,7 @@ import { start } from "./start.js";
 const USAGE = `usage: serve start --file <agent.tsx> --slug <slug> [--file … --slug …] [--console] [--events]
        serve prompt --file <agent.tsx> --slug <slug> [--state field=json]… [--channel name] [--medium how] [--show-machine]
 
-  Reads PINECALL_URL, PINECALL_KEY and PINECALL_ENV from its environment and nothing else.
+  Reads PINECALL_URL, PINECALL_KEY, PINECALL_ENV and PINECALL_HOST from its environment and nothing else.
   start leaves on SIGINT, SIGTERM or the end of its stdin, draining first; a second signal leaves now.`;
 
 /** Run one verb; 2 when it cannot run at all, with the sentence on `err` — a flag it does not have,

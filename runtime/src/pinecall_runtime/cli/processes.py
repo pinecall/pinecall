@@ -1,7 +1,12 @@
 """The processes: the gateway, a worker of the fleet, the fleet's overflow, the runner of hosted apps."""
 
+import os
+import signal
+import subprocess
+import sys
+import threading
 from types import FrameType
-from typing import override
+from typing import IO, override
 from urllib.parse import urlparse
 
 import typer
@@ -9,7 +14,7 @@ import uvicorn
 
 from pinecall_runtime import runner, worker
 from pinecall_runtime.app import announce_closing, app
-from pinecall_runtime.cli.command import OK, context_of, verb
+from pinecall_runtime.cli.command import FOUND_WRONG, OK, Context, context_of, verb
 from pinecall_runtime.config import Settings
 from pinecall_runtime.exceptions import ConfigurationError
 from pinecall_runtime.providers import service as providers
@@ -19,6 +24,10 @@ NOT_LOOPBACK = (
     "PINECALL_GATEWAY_URL binds {host}: a box's gateway listens on loopback, behind its proxy "
     "(a pod's says PINECALL_GATEWAY_LISTEN)"
 )
+
+RUNNING = "{names} running; Ctrl-C stops them, the services stay (local down)"
+# The runner of what `pinecall deploy` sends a runtime of one's own.
+RUNNER = ["runner", "start"]
 
 # Google's load balancer keeps an idle connection to a gateway 600 s and sends the next request
 # down it: the gateway must keep it longer (Google says 620 s), or a request meets a closed socket
@@ -95,3 +104,44 @@ def listening(settings: Settings) -> tuple[str, int]:
     if named not in LOOPBACK:
         raise ConfigurationError(NOT_LOOPBACK.format(host=named))
     return named, bound.port or 8080
+
+
+# Processes of this same package, their lines told apart by a prefix, stopped together.
+def run_together(context: Context, values: dict[str, str], *verbs: list[str]) -> int:
+    """Run the verbs as child processes on the local settings until Ctrl-C; 1 when one failed."""
+    children = [
+        subprocess.Popen(
+            [sys.executable, "-m", "pinecall_runtime.cli", *verb],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env={**os.environ, **values},
+        )
+        for verb in verbs
+    ]
+    readers = [
+        threading.Thread(target=_relay, args=(child.stdout, verb[0]), daemon=True)
+        for child, verb in zip(children, verbs, strict=True)
+    ]
+    for reader in readers:
+        reader.start()
+    context.out.line(RUNNING.format(names=" · ".join(verb[0] for verb in verbs)))
+
+    def stop(_signal: int, _frame: object) -> None:
+        for child in children:
+            child.terminate()
+
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+    codes = [child.wait() for child in children]
+    for reader in readers:
+        reader.join(timeout=1)
+    return OK if all(code in (0, -signal.SIGTERM) for code in codes) else FOUND_WRONG
+
+
+def _relay(out: IO[str] | None, prefix: str) -> None:
+    if out is None:
+        return
+    for line in out:
+        sys.stdout.write(f"{prefix:<8}| {line}")
+        sys.stdout.flush()

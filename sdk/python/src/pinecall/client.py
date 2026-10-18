@@ -81,6 +81,7 @@ class Client:
         self.sdk = f"pinecall-python/{__version__}"
         """How this app is named in the org's list of processes."""
         self.host = socket.gethostname()
+        """The machine it says it runs on: a hosted app's is the name its runner gave it."""
         self._signing = (api_key, env)
         self._agents: dict[str, AgentSocket] = {}
         self._entries: list[Callable[[Entry], None]] = []

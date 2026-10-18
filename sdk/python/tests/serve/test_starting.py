@@ -3,6 +3,7 @@
 import asyncio
 import io
 import json
+import socket
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,13 @@ def test_the_door_is_the_environments_alone_and_a_world_it_does_not_know_is_refu
         client_from({"PINECALL_URL": "https://x", "PINECALL_KEY": "k"}, prod=True).env
         == "production"
     )
+
+
+def test_the_machine_it_registers_as_is_the_host_a_runner_named_else_this_one() -> None:
+    door = {"PINECALL_URL": "https://x", "PINECALL_KEY": "k"}
+    named = client_from({**door, "PINECALL_HOST": "support-r3-0a1b2c3d"}, prod=False)
+    assert named.host == "support-r3-0a1b2c3d"
+    assert client_from(door, prod=False).host == socket.gethostname()
 
 
 async def test_the_first_line_is_the_registration_and_a_signal_drains_then_leaves(

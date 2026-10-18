@@ -4,7 +4,7 @@ import hashlib
 import re
 import ssl
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +13,14 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from pinecall_runtime.exceptions import UpstreamError
+from pinecall_runtime.hosting.service.hosts import (
+    DEPENDENCIES,
+    DRAIN_S,
+    INSTALL_WITHIN_S,
+    Container,
+    Launch,
+    cli_installed,
+)
 from pinecall_runtime.kit.text import Json, JsonObject
 
 # Every pod the runner starts carries these, so a runner that restarts finds what is its own. Two
@@ -27,14 +35,11 @@ MEMORY = "256Mi"
 CPU = "500m"
 # The install runs the org's own scripts: the same sandbox, more room, and a clock.
 INSTALL_MEMORY = "1Gi"
-INSTALL_WITHIN_S = 300
 # The one writable place an app has besides its install: TMPDIR points here, a tmpfs.
 SCRATCH = "/scratch"
 SCRATCH_SIZE = "64Mi"
 # Public resolvers: nothing of the cluster's is an app's to ask.
 RESOLVERS = ("1.1.1.1", "8.8.8.8")
-# What a drain needs: ten seconds for the gateway, thirty for the slowest tool.
-DRAIN_S = 45
 A_VERB_WITHIN_S = 30.0
 # Where a container finds what it is started with: a secret the runner wrote, mounted read-only.
 ENVIRONMENT = "/run/pinecall"
@@ -48,29 +53,19 @@ NOT_THERE = 404
 ALREADY_THERE = 409
 REFUSED = "the cluster {verb}: {status} {detail}"
 NO_ANSWER = "the cluster {verb}: no answer in {seconds:.0f}s"
-# The `pinecall` a hosted project is started with: the platform's own, never a dependency of the
-# project. A range, so a CLI release reaches hosted projects on their next start with no runtime
-# release; a CLI that breaks its contract bumps the minor, and this line with it.
-CLI_VERSION = "^0.11.0"
-# Where that CLI is installed, on a volume of its own: the project's folder holds the project.
+# Where the platform's `pinecall` is installed, on a volume of its own: the project's folder holds the project.
 CLI_HOME = "/opt/pinecall"
 # Where a pod's service account finds what it calls the cluster's API with.
 SERVICE_ACCOUNT = Path("/var/run/secrets/kubernetes.io/serviceaccount")
-# What a pod whose process is over is in; a pod still installing or starting has not exited.
-ENDED = frozenset({"Succeeded", "Failed"})
 A_VARIABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-# The release's sources, fetched from this env's runner by their digest, then its dependencies
-# installed the way its lockfile says (npm resolves what package.json names when there is none),
+# The release's sources, fetched from this env's runner by their digest, then its dependencies (into
+# /app/.venv for a Python one, on the app image's interpreter, the same path in both containers),
 # then the platform's own CLI beside them.
 INSTALL = (
     "node -e 'fetch(process.argv[1]).then(async (r) => { if (!r.ok) throw new Error(r.status);"
     ' process.stdout.write(Buffer.from(await r.arrayBuffer())); })\' "$PINECALL_SOURCE"'
-    " | tar -xz -C /app && cd /app && "
-    "if [ -f pnpm-lock.yaml ]; then corepack pnpm install --frozen-lockfile --prod; "
-    "elif [ -f package-lock.json ]; then npm ci --omit=dev --no-audit --no-fund; "
-    "else npm install --omit=dev --no-audit --no-fund; fi"
-    f" && npm install -g --prefix {CLI_HOME} --no-audit --no-fund pinecall@{CLI_VERSION}"
+    f" | tar -xz -C /app && cd /app && {DEPENDENCIES} && {cli_installed(CLI_HOME)}"
 )
 # The process's own shell reads its environment, then becomes the command.
 READ_THEN_RUN = f'. {ENVIRONMENT}/env && exec "$@"'
@@ -85,34 +80,6 @@ class Engine:
     namespace: str
     # This runner's own address as an app's pod reaches it: `<url>/sources/<sha256>`.
     sources_url: str
-
-
-@dataclass(frozen=True, slots=True)
-class Container:
-    """A pod the runner started: its name (the host), its app and release, how it is."""
-
-    name: str
-    app: str
-    release: int
-    state: str
-    started_at: float
-
-    @property
-    def has_exited(self) -> bool:
-        """Whether its process ended; one still installing or starting has not."""
-        return self.state in ENDED
-
-
-@dataclass(frozen=True, slots=True)
-class Launch:
-    """One host to start: whose, which release and its digest, what it starts with."""
-
-    env: str
-    app: str
-    host: str
-    release: int
-    sha256: str
-    command: Sequence[str]
 
 
 class _Read(BaseModel):
@@ -173,12 +140,13 @@ class Cluster:
     engine: Engine
     token: Path = SERVICE_ACCOUNT / "token"
 
-    async def pods(self, env: str) -> list[Container]:
+    async def running(self, env: str) -> list[Container]:
         """Every pod this env's runner started, running or not; never another env's."""
         selector = {"labelSelector": f"{APP_LABEL},{ENV_LABEL}={env}"}
         listing = await self._required(_Request("list", "GET", self._at("pods"), params=selector))
         return containers_in(listing.json().get("items", []))
 
+    # The pod fetches the sources from the runner itself, by their digest: they are not sent from here.
     async def start(self, launch: Launch, environment: Mapping[str, str]) -> None:
         """The host's environment as a secret, then its pod: installing first, then running."""
         secret = environment_secret(launch.host, environment)
@@ -206,6 +174,9 @@ class Cluster:
             if answer.is_success and answer.text.strip():
                 return answer.text
         return ""
+
+    async def close(self) -> None:
+        """Nothing to do: the pods go on without the runner, and the next one finds them by label."""
 
     async def _required(self, request: _Request) -> httpx.Response:
         answer = await self._request(request)
@@ -324,7 +295,7 @@ def pod(engine: Engine, launch: Launch) -> JsonObject:
                 {
                     "name": "app",
                     "image": engine.image,
-                    "command": ["sh", "-c", READ_THEN_RUN, "sh", *launch.command],
+                    "command": ["sh", "-c", READ_THEN_RUN, "sh", f"{CLI_HOME}/bin/pinecall", *launch.arguments],
                     "workingDir": "/app",
                     "env": [
                         {"name": "HOME", "value": SCRATCH},

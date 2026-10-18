@@ -266,6 +266,7 @@ module Pinecall
     end
 
     attr_reader env: String?
+    attr_accessor host: String
     def initialize: (url: String, api_key: String, ?env: String?, ?ping_every: Numeric, ?backoff: Hash[Symbol, Numeric]) -> void
     def drain: (?answer_s: Numeric, ?tools_s: Numeric) -> Drained
     def on_entries: () { (untyped) -> void } -> ^() -> void

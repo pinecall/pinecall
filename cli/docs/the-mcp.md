@@ -164,7 +164,7 @@ Every parameter, and a real call of each: [Going live, and the docs](mcp/going-l
 
 | tool | actions | what it does |
 |---|---|---|
-| `deploy` | `deploy` · `wait` · `list` · `releases` · `logs` · `rollback` · `stop` · `start` | the project run on Pinecall: a release uploaded (what its `.gitignore` files leave in) and followed until live; TypeScript projects only |
+| `deploy` | `deploy` · `wait` · `list` · `releases` · `logs` · `rollback` · `stop` · `start` | the project run on Pinecall: a release uploaded (what its `.gitignore` files leave in) and followed until live; TypeScript and Python projects |
 | `docs_search` | — | the sections of docs.pinecall.io that answer a question, each with its address |
 | `get_doc` | — | one page of the docs whole, by its address or its path |
 

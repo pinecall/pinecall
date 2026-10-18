@@ -17,6 +17,7 @@ import { ONLY_THE_VIEW } from "../../src/serve/start.js";
 
 const KEY = "pk_test";
 const SLUG = "clinica-norte";
+const A_HOST = "support-r3-0a1b2c3d";
 const AGENT = fileURLToPath(new URL("./clinic/agents/clinica-norte/agent.tsx", import.meta.url));
 
 let gateway: FakeGateway | null = null;
@@ -55,8 +56,8 @@ async function until(found: () => boolean): Promise<void> {
 async function serving(...flags: string[]): Promise<{ io: ReturnType<typeof anIo>; running: Promise<number>; held: FakeGateway }> {
   const held = await FakeGateway.start({ apiKey: KEY, holdsDrain: flags.includes("--holds-drain") });
   gateway = held;
-  const io = anIo({ PINECALL_URL: held.url, PINECALL_KEY: KEY });
-  const running = main(["start", "--file", AGENT, "--slug", SLUG, ...flags.filter((flag) => flag !== "--holds-drain")], io);
+  const io = anIo({ PINECALL_URL: held.url, PINECALL_KEY: KEY, ...(flags.includes("--as-a-host") ? { PINECALL_HOST: A_HOST } : {}) });
+  const running = main(["start", "--file", AGENT, "--slug", SLUG, ...flags.filter((flag) => flag !== "--holds-drain" && flag !== "--as-a-host")], io);
   await until(() => held.commandsOf("agent.configure").length > 0);
   return { io, running, held };
 }
@@ -68,6 +69,13 @@ describe("the wire on stdout", () => {
     expect(JSON.parse(first!)).toEqual({ type: "agent.registered", agent: SLUG, call: null, data: expect.objectContaining({ app: "app_1" }) });
     (io.input as PassThrough).end();
     expect(await running).toBe(0);
+  });
+
+  it("says it runs on the host a hosted app's runner named", async () => {
+    const { io, running, held } = await serving("--as-a-host");
+    expect(held.commandsOf("agent.register")[0]?.data["host"]).toBe(A_HOST);
+    (io.input as PassThrough).end();
+    await running;
   });
 
   it("registers under the slug it was given, and a console's process takes no unclaimed call", async () => {

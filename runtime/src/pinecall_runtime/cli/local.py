@@ -1,27 +1,25 @@
-"""`local`: the runtime whole on one machine: the services in Docker, the schema, the gateway and a worker."""
+"""`local`: the runtime whole on one machine: the services in Docker, the schema, the gateway, a worker, a runner."""
 
 import asyncio
 import base64
 import os
 import secrets
-import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 from collections.abc import Sequence
 from importlib.resources import files
 from pathlib import Path
 from shutil import which
-from typing import IO, Annotated
+from typing import Annotated
 
 import typer
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys
-from pinecall_runtime.cli import orgs
-from pinecall_runtime.cli.command import FOUND_WRONG, OK, Context, context_of, verb
+from pinecall_runtime.cli import orgs, processes
+from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.config import Settings
 from pinecall_runtime.enums import Env, KeyScope, Role
 from pinecall_runtime.exceptions import ConfigurationError, UpstreamError
@@ -61,6 +59,11 @@ NO_DOCKER = (
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 NOT_ANSWERING = "{service} did not answer on 127.0.0.1:{port} within {seconds:.0f} s: `docker compose ps`"
 
+# The box's own keys of the sandbox, each drawn once into the env file: its fleet's, and its runner's.
+BOX_KEYS = (
+    ("PINECALL_WORKER_KEY", KeyScope.fleet, "the sandbox fleet"),
+    ("PINECALL_RUNNER_KEY", KeyScope.runner, "the sandbox runner"),
+)
 # The settings the gateway and the worker run on here: the services on loopback, a dev LiveKit pair, secrets drawn once.
 SETTINGS = """DATABASE_URL=postgresql://pinecall:pinecall@127.0.0.1:55433/pinecall
 PINECALL_REDIS_URL=redis://127.0.0.1:56380/0
@@ -83,7 +86,6 @@ FIRST = (
     "  the first time, in another terminal:\n"
     "    pinecall-runtime local init --email you@example.com --person 'Your Name'"
 )
-RUNNING = "gateway and a sandbox worker running; Ctrl-C stops them, the services stay (local down)"
 DOWN = "local: the services stopped; the database and {env} are kept"
 WIPED = "local: the services stopped and the database deleted; {env} is kept"
 
@@ -121,7 +123,7 @@ async def local_up(
         context.out.line(FIRST)
     if services_only:
         return OK
-    return run_both(context, values, ["gateway"], ["worker", "start"])
+    return processes.run_together(context, values, ["gateway"], ["worker", "start"], processes.RUNNER)
 
 
 def services_up(compose: Path, services: Sequence[str]) -> None:
@@ -140,7 +142,7 @@ def services_up(compose: Path, services: Sequence[str]) -> None:
 
 
 async def prepare_database(values: dict[str, str], env: Path) -> platform.History:
-    """The schema brought to this release, and the sandbox fleet's key drawn once into the env file."""
+    """The schema brought to this release, and the sandbox's fleet and runner keys drawn once into the env file."""
     # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local settings
     # become the process's here, as they are the children's (a clean machine reached for localhost:5432, 2026-10-17).
     os.environ.update(values)
@@ -148,14 +150,16 @@ async def prepare_database(values: dict[str, str], env: Path) -> platform.Histor
     try:
         history = await platform.apply_history(engine)
         await asyncio.to_thread(platform.upgrade_schema, tracked=history.tracked)
-        if "PINECALL_WORKER_KEY" not in values:
-            issue = keys.Issue(
-                org=DEFAULT_ORG, env=Env.sandbox, scopes=frozenset({KeyScope.fleet}), label="the sandbox fleet"
-            )
+        for variable, scope, label in BOX_KEYS:
+            if variable in values:
+                continue
+            issue = keys.Issue(org=DEFAULT_ORG, env=Env.sandbox, scopes=frozenset({scope}), label=label)
             async with session_maker(engine).begin() as session:
-                _, values["PINECALL_WORKER_KEY"] = await keys.issue_key(session, issue)
+                _, values[variable] = await keys.issue_key(session, issue)
             with env.open("a", encoding="utf-8") as out:
-                out.write(f"PINECALL_WORKER_KEY={values['PINECALL_WORKER_KEY']}\n")
+                out.write(f"{variable}={values[variable]}\n")
+        # A release deployed here runs as a process of this machine: the code is its owner's own.
+        values.setdefault("PINECALL_RUNNER_ENGINE", "processes")
     finally:
         await engine.dispose()
     return history
@@ -253,48 +257,7 @@ def settings_of(values: dict[str, str]) -> Settings:
     return Settings.model_validate({**variables, "variables": variables})
 
 
-# Two processes of this same package, their lines told apart by a prefix, stopped together.
-def run_both(context: Context, values: dict[str, str], *verbs: list[str]) -> int:
-    """Run the verbs as child processes on the local settings until Ctrl-C; 1 when one failed."""
-    children = [
-        subprocess.Popen(
-            [sys.executable, "-m", "pinecall_runtime.cli", *verb],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env={**os.environ, **values},
-        )
-        for verb in verbs
-    ]
-    readers = [
-        threading.Thread(target=_relay, args=(child.stdout, verb[0]), daemon=True)
-        for child, verb in zip(children, verbs, strict=True)
-    ]
-    for reader in readers:
-        reader.start()
-    context.out.line(RUNNING)
-
-    def stop(_signal: int, _frame: object) -> None:
-        for child in children:
-            child.terminate()
-
-    signal.signal(signal.SIGINT, stop)
-    signal.signal(signal.SIGTERM, stop)
-    codes = [child.wait() for child in children]
-    for reader in readers:
-        reader.join(timeout=1)
-    return OK if all(code in (0, -signal.SIGTERM) for code in codes) else FOUND_WRONG
-
-
 def docker_or_refuse() -> None:
     """Docker on PATH, or the sentence that says what to install."""
     if which("docker") is None:
         raise ConfigurationError(NO_DOCKER)
-
-
-def _relay(out: IO[str] | None, prefix: str) -> None:
-    if out is None:
-        return
-    for line in out:
-        sys.stdout.write(f"{prefix:<8}| {line}")
-        sys.stdout.flush()

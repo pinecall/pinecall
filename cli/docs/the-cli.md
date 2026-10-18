@@ -2143,13 +2143,21 @@ is [deploying.md](deploying.md)**; what follows is the verb's reference. What it
 
 - **The project, packed.** Every file the project's `.gitignore` files leave in — each read where it
   sits, with no git asked, so a folder that is no checkout packs the same — and never
-  `node_modules`, `.git`, `dist` or any `.env`: the key in `.env` is yours, and the app gets one of
-  its own. 10 MB packed at most, 100 MB unpacked, 5 000 files; a link or a path out of the folder is
-  refused.
-- **A lockfile, and `@pinecall/agents` in the dependencies.** The platform installs from
+  `node_modules`, `.venv`, `__pycache__`, `.git`, `dist` or any `.env`: the key in `.env` is yours,
+  and the app gets one of its own. 10 MB packed at most, 100 MB unpacked, 5 000 files; a link or a
+  path out of the folder is refused.
+- **Agents in TypeScript or in Python, one of the two.** A Ruby agent, or a project with agents in
+  two languages, is refused before anything is sent.
+- **TypeScript: a lockfile, and `@pinecall/agents` in the dependencies.** The platform installs from
   `pnpm-lock.yaml` (`pnpm install --frozen-lockfile --prod`), else `package-lock.json` (`npm ci`),
-  else `package.json`, in five minutes at most; the version of `@pinecall/agents` the lockfile pins
-  is the one that serves the agent, started by the platform's own `pinecall`.
+  else `package.json`; the version of `@pinecall/agents` the lockfile pins is the one that serves
+  the agent.
+- **Python: a `pyproject.toml`, and `pinecall` in its dependencies.** The platform installs it with
+  uv on CPython 3.13 (`uv sync --frozen --no-dev` from `uv.lock`, else `uv sync --no-dev`), as
+  `pinecall new --python` lays it out; the version of `pinecall` it resolves is the one that serves
+  the agent.
+
+Either install has five minutes at most, and the agent is started by the platform's own `pinecall`.
 - **The app's name**: this folder's name, or `--name`. Lower-case words and dashes. The first
   upload makes the app — counted against the org's `hosted_apps` quota in that environment, and given a
   server's token of its own (`hosted app <name>` in the console's API keys); every later upload is its

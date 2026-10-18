@@ -13,7 +13,6 @@ from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.enums import Env
-from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.hosting import schemas, service
 from pinecall_runtime.hosting.auth import AppKey, RunnerKey, TheOperator
 from pinecall_runtime.kit import sse
@@ -27,7 +26,6 @@ router = APIRouter()
 
 GZIP = "application/gzip"
 ROLLED_BACK = "rollback to release {release}"
-NO_NAME = "this box has no PINECALL_DOMAIN: a hosted app has no gateway address to dial"
 RETRY_MS = 1000
 
 
@@ -243,19 +241,19 @@ async def runner_source(org: str, name: str, release: int, actor: RunnerKey, ses
     return Response(source.data, media_type=GZIP)
 
 
-# The box's own names win over an org's secret of the same name: the endpoint refuses those names.
+# The box's own names win over an org's secret of the same name: the endpoint refuses those names. A
+# box with no name says no address, and its runner hands its apps the one it dials itself.
 @router.get("/v1/runner/apps/{org}/{name}/environment")
 async def runner_environment(
     org: str, name: str, actor: RunnerKey, handles: TheHandles, session: Session
 ) -> schemas.AppEnvironment:
     """What the app's process is started with: the org's secrets, its token, the gateway."""
     address = handles.settings.address
-    if address is None:
-        raise ServiceUnavailable(NO_NAME)
     with box_wide():
         secrets = await service.environment_of(session, handles.vault, org, actor.env)
         token = await service.key_of(session, handles.vault, service.App(org=org, env=actor.env, name=name))
-    return schemas.AppEnvironment(environment={**secrets, "PINECALL_KEY": token, "PINECALL_URL": address})
+    named = {} if address is None else {"PINECALL_URL": address}
+    return schemas.AppEnvironment(environment={**secrets, "PINECALL_KEY": token, **named})
 
 
 async def _secrets(session: Session, actor: Actor) -> schemas.SecretList:

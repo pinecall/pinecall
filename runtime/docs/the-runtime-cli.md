@@ -23,9 +23,11 @@ that is not loopback is refused in one sentence (on Linux, `setup` sets `PINECAL
 every interface, so the LiveKit container's webhooks reach it; the machine's firewall is the fence). `worker start` is a worker of the fleet
 `PINECALL_FLEET` names, until told to stop or cordoned; `worker overflow` the one that answers when
 the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
-opens running, one gVisor pod each: the runner is itself a pod of the hosting cluster
+opens running. On the hosting cluster it runs one gVisor pod each and is itself a pod there
 (`charts/hosting`), outside the runtime's own cluster ([../infra/README.md](../../infra/README.md),
-"Hosting"). Every
+"Hosting"); with `PINECALL_RUNNER_ENGINE=processes`, as `local up` runs it, each release is a
+process of this machine under `PINECALL_RUNNER_HOME`, installed with the machine's own npm and uv
+and fenced by nothing, since the code there is the machine owner's, and its apps stop with it. Every
 variable they read is
 [the-environment.md](the-environment.md).
 
@@ -43,7 +45,7 @@ This machine's runtime, from nothing to a class that answers, in one verb; run o
 again. It is `local up` and every decision a first run asks, in order, each printed as one line
 and skipped when already done: Docker found (else the sentence that says what to install), the
 services up and the schema at this release, the console's person, this machine's key, the
-models, and the gateway and a worker running as `local up` runs them. `pinecall setup`, the CLI's,
+models, and the gateway, a worker and the runner running as `local up` runs them. `pinecall setup`, the CLI's,
 asks the same with a screen and runs this with its answers.
 
 **The person.** Every run makes sure somebody signs in to the console: the address `--email`
@@ -96,8 +98,8 @@ screen — `pinecall setup`, the CLI's — can show the whole list with the reas
 
 **`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
 nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,
-a spoken call does not. `--services-only` stops before running the two processes, as `local up`'s
-does.
+a spoken call does not, and no worker runs. `--services-only` stops before running the
+processes, as `local up`'s does.
 
 ## `local`
 
@@ -113,11 +115,14 @@ from anywhere. `up` writes the Docker Compose files the package ships into `--di
 (`~/.pinecall-runtime/local` unless named), brings up Postgres (17, with pgvector and
 pg_textsearch, built once), Redis and LiveKit on loopback ports of their own, migrates the schema,
 draws the machine's secrets once into `<dir>/env` (0600: the vault key, the ops key, the token
-key, the sandbox fleet's key), then runs the gateway on `http://127.0.0.1:8080` — the console
-included, the sandbox at `/sandbox/` — and a worker of the sandbox fleet, their lines prefixed
-`gateway |` and `worker  |`. Ctrl-C stops the two; the services stay. `--services-only` stops after
-the schema, for a checkout that runs the two from its sources (`make local-gateway`,
-`make local-worker`). Run `up` again any time: it keeps the secrets and the database.
+key, the sandbox fleet's and the sandbox runner's keys), then runs the gateway on
+`http://127.0.0.1:8080` — the console included, the sandbox at `/sandbox/` — a worker of the
+sandbox fleet, and the sandbox's runner, which runs what `pinecall deploy` sends here as processes
+of this machine (`runner start` above); their lines are prefixed `gateway |`, `worker  |` and
+`runner  |`. Ctrl-C stops the three, and the deployed apps with them; the services stay.
+`--services-only` stops after the schema, for a checkout that runs the processes from its sources
+(`make local-gateway`, `make local-worker`). Run `up` again any time: it keeps the secrets and the
+database.
 
 `down` stops the services and keeps the database; `--volumes` deletes it. `init` is `init` below,
 run on the local settings, so the first org and person need no shell line. `env` prints that

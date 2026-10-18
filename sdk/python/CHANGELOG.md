@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's
+  hostname (`Client.host`). A hosted app's runner names each host, and the gateway knows a release
+  is serving by it, on a machine that runs several.
+
 ## 0.11.4 — Released with every other package (2026-10-17)
 
 - Nothing of the Python SDK changed: published at 0.11.4 with every other package.

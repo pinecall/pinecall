@@ -115,7 +115,10 @@ module Pinecall
       world = nil if world.to_s.empty?
       raise CannotServe, "PINECALL_ENV is sandbox or production, not #{world}" unless world.nil? || WORLDS.include?(world)
 
-      Client.new(url:, api_key: key, env: world)
+      client = Client.new(url:, api_key: key, env: world)
+      # The name a hosted app's runner gave it: the gateway knows the release by it.
+      client.host = env["PINECALL_HOST"] unless env["PINECALL_HOST"].to_s.empty?
+      client
     end
 
     # Listening starts before connect, so `agent.registered` is the first line of a pipe. A pipe's

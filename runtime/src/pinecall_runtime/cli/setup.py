@@ -13,7 +13,7 @@ import typer
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys, members, orgs
-from pinecall_runtime.cli import local
+from pinecall_runtime.cli import local, processes
 from pinecall_runtime.cli import orgs as orgs_cli
 from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli import setup_servers as servers
@@ -142,9 +142,9 @@ async def setup(
     if services_only:
         return OK
     return (
-        local.run_both(context, values, ["gateway"])
+        processes.run_together(context, values, ["gateway"], processes.RUNNER)
         if chat_only
-        else local.run_both(context, values, ["gateway"], ["worker", "start"])
+        else processes.run_together(context, values, ["gateway"], ["worker", "start"], processes.RUNNER)
     )
 
 

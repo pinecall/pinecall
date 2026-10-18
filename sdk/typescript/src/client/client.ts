@@ -56,6 +56,8 @@ export interface PinecallOptions {
   env?: World;
   /** How this app names itself in the org's list of processes; `pinecall/<version>` otherwise. */
   sdk?: string;
+  /** The machine it says it runs on; this one's hostname otherwise. A hosted app's is its host's name. */
+  host?: string;
   pingMs?: number;
   backoff?: Partial<Backoff>;
 }
@@ -68,8 +70,8 @@ export interface PinecallOptions {
  */
 export class Pinecall implements AgentGateway {
   readonly sdk: string;
-  /** This machine's hostname, shown by the gateway next to the app. */
-  readonly host = hostname();
+  /** The machine it says it runs on, shown by the gateway next to the app. */
+  readonly host: string;
   /** The gateway this client talks to. */
   readonly url: string;
   /** The API key. Sent in a header, never in a URL. */
@@ -93,6 +95,7 @@ export class Pinecall implements AgentGateway {
     this.apiKey = apiKey;
     this.env = options.env;
     this.sdk = options.sdk ?? `pinecall/${version}`;
+    this.host = options.host ?? hostname();
     this.#listeners = new Listeners<Call | null>((error) => this.onError(error));
     const dial: ConnectionOptions = { url, apiKey, ...(options.env === undefined ? {} : { env: options.env }) };
     if (options.pingMs !== undefined) {

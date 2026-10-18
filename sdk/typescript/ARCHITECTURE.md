@@ -113,7 +113,7 @@ writes nowhere else and a test hands in its own.
 | file | what it is |
 |---|---|
 | `index.ts` | `main`: `start` or `prompt`, a refusal (`CannotServe`, a class's `DeclarationRefused`, a flag `parseArgs` refused) is its sentence and exit 2; the is-entry guard |
-| `start.ts` | `start --file <f> --slug <s> [--file --slug]… [--console] [--events]`: the door from `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` and nothing else; each class loaded and mounted under its slug (`--console`: `takesUnclaimed: false`); its socket answers `view.render` and refuses every other dev verb, which are the CLI's |
+| `start.ts` | `start --file <f> --slug <s> [--file --slug]… [--console] [--events]`: the door from `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` and nothing else, and `PINECALL_HOST` as the machine it registers as (a hosted app's host, which the gateway knows its release by); each class loaded and mounted under its slug (`--console`: `takesUnclaimed: false`); its socket answers `view.render` and refuses every other dev verb, which are the CLI's |
 | `prompt.ts` | `prompt --file <f> --slug <s> [--state field=json]… [--channel] [--medium] [--show-machine]`: the class opened in the state the pairs name, its prompt printed, and its machine under it when asked |
 | `load.ts` | a tenant's class loaded with tsx and handed its own source (`loadAgent`); `loadServed` refuses a class whose `static slug` is not the one it is served as; `instanceFor` is one instance with a line to answer on, for the pages that print a prompt |
 | `lines.ts` | `--events`: one line per wire entry, `{type, agent, call, data}` as the gateway wrote it, `agent.registered` first; without it a few lines for a person; `aLostSocket` |
@@ -409,7 +409,7 @@ reaches this package in two ways only: it imports `@pinecall/agents/client` and
 `@pinecall/agents/wire`, and it starts `@pinecall/agents/serve` in a child process, resolved from
 the tenant project's own `node_modules` — so the framework that serves an agent is the version the
 project pinned, not the CLI's. The child's contract is `src/serve/` (§2): its door from `PINECALL_URL`, `PINECALL_KEY` and
-`PINECALL_ENV`, `--events` on stdout, a drain when its stdin ends. Every verb is that package's
+`PINECALL_ENV`, the machine it registers as from `PINECALL_HOST`, `--events` on stdout, a drain when its stdin ends. Every verb is that package's
 `docs/the-cli.md`.
 
 ## 11. The page

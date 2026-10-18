@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A hosted app may be a Python project.** A release whose agents are `agents/*/agent.py` is
+  installed with uv into its own `.venv` (`uv.lock` when it has one) on the CPython of the app
+  image, and `pinecall start` runs it as it runs a TypeScript one. `infra/images/app` is that
+  image: Node 24, uv and CPython 3.13; on Node's own image a Python release fails its install and
+  says so.
+
+- **`pinecall deploy` to a runtime of your own, with no cluster.** `local up` (and `setup`) runs a
+  third process, the sandbox's runner, with `PINECALL_RUNNER_ENGINE=processes`: each release is a
+  process of the machine under `PINECALL_RUNNER_HOME`, installed with its own npm and uv, fenced by
+  nothing (the code is the machine owner's), stopped with the runner. Its key is drawn once into
+  the env file beside the fleet's. Every host is started with `PINECALL_HOST`, its name, which the
+  SDKs' serve entries register as, so the gateway knows a release is serving on a machine that runs
+  several; and `GET /v1/runner/apps/{org}/{name}/environment` on a box with no name leaves
+  `PINECALL_URL` out instead of answering `503`, and the runner hands its apps the address it dials.
+
 - **A command the session refuses no longer cuts the call off from its app.** A `room.send` on a
   written call, or any command the session refuses, that reached the gateway serving the call through
   another gateway (the app's socket on one, the call on the other) raised out of the call's command

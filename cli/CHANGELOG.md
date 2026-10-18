@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall deploy` runs a Python project.** A project whose agents are `agent.py` is uploaded with
+  its `pyproject.toml` and Pinecall installs it with uv on CPython 3.13 (`uv.lock` when it has one);
+  `.venv` and `__pycache__` never travel. A project with agents in two languages, or a Python one
+  with no `pyproject.toml`, is refused before anything is sent. Ruby is still run on your own server.
+
 - The agent `pinecall new` writes takes no message on a blank or a guess: `takeMessage` refuses an `about` (or a name) that says nothing — `not specified`, `unknown`, `n/a` — and tells the model to ask for it; once the message is taken it still answers what the documents answer, and says goodbye when the caller wants nothing more instead of repeating it. Its ring-0 tests say so in the three languages.
 
 - **MCP: a held agent whose thread dies says so.** A tool or a hook throwing where nothing caught it ended the agent's thread, and `status` kept answering `held: thread` while every `chat` and `test` waited out its timeout. The thread's end is now the sentence `status` leads with and every tool refuses with — its exit code and the last lines it printed — until a save loads a version that lives.

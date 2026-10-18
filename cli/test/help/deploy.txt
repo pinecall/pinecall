@@ -30,7 +30,7 @@ answering until the new one's agents register, so a deploy cuts no call; one tha
 exits, or registers nothing is reported with its last lines, and the one before keeps serving.
 
 What travels is every file the project's .gitignore files leave in — read where each sits, no git
-asked — never node_modules, .git, dist or any .env. The sandbox's unless --prod.
+asked — never node_modules, .venv, .git, dist or any .env. The sandbox's unless --prod.
 
 Examples
   ~/acme-support $ pinecall deploy --prod --note "reads the order's eta back"

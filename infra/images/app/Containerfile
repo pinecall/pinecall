@@ -1,0 +1,21 @@
+# A hosted app: the image both containers of an app's pod run (charts/hosting's appImage). Node
+# for the platform's `pinecall` and a TypeScript project; uv and one CPython for a Python project,
+# installed here so an install never downloads an interpreter and the venv it makes points at a
+# path that exists in both containers. Nothing of an org's is in it: its sources and dependencies
+# are installed into the pod's own volumes.
+
+ARG NODE=docker.io/library/node:24-slim
+ARG UV=ghcr.io/astral-sh/uv:0.9.30
+
+FROM ${UV} AS uv
+
+FROM ${NODE}
+COPY --from=uv /uv /usr/local/bin/uv
+# The interpreter lives under /opt/python, read by every user; an install finds it there and never
+# fetches another. The cache (the install's HOME) and the venv (/app) are two volumes: a copy, not
+# a link. The app's root is read-only, so Python writes no bytecode beside the sources.
+ENV UV_PYTHON_INSTALL_DIR=/opt/python \
+    UV_LINK_MODE=copy \
+    PYTHONDONTWRITEBYTECODE=1
+RUN UV_PYTHON_DOWNLOADS=automatic uv python install 3.13 && chmod -R a+rX /opt/python
+ENV UV_PYTHON_DOWNLOADS=never

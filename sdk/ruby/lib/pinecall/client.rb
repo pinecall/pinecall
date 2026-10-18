@@ -40,6 +40,8 @@ module Pinecall
     Drained = Data.define(:handed, :parked, :tools, :finished)
 
     attr_reader :url, :api_key, :env
+    # The machine it says it runs on: a hosted app's is the name its runner gave it.
+    attr_accessor :host
 
     def initialize(url:, api_key:, env: nil, ping_every: Connection::PINGS_EVERY_S, backoff: {})
       raise ArgumentError, "Pinecall::Client.new(url:, api_key:): one of the two was not given" if url.nil? || api_key.nil?
@@ -47,6 +49,7 @@ module Pinecall
       @url = url
       @api_key = api_key
       @env = env
+      @host = Socket.gethostname
       @agents = {}
       @errors = []
       @entries = []

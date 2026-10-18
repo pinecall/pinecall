@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     runner_sources_url: str = Field("http://127.0.0.1:8080", alias="PINECALL_RUNNER_SOURCES_URL")
     runner_listen: str = Field("127.0.0.1", alias="PINECALL_RUNNER_LISTEN")
     runner_port: int = Field(8080, alias="PINECALL_RUNNER_PORT")
+    # Where the runner runs each host: a gVisor pod on the hosting cluster, or a process of this
+    # machine, unfenced, for a runtime whose apps are its owner's own (`local up`).
+    runner_engine: Literal["cluster", "processes"] = Field("cluster", alias="PINECALL_RUNNER_ENGINE")
+    runner_home: Path = Field(Path.home() / ".pinecall-runtime" / "apps", alias="PINECALL_RUNNER_HOME")
 
     # ── observability ──
     role: Role = Field("all", alias="PINECALL_ROLE")

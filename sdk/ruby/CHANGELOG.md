@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's
+  hostname (`Client#host`). A hosted app's runner names each host, and the gateway knows a release
+  is serving by it, on a machine that runs several.
+
 ## [0.11.4] — Released with every other package (2026-10-17)
 
 - Nothing of the Ruby SDK changed: published at 0.11.4 with every other package.
