@@ -1,6 +1,7 @@
 """Tests for a session opened for a spoken call: the pipeline, the turn options, the keyterms."""
 
 import pytest
+from livekit.agents import llm
 from livekit.agents.types import NotGiven
 from livekit.agents.voice import AgentSession
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
@@ -8,9 +9,11 @@ from livekit.agents.voice.room_io import RoomOptions
 
 import pinecall_runtime.session.session as session_module
 import pinecall_runtime.session.text as text
+import pinecall_runtime.session.voice as voice_module
 from pinecall_runtime.agents.declaration import AgentConfig, Turn
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
 from pinecall_runtime.session.session import is_spoken
@@ -64,6 +67,25 @@ def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_
     voice = AcmeTTS(speech_key="k")
     assert is_spoken(AgentSession(llm=Talks(api_key="k"), tts=voice), (voice,))
     assert not is_spoken(AgentSession(llm=AcmeLLM(api_key="k")), ())
+
+
+@needs_the_database
+@pytest.mark.parametrize("says", [True, False])
+async def test_a_realtime_model_that_says_given_words_is_the_calls_only_voice(
+    box: Box, monkeypatch: pytest.MonkeyPatch, says: bool
+) -> None:
+    model = Talks(api_key="k")
+    model.capabilities.supports_say = says
+
+    def built(_stage: Running) -> llm.RealtimeModel:
+        return model
+
+    monkeypatch.setattr(voice_module, "build_realtime", built)
+    session = spoken_call(box, NOBODY)
+    assert session.live.llm is model  # pyright: ignore[reportUnknownMemberType]
+    # livekit says given words through a TTS whenever the session has one.
+    assert (session.live.tts is None) is says  # pyright: ignore[reportUnknownMemberType]
+    assert [type(stage).__name__ for stage in session.built] == ([] if says else ["AcmeTTS"])
 
 
 @needs_the_database

@@ -32,9 +32,10 @@
 - **A voice call can run on a realtime model, which hears and speaks itself.** An agent whose LLM
   stage names a realtime model's class (`llm-builds realtime.RealtimeModel`, xAI's Grok Voice on the
   org's own key) has its spoken calls run on it: no ears, the model taking the turn and answering in
-  its own voice, the agent's tools and prompt as on any call. The call's voice stays for what is said
-  verbatim (the recording notice, a greeting given as words, a read-back). A written call of such an
-  agent is not served.
+  its own voice, the agent's tools and prompt as on any call, the room's audio open both ways. A model
+  that says given words itself (xAI's does) says the recording notice, a greeting given as words and
+  a read-back in that same voice; for one that cannot, the call's voice says them. A written call of
+  such an agent is not served.
 
 - **`setup` loads every provider whose key it finds and serves the open models that fit; it asks no
   stage.** What a call runs on is the agent's to name (`pinecall agent set`, the console, the

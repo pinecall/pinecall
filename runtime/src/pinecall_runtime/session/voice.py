@@ -58,11 +58,15 @@ def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int 
 
 
 # A realtime model hears the caller, takes the turn and answers in its own voice: the session has no
-# ears and leaves the turn to the model. The call's voice stays for what is said verbatim (the notice,
-# a greeting given as words, a read-back), which a realtime model cannot say as given.
+# ears and leaves the turn to the model. One that says given words itself (xAI's) says the notice, a
+# greeting given as words and a read-back too, so the call has one voice: livekit says through a TTS
+# whenever the session has one. A model that cannot keeps the call's voice for them.
 def _realtime_session(
     call: Call, realtime: llm.RealtimeModel, stages: providers.Pipeline, lookup_budget_ms: int | None
 ) -> Session:
+    if realtime.capabilities.supports_say:
+        alone: AgentSession[None] = AgentSession(llm=realtime, max_tool_steps=ONE_ANSWER_PER_TOOL)
+        return Session(alone, (), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS))
     voice = providers.build_voice(stages.tts)
     write_switches(call.writing, (voice,))
     live: AgentSession[None] = AgentSession(
