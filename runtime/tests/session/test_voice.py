@@ -2,6 +2,7 @@
 
 import pytest
 from livekit.agents.types import NotGiven
+from livekit.agents.voice import AgentSession
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
 from livekit.agents.voice.room_io import RoomOptions
 
@@ -12,8 +13,11 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
+from pinecall_runtime.session.session import is_spoken
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
+from tests.fakes.acme import AcmeLLM, AcmeTTS
+from tests.providers.test_realtime import Talks
 from tests.session.conftest import (
     Box,
     a_session,
@@ -54,6 +58,12 @@ async def test_the_caller_is_pinned_before_livekit_links_a_seat_and_a_written_ca
     assert (options.audio_input, options.audio_output) == (False, False)
     # Only a widget's visitor is waited for; any other caller leaving closes the session.
     assert options.close_on_disconnect is True
+
+
+def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_not() -> None:
+    voice = AcmeTTS(speech_key="k")
+    assert is_spoken(AgentSession(llm=Talks(api_key="k"), tts=voice), (voice,))
+    assert not is_spoken(AgentSession(llm=AcmeLLM(api_key="k")), ())
 
 
 @needs_the_database

@@ -412,7 +412,7 @@ class Session:
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit.
     async def _open(self, history: llm.ChatContext) -> None:
         self.listener.hold = self.hold
-        spoken = any(isinstance(component, stt.STT) for component in self.built)
+        spoken = is_spoken(self.live, self.built)
         options = RoomOptions(
             participant_identity=given_or_unset(self.seat),
             close_on_disconnect=self.call.context.channel is not Channel.web,
@@ -448,6 +448,13 @@ class Session:
             return self.ended
         closed_for = self.listener.closed_for
         return A_PLATFORM_ERROR if closed_for is None else HOW_IT_ENDED[closed_for]
+
+
+# A realtime model hears and speaks itself: its call has no ears, and is spoken all the same.
+def is_spoken(live: AgentSession[None], built: tuple[Built, ...]) -> bool:
+    """Whether the call is heard and answered in audio: it has ears, or a model that hears."""
+    hears = isinstance(live.llm, llm.RealtimeModel)  # pyright: ignore[reportUnknownMemberType]
+    return hears or any(isinstance(component, stt.STT) for component in built)
 
 
 def given_or_unset[T](value: T | None) -> NotGivenOr[T]:
