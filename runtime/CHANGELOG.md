@@ -5,7 +5,9 @@
 - **A plugin's LLM on the Responses API is a vendor's LLM.** xAI's plugin keeps Grok as
   `responses.LLM`, not at the top of its module, so Pinecall saw xAI as ears and a voice alone:
   `xai/grok-4-1-fast-non-reasoning` was no model an agent could name. A vendor's LLM is looked for at
-  the top of its module, then in its `responses` module.
+  the top of its module, then in its `responses` module. Its replies are said through to the end:
+  xAI reports usage with no cache-write count (`null`), which livekit's Responses stream took for a
+  broken connection after the reply was said, failing every turn; such a count is read as none.
 
 - **A transcription is done a second after the last word once the audio is over, whatever the vendor
   does with its stream.** Dictation and a streamed note waited for the vendor to close its stream,

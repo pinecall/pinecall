@@ -56,6 +56,28 @@ SAMPLING = frozenset({"temperature", "top_p", "top_k"})
 
 # A plugin's constructor takes no field for every request (a model's thinking, its effort), and
 # livekit hands each request extra_kwargs: the row's ride every one, a caller's own over them.
+# xAI's Responses API ends a reply with usage that counts no cache writes (`cache_write_tokens: null`),
+# and livekit's Responses stream passes that None on where an int is due: the reply is said whole, then
+# the stream fails as a "connection error" and the turn with it. A count the vendor does not give is
+# read as none written. Only a Responses stream reads such usage; any other is left as it is.
+def counting_unreported_cache_as_none(stream: llm.LLMStream) -> llm.LLMStream:
+    """The stream, its usage's missing cache counts read as 0 before livekit reads them."""
+    processed: object = getattr(stream, "_process_event", None)
+    if not callable(processed):
+        return stream
+
+    def process(event: object) -> object:
+        usage = getattr(getattr(event, "response", None), "usage", None)
+        details = getattr(usage, "input_tokens_details", None)
+        for count in ("cached_tokens", "cache_write_tokens"):
+            if details is not None and hasattr(details, count) and getattr(details, count) is None:
+                setattr(details, count, 0)
+        return processed(event)
+
+    setattr(stream, "_process_event", process)  # noqa: B010
+    return stream
+
+
 class LLMWithRequest(llm.LLM[Never]):
     """A plugin's LLM whose every request carries the operator's fields for its model, and no caller's sampling."""
 
@@ -96,13 +118,15 @@ class LLMWithRequest(llm.LLM[Never]):
             for name, value in (extra_kwargs if is_given(extra_kwargs) else {}).items()
             if name not in SAMPLING
         }
-        return self.built.chat(
-            chat_ctx=chat_ctx,
-            tools=tools,
-            conn_options=conn_options,
-            parallel_tool_calls=parallel_tool_calls,
-            tool_choice=tool_choice,
-            extra_kwargs={**self.request, **given},
+        return counting_unreported_cache_as_none(
+            self.built.chat(
+                chat_ctx=chat_ctx,
+                tools=tools,
+                conn_options=conn_options,
+                parallel_tool_calls=parallel_tool_calls,
+                tool_choice=tool_choice,
+                extra_kwargs={**self.request, **given},
+            )
         )
 
     @override
