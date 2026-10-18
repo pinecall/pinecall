@@ -43,6 +43,7 @@ from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.session.call import Call, Platform, ToolUse
 from pinecall_runtime.session.hearing import keyterms
 from pinecall_runtime.session.hold import HoldMusic
+from pinecall_runtime.session.lookups import TEXT_LOOKUP_MS, VOICE_LOOKUP_MS
 from pinecall_runtime.session.prompt import A_RELEASE
 from pinecall_runtime.session.room import CallRoom
 from pinecall_runtime.session.session import Session
@@ -940,17 +941,30 @@ async def test_the_callers_words_and_states_land_in_the_order_they_were_heard(bo
     assert order[-3:] == ["user.state", "user.transcript", "agent.state"]
 
 
+# Ears with no interims (Whisper) give the final alone, before the end of the turn is weighed: it
+# starts the run, and an interim before it keeps the run it started.
 @needs_the_database
-async def test_only_the_interim_transcript_reaches_the_lookups_and_never_the_final(
-    box: Box,
-) -> None:
+async def test_a_final_transcript_starts_the_lookups_once_a_turn(box: Box) -> None:
     session = a_session(box, AgentConfig(slug="clinica-norte", memory=MemoryPolicy()))
     await session.start()
-    final = UserInputTranscribedEvent(transcript="quiero cambiar mi turno del lunes", is_final=True)
-    session.live.emit("user_input_transcribed", final)
+    sentence = "quiero cambiar mi turno del lunes"
+    session.live.emit("user_input_transcribed", UserInputTranscribedEvent(transcript=sentence, is_final=True))
+    session.live.emit("user_input_transcribed", UserInputTranscribedEvent(transcript=f"{sentence} sí", is_final=True))
     await settled()
     await text.end_text(session, "caller_hung_up", "caller")
-    assert box.lookups == []
+    assert box.lookups == [("recall", {"contact": "+59899123456", "query": sentence})]
+
+
+# PINECALL_VOICE_LOOKUP_BUDGET_MS and its written twin, when the operator sets them.
+@needs_the_database
+async def test_a_lookup_budget_the_operator_set_is_the_one_a_session_waits(box: Box) -> None:
+    assert box.log.call is not None
+    call = Call(context_of(box.log.call, Channel.phone), NOBODY, box.platform())
+    stages = Pipeline(llm=Running(ACME, "k"), stt=Running(ACME, "k"), tts=Running(ACME, "k"))
+    assert voice_session(call, stages).lookups.budget_ms == VOICE_LOOKUP_MS
+    assert voice_session(call, stages, 600).lookups.budget_ms == 600
+    assert text_session(call, Running(ACME, "k")).lookups.budget_ms == TEXT_LOOKUP_MS
+    assert text_session(call, Running(ACME, "k"), 900).lookups.budget_ms == 900
 
 
 @needs_the_database

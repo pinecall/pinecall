@@ -141,7 +141,8 @@ def _session(
 
     looking = lookup if recalled is None else judging.golden_lookup(recalled, lookup, served.log.append)
     platform = session.Platform(append_many=served.log.append_many, tool=served.tools.run, lookup=looking, seal=sealed)
-    running = session.text_session(session.Call(served.context, served.config, platform), model)
+    call = session.Call(served.context, served.config, platform)
+    running = session.text_session(call, model, serving.handles.settings.text_lookup_budget_ms)
     serving.live.set_session(served.call, running)
     return running
 

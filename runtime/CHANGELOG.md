@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A spoken turn's search and recall are back before the turn ends, on ears that write no
+  interims.** A lookup started on the first interim worth a query, and Whisper-family ears write
+  none: every lookup started at the end of the turn and spent its 250 ms waiting on the embedder,
+  so every turn of a call on open models logged `search did not run: no answer within 250 ms`
+  (gpu.pinecall.io, 2026-10-18). The final transcript starts it too now, while the end of the
+  turn is still weighed, once a turn as before. `PINECALL_VOICE_LOOKUP_BUDGET_MS` and
+  `PINECALL_TEXT_LOOKUP_BUDGET_MS`, documented and never read, are the budgets the sessions wait.
+
 - **A command the session refuses no longer cuts the call off from its app.** A `room.send` on a
   written call, or any command the session refuses, that reached the gateway serving the call through
   another gateway (the app's socket on one, the call on the other) raised out of the call's command

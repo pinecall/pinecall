@@ -99,8 +99,8 @@ class Lookups:
         retrieved = any(docs.mode == "retrieved" for docs in config.bases)
         return recall + (("search",) if retrieved else ())
 
-    # Started on the first interim worth a query, so the results are in when the turn ends. One
-    # run a turn: a second embed is paid for. Every turn ends, since livekit folds a short
+    # Started on the first transcript worth a query, interim or final, so the results are in when
+    # the turn ends. One run a turn: a second embed is paid for. Every turn ends, since livekit folds a short
     # transcript into the next one, so the run is always consumed.
     def heard_so_far(self, text: str) -> None:
         """Start this turn's lookups on what the caller has said so far, once."""

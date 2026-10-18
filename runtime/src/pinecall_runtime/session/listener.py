@@ -136,13 +136,15 @@ class Listener:
             case _:
                 return
 
-    # Interims also start the lookups, so recall and search run while the caller still talks.
+    # Every transcript starts the lookups, so recall and search run while the caller still talks or
+    # while the end of the turn is weighed. Ears that write no interims (Whisper) give the final
+    # alone, some 300 ms before the turn ends: left to the turn's end, the lookup spent its budget
+    # waiting on the embedder (gpu.pinecall.io, 2026-10-18).
     def _transcribed(self, event: UserInputTranscribedEvent) -> None:
         self.language = event.language or self.language
         text = wire.UserTranscript(text=event.transcript, final=event.is_final, language=event.language)
         self.call.writing.write("user.transcript", text)
-        if not event.is_final:
-            self.lookups.heard_so_far(event.transcript)
+        self.lookups.heard_so_far(event.transcript)
 
     # Metrics are whole by the time an item is added, so the turns are written here.
     def _turn(self, item: object) -> None:

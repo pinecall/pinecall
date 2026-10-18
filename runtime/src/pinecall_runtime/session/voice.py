@@ -31,7 +31,7 @@ SMART_TURN: providers.TurnModel = "smart-turn-v3"
 MIN_SPEECH_S = 0.25
 
 
-def voice_session(call: Call, stages: providers.Pipeline) -> Session:
+def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
     """A voice call: the three stages built for it, the turn taken as a phone line needs."""
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, call.config.turn)
@@ -49,7 +49,9 @@ def voice_session(call: Call, stages: providers.Pipeline) -> Session:
         stt_context_options=context_of(call.config, ears),
         max_tool_steps=ONE_ANSWER_PER_TOOL,
     )
-    return Session(live, (thinking, ears, voice), Lookups(call, call.platform.lookup, VOICE_LOOKUP_MS))
+    return Session(
+        live, (thinking, ears, voice), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS)
+    )
 
 
 def context_of(config: AgentConfig, ears: providers.Ears) -> NotGivenOr[STTContextOptions]:

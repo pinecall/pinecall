@@ -98,7 +98,11 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
 
     platform = _platform_of(gateway, context.call, config, seal, measures_path(settings))
     call = session.Call(context, config, platform, audio, _carried_history(opened))
-    running = session.text_session(call, pipeline.llm) if typed else session.voice_session(call, pipeline)
+    running = (
+        session.text_session(call, pipeline.llm, settings.text_lookup_budget_ms)
+        if typed
+        else session.voice_session(call, pipeline, settings.voice_lookup_budget_ms)
+    )
 
     # Registered before anything else can fail: a call that dies in its setup still seals.
     # livekit reads a shutdown callback's `__code__`, which a `partial` has not.

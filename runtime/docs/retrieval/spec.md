@@ -21,11 +21,13 @@ reads the same shape: `{"chunks": [{path, heading, text}]}` and
 `{"facts": [{text, source, since}]}`, with no score in either, because a score means something
 to the ranking and nothing to the model.
 
-A lookup starts on the first interim transcript worth a query, so its answer is usually in before
-the caller stops talking. What a turn waits for it is a budget: 250 ms on a spoken call, 3 s on a
-written one (`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A lookup that
-is late is cancelled and the turn goes on without it; a lookup that cannot run at all is a
-recoverable `error` entry, `search_skipped` or `recall_skipped`, saying why.
+A lookup starts on the first transcript worth a query, interim or final, so its answer is usually
+in before the turn ends: ears that write interims start it while the caller still talks, and ears
+that write none (Whisper) start it on the final, while the end of the turn is still being weighed.
+What a turn waits for it is a budget: 250 ms on a spoken call, 3 s on a written one
+(`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A lookup that is late is
+cancelled and the turn goes on without it; a lookup that cannot run at all is a recoverable
+`error` entry, `search_skipped` or `recall_skipped`, saying why.
 
 Neither runs on a turn with no letter in it: a number being read out finds nothing in a prose
 index, and a caller's digits are the last thing to send to an embedder.
@@ -119,7 +121,7 @@ judge as a search that found nothing.
 
 1. **The silence retrieval costs** is livekit's own `on_user_turn_completed_delay`: the callback
    it times is where the session collects its lookups. Target: p95 under 50 ms, because a lookup
-   started on an interim is usually back before anybody waits.
+   started on a transcript is usually back before anybody waits.
 2. **Turns that went without** is `count(error where code in (search_skipped, recall_skipped)) /
    count(turn.user)`. Target: under 1 %. Above it the fix is the budget, the embedder or the
    database, never a larger budget: a budget always met is a budget the caller pays in silence.
