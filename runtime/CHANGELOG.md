@@ -13,7 +13,8 @@
   ears are built: as `keyterm` to the ears that take it (Deepgram, Cartesia), and as the options
   object's `context.terms` to one that takes its options as one object (Soniox's `params`), which
   also takes the call's language there as its hints, as it never did. What the row puts in that
-  object stands. Dictation (`?hear=`) is given them the same way.
+  object stands. Dictation (`?hear=`) is given them the same way. A model that refuses them
+  (Cartesia's `ink-whisper` takes no `keyterm`) is built without them: the words help, never stop it.
 
 - **`pinecall-runtime setup` runs the stack that fits the machine, and signs it in.** With nothing
   after it, it reads the machine and shows the recommended stack at a terminal — Enter runs it, a

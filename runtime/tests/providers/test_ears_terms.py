@@ -53,6 +53,15 @@ class TermsInsideItsOptions(_Ears):
         super().__init__(api_key=api_key, params=params)
 
 
+class TermsOnSomeModels(_Ears):
+    """As Cartesia's: `keyterm` is an argument, and a model that takes none refuses it."""
+
+    def __init__(self, *, api_key: str, model: str = "whisper", keyterm: list[str] | None = None) -> None:
+        if keyterm and model == "whisper":
+            raise ValueError("keyterm is only supported by turn-detecting models")
+        super().__init__(api_key=api_key, model=model, keyterm=keyterm)
+
+
 class NoTerms(_Ears):
     """Ears that take no words to expect: given none, never refused for it."""
 
@@ -91,3 +100,13 @@ def test_what_the_row_put_in_the_options_object_stands(monkeypatch: pytest.Monke
 
 def test_ears_that_take_no_words_are_built_without_them(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _built(monkeypatch, NoTerms, Running(vendor="v", credentials="k")) == {"api_key": "k"}
+
+
+def test_a_model_that_refuses_the_words_is_built_without_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    given = _built(monkeypatch, TermsOnSomeModels, Running(vendor="v", credentials="k"))
+    assert given == {"api_key": "k", "model": "whisper", "keyterm": None}
+
+
+def test_a_model_that_takes_the_words_gets_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    given = _built(monkeypatch, TermsOnSomeModels, Running(vendor="v", credentials="k", model="turns"))
+    assert given["keyterm"] == list(HEAR)

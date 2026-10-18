@@ -324,15 +324,24 @@ def _built[T](
     if not any(name in running.options for name in THE_LANGUAGE):
         given |= _first(accepts, THE_LANGUAGE, primary_language(running.language))
     given |= _first(accepts, THE_HINTS, list(running.hints) or None)
-    given |= _first(accepts, THE_TERMS, list(hear) or None)
-    given |= _inside_its_options(made, accepts, given, running, hear)
     if running.model is not None:
         given["model"] = running.model
+    plain = dict(given)
+    if hear:
+        given |= _first(accepts, THE_TERMS, list(hear))
+        given |= _inside_its_options(made, accepts, given, running, hear)
     # A plugin raises what it likes when it refuses (SpitchError, a missing variable): each is
-    # the vendor refusing its stage, said in its own words.
+    # the vendor refusing its stage, said in its own words. A model that takes no words to expect
+    # (Cartesia's ink-whisper refuses `keyterm`) is built without them: the words help, never stop it.
     try:
         return constructor(**_shaped(made, given))
     except Exception as refused:
+        if given != plain:
+            logger.info("%s %s takes no words to expect (%s): built without them", running.vendor, named, refused)
+            try:
+                return constructor(**_shaped(made, plain | _inside_its_options(made, accepts, plain, running, ())))
+            except Exception as again:
+                raise ValidationError(f"{running.vendor} refused its {named}: {again}") from again
         raise ValidationError(f"{running.vendor} refused its {named}: {refused}") from refused
 
 
