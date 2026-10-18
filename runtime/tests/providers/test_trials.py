@@ -27,3 +27,15 @@ async def test_a_key_the_vendor_answers_on_is_kept(gateway: Gateway, tenant: Ten
     assert kept.status_code == 204, kept.text
     vendors = await gateway.http.get("/v1/provider-keys", headers=tenant.person)
     assert acme.ACME in vendors.json()["vendors"]
+
+
+@needs_the_services
+async def test_a_key_one_job_of_the_vendor_answers_on_is_kept(gateway: Gateway, tenant: Tenant) -> None:
+    """A speech-to-text plan of a vendor that also thinks and speaks: its model and voice refuse the
+    key, its ears answer, and the key is kept for the ears."""
+    kept = await gateway.http.put(
+        f"/v1/provider-keys/{acme.ACME}", json={"key": acme.AN_EARS_ONLY_KEY}, headers=tenant.person
+    )
+    assert kept.status_code == 204, kept.text
+    vendors = await gateway.http.get("/v1/provider-keys", headers=tenant.person)
+    assert acme.ACME in vendors.json()["vendors"]

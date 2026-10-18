@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A vendor key is kept when any job the vendor does answers on it.** A key was tried on the first
+  job of `llm`, `tts`, `stt` the vendor does, alone: Soniox's speech-to-text key, refused by its
+  text-to-speech, was turned away though every call would have heard on it. Each job is tried in
+  that order until one answers; refused by all, the answer is the first job's refusal, as before.
+
 - **A voice note is said back as text, whole or as it is spoken.** Both are heard by the ears a call
   hears with, built the same way: the box's default STT vendor, or the one `?stt=` names
   (`&model=` too), with the operator's options, on the org's own key or one the box lends;

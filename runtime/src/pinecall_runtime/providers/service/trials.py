@@ -10,7 +10,7 @@ from livekit.agents.llm import ChatContext
 from livekit.agents.utils import http_context
 
 from pinecall_runtime.agents.declaration import Modality, Turn
-from pinecall_runtime.exceptions import UpstreamError, ValidationError
+from pinecall_runtime.exceptions import PinecallError, UpstreamError, ValidationError
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service import keyring, voices
 from pinecall_runtime.providers.service.plugins import Credentials, Running, Vendor, words_of
@@ -61,14 +61,23 @@ async def try_stage(stage: Modality, running: Running, turn: Turn | None = None,
         raise ValidationError(f"{running.vendor} refused {named}: {failed}") from failed
 
 
-# A key is tried as a call would run it, on the first job the vendor does: a key that cannot answer
-# one small request would fail every call it is kept for.
+# A key is tried as a call would run it, on each job the vendor does, until one answers: a key that
+# answers none would fail every call it is kept for, and a key for one of them (a speech-to-text plan
+# of a vendor that also speaks) is kept for that one. Refused, it is in the first job's words.
 async def try_key(vendor: Vendor, credentials: Credentials, catalog: Catalog) -> None:
-    """The vendor asked one small thing on these credentials; refused in its words, nothing kept."""
+    """The vendor asked one small thing on these credentials per job; refused in its words, nothing kept."""
+    first: PinecallError | None = None
     for stage in JOBS:
-        if stage in vendor.does:
+        if stage not in vendor.does:
+            continue
+        try:
             await try_stage(stage, keyring.vendor_on(stage, vendor.name, credentials, catalog), what="this key")
-            return
+        except (ValidationError, UpstreamError) as refused:
+            first = first or refused
+            continue
+        return
+    if first is not None:
+        raise first
 
 
 def _unanswered(running: Running, named: str, why: str) -> str:

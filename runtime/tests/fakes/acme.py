@@ -32,6 +32,8 @@ VOICE = "acme-voice"
 HEARD = "acme heard: {said}"
 # A key the vendor turns away, as a real one answers a wrong key: 401.
 A_REFUSED_KEY = "acme-refused-key"
+# A key it takes for its ears alone, as a vendor's speech-to-text plan is: its model and voice refuse it.
+AN_EARS_ONLY_KEY = "acme-ears-only-key"
 # What every reply counts, so a call's usage and its cost are numbers a test can name.
 PROMPT_TOKENS = 20
 COMPLETION_TOKENS = 5
@@ -127,6 +129,8 @@ class AcmeTTS(tts.TTS[Never]):
 
     def refuse(self) -> None:
         """Raise the refusal it was built with, if any, or a 404 for a voice it does not have."""
+        if self.given["speech_key"] in (A_REFUSED_KEY, AN_EARS_ONLY_KEY):
+            raise APIStatusError("invalid api key", status_code=401)
         if UNKNOWN in (self.given["voice_name"], self.given["model"]):
             raise APIStatusError("no such voice", status_code=404)
         if self.refusal == "status":
@@ -220,9 +224,12 @@ class _Listened(stt.RecognizeStream):
         super().__init__(stt=ears, conn_options=conn_options)  # pyright: ignore[reportUnknownMemberType]
         self.model = ears.given["model"]
         self.silence_ms = ears.given["eot_timeout_ms"]
+        self.key = ears.given["api_key"]
 
     @override
     async def _run(self) -> None:
+        if self.key == A_REFUSED_KEY:
+            raise APIStatusError("invalid api key", status_code=401)
         if self.model == UNKNOWN:
             raise APIStatusError("no such model", status_code=404)
         if isinstance(self.silence_ms, int) and self.silence_ms < SHORTEST_SILENCE_MS:
@@ -353,7 +360,7 @@ class _Streamed(llm.LLMStream):
             raise APIStatusError("blocked: PROHIBITED_CONTENT", status_code=400, retryable=False)
         if self.refusing:
             raise APIConnectionError(self.refusing)
-        if self.scripted.given["api_key"] == A_REFUSED_KEY:
+        if self.scripted.given["api_key"] in (A_REFUSED_KEY, AN_EARS_ONLY_KEY):
             raise APIStatusError("invalid api key", status_code=401)
         if self.scripted.model == UNKNOWN:
             raise APIStatusError("no such model", status_code=404)
