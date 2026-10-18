@@ -263,6 +263,14 @@ class StopAppResponse(WireModel):
     stopped: bool
 
 
+class KilledAgent(WireModel):
+    """An agent killed: the envs it was held in, and the app sockets that let go of it."""
+
+    agent: str
+    envs: list[Env]
+    apps: list[str]
+
+
 class RingTarget(WireModel):
     """Whose terminal a ring at the agent lands in, and who else could take it."""
 

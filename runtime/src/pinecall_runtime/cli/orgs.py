@@ -160,6 +160,21 @@ async def orgs_move(ctx: typer.Context, agent: str, org: str) -> int:
     return OK
 
 
+# Which app holds which agent lives in the gateways' memory: a kill asks a gateway, which tells
+# every socket that holds the agent, on every gateway. Nothing is erased; the apps keep the others.
+@verb
+async def kill(
+    ctx: typer.Context,
+    agent: str,
+    org: Annotated[str, typer.Option("--org", help="The org's slug.")] = DEFAULT_ORG,
+) -> int:
+    """The agent let go by every app of the org that holds it, in either env (asks a gateway)."""
+    context = context_of(ctx)
+    killed = await (await context.ops()).read("POST", f"/v1/ops/orgs/{org}/agents/{agent}/kill", agents.KilledAgent)
+    context.out.line(f"{killed.agent} killed in {', '.join(killed.envs)}: {', '.join(killed.apps)} let go of it")
+    return OK
+
+
 @app.command("rm")
 @verb
 async def orgs_rm(ctx: typer.Context, org: str) -> int:

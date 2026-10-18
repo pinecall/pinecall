@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import type { AppProcess, AppStopped } from "@pinecall/agents/wire";
+import type { AppProcess, AppStopped, KilledAgent } from "@pinecall/agents/wire";
 import { z } from "zod";
 
 import * as api from "../../api/agents.js";
@@ -13,7 +13,7 @@ import { PinecallError, UsageError } from "../../errors.js";
 import type { FilePlayer } from "../../kit/player.js";
 import { agentNamed } from "./settings.js";
 
-export type { AppProcess, ListedVoice, PipelineReport, VoiceSaid } from "../../api/agents.js";
+export type { AppProcess, KilledAgent, ListedVoice, PipelineReport, VoiceSaid } from "../../api/agents.js";
 
 /** What `voices` takes: the vendor (the gateway's own when left out), a language, a country. */
 export const ListVoicesInput = z.object({
@@ -60,6 +60,11 @@ export async function listApps(ctx: Context): Promise<AppProcess[]> {
 export async function stopApp(ctx: Context, app: string): Promise<AppStopped> {
   if (app === "") throw new UsageError("stop takes the app: the first column of `pinecall agent list`");
   return api.stopApp(ctx.gateway(), app);
+}
+
+/** The agent let go by every app that holds it in this env, whoever's; the gateway refuses a key that is not an admin's. */
+export async function killAgent(ctx: Context, agent: string | undefined): Promise<KilledAgent> {
+  return api.killAgent(ctx.gateway(), ctx.slug("kill", { agent }));
 }
 
 /** What a vendor whose plugin lists no voices is told, with the vendors that list theirs. */

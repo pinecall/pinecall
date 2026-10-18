@@ -5,6 +5,7 @@ export { hearWords, lexiconHistory, removeWords, sayWord, SayWordInput, showLexi
 export {
   countTools,
   defaultVoiceVendor,
+  killAgent,
   listApps,
   listVoices,
   ListVoicesInput,
@@ -14,6 +15,7 @@ export {
   showPipeline,
   stopApp,
   type AppProcess,
+  type KilledAgent,
   type ListedVoice,
   type PipelineReport,
   type VoicePlayed,

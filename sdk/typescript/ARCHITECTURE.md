@@ -383,7 +383,9 @@ class, no view, no CLI. It knows two things — the wire (`src/wire/`) and `ws`.
 - **A stop is the one close that is not retried.** Every other close is a blip and is redialled
   with jittered backoff for ever. An `error` coded `stopped` for no agent — a member of the org
   pressed Stop (`POST /v1/apps/{app}/stop`) — closes the connection for good and is handed to
-  `onStopped`; the serve entry prints it and exits. `agent.register` names the machine (`host`),
+  `onStopped`; the serve entry prints it and exits. An `error` coded `killed` on one agent — an
+  admin killed it (`POST /v1/agents/{slug}/kill`) — drops that agent from the ones the client
+  declares: the socket stays, a reconnect leaves it out, and the others go on. `agent.register` names the machine (`host`),
   so the gateway's list of processes (`GET /v1/apps`) says where each one runs.
 - **A socket may answer the console instead of serving calls.** `answersDev: true` registers it as
   the one the console's dev verbs go to (with `takesUnclaimed: false` it takes no call), and it

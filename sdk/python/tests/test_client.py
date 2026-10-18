@@ -138,6 +138,27 @@ async def test_a_stop_from_the_org_closes_the_socket_for_good_and_says_why(
     assert len(gateway.commands_of("agent.register")) == 1
 
 
+async def test_an_agent_killed_is_not_declared_again_and_the_app_keeps_the_others(
+    gateway: FakeGateway,
+) -> None:
+    client = client_of(gateway)
+    client.agent("clinica-norte")
+    client.agent("front-desk")
+    heard: list[Entry] = []
+    client.on_entries(heard.append)
+    await client.connect()
+    killed = {"code": "killed", "message": "front-desk was killed by ana", "recoverable": False}
+    await gateway.emit("front-desk", None, "error", killed)
+    await gateway.until(lambda: any(entry.type == "error" for entry in heard))
+    assert client.connected
+    await gateway.cut()
+    await gateway.until(lambda: len(gateway.commands_of("agent.register")) == 3)
+    await asyncio.sleep(0.1)
+    declared = [one["agent"] for one in gateway.commands_of("agent.register")]
+    assert declared == ["clinica-norte", "front-desk", "clinica-norte"]
+    await client.close()
+
+
 async def test_a_drain_says_where_the_calls_went_and_waits_for_the_tool_still_running(
     gateway: FakeGateway,
 ) -> None:

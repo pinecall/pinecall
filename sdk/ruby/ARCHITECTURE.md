@@ -258,7 +258,9 @@ no CLI. It knows the wire (`lib/pinecall/wire/`) and `websocket-driver`.
   gateway's own `detail`. The org's bases, memory and keys are the one CLI's verbs.
 - **Leaving.** `drain` asks every agent to drain and waits for the tools running, up to 30 s;
   a stop from the org (`error` coded `stopped`, for no agent) closes the socket for good and goes
-  to `on_stopped`; `on_entries` hands over every entry as the gateway wrote it.
+  to `on_stopped`; an agent killed (`error` coded `killed`, on that agent) is dropped from the
+  agents the client declares, so a reconnect leaves it out and the others go on; `on_entries`
+  hands over every entry as the gateway wrote it.
 
 ## 10. The serve contract
 

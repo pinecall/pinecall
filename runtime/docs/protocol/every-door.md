@@ -75,6 +75,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/apps` | calls | The app sockets of the org in the environment this key may see, oldest first. |
 | `WS` | `/v1/apps` | — | An app holds its agents here, answers their tools, and sends their calls' commands. |
 | `POST` | `/v1/apps/{app}/stop` | app | Tell the app it was stopped, and close its socket. |
+| `POST` | `/v1/agents/{slug}/kill` | team and app (an admin) | Let go of the agent in every app that holds it in the env, whoever's; the apps keep their other agents, and nothing is erased. |
 | `GET` | `/v1/callbacks` | calls | The org's callbacks in the key's environment, oldest first, a page at a time. |
 | `POST` | `/v1/callbacks` | app · fleet | Somebody the overflow told to wait for a call back, on the agent's log. |
 | `POST` | `/v1/calls` | app · fleet | Open a call's log, serve it to its agent's socket, say its minutes and its first words. |
@@ -237,6 +238,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/ops/orgs/{named}` | operator | One org as it stands: its quotas per environment, its dial guards, and what it holds. |
 | `PUT` | `/v1/ops/orgs/{named}/agents` | operator | An agent's logs and numbers moved into this org; refused while somebody holds it. |
 | `DELETE` | `/v1/ops/orgs/{named}/agents/{agent}` | operator | Erase one agent of the org, its logs, recordings and every row it owns; the trail row. |
+| `POST` | `/v1/ops/orgs/{named}/agents/{slug}/kill` | operator | Let go of the agent in every app of the org that holds it, in either env; nothing is erased. |
 | `PUT` | `/v1/ops/orgs/{named}/dialling` | operator | The org's dial guards, replaced whole; one left out is the default. |
 | `GET` | `/v1/ops/orgs/{named}/keys` | operator | Every key of the org, oldest first, the revoked ones named as revoked; never a key. |
 | `POST` | `/v1/ops/orgs/{named}/keys` | operator | A key of the org in the environment named, answered this once. |

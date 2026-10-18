@@ -46,6 +46,7 @@ path end to end, with every output under it.
 | [`runs`](#runs) | the suites: list, show, diff, promote a call, watch the drift | yes |
 | [`cases`](#cases) | the org's dataset — real calls kept as cases: list, show, approve, dismiss, reopen, pull, keep, forget | yes |
 | [`agent`](#agent) | the agent's settings — yours, the team's, production's — set, knowledge, history, diff, rollback, pull, push | yes |
+| [`kill`](#kill) | an admin's: every app holding the agent in the env lets go of it and keeps its others; nothing is erased | yes |
 | [`lexicon`](#lexicon) | an agent's words: how the voice says them and what the ears must know | yes |
 | [`pipeline`](#pipeline) | what it hears, decides and speaks with, as the next call would be built | yes |
 | [`line`](#line) | which phone is yours, and whose terminal a call from anybody else's rings in | yes |
@@ -1381,6 +1382,30 @@ It is not the RAG. The documents a turn *searches* — a catalogue, a policy man
 too long to read whole — are [`pinecall docs`](#docs), attached to the same settings as `bases`.
 `pinecall agent` prints the two on two rows: `knowledge` as a size, `bases` by name.
 
+## `kill`
+
+```
+pinecall kill [agent]                    … and with --prod, in production
+```
+
+An admin's verb: the agent let go by **every** app that holds it in the environment, whoever's
+process it is — a colleague's `pinecall start`, a deploy, the org's own server. Each app is sent an
+`error` coded `killed` on that agent (`POST /v1/agents/{slug}/kill`, a key that opens both `team`
+and `app`): it prints `<agent> ✗ <agent> was killed by <name>`, keeps answering for its other
+agents, and does not declare this one again when its socket comes back. The agent's live calls move
+as on a drain, to another holder or parked. From that moment it is in no `agent list`, no console
+and no playground.
+
+Nothing is erased: its settings and their versions, its calls and their logs stay, and an app that
+declares it again — a `pinecall start` restarted, a save that reloads the class — holds it again.
+Without `agent`, the agent beside the class; from any folder, the slug named. A key that is not an
+admin's is refused with exit 1; an agent no app holds in the env is the gateway's 404, exit 2.
+
+```console
+$ pinecall kill front-desk
+killed front-desk in sandbox: one app let go of it (app_7) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again
+```
+
 ## `lexicon`
 
 ```
@@ -2331,6 +2356,7 @@ code can call — over HTTP, in any language, with the same key.
 | `eval` | `POST /v1/evals/replay/{call}` |
 | `agent` | `GET`·`PUT /v1/agents/{slug}/settings`, `GET …/settings/history`, `GET …/settings/diff`, `POST …/settings/rollback`; `list` and `stop` are `GET /v1/apps` and `POST /v1/apps/{app}/stop` |
 | `agent knowledge` · `lexicon` · `memory policy` · `docs attach` · `detach` | `GET`·`PUT /v1/agents/{slug}/settings` · `GET`·`PUT /v1/agents/{slug}/lexicon`, `GET …/history` |
+| `kill` | `POST /v1/agents/{slug}/kill` |
 | `pipeline` | `GET /v1/agents/{slug}/pipeline` |
 | `docs` | `PUT`·`GET`·`DELETE /v1/knowledge[/{base}]`, `POST /v1/knowledge/{base}/eval`, `GET /v1/knowledge/attached` |
 | `memory` | `GET`·`DELETE /v1/contacts/{contact}/memory`, `POST /v1/contacts/memory/eval` |

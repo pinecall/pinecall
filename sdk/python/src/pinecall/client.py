@@ -27,6 +27,9 @@ from pinecall.wire.parts import AgentConfig
 # The `error` code a person's stop sends (`POST /v1/apps/{app}/stop`): the client never dials
 # again after it, or the stop would undo itself.
 STOPPED = "stopped"
+# `error` code on one agent an admin killed (`POST /v1/agents/{slug}/kill`): the gateway let go of
+# it, and the client declares it no more when it reconnects. The other agents go on.
+KILLED = "killed"
 
 # Within a process manager's shutdown grace.
 TOOLS_WITHIN_S = 30.0
@@ -252,6 +255,8 @@ class Client:
         held = self._agents.get(entry.agent)
         if held is not None:
             held.take(entry)
+            if _killed(entry):
+                del self._agents[entry.agent]
 
     async def _stop(self, why: str) -> None:
         await self._connection.close()
@@ -295,3 +300,10 @@ def detail_of(answered: httpx.Response) -> str:
         if isinstance(detail, str):
             return detail
     return answered.text
+
+
+def _killed(entry: Entry) -> bool:
+    if entry.type != "error":
+        return False
+    said = event_of(entry)
+    return isinstance(said, ErrorEvent) and said.code == KILLED

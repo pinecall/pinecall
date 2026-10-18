@@ -33,6 +33,10 @@ module Pinecall
     # A stop from the org: the socket is closed for good and the app decides what comes next.
     STOPPED = "stopped"
 
+    # One agent an admin killed (`POST /v1/agents/{slug}/kill`): the gateway let go of it, and the
+    # client declares it no more when it reconnects. The other agents go on.
+    KILLED = "killed"
+
     # Seconds the running tools are given to answer once a drain was asked.
     TOOLS_FINISH_WITHIN_S = 30
 
@@ -173,10 +177,13 @@ module Pinecall
       return if agent.nil?
 
       guarded { agent.take(entry) }
+      @agents.delete(entry.agent) if killed?(entry)
     end
 
     # An `error` coded `stopped` for no agent: a member of the org pressed Stop.
     def stop?(entry) = entry.type == "error" && entry.agent.to_s.empty? && entry.data[:code] == STOPPED
+
+    def killed?(entry) = entry.type == "error" && entry.data[:code] == KILLED
 
     # With no stop listener the stop is reported as an error, so it is never silent.
     # Every agent registered again, then whoever asked to know.

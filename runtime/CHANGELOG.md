@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **An agent can be killed: `POST /v1/agents/{slug}/kill`, an admin's, and
+  `pinecall-runtime kill <agent> [--org]`, the operator's.** Every app that holds the agent in the
+  env (the operator's: in both) lets go of it, on whichever gateway it is connected: it is sent an
+  `error` coded `killed` on that agent and keeps its other agents, and the agent's calls move as on
+  a drain. From then on no list, console or playground shows it. Nothing is erased: its settings,
+  calls and logs stay, and an app that declares it again holds it again.
+
 - **The open models' Ollama is 0.40.6.** Up to 0.32 Ollama re-read a model's whole vocabulary on
   every request before running it: ~0.25 s on the embedder and ~0.3 s on the thinking, every turn,
   longer than a spoken turn's lookup budget. On 0.40.6 an embedding takes ~10 ms. On a GPU

@@ -108,4 +108,16 @@ class AgentTest < Minitest::Test
     assert_equal "stopped by Lucía", why.pop(timeout: 5)
     refute @client.connected?
   end
+
+  # The agents a reconnect declares again are the client's own: a killed one is no longer among them.
+  def test_an_agent_killed_is_dropped_from_what_the_client_declares_and_the_socket_stays_open
+    @client.agent("front-desk", tools: [])
+    heard = Thread::Queue.new
+    @client.on_entries { |entry| heard << entry.type if entry.agent == "front-desk" }
+    @gateway.send_entry("front-desk", "error", { code: "killed", message: "front-desk was killed by Lucía", recoverable: false })
+
+    assert_equal "error", heard.pop(timeout: 5)
+    assert_equal ["clinica-norte"], @client.agents.keys
+    assert @client.connected?
+  end
 end

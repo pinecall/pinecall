@@ -4,8 +4,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 
+from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.agents import schemas
-from pinecall_runtime.agents.auth import AppKey, CallsKey, FleetKey, KnownAgent, sees_every_scope
+from pinecall_runtime.agents.auth import AppKey, CallsKey, FleetKey, KnownAgent, TheOperator, sees_every_scope
 from pinecall_runtime.agents.service.registry import AgentRegistry, named_holder
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
@@ -15,12 +16,18 @@ from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.handles import handles_of
 from pinecall_runtime.kit.text import parse_e164
-from pinecall_runtime.postgres import Session
+from pinecall_runtime.postgres import Session, box_wide
 from pinecall_runtime.telephony import service as telephony
 
 router = APIRouter()
 
 NOT_IN_PRODUCTION = "production has one scope and the org holds it: there is nothing to route"
+# Every holder's process is cut, so it is an admin's: a key that opens both team and app.
+ONLY_AN_ADMIN = "killing an agent is an admin's: it cuts every holder's app, and this key does not open team and app"
+HELD_BY_NOBODY = "no app holds {slug} in {env}: there is nothing to kill"
+KILLED_BY = "{slug} was killed by {name}"
+NOBODY_OF_THE_ORG_HOLDS = "no app of {org} holds {slug}: there is nothing to kill"
+OPERATOR_KILLED = "{slug} was killed by this box's operator"
 NOBODY_TO_ROUTE_TO = "a phone reaches a person's own scope, and this key names no person"
 
 
@@ -58,6 +65,40 @@ async def stop_app(app: str, actor: AppKey, request: Request) -> schemas.StopApp
         raise NotFound(f"no app {app} is connected to this box that this key may stop")
     await found.stop(f"stopped by {actor.name}")
     return schemas.StopAppResponse(app=app, stopped=True)
+
+
+# Nothing is erased: its settings, calls and logs stay, and an app that declares it again holds it
+# again. The apps keep their other agents.
+@router.post("/v1/agents/{slug}/kill")
+async def kill_agent(slug: KnownAgent, actor: AppKey, request: Request) -> schemas.KilledAgent:
+    """Let go of the agent in every app that holds it in the env, whoever's; an admin's."""
+    if not sees_every_scope(actor):
+        raise Forbidden(ONLY_AN_ADMIN)
+    why = KILLED_BY.format(slug=slug, name=actor.name)
+    apps = await calls.kill_agent(_live(request), _registry(request), actor.org, actor.env, slug, why)
+    if not apps:
+        raise NotFound(HELD_BY_NOBODY.format(slug=slug, env=actor.env))
+    return schemas.KilledAgent(agent=slug, envs=[actor.env], apps=apps)
+
+
+# The operator's kill reaches both envs of the org: what an admin of it would do in each.
+@router.post("/v1/ops/orgs/{named}/agents/{slug}/kill")
+async def kill_agent_of_org(
+    named: str, slug: str, _actor: TheOperator, request: Request, session: Session
+) -> schemas.KilledAgent:
+    """Let go of the agent in every app of the org that holds it, in either env."""
+    with box_wide():
+        org = await orgs.get_org(session, named)
+    why = OPERATOR_KILLED.format(slug=slug)
+    envs: list[Env] = []
+    apps: list[str] = []
+    for env in Env:
+        killed = await calls.kill_agent(_live(request), _registry(request), org.id, env, slug, why)
+        envs += [env] if killed else []
+        apps += killed
+    if not apps:
+        raise NotFound(NOBODY_OF_THE_ORG_HOLDS.format(slug=slug, org=org.slug))
+    return schemas.KilledAgent(agent=slug, envs=envs, apps=apps)
 
 
 # ── the line ──

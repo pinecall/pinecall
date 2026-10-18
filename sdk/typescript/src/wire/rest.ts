@@ -108,6 +108,18 @@ export const AppStoppedSchema = z.strictObject({
 export type AppStopped = z.infer<typeof AppStoppedSchema>;
 
 /**
+ * POST /v1/agents/{slug}/kill, an admin's: every app holding the agent in the env let go of it and
+ * kept its other agents. Nothing is erased; an app that declares it again holds it again.
+ */
+export const KilledAgentSchema = z.strictObject({
+  agent: z.string(),
+  envs: z.array(z.enum(["sandbox", "production"])),
+  apps: z.array(z.string()),
+});
+
+export type KilledAgent = z.infer<typeof KilledAgentSchema>;
+
+/**
  * GET /v1/agents/{slug}/line: whose terminal a call that RINGS at this agent's doors lands in. An
  * org shares one sandbox number, so it rings in one place and which one is claimed.
  */

@@ -1,0 +1,11 @@
+$ pinecall kill --help
+Usage: pinecall kill [options] [agent]
+
+an admin's: every app holding the agent in this env lets go of it and keeps its
+others; nothing is erased
+
+Arguments:
+  agent       the agent's slug; beside an agent's class, that agent
+
+Options:
+  -h, --help  display help for command

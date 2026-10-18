@@ -84,6 +84,11 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
   to it, its eval runs and cases, its days of drift; a person held to it loses it from their list.
   The dial ledger stays. Answers the erasure's trail row (`what: agent`); `409` while a process of
   the org holds it or one of its calls is live. Another org's agent of the same slug is never touched.
+- `POST /v1/ops/orgs/{named}/agents/{slug}/kill`: the agent let go by every app of the org that
+  holds it, in either env, on whichever gateway: each is sent an `error` coded `killed` on that
+  agent, keeps its other agents and declares this one no more when it reconnects; its calls move
+  as on a drain. Nothing is erased. `{agent, envs, apps}`; `404` when no app of the org holds it.
+  The tenant's own is `POST /v1/agents/{slug}/kill`, an admin's, in the env of the key.
 
 ## Quotas and dial guards
 

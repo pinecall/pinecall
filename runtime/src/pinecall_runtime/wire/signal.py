@@ -29,12 +29,20 @@ class Bound(BaseModel):
     after: int
 
 
+class Killed(BaseModel):
+    """One agent an app socket is to let go of, and why."""
+
+    agent: str
+    why: str
+
+
 class ForApp(BaseModel):
-    """One message for an app socket: a call bound to it, an entry to send it, or a stop."""
+    """One message for an app socket: a call bound to it, an entry to send it, a stop, or a kill."""
 
     bound: Bound | None = None
     entry: Entry | None = None
     stop: str | None = None
+    kill: Killed | None = None
 
 
 class JobReport(BaseModel):

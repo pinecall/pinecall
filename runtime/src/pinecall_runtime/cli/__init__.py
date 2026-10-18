@@ -57,6 +57,7 @@ app.add_typer(rebuild.usage_app, name="usage")
 app.command("traceback")(traceback.traceback)
 app.command("setup")(setup.setup)
 app.command("init")(orgs.init)
+app.command("kill")(orgs.kill)
 app.add_typer(orgs.app, name="orgs")
 for name, limit in limits.VERBS.items():
     orgs.app.command(name)(limit)

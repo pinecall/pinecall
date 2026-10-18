@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { answer } from "../support/gateway.js";
+import { answer, refuse } from "../support/gateway.js";
 import { lexiconRow, SETTINGS, tuningRow } from "../support/fixtures.js";
 import { folder } from "../support/project.js";
 import { run, runJson } from "../support/run.js";
@@ -75,6 +75,26 @@ describe("pinecall agent", () => {
   it("list prints each process holding the org's agents", async () => {
     answer("get", "/v1/apps", { apps: [{ app: "app_1", agents: ["front-desk"], env: "sandbox", host: "ana-macbook", address: null, sdk: "ts 0.10.1", holder: { holder: "mem_ana", name: "ana@clinica.test" }, connected_at: 1_792_150_000 }] });
     expect((await run(["agent", "list"])).out).toMatch(/^app_1 {2}front-desk {2}ana@clinica\.test · ana-macbook · ts 0\.10\.1 · since \d{4}-\d{2}-\d{2} \d{2}:\d{2}\n$/);
+  });
+});
+
+describe("pinecall kill", () => {
+  it("kills the agent beside the class, or the one named from any folder, and says nothing was erased", async () => {
+    const sent = answer("post", "/v1/agents/:slug/kill", { agent: "front-desk", envs: ["sandbox"], apps: ["app_1"] });
+    const ran = await run(["kill"]);
+    expect(ran.code).toBe(0);
+    expect(sent[0]!.path).toBe("/v1/agents/front-desk/kill");
+    expect(ran.out).toContain("killed front-desk in sandbox: one app let go of it (app_1) and kept their other agents");
+    expect(ran.out).toContain("its settings and calls stay");
+    await run(["kill", "sales"], { cwd: folder() });
+    expect(sent[1]!.path).toBe("/v1/agents/sales/kill");
+  });
+
+  it("says the gateway's refusal of a key that is not an admin's", async () => {
+    refuse("post", "/v1/agents/:slug/kill", 403, "killing an agent is an admin's: it cuts every holder's app, and this key does not open team and app");
+    const ran = await run(["kill", "front-desk"]);
+    expect(ran.code).not.toBe(0);
+    expect(ran.err).toContain("killing an agent is an admin's");
   });
 });
 

@@ -140,6 +140,13 @@ export class FakeGateway {
     }
   }
 
+  /** Kill one agent on every connected app as `POST /v1/agents/{slug}/kill` does: an `error` coded `killed`, on that agent. */
+  kill(agent: string, why: string): void {
+    for (const socket of this.#sockets) {
+      socket.send(JSON.stringify(this.#entry(agent, null, "error", { code: "killed", message: why, recoverable: false })));
+    }
+  }
+
   /** Stop listening and close all connections. */
   async close(): Promise<void> {
     this.cut();

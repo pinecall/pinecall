@@ -5,7 +5,7 @@ import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 import type { CornerWritten } from "./service/corners.js";
 import { date } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type LexiconAnswer, type LexiconHistory, type LexiconRow, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed } from "./service/index.js";
+import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed } from "./service/index.js";
 
 // Max cell width; longer values are truncated so three columns fit.
 const A_CELL = 40;
@@ -225,6 +225,11 @@ export function apps(found: AppProcess[]): string[] {
 
 export function appStopped({ app }: { app: string }): string {
   return `stopped ${app}: its agents are free — a supervisor that restarts it (systemd, pm2) starts it again`;
+}
+
+export function killed({ agent, envs, apps }: KilledAgent): string {
+  const which = apps.length === 1 ? "one app" : `${apps.length} apps`;
+  return `killed ${agent} in ${envs.join(", ")}: ${which} let go of it (${apps.join(", ")}) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again`;
 }
 
 export function voices(found: ListedVoice[]): string[] {

@@ -30,6 +30,7 @@ from pinecall_runtime.calls.service.days import Kept as DaysKept
 from pinecall_runtime.calls.service.days import examine_days, keep_days
 from pinecall_runtime.calls.service.dialing import PlacedCall, Placement, place_call
 from pinecall_runtime.calls.service.drift import rebuild as rebuild_drift
+from pinecall_runtime.calls.service.kills import kill_agent
 from pinecall_runtime.calls.service.lists import (
     ever_reached,
     facts_of_calls,
@@ -115,6 +116,7 @@ __all__ = [
     "judge_call",
     "judge_of",
     "keep_days",
+    "kill_agent",
     "known_here",
     "move_logs",
     "new_call_id",

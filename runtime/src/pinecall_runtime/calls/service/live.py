@@ -35,7 +35,7 @@ from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.base import Command, Entry, WireModel
 from pinecall_runtime.wire.commands import DevAnswer, SessionConfigure, SupervisorVerb, command_of
 from pinecall_runtime.wire.events import ErrorEvent
-from pinecall_runtime.wire.signal import Bound, ForApp
+from pinecall_runtime.wire.signal import Bound, ForApp, Killed
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,9 @@ class Live:
         """The org's sockets in the env on every gateway, oldest first."""
         mine = [app for app in self.apps.values() if app.scope.org == org and app.scope.env == env]
         theirs = [
-            registry.ConnectedApp(row.app, row.scope, row.address, row.connected_at, self._stop(row.app), row.host)
+            registry.ConnectedApp(
+                row.app, row.scope, row.address, row.connected_at, self._stop(row.app), self._kill(row.app), row.host
+            )
             for row in self.elsewhere.rows_of(org, env.value)
         ]
         return sorted([*mine, *theirs], key=lambda one: one.connected_at)
@@ -374,6 +376,12 @@ class Live:
             await tell_app(self.signal, app, ForApp(stop=why))
 
         return stop
+
+    def _kill(self, app: registry.SocketId) -> Callable[[str, str], Awaitable[None]]:
+        async def kill(agent: str, why: str) -> None:
+            await tell_app(self.signal, app, ForApp(kill=Killed(agent=agent, why=why)))
+
+        return kill
 
     async def _answer_from_there(self, ask_id: str, answer: asyncio.Future[DevAnswer], heard: asyncio.Event) -> None:
         try:

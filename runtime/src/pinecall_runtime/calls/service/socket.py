@@ -56,6 +56,8 @@ type Close = Callable[[str], Awaitable[None]]
 
 # Sent on a stop: the SDK exits instead of reconnecting.
 STOPPED = "stopped"
+# `error` code on one agent killed by an admin (`POST /v1/agents/{slug}/kill`): the app keeps the others.
+KILLED = "killed"
 REFUSED = "refused"
 BAD_SHAPE = "bad_shape"
 NOT_JSON = "a frame is one JSON object: this one did not parse"
@@ -109,7 +111,12 @@ class AppSocket:
     def connect(self) -> None:
         """Say the socket is open: the org's list of apps shows it from now on."""
         app = agents_registry.ConnectedApp(
-            app=self.id, scope=self.scope, address=self.address, connected_at=self.connected_at, stop=self.stop
+            app=self.id,
+            scope=self.scope,
+            address=self.address,
+            connected_at=self.connected_at,
+            stop=self.stop,
+            kill=self.kill,
         )
         self.live.connect(app, self.send)
 
@@ -121,6 +128,19 @@ class AppSocket:
         """Tell the app it was stopped, and close: it exits instead of reconnecting."""
         await self.send(Entry.unstored("", "error", ErrorEvent(code=STOPPED, message=why, recoverable=False).dump()))
         await self._close(why)
+
+    # The app keeps its other agents; the killed one's calls move as on a drain, to whoever else
+    # holds it, else parked. The error tells the app not to declare it again when it reconnects.
+    async def kill(self, slug: str, why: str) -> None:
+        """Tell the app one of its agents was killed, and let go of it here."""
+        if self.registry.on_socket(self.id, self.scope.env, slug) is None:
+            return
+        await self.send(Entry.unstored(slug, "error", ErrorEvent(code=KILLED, message=why, recoverable=False).dump()))
+        theirs = [call for call in self.live.bound_to(self.id) if self.live.calls[call].agent == slug]
+        for call in theirs:
+            self.live.attach(call, None)
+        await self.registry.kill(self.id, self.scope.env, slug)
+        await hand_on(self.live, self.registry, theirs)
 
     async def take(self, raw: Json) -> None:
         """One frame: its command applied, or refused in an error that names it."""
@@ -144,7 +164,7 @@ class AppSocket:
             )
 
     # What other gateways send this socket: a call they bound to it (served here and pumped down
-    # it, from the seq they said), an entry for it (a console's dev.request), or a stop.
+    # it, from the seq they said), an entry for it (a console's dev.request), a stop, or a kill.
     async def listen(self) -> None:
         """Hear the socket's inbox on the signal, for as long as the socket is open."""
         while True:
@@ -168,6 +188,8 @@ class AppSocket:
             await self.send(message.entry)
         if message.stop is not None:
             await self.stop(message.stop)
+        if message.kill is not None:
+            await self.kill(message.kill.agent, message.kill.why)
 
     async def gone(self) -> None:
         """The app went: its calls outlive the socket, parked, then handed to the next holder."""

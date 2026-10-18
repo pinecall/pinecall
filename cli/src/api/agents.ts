@@ -4,6 +4,7 @@ import {
   type AppList,
   type AppProcess,
   type AppStopped,
+  type KilledAgent,
   type LexiconAnswer,
   type LexiconBody,
   type LexiconHistory,
@@ -16,7 +17,7 @@ import {
 } from "@pinecall/agents/wire";
 import type { z } from "zod";
 
-export type { AppProcess, AppStopped, LexiconAnswer, LexiconBody, LexiconHistory, TuningAnswer, TuningBody, TuningDiff, TuningHistory, VoiceSample } from "@pinecall/agents/wire";
+export type { AppProcess, AppStopped, KilledAgent, LexiconAnswer, LexiconBody, LexiconHistory, TuningAnswer, TuningBody, TuningDiff, TuningHistory, VoiceSample } from "@pinecall/agents/wire";
 
 import { seg, type GatewayClient } from "./client.js";
 
@@ -125,6 +126,11 @@ export async function listApps(gw: GatewayClient): Promise<AppProcess[]> {
 
 export function stopApp(gw: GatewayClient, app: string): Promise<AppStopped> {
   return gw.post<AppStopped>(`/v1/apps/${seg(app)}/stop`);
+}
+
+/** An admin's: every app holding the agent in the env lets go of it, and keeps its other agents. */
+export function killAgent(gw: GatewayClient, agent: string): Promise<KilledAgent> {
+  return gw.post<KilledAgent>(`/v1/agents/${seg(agent)}/kill`);
 }
 
 export function getVoiceCatalogue(gw: GatewayClient): Promise<VoiceCatalogue> {

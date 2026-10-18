@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An agent an admin killed is declared no more.** An `error` coded `killed` on one agent
+  (`POST /v1/agents/{slug}/kill`) drops it from the agents the client declares: the socket stays,
+  the other agents go on, and a reconnect leaves the killed one out.
+
 - **An agent no longer says it will check and then stops.** The first protocol every agent is given now
   says to call the tool in the same reply, that saying it is about to act does not act, and never to ask
   the caller to wait: once it stops talking nothing happens until the caller speaks. Open models said

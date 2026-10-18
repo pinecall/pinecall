@@ -183,7 +183,9 @@ It knows the wire, `websockets` and `httpx`.
   `Last-Event-ID`, and raises only when the stream never opened.
 - **Leaving.** `drain` asks every agent to drain and waits for the tools running, up to 30 s; a
   stop from the org (`error` coded `stopped`, for no agent) closes the socket for good and goes
-  to `on_stopped`; `on_entries` hands over every entry as the gateway wrote it.
+  to `on_stopped`; an agent killed (`error` coded `killed`, on that agent) is dropped from the
+  agents the client declares, so a reconnect leaves it out and the others go on; `on_entries`
+  hands over every entry as the gateway wrote it.
 
 ## 6. The bridge, step by step
 

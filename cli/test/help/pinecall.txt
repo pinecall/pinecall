@@ -56,6 +56,9 @@ Commands:
   agent                          what the org set over the class — yours, the
                                  team's, production's — setting it, and the
                                  processes that hold it
+  kill [agent]                   an admin's: every app holding the agent in this
+                                 env lets go of it and keeps its others; nothing
+                                 is erased
   lexicon                        an agent's words: how the voice says them and
                                  what the ears must know
   pipeline [options]             what the agent hears, decides and speaks with,

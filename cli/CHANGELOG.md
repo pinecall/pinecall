@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall kill [agent]`, an admin's.** Every app holding the agent in the env — whoever's —
+  lets go of it and keeps its other agents; it leaves every list, the console and the playground.
+  Nothing is erased: its settings and calls stay, and an app that declares it again holds it again.
+
 - The agent `pinecall new` writes takes no message on a blank or a guess: `takeMessage` refuses an `about` (or a name) that says nothing — `not specified`, `unknown`, `n/a` — and tells the model to ask for it; once the message is taken it still answers what the documents answer, and says goodbye when the caller wants nothing more instead of repeating it. Its ring-0 tests say so in the three languages.
 
 - **MCP: a held agent whose thread dies says so.** A tool or a hook throwing where nothing caught it ended the agent's thread, and `status` kept answering `held: thread` while every `chat` and `test` waited out its timeout. The thread's end is now the sentence `status` leads with and every tool refuses with — its exit code and the last lines it printed — until a save loads a version that lives.

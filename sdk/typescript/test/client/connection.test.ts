@@ -118,6 +118,33 @@ describe("being stopped", () => {
   });
 });
 
+describe("an agent killed", () => {
+  it("is not declared again when the socket comes back, and the app keeps its other agents", async () => {
+    const pc = await connected({ backoff: { firstMs: 20, capMs: 40 } });
+    const errors: string[] = [];
+    pc.onErrors((error) => errors.push(error.message));
+    pc.agent("clinica-norte", {});
+    pc.agent("front-desk", {});
+    const heard: string[] = [];
+    pc.onEntries((entry) => heard.push(`${entry.agent} ${entry.type}`));
+    await pc.connect();
+    expect(gateway.commandsOf("agent.register").map((command) => command.agent)).toEqual(["clinica-norte", "front-desk"]);
+
+    gateway.kill("front-desk", "front-desk was killed by Ana");
+    await vi.waitFor(() => expect(heard).toContain("front-desk error"));
+    expect(pc.connected).toBe(true);
+
+    gateway.cut();
+    await vi.waitFor(() => expect(gateway.commandsOf("agent.register")).toHaveLength(3), { timeout: 4_000 });
+    await new Promise((waited) => setTimeout(waited, 100));
+    expect(gateway.commandsOf("agent.register").map((command) => command.agent)).toEqual([
+      "clinica-norte",
+      "front-desk",
+      "clinica-norte",
+    ]);
+  });
+});
+
 // A 1008 close carries the gateway's reason: surface it, and do not retry.
 describe("a socket the gateway refuses", () => {
   it("carries the gateway's own sentence, and is not retried", async () => {

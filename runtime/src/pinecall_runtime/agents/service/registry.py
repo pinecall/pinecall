@@ -32,6 +32,8 @@ type SocketId = str
 # A slug is one org's: the scope names the org, the env and whose copy it is.
 type Held = tuple[Scope, str]
 type Stop = Callable[[str], Awaitable[None]]
+# An agent killed on a socket: its slug, and why.
+type Kill = Callable[[str, str], Awaitable[None]]
 
 SOCKET_PREFIX = "app_"
 HELD_CHANNEL = "held"
@@ -173,6 +175,7 @@ class ConnectedApp:
     address: str | None
     connected_at: float
     stop: Stop
+    kill: Kill
     host: str | None = None
 
 
@@ -400,23 +403,34 @@ class AgentRegistry:
 
     async def release(self, owner: SocketId) -> None:
         """A socket closed: its agents let go, the line handed on, agent.detached for each."""
-        theirs = [key for key, kept in self._mine.items() if any(i.owner == owner for i in kept)]
-        for found in theirs:
-            kept = [item for item in self._mine[found] if item.owner != owner]
-            if kept:
-                self._mine[found] = kept
-            else:
-                del self._mine[found]
-            self._merge()
-            left = self.holders.get(found, [])
-            scope, slug = found
-            if self.lines.get((scope.env, slug)) == scope.holder and not left:
-                self._assign(self._mine_lines, scope.env, slug, None)
-                self._next_takes_the_line(scope, slug)
-            await self._write(scope.env, slug, "agent.detached", AgentDetached(app=owner, env=scope.env, left=not left))
+        for found in [key for key, kept in self._mine.items() if any(i.owner == owner for i in kept)]:
+            await self._let_go(owner, found)
         self._say()
 
+    async def kill(self, owner: SocketId, env: Env, slug: str) -> bool:
+        """One agent let go by a socket that keeps the others; False when the socket did not hold it."""
+        found = self.on_socket(owner, env, slug)
+        if found is None or found.held_as not in self._mine:
+            return False
+        await self._let_go(owner, found.held_as)
+        self._say()
+        return True
+
     # ── private ──
+
+    async def _let_go(self, owner: SocketId, found: Held) -> None:
+        kept = [item for item in self._mine[found] if item.owner != owner]
+        if kept:
+            self._mine[found] = kept
+        else:
+            del self._mine[found]
+        self._merge()
+        left = self.holders.get(found, [])
+        scope, slug = found
+        if self.lines.get((scope.env, slug)) == scope.holder and not left:
+            self._assign(self._mine_lines, scope.env, slug, None)
+            self._next_takes_the_line(scope, slug)
+        await self._write(scope.env, slug, "agent.detached", AgentDetached(app=owner, env=scope.env, left=not left))
 
     def _replace(self, registration: Registration) -> None:
         self._last_claim = max(time.time(), self._last_claim + 1e-6)

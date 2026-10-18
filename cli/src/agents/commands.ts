@@ -181,6 +181,11 @@ export function register(program: Command, ctx: Context): void {
     .description("close one app's socket; a pinecall that hears it exits instead of dialling back")
     .argument("<app>", "the first column of `pinecall agent list`")
     .action(async (app) => ctx.io.result(await service.stopApp(ctx, app), render.appStopped));
+  program
+    .command("kill")
+    .description("an admin's: every app holding the agent in this env lets go of it and keeps its others; nothing is erased")
+    .argument("[agent]", "the agent's slug; beside an agent's class, that agent")
+    .action(async (agent) => ctx.io.result(await service.killAgent(ctx, agent), render.killed));
 
   const lexicon = program.command("lexicon").description("an agent's words: how the voice says them and what the ears must know").addHelpText("after", LEXICON);
   lexicon

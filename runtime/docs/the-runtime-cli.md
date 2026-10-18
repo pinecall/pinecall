@@ -12,7 +12,7 @@ writes an agent, nothing there issues a key.
 |---|---|
 | `gateway` · `worker` · `runner` · `doctor` · `providers` · `local` | this machine: its settings, its database, its LiveKit; `local` brings all three up in Docker |
 | `migrate` · `sessions` · `memory` · `retention` · `traceback` · `facts` · `drift` · `usage` · `vault` · `init` · `orgs` · `keys` · `box` · `routes` · `fence` · `sip` | the services themselves, over `DATABASE_URL` (with `PINECALL_VAULT_KEY` for what is sealed, LiveKit for what a route admits, Redis to tell every gateway a key was revoked) |
-| `fleet` · `orgs move` | a running gateway, over `/v1/ops/*` with `PINECALL_OPS_KEY` ([protocol/operator-api.md](protocol/operator-api.md)): the roster, its cordons and which app holds which agent live in the gateways' memory |
+| `fleet` · `orgs move` · `kill` | a running gateway, over `/v1/ops/*` with `PINECALL_OPS_KEY` ([protocol/operator-api.md](protocol/operator-api.md)): the roster, its cordons and which app holds which agent live in the gateways' memory |
 | `load` | a running gateway's sandbox, over the worker's own call endpoints with the sandbox fleet's key (`PINECALL_WORKER_KEY`) |
 
 ## `gateway` · `worker start` · `worker overflow` · `runner start`
@@ -135,6 +135,19 @@ pinecall-runtime init [--org <slug>] --email <address> --person "<name>" [--name
 The first org and the first person on a runtime nobody has used yet: the org made (or found, run
 twice), its first admin invited, that person made an operator of this deployment, and the invitation link
 printed once with the two lines to type next.
+
+## `kill`
+
+```
+pinecall-runtime kill <agent> [--org <slug>]
+```
+
+The agent let go by every app of the org that holds it, in either env, wherever they are connected:
+each app is told the agent was killed, keeps its other agents, and declares this one no more when it
+reconnects; the agent's calls move as on a drain. Nothing is erased: its settings, calls and logs
+stay, and an app that declares it again holds it again. `--org` is `default` unless named. It asks a
+gateway (`POST /v1/ops/orgs/{org}/agents/{agent}/kill`), because which app holds which agent lives
+in the gateways' memory; a tenant's admin does the same in one env with `pinecall kill`.
 
 ## `orgs`
 

@@ -21,6 +21,10 @@ const { version } = createRequire(import.meta.url)("../../package.json") as { ve
 // not reconnect afterwards, or the stop would have no effect.
 const STOPPED = "stopped";
 
+// `error` code on one agent an admin killed (`POST /v1/agents/{slug}/kill`): the gateway let go of
+// it, and the client must not declare it again when it reconnects. The other agents go on.
+const KILLED = "killed";
+
 /** A search result chunk: its source path, heading and text. */
 export interface Found {
   path: string;
@@ -283,6 +287,7 @@ export class Pinecall implements AgentGateway {
     } catch (failed) {
       this.onError(asError(failed));
     }
+    if (killed(entry)) this.#agents.delete(entry.agent);
   }
 
   // With no stop listener, report the stop as an error so it is not silent.
@@ -337,4 +342,10 @@ function detailOf(text: string): string {
   } catch {
     return text;
   }
+}
+
+function killed(entry: Entry): boolean {
+  if (entry.type !== "error") return false;
+  const said = eventOf(entry);
+  return said.type === "error" && said.data.code === KILLED;
 }
