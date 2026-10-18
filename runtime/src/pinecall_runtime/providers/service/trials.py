@@ -14,7 +14,7 @@ from pinecall_runtime.exceptions import PinecallError, UpstreamError, Validation
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service import keyring, voices
 from pinecall_runtime.providers.service.plugins import Credentials, Running, Vendor, words_of
-from pinecall_runtime.providers.service.stages import llm_of, stt_of
+from pinecall_runtime.providers.service.stages import build_realtime, llm_of, stt_of
 
 # A vendor slower than this to say a word is not refusing the setting, it is not answering.
 TRY_S = 12.0
@@ -85,6 +85,11 @@ def _unanswered(running: Running, named: str, why: str) -> str:
 
 
 async def _answered(running: Running) -> None:
+    # A realtime model opens its session with the call: built, its class and its arguments are tried.
+    realtime = build_realtime(running)
+    if realtime is not None:
+        await realtime.aclose()
+        return
     model = llm_of(running)
     context = ChatContext.empty()
     context.add_message(role="user", content=LINE)

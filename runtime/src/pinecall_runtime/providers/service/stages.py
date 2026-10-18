@@ -167,6 +167,16 @@ def stt_of(running: Running, turn: Turn | None, hear: Sequence[str] = ()) -> stt
     return _built("stt", AN_STT, running, _turn_knobs(turn), tuple(hear))
 
 
+# A model that hears and speaks itself (xAI's `realtime.RealtimeModel`, named by the agent's `llm-builds`)
+# stands for the whole conversation of a voice call: no ears, its own voice. None when the LLM stage
+# builds a plain LLM, as it does unless the agent names such a class.
+def build_realtime(running: Running) -> llm.RealtimeModel | None:
+    """The realtime model the LLM stage builds, or None."""
+    if not issubclass(_class_of("llm", running), llm.RealtimeModel):
+        return None
+    return _built("llm", llm.RealtimeModel, running, {})
+
+
 # A call's three stages: with no fallback, exactly the plugin's object; with some, livekit's
 # FallbackAdapter over the stage and the vendors that take over, in order.
 def build_thinking(running: Running) -> Thinking:

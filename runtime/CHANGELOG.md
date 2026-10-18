@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A voice call can run on a realtime model, which hears and speaks itself.** An agent whose LLM
+  stage names a realtime model's class (`llm-builds realtime.RealtimeModel`, xAI's Grok Voice on the
+  org's own key) has its spoken calls run on it: no ears, the model taking the turn and answering in
+  its own voice, the agent's tools and prompt as on any call. The call's voice stays for what is said
+  verbatim (the recording notice, a greeting given as words, a read-back). A written call of such an
+  agent is not served.
+
 - **`setup` shows the machine and the stack that fits it, and a stage is completed as it is typed.**
   At a terminal, before anything is brought up: the card or the Mac's memory and what is left for
   the models, Docker, the Ollama here and the models it holds, each measured model and whether it

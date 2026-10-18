@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from functools import cache
 
-from livekit.agents import NOT_GIVEN, NotGivenOr, inference
+from livekit.agents import NOT_GIVEN, NotGivenOr, inference, llm
 from livekit.agents.voice import AgentSession, STTContextOptions
 from livekit.agents.voice import text_transforms as transforms
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
@@ -12,6 +12,7 @@ from smart_turn_livekit import SmartTurnDetector  # pyright: ignore[reportMissin
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.providers.service.stages import build_realtime
 from pinecall_runtime.session.call import Call
 from pinecall_runtime.session.hearing import keyterms, policy_for
 from pinecall_runtime.session.listener import write_switches
@@ -33,6 +34,9 @@ MIN_SPEECH_S = 0.25
 
 def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
     """A voice call: the three stages built for it, the turn taken as a phone line needs."""
+    realtime = build_realtime(stages.llm)
+    if realtime is not None:
+        return _realtime_session(call, realtime, stages, lookup_budget_ms)
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}))
     voice = providers.build_voice(stages.tts)
@@ -52,6 +56,24 @@ def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int 
     return Session(
         live, (thinking, ears, voice), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS)
     )
+
+
+# A realtime model hears the caller, takes the turn and answers in its own voice: the session has no
+# ears and leaves the turn to the model. The call's voice stays for what is said verbatim (the notice,
+# a greeting given as words, a read-back), which a realtime model cannot say as given.
+def _realtime_session(
+    call: Call, realtime: llm.RealtimeModel, stages: providers.Pipeline, lookup_budget_ms: int | None
+) -> Session:
+    voice = providers.build_voice(stages.tts)
+    write_switches(call.writing, (voice,))
+    live: AgentSession[None] = AgentSession(
+        llm=realtime,
+        tts=voice,
+        tts_text_transforms=_text_transforms_of(call.config),
+        max_tool_steps=ONE_ANSWER_PER_TOOL,
+    )
+    # The realtime model reports its measures through its session, not itself: only the voice is listened to.
+    return Session(live, (voice,), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS))
 
 
 def context_of(config: AgentConfig, ears: providers.Ears) -> NotGivenOr[STTContextOptions]:
