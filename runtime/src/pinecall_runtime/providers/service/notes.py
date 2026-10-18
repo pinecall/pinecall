@@ -36,6 +36,9 @@ SAMPLE_WIDTH = 2
 # it settles its last words before the stream closes.
 FRAME_MS = 20
 TAIL_MS = 600
+# Once the audio is over, the words are settled after this long without a new one, whether or not the
+# vendor closes its stream: Soniox's keeps it open.
+SETTLED_S = 1.0
 A_RATE = 16000
 # A dictation token opens one stream, within the minute it was minted in, for the org it names.
 DICTATION_TOKEN_TTL_S = 60
@@ -125,21 +128,52 @@ async def _streamed(
         bytes(rate * channels * SAMPLE_WIDTH * TAIL_MS // 1000), rate, channels, rate * TAIL_MS // 1000
     )
     heard: list[tuple[str, str | None]] = []
+    words = _Words()
 
-    async def feed() -> None:
-        for frame in frames:
-            stream.push_frame(frame)
-        stream.push_frame(silence)
-        stream.end_input()
-
-    async with stream:
-        feeding = asyncio.create_task(feed())
+    async def listen() -> None:
         async for event in stream:
+            if event.alternatives and event.type in _WORDS:
+                words.came()
             if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT and event.alternatives:
                 best = event.alternatives[0]
                 heard.append((best.text.strip(), _language(best)))
-        await feeding
+
+    async with stream:
+        listening = asyncio.create_task(listen())
+        try:
+            for frame in frames:
+                stream.push_frame(frame)
+            stream.push_frame(silence)
+            stream.end_input()
+            await words.settled(listening)
+        finally:
+            listening.cancel()
     return heard
+
+
+_WORDS = frozenset({stt.SpeechEventType.INTERIM_TRANSCRIPT, stt.SpeechEventType.FINAL_TRANSCRIPT})
+
+
+class _Words:
+    """When the ears last said a word, to know when they are done once the audio is over."""
+
+    def __init__(self) -> None:
+        self.last = asyncio.get_running_loop().time()
+
+    def came(self) -> None:
+        self.last = asyncio.get_running_loop().time()
+
+    async def settled(self, listening: asyncio.Task[None]) -> None:
+        """Until the vendor closes its stream, or SETTLED_S passes with no new word; WITHIN_S at most."""
+        loop = asyncio.get_running_loop()
+        ended = loop.time()
+        self.last = max(self.last, ended)
+        while not listening.done():
+            now = loop.time()
+            if now - self.last >= SETTLED_S or now - ended >= WITHIN_S:
+                return
+            await asyncio.wait({listening}, timeout=0.1)
+        listening.result()
 
 
 async def _whole(
@@ -256,10 +290,14 @@ async def dictate(running: Running, heard: AsyncIterator[bytes | None], said: Sa
         chunker = AudioByteStream(A_RATE, 1, samples_per_channel=A_RATE * FRAME_MS // 1000)
         silence = rtc.AudioFrame(bytes(A_RATE * SAMPLE_WIDTH * TAIL_MS // 1000), A_RATE, 1, A_RATE * TAIL_MS // 1000)
 
+        words = _Words()
+
         async def relay() -> None:
             async for event in stream:
                 if not event.alternatives:
                     continue
+                if event.type in _WORDS:
+                    words.came()
                 text = event.alternatives[0].text.strip()
                 if event.type is stt.SpeechEventType.INTERIM_TRANSCRIPT:
                     await said("interim", text)
@@ -278,8 +316,7 @@ async def dictate(running: Running, heard: AsyncIterator[bytes | None], said: Sa
                 stream.push_frame(frame)
             stream.push_frame(silence)
             stream.end_input()
-            async with asyncio.timeout(WITHIN_S):
-                await relaying
+            await words.settled(relaying)
             await said(DONE, "")
         except TimeoutError:
             stream.end_input()

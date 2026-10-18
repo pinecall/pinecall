@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A transcription is done a second after the last word once the audio is over, whatever the vendor
+  does with its stream.** Dictation and a streamed note waited for the vendor to close its stream,
+  and Soniox's never does: every Soniox dictation ran to its 30-second ceiling before `done`. The
+  words are settled a second after the last one, or when the vendor closes, whichever comes first.
+
 - **The words a call's ears are told to expect reach every vendor, under the name it takes them.**
   The lexicon's words (`pinecall lexicon hear`) were livekit's session keyterms, which only the ears
   that declare them take (Deepgram's): Soniox and Cartesia heard none. They are now given when the
