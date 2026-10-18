@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://docs.pinecall.io/start/quickstart/">
-    <img src=".github/assets/banner-4aece02a.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
+    <img src=".github/assets/banner-b82fc40f.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
   </a>
 </p>
 
