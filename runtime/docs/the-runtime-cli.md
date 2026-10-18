@@ -124,7 +124,8 @@ of this machine (`runner start` above); their lines are prefixed `gateway |`, `w
 (`make local-gateway`, `make local-worker`). Run `up` again any time: it keeps the secrets and the
 database.
 
-`down` stops the services and keeps the database; `--volumes` deletes it. `init` is `init` below,
+`down` stops the services and keeps the database; `--volumes` deletes it, and the next `up` draws
+the box's keys again, since the database that knew them is gone. `init` is `init` below,
 run on the local settings, so the first org and person need no shell line. `env` prints that
 line, `set -a; . <dir>/env; set +a`, for any other verb against the local runtime. It needs Docker
 with the compose plugin: Docker Desktop on macOS and Windows, Docker Engine on Linux; without it

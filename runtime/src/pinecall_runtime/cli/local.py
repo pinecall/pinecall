@@ -15,6 +15,7 @@ from shutil import which
 from typing import Annotated
 
 import typer
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys
@@ -59,11 +60,15 @@ NO_DOCKER = (
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 NOT_ANSWERING = "{service} did not answer on 127.0.0.1:{port} within {seconds:.0f} s: `docker compose ps`"
 
-# The box's own keys of the sandbox, each drawn once into the env file: its fleet's, and its runner's.
+# The box's own keys of the sandbox, drawn into the env file: its fleet's, and its runner's. A key
+# the database does not know (deleted with `down --volumes`, the env file kept) is drawn again.
 BOX_KEYS = (
     ("PINECALL_WORKER_KEY", KeyScope.fleet, "the sandbox fleet"),
     ("PINECALL_RUNNER_KEY", KeyScope.runner, "the sandbox runner"),
 )
+# A release deployed here runs as a process of this machine: the code is its owner's own. Written
+# into the env file when missing, so one older than the runner gets it too.
+RUNNER_ENGINE = ("PINECALL_RUNNER_ENGINE", "processes")
 # The settings the gateway and the worker run on here: the services on loopback, a dev LiveKit pair, secrets drawn once.
 SETTINGS = """DATABASE_URL=postgresql://pinecall:pinecall@127.0.0.1:55433/pinecall
 PINECALL_REDIS_URL=redis://127.0.0.1:56380/0
@@ -87,7 +92,7 @@ FIRST = (
     "    pinecall-runtime local init --email you@example.com --person 'Your Name'"
 )
 DOWN = "local: the services stopped; the database and {env} are kept"
-WIPED = "local: the services stopped and the database deleted; {env} is kept"
+WIPED = "local: the services stopped and the database deleted; {env} is kept, its keys drawn again on the next up"
 
 Dir = Annotated[Path, typer.Option("--dir", help="Where this machine keeps its local runtime.")]
 
@@ -142,7 +147,7 @@ def services_up(compose: Path, services: Sequence[str]) -> None:
 
 
 async def prepare_database(values: dict[str, str], env: Path) -> platform.History:
-    """The schema brought to this release, and the sandbox's fleet and runner keys drawn once into the env file."""
+    """The schema brought to this release, and the box's keys drawn into the env file, each once."""
     # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local settings
     # become the process's here, as they are the children's (a clean machine reached for localhost:5432, 2026-10-17).
     os.environ.update(values)
@@ -150,19 +155,30 @@ async def prepare_database(values: dict[str, str], env: Path) -> platform.Histor
     try:
         history = await platform.apply_history(engine)
         await asyncio.to_thread(platform.upgrade_schema, tracked=history.tracked)
-        for variable, scope, label in BOX_KEYS:
-            if variable in values:
-                continue
-            issue = keys.Issue(org=DEFAULT_ORG, env=Env.sandbox, scopes=frozenset({scope}), label=label)
-            async with session_maker(engine).begin() as session:
-                _, values[variable] = await keys.issue_key(session, issue)
-            with env.open("a", encoding="utf-8") as out:
-                out.write(f"{variable}={values[variable]}\n")
-        # A release deployed here runs as a process of this machine: the code is its owner's own.
-        values.setdefault("PINECALL_RUNNER_ENGINE", "processes")
+        await draw_box_keys(engine, values, env)
     finally:
         await engine.dispose()
+    if RUNNER_ENGINE[0] not in values:
+        write_variable(env, values, *RUNNER_ENGINE)
     return history
+
+
+async def draw_box_keys(engine: AsyncEngine, values: dict[str, str], env: Path) -> None:
+    """Each box key missing from the env file, or one its database does not know, drawn and written."""
+    async with session_maker(engine).begin() as session:
+        for variable, scope, label in BOX_KEYS:
+            if variable in values and await keys.verify_key(session, values[variable]) is not None:
+                continue
+            issue = keys.Issue(org=DEFAULT_ORG, env=Env.sandbox, scopes=frozenset({scope}), label=label)
+            _, secret = await keys.issue_key(session, issue)
+            write_variable(env, values, variable, secret)
+
+
+def write_variable(env: Path, values: dict[str, str], variable: str, value: str) -> None:
+    """The variable's line in the env file, replaced or added, and the value in the settings."""
+    values[variable] = value
+    kept = [line for line in env.read_text(encoding="utf-8").splitlines() if not line.startswith(f"{variable}=")]
+    env.write_text("".join(f"{line}\n" for line in [*kept, f"{variable}={value}"]), encoding="utf-8")
 
 
 @app.command("down")

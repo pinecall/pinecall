@@ -17,6 +17,10 @@
   several; and `GET /v1/runner/apps/{org}/{name}/environment` on a box with no name leaves
   `PINECALL_URL` out instead of answering `503`, and the runner hands its apps the address it dials.
 
+- **`local up` draws a box key again when its database does not know it.** `down --volumes`
+  deleted the database and kept the env file, so the next `up` ran the worker on a fleet key
+  nobody had minted. A key the database does not know is drawn again and its line replaced.
+
 - **A command the session refuses no longer cuts the call off from its app.** A `room.send` on a
   written call, or any command the session refuses, that reached the gateway serving the call through
   another gateway (the app's socket on one, the call on the other) raised out of the call's command
