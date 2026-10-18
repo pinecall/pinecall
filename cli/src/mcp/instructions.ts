@@ -5,8 +5,8 @@ import type { Stage } from "./tools/index.js";
 const JOURNEY = `Pinecall runs voice and chat agents written as a class. These tools take a person from an empty
 folder to an agent on Pinecall, without a terminal.
 
-The journey: \`project\` (show, open or new) → \`whoami\`, which is refused naming \`link\` when the
-project has no key, and \`link\` names \`login\` when this machine is not signed in → \`start\` holds
+The journey: \`project\` (show, open or new — its pinecall.json names the gateway and the org it runs
+in) → \`whoami\`, which is refused naming \`login\` when this machine is not signed in there → \`start\` holds
 the agent while it is written, reloaded on every save → \`chat\` talks to it, \`test\` runs its
 goldens, \`simulate\` plays a caller, \`remember\` runs its memory cases — on the copy \`start\` holds,
 or with nothing held on whoever holds it: a terminal, a colleague, production's own process →

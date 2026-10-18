@@ -27,10 +27,10 @@ THE_FIRST_ROLE = Role.admin
 THE_OPERATOR = "The operator"
 NOTHING_ON_STDIN = "the key is read from stdin, one line, and nothing came"
 WHAT_TO_DO_NEXT = """
-  Open the link above to set a password. Then, in the directory of an agent:
+  Open the link above to set a password. Then, on the machine an agent is written on:
 
     pinecall login {url}
-    pinecall link
+    pinecall new <project> --agent <name>
     pinecall start
 """
 

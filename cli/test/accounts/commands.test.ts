@@ -1,4 +1,4 @@
-/** `pinecall login | link | whoami | secrets` as typed: the link printed, the key never; .env written; envs explained. */
+/** `pinecall login | whoami | secrets` as typed: the link printed, the key never; the org chosen and kept; envs explained. */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,49 +11,56 @@ import { run } from "../support/run.js";
 
 const WHO = { org: "org_1", slug: "clinica", key_id: "k_4f2a1d9c66b30e17", label: "ana-macbook", env: "sandbox", name: "Ana Ruiz", production: true };
 
-/** A machine signed in to the fake gateway: its `~/.pinecall`. */
-function signedInHome(): string {
-  const home = folder();
-  writeFileSync(join(home, "session.json"), JSON.stringify({ gateways: { [GATEWAY]: { key: "pc_live_machine" } }, last: GATEWAY }));
-  return home;
+const ADVICE = {
+  stages: [
+    { stage: "stt", choice: "openai/whisper", runs_on: "served here", served: ["whisper"] },
+    { stage: "llm", choice: "openai/nemotron-3.5-lightning:30b-a3b", runs_on: "served here", served: ["nemotron-3.5-lightning:30b-a3b"] },
+    { stage: "tts", choice: "cartesia", runs_on: "needs a key", served: [] },
+  ],
+  lends: [],
+  judge: null,
+  caller: null,
+  machine: null,
+};
+
+/** A pairing approved at the fake gateway: the machine's key, and who it is. */
+function approves(): void {
+  answer("post", "/v1/login/pairings", { code: "ABCD-1234" });
+  answer("get", "/v1/login/pairings/:code/key", { key: "pc_live_machine" });
+  answer("get", "/v1/whoami", { ...WHO, env: "production" });
 }
 
 describe("pinecall login", () => {
-  it("prints the link on stderr, and who signed in once approved; the key nowhere", async () => {
-    answer("post", "/v1/login/pairings", { code: "ABCD-1234" });
-    answer("get", "/v1/login/pairings/:code/key", { key: "pc_live_machine" });
-    answer("get", "/v1/whoami", { ...WHO, env: "production" });
-    const ran = await run(["login", GATEWAY, "--no-open"]);
+  it("signs in, says the org and what the runtime gives; the key nowhere", async () => {
+    approves();
+    answer("get", "/v1/providers/advice", ADVICE);
+    const home = folder();
+    const ran = await run(["login", GATEWAY, "--no-open"], { env: { PINECALL_HOME: home } });
     expect(ran.code).toBe(0);
     expect(ran.err).toContain(`${GATEWAY}/cli?c=ABCD-1234`);
-    expect(ran.out).toBe(`signed in to ${GATEWAY} as Ana Ruiz\n`);
+    expect(ran.out).toContain(`signed in to ${GATEWAY} as Ana Ruiz · org clinica`);
+    expect(ran.out).toMatch(/thinking\s+openai\/nemotron-3\.5-lightning:30b-a3b\s+served here/);
+    expect(ran.out).toContain("a stage that needs a key: pinecall providers add <vendor>");
     expect(ran.out + ran.err).not.toContain("pc_live_machine");
+    expect(JSON.parse(readFileSync(join(home, "session.json"), "utf8")).gateways[GATEWAY]).toEqual({ key: "pc_live_machine", org: "clinica" });
   });
-});
 
-describe("pinecall link", () => {
-  it("writes the key of the only org into .env, and says so", async () => {
-    answer("get", "/v1/login/orgs", { orgs: [{ org: "org_1", slug: "clinica", here: true }] });
-    const root = folder();
-    const ran = await run(["link"], { cwd: root, key: null, env: { PINECALL_HOME: signedInHome() } });
+  it("is the one way in: link, setup and --org are none of this CLI's", async () => {
+    for (const gone of [["link"], ["setup"], ["login", "--org", "acme"]]) {
+      const ran = await run(gone);
+      expect(ran.code).not.toBe(0);
+      expect(ran.err).toMatch(/unknown command|unknown option/);
+    }
+  });
+
+  it("leaves every verb on this machine running on the sign-in, in any folder", async () => {
+    const sent = answer("get", "/v1/whoami", WHO);
+    const home = folder();
+    writeFileSync(join(home, "session.json"), JSON.stringify({ gateways: { [GATEWAY]: { key: "pc_live_machine", org: "clinica" } }, last: GATEWAY }));
+    const ran = await run(["whoami"], { cwd: folder(), key: null, env: { PINECALL_HOME: home } });
     expect(ran.code).toBe(0);
-    expect(ran.out).toBe("▸ clinica · PINECALL_KEY and PINECALL_URL written to .env\n");
-    expect(readFileSync(join(root, ".env"), "utf8")).toContain("PINECALL_KEY=pc_live_machine");
-  });
-
-  it("with several orgs and nobody at the terminal, names them and refuses", async () => {
-    answer("get", "/v1/login/orgs", { orgs: [{ org: "org_1", slug: "clinica", here: true }, { org: "org_2", slug: "acme", here: false }] });
-    const ran = await run(["link"], { cwd: folder(), key: null, env: { PINECALL_HOME: signedInHome() } });
-    expect(ran.code).toBe(2);
-    expect(ran.err).toContain("--org clinica | acme");
-  });
-
-  it("--org mints a key in the org named", async () => {
-    answer("get", "/v1/login/orgs", { orgs: [{ org: "org_1", slug: "clinica", here: true }, { org: "org_2", slug: "acme", here: false }] });
-    const minted = answer("post", "/v1/login/org", { key: "pc_live_acme" });
-    const ran = await run(["link", "--org", "acme"], { cwd: folder(), key: null, env: { PINECALL_HOME: signedInHome() } });
-    expect(ran.code).toBe(0);
-    expect(minted[0]!.body).toEqual({ org: "org_2" });
+    expect(ran.out.split("\n")[0]).toBe(`gateway ${GATEWAY} · org clinica · key from your sign-in (${home}/session.json) · sandbox`);
+    expect(sent[0]!.authorization).toBe("Bearer pc_live_machine");
   });
 });
 

@@ -1,8 +1,8 @@
-/** The `runtime` tool with nothing started: what `status` says before and after `pinecall-runtime setup` left its file. */
+/** The `runtime` tool with nothing started: what `status` says before and after `pinecall-runtime setup` signed this machine in. */
 
 import { describe, expect, it } from "vitest";
 
-import { LOCAL_FILE } from "../../../src/project/credentials.js";
+import { LOCAL_GATEWAY, SESSION_FILE } from "../../../src/project/session.js";
 import { runtime } from "../../../src/mcp/tools/runtime.js";
 import type { ToolContext } from "../../../src/mcp/tool.js";
 import { folder, write } from "../../support/project.js";
@@ -12,14 +12,14 @@ function contextAt(home: string): ToolContext {
 }
 
 describe("the runtime tool", () => {
-  it("status says there is no runtime on this machine until setup handed its key", async () => {
+  it("status says there is no runtime on this machine until setup signed it in", async () => {
     const home = folder();
     expect(await runtime.call({ action: "status" }, contextAt(home))).toEqual({
       running: false,
       handed: false,
       says: "no runtime on this machine yet: call runtime with action up",
     });
-    write(home, LOCAL_FILE, JSON.stringify({ url: "http://127.0.0.1:8080", key: "pc_test_local", org: "default" }));
+    write(home, SESSION_FILE, JSON.stringify({ gateways: { [LOCAL_GATEWAY]: { key: "pc_live_local", org: "default" } }, last: LOCAL_GATEWAY }));
     expect(await runtime.call({ action: "status" }, contextAt(home))).toEqual({ running: false, handed: true, gateway: "http://127.0.0.1:8080" });
   });
 

@@ -1,4 +1,4 @@
-# The key `pinecall link` writes: never in the repository.
+# A PINECALL_KEY kept in .env, a server's or a CI job's: never in the repository.
 .env
 .env.*
 !.env.example

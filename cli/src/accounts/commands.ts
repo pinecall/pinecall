@@ -1,11 +1,11 @@
-/** `pinecall login | link | whoami | secrets`: this machine signed in, the project tied to an org, who the key is, the org's secrets. */
+/** `pinecall login | whoami | secrets | team`: this machine signed in to one of your orgs, who the key is, the org's secrets and people. */
 
 import type { Command } from "@commander-js/extra-typings";
 
 import { connectionLine, type Context } from "../context.js";
 import { UsageError } from "../errors.js";
 import { openInBrowser } from "../kit/browser.js";
-import { allOf, readLine, typedInSilence } from "../kit/stdin.js";
+import { allOf, typedInSilence } from "../kit/stdin.js";
 import { CLOUD_URL } from "../project/credentials.js";
 import * as render from "./render.js";
 import * as service from "./service/index.js";
@@ -13,41 +13,25 @@ import * as service from "./service/index.js";
 const LOGIN = `
 Prints a link and opens it. You sign in there — in a browser, where a password belongs — and
 the page hands this terminal a key of its OWN, minted for you and labelled as this machine, so
-it is revoked on its own from Tokens. Nothing types a password into a shell, and the day your
-org signs in with Google this verb does not change.
+it is revoked on its own from Tokens. Nothing types a password into a shell. Once per machine and
+gateway: every verb on this machine runs on it.
 
-With no URL it is ${CLOUD_URL}, and it says so before anything is kept.
+A project says which org it runs in, in the pinecall.json \`pinecall new\` writes at its root, and
+this machine's key in that org is made the first time a verb needs it — the person may belong to
+many orgs. Outside a project, a verb acts in the org the sign-in's own key is in, and its first
+line says which.
 
-The key is the machine's sign-in, kept in ~/.pinecall/session.json (0600; PINECALL_HOME moves
-it), and no verb runs on it: a project runs on the key \`pinecall link\` writes into its own
-.env. \`link\` signs the machine in itself when it is not, so this is rarely typed. A server has
-no login at all: a server's token from Tokens, in its secrets as PINECALL_KEY.
+With no URL it is ${CLOUD_URL}, and it says so before anything is kept. A runtime on this
+machine (\`pinecall-runtime setup\`) signs this machine in by itself. A server signs in nowhere: a
+server's token from Tokens, in its secrets as PINECALL_KEY, which wins over any sign-in.
 
 Examples
-  $ pinecall login
-  gateway  https://cloud.pinecall.io   (the default — \`pinecall login <url>\` for your own)
-
+  $ pinecall login https://pinecall.example.com
   open this to sign in:
-  https://cloud.pinecall.io/cli?c=cli_…
+  https://pinecall.example.com/cli?c=cli_…
 
   waiting…
-  signed in to https://cloud.pinecall.io as Ana García
-`;
-
-const LINK = `
-Run in the project's folder. Signs this machine in through a browser when it is not, asks
-which of your orgs this project is — --org names it — and writes your key for that org into
-./.env as PINECALL_KEY (and PINECALL_URL when the gateway is not ${CLOUD_URL}). Every verb run
-in this folder, or under it, reads it from there: a project of another org is another folder
-with its own .env, and nothing is ever switched.
-
-The key is yours: your role decides what it may do, and --prod reaches production while your
-org lets you act there. A server does not link: a server's token from Tokens, in its secrets.
-
-Examples
-  ~/clinica $ pinecall link --org clinica
-  ▸ clinica · PINECALL_KEY written to .env
-  git would commit .env: add it to .gitignore before a commit carries your key
+  signed in to https://pinecall.example.com as Ana García · org clinica
 `;
 
 const WHOAMI = `
@@ -100,37 +84,15 @@ Examples
 export function register(program: Command, ctx: Context): void {
   program
     .command("login")
-    .description("sign this machine in through a browser; `link` asks for it when it is needed")
+    .description("sign this machine in to a gateway through a browser: every verb on it runs on that sign-in")
     .argument("[gateway]", `the gateway to sign in to; ${CLOUD_URL} when left out`)
     .option("--no-open", "print the link and do not open a browser")
     .addHelpText("after", LOGIN)
     .action(async (gateway, flags) => {
       if (gateway === undefined) ctx.io.info(render.DEFAULT_GATEWAY(CLOUD_URL));
       const signed = await signInThrough(ctx, gateway ?? CLOUD_URL, flags.open);
-      ctx.io.result(signed, render.signedIn);
-    });
-
-  program
-    .command("link")
-    .description("this project's folder to one of your orgs: your key, in its .env")
-    .option("--org <slug>", "which org, when you belong to several and do not want to be asked")
-    .option("--gateway <url>", "another gateway than the one this machine last signed in to")
-    .option("--no-open", "when signing in: print the link and do not open a browser")
-    .addHelpText("after", LINK)
-    .action(async (flags) => {
-      const input = service.LinkInput.parse({ org: flags.org, gateway: flags.gateway });
-      let machine = service.machineSignIn(ctx, input.gateway);
-      if (machine === undefined) {
-        const signed = await signInThrough(ctx, input.gateway ?? CLOUD_URL, flags.open);
-        ctx.io.info(render.signedIn(signed));
-        machine = service.machineSignIn(ctx, signed.gateway)!;
-      }
-      const orgs = await service.listOrgs(ctx, machine);
-      const org = input.org === undefined && orgs.length > 1 ? await askWhichOrg(ctx, orgs) : service.chooseOrg(orgs, input.org);
-      const linked = await service.linkProject(ctx, machine, org);
-      ctx.io.result(linked, render.linked);
-      // Warn on every run until .env is git-ignored, so the key is never committed.
-      if (!linked.gitIgnored) ctx.io.warn(render.GIT_WOULD_COMMIT);
+      const machine = service.machineSignIn(ctx, signed.gateway)!;
+      ctx.io.result({ ...signed, advice: await service.adviceAt(machine.url, machine.key) }, render.loggedIn);
     });
 
   program
@@ -197,20 +159,10 @@ async function typedTwice(ctx: Context): Promise<string> {
   return first;
 }
 
-// Browser sign-in, key verification and storage; shared by `login` and `link`.
+// Browser sign-in, key verification and storage.
 async function signInThrough(ctx: Context, gateway: string, open: boolean): Promise<service.SignedIn> {
   const signIn = await service.startSignIn(ctx, service.StartSignInInput.parse({ gateway }));
   for (const line of render.signInLink(signIn.link)) ctx.io.info(line);
   if (open) openInBrowser(signIn.link);
   return await signIn.done;
-}
-
-// A numbered list on the terminal; without a person at it, the slugs are named and the verb refuses.
-async function askWhichOrg(ctx: Context, orgs: service.Org[]): Promise<service.Org> {
-  const slugs = orgs.map(service.slugOf);
-  if (!ctx.io.interactive) throw new UsageError(`which org is this project? --org ${slugs.join(" | ")}`);
-  for (const line of render.orgChoices(slugs)) ctx.io.info(line);
-  const answer = (await readLine("which org is this project? ", ctx.io)).trim();
-  const picked = slugs[Number(answer) - 1] ?? slugs.find((slug) => slug === answer);
-  return service.chooseOrg(orgs, picked);
 }

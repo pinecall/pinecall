@@ -118,7 +118,7 @@ Postgres under CloudNativePG.
 
 The runtime whole runs on a laptop too, with no cloud account: `make local` starts the platform's
 Postgres, Redis and LiveKit in docker (`pinecall-runtime local up`, ports 55433, 56380, 7880 — what
-`pinecall-runtime setup` runs too, with a person, a key for the CLI and the models),
+`pinecall-runtime setup` runs too, with the console's admin, this machine signed in, and the models),
 migrates the schema and writes `.local/env` once (a vault key, an ops key and the sandbox fleet's
 key drawn there, 0600); `make local-gateway` and `make local-worker` run both from the checkout on
 those settings, and `make local-down` stops the compose. LiveKit's pair there is a laptop-only

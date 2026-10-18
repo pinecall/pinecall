@@ -33,8 +33,8 @@ path end to end, with every output under it.
 
 | verb | what it is | needs the gateway |
 |---|---|---|
-| [`new`](#new) | a new project of one agent, in TypeScript, Ruby or Python | **no** |
-| [`link`](#link) | this project's folder to one of your orgs: your key, written to its `.env` | yes |
+| [`login`](#login) | sign this machine in to a gateway through a browser, once: every verb runs on it | yes |
+| [`new`](#new) | a new project of one agent, in TypeScript, Ruby or Python, and its `pinecall.json`: where it runs | only for the org |
 | [`start`](#start) | the app registered and answering — **the process you deploy** | yes |
 | [`console`](#console) | the platform's console in a browser, signed in: the sandbox's at `<url>/sandbox/`, `--prod` for production's at `<url>/` | yes |
 | [`chat`](#chat) | a written caller against the agent, wherever it is held | yes |
@@ -65,7 +65,6 @@ path end to end, with every output under it.
 | [`data`](#data) | the org's data: erasures and their trail, its policy, consent, the do-not-call list, export | yes |
 | [`deploy`](#deploy) | this project run by the platform itself: uploaded as a release, installed and started there; list, releases, rollback, logs, stop, start, rm | yes |
 | [`secrets`](#secrets) | the values the org's hosted apps are started with: list, set, rm — never read back | yes |
-| [`login`](#login) | sign this machine in through a browser; `link` asks for it when it is needed | yes |
 | [`whoami`](#whoami) | which gateway, which org, which environments the key opens, and where the key came from | yes |
 | [`mcp`](#mcp) | the MCP server an assistant runs this CLI as; `mcp install` adds it to every assistant here | the tools do |
 
@@ -83,41 +82,47 @@ runs from any folder; beside an agent's class, both read as that agent.
 
 ## Where the gateway and the key come from
 
-**The project's, the way any app reads its own secrets** (`src/env.ts`). Every verb reads
-`PINECALL_KEY` and `PINECALL_URL` from the process's environment — a server's secrets, a CI job's
-— else from the nearest `.env` walking up from the directory it runs in, which
-[`pinecall link`](#link) wrote, else from `~/.pinecall/local.json`, which `pinecall-runtime setup`
-writes when it runs the runtime on this machine: your key there, and `http://127.0.0.1:8080`. So on
-your own machine no verb needs `login` or `link`, and a project with a key of its own (a Cloud
-project beside it) keeps its own. `PINECALL_URL` is `https://cloud.pinecall.io` unless one of these
-names another. Nothing else is read: v1's `PINECALL_API_KEY` never is, because a shell that still
-had v1's key exported once pointed every verb at another org with every line reading the same.
+**Two things, each with one job.** This machine's **sign-in** says who you are at a gateway:
+`pinecall login [url]` keeps it in `~/.pinecall/session.json`, once per machine and gateway, and
+`pinecall-runtime setup` writes the same for the runtime it runs here. A project's
+**`pinecall.json`**, at its root and committed beside its agents, says where the project runs:
 
-**A project folder is one org.** `pinecall link` in the folder writes your key for the org you
-pick; a project of another org is another folder with its own `.env`, and nothing is ever
-switched. There are no profiles, no active mark and no flag that points one command elsewhere.
-
-```console
-~/clinica $ pinecall link
-  1. clinica
-  2. dental-sur
-which org is this project? 1
-▸ clinica · PINECALL_KEY written to .env
+```json
+{ "gateway": "https://pinecall.miempresa.com", "org": "clinica" }
 ```
 
+It holds no key, so whoever clones the project runs it there on their own sign-in.
+[`pinecall new`](#new) writes it — the gateway this machine signed in to last and your only org
+there, or the one you pick when you belong to several.
+
+**Every verb finds its key in this order, and nothing else is read:**
+
+1. `PINECALL_KEY` and `PINECALL_URL` in the process's environment — a server's secrets, a CI job's.
+2. `PINECALL_KEY` in the nearest `.env` walking up from where it runs (an app's own secrets).
+3. The nearest `pinecall.json`: its gateway and its org, and this machine's key in that org. The
+   sign-in's own key when it is that org's; otherwise one minted from it there the first time a
+   verb needs it — a project cloned onto this machine, an org changed in the file — labelled as this
+   machine, kept beside the sign-in and never in the project.
+4. Outside a project, the sign-in at the gateway signed in to last, in the org its own key is in.
+
+So on your own machine with a runtime of its own no verb needs `login`, and a project of another org
+is only another `pinecall.json`: nothing is switched. v1's `PINECALL_API_KEY` is never read, because
+a shell that still had v1's key exported once pointed every verb at another org with every line
+reading the same.
+
 **One gateway, two environments, one identity.** Production and the sandbox are two environments of the same
-gateway — each with its own data, neither reaching the other — and `PINECALL_URL` is that one
-gateway, for both. The environment a request acts in is decided there, from the key and the header,
+gateway — each with its own data, neither reaching the other — and the gateway a verb found
+(`PINECALL_URL`, or the project's `pinecall.json`) is that one gateway, for both. The environment a request acts in is decided there, from the key and the header,
 never from the name: every verb knocks at the same URL with the same key, and says which environment
 it means.
 
 | the verb | knocks at | with | saying |
 |---|---|---|---|
-| without `--prod` — the sandbox | `PINECALL_URL` | the project's key | `pinecall-env: sandbox` |
-| with `--prod` | `PINECALL_URL` | the project's key | `pinecall-env: production` |
+| without `--prod` — the sandbox | the gateway | the key found | `pinecall-env: sandbox` |
+| with `--prod` | the gateway | the key found | `pinecall-env: production` |
 
 **A person's key opens both environments.** Nothing is derived, minted or discovered for the sandbox:
-the key `pinecall link` wrote is the one every verb sends, and the `pinecall-env` header on every
+the key a verb found is the one it sends, and the `pinecall-env` header on every
 request and every socket (`@pinecall/agents/client`'s `signed.ts`) says which environment it acts in — absent, the
 gateway takes the sandbox. `--prod` is for one command and keeps nothing, so the next command is
 in the sandbox again. Production lets a person through only while their production switch is on —
@@ -139,23 +144,23 @@ production token sent without `--prod` is refused by the gateway, in its words (
 production server's token, and this request is for sandbox: a server's token opens the environment it
 was made in``). [production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md) is that path.
 
-`whoami` and `callbacks` open by printing where they went: `gateway <url> · key from <where> ·
-<environment>`. The rest get on with the answer. With no key anywhere every one of them is refused:
-``no PINECALL_KEY here: `pinecall link` in the project's folder writes it to .env (a server keeps
-it in its secrets), or `pinecall-runtime setup` runs a runtime on this machine the CLI finds by
-itself``, and the exit code is 2. A key from the runtime on this machine reads `key from the local
-runtime (~/.pinecall/local.json)`. **`pinecall whoami` is the first thing to run when an
-endpoint refuses you and will not say why.**
+`whoami` and `callbacks` open by printing where they went: `gateway <url> · org <slug> · key from
+<where> · <environment>`. The rest get on with the answer. With no key, every one of them is refused
+with exit 2 and the sentence that says what to do: a project whose gateway this machine is not
+signed in to names it (``pinecall.json runs this project at <url>: sign in there, `pinecall login
+<url>```); an org you are no member of says so; a machine signed in nowhere hears ``this machine is
+signed in nowhere: `pinecall login [url]` (a server keeps PINECALL_KEY in its secrets), or
+`pinecall-runtime setup` runs a runtime here that the CLI uses by itself``. **`pinecall whoami` is
+the first thing to run when an endpoint refuses you and will not say why.**
 
 ## `~/.pinecall/`
 
 | file | what it holds |
 |---|---|
-| `session.json` | `{ "gateways": { "<url>": { key?, calling? } }, "last": … }` — this machine, one row per gateway it knows (`src/signed-in.ts`): `key`, this machine signed in as a person (`login`), which `link` mints a project's key from; `calling`, the phone `pinecall line from` said, re-sent by every `start`. No project reads it for its own key: that is the `.env` |
-| `local.json` | `{ "url", "key", "org", "written_by" }` — written by `pinecall-runtime setup` on this machine: the runtime's address and your key there, read by a project that has no key of its own. Run `setup` again and it is written again |
+| `session.json` | `{ "gateways": { "<url>": { key, org, orgs?, calling? } }, "last": … }` — this machine, one row per gateway it knows (`src/project/session.ts`): `key`, the sign-in (`login`'s, or the local runtime admin's that `pinecall-runtime setup` writes), and `org`, the org it acts in; `orgs`, the keys minted from it in your other orgs, by slug; `calling`, the phone `pinecall line from` said, re-sent by every `start`. A new sign-in at a gateway drops the keys minted from the old one |
 
 The directory is `0700` and the file `0600`; `PINECALL_HOME` moves it. A key is never printed,
-never logged, and never put in a URL. A `.env` that `link` creates is `0600` too.
+never logged, never put in a URL, and never written into a project.
 
 ---
 
@@ -168,6 +173,7 @@ one folder under `agents/`, and everything the agent is lives in it — copy the
 copied the agent (`src/project/layout.ts`):
 
 ```
+pinecall.json                         where the project runs: its gateway and its org, no key (committed)
 agents/<name>/agent.tsx               the class — and beside it only what this agent uses (callbacks.ts);
                                       agent.ts, agent.rb or agent.py for a class in another language
 agents/<name>/docs/                   the documents `docs push` sends as the agent's base
@@ -218,86 +224,15 @@ of this project, by its folder's name. In a verb that only asks the gateway — 
 `runs drift`, `numbers import`, `callbacks`, `docs attach` — it is a slug, because there is no
 class to find. `--file` is always a file.
 
-## `setup`
-
-```
-pinecall setup [--stt <choice>] [--turn stt|smart-turn|livekit] [--llm <choice>] [--tts <choice>]
-               [--judge <choice>] [--caller <choice>] [--email <address>] [--chat-only] [--yes] [--recommend]
-```
-
-The runtime on this machine, chosen on a screen and run: `pinecall-runtime setup` with its
-decisions made here. It needs the runtime installed (`uv tool install "pinecall-runtime[voice]"`)
-and Docker. First it reads the machine through the runtime (`pinecall-runtime setup --recommend`):
-the card and its memory, Apple silicon and its unified memory, RAM and cores, whether Docker and
-an Ollama are here, which vendors' key variables are set. Then it shows every model measured
-for a voice agent — whether it fits beside the ears, the voice and the embedder and by how much
-it is short, the time to its first token, whether it took a message, answered from the documents
-and made small talk — with the stack this machine runs best already picked.
-
-Five ways, one chosen with the arrows: **recommended** (what the machine runs best), **all
-local** (every stage an open model here, no account anywhere), **with keys** (deepgram hears,
-anthropic thinks, cartesia speaks), **stage by stage** and **chat only**. Stage by stage asks
-six questions — the ears, the end of turn, the thinking, the voice, the judge of a finished call,
-the model that plays the simulated caller — each a list typed into and narrowed as you type:
-`local` (the server on this machine), `local/<model>` for every measured model marked ✓ or ✗
-for this machine, and any model Ollama has by its tag, then every vendor this build runs that
-does the stage. The judge and the caller follow the thinking until picked on their own.
-
-A key is never typed on this screen. Before running, it says where each vendor's key is: in the
-environment, in a shell file this shell has not sourced (`~/.zshrc`, `~/.bashrc`, fish's
-`config.fish` — read by name, never by value), or nowhere, in which case the runtime asks for it
-without echo. Enter runs `pinecall-runtime setup --yes` with the answers and leaves it running:
-Postgres, Redis and LiveKit in Docker, the schema, a key this CLI finds by itself in
-`~/.pinecall/local.json`, the models pulled once, the gateway and a worker.
-
-In a project whose key points at a gateway on another host — the cloud, a server — this machine
-is neither scanned nor set up. The host advises instead (`GET /v1/providers/advice`), a stage at a
-time, from what it has: an open model its own servers list (no key at all), else a vendor it lends
-(none of yours), else your org's own key, else one your org must bring. Its judge and simulated
-caller are its own, on its keys; its operator also gets its machine, where its model servers run on
-it. A key a stage needs that this shell exports is offered to your org on that host — tried there
-before it is kept, never printed here — and one that sits in a shell file not yet sourced is named
-by file. The stack is then an agent's: the line it ends with is the `pinecall agent set` to run.
-
-```console
-$ pinecall setup --recommend
-this runtime  https://gpu.example.com · lends nothing
-
-ears         openai/deepdml/faster-whisper-large-v3-turbo-ct2  served here
-             served there: deepdml/faster-whisper-large-v3-turbo-ct2
-thinking     openai/qwen3:30b-a3b-instruct-2507-q4_K_M         served here
-             served there: qwen3:30b-a3b-instruct-2507-q4_K_M, gemma4:12b, bge-m3
-voice        openai/kokoro                                     served here
-
-for an agent pinecall agent set --agent <name> --stt openai/deepdml/faster-whisper-large-v3-turbo-ct2 --llm openai/qwen3:30b-a3b-instruct-2507-q4_K_M --tts openai/kokoro
-```
-
-A flag names a stage and that stage is not asked. `--yes` asks nothing and runs the recommended
-stack as the flags amend it — what a pipe or a script gets, since the screen needs a terminal.
-`--recommend` prints the reading and stops; `--json` makes it the runtime's own JSON.
-
-```console
-$ pinecall setup --recommend
-this machine  NVIDIA L4 · 22.5 GB · 22.5 GB for the models
-here          docker ✓ · ollama the container · linux x86_64
-keys set      none
-
-measured                                fits       first token  message  docs  talk
-qwen3:30b-a3b-instruct-2507-q4_K_M      ✗ -1.6 GB  0.4s         3/3      3/3   3/3
-gemma4:12b                              ✓          0.9s         3/3      3/3   3/3
-gemma4:e4b                              ✓          0.8s         2/3      3/3   3/3
-
-recommended   stt local · turn smart-turn · llm local/gemma4:12b · tts local
-```
-
 ## `new`
 
 ```
-pinecall new <name> [--agent <name>] [--typescript | --ruby | --python]
+pinecall new <name> [--agent <name>] [--typescript | --ruby | --python] [--org <slug>]
 ```
 
 A project in `./<name>/`, in the layout every verb reads: the toolchain, a README, a `.gitignore`
-that keeps `.env` and `.pinecall/` out, and an empty `agents/`. A project and an agent are two
+that keeps `.env` and `.pinecall/` out, an empty `agents/`, and the `pinecall.json` that says where it
+runs (below). A project and an agent are two
 names — the business, and one of the agents that answer for it — so `new` names the project, and
 `--agent` writes its first agent too: `agents/<agent>/`, holding the class — a receptionist that
 answers from the documents it is given and otherwise takes a message with one tool — its ring-0
@@ -310,16 +245,29 @@ nothing else: `@pinecall/agents` at the version this CLI is released with, the `
 the `pinecall` package. The CLI is never a dependency of the project.
 
 Both names are slugs — lowercase letters, digits and dashes, starting with a letter; the agent's
-is its name on the gateway — and the folder must not exist or must be empty. It writes files and
-nothing else: no key, no install, no gateway. It prints the commands that come next.
+is its name on the gateway — and the folder must not exist or must be empty. Nothing is installed.
+It prints the commands that come next.
+
+**Where it runs.** On a machine signed in to a gateway — `pinecall login`, or a runtime
+`pinecall-runtime setup` runs here — `new` asks that gateway for your orgs and writes
+`pinecall.json` at the project's root: the gateway, and your only org, or the one you pick when you
+belong to several. The org is chosen before a file is written, so a refusal leaves nothing behind;
+with nobody at the terminal, `--org <slug>` names it, and several orgs with none named is exit 2
+naming them. This machine's key in that org is made then. A machine signed in nowhere writes no
+`pinecall.json` and says `pinecall login` comes next: until a `pinecall.json` names one, the
+project runs in the org of the sign-in. A gateway that does not answer is said in a warning, and the
+project is written all the same.
 
 ```console
 $ pinecall new clinica-dental --agent sofia --ruby
+  1. clinica
+  2. dental-sur
+which org is this project? 2
 ▸ clinica-dental · a Ruby project · agents/sofia/
+  runs in dental-sur at https://pinecall.miempresa.com (pinecall.json)
 
   cd clinica-dental
   bundle install
-  pinecall link        sign in, pick the org: its key goes to .env
   pinecall chat        talk to it here
   pinecall test        its goldens, against a real model
   pinecall start       answer calls
@@ -401,14 +349,14 @@ drawn by the class's process. `pinecall agent list` shows both, the second named
 `pinecall-cli/<version>`. `--inspect` opens the agent's process to a debugger.
 
 The app registered on the gateway and answering: **this is the process you deploy**, the same one
-on a laptop and on a server. With nothing said it holds the **sandbox** agent — at `PINECALL_URL`,
-with the project's key, saying `pinecall-env: sandbox` ([above](#where-the-gateway-and-the-key-come-from)) — and in the sandbox
+on a laptop and on a server. With nothing said it holds the **sandbox** agent — at the gateway it
+found, with the key it found, saying `pinecall-env: sandbox` ([above](#where-the-gateway-and-the-key-come-from)) — and in the sandbox
 **the agent is held per person**: two developers of one tenant each run the same agent and each
 reaches their own, while a *number* is one endpoint and rings in one place — a developer's own phone
 reaches their copy, and anybody else's call lands where the line was claimed ([`line`](#line)). An
 admin, and whoever runs the gateway, see every corner of the sandbox rather than only their own.
 
-**`--prod` runs production's agent**, the one the org's customers reach, at `PINECALL_URL`. On a
+**`--prod` runs production's agent**, the one the org's customers reach, at the same gateway. On a
 server that is a production server's token in `PINECALL_KEY`, which was made for it and is
 refused without the flag; on a person's key it opens only while their production switch is on,
 and the gateway's refusal is printed before anything registers. How a server runs it — under the process manager, or
@@ -445,7 +393,7 @@ own. Give it that long under its manager ([production.md](https://github.com/pin
 
 ```console
 $ pinecall start
-clinica-norte · clinica · sandbox · connected to https://cloud.pinecall.io · key from .env · tools 4
+clinica-norte · clinica · sandbox · connected to https://cloud.pinecall.io · key from your sign-in (~/.pinecall/session.json) · tools 4
 talk to it  https://cloud.pinecall.io/sandbox/a/clinica-norte/playground?login=lc_9f2   (opens within five minutes, once)
 doors    web · phone +34910000000
 line     rings in this terminal · also running: carla@clinica.test
@@ -457,7 +405,7 @@ line     rings in this terminal · also running: carla@clinica.test
 
 | flag | |
 |---|---|
-| `--prod` | production's agent, at `PINECALL_URL`: a production server's token, or a person's key while their switch is on |
+| `--prod` | production's agent, at the same gateway: a production server's token, or a person's key while their switch is on |
 | `--ui` | the full-screen terminal view. `p` pause · `c` clear · `e` events · `q` quit. The prompt a call is in is not on screen: the gateway keeps a hash of each block, not its text — `pinecall prompt` prints the page a state produces |
 | `--events` | the agent's process's own lines: one JSON object per wire entry, `{"type","agent","call","data"}` with `data` as the gateway wrote it (snake_case), `agent.registered` first, for a pipe |
 | `--show-prompt` | the prompt a fresh instance would produce, through the agent's serve entry, then exit. No key, no gateway |
@@ -1778,7 +1726,7 @@ pinecall callbacks [--agent <slug>] [--after <cursor>]
 
 ```console
 $ pinecall callbacks
-gateway https://cloud.pinecall.io · key from .env · sandbox
+gateway https://cloud.pinecall.io · org clinica · key from your sign-in (~/.pinecall/session.json) · sandbox
 nobody is waiting for a call back
 ```
 
@@ -1789,7 +1737,7 @@ One line each — when, the agent, the number, the channel, who took it — olde
 (`callback.requested`, on the agent's log); dialing back is your app's.
 
 ```
-gateway https://cloud.pinecall.io · key from .env
+gateway https://cloud.pinecall.io · org clinica · key from your sign-in (~/.pinecall/session.json)
 2026-09-11 19:20  clinica-norte  +34600000000  phone  via overflow on call_9f2c…
 2026-09-11 19:22  clinica-norte  +34611111111  web    via the widget
 ```
@@ -1900,33 +1848,6 @@ with its facts and its whole log, every memory, every version of every agent's s
 every knowledge document. `--out` writes a file and says so on stderr; without it, stdout, for a
 pipe. Recordings are not inlined: `pinecall sessions` names them.
 
-## `link`
-
-```
-pinecall link [--org <slug>] [--gateway <url>]
-```
-
-**This project's folder, tied to one of your orgs.** Run in the project's folder: it signs this
-machine in through the browser when it is not ([`login`](#login), the same dance), lists your orgs
-(`GET /v1/login/orgs`), asks which one this project is — `--org` names it — and mints your key
-there (`POST /v1/login/org`), unless it is the org this machine is signed in to, whose key it
-already holds. The key goes into `./.env` as `PINECALL_KEY`, and `PINECALL_URL` beside it when the
-gateway is not `https://cloud.pinecall.io`; every other line of the file is left as it was. That one
-key opens both environments at that one gateway — the sandbox without `--prod`, production with it —
-and nothing else is written or derived ([above](#where-the-gateway-and-the-key-come-from)).
-
-```console
-~/clinica $ pinecall link --org clinica
-▸ clinica · PINECALL_KEY written to .env
-git would commit .env: add it to .gitignore before a commit carries your key
-```
-
-The last line is said every time until the project's `.gitignore` names `.env`: a key committed is
-a key published. Every verb run in this folder, or under it, reads the key from there; a project of
-another org is another folder, linked on its own. `--gateway` names another gateway than the one
-this machine last signed in to. A server does not link: it runs on a server's token from the
-console's API keys screen, kept in its secrets ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md)).
-
 ## `login`
 
 ```
@@ -1940,24 +1861,36 @@ screen. Nothing types a password into a shell, and the day your org signs in wit
 does not change.
 
 ```console
-$ pinecall login
-gateway  https://cloud.pinecall.io   (the default — `pinecall login <url>` for your own)
-
+$ pinecall login https://pinecall.miempresa.com
 open this to sign in:
-https://cloud.pinecall.io/cli?c=cli_…
+https://pinecall.miempresa.com/cli?c=cli_…
 
 waiting…
-signed in to https://cloud.pinecall.io as Ana García
+signed in to https://pinecall.miempresa.com as Ana García · org clinica
+
+what this runtime gives your agents
+  ears      openai/deepdml/faster-whisper-large-v3-turbo-ct2   served here
+  thinking  openai/nemotron-3.5-lightning:30b-a3b              served here
+  voice     cartesia                                           needs a key
+
+a stage that needs a key: pinecall providers add <vendor>
 ```
 
-**It signs the machine in, and no verb runs on that.** The key is proved at `/v1/whoami` and kept
-in `~/.pinecall/session.json`; what a project runs on is the key [`link`](#link) mints from it into
-the project's `.env`. `link` signs in on its own when it has to, so this is rarely typed. With no
-URL it is `https://cloud.pinecall.io`, and it says so above the link, so a person who meant their
-own platform sees the assumption before anything is kept. The URL is the one gateway's, and the key it
-leaves opens both of its environments; the sandbox keeps no password of its own. The word in the link
-dies in ten minutes and on first collection; a terminal with no browser prints the same link and
-you open it from wherever you are. A server has no login at all.
+**Once per machine and gateway, and every verb runs on it.** The key is proved at `/v1/whoami` and
+kept in `~/.pinecall/session.json` with the org it acts in. It chooses no org: you may belong to
+many, and each project names its own in its `pinecall.json` ([where the key comes
+from](#where-the-gateway-and-the-key-come-from)). Signing in again at a gateway replaces the
+sign-in there and drops the keys minted from the old one. After it, the gateway says what it gives
+your agents a stage at a time (`GET /v1/providers/advice`): an open model it serves, a vendor it
+lends, your org's own key, or one your org must bring; a gateway that does not say is left out.
+
+With no URL it is `https://cloud.pinecall.io`, and it says so above the link, so a person who meant
+their own platform sees the assumption before anything is kept. The key opens both environments of
+that gateway; the sandbox keeps no password of its own. The word in the link dies in ten minutes
+and on first collection; a terminal with no browser prints the same link and you open it from
+wherever you are. A runtime on this machine (`pinecall-runtime setup`) signs it in by itself, and a
+server has no login at all: it runs on a server's token from the console's API keys screen, kept in
+its secrets as `PINECALL_KEY` ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md)).
 
 ## `whoami`
 
@@ -1965,8 +1898,8 @@ you open it from wherever you are. A server has no login at all.
 pinecall whoami [--prod]
 ```
 
-**The one endpoint**: `PINECALL_URL`, with the key from the environment or the project's `.env`, on
-one line with where the key came from; under it what the gateway says the key is in the environment
+**The one endpoint**: the gateway and the key every verb finds ([above](#where-the-gateway-and-the-key-come-from)),
+on one line with the org and where the key came from; under it what the gateway says the key is in the environment
 asked — the sandbox, or production with `--prod`: the org (its slug, or its id when the gateway
 carries none), the key's id, the environment, the label it was issued under, and whether the key may act
 in production — your switch, an admin's always, or a production server token; and under that
@@ -1977,7 +1910,7 @@ neither printed nor sent anywhere else.
 
 ```console
 $ pinecall whoami
-gateway https://cloud.pinecall.io · key from .env · sandbox
+gateway https://cloud.pinecall.io · org clinica · key from your sign-in (~/.pinecall/session.json) · sandbox
   org clinica · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
   a person's key: the sandbox without --prod, production with it
 ```
@@ -2168,7 +2101,7 @@ is [deploying.md](deploying.md)**; what follows is the verb's reference. What it
 
 - **The project, packed.** Every file the project's `.gitignore` files leave in — each read where it
   sits, with no git asked, so a folder that is no checkout packs the same — and never
-  `node_modules`, `.git`, `dist` or any `.env`: the key in `.env` is yours, and the app gets one of
+  `node_modules`, `.git`, `dist` or any `.env`: a key in a `.env` is yours, and the app gets one of
   its own. 10 MB packed at most, 100 MB unpacked, 5 000 files; a link or a path out of the folder is
   refused.
 - **A lockfile, and `@pinecall/agents` in the dependencies.** The platform installs from
@@ -2371,14 +2304,15 @@ code can call — over HTTP, in any language, with the same key.
 | `judging` | `GET`·`PUT /v1/org/judging` · `GET /v1/provider-keys` to say whose key the model runs on |
 | `line` | `GET`·`POST`·`DELETE /v1/agents/{slug}/line`, `PUT`·`DELETE /v1/line/from` |
 | `console` | `POST /v1/login/codes` in the environment asked — the one-use code the browser spends for a key of its own. Every other endpoint the console asks, it asks for itself |
-| `login` | `POST /v1/login/pairings`, `GET …/{code}/key` — then `GET /v1/whoami` to prove what it got |
-| `link` | what `login` knocks at when the machine is not signed in, then `GET /v1/login/orgs` for the person's orgs and `POST /v1/login/org` for the key in the one picked |
+| `login` | `POST /v1/login/pairings`, `GET …/{code}/key` — then `GET /v1/whoami` to prove what it got, and `GET /v1/providers/advice` for what the gateway gives |
+| `new` | on a signed-in machine, `GET /v1/login/orgs` for your orgs and `POST /v1/login/org` for this machine's key in the one picked |
+| any verb in a project | `GET /v1/login/orgs` and `POST /v1/login/org` once, when its `pinecall.json` names an org this machine has no key in yet |
 | `whoami` | `GET /v1/whoami` in the environment asked — the sandbox, or production with `--prod` |
 | `deploy` | `POST /v1/hosted/{name}/releases` (the tarball itself, `application/gzip`), then `GET /v1/hosted` every few seconds while it follows; `list` is `GET /v1/hosted`, `releases` `GET …/{name}/releases`, `rollback <n>` `POST …/{name}/rollback {release}`, `logs` `GET …/{name}/logs` every two seconds, `stop` · `start` `POST …/{name}/stop` · `…/start`, `rm` `DELETE /v1/hosted/{name}` |
 | `secrets` | `GET /v1/secrets` · `PUT`·`DELETE /v1/secrets/{name}` |
 | `telemetry` | `GET`·`PUT`·`DELETE /v1/telemetry` |
 | `monitors` | `GET`·`POST /v1/monitors` · `DELETE /v1/monitors/{id}` |
 | `webhook` | `GET`·`PUT`·`DELETE /v1/webhook` · `POST /v1/webhook/test` |
-| every verb, without `--prod` | its own endpoints at `PINECALL_URL`, with the project's key and `pinecall-env: sandbox` on each request and socket; nothing is asked first |
-| every verb, with `--prod` | the same endpoints at `PINECALL_URL`, with the same key and `pinecall-env: production` on each request and socket |
+| every verb, without `--prod` | its own endpoints at the gateway it found, with the key it found and `pinecall-env: sandbox` on each request and socket; nothing else is asked first |
+| every verb, with `--prod` | the same endpoints at the same gateway, with the same key and `pinecall-env: production` on each request and socket |
 | `prompt` | none. It is the one verb that needs no gateway and no key |

@@ -45,6 +45,7 @@ export async function main(
       program.outputHelp();
       return USAGE;
     }
+    await ctx.prepare();
     await program.parseAsync([...argv], { from: "user" });
     return stopping.signal.aborted ? new Cancelled().exit : 0;
   } catch (failed) {

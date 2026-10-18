@@ -69,10 +69,9 @@ Every parameter, and a real call of each: [Getting started](mcp/getting-started.
 | tool | actions | what it does |
 |---|---|---|
 | `whoami` | — | which org, gateway and environment the project's key acts in, and whether production is allowed for the key and for this server |
-| `login` | `start` · `status` | signs this machine in: `start` answers a link the person opens in a browser; `status` waits until they approved it. The key is kept in `~/.pinecall/session.json` and never answered |
-| `link` | `orgs` · `write` | the person's orgs, and the key of one written into the project's `.env` (`PINECALL_KEY`, and `PINECALL_URL` when the gateway is not Pinecall Cloud); it warns when `.gitignore` does not name `.env` |
-| `project` | `show` · `open` · `new` · `generate` | the folder the tools act on, its agents and their language, whether it has a key; another folder opened (with nothing held: `stop` first); a new project of one agent written from `pinecall new`'s templates, in TypeScript, Ruby or Python, and opened; `generate` adds a second agent (`kind: agent`) or a golden from the caller's lines and the tools that must be called (`kind: golden`), as `pinecall generate` does |
-| `runtime` | `status` · `up` · `down` | the runtime on this machine, for a person with no account: `up` runs `pinecall-runtime setup --yes` — Docker, the schema, a key handed to this CLI in `~/.pinecall/local.json`, open models (Ollama, Whisper, Kokoro) pulled once — and keeps it running; `status` says what it printed and whether it said ready; `down` stops it, keeping the database and the key |
+| `login` | `start` · `status` | signs this machine in to a gateway, once: `start` answers a link the person opens in a browser; `status` waits until they approved it, and says the org the sign-in acts in. The key is kept in `~/.pinecall/session.json` and never answered; every tool runs on it, in the org the project's `pinecall.json` names |
+| `project` | `show` · `open` · `new` · `generate` | the folder the tools act on, its agents and their language, whether it has a key; another folder opened (with nothing held: `stop` first); a new project of one agent written from `pinecall new`'s templates, in TypeScript, Ruby or Python, its `pinecall.json` naming the gateway and the org it runs in (`org` when the person has several: asked of them, never guessed), and opened; `generate` adds a second agent (`kind: agent`) or a golden from the caller's lines and the tools that must be called (`kind: golden`), as `pinecall generate` does |
+| `runtime` | `status` · `up` · `down` | the runtime on this machine, for a person with no account: `up` runs `pinecall-runtime setup --yes` — Docker, the schema, this machine signed in to it in `~/.pinecall/session.json`, open models (Ollama, Whisper, Kokoro) pulled once — and keeps it running; `status` says what it printed and whether it said ready; `down` stops it, keeping the database and the sign-in |
 | `team` | `list` · `reset` | the org's people, and a one-use link one of them opens to choose a new password; no password passes through the assistant, and setting one directly is `pinecall team password` in a terminal |
 
 ### Holding the agent, and talking to it
@@ -168,8 +167,8 @@ Every parameter, and a real call of each: [Going live, and the docs](mcp/going-l
 | `docs_search` | — | the sections of docs.pinecall.io that answer a question, each with its address |
 | `get_doc` | — | one page of the docs whole, by its address or its path |
 
-A refusal is one sentence that names what to do next: no project names `project`, no key names
-`link`, no sign-in names `login`; `stop` with no agent held names `start`.
+A refusal is one sentence that names what to do next: no project names `project`, no sign-in names
+`login` (and the gateway a project's `pinecall.json` runs it at); `stop` with no agent held names `start`.
 
 ## Not in the MCP
 

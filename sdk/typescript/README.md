@@ -53,9 +53,9 @@ of the project: it never loads this one, it starts the agents of your project th
 
 ```bash
 npm i -g pinecall
+pinecall login               # sign this machine in through the browser, once
 pinecall new acme --agent front-desk   # the project, and its first agent in agents/front-desk/
 cd acme && npm install
-pinecall link                # sign in through the browser; writes your key to ./.env
 pinecall chat                # talk to the agent in this terminal
 pinecall test                # run its golden against a real model
 pinecall start               # run the agent (this is the process you deploy)
@@ -68,7 +68,7 @@ checkout:
 pnpm install
 npm i -g pinecall            # the CLI; the example takes the framework from this checkout
 cd ../../examples/typescript/clinica-norte
-pinecall link                # sign in through the browser; writes your key to ./.env
+pinecall login               # sign this machine in through the browser, once
 pinecall chat                # talk to the agent in this terminal
 pinecall start               # run the agent (this is the process you deploy)
 pinecall console             # open the sandbox console

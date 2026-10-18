@@ -113,6 +113,6 @@ describe("pinecall telemetry", () => {
   it("without a key, nothing is sent and the sentence says how to get one", async () => {
     const ran = await run(["telemetry"], { key: null });
     expect(ran.code).toBe(2);
-    expect(ran.err).toContain("pinecall link");
+    expect(ran.err).toContain("pinecall login");
   });
 });

@@ -31,8 +31,8 @@ export function OnYourComputer({ language }: { language: Language }): ReactNode 
         <Terminal
           lines={[
             { say: "install the CLI, once", run: "npm i -g pinecall" },
-            { say: "sign this computer in to your org: it opens this console to confirm", run: `pinecall login ${window.location.origin}` },
-            { say: `write the ${label} agent from the step before into a folder, and link it: this makes the project's key`, run: `pinecall new ${SLUG}${flag} && cd ${SLUG} && pinecall link` },
+            { say: "sign this computer in, once: it opens this console to confirm", run: `pinecall login ${window.location.origin}` },
+            { say: `write the ${label} agent from the step before into a folder: its pinecall.json says it runs in your org`, run: `pinecall new ${SLUG}${flag} && cd ${SLUG}` },
             { say: "run it: it answers for as long as this runs, and prints a link to talk to it", run: "pinecall start" },
           ]}
         />
@@ -42,10 +42,10 @@ export function OnYourComputer({ language }: { language: Language }): ReactNode 
           <div className="wel-block">
             <strong>Then tell your assistant</strong>
             <blockquote className="wel-quote">
-              Make me a Pinecall agent in ./{SLUG}, in {label}, that answers from the business's documents and takes a message otherwise. Sign in at {window.location.origin},
-              link it to my org, and start it.
+              Make me a Pinecall agent in ./{SLUG}, in {label}, that answers from the business's documents and takes a message otherwise. Sign in at {window.location.origin}
+              and start it.
             </blockquote>
-            <span className="wel-hint">Its tools sign the machine in, write the project, link it and start it. No key ever passes through the assistant.</span>
+            <span className="wel-hint">Its tools sign the machine in, write the project and start it. No key ever passes through the assistant.</span>
           </div>
         </>
       )}

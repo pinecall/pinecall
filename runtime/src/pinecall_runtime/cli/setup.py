@@ -1,4 +1,4 @@
-"""`setup`: this machine's runtime in one verb: Docker, the schema, a key the CLI finds by itself, the models."""
+"""`setup`: this machine's runtime in one verb: Docker, the schema, its admin, this machine signed in, the models."""
 
 import json
 import os
@@ -20,12 +20,16 @@ from pinecall_runtime.cli import setup_servers as servers
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.enums import Role
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
+from pinecall_runtime.kit.text import a_mapping
 from pinecall_runtime.providers import service as providers
 
-# Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it); the key setup makes is
-# handed to it there, in a file of its own, read by the CLI when a project has no key of its own.
+# Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it): setup signs the machine in
+# to this runtime there, as `pinecall login` would, in the CLI's own file and format
+# (cli/src/project/session.ts): one entry per gateway, its key and its org, and the last one.
 CLI_HOME_VARIABLE = "PINECALL_HOME"
-CLI_LOCAL_FILE = "local.json"
+CLI_SESSION_FILE = "session.json"
+# What setup wrote before the sign-in was the CLI's one way in: taken away when found.
+CLI_OLD_FILE = "local.json"
 DEV_KEY = "PINECALL_DEV_KEY"
 # Whose key it is: the console's person, so what `pinecall start` holds is the copy their console shows.
 DEV_KEY_OF = "PINECALL_DEV_KEY_OF"
@@ -33,14 +37,14 @@ DEV_KEY_LABEL = "this machine (pinecall-runtime setup)"
 
 NO_COMPOSE = "docker compose did not answer: start Docker and run this again"
 NEXT = """
-  in an agent's folder:
+  on this machine, with no login:
     npm i -g pinecall && pinecall new acme --agent front-desk && cd acme && npm install
     pinecall chat        # a written call, here, on this runtime
     pinecall start       # answer calls; pinecall test, pinecall simulate, pinecall console follow
+  from another machine, signed in with that address and password:
+    pinecall login http://<this machine>:8080
+  more people: the console's Team, or pinecall-runtime orgs invite default <email>
 """
-NEXT_ORG = (
-    "\n  in an agent's folder, signed in with that address and password:\n    pinecall login {url}\n    pinecall link\n"
-)
 # Where nobody is asked: an address that reads as this machine's, and a password drawn and shown once.
 NOBODY_ASKED = "admin@pinecall.local"
 DRAWN_BYTES = 12
@@ -51,13 +55,6 @@ CHANGES_IT = "`pinecall-runtime orgs password default {email}` changes it"
 async def setup(
     ctx: typer.Context,
     where: local.Dir = local.DEFAULT_DIR,
-    org_mode: Annotated[
-        bool,
-        typer.Option(
-            "--org",
-            help="A team's runtime: the first org and person, as `init` makes them, instead of this machine's key.",
-        ),
-    ] = False,
     models: Annotated[
         str | None,
         typer.Option(
@@ -90,7 +87,7 @@ async def setup(
     password_stdin: Annotated[
         bool, typer.Option("--password-stdin", help="The console person's password read as one line of stdin.")
     ] = False,
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="Ask nothing: local models, this machine's key.")] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Ask nothing: the stack that fits this machine.")] = False,
     services_only: Annotated[
         bool, typer.Option("--services-only", help="Everything but running the gateway and the worker.")
     ] = False,
@@ -107,7 +104,7 @@ async def setup(
         str | None, typer.Option("--person", help="Their name; the address's first part when not given.")
     ] = None,
 ) -> int:
-    """This machine's runtime, from nothing to a class that answers: run once, safe to run again."""
+    """This machine's runtime, from nothing to a class that answers, on the stack that fits it; safe to run again."""
     context = context_of(ctx)
     out = context.out
     if recommend:
@@ -131,14 +128,13 @@ async def setup(
     async with runtime.stack:
         said, member = await _the_person(runtime, email, person, asking, password_stdin)
         out.line(said)
-        if not org_mode:
-            handed = await _this_machines_key(runtime, values, env, member)
-            out.line(f"key        this machine's, in {handed}: the CLI finds this runtime by itself")
+        handed = await _this_machines_key(runtime, values, env, member)
+        out.line(f"signed in  this machine, in {handed}: the pinecall CLI here needs no login")
         choices = _choices(models, stt, turn, llm, tts, judge, caller, asking=asking, chat_only=chat_only)
         if choices is not None:
             await servers.models(runtime, where, choices, asking=asking, out=out)
     out.line(f"ready      console {local.GATEWAY_URL}/sandbox/")
-    out.line(NEXT_ORG.format(url=local.GATEWAY_URL) if org_mode else NEXT)
+    out.line(NEXT)
     if services_only:
         return OK
     return (
@@ -148,7 +144,8 @@ async def setup(
     )
 
 
-# What the flags say, else the questions at a terminal, else every stage on this machine.
+# What the flags say; else the stack that fits this machine, shown at a terminal, where a stage may
+# be changed before it runs.
 def _choices(
     models: str | None,
     stt: str | None,
@@ -165,9 +162,10 @@ def _choices(
         return None
     if models not in (None, "local", "keys"):
         raise ValidationError(f"--models is local, keys or none, not {models!r}")
-    base = models_.ALL_KEYS if models == "keys" else models_.ALL_LOCAL
-    if models is None and asking and not any((stt, turn, llm, tts, judge, caller)):
-        base = models_.ask_choices()
+    named = any((stt, turn, llm, tts, judge, caller))
+    base = models_.ALL_KEYS if models == "keys" else models_.ALL_LOCAL if models == "local" else models_.recommended()
+    if models is None and asking and not named:
+        base = models_.confirmed(base)
     chosen = models_.Choices(
         stt=models_.local_or_vendor(stt or base.stt),
         turn=models_.turn_of(turn or base.turn),
@@ -218,15 +216,32 @@ def cli_home(environ: Mapping[str, str]) -> Path:
 
 
 def hand_to_cli(secret: str, home: Path) -> Path:
-    """Write the key where the CLI reads it, owner-only; the path written."""
+    """This machine signed in to this runtime, in the CLI's session file, owner-only; its other gateways kept."""
     home.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path = home / CLI_LOCAL_FILE
-    handed = {"url": local.GATEWAY_URL, "key": secret, "org": DEFAULT_ORG, "written_by": "pinecall-runtime setup"}
+    path = home / CLI_SESSION_FILE
+    gateways = dict(_gateways_in(path))
+    kept = gateways.get(local.GATEWAY_URL)
+    # A new sign-in: the keys minted from an earlier one go, the phone it calls from stays.
+    entry: dict[str, object] = {"key": secret, "org": DEFAULT_ORG}
+    if a_mapping(kept) and "calling" in kept:
+        entry["calling"] = kept["calling"]
+    gateways[local.GATEWAY_URL] = entry
     if not path.exists():
         path.touch(mode=0o600)
-    path.write_text(json.dumps(handed, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps({"gateways": gateways, "last": local.GATEWAY_URL}, indent=2) + "\n", encoding="utf-8")
     path.chmod(0o600)
+    (home / CLI_OLD_FILE).unlink(missing_ok=True)
     return path
+
+
+# The gateways the CLI's session already holds; none from a file that is not there or not its shape.
+def _gateways_in(path: Path) -> Mapping[str, object]:
+    try:
+        read: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    gateways = read.get("gateways") if a_mapping(read) else None
+    return gateways if a_mapping(gateways) else {}
 
 
 # ── who signs in to the console ──

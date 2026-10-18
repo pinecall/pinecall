@@ -9,7 +9,7 @@ import { installEverywhere, listHosts, renderDone, renderListed } from "./instal
 
 const MCP = `
 With nothing after it, the MCP server on stdin and stdout, for an assistant to launch: the tools
-sign this machine in, link a project, hold the agent, chat with it, test it. It starts no process
+sign this machine in, make a project, hold the agent, chat with it, test it. It starts no process
 of its own. Every tool acts in the sandbox, and in production when asked with prod: true; your
 org's switch still decides.
 

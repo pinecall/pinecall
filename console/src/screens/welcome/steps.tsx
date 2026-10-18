@@ -73,7 +73,7 @@ export function Ready({ world }: { world: string }): ReactNode {
     <>
       <p className="wel-lead">
         Your agent runs while your computer does. To have it answer customers all the time, run the same project on a server of yours, in production. It needs one thing your
-        computer had from <code className="wel-inline">pinecall link</code>: a key, this time the server's own.
+        computer had from <code className="wel-inline">pinecall login</code>: a key, this time the server's own.
       </p>
       <div className="wel-facts">
         <div className="wel-fact">

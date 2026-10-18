@@ -42,7 +42,7 @@ export function Setup({ agents, limits }: { agents: number; limits: Limits | nul
     let gone = false;
     void (async () => {
       const found: Step[] = [
-        { done: agents > 0, name: "Make your first agent", why: "An agent is a class in a folder of yours; this writes one and links it to your org.", command: "pinecall new front-desk && cd front-desk && pinecall link" },
+        { done: agents > 0, name: "Make your first agent", why: "An agent is a class in a folder of yours; this writes one, and its pinecall.json says it runs in your org.", command: "pinecall new front-desk && cd front-desk && pinecall start" },
       ];
       // A call runs on the org's own key for a vendor, else on one the box lends; with neither it is refused.
       const [limits, vendors] = await Promise.all([

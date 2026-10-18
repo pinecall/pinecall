@@ -100,9 +100,9 @@ async def take_key_back(vendor: str, actor: ProvidersKey, session: Session) -> N
         raise NotFound(f"this org brought no key for {named}")
 
 
-# `pinecall setup` on a project whose gateway is on another host asks this instead of reading the
-# laptop: the host advises from what it serves and lends, and the org's own keys. The machine is
-# its operator's to see, and only where the row's open-model servers are on this same host.
+# `pinecall login` asks this once signed in: the host advises from what it serves and lends, and the
+# org's own keys. The machine is its operator's to see, and only where the row's open-model servers
+# are on this same host.
 @router.get("/v1/providers/advice")
 async def advise(actor: ProvidersKey, request: Request, session: Session) -> Advice:
     """What this host advises the org to run, stage by stage, and whose key each runs on."""

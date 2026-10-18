@@ -4,7 +4,7 @@ import { GatewayClient, type Env } from "./api/client.js";
 import { UsageError } from "./errors.js";
 import { homeOf } from "./kit/home.js";
 import type { IO } from "./kit/io.js";
-import { anotherEnvsToken, NO_KEY, readCredentials, serverEnvOf, type Credentials } from "./project/credentials.js";
+import { anotherEnvsToken, NO_KEY, prepareProjectKey, readCredentials, serverEnvOf, type Credentials } from "./project/credentials.js";
 import { agentsOf, oneAgentOf, slugOf, type AgentChoice, type AgentHome } from "./project/layout.js";
 
 /** What a verb runs with. Built once per invocation; a service takes it as its first argument. */
@@ -18,8 +18,10 @@ export interface Context {
   env: Env;
   /** Fires on Ctrl-C; a long verb passes it to what it waits on. */
   readonly signal: AbortSignal;
-  /** The project's key and URL, or where they were not found. Never throws. */
+  /** The key and URL a verb sends, and where they came from; what is missing, said. Never throws. */
   credentials(): Credentials;
+  /** Before a verb: this machine's key in the org the project's `pinecall.json` names, minted when it has none yet. */
+  prepare(): Promise<void>;
   /** The gateway for this env; `UsageError` without a key or with a server token of the other env. */
   gateway(): GatewayClient;
   /** The agents a verb acts on, by `--file`/`--agent` or every one of the project. */
@@ -64,10 +66,15 @@ class ProcessContext implements Context {
     return this.#credentials;
   }
 
+  async prepare(): Promise<void> {
+    await prepareProjectKey(this.processEnv, this.cwd, homeOf(this.processEnv));
+    this.#credentials = undefined;
+  }
+
   gateway(): GatewayClient {
     if (this.#gateway !== undefined && this.#gateway.env === this.env) return this.#gateway;
-    const { url, key } = this.credentials();
-    if (key === undefined) throw new UsageError(NO_KEY);
+    const { url, key, missing } = this.credentials();
+    if (key === undefined) throw new UsageError(missing ?? NO_KEY);
     // A person's key opens both envs and the header says which; a server's token has one env.
     const token = serverEnvOf(key);
     if (token !== undefined && token !== this.env) throw new UsageError(anotherEnvsToken(token, url));
@@ -88,8 +95,8 @@ class ProcessContext implements Context {
   }
 }
 
-/** The first line a connecting verb says: gateway, key source and env. */
+/** The first line a connecting verb says: gateway, org, key source and env. */
 export function connectionLine(ctx: Context): string {
-  const { url, source } = ctx.credentials();
-  return `gateway ${url} · key from ${source} · ${ctx.env}`;
+  const { url, source, org } = ctx.credentials();
+  return `gateway ${url}${org === undefined ? "" : ` · org ${org}`} · key from ${source} · ${ctx.env}`;
 }

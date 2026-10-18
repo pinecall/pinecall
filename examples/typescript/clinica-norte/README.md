@@ -52,7 +52,7 @@ With the CLI, which is its own package (`npm i -g pinecall`, or `node ../../../c
 from the repository's [`cli/`](../../../cli)):
 
 ```bash
-pinecall link               # once: signs in and writes PINECALL_KEY to .env
+pinecall login              # once per machine: signs it in
 pinecall start              # the app: registers the agent and answers its tools
 pinecall chat               # the app in THIS terminal, and a written call against it
 pinecall test               # the goldens of agents/clinica-norte/test/goldens/, scored by the runtime

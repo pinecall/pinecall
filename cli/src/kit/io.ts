@@ -5,12 +5,6 @@ import { Writable } from "node:stream";
 /** Lines for a terminal, from data; a string is one line. */
 export type Render<T> = (data: T) => string | readonly string[];
 
-/** The real terminal's own streams, for a screen that draws itself (the setup wizard). */
-export interface Terminal {
-  stdout: NodeJS.WriteStream;
-  stdin: NodeJS.ReadStream;
-}
-
 /** The streams and switches a verb writes with. The only module that names `process.stdout`. */
 export interface IO {
   readonly stdout: Writable;
@@ -25,8 +19,6 @@ export interface IO {
   json: boolean;
   /** `PINECALL_DEBUG`: `debug` lines are written. */
   readonly verbose: boolean;
-  /** The terminal itself, when both stdout and stdin are one; undefined piped, in a test, under the MCP server. */
-  readonly terminal: Terminal | undefined;
   /** A verb's answer: the object under `--json`, the rendered lines otherwise. */
   result<T>(data: T, render: Render<T>): void;
   /** A line of the answer written as it comes (a transcript, a log); silent under `--json`. */
@@ -44,7 +36,6 @@ export function systemIO(env: NodeJS.ProcessEnv = process.env): IO {
     columns: process.stdout.isTTY === true ? process.stdout.columns : undefined,
     interactive: process.stdin.isTTY === true,
     verbose: env["PINECALL_DEBUG"] !== undefined,
-    ...(process.stdout.isTTY === true && process.stdin.isTTY === true ? { terminal: { stdout: process.stdout, stdin: process.stdin } } : {}),
   });
 }
 
@@ -54,19 +45,17 @@ export class StreamIO implements IO {
   readonly columns: number | undefined;
   readonly interactive: boolean;
   readonly verbose: boolean;
-  readonly terminal: Terminal | undefined;
   json = false;
 
   constructor(
     readonly stdout: Writable,
     readonly stderr: Writable,
-    options: { tty?: boolean; columns?: number | undefined; interactive?: boolean; verbose?: boolean; terminal?: Terminal } = {},
+    options: { tty?: boolean; columns?: number | undefined; interactive?: boolean; verbose?: boolean } = {},
   ) {
     this.tty = options.tty ?? false;
     this.columns = options.columns;
     this.interactive = options.interactive ?? false;
     this.verbose = options.verbose ?? false;
-    this.terminal = options.terminal;
   }
 
   result<T>(data: T, render: Render<T>): void {
@@ -101,7 +90,6 @@ export class CollectingIO implements IO {
   readonly columns = undefined;
   readonly interactive = false;
   readonly verbose = false;
-  readonly terminal = undefined;
   json = false;
   /** The results, as data: what `result` was given. */
   readonly results: unknown[] = [];

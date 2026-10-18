@@ -1,13 +1,11 @@
-/** Accounts as a terminal reads them: the sign-in link, who signed in, what `link` wrote, who a key is, the secrets and the people. */
+/** Accounts as a terminal reads them: the sign-in link, who signed in and in which org, who a key is, the secrets and the people. */
 
 import { date, yesNo } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { Linked, MemberRow, ResetLink, SecretList, SignedIn, Whoami } from "./service/index.js";
+import type { Advice, MemberRow, ResetLink, SecretList, SignedIn, Whoami } from "./service/index.js";
 
 /** Said before the link when no gateway was named, so the assumption is seen before anything is kept. */
 export const DEFAULT_GATEWAY = (url: string): string => `gateway  ${url}   (the default — \`pinecall login <url>\` for your own)`;
-
-export const GIT_WOULD_COMMIT = "git would commit .env: add it to .gitignore before a commit carries your key";
 
 export const NO_SECRETS = "the org has no secrets here yet: `pinecall secrets set <NAME>`";
 
@@ -16,18 +14,18 @@ export function signInLink(link: string): string[] {
   return ["", "open this to sign in:", link, "", "waiting…"];
 }
 
-export function signedIn(signed: SignedIn): string {
-  return `signed in to ${signed.gateway} as ${signed.name}`;
+/** What `login` did, and what the gateway serves or lends to this org, a stage at a time. */
+export function loggedIn(done: SignedIn & { advice: Advice | null }): string[] {
+  const lines = [`signed in to ${done.gateway} as ${done.name} · org ${done.org}`];
+  if (done.advice === null || done.advice.stages.length === 0) return lines;
+  lines.push("", "what this runtime gives your agents");
+  const width = Math.max(...done.advice.stages.map((one) => one.choice.length)) + 2;
+  for (const one of done.advice.stages) lines.push(`  ${(STAGES[one.stage] ?? one.stage).padEnd(10)}${one.choice.padEnd(width)}${one.runs_on}`);
+  if (done.advice.stages.some((one) => one.runs_on === "needs a key")) lines.push("", "a stage that needs a key: pinecall providers add <vendor>");
+  return lines;
 }
 
-/** The orgs as a numbered list, for the terminal's question. */
-export function orgChoices(slugs: string[]): string[] {
-  return slugs.map((slug, at) => `  ${at + 1}. ${slug}`);
-}
-
-export function linked(done: Linked): string {
-  return `▸ ${done.org} · ${done.written.join(" and ")} written to .env`;
-}
+const STAGES: Record<string, string> = { stt: "ears", llm: "thinking", tts: "voice" };
 
 /** The connection line, then who the key is there and which envs it opens, indented under it. */
 export function whoami(connection: string, who: Whoami): string[] {

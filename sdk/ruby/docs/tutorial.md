@@ -12,14 +12,17 @@ imports LiveKit.
 
 ```bash
 npm i -g pinecall                # the CLI, Node 24+
+pinecall login                   # signs this machine in, once
 mkdir clinica && cd clinica
 bundle init && bundle add pinecall
-pinecall link                    # signs this machine in, picks the org, writes its key to ./.env
 pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
-`pinecall link` writes `PINECALL_KEY` into this folder's `.env` (and `PINECALL_URL` when the gateway
-is not Pinecall's), which nothing else reads: another org is another folder. Every verb works in the sandbox unless `--prod` is said.
+`pinecall login` signs this machine in, once: every verb runs on it, in the org of the sign-in. A
+project made with `pinecall new` also gets a `pinecall.json` naming its gateway and org — asked when
+you belong to several — and a folder made by hand can carry the same two lines,
+`{"gateway": "https://cloud.pinecall.io", "org": "<slug>"}`. It holds no key, so it is committed with
+the project. Every verb works in the sandbox unless `--prod` is said.
 
 ## 2. The class
 

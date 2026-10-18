@@ -12,10 +12,10 @@ code never imports LiveKit.
 
 ```bash
 npm i -g pinecall                # the CLI, Node 24+
-pinecall new clinica --agent clinica-norte --python
+pinecall login                   # signs this machine in, once
+pinecall new clinica --agent clinica-norte --python   # and its pinecall.json: your org
 cd clinica
 uv sync                          # the project's .venv, with pinecall in it
-pinecall link                    # signs this machine in, picks the org, writes its key to ./.env
 pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
@@ -23,8 +23,9 @@ pinecall whoami                  # which gateway, which org, and where the key w
 `--agent` its first agent, `agents/clinica-norte/`: the class, its view, a ring-0 test and one golden. Without uv, `python -m venv .venv` and
 `.venv/bin/pip install pinecall pytest` make the same `.venv`, and the CLI uses it the same way.
 
-`pinecall link` writes `PINECALL_KEY` into this folder's `.env` (and `PINECALL_URL` when the gateway
-is not Pinecall's), which nothing else reads: another org is another folder. Every verb works in the sandbox unless `--prod` is said.
+`pinecall login` signs this machine in, once: every verb runs on it, in the org the project's
+`pinecall.json` names — `pinecall new` writes it, asking which org when you belong to several. It
+holds no key, so it is committed with the project. Every verb works in the sandbox unless `--prod` is said.
 
 ## 2. The class
 

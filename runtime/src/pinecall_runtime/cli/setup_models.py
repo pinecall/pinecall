@@ -1,7 +1,7 @@
 """What `setup` runs a call on, stage by stage: an open model on this machine or a vendor of yours, and the keys."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 import typer
@@ -19,7 +19,7 @@ type Turn = Literal["stt", "smart-turn", "livekit"]
 TURNS: tuple[Turn, ...] = ("stt", "smart-turn", "livekit")
 TURN_MODELS: dict[Turn, str | None] = {"stt": None, "smart-turn": "smart-turn-v3", "livekit": "v1-mini"}
 
-# Open models on this machine, through the `openai` plugin and a `base_url` per stage (DEV-FIRST.md).
+# Open models on this machine, through the `openai` plugin and a `base_url` per stage.
 # The thinking's default is the one that took a message, read the documents and made small talk on
 # a 24 GB card (providers/service/machine.py); `setup --recommend` names a larger one where it fits.
 LOCAL_LLM = "gemma4:12b"
@@ -133,25 +133,70 @@ def check_choices(choices: Choices) -> Choices:
     return choices
 
 
-def ask_choices() -> Choices:
-    """The questions, at a terminal: each stage's list is what this build runs, plus `local[/model]`."""
-    stt = _ask("ears: who hears the caller?", "stt")
-    turns = [turn for turn in TURNS if turn != "stt" or (not is_local(stt) and providers.ends_turns(stt))]
-    turn = typer.prompt(f"end of turn: {' · '.join(turns)}", default="stt" if "stt" in turns else "smart-turn")
-    llm = _ask("thinking: which model?", "llm")
-    tts = _ask("voice: who speaks?", "tts")
-    judge = _ask("judging a finished call: which model?", "llm", default=llm)
-    caller = _ask("the simulated caller: which model?", "llm", default=llm)
-    return check_choices(
-        Choices(
-            stt=stt,
-            turn=turn_of(turn),
-            llm=llm,
-            tts=tts,
-            judge=None if judge == llm else judge,
-            caller=None if caller == llm else caller,
-        )
+def recommended() -> Choices:
+    """The stack that fits this machine, as `setup --recommend` reads it; the judge and the caller follow it."""
+    stack = providers.recommendation(os.environ)["recommendation"]["stack"]
+    return Choices(
+        stt=local_or_vendor(stack["stt"]),
+        turn=turn_of(stack["turn"]),
+        llm=local_or_vendor(stack["llm"]),
+        tts=local_or_vendor(stack["tts"]),
     )
+
+
+# What a stage is called on the screen, and the field it is.
+STAGE_WORDS: dict[str, str] = {
+    "ears": "stt",
+    "turn": "turn",
+    "thinking": "llm",
+    "voice": "tts",
+    "judge": "judge",
+    "caller": "caller",
+}
+
+
+FOLLOWS = "the thinking's model"
+QUESTIONS = {
+    "stt": "ears",
+    "llm": "thinking",
+    "tts": "voice",
+    "judge": "judging a finished call",
+    "caller": "the simulated caller",
+}
+
+
+def confirmed(base: Choices) -> Choices:
+    """The stack shown at a terminal: Enter runs it, a stage's name changes that stage and shows it again."""
+    chosen = base
+    while True:
+        typer.echo("\n  the stack that fits this machine")
+        for word, field in STAGE_WORDS.items():
+            said = getattr(chosen, field)
+            typer.echo(f"    {word:<9} {said if said is not None else FOLLOWS}")
+        asked = f"\n  Enter runs it, or change a stage ({' · '.join(STAGE_WORDS)})"
+        answer = typer.prompt(asked, default="", show_default=False)
+        word = answer.strip().lower()
+        if word == "":
+            return check_choices(chosen)
+        field = STAGE_WORDS.get(word)
+        if field is None:
+            typer.echo(f"  {word!r} is no stage: {', '.join(STAGE_WORDS)}")
+            continue
+        chosen = _changed(chosen, field)
+
+
+def _changed(chosen: Choices, field: str) -> Choices:
+    if field == "turn":
+        stt = chosen.stt
+        turns = [turn for turn in TURNS if turn != "stt" or (not is_local(stt) and providers.ends_turns(stt))]
+        return replace(chosen, turn=turn_of(typer.prompt(f"end of turn: {' · '.join(turns)}", default=chosen.turn)))
+    stage = {"stt": "stt", "llm": "llm", "tts": "tts", "judge": "llm", "caller": "llm"}[field]
+    question = QUESTIONS[field]
+    current = getattr(chosen, field) or chosen.llm
+    picked = _ask(f"{question}: which?", stage, default=current)
+    if field in ("judge", "caller"):
+        return replace(chosen, **{field: None if picked == chosen.llm else picked})
+    return replace(chosen, **{field: picked})
 
 
 def _ask(question: str, stage: str, default: str = LOCAL) -> str:

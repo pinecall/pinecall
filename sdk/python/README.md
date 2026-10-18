@@ -71,7 +71,7 @@ a project laid out as `agents/<name>/agent.py`, with this package in its `.venv`
 
 ```bash
 npm i -g pinecall                     # the CLI: Node, whatever the agent is written in
-pinecall link                         # this folder tied to your org: its key, in ./.env
+pinecall login                        # this machine signed in, once; pinecall.json names the org
 pinecall prompt --state agents/<name>/test/goldens/a.json   # the exact prompt a state produces. No gateway.
 pinecall chat                         # the agent served from this terminal, and a caller against it
 pinecall test                         # ring 1: the goldens, scored by the gateway

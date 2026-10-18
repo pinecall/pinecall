@@ -28,15 +28,15 @@ export interface Whoami {
 export interface Org {
   org: string;
   slug?: string | null;
-  /** Whether the machine's sign-in is already this org's key. */
+  /** Whether the key asking is this org's. */
   here: boolean;
-  /** False for orgs an operator can enter without membership; those cannot be linked. */
+  /** False for orgs an operator can enter without membership; a project is never made to run in those. */
   member?: boolean;
 }
 
 /**
  * The gateway for a sign-in: accounts exist only in production, and a pairing is opened with no
- * key at all. `link` mints from the machine's own key through the same client.
+ * key at all. A key in another of the person's orgs is minted from the machine's own through the same client.
  */
 export function accountsGateway(url: string, key = ""): GatewayClient {
   return new GatewayClient(url, key, "production");

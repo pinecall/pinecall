@@ -52,7 +52,7 @@ what it is.
 
 ## Traps — each one cost an afternoon
 
-- **A test's home is `PINECALL_HOME`, not `HOME`** (`accounts/service/home.ts` reads that variable,
+- **A test's home is `PINECALL_HOME`, not `HOME`** (`kit/home.ts` reads that variable,
   else `os.homedir()`): `test/support/` sets it to a folder of the test's own, or a test signs the
   real machine in. `mcp install` takes its home as an argument for the same reason — never run it
   through `run([...])`.
@@ -60,11 +60,13 @@ what it is.
   test whose run broke would write into the checkout. Test `writeReproductions` with a folder of
   its own.
 
-- **The CLI reads `PINECALL_KEY` and `PINECALL_URL`, and the local runtime's file** (`project/credentials.ts`):
-  from the process's environment, else from the nearest `.env` up from the cwd, else
-  `~/.pinecall/local.json`, which `pinecall-runtime setup` writes (a key of the org `default` on
-  `http://127.0.0.1:8080`). v1's `PINECALL_API_KEY` is never read, and there are no profiles:
-  another org is another folder.
+- **The CLI's key, in one order** (`project/credentials.ts`): `PINECALL_KEY` and `PINECALL_URL` from
+  the process's environment, else `PINECALL_KEY` from the nearest `.env`, else the project's
+  `pinecall.json` (gateway and org, committed, no key) and this machine's key in that org from
+  `~/.pinecall/session.json` (`project/session.ts`: `pinecall login`'s sign-in, or the one
+  `pinecall-runtime setup` writes in the same format), minted once from the sign-in before the verb
+  runs (`ctx.prepare()`); outside a project, the sign-in signed in to last. A
+  key is never written into a project. v1's `PINECALL_API_KEY` is never read.
   `--prod` on any verb acts in production for that one command; the `pinecall-env` header says which.
 - **The child gets its door in its environment, never its argv** (`dev/child.ts`): an argv is read
   by every process on the machine.

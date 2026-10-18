@@ -126,19 +126,18 @@ $ uv tool install "pinecall-runtime[voice]"
 $ pinecall-runtime setup
 ```
 
-Asks your email and a password for the console, and where the models come from: `local`, open
-models on your machine, or `keys`, your vendors'. Then the CLI finds it: no `login`, no `link`.
+Reads your machine and runs the stack that fits it — Enter to use it, or change a stage — and asks
+your email and a password for the console. This machine is then signed in to it: no `login`.
 [On your machine](https://docs.pinecall.io/self-hosting/laptop/)
 
 </td><td>
 
 ```console
 $ pinecall login
-$ pinecall link
 ```
 
-`login` signs this machine in through the browser, once; `link`, in a project, writes its key to
-`.env`. Your org gets a sandbox, where nothing reaches a real caller, and production.
+`login` signs this machine in through the browser, once; every project then runs in the org its
+`pinecall.json` names. Your org gets a sandbox, where nothing reaches a real caller, and production.
 
 </td></tr>
 </table>
@@ -240,7 +239,7 @@ Each folder's `README.md` says what it is and how to use it.
 
 | stage | verbs |
 |---|---|
-| start | `new` · `generate` · `login` · `link` · `whoami` |
+| start | `login` · `new` · `generate` · `whoami` |
 | hold and talk | `start` · `chat` · `prompt` · `console` · `supervise` |
 | the agent's settings | `agent` · `lexicon` · `voices` · `pipeline` · `providers` |
 | testing | `test` · `simulate` · `eval` · `runs` · `cases` · `personas` · `judges` · `judging` |

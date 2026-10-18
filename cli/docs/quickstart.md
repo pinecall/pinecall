@@ -1,6 +1,6 @@
 # Quickstart
 
-From nothing to an agent that answers, in ten minutes. You install one command, create a project
+From nothing to an agent that answers, in ten minutes. You install one command, sign in, create a project
 in the language you like, read what the model will see, talk to the agent, and run its first test.
 Everything runs in your org's **sandbox** on Pinecall Cloud: a space of your own to try things,
 where nothing reaches a real caller.
@@ -31,8 +31,28 @@ One command, installed once per machine. It serves an agent in any of the three 
 
 > [!NOTE]
 > No account, and nothing sent to a cloud? `pinecall-runtime setup` runs the whole runtime on your
-> machine, open models included, and the CLI finds it by itself: skip `pinecall link` below.
+> machine, open models included, and signs this machine in to it: skip `pinecall login` below.
 > [On your machine](/self-hosting/laptop/) walks it.
+
+### Sign in
+
+```bash
+pinecall login
+```
+
+:::result
+```console
+gateway  https://cloud.pinecall.io   (the default — `pinecall login <url>` for your own)
+
+open this to sign in:
+https://cloud.pinecall.io/cli?c=cli_…
+
+waiting…
+signed in to https://cloud.pinecall.io as Ana García · org acme
+```
+It opens the browser so you can sign in, and keeps this machine signed in: once per machine, and
+every `pinecall` command uses it, in any folder. No key is written into your projects.
+:::
 
 ### Create a project
 
@@ -63,10 +83,10 @@ bundle install
 :::result
 ```console
 ▸ acme · a TypeScript project · agents/front-desk/
+  runs in acme at https://cloud.pinecall.io (pinecall.json)
 
   cd acme
   npm install
-  pinecall link        sign in, pick the org: its key goes to .env
   pinecall chat        talk to it here
   pinecall test        its goldens, against a real model
   pinecall start       answer calls
@@ -112,20 +132,8 @@ The agent `--agent` writes is a front desk: it answers from the documents it is 
 for anything else, takes a message — the caller's name and what the call is about — with its one
 tool, `takeMessage` (`take_message` in Python and Ruby).
 
-### Sign in
-
-```bash
-pinecall link
-```
-
-:::result
-```console
-▸ front-desk · PINECALL_KEY written to .env
-```
-It opens the browser so you can sign in, asks which of your orgs this project belongs to, and
-writes your key to `./.env`. The project's `.gitignore` already keeps `.env` out of git. Every
-`pinecall` command run in this folder reads the key from there.
-:::
+`pinecall.json`, at the project's root, says where it runs: the gateway you signed in to and your
+org there. With several orgs, `new` asks which. Commit it: it holds no key.
 
 To see which org and gateway the CLI is using at any time:
 
@@ -135,8 +143,8 @@ pinecall whoami
 
 :::result
 ```console
-gateway https://cloud.pinecall.io · key from .env · sandbox
-  org front-desk · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
+gateway https://cloud.pinecall.io · org acme · key from your sign-in (~/.pinecall/session.json) · sandbox
+  org acme · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
 ```
 The first line is where commands go and which key they use. `sandbox` means nothing you do here
 reaches a real caller; `--prod` on a command acts in production instead.
@@ -261,7 +269,7 @@ pinecall start
 
 :::result
 ```console
-front-desk · front-desk · sandbox · connected to https://cloud.pinecall.io · key from .env · tools 1
+front-desk · acme · sandbox · connected to https://cloud.pinecall.io · key from your sign-in (~/.pinecall/session.json) · tools 1
 talk to it  https://cloud.pinecall.io/sandbox/a/front-desk/playground
 doors    web
 ```

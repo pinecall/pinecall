@@ -8,6 +8,8 @@ Options:
   --typescript    the class in TypeScript (agent.tsx, vitest); the default
   --ruby          the class in Ruby (agent.rb, a view in ERB, minitest)
   --python        the class in Python (agent.py, a view in Jinja, pytest, uv)
+  --org <slug>    the org it runs in, when you belong to several and nobody is
+                  at the terminal to be asked
   -h, --help      display help for command
 
 Writes ./<name>/, the project: its toolchain (package.json, Gemfile or pyproject.toml), a README and
@@ -15,6 +17,11 @@ an empty agents/. A project is the business; its agents are the folders under ag
 by its slug on the gateway. --agent writes the first one too: agents/<agent>/ holding the class — a
 receptionist that takes a message — its ring-0 test and one golden. Names are lowercase letters,
 digits and dashes, starting with a letter.
+
+On a machine signed in to a gateway (`pinecall login`, or a runtime `pinecall-runtime setup`
+runs here), it writes pinecall.json too: that gateway and the org the project runs in — your only
+one, or the one you pick when you belong to several (--org with nobody to ask). It holds no key:
+commit it, and whoever clones the project runs it there, on their own sign-in.
 
 Examples
   $ pinecall new clinica-dental --agent sofia

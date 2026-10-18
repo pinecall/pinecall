@@ -17,7 +17,7 @@ function contextFor(processEnv: NodeJS.ProcessEnv, cwd = project()) {
 
 describe("the gateway", () => {
   it("is refused without a key, naming how to get one", () => {
-    expect(() => contextFor({}, folder()).gateway()).toThrow(/no PINECALL_KEY here: `pinecall link`/);
+    expect(() => contextFor({}, folder()).gateway()).toThrow(/signed in nowhere: `pinecall login \[url\]`/);
   });
 
   it("follows the env the verb is in, and a person's key opens both", () => {

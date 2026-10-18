@@ -1,12 +1,12 @@
-/** Signing a machine in: a pairing opened with no key, the key collected once approved, proved, and only then kept. */
+/** Signing a machine in: a pairing opened with no key, the key collected once approved and proved; the org chosen, its key kept. */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import * as service from "../../../src/accounts/service/index.js";
-import { answer, GATEWAY } from "../../support/gateway.js";
+import { answer, GATEWAY, refuse } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { folder } from "../../support/project.js";
 
@@ -21,11 +21,11 @@ describe("a sign-in", () => {
     const { ctx } = testContext({ home });
     const signIn = await service.startSignIn(ctx, service.StartSignInInput.parse({ gateway: `${GATEWAY}/`, waitS: 1 }));
     expect(signIn.link).toBe(`${GATEWAY}/cli?c=ABCD-1234`);
-    expect(await signIn.done).toEqual({ gateway: GATEWAY, name: "Ana Ruiz" });
+    expect(await signIn.done).toEqual({ gateway: GATEWAY, name: "Ana Ruiz", org: "clinica" });
     expect(pairing[0]!.authorization).toBeNull();
     expect(asked[0]!.query).toEqual({ wait_s: "1" });
     expect(proved[0]!.authorization).toBe("Bearer pc_live_machine");
-    expect(service.readSignIn(home)).toEqual({ url: GATEWAY, key: "pc_live_machine" });
+    expect(service.readSignIn(home)).toEqual({ url: GATEWAY, key: "pc_live_machine", org: "clinica" });
   });
 
   it("asks again while nobody approved, and gives up once the time is up, keeping nothing", async () => {
@@ -41,7 +41,7 @@ describe("a sign-in", () => {
   });
 });
 
-describe("link", () => {
+describe("the orgs", () => {
   it("lists only the orgs the person is a member of", async () => {
     answer("get", "/v1/login/orgs", { orgs: [{ org: "org_1", slug: "clinica", here: true }, { org: "org_9", slug: "acme", here: false, member: false }] });
     const { ctx } = testContext();
@@ -52,25 +52,14 @@ describe("link", () => {
     const orgs = [{ org: "org_1", slug: "clinica", here: true }, { org: "org_2", slug: null, here: false }];
     expect(service.chooseOrg([orgs[0]!], undefined)).toBe(orgs[0]);
     expect(service.chooseOrg(orgs, "org_2")).toBe(orgs[1]);
-    expect(() => service.chooseOrg(orgs, undefined)).toThrow("which org is this project? --org clinica | org_2");
-    expect(() => service.chooseOrg(orgs, "acme")).toThrow("you are no member of acme");
+    expect(() => service.chooseOrg(orgs, undefined)).toThrow("which org is this project? pinecall new … --org clinica | org_2");
+    expect(() => service.chooseOrg(orgs, "acme")).toThrow("you are no member of acme at this gateway: yours are clinica, org_2");
   });
 
-  it("writes the machine's own key when it is already the org's, and the gateway beside it", async () => {
-    const root = folder();
-    const { ctx } = testContext({ cwd: root });
-    const linked = await service.linkProject(ctx, { url: GATEWAY, key: "pc_live_machine" }, { org: "org_1", slug: "clinica", here: true });
-    expect(linked).toMatchObject({ org: "clinica", written: ["PINECALL_KEY", "PINECALL_URL"] });
-    expect(readFileSync(join(root, ".env"), "utf8")).toContain("PINECALL_KEY=pc_live_machine");
-  });
-
-  it("mints a key in another org, leaving the rest of .env as it was", async () => {
-    const minted = answer("post", "/v1/login/org", { key: "pc_live_acme" });
-    const root = folder();
-    const { ctx } = testContext({ cwd: root });
-    await service.linkProject(ctx, { url: GATEWAY, key: "pc_live_machine" }, { org: "org_2", slug: "acme", here: false });
-    expect(minted[0]!.body).toEqual({ org: "org_2" });
-    expect(minted[0]!.env).toBe("production");
-    expect(readFileSync(join(root, ".env"), "utf8")).toContain("PINECALL_KEY=pc_live_acme");
+  it("asks the gateway what it gives the org, and says nothing when it does not answer", async () => {
+    answer("get", "/v1/providers/advice", { stages: [{ stage: "llm", choice: "openai/nemotron", runs_on: "served here", served: ["nemotron"] }], lends: [], judge: null, caller: null, machine: null });
+    expect((await service.adviceAt(GATEWAY, "pc_live_machine"))?.stages[0]?.choice).toBe("openai/nemotron");
+    refuse("get", "/v1/providers/advice", 404, "Not Found");
+    expect(await service.adviceAt(GATEWAY, "pc_live_machine")).toBeNull();
   });
 });

@@ -6,6 +6,18 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **One way in: `pinecall login`, once per machine, and a project says where it runs in `pinecall.json`.**
+  `pinecall link` and the CLI's `pinecall setup` are gone, and no key is written into a project
+  any more. `login [url]` signs the machine in and says what the gateway gives your agents; it
+  chooses no org. `pinecall new` writes `pinecall.json` at the project's root — the gateway this
+  machine is signed in to and the org it runs in, asked when you belong to several (`--org` with
+  nobody to ask) — which holds no key and is committed. Every verb finds its key in one order:
+  `PINECALL_KEY` in the environment, then in `.env`, then the project's `pinecall.json` and this
+  machine's key in that org (minted once from the sign-in, the first time a verb needs it, and kept
+  in `~/.pinecall/session.json`), then the sign-in alone outside a project. Each verb's first line
+  says the org. A project with a key in its `.env` keeps working as it did. The runtime on this
+  machine (`pinecall-runtime setup`) signs it in by itself; `~/.pinecall/local.json` is gone.
+
 - **`pinecall kill [agent]`, an admin's.** Every app holding the agent in the env — whoever's —
   lets go of it and keeps its other agents; it leaves every list, the console and the playground.
   Nothing is erased: its settings and calls stay, and an app that declares it again holds it again.

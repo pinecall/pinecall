@@ -12,7 +12,7 @@ export function WayIn({ children, foot }: { children: ReactNode; foot?: ReactNod
         <img className="login-logo login-logo-daylight" src="/pinecall-logo-6289e641.png" alt="Pinecall" />
         <img className="login-logo login-logo-dark" src="/pinecall-logo-dark-966fa8a4.png" alt="Pinecall" />
         <div className="login-form">{children}</div>
-        <p className="login-foot">{foot ?? <>Working from a terminal? Run <span className="login-command">pinecall link</span> in your project's folder.</>}</p>
+        <p className="login-foot">{foot ?? <>Working from a terminal? Run <span className="login-command">pinecall login</span> on your computer, once.</>}</p>
       </div>
       <Showcase />
     </div>

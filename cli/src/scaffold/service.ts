@@ -1,4 +1,4 @@
-/** Scaffold: a new project, an agent in it, one more golden for an agent — files written, nothing asked of a gateway. */
+/** Scaffold: a new project and where it runs, an agent in it, one more golden for an agent. */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -6,7 +6,13 @@ import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
-import { UsageError } from "../errors.js";
+import { listOrgs, slugOf, type Org } from "../accounts/service/index.js";
+import type { Context } from "../context.js";
+import { errorMessage, UsageError } from "../errors.js";
+import { homeOf as pinecallHome } from "../kit/home.js";
+import { writeProjectConfig, type ProjectConfig } from "../project/config.js";
+import { prepareProjectKey } from "../project/credentials.js";
+import { readSignIn, type MachineSignIn } from "../project/session.js";
 import type { Golden } from "../evals/service/goldens.js";
 import { agentFilesOf, homeOf, PROJECT_AGENTS, type AgentHome } from "../project/layout.js";
 import { languageOf } from "../project/language.js";
@@ -46,11 +52,35 @@ export const GoldenInput = z.object({
 });
 export type GoldenInput = z.infer<typeof GoldenInput>;
 
-/** A project written: where, in which language, and its first agent's files when one was asked for. */
+/** A project written: where, in which language, its first agent when one was asked for, and where it runs. */
 export interface Written {
   root: string;
   template: Template;
   agent?: string | undefined;
+  /** What its pinecall.json names; unset when this machine was signed in nowhere. */
+  runs?: ProjectConfig | undefined;
+}
+
+/** Where a new project could run: the gateway this machine signed in to last and the person's orgs there, or why they could not be read. */
+export type OrgsHere = { machine: MachineSignIn; orgs: Org[] } | { machine: MachineSignIn; unread: string } | undefined;
+
+/** The gateway this machine signed in to last, and the person's orgs there; undefined when it is signed in nowhere. */
+export async function orgsHere(ctx: Context): Promise<OrgsHere> {
+  const machine = readSignIn(pinecallHome(ctx.processEnv));
+  if (machine === undefined) return undefined;
+  try {
+    return { machine, orgs: await listOrgs(ctx, machine) };
+  } catch (failed) {
+    return { machine, unread: `${machine.url} did not say your orgs (${errorMessage(failed)}): no pinecall.json was written, and the project runs in your sign-in's org until one is` };
+  }
+}
+
+/** The project made to run in one org of the gateway: its pinecall.json written, and this machine's key there made now. */
+export async function runIn(ctx: Context, written: Written, machine: MachineSignIn, org: Org): Promise<Written> {
+  const runs: ProjectConfig = { gateway: machine.url, org: slugOf(org) };
+  writeProjectConfig(written.root, runs);
+  await prepareProjectKey(ctx.processEnv, written.root, pinecallHome(ctx.processEnv));
+  return { ...written, runs };
 }
 
 /** The one language the flags name, or undefined when they name none; refused when they name more than one. */

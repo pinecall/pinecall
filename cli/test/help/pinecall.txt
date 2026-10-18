@@ -14,12 +14,8 @@ Commands:
                                  and its first agent with --agent
   generate|g                     an agent in this project, or one more golden
                                  for one of its agents
-  setup [options]                the runtime on this machine, chosen on a screen
-                                 and run
-  login [options] [gateway]      sign this machine in through a browser; `link`
-                                 asks for it when it is needed
-  link [options]                 this project's folder to one of your orgs: your
-                                 key, in its .env
+  login [options] [gateway]      sign this machine in to a gateway through a
+                                 browser: every verb on it runs on that sign-in
   whoami                         which org and which key this terminal is
                                  holding, and which envs it opens
   secrets                        the org's secrets: what its hosted apps are

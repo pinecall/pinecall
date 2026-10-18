@@ -4,7 +4,8 @@ import { existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import type { SignIn } from "../accounts/service/index.js";
-import { homeOf as pinecallHome, readSignIn } from "../accounts/service/home.js";
+import { homeOf as pinecallHome } from "../kit/home.js";
+import { readSession } from "../project/session.js";
 import type { Env, GatewayClient } from "../api/client.js";
 import { createContext, type Context } from "../context.js";
 import { CollectingIO } from "../kit/io.js";
@@ -18,7 +19,7 @@ import type { InFlight } from "./tools/evals.js";
 import type { LocalRuntimeProcess } from "./tools/runtime.js";
 
 export const NO_PROJECT = "no project open: call `project` with action `open` and the folder's path, or `new` to write one";
-export const NO_KEY_HERE = (root: string): string => `no PINECALL_KEY for ${root}: call \`link\` to write one into its .env (it asks you to \`login\` first when this machine is not signed in)`;
+export const NO_KEY_HERE = (root: string): string => `no key for ${root}: call \`login\`, and the person opens the link it answers`;
 export const STOP_FIRST = (held: string[]): string => `stop the agents held first (${held.join(", ")}): a project is opened with nothing running`;
 
 /** The agent a tool talks to: its slug, and the app and version when this server holds it in the env asked. */
@@ -79,7 +80,9 @@ export class Session {
   /** The Context one tool call runs with: the project's folder and key, in the env asked, its lines collected. */
   async contextFor(prod: boolean): Promise<ToolContext> {
     const root = await this.project().catch(() => undefined);
-    return new SessionContext(this, root, prod ? "production" : "sandbox");
+    const ctx = new SessionContext(this, root, prod ? "production" : "sandbox");
+    if (root !== undefined) await ctx.prepare();
+    return ctx;
   }
 
   /** The agent held, the one named or the only one; refused when none is. Only `stop` needs one. */
@@ -113,12 +116,12 @@ export class Session {
     await Promise.allSettled([...this.held.values()].map((held) => held.stop()));
   }
 
-  /** Every secret this session could print: the environment's key, the project's, and the machine's sign-in, to be scrubbed from any answer. */
+  /** Every secret this session could print: the environment's key, the project's, and every key of the machine's sign-in, to be scrubbed from any answer. */
   secrets(): string[] {
     const exported = this.processEnv[KEY_VARIABLE];
     const project = this.root === undefined ? undefined : readCredentials(this.processEnv, this.root, pinecallHome(this.processEnv)).key;
-    const machine = readSignIn(pinecallHome(this.processEnv))?.key;
-    return [exported, project, machine].filter((one): one is string => one !== undefined && one !== "");
+    const machine = Object.values(readSession(pinecallHome(this.processEnv)).gateways).flatMap((one) => [one.key, ...Object.values(one.orgs ?? {})]);
+    return [exported, project, ...machine].filter((one): one is string => one !== undefined && one !== "");
   }
 }
 
@@ -149,9 +152,14 @@ class SessionContext implements ToolContext {
     return this.inner.credentials();
   }
 
+  async prepare(): Promise<void> {
+    await this.inner.prepare();
+  }
+
   gateway(): GatewayClient {
     if (this.root === undefined) throw new ToolRefused(NO_PROJECT);
-    if (this.inner.credentials().key === undefined) throw new ToolRefused(NO_KEY_HERE(this.root));
+    const { key, missing } = this.inner.credentials();
+    if (key === undefined) throw new ToolRefused(missing === undefined ? NO_KEY_HERE(this.root) : missing.replaceAll("`pinecall login", "`login` (the tool), as `pinecall login"));
     this.inner.env = this.env;
     return this.inner.gateway();
   }

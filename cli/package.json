@@ -28,9 +28,6 @@
     "@pinecall/agents": "workspace:^",
     "commander": "^14.0.0",
     "ignore": "^7.0.12",
-    "ink": "^8.0.0",
-    "ink-text-input": "^6.0.0",
-    "react": "^19.3.1",
     "tsx": "^4.20.6",
     "ws": "^8.21.3",
     "zod": "^4.6.5"
@@ -40,7 +37,6 @@
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
-    "@types/react": "^19.3.0",
     "@types/ws": "^8.18.1",
     "msw": "^3.0.3",
     "typescript": "7.0.2",

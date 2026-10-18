@@ -20,9 +20,9 @@ its SDK, never on this CLI.
 ## Quick start
 
 ```bash
-pinecall new front-desk          # or --ruby, --python: a project of one agent, ready for every verb below
+pinecall login                   # sign this machine in through the browser, once
+pinecall new front-desk          # or --ruby, --python: a project of one agent; its pinecall.json says your org
 cd front-desk && npm install     # bundle install for Ruby, uv sync for Python
-pinecall link        # sign in through the browser; writes your key to ./.env
 pinecall prompt      # the prompt the model reads, offline; --state <golden> for another state
 pinecall chat        # talk to the agent in this terminal
 pinecall test        # run the goldens
@@ -31,8 +31,9 @@ pinecall deploy      # or let Pinecall run it
 pinecall mcp install # or do all of it from Claude Code, Codex, Cursor…
 ```
 
-Every verb acts in the sandbox unless `--prod` is given. The CLI reads `PINECALL_KEY` and
-`PINECALL_URL` from the environment or the project's `.env`.
+Every verb acts in the sandbox unless `--prod` is given. On your machine it runs on your sign-in,
+in the org the project's `pinecall.json` names; a server or CI sets `PINECALL_KEY` and
+`PINECALL_URL` in its environment instead.
 
 | | |
 |---|---|

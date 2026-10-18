@@ -12,10 +12,10 @@ gateway. Your code never imports LiveKit.
 
 ```bash
 npm i -g pinecall                # the CLI, Node 24+, once per machine
-pinecall new clinica --agent clinica-norte
+pinecall login                   # signs this machine in, once
+pinecall new clinica --agent clinica-norte   # and its pinecall.json: your org
 cd clinica
 npm install                      # @pinecall/agents, the project's one dependency
-pinecall link                    # signs this machine in, picks the org, writes its key to ./.env
 pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
@@ -24,8 +24,9 @@ pinecall whoami                  # which gateway, which org, and where the key w
 the decorators) and `vitest.config.ts`. `--agent` writes its first agent, `agents/clinica-norte/`:
 the class, a ring-0 test and one golden. Another agent of the clinic is `pinecall generate agent <name>`.
 
-`pinecall link` writes `PINECALL_KEY` into this folder's `.env` (and `PINECALL_URL` when the gateway
-is not Pinecall's), which nothing else reads: another org is another folder. Every verb works in the
+`pinecall login` signs this machine in, once: every verb runs on it, in the org the project's
+`pinecall.json` names — `pinecall new` writes it, asking which org when you belong to several. It
+holds no key, so it is committed with the project. Every verb works in the
 sandbox unless `--prod` is said.
 
 ## 2. The class

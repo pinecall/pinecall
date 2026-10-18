@@ -1,45 +1,43 @@
-/** Where a project's key and gateway URL come from: the environment, else the nearest `.env`, else the runtime on this machine. */
+/** Where the key and gateway URL come from: the environment, else the nearest `.env`, else the project's `pinecall.json` and this machine's sign-in. */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { relative } from "node:path";
 
+import { accountsGateway, createOrgKey, listOrgs } from "../api/accounts.js";
 import type { Env } from "../api/client.js";
+import { errorMessage } from "../errors.js";
 import { nearestDotenv, readDotenv } from "../kit/dotenv.js";
+import { findProjectConfig, PROJECT_FILE, type FoundConfig } from "./config.js";
+import { keepOrgKey, keyIn, readSignIn, SESSION_FILE } from "./session.js";
 
 /** Pinecall's cloud: the default gateway, serving both envs. */
 export const CLOUD_URL = "https://cloud.pinecall.io";
 
-/** Environment variables for the key and the gateway URL — the only two the CLI reads. */
+/** Environment variables for the key and the gateway URL — a server's and CI's way in. */
 export const KEY_VARIABLE = "PINECALL_KEY";
 export const URL_VARIABLE = "PINECALL_URL";
 
-/**
- * The file `pinecall-runtime setup` writes in the CLI's home when it runs a runtime on this
- * machine: that runtime's URL and a key of its org `default`, owner-only. Read last, so a project
- * with a key of its own (a Cloud project) never sees it.
- */
-export const LOCAL_FILE = "local.json";
-
-/** The project's gateway, its key if any, and where the key was read. */
+/** The gateway a verb talks to, the key it sends, where the key came from, and the org it acts in. */
 export interface Credentials {
   url: string;
   key: string | undefined;
-  /** `the environment`, `nowhere`, the `.env` path relative to the cwd, or `the local runtime (…)`. */
+  /** `the environment`, the `.env` path relative to the cwd, `your sign-in (…)`, or `nowhere`. */
   source: string;
+  /** The org, when this machine's sign-in says it: the project's, or the sign-in's own. */
+  org?: string;
+  /** With no key: the sentence that says what to do. */
+  missing?: string;
 }
 
-/** What `pinecall-runtime setup` wrote: where the runtime on this machine answers, and its key. */
-export interface LocalRuntime {
-  url: string;
-  key: string;
-}
+export const NO_KEY =
+  "this machine is signed in nowhere: `pinecall login [url]` (a server keeps PINECALL_KEY in its secrets), or `pinecall-runtime setup` runs a runtime here that the CLI uses by itself";
 
 /**
- * Read `PINECALL_KEY` and `PINECALL_URL` from the environment, else from the nearest `.env`, else
- * the runtime on this machine when `home` holds the file `setup` wrote. v1's `PINECALL_API_KEY`
- * is deliberately ignored: another CLI may export it for a different org.
+ * `PINECALL_KEY` and `PINECALL_URL` from the environment, else from the nearest `.env`; else the
+ * project's `pinecall.json` names the gateway and the org, and the key is this machine's in that
+ * org; outside a project, the sign-in at the gateway signed in to last, in its own org. Never
+ * throws: what is wrong is said in `missing`. v1's `PINECALL_API_KEY` is never read.
  */
-export function readCredentials(env: NodeJS.ProcessEnv, from: string, home?: string): Credentials {
+export function readCredentials(env: NodeJS.ProcessEnv, from: string, home: string): Credentials {
   const exported = env[KEY_VARIABLE];
   if (exported !== undefined && exported !== "") {
     return { url: env[URL_VARIABLE] ?? CLOUD_URL, key: exported, source: "the environment" };
@@ -50,21 +48,52 @@ export function readCredentials(env: NodeJS.ProcessEnv, from: string, home?: str
   if (key !== undefined && key !== "") {
     return { url: env[URL_VARIABLE] ?? values[URL_VARIABLE] ?? CLOUD_URL, key, source: relative(from, file!) || file! };
   }
-  const local = home === undefined ? undefined : readLocalRuntime(home);
-  if (local !== undefined) return { url: local.url, key: local.key, source: `the local runtime (${join(home!, LOCAL_FILE)})` };
-  return { url: env[URL_VARIABLE] ?? values[URL_VARIABLE] ?? CLOUD_URL, key: undefined, source: "nowhere" };
+  let project: FoundConfig | undefined;
+  try {
+    project = findProjectConfig(from);
+  } catch (failed) {
+    return { url: CLOUD_URL, key: undefined, source: "nowhere", missing: errorMessage(failed) };
+  }
+  const session = `your sign-in (${home}/${SESSION_FILE})`;
+  if (project !== undefined) {
+    const { gateway, org } = project.config;
+    const inOrg = keyIn(home, gateway, org);
+    if (inOrg !== undefined) return { url: gateway, key: inOrg, source: session, org };
+    const missing =
+      readSignIn(home, gateway) === undefined
+        ? `${relative(from, project.file) || PROJECT_FILE} runs this project at ${gateway}: sign in there, \`pinecall login ${gateway}\``
+        : `this machine has no key in ${org} at ${gateway}: you are no member of it there, or the gateway refused one (\`pinecall login ${gateway}\` again)`;
+    return { url: gateway, key: undefined, source: "nowhere", org, missing };
+  }
+  const signed = readSignIn(home);
+  if (signed !== undefined) return { url: signed.url, key: signed.key, source: session, ...(signed.org === undefined ? {} : { org: signed.org }) };
+  return { url: env[URL_VARIABLE] ?? CLOUD_URL, key: undefined, source: "nowhere", missing: NO_KEY };
 }
 
-/** The runtime `pinecall-runtime setup` left in the CLI's home, when there is one. */
-export function readLocalRuntime(home: string): LocalRuntime | undefined {
-  const path = join(home, LOCAL_FILE);
-  if (!existsSync(path)) return undefined;
+/**
+ * Before a verb runs: a project whose `pinecall.json` names an org this machine has no key in yet —
+ * a project cloned onto it, an org switched in the file — gets one, minted from the sign-in at its
+ * gateway and kept beside it. Asks the gateway only then; a failure is left for the verb to say.
+ */
+export async function prepareProjectKey(env: NodeJS.ProcessEnv, from: string, home: string): Promise<void> {
+  if (readCredentials(env, from, home).key !== undefined) return;
+  let project: FoundConfig | undefined;
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<LocalRuntime>;
-    if (typeof parsed.url !== "string" || typeof parsed.key !== "string" || parsed.key === "") return undefined;
-    return { url: parsed.url, key: parsed.key };
+    project = findProjectConfig(from);
   } catch {
-    return undefined;
+    return;
+  }
+  if (project === undefined) return;
+  const { gateway, org } = project.config;
+  const signed = readSignIn(home, gateway);
+  if (signed === undefined) return;
+  try {
+    const gw = accountsGateway(gateway, signed.key);
+    const found = (await listOrgs(gw)).find((one) => one.member !== false && (one.slug === org || one.org === org));
+    if (found === undefined) return;
+    keepOrgKey(home, gateway, org, found.here ? signed.key : await createOrgKey(gw, found.org));
+  } catch {
+    return;
   }
 }
 
@@ -76,9 +105,6 @@ export function readLocalRuntime(home: string): LocalRuntime | undefined {
 export function serverEnvOf(key: string): Env | undefined {
   return key.startsWith("pc_test_") ? "sandbox" : undefined;
 }
-
-export const NO_KEY =
-  "no PINECALL_KEY here: `pinecall link` in the project's folder writes it to .env (a server keeps it in its secrets), or `pinecall-runtime setup` runs a runtime on this machine the CLI finds by itself";
 
 /** The sentence for a server token used against the other env. */
 export function anotherEnvsToken(token: Env, url: string): string {

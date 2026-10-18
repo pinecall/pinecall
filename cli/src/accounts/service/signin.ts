@@ -8,8 +8,9 @@ import type { Context } from "../../context.js";
 import { Cancelled, errorMessage, PinecallError } from "../../errors.js";
 import { hostname } from "../../kit/hostname.js";
 import { CLOUD_URL } from "../../project/credentials.js";
-import { homeOf, readSignIn, writeSignIn, type MachineSignIn } from "./home.js";
-import { personOf } from "./whoami.js";
+import { homeOf } from "../../kit/home.js";
+import { keepSignIn, readSignIn, type MachineSignIn } from "../../project/session.js";
+import { orgOf, personOf } from "./whoami.js";
 
 // The pairing code expires after ten minutes; stop asking shortly after. Each ask is held by the
 // gateway until a person approves or this many seconds pass, the most it holds one.
@@ -28,10 +29,11 @@ export const StartSignInInput = z.object({
 });
 export type StartSignInInput = z.infer<typeof StartSignInInput>;
 
-/** This machine, signed in: the gateway and the person the gateway says the key is. Never the key. */
+/** This machine, signed in: the gateway, the person the gateway says the key is, and the org it acts in. Never the key. */
 export interface SignedIn {
   gateway: string;
   name: string;
+  org: string;
 }
 
 /** A sign-in in flight: the link a person opens, and the outcome once they did. */
@@ -63,8 +65,8 @@ export async function startSignIn(ctx: Context, input: StartSignInInput): Promis
     link: signInLink(url, code),
     done: collectKey(ctx, gw, code, input).then(async (key) => {
       const who = await api.getWhoami(api.accountsGateway(url, key));
-      writeSignIn(homeOf(ctx.processEnv), url, key);
-      return { gateway: url, name: personOf(who) };
+      keepSignIn(homeOf(ctx.processEnv), url, key, orgOf(who));
+      return { gateway: url, name: personOf(who), org: orgOf(who) };
     }),
   };
   // Recorded here so a rejection nobody awaited yet is handled, and so `outcome` can be read later.

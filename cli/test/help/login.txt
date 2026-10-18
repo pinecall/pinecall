@@ -1,7 +1,8 @@
 $ pinecall login --help
 Usage: pinecall login [options] [gateway]
 
-sign this machine in through a browser; `link` asks for it when it is needed
+sign this machine in to a gateway through a browser: every verb on it runs on
+that sign-in
 
 Arguments:
   gateway     the gateway to sign in to; https://cloud.pinecall.io when left out
@@ -12,23 +13,23 @@ Options:
 
 Prints a link and opens it. You sign in there — in a browser, where a password belongs — and
 the page hands this terminal a key of its OWN, minted for you and labelled as this machine, so
-it is revoked on its own from Tokens. Nothing types a password into a shell, and the day your
-org signs in with Google this verb does not change.
+it is revoked on its own from Tokens. Nothing types a password into a shell. Once per machine and
+gateway: every verb on this machine runs on it.
 
-With no URL it is https://cloud.pinecall.io, and it says so before anything is kept.
+A project says which org it runs in, in the pinecall.json `pinecall new` writes at its root, and
+this machine's key in that org is made the first time a verb needs it — the person may belong to
+many orgs. Outside a project, a verb acts in the org the sign-in's own key is in, and its first
+line says which.
 
-The key is the machine's sign-in, kept in ~/.pinecall/session.json (0600; PINECALL_HOME moves
-it), and no verb runs on it: a project runs on the key `pinecall link` writes into its own
-.env. `link` signs the machine in itself when it is not, so this is rarely typed. A server has
-no login at all: a server's token from Tokens, in its secrets as PINECALL_KEY.
+With no URL it is https://cloud.pinecall.io, and it says so before anything is kept. A runtime on this
+machine (`pinecall-runtime setup`) signs this machine in by itself. A server signs in nowhere: a
+server's token from Tokens, in its secrets as PINECALL_KEY, which wins over any sign-in.
 
 Examples
-  $ pinecall login
-  gateway  https://cloud.pinecall.io   (the default — `pinecall login <url>` for your own)
-
+  $ pinecall login https://pinecall.example.com
   open this to sign in:
-  https://cloud.pinecall.io/cli?c=cli_…
+  https://pinecall.example.com/cli?c=cli_…
 
   waiting…
-  signed in to https://cloud.pinecall.io as Ana García
+  signed in to https://pinecall.example.com as Ana García · org clinica
 

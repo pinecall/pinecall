@@ -37,8 +37,9 @@
             "language": "typescript"
           }
         ],
-        "key": "from .env",
+        "key": "from your sign-in (/Users/you/.pinecall/session.json)",
         "gateway": "https://cloud.pinecall.io",
+        "org": "acme",
         "installed": true
       }
     },
@@ -56,10 +57,15 @@
             "language": "python"
           }
         ],
-        "key": "none: call link",
+        "key": "from your sign-in (/Users/you/.pinecall/session.json)",
         "gateway": "https://cloud.pinecall.io",
+        "org": "acme",
         "installed": false,
-        "next": "uv sync in /Users/you/front-desk, then `link` writes its key"
+        "runs": {
+          "gateway": "https://cloud.pinecall.io",
+          "org": "acme"
+        },
+        "next": "uv sync in /Users/you/front-desk, then `start`"
       }
     }
   ],
@@ -1164,29 +1170,6 @@
             "url": "https://docs.pinecall.io/wire/commands/",
             "score": 19.72,
             "snippet": "…eclare or change what the agent is: voice, models, language, greeting, the full tool list. | | `agent.drain` | agent | `agent.draining` | This socket is leaving: hand it no new call for the agent, move the live calls it holds to the newest…"
-          }
-        ]
-      }
-    }
-  ],
-  "link": [
-    {
-      "args": {
-        "action": "orgs"
-      },
-      "answer": {
-        "orgs": [
-          {
-            "slug": "acme",
-            "this_machines": true
-          },
-          {
-            "slug": "acme-staging",
-            "this_machines": false
-          },
-          {
-            "slug": "northwind",
-            "this_machines": false
           }
         ]
       }

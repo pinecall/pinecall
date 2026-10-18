@@ -4,13 +4,13 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 
 import { z } from "zod";
 
-import { homeOf } from "../../accounts/service/home.js";
-import { readLocalRuntime } from "../../project/credentials.js";
-import { NOT_INSTALLED } from "../../setup/service.js";
+import { homeOf } from "../../kit/home.js";
+import { LOCAL_GATEWAY, readSignIn } from "../../project/session.js";
 import { tool, ToolRefused } from "../tool.js";
 import { WAIT, WAIT_S } from "./fields.js";
 
-export const NO_RUNTIME = NOT_INSTALLED;
+export const NO_RUNTIME =
+  'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then run this again';
 /** The line `setup` prints when the runtime answers and the processes are about to run. */
 const READY = "ready";
 /** How many of the runtime's lines an answer carries. */
@@ -31,7 +31,7 @@ export const runtime = tool({
   description:
     "The runtime on this machine: `up` runs `pinecall-runtime setup` (Docker, the schema, a key the CLI finds by itself, open models), `status` says what it printed and whether it answers, `down` stops it.",
   schema: {
-    action: z.enum(["status", "up", "down"]).describe("status reads the runtime this server started, or the one setup left; up runs setup and keeps it running; down stops it"),
+    action: z.enum(["status", "up", "down"]).describe("status reads the runtime this server started, or the one `pinecall-runtime setup` left; up runs it and keeps it running; down stops it"),
     models: z
       .enum(["local", "keys", "none"])
       .optional()
@@ -41,7 +41,7 @@ export const runtime = tool({
     wait_s: WAIT,
   },
   manual:
-    "`runtime` is for a person with no Pinecall account who wants the runtime on their own machine: `up` runs `pinecall-runtime setup --yes`, which brings Postgres, Redis and LiveKit up in Docker, writes the schema, hands a key to this CLI in `~/.pinecall/local.json` (so `whoami`, `chat`, `test` and `start` work with no `login` and no `link`) and, with local models, pulls Ollama, Whisper and Kokoro once — minutes, the first time. It answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway and the worker and the services; the database and the key are kept. A project with a key of its own (`.env`) keeps using it: the local runtime is read last.",
+    "`runtime` is for a person with no Pinecall account who wants the runtime on their own machine: `up` runs `pinecall-runtime setup --yes`, which brings Postgres, Redis and LiveKit up in Docker, writes the schema, signs this machine in to it as its admin, in `~/.pinecall/session.json` (so `whoami`, `chat`, `test` and `start` work with no `login`) and, with local models, pulls Ollama, Whisper and Kokoro once — minutes, the first time. It answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway and the worker and the services; the database and the key are kept. A project runs where its pinecall.json says: a project made while the runtime runs here names it.",
   handler: async (args, ctx) => {
     const home = homeOf(ctx.processEnv);
     const started = ctx.session.runtime;
@@ -50,7 +50,7 @@ export const runtime = tool({
       if (started !== undefined && started.exited === undefined) await stopped(started);
       ctx.session.runtime = undefined;
       const down = spawnSync("pinecall-runtime", ["local", "down"], { encoding: "utf8", env: ctx.processEnv });
-      return { stopped: true, said: lastLines((down.stdout + down.stderr).split("\n")), kept: "the database and the key in ~/.pinecall/local.json" };
+      return { stopped: true, said: lastLines((down.stdout + down.stderr).split("\n")), kept: "the database, and this machine signed in to it" };
     }
     if (started !== undefined && started.exited === undefined) return statusOf(started, home);
     requireInstalled(ctx.processEnv);
@@ -110,7 +110,7 @@ async function stopped(running: LocalRuntimeProcess): Promise<void> {
 }
 
 function statusOf(running: LocalRuntimeProcess | undefined, home: string): Record<string, unknown> {
-  const handed = readLocalRuntime(home);
+  const handed = readSignIn(home, LOCAL_GATEWAY);
   const key = handed === undefined ? { handed: false, says: "no runtime on this machine yet: call runtime with action up" } : { handed: true, gateway: handed.url };
   if (running === undefined) return { running: false, ...key };
   return {

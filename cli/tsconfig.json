@@ -6,9 +6,6 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    // The wizard's screens are React elements for Ink; a tenant's views, which the preset compiles against the framework's runtime, are never built here.
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "declaration": true,
     "sourceMap": true,
     "rootDir": "src",
