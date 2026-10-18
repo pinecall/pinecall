@@ -37,6 +37,7 @@ NOT_LAID_DOWN = "the release could not be laid down on this machine: {why}"
 NOT_STARTED = 127
 # A process of a runner that died is no child of this one: whether it left is asked this often.
 LEFT_EVERY_S = 0.5
+ZOMBIE = "Z"
 
 
 @dataclass
@@ -221,6 +222,7 @@ def _sweep(home: Path) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
 
+# A process that ended and nobody reaped yet still answers a signal: on Linux its state says so.
 def _alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -228,4 +230,8 @@ def _alive(pid: int) -> bool:
         return False
     except PermissionError:
         return True
-    return True
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rpartition(")")[2].split()[0]
+    except (OSError, IndexError):
+        return True
+    return state != ZOMBIE
