@@ -73,6 +73,8 @@ class Pipeline:
     llm: Running
     stt: Running
     tts: Running
+    # The model a voice call runs on alone, hearing and speaking itself, where the agent names one.
+    realtime: Running | None = None
 
     # The gateway keeps these with the call's facts: their usage is the operator's to bill.
     @property
@@ -85,7 +87,12 @@ class Pipeline:
     # which go last, among themselves in the row's order too.
     def demoting(self, failing: frozenset[str]) -> "Pipeline":
         """The same stages, each with the vendors failing now behind the ones that are not."""
-        return Pipeline(llm=_behind(self.llm, failing), stt=_behind(self.stt, failing), tts=_behind(self.tts, failing))
+        return Pipeline(
+            llm=_behind(self.llm, failing),
+            stt=_behind(self.stt, failing),
+            tts=_behind(self.tts, failing),
+            realtime=self.realtime,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,7 +190,21 @@ def build_pipeline(config: AgentConfig, catalog: Catalog, keys: Keyring) -> Pipe
         )
         for item in (tts, *tts.fallbacks)
     )
-    return Pipeline(llm=llm, stt=_over(*ears), tts=_over(*voices))
+    realtime = None if config.realtime is None else talking_of(config.realtime, keys)
+    return Pipeline(llm=llm, stt=_over(*ears), tts=_over(*voices), realtime=realtime)
+
+
+# A realtime model runs on the org's own key alone, as a plugin's own class does, and is told the
+# agent's options alone: the row's options for the vendor are its LLM's.
+def talking_of(declared: Model, keys: Keyring) -> Running:
+    """The realtime model a voice call runs on, on the org's own key."""
+    chosen = running_on(keys, declared.provider, declared.model or None)
+    if chosen.lent:
+        raise Conflict(
+            f"a realtime model runs on the org's own {chosen.vendor} key, and this agent's would run on the "
+            f"platform's: add yours with pinecall providers add {chosen.vendor}"
+        )
+    return dataclasses.replace(chosen, options=dict(declared.options))
 
 
 # A written call runs this stage alone: a call with no voice is not refused for want of one.
@@ -271,7 +292,7 @@ def parse_lending(entries: Iterable[str]) -> frozenset[str]:
 
 # Checked where an agent declares itself and where its settings are set, not first on a call.
 def refuse_what_cannot_run(config: AgentConfig, catalog: Catalog, keys: Keyring) -> None:
-    """Refuse a stage given a plugin of its own on a lent key, or an end of turn it cannot have."""
+    """Refuse a plugin of its own or a realtime model on a lent key, or an end of turn a stage cannot have."""
     stages: tuple[tuple[Modality, Model | Voice | None], ...] = (
         ("llm", config.llm),
         ("stt", config.stt),
@@ -281,6 +302,8 @@ def refuse_what_cannot_run(config: AgentConfig, catalog: Catalog, keys: Keyring)
     for modality, declared in stages:
         if declared is not None and _names_its_own(declared):
             stage_on_its_key(modality, declared, catalog, keys)
+    if config.realtime is not None:
+        talking_of(config.realtime, keys)
 
 
 # ── the catalogue an org reads ──
@@ -316,6 +339,7 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
         defaults=catalog.default_vendors,
         voices=[],
         models={named: [model] for named, model in catalog.models.items()},
+        realtime={vendor.name: list(vendor.realtime) for vendor in plugins.installed().values() if vendor.realtime},
     )
 
 

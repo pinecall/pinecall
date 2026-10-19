@@ -45,6 +45,8 @@ export const CatalogueSchema = z.object({
   voices: z.array(z.string()),
   /** Curated models by "<modality>/<vendor>", default first. */
   models: z.record(z.string(), z.array(z.string())),
+  /** By vendor, the models that hear and speak themselves, as the vendor's plugin names them. */
+  realtime: z.record(z.string(), z.array(z.string())),
 });
 export type Catalogue = z.infer<typeof CatalogueSchema>;
 

@@ -98,7 +98,7 @@ export function shown(config: TuningBody, field: Field): string | undefined {
     const temperature = config.temperature ?? undefined;
     return temperature === undefined ? undefined : String(temperature);
   }
-  if (field === "llm-options" || field === "stt-options" || field === "tts-options" || field === "judge-options") {
+  if (field === "llm-options" || field === "realtime-options" || field === "stt-options" || field === "tts-options" || field === "judge-options") {
     const options = config[WIRE[field] as "llm_options"] ?? undefined;
     if (options === undefined) return undefined;
     return Object.entries(options).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join(" · ");

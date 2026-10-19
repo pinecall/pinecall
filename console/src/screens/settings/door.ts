@@ -37,7 +37,7 @@ export async function rollbackTo(credentials: Credentials, agent: string, versio
 }
 
 /** Displayed fields, in order, with their labels. */
-export const FIELDS = ["voice", "tts", "tts_model", "stt", "language", "llm", "greeting", "hangup", "turn", "memory", "record", "max_duration_s", "knowledge", "bases"] as const;
+export const FIELDS = ["voice", "tts", "tts_model", "stt", "language", "llm", "realtime", "greeting", "hangup", "turn", "memory", "record", "max_duration_s", "knowledge", "bases"] as const;
 export type Field = (typeof FIELDS)[number];
 
 export const LABEL: Record<Field, string> = {
@@ -47,6 +47,7 @@ export const LABEL: Record<Field, string> = {
   stt: "STT",
   language: "Language",
   llm: "LLM",
+  realtime: "On voice calls",
   greeting: "Opening",
   hangup: "Hang up when",
   turn: "Turn",

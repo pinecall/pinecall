@@ -33,6 +33,7 @@ THE_DOOR = [
     "knowledge",
     "llm",
     "panel",
+    "realtime",
     "render",
     "show_prompt",
     "state",

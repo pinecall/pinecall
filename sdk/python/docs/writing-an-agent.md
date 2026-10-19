@@ -79,7 +79,11 @@ WebSocket), and `options=`, that class's keyword arguments as the plugin names t
 and over Pinecall's. **Both run only on your org's own key for that vendor**: on a key Pinecall lends
 they are refused when the agent registers, naming `pinecall providers add <vendor>`, since an option
 can point the plugin at another server. `@llm` also takes `temperature=`, which runs on any key. A
-vendor that is not installed, or does not do the stage, is refused at registration. `@llm` fixes the
+model that hears and speaks itself is not an `@llm`: `@realtime("xai/grok-voice-3.0",
+options={"voice": "eve"})` runs the agent's voice calls — phone and web — on it alone, with no ears
+and its own voice, while the `@llm` keeps answering the written ones; `pinecall providers` lists the
+vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
+such a model is refused at registration. A vendor that is not installed, or does not do the stage, is refused at registration. `@llm` fixes the
 whole model: with it on the class, `--temperature`, `--llm-builds` and `--llm-option` are refused too.
 
 `@judge` is the model the agent's calls are judged on at hang-up, over the org's choice and
@@ -92,6 +96,7 @@ judge is asked for a forced tool call, so a local model must call tools.
 |---|---|---|---|
 | `voice` | the voice: its vendor and the vendor's id | `@voice("<vendor>", "<id>", model=…)` | `pinecall agent set --voice` |
 | `llm` | the model that answers, and its temperature | `@llm("<vendor>/<model>", temperature=0.3)` | `pinecall agent set --llm` |
+| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `@realtime("<vendor>/<model>", options={…})` | `pinecall agent set --realtime` |
 | `stt` | the ears, and who ends the caller's turn | `@stt("<vendor>/<model>", end_of_turn="smart-turn")` | `pinecall agent set --stt` · `--end-of-turn` |
 | `judge` | the model the calls are judged on; on your own key its evals are not billed | `@judge("<vendor>/<model>", options={"base_url": "…"})` | the settings' `judge`, `judge_builds`, `judge_options` |
 | `language` | the language the call is in | `language = "es"` | `pinecall agent set --language` |

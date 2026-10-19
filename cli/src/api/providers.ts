@@ -21,6 +21,8 @@ export interface Provider {
 export interface Catalog {
   providers: Provider[];
   defaults: Record<string, string>;
+  /** By vendor, the models that hear and speak themselves: `agent set --realtime xai/grok-voice-3.0` runs the voice calls on one. A runtime before 0.11.5 answers none. */
+  realtime?: Record<string, string[]>;
 }
 
 export function listProviders(gw: GatewayClient): Promise<Catalog> {

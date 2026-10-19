@@ -145,12 +145,14 @@ export class Agent {
   static visibility?: Record<string, Visibility>;
 
   // The environment the class may declare: each one declared wins over the agent's settings, and
-  // the console shows it set by the class. `voice`, `llm`, `stt` and `judge` are what @voice, @llm,
-  // @stt and @judge set.
+  // the console shows it set by the class. `voice`, `llm`, `realtime`, `stt` and `judge` are what
+  // @voice, @llm, @realtime, @stt and @judge set.
   /** The language the agent speaks and expects, a BCP 47 tag: `"es"`, `"pt-BR"`. */
   static language?: Declared["language"];
   static voice?: Declared["voice"];
   static llm?: Declared["llm"];
+  /** The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`. */
+  static realtime?: Declared["realtime"];
   static stt?: Declared["stt"];
   /** The model the agent's calls are judged on. */
   static judge?: Declared["judge"];

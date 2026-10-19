@@ -9,14 +9,20 @@ Every vendor this build runs, and how **this org** may run each:
 ```json
 { "providers": [ { "name": "elevenlabs", "does": ["tts"], "availability": "offered", "ready": true, "broken": null, "voices_listed": true } ],
   "defaults": { "llm": "anthropic", "stt": "soniox", "tts": "elevenlabs" },
-  "models": { "tts/elevenlabs": ["eleven_flash_v2_5"] } }
+  "models": { "tts/elevenlabs": ["eleven_flash_v2_5"] },
+  "realtime": { "xai": ["grok-voice-latest", "grok-voice-3.0"] } }
 ```
 
 A vendor is a livekit plugin installed on the platform; nothing in code lists them. `availability` is
 `yours` (the org brought its key), `offered` (the platform lends its own to this org), `bring your own`
 (installed, and no key would run it for this org) or `broken` (the plugin does not import, `broken`
 says why). `ready` is the first two. `voices_listed` says whether `GET /v1/voices` lists that
-vendor's voices. `defaults` and `models` are the platform's providers row.
+vendor's voices. `defaults` and `models` are the platform's providers row. `realtime` is, by vendor,
+the models that hear and speak themselves, as the vendor's plugin names them (the `Literal` its
+realtime class types its `model` as, else the `RealtimeModels` it lists): named as an agent's
+`realtime` — `xai/grok-voice-3.0`, in the settings or in `@realtime` — a voice call runs on that model
+alone, with no ears and no voice of its own, while a written call keeps the agent's `llm`
+([settings-api.md](settings-api.md)).
 
 ## Where the abstraction is, and where it stops
 

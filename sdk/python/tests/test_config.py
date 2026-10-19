@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import pytest
 
-from pinecall import Agent, DeclarationRefused, judge, knowledge, llm, stt, voice
+from pinecall import Agent, DeclarationRefused, judge, knowledge, llm, realtime, stt, voice
 from pinecall._config import declared_on_the_instance, environment_of, slug_of
 from pinecall.bridge import config_of
 
@@ -78,6 +78,22 @@ def test_a_model_id_keeps_every_slash_after_the_vendors() -> None:
         "provider": "livekit",
         "model": "openai/gpt-5-mini",
     }
+
+
+def test_the_voice_calls_realtime_model_is_sent_beside_the_written_calls_llm() -> None:
+    @llm("openai/gpt-6-luna")
+    @realtime("xai/grok-voice-3.0", options={"voice": "eve"})
+    class KalaVoz(Agent):
+        """Kala, hablada por Grok."""
+
+    sent = config_of(KalaVoz).model_dump(exclude_none=True)
+    assert sent["llm"] == {"provider": "openai", "model": "gpt-6-luna"}
+    assert sent["realtime"] == {
+        "provider": "xai",
+        "model": "grok-voice-3.0",
+        "options": {"voice": "eve"},
+    }
+    assert '@realtime("<vendor>/<model>")' in declared_on_the_instance("realtime")
 
 
 def test_an_environment_field_annotated_as_state_is_refused_with_how_to_declare_it() -> None:

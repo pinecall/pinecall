@@ -40,6 +40,10 @@ export interface Typed {
   tts: Knob;
   /** The model the agent's calls are judged on; empty is the org's choice, else Pinecall's. */
   judge: Knob;
+  /** The model a voice call runs on alone, hearing and speaking itself; empty runs it on the three stages. */
+  realtime: Knob;
+  /** Its keyword arguments as JSON text, the org's own key alone running them. */
+  realtime_options: string;
   voice: string;
   /** The model's temperature; "" is the vendor's default. */
   temperature: string;
@@ -101,6 +105,8 @@ export function typedOf(config: TuningBody, vendors: ReadonlySet<string>): Typed
     stt: knobOf(config.stt, vendors),
     llm: knobOf(config.llm, vendors),
     judge: knobOf(config.judge, vendors),
+    realtime: knobOf(config.realtime, vendors),
+    realtime_options: config.realtime_options === null || config.realtime_options === undefined ? "" : JSON.stringify(config.realtime_options, null, 2),
     tts: ttsModel === undefined || ttsModel === "" ? tts : { ...tts, model: ttsModel },
     voice: config.voice ?? "",
     temperature: typeof config.temperature === "number" ? String(config.temperature) : "",
@@ -144,6 +150,7 @@ export const COVERED: Readonly<Record<string, readonly (keyof TuningBody)[]>> = 
   voice: ["voice", "tts", "tts_model", "tts_builds", "tts_options"],
   stt: ["stt", "stt_builds", "stt_options", "end_of_turn"],
   llm: ["llm", "temperature", "llm_builds", "llm_options"],
+  realtime: ["realtime", "realtime_options"],
   judge: ["judge", "judge_builds", "judge_options"],
   language: ["language"],
   greeting: ["greeting"],
@@ -155,7 +162,8 @@ export const COVERED: Readonly<Record<string, readonly (keyof TuningBody)[]>> = 
   docs: ["bases"],
 };
 
-export const NOT_AN_OBJECT = (stage: Modeled): string => `The ${stage.toUpperCase()} plugin's options are not a JSON object: write them as {"name": value, …}, or leave the field empty.`;
+export const NOT_AN_OBJECT = (stage: Modeled | "realtime"): string =>
+  `The ${stage === "realtime" ? "realtime model" : `${stage.toUpperCase()} plugin`}'s options are not a JSON object: write them as {"name": value, …}, or leave the field empty.`;
 
 // Empty fields are omitted (the door refuses ""), reverting to the runtime default. A words-only
 // key keeps the corner's other fields and rewrites only its own three. A field the class fixes is
@@ -183,6 +191,11 @@ function fromTheForm(typed: Typed, wordsOnly: boolean, standing: TuningBody): Tu
       const options = optionsOf(field, plugin.options);
       if (options !== undefined) config[`${field}_options`] = options;
     }
+    const talks = wordOf(typed.realtime);
+    if (talks !== "") config.realtime = talks;
+    // Options name no model alone: with no realtime model picked they are not sent.
+    const talking = optionsOf("realtime", typed.realtime_options);
+    if (talks !== "" && talking !== undefined) config.realtime_options = talking;
     if (typed.temperature.trim() !== "") config.temperature = Number(typed.temperature);
     if (typed.end_of_turn !== "") config.end_of_turn = typed.end_of_turn;
     const voice = typed.voice.trim();
@@ -233,7 +246,7 @@ function pluginOf(builds: string | null | undefined, options: Record<string, unk
   return { builds: builds ?? "", options: options === null || options === undefined ? "" : JSON.stringify(options, null, 2) };
 }
 
-function optionsOf(stage: Modeled, text: string): Record<string, unknown> | undefined {
+function optionsOf(stage: Modeled | "realtime", text: string): Record<string, unknown> | undefined {
   if (text.trim() === "") return undefined;
   let parsed: unknown;
   try {

@@ -151,6 +151,8 @@ export const AgentConfigSchema = z.strictObject({
   greeting: GreetingConfigSchema.nullish(),
   voice: VoiceConfigSchema.nullish(),
   llm: ModelConfigSchema.nullish(),
+  /** The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`. */
+  realtime: ModelConfigSchema.nullish(),
   stt: ModelConfigSchema.nullish(),
   /** The model the agent's calls are judged on, over the org's and the platform's. */
   judge: ModelConfigSchema.nullish(),

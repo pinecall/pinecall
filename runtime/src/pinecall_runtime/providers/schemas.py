@@ -176,6 +176,9 @@ class Catalogue(WireModel):
     # The picker reads GET /v1/voices; no names are curated in code.
     voices: list[str]
     models: dict[str, list[str]]
+    # `xai`: the models that hear and speak themselves, as the vendor's plugin lists them; the agent's
+    # `realtime` names one, and its voice calls run on it with no ears and no voice of their own.
+    realtime: dict[str, list[str]]
 
 
 class AdvisedStage(WireModel):

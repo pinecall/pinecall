@@ -51,6 +51,10 @@ class SettingsBody(WireModel):
     stt_options: dict[str, Any] | None = None
     llm_builds: str | None = None
     llm_options: dict[str, Any] | None = None
+    # The model a voice call runs on alone, `vendor/model`, hearing and speaking itself; its options
+    # run on the org's own key. A written call runs on `llm`.
+    realtime: str | None = None
+    realtime_options: dict[str, Any] | None = None
     # The model the agent's calls are judged on, `vendor/model`; null is the org's choice.
     judge: str | None = None
     judge_builds: str | None = None
@@ -368,11 +372,16 @@ class PipelineReport(WireModel):
     hears: PipelineStage
     decides: PipelineStage
     speaks: PipelineStage
+    # What a voice call runs on alone, where the agent names a model that hears and speaks itself:
+    # then its voice calls use neither ears nor voice, and `decides` answers its written calls.
+    talks: PipelineStage | None = None
     greeting: GreetingConfig | None
     voices: list[str]
     providers: list[ProviderRow]
     defaults: dict[Modality, str]
     models: dict[str, list[str]]
+    # By vendor, the models that hear and speak themselves, as GET /v1/providers lists them.
+    realtime: dict[str, list[str]]
     calls: int
     medians: list[Measured]
     unavailable_reasons: dict[str, str]
@@ -405,11 +414,14 @@ class TelemetryTarget(WireModel):
 
 
 class PipelineKeys(WireModel):
-    """GET /v1/agents/{slug}/provider-keys: the three stages on their keys, and where traces go."""
+    """GET /v1/agents/{slug}/provider-keys: the stages on their keys, and where traces go."""
 
     llm: RunningStage
     stt: RunningStage
     tts: RunningStage
+    # A voice call's whole conversation, where the agent names a model that hears and speaks itself.
+    # Sent only then, so a worker of the version before reads every other answer as it did.
+    realtime: RunningStage | None = None
     telemetry: TelemetryTarget | None = None
 
 

@@ -52,7 +52,7 @@ scope's newest version writes none and answers the one standing: a version says 
 ```
 
 `fixed` names the settings the class holding the agent declares itself, by the declaration's names
-(`language`, `voice`, `llm`, `stt`, `judge`, `greeting`, `hangup`, `turn`, `knowledge`, `docs`, `memory`,
+(`language`, `voice`, `llm`, `realtime`, `stt`, `judge`, `greeting`, `hangup`, `turn`, `knowledge`, `docs`, `memory`,
 `record`): these run as the class says whatever the rows below hold. Empty when no app holds the
 agent here, or its class declares none. Each scope's **own** newest, or null when that scope set nothing; never the fallthrough, because
 `if_version` is about the scope being written. `config` carries only the knobs the row set: `voice`,
@@ -65,7 +65,12 @@ model on the worker; unset, the row's choice for the vendor), `llm_builds`, `stt
 it: `responses.LLM`) and `llm_options`, `stt_options`, `tts_options` (that class's keyword arguments
 as the plugin names them, each replacing the providers row's of the same name; both only on the
 org's own key for the vendor, `409` on a lent one; set on an agent whose row names no vendor for
-the stage, these name the one in use, which then runs without the default's fallbacks), `judge`,
+the stage, these name the one in use, which then runs without the default's fallbacks), `realtime`
+and `realtime_options` (the model a voice call runs on alone, one that hears and speaks itself —
+`xai/grok-voice-3.0`, or a vendor alone for its plugin's own, as `GET /v1/providers` lists them under
+`realtime` — and its keyword arguments, `{"voice": "eve"}`; a written call keeps `llm`, which never
+names such a model: `400 xai/grok-voice-3.0 hears and speaks itself, so it is the agent's realtime
+and not its llm: …`; only on the org's own key for the vendor, `409` on a lent one), `judge`,
 `judge_builds`, `judge_options` (the model the agent's calls are judged on, named as `llm` is, over
 the org's choice at `PUT /v1/org/judging` and the platform's; on a key of the org's own, a local
 model's server among them through `judge_options` `{"base_url": …}`, its evals are never billed —
@@ -98,12 +103,12 @@ connection — and `400 eot_threshold 0.1 is outside 0.5 to 0.9` otherwise; a ve
 this check is still read. A stage the set changes — the voice, its vendor or model, the model, the
 ears — is tried once before anything is kept, on the key a call would use: a line said, one word
 answered, half a second of silence heard (ears that take only a whole utterance are tried by their
-first call). The vendor's no is `400 acme refused the voice this sets: no such voice`, in its words;
+first call); a realtime model is built with its options and closed, its session opening with the call. The vendor's no is `400 acme refused the voice this sets: no such voice`, in its words;
 a vendor that does not answer is `502 … nothing was kept, try again`. A save that changes no stage
 asks no vendor anything. `409` when the scope is not at `if_version`, and `409 voice set by the
 class of clinica-norte: …` when the set changes a knob the class declares (`tts`, `tts_model`,
 `tts_builds` and `tts_options` are the class's `voice`; `temperature`, `llm_builds` and
-`llm_options` its `llm`; `stt_builds`, `stt_options` and `end_of_turn` its `stt`; `judge_builds` and
+`llm_options` its `llm`; `realtime_options` its `realtime`; `stt_builds`, `stt_options` and `end_of_turn` its `stt`; `judge_builds` and
 `judge_options` its `judge`; `bases` its `docs`), before
 anything is tried or kept. A set whose plugin class or options would run on a key the platform
 lends is `409 llm options and builds run on the org's own openai key, and this agent's llm would run

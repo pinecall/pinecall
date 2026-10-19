@@ -315,6 +315,8 @@ class AgentConfig(WireModel):
     greeting: GreetingConfig | None = None
     voice: VoiceConfig | None = None
     llm: ModelConfig | None = None
+    # The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`.
+    realtime: ModelConfig | None = None
     stt: ModelConfig | None = None
     judge: ModelConfig | None = None
     turn: TurnConfig | None = None

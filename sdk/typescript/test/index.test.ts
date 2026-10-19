@@ -60,6 +60,7 @@ const PUBLIC = [
     "parametersOf",
     "parseClassSource",
     "promptOf",
+    "realtime",
     "recalled",
     "register",
     "render",

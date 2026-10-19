@@ -27,6 +27,7 @@ from pinecall_runtime.providers.service.keyring import (
     refuse_what_cannot_run,
     running_on,
     stage_on_its_key,
+    talking_of,
     thinking_of,
 )
 from pinecall_runtime.providers.service.machine import (
@@ -46,16 +47,19 @@ from pinecall_runtime.providers.service.machine import (
 )
 from pinecall_runtime.providers.service.notes import TRANSCRIPTIONS_A_MINUTE
 from pinecall_runtime.providers.service.plugins import (
+    NOT_REALTIME,
     Credentials,
     Ears,
     Running,
     Speaking,
     Thinking,
     Vendor,
+    hears_and_speaks,
     installed,
     installed_vendor,
     is_installed,
     primary_language,
+    refuse_realtime_as_llm,
     vendor_doing,
     vendor_named_in,
     words_of,
@@ -76,7 +80,7 @@ from pinecall_runtime.providers.service.stages import (
     takes_a_key,
     tts_of,
 )
-from pinecall_runtime.providers.service.trials import try_stage
+from pinecall_runtime.providers.service.trials import try_realtime, try_stage
 from pinecall_runtime.providers.service.voices import (
     SAMPLES_A_MINUTE,
     ListedVoice,
@@ -86,6 +90,7 @@ from pinecall_runtime.providers.service.voices import (
 
 __all__ = [
     "LOCAL",
+    "NOT_REALTIME",
     "SAMPLES_A_MINUTE",
     "THE_ENVIRONMENT",
     "TRANSCRIPTIONS_A_MINUTE",
@@ -126,6 +131,7 @@ __all__ = [
     "drop_own_credentials",
     "ends_turns",
     "get_catalog",
+    "hears_and_speaks",
     "installed",
     "installed_vendor",
     "is_installed",
@@ -148,6 +154,7 @@ __all__ = [
     "rates_from_csv",
     "recommend",
     "recommendation",
+    "refuse_realtime_as_llm",
     "refuse_untaken_knobs",
     "refuse_what_cannot_run",
     "running_on",
@@ -156,7 +163,9 @@ __all__ = [
     "stage_on_its_key",
     "stt_of",
     "takes_a_key",
+    "talking_of",
     "thinking_of",
+    "try_realtime",
     "try_stage",
     "tts_of",
     "tuning_of",

@@ -1127,6 +1127,7 @@ pinecall agent [--agent <slug>] [--json]
 pinecall agent list · stop <app>
 pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--temperature n] [--language en|es|pt-BR…]
                    [--llm-builds Class] [--llm-option key=value …] [--stt-builds Class] [--stt-option key=value …]
+                   [--realtime vendor/model] [--realtime-option key=value …]
                    [--tts-builds Class] [--tts-option key=value …]
                    [--judge x] [--judge-builds Class] [--judge-option key=value …]
                    [--greeting '…' | --greeting improvise[:'…']] [--greeting-interruptible on|off]
@@ -1135,7 +1136,7 @@ pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--
                    [--max-duration 1-60|off]
                    [--remember '…' …] [--forget '…' …] [--team] [--note '…']
 pinecall agent knowledge [--team] · knowledge edit [--team] [--note '…']
-pinecall agent clear <voice|tts|tts-model|stt|end-of-turn|llm|temperature|llm-builds|llm-options|stt-builds|stt-options|tts-builds|tts-options
+pinecall agent clear <voice|tts|tts-model|stt|end-of-turn|llm|temperature|llm-builds|llm-options|realtime|realtime-options|stt-builds|stt-options|tts-builds|tts-options
                       |judge|judge-builds|judge-options|language|greeting|hangup|turn|memory|record|max-duration|knowledge|bases …> [--team]
 pinecall agent clear --all [--team]
 pinecall agent history [--team] · diff [--against team|production] · rollback <version> [--team]
@@ -1183,7 +1184,7 @@ fields; the site's *Settings in the class*), and **what the class declares wins*
 refused, nothing saved, in the gateway's sentence: `voice set by the class of clinica-norte: the
 class's declaration wins over these settings, so change it there, or take it out of the class to set
 it here`. `--tts` and `--tts-model` are the class's `voice`; `--temperature`, `--llm-builds` and
-`--llm-option` its `llm`; `--stt-builds`, `--stt-option` and `--end-of-turn` its `stt`; `--judge-builds` and
+`--llm-option` its `llm`; `--realtime-option` its `realtime` (`@realtime`); `--stt-builds`, `--stt-option` and `--end-of-turn` its `stt`; `--judge-builds` and
 `--judge-option` its `judge` (`@judge`). Which fields are fixed is
 what the process holding the agent in that environment declared: with none holding it, none is.
 
@@ -1208,6 +1209,23 @@ Pinecall lends, the set is refused with `llm options and builds run on the org's
 this agent's llm would run on the platform's: add yours with pinecall providers add openai, or take them
 out` — an option can point a plugin at another server, and a lent key never goes anywhere but the
 vendor. `--temperature` is the model's, in the vendor's own range, and runs on any key.
+
+**A voice call can run on a realtime model while a written call keeps the LLM.** `pinecall
+providers` lists, per vendor, the models that hear and speak themselves (xAI's `grok-voice-3.0`,
+OpenAI's `gpt-realtime`); `--realtime xai/grok-voice-3.0` runs the agent's voice calls — SIP and
+WebRTC alike — on that model alone, no ears and its own voice, with the agent's tools and prompt as
+on any call, while `--llm` keeps answering its written calls (the chat, WhatsApp). A vendor alone,
+`--realtime xai`, is its plugin's own realtime model. `--realtime-option key=value` passes one of its
+keyword arguments as the plugin names it (`--realtime-option voice=eve`, Grok's voice); like a
+plugin's own options, the realtime model runs on the org's own key for the vendor alone — on a key
+Pinecall lends the set is refused with `409 a realtime model runs on the org's own xai key, …`. A set
+that changes it builds it once before anything is kept, so a model or an option the vendor does not
+take is refused in our words. No class is named: the runtime builds the plugin's realtime one. An
+`--llm` that names a realtime model is refused, `400 xai/grok-voice-3.0 hears and speaks itself, so it
+is the agent's realtime and not its llm: …`. What is said verbatim (the recording notice, a greeting
+given as words, a read-back) is still the voice's. `clear realtime` gives the voice calls back to the
+ears, the LLM and the voice. The console offers the same models in Configure ▸ LLM, under *On voice
+calls*.
 
 **The model the agent's calls are judged on is `--judge`**, named as `--llm` is — `vendor/model`, a
 vendor, a model, a tier — with `--judge-builds` and `--judge-option` beside it as the `--llm` pair
@@ -1661,7 +1679,10 @@ project with no vendor key at all. `standing` is the one word for what each is s
 `ready` is the only one that runs a call, `no plugin` and `no key` are the operator's to fix, and
 `its own` is a vendor whose credentials are a chain or a pair and never one key anybody could
 bring. Any of these names — or any of its aliases — is what `agent set --stt`, `--llm` and
-`--tts` take: the six knobs are the agent's settings, and `pipeline` only reads them back.
+`--tts` take: the six knobs are the agent's settings, and `pipeline` only reads them back. Under
+the table, one line per vendor whose plugin names realtime models — `realtime · xai:
+grok-voice-latest, grok-voice-3.0, …` — the models that hear and speak themselves, which
+`agent set --realtime xai/grok-voice-3.0` runs the voice calls on.
 
 A key added here is this org's own account with that vendor, and every call of this org runs on it
 from the next one. It is tried before it is kept — the vendor is asked one small thing on it, as a

@@ -49,6 +49,8 @@ PIPELINE_ONLY = (
     "end_of_turn",
     "llm_builds",
     "llm_options",
+    "realtime",
+    "realtime_options",
     "stt_builds",
     "stt_options",
     "tts_builds",
@@ -77,6 +79,7 @@ DECLARED_AS = {
     "temperature": "llm",
     "llm_builds": "llm",
     "llm_options": "llm",
+    "realtime_options": "realtime",
     "stt_builds": "stt",
     "end_of_turn": "stt",
     "stt_options": "stt",
@@ -90,6 +93,7 @@ STAGE_KNOBS: dict[Modality, tuple[str, ...]] = {
     "llm": ("llm", "temperature", "llm_builds", "llm_options"),
     "stt": ("stt", "stt_builds", "stt_options", "end_of_turn", "turn", "language"),
 }
+REALTIME_KNOBS = ("realtime", "realtime_options")
 
 
 class VersionMoved(Conflict):
@@ -342,6 +346,8 @@ async def write_tuning(
         for stage, knobs in STAGE_KNOBS.items():
             if any(_changes(wanted, newest, knob) for knob in knobs):
                 await providers.try_stage(stage, getattr(stages, stage), wanted.turn)
+        if stages.realtime is not None and any(_changes(wanted, newest, knob) for knob in REALTIME_KNOBS):
+            await providers.try_realtime(stages.realtime)
     return await put_tuning(session, scope, agent, wanted, written)
 
 

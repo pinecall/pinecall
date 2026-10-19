@@ -2,9 +2,11 @@
 
 import importlib
 import importlib.util
+import inspect
 import logging
 import pkgutil
 import re
+import typing
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cache
@@ -38,6 +40,14 @@ CLASS_OF: dict[Modality, str] = {"llm": "LLM", "stt": "STT", "tts": "TTS"}
 # Where a plugin puts each class, in the order looked for: at the top of its module, or an LLM on the
 # Responses API in its `responses` module, as xAI's Grok is (`livekit.plugins.xai.responses.LLM`).
 CLASS_PATHS: dict[Modality, tuple[str, ...]] = {"llm": ("LLM", "responses.LLM"), "stt": ("STT",), "tts": ("TTS",)}
+# A model that hears and speaks itself (xAI's Grok Voice, OpenAI's Realtime API) is the plugin's
+# realtime class, where it keeps one: in its `realtime` module, or at the top. The models that class
+# runs are what the plugin types its `model` argument as (a Literal), else what it lists under a
+# name ending so, at its top or in its `models` module (OpenAI's `RealtimeModels`).
+REALTIME_PATHS: tuple[str, ...] = ("realtime.RealtimeModel", "RealtimeModel")
+REALTIME_MODELS = "RealtimeModels"
+# Where a refused realtime model points the person: the ones the catalogue lists.
+NOT_REALTIME = "`pinecall providers` lists, by vendor, the models that do"
 
 # livekit's three bases are generic in the extra events a subclass may emit; a plugin adds none.
 AN_LLM: type[llm.LLM[Never]] = llm.LLM
@@ -87,6 +97,8 @@ class Vendor:
     name: str
     does: frozenset[Modality]
     broken: str | None = None
+    # The models that hear and speak themselves, by name: the agent's `realtime` names one for its voice calls.
+    realtime: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -201,18 +213,83 @@ def _vendor(name: str, module: str) -> Vendor:
     except ImportError as broken:
         logger.warning("the %s plugin does not import, so it builds nothing", name, exc_info=True)
         return Vendor(name, frozenset(), broken=str(broken))
-    return Vendor(name, frozenset(m for m in MODALITIES if class_path(imported, m) is not None))
+    does: set[Modality] = {m for m in MODALITIES if class_path(imported, m) is not None}
+    # A realtime model is the LLM stage of the calls it runs, whatever else the plugin exports.
+    if realtime_path(imported) is not None:
+        does.add("llm")
+    return Vendor(name, frozenset(does), realtime=realtime_models(imported))
 
 
 def class_path(module: object, modality: Modality) -> str | None:
     """Where the module keeps its class for that stage (`LLM`, `responses.LLM`), or None."""
-    for path in CLASS_PATHS[modality]:
-        found: object = module
-        for part in path.split("."):
+    return next((path for path in CLASS_PATHS[modality] if isinstance(_at(module, path), type)), None)
+
+
+def realtime_path(module: object) -> str | None:
+    """Where the module keeps its realtime model's class (`realtime.RealtimeModel`), or None."""
+    return next((path for path in REALTIME_PATHS if isinstance(_at(module, path), type)), None)
+
+
+def hears_and_speaks(vendor: str) -> bool:
+    """Whether the vendor's plugin has a realtime model's class."""
+    return realtime_path(plugin(vendor)) is not None
+
+
+# The model that writes the answers is never one that hears and speaks itself: that one is the
+# agent's `realtime`, and a written call could not run on it. A class the plugin does not export is
+# its own refusal, where the stage is built.
+def refuse_realtime_as_llm(vendor: str, model: str | None, builds: str | None) -> None:
+    """Refuse an LLM stage that names a realtime model, by its name or by its class."""
+    found = installed().get(vendor)
+    named = found is not None and model is not None and model in found.realtime
+    made = None if builds is None else _at(plugin(vendor), builds)
+    if named or (isinstance(made, type) and issubclass(made, llm.RealtimeModel)):
+        said = f"{vendor}/{model}" if model else vendor
+        raise ValidationError(
+            f"{said} hears and speaks itself, so it is the agent's realtime and not its llm: "
+            f"@realtime('{said}') or --realtime {said}, and the llm stays the model a written call answers with"
+        )
+
+
+def realtime_models(module: object) -> tuple[str, ...]:
+    """The models the plugin's realtime class runs, by name; none where it has no such class or names none."""
+    path = realtime_path(module)
+    made = None if path is None else _at(module, path)
+    if not isinstance(made, type):
+        return ()
+    try:
+        argument = inspect.signature(made, eval_str=True).parameters.get("model")
+    except (NameError, TypeError, ValueError):
+        argument = None
+    declared = None if argument is None else argument.annotation
+    typed = _literal_in(declared)
+    if typed:
+        return typed
+    for holder in (module, getattr(module, "models", None)):
+        for name in dir(holder) if holder is not None else ():
+            listed = _literal_in(getattr(holder, name)) if name.endswith(REALTIME_MODELS) else ()
+            if listed:
+                return listed
+    return ()
+
+
+# A plugin may raise ImportError for a module whose extras are not installed (AWS's `realtime`): that
+# module is not there, as a missing one is not.
+def _at(module: object, path: str) -> object:
+    found: object = module
+    for part in path.split("."):
+        try:
             found = getattr(found, part, None)
-        if isinstance(found, type):
-            return path
-    return None
+        except ImportError:
+            return None
+    return found
+
+
+# The strings of a Literal, through the unions a plugin wraps it in (`NotGivenOr[Models | str]`).
+def _literal_in(declared: object) -> tuple[str, ...]:
+    if typing.get_origin(declared) is typing.Literal:
+        return tuple(one for one in typing.get_args(declared) if isinstance(one, str))
+    return tuple(name for inner in typing.get_args(declared) for name in _literal_in(inner))
 
 
 # A vendor SDK puts its whole body in the message (`Error code: 401 - {'message': …}`): the

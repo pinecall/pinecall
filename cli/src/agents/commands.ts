@@ -21,15 +21,18 @@ does not hear it. --team writes the org's own corner instead, which every corner
 --prod writes production's, if your org lets you act there. The whole set travels with the
 version it was read at, so two people saving at once never write over each other. A model knob
 reads four ways — \`--llm anthropic/claude-haiku-5-5\`, \`--llm cartesia\` (a vendor), \`--llm
-claude-haiku-5-5\` (a model), and \`--llm haiku\` (a tier). --greeting sets the words said as the
-call opens; \`--greeting improvise\` has the model open on its prompt. --hangup any lets the model
-end the call whenever it judges it done. --end-of-turn is who says the caller's turn is over.
---remember and --forget replace those lists whole. --llm-builds names a class of the vendor's
-plugin, and --llm-option key=value one of its keyword arguments; --stt-…, --tts-… and --judge-…
-are the same for the ears, the voice and the judge model. Those run only on your org's own key.
+claude-haiku-5-5\` (a model), and \`--llm haiku\` (a tier). --realtime names the model a voice call
+runs on alone, one that hears and speaks itself (\`pinecall providers\` lists them): \`--realtime
+xai/grok-voice-3.0 --realtime-option voice=eve\`; the --llm keeps answering the written calls, and
+never names such a model. --greeting sets the words said as the call opens; \`--greeting
+improvise\` has the model open on its prompt. --hangup any lets the model end the call whenever it
+judges it done. --end-of-turn is who says the caller's turn is over. --remember and --forget
+replace those lists whole. --llm-builds names a class of the vendor's plugin, and --llm-option
+key=value one of its keyword arguments; --stt-…, --tts-… and --judge-… are the same for the ears,
+the voice and the judge model. Those run only on your org's own key, as --realtime-option does.
 
-A field the class declares itself (@voice, @llm, @stt, a static field) says \`class\` in every
-corner: the class wins, and a set or clear of it is refused naming the class.
+A field the class declares itself (@voice, @llm, @realtime, @stt, a static field) says \`class\` in
+every corner: the class wins, and a set or clear of it is refused naming the class.
 
 knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it
 prints the corner's text; \`edit\` opens it in $EDITOR and saves what you wrote as the next
@@ -90,11 +93,11 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .action(async (flags) => ctx.io.result(await service.showSettings(ctx, flags.agent), render.settings));
   const set = agent.command("set").description("write the fields named as the next version of a corner").option("--agent <slug>").option("--team", "the org's own corner").option("--note <note>");
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup"]) set.option(`--${flag} <value>`);
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup"]) set.option(`--${flag} <value>`);
   for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "max-duration"]) set.option(`--${flag} <n>`);
   for (const flag of ["greeting-interruptible", "record"]) set.option(`--${flag} <on|off>`);
   set.option("--end-of-turn <who>", END_OF_TURN_HELP);
-  for (const stage of ["llm", "stt", "tts", "judge"]) set.option(`--${stage}-option <key=value...>`);
+  for (const stage of ["llm", "realtime", "stt", "tts", "judge"]) set.option(`--${stage}-option <key=value...>`);
   set.option("--remember <phrase...>").option("--forget <phrase...>");
   set.action(async (flags) => {
     const named = settingsOf(flags as Record<string, unknown>);
@@ -262,7 +265,7 @@ const END_OF_TURN_HELP = "who says the caller's turn is over: stt (the ears them
 function settingsOf(flags: Record<string, unknown>): Record<string, unknown> {
   const named: Record<string, unknown> = {};
   const text = (flag: string): string | undefined => flags[camel(flag)] as string | undefined;
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "greeting-interruptible", "record", "end-of-turn"]) {
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "greeting-interruptible", "record", "end-of-turn"]) {
     if (text(flag) !== undefined) named[flag] = text(flag);
   }
   for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold"]) {
@@ -271,7 +274,7 @@ function settingsOf(flags: Record<string, unknown>): Record<string, unknown> {
   }
   const limit = text("max-duration");
   if (limit !== undefined) named["max-duration"] = limit === "off" ? "off" : Number(limit);
-  for (const stage of ["llm", "stt", "tts", "judge"]) {
+  for (const stage of ["llm", "realtime", "stt", "tts", "judge"]) {
     const options = parseKeyValues(`${stage}-option`, flags[`${stage}Option`] as string[] | undefined);
     if (options !== undefined) named[`${stage}-options`] = options;
   }

@@ -6,6 +6,11 @@ maintainer's call.
 
 ## [Unreleased]
 
+- **A voice call runs on a realtime model while a written call keeps the LLM.** `realtime "xai/grok-voice-3.0", options: { voice: "eve" }` names the
+  model the agent's voice calls (phone and web) run on alone, one that hears and speaks itself — no
+  ears, its own voice — while the `llm` keeps answering its written calls. Its options run on the
+  org's own key for the vendor; an `llm` that names such a model is refused at registration.
+
 - **An agent an admin killed is declared no more.** An `error` coded `killed` on one agent
   (`POST /v1/agents/{slug}/kill`) drops it from the agents the client declares: the socket stays,
   the other agents go on, and a reconnect leaves the killed one out.

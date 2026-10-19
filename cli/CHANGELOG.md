@@ -14,6 +14,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   as a TypeScript project: `<name>.zip`, or its files written into `--out`). The MCP's new `studio`
   tool (`list`, `show`, `new`, `save`, `try`, `deploy`) builds one end to end, and `chat` talks to it.
 
+- **A voice call runs on a realtime model while a written call keeps the LLM.** `pinecall agent set
+  --realtime xai/grok-voice-3.0 --realtime-option voice=eve` (and the MCP's `agent`, `settings.realtime`
+  and `settings.realtime-options`) names the model the agent's voice calls run on alone, one that
+  hears and speaks itself; `--llm` keeps answering its written calls. `clear realtime` and
+  `clear realtime-options` take them out, and the settings table shows both rows, `class` where the
+  class declares `@realtime`. `pinecall providers` prints the realtime models under the table, one
+  line per vendor (`realtime · xai: …`), and the MCP's `providers` answers them under `realtime`.
+
 - **The MCP's `runtime` tool shows the stack before running it, and takes every stage.** A new
   action, `recommend`, answers what `pinecall-runtime setup --recommend` reads: the machine, where
   each vendor's key is (never its value), each measured model and whether it fits, and the stack

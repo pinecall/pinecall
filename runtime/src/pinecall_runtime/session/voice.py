@@ -32,10 +32,10 @@ MIN_SPEECH_S = 0.25
 
 
 def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
-    """A voice call: the three stages built for it, the turn taken as a phone line needs."""
-    realtime = providers.build_realtime(stages.llm)
-    if realtime is not None:
-        return _realtime_session(call, realtime, stages, lookup_budget_ms)
+    """A voice call: the three stages built for it, the turn taken as a phone line needs; or the
+    realtime model the agent names, alone."""
+    if stages.realtime is not None:
+        return _realtime_session(call, providers.build_realtime(stages.realtime), stages, lookup_budget_ms)
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}))
     voice = providers.build_voice(stages.tts)

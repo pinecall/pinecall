@@ -10,6 +10,7 @@ import { Button, Input, Tabs } from "../../ui";
 import { BasesSection } from "./bases";
 import { ConversationSection } from "./conversation";
 import { LanguageField } from "./language";
+import { RealtimeSection } from "./realtime";
 import type { Stage } from "../pipeline/door";
 import { EndOfTurnField, FixedByTheClass, PluginFields, TemperatureField } from "./plugin";
 import { StageSection, VoiceField } from "./stages";
@@ -45,6 +46,7 @@ export function SettingsForm({
   providers,
   defaults,
   models,
+  realtime,
   bases,
   fixed,
   running,
@@ -63,12 +65,14 @@ export function SettingsForm({
   providers: readonly Provider[];
   defaults: Readonly<Record<string, string>>;
   models: Readonly<Record<string, readonly string[]>>;
+  /** By vendor, the models that hear and speak themselves: one picked runs the voice calls alone. */
+  realtime: Readonly<Record<string, readonly string[]>>;
   /** Bases in this world for the Bases section; null while loading. */
   bases: readonly KnowledgeBase[] | null;
   /** The settings the agent's class declares itself, by the declaration's names: shown, never edited. */
   fixed: ReadonlySet<string>;
   /** What the next call runs at each stage, where the class's value is read from; null while asked for. */
-  running: { hears: Stage; decides: Stage; speaks: Stage } | null;
+  running: { hears: Stage; decides: Stage; speaks: Stage; talks: Stage | null } | null;
   section: Section;
   onPickSection: (section: Section) => void;
   saving: boolean;
@@ -88,10 +92,12 @@ export function SettingsForm({
     setInvalid(null);
     setTyped({ ...typed, plugins: { ...typed.plugins, [modality]: plugin } });
   };
-  const knob = (field: "stt" | "llm" | "tts" | "judge") => (picked: Typed["stt"]) => {
+  const knob = (field: "stt" | "llm" | "tts" | "judge" | "realtime") => (picked: Typed["stt"]) => {
     setSaved(false);
-    // Voices are per vendor: changing the TTS vendor clears the voice.
-    setTyped(field === "tts" && picked.vendor !== typed.tts.vendor ? { ...typed, tts: picked, voice: "" } : { ...typed, [field]: picked });
+    // Voices and a realtime model's options are per vendor: changing the vendor clears them.
+    if (field === "tts" && picked.vendor !== typed.tts.vendor) setTyped({ ...typed, tts: picked, voice: "" });
+    else if (field === "realtime" && picked.vendor !== typed.realtime.vendor) setTyped({ ...typed, realtime: picked, realtime_options: "" });
+    else setTyped({ ...typed, [field]: picked });
   };
   // Picked TTS vendor, else the runtime default (null until the pipeline report arrives).
   const speaking = typed.tts.vendor === "" ? (defaults["tts"] ?? null) : typed.tts.vendor;
@@ -122,14 +128,25 @@ export function SettingsForm({
         </StageSection>
       )}
       {section === "decides" && (
-        <StageSection modality="llm" title="Language model" blurb="The model that reads what the caller said and writes the answer." knob={typed.llm} providers={providers} defaults={defaults} models={models} onChange={knob("llm")} fixed={fixed.has("llm") ? { value: said(running?.decides) } : undefined}>
-          {!fixed.has("llm") && (
-            <>
-              <TemperatureField temperature={typed.temperature} onChange={(temperature) => change("temperature", temperature)} />
-              <PluginFields modality="llm" vendor={vendorOf(typed.llm.vendor, defaults["llm"])} plugin={typed.plugins.llm} onChange={plug("llm")} />
-            </>
-          )}
-        </StageSection>
+        <>
+          <StageSection modality="llm" title="Language model" blurb="The model that reads what the caller said and writes the answer." knob={typed.llm} providers={providers} defaults={defaults} models={models} onChange={knob("llm")} fixed={fixed.has("llm") ? { value: said(running?.decides) } : undefined}>
+            {!fixed.has("llm") && (
+              <>
+                <TemperatureField temperature={typed.temperature} onChange={(temperature) => change("temperature", temperature)} />
+                <PluginFields modality="llm" vendor={vendorOf(typed.llm.vendor, defaults["llm"])} plugin={typed.plugins.llm} onChange={plug("llm")} />
+              </>
+            )}
+          </StageSection>
+          <RealtimeSection
+            knob={typed.realtime}
+            options={typed.realtime_options}
+            providers={providers}
+            realtime={realtime}
+            fixed={fixed.has("realtime") ? { value: said(running?.talks ?? undefined) } : undefined}
+            onChange={knob("realtime")}
+            onOptions={(options) => change("realtime_options", options)}
+          />
+        </>
       )}
       {section === "speaks" && (
         <StageSection modality="tts" title="Voice" blurb="What says the answer out loud, and in which voice." knob={typed.tts} providers={providers} defaults={defaults} models={models} onChange={knob("tts")} fixed={fixed.has("voice") ? { value: said(running?.speaks, true) } : undefined}>

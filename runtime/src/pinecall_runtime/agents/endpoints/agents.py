@@ -70,7 +70,7 @@ async def agent_config(
 
 # The one answer that carries keys: to the fleet's key, or the org's own worker's. The box's
 # keys leave it only for its own workers: an org's process is handed the org's keys alone.
-@router.get("/v1/agents/{slug}/provider-keys")
+@router.get("/v1/agents/{slug}/provider-keys", response_model_exclude_unset=True)
 async def agent_credentials(
     slug: KnownAgent,
     actor: WorkerKey,
@@ -90,7 +90,7 @@ async def agent_credentials(
     stages = providers.build_pipeline(tuned, catalog, keys).demoting(counters.failing(at))
     counters.handed_out((stages.llm.vendor, stages.stt.vendor, stages.tts.vendor), at)
     traced = await compliance.telemetry_of(session, _vault(request), actor.org)
-    return schemas.PipelineKeys(
+    handed = schemas.PipelineKeys(
         llm=_running_stage(stages.llm),
         stt=_running_stage(stages.stt),
         tts=_running_stage(stages.tts),
@@ -98,6 +98,11 @@ async def agent_credentials(
         if traced is None
         else schemas.TelemetryTarget(endpoint=traced.endpoint, headers=dict(traced.headers), pii=traced.pii),
     )
+    # Set only where there is one: the answer leaves unset fields out, and a worker of the version
+    # before reads it as it did.
+    if stages.realtime is not None:
+        handed.realtime = _running_stage(stages.realtime)
+    return handed
 
 
 @router.get("/v1/agents/{slug}/hold-audio")
@@ -163,11 +168,15 @@ async def pipeline_report(
         hears=stages["hears"],
         decides=stages["decides"],
         speaks=stages["speaks"],
+        talks=None
+        if config.realtime is None
+        else schemas.PipelineStage(vendor=config.realtime.provider, model=config.realtime.model or None),
         greeting=_greeting(config.greeting),
         voices=listed.voices,
         providers=listed.providers,
         defaults=listed.defaults,
         models=listed.models,
+        realtime=listed.realtime,
         calls=counted,
         medians=[schemas.Measured(name=row.name, seconds=row.seconds, turns=row.turns) for row in medians],
         unavailable_reasons=_unavailable(stages, keys),

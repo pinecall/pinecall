@@ -1,4 +1,4 @@
-/** The `@tool({...})` method decorator, and the `@render(Prompt)`, `@voice`, `@llm`, `@stt` and `@judge` class decorators. */
+/** The `@tool({...})` method decorator, and the `@render(Prompt)`, `@voice`, `@llm`, `@realtime`, `@stt` and `@judge` class decorators. */
 
 import { withAuthorAsync } from "./authors.js";
 import { lowerStage } from "./stages.js";
@@ -86,6 +86,17 @@ export function llm(model: string, more: Plugin & { temperature?: number } = {})
 }
 
 /**
+ * The model a voice call runs on alone, one that hears and speaks itself, `vendor/model` or a vendor
+ * alone: `@realtime("xai/grok-voice-3.0", { options: { voice: "eve" } })`. A written call keeps the
+ * `@llm`. Its options run on the org's own key for the vendor. Declared, it wins over the agent's settings.
+ */
+export function realtime(model: string, more: { options?: Record<string, unknown> } = {}) {
+  return function decorate(ctor: Function): void {
+    declare(ctor, "realtime", { ...modelOf(model), ...more });
+  };
+}
+
+/**
  * The ears, `vendor/model` or a vendor alone: `@stt("soniox/stt-rt-v3", { endOfTurn: "smart-turn" })`.
  * `endOfTurn` is who says the caller's turn is over: `"stt"` the ears themselves (Deepgram Flux),
  * `"livekit"` or `"smart-turn"` a model on the worker. Declared, they win over the agent's settings.
@@ -117,7 +128,7 @@ function modelOf(named: string): { provider: string; model: string } {
 }
 
 // Refuse both spellings on one class, as @render does: one of them would be silently dead.
-function declare(ctor: Function, field: "voice" | "llm" | "stt" | "judge", value: object): void {
+function declare(ctor: Function, field: "voice" | "llm" | "realtime" | "stt" | "judge", value: object): void {
   if (Object.hasOwn(ctor, field)) {
     throw new DeclarationRefused(`${ctor.name} declares both @${field}(…) and a static ${field}; keep one`);
   }

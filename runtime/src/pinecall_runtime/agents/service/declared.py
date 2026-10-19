@@ -17,7 +17,7 @@ from pinecall_runtime.agents.declaration import (
     Turn,
     Voice,
 )
-from pinecall_runtime.agents.service.tuning import model_from_wire
+from pinecall_runtime.agents.service.tuning import model_from_wire, realtime_from_wire
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.wire.parts import AgentConfig as Declaration
@@ -91,6 +91,7 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
         "language": ("language", declaration.language),
         "voice": ("voice", _voice_of(declaration.voice)),
         "llm": ("llm", model_from_wire(declaration.llm, "llm")),
+        "realtime": ("realtime", realtime_from_wire(declaration.realtime)),
         "stt": ("stt", model_from_wire(declaration.stt, "stt")),
         "judge": ("judge", model_from_wire(declaration.judge, "llm")),
         "greeting": ("greeting", _greeting_of(declaration.greeting)),

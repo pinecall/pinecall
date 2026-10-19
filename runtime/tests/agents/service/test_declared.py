@@ -15,6 +15,7 @@ from pinecall_runtime.wire.parts import (
     Pronunciation,
     VoiceConfig,
 )
+from tests.fakes import talker
 from tests.fakes.acme import ACME
 
 NOTHING = AgentConfig(slug="clinica-norte")
@@ -86,6 +87,39 @@ def test_who_ends_the_turn_is_the_ears_and_refused_on_the_model() -> None:
     assert with_app_fields(NOTHING, Declared(stt=ears)).stt == Model(ACME, "acme-ears", end_of_turn="smart-turn")
     with pytest.raises(ValidationError, match="end_of_turn is the ears'"):
         with_app_fields(NOTHING, Declared(llm=ModelConfig(provider=ACME, model="acme-1", end_of_turn="stt")))
+
+
+def test_a_realtime_model_the_class_declares_is_fixed_beside_its_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The voice calls' model and the written calls' are two settings, each fixed by the class."""
+    vendor = talker.install(monkeypatch)
+    declared = Declared(
+        llm=ModelConfig(provider=ACME, model="acme-1"),
+        realtime=ModelConfig(provider=vendor, model="voice-3", options={"voice": "eve"}),
+    )
+    config = with_app_fields(NOTHING, declared)
+    assert config.llm == Model(ACME, "acme-1")
+    assert config.realtime == Model(vendor, "voice-3", options={"voice": "eve"})
+    assert config.fixed == frozenset({"llm", "realtime"})
+
+
+def test_a_realtime_model_named_as_the_llm_is_refused_naming_the_realtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The llm answers the written calls, which a model that hears and speaks itself cannot."""
+    vendor = talker.install(monkeypatch)
+    with pytest.raises(ValidationError, match="it is the agent's realtime and not its llm"):
+        with_app_fields(NOTHING, Declared(llm=ModelConfig(provider=vendor, model="voice-3")))
+    with pytest.raises(ValidationError, match="it is the agent's realtime and not its llm"):
+        with_app_fields(NOTHING, Declared(llm=ModelConfig(provider=vendor, model="x", builds="realtime.RealtimeModel")))
+
+
+def test_a_realtime_model_is_a_vendors_that_has_one_and_takes_no_class_of_its_own(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A vendor with no realtime class is refused, and so is a class or a temperature named for one."""
+    vendor = talker.install(monkeypatch)
+    with pytest.raises(ValidationError, match="acme has no model that hears and speaks itself"):
+        with_app_fields(NOTHING, Declared(realtime=ModelConfig(provider=ACME, model="acme-1")))
+    with pytest.raises(ValidationError, match=r"@realtime\('<vendor>/<model>'"):
+        with_app_fields(NOTHING, Declared(realtime=ModelConfig(provider=vendor, model="voice-3", builds="LLM")))
 
 
 def test_the_judge_the_class_declares_is_a_model_and_is_fixed(listener: str) -> None:

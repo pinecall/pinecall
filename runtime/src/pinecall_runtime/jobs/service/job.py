@@ -179,8 +179,13 @@ def notice_of(opened: calls.OpenCallResponse, *, recorded: bool) -> str | None:
 
 
 def pipeline_of(keys: agents.PipelineKeys) -> providers.Pipeline:
-    """The three stages as the session builds them, from the gateway's answer."""
-    return providers.Pipeline(llm=_running(keys.llm), stt=_running(keys.stt), tts=_running(keys.tts))
+    """The stages as the session builds them, from the gateway's answer."""
+    return providers.Pipeline(
+        llm=_running(keys.llm),
+        stt=_running(keys.stt),
+        tts=_running(keys.tts),
+        realtime=None if keys.realtime is None else _running(keys.realtime),
+    )
 
 
 def telemetry_of(keys: agents.PipelineKeys) -> compliance.Telemetry | None:

@@ -28,6 +28,7 @@ from pinecall_runtime.providers.service.plugins import (
     MOST_FIELDS,
     NOT_A_CREDENTIAL,
     NOT_A_CREDENTIAL_ENDS,
+    NOT_REALTIME,
     THE_HINTS,
     THE_KEY,
     THE_LANGUAGE,
@@ -41,6 +42,7 @@ from pinecall_runtime.providers.service.plugins import (
     class_path,
     plugin,
     primary_language,
+    realtime_path,
 )
 from pinecall_runtime.wire.metrics import LLMModelUsage
 
@@ -168,14 +170,15 @@ def stt_of(running: Running, turn: Turn | None, hear: Sequence[str] = ()) -> stt
     return _built("stt", AN_STT, running, _turn_knobs(turn), tuple(hear))
 
 
-# A model that hears and speaks itself (xAI's `realtime.RealtimeModel`, named by the agent's `llm-builds`)
-# stands for the whole conversation of a voice call: no ears, its own voice. None when the LLM stage
-# builds a plain LLM, as it does unless the agent names such a class.
-def build_realtime(running: Running) -> llm.RealtimeModel | None:
-    """The realtime model the LLM stage builds, or None."""
-    if not issubclass(_class_of("llm", running), llm.RealtimeModel):
-        return None
-    return _built("llm", llm.RealtimeModel, running, {})
+# A model that hears and speaks itself (xAI's Grok Voice, OpenAI's Realtime API) stands for the whole
+# conversation of a voice call: no ears, its own voice. It is the agent's `realtime`, built by the
+# plugin's realtime class (`realtime.RealtimeModel`) whatever the row names for the vendor's LLM.
+def build_realtime(running: Running) -> llm.RealtimeModel:
+    """The realtime model a voice call runs on alone."""
+    path = realtime_path(plugin(running.vendor))
+    if path is None:
+        raise ValidationError(f"{running.vendor} has no model that hears and speaks itself: {NOT_REALTIME}")
+    return _built("llm", llm.RealtimeModel, dataclasses.replace(running, builds=path), {})
 
 
 # A call's three stages: with no fallback, exactly the plugin's object; with some, livekit's

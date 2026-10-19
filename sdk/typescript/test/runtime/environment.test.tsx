@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
-import { judge, llm, stt, voice } from "../../src/agent/decorators.js";
+import { judge, llm, realtime, stt, voice } from "../../src/agent/decorators.js";
 import { improvise } from "../../src/agent/opening.js";
 import ClinicaNorte from "../agent/clinica-norte.js";
 import { ENVIRONMENT, declaredOnTheInstance, environmentOf } from "../../src/runtime/environment.js";
@@ -87,6 +87,16 @@ it("sends the judge's model, a local one by its server, as the declaration names
     options: { base_url: "http://gpu:8000/v1" },
   });
   expect(declaredOnTheInstance("judge")).toContain("@judge('<vendor>/<model>')");
+});
+
+it("sends the voice calls' realtime model beside the written calls' llm", () => {
+  @llm("openai/gpt-6-luna")
+  @realtime("xai/grok-voice-3.0", { options: { voice: "eve" } })
+  class KalaVoz extends ClinicaNorte {}
+  const declared = environmentOf(KalaVoz);
+  expect(declared.llm).toEqual({ provider: "openai", model: "gpt-6-luna" });
+  expect(declared.realtime).toEqual({ provider: "xai", model: "grok-voice-3.0", options: { voice: "eve" } });
+  expect(declaredOnTheInstance("realtime")).toContain("@realtime('<vendor>/<model>')");
 });
 
 it("refuses a class that declares a model twice, by decorator and static field", () => {

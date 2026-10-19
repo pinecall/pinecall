@@ -12,19 +12,24 @@ What one agent would hear, decide and speak with on its next call, and how fast 
   "hears":   { "vendor": "soniox", "model": null, "voice_id": null, "language": "es" },
   "decides": { "vendor": "anthropic", "model": "claude-haiku-5-5", "voice_id": null, "language": null },
   "speaks":  { "vendor": "elevenlabs", "model": null, "voice_id": "a-voice", "language": "es" },
+  "talks":   null,
   "greeting": { "say": "Clínica Norte, buenas.", "reply": null, "allow_interruptions": null },
   "providers": [ … ],
   "defaults": { "llm": "anthropic", "stt": "soniox", "tts": "elevenlabs" },
   "models": { "tts/elevenlabs": [ "eleven_flash_v2_5" ] },
+  "realtime": { "xai": [ "grok-voice-latest", "grok-voice-3.0" ] },
   "calls": 12,
   "medians": [ { "name": "transcription_delay", "seconds": 0.13, "turns": 41 } ],
   "unavailable_reasons": { "speaks": "elevenlabs has no key: the org brought none and the box holds none" } }
 ```
 
 Each stage is the vendor a call **would** be built with: the agent's settings, else the providers
-row's default for that modality. Nothing is built to answer. `providers` are the rows
+row's default for that modality. `talks` is the realtime model a voice call runs on alone, where the
+agent names one (`{ "vendor": "xai", "model": "grok-voice-3.0", … }`): then its voice calls use
+neither `hears` nor `speaks`, and `decides` answers its written calls; null otherwise. Nothing is built to answer. `providers` are the rows
 `GET /v1/providers` answers this org ([provider-keys.md](provider-keys.md)); `defaults` and `models`
-are the providers row's. `medians` pools every turn of the agent's last twenty calls, livekit's own
+are the providers row's, and `realtime` the models that hear and speak themselves, by vendor, as that
+page says. `medians` pools every turn of the agent's last twenty calls, livekit's own
 field names, the median and not the mean; a measure nobody took has no row. `e2e_latency` is
 the caller's wait to the agent's first sound, as the session writes it
 ([metrics.md](../wire/metrics.md)), and one row is the runtime's: `talk_share`, the agent's part

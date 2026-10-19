@@ -15,6 +15,7 @@ ENVIRONMENT: tuple[str, ...] = (
     "language",
     "voice",
     "llm",
+    "realtime",
     "stt",
     "judge",
     "greeting",
@@ -33,6 +34,7 @@ ENVIRONMENT: tuple[str, ...] = (
 DECORATED: Mapping[str, str] = {
     "voice": '@voice("<vendor>", "<voice id>")',
     "llm": '@llm("<vendor>/<model>")',
+    "realtime": '@realtime("<vendor>/<model>")',
     "stt": '@stt("<vendor>/<model>")',
     "judge": '@judge("<vendor>/<model>")',
     "knowledge": '@knowledge(path="…", text="…")',
@@ -113,6 +115,24 @@ def llm(
     """
     given = {"temperature": temperature, "builds": builds, "options": options}
     return _declaring("llm", {**_model_of(model), **_set(given)})
+
+
+def realtime(
+    model: str,
+    *,
+    options: Mapping[str, object] | None = None,
+) -> Callable[[_Class], _Class]:
+    """The model a voice call runs on alone, hearing and speaking itself; it wins over the settings.
+
+    A written call keeps the `@llm`.
+
+    Args:
+        model: `vendor/model` (`"xai/grok-voice-3.0"`), or a vendor alone to run its own; `pinecall
+            providers` lists them.
+        options: Its keyword arguments, as the plugin names them (`{"voice": "eve"}`); they run
+            only on the org's own key for the vendor.
+    """
+    return _declaring("realtime", {**_model_of(model), **_set({"options": options})})
 
 
 def stt(

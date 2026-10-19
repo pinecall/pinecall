@@ -10,6 +10,13 @@ from pinecall_runtime.wire.parts import ModelConfig
 
 # Model ids carry slashes of their own (`openai/gpt-5` on LiveKit Inference): the first ends the vendor.
 SEPARATOR = "/"
+REALTIME_TAKES = (
+    "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
+)
+REALTIME_NAMES = (
+    "a realtime model is named as vendor/model, or a vendor alone for its own: xai/grok-voice-3.0, "
+    "as `pinecall providers` lists them; its options go with it"
+)
 
 
 def apply_tuning(
@@ -28,6 +35,7 @@ def apply_tuning(
         voice=kept("voice", declared.voice, _voice(declared, tuning, defaults)),
         stt=kept("stt", declared.stt, _ears(declared, tuning, defaults)),
         llm=kept("llm", declared.llm, _thinking(declared, tuning, defaults)),
+        realtime=kept("realtime", declared.realtime, _talking(tuning)),
         judge=kept("judge", declared.judge, _judging(declared, tuning, defaults)),
         hangup=kept("hangup", declared.hangup, tuning.hangup),
         turn=kept("turn", declared.turn, tuning.turn),
@@ -43,18 +51,34 @@ def apply_tuning(
 
 
 def model_from_wire(wanted: ModelConfig | None, modality: Modality) -> Model | None:
-    """A model as the wire names it, its vendor checked for the stage."""
+    """A model as the wire names it, its vendor checked for the stage; an LLM never one that hears and speaks itself."""
     if wanted is None:
         return None
     if wanted.end_of_turn is not None and modality != "stt":
         raise ValidationError(f"end_of_turn is the ears': @stt('<vendor>', {{ endOfTurn: '{wanted.end_of_turn}' }})")
-    return Model(
+    made = Model(
         provider=providers.vendor_doing(wanted.provider.lower(), modality),
         model=wanted.model,
         temperature=wanted.temperature,
         builds=wanted.builds,
         options=dict(wanted.options or {}),
         end_of_turn=wanted.end_of_turn,
+    )
+    if modality == "llm":
+        providers.refuse_realtime_as_llm(made.provider, made.model or None, made.builds)
+    return made
+
+
+# A realtime model is named by vendor and model and takes its options; its class is the plugin's
+# realtime one, never named, and its temperature is the vendor's.
+def realtime_from_wire(wanted: ModelConfig | None) -> Model | None:
+    """The realtime model a class declares, its vendor checked for one that hears and speaks itself."""
+    if wanted is None:
+        return None
+    if wanted.builds is not None or wanted.temperature is not None or wanted.end_of_turn is not None:
+        raise ValidationError(REALTIME_TAKES)
+    return _realtime_checked(
+        Model(provider=wanted.provider.lower(), model=wanted.model, options=dict(wanted.options or {}))
     )
 
 
@@ -95,13 +119,35 @@ def _thinking(declared: AgentConfig, tuning: Tuning, defaults: Mapping[Modality,
     in_use = defaults["llm"] if declared.llm is None else declared.llm.provider
     named = model_named(tuning.llm, "llm", in_use=in_use)
     if all(knob is None for knob in (tuning.temperature, tuning.llm_builds, tuning.llm_options)):
-        return named
-    return dataclasses.replace(
-        named or Model(provider=in_use, model=""),
-        temperature=tuning.temperature,
-        builds=tuning.llm_builds,
-        options=dict(tuning.llm_options or {}),
-    )
+        thinking = named
+    else:
+        thinking = dataclasses.replace(
+            named or Model(provider=in_use, model=""),
+            temperature=tuning.temperature,
+            builds=tuning.llm_builds,
+            options=dict(tuning.llm_options or {}),
+        )
+    if thinking is not None:
+        providers.refuse_realtime_as_llm(thinking.provider, thinking.model or None, thinking.builds)
+    return thinking
+
+
+# `vendor/model`, or a vendor alone for its plugin's own; a class that declares its realtime keeps it,
+# so the settings name one only where the class does not.
+def _talking(tuning: Tuning) -> Model | None:
+    if tuning.realtime is None:
+        if tuning.realtime_options is not None:
+            raise ValidationError(REALTIME_NAMES)
+        return None
+    vendor, _, model = tuning.realtime.strip().partition(SEPARATOR)
+    return _realtime_checked(Model(provider=vendor.lower(), model=model, options=dict(tuning.realtime_options or {})))
+
+
+def _realtime_checked(named: Model) -> Model:
+    vendor = providers.vendor_doing(named.provider, "llm")
+    if not providers.hears_and_speaks(vendor):
+        raise ValidationError(f"{vendor} has no model that hears and speaks itself: {providers.NOT_REALTIME}")
+    return dataclasses.replace(named, provider=vendor)
 
 
 def _judging(declared: AgentConfig, tuning: Tuning, defaults: Mapping[Modality, str]) -> Model | None:

@@ -71,7 +71,11 @@ WebSocket), and `options`, that class's keyword arguments as the plugin names th
 and over the operator's. **Both run only on your org's own key for that vendor**: on a key Pinecall
 lends they are refused at registration, naming `pinecall providers add <vendor>`, since an option
 can point the plugin at another server. `@llm` also takes `temperature`, which runs on any key. A
-vendor that is not installed, or does not do the stage, is refused at registration. A decorator
+model that hears and speaks itself is not an `@llm`: `@realtime("xai/grok-voice-3.0", { options: {
+voice: "eve" } })` runs the agent's voice calls — phone and web — on it alone, with no ears and its
+own voice, while the `@llm` keeps answering the written ones; `pinecall providers` lists the
+vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
+such a model is refused at registration. A vendor that is not installed, or does not do the stage, is refused at registration. A decorator
 fixes the whole stage: with `@llm` in the class, `--temperature`, `--llm-builds` and `--llm-option`
 are refused too. The settings take the same knobs for a class that leaves the stage to them
 (`pinecall agent set --temperature 0.3 --llm-builds responses.LLM --llm-option use_websocket=true`). The rest are `static` fields: an instance field is the call's state, so one of these
@@ -81,6 +85,7 @@ declared there is refused when the class loads.
 |---|---|---|---|
 | `voice` | the voice: its vendor and the vendor's id | `@voice("<vendor>", "<id>")` | `pinecall agent set --voice` |
 | `llm` | the model that answers, and its temperature | `@llm("<vendor>/<model>", { temperature })` | `pinecall agent set --llm` |
+| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `@realtime("<vendor>/<model>", { options })` | `pinecall agent set --realtime` |
 | `stt` | the ears, and who ends the caller's turn | `@stt("<vendor>/<model>", { endOfTurn })` | `pinecall agent set --stt` · `--end-of-turn` |
 | `judge` | the model its calls are judged on | `@judge("<vendor>/<model>", { options })` | `pinecall agent set --judge` |
 | `language` | the language the call is in | `static language = "es"` | `pinecall agent set --language` |

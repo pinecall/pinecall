@@ -149,6 +149,9 @@ export const TuningBodySchema = z.strictObject({
   /** A class of each stage's plugin other than its default, and its keyword arguments: the org's own key alone runs them. */
   llm_builds: z.string().nullish(),
   llm_options: z.record(z.string(), z.unknown()).nullish(),
+  /** The model a voice call runs on alone, `vendor/model`, hearing and speaking itself; a written call runs on `llm`. */
+  realtime: z.string().nullish(),
+  realtime_options: z.record(z.string(), z.unknown()).nullish(),
   stt_builds: z.string().nullish(),
   stt_options: z.record(z.string(), z.unknown()).nullish(),
   tts_builds: z.string().nullish(),

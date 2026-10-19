@@ -23,6 +23,41 @@ describe("a model knob, read as two picks", () => {
   });
 });
 
+describe("the model a voice call runs on alone", () => {
+  const vendors = new Set([...VENDORS, "xai", "openai"]);
+
+  it("opens on the corner's realtime model and its options, and sends both back beside the llm", () => {
+    const standing = { llm: "openai/gpt-6-luna", realtime: "xai/grok-voice-3.0", realtime_options: { voice: "eve" } };
+    const typed = typedOf(standing, vendors);
+
+    expect(typed.realtime).toEqual({ vendor: "xai", model: "grok-voice-3.0" });
+    expect(configOf(typed, false, {})).toMatchObject(standing);
+  });
+
+  it("sends no options when no realtime model is picked, since options name no model alone", () => {
+    const typed = typedOf({ realtime: "xai/grok-voice-3.0", realtime_options: { voice: "eve" } }, vendors);
+    typed.realtime = { vendor: "", model: "" };
+
+    const config = configOf(typed, false, {});
+    expect([config.realtime, config.realtime_options]).toEqual([undefined, undefined]);
+  });
+
+  it("keeps the corner's realtime model when the class declares one", () => {
+    const standing = { realtime: "xai/grok-voice-3.0" };
+    const typed = typedOf(standing, vendors);
+    typed.realtime = { vendor: "openai", model: "gpt-realtime" };
+
+    expect(configOf(typed, false, standing, new Set(["realtime"])).realtime).toBe("xai/grok-voice-3.0");
+  });
+
+  it("refuses options that are not a JSON object, naming the realtime model", () => {
+    const typed = typedOf({ realtime: "xai/grok-voice-3.0" }, vendors);
+    typed.realtime_options = "voice=eve";
+
+    expect(() => configOf(typed, false, {})).toThrow("The realtime model's options are not a JSON object");
+  });
+});
+
 describe("the form opened on a corner", () => {
   it("folds tts_model into the speaking pick, since it wins on the wire", () => {
     const typed = typedOf({ tts: "elevenlabs", tts_model: "eleven_multilingual_v2", voice: "carolina" }, VENDORS);

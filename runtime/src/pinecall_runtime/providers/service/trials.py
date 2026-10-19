@@ -84,12 +84,15 @@ def _unanswered(running: Running, named: str, why: str) -> str:
     return f"{running.vendor} did not answer while {named} was tried: {why}; nothing was kept, try again"
 
 
+# A realtime model opens its session with the call: built, its class and its arguments are tried,
+# and a vendor's no to them is heard here; its key is the one the org already brought.
+async def try_realtime(running: Running) -> None:
+    """The realtime model built as a voice call builds it, and closed; refused in our words."""
+    talking = build_realtime(running)
+    await talking.aclose()
+
+
 async def _answered(running: Running) -> None:
-    # A realtime model opens its session with the call: built, its class and its arguments are tried.
-    realtime = build_realtime(running)
-    if realtime is not None:
-        await realtime.aclose()
-        return
     model = llm_of(running)
     context = ChatContext.empty()
     context.add_message(role="user", content=LINE)

@@ -14,6 +14,21 @@
   agent as a TypeScript project zipped); `docs/protocol/studio.md` says them whole. Sources uploaded
   under a Studio agent's name are refused.
 
+- **A voice call runs on a realtime model and a written call on the LLM: `realtime` is a setting of
+  its own.** The class's `@realtime("xai/grok-voice-3.0", { options })` and the settings' `realtime`
+  and `realtime_options` name the model a voice call (SIP or WebRTC) runs on alone, hearing and
+  speaking itself; the `llm` stays the model a written call answers with. The realtime model is built
+  by its plugin's realtime class (`realtime.RealtimeModel`), never named; it runs on the org's own key
+  for the vendor alone, its options too, and a set that changes it builds it once before it is kept.
+  An `llm` that names a realtime model, by its name or by its class (`llm_builds
+  realtime.RealtimeModel`, what the entry below introduced), is refused naming `realtime`.
+  `GET /v1/providers` and the pipeline report answer `realtime`: by vendor, the models that hear and
+  speak themselves, read off each plugin (the `Literal` its realtime class types its `model` as, else
+  the `RealtimeModels` it lists) — xAI's `grok-voice-3.0`, OpenAI's `gpt-realtime`; the report's
+  `talks` is the realtime model a voice call of the agent runs on. A plugin with a realtime class and
+  no LLM does the `llm` stage. The stages handed to a worker carry `realtime` only when there is one,
+  so a worker of the version before reads every other answer as it did.
+
 - **A voice call can run on a realtime model, which hears and speaks itself.** An agent whose LLM
   stage names a realtime model's class (`llm-builds realtime.RealtimeModel`, xAI's Grok Voice on the
   org's own key) has its spoken calls run on it: no ears, the model taking the turn and answering in
@@ -21,18 +36,16 @@
   verbatim (the recording notice, a greeting given as words, a read-back). A written call of such an
   agent is not served.
 
-- **`setup` asks each stage in turn, listing what could run it, the one that fits marked.**
-  At a terminal, before anything is brought up: one line for the machine (the card or the Mac's
-  memory and what is left for the models, Docker, the Ollama here and the models it holds), then
-  the ears, the turn, the thinking, the voice, the judge and the caller, each a numbered list —
-  `local` (Whisper, Kokoro), each measured model with whether it fits, every other tag Ollama holds
-  but the embedder, each vendor whose key is found and the stage's usual one — with the recommended
-  one marked and taken by Enter; every other installed vendor is one line, picked by its name with
-  completion. The judge and the caller are one line each, on the thinking's model unless another is
-  named. A vendor's line says where its key is: looked for in the environment and then in the
-  shell's files (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`), never
-  its value; a vendor picked with no key is asked for it there, once, without echo
-  (`prompt_toolkit`, a dependency new to the runtime). The measured table puts
+- **`setup` loads every provider whose key it finds and serves the open models that fit; it asks no
+  stage.** What a call runs on is the agent's to name (`pinecall agent set`, the console, the
+  class). Setup says where it read keys from, the vendors loaded (`providers  cartesia · deepgram ·
+  groq · xai — 4 keys found`) and the open models served (`models     gemma4:12b · whisper · kokoro
+  — open, served on this machine`), which are also the runtime's defaults for an agent naming no
+  stage. A key is looked for in the environment and then in the shell's files (`~/.zshrc`,
+  `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`), never shown; each one found is given
+  to the org `default` and to the box, so an agent names that vendor with nothing to add. A
+  default's key found nowhere is asked once, without echo (`prompt_toolkit`, a dependency new to
+  the runtime). The line of the servers brought up is `serving` now. The measured table puts
   `nemotron-3.5-lightning:30b-a3b` first (tool called 18/18 on the real voice turns, 0.45 s to the
   first token, on an A100); `qwen3:30b-a3b-2507`, which called it 1/18, is out. `--recommend` says
   `ollama_models`, `room_gib`, where each key is and what each candidate `did`.

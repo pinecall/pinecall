@@ -144,9 +144,10 @@ export function Settings(): ReactNode {
               providers={report?.providers ?? []}
               defaults={report?.defaults ?? {}}
               models={report?.models ?? {}}
+              realtime={report?.realtime ?? {}}
               bases={bases}
               fixed={new Set(answer.fixed)}
-              running={report === null ? null : { hears: report.hears, decides: report.decides, speaks: report.speaks }}
+              running={report === null ? null : { hears: report.hears, decides: report.decides, speaks: report.speaks, talks: report.talks ?? null }}
               section={section}
               onPickSection={(picked) => setParams(picked === offered[0]!.tab ? {} : { section: picked })}
               saving={saving}

@@ -13,7 +13,7 @@ module Pinecall
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
-      ENVIRONMENT = %i[language voice llm stt judge greeting hangup turn says hears knowledge docs memory record].freeze
+      ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `greeting say: "…"`.
       AS_KEYWORDS = %i[turn knowledge docs memory].freeze
@@ -79,6 +79,15 @@ module Pinecall
           return environment[:llm] if model.equal?(NOTHING)
 
           environment[:llm] = { **Config.model_of(model), temperature:, builds:, options: }.compact
+        end
+
+        # The model a voice call runs on alone, one that hears and speaks itself; a written call
+        # keeps the `llm`: `realtime "xai/grok-voice-3.0", options: { voice: "eve" }`. Its options
+        # run on the org's own key for the vendor.
+        def realtime(model = NOTHING, options: nil)
+          return environment[:realtime] if model.equal?(NOTHING)
+
+          environment[:realtime] = { **Config.model_of(model), options: }.compact
         end
 
         # The ears, `vendor/model` or a vendor alone, and who says the caller's turn is over:

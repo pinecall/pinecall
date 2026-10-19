@@ -94,6 +94,18 @@ class ConfigTest < Minitest::Test
     assert_raises(Pinecall::DeclarationRefused) { opening.call { greeting 42 } }
   end
 
+  def test_the_voice_calls_realtime_model_is_sent_beside_the_written_calls_llm
+    kala = Class.new(Pinecall::Agent) do
+      llm "openai/gpt-6-luna"
+      realtime "xai/grok-voice-3.0", options: { voice: "eve" }
+    end
+    sent = kala.wire_config(tools: [])
+
+    assert_equal({ provider: "openai", model: "gpt-6-luna" }, sent[:llm])
+    assert_equal({ provider: "xai", model: "grok-voice-3.0", options: { voice: "eve" } }, sent[:realtime])
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
   def test_hangup_is_when_in_words_or_true_for_whenever_the_model_judges
     assert_equal({ when: "" }, Class.new(Pinecall::Agent) { hangup true }.hangup)
     assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { hangup "" } }

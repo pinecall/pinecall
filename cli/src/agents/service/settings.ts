@@ -15,6 +15,7 @@ export const FIELDS = [
   "voice", "tts", "tts-model", "tts-builds", "tts-options",
   "stt", "stt-builds", "stt-options", "end-of-turn",
   "llm", "temperature", "llm-builds", "llm-options",
+  "realtime", "realtime-options",
   "judge", "judge-builds", "judge-options",
   "language", "greeting", "hangup", "turn", "memory", "record", "max-duration", "knowledge", "bases",
 ] as const;
@@ -25,6 +26,7 @@ export const WIRE: Record<Field, keyof TuningBody> = {
   voice: "voice", tts: "tts", "tts-model": "tts_model", "tts-builds": "tts_builds", "tts-options": "tts_options",
   stt: "stt", "stt-builds": "stt_builds", "stt-options": "stt_options", "end-of-turn": "end_of_turn",
   llm: "llm", temperature: "temperature", "llm-builds": "llm_builds", "llm-options": "llm_options",
+  realtime: "realtime", "realtime-options": "realtime_options",
   judge: "judge", "judge-builds": "judge_builds", "judge-options": "judge_options",
   language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record",
   "max-duration": "max_duration_s", knowledge: "knowledge", bases: "bases",
@@ -35,6 +37,7 @@ export const DECLARED_AS: Partial<Record<Field, string>> = {
   voice: "voice", tts: "voice", "tts-model": "voice", "tts-builds": "voice", "tts-options": "voice",
   stt: "stt", "stt-builds": "stt", "stt-options": "stt", "end-of-turn": "stt",
   llm: "llm", temperature: "llm", "llm-builds": "llm", "llm-options": "llm",
+  realtime: "realtime", "realtime-options": "realtime",
   judge: "judge", "judge-builds": "judge", "judge-options": "judge",
   language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record", knowledge: "knowledge", bases: "docs",
 };
@@ -64,6 +67,8 @@ export const SettingsInput = z
     temperature: z.number().min(0, "--temperature is 0 or more"),
     "llm-builds": z.string(),
     "llm-options": z.record(z.string(), z.unknown()),
+    realtime: z.string(),
+    "realtime-options": z.record(z.string(), z.unknown()),
     "stt-builds": z.string(),
     "stt-options": z.record(z.string(), z.unknown()),
     "tts-builds": z.string(),
@@ -228,12 +233,12 @@ function withModelsNamed(input: SettingsInput): SettingsInput {
 /** The fields this input sets, under wire names, merged over the current row where nested. */
 export function fieldsOf(input: SettingsInput, standing: TuningBody): Partial<TuningBody> {
   const wanted: Partial<TuningBody> = {};
-  for (const field of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "stt-builds", "tts-builds", "judge", "judge-builds", "language"] as const) {
+  for (const field of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language"] as const) {
     const value = input[field];
     if (typeof value === "string") (wanted as Record<string, unknown>)[WIRE[field]] = value;
   }
   if (input.temperature !== undefined) wanted.temperature = input.temperature;
-  for (const stage of ["llm", "stt", "tts", "judge"] as const) {
+  for (const stage of ["llm", "realtime", "stt", "tts", "judge"] as const) {
     const options = input[`${stage}-options`];
     if (options !== undefined) wanted[`${stage}_options`] = options;
   }

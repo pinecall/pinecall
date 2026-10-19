@@ -1,61 +1,43 @@
-"""An LLM stage that names a realtime model builds one, for the whole conversation of a voice call;
-any other builds no realtime model, and the call keeps its ears, its model and its voice."""
-
-from typing import Never, override
+"""A realtime model is built by its plugin's realtime class, with its key, its model and its options,
+whatever the row names for the vendor's LLM; a vendor with no such class has none, and an LLM stage
+never names one."""
 
 import pytest
-from livekit.agents import llm
 
-from pinecall_runtime.agents.declaration import Modality
-from pinecall_runtime.providers.service import stages
+from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.providers.service import plugins, stages
 from pinecall_runtime.providers.service.plugins import Running
-
-ABLE = llm.RealtimeCapabilities(
-    message_truncation=False,
-    turn_detection=True,
-    user_transcription=True,
-    auto_tool_reply_generation=False,
-    audio_output=True,
-    manual_function_calls=False,
-)
+from tests.fakes import talker
+from tests.fakes.acme import ACME
 
 
-class Talks(llm.RealtimeModel):
-    """As xAI's `realtime.RealtimeModel`: built with its key, its model and its voice."""
-
-    def __init__(self, *, api_key: str, model: str = "voice-1", voice: str | None = "Ara") -> None:
-        super().__init__(capabilities=ABLE)
-        self.given = {"api_key": api_key, "model": model, "voice": voice}
-
-    @override
-    def session(self, *, turn_detection_disabled: bool = False) -> llm.RealtimeSession[Never]:
-        raise NotImplementedError
-
-    @override
-    async def aclose(self) -> None:
-        return None
+@pytest.fixture
+def vendor(monkeypatch: pytest.MonkeyPatch) -> str:
+    """The talker vendor, installed for this test alone."""
+    return talker.install(monkeypatch)
 
 
-class Thinks:
-    """A plain LLM's class: no realtime model."""
+def test_the_realtime_class_is_built_with_the_key_the_model_and_the_options(vendor: str) -> None:
+    running = Running(vendor=vendor, credentials="k", model="voice-3", builds="LLM", options={"voice": "eve"})
+    built = stages.build_realtime(running)
+    assert isinstance(built, talker.TalkerRealtime)
+    assert built.given == {"api_key": "k", "model": "voice-3", "voice": "eve"}
 
 
-def _with(monkeypatch: pytest.MonkeyPatch, made: type) -> None:
-    def the_class(_modality: Modality, _running: Running) -> type:
-        return made
-
-    monkeypatch.setattr(stages, "_class_of", the_class)
-
-
-def test_a_stage_that_names_a_realtime_model_builds_it_with_its_key_and_model(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _with(monkeypatch, Talks)
-    built = stages.build_realtime(Running(vendor="v", credentials="k", model="voice-3", builds="realtime.Talks"))
-    assert isinstance(built, Talks)
-    assert built.given == {"api_key": "k", "model": "voice-3", "voice": "Ara"}
+def test_a_vendor_alone_builds_its_plugins_own_realtime_model(vendor: str) -> None:
+    built = stages.build_realtime(Running(vendor=vendor, credentials="k"))
+    assert isinstance(built, talker.TalkerRealtime)
+    assert built.given["model"] == "voice-1"
 
 
-def test_a_stage_of_a_plain_llm_builds_no_realtime_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    _with(monkeypatch, Thinks)
-    assert stages.build_realtime(Running(vendor="v", credentials="k", model="m")) is None
+def test_a_vendor_with_no_realtime_class_has_no_realtime_model() -> None:
+    with pytest.raises(ValidationError, match="acme has no model that hears and speaks itself"):
+        stages.build_realtime(Running(vendor=ACME, credentials="k", model="acme-1"))
+
+
+def test_an_llm_that_names_a_realtime_model_or_its_class_is_refused_naming_the_realtime(vendor: str) -> None:
+    with pytest.raises(ValidationError, match=r"talker/voice-3 hears and speaks itself.*@realtime"):
+        plugins.refuse_realtime_as_llm(vendor, "voice-3", None)
+    with pytest.raises(ValidationError, match="hears and speaks itself"):
+        plugins.refuse_realtime_as_llm(vendor, talker.PLAIN, "realtime.RealtimeModel")
+    plugins.refuse_realtime_as_llm(vendor, talker.PLAIN, None)

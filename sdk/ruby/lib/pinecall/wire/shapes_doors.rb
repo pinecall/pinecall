@@ -22,6 +22,7 @@ module Pinecall
           greeting: { kind: :ref, ref: "GreetingConfig" },
           voice: { kind: :ref, ref: "VoiceConfig" },
           llm: { kind: :ref, ref: "ModelConfig" },
+          realtime: { kind: :ref, ref: "ModelConfig" },
           stt: { kind: :ref, ref: "ModelConfig" },
           judge: { kind: :ref, ref: "ModelConfig" },
           turn: { kind: :ref, ref: "TurnConfig" },

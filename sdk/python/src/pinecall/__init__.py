@@ -3,6 +3,7 @@
 from pinecall._config import judge as judge
 from pinecall._config import knowledge as knowledge
 from pinecall._config import llm as llm
+from pinecall._config import realtime as realtime
 from pinecall._config import stt as stt
 from pinecall._config import voice as voice
 from pinecall._opening import improvise as improvise
@@ -65,6 +66,7 @@ __all__ = [
     "knowledge",
     "llm",
     "panel",
+    "realtime",
     "render",
     "show_prompt",
     "state",

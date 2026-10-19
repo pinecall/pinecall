@@ -1,4 +1,4 @@
-/** What a class declares of its environment: `@voice`, `@llm`, `@stt`, `@judge` and its static fields. */
+/** What a class declares of its environment: `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and its static fields. */
 
 import { improvise, type Ending, type Opening } from "../agent/opening.js";
 import { DeclarationRefused } from "../agent/tools.js";
@@ -9,6 +9,7 @@ export const ENVIRONMENT = [
   "language",
   "voice",
   "llm",
+  "realtime",
   "stt",
   "judge",
   "greeting",
@@ -30,6 +31,7 @@ const NOT_AN_ENDING = "hangup is when the model may end the call, in your words,
 const DECORATED: Readonly<Record<string, string>> = {
   voice: "@voice('<vendor>', '<voice id>')",
   llm: "@llm('<vendor>/<model>')",
+  realtime: "@realtime('<vendor>/<model>')",
   stt: "@stt('<vendor>/<model>')",
   judge: "@judge('<vendor>/<model>')",
 };

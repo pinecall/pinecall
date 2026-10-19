@@ -35,15 +35,18 @@ does not hear it. --team writes the org's own corner instead, which every corner
 --prod writes production's, if your org lets you act there. The whole set travels with the
 version it was read at, so two people saving at once never write over each other. A model knob
 reads four ways — `--llm anthropic/claude-haiku-5-5`, `--llm cartesia` (a vendor), `--llm
-claude-haiku-5-5` (a model), and `--llm haiku` (a tier). --greeting sets the words said as the
-call opens; `--greeting improvise` has the model open on its prompt. --hangup any lets the model
-end the call whenever it judges it done. --end-of-turn is who says the caller's turn is over.
---remember and --forget replace those lists whole. --llm-builds names a class of the vendor's
-plugin, and --llm-option key=value one of its keyword arguments; --stt-…, --tts-… and --judge-…
-are the same for the ears, the voice and the judge model. Those run only on your org's own key.
+claude-haiku-5-5` (a model), and `--llm haiku` (a tier). --realtime names the model a voice call
+runs on alone, one that hears and speaks itself (`pinecall providers` lists them): `--realtime
+xai/grok-voice-3.0 --realtime-option voice=eve`; the --llm keeps answering the written calls, and
+never names such a model. --greeting sets the words said as the call opens; `--greeting
+improvise` has the model open on its prompt. --hangup any lets the model end the call whenever it
+judges it done. --end-of-turn is who says the caller's turn is over. --remember and --forget
+replace those lists whole. --llm-builds names a class of the vendor's plugin, and --llm-option
+key=value one of its keyword arguments; --stt-…, --tts-… and --judge-… are the same for the ears,
+the voice and the judge model. Those run only on your org's own key, as --realtime-option does.
 
-A field the class declares itself (@voice, @llm, @stt, a static field) says `class` in every
-corner: the class wins, and a set or clear of it is refused naming the class.
+A field the class declares itself (@voice, @llm, @realtime, @stt, a static field) says `class` in
+every corner: the class wins, and a set or clear of it is refused naming the class.
 
 knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it
 prints the corner's text; `edit` opens it in $EDITOR and saves what you wrote as the next
@@ -85,6 +88,7 @@ Options:
   --stt <value>
   --llm <value>
   --llm-builds <value>
+  --realtime <value>
   --stt-builds <value>
   --tts-builds <value>
   --judge <value>
@@ -104,6 +108,7 @@ Options:
                                      (the ears themselves), livekit or
                                      smart-turn
   --llm-option <key=value...>
+  --realtime-option <key=value...>
   --stt-option <key=value...>
   --tts-option <key=value...>
   --judge-option <key=value...>
@@ -120,9 +125,9 @@ takes every one
 Arguments:
   fields          voice · tts · tts-model · tts-builds · tts-options · stt ·
                   stt-builds · stt-options · end-of-turn · llm · temperature ·
-                  llm-builds · llm-options · judge · judge-builds ·
-                  judge-options · language · greeting · hangup · turn · memory ·
-                  record · max-duration · knowledge · bases
+                  llm-builds · llm-options · realtime · realtime-options · judge
+                  · judge-builds · judge-options · language · greeting · hangup
+                  · turn · memory · record · max-duration · knowledge · bases
 
 Options:
   --all           every field of the corner's own row

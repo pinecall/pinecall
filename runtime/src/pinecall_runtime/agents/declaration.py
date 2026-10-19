@@ -203,6 +203,9 @@ class Tuning:
     end_of_turn: EndOfTurn | None = None
     llm_builds: str | None = None
     llm_options: Mapping[str, Any] | None = None
+    # The model a voice call runs on alone, hearing and speaking itself; a written call keeps `llm`.
+    realtime: str | None = None
+    realtime_options: Mapping[str, Any] | None = None
     stt_builds: str | None = None
     stt_options: Mapping[str, Any] | None = None
     tts_builds: str | None = None
@@ -229,6 +232,7 @@ class Tuning:
             "stt",
             "llm",
             "llm_builds",
+            "realtime",
             "stt_builds",
             "tts_builds",
             "judge",
@@ -300,6 +304,8 @@ class AgentConfig:
     language: str | None = None
     voice: Voice | None = None
     llm: Model | None = None
+    # A model that hears and speaks itself: a voice call runs on it alone, a written call on `llm`.
+    realtime: Model | None = None
     stt: Model | None = None
     judge: Model | None = None
     turn: Turn | None = None
