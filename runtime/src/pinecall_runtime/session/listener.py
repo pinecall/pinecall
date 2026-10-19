@@ -321,3 +321,10 @@ def _switch(writing: Writing, stage: Modality, adapter: Adapter) -> Callable[[ob
             writing.write("vendor.switched", switched)
 
     return written
+
+
+# A realtime model hears and speaks itself: its call has no ears, and is spoken all the same.
+def is_spoken(live: AgentSession[None], built: tuple[Built, ...]) -> bool:
+    """Whether the call is heard and answered in audio: it has ears, or a model that hears."""
+    hears = isinstance(live.llm, llm.RealtimeModel)  # pyright: ignore[reportUnknownMemberType]
+    return hears or any(isinstance(component, stt.STT) for component in built)

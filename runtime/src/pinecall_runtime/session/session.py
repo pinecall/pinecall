@@ -18,7 +18,7 @@ from pinecall_runtime.session import echo, prompt, recording
 from pinecall_runtime.session.agent import CallAgent
 from pinecall_runtime.session.hearing import keyterms
 from pinecall_runtime.session.hold import HoldMusic
-from pinecall_runtime.session.listener import Built, Listener
+from pinecall_runtime.session.listener import Built, Listener, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
 from pinecall_runtime.session.tools import Toolbox, opening
@@ -448,13 +448,6 @@ class Session:
             return self.ended
         closed_for = self.listener.closed_for
         return A_PLATFORM_ERROR if closed_for is None else HOW_IT_ENDED[closed_for]
-
-
-# A realtime model hears and speaks itself: its call has no ears, and is spoken all the same.
-def is_spoken(live: AgentSession[None], built: tuple[Built, ...]) -> bool:
-    """Whether the call is heard and answered in audio: it has ears, or a model that hears."""
-    hears = isinstance(live.llm, llm.RealtimeModel)  # pyright: ignore[reportUnknownMemberType]
-    return hears or any(isinstance(component, stt.STT) for component in built)
 
 
 def given_or_unset[T](value: T | None) -> NotGivenOr[T]:

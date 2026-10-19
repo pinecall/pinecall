@@ -869,6 +869,7 @@ def spoken_call(
     ends_the_turn: bool = False,
     keyterms: bool = False,
     turn_model: TurnModel = "v1-mini",
+    realtime: bool = False,
 ) -> Session:
     assert box.log.call is not None
     call = Call(context_of(box.log.call, Channel.phone), config, box.platform())
@@ -877,6 +878,7 @@ def spoken_call(
         llm=Running(ACME, "k"),
         stt=Running(ACME, "k", ends_the_turn=ends_the_turn, options=ears, turn_model=turn_model),
         tts=Running(ACME, "k"),
+        realtime=Running(ACME, "k") if realtime else None,
     )
     return voice_session(call, stages)
 

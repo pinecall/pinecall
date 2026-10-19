@@ -16,11 +16,11 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
-from pinecall_runtime.session.session import is_spoken
+from pinecall_runtime.session.listener import is_spoken
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
 from tests.fakes.acme import AcmeLLM, AcmeTTS
-from tests.providers.test_realtime import Talks
+from tests.fakes.talker import TalkerRealtime
 from tests.session.conftest import (
     Box,
     a_session,
@@ -65,7 +65,7 @@ async def test_the_caller_is_pinned_before_livekit_links_a_seat_and_a_written_ca
 
 def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_not() -> None:
     voice = AcmeTTS(speech_key="k")
-    assert is_spoken(AgentSession(llm=Talks(api_key="k"), tts=voice), (voice,))
+    assert is_spoken(AgentSession(llm=TalkerRealtime(api_key="k"), tts=voice), (voice,))
     assert not is_spoken(AgentSession(llm=AcmeLLM(api_key="k")), ())
 
 
@@ -74,14 +74,14 @@ def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_
 async def test_a_realtime_model_that_says_given_words_is_the_calls_only_voice(
     box: Box, monkeypatch: pytest.MonkeyPatch, says: bool
 ) -> None:
-    model = Talks(api_key="k")
+    model = TalkerRealtime(api_key="k")
     model.capabilities.supports_say = says
 
     def built(_stage: Running) -> llm.RealtimeModel:
         return model
 
-    monkeypatch.setattr(voice_module, "build_realtime", built)
-    session = spoken_call(box, NOBODY)
+    monkeypatch.setattr(voice_module.providers, "build_realtime", built)
+    session = spoken_call(box, NOBODY, realtime=True)
     assert session.live.llm is model  # pyright: ignore[reportUnknownMemberType]
     # livekit says given words through a TTS whenever the session has one.
     assert (session.live.tts is None) is says  # pyright: ignore[reportUnknownMemberType]
