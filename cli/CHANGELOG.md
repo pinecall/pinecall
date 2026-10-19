@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.11.5] — the voice calls' realtime model set apart from the LLM; pinecall studio; one way in with pinecall login
 
 - **`pinecall studio`: the agents built in the console's Studio, from a terminal and from the MCP.**
   `list`, `new <name>`, `pull <name>` (the definition as `<name>.studio.json`, the release it was

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.5 — A voice call runs on a realtime model and a written call on the LLM; Studio builds an agent in the console; setup loads every provider it finds (2026-10-19)
 
 - **Studio: an agent built in the console, held by the gateway.** A Studio agent is instructions, a
   greeting, HTTP tools (a request to the business's own API, `{param}` in the URL, `{{secrets.NAME}}`
@@ -17,25 +17,21 @@
 - **A voice call runs on a realtime model and a written call on the LLM: `realtime` is a setting of
   its own.** The class's `@realtime("xai/grok-voice-3.0", { options })` and the settings' `realtime`
   and `realtime_options` name the model a voice call (SIP or WebRTC) runs on alone, hearing and
-  speaking itself; the `llm` stays the model a written call answers with. The realtime model is built
-  by its plugin's realtime class (`realtime.RealtimeModel`), never named; it runs on the org's own key
-  for the vendor alone, its options too, and a set that changes it builds it once before it is kept.
-  An `llm` that names a realtime model, by its name or by its class (`llm_builds
-  realtime.RealtimeModel`, what the entry below introduced), is refused naming `realtime`.
-  `GET /v1/providers` and the pipeline report answer `realtime`: by vendor, the models that hear and
-  speak themselves, read off each plugin (the `Literal` its realtime class types its `model` as, else
-  the `RealtimeModels` it lists) — xAI's `grok-voice-3.0`, OpenAI's `gpt-realtime`; the report's
-  `talks` is the realtime model a voice call of the agent runs on. A plugin with a realtime class and
-  no LLM does the `llm` stage. The stages handed to a worker carry `realtime` only when there is one,
-  so a worker of the version before reads every other answer as it did.
-
-- **A voice call can run on a realtime model, which hears and speaks itself.** An agent whose LLM
-  stage names a realtime model's class (`llm-builds realtime.RealtimeModel`, xAI's Grok Voice on the
-  org's own key) has its spoken calls run on it: no ears, the model taking the turn and answering in
-  its own voice, the agent's tools and prompt as on any call, the room's audio open both ways. A model
-  that says given words itself (xAI's does) says the recording notice, a greeting given as words and
-  a read-back in that same voice; for one that cannot, the call's voice says them. A written call of
-  such an agent is not served.
+  speaking itself: no ears, the model taking the turn and answering in its own voice, the agent's
+  tools and prompt as on any call, the room's audio open both ways. The `llm` stays the model a
+  written call answers with. A model that says given words itself (xAI's does) says the recording
+  notice, a greeting given as words and a read-back in that same voice; for one that cannot, the
+  call's voice says them. The realtime model is built by its plugin's realtime class
+  (`realtime.RealtimeModel`), never named; it runs on the org's own key for the vendor alone, its
+  options too, and a set that changes it builds it once before it is kept. An `llm` that names a
+  realtime model, by its name or by its class (`llm_builds realtime.RealtimeModel`), is refused
+  naming `realtime`. `GET /v1/providers` and the pipeline report answer `realtime`: by vendor, the
+  models that hear and speak themselves, read off each plugin (the `Literal` its realtime class types
+  its `model` as, else the `RealtimeModels` it lists) — xAI's `grok-voice-3.0`, OpenAI's
+  `gpt-realtime`; the report's `talks` is the realtime model a voice call of the agent runs on. A
+  plugin with a realtime class and no LLM does the `llm` stage. The stages handed to a worker carry
+  `realtime` only when there is one, so a worker of the version before reads every other answer as
+  it did.
 
 - **`setup` loads every provider whose key it finds and serves the open models that fit; it asks no
   stage.** What a call runs on is the agent's to name (`pinecall agent set`, the console, the

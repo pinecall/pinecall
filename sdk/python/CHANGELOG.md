@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.5 — @realtime: a voice call's model that hears and speaks itself, beside the @llm (2026-10-19)
 
 - **A voice call runs on a realtime model while a written call keeps the LLM.** `@realtime("xai/grok-voice-3.0", options={"voice": "eve"})` names the
   model the agent's voice calls (phone and web) run on alone, one that hears and speaks itself — no

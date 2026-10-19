@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## [Unreleased]
+## [0.11.5] — realtime: a voice call's model that hears and speaks itself, beside the llm (2026-10-19)
 
 - **A voice call runs on a realtime model while a written call keeps the LLM.** `realtime "xai/grok-voice-3.0", options: { voice: "eve" }` names the
   model the agent's voice calls (phone and web) run on alone, one that hears and speaks itself — no
