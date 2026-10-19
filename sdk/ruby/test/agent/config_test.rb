@@ -25,6 +25,12 @@ class ConfigTest < Minitest::Test
     record false
   end
 
+  # Kala, que escribe con un modelo y habla con otro que oye y habla solo.
+  class Hablada < Pinecall::Agent
+    llm "openai/gpt-6-luna"
+    realtime "xai/grok-voice-3.0", options: { voice: "eve" }
+  end
+
   def test_a_class_that_declares_no_environment_sends_its_contract_alone
     sent = Clinica.wire_config(tools: [])
 
@@ -95,11 +101,7 @@ class ConfigTest < Minitest::Test
   end
 
   def test_the_voice_calls_realtime_model_is_sent_beside_the_written_calls_llm
-    kala = Class.new(Pinecall::Agent) do
-      llm "openai/gpt-6-luna"
-      realtime "xai/grok-voice-3.0", options: { voice: "eve" }
-    end
-    sent = kala.wire_config(tools: [])
+    sent = Hablada.wire_config(tools: [])
 
     assert_equal({ provider: "openai", model: "gpt-6-luna" }, sent[:llm])
     assert_equal({ provider: "xai", model: "grok-voice-3.0", options: { voice: "eve" } }, sent[:realtime])
