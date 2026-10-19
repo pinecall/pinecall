@@ -78,7 +78,7 @@ async def test_a_studio_agent_is_a_hosted_app_of_the_studio_kind(gateway: Gatewa
     upload = await gateway.http.post(
         f"/v1/hosted/{agent}/releases", content=b"x", headers={**tenant.server, "content-type": "application/gzip"}
     )
-    assert upload.status_code == 422 and "Studio agent" in upload.json()["detail"]
+    assert upload.status_code == 400 and "Studio agent" in upload.json()["detail"]
 
 
 async def test_a_definition_naming_a_secret_the_env_lacks_is_refused_until_it_is_set(
@@ -87,7 +87,7 @@ async def test_a_definition_naming_a_secret_the_env_lacks_is_refused_until_it_is
     """The secret is said by name; once set in the env the same definition is taken."""
     with_secret = {"name": agent, "definition": clinic().model_dump(mode="json", exclude_none=True)}
     refused = await gateway.http.post("/v1/studio/agents", json=with_secret, headers=tenant.person)
-    assert refused.status_code == 422 and "AGENDA_KEY" in refused.json()["detail"]
+    assert refused.status_code == 400 and "AGENDA_KEY" in refused.json()["detail"]
     await gateway.http.put("/v1/secrets/AGENDA_KEY", json={"value": "k"}, headers=tenant.person)
     made = await gateway.http.post("/v1/studio/agents", json=with_secret, headers=tenant.person)
     assert made.status_code == 200, made.text

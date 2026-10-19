@@ -13,7 +13,7 @@ import { Answering } from "./production";
 import "./studio.css";
 
 const NOT_FOUND = 404;
-const IS_CODE = 422;
+const IS_CODE = 400;
 
 /** What the screen says instead of the editor when the gateway refused to read the agent. */
 function refusal(failed: unknown): string {
