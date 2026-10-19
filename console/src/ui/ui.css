@@ -461,6 +461,42 @@ textarea:focus {
   color: var(--accent);
 }
 
+/* Stats apart: a card each, the value large, and what moved it on a line of its own. */
+.ui-stats-apart {
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
+
+.ui-stats-apart .ui-stat {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  padding: 18px 20px;
+}
+
+.ui-stats-apart .ui-stat-label {
+  margin-bottom: 14px;
+}
+
+.ui-stats-apart .ui-stat-line {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ui-stats-apart .ui-stat-value {
+  font-size: 30px;
+  letter-spacing: -0.9px;
+}
+
+.ui-stats-apart .ui-stat-delta {
+  padding-bottom: 0;
+  max-width: 100%;
+}
+
 /* ── the table ────────────────────────────────────────────────────────────── */
 
 .ui-table-head,

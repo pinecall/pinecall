@@ -1,0 +1,152 @@
+/* The pane beside a call: its outcome, the judges in lines, and the four tiles under them. */
+
+.call-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 16px 0;
+}
+
+.call-side-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.call-side-head-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+
+.call-side-head {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.call-side-head-meta {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.call-side-outcome {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.call-side-quiet {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+/* A judge: its verdict as an icon, its name, the word it answered — and, when it broke, why. */
+.call-side-judges {
+  display: flex;
+  flex-direction: column;
+  margin-top: -6px;
+}
+
+.call-side-judge {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.call-side-judge-icon {
+  display: inline-flex;
+}
+
+.call-side-judge-name {
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.call-side-judge-said {
+  font-size: 12px;
+}
+
+.call-side-judge-why {
+  grid-column: 2 / -1;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.call-side-judge-seq {
+  margin-left: 4px;
+  font-family: var(--face-fixed);
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+.call-side-tone-red {
+  color: var(--red);
+}
+
+.call-side-tone-green {
+  color: var(--green);
+}
+
+.call-side-tone-indigo {
+  color: var(--indigo);
+}
+
+.call-side-tone-muted {
+  color: var(--ink-4);
+}
+
+/* The tiles: a label, a value, and under it what the value is made of. */
+.call-side-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.call-side-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.call-side-tile-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.call-side-tile-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.call-side-tile-sub {
+  font-size: 11px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

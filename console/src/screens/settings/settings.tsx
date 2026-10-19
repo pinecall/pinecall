@@ -10,21 +10,25 @@ import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { WORLD } from "../../lib/mode";
 import { useScopes } from "../../lib/whoami";
-import { Check, Empty, Page, PageHead, Refused, usePane } from "../../ui";
+import { Empty, Page, PageHead, Refused, Segmented, usePane } from "../../ui";
 import { readBases } from "../docs/door";
 import { readPipeline, type Report } from "../pipeline/door";
+import { readVendors } from "../providers";
 import { edited, readHistory, readSettings, rollbackTo, setSettings } from "./door";
 import { sectionsFor, SettingsForm, type Section } from "./form";
 import { History } from "./history";
 import { Now, type Corner } from "./now";
+import type { Step } from "./pipeline";
 import "./settings.css";
 
 function saidBy(failed: unknown): string {
   return failed instanceof Error ? failed.message : String(failed);
 }
 
+const STEPS: readonly Step[] = ["hears", "decides", "speaks", "judged"];
+
 // Production edits production's corner (the gateway enforces access); the sandbox edits yours, or
-// the team's when ticked. The open section lives in the URL.
+// the team's when picked. The open section, and the stage under the Pipeline's tiles, live in the URL.
 export function Settings(): ReactNode {
   const credentials = useCredentials();
   const agent = useParams()["agent"] ?? "";
@@ -34,15 +38,23 @@ export function Settings(): ReactNode {
   const [history, setHistory] = useState<TuningHistory | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [bases, setBases] = useState<KnowledgeBase[] | null>(null);
+  // The vendors this org runs on its own key; every other is lent by Pinecall.
+  const [own, setOwn] = useState<ReadonlySet<string>>(new Set());
   const [team, setTeam] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The save bar is the form's, drawn here under the page that scrolls.
+  const [bar, setBar] = useState<HTMLElement | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const wordsOnly = scopes !== null && !scopes.includes("pipeline");
   const production = WORLD === "production";
   const offered = sectionsFor(wordsOnly);
   const asked = params.get("section");
-  const section: Section = offered.some((one) => one.tab === asked) ? (asked as Section) : offered[0]!.tab;
+  // A link from before the tiles named a stage as a section: it opens the Pipeline on that stage.
+  const linked = STEPS.find((one) => one === asked);
+  const section: Section = linked !== undefined && offered.some((one) => one.tab === "pipeline") ? "pipeline" : offered.some((one) => one.tab === asked) ? (asked as Section) : offered[0]!.tab;
+  const step: Step = linked ?? STEPS.find((one) => one === params.get("stage")) ?? "hears";
+  const pickStep = (picked: Step): void => setParams(picked === "hears" ? {} : { stage: picked });
 
   const reread = useCallback(async (): Promise<void> => {
     setAnswer(await readSettings(credentials, agent));
@@ -67,6 +79,10 @@ export function Settings(): ReactNode {
     readBases(credentials).then(
       (read) => !gone && setBases(read.bases),
       () => !gone && setBases([]),
+    );
+    readVendors(credentials).then(
+      (read) => !gone && setOwn(new Set(read)),
+      () => undefined,
     );
     return () => {
       gone = true;
@@ -113,54 +129,69 @@ export function Settings(): ReactNode {
   return (
     <div className="set-grid" style={pane.style}>
       {pane.handle}
-      <Page width={1060}>
-        <PageHead
-          title="Configure"
-          ledeWidth={660}
-          lede={
-            production
-              ? "What this agent runs on in production. Every save is a new version with your name on it, and any version can be rolled back."
-              : "What this agent runs on in the sandbox: yours to try in your own corner, or the team's, which every corner falls back to. Every save is a version; production has its own page."
-          }
-        />
+      <div className="set-column">
+        <Page width={900}>
+          <PageHead
+            title="Configure"
+            ledeWidth={660}
+            lede={
+              production
+                ? "What this agent runs on in production. Every save is a new version with your name on it, and any version can be rolled back."
+                : "What this agent runs on in the sandbox: yours to try in your own corner, or the team's, which every corner falls back to. Every save is a version; production has its own page."
+            }
+            actions={
+              !wordsOnly && !production && (
+                <div className="set-saving">
+                  <span className="set-saving-label">Saving to</span>
+                  <Segmented
+                    options={[
+                      { value: "yours", label: "Your corner" },
+                      { value: "team", label: "Team" },
+                    ]}
+                    value={team ? "team" : "yours"}
+                    onChange={(picked) => setTeam(picked === "team")}
+                  />
+                </div>
+              )
+            }
+          />
 
-        {answer === null && <Empty>{refused ?? "Asking the gateway…"}</Empty>}
-        {answer !== null && (
-          <div className="set-main">
-            {!wordsOnly && !production && (
-              <div className="set-corner-pick">
-                <Check checked={team} onChange={setTeam}>
-                  Write the team's corner, which every corner falls back to — not only yours
-                </Check>
-              </div>
-            )}
-            <SettingsForm
-              // Re-key once vendors arrive: wire words are parsed as vendor or model against them.
-              key={`${agent}-${team}-${standing?.version ?? 0}-${inEffect?.version ?? 0}-${report === null ? "asking" : "read"}-${answer.fixed.join(",")}`}
-              standing={inEffect?.config ?? {}}
-              version={standing?.version ?? null}
-              wordsOnly={wordsOnly}
-              language={report?.speaks.language ?? null}
-              providers={report?.providers ?? []}
-              defaults={report?.defaults ?? {}}
-              models={report?.models ?? {}}
-              realtime={report?.realtime ?? {}}
-              bases={bases}
-              fixed={new Set(answer.fixed)}
-              running={report === null ? null : { hears: report.hears, decides: report.decides, speaks: report.speaks, talks: report.talks ?? null }}
-              section={section}
-              onPickSection={(picked) => setParams(picked === offered[0]!.tab ? {} : { section: picked })}
-              saving={saving}
-              error={refused}
-              onSave={save}
-            />
-          </div>
-        )}
+          {answer === null && <Empty>{refused ?? "Asking the gateway…"}</Empty>}
+          {answer !== null && (
+            <div className="set-main">
+              <SettingsForm
+                // Re-key once vendors arrive: wire words are parsed as vendor or model against them.
+                key={`${agent}-${team}-${standing?.version ?? 0}-${inEffect?.version ?? 0}-${report === null ? "asking" : "read"}-${answer.fixed.join(",")}`}
+                standing={inEffect?.config ?? {}}
+                version={standing?.version ?? null}
+                wordsOnly={wordsOnly}
+                language={report?.speaks.language ?? null}
+                providers={report?.providers ?? []}
+                defaults={report?.defaults ?? {}}
+                models={report?.models ?? {}}
+                realtime={report?.realtime ?? {}}
+                bases={bases}
+                fixed={new Set(answer.fixed)}
+                running={report === null ? null : { hears: report.hears, decides: report.decides, speaks: report.speaks, talks: report.talks ?? null }}
+                own={own}
+                section={section}
+                onPickSection={(picked) => setParams(picked === offered[0]!.tab ? {} : { section: picked })}
+                step={step}
+                onPickStep={pickStep}
+                bar={bar}
+                saving={saving}
+                error={refused}
+                onSave={save}
+              />
+            </div>
+          )}
 
-        {said !== null && <div className="ui-empty">{said}</div>}
-        {/* Write refusals only; a refused read is already shown in place of the screen. */}
-      {answer !== null && <Refused>{refused}</Refused>}
-      </Page>
+          {said !== null && <div className="ui-empty">{said}</div>}
+          {/* Write refusals only; a refused read is already shown in place of the screen. */}
+        {answer !== null && <Refused>{refused}</Refused>}
+        </Page>
+        <div ref={setBar} />
+      </div>
 
       <aside className="set-pane" aria-label="what is set, and its history">
         {answer === null ? (

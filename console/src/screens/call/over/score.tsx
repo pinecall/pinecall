@@ -23,22 +23,7 @@ export function scoreIn(entries: Entry[]): CallScore | null {
 }
 
 // Judges that returned nothing are drawn dim, never green, so coverage is not overstated.
-// `compact`, beside the call: each judge one line, its reason a click away, the bill left to the full page.
-export function ScoreCard({
-  call,
-  base,
-  score: sealed,
-  turns,
-  ended,
-  compact = false,
-}: {
-  call: string;
-  base: string;
-  score: CallScore | null;
-  turns: number;
-  ended: boolean;
-  compact?: boolean;
-}): ReactNode {
+export function ScoreCard({ call, base, score: sealed, turns, ended }: { call: string; base: string; score: CallScore | null; turns: number; ended: boolean }): ReactNode {
   // A verdict requested here overrides the logged one on this screen.
   const [asked, setAsked] = useState<CallScore | null>(null);
   const score = asked ?? sealed;
@@ -71,7 +56,7 @@ export function ScoreCard({
             )}
             <div className="over-judges">
               {score.judges.map((judge) => (
-                <JudgeRow key={judge.name} base={base} call={call} judgment={judge} compact={compact} />
+                <JudgeRow key={judge.name} base={base} call={call} judgment={judge} />
               ))}
               {(score.panel ?? [])
                 .filter((name) => !score.judges.some((judge) => judge.name === name))
@@ -85,7 +70,7 @@ export function ScoreCard({
                   </div>
                 ))}
             </div>
-            {!compact && <p className="over-sentence">{billOf(score, turns)}</p>}
+            <p className="over-sentence">{billOf(score, turns)}</p>
           </>
         )}
       </div>
@@ -93,30 +78,7 @@ export function ScoreCard({
   );
 }
 
-function JudgeRow({ base, call, judgment, compact }: { base: string; call: string; judgment: Judgment; compact: boolean }): ReactNode {
-  if (compact) {
-    return (
-      <details className="over-judge over-judge-folded">
-        <summary className="over-judge-line">
-          <span className="over-judge-name">{judgment.name}</span>
-          <Pill tone={VERDICT_TONE[judgment.verdict] ?? "muted"}>{answerOf(judgment)}</Pill>
-        </summary>
-        <div className="over-judge-reason">
-          {judgment.reason}
-          {judgment.evidence.said != null && <span className="over-judge-said"> “{judgment.evidence.said}”</span>}
-        </div>
-        {judgment.evidence.seqs.length > 0 && (
-          <div className="over-judge-line">
-            {judgment.evidence.seqs.map((seq) => (
-              <Link key={seq} className="over-seq" to={`${base}/${call}#seq-${seq}`}>
-                seq {seq}
-              </Link>
-            ))}
-          </div>
-        )}
-      </details>
-    );
-  }
+function JudgeRow({ base, call, judgment }: { base: string; call: string; judgment: Judgment }): ReactNode {
   return (
     <div className="over-judge over-judge-full">
       <span className="over-judge-name">{judgment.name}</span>

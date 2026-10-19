@@ -1,21 +1,21 @@
 /** Calls read as threads: the conversations as a messenger shows them — one thread per person — beside the one open, drawn the one way a call is. */
 
 import { type SessionLine } from "@pinecall/core/wire/rest";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 
 import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { wantsAPerson } from "@pinecall/core/calls";
-import { clockOf, dayOf, today, utcDay } from "../../lib/format";
+import { elapsed, isLive, wantsAPerson, type CallDay } from "@pinecall/core/calls";
+import { clockOf, dayOf } from "../../lib/format";
 import { useOrg } from "../../lib/org";
-import { Avatar, usePane } from "../../ui";
+import { Avatar, Icon, Pill, usePane } from "../../ui";
 import { Call } from "../call";
 import type { Outbound } from "../numbers/door";
 import { Aside } from "./aside";
 import { CallBack, DialForm, useOutbound } from "./dial";
 import { markRead, readDoorThreads, writeTo, type DoorThread } from "./inbox-door";
-import { lastOf, lettersOf, threadsOf, titleOf, type Thread } from "./threads";
+import { lastOf, lettersOf, threadDays, threadsOf, titleOf, type Thread } from "./threads";
 import "./inbox.css";
 
 /**
@@ -45,8 +45,10 @@ export function Inbox({ listed, focus, onFocus }: { listed: readonly SessionLine
   const outbound = useOutbound();
   const [door, seen] = useDoorThreads(agent, listed.length);
   const [refused, setRefused] = useState<string | null>(null);
+  // How many threads each day shows, by its key, once "Show more" was pressed on it.
+  const [more, setMore] = useState<ReadonlyMap<string, number>>(new Map());
 
-  const open = threads.find((thread) => chosen !== undefined && thread.lines.some((line) => line.call === chosen)) ?? threads[0];
+  const open =threads.find((thread) => chosen !== undefined && thread.lines.some((line) => line.call === chosen)) ?? threads[0];
   // The call on screen where the screen opens a call: the one the URL names, else the thread's newest.
   const call = open === undefined ? undefined : (open.lines.find((line) => line.call === chosen) ?? open.latest);
   const base = agent === "" ? "/calls" : `/a/${encodeURIComponent(agent)}/calls`;
@@ -99,17 +101,37 @@ export function Inbox({ listed, focus, onFocus }: { listed: readonly SessionLine
             <p className="ib-empty">No conversations yet. The first call to reach {agent === "" ? "an agent" : agent} opens a thread here as it rings.</p>
           )}
           {threads.length > 0 && shown.length === 0 && <p className="ib-empty">Nobody here matches “{query}”.</p>}
-          {shown.map((thread) => (
-            <ThreadRow
-              key={thread.contact}
-              thread={thread}
-              name={nameOf(thread, door)}
-              whose={agent === "" ? thread.latest.agent : undefined}
-              fresh={(door?.get(thread.contact)?.unread ?? 0) > 0}
-              on={thread === open}
-              onOpen={() => void navigate(hrefOf(thread.latest.call))}
-            />
-          ))}
+          {threadDays(shown).map((day) => {
+            const rows = shownOf(day, open, more);
+            const left = day.lines.length - rows.length;
+            return (
+              <Fragment key={day.key}>
+                <div className="ib-day">{dayName(day)}</div>
+                {rows.map((thread) => (
+                  <ThreadRow
+                    key={thread.contact}
+                    thread={thread}
+                    name={nameOf(thread, door)}
+                    whose={agent === "" ? thread.latest.agent : undefined}
+                    fresh={(door?.get(thread.contact)?.unread ?? 0) > 0}
+                    on={thread === open}
+                    onOpen={() => void navigate(hrefOf(thread.latest.call))}
+                  />
+                ))}
+                {left > 0 && (
+                  <button
+                    type="button"
+                    className="ib-more"
+                    title={`Show ${Math.min(A_PAGE, left)} more · ${left} left`}
+                    aria-label={`Show ${Math.min(A_PAGE, left)} more, ${left} left`}
+                    onClick={() => setMore(new Map(more).set(day.key, rows.length + A_PAGE))}
+                  >
+                    <Icon name="chevron" size={16} />
+                  </button>
+                )}
+              </Fragment>
+            );
+          })}
         </div>
       </div>
       {open === undefined || call === undefined ? (
@@ -192,51 +214,78 @@ function ThreadRow({
   on: boolean;
   onOpen: () => void;
 }): ReactNode {
+  const line = thread.latest;
+  const live = isLive(line);
+  const asking = wantsAPerson(line);
   return (
     <button type="button" className={on ? "ib-row ib-row-on" : "ib-row"} onClick={onOpen}>
-      <Avatar name={name} letters={lettersOf(thread)} size={28} round />
+      {/* A call up now wears a dot on its avatar: amber while it waits for a person, else green. */}
+      <span className={asking ? "ib-avatar ib-avatar-asked" : live ? "ib-avatar ib-avatar-live" : "ib-avatar"}>
+        <Avatar name={name} letters={lettersOf(thread)} size={36} round />
+      </span>
       <span className="ib-row-main">
         <span className="ib-row-top">
           <span className="ib-row-name">{name}</span>
-          <span className="ib-row-time">{whenOf(thread.latest.started_at)}</span>
+          {/* The day heads the group, so a row says its hour — or, on the line, how long it has been. */}
+          <span className={asking ? "ib-row-time ib-row-time-asked" : live ? "ib-row-time ib-row-time-live" : "ib-row-time"}>
+            {live ? elapsed(line.started_at) : line.started_at === null ? "" : clockOf(line.started_at).slice(0, 5)}
+          </span>
         </span>
+        <span className="ib-row-last">{lastOf(thread)}</span>
         <span className="ib-row-bottom">
-          {/* A contact the agent asked a person for is waiting on somebody in this list. */}
-          {wantsAPerson(thread.latest) ? (
-            <span className="ib-row-last ib-row-asked">wants a person</span>
-          ) : (
-            <span className={thread.latest.status !== "ended" ? "ib-row-last ib-row-last-live" : "ib-row-last"}>{lastOf(thread)}</span>
-          )}
-          {/* One thing at the end, the one that matters: live, new, a judge that broke — else whose it is. */}
-          {markOf(thread.latest, fresh) ?? (whose !== undefined && <span className="ib-row-agent">{whose}</span>)}
+          <span className="ib-row-where">{[whose, line.channel].filter((one) => one !== undefined && one !== null).join(" · ")}</span>
+          {markOf(line, fresh)}
         </span>
       </span>
     </button>
   );
 }
 
-/** The row's mark, when there is one worth it: live, new, or a verdict that broke. A call that held says nothing. */
+/** The row's mark, when there is one worth it: wants a person, new, or a verdict that broke. A call that held says nothing. */
 function markOf(line: Thread["latest"], fresh: boolean): ReactNode | null {
-  if (line.status !== "ended") return <span className={wantsAPerson(line) ? "ib-mark ib-mark-live ib-mark-asked" : "ib-mark ib-mark-live"} aria-label="live" />;
+  if (wantsAPerson(line)) {
+    return (
+      <Pill tone="amber" small>
+        wants a person
+      </Pill>
+    );
+  }
   // New, not how many: the door counts calls and lines, which is not what a reader means by messages.
   if (fresh) return <span className="ib-new" aria-label="new" />;
   const score = line.score;
   if (score === null || score === undefined || score.judged === 0 || score.passed) return null;
   return (
-    <span className="ib-mark ib-mark-broke">
-      {score.held}/{score.judged}
-    </span>
+    <Pill tone="red" small>
+      broke {score.held}/{score.judged}
+    </Pill>
   );
 }
 
-// `13:24` today, `Yesterday`, then the day.
-function whenOf(at: number | null): string {
-  if (at === null) return "";
-  const days = today();
-  const day = utcDay(at);
-  if (day === days.today) return clockOf(at).slice(0, 5);
-  if (day === days.yesterday) return "Yesterday";
-  return dayOf(at);
+// A busy day shows this many threads and a button for the next as many: paged, never a scroll
+// inside the list's own scroll.
+const A_PAGE = 5;
+
+/** The threads a day shows: a page, or as many as "Show more" asked for — always down to the one open, and every one on the line. */
+function shownOf(day: CallDay<Thread>, open: Thread | undefined, more: ReadonlyMap<string, number>): Thread[] {
+  if (day.name === "live") return day.lines;
+  const reaching = open === undefined ? 0 : day.lines.indexOf(open) + 1;
+  return day.lines.slice(0, Math.max(more.get(day.key) ?? A_PAGE, reaching));
+}
+
+/** A group's title: who is on the line now, then Today, Yesterday and every day before by its date. */
+function dayName(day: CallDay<Thread>): string {
+  switch (day.name) {
+    case "live":
+      return "On the line";
+    case "unstarted":
+      return "Not started";
+    case "today":
+      return "Today";
+    case "yesterday":
+      return "Yesterday";
+    case "before":
+      return dayOf(day.at);
+  }
 }
 
 /** The thread's moves in the call's head: the conversation alone on the screen, and a call back to a phone number. */

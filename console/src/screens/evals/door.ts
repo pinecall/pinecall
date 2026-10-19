@@ -1,4 +1,4 @@
-/** Eval requests and schemas: runs, replay, promote, reproductions. */
+/** Eval requests and schemas: runs, promote, reproductions. */
 
 import { z } from "zod";
 
@@ -88,23 +88,6 @@ export async function readRuns(credentials: Credentials, agent: string): Promise
  */
 export async function runCases(credentials: Credentials, agent: string, cases: string[], version: number | undefined): Promise<EvalRun> {
   return EvalRunSchema.parse(await post(credentials, "/v1/evals/run", { agent, cases, ...(version === undefined ? {} : { version }) }));
-}
-
-/** One ring-3 check result. */
-const VerdictSchema = z.object({ check: z.string(), status: z.string(), detail: z.string() });
-
-/** Ring-3 result: the call rebuilt from its log and checked by code, no model involved. */
-const ReplayedSchema = z.object({
-  call: z.string(),
-  agent: z.string(),
-  passed: z.boolean(),
-  verdicts: z.array(VerdictSchema),
-});
-export type Replayed = z.infer<typeof ReplayedSchema>;
-
-/** Run the runtime's code checks on a finished call without re-running it. */
-export async function replayCall(credentials: Credentials, call: string): Promise<Replayed> {
-  return ReplayedSchema.parse(await post(credentials, `/v1/evals/replay/${encodeURIComponent(call)}`, {}));
 }
 
 /** A golden candidate written from a call: file path, the golden as written, and notes for review. */

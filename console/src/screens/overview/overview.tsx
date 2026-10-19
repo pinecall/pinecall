@@ -1,4 +1,4 @@
-/** Overview: who is on the line, the window's numbers, calls a day, what needs a look, and how calls end — every agent's, or the one in view. */
+/** Overview: who is on the line, the window's numbers, calls a day beside how calls end, and what needs a look — every agent's, or the one in view. */
 
 import { useMemo, type ReactNode } from "react";
 import { Navigate, useParams } from "react-router";
@@ -77,36 +77,35 @@ export function Overview(): ReactNode {
           <OnTheLine live={onAir} agent={agent} />
         </section>
 
-        <Stats min={170}>
+        <Stats min={170} apart>
           <Numbers counted={counted} before={before} said={said} />
         </Stats>
 
-        <div className="ovw-split">
+        <div className="ovw-pair">
           <Card>
             <CardHead title="Calls a day" meta={<Legend />} />
             {counted === null ? <Empty>Counting the calls…</Empty> : <CallsByDay days={days} />}
           </Card>
-          <NeedsALook lines={mine} suites={theirSuites} agent={agent} />
+          <div className="ovw-column">
+            <Card>
+              <CardHead title="How calls end" meta={said} />
+              {(counted?.endings.length ?? 0) === 0 ? (
+                <Empty>No call has ended {said}.</Empty>
+              ) : (
+                <Shares rows={(counted?.endings ?? []).slice(0, 6).map((one) => ({ name: one.reason.replace(/_/g, " "), count: one.count }))} />
+              )}
+              {agent === "" && (
+                <div className="ovw-card-part">
+                  <CardHead title="Where calls come in" meta={said} />
+                  <Shares tone="channel" rows={CHANNELS.map((channel) => ({ name: CHANNEL_NAME[channel], count: counted?.channels[channel] ?? 0, key: channel }))} />
+                </div>
+              )}
+            </Card>
+            {agent !== "" && <Speed agent={agent} />}
+          </div>
         </div>
 
-        <div className="ovw-pair">
-          <Card>
-            <CardHead title="How calls end" meta={said} />
-            {(counted?.endings.length ?? 0) === 0 ? (
-              <Empty>No call has ended {said}.</Empty>
-            ) : (
-              <Shares rows={(counted?.endings ?? []).slice(0, 6).map((one) => ({ name: one.reason.replace(/_/g, " "), count: one.count }))} />
-            )}
-          </Card>
-          {agent === "" ? (
-            <Card>
-              <CardHead title="Where calls come in" meta={said} />
-              <Shares tone="channel" rows={CHANNELS.map((channel) => ({ name: CHANNEL_NAME[channel], count: counted?.channels[channel] ?? 0, key: channel }))} />
-            </Card>
-          ) : (
-            <Speed agent={agent} />
-          )}
-        </div>
+        <NeedsALook lines={mine} suites={theirSuites} agent={agent} />
 
         {agent === "" && limits !== null && <LimitsCard limits={limits} />}
 

@@ -1,12 +1,15 @@
-/** Starting a simulation: how the line is (spoken or written, how long, how noisy) and the callers to choose from — choosing one puts it on the agent and opens the call. */
+/** Starting simulations: tick who calls, say how many calls each and how the line is (written, quiet or noisy), and run them — each one put on the agent and judged when it ends. */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { Check, Chips, Input, Pill, Select, SelectItem } from "../../ui";
+import { usd } from "../../lib/format";
+import { rowAt } from "../../lib/harness";
+import { Chips, Icon, Input, Segmented, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
-import { Face } from "../personas/face";
+import { Callers, keyOf } from "./callers";
 import { startSimulation } from "./simulating";
 import "./starter.css";
 
@@ -31,18 +34,31 @@ const BACKGROUNDS = [
 
 type Background = (typeof BACKGROUNDS)[number]["value"];
 
-type Line = "spoken" | "written";
+// The line is written, or spoken — quiet, or with a voice and the street behind it.
+type Line = "written" | "quiet" | "noisy";
 
 const LINES: readonly { value: Line; label: string }[] = [
-  { value: "spoken", label: "Spoken" },
   { value: "written", label: "Written" },
+  { value: "quiet", label: "Quiet" },
+  { value: "noisy", label: "Noisy" },
 ];
 
+const EACH: readonly { value: "1" | "3" | "5"; label: string }[] = [
+  { value: "1", label: "1" },
+  { value: "3", label: "3" },
+  { value: "5", label: "5" },
+];
+
+/** What a call of these has cost and taken so far: the estimate under the button, read off the runs already made. */
+export interface Typical {
+  seconds: number | null;
+  usd: number | null;
+}
+
 /**
- * The gateway plays the caller and calls the agent as anybody calls it, so whatever holds the agent
- * answers — the one deployed, or a `pinecall start` in its directory — and the call is judged at
- * hang-up like any other. A caller is started by choosing it: the call's id comes back at once and
- * the screen opens it.
+ * The gateway plays each caller and calls the agent as anybody calls it, so whatever holds the
+ * agent answers — the one deployed, or a `pinecall start` in its directory — and every call is
+ * judged at hang-up like any other. One call started opens at once; several stay here, in Runs.
  */
 export function Starter({
   inView,
@@ -52,7 +68,7 @@ export function Starter({
   personas,
   asking,
   asked,
-  all,
+  typical,
   onStarted,
 }: {
   /** The agent in view, or "" for every agent: with one in view, the agent is it. */
@@ -66,247 +82,145 @@ export function Starter({
   personas: Persona[] | null;
   /** Why there are none yet: still asking, or the refusal in the gateway's words. */
   asking: string | null;
-  /** The caller the page was opened for (Personas' "Use in a simulation"), marked in the grid. */
+  /** The caller the page was opened for (Personas' "Use in a simulation"), ticked from the start. */
   asked?: string | undefined;
-  /** Every caller is offered, the ones switched off too, as cards of their own under the enabled ones'. */
-  all: boolean;
-  /** Told the call's id the moment it has one, and whether it is on a spoken line. */
-  onStarted: (call: string, spoken: boolean) => void;
+  typical: Typical;
+  /** Told the calls' ids the moment there are some, and whether they are on a spoken line. */
+  onStarted: (calls: string[], spoken: boolean) => void;
 }): ReactNode {
   const credentials = useCredentials();
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [each, setEach] = useState<"1" | "3" | "5">("1");
   // The screen is for listening: a spoken line unless somebody wants a written one.
-  const [line, setLine] = useState<Line>("spoken");
+  const [line, setLine] = useState<Line>("quiet");
   const [turns, setTurns] = useState(TURNS);
-  const [noisy, setNoisy] = useState(false);
   const [noise, setNoise] = useState(NOISE_DB);
   const [loss, setLoss] = useState(LOSS_PERCENT);
   const [background, setBackground] = useState<Background>("");
-  const [calling, setCalling] = useState<string | null>(null);
+  const [all, setAll] = useState(asked !== undefined);
+  const [calling, setCalling] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
-  const spoken = line === "spoken";
+  const spoken = line !== "written";
 
-  const start = async (persona: Persona): Promise<void> => {
-    if (calling !== null) return;
-    setCalling(persona.name);
-    setRefused(null);
-    try {
-      // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
-      const call = await startSimulation(credentials, {
-        agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
-        persona: persona.name,
-        voice: spoken,
-        turns,
-        ...(spoken && noisy ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
-      });
-      onStarted(call, spoken);
-    } catch (failed) {
-      setRefused(failed instanceof GatewayError ? failed.message : String(failed));
-      setCalling(null);
-    }
+  // A caller the page was opened for starts ticked, once the callers are read.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || asked === undefined || personas === null) return;
+    seeded.current = true;
+    setPicked(new Set(personas.filter((one) => one.name === asked).map(keyOf)));
+  }, [asked, personas]);
+
+  const chosen = (personas ?? []).filter((persona) => picked.has(keyOf(persona)));
+  const total = chosen.length * Number(each);
+  const hasOff = (personas ?? []).some((persona) => isPinecalls(persona) && !persona.on);
+
+  const toggle = (persona: Persona): void => {
+    const next = new Set(picked);
+    if (next.has(keyOf(persona))) next.delete(keyOf(persona));
+    else next.add(keyOf(persona));
+    setPicked(next);
   };
 
+  const run = async (): Promise<void> => {
+    if (calling || total === 0) return;
+    setCalling(true);
+    setRefused(null);
+    const calls: string[] = [];
+    try {
+      for (const persona of chosen) {
+        for (let at = 0; at < Number(each); at += 1) {
+          // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
+          calls.push(
+            await startSimulation(credentials, {
+              agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
+              persona: persona.name,
+              voice: spoken,
+              turns,
+              ...(line === "noisy" ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
+            }),
+          );
+        }
+      }
+    } catch (failed) {
+      // What was refused is said, and what had started stays started: the screen carries on with those.
+      const said = failed instanceof GatewayError ? failed.message : String(failed);
+      setRefused(calls.length === 0 ? said : `${said} — ${String(calls.length)} of ${String(total)} started.`);
+    } finally {
+      setCalling(false);
+    }
+    if (calls.length > 0) onStarted(calls, spoken);
+  };
+
+  const minutes = typical.seconds === null ? null : Math.max(1, Math.round(typical.seconds / 60));
+  const cost = typical.usd === null ? null : typical.usd * total;
+
   return (
-    <section className="ui-tiles-block" aria-label="new simulation">
-      <div className="sim-bar">
-        <Chips options={LINES} value={line} onChange={setLine} />
-        <label className="sim-turns">
-          <Input size="sm" type="number" aria-label="Turns the caller says" min={1} max={30} value={turns} onChange={(event) => setTurns(Number(event.target.value))} />
-          <span>turns</span>
-        </label>
-        {spoken && (
-          <Check checked={noisy} onChange={setNoisy}>
-            Noisy line
-          </Check>
-        )}
-        {spoken && noisy && (
-          <>
-            <Select size="sm" value={background} onValueChange={(value) => setBackground(value as Background)} aria-label="What plays behind the caller">
-              {BACKGROUNDS.map((one) => (
-                <SelectItem key={one.value} value={one.value}>
-                  {one.label}
-                </SelectItem>
-              ))}
-            </Select>
-            <label className="sim-turns">
-              <Input size="sm" type="number" aria-label="Noise, dB under" min={0} max={60} value={noise} onChange={(event) => setNoise(Number(event.target.value))} />
-              <span>dB under</span>
-            </label>
-            <label className="sim-turns">
-              <Input size="sm" type="number" aria-label="Packets lost, %" min={0} max={100} value={loss} onChange={(event) => setLoss(Number(event.target.value))} />
-              <span>% lost</span>
-            </label>
-          </>
-        )}
+    <section className="sim-card" aria-label="new simulation">
+      <div className="sim-card-title">New simulation</div>
+      <div className="sim-who">
+        <div className="sim-who-head">
+          <span className="sim-label">Who calls</span>
+          <span className="sim-who-links">
+            {hasOff && (
+              <button type="button" className="sim-link" onClick={() => setAll(!all)}>
+                {all ? "Only the ones switched on" : "Show the ones switched off"}
+              </button>
+            )}
+            <Link to={rowAt(inView, "personas")}>Edit personas</Link>
+          </span>
+        </div>
+        {agents.length === 0 && <p className="sim-note">No agent is running in this world: deploy one, or run pinecall start in its directory.</p>}
+        {personas === null && asking !== null && <p className="sim-note">{asking}</p>}
+        {personas !== null && personas.length === 0 && <p className="sim-note">No personas yet: write the first caller in Personas.</p>}
+        {personas !== null && personas.length > 0 && <Callers inView={inView} agents={agents} agent={agent} onAgent={onAgent} personas={personas} picked={picked} onPick={toggle} all={all} />}
       </div>
-      {refused !== null && <p className="sim-refused">{refused}</p>}
-      {agents.length === 0 && <p className="sim-note">No agent is running in this world: deploy one, or run pinecall start in its directory.</p>}
-      {personas === null && asking !== null && <p className="sim-note">{asking}</p>}
-      {personas !== null && personas.length === 0 && <p className="sim-note">No personas yet: write the first caller in Personas.</p>}
-      {personas !== null && inView === "" ? (
-        <Everyones personas={personas} agents={agents} agent={agent} onAgent={onAgent} asked={asked} calling={calling} onChoose={(persona) => void start(persona)} />
-      ) : (
-        personas !== null && (
-          <>
-            {enabled(personas).length > 0 && (
-              <>
-                <p className="sim-prompt">Ready to call {agent}</p>
-                <div className="ui-tiles">
-                  {enabled(personas).map((persona) => (
-                    <CallerTile key={persona.name} persona={persona} asked={persona.name === asked} calling={calling} onChoose={() => void start(persona)} />
-                  ))}
-                </div>
-              </>
-            )}
-            {(all || enabled(personas).length === 0) && switchedOff(personas).length > 0 && (
-              <>
-                <p className="sim-prompt">{enabled(personas).length === 0 ? `Pinecall's callers · none is switched on for ${agent} yet, and any of them can still call it` : `Switched off for ${agent} · called by hand`}</p>
-                <div className="ui-tiles">
-                  {switchedOff(personas).map((persona) => (
-                    <CallerTile key={persona.name} persona={persona} asked={persona.name === asked} calling={calling} onChoose={() => void start(persona)} />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )
+
+      <div className="sim-options">
+        <div className="sim-option">
+          <span className="sim-label">Calls per persona</span>
+          <Chips options={EACH} value={each} onChange={setEach} />
+        </div>
+        <div className="sim-option">
+          <span className="sim-label">The line</span>
+          <Segmented options={LINES} value={line} onChange={setLine} />
+        </div>
+        <div className="sim-option">
+          <span className="sim-label">Turns each</span>
+          <Input size="sm" type="number" aria-label="Turns the caller says" min={1} max={30} value={turns} onChange={(event) => setTurns(Number(event.target.value))} />
+        </div>
+      </div>
+      {line === "noisy" && (
+        <div className="sim-noise">
+          <Select size="sm" value={background} onValueChange={(value) => setBackground(value as Background)} aria-label="What plays behind the caller">
+            {BACKGROUNDS.map((one) => (
+              <SelectItem key={one.value} value={one.value}>
+                {one.label}
+              </SelectItem>
+            ))}
+          </Select>
+          <label className="sim-turns">
+            <Input size="sm" type="number" aria-label="Noise, dB under" min={0} max={60} value={noise} onChange={(event) => setNoise(Number(event.target.value))} />
+            <span>dB under</span>
+          </label>
+          <label className="sim-turns">
+            <Input size="sm" type="number" aria-label="Packets lost, %" min={0} max={100} value={loss} onChange={(event) => setLoss(Number(event.target.value))} />
+            <span>% lost</span>
+          </label>
+        </div>
       )}
+
+      {refused !== null && <p className="sim-refused">{refused}</p>}
+      <div className="sim-foot">
+        <span className="sim-foot-said">
+          {total === 0
+            ? "Tick who calls to run."
+            : [`${String(total)} ${total === 1 ? "call" : "calls"}`, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
+        </span>
+        <button type="button" className="sim-run" disabled={calling || total === 0} onClick={() => void run()}>
+          <Icon name="play" size={14} />
+          {calling ? "Starting…" : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
+        </button>
+      </div>
     </section>
   );
-}
-
-/**
- * Every agent in view: every agent's own callers, each under its agent and ringing it, then
- * Pinecall's library once, ringing the agent picked beside its heading. Nothing is filtered: who is
- * in view is the sidebar's to narrow.
- */
-function Everyones({
-  personas,
-  agents,
-  agent,
-  onAgent,
-  asked,
-  calling,
-  onChoose,
-}: {
-  personas: Persona[];
-  agents: readonly string[];
-  agent: string;
-  onAgent: (agent: string) => void;
-  asked: string | undefined;
-  calling: string | null;
-  onChoose: (persona: Persona) => void;
-}): ReactNode {
-  const own = personas.filter((persona) => !isPinecalls(persona));
-  const library = inOrder(personas.filter(isPinecalls));
-  return (
-    <>
-      {own.length > 0 && (
-        <>
-          <p className="sim-prompt">Written for your agents · each rings its own</p>
-          <div className="ui-tiles">
-            {own.map((persona) => (
-              <CallerTile key={`${persona.agent}/${persona.name}`} persona={persona} rings={persona.agent} asked={persona.name === asked} calling={calling} onChoose={() => onChoose(persona)} />
-            ))}
-          </div>
-        </>
-      )}
-      {library.length > 0 && (
-        <>
-          <div className="sim-prompt sim-prompt-pick">
-            <span>Pinecall's callers · ring</span>
-            {agents.length > 1 ? (
-              <Select size="sm" value={agent} onValueChange={onAgent} aria-label="The agent Pinecall's callers ring">
-                {agents.map((one) => (
-                  <SelectItem key={one} value={one}>
-                    {one}
-                  </SelectItem>
-                ))}
-              </Select>
-            ) : (
-              <span>{agent}</span>
-            )}
-          </div>
-          <div className="ui-tiles">
-            {library.map((persona) => (
-              <CallerTile key={persona.name} persona={persona} asked={persona.name === asked} calling={calling} onChoose={() => onChoose(persona)} />
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
-// The callers a person has enabled: the ones written for the agent, and Pinecall's it switched on.
-function enabled(personas: Persona[]): Persona[] {
-  return inOrder(personas).filter(isOn);
-}
-
-// Pinecall's callers the agent has switched off: its nightly plays none of them, a person may.
-function switchedOff(personas: Persona[]): Persona[] {
-  return inOrder(personas).filter((persona) => !isOn(persona));
-}
-
-function isOn(persona: Persona): boolean {
-  return !isPinecalls(persona) || persona.on;
-}
-
-function CallerTile({ persona, rings, asked, calling, onChoose }: { persona: Persona; rings?: string; asked: boolean; calling: string | null; onChoose: () => void }): ReactNode {
-  const library = isPinecalls(persona);
-  const acts = [
-    persona.behavior.interrupts > 0 ? `talks over ${Math.round(persona.behavior.interrupts * 100)}%` : null,
-    persona.behavior.pause_s > 0 ? `pauses ${persona.behavior.pause_s}s` : null,
-  ].filter((one): one is string => one !== null);
-  const about = library ? (persona.summary ?? "") : persona.about;
-  const classes = ["ui-tile", "sim-tile", isOn(persona) ? null : "ui-tile-off sim-tile-off", asked ? "sim-tile-asked" : null];
-  return (
-    <article className={classes.filter((one) => one !== null).join(" ")}>
-      <button type="button" className="ui-tile-open" aria-label={`Call as ${persona.name}`} disabled={calling !== null} onClick={onChoose} />
-      <div className="ui-tile-top">
-        <Face name={persona.name} size={64} />
-        {library ? (
-          <Pill tone="gray" small>
-            {persona.on ? "Pinecall" : "Pinecall · off"}
-          </Pill>
-        ) : (
-          <Pill tone="violet" small>
-            yours
-          </Pill>
-        )}
-      </div>
-      <h3 className="ui-tile-name">{persona.name}</h3>
-      {about !== "" && <p className="sim-tile-about">{about}</p>}
-      {persona.goal !== "" && persona.goal !== about && (
-        <p className="sim-tile-goal">
-          <span>Wants</span> {persona.goal}
-        </p>
-      )}
-      <div className="ui-tile-tags">
-        {rings !== undefined && (
-          <Pill tone="indigo" small>
-            rings {rings}
-          </Pill>
-        )}
-        {persona.tags.map((tag) => (
-          <Pill key={tag} tone={tag === "red-team" ? "red" : "gray"} small>
-            {tag}
-          </Pill>
-        ))}
-      </div>
-      <footer className="ui-tile-foot">
-        <span>{calling === persona.name ? "Calling…" : acts.length === 0 ? "calm on the line" : acts.join(" · ")}</span>
-        <span>{calling === persona.name ? "" : "Call as them →"}</span>
-      </footer>
-    </article>
-  );
-}
-
-// Every caller, the ones switched off for the nightly too: any of Pinecall's may be called by hand.
-// The agent's own first, the ones somebody wrote for it; Pinecall's library after them, realism
-// before the red team.
-function inOrder(personas: Persona[]): Persona[] {
-  const own = personas.filter((persona) => !isPinecalls(persona));
-  const red = (persona: Persona): number => Number(persona.tags.includes("red-team"));
-  const library = personas.filter(isPinecalls).sort((one, other) => red(one) - red(other) || one.name.localeCompare(other.name));
-  return [...own, ...library];
 }

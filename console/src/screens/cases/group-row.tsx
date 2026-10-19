@@ -14,7 +14,7 @@ import { applyGroup, decideGroup, personaFromGroup, proposeGroup, type CaseGroup
 const STATUS_TONE = { pending: "amber", approved: "green", dismissed: "gray" } as const;
 
 /** What the assistant is told for a code fix: the MCP's `cases` tool knows the rest. */
-function promptFor(group: CaseGroup, proposal: Proposal): string {
+export function promptFor(group: CaseGroup, proposal: Proposal): string {
   return `Pinecall case group ${group.id} (judge ${group.judge}): ${proposal.cause}\nProposed ${proposal.kind} fix at ${proposal.where}: ${typeof proposal.change === "string" ? proposal.change : JSON.stringify(proposal.change)}\nUse the pinecall MCP's cases tool: group ${group.id}, make the change, run test with case until it holds, then approve the group.`;
 }
 

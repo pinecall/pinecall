@@ -1,13 +1,21 @@
 /** Observability: the window at a glance and day by day — latency, success, duration, endings, judges, tools, cost — every agent's or the one in view. */
 
 import { useMemo, type ReactNode } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import { useInsights, useWindowDays, windowSaid, WindowPicker } from "../../lib/insights";
 import { useSeries, type SeriesDay } from "../../lib/series";
-import { Card, CardHead, Empty, Page, PageHead, Stat, Stats, TableHead } from "../../ui";
+import { useSlowTurns } from "../../lib/slow";
+import { useTools } from "../../lib/tools";
+import { Card, CardHead, Empty, Icon, Page, PageHead, Stat, Stats, TableHead } from "../../ui";
+import { useMonitors } from "../monitors";
 import { Bars, type Stack } from "./bars";
 import { Lines, type Line } from "./lines";
+import { LiveEvents } from "./live-events";
+import { ProvidersCard } from "./providers-card";
+import { SlowTurns } from "./slow-turns";
+import { TimeToAnswer } from "./time-to-answer";
+import { ToolsCard } from "./tools-card";
 import "./observability.css";
 
 const STAGE_NAME: Record<string, string> = { stt: "Transcription", llm: "First token", tts: "First audio" };
@@ -67,6 +75,10 @@ export function Observability(): ReactNode {
   const answered = useSeries({ agent: asked, days: range });
   const earlier = useSeries({ agent: asked, days: range, day: utcDay(Date.now() / 1000 - range * 86400) });
   const insights = useInsights({ agent: asked, days: range });
+  const toolStats = useTools({ agent: asked, days: range });
+  const slow = useSlowTurns({ agent: asked, days: range });
+  const monitors = useMonitors().monitors ?? [];
+  const vendors = answered?.days === range ? answered.vendors : [];
   const series = answered?.days === range ? answered.series : null;
   const days = useMemo(() => (series ?? []).map((day) => day.day), [series]);
   const rows = useMemo(() => series ?? [], [series]);
@@ -147,8 +159,31 @@ export function Observability(): ReactNode {
       <PageHead
         title="Observability"
         lede={`How ${agent === "" ? "every agent" : agent} ran over ${windowSaid(range)}: how fast each stage answered, how calls ended, what the judges held, which tools failed, what it cost — at a glance, then day by day.`}
-        actions={<WindowPicker days={range} onPick={pickRange} />}
+        actions={
+          <>
+            <Link to="/telemetry" className="ui-button ui-button-sm obs-otel">
+              <Icon name="plug" size={14} />
+              Send to OpenTelemetry
+            </Link>
+            <WindowPicker days={range} onPick={pickRange} />
+          </>
+        }
       />
+      {answered?.days === range && (
+        <TimeToAnswer now={answered} before={earlier?.days === range ? earlier : null} tools={toolStats?.tools ?? []} monitors={monitors} agent={agent} range={range} />
+      )}
+      {/* These three are a newer runtime's: a box without them draws the page as it was. */}
+      {(toolStats !== null || vendors.length > 0) && (
+        <div className="obs-pair">
+          {toolStats !== null && <ToolsCard tools={toolStats?.tools ?? []} agent={agent} />}
+          {vendors.length > 0 && <ProvidersCard vendors={vendors} monitors={monitors} agent={agent} />}
+        </div>
+      )}
+      <div className="obs-pair">
+        {slow !== null && <SlowTurns turns={slow?.turns ?? []} agent={agent} />}
+        <LiveEvents />
+      </div>
+      <h2 className="obs-section">Day by day</h2>
       <Stats min={170}>
         <Stat size="big" label="Calls" value={now.calls} delta={moved?.text ?? said} tone={moved?.tone ?? "flat"} />
         <Stat

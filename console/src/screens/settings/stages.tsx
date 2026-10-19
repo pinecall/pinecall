@@ -3,7 +3,9 @@
 import type { ReactNode } from "react";
 
 import { doing, named, type Provider } from "../../lib/catalogue";
-import { Label, Select, SelectItem } from "../../ui";
+import { Label } from "../../ui";
+import { Advanced } from "./advanced";
+import { Choice, type Pick } from "./choice";
 import { FixedByTheClass } from "./plugin";
 import type { Knob, Modality } from "./typed";
 import { VoiceById } from "./voice-by-id";
@@ -22,7 +24,9 @@ export function StageSection({
   onChange,
   fixed,
   unset,
+  own,
   children,
+  advanced,
 }: {
   modality: Modality;
   title: string;
@@ -36,7 +40,11 @@ export function StageSection({
   fixed?: { value: string | null } | undefined;
   /** What no vendor picked means, where it is not the runtime's default; no model is listed until one is. */
   unset?: string | undefined;
+  /** The vendors this org runs on its own key; every other is lent by Pinecall. */
+  own: ReadonlySet<string>;
   children?: ReactNode;
+  /** What most people never touch: folded away until asked for. */
+  advanced?: ReactNode;
 }): ReactNode {
   if (fixed !== undefined) {
     return (
@@ -50,53 +58,50 @@ export function StageSection({
       </section>
     );
   }
-  // Only what this box can run: a vendor with a key here AND models this build runs at it. A vendor
-  // with no key is a line that would go out silent, and one with no models is a name to guess at.
-  // A vendor set from the terminal that is neither still shows, said so, rather than a list that
-  // quietly reads as "nothing chosen".
-  const ready = doing(providers, modality).filter((one) => one.ready && (models[`${modality}/${one.name}`] ?? []).length > 0);
+  // Only what this box can run: a vendor with a key here. One with no key is a line that would go
+  // out silent; one with no models listed runs its own default, which the Model row says. A vendor
+  // set from the terminal that has no key still shows, said so, rather than a list that quietly
+  // reads as "nothing chosen".
+  const ready = doing(providers, modality).filter((one) => one.ready);
   const runtimeDefault = defaults[modality] ?? "";
   const vendor = knob.vendor === "" ? runtimeDefault : knob.vendor;
   const listed = ready.some((one) => one.name === knob.vendor) ? ready : knob.vendor === "" ? ready : [{ name: knob.vendor, ready: false } as Provider, ...ready];
   const known = models[`${modality}/${vendor}`] ?? [];
   const options = known.includes(knob.model) || knob.model === "" ? known : [knob.model, ...known];
+  const vendors: Pick[] = [
+    { value: "", label: unset ?? "Runtime default", tag: unset === undefined ? runtimeDefault : undefined },
+    ...listed.map((one) => ({ value: one.name, label: one.name, mono: true, tag: !one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by Pinecall" })),
+  ];
+  const picks: Pick[] = [
+    { value: "", label: `${vendor}'s default`, tag: known[0] },
+    ...options.map((name) => ({ value: name, label: name, mono: true, tag: known.includes(name) ? undefined : "as set" })),
+  ];
   return (
     <section className="set-section">
       <div className="set-section-head">
         <h2 className="set-section-title">{title}</h2>
         <p className="set-section-blurb">{blurb}</p>
       </div>
-      <div className="set-row">
-        <div className="set-field">
-          <Label>Vendor</Label>
-          <Select value={knob.vendor} aria-label="Vendor" onValueChange={(value) => onChange({ vendor: value, model: "" })}>
-            <SelectItem value="">{unset ?? `Runtime default · ${runtimeDefault}`}</SelectItem>
-            {listed.map((one) => (
-              <SelectItem key={one.name} value={one.name}>
-                {one.name}
-                {one.ready ? "" : ` · ${NOT_HERE}`}
-              </SelectItem>
-            ))}
-          </Select>
-          <p className="set-help">The vendors this box has a key for. Another one appears here once its key is added in Providers.</p>
-        </div>
-        {(unset === undefined || knob.vendor !== "") && (
-          <div className="set-field">
-            <Label>Model</Label>
-            <Select value={knob.model} aria-label="Model" onValueChange={(value) => onChange({ ...knob, model: value })}>
-              <SelectItem value="">{vendor}'s default{known[0] === undefined ? "" : ` · ${known[0]}`}</SelectItem>
-              {options.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                  {known.includes(name) ? "" : " · as set"}
-                </SelectItem>
-              ))}
-            </Select>
-            <p className="set-help">{known.length === 0 ? `${vendor} runs its own default; there is no model to pick.` : "The models that run on this box. The default is the one tuned for phone calls."}</p>
-          </div>
-        )}
+      <div className="set-field">
+        <Label>Vendor</Label>
+        <Choice label="Vendor" picks={vendors} value={knob.vendor} onPick={(value) => onChange({ vendor: value, model: "" })} />
+        <p className="set-help">Only vendors this box has a key for. Add one in Providers.</p>
       </div>
+      {(unset === undefined || knob.vendor !== "") && (
+        <div className="set-field">
+          <Label>Model</Label>
+          {known.length === 0 ? (
+            <p className="set-help">{vendor} runs its own default; there is no model to pick.</p>
+          ) : (
+            <>
+              <Choice label="Model" picks={picks} value={knob.model} onPick={(value) => onChange({ ...knob, model: value })} />
+              <p className="set-help">The default is the one tuned for phone calls.</p>
+            </>
+          )}
+        </div>
+      )}
       {children}
+      {advanced !== undefined && advanced !== null && advanced !== false && <Advanced>{advanced}</Advanced>}
     </section>
   );
 }
