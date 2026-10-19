@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.6 — A tool's untyped parameter with a default takes the default's type (2026-10-19)
 
 - **A tool's parameter with a default and no annotation takes the default's type.** `cantidad=1`
   reached the model as text to fill; an int, a float, a bool or a str default now types it.

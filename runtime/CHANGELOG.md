@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.6 — A realtime call's waits are measured (2026-10-19)
 
 - **A voice call on a realtime model has its waits measured.** A realtime model's caller turn
   carries no `stopped_speaking_at`, so its replies had no `e2e_latency` and a call on Grok Voice read

@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## [Unreleased]
+## [0.11.6] — a tool's untyped parameter with a default takes the default's type
 
 - **A tool's parameter with a default and no type takes the default's.** `cantidad = 1` reached the
   model as an open object, and a model that follows the schema (Grok Voice) sent `{"1": 1}` for a
