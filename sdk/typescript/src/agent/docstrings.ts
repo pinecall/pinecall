@@ -5,6 +5,7 @@ import type {
   Class,
   ClassElement,
   Comment,
+  Expression,
   FormalParameter,
   ParamPattern,
   Statement,
@@ -213,7 +214,22 @@ function paramOf(node: ParamPattern, source: Source, types: Declared): ParamDoc 
   const param: ParamDoc = { name: binding.name, optional };
   if (type) param.type = textOf(type, source);
   if (type && !plainType(type)) param.schema = jsonOf(type, types, new Set());
+  // `cantidad = 1` writes no type but says it: the default's own. Left unread it reached the model
+  // as an open object, and a model that follows the schema (Grok) sent `{"1": 1}` for a quantity.
+  if (!type && defaulted) {
+    const inferred = typeOfDefault(node.right);
+    if (inferred) param.type = inferred;
+  }
   return param;
+}
+
+/** The type a default literal says (`1`, `"es"`, `true`, `-1`), or undefined for any other value. */
+function typeOfDefault(value: Expression): "number" | "string" | "boolean" | undefined {
+  const literal = value.type === "UnaryExpression" && value.operator === "-" ? value.argument : value;
+  if (literal.type === "TemplateLiteral") return "string";
+  if (literal.type !== "Literal") return undefined;
+  const given = typeof literal.value;
+  return given === "number" || given === "string" || given === "boolean" ? given : undefined;
 }
 
 /** Parameters of a method, or of a function-valued field. */

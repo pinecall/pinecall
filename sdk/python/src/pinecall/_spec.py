@@ -42,8 +42,15 @@ def arguments_model(name: str, method: Callable[..., object]) -> type[BaseModel]
         default = ... if parameter.default is inspect.Parameter.empty else parameter.default
         # Stored under a name of ours, so a parameter called `json` or `copy` never shadows the
         # model's own; the model and the schema know it by its own name.
-        fields[f"p{index}"] = (hints.get(called, str), Field(default, alias=called))
+        fields[f"p{index}"] = (hints.get(called, _type_of(default)), Field(default, alias=called))
     return create_model(f"{name}_arguments", __config__=CLOSED, **fields)
+
+
+# `cantidad=1` writes no type but says it: the default's own. Read as text, a quantity reached the
+# model as a string to fill.
+def _type_of(default: object) -> type:
+    """The type a default's value says (`1`, `0.5`, `True`, `"es"`), else text."""
+    return type(default) if isinstance(default, bool | int | float | str) else str
 
 
 def spec_of(

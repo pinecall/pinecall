@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **A voice call on a realtime model has its waits measured.** A realtime model's caller turn
+  carries no `stopped_speaking_at`, so its replies had no `e2e_latency` and a call on Grok Voice read
+  "no metrics" on every turn. The wait is now timed from when the session saw the caller go quiet
+  (`user_state_changed`, speaking to listening), the ears' own stop winning where a turn has one.
+
 ## 0.11.5 — A voice call runs on a realtime model and a written call on the LLM; Studio builds an agent in the console; setup loads every provider it finds (2026-10-19)
 
 - **Studio: an agent built in the console, held by the gateway.** A Studio agent is instructions, a

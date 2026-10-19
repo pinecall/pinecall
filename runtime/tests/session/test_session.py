@@ -943,6 +943,18 @@ async def test_the_callers_words_and_states_land_in_the_order_they_were_heard(bo
     assert order[-3:] == ["user.state", "user.transcript", "agent.state"]
 
 
+# A realtime model's caller turn has no stop of its own: the session saw the caller go quiet.
+@needs_the_database
+async def test_the_caller_going_quiet_is_kept_for_the_turn_it_ends(box: Box) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    quiet = UserStateChangedEvent(old_state="speaking", new_state="listening", created_at=104.0)
+    session.live.emit("user_state_changed", quiet)
+    session.live.emit("user_state_changed", UserStateChangedEvent(old_state="listening", new_state="away"))
+    assert session.call.went_quiet_at == 104.0
+    await text.end_text(session, "caller_hung_up", "caller")
+
+
 # Ears with no interims (Whisper) give the final alone, before the end of the turn is weighed: it
 # starts the run, and an interim before it keeps the run it started.
 @needs_the_database

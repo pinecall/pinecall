@@ -137,6 +137,26 @@ describe("docstrings at runtime", () => {
     ]);
   });
 
+  // A model that follows the schema fills an open object for an untyped `cantidad = 1` (Grok sent `{"1": 1}`).
+  it("reads a parameter with a default and no type as the default's type", () => {
+    const docs = parseClassSource(`
+      class Desk {
+        /** Adds. */
+        add(model: string, quantity = 1, note = "", gift = false, offset = -2, size = \`M\`, extras = []): void {}
+      }
+    `);
+
+    expect(docs.methods.get("add")?.params).toEqual([
+      { name: "model", type: "string", optional: false },
+      { name: "quantity", type: "number", optional: true },
+      { name: "note", type: "string", optional: true },
+      { name: "gift", type: "boolean", optional: true },
+      { name: "offset", type: "number", optional: true },
+      { name: "size", type: "string", optional: true },
+      { name: "extras", optional: true },
+    ]);
+  });
+
   // An undeclared type becomes an object described by its name.
   it("names a type it cannot see the declaration of", () => {
     const docs = parseClassSource(`

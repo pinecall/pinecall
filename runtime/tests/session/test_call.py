@@ -238,6 +238,22 @@ async def test_a_reply_over_the_caller_or_with_no_stop_known_carries_no_end_to_e
     assert "e2e_latency" not in fresh.replied({"started_speaking_at": 1.0, "e2e_latency": 0.4})
 
 
+# A realtime model's caller turn carries no `stopped_speaking_at` (Grok Voice, 2026-10-19): the
+# wait is timed from when the session saw the caller go quiet, and the ears' own stop wins.
+@needs_the_database
+async def test_a_turn_with_no_stop_of_its_own_is_timed_from_when_the_caller_went_quiet(box: Box, call: str) -> None:
+    ongoing = Call(context_of(call), AgentConfig(slug="a"), box.platform())
+    ongoing.went_quiet(104.0)
+    ongoing.heard({"started_speaking_at": 100.0})
+    assert ongoing.replied({"started_speaking_at": 104.9})["e2e_latency"] == pytest.approx(0.9)
+    ongoing.went_quiet(110.0)
+    ongoing.heard({"stopped_speaking_at": 110.4})
+    assert ongoing.replied({"started_speaking_at": 111.0})["e2e_latency"] == pytest.approx(0.6)
+    # Each quiet times the one turn it ended.
+    ongoing.heard({})
+    assert "e2e_latency" not in ongoing.replied({"started_speaking_at": 120.0})
+
+
 @needs_the_database
 async def test_the_model_keeps_quiet_while_a_person_has_the_line_or_is_being_waited_for(box: Box, call: str) -> None:
     ongoing = Call(context_of(call), AgentConfig(slug="a"), box.platform())

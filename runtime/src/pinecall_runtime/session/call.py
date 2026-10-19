@@ -105,16 +105,26 @@ class Call:
         self.requests: list[JsonObject] = []
         # When the caller last stopped speaking, until the agent's first turn after it is written.
         self.heard_stopped_at: float | None = None
+        # When the caller last went quiet, as the session's state says it: what a realtime model's
+        # turn is timed from, since its caller's turn carries no `stopped_speaking_at`.
+        self.went_quiet_at: float | None = None
 
     def speech(self) -> str:
         """A new speech id, `sp_<n>`."""
         self.speeches += 1
         return f"{SPEECH}{self.speeches}"
 
+    def went_quiet(self, at: float) -> None:
+        """The caller stopped speaking, as the session's state says."""
+        self.went_quiet_at = at
+
+    # The ears' own `stopped_speaking_at` when the turn has one; a realtime model's turn carries
+    # none, and the session's state saw the caller go quiet.
     def heard(self, metrics: Mapping[str, object]) -> None:
         """The caller's turn ended: the agent's next turn is the first sound they wait for."""
         stopped = metrics.get("stopped_speaking_at")
-        self.heard_stopped_at = float(stopped) if isinstance(stopped, int | float) else None
+        quiet, self.went_quiet_at = self.went_quiet_at, None
+        self.heard_stopped_at = float(stopped) if isinstance(stopped, int | float) else quiet
 
     # livekit's e2e_latency runs from the caller's last word to the turn it rides on, so a preamble
     # said before a tool ("let me look that up") left the tool's wait on the answer after it. The

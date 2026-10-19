@@ -117,6 +117,8 @@ class Listener:
             case UserInputTranscribedEvent():
                 self._transcribed(event)
             case UserStateChangedEvent():
+                if event.old_state == "speaking" and event.new_state != "speaking":
+                    self.call.went_quiet(event.created_at)
                 writing.write("user.state", wire.UserStateChanged(state=event.new_state))
             case AgentStateChangedEvent():
                 if self.call.agent_speaking and event.new_state != "speaking":

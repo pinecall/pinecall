@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## [Unreleased]
+
+- **A tool's parameter with a default and no type takes the default's.** `cantidad = 1` reached the
+  model as an open object, and a model that follows the schema (Grok Voice) sent `{"1": 1}` for a
+  quantity. A number, a string or a boolean default now types its parameter.
+
 ## [0.11.5] — @realtime: a voice call's model that hears and speaks itself, beside the @llm
 
 - **A voice call runs on a realtime model while a written call keeps the LLM.** `@realtime("xai/grok-voice-3.0", { options: { voice: "eve" } })` names the

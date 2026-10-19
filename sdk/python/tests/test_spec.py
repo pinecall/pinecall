@@ -66,7 +66,22 @@ def test_a_parameter_with_no_annotation_is_text_because_that_is_what_a_caller_sa
     def note(self: object, text) -> None:  # noqa: ANN001 # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
         """Note."""
 
-    assert schema_of(arguments_model("note", note), {})  # pyright: ignore[reportUnknownArgumentType]["properties"]["text"] == {"type": "string"}
+    schema = schema_of(arguments_model("note", note), {})  # pyright: ignore[reportUnknownArgumentType]
+    assert schema["properties"]["text"] == {"type": "string"}
+
+
+# A model that follows the schema fills text for an untyped `cantidad=1`: the default says the type.
+def test_a_parameter_with_a_default_and_no_annotation_is_the_defaults_type() -> None:
+    def add(self: object, *, quantity=1, share=0.5, gift=False, note="") -> None:  # noqa: ANN001 # pyright: ignore[reportMissingParameterType]
+        """Add."""
+
+    properties = schema_of(arguments_model("add", add), {})["properties"]
+    assert [properties[name]["type"] for name in ("quantity", "share", "gift", "note")] == [
+        "integer",
+        "number",
+        "boolean",
+        "string",
+    ]
 
 
 def test_a_name_no_model_can_call_is_refused() -> None:
