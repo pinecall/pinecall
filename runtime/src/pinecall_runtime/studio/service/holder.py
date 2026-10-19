@@ -250,7 +250,9 @@ class StudioSocket:
         }
         values = {**run.values, "secrets": await self.holder.secrets(self.org, self.env)}
         request = fetch.post_of(collect.send_to, collect.headers, body, values)
-        answer = await fetch.send(self.holder.http, request, name="data collection", timeout_s=10.0)
+        answer = await fetch.send(
+            self.holder.http, request, name="data collection", timeout_s=10.0, resolver=self.holder.resolver
+        )
         if answer.error is not None:
             logger.warning(
                 "studio %s/%s: the results of %s were not taken: %s", self.org, run.agent, call, answer.error
