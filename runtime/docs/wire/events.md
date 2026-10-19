@@ -41,6 +41,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `error` | agent | no | [events-control.md](events-control.md) | Something went wrong. |
 | `event.received` | call | no | [events-room.md](events-room.md) | A fact arrived from outside the conversation: the tenant's backend sent call.event, or a participant's browser sent pinecall.event. |
 | `fleet.full` | agent | no | [events-control.md](events-control.md) | The gateway refused to open a call because every worker of the fleet was full. |
+| `judge.broke` | feed | yes | [events-control.md](events-control.md) | A judge found a sealed call broken; its name, never its reason or its evidence. |
 | `log.caught_up` | call | yes | [events-control.md](events-control.md) | The replay is done: everything up to seq has been sent and what follows is live. |
 | `log.gap` | call | yes | [events-control.md](events-control.md) | This reader missed a stretch: it reconnected too late for the store, or fell behind and the fanout dropped ephemeral entries. |
 | `memory.ops` | call | no | [events-app.md](events-app.md) | What memory did for this turn or at hangup: a recall before the reply, a remember after the call, a forget on request. |
@@ -70,6 +71,8 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `supervisor.transferred` | call | no | [events-control.md](events-control.md) | A supervisor asked for a transfer. |
 | `supervisor.whispered` | call | no | [events-control.md](events-control.md) | A supervisor told the agent something the caller never heard. |
 | `tool.call` | call | no | [events-app.md](events-app.md) | The model called a tool. |
+| `tool.failed` | feed | yes | [events-control.md](events-control.md) | A tool of a call failed or timed out; its name and seconds, never its error, arguments or output. |
+| `tool.ran` | feed | yes | [events-control.md](events-control.md) | A tool of a call answered; its name and seconds, never its arguments or its output. |
 | `tool.result` | call | no | [events-app.md](events-app.md) | The app answered a tool.call. |
 | `tools.changed` | call | no | [events-app.md](events-app.md) | The tools the model can see changed. |
 | `track.published` | call | no | [events-room.md](events-room.md) | A participant put a track on the room: their microphone, their camera, a screen. |

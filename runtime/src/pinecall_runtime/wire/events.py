@@ -7,7 +7,7 @@ from pydantic import Field
 from pinecall_runtime.enums import Channel, Direction, Env, Medium
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.wire.base import Entry, WireModel
-from pinecall_runtime.wire.feed import ReleaseChanged, RunChanged, WorkerChanged
+from pinecall_runtime.wire.feed import JudgeBroke, ReleaseChanged, RunChanged, ToolFailed, ToolRan, WorkerChanged
 from pinecall_runtime.wire.metrics import (
     AgentTurnMetrics,
     AvatarMetrics,
@@ -57,6 +57,7 @@ EPHEMERAL_EVENTS: frozenset[str] = frozenset(
     {
         "agent.transcript",
         "dev.request",
+        "judge.broke",
         "log.caught_up",
         "log.gap",
         "metrics.vad",
@@ -65,6 +66,8 @@ EPHEMERAL_EVENTS: frozenset[str] = frozenset(
         "release.changed",
         "room.sent",
         "run.changed",
+        "tool.failed",
+        "tool.ran",
         "user.transcript",
         "worker.changed",
     }
@@ -626,6 +629,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "error": ErrorEvent,
     "event.received": EventReceived,
     "fleet.full": FleetFull,
+    "judge.broke": JudgeBroke,
     "log.caught_up": LogCaughtUp,
     "log.gap": LogGap,
     "memory.ops": MemoryOps,
@@ -659,6 +663,8 @@ EVENTS: dict[str, type[WireModel]] = {
     "supervisor.transferred": SupervisorTransferred,
     "supervisor.whispered": SupervisorWhispered,
     "tool.call": ToolCall,
+    "tool.failed": ToolFailed,
+    "tool.ran": ToolRan,
     "tool.result": ToolResult,
     "tools.changed": ToolsChanged,
     "track.published": TrackPublished,

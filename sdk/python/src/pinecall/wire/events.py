@@ -82,6 +82,7 @@ EPHEMERAL_EVENTS: frozenset[str] = frozenset(
     {
         "agent.transcript",
         "dev.request",
+        "judge.broke",
         "log.caught_up",
         "log.gap",
         "metrics.vad",
@@ -90,6 +91,8 @@ EPHEMERAL_EVENTS: frozenset[str] = frozenset(
         "release.changed",
         "room.sent",
         "run.changed",
+        "tool.failed",
+        "tool.ran",
         "user.transcript",
         "worker.changed",
     }
@@ -262,6 +265,32 @@ class WorkerChanged(WireModel):
     cordoned: bool
 
 
+class ToolRan(WireModel):
+    """A tool of a call answered; its name and seconds, never its arguments or its output."""
+
+    call: str
+    agent: str
+    name: str
+    duration_s: float | None
+
+
+class ToolFailed(WireModel):
+    """A tool of a call failed or timed out; its name and seconds, never what it said."""
+
+    call: str
+    agent: str
+    name: str
+    duration_s: float | None
+
+
+class JudgeBroke(WireModel):
+    """A judge found a sealed call broken; its name, never its reason or its evidence."""
+
+    call: str
+    agent: str
+    judge: str
+
+
 class LogCaughtUp(WireModel):
     """The replay is done: everything up to seq has been sent and what follows is live."""
 
@@ -337,6 +366,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "error": ErrorEvent,
     "event.received": EventReceived,
     "fleet.full": FleetFull,
+    "judge.broke": JudgeBroke,
     "log.caught_up": LogCaughtUp,
     "log.gap": LogGap,
     "memory.ops": MemoryOps,
@@ -369,6 +399,8 @@ EVENTS: dict[str, type[WireModel]] = {
     "supervisor.transferred": SupervisorTransferred,
     "supervisor.whispered": SupervisorWhispered,
     "tool.call": ToolCall,
+    "tool.failed": ToolFailed,
+    "tool.ran": ToolRan,
     "tool.result": ToolResult,
     "tools.changed": ToolsChanged,
     "track.published": TrackPublished,

@@ -378,8 +378,9 @@ differ and the columns that do: `facts rebuild
 --call` mends one. Its `offers` line names the rooms a caller joined over a minute ago that are
 still kept: three offers 12 s apart let every room go before then, so one still kept is a room no
 gateway is sweeping. `drift rebuild [--org <org id>] [--since YYYY-MM-DD]` forgets the drift of
-the days the flags name (every org's and every day's when none), each stage's histogram and each
-judge's count that `/v1/insights` and `/v1/insights/drift` read, and counts every sealed call of
+the days the flags name (every org's and every day's when none), each stage's histogram, each
+judge's count, each tool's day and each call's slowest turns that `/v1/insights`, `/v1/insights/drift`,
+`/v1/insights/tools` and `/v1/insights/slow` read, and counts every sealed call of
 them again from its log, each in a transaction of its own; it prints how many sealed calls it read
 and how many it counted. A seal whose count broke says so in the gateway's journal, and this is what
 mends it.

@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **Per-tool stats, the slowest turns and the vendors of the series.** Three new reads of what the
+  seal folds: `GET /v1/insights/tools` (every tool of the window: results, failures, median seconds
+  and the newest failure with its call, time and error), `GET /v1/insights/slow` (the window's
+  slowest turns with where the wait went: hearing, thinking, tools, speaking; `limit` 1 to 50) and,
+  in `GET /v1/insights/series`, a top-level `vendors` (each stage by vendor and model over the whole
+  window). The seal counts them into two new tables, `tool_days` and `slow_turns` (migration
+  `000004`); `pinecall-runtime drift rebuild` counts the sealed calls before this into them, and
+  erasing a call deletes its slow turns and empties the failure it left on a tool's day. An org's
+  export carries both. `docs/protocol/console-api.md` says them whole.
+- **The org's feed says a tool ran or failed and a judge broke.** `tool.ran` and `tool.failed`
+  (call, agent, tool name, seconds) when a `tool.result` is written, and `judge.broke` (call, agent,
+  judge) once per broken judge when a call is sealed. Ephemeral, never stored, and with no content:
+  no arguments, output, error, reason or evidence. The three are in the TypeScript, Python and Ruby
+  registries and in `@pinecall/core`'s.
+
 ## 0.11.6 — A realtime call's waits are measured (2026-10-19)
 
 - **A voice call on a realtime model has its waits measured.** A realtime model's caller turn

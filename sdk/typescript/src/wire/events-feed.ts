@@ -1,4 +1,4 @@
-/** What a feed says of a change no log holds: a run, a release, a worker, each by its ids alone. */
+/** What a feed says of a change no log holds: a run, a release, a worker, a tool, a judge, by ids alone. */
 
 import { z } from "zod";
 
@@ -21,4 +21,27 @@ export const WorkerChangedSchema = z.strictObject({
   fleet: z.string(),
   up: z.boolean(),
   cordoned: z.boolean(),
+});
+
+/** A tool of a call answered; its name and seconds, never its arguments or its output. */
+export const ToolRanSchema = z.strictObject({
+  call: z.string(),
+  agent: z.string(),
+  name: z.string(),
+  duration_s: z.number().nullable(),
+});
+
+/** A tool of a call failed or timed out; its name and seconds, never its error, arguments or output. */
+export const ToolFailedSchema = z.strictObject({
+  call: z.string(),
+  agent: z.string(),
+  name: z.string(),
+  duration_s: z.number().nullable(),
+});
+
+/** A judge found a sealed call broken; its name, never its reason or its evidence. */
+export const JudgeBrokeSchema = z.strictObject({
+  call: z.string(),
+  agent: z.string(),
+  judge: z.string(),
 });

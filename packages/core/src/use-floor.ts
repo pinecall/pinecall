@@ -13,6 +13,21 @@ import type { Connection } from "./stream";
 /** Newest calls to read; older ones are paged via `calls-search.ts`. */
 export const FLOOR_ROWS = 50;
 
+// The entries that change a row of the list. The feed also carries the tools that ran and the
+// judges that broke, one frame each: those say nothing the list draws, and must not read it again.
+const WHAT_MOVES_A_ROW = [
+  "call.ringing",
+  "call.dialing",
+  "call.started",
+  "call.ended",
+  "call.summary",
+  "call.score",
+  "attention.requested",
+  "attention.answered",
+  "supervisor.took_over",
+  "supervisor.released",
+] as const;
+
 /** Org calls newest first, stream status and last error. */
 export interface Floor {
   lines: SessionLine[];
@@ -54,6 +69,7 @@ export function useFloor(limit = FLOOR_ROWS): Floor {
       })();
     },
     {
+      types: WHAT_MOVES_A_ROW,
       // /v1/events has no backlog or seq: a frame only triggers a refetch.
       onEntry(entry) {
         if (entry.type === "agent.registered" || entry.type === "agent.detached") {

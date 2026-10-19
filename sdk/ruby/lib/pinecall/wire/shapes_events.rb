@@ -273,6 +273,23 @@ module Pinecall
           up: { kind: :bool, required: true },
           cordoned: { kind: :bool, required: true }
         }.freeze,
+        "ToolRan" => {
+          call: { kind: :str, required: true },
+          agent: { kind: :str, required: true },
+          name: { kind: :str, required: true },
+          duration_s: { kind: :float, null: true, required: true }
+        }.freeze,
+        "ToolFailed" => {
+          call: { kind: :str, required: true },
+          agent: { kind: :str, required: true },
+          name: { kind: :str, required: true },
+          duration_s: { kind: :float, null: true, required: true }
+        }.freeze,
+        "JudgeBroke" => {
+          call: { kind: :str, required: true },
+          agent: { kind: :str, required: true },
+          judge: { kind: :str, required: true }
+        }.freeze,
         "LogCaughtUp" => {
           seq: { kind: :int, required: true }
         }.freeze,

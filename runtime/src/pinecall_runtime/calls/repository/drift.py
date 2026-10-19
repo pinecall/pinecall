@@ -1,4 +1,4 @@
-"""The drift tables: a sealed call claimed once, its stages and verdicts added into its day."""
+"""The drift tables: a sealed call claimed once, its stages, verdicts and tools added into its day."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import Row, bindparam, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB, insert
 
-from pinecall_runtime.calls.models import CallLogHead, DriftCall
+from pinecall_runtime.calls.models import CallLogHead, DriftCall, SlowTurn
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
@@ -40,6 +40,30 @@ on conflict (org, env, holder, day, agent, config_version, judge, criteria) do u
     broken = kept.broken + excluded.broken
 """).bindparams(bindparam("verdicts", type_=JSONB))
 
+# A tool's results add into its day like a stage's; the newest failure of the two stands.
+TOOLS_ADDED = text("""
+insert into tool_days as kept (org, env, holder, agent, day, tool, ran, failed, buckets,
+                               last_error_call, last_error_at, last_error_text)
+select :org, :env, :holder, :agent, :day, found.tool, found.ran, found.failed, found.buckets,
+       found.last_error_call, found.last_error_at, found.last_error_text
+from jsonb_to_recordset(:tools) as found(tool text, ran integer, failed integer, buckets integer[],
+     last_error_call text, last_error_at double precision, last_error_text text)
+on conflict (org, env, holder, day, agent, tool) do update set
+    ran = kept.ran + excluded.ran,
+    failed = kept.failed + excluded.failed,
+    buckets = (select array_agg(mine + theirs order by at)
+               from unnest(kept.buckets, excluded.buckets) with ordinality as bucket(mine, theirs, at)),
+    last_error_call = case when excluded.last_error_at is not null
+                            and (kept.last_error_at is null or excluded.last_error_at >= kept.last_error_at)
+                           then excluded.last_error_call else kept.last_error_call end,
+    last_error_text = case when excluded.last_error_at is not null
+                            and (kept.last_error_at is null or excluded.last_error_at >= kept.last_error_at)
+                           then excluded.last_error_text else kept.last_error_text end,
+    last_error_at = case when excluded.last_error_at is not null
+                          and (kept.last_error_at is null or excluded.last_error_at >= kept.last_error_at)
+                         then excluded.last_error_at else kept.last_error_at end
+""").bindparams(bindparam("tools", type_=JSONB))
+
 # A side is a day, a version, or both; one agent's rows in the scope.
 ONE_SIDE = """
 where org = :org and env = :env and holder = :holder and agent = :agent
@@ -59,6 +83,13 @@ where org = :org and env = :env and holder = :holder
   and day >= :first and day <= :last and (cast(:agent as text) is null or agent = :agent)
 """)
 
+WINDOW_TOOLS = text("""
+select tool, ran, failed, buckets, last_error_call, last_error_at, last_error_text
+from tool_days
+where org = :org and env = :env and holder = :holder
+  and day >= :first and day <= :last and (cast(:agent as text) is null or agent = :agent)
+""")
+
 # A rebuild forgets what it will fold again, in one transaction, then folds call by call.
 FORGET = text("""
 with calls as (
@@ -66,6 +97,12 @@ with calls as (
     where (cast(:org as text) is null or org = :org) and (cast(:since as date) is null or day >= :since)
 ), stages as (
     delete from stage_days
+    where (cast(:org as text) is null or org = :org) and (cast(:since as date) is null or day >= :since)
+), tools as (
+    delete from tool_days
+    where (cast(:org as text) is null or org = :org) and (cast(:since as date) is null or day >= :since)
+), slow as (
+    delete from slow_turns
     where (cast(:org as text) is null or org = :org) and (cast(:since as date) is null or day >= :since)
 )
 delete from judge_days
@@ -140,6 +177,21 @@ class DriftRepository(Repository[DriftCall]):
         if verdicts:
             await self.session.execute(VERDICTS_ADDED, {**where.params(), "verdicts": list(verdicts)})
 
+    async def add_tools(self, where: Where, tools: Sequence[Mapping[str, Any]]) -> None:
+        """Add the tools' counts into the day's rows."""
+        if tools:
+            await self.session.execute(TOOLS_ADDED, {**where.params(), "tools": list(tools)})
+
+    async def add_slow_turns(self, where: Where, turns: Sequence[Mapping[str, Any]]) -> None:
+        """Keep the call's slowest turns; a turn kept already stays as it is."""
+        if turns:
+            rows = [
+                {"org": where.org, "env": where.env, "holder": where.holder, "agent": where.agent, "day": where.day}
+                | dict(turn)
+                for turn in turns
+            ]
+            await self.session.execute(insert(SlowTurn).on_conflict_do_nothing(), rows)
+
     async def side_stages(self, scope: Scope, agent: str, day: date | None, version: int | None) -> Sequence[Row[Any]]:
         """The stage rows of one side."""
         return (await self.session.execute(SIDE_STAGES, _side(scope, agent, day, version))).all()
@@ -152,15 +204,31 @@ class DriftRepository(Repository[DriftCall]):
 
     async def window_stages(self, scope: Scope, first: date, last: date, agent: str | None) -> Sequence[Row[Any]]:
         """Every stage row of the scope's days first to last."""
-        params = {
-            "org": scope.org,
-            "env": scope.env.value,
-            "holder": scope.holder,
-            "first": first,
-            "last": last,
-            "agent": agent,
-        }
-        return (await self.session.execute(WINDOW_STAGES, params)).all()
+        return (await self.session.execute(WINDOW_STAGES, _window(scope, first, last, agent))).all()
+
+    async def window_tools(self, scope: Scope, first: date, last: date, agent: str | None) -> Sequence[Row[Any]]:
+        """Every tool row of the scope's days first to last."""
+        return (await self.session.execute(WINDOW_TOOLS, _window(scope, first, last, agent))).all()
+
+    async def window_slow_turns(
+        self, scope: Scope, first: date, last: date, agent: str | None, limit: int
+    ) -> Sequence[SlowTurn]:
+        """The slowest turns of the scope's days first to last, slowest first."""
+        statement = (
+            select(SlowTurn)
+            .where(
+                SlowTurn.org == scope.org,
+                SlowTurn.env == scope.env,
+                SlowTurn.holder == scope.holder,
+                SlowTurn.day >= first,
+                SlowTurn.day <= last,
+            )
+            .order_by(SlowTurn.e2e_s.desc(), SlowTurn.at.desc(), SlowTurn.call, SlowTurn.seq)
+            .limit(limit)
+        )
+        if agent is not None:
+            statement = statement.where(SlowTurn.agent == agent)
+        return (await self.session.scalars(statement)).all()
 
     async def forget(self, org: str | None, since: date | None) -> None:
         """Drop the drift of the calls named: an org's, those since a day, or every one."""
@@ -190,4 +258,15 @@ def _side(scope: Scope, agent: str, day: date | None, version: int | None) -> di
         "agent": agent,
         "day": day,
         "version": version,
+    }
+
+
+def _window(scope: Scope, first: date, last: date, agent: str | None) -> dict[str, Any]:
+    return {
+        "org": scope.org,
+        "env": scope.env.value,
+        "holder": scope.holder,
+        "first": first,
+        "last": last,
+        "agent": agent,
     }

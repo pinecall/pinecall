@@ -91,7 +91,14 @@ import {
   CallSummarySchema,
   CallTransferredSchema,
 } from "./events-call.js";
-import { ReleaseChangedSchema, RunChangedSchema, WorkerChangedSchema } from "./events-feed.js";
+import {
+  JudgeBrokeSchema,
+  ReleaseChangedSchema,
+  RunChangedSchema,
+  ToolFailedSchema,
+  ToolRanSchema,
+  WorkerChangedSchema,
+} from "./events-feed.js";
 import {
   AvatarMetricsSchema,
   EOTInferenceMetricsSchema,
@@ -149,6 +156,7 @@ export const EVENT_SCHEMAS = {
   "error": ErrorEventSchema,
   "event.received": EventReceivedSchema,
   "fleet.full": FleetFullSchema,
+  "judge.broke": JudgeBrokeSchema,
   "log.caught_up": LogCaughtUpSchema,
   "log.gap": LogGapSchema,
   "memory.ops": MemoryOpsSchema,
@@ -181,6 +189,8 @@ export const EVENT_SCHEMAS = {
   "supervisor.transferred": SupervisorTransferredSchema,
   "supervisor.whispered": SupervisorWhisperedSchema,
   "tool.call": ToolCallSchema,
+  "tool.failed": ToolFailedSchema,
+  "tool.ran": ToolRanSchema,
   "tool.result": ToolResultSchema,
   "tools.changed": ToolsChangedSchema,
   "track.published": TrackPublishedSchema,
@@ -196,7 +206,7 @@ export const EVENT_SCHEMAS = {
 export type EventType = keyof typeof EVENT_SCHEMAS;
 
 /** Events a store may drop and a slow reader may miss: the entry's ephemeral flag defaults to this. */
-export const EPHEMERAL_EVENTS: ReadonlySet<EventType> = new Set<EventType>(["agent.transcript", "dev.request", "log.caught_up", "log.gap", "metrics.vad", "participant.speaking", "pong", "release.changed", "room.sent", "run.changed", "user.transcript", "worker.changed"]);
+export const EPHEMERAL_EVENTS: ReadonlySet<EventType> = new Set<EventType>(["agent.transcript", "dev.request", "judge.broke", "log.caught_up", "log.gap", "metrics.vad", "participant.speaking", "pong", "release.changed", "room.sent", "run.changed", "tool.failed", "tool.ran", "user.transcript", "worker.changed"]);
 
 /** Every command by its wire type; the codec looks the schema up here. */
 export const COMMAND_SCHEMAS = {

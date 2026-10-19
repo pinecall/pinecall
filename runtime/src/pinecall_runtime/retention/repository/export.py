@@ -128,6 +128,27 @@ FROM judge_days WHERE org = :org AND env = :env
 ORDER BY day, agent, config_version, judge, criteria
 """)
 
+TOOL_DAYS = text("""
+SELECT jsonb_build_object(
+    'kind', 'tool_day', 'holder', holder, 'agent', agent, 'day', day, 'tool', tool, 'ran', ran,
+    'failed', failed, 'buckets', buckets, 'last_error_call', last_error_call,
+    'last_error_at', last_error_at, 'last_error_text', last_error_text
+)::text AS line
+FROM tool_days WHERE org = :org AND env = :env
+ORDER BY day, agent, tool
+""")
+
+# The slowest turns of each call, with the caller's name.
+SLOW_TURNS = text("""
+SELECT jsonb_build_object(
+    'kind', 'slow_turn', 'holder', holder, 'agent', agent, 'day', day, 'call', call, 'seq', seq,
+    'at', at, 'name', name, 'e2e_s', e2e_s, 'hears_s', hears_s, 'thinks_s', thinks_s,
+    'tools_s', tools_s, 'speaks_s', speaks_s
+)::text AS line
+FROM slow_turns WHERE org = :org AND env = :env
+ORDER BY day, agent, call, seq
+""")
+
 # What follows the calls, in this order.
 AFTER_THE_CALLS: tuple[TextClause, ...] = (
     MEMORIES,
@@ -140,6 +161,8 @@ AFTER_THE_CALLS: tuple[TextClause, ...] = (
     PROMPTS,
     STAGE_DAYS,
     JUDGE_DAYS,
+    TOOL_DAYS,
+    SLOW_TURNS,
 )
 
 
