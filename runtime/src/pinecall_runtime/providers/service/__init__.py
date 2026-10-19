@@ -63,6 +63,7 @@ from pinecall_runtime.providers.service.plugins import (
 from pinecall_runtime.providers.service.prices import RatesChange, cost_of, rates_changed, rates_from_csv
 from pinecall_runtime.providers.service.stages import (
     build_ears,
+    build_realtime,
     build_thinking,
     build_voice,
     check_credentials,
@@ -111,6 +112,7 @@ __all__ = [
     "box_credentials",
     "build_ears",
     "build_pipeline",
+    "build_realtime",
     "build_thinking",
     "build_voice",
     "catalogue_of",

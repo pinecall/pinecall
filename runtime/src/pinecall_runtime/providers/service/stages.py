@@ -74,7 +74,8 @@ def counting_unreported_cache_as_none(stream: llm.LLMStream) -> llm.LLMStream:
                 setattr(details, count, 0)
         return processed(event)
 
-    setattr(stream, "_process_event", process)  # noqa: B010
+    # The stream's own hook, replaced on this instance alone; object.__setattr__ names it as data.
+    object.__setattr__(stream, "_process_event", process)
     return stream
 
 

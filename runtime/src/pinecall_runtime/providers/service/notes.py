@@ -17,7 +17,7 @@ from livekit.agents.utils.codecs import AudioStreamDecoder
 from pydantic import BaseModel, ConfigDict
 from pydantic import ValidationError as PydanticValidationError
 
-from pinecall_runtime.accounts.service.tokens import OUR_KEY_ID
+from pinecall_runtime.accounts.service import tokens
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
 from pinecall_runtime.kit.auth import Scope
@@ -262,7 +262,7 @@ def dictation_token(
         {"iat": moment, "exp": moment + DICTATION_TOKEN_TTL_S, "dictates": claims},
         _signing_key(own_key),
         algorithm="HS256",
-        headers={"kid": OUR_KEY_ID},
+        headers={"kid": tokens.OUR_KEY_ID},
     )
 
 

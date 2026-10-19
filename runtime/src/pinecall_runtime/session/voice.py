@@ -12,7 +12,6 @@ from smart_turn_livekit import SmartTurnDetector  # pyright: ignore[reportMissin
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.providers import service as providers
-from pinecall_runtime.providers.service.stages import build_realtime
 from pinecall_runtime.session.call import Call
 from pinecall_runtime.session.hearing import keyterms, policy_for
 from pinecall_runtime.session.listener import write_switches
@@ -34,7 +33,7 @@ MIN_SPEECH_S = 0.25
 
 def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
     """A voice call: the three stages built for it, the turn taken as a phone line needs."""
-    realtime = build_realtime(stages.llm)
+    realtime = providers.build_realtime(stages.llm)
     if realtime is not None:
         return _realtime_session(call, realtime, stages, lookup_budget_ms)
     thinking = providers.build_thinking(stages.llm)
