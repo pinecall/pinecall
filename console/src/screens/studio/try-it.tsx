@@ -1,10 +1,10 @@
 /** Try it: the agent as it was last saved, answering a person who types or talks, or a caller a model plays — with, under it, what production answers with. */
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { Icon, Segmented } from "../../ui";
 import { useRoom } from "../talk";
-import { fromRoom, Messages } from "./messages";
+import { fromRoom, Messages, type Message } from "./messages";
 import { Played, Pretend, usePlaying } from "./pretend";
 import "./try-it.css";
 
@@ -37,6 +37,8 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
   const [how, setHow] = useState<How>("type");
   const [over, setOver] = useState(false);
   const [text, setText] = useState("");
+  // What was written before the room was ready: on screen at once, until the room carries it.
+  const [queued, setQueued] = useState<string | null>(null);
   const simulating = playing.call !== null && !over;
   const inside = room.phase === "live" || room.phase === "connecting";
   const typed = text.trim() !== "";
@@ -47,14 +49,37 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
     setHow(chosen);
   };
 
+  // The line the room carries is the one the page held: it stops standing in for it.
+  const carried = room.lines.some((line) => line.kind === "said" && line.speaker === "user");
+  useEffect(() => {
+    if (queued !== null && (carried || room.phase === "failed" || room.phase === "ended")) setQueued(null);
+  }, [queued, carried, room.phase]);
+
   const send = (event: FormEvent): void => {
     event.preventDefault();
-    if (!typed || simulating || room.phase === "connecting") return;
+    if (!typed || simulating) return;
     const line = text.trim();
     setText("");
-    // With nothing open a line starts a written chat and is its first message; inside one it goes into it.
-    void (inside ? room.write(line) : room.open(how === "talk" ? "talk" : "chat", line));
+    if (room.phase === "live") {
+      void room.write(line);
+      return;
+    }
+    // Shown at once whatever the room is doing; sent when the agent has opened the call.
+    setQueued(line);
+    if (room.phase === "connecting") room.hold(line);
+    else void room.open(how === "talk" ? "talk" : "chat", line);
   };
+
+  // Reaching for the box is the intent: the room starts opening, so it is open by the time a line is written.
+  const warm = (): void => {
+    if (how === "type" && room.phase === "idle" && !simulating) void room.open("chat");
+  };
+
+  const shown: Message[] = [
+    ...(room.phase === "connecting" ? [{ kind: "note" as const, id: "joining", text: "Joining the room…" }] : []),
+    ...fromRoom(room.lines),
+    ...(queued === null ? [] : [{ kind: "said" as const, id: "queued", who: "caller" as const, text: queued, unsettled: true }]),
+  ];
 
   // Hanging up what is open, and a model left playing, then a chat as empty as at the start.
   const startOver = async (): Promise<void> => {
@@ -80,7 +105,7 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
         <Played call={playing.call} onOver={setOver} />
       ) : (
         <Messages
-          messages={fromRoom(room.lines)}
+          messages={shown}
           empty={
             <div className="sto-hello">
               <span className="sto-hello-icon" aria-hidden>
@@ -110,7 +135,8 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
               className="sto-write"
               aria-label="Write to the agent"
               value={text}
-              disabled={simulating || room.phase === "connecting"}
+              disabled={simulating}
+              onFocus={warm}
               placeholder={simulating ? `A model is playing ${playing.persona ?? "a caller"}…` : onVoice ? "Type into the call — a number, an address…" : "Type a message…"}
               onChange={(event) => setText(event.target.value)}
             />
@@ -119,7 +145,7 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
                 <Icon name="phone" size={15} />
               </button>
             ) : (
-              <button type="submit" className="sto-send" aria-label="Send" disabled={!typed || simulating || room.phase === "connecting"}>
+              <button type="submit" className="sto-send" aria-label="Send" disabled={!typed || simulating}>
                 <Icon name="arrow" size={16} />
               </button>
             )}

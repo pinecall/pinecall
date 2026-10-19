@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A save in Studio is heard by the calls already open in the sandbox.** The socket that holds a
+  Studio agent sent a call its prompt and its tools once, when it started, so a person trying the
+  agent in the console and changing its instructions asked the old ones. Now a save makes the sandbox's
+  open calls take the new definition: their next turn runs on it. Production's calls keep the one they
+  opened on, and a deploy answers from the next call, as `docs/protocol/studio.md` says.
 - **Per-tool stats, the slowest turns and the vendors of the series.** Three new reads of what the
   seal folds: `GET /v1/insights/tools` (every tool of the window: results, failures, median seconds
   and the newest failure with its call, time and error), `GET /v1/insights/slow` (the window's

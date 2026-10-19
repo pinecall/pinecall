@@ -143,6 +143,59 @@ async def test_a_call_is_answered_from_the_definition_its_tools_run_and_its_resu
     await asyncio.gather(following, return_exceptions=True)
 
 
+async def test_a_save_in_the_sandbox_is_heard_by_the_call_already_open(
+    gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient, faked_api: list[httpx.Request]
+) -> None:
+    """Trying the agent, a person changes its instructions: the call open takes them, its next turn runs on them."""
+    await made(gateway, tenant, agent)
+    context = a_voice_call(tenant, agent)
+    ours = gateway.app.state.studio.sockets[(tenant.org, Env.sandbox)].socket.id
+    await fleet.open(OpenCallRequest(agent=agent, context=context, app=ours))
+    commands: list[Command] = []
+
+    async def follow() -> None:
+        async for command in fleet.commands(context.call):
+            commands.append(command)
+
+    following = asyncio.create_task(follow())
+    writing = Writing(partial(fleet.append_many, context.call), context.call)
+    writing.open()
+    started = CallStarted.model_validate(
+        {
+            "channel": "web",
+            "direction": "inbound",
+            "from": "+59899123456",
+            "to": agent,
+            "caller": None,
+            "started_at": time.time(),
+        }
+    )
+    await writing.write("call.started", started)
+
+    def identity() -> str:
+        sent = [c.data["text"] for c in commands if c.type == "prompt.set" and c.data["name"] == "identity"]
+        return sent[-1] if sent else ""
+
+    await until(lambda: identity().startswith("You answer the phone for Clínica Norte."))
+    before = len([c for c in commands if c.type == "tools.set"])
+    changed = clinic(instructions="Answer in one short line, for the clinic.").model_dump(
+        mode="json", exclude_none=True
+    )
+    saved = await gateway.http.put(f"/v1/studio/agents/{agent}", json={"definition": changed}, headers=tenant.person)
+    assert saved.status_code == 200, saved.text
+    await until(lambda: identity().startswith("Answer in one short line, for the clinic."))
+    # The tools are sent again with it: a tool added in the save is one the open call may call.
+    assert len([c for c in commands if c.type == "tools.set"]) > before
+
+    await writing.write(
+        "call.ended", CallEnded(reason="agent_hung_up", ended_by="agent", ended_at=time.time(), duration_s=3.0)
+    )
+    await writing.close(5)
+    await fleet.sealed(context.call, SealCallRequest(usage=[], outcome="done"))
+    following.cancel()
+    await asyncio.gather(following, return_exceptions=True)
+
+
 async def test_a_save_is_held_at_once_and_a_stopped_agent_is_let_go(
     gateway: Gateway, tenant: Tenant, agent: str
 ) -> None:

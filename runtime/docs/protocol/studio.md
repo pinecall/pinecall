@@ -75,9 +75,11 @@ is refused: a slug is one agent.
 For each call the socket is sent the call's entries as any app is: at `call.started` (or
 `call.attached`, rebuilding the call from its state) it sends `state.set` with what is collected,
 `prompt.set` for `identity`, `tools` and `view`, and `tools.set`; at `tool.call` it sends the
-request or runs `collect`, then `tool.result`; at `call.ended` it posts the results. A call keeps
-the definition it opened on while it runs on that gateway; a call handed to another gateway is
-rebuilt on the newest release.
+request or runs `collect`, then `tool.result`; at `call.ended` it posts the results. In the sandbox a
+save reaches the calls already open: the socket sends again the blocks that changed and
+`tools.set`, so a call's next turn runs on the new definition (the console's Try it is one). In
+production a call keeps the definition it opened on while it runs on that gateway, and a deploy
+answers from the next call; a call handed to another gateway is rebuilt on the newest release.
 
 ## The endpoints
 
