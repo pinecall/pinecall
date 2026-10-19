@@ -239,7 +239,7 @@ Where a ring lands, a developer's own phone and the agent's line: `PUT`·`DELETE
 An agent's settings and its lexicon: [settings-api.md](settings-api.md). The pipeline and its hold
 melody: [pipeline-api.md](pipeline-api.md). The knowledge bases and a contact's memory, and when a
 call looks either up: [../retrieval/spec.md](../retrieval/spec.md). The vendors, the org's own
-keys, the voices: [provider-keys.md](provider-keys.md). The widget: [console-api.md](console-api.md).
+keys, the voices, and a voice note or a dictation said back as text: [provider-keys.md](provider-keys.md). The widget: [console-api.md](console-api.md).
 An agent the platform runs itself, from sources the org uploads, and the org's secrets:
 [hosting.md](hosting.md). An agent built in the console, which the gateway holds itself:
 [studio.md](studio.md).

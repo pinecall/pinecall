@@ -20,3 +20,27 @@ Build an agent with no code, as the console's Studio does: made, its definition 
 | `release` | a whole number 1 or more |  | `deploy`: the sandbox's release to deploy; its newest when left out |
 | `note` | text |  | `new`, `save` and `deploy`: a note kept with the release |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+```json title="called with"
+{
+  "action": "try",
+  "name": "studio-smoke-130015",
+  "tool": "echo",
+  "arguments": {
+    "word": "pinecall"
+  }
+}
+```
+
+```json title="answered"
+{
+  "status": 200,
+  "body": {
+    "method": "GET",
+    "url": "https://httpbin.org/anything/pinecall",
+    "origin": "34.121.61.139"
+  },
+  "error": null,
+  "duration_ms": 254
+}
+```

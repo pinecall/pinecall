@@ -129,3 +129,22 @@ first-audio;dur=…, total;dur=…`. The words are read exactly as the settings 
 what plays is what saves. No `text` is the providers row's line for the language, else one in
 English. `400` past 400 characters; `429` past thirty samples a minute on one key; a vendor that
 refuses or does not answer is `502` in its own words.
+
+## Voice notes and dictation
+
+A chat's voice note, or a page's dictation, is said back as text by the ears a call hears with: the
+platform's default speech-to-text vendor, or the one `?stt=` names (`&model=` too), with the
+operator's options for it, on the org's own key or one the platform lends — the same keyring a call
+runs on. `?language=es` is the note's language, as a call's; `?hear=` (repeated) names words to
+expect, a brand or a product, written back as given where the vendor takes terms, as a call's
+lexicon names them. A key that opens `talk` or `pipeline` may ask, thirty times a minute.
+
+| endpoint | what |
+|---|---|
+| `POST /v1/transcriptions[?stt=&model=&language=&hear=]` | the note whole: the body is the audio, raw PCM as a browser records it (`Content-Type: audio/L16; rate=16000; channels=1`) or a container — WAV, WebM, Ogg, MP4, MP3 — decoded here, 8 MB at most. Answers `{text, language, audio_ms, vendor}`: the words, the language most of them were in, how much audio was heard, and the vendor that heard it |
+| `POST /v1/transcriptions/token[?stt=&model=&language=&hear=]` | a minute's token for one dictation, the ears and language asked for checked now against the org's keys: `{token, path, expires_in: 60, vendor}`. The page's server asks for it with the org's key, and the page never holds that key |
+| `WS /v1/transcriptions/stream?token=…` | the dictation itself, as it is spoken: raw 16 kHz mono PCM frames in, `{type: "interim" \| "final", text}` out as the words are heard; the text frame `end` closes the audio, and `{type: "done"}` follows once the last words are settled. A token that is no dictation token of this gateway's, or expired, is refused before the socket opens |
+
+An empty body is `400`; past 8 MB, `413`; past thirty a minute on one key, `429` with `Retry-After`;
+a vendor that is not installed or does not hear is `400`, and a vendor this org has no key for and is
+not lent is refused as a call would be.

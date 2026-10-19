@@ -26,7 +26,9 @@ What one agent would hear, decide and speak with on its next call, and how fast 
 Each stage is the vendor a call **would** be built with: the agent's settings, else the providers
 row's default for that modality. `talks` is the realtime model a voice call runs on alone, where the
 agent names one (`{ "vendor": "xai", "model": "grok-voice-3.0", … }`): then its voice calls use
-neither `hears` nor `speaks`, and `decides` answers its written calls; null otherwise. Nothing is built to answer. `providers` are the rows
+no `hears`, and `speaks` only where the realtime model cannot say given words itself (the recording
+notice, a greeting given as words, a read-back) — xAI's can, so its calls use no `speaks` at all — and
+`decides` answers the agent's written calls; null otherwise. Nothing is built to answer. `providers` are the rows
 `GET /v1/providers` answers this org ([provider-keys.md](provider-keys.md)); `defaults` and `models`
 are the providers row's, and `realtime` the models that hear and speak themselves, by vendor, as that
 page says. `medians` pools every turn of the agent's last twenty calls, livekit's own

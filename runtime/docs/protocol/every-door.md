@@ -314,6 +314,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/signup/verify` | — | The mailed code back: the org made, its admin seated, their first key and a login code. |
 | `POST` | `/v1/tokens` | talk | A room token for one of the key's agents, the dispatch to its environment's fleet inside it. |
 | `GET` | `/v1/usage` | usage | The org's metered rows after the cursor, their totals, and the next cursor. |
+| `POST` | `/v1/transcriptions` | talk · pipeline | The note's words, heard on the keys the org's calls run on. |
+| `POST` | `/v1/transcriptions/token` | talk · pipeline | A minute's token for one dictation on the org's keys, with the ears and language asked for. |
+| `WS` | `/v1/transcriptions/stream` | — | Raw 16 kHz PCM frames in, `{type: interim\|final, text}` out as it is heard; `end` closes the audio and `{type: done}` follows once the words are settled. |
 | `GET` | `/v1/voices` | pipeline | A vendor's own voices, as its plugin lists them; a vendor that lists none is a 404. |
 | `POST` | `/v1/voices/sample` | pipeline | The line said by that vendor's voice, over the path a call speaks on. |
 | `GET` | `/v1/whatsapp/webhook` | — | Meta subscribing: its challenge echoed back when it says this deployment's word. |

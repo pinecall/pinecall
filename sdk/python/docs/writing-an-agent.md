@@ -83,7 +83,7 @@ model that hears and speaks itself is not an `@llm`: `@realtime("xai/grok-voice-
 options={"voice": "eve"})` runs the agent's voice calls — phone and web — on it alone, with no ears
 and its own voice, while the `@llm` keeps answering the written ones; `pinecall providers` lists the
 vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
-such a model is refused at registration. A vendor that is not installed, or does not do the stage, is refused at registration. `@llm` fixes the
+such a model is refused at registration. A realtime model that says given words itself (xAI's Grok does) is the call's only voice: the recording notice, a greeting given as words and a confirmation's read-back are said by it, in its own voice; one that cannot leaves them to the agent's voice, and the call then has two. A vendor that is not installed, or does not do the stage, is refused at registration. `@llm` fixes the
 whole model: with it on the class, `--temperature`, `--llm-builds` and `--llm-option` are refused too.
 
 `@judge` is the model the agent's calls are judged on at hang-up, over the org's choice and

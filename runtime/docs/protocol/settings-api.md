@@ -70,7 +70,10 @@ and `realtime_options` (the model a voice call runs on alone, one that hears and
 `xai/grok-voice-3.0`, or a vendor alone for its plugin's own, as `GET /v1/providers` lists them under
 `realtime` — and its keyword arguments, `{"voice": "eve"}`; a written call keeps `llm`, which never
 names such a model: `400 xai/grok-voice-3.0 hears and speaks itself, so it is the agent's realtime
-and not its llm: …`; only on the org's own key for the vendor, `409` on a lent one), `judge`,
+and not its llm: …`; only on the org's own key for the vendor, `409` on a lent one; a realtime model
+that says given words itself — `capabilities.supports_say`, xAI's does — also says the recording notice, a
+greeting given as words and a read-back, so the call has one voice, and the agent's `tts` is not built;
+one that cannot keeps the `tts` for those lines alone), `judge`,
 `judge_builds`, `judge_options` (the model the agent's calls are judged on, named as `llm` is, over
 the org's choice at `PUT /v1/org/judging` and the platform's; on a key of the org's own, a local
 model's server among them through `judge_options` `{"base_url": …}`, its evals are never billed —

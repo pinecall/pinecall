@@ -1453,5 +1453,27 @@
         "billing_url": "https://billing.pinecall.io/"
       }
     }
+  ],
+  "studio": [
+    {
+      "args": {
+        "action": "try",
+        "name": "studio-smoke-130015",
+        "tool": "echo",
+        "arguments": {
+          "word": "pinecall"
+        }
+      },
+      "answer": {
+        "status": 200,
+        "body": {
+          "method": "GET",
+          "url": "https://httpbin.org/anything/pinecall",
+          "origin": "34.121.61.139"
+        },
+        "error": null,
+        "duration_ms": 254
+      }
+    }
   ]
 }

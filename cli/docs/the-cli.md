@@ -1223,7 +1223,9 @@ that changes it builds it once before anything is kept, so a model or an option 
 take is refused in our words. No class is named: the runtime builds the plugin's realtime one. An
 `--llm` that names a realtime model is refused, `400 xai/grok-voice-3.0 hears and speaks itself, so it
 is the agent's realtime and not its llm: …`. What is said verbatim (the recording notice, a greeting
-given as words, a read-back) is still the voice's. `clear realtime` gives the voice calls back to the
+given as words, a read-back) is said by the realtime model itself when it can say given words —
+xAI's Grok can, so the call has one voice, its own; a realtime model that cannot leaves them to the
+agent's voice (`--voice`, `--tts`), and the call then has two. `clear realtime` gives the voice calls back to the
 ears, the LLM and the voice. The console offers the same models in Configure ▸ LLM, under *On voice
 calls*.
 

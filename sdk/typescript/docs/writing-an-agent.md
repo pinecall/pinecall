@@ -75,7 +75,7 @@ model that hears and speaks itself is not an `@llm`: `@realtime("xai/grok-voice-
 voice: "eve" } })` runs the agent's voice calls — phone and web — on it alone, with no ears and its
 own voice, while the `@llm` keeps answering the written ones; `pinecall providers` lists the
 vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
-such a model is refused at registration. A vendor that is not installed, or does not do the stage, is refused at registration. A decorator
+such a model is refused at registration. A realtime model that says given words itself (xAI's Grok does) is the call's only voice: the recording notice, a greeting given as words and a confirmation's read-back are said by it, in its own voice; one that cannot leaves them to the agent's voice, and the call then has two. A vendor that is not installed, or does not do the stage, is refused at registration. A decorator
 fixes the whole stage: with `@llm` in the class, `--temperature`, `--llm-builds` and `--llm-option`
 are refused too. The settings take the same knobs for a class that leaves the stage to them
 (`pinecall agent set --temperature 0.3 --llm-builds responses.LLM --llm-option use_websocket=true`). The rest are `static` fields: an instance field is the call's state, so one of these
