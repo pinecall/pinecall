@@ -1,10 +1,10 @@
-/* Studio: the form on the left, scrolling on its own, and the live preview filling the right. */
+/* Studio: the definition in tabs on the left, scrolling on its own, and the agent to try filling the right. */
 
 .sto-grid {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 40%);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -12,40 +12,19 @@
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 28px 28px 56px 32px;
+  padding: 24px 28px 48px;
+}
+
+.sto-form-in {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-width: 840px;
+  margin: 0 auto;
 }
 
-.sto-form > * {
+.sto-form-in > * {
   flex: 0 0 auto;
-}
-
-.sto-preview {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--line-3);
-}
-
-.sto-preview > section {
-  flex: 1;
-  min-height: 0;
-}
-
-.sto-preview-note {
-  flex: none;
-  padding: 11px 18px;
-  border-bottom: 1px solid var(--line-3);
-  font-size: 12.5px;
-  color: var(--ink-4);
-}
-
-.sto-preview-note strong {
-  color: var(--ink-2);
-  font-weight: 500;
 }
 
 @media (max-width: 1000px) {
@@ -58,12 +37,169 @@
   .sto-form {
     overflow-y: visible;
   }
+}
 
-  .sto-preview {
-    min-height: 560px;
-    border-left: 0;
-    border-top: 1px solid var(--line-3);
-  }
+/* ── the agent's head ─────────────────────────────────────────────────────── */
+
+.sto-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+
+.sto-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.sto-head-words {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sto-head-name {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.sto-head-sub {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.sto-head-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+}
+
+.sto-head .ui-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sto-tab-mark {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ground-5);
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+/* ── the instructions ─────────────────────────────────────────────────────── */
+
+.sto-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sto-blurb {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.sto-editor {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.sto-instructions {
+  min-height: 260px;
+  padding: 16px 18px;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.sto-insert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line-2);
+  background: var(--ground-3);
+}
+
+.sto-insert-label {
+  padding-right: 4px;
+  font-size: 12px;
+  color: var(--ink-5);
+}
+
+.sto-insert-one {
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sto-insert-one:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-6);
+}
+
+.sto-insert-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-5);
+}
+
+.sto-tip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--amber-tint);
+  box-shadow: inset 0 0 0 1px light-dark(#f3dfa0, rgb(245 158 11 / 0.3));
+}
+
+.sto-tip-icon {
+  display: inline-flex;
+  color: var(--amber);
+}
+
+.sto-tip-said {
+  flex: 1 1 240px;
+  font-size: 13px;
+}
+
+.sto-tip-go {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ── a section's form ─────────────────────────────────────────────────────── */
@@ -104,12 +240,6 @@
   margin: 0;
   font-size: 13.5px;
   color: var(--ink-2);
-}
-
-.sto-instructions {
-  min-height: 220px;
-  font-family: var(--face-fixed);
-  font-size: 12.5px;
 }
 
 .sto-label {
@@ -248,4 +378,65 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+/* ── studio with no agent in view: the agents built here ──────────────────── */
+
+.sto-home {
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.sto-home-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  color: var(--ink);
+}
+
+.sto-home-row + .sto-home-row {
+  border-top: 1px solid var(--line-2);
+}
+
+.sto-home-row:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.sto-home-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.sto-home-words {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sto-home-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sto-home-sub {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.sto-home-go {
+  display: inline-flex;
+  color: var(--ink-5);
+  transform: rotate(-90deg);
 }

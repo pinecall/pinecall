@@ -1,6 +1,7 @@
 /** Studio in production: the release answering there, read and never edited — the sandbox is where it changes. */
 
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { dayAndTime } from "../../lib/format";
 import { inTheOtherWorld } from "../../lib/mode";
@@ -17,9 +18,14 @@ export function Answering({ agent }: { agent: StudioAgent }): ReactNode {
         title={agent.name}
         lede={`Release ${agent.release} answers in production · deployed by ${agent.author} · ${dayAndTime(agent.saved_at)}${agent.stopped ? " · stopped" : ""}`}
         actions={
-          <Button size="md" onClick={() => window.location.assign(inTheOtherWorld(window.location.pathname))}>
-            Open it in the sandbox
-          </Button>
+          <>
+            <Link to="/studio" className="sto-head-link">
+              All agents in Studio
+            </Link>
+            <Button size="md" onClick={() => window.location.assign(inTheOtherWorld(window.location.pathname))}>
+              Open it in the sandbox
+            </Button>
+          </>
         }
       />
       <p className="sto-hint">Edit it in the sandbox, then Deploy.</p>

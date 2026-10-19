@@ -9,6 +9,7 @@ import { WORLD } from "../../lib/mode";
 import { Card, Page, PageHead } from "../../ui";
 import { readStudioAgent, type StudioAgent } from "./door";
 import { Editor } from "./editor";
+import { StudioHome } from "./home";
 import { Answering } from "./production";
 import "./studio.css";
 
@@ -29,6 +30,12 @@ function refusal(failed: unknown): string {
 export function Studio(): ReactNode {
   const agent = useParams()["agent"] ?? "";
   const credentials = useCredentials();
+  // No agent in view: the agents built here, and the way to build another.
+  if (agent === "") return <StudioHome />;
+  return <StudioOf agent={agent} credentials={credentials} />;
+}
+
+function StudioOf({ agent, credentials }: { agent: string; credentials: ReturnType<typeof useCredentials> }): ReactNode {
   const [standing, setStanding] = useState<StudioAgent | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
 

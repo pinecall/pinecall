@@ -28,7 +28,7 @@ const workspace = (world: "production" | "sandbox"): string[] =>
 
 describe("production's console", () => {
   it("looks at the org from four rows: its overview, every call, how they are judged, and its agents", () => {
-    expect(looked(ORG_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality", "Observability", "Agents", "Knowledge"]);
+    expect(looked(ORG_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality", "Observability", "Agents", "Studio", "Knowledge"]);
   });
 
   it("lists under Agents what runs them: the apps the box hosts and the secrets they start with", () => {
@@ -96,7 +96,7 @@ describe("the box's screens", () => {
 
 describe("the sandbox's console", () => {
   it("is the workshop: the same rows looked at, no numbers, people or bill, and its own API keys, provider keys and notices", () => {
-    expect(looked(ORG_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Observability", "Agents", "Knowledge"]);
+    expect(looked(ORG_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Observability", "Agents", "Studio", "Knowledge"]);
     expect(workspace("sandbox")).toEqual(["Privacy", "Settings"]);
     expect(tabs(ORG_SCREENS, "org-settings", "sandbox")).toEqual(["API keys", "Providers", "Telemetry", "Alerts", "Phone testing"]);
   });

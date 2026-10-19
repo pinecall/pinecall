@@ -1,4 +1,4 @@
-/** The Agents screen's New agent form: a name, an agent made in Studio, and Studio opened on it once the gateway holds it. */
+/** The New agent form, on Studio and on the Agents screen: a name, an agent made in Studio, and Studio opened on it once the gateway holds it. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
@@ -7,7 +7,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { useOrg } from "../../lib/org";
 import { Button, Card, Field, Input, Refused } from "../../ui";
-import { makeStudioAgent } from "../studio";
+import { makeStudioAgent } from "./door";
 
 const A_SLUG = /^[a-z][a-z0-9-]*$/;
 const LONGEST = 40;
