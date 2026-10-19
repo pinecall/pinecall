@@ -32,7 +32,7 @@ One command, installed once per machine. It serves an agent in any of the three 
 > [!NOTE]
 > No account, and nothing sent to a cloud? `pinecall-runtime setup` runs the whole runtime on your
 > machine, open models included, and signs this machine in to it: skip `pinecall login` below.
-> [On your machine](/self-hosting/laptop/) walks it.
+> [On your machine](../../docs/pages/self-hosting/on-your-laptop.md) walks it.
 
 ### Sign in
 
