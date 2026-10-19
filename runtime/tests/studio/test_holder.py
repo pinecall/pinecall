@@ -32,8 +32,17 @@ async def made(gateway: Gateway, tenant: Tenant, agent: str) -> None:
         "/v1/studio/agents", json={"name": agent, "definition": definition}, headers=tenant.person
     )
     assert answered.status_code == 200, answered.text
+    # Every gateway of a parallel run shares Redis, so the registry says it is held as soon as any of
+    # them holds it: this gateway's own Studio socket is what the test's calls and asserts reach.
+    holder = gateway.app.state.studio
+
     registry = gateway.app.state.registry
-    await until(lambda: registry.is_held(tenant.org, agent))
+
+    def held_here() -> bool:
+        socket = holder.sockets.get((tenant.org, Env.sandbox))
+        return socket is not None and registry.on_socket(socket.socket.id, Env.sandbox, agent) is not None
+
+    await until(held_here)
 
 
 def a_voice_call(tenant: Tenant, agent: str) -> CallContext:
@@ -73,7 +82,10 @@ async def test_a_call_is_answered_from_the_definition_its_tools_run_and_its_resu
     """The prompt rendered for the caller, the lookup sent, collect saving the name, the fields posted at the end."""
     await made(gateway, tenant, agent)
     context = a_voice_call(tenant, agent)
-    await fleet.open(OpenCallRequest(agent=agent, context=context))
+    # Every gateway of the run shares Redis and so holds the agent too: the call is bound to this
+    # gateway's Studio socket, the one whose requests the fake agenda answers.
+    ours = gateway.app.state.studio.sockets[(tenant.org, Env.sandbox)].socket.id
+    await fleet.open(OpenCallRequest(agent=agent, context=context, app=ours))
     commands: list[Command] = []
 
     async def follow() -> None:
@@ -99,7 +111,8 @@ async def test_a_call_is_answered_from_the_definition_its_tools_run_and_its_resu
         sent = [c.data["text"] for c in commands if c.type == "prompt.set" and c.data["name"] == name]
         return sent[-1] if sent else None
 
-    await until(lambda: prompt("identity") is not None)
+    # The blocks go out in order, identity, tools, view: the last one landed is all of them.
+    await until(lambda: prompt("view") is not None)
     identity = prompt("identity") or ""
     assert identity.startswith("You answer the phone for Clínica Norte. The caller dials from +59899123456.")
     assert "<protocols>" in identity
