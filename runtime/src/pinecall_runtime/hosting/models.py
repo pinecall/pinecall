@@ -28,6 +28,8 @@ class HostedApp(Model):
     name: Mapped[str] = mapped_column(Text, primary_key=True)
     key_fingerprint: Mapped[str] = mapped_column(Text, nullable=False)
     sealed_key: Mapped[str] = mapped_column(Text, nullable=False)
+    # `code` the runner starts from its sources; `studio` the gateway holds, its key columns empty.
+    kind: Mapped[str] = mapped_column(Text, nullable=False, server_default="code", default="code")
     created_by: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
     # What the runner last said: the release it serves and under which host, or what failed.

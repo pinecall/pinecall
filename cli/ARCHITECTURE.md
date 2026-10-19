@@ -33,7 +33,7 @@ The domains, bottom up, each importing only the domains below it (their `service
 for a mark two terminals write the same way):
 
 ```
-billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · alerts · scaffold · dev · mcp
+billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · studio · alerts · scaffold · dev · mcp
 ```
 
 ## 3. The tree
@@ -45,7 +45,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `context.ts` | 102 | What a verb runs with: its IO, its env, and the project and gateway it asks for, resolved once on first use. |
 | `errors.ts` | 48 | Every error the CLI throws, each carrying the exit code `main.ts` answers with. |
 | `main.ts` | 83 | The entry: the program is run, and every error becomes one sentence and an exit code. |
-| `program.ts` | 56 | The command tree on one screen: the global flags, and one `register` call per domain. |
+| `program.ts` | 57 | The command tree on one screen: the global flags, and one `register` call per domain. |
 | `version.ts` | 9 | The version this CLI was published as: its own package.json's. |
 
 ### `kit/` — the toolkit, no business noun
@@ -68,6 +68,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `kit/stdin.ts` | 53 | Terminal input: a secret without echo, or the lines of a pipe. A key never lands in argv or the scrollback. |
 | `kit/table.ts` | 28 | Rows as aligned columns: the one table a verb prints. |
 | `kit/tarball.ts` | 93 | A project as a release: its files, never its secrets or its dependencies, as a gzipped tarball. |
+| `kit/zip.ts` | 70 | A zip archive read whole in memory: each file's path and bytes, stored or deflated, none outside the folder it is read into. |
 
 ### `api/` — the gateway, the only place `fetch` and `/v1/` appear
 
@@ -87,6 +88,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `api/judging.ts` | 55 | The judging endpoints: the judges of the org or of one agent, one tried on calls, and whether the org's calls are judged. |
 | `api/knowledge.ts` | 74 | The knowledge endpoints: the bases, a contact's memory, the recall and extraction goldens, and the settings an attachment lives in. |
 | `api/providers.ts` | 64 | The providers endpoints: the vendor catalog, and the org's own provider keys, written and named but never read. |
+| `api/studio.ts` | 143 | The Studio endpoints: the org's agents built in the console — listed, made, read, saved, deployed, a tool tried, the code zipped. |
 | `api/telephony.ts` | 192 | The telephony endpoints: the org's numbers and routes, its carrier accounts, an agent's line, the callbacks waiting. |
 
 ### `project/` — the tenant's folder
@@ -210,6 +212,14 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `hosting/render.ts` | 64 | Hosting as a terminal reads it: a release sent and settled, the apps, the releases, the logs. |
 | `hosting/service.ts` | 211 | Hosting: the project uploaded as a release Pinecall installs and runs, followed until live; the apps, their releases, logs, rollback, stop and start. |
 
+### `studio/`
+
+| file | lines | what it is |
+|---|---|---|
+| `studio/commands.ts` | 87 | `pinecall studio`: the agents built in the console's Studio — listed, made, pulled to a file and pushed back, a tool tried, deployed, their code. |
+| `studio/render.ts` | 45 | Studio as a terminal reads it: the agents, one made, a file pulled or pushed, a tool tried, a deploy, the code written. |
+| `studio/service.ts` | 193 | Studio: the org's agents built in the console — listed, made, pulled to a file and pushed over the release read, a tool tried, deployed, their code downloaded. |
+
 ### `alerts/`
 
 | file | lines | what it is |
@@ -257,7 +267,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/install/configs.ts` | 56 | Somebody else's config file, with exactly one entry changed: Pinecall's. Their servers, settings and comments stay. |
 | `mcp/install/hosts.ts` | 75 | The assistants `pinecall mcp install` writes into: where each keeps its MCP servers, in which format, under which key. |
 | `mcp/install/installing.ts` | 57 | `pinecall mcp install`: Pinecall written into every assistant on this machine, listed, or taken out — and what was done, line by line. |
-| `mcp/instructions.ts` | 34 | The server's instructions: the journey from nothing to an agent answering, and the tools by stage. Each tool's manual rides its own description. |
+| `mcp/instructions.ts` | 36 | The server's instructions: the journey from nothing to an agent answering, and the tools by stage. Each tool's manual rides its own description. |
 | `mcp/scrub.ts` | 15 | No secret crosses a model: every answer and every refusal of the MCP server passes here first. |
 | `mcp/server.ts` | 89 | The MCP server: every tool registered on one stdio connection, each answer scrubbed, each failure one sentence. |
 | `mcp/session.ts` | 184 | One MCP server's state — the project it works in, what it holds, what is in flight — and the Context each tool call runs with. |
@@ -271,13 +281,14 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/tools/evals.ts` | 267 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
 | `mcp/tools/fields.ts` | 22 | The fields many tools take, declared once so every schema says them in the same words. |
 | `mcp/tools/hosting.ts` | 55 | The `deploy` tool: the hosting domain, over its service. |
-| `mcp/tools/index.ts` | 39 | Every tool the MCP server offers, by the stage a person meets it at. |
+| `mcp/tools/index.ts` | 41 | Every tool the MCP server offers, by the stage a person meets it at. |
 | `mcp/tools/judging.ts` | 93 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
 | `mcp/tools/knowledge.ts` | 71 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
 | `mcp/tools/providers.ts` | 13 | The `providers` tool: the providers domain, over its service. |
 | `mcp/tools/runtime.ts` | 155 | The `runtime` tool: the runtime on this machine — what fits it, `pinecall-runtime setup` run from here, what it printed, and stopped. |
 | `mcp/tools/scaffold.ts` | 78 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
 | `mcp/tools/site.ts` | 50 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
+| `mcp/tools/studio.ts` | 43 | The `studio` tool: the studio domain, over its service. |
 | `mcp/tools/telephony.ts` | 77 | The `line`, `numbers`, `carriers` and `callbacks` tools: the telephony domain, over its service. |
 
 ## 4. What a verb is started with
@@ -306,6 +317,7 @@ too: `node --import tsx` on it prints what breaks a rule). What every test stand
 | `support/run.ts` | the CLI as typed: `main` in-process, the exit code and both streams back, stdin what the test pipes |
 | `support/project.ts` | a tenant's project on disk for one test, removed after it |
 | `support/fixtures.ts` | what the gateway answers, written once: limits, the catalog, settings and lexicon rows, judges, a run, a persona, a case |
+| `support/zip.ts` | a zip archive made in memory, as the gateway packs one: what `studio code` and `kit/zip` are tested with |
 | `support/fake-serve.mjs` | a serve entry a test scripts: its lines, a drain on SIGTERM, deaf on request |
 
 Nothing is mocked by module: a service is tested through the requests it sends and the answers it

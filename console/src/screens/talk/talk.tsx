@@ -23,30 +23,37 @@ export function Talk(): ReactNode {
   const agent = useParams()["agent"] ?? "";
   const live = useRoom(agent);
   const pane = usePane({ name: "agent.inspector", initial: 330, min: 260, max: 620, side: "right" });
-  // Nothing said yet and no call: the heading and the box sit in the middle, as a chat opens.
-  const fresh = live.lines.length === 0 && live.phase !== "live";
 
   return (
     <div className="talk-grid" style={pane.style}>
       {pane.handle}
-      <section className={fresh ? "talk-stage talk-stage-fresh" : "talk-stage"} aria-label={`Chat with ${agent}`}>
-        {live.phase !== "idle" && <Bar live={live} />}
-        <Refused>{live.error}</Refused>
-        {fresh ? (
-          <div className="talk-hello">
-            <h2 className="talk-hello-title">{live.phase === "connecting" ? "Joining the room…" : `What should ${agent} help with?`}</h2>
-            <Dock agent={agent} live={live} />
-          </div>
-        ) : (
-          <>
-            <Conversation lines={live.lines} />
-            <Dock agent={agent} live={live} />
-          </>
-        )}
-        {live.call !== null && <Marks call={live.call} heard={live.heard} />}
-      </section>
+      <Stage agent={agent} live={live} />
       <Inspector agent={agent} call={live.call} />
     </div>
+  );
+}
+
+/** The conversation and its box, over the room it is handed: the Playground's, and Studio's preview beside its form. */
+export function Stage({ agent, live }: { agent: string; live: Talking }): ReactNode {
+  // Nothing said yet and no call: the heading and the box sit in the middle, as a chat opens.
+  const fresh = live.lines.length === 0 && live.phase !== "live";
+  return (
+    <section className={fresh ? "talk-stage talk-stage-fresh" : "talk-stage"} aria-label={`Chat with ${agent}`}>
+      {live.phase !== "idle" && <Bar live={live} />}
+      <Refused>{live.error}</Refused>
+      {fresh ? (
+        <div className="talk-hello">
+          <h2 className="talk-hello-title">{live.phase === "connecting" ? "Joining the room…" : `What should ${agent} help with?`}</h2>
+          <Dock agent={agent} live={live} />
+        </div>
+      ) : (
+        <>
+          <Conversation lines={live.lines} />
+          <Dock agent={agent} live={live} />
+        </>
+      )}
+      {live.call !== null && <Marks call={live.call} heard={live.heard} />}
+    </section>
   );
 }
 

@@ -16,6 +16,7 @@ from pinecall_runtime.knowledge import endpoints as knowledge
 from pinecall_runtime.platform import endpoints as platform
 from pinecall_runtime.providers import endpoints as providers
 from pinecall_runtime.retention import endpoints as retention
+from pinecall_runtime.studio import endpoints as studio
 from pinecall_runtime.telephony import endpoints as telephony
 
 # In the canon's order, bottom up; `platform` is mounted apart, after them all.
@@ -33,6 +34,7 @@ DOMAINS = (
     calls,
     evals,
     hosting,
+    studio,
     retention,
 )
 

@@ -64,6 +64,7 @@ path end to end, with every output under it.
 | [`callbacks`](#callbacks) | the numbers people left when every seat was taken | yes |
 | [`data`](#data) | the org's data: erasures and their trail, its policy, consent, the do-not-call list, export | yes |
 | [`deploy`](#deploy) | this project run by the platform itself: uploaded as a release, installed and started there; list, releases, rollback, logs, stop, start, rm | yes |
+| [`studio`](#studio) | the agents built in the console's Studio, with no class: list, new, pull, push, try a tool, deploy, code | yes |
 | [`secrets`](#secrets) | the values the org's hosted apps are started with: list, set, rm — never read back | yes |
 | [`whoami`](#whoami) | which gateway, which org, which environments the key opens, and where the key came from | yes |
 | [`mcp`](#mcp) | the MCP server an assistant runs this CLI as; `mcp install` adds it to every assistant here | the tools do |
@@ -2141,6 +2142,56 @@ The sandbox's platform unless `--prod`; each environment hosts its own apps.
 The process prints no console link: a hosted app's output is a log, and a one-use code in a log is
 a way in for whoever reads it (see [`start`](#start)).
 
+## `studio`
+
+```console
+$ pinecall studio new front-desk
+front-desk: made in the sandbox as release 1 — `pinecall studio pull front-desk` writes it to a file
+$ pinecall studio pull front-desk
+front-desk: release 1 written to front-desk.studio.json
+$ pinecall studio push front-desk --note "books the visit"
+front-desk: front-desk.studio.json saved as release 2 in the sandbox
+$ pinecall studio try front-desk find_slot day=2026-10-21 people=2
+200 · 184 ms
+{
+  "free": 2
+}
+$ pinecall studio deploy front-desk --note "first week"
+front-desk: in production as release 1, answering from its next call
+```
+
+An agent built in the console's Studio is no class and no project: one **definition** — its
+instructions, its greeting (`say` the words, or `reply` for an opening of the model's own), the
+HTTP requests it may make as tools, and the data it collects from the caller, posted where you say
+when the call ends — kept by the gateway, which holds the agent itself. Nothing is started to talk
+to it: `pinecall chat front-desk` reaches it in the sandbox like any agent. It is a hosted app as
+[`deploy`](#deploy) uploads one, so `pinecall deploy list` shows it beside the others, counted against
+the same quota, and `deploy stop`, `start`, `rm` and `rollback` take it by name. Every save is a
+release, numbered, never edited.
+
+`pull` writes the newest release as `{"release": N, "definition": {…}}` to `<name>.studio.json`
+(`--out` names another file); edit it and `push` saves it as the next release **based on N**, then
+writes the new number into the file, so the next push goes over it. If someone saved in between —
+in the console or another terminal — the gateway refuses it (409, exit 1) and nothing is kept:
+pull again and edit that. A file that is not what `pull` writes is refused before anything is sent,
+naming the field; a push in which nothing changed keeps the release it was. A header's value
+names a secret as `{{secrets.NAME}}`, set with [`secrets`](#secrets) — never the secret itself, in the
+file or anywhere else; a definition that names a secret the environment does not have is refused.
+
+The sandbox's agents unless `--prod`. `deploy` is asked from the sandbox and lands in production: it
+takes a person's key that may act there, and the secrets the definition names must be set in
+production too.
+
+| | |
+|---|---|
+| `pinecall studio list` | the org's Studio agents in the environment: each one's release, who saved it, whether it is stopped |
+| `pinecall studio new <name>` | one made, starting from the template the gateway gives; the name is an app's: lower-case words and dashes, free among the org's apps and agents |
+| `pinecall studio pull <name> [--out <file>]` | the newest release written to a file, the release beside the definition |
+| `pinecall studio push <name> [--file <file>] [--note <why>]` | the file saved as the next release, over the release it was pulled at |
+| `pinecall studio try <name> <tool> [key=value …]` | the saved tool's request sent once, as a call would send it, and its status, time and body printed; a value that reads as a number or as `true`/`false` is sent as one, anything else as text |
+| `pinecall studio deploy <name> [--release <n>] [--note <why>]` | the sandbox's release — its newest unless `--release` — kept as production's next, answering from its next call |
+| `pinecall studio code <name> [--out <dir>]` | the agent as a TypeScript project of the framework's — the class `pinecall deploy` would run — saved as `<name>.zip`, or with `--out` its files written into that folder (under `<name>/`), none over a file already there |
+
 ## `secrets`
 
 ```console
@@ -2315,6 +2366,7 @@ code can call — over HTTP, in any language, with the same key.
 | any verb in a project | `GET /v1/login/orgs` and `POST /v1/login/org` once, when its `pinecall.json` names an org this machine has no key in yet |
 | `whoami` | `GET /v1/whoami` in the environment asked — the sandbox, or production with `--prod` |
 | `deploy` | `POST /v1/hosted/{name}/releases` (the tarball itself, `application/gzip`), then `GET /v1/hosted` every few seconds while it follows; `list` is `GET /v1/hosted`, `releases` `GET …/{name}/releases`, `rollback <n>` `POST …/{name}/rollback {release}`, `logs` `GET …/{name}/logs` every two seconds, `stop` · `start` `POST …/{name}/stop` · `…/start`, `rm` `DELETE /v1/hosted/{name}` |
+| `studio` | `list` is `GET /v1/studio/agents`, `new` `POST /v1/studio/agents {name, note}`, `pull` `GET /v1/studio/agents/{name}`, `push` `PUT …/{name} {definition, based_on, note}`, `try` `POST …/{name}/try {tool, arguments}`, `deploy` `POST …/{name}/deploy {release, note}` in the sandbox, `code` `GET …/{name}/code` (`application/zip`) |
 | `secrets` | `GET /v1/secrets` · `PUT`·`DELETE /v1/secrets/{name}` |
 | `telemetry` | `GET`·`PUT`·`DELETE /v1/telemetry` |
 | `monitors` | `GET`·`POST /v1/monitors` · `DELETE /v1/monitors/{id}` |

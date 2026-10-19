@@ -6,6 +6,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall studio`: the agents built in the console's Studio, from a terminal and from the MCP.**
+  `list`, `new <name>`, `pull <name>` (the definition as `<name>.studio.json`, the release it was
+  read at beside it), `push <name>` (the file saved as the next release over that one; refused when
+  someone saved meanwhile), `try <name> <tool> key=value…` (one tool's request sent once: status,
+  time, body), `deploy <name>` (the sandbox's release into production) and `code <name>` (the agent
+  as a TypeScript project: `<name>.zip`, or its files written into `--out`). The MCP's new `studio`
+  tool (`list`, `show`, `new`, `save`, `try`, `deploy`) builds one end to end, and `chat` talks to it.
+
 - **The MCP's `runtime` tool shows the stack before running it, and takes every stage.** A new
   action, `recommend`, answers what `pinecall-runtime setup --recommend` reads: the machine, where
   each vendor's key is (never its value), each measured model and whether it fits, and the stack

@@ -5,13 +5,15 @@ import { z } from "zod";
 import { drop, post, read, type Credentials } from "@pinecall/core/api";
 
 // runtime wire/rest/hosting.py: HostedAppRow. `release` is the newest, `live_release` the one
-// serving, `failed_why` why the newest did not build or start.
+// serving, `failed_why` why the newest did not build or start; `kind` is `code`, sources the runner
+// starts, or `studio`, an agent built in the console that the gateway holds.
 const HostedSchema = z.object({
   name: z.string(),
   release: z.number().int().nullable(),
   live_release: z.number().int().nullable(),
   failed_why: z.string().nullable(),
   stopped: z.boolean(),
+  kind: z.enum(["code", "studio"]),
   created_by: z.string(),
   created_at: z.number(),
 });

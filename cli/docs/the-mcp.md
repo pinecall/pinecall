@@ -157,6 +157,14 @@ Every parameter, and a real call of each: [Knowledge and memory](mcp/knowledge-a
 | `memory` | `show` · `policy` · `eval` | what the agent kept about a caller (naming no agent), what it keeps and never keeps (`policy` with neither list reads them), and `goldens/memory.json` |
 | `remember` | — | the extraction cases under `agents/<agent>/test/memory/`, run on the model and policy of the agent, held here or wherever it is held |
 
+### An agent with no code
+
+Every parameter, and a real call of each: [An agent with no code](mcp/studio.md).
+
+| tool | actions | what it does |
+|---|---|---|
+| `studio` | `list` · `show` · `new` · `save` · `try` · `deploy` | an agent built as the console's Studio builds it, with no class: made in the sandbox, its whole definition — instructions, greeting, HTTP tools, data collection — saved as the next release over the one read, each tool's request tried once, then `chat` with it by name and `deploy` it to production; a header names a secret as `{{secrets.NAME}}`, never its value |
+
 ### Going live, and the docs
 
 Every parameter, and a real call of each: [Going live, and the docs](mcp/going-live.md).

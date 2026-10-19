@@ -62,7 +62,7 @@ them all, since it deletes from their tables.
 
    ```
    platform · billing · accounts · compliance · providers · agents · knowledge · channels
-   · fleet · telephony · session · judging · alerts · calls · evals · hosting · retention · jobs
+   · fleet · telephony · session · judging · alerts · calls · evals · hosting · studio · retention · jobs
    ```
 
    `judging` is what a judge and a persona are and how a finished call is read and judged; it sits

@@ -1,11 +1,12 @@
 /** Apps: the org's hosted apps in this world — their state, time served, and logs, releases, stop, start, remove. */
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { useWorld } from "../../lib/world";
-import { Card, Empty, Page, PageHead, Pill, Refused, TableHead, TextAction } from "../../ui";
+import { Card, Empty, Page, PageHead, Pill, Refused, TableHead, Tag, TextAction } from "../../ui";
 import { readHosted, readServed, removeApp, startApp, stopApp, type Hosted } from "./door";
 import { firstLine, hours, servedByApp, stateOf } from "./fold";
 import { LogsPanel } from "./logs";
@@ -150,17 +151,22 @@ function Row({
   remove: (name: string) => void;
 }): ReactNode {
   const state = stateOf(app);
+  // A Studio agent is edited in Studio, and has no process of its own whose lines could be read.
+  const studio = app.kind === "studio";
   return (
     <div className="apps-row">
       <div className="ui-table-row" style={{ gridTemplateColumns: COLUMNS }}>
-        <span className="ui-cell-strong ui-clip">{app.name}</span>
+        <span className="ui-cell-strong ui-clip apps-name">
+          {studio ? <Link to={`/a/${encodeURIComponent(app.name)}/studio`}>{app.name}</Link> : app.name}
+          {studio && <Tag>Studio</Tag>}
+        </span>
         <span>
           <Pill tone={state.tone}>{state.text}</Pill>
         </span>
         <span className="ui-cell-ink ui-clip">{app.created_by}</span>
         <span className="ui-cell-faint ui-cell-right apps-hours">{hours(seconds)}</span>
         <span className="apps-actions">
-          <TextAction onClick={() => open(app.name, "logs")}>{opened === "logs" ? "Hide logs" : "Logs"}</TextAction>
+          {!studio && <TextAction onClick={() => open(app.name, "logs")}>{opened === "logs" ? "Hide logs" : "Logs"}</TextAction>}
           <TextAction onClick={() => open(app.name, "releases")}>{opened === "releases" ? "Hide releases" : "Releases"}</TextAction>
           {app.stopped ? <TextAction onClick={() => start(app.name)}>Start</TextAction> : <TextAction onClick={() => stop(app.name)}>Stop</TextAction>}
           <TextAction danger onClick={() => remove(app.name)}>

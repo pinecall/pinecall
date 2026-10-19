@@ -1,11 +1,15 @@
 """The hosting rules, one module per noun; what other domains use is named here once."""
 
 from pinecall_runtime.hosting.service.apps import (
+    CODE,
     LARGEST_SOURCE,
+    STUDIO,
     App,
     AppStatus,
     Runnable,
     Source,
+    StudioRelease,
+    check_code,
     checked_name,
     checked_source,
     delete_app,
@@ -14,13 +18,17 @@ from pinecall_runtime.hosting.service.apps import (
     is_hosted,
     keep_release,
     key_of,
+    kind_of,
     list_apps,
     open_app,
+    open_studio,
     record_failed,
     record_live,
     release_of,
     releases_of,
     source_of,
+    studio_in,
+    studio_serving,
 )
 from pinecall_runtime.hosting.service.runner import Runner, run_runner
 from pinecall_runtime.hosting.service.running import (
@@ -44,8 +52,10 @@ from pinecall_runtime.hosting.service.secrets import (
 )
 
 __all__ = [
+    "CODE",
     "LARGEST_SOURCE",
     "LOGS_CHANNEL",
+    "STUDIO",
     "App",
     "AppStatus",
     "Logs",
@@ -53,7 +63,9 @@ __all__ = [
     "Runner",
     "Secret",
     "Source",
+    "StudioRelease",
     "ask_for_logs",
+    "check_code",
     "checked_name",
     "checked_source",
     "count_serving",
@@ -66,10 +78,12 @@ __all__ = [
     "keep_logs",
     "keep_release",
     "key_of",
+    "kind_of",
     "list_apps",
     "list_secrets",
     "month_of",
     "open_app",
+    "open_studio",
     "put_secret",
     "record_failed",
     "record_live",
@@ -81,4 +95,6 @@ __all__ = [
     "source_of",
     "start_app",
     "stop_app",
+    "studio_in",
+    "studio_serving",
 ]

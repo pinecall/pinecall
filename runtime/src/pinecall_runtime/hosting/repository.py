@@ -100,7 +100,15 @@ class HostedAppRepository(Repository[HostedApp]):
 
     # Two uploads of a new app at once: the second insert writes nothing.
     async def open(
-        self, org: str, env: Env, name: str, *, key_fingerprint: str, sealed_key: str, created_by: str
+        self,
+        org: str,
+        env: Env,
+        name: str,
+        *,
+        key_fingerprint: str,
+        sealed_key: str,
+        created_by: str,
+        kind: str = "code",
     ) -> bool:
         """Start hosting the app; False when another request opened it first."""
         statement = (
@@ -112,6 +120,7 @@ class HostedAppRepository(Repository[HostedApp]):
                 key_fingerprint=key_fingerprint,
                 sealed_key=sealed_key,
                 created_by=created_by,
+                kind=kind,
             )
             .on_conflict_do_nothing(index_elements=["org", "env", "name"])
             .returning(HostedApp.name)

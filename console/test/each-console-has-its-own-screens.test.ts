@@ -102,7 +102,7 @@ describe("the sandbox's console", () => {
   });
 
   it("has every screen of an agent, Dev chat among them", () => {
-    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Playground", "Dev chat", "Test", "Goldens", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Widget", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
+    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Studio", "Playground", "Dev chat", "Test", "Goldens", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Widget", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
   });
 });
 
@@ -110,7 +110,7 @@ describe("the sandbox's console", () => {
 describe("an agent's screens", () => {
   it("are the org's three rows looked at, then what builds the agent, and never a word the workspace says", () => {
     expect(looked(AGENT_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality"]);
-    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
     const words = rowsOf(AGENT_SCREENS, "production").map((screen) => screen.name);
     expect(words.filter((word) => workspace("production").includes(word))).toEqual([]);
   });

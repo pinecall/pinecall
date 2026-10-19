@@ -50,7 +50,7 @@ The domains, bottom up; a domain imports a domain below it — its `service`, or
 shared mark — never one above, and never another's `commands`:
 
 ```
-setup · billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · alerts · scaffold
+setup · billing · accounts · providers · agents · knowledge · telephony · judging · calls · evals · hosting · studio · alerts · scaffold
 · dev · mcp
 ```
 

@@ -1,0 +1,251 @@
+/* Studio: the form on the left, scrolling on its own, and the live preview filling the right. */
+
+.sto-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 40%);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.sto-form {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 28px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sto-form > * {
+  flex: 0 0 auto;
+}
+
+.sto-preview {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-3);
+}
+
+.sto-preview > section {
+  flex: 1;
+  min-height: 0;
+}
+
+.sto-preview-note {
+  flex: none;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--line-3);
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.sto-preview-note strong {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+@media (max-width: 1000px) {
+  .sto-grid {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sto-form {
+    overflow-y: visible;
+  }
+
+  .sto-preview {
+    min-height: 560px;
+    border-left: 0;
+    border-top: 1px solid var(--line-3);
+  }
+}
+
+/* ── a section's form ─────────────────────────────────────────────────────── */
+
+.sto-body {
+  padding: 4px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.sto-body p {
+  margin: 0;
+}
+
+.sto-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-4);
+}
+
+.sto-wrong {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.sto-said {
+  margin: 0;
+  font-size: 13px;
+  color: var(--green);
+}
+
+.sto-refused {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.sto-instructions {
+  min-height: 220px;
+  font-family: var(--face-fixed);
+  font-size: 12.5px;
+}
+
+.sto-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.sto-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* ── rows: headers, parameters, fields ────────────────────────────────────── */
+
+.sto-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sto-row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+
+.sto-row-header {
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr) auto;
+}
+
+.sto-row-param {
+  grid-template-columns: minmax(0, 0.8fr) 110px minmax(0, 1.4fr) auto auto;
+}
+
+.sto-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* ── a tool ───────────────────────────────────────────────────────────────── */
+
+.sto-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line-3);
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.sto-tool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sto-tool-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sto-try {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--ground-side);
+}
+
+.sto-try-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.sto-try-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.sto-try-args {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.sto-try-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sto-try-status {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+
+.sto-try-status-bad {
+  color: var(--red);
+}
+
+.sto-try-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.sto-try-body {
+  max-height: 320px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--ground);
+}
+
+/* ── production's read-only view ──────────────────────────────────────────── */
+
+.sto-read {
+  white-space: pre-wrap;
+}
+
+.sto-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}

@@ -42,6 +42,7 @@ from pinecall_runtime.livekit import key_pair, open_servers
 from pinecall_runtime.postgres import POOL_WAIT_S, STATEMENT_TIMEOUT_MS, box_task, create_engine, session_maker
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.redis import open_signal
+from pinecall_runtime.studio import service as studio
 from pinecall_runtime.telephony import service as telephony
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,9 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     threads = calls.Threads(serving, registry)
     await threads.load()
     await _started(stack, threads)
+    # The agents built in Studio, held by this gateway on its own app socket.
+    holder = studio.Holder(serving, threads, http)
+    await _started(stack, holder)
     key_cache = keys.KeyCache(sessions, signal)
     await _started(stack, key_cache)
     outbox = mail.Outbox(sessions, vault, _box_mailbox(settings))
@@ -149,6 +153,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         "offering": offering,
         "serving": serving,
         "threads": threads,
+        "studio": holder,
         "counters": serving.counters,
         "key_cache": key_cache,
         "sign_ins": signin.SignIns(sessions, vault, signal),

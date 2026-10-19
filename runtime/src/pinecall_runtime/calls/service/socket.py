@@ -21,6 +21,7 @@ from pinecall_runtime.calls.service.serving import Serving, claim_code, known_he
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.enums import Channel, ConsentKind
 from pinecall_runtime.exceptions import (
+    Conflict,
     PinecallError,
     QuotaExceeded,
     ServiceUnavailable,
@@ -56,6 +57,10 @@ type Close = Callable[[str], Awaitable[None]]
 
 # Sent on a stop: the SDK exits instead of reconnecting.
 STOPPED = "stopped"
+# The gateway's own Studio socket (studio/service/holder.py): a slug it holds is held by no other app.
+STUDIO_SDK = "studio"
+STUDIO_KEYS = "studio:"
+STUDIOS = "{slug} is a Studio agent of this org: Studio holds it, so give your app's agent another name"
 # `error` code on one agent killed by an admin (`POST /v1/agents/{slug}/kill`): the app keeps the others.
 KILLED = "killed"
 REFUSED = "refused"
@@ -240,6 +245,8 @@ class AppSocket:
 
     async def _register(self, slug: str, wanted: AgentRegister) -> None:
         keys.check_agent(self.actor, slug)
+        if not self.actor.key_id.startswith(STUDIO_KEYS) and self._held_by_studio(slug):
+            raise Conflict(STUDIOS.format(slug=slug))
         self.live.named(self.id, wanted.host)
         scope = self.scope
         others = self.registry.slugs_of(scope.org) - {slug}
@@ -355,6 +362,10 @@ class AppSocket:
         self.live.attach(bound.call, self.id)
         then = unanswered_tools(await served.log.whole()) if bound.after else []
         self.live.pumped(bound.call, after=bound.after, then=then)
+
+    def _held_by_studio(self, slug: str) -> bool:
+        scopes = (self.scope, agents_registry.orgs_own(self.scope))
+        return any(held.sdk == STUDIO_SDK for scope in scopes for held in self.registry.holders.get((scope, slug), ()))
 
     def _holds(self, slug: str) -> agents_registry.Registration:
         registration = self.registry.on_socket(self.id, self.scope.env, slug)

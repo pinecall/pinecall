@@ -5,11 +5,9 @@ import { Link } from "react-router";
 
 import type { HeldAgent } from "@pinecall/core/wire/rest-org";
 import { Refused, Select, SelectItem } from "../../ui";
-import { Composer, Conversation } from "../talk/lines";
-import { useRoom } from "../talk/use-room";
+import { Composer, Conversation, useRoom } from "../talk";
 import { NotRunning } from "./not-running";
 import { SLUG } from "./agent-code";
-import "../talk/talk.css";
 
 export function TryStep({ agents, onBack }: { agents: HeldAgent[]; onBack: () => void }): ReactNode {
   const [picked, setPicked] = useState("");

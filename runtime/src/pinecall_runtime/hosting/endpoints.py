@@ -21,6 +21,7 @@ from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.handles import Handles, TheHandles
 from pinecall_runtime.kit.http import capped_body
 from pinecall_runtime.postgres import Session, box_wide
+from pinecall_runtime.studio import service as studio
 from pinecall_runtime.wire.feed import ReleaseChanged
 
 router = APIRouter()
@@ -37,6 +38,12 @@ def _asked_by(actor: Actor) -> str:
 
 def _app(actor: Actor, name: str) -> service.App:
     return service.App(org=actor.org, env=actor.env, name=name)
+
+
+# Committed first: the gateways that hear it read the rows this request wrote.
+async def _studio_changed(session: Session, handles: Handles, actor: Actor) -> None:
+    await session.commit()
+    studio.changed(handles.signal, actor.org, actor.env)
 
 
 # ── the org's hosted apps ──
@@ -63,6 +70,7 @@ async def upload_release(
 ) -> schemas.ReleaseRow:
     """The project's sources as the app's next release."""
     app = _app(actor, service.checked_name(name))
+    await service.check_code(session, app)
     source = await asyncio.to_thread(
         service.checked_source, await capped_body(request, service.LARGEST_SOURCE, "a release")
     )
@@ -91,20 +99,27 @@ async def release_source(name: str, release: int, actor: AppKey, session: Sessio
 
 
 @router.post("/v1/hosted/{name}/stop", status_code=204)
-async def stop_hosted_app(name: str, actor: AppKey, session: Session) -> None:
+async def stop_hosted_app(name: str, actor: AppKey, handles: TheHandles, session: Session) -> None:
     """Stop running the app: its process drains, and its releases and token stay."""
     await service.stop_app(session, _app(actor, name), by=_asked_by(actor))
+    await _studio_changed(session, handles, actor)
 
 
 @router.post("/v1/hosted/{name}/start", status_code=204)
-async def start_hosted_app(name: str, actor: AppKey, session: Session) -> None:
+async def start_hosted_app(name: str, actor: AppKey, handles: TheHandles, session: Session) -> None:
     """Run a stopped app again, its newest release."""
     await service.start_app(session, _app(actor, name))
+    await _studio_changed(session, handles, actor)
 
 
 @router.post("/v1/hosted/{name}/rollback")
 async def roll_back_release(
-    name: str, body: schemas.RollbackRequest, actor: AppKey, serving: TheServing, session: Session
+    name: str,
+    body: schemas.RollbackRequest,
+    actor: AppKey,
+    serving: TheServing,
+    handles: TheHandles,
+    session: Session,
 ) -> schemas.ReleaseRow:
     """An earlier release's sources kept again as the app's next release."""
     app = _app(actor, name)
@@ -113,6 +128,7 @@ async def roll_back_release(
         session, app, source, author=_asked_by(actor), note=ROLLED_BACK.format(release=body.release)
     )
     serving.logs.announce(actor.scope, "release.changed", ReleaseChanged(app=app.name, release=kept.release))
+    await _studio_changed(session, handles, actor)
     return schemas.ReleaseRow.of(kept)
 
 
@@ -141,10 +157,12 @@ async def hosted_usage(
 
 
 @router.delete("/v1/hosted/{name}", status_code=204)
-async def drop_hosted_app(name: str, actor: AppKey, session: Session, cache: KeyCacheDep) -> None:
+async def drop_hosted_app(name: str, actor: AppKey, handles: TheHandles, session: Session, cache: KeyCacheDep) -> None:
     """Stop hosting the app: its releases go, and its token is revoked."""
     stopped = await service.delete_app(session, _app(actor, name))
-    cache.forget(fingerprint_=stopped)
+    if stopped:
+        cache.forget(fingerprint_=stopped)
+    await _studio_changed(session, handles, actor)
 
 
 # ── the org's secrets ──
@@ -215,6 +233,8 @@ async def runner_heartbeat(
         serving_now = [
             (app.org, app.name) for app in wanted if any(service.is_a_host_of(app.name, h) for h in hosts[app.org])
         ]
+        # A Studio agent serves wherever a gateway holds it: it is counted while it runs, as an app is.
+        serving_now += await service.studio_serving(session, env)
         await service.count_serving(session, env, serving_now, datetime.now(UTC))
     return schemas.RunnerHeartbeatResponse(
         env=env,

@@ -9,7 +9,7 @@ import { putSecret, readSecrets } from "../src/screens/secrets/door";
 const CREDENTIALS = { base: "/", key: "pk_test" };
 
 // runtime wire/rest/hosting.py, as the doors answer it.
-const AN_APP = { name: "clinica-norte", release: 3, live_release: 2, failed_why: null, stopped: false, created_by: "ana@clinica.uy", created_at: 1.5 };
+const AN_APP = { name: "clinica-norte", release: 3, live_release: 2, failed_why: null, stopped: false, kind: "code", created_by: "ana@clinica.uy", created_at: 1.5 };
 const A_RELEASE = { name: "clinica-norte", release: 3, sha256: "ab".repeat(32), bytes: 20480, author: "ana@clinica.uy", note: "", created_at: 2.5 };
 const A_SECRET = { name: "CRM_TOKEN", set_by: "ana@clinica.uy", set_at: 3.5 };
 

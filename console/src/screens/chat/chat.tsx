@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { Button, Field, Input, Refused, Select, SelectItem } from "../../ui";
-import { Inspector } from "../talk/inspector";
+import { Inspector } from "../talk";
 import { useWatchedCall } from "../call/use-watched-call";
 import { Bubbles, type Pending } from "./bubbles";
 import { endChat, readChatRoster, sayInChat, startChat, type Roster } from "./door";

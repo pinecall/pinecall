@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { firstLine, hours, readAgo, servedByApp, stateOf } from "../src/screens/apps/fold";
 
-const AN_APP = { name: "clinica-norte", release: 3, live_release: 3, failed_why: null, stopped: false, created_by: "ana@clinica.uy", created_at: 1.5 };
+const AN_APP = { name: "clinica-norte", release: 3, live_release: 3, failed_why: null, stopped: false, kind: "code" as const, created_by: "ana@clinica.uy", created_at: 1.5 };
 
 describe("an app's state", () => {
   it("is live when the newest release is the one serving", () => {

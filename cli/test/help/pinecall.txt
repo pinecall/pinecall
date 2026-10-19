@@ -88,6 +88,9 @@ Commands:
                                  keys this org brought of its own
   deploy                         run this project on Pinecall: uploaded as a
                                  release, installed and started there
+  studio                         agents built in the console's Studio: made,
+                                 pulled to a file and pushed back, a tool tried,
+                                 deployed, their code
   monitors                       the numbers this org watches — latency, the
                                  judges, escalations, tools, spend — and the
                                  line each must not cross

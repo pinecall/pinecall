@@ -147,6 +147,13 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/hosted/{name}/rollback` | app | An earlier release's sources kept again as the app's next release. |
 | `POST` | `/v1/hosted/{name}/start` | app | Run a stopped app again, its newest release. |
 | `POST` | `/v1/hosted/{name}/stop` | app | Stop running the app: its process drains, and its releases and token stay. |
+| `GET` | `/v1/studio/agents` | app | The org's Studio agents in this environment, by name, each its newest release. |
+| `POST` | `/v1/studio/agents` | app | Make an agent in Studio: a hosted app the gateway holds, its first release the definition. |
+| `GET` | `/v1/studio/agents/{name}` | app | The agent's newest release and its definition. |
+| `PUT` | `/v1/studio/agents/{name}` | app | The definition kept as the agent's next release, over the release it was read at. |
+| `GET` | `/v1/studio/agents/{name}/code` | app | The agent as a TypeScript project of the framework's, zipped: the class `pinecall deploy` runs. |
+| `POST` | `/v1/studio/agents/{name}/deploy` | app | The sandbox's release kept as production's next: the agent answers there from the next call. |
+| `POST` | `/v1/studio/agents/{name}/try` | app | One tool's request sent once, as a call would send it; what came back. |
 | `GET` | `/v1/insights` | calls | Whole UTC days of the key's environment and scope at a glance, and the month's spend. |
 | `GET` | `/v1/monitors` | evals | The world's monitors — a number of the series watched over a window — each with the last day it fired. |
 | `POST` | `/v1/monitors` | evals | Watch a number: it fires, once a day on the agent's log, when it crosses the line over its window. |

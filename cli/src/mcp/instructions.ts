@@ -13,6 +13,8 @@ or with nothing held on whoever holds it: a terminal, a colleague, production's 
 \`calls\` lists what happened and \`call\` reads one call's log whole → \`agent\`, \`voices\`,
 \`lexicon\`, \`docs\` and \`memory\` tune it → \`deploy\` runs it on Pinecall → \`supervise\` watches a
 live call and moves on it → \`console_url\` opens the console for the person.
+\`studio\` is the way to an agent with no class: \`new\` → \`save\` its instructions, tools and data
+collection → \`try\` each tool → \`chat\` with it by name → \`deploy\` it.
 \`docs_search\` and \`get_doc\` read docs.pinecall.io: read a page whole before writing code from it.
 
 Every tool acts in the sandbox, and in production when asked with \`prod: true\`; the org's own

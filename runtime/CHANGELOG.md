@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Studio: an agent built in the console, held by the gateway.** A Studio agent is instructions, a
+  greeting, HTTP tools (a request to the business's own API, `{param}` in the URL, `{{secrets.NAME}}`
+  in a header) and data collection (fields the agent gathers, the call ended once the required ones
+  are in, the results posted where the definition says). It is a hosted app of the new kind
+  `studio` (`hosted_apps.kind`, migration `000003`): counted against `hosted_apps`, metered as an
+  app is, listed in `GET /v1/hosted`, its releases its definition. The gateway holds every running
+  one on an app socket of its own and answers its calls with the wire an SDK speaks; an app of the
+  org's registering its slug is refused. The endpoints are `/v1/studio/agents` (list, make, read,
+  save over the release read, try a tool, deploy the sandbox's release to production, and the
+  agent as a TypeScript project zipped); `docs/protocol/studio.md` says them whole. Sources uploaded
+  under a Studio agent's name are refused.
+
 - **A voice call can run on a realtime model, which hears and speaks itself.** An agent whose LLM
   stage names a realtime model's class (`llm-builds realtime.RealtimeModel`, xAI's Grok Voice on the
   org's own key) has its spoken calls run on it: no ears, the model taking the turn and answering in
