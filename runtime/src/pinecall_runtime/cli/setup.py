@@ -1,4 +1,4 @@
-"""`setup`: this machine's runtime in one verb: Docker, the stack that fits it, its admin, its sign-in, the models."""
+"""`setup`: this machine's runtime in one verb: Docker, the providers found, the open models, its admin, its sign-in."""
 
 import os
 import subprocess
@@ -13,6 +13,7 @@ from pinecall_runtime.cli import setup_models as models_
 from pinecall_runtime.cli import setup_person as person_
 from pinecall_runtime.cli import setup_servers as servers
 from pinecall_runtime.cli.command import OK, Context, context_of, verb
+from pinecall_runtime.cli.output import Printer
 from pinecall_runtime.exceptions import UpstreamError, ValidationError
 from pinecall_runtime.providers import service as providers
 
@@ -39,13 +40,14 @@ async def setup(
     ] = None,
     stt: Annotated[
         str | None,
-        typer.Option("--stt", help="Who hears the caller: local, local/<whisper model>, or a vendor of yours."),
+        typer.Option("--stt", help="The ears of an agent naming none: local, local/<whisper model>, or a vendor."),
     ] = None,
     turn: Annotated[
-        str | None, typer.Option("--turn", help="Who ends the caller's turn: stt, smart-turn or livekit.")
+        str | None, typer.Option("--turn", help="The end of turn of an agent naming none: stt, smart-turn or livekit.")
     ] = None,
     llm: Annotated[
-        str | None, typer.Option("--llm", help="Who thinks: local, local/<ollama model>, or a vendor of yours.")
+        str | None,
+        typer.Option("--llm", help="The thinking of an agent naming none: local, local/<ollama model>, or a vendor."),
     ] = None,
     judge: Annotated[
         str | None,
@@ -55,7 +57,9 @@ async def setup(
         str | None,
         typer.Option("--caller", help="Who plays the simulated caller: as --llm; the thinking's model when not given."),
     ] = None,
-    tts: Annotated[str | None, typer.Option("--tts", help="Who speaks: local, or a vendor of yours.")] = None,
+    tts: Annotated[
+        str | None, typer.Option("--tts", help="The voice of an agent naming none: local, or a vendor.")
+    ] = None,
     chat_only: Annotated[
         bool, typer.Option("--chat-only", help="Written calls alone: no LiveKit, no worker, no ears, no voice.")
     ] = False,
@@ -63,7 +67,7 @@ async def setup(
         bool, typer.Option("--password-stdin", help="The console person's password read as one line of stdin.")
     ] = False,
     yes: Annotated[
-        bool, typer.Option("--yes", "-y", help="Ask nothing: the stack that fits this machine, and no password.")
+        bool, typer.Option("--yes", "-y", help="Ask nothing: a key missing refuses, and no password.")
     ] = False,
     services_only: Annotated[
         bool, typer.Option("--services-only", help="Everything but running the gateway and the worker.")
@@ -81,7 +85,7 @@ async def setup(
         str | None, typer.Option("--person", help="Their name; the address's first part when not given.")
     ] = None,
 ) -> int:
-    """This machine's runtime, from nothing to a class that answers, on the stack that fits it; safe to run again."""
+    """This machine's runtime, from nothing to a class that answers: every provider found, the open models that fit."""
     context = context_of(ctx)
     out = context.out
     if recommend:
@@ -90,9 +94,9 @@ async def setup(
     asking = sys.stdin.isatty() and not yes
     local.docker_or_refuse()
     out.line(f"docker     {_compose_version()}")
-    # Decided before anything is brought up: a stage picked, a key missing, both say so here.
-    choices, typed = _choices(models, stt, turn, llm, tts, judge, caller, asking=asking, chat_only=chat_only)
-    keys, found = models_.keys_for(choices, ask=_asked(typed, asking)) if choices else ({}, {})
+    # Decided before anything is brought up: the providers found, the open models, a key missing.
+    choices = _choices(models, stt, turn, llm, tts, judge, caller, chat_only=chat_only)
+    keys, found = _providers(choices, asking=asking, out=out) if choices else ({}, {})
     compose = local.write_shipped(where)
     services = ("postgres", "redis") if chat_only else local.SERVICES
     local.services_up(compose, services)
@@ -123,8 +127,8 @@ async def setup(
     )
 
 
-# What the flags say; else the stack that fits this machine — shown at a terminal, where a stage
-# may be changed before it runs.
+# The runtime's defaults, what an agent naming no stage runs on: what the flags say, else the open
+# models that fit this machine, else the vendors.
 def _choices(
     models: str | None,
     stt: str | None,
@@ -134,25 +138,18 @@ def _choices(
     judge: str | None,
     caller: str | None,
     *,
-    asking: bool,
     chat_only: bool,
-) -> tuple[models_.Choices | None, dict[str, str]]:
-    typed: dict[str, str] = {}
+) -> models_.Choices | None:
     if models == "none":
-        return None, typed
+        return None
     if models not in (None, "local", "keys"):
         raise ValidationError(f"--models is local, keys or none, not {models!r}")
-    named = any((stt, turn, llm, tts, judge, caller))
     if models == "keys":
         base = models_.ALL_KEYS
     elif models == "local":
         base = models_.ALL_LOCAL
     else:
-        machine = providers.detect(os.environ)
-        fits = providers.recommend(machine)
-        base = models_.recommended(fits)
-        if asking and not named:
-            base, typed = ask.chosen(machine, fits, base)
+        base = models_.recommended(providers.recommend(providers.detect(os.environ)))
     chosen = models_.Choices(
         stt=models_.local_or_vendor(stt or base.stt),
         turn=models_.turn_of(turn or base.turn),
@@ -170,14 +167,19 @@ def _choices(
             judge=chosen.judge,
             caller=chosen.caller,
         )
-    return models_.check_choices(chosen), typed
+    return models_.check_choices(chosen)
 
 
-# A key typed as its vendor was picked is not asked again; one still missing is, at a terminal.
-def _asked(typed: dict[str, str], asking: bool) -> models_.Ask | None:
-    if not typed and not asking:
-        return None
-    return lambda variable: typed.get(variable) or (ask.secret(variable) if asking else "")
+# Every key found is loaded, so an agent may name any vendor of yours with nothing to add; a key
+# the defaults need and found nowhere is asked for at a terminal, else refused.
+def _providers(choices: models_.Choices, *, asking: bool, out: Printer) -> tuple[dict[str, str], dict[str, str]]:
+    loaded, places = models_.keys_found()
+    out.line(models_.said_loading(places))
+    out.line(models_.said_providers(loaded))
+    out.line(models_.said_models(choices))
+    keys, found = models_.keys_for(choices, ask=ask.secret if asking else None)
+    # A real key wins over the word the embedder's plugin is given when none is.
+    return {**keys, **loaded}, {**found, **places}
 
 
 def _compose_version() -> str:

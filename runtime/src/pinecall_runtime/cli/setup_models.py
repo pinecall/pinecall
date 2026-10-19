@@ -164,14 +164,7 @@ def keys_for(
         if not providers.takes_a_key(vendor):
             continue
         variable = providers.key_variable(vendor)
-        where = providers.where_is_key(variable, environ, home)
-        secret = (
-            environ.get(variable, "").strip()
-            if where == providers.THE_ENVIRONMENT
-            else providers.key_from_shell(variable, home)
-            if where is not None
-            else None
-        )
+        secret, where = _read_key(variable, environ, home)
         if not secret and ask is not None:
             secret, where = ask(variable).strip(), TYPED
         if not secret or where is None:
@@ -180,3 +173,57 @@ def keys_for(
     # The embedder is local, on the openai plugin, whatever the stages: the plugin wants a key.
     given.setdefault("openai", NO_KEY_NEEDED)
     return given, found
+
+
+def keys_found(
+    *, environ: Mapping[str, str] = os.environ, home: Path | None = None
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Every installed vendor whose key is in the environment or a shell file, its key read; and where each one was."""
+    given: dict[str, str] = {}
+    found: dict[str, str] = {}
+    for vendor, plugin in sorted(providers.installed().items()):
+        if plugin.broken is not None or not providers.takes_a_key(vendor):
+            continue
+        variable = providers.key_variable(vendor)
+        secret, where = _read_key(variable, environ, home)
+        if secret and where is not None:
+            given[vendor], found[variable] = secret, where
+    return given, found
+
+
+def said_loading(found: Mapping[str, str]) -> str:
+    """Where the keys were read from: the environment first, then each shell file holding one."""
+    places = sorted(set(found.values()), key=lambda place: (place != providers.THE_ENVIRONMENT, place))
+    where = " and ".join(places) if places else "the environment and the shell's files"
+    return f"loading providers from {where} …"
+
+
+def said_providers(loaded: Mapping[str, str]) -> str:
+    """The vendors an agent may name with no key to add: each one whose key was found."""
+    if not loaded:
+        return "providers  no keys found: `pinecall providers add <vendor>` adds one"
+    count = f"{len(loaded)} key found" if len(loaded) == 1 else f"{len(loaded)} keys found"
+    return f"providers  {' · '.join(sorted(loaded))} — {count}"
+
+
+def said_models(choices: Choices) -> str:
+    """The open models this machine serves: an agent naming none runs on them."""
+    served = [
+        *choices.local_models,
+        *(["whisper"] if is_local(choices.stt) else []),
+        *(["kokoro"] if is_local(choices.tts) else []),
+    ]
+    if not served:
+        return "models     none served here: an agent runs on the providers"
+    return f"models     {' · '.join(served)} — open, served on this machine"
+
+
+# A variable's value and where it was: the environment, else the shell file setting it as plain
+# text; (None, the file) when the file's line expands, (None, None) when it is nowhere.
+def _read_key(variable: str, environ: Mapping[str, str], home: Path | None) -> tuple[str | None, str | None]:
+    where = providers.where_is_key(variable, environ, home)
+    if where == providers.THE_ENVIRONMENT:
+        return environ.get(variable, "").strip(), where
+    if where is not None:
+        return providers.key_from_shell(variable, home), where
+    return None, None

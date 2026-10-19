@@ -105,7 +105,7 @@ async def models(
 ) -> None:
     """The servers the choices need up, the keys they need kept, the row written: what `setup` does for the models."""
     served = models_up(where, choices, host_ollama=providers.answers(MODEL_PORTS["Ollama"]))
-    out.line("models     " + " · ".join(served) + " — open models, no account")
+    out.line("serving    " + " · ".join(served) + " — open models, no account")
     chosen = " · ".join(
         f"{choice} {stage}"
         for stage, choice in (

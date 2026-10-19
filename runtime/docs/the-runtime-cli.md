@@ -38,80 +38,43 @@ pinecall-runtime setup [--dir <path>] [--email <address>] [--person "…"] [--pa
 ```
 
 This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
-again. Typed with nothing after it, it does the right thing: it shows what the machine is and the
-stack that fits it, Enter runs it, and it asks who signs in to the console. Nothing is brought up
-before that is decided. Each step is one line, skipped when already done: Docker found (else the
-sentence that says what to install), the services up and the schema at this release, the console's
-admin, this machine signed in, the models, and the gateway and a worker running as `local up` runs
+again. Typed with nothing after it, it does the right thing: it loads the providers whose keys it
+finds, serves the open models that fit the machine, and asks who signs in to the console. Each step
+is one line, skipped when already done: Docker found (else the sentence that says what to install),
+the providers and the models, the services up and the schema at this release, the console's admin,
+this machine signed in, the models served, and the gateway and a worker running as `local up` runs
 them. It is this machine's runtime, for the person at it: a runtime several people reach is a
 deployment ([on Kubernetes](../../infra/README.md)).
 
-**The machine, and a stage at a time.** It reads the machine — the cards and their memory
-(`nvidia-smi`), Apple silicon and its unified memory, the cores and the RAM, whether Docker is
-here, whether an Ollama answers and which models it holds already, and where each vendor's key
-variable is: in the environment, or in a shell file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`,
-`~/.bash_profile`, `~/.profile`) not loaded into this terminal. A key's value is never shown; only
-where it is. From that it knows the stack that fits: the thinking is the best model of those
-measured (`providers/service/machine.py`: what each did when measured, the time to the first
-token, the memory it needs) whose memory fits the card beside the ears, the voice and the embedder;
-a machine with no GPU runs the three vendors instead, and a Mac the thinking on its own Ollama
-(Metal) with the ears and the voice in CPU containers. At a terminal it asks each stage in turn,
-listing everything that could run it with the one that fits marked:
+**The providers found, and the open models.** It asks no stage: what a call runs on is the
+agent's to name (`pinecall agent set --llm groq`, `--stt`, `--tts`, a realtime model such as
+`--realtime xai/grok-voice-3.0`, the console's Configure, or the class itself). Setup gives the
+runtime what an agent may name:
 
 ```console
-  this machine   NVIDIA L4 · 23.0 GB — 17.2 GB for the models beside the voice · Docker ✓ · Ollama ✓ (bge-m3:latest, gemma4:12b)
-
-  ears — who hears the caller
-    1  local                                    Whisper large-v3 turbo, on this machine   recommended
-    2  deepgram                                 DEEPGRAM_API_KEY in the environment
-       … 30 more: assemblyai, aws, azure … — type a name, Tab completes
-  ears [1]:
-
-  turn — who ends the caller's turn
-    1  smart-turn                               Smart Turn v3, on the worker's CPU   recommended
-    2  livekit                                  livekit's v1-mini, on the worker's CPU
-  turn [1]:
-
-  thinking — who thinks
-    1  local/nemotron-3.5-lightning:30b-a3b     Ollama · short by 7.8 GB
-    2  local/gemma4:12b                         Ollama · fits · 0.90 s to first token   recommended
-    3  local/gemma4:e4b                         Ollama · fits · 0.80 s to first token
-    4  anthropic                                ANTHROPIC_API_KEY in ~/.zshrc
-       … 12 more: aws, azure, baseten … — type a name, Tab completes
-  thinking [2]: 4
-  ANTHROPIC_API_KEY read from ~/.zshrc
-
-  voice — who speaks
-    1  local                                    Kokoro, on this machine   recommended
-    2  cartesia                                 CARTESIA_API_KEY — asked now if you pick it
-    3  deepgram                                 DEEPGRAM_API_KEY in the environment
-       … 37 more: asyncai, aws, azure … — type a name, Tab completes
-  voice [1]: 2
-  CARTESIA_API_KEY: ••••••••••••
-
-  judge — who judges a finished call   [the thinking's: anthropic]:
-
-  caller — who plays the simulated caller   [the thinking's: anthropic]:
-
-  the stack
-    ears local · turn smart-turn · thinking anthropic · voice cartesia · judge anthropic · caller anthropic
-  Enter runs it:
+docker     compose 2.39.1
+loading providers from the environment and ~/.zshrc …
+providers  cartesia · deepgram · groq · xai — 4 keys found
+models     gemma4:12b · whisper · kokoro — open, served on this machine
 ```
 
-A stage's list is what runs with nothing more asked: for the ears and the voice `local` (Whisper,
-Kokoro); for the thinking each measured model (whether it fits and by how much it is short) and
-every other tag the Ollama here holds, the embedder aside; for the turn the two models on the
-worker's CPU, and the ears' own endpointing when the ears chosen have one. Then each vendor whose
-key is found, and the stage's usual vendor (deepgram, anthropic, cartesia) whether or not it is.
-Every other installed vendor doing the stage is one line, `… 30 more` — its name picks it,
-completed as it is typed. The judge and the caller are one line each, on the thinking's model: Enter leaves
-them there, a name picks another, anything else lists what the thinking lists. Enter takes the
-marked default; a number or a name picks, a name from the rest too. A vendor's line says
-where its key is, and **a vendor picked with no key is asked for it there**, once, without echo —
-adding a provider is part of setup, not a verb typed after it; a key found in the environment or
-a shell file is read from there and the line says so. The stack is said on one line, and Enter runs
-it. `--yes`, or no terminal, runs the stack that fits without asking, and a key that is nowhere
-refuses. The flags are for a script: a flag names a stage and that stage is not asked.
+**Every key found is loaded.** For each installed vendor it looks for the key's variable in the
+environment, then in the shell's files (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`,
+`~/.profile`) not loaded into this terminal; a key found is read and given to the org `default`
+and to the box, so an agent names that vendor with nothing to add. A key's value is never shown; a
+line that expands (`$(…)`, `$OTHER`) is not read. `pinecall providers add <vendor>` adds one later.
+
+**The open models are the ones that fit.** It reads the machine — the cards and their memory
+(`nvidia-smi`), Apple silicon and its unified memory, the RAM, whether an Ollama answers and which
+models it holds — and serves the best measured model whose memory fits the card beside the ears,
+the voice and the embedder (`providers/service/machine.py`: what each did when measured, the time
+to the first token, the memory it needs), with Whisper and Kokoro; a Mac thinks on its own Ollama
+(Metal) with the ears and the voice in CPU containers. They are also **the runtime's defaults**:
+what an agent naming no stage runs on. A machine with no GPU serves none, and its defaults are
+deepgram, anthropic and cartesia; a default's key found nowhere is asked for at a terminal, once,
+without echo, and refuses under `--yes` or with no terminal. `--recommend` prints what it read
+and what fits, as JSON. The flags (`--llm`, `--stt`, `--tts`, `--turn`, `--judge`, `--caller`,
+`--models local|keys|none`) set the defaults instead.
 
 **The console's admin.** Every run makes sure somebody signs in to the console: the address
 `--email` names, or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an
@@ -131,8 +94,8 @@ makes here runs on this runtime, in `default`. A person's key, not a server's, b
 sandbox a person's console shows that person's own copy of the agents: what `pinecall start`
 holds is what the console they sign in to shows.
 
-**The models, a stage at a time.** Each of the ears (`--stt`), the thinking (`--llm`) and the
-voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
+**The defaults, a stage at a time.** What an agent naming no stage runs on. Each of the ears
+(`--stt`), the thinking (`--llm`) and the voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
 build runs (`providers installed` lists them). `local/<model>` names the open model itself: any
 tag Ollama pulls for the thinking, any model Speaches loads for the ears; the voice is Kokoro.
 `--judge` and `--caller` choose, the same way, who judges a finished call and who improvises the
@@ -146,7 +109,7 @@ Ollama already answering on :11434 is used instead of the container. Memory and 
 `bge-m3`, on Ollama, always: the embedder is never a choice, since changing it would blind every
 base and every memory. A vendor's key is read from its variable (`DEEPGRAM_API_KEY`,
 `<VENDOR>_API_KEY`) in the environment, else from the shell file that exports it as plain text,
-else asked once without echo, and held sealed by the org `default` and by the
+else asked once without echo at a terminal, and held sealed by the org `default` and by the
 box — the judges at hang-up and the simulated caller run on the box's keys, on the model chosen to
 think. The providers row is written for the choices and the console edits it from then on; a row
 already there is left as it is. `--models local` is every stage local, `--models keys` deepgram,

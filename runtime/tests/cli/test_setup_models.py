@@ -78,3 +78,31 @@ def test_what_is_checked_a_vendor_installed_doing_its_stage_and_one_local_voice(
     with pytest.raises(ValidationError, match="the local voice is Kokoro"):
         models.check_choices(models.Choices(tts="local/piper"))
     assert models.check_choices(models.Choices(llm="local/gemma4:12b", caller="acme")).calling == "acme"
+
+
+def test_every_key_found_is_loaded_and_where_it_was_said(tmp_path: Path) -> None:
+    """A vendor whose key is in the environment or a shell file is loaded; one that expands or is nowhere is not."""
+    (tmp_path / ".zshrc").write_text("export ACME_API_KEY='ak-z'\n", encoding="utf-8")
+    loaded, places = models.keys_found(environ={}, home=tmp_path)
+    assert loaded["acme"] == "ak-z" and places["ACME_API_KEY"] == "~/.zshrc"
+    assert models.said_loading(places) == "loading providers from ~/.zshrc …"
+    assert "acme" in models.said_providers(loaded)
+    from_env, said = models.keys_found(environ={"ACME_API_KEY": "ak-e"}, home=tmp_path)
+    assert from_env["acme"] == "ak-e" and said["ACME_API_KEY"] == providers.THE_ENVIRONMENT
+    (tmp_path / ".zshrc").write_text('export ACME_API_KEY="$(op read acme)"\n', encoding="utf-8")
+    expands, _ = models.keys_found(environ={}, home=tmp_path)
+    assert "acme" not in expands
+
+
+def test_the_lines_setup_says_name_the_providers_and_the_open_models() -> None:
+    """The providers with a key, counted; the open models this machine serves, or none on a stack of vendors."""
+    assert models.said_providers({"xai": "k", "cartesia": "k"}) == "providers  cartesia · xai — 2 keys found"
+    assert models.said_providers({"xai": "k"}) == "providers  xai — 1 key found"
+    assert models.said_providers({}) == "providers  no keys found: `pinecall providers add <vendor>` adds one"
+    assert models.said_loading({"A": providers.THE_ENVIRONMENT, "B": "~/.zshrc", "C": "~/.bashrc"}) == (
+        f"loading providers from {providers.THE_ENVIRONMENT} and ~/.bashrc and ~/.zshrc …"
+    )
+    assert models.said_models(models.Choices(llm="local/gemma4:12b")) == (
+        "models     gemma4:12b · whisper · kokoro — open, served on this machine"
+    )
+    assert models.said_models(models.ALL_KEYS) == "models     none served here: an agent runs on the providers"
