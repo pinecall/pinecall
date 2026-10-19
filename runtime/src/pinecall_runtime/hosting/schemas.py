@@ -30,6 +30,8 @@ class HostedAppRow(Row):
     failed_why: str | None
     # A person stopped it: nothing runs, and its releases and token stay.
     stopped: bool
+    # `code`, sources the runner starts; `studio`, an agent built in the console the gateway holds.
+    kind: str = "code"
     created_by: str
     created_at: datetime
 

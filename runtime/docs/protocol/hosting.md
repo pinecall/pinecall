@@ -20,12 +20,17 @@ From a terminal, the endpoints are two verbs of the `pinecall` CLI:
 until it is live or failed, with `list`, `releases`, `rollback <n>` and `rm`; `pinecall secrets`
 sets, lists and drops the org's secrets. Their page is `cli/docs/the-cli.md`.
 
+An app is of one of two kinds: `code`, the sources the runner starts, and `studio`, an agent built
+in the console that the gateway holds itself ([studio.md](studio.md)). A Studio agent is counted,
+metered and listed as an app; the runner is never told to start it, and sources uploaded under its
+name are refused.
+
 ## An app and its releases
 
 | endpoint | what |
 |---|---|
 | `POST /v1/hosted/{name}/releases[?note=]` | the body is the project as a gzipped tarball (`application/gzip`, no multipart); answers the release: `{name, release, sha256, bytes, author, note, created_at}` |
-| `GET /v1/hosted` | `{apps: [{name, release, live_release, failed_why, stopped, created_by, created_at}]}`, by name. `release` is the newest, `null` before the first; `live_release` the one serving the app now, `null` while none is; `failed_why` why the newest did not build or start, `null` when it did or is on its way |
+| `GET /v1/hosted` | `{apps: [{name, release, live_release, failed_why, stopped, kind, created_by, created_at}]}`, by name; `kind` is `code` or `studio`, and a Studio agent's `live_release` is its newest. `release` is the newest, `null` before the first; `live_release` the one serving the app now, `null` while none is; `failed_why` why the newest did not build or start, `null` when it did or is on its way |
 | `GET /v1/hosted/{name}/releases` | `{releases: [...]}`, newest first |
 | `GET /v1/hosted/{name}/releases/{release}/source` | the tarball as it was uploaded |
 | `POST /v1/hosted/{name}/rollback {release}` | release n's sources kept again as the next release, noted `rollback to release n`; answers the new release |

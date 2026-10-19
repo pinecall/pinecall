@@ -14,6 +14,7 @@ import { providers } from "./providers.js";
 import { runtime } from "./runtime.js";
 import { project } from "./scaffold.js";
 import { docsSearch, getDoc } from "./site.js";
+import { studio } from "./studio.js";
 import { callbacks, carriers, line, numbers } from "./telephony.js";
 
 /** One stage of the journey and its tools. */
@@ -33,6 +34,7 @@ export const STAGES: readonly Stage[] = [
   { stage: "Supervising a live call", page: "supervising", tools: [supervise] },
   { stage: "Testing", page: "testing", tools: [test, runs, cases, simulate, personas, judges, judging, evalTool] },
   { stage: "Knowledge and memory", page: "knowledge-and-memory", tools: [docs, memory, remember] },
+  { stage: "An agent with no code", page: "studio", tools: [studio] },
   { stage: "Going live, and the docs", page: "going-live", tools: [deploy, docsSearch, getDoc] },
 ];
 

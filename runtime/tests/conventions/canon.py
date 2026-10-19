@@ -26,6 +26,7 @@ DOMAINS = (
     "calls",
     "evals",
     "hosting",
+    "studio",
     "retention",
     "jobs",
 )

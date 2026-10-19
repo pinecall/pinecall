@@ -33,6 +33,7 @@ import { PrivacyConsent, PrivacyErasures, PrivacyReads, PrivacyRules } from "./s
 import { Pipeline } from "./screens/pipeline";
 import { Personas } from "./screens/personas";
 import { Simulations } from "./screens/simulations";
+import { Studio } from "./screens/studio";
 import { Settings } from "./screens/settings";
 import { Talk } from "./screens/talk";
 import { BillingHop } from "./screens/billing";
@@ -99,6 +100,7 @@ const BOX: Record<string, ReactNode> = {
 
 const AGENT: Record<string, ReactNode> = {
   "agent-overview": <Overview />,
+  studio: <Studio />,
   talk: <Talk />,
   devchat: <Chat />,
   calls: <Calls />,

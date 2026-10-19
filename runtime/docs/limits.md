@@ -31,8 +31,9 @@ in both environments.
 - **Agents, numbers, facts, seats and chunks** are refused at their limit; a push that would pass
   `knowledge_chunks` is refused whole.
 - **Hosted apps** (`hosted_apps`) are counted when an app's first release is uploaded
-  ([protocol/hosting.md](protocol/hosting.md)); a later release of an app the org already has is
-  never refused for it.
+  ([protocol/hosting.md](protocol/hosting.md)), and a Studio agent when it is made or first deployed
+  to production ([protocol/studio.md](protocol/studio.md)): each is one hosted app. A later release
+  of an app the org already has is never refused for it.
 - **Evals** (`evals`) are the judges that answered a call (held, broken or classified) on the
   platform's key this month, a call's score and a judge tried on calls alike; a judge on the org's
   own key is never one. Past the limit a call still seals: the judges left are `skipped`, saying

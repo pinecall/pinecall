@@ -25,6 +25,7 @@ const DOMAINS: (() => Promise<{ register: Register }>)[] = [
   () => import("./judging/commands.js"),
   () => import("./providers/commands.js"),
   () => import("./hosting/commands.js"),
+  () => import("./studio/commands.js"),
   () => import("./alerts/commands.js"),
   () => import("./mcp/commands.js"),
 ];

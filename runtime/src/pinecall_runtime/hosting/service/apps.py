@@ -26,6 +26,9 @@ MOST_FILES = 5000
 LONGEST_NAME = 40
 STAMP = 8
 LABEL = "hosted app {name}"
+# The two kinds of hosted app: code the runner starts, and a Studio agent the gateway holds.
+CODE = "code"
+STUDIO = "studio"
 
 TOO_BIG = "a release's sources are {limit} MB at most packed"
 TOO_LONG_A_NAME = "an app's name is {limit} characters at most, and {name} is {length}"
@@ -35,6 +38,7 @@ TOO_MANY_FILES = "a release holds {limit} files at most: leave node_modules and 
 NOT_A_FILE = "{path} is a link or a device: a release holds files and folders only"
 LEAVES_THE_PROJECT = "{path} leaves the project's folder: every path of a release stays inside it"
 NOT_HOSTED = "the box hosts no app called {name} for this org in {env}"
+NOT_CODE = "{name} is a Studio agent: it is edited in the console's Studio, never uploaded as sources"
 NO_RELEASE = "{name} has no release {release}"
 
 # <name>-r<release>-<stamp>: the release is read back off it, so a report names nothing else.
@@ -68,6 +72,7 @@ class AppStatus:
     failed_why: str | None
     # A person stopped it: the runner is not told to run it, and its releases stay.
     stopped: bool = False
+    kind: str = CODE
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +88,16 @@ class Runnable:
     failed: bool
     logs_wanted: bool
     live_host: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class StudioRelease:
+    """A Studio agent the gateway holds: whose, its name, and its newest release's definition."""
+
+    org: str
+    name: str
+    release: int
+    definition: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,8 +163,51 @@ async def hosted_in(session: AsyncSession, env: Env) -> list[Runnable]:
     return [
         _runnable(standing)
         for standing in await HostedAppRepository(session).standing(env, None)
-        if standing.app.is_running and standing.release is not None
+        if standing.app.is_running and standing.release is not None and standing.app.kind == CODE
     ]
+
+
+# What the gateway holds itself: no runner starts a Studio agent, and a stopped one is not held.
+async def studio_in(session: AsyncSession, env: Env, org: str | None = None) -> list[StudioRelease]:
+    """Every Studio agent running in the env, one org's or every org's, its newest definition."""
+    releases = ReleaseRepository(session)
+    held: list[StudioRelease] = []
+    for standing in await HostedAppRepository(session).standing(env, org):
+        app = standing.app
+        if app.kind != STUDIO or not app.is_running or standing.release is None:
+            continue
+        found = await releases.get(app.org, env, app.name, standing.release)
+        if found is not None:
+            held.append(StudioRelease(org=app.org, name=app.name, release=standing.release, definition=found.source))
+    return held
+
+
+async def studio_serving(session: AsyncSession, env: Env) -> list[tuple[str, str]]:
+    """Every Studio agent running in the env, as an (org, name): what the meter counts as serving."""
+    return [
+        (standing.app.org, standing.app.name)
+        for standing in await HostedAppRepository(session).standing(env, None)
+        if standing.app.kind == STUDIO and standing.app.is_running and standing.release is not None
+    ]
+
+
+async def check_code(session: AsyncSession, app: App) -> None:
+    """Refuse sources for a Studio agent: its releases are definitions the console writes."""
+    if await kind_of(session, app) == STUDIO:
+        raise ValidationError(NOT_CODE.format(name=app.name))
+
+
+async def kind_of(session: AsyncSession, app: App) -> str | None:
+    """`code` or `studio`; None for an app the box does not host."""
+    found = await HostedAppRepository(session).get(app.org, app.env, app.name)
+    return None if found is None else found.kind
+
+
+async def open_studio(session: AsyncSession, app: App, *, created_by: str) -> None:
+    """Start hosting a Studio agent: a hosted app with no token, since no process of its own runs it."""
+    await HostedAppRepository(session).open(
+        app.org, app.env, app.name, key_fingerprint="", sealed_key="", created_by=created_by, kind=STUDIO
+    )
 
 
 async def is_hosted(session: AsyncSession, app: App) -> bool:
@@ -234,7 +292,8 @@ async def delete_app(session: AsyncSession, app: App) -> str:
     if found is None:
         raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
     await repository.delete(found)
-    await keys.revoke_fingerprint(session, found.key_fingerprint)
+    if found.key_fingerprint:
+        await keys.revoke_fingerprint(session, found.key_fingerprint)
     return found.key_fingerprint
 
 
@@ -264,9 +323,11 @@ def _status(standing: AppStanding) -> AppStatus:
         release=standing.release,
         sha256=standing.sha256,
         host=host,
-        live_release=app.live_release,
+        # A Studio agent's newest release is the one held: no runner reports it.
+        live_release=standing.release if app.kind == STUDIO else app.live_release,
         failed_why=app.failed_why if host is not None and app.failed_host == host else None,
         stopped=app.stopped_at is not None,
+        kind=app.kind,
     )
 
 

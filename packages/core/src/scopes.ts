@@ -4,6 +4,8 @@
 // A screen the key does not open is not drawn — never a 403 met on a click. The desk is gated
 // inside the conversation page by `supervise`; nothing else here decides what a verb may do.
 export const SCOPE_OF: Record<string, string> = {
+  // A Studio agent is a hosted app: its doors open to the key that may run the org's apps.
+  studio: "app",
   talk: "talk",
   devchat: "talk",
   calls: "calls",

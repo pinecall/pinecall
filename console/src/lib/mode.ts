@@ -162,7 +162,8 @@ export const BOX_SCREENS: readonly Screen[] = [
 ];
 
 // One agent in view: the same three rows the org's are — its Overview, its Calls, its Quality,
-// each the org's screen with only its calls — then what builds it. Playground is the gateway's
+// each the org's screen with only its calls — then what builds it. Studio is an agent built with no
+// code, its definition a form beside the agent to talk to. Playground is the gateway's
 // room, by voice or in writing, and Dev chat — a written call to the class in a developer's own
 // directory — is its second tab in the workshop. Test is what happens before a change ships: the
 // goldens and their runs, with an overview of the whole harness first. The harness is its own
@@ -174,6 +175,8 @@ export const AGENT_SCREENS: readonly Screen[] = [
   { key: "agent-overview", path: "overview", name: "Overview", in: BOTH, icon: "grid" },
   { key: "calls", path: "calls", name: "Calls", in: BOTH, icon: "list" },
   { key: "quality", path: "quality", name: "Quality", in: BOTH, icon: "check" },
+  // An agent built with no code: its definition edited in the sandbox beside a live preview, read in production.
+  { key: "studio", path: "studio", name: "Studio", in: BOTH, icon: "bot", group: "build" },
   { key: "talk", path: "playground", name: "Playground", tab: "Chat", in: BOTH, icon: "chat", group: "build" },
   { key: "devchat", path: "dev-chat", name: "Dev chat", in: THE_WORKSHOPS, under: "talk" },
   { key: "test", path: "test", name: "Test", tab: "Overview", in: BOTH, icon: "flask", group: "build" },

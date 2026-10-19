@@ -51,6 +51,7 @@ from pinecall_runtime.calls.service.refold import A_SAMPLE, differing, heads_beh
 from pinecall_runtime.calls.service.refold import rebuild as refold_facts
 from pinecall_runtime.calls.service.seal import drift_folded, judge_call, judge_of, panel_for, prompt_of
 from pinecall_runtime.calls.service.serving import Serving, claim_code, known_here
+from pinecall_runtime.calls.service.socket import AppSocket
 from pinecall_runtime.calls.service.stranded import stranded
 from pinecall_runtime.calls.service.text import TextSetup, open_text, open_text_as
 from pinecall_runtime.calls.service.threads import Threads
@@ -60,6 +61,7 @@ from pinecall_runtime.calls.store import Store
 __all__ = [
     "A_SAMPLE",
     "SEALED_FILE",
+    "AppSocket",
     "AppendEntriesRefused",
     "AppendEntriesRequest",
     "AppendEntriesResponse",

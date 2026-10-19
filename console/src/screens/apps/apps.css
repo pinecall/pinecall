@@ -8,6 +8,12 @@
   border-top: 0;
 }
 
+.apps-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .apps-hours {
   font-variant-numeric: tabular-nums;
 }

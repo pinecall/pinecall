@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 export const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../src");
 
 /** The domains, bottom up: a domain imports one below it, never one above. */
-export const DOMAINS = ["billing", "accounts", "providers", "agents", "knowledge", "telephony", "judging", "calls", "evals", "hosting", "alerts", "scaffold", "dev", "mcp"] as const;
+export const DOMAINS = ["billing", "accounts", "providers", "agents", "knowledge", "telephony", "judging", "calls", "evals", "hosting", "studio", "alerts", "scaffold", "dev", "mcp"] as const;
 
 /** The folders that are not domains, and what each may be imported by anyone. */
 const FOUNDATIONS = new Set(["api", "kit", "project"]);

@@ -14,6 +14,7 @@ import { opens } from "@pinecall/core/scopes";
 import { useScopes, useWhoami } from "../../lib/whoami";
 import {
   Avatar,
+  Button,
   ButtonLink,
   Card,
   CardAction,
@@ -36,6 +37,7 @@ import {
 } from "../../ui";
 import { readTokens, type Listed } from "../tokens/door";
 import { Processes } from "./processes";
+import { NewAgent } from "./new-agent";
 import { readAvailable, readNumbers, type Answering } from "../numbers/door";
 import { readCatalogue, readVendors } from "../providers/door";
 import "./agents.css";
@@ -105,6 +107,9 @@ export function Agents(): ReactNode {
   const activeKeys = accounts.keys?.filter((key) => key.revoked_at === null) ?? [];
   const ready = accounts.catalogue?.providers.filter((one) => one.standing === READY) ?? [];
   const canIssue = WORLD === "production" && scopes !== null && scopes.includes("app");
+  // An agent built in Studio is made in the sandbox, by a key that may run the org's apps.
+  const canMake = WORLD === "sandbox" && scopes !== null && scopes.includes("app");
+  const [making, setMaking] = useState(false);
 
   return (
     <Page>
@@ -116,9 +121,15 @@ export function Agents(): ReactNode {
             <ButtonLink to="/tokens" size="base">
               New server token
             </ButtonLink>
+          ) : canMake ? (
+            <Button kind="primary" onClick={() => setMaking(true)} disabled={making}>
+              New agent
+            </Button>
           ) : undefined
         }
       />
+
+      {making && <NewAgent onCancel={() => setMaking(false)} />}
 
       <Stats min={170}>
         <Stat label="Agents up" value={agents.length} of={`of ${known.size}`} />

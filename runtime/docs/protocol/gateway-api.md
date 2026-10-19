@@ -241,7 +241,8 @@ melody: [pipeline-api.md](pipeline-api.md). The knowledge bases and a contact's 
 call looks either up: [../retrieval/spec.md](../retrieval/spec.md). The vendors, the org's own
 keys, the voices: [provider-keys.md](provider-keys.md). The widget: [console-api.md](console-api.md).
 An agent the platform runs itself, from sources the org uploads, and the org's secrets:
-[hosting.md](hosting.md).
+[hosting.md](hosting.md). An agent built in the console, which the gateway holds itself:
+[studio.md](studio.md).
 
 ## 6. Evals
 

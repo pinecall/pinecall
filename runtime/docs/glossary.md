@@ -29,6 +29,7 @@
 | **persona** | a synthetic caller a model plays one line at a time, with what it expects of the agent and how it acts on a spoken line: Pinecall's library (`judging/library/personas/`, switched per agent) or the agent's own |
 | **judge** | one question about a finished call that the judge model answers, citing the turns: `held`, `broken`, `deferred` or `skipped`; Pinecall's library (`judging/library/judges/`, switched per org and agent), or one an org writes for itself or for one agent |
 | **run** | every golden of a suite under every model named, through the app that holds the agent, judged into a matrix |
+| **Studio agent** | an agent built in the console, its definition a hosted app's release of the kind `studio`, held by the gateway itself (`studio/`, `docs/protocol/studio.md`) |
 | **hosted app** | an org's agent process that the deployment runs itself, from sources the org uploaded, on a server's token minted for it (`hosting/service/apps.py`, `docs/protocol/hosting.md`) |
 | **release** | one upload of a hosted app's sources, numbered from 1 and never edited |
 | **secret** | a value of the org's, per environment, that its hosted apps are started with as an environment variable; kept sealed and never read back by an endpoint (`hosting/service/secrets.py`) |
