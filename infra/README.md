@@ -118,9 +118,9 @@ home on an emptyDir.
 Two NetworkPolicies (`templates/policies.yaml`) name who reaches each store: the gateways' Redis
 the gateways alone; Postgres the gateways, the pods labelled `pinecall.io/reaches-postgres` (the
 migrations, the fleets' keys, the retention, a suite's Job), its own instances and CloudNativePG's
-namespace. They are enforced only once the cluster's dataplane enforces policies (Dataplane V2,
-`modules/gke`), which this cluster's does not yet: that change makes the cluster again, and is
-planned on its own.
+namespace. They are enforced only on a cluster whose dataplane enforces network policies (GKE's
+Dataplane V2), which `modules/gke` does not turn on: on a cluster already made, turning it on makes
+the cluster again.
 
 ## The first person
 
