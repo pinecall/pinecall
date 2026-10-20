@@ -73,6 +73,7 @@ docs/                        the pages a person writing an agent reads: README �
     commands.py              every command, `COMMANDS` and `command_of`
     events.py                the agent's and the control's events, `EVENTS` and `event_of`
     events_call.py           a call's life: ringing to summary, a confirm, a supervisor
+    events_feed.py           what a feed says of a change no log holds: a run, a release, a worker, a tool, a judge
     events_turn.py           inside a conversation: the turns, a tool call, the state, an outside fact
     room.py                  who is in the room and what they publish
     metrics.py               livekit-agents' metric blocks, as they are
@@ -145,8 +146,8 @@ it, changed in four ways and no more:
 - a PEP 695 `type X = …` is `X: TypeAlias = …`, the 3.11 spelling; the recursive `Json` is a
   `TypeAliasType`, which pydantic and pyright both read;
 - the runtime's `DeclarationRefused` is `WireError`;
-- `events.py` is three modules under the 400-line ceiling (`events`, `events_call`, `events_turn`);
-  `events.py` re-imports the other two, so `EVENTS` is still one registry.
+- `events.py` is four modules under the 400-line ceiling (`events`, `events_call`, `events_feed`,
+  `events_turn`); `events.py` re-imports the other three, so `EVENTS` is still one registry.
 
 The reducer is the runtime's too: `wire/reduce.py` is `runtime/pinecall/log/reduce.py`'s fold —
 `reduce`, `apply`, `initial_state` and their helpers — and none of what the runtime counts with it

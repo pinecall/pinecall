@@ -1,4 +1,4 @@
-"""Every event a log holds and the registry of them; the agent's and the control's defined here."""
+"""Every event a log or a feed holds, and the registry of them; the agent's and the control's are here."""
 
 from typing import Literal
 
@@ -27,6 +27,14 @@ from pinecall.wire.events_call import (
     SupervisorTookOver,
     SupervisorTransferred,
     SupervisorWhispered,
+)
+from pinecall.wire.events_feed import (
+    JudgeBroke,
+    ReleaseChanged,
+    RunChanged,
+    ToolFailed,
+    ToolRan,
+    WorkerChanged,
 )
 from pinecall.wire.events_turn import (
     AgentStateChanged,
@@ -239,56 +247,6 @@ class FleetFull(WireModel):
     channel: Channel
     workers: int
     active: int
-
-
-class ReleaseChanged(WireModel):
-    """A hosted app's release changed where it stands: uploaded, live, failed or replaced."""
-
-    app: str
-    release: int
-
-
-class RunChanged(WireModel):
-    """A run of goldens and cases opened a call, judged one, or finished."""
-
-    run: str
-    agent: str
-    finished: bool
-
-
-class WorkerChanged(WireModel):
-    """A worker of a fleet was first heard, cordoned, uncordoned, or stopped being heard."""
-
-    worker: str
-    fleet: str
-    up: bool
-    cordoned: bool
-
-
-class ToolRan(WireModel):
-    """A tool of a call answered; its name and seconds, never its arguments or its output."""
-
-    call: str
-    agent: str
-    name: str
-    duration_s: float | None
-
-
-class ToolFailed(WireModel):
-    """A tool of a call failed or timed out; its name and seconds, never what it said."""
-
-    call: str
-    agent: str
-    name: str
-    duration_s: float | None
-
-
-class JudgeBroke(WireModel):
-    """A judge found a sealed call broken; its name, never its reason or its evidence."""
-
-    call: str
-    agent: str
-    judge: str
 
 
 class LogCaughtUp(WireModel):
