@@ -1,6 +1,10 @@
 # Providers, an org's own keys, and the voices
 
 The org's key holding `providers` for the catalogue and the keys; `pipeline` for the voices.
+`GET /v1/providers` and `GET /v1/voices` also answer a request with no key at all: what the platform
+runs and what each vendor publishes is no org's. Without a key no org's key is counted (every vendor
+reads as one a key would have to run, `ready: false`) and no vendor is asked for its voices, so a bare
+request never spends a key; a key that opens neither scope is still `403`.
 
 ## `GET /v1/providers`
 

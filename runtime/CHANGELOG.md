@@ -10,6 +10,10 @@
   `GET /v1/voices` falls back, where neither the row nor the plugin lists any, to the voices voicedex
   knows (Deepgram's, Rime's, Gemini's, xAI's…), and every listed voice gains `preview_url`, gender and
   accent where its list lacked them. No vendor is named in code; prices are not read from it yet.
+- **`GET /v1/providers` and `GET /v1/voices` answer anyone.** A request with no key reads the
+  catalogue as no org (no key counted, `ready: false`) and the voices the row lists or voicedex knows;
+  the vendor's plugin is asked only on a key, so a bare request never spends one. A key keeps its
+  scopes: one that opens neither is still `403`.
 
 ## 0.11.6 — A realtime call's waits are measured (2026-10-19)
 

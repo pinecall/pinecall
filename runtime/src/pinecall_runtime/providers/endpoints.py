@@ -23,7 +23,14 @@ from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import Handles, handles_of
 from pinecall_runtime.kit.websockets import close_reason, code_of, refuse_socket
 from pinecall_runtime.postgres import Session, box_wide
-from pinecall_runtime.providers.auth import EarsKey, PipelineKey, ProvidersKey, TheOperator
+from pinecall_runtime.providers.auth import (
+    EarsKey,
+    PipelineKey,
+    PipelineKeyOrAnyone,
+    ProvidersKey,
+    ProvidersKeyOrAnyone,
+    TheOperator,
+)
 from pinecall_runtime.providers.schemas import (
     Advice,
     AdvisedStage,
@@ -65,12 +72,18 @@ NUMBERS_ACCOUNT = "twilio"
 # ── an org's ──
 
 
-# The same for every key of an org: what is installed, and whose key would run each vendor.
+# The same for every key of an org: what is installed, and whose key would run each vendor. Without a key it
+# is the platform's alone: no org's key is counted, so every vendor reads as one a key would have to run.
 @router.get("/v1/providers")
-async def catalogue(actor: ProvidersKey, request: Request, session: Session) -> Catalogue:
-    """Every vendor this build runs and how this org may run it, the defaults, the models named."""
+async def catalogue(actor: ProvidersKeyOrAnyone, request: Request, session: Session) -> Catalogue:
+    """Every vendor this build runs and how this org may run it (anyone: as no key runs it), the defaults,
+    the models offered."""
     configured = await catalog.get_catalog(session)
-    keys = await keyring.keys_of(session, _vault(request), actor.scope)
+    keys = (
+        keyring.Keyring(lends=frozenset())
+        if actor is None
+        else await keyring.keys_of(session, _vault(request), actor.scope)
+    )
     return keyring.catalogue_of(configured, keys)
 
 
@@ -127,14 +140,15 @@ async def advise(actor: ProvidersKey, request: Request, session: Session) -> Adv
 # Built as a call builds the stage: the operator's options, on the key a call would use.
 @router.get("/v1/voices")
 async def list_voices(
-    actor: PipelineKey,
+    actor: PipelineKeyOrAnyone,
     request: Request,
     session: Session,
     tts: Annotated[str, Query(min_length=1)],
     language: Annotated[str | None, Query()] = None,
 ) -> VoicesListed:
     """The voices the providers row lists for a vendor, else its plugin's, else those voicedex knows it publishes;
-    none is a 404. voicedex adds each voice's preview, gender and accent where the list lacks them."""
+    none is a 404. voicedex adds each voice's preview, gender and accent where the list lacks them. Without a
+    key the plugin is never asked: no key is spent on a request that brings none."""
     configured = await catalog.get_catalog(session)
     named = plugins.installed_vendor(tts)
     spoken = plugins.primary_language(language)
@@ -142,7 +156,7 @@ async def list_voices(
     # The row lists this vendor's voices by language: one it lists none in is said as that.
     if not listed and spoken is not None and voices.listed_in_catalog(configured, named, None):
         raise NotFound(f"{named} lists no voice in {language}: drop --language to see every one")
-    if not listed and keyring.lists_voices(named, ("tts",)):
+    if not listed and actor is not None and keyring.lists_voices(named, ("tts",)):
         keys = await keyring.keys_of(session, _vault(request), actor.scope)
         stage = keyring.stage_on_its_key("tts", Voice(provider=named), configured, keys)
         listed = await voices.listed_by_vendor(dataclasses.replace(stage, language=spoken))
