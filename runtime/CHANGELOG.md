@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The usage feed says which vendors a call ran on the platform's own keys.** A `call.summary`
+  row carries `lent` (`["deepgram", "google"]`) and its minutes count as `lent_minutes` in the
+  totals, so a billing layer can bill the minutes a plan includes on the platform's vendors apart
+  from those an org ran on its own keys. Read from the call's facts, where the seal kept them: the
+  log's wire is unchanged.
+- **A voice can be priced by the second of audio it made**, as Gemini's voices are billed: a rate
+  with `audio_seconds` and no `characters` prices the voice's audio, and each cost row is its
+  model's stage whatever its unit. The package's list prices carry `gemini-3.8-flash-lite-tts`,
+  `gemini-3.8-flash-tts` and `gemini-3.5-transcribe-live`.
+- **A voice reaches a plugin that takes no voice argument as its model**: Deepgram's voices are its
+  models, so a row's `"deepgram/es": "aura-2-celeste-es"` makes a Spanish call speak it, as a
+  fallback too.
 - **Rotating one of the runtime's keys is one `box keys set`.** `setup` gives the org `default` each
   key it finds as its own too; that copy stayed on the old key when the runtime's was replaced, so
   the operator's own calls kept running on it. Now `box keys set` (and the console's Box settings ▸

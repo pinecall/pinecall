@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import Row, select, text
+from sqlalchemy import Row, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from pinecall_runtime.calls.models import CallFact, CallLogHead
@@ -141,6 +141,15 @@ class FactsRepository(Repository[CallFact]):
             index_elements=[CallFact.call], set_={"lent": statement.excluded.lent}
         )
         await self.session.execute(statement)
+
+    async def lent_of(self, calls: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        """The vendors each of the calls ran on the box's own key, for the calls that ran on any."""
+        if not calls:
+            return {}
+        statement = select(CallFact.call, CallFact.lent).where(
+            CallFact.call.in_(list(calls)), func.cardinality(CallFact.lent) > 0
+        )
+        return {call: tuple(lent) for call, lent in (await self.session.execute(statement)).all()}
 
     # Not a fold: the state's line at the seal, kept so a list reads it instead of folding the log.
     async def set_line(self, call: str, line: Mapping[str, Any]) -> None:

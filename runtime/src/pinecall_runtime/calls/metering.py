@@ -35,6 +35,9 @@ class Usage:
     # Calls a simulated caller played.
     simulations: int = 0
     cost_usd: float = 0.0
+    # The minutes of calls a stage of which ran on the box's own key: what a plan that includes
+    # the box's vendors bills apart from the minutes an org ran on keys of its own.
+    lent_minutes: float = 0.0
 
     def __add__(self, other: Self) -> Self:
         """The two added up, field by field."""
@@ -49,6 +52,7 @@ class Usage:
             evals=self.evals + other.evals,
             simulations=self.simulations + other.simulations,
             cost_usd=self.cost_usd + other.cost_usd,
+            lent_minutes=self.lent_minutes + other.lent_minutes,
         )
 
 
@@ -63,6 +67,8 @@ class UsageRow:
     type: str
     at: float
     used: Usage = field(default_factory=Usage)
+    # The vendors a call ran on the box's own key; the gateway keeps them with the call's facts.
+    lent: tuple[str, ...] = ()
 
 
 def usage_row(metered: Positioned) -> UsageRow:
@@ -92,6 +98,13 @@ def usage_row(metered: Positioned) -> UsageRow:
             )
         case _:
             return row
+
+
+def lent_row(row: UsageRow, vendors: tuple[str, ...]) -> UsageRow:
+    """A summary's row with the vendors its call ran on the box's own key, and its minutes counted as lent."""
+    if not vendors:
+        return row
+    return replace(row, lent=vendors, used=replace(row.used, lent_minutes=row.used.minutes))
 
 
 def totals_by_org(rows: Iterable[UsageRow]) -> dict[str, Usage]:

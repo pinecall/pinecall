@@ -8,14 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.calls import histogram
 from pinecall_runtime.calls.facts import STAGES
-from pinecall_runtime.calls.metering import UsageRow, usage_row
+from pinecall_runtime.calls.metering import UsageRow, lent_row, usage_row
+from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.repository.series import A_DAY_S, SeriesRepository
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.calls.writer import METERED_TYPES
 from pinecall_runtime.enums import Channel
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.postgres import box_wide
 
 CHANNELS = tuple(channel.value for channel in Channel)
+SUMMARY = "call.summary"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,11 +113,22 @@ class SeriesDay:
 
 
 # The cursor moves past every row read, kept or not, so a page filtered to one org still moves.
-async def metered_page(store: Store, *, after: int, limit: int, org: str | None) -> MeteredPage:
-    """The metered rows after the cursor, of one org or of every org, folded."""
+async def metered_page(store: Store, session: AsyncSession, *, after: int, limit: int, org: str | None) -> MeteredPage:
+    """The metered rows after the cursor, of one org or of every org, folded, a call's lent vendors on its summary."""
     read = [usage_row(item) for item in await store.across(METERED_TYPES, after=after, limit=limit)]
     kept = [row for row in read if org is None or row.org == org]
-    return MeteredPage(rows=kept, next=read[-1].cursor if read else None)
+    return MeteredPage(rows=await _with_lent(session, kept), next=read[-1].cursor if read else None)
+
+
+# Not in the summary: the gateway keeps the vendors a call ran on the box's key with its facts,
+# in the transaction that writes the summary, and the log's wire stays the one every SDK reads.
+async def _with_lent(session: AsyncSession, rows: list[UsageRow]) -> list[UsageRow]:
+    calls = [row.call for row in rows if row.type == SUMMARY and row.call]
+    if not calls:
+        return rows
+    with box_wide():
+        lent = await FactsRepository(session).lent_of(calls)
+    return [lent_row(row, lent.get(row.call, ())) if row.type == SUMMARY else row for row in rows]
 
 
 # One agent's window when it names one; the whole scope's when it is None.

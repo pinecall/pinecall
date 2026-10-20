@@ -28,10 +28,10 @@ BOX_OWN = frozenset({"worker.changed"})
 # counts nothing twice.
 @router.get("/v1/usage")
 async def usage_feed(
-    actor: UsageKey, serving: TheServing, query: Annotated[schemas.UsageQuery, Query()]
+    actor: UsageKey, serving: TheServing, session: Session, query: Annotated[schemas.UsageQuery, Query()]
 ) -> schemas.UsagePage:
     """The org's metered rows after the cursor, their totals, and the next cursor."""
-    page = await usage.metered_page(serving.logs.store, after=query.after, limit=query.limit, org=actor.org)
+    page = await usage.metered_page(serving.logs.store, session, after=query.after, limit=query.limit, org=actor.org)
     totals = totals_by_org(page.rows).get(actor.org)
     return schemas.UsagePage(
         rows=[usage_row(row) for row in page.rows],
@@ -57,7 +57,7 @@ async def box_usage(
     if sse.wants_sse(request):
         frames = _metered_stream(serving, query.after, only)
         return sse.streamed(sse.paced(frames, closing=request.app.state.closing))
-    page = await usage.metered_page(serving.logs.store, after=query.after, limit=query.limit, org=only)
+    page = await usage.metered_page(serving.logs.store, session, after=query.after, limit=query.limit, org=only)
     return schemas.BoxUsagePage(
         rows=[usage_row(row) for row in page.rows],
         totals={named: usage_totals(used) for named, used in totals_by_org(page.rows).items()},
@@ -92,6 +92,7 @@ def usage_row(row: UsageRow) -> schemas.UsageRow:
         evals=used.evals,
         simulated=used.simulations > 0,
         cost_usd=used.cost_usd,
+        lent=list(row.lent),
     )
 
 
@@ -108,6 +109,7 @@ def usage_totals(used: Usage) -> schemas.UsageTotals:
         evals=used.evals,
         simulations=used.simulations,
         cost_usd=used.cost_usd,
+        lent_minutes=used.lent_minutes,
     )
 
 
@@ -133,7 +135,10 @@ async def _metered_stream(serving: Serving, after: int, only: str | None) -> Asy
     try:
         while True:
             while True:
-                page = await usage.metered_page(serving.logs.store, after=cursor, limit=schemas.DEFAULT_LIMIT, org=only)
+                async with serving.handles.sessions() as session:
+                    page = await usage.metered_page(
+                        serving.logs.store, session, after=cursor, limit=schemas.DEFAULT_LIMIT, org=only
+                    )
                 for row in page.rows:
                     yield sse.frame(usage_row(row).dump_json(), event="usage", id_=str(row.cursor))
                 if page.next is None:

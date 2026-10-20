@@ -366,6 +366,10 @@ def _built[T](
     given |= _first(accepts, THE_HINTS, list(running.hints) or None)
     if running.model is not None:
         given["model"] = running.model
+    # A voice whose plugin takes no voice argument is the model it speaks with: Deepgram's voices are
+    # its models (`aura-2-celeste-es`), so a voice the row keeps per language reaches it this way.
+    if modality == "tts" and running.voice is not None and not accepts & set(THE_VOICE):
+        given["model"] = running.voice
     plain = dict(given)
     if hear:
         given |= _first(accepts, THE_TERMS, list(hear))

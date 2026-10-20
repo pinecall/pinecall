@@ -74,6 +74,9 @@ google,gemini-3.5-flash-lite,output_tokens,2.5,2026-10-11,https://ai.google.dev/
 google,gemini-3.8-flash,input_tokens,0.75,2026-10-17,https://ai.google.dev/gemini-api/docs/pricing
 google,gemini-3.8-flash,cached_input_tokens,0.075,2026-10-17,https://ai.google.dev/gemini-api/docs/pricing
 google,gemini-3.8-flash,output_tokens,3.75,2026-10-17,https://ai.google.dev/gemini-api/docs/pricing
+google,gemini-3.5-transcribe-live,audio_seconds,0.000148750007,2026-10-20,https://ai.google.dev/gemini-api/docs/pricing
+google,gemini-3.8-flash-lite-tts,audio_seconds,0.00015,2026-10-20,https://ai.google.dev/gemini-api/docs/pricing
+google,gemini-3.8-flash-tts,audio_seconds,0.000225,2026-10-20,https://ai.google.dev/gemini-api/docs/pricing
 openai,gpt-4.1,input_tokens,2,2025-07-04,https://platform.openai.com/docs/pricing
 openai,gpt-4.1,cached_input_tokens,0.5,2025-07-04,https://platform.openai.com/docs/pricing
 openai,gpt-4.1,output_tokens,8,2025-07-04,https://platform.openai.com/docs/pricing

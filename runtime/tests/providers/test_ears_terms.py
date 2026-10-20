@@ -1,11 +1,12 @@
 """The words the ears are told to expect reach every plugin under the name it takes them, and the
-language reaches one whose options are a single object: as an argument, or inside that object."""
+language reaches one whose options are a single object: as an argument, or inside that object; a
+voice reaches the plugin under its voice argument, or as its model where it takes none."""
 
 from dataclasses import dataclass
 from typing import Never, override
 
 import pytest
-from livekit.agents import stt
+from livekit.agents import stt, tts
 
 from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.providers.service import stages
@@ -110,3 +111,54 @@ def test_a_model_that_refuses_the_words_is_built_without_them(monkeypatch: pytes
 def test_a_model_that_takes_the_words_gets_them(monkeypatch: pytest.MonkeyPatch) -> None:
     given = _built(monkeypatch, TermsOnSomeModels, Running(vendor="v", credentials="k", model="turns"))
     assert given["keyterm"] == list(HEAR)
+
+
+class _Voice(tts.TTS[Never]):
+    """A voice that keeps what it was built with."""
+
+    def __init__(self, **given: object) -> None:
+        super().__init__(capabilities=tts.TTSCapabilities(streaming=False), sample_rate=24000, num_channels=1)
+        self.given = given
+
+    @override
+    def synthesize(self, text: str, *, conn_options: object = None) -> tts.ChunkedStream:
+        raise NotImplementedError
+
+
+class VoiceIsTheModel(_Voice):
+    """As Deepgram's: no voice argument, the voice named in the model (`aura-2-celeste-es`)."""
+
+    def __init__(self, *, api_key: str, model: str = "aura-2-thalia-en") -> None:
+        super().__init__(api_key=api_key, model=model)
+
+
+class VoiceAsAnArgument(_Voice):
+    """As Gemini's: `voice_name` beside the model."""
+
+    def __init__(self, *, api_key: str, model: str = "tts", voice_name: str = "Kore") -> None:
+        super().__init__(api_key=api_key, model=model, voice_name=voice_name)
+
+
+def _spoken(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> dict[str, object]:
+    def the_class(_modality: Modality, _running: Running) -> type:
+        return made
+
+    monkeypatch.setattr(stages, "_class_of", the_class)
+    voice = stages.tts_of(running)
+    assert isinstance(voice, _Voice)
+    return voice.given
+
+
+def test_a_voice_whose_plugin_takes_no_voice_argument_is_the_model_it_speaks_with(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    running = Running(vendor="v", credentials="k", model="aura-2", voice="aura-2-celeste-es")
+    assert _spoken(monkeypatch, VoiceIsTheModel, running) == {"api_key": "k", "model": "aura-2-celeste-es"}
+    plain = Running(vendor="v", credentials="k", model="aura-2-thalia-en")
+    assert _spoken(monkeypatch, VoiceIsTheModel, plain) == {"api_key": "k", "model": "aura-2-thalia-en"}
+
+
+def test_a_voice_whose_plugin_takes_one_goes_there_and_the_model_stays(monkeypatch: pytest.MonkeyPatch) -> None:
+    running = Running(vendor="v", credentials="k", model="flash-lite-tts", voice="Puck")
+    given = _spoken(monkeypatch, VoiceAsAnArgument, running)
+    assert (given["model"], given["voice_name"]) == ("flash-lite-tts", "Puck")

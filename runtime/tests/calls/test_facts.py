@@ -165,3 +165,29 @@ def test_the_line_a_list_shows_is_the_states_own_fields_and_a_fold_leaves_it() -
     assert line["seq"] == EXPECTED["seq"]
     kept = replace(CallFacts(call="CA_x"), line=line)
     assert fold(kept, logged("call.ended", {"reason": "caller_hung_up", "duration_s": 2.0})).line == line
+
+
+def test_a_voice_priced_by_the_second_is_the_voices_cost_not_the_ears() -> None:
+    """A row's stage is its model's usage: Gemini's voice bills audio seconds, as ears do, and is still the voice."""
+
+    def row(provider: str, model: str, unit: str, usd: float) -> JsonObject:
+        return {"provider": provider, "model": model, "unit": unit, "quantity": 1, "unit_price_usd": usd, "usd": usd}
+
+    usage: list[Json] = [
+        {"type": "stt_usage", "provider": "Deepgram", "model": "flux-general-multi", "audio_duration": 50.0},
+        {"type": "tts_usage", "provider": "Gemini", "model": "gemini-3.8-flash-lite-tts", "audio_duration": 33.0},
+    ]
+    rows: list[Json] = [
+        row("Deepgram", "flux-general-multi", "audio_seconds", 0.0065),
+        row("Gemini", "gemini-3.8-flash-lite-tts", "audio_seconds", 0.005),
+    ]
+    summary: JsonObject = {
+        "reason": "caller_hung_up",
+        "outcome": "o",
+        "duration_s": 60.0,
+        "turns": 3,
+        "usage": usage,
+        "cost": {"usd": 0.0115, "rows": rows, "unpriced": []},
+    }
+    facts = fold(CallFacts(call="CA_x"), logged("call.summary", summary))
+    assert (facts.cost_stt_usd, facts.cost_tts_usd) == (0.0065, 0.005)

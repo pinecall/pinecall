@@ -22,6 +22,7 @@ from pinecall_runtime.wire.events import (
     UserTurnEnded,
     event_of,
 )
+from pinecall_runtime.wire.metrics import ModelUsage
 from pinecall_runtime.wire.parts import PLATFORM, Cost
 from pinecall_runtime.wire.room import RoomOpened
 from pinecall_runtime.wire.scores import CallScore
@@ -68,9 +69,11 @@ LINE_FIELDS = (
     "attention",
 )
 
-# What a summary's cost is folded by: a row's unit says its stage, and the box's own rows
-# (PLATFORM) are the platform's, whatever their unit.
+# What a summary's cost is folded by: a model's rows are the stage its usage was metered in,
+# whatever their unit (a voice priced by the second of audio, as Gemini's is); a row no usage names
+# (a phone leg) is its unit's stage; the box's own rows (PLATFORM) are the platform's.
 STAGES = ("llm", "stt", "tts", "phone", "platform")
+STAGE_OF_USAGE = {"llm_usage": "llm", "stt_usage": "stt", "tts_usage": "tts"}
 STAGE_OF_UNIT = {
     "input_tokens": "llm",
     "cached_input_tokens": "llm",
@@ -269,14 +272,18 @@ def _over(facts: CallFacts, over: CallEnded | CallSummary) -> CallFacts:
         outcome=over.outcome,
         cost_usd=over.cost.usd,
         end_reason=facts.end_reason or over.reason,
-        **_cost_by_stage(over.cost),
+        **_cost_by_stage(over.cost, over.usage),
     )
 
 
-def _cost_by_stage(cost: Cost) -> dict[str, Any]:
+def _cost_by_stage(cost: Cost, usage: Sequence[ModelUsage]) -> dict[str, Any]:
+    staged = {(used.provider, used.model): STAGE_OF_USAGE[used.type] for used in usage if used.type in STAGE_OF_USAGE}
     summed: dict[str, float] = dict.fromkeys(STAGES, 0.0)
     for row in cost.rows:
-        stage = "platform" if row.provider == PLATFORM else STAGE_OF_UNIT[row.unit]
+        if row.provider == PLATFORM:
+            stage = "platform"
+        else:
+            stage = staged.get((row.provider, row.model), STAGE_OF_UNIT[row.unit])
         summed[stage] += row.usd
     return {f"cost_{stage}_usd": round(usd, 6) for stage, usd in summed.items()}
 

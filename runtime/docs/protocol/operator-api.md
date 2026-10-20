@@ -20,7 +20,9 @@ An org is named by its **id or its slug** wherever a path says `{named}`.
 Rows of `box_settings`, each read and written whole. The console's Box settings edits them — **Defaults** the providers row, **Keys** the platform's keys and the account it buys numbers on, **Admission** — and `pinecall-runtime box` types every one but the providers row ([the-runtime-cli.md](../the-runtime-cli.md#box)):
 
 - `GET` · `PUT /v1/ops/providers`: the providers row: the default vendor and model of each stage,
-  the models a vendor named alone runs, the voice per vendor and language, the voices a picker
+  the models a vendor named alone runs, the voice per vendor and language (`"deepgram/es":
+  "aura-2-celeste-es"`; a vendor whose plugin takes no voice argument, as Deepgram's, speaks the
+  voice as its model), the voices a picker
   offers per vendor and language where the vendor's plugin lists none (`listed`: `"cartesia/es":
   [{id, name, gender, country, accent, description}]`, [provider-keys.md](provider-keys.md#the-voices)), what each vendor is told
   (`tuning`), the language hints, the rates a call is priced at in dollars, the judge model and what

@@ -129,6 +129,10 @@ def _priced(used: ModelUsage, rates: Mapping[str, Rate]) -> list[CostRow] | None
         case LLMModelUsage():
             return None if rate is None or rate.input is None else _tokens(used, rate)
         case TTSModelUsage():
+            # A voice is priced as its vendor bills it: by the character read, or by the second of
+            # audio it made (Gemini's, whose price is per audio token).
+            if rate is not None and rate.characters is None and rate.audio_seconds is not None:
+                return _counted(used, "audio_seconds", quantity=used.audio_duration or 0.0, per=rate.audio_seconds)
             return _counted(
                 used, "characters", quantity=used.characters_count or 0, per=None if rate is None else rate.characters
             )
