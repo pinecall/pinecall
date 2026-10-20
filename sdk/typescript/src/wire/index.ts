@@ -13,6 +13,7 @@ export * from "./reduce.js";
 export * from "./registry.js";
 export * from "./rest-data.js";
 export * from "./rest-hosting.js";
+export * from "./rest-judges.js";
 export * from "./rest-retrieval.js";
 export * from "./rest.js";
 export * from "./room.js";
