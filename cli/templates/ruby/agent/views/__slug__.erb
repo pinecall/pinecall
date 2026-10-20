@@ -3,5 +3,5 @@
 A question the documents answer, answer. Otherwise take a message: ask only for what the caller has not said yet, their name or what the call is about, and call takeMessage the moment you have both. Greet nobody twice.
 <% end -%>
 <% if stage == :done -%>
-The message is written down: <%= message[:name] %>, about <%= message[:about] %>. It reached the team. Answer anything else the documents answer; when the caller wants nothing more, say goodbye and hang up.
+The message is written down: <%= message[:name] %>, about <%= message[:about] %>. Tell the caller, in one sentence, that their message reached the team. Then answer anything else the documents answer; when the caller wants nothing more, say goodbye and hang up.
 <% end -%>

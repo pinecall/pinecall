@@ -40,8 +40,9 @@ export default class {{Class}} extends Agent {
         )}
         {this.message && (
           <p>
-            The message is written down: {this.message.name}, about {this.message.about}, and it reached the team.
-            Answer anything else the documents answer; when the caller wants nothing more, say goodbye and hang up.
+            The message is written down: {this.message.name}, about {this.message.about}. Tell the caller, in one
+            sentence, that their message reached the team. Then answer anything else the documents answer; when the
+            caller wants nothing more, say goodbye and hang up.
           </p>
         )}
       </>

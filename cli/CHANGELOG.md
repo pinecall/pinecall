@@ -4,6 +4,15 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **The agent `new` writes tells the caller their message reached the team.** Its view said the message
+  reached the team and never asked the agent to say so; on an open model (gemma4:12b) the agent went
+  straight to "anything else?" and its own golden passed 2 times in 5. Now 20/20 in TypeScript, 10/10
+  in Python and in Ruby, on the same model.
+- **One word for the keys an org did not bring: the runtime's.** `pinecall limits`, `login`'s advice and the
+  MCP's `usage` say *lent by the runtime*, where they said the deployment, the host or the platform.
+
 ## [0.11.6] — released with every other package
 
 - Nothing of the CLI changed: published at 0.11.6 with every other package.
