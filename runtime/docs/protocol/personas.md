@@ -30,7 +30,8 @@ happened. `call` is minted by the client as the platform mints one (`call_` and 
 other shape) so it tails the log before the call starts, and it must name a call nobody opened:
 the head is claimed in the caller's scope before the room is offered, and an id that exists —
 anybody's — is `409`. A persona is the agent's: a name nobody wrote for that agent is `404`; one
-sent without a name is played as sent. A room nobody can hold is `503`. The answer is `{call, turns,
+sent without a name is played as sent. Its `llm`, `tts` and `voice` are checked as a written
+persona's are: one the deployment lacks is `400` before the room is offered. A room nobody can hold is `503`. The answer is `{call, turns,
 line, caller_cost_usd, stopped_at_ceiling}`: what the caller's lines and voice cost by the platform's
 rates, and whether it hung up because the call had spent the providers row's
 `caller.ceiling_usd` ([operator-api.md](operator-api.md)); the line that crosses it is the last

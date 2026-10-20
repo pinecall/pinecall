@@ -6,7 +6,8 @@
   `tts`, `voice`): the model, the voice's vendor and the voice this run alone is played on, over the
   persona's own. A model, a vendor or a voice the runtime lacks is `400` before the call starts, as
   when a persona is written; a `tts` with no `voice` drops the persona's voice. The console's
-  Simulations picks them as Personas does.
+  Simulations picks them as Personas does. `POST /v1/evals/voice` checks the persona it is sent the
+  same way: a voice vendor it lacks was read as a model of the agent's and failed inside the call.
 - **A test room can run another voice and other models, for its call alone.** `POST /v1/tokens`
   takes `tuning` (`stt`, `llm`, `tts`, `tts_model`, `voice`, `language`, `temperature`) in the
   sandbox, from a key that opens `pipeline`: the values ride the signed dispatch, the worker says them

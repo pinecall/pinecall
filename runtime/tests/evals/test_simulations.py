@@ -55,3 +55,13 @@ async def test_a_run_that_names_nobody_new_is_played_as_the_persona_is(
     answer = await simulated(gateway, tenant, agent, {})
     assert answer.status_code == 404
     assert "no app holds agent" in answer.text
+
+
+async def test_a_spoken_call_whose_caller_names_a_vendor_this_box_lacks_is_refused_as_one(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The persona sent whole is checked as a written one is, never tried as some vendor's model."""
+    call = {**voice_call("", agent), "persona": {"goal": "Leave a message.", "style": "Brief.", "tts": "nonvendor"}}
+    answer = await gateway.http.post("/v1/evals/voice", json=call, headers=tenant.server)
+    assert answer.status_code == 400
+    assert "no vendor named 'nonvendor'" in answer.text
