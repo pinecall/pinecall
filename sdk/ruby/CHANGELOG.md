@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its
+  call, agent and name (and seconds): the org's feed says a tool answered or failed and a judge
+  found a call broken, never what it said.
+
 ## [0.11.6] — Released with every other package (2026-10-19)
 
 - Nothing of the gem changed: published at 0.11.6 with every other package.

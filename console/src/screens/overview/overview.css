@@ -1,4 +1,4 @@
-/* Overview: who is on the line, the numbers across, calls a day beside what needs a look, two cards of shares, and the agents. */
+/* Overview: who is on the line, the numbers across, calls a day beside how they end, what needs a look, and the agents. */
 
 /* The three channels, the dataviz method's categorical slots 7, 3 and 2 — violet, aqua, orange —
    validated for colour-blind separation on both surfaces; dark steps of their own, not a flip.
@@ -10,25 +10,45 @@
   --ovw-whatsapp: light-dark(#eb6834, #d95926);
 }
 
-.ovw-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
 .ovw-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+}
+
+/* A card of the pair is a column, so what it holds can take the height the row gives it. */
+.ovw-pair > .ui-card {
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1100px) {
-  .ovw-split,
   .ovw-pair {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* The right of the pair: how calls end, and under it the agent's speed when one is in view. */
+.ovw-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ovw-column > :first-child {
+  flex: 1;
+}
+
+/* A second part of one card, under a rule. */
+.ovw-card-part {
+  margin: 4px 18px 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.ovw-card-part > .ui-card-head,
+.ovw-card-part > .ovw-shares {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* ── on the line now ──────────────────────────────────────────────────────── */
@@ -43,9 +63,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--ink-3);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .ovw-pulse {
@@ -63,6 +83,45 @@
 .ovw-quiet {
   margin: 0;
   font-size: 13px;
+  color: var(--ink-4);
+}
+
+/* Nobody on the line: a dashed box holding the place the calls will take, and what will be there. */
+.ovw-nobody {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px dashed var(--line-control);
+  border-radius: 12px;
+}
+
+.ovw-nobody-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--ground-4);
+  color: var(--ink-4);
+}
+
+.ovw-nobody-words {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ovw-nobody-title {
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.ovw-nobody-why {
+  font-size: 12.5px;
   color: var(--ink-4);
 }
 
@@ -141,20 +200,24 @@
 
 /* ── needs a look ─────────────────────────────────────────────────────────── */
 
+/* One row a thing: its kind's icon on a tinted tile, who and what, why under it, and where it is fixed. */
 .ovw-looks {
   display: flex;
   flex-direction: column;
-  padding: 0 6px 6px;
+  border-top: 1px solid var(--line-2);
 }
 
 .ovw-look {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  padding: 10px 12px;
-  border-radius: 8px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
   color: var(--ink);
+}
+
+.ovw-look + .ovw-look {
+  border-top: 1px solid var(--line-2);
 }
 
 .ovw-look:hover {
@@ -162,33 +225,65 @@
   color: var(--ink);
 }
 
-.ovw-look-mark {
-  width: 7px;
-  height: 7px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: var(--amber-dot);
-}
-
-.ovw-look-mark-severe {
-  background: var(--red);
+.ovw-look-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  align-self: start;
 }
 
 .ovw-look-words {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
+.ovw-look-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .ovw-look-title {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ovw-look-kind {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.ovw-look-kind-indigo {
+  color: var(--indigo);
+}
+
+.ovw-look-kind-red {
+  color: var(--red);
+}
+
+.ovw-look-kind-amber {
+  color: var(--amber);
+}
+
+.ovw-look-where {
+  font-size: 12.5px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ovw-look-why {
-  font-size: 12.5px;
-  color: var(--ink-4);
+  font-size: 13px;
+  color: var(--ink-3);
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -196,43 +291,32 @@
   overflow: hidden;
 }
 
-.ovw-look-end {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
 .ovw-look-go {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--accent);
-  white-space: nowrap;
-  opacity: 0;
-}
-
-.ovw-look:hover .ovw-look-go,
-.ovw-look:focus-visible .ovw-look-go {
-  opacity: 1;
-}
-
-.ovw-look-when {
-  font-size: 11.5px;
-  color: var(--ink-5);
   white-space: nowrap;
 }
 
 /* ── charts ───────────────────────────────────────────────────────────────── */
 
+/* The chart takes whatever height its card has left, and draws at that height: beside how calls
+   end, the card is as tall as that one, and alone it is never shorter than the chart was. */
 .ovw-chart {
   position: relative;
-  padding: 6px 18px 12px;
+  flex: 1;
+  min-height: 198px;
+}
+
+.ovw-plot {
+  position: absolute;
+  inset: 6px 18px 12px;
 }
 
 .ovw-chart svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   overflow: visible;
 }
 

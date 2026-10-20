@@ -49,6 +49,8 @@ export interface Talking {
   toggleMic: () => Promise<void>;
   /** Write a line into the call instead of saying it. The agent answers it as it answers a spoken turn. */
   write: (text: string) => Promise<void>;
+  /** A line for a room still being joined: it goes in after the agent has opened the call, as `open`'s first line does. */
+  hold: (text: string) => void;
   /** One entry of the call's log, for the marks the room itself does not carry. */
   heard: (entry: Entry) => void;
 }
@@ -234,6 +236,16 @@ export function useRoom(agent: string): Talking {
     }
   }, [agent, credentials, said, write]);
 
+  // What `open` does with the line it was given, for a line that comes while the room is still being joined.
+  const hold = useCallback((text: string): void => {
+    if (first.current !== null || text.trim() === "") return;
+    first.current = text.trim();
+    const joined = room.current;
+    const agentIn = joined !== null && [...joined.remoteParticipants.values()].some((participant) => participant.kind === ParticipantKind.AGENT);
+    // The agent is there already: it opens, or it has nothing to say and the line goes a beat after.
+    if (agentIn && nobodyOpened.current === null) nobodyOpened.current = window.setTimeout(() => flush.current(), A_BEAT_MS);
+  }, []);
+
   const close = useCallback(async (): Promise<void> => {
     await room.current?.disconnect();
   }, []);
@@ -252,7 +264,7 @@ export function useRoom(agent: string): Talking {
     };
   }, []);
 
-  return { phase, mode, call, lines, error, since, muted, open, close, toggleMic, write, heard };
+  return { phase, mode, call, lines, error, since, muted, open, close, toggleMic, write, hold, heard };
 }
 
 // One segment from its first delta to the trailer that settles it. A segment's line is the text

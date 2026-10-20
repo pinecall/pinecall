@@ -2,8 +2,8 @@
 
 import { type SessionLine } from "@pinecall/core/wire/rest";
 
-import { prettyNumber, wantsAPerson } from "@pinecall/core/calls";
-import { duration, lettersFor, visitorOf } from "../../lib/format";
+import { byDay, isLive, prettyNumber, wantsAPerson, type CallDay } from "@pinecall/core/calls";
+import { duration, lettersFor, utcDay, visitorOf } from "../../lib/format";
 
 /** One person's calls with this agent, newest first. */
 export interface Thread {
@@ -38,11 +38,23 @@ export function threadsOf(lines: readonly SessionLine[]): Thread[] {
   }
   const threads = [...found.values()];
   for (const thread of threads) thread.lines.sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0));
-  // Newest first, except that a contact waiting for a person comes before every other: that is
-  // the one row in this list somebody has to answer.
+  // Newest first, except that a contact waiting for a person comes before every other — that is
+  // the one row in this list somebody has to answer — and then whoever is on the line now.
   return threads.sort(
-    (a, b) => Number(wantsAPerson(b.latest)) - Number(wantsAPerson(a.latest)) || (b.latest.started_at ?? 0) - (a.latest.started_at ?? 0),
+    (a, b) =>
+      Number(wantsAPerson(b.latest)) - Number(wantsAPerson(a.latest)) ||
+      Number(isLive(b.latest)) - Number(isLive(a.latest)) ||
+      (b.latest.started_at ?? 0) - (a.latest.started_at ?? 0),
   );
+}
+
+/** The threads under "live" and then their newest call's day, in the order given (core's `byDay`, by UTC day as every time on this page is). */
+export function threadDays(threads: readonly Thread[]): CallDay<Thread>[] {
+  const of = new Map(threads.map((thread) => [thread.latest.call, thread]));
+  return byDay(
+    threads.map((thread) => thread.latest),
+    utcDay,
+  ).map((day) => ({ ...day, lines: day.lines.flatMap((line) => of.get(line.call) ?? []) }));
 }
 
 function handleOf(line: SessionLine): string {
@@ -67,7 +79,7 @@ export function lettersOf(thread: Thread): string | undefined {
 /** What a thread's row says under its name: the newest call's outcome, or how it went. */
 export function lastOf(thread: Thread): string {
   const line = thread.latest;
-  if (line.status !== "ended") return "On a call now";
   if (line.outcome !== null && line.outcome !== "") return line.outcome;
+  if (line.status !== "ended") return "On a call now";
   return `${line.channel ?? "a"} call · ${duration(line)}`;
 }

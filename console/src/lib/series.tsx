@@ -11,6 +11,8 @@ import { type Asked, WHAT_MOVES_THE_NUMBERS } from "./insights";
 // runtime wire/rest/usage.py: Series. Loose so a new field does not fail the parse.
 const StageSchema = z.object({ stage: z.string(), turns: z.number(), median_s: z.number().nullable(), p95_s: z.number().nullable() });
 const JudgeSchema = z.object({ name: z.string(), held: z.number(), judged: z.number() });
+// The window's turns per stage, vendor and model: what answered, and how fast.
+const VendorSchema = z.object({ stage: z.string(), vendor: z.string(), model: z.string().nullable(), turns: z.number(), median_s: z.number().nullable(), p95_s: z.number().nullable() });
 const DaySchema = z.looseObject({
   day: z.string(),
   calls: z.number(),
@@ -26,11 +28,14 @@ const DaySchema = z.looseObject({
   tools_ran: z.number(),
   tools_failed: z.number(),
 });
-const SeriesSchema = z.looseObject({ day: z.string(), days: z.number(), agent: z.string().nullable(), series: z.array(DaySchema) });
+// `vendors` is a box's newer answer: a runtime that does not send it reads as none.
+const SeriesSchema = z.looseObject({ day: z.string(), days: z.number(), agent: z.string().nullable(), series: z.array(DaySchema), vendors: z.array(VendorSchema).default([]) });
 
 export type Series = z.infer<typeof SeriesSchema>;
 /** One UTC day of the window, every number a chart draws. */
 export type SeriesDay = Series["series"][number];
+/** One vendor and model over the whole window, for one stage. */
+export type SeriesVendor = Series["vendors"][number];
 
 /** Parse what the door answered; a renamed field is refused. */
 export function seriesOf(answered: unknown): Series {

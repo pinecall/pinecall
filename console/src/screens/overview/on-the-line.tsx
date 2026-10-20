@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { elapsed, wantsAPerson, whoOn } from "@pinecall/core/calls";
 import { webVisitor } from "../../lib/format";
-import { Avatar, ButtonLink } from "../../ui";
+import { Avatar, ButtonLink, Icon } from "../../ui";
 
 // More than this many at once is a floor, and Calls is where a floor is read.
 const AT_MOST = 6;
@@ -14,7 +14,17 @@ export function OnTheLine({ live, agent }: { live: readonly SessionLine[]; agent
   const base = agent === "" ? "/calls" : `/a/${encodeURIComponent(agent)}/calls`;
   const shown = [...live].sort((a, b) => Number(wantsAPerson(b)) - Number(wantsAPerson(a))).slice(0, AT_MOST);
   if (shown.length === 0) {
-    return <p className="ovw-quiet">Nobody is on the line. A call appears here the moment it rings.</p>;
+    return (
+      <div className="ovw-nobody">
+        <span className="ovw-nobody-icon" aria-hidden>
+          <Icon name="phone" size={17} />
+        </span>
+        <span className="ovw-nobody-words">
+          <span className="ovw-nobody-title">Nobody is on the line.</span>
+          <span className="ovw-nobody-why">A call appears here the moment it rings, with Listen and Take the line.</span>
+        </span>
+      </div>
+    );
   }
   return (
     <div className="ovw-live">

@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react";
 
-export function Stats({ min, children }: { min: number; children: ReactNode }): ReactNode {
+/** `apart` draws each stat as a card of its own, the value large and what moved it under it; else they share one card. */
+export function Stats({ min, apart = false, children }: { min: number; apart?: boolean | undefined; children: ReactNode }): ReactNode {
   return (
-    <div className="ui-stats" style={{ gridTemplateColumns: `repeat(auto-fit,minmax(${min}px,1fr))` }}>
+    <div className={apart ? "ui-stats ui-stats-apart" : "ui-stats"} style={{ gridTemplateColumns: `repeat(auto-fit,minmax(${min}px,1fr))` }}>
       {children}
     </div>
   );

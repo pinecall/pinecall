@@ -1,16 +1,17 @@
 /** The Overview's charts, drawn in SVG with the console's own tokens: calls a day by channel, and a bar per share. */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { dayOf } from "../../lib/format";
 import { callsOn, CHANNELS, type Channel, type Day } from "./counted";
 
+// The drawing is WIDTH units wide and as tall as its box allows at that scale, so the chart fills the
+// card beside it without stretching a letter; HEIGHT is its height until the box is measured.
 const WIDTH = 640;
 const HEIGHT = 180;
 const LEFT = 30;
 const BOTTOM = 22;
 const TOP = 8;
-const PLOT = HEIGHT - BOTTOM - TOP;
 
 /** The channel's name as a legend and a tooltip say it. */
 export const CHANNEL_NAME: Record<Channel, string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp" };
@@ -28,64 +29,85 @@ function dayAt(day: string): string {
 /** Calls a day, each bar its channels stacked with a 2px gap between them; a hover says the day's numbers. */
 export function CallsByDay({ days }: { days: Day[] }): ReactNode {
   const [on, setOn] = useState<number | null>(null);
+  const [box, height] = useHeightAtWidth();
+  const plot = height - BOTTOM - TOP;
   const ticks = ticksFor(Math.max(1, ...days.map(callsOn)));
   const top = ticks[ticks.length - 1] ?? 1;
   const slot = (WIDTH - LEFT) / days.length;
   const bar = Math.min(26, slot * 0.62);
-  const y = (value: number): number => TOP + PLOT - (value / top) * PLOT;
+  const y = (value: number): number => TOP + plot - (value / top) * plot;
   const hovered = on === null ? undefined : days[on];
 
   return (
     <div className="ovw-chart">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Calls a day, by channel" onMouseLeave={() => setOn(null)}>
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line x1={LEFT} x2={WIDTH} y1={y(tick)} y2={y(tick)} className="ovw-grid" />
-            <text x={LEFT - 8} y={y(tick) + 3.5} className="ovw-tick" textAnchor="end">
-              {tick}
-            </text>
-          </g>
-        ))}
-        {days.map((day, index) => {
-          const x = LEFT + index * slot + (slot - bar) / 2;
-          let base = 0;
-          return (
-            <g key={day.day} onMouseEnter={() => setOn(index)} className={on === index ? "ovw-bar ovw-bar-on" : "ovw-bar"}>
-              {/* The hit target is the whole slot, taller than any bar. */}
-              <rect x={LEFT + index * slot} y={TOP} width={slot} height={PLOT} className="ovw-hit" />
-              {CHANNELS.map((channel) => {
-                const value = day.calls[channel];
-                if (value === 0) return null;
-                const from = y(base);
-                base += value;
-                const height = Math.max(0, from - y(base) - 2);
-                return <rect key={channel} x={x} y={y(base)} width={bar} height={Math.max(height, 1.5)} rx={3} className={`ovw-fill ovw-fill-${channel}`} />;
-              })}
-              {(index % 2 === days.length % 2 || days.length <= 8) && (
-                <text x={x + bar / 2} y={HEIGHT - 6} className="ovw-tick" textAnchor="middle">
-                  {dayAt(day.day)}
-                </text>
-              )}
+      <div className="ovw-plot" ref={box}>
+        <svg viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label="Calls a day, by channel" onMouseLeave={() => setOn(null)}>
+          {ticks.map((tick) => (
+            <g key={tick}>
+              <line x1={LEFT} x2={WIDTH} y1={y(tick)} y2={y(tick)} className="ovw-grid" />
+              <text x={LEFT - 8} y={y(tick) + 3.5} className="ovw-tick" textAnchor="end">
+                {tick}
+              </text>
             </g>
-          );
-        })}
-      </svg>
-      {hovered !== undefined && on !== null && (
-        <div className="ovw-tip" style={{ left: `${((LEFT + (on + 0.5) * slot) / WIDTH) * 100}%` }}>
-          <div className="ovw-tip-head">
-            {dayAt(hovered.day)} · {callsOn(hovered)} calls
-          </div>
-          {CHANNELS.filter((channel) => hovered.calls[channel] > 0).map((channel) => (
-            <div key={channel} className="ovw-tip-row">
-              <span className={`ovw-key ovw-key-${channel}`} />
-              {CHANNEL_NAME[channel]}
-              <span className="ovw-tip-value">{hovered.calls[channel]}</span>
-            </div>
           ))}
-        </div>
-      )}
+          {days.map((day, index) => {
+            const x = LEFT + index * slot + (slot - bar) / 2;
+            let base = 0;
+            return (
+              <g key={day.day} onMouseEnter={() => setOn(index)} className={on === index ? "ovw-bar ovw-bar-on" : "ovw-bar"}>
+                {/* The hit target is the whole slot, taller than any bar. */}
+                <rect x={LEFT + index * slot} y={TOP} width={slot} height={plot} className="ovw-hit" />
+                {CHANNELS.map((channel) => {
+                  const value = day.calls[channel];
+                  if (value === 0) return null;
+                  const from = y(base);
+                  base += value;
+                  const tall = Math.max(0, from - y(base) - 2);
+                  return <rect key={channel} x={x} y={y(base)} width={bar} height={Math.max(tall, 1.5)} rx={3} className={`ovw-fill ovw-fill-${channel}`} />;
+                })}
+                {(index % 2 === days.length % 2 || days.length <= 8) && (
+                  <text x={x + bar / 2} y={height - 6} className="ovw-tick" textAnchor="middle">
+                    {dayAt(day.day)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        {hovered !== undefined && on !== null && (
+          <div className="ovw-tip" style={{ left: `${((LEFT + (on + 0.5) * slot) / WIDTH) * 100}%` }}>
+            <div className="ovw-tip-head">
+              {dayAt(hovered.day)} · {callsOn(hovered)} calls
+            </div>
+            {CHANNELS.filter((channel) => hovered.calls[channel] > 0).map((channel) => (
+              <div key={channel} className="ovw-tip-row">
+                <span className={`ovw-key ovw-key-${channel}`} />
+                {CHANNEL_NAME[channel]}
+                <span className="ovw-tip-value">{hovered.calls[channel]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
+}
+
+/** The box to draw in, and how tall the drawing is at WIDTH units across it: HEIGHT until it is measured. */
+function useHeightAtWidth(): [RefObject<HTMLDivElement | null>, number] {
+  const box = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(HEIGHT);
+  useEffect(() => {
+    const held = box.current;
+    if (held === null) return;
+    const watch = new ResizeObserver(([entry]) => {
+      const { width, height: tall } = entry?.contentRect ?? { width: 0, height: 0 };
+      if (width > 0 && tall > 0) setHeight((WIDTH * tall) / width);
+    });
+    watch.observe(held);
+    return () => watch.disconnect();
+  }, []);
+  return [box, height];
 }
 
 /** A labelled bar per row, its share of the largest: how calls ended, which door they came in by. */

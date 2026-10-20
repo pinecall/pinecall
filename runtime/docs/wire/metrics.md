@@ -184,9 +184,9 @@ stage, the median and the 95th percentile in seconds, so "the ears are 500 ms sl
 yesterday" is two rows of two days, and "the ears are wrong" is the confidence falling. The vendor
 is `model_provider` as the plugin reports it, and absent when the report named none.
 
-They are counted once per call, when it is sealed, from the call's own log (`log/drift.py`), never
+They are counted once per call, when it is sealed, from the call's own log (`calls/service/drift.py`), never
 read off the log at the endpoint: a day holds the calls sealed in it, not those still going. Each
-stage's seconds are kept as a fixed histogram (`log/_histogram.py`: under 10 ms, 92 buckets each
+stage's seconds are kept as a fixed histogram (`calls/histogram.py`: under 10 ms, 92 buckets each
 10 % wider than the one below it up to 63 s, and one for anything slower), so the calls of a day,
 of an agent and of a version add bucket by bucket, and a median or p95 read off the buckets is
 within 5 % of the exact one. The same fold counts each judge's settled verdicts of the call, by
@@ -194,3 +194,17 @@ the version of the agent's settings it ran on and the hash of the judge's questi
 `GET /v1/insights/drift` compares ([console-api.md](../protocol/console-api.md)); a call judged
 again (`POST /v1/evals/judge/{call}?again=true`) replaces its verdicts rather than adding them.
 `pinecall-runtime drift rebuild` counts them again from the log ([the-runtime-cli.md](../the-runtime-cli.md)).
+
+The same seal folds two more things, read at `GET /v1/insights/series`, `/tools` and `/slow`
+([console-api.md](../protocol/console-api.md)). `tool_days` is one row per day, agent and tool
+name: how many `tool.result`s the tool wrote (`ran`, the failed ones included), how many carried an
+error (`failed`), the `duration_s` of the results in the same histogram as a stage's, and the
+newest failure of the day (`last_error_call`, `last_error_at`, `last_error_text`); a median over a
+window is read off the buckets added, and a gateway's timeout, which has no `duration_s`, is
+counted and not timed. `slow_turns` keeps, for each call, the three agent turns with the greatest
+`e2e_latency`, with where the wait went: `hears_s` is the `transcription_delay` of the caller's turn
+right before, `thinks_s` the `llm_node_ttft`, `speaks_s` the `tts_node_ttfb`, and `tools_s`
+the sum of the `duration_s` of the tools whose `tool.call` carries that turn's `speech_id`; each is
+null when it was not measured. Erasing a call deletes its `slow_turns` and empties the
+`last_error_*` of the `tool_days` that named it, which keep their counts; both are in an org's
+export.

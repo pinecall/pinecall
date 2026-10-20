@@ -71,6 +71,7 @@ const ORG: Record<string, ReactNode> = {
   tokens: <Tokens />,
   providers: <Providers />,
   apps: <Apps />,
+  studio: <Studio />,
   secrets: <Secrets />,
   telemetry: <Telemetry />,
   alerts: <Alerts />,

@@ -16,8 +16,10 @@ from pinecall_runtime.calls.models import (
     CallPrivate,
     DriftCall,
     JudgeDay,
+    SlowTurn,
     StageDay,
     ThreadRead,
+    ToolDay,
 )
 from pinecall_runtime.channels.models import Route
 from pinecall_runtime.compliance.models import RecordingKey
@@ -114,7 +116,8 @@ class ErasureRepository(Repository[Erasure]):
 
     # What a call left besides its entries: the private values sealed beside them, its recording's
     # key, its head, facts and tokens, the memories it taught, the verdicts its day's drift counted
-    # (the day's sums keep its numbers, which name nobody), the case made of it, the labels people
+    # and its slowest turns (the day's sums keep its numbers, which name nobody, but a tool's last
+    # failure loses the call, the moment and the error text), the case made of it, the labels people
     # gave its judges, and what it was when it opened.
     async def erase_logs(self, logs: Sequence[str], calls: Sequence[str]) -> int:
         """Delete every row of the logs and their calls; how many memories the calls had taught."""
@@ -125,6 +128,12 @@ class ErasureRepository(Repository[Erasure]):
         await self.changed(delete(Token).where(Token.call.in_(calls)))
         taught = await self.changed(delete(ContactMemory).where(ContactMemory.source_call.in_(calls)))
         await self.changed(delete(DriftCall).where(DriftCall.call.in_(calls)))
+        await self.changed(delete(SlowTurn).where(SlowTurn.call.in_(calls)))
+        await self.changed(
+            update(ToolDay)
+            .where(ToolDay.last_error_call.in_(calls))
+            .values(last_error_call=None, last_error_at=None, last_error_text=None)
+        )
         await self.changed(delete(EvalCase).where(EvalCase.source_call.in_(calls)))
         await self.changed(delete(JudgeLabel).where(JudgeLabel.call.in_(calls)))
         await self.changed(delete(CallOpening).where(CallOpening.call.in_(calls)))
@@ -180,6 +189,8 @@ class ErasureRepository(Repository[Erasure]):
             (DriftCall, DriftCall.agent),
             (JudgeDay, JudgeDay.agent),
             (StageDay, StageDay.agent),
+            (ToolDay, ToolDay.agent),
+            (SlowTurn, SlowTurn.agent),
             (JudgeLabel, JudgeLabel.agent),
             (ThreadRead, ThreadRead.agent),
             (Token, Token.agent),

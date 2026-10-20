@@ -162,7 +162,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/webhook` | providers | Keep the org's webhook: the URL, and the secret every post is signed with. |
 | `DELETE` | `/v1/webhook` | providers | Forget the org's webhook. |
 | `POST` | `/v1/webhook/test` | providers | One test post to the org's webhook, signed as every alert is, waited for: whether a 2xx came back, else why not. |
-| `GET` | `/v1/insights/series` | calls | Every UTC day of the window — calls, endings, cost, latencies by stage, judges, tools — as the Observability screen draws it. |
+| `GET` | `/v1/insights/series` | calls | Every UTC day of the window — calls, endings, cost, latencies by stage, judges, tools — and the window's stages by vendor and model, as the Observability screen draws it. |
+| `GET` | `/v1/insights/tools` | calls | Every tool of the window: its results, those that failed, its median seconds and its newest failure; the most failed first. |
+| `GET` | `/v1/insights/slow` | calls | The window's slowest turns, each with where the caller's wait went: hearing, thinking, tools, speaking. |
 | `GET` | `/v1/insights/drift` | calls | What moved between two days or versions of an agent, and the versions run or set. |
 | `POST` | `/v1/invitations/{token}` | — | Choose a password: the member is active, and here is their first key. |
 | `GET` | `/v1/keys` | — | The org's keys this key may see, oldest first, the revoked ones too; never a key. |

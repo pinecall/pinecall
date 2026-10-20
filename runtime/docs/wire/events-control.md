@@ -153,6 +153,16 @@ The gateway refused to open a call because every worker of the fleet was full. W
 | `workers` | `integer` | yes | How many workers the fleet had at that moment, every one of them full. |
 | `active` | `integer` | yes | How many calls those workers were holding between them. |
 
+### `judge.broke`
+
+A judge found a sealed call broken. Said on the org's feed once per broken judge when the call is sealed with its `call.score`, with nothing else and never stored: the reason and the evidence are the call's content, read at `GET /v1/calls/{call}/events`.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `call` | `string` | yes | The call that was sealed. |
+| `agent` | `string` | yes | The agent that took it. |
+| `judge` | `string` | yes | The judge's name. |
+
 ### `release.changed`
 
 A hosted app's release changed where it stands: uploaded, live, failed or replaced. Said on the org's feed with nothing else and never stored: the app and its releases are read at `GET /v1/hosted`.
@@ -171,6 +181,28 @@ A run of goldens and cases opened a call, judged one, or finished. Said on the o
 | `run` | `string` | yes | The run's id. |
 | `agent` | `string` | yes | The agent the run is of. |
 | `finished` | `boolean` | yes | True once the run is done or failed. |
+
+### `tool.failed`
+
+A tool of a call failed or timed out. Said on the org's feed when the `tool.result` is written, with nothing of the call's content and never stored: the error, the arguments and the output stay in the call's log, read at `GET /v1/calls/{call}/events`. A gateway timeout has no seconds.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `call` | `string` | yes | The call the tool ran in. |
+| `agent` | `string` | yes | The agent that took it. |
+| `name` | `string` | yes | The tool's name. |
+| `duration_s` | `number | null` | yes | Seconds the tool took, null when the result carried none. |
+
+### `tool.ran`
+
+A tool of a call answered. Said on the org's feed when the `tool.result` is written, with nothing of the call's content and never stored: the arguments and the output stay in the call's log, read at `GET /v1/calls/{call}/events`.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `call` | `string` | yes | The call the tool ran in. |
+| `agent` | `string` | yes | The agent that took it. |
+| `name` | `string` | yes | The tool's name. |
+| `duration_s` | `number | null` | yes | Seconds the tool took, null when the result carried none. |
 
 ### `worker.changed`
 

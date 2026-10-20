@@ -60,7 +60,14 @@ import {
   CallSummarySchema,
   CallTransferredSchema,
 } from "./events-call.js";
-import { ReleaseChangedSchema, RunChangedSchema, WorkerChangedSchema } from "./events-feed.js";
+import {
+  JudgeBrokeSchema,
+  ReleaseChangedSchema,
+  RunChangedSchema,
+  ToolFailedSchema,
+  ToolRanSchema,
+  WorkerChangedSchema,
+} from "./events-feed.js";
 import {
   AvatarMetricsSchema,
   EOTInferenceMetricsSchema,
@@ -118,6 +125,7 @@ export const EVENT_SCHEMAS = {
   "error": ErrorEventSchema,
   "event.received": EventReceivedSchema,
   "fleet.full": FleetFullSchema,
+  "judge.broke": JudgeBrokeSchema,
   "log.caught_up": LogCaughtUpSchema,
   "log.gap": LogGapSchema,
   "memory.ops": MemoryOpsSchema,
@@ -151,6 +159,8 @@ export const EVENT_SCHEMAS = {
   "supervisor.transferred": SupervisorTransferredSchema,
   "supervisor.whispered": SupervisorWhisperedSchema,
   "tool.call": ToolCallSchema,
+  "tool.failed": ToolFailedSchema,
+  "tool.ran": ToolRanSchema,
   "tool.result": ToolResultSchema,
   "tools.changed": ToolsChangedSchema,
   "track.published": TrackPublishedSchema,

@@ -48,6 +48,8 @@ const StudioAgentSchema = z.object({
   stopped: z.boolean(),
 });
 
+const StudioAgentListSchema = z.object({ agents: z.array(StudioAgentSchema) });
+
 const TriedSchema = z.object({ status: z.number().int().nullable(), body: z.unknown(), error: z.string().nullable(), duration_ms: z.number() });
 
 export type ParamType = z.infer<typeof ParamTypeSchema>;
@@ -69,6 +71,11 @@ const doorOf = (name: string): string => `/v1/studio/agents/${encodeURIComponent
 /** The agent's newest release in this world. */
 export async function readStudioAgent(credentials: Credentials, name: string): Promise<StudioAgent> {
   return StudioAgentSchema.parse(await read(credentials, doorOf(name)));
+}
+
+/** Every agent the org has built in Studio in this world, by name, each its newest release. */
+export async function readStudioAgents(credentials: Credentials): Promise<StudioAgent[]> {
+  return StudioAgentListSchema.parse(await read(credentials, "/v1/studio/agents")).agents;
 }
 
 /** A new agent in the sandbox, by its name alone: it starts with the gateway's first instructions. */

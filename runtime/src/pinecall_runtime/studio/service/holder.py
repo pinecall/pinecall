@@ -97,6 +97,17 @@ class StudioSocket:
         # What was set alone: a default sent (`record`) would be a setting the agent fixes for the console.
         config = defined.declaration(definition).model_dump(mode="json", exclude_unset=True, exclude_none=True)
         await self._command("agent.configure", slug, None, {"config": config})
+        if self.env is Env.sandbox:
+            await self._reheard(slug, definition)
+
+    # The console's Try it is a call, and a save is meant to be heard by it: in the sandbox the calls
+    # already open take the new definition and run their next turn on it. Production's keep the one
+    # they opened on, as a deploy says: the next call answers with it.
+    async def _reheard(self, slug: str, definition: Definition) -> None:
+        for call, run in list(self.runs.items()):
+            if run.agent == slug:
+                run.definition = definition
+                await self._send_definition(run, call)
 
     async def let_go(self, slug: str) -> None:
         """Stop holding the agent: its calls go where a new one would, or wait parked."""
@@ -173,11 +184,16 @@ class StudioSocket:
         self.runs[call] = run
         if definition.collect is not None:
             await self._command("state.set", agent, call, {"state": run.collected})
+        await self._send_definition(run, call)
+
+    async def _send_definition(self, run: Run, call: str) -> None:
+        """The prompt's blocks that changed, and the tools visible, as the call's definition says them."""
+        definition = run.definition
         await self._prompt(run, call, "identity", defined.identity(definition, run.values))
         await self._prompt(run, call, "tools", defined.tools_block(definition))
         await self._prompt(run, call, "view", defined.view(definition, run.collected))
         specs = [spec.model_dump(mode="json", exclude_none=True) for spec in defined.tool_specs(definition)]
-        await self._command("tools.set", agent, call, {"tools": specs})
+        await self._command("tools.set", run.agent, call, {"tools": specs})
 
     async def _prompt(self, run: Run, call: str, name: str, text: str) -> None:
         if run.sent.get(name, "") == text:

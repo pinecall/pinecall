@@ -51,44 +51,136 @@
   font-size: 12.5px;
 }
 
-/* The runs as a table: a caller's face and name, and what the row says in a quieter ink. */
+/* The runs: a caller's face and name, when and how long, what the judges answered, and what it cost. */
 
-.runs-bar {
+.runs {
   display: flex;
-  align-items: center;
-}
-
-.runs-table {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--ground);
-}
-
-.runs-who {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
+}
+
+.runs-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.runs-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.runs-meta {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.runs-list {
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.runs-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 150px 64px 18px;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+  color: var(--ink);
+}
+
+.runs-row + .runs-row {
+  border-top: 1px solid var(--line-2);
+}
+
+.runs-row:hover {
+  background: var(--ground-3);
+  color: var(--ink);
+}
+
+.runs-words {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
 .runs-name {
   font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink);
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.runs-faint {
+.runs-sub {
+  font-size: 12px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.runs-verdict-said {
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs-tone-green {
+  color: var(--green);
+}
+
+.runs-tone-red {
+  color: var(--red);
+}
+
+.runs-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: light-dark(#ececf1, #2a2c3a);
+  overflow: hidden;
+}
+
+.runs-bar-fill {
+  display: block;
+  height: 100%;
+}
+
+.runs-fill-green {
+  background: var(--green);
+}
+
+.runs-fill-red {
+  background: var(--red);
+}
+
+.runs-unjudged {
   font-size: 12.5px;
   color: var(--ink-4);
 }
 
-.runs-num {
+.runs-cost {
+  font-family: var(--face-fixed);
+  font-size: 12px;
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.runs-go {
+  display: inline-flex;
+  color: var(--ink-5);
+  transform: rotate(-90deg);
 }
 
 .sims-back {
@@ -100,12 +192,4 @@
 
 .sims-back:hover {
   color: var(--accent-hover);
-}
-
-/* How many simulations ran, beside the tab that lists them. */
-.sims-count {
-  margin-left: 6px;
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-4);
 }

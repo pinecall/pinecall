@@ -1,106 +1,75 @@
-/** Quality's overview: how the REAL calls are going — judged at hang-up — for every agent or the one in view: the share that held, a day at a time, what broke, and by agent. */
+/** Quality: how the REAL calls kept their rules over a window — the share that held, what broke, the fixes ready, the goldens — then each rule, and the calls the picked one broke. */
 
-import { useMemo, type ReactNode } from "react";
-import { Link, useParams } from "react-router";
+import { useMemo, useState, type ReactNode } from "react";
+import { useParams } from "react-router";
 
-import { whoOn } from "@pinecall/core/calls";
-import { ago, percent, webVisitor } from "../../lib/format";
-import { useInsights } from "../../lib/insights";
+import { utcDay } from "../../lib/format";
+import { rowAt } from "../../lib/harness";
+import { useInsights, useWindowDays, WindowPicker } from "../../lib/insights";
 import { useOrg } from "../../lib/org";
-import { Bar, Card, CardHead, Page, PageHead, Stat, Stats, TableHead, TableRow } from "../../ui";
-import { HeldByDay } from "./held-by-day";
+import { useScores } from "../../lib/use-scores";
+import { Page, PageHead } from "../../ui";
+import { useCases } from "../cases";
+import { useSuites } from "../evals";
+import { fixable, Fixes } from "./fixes";
+import { Count, Kept } from "./kept";
+import { BrokeIt, Rules, rulesOf } from "./rules";
+import { useJudges } from "./use-judges";
 import "./quality.css";
-
-// The numbers across are a week's; the line is a month's, so a week reads against what came before.
-const WEEK = 7;
-const MONTH = 30;
-// What broke is read off the calls the page already follows: the newest, not all of them.
-const BROKE_SHOWN = 8;
-const AGENT_COLUMNS = "minmax(0,1.4fr) 90px minmax(0,1fr)";
 
 /**
  * Quality is about calls that happened; whether a change is safe before it ships is Test's. The
- * week's numbers and the line are the gateway's count (`/v1/insights`); what broke is the calls
- * the page follows whose judges said no, each with the judge's own reason; the judges' held-rates
- * are Test's Judges tab's, and the lines its numbers must not cross are the Monitors tab's.
+ * window's numbers are the gateway's count (`/v1/insights`); the fixes are the case groups whose
+ * diagnosis names a change; each rule's rate and the calls it broke are read off the newest
+ * judged calls the page follows, one log each — the window counts every call, the rules what was read.
  */
 export function Quality(): ReactNode {
   const agent = useParams()["agent"] ?? "";
-  const { lines } = useOrg();
   const asked = agent === "" ? undefined : agent;
-  const week = useInsights({ agent: asked, days: WEEK });
-  const month = useInsights({ agent: asked, days: MONTH });
+  const [days, pickDays] = useWindowDays(7);
+  const counted = useInsights({ agent: asked, days });
+  const before = useInsights({ agent: asked, day: utcDay(Date.now() / 1000 - days * 86400), days });
+  const { lines } = useOrg();
   const mine = useMemo(() => (agent === "" ? lines : lines.filter((line) => line.agent === agent)), [lines, agent]);
-  const broke = mine.filter((line) => line.score?.passed === false).slice(0, BROKE_SHOWN);
-  const calls = agent === "" ? "/calls" : `/a/${encodeURIComponent(agent)}/calls`;
-  const judged = week?.judged ?? 0;
+  const scored = useScores(mine);
+  const judges = useJudges(agent === "" ? null : agent).judges;
+  const cases = useCases(agent);
+  const suites = [...useSuites().values()].filter((suite) => agent === "" || suite.agent === agent);
+
+  const rules = rulesOf(judges, scored);
+  const [picked, setPicked] = useState<string | null>(null);
+  // Unpicked, the rule that broke most is the one shown.
+  const rule = rules.find((one) => one.name === picked) ?? rules[0];
+  const fixes = (cases.groups ?? []).filter(fixable);
+  const broke = counted === null ? null : counted.judged - counted.passed;
+  const held = suites.reduce((all, suite) => all + suite.held, 0);
+  const cells = suites.reduce((all, suite) => all + suite.cells, 0);
 
   return (
     <Page>
-      <PageHead
-        title="Quality"
-        lede="Real calls, judged at hang-up."
-      />
+      <PageHead title="Quality" lede="Judges read every call and check it against your rules." actions={<WindowPicker days={days} onPick={pickDays} />} />
 
-      <Stats min={170}>
-        <Stat size="big" label="Calls judged" value={week === null ? "—" : judged} delta="the last 7 days" tone="flat" />
-        <Stat size="big" label="Held" value={week === null || judged === 0 ? "—" : percent(week.passed / judged)} delta={judged === 0 ? "nothing judged" : `${week?.passed ?? 0} of ${judged}`} tone="flat" />
-        <Stat size="big" label="Broke" value={week === null ? "—" : judged - (week.passed ?? 0)} delta={<Link to={`${calls}?status=broke`}>See them in Calls</Link>} tone="flat" />
-      </Stats>
-
-      <div className="qly-split">
-        <Card>
-          <CardHead title="Held, a day at a time" meta="share of judged calls where every judge held · the last 30 days" />
-          {month === null ? <p className="qly-quiet">Counting the verdicts…</p> : <HeldByDay series={month.series} />}
-        </Card>
-        <Card>
-          <CardHead title="What broke" meta="the judge's own reason" />
-          {broke.length === 0 ? (
-            <p className="qly-quiet">Every judged call the page follows held.</p>
-          ) : (
-            <div className="qly-broke">
-              {broke.map((line) => (
-                <Link key={line.call} to={`${calls}/${line.call}`} className="qly-broke-one">
-                  <span className="qly-broke-mark" aria-hidden />
-                  <span className="qly-broke-words">
-                    <span className="qly-broke-who">
-                      {whoOn(line, webVisitor)}
-                      {agent === "" && <span className="qly-broke-agent"> · {line.agent}</span>}
-                    </span>
-                    <span className="qly-broke-why">{line.score?.reason ?? "A judge answered broken."}</span>
-                  </span>
-                  <span className="qly-broke-when">
-                    {line.score?.held}/{line.score?.judged} · {ago(line.started_at)}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
+      <div className="qly-top">
+        <Kept counted={counted?.days === days ? counted : null} before={before?.days === days ? before : null} days={days} />
+        <div className="qly-counts">
+          <Count label="Calls that broke" value={broke === null ? "—" : String(broke)} tone={broke !== null && broke > 0 ? "red" : undefined} sub="a rule" to={`${rowAt(agent, "calls")}?status=broke`} />
+          <Count label="Fixes ready" value={cases.groups === null ? "—" : String(fixes.length)} sub={fixes.length === 0 ? "nothing diagnosed waits" : "one click each"} to={rowAt(agent, "cases")} />
+          <Count
+            label="Goldens"
+            value={cells === 0 ? "—" : `${held}/${cells}`}
+            tone={cells === 0 ? undefined : held === cells ? "green" : "amber"}
+            sub={cells === 0 ? "no run yet" : "held last run"}
+            to={agent === "" ? undefined : `/a/${encodeURIComponent(agent)}/goldens`}
+          />
+        </div>
       </div>
 
-      {agent === "" && (week?.agents.length ?? 0) > 0 && (
-        <Card>
-          <CardHead title="By agent" meta="the last 7 days · a row puts that agent in view" />
-          <TableHead columns={AGENT_COLUMNS} labels={["Agent", "Calls>", "Held by the judges"]} />
-          {(week?.agents ?? []).map((one) => (
-            <TableRow key={one.slug} columns={AGENT_COLUMNS} to={`/a/${encodeURIComponent(one.slug)}/quality`}>
-              <span className="ui-cell-strong ui-clip">{one.slug}</span>
-              <span className="ui-cell-ink ui-cell-right qly-num">{one.calls}</span>
-              <span className="qly-held">
-                {one.score === null ? (
-                  <span className="ui-cell-faint">nothing judged</span>
-                ) : (
-                  <>
-                    <Bar share={one.score} />
-                    <span className="ui-cell-ink qly-num">{percent(one.score)}</span>
-                  </>
-                )}
-              </span>
-            </TableRow>
-          ))}
-        </Card>
-      )}
+      <Fixes groups={fixes} agent={agent} />
+
+      <div className="qly-pair">
+        <Rules rules={rules} picked={rule?.name ?? null} onPick={setPicked} agent={agent} />
+        <BrokeIt rule={rule} scored={scored} cases={cases.listed?.cases ?? []} agent={agent} />
+      </div>
     </Page>
   );
 }

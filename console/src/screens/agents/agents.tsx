@@ -37,7 +37,7 @@ import {
 } from "../../ui";
 import { readTokens, type Listed } from "../tokens/door";
 import { Processes } from "./processes";
-import { NewAgent } from "./new-agent";
+import { NewAgent } from "../studio";
 import { readAvailable, readNumbers, type Answering } from "../numbers/door";
 import { readCatalogue, readVendors } from "../providers/door";
 import "./agents.css";

@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 export interface TabItem<T extends string> {
   tab: T;
   name: string;
+  /** Drawn before the name. */
+  icon?: ReactNode | undefined;
   /** Shown after the name, e.g. a dot or count. */
   mark?: ReactNode | undefined;
 }
@@ -31,6 +33,7 @@ export function Tabs<T extends string>({
           aria-current={on === one.tab ? "page" : undefined}
           onClick={() => onPick(one.tab)}
         >
+          {one.icon}
           {one.name}
           {one.mark}
         </button>

@@ -118,6 +118,8 @@ export const ORG_SCREENS: readonly Screen[] = [
   // The apps the box hosts for the org in this world (`pinecall deploy`), and what they start with.
   { key: "apps", path: "apps", name: "Apps", in: BOTH, under: "agents" },
   { key: "secrets", path: "secrets", name: "Secrets", in: BOTH, under: "agents" },
+  // The agents built with no code, and where a new one is made; with an agent in view it is that agent's definition.
+  { key: "studio", path: "studio", name: "Studio", in: BOTH, icon: "route" },
   // Every base of the world and who searches it, and every fact any agent's calls taught.
   { key: "knowledge", path: "knowledge", name: "Knowledge", in: BOTH, icon: "book", opensOn: "first-tab" },
   { key: "org-docs", path: "docs", name: "Docs", in: BOTH, under: "knowledge" },

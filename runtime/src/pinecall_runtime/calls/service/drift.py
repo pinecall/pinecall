@@ -14,6 +14,7 @@ from pinecall_runtime.calls import histogram
 from pinecall_runtime.calls.repository.drift import DriftRepository, Where
 from pinecall_runtime.calls.repository.heads import HeadRepository
 from pinecall_runtime.calls.repository.refold import RefoldRepository
+from pinecall_runtime.calls.service import slow_turns, tool_days
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.wire.base import Entry
@@ -144,7 +145,7 @@ VERDICTS: TypeAdapter[list[Verdict]] = TypeAdapter(list[Verdict])
 
 # The seal's: a call is folded once, and folded again (judged again) only its verdicts change.
 async def fold(session: AsyncSession, call: str, entries: Sequence[Entry], score: CallScore) -> bool:
-    """Count a sealed call's stages and verdicts into its day; False for a call never started."""
+    """Count a sealed call's stages, verdicts, tools and slowest turns into its day; False if never started."""
     head = await HeadRepository(session).head_of_call(call)
     if head is None or head.scope is None or head.started_at is None:
         return False
@@ -155,6 +156,8 @@ async def fold(session: AsyncSession, call: str, entries: Sequence[Entry], score
     dumped = VERDICTS.dump_python(verdicts, mode="json")
     if await repository.claim(call, where, dumped, ran, failed):
         await repository.add_stages(where, _sample_rows(_samples_of(entries)))
+        await repository.add_tools(where, tool_days.rows_of(entries))
+        await repository.add_slow_turns(where, slow_turns.rows_of(call, entries))
         await repository.add_verdicts(where, _verdict_rows(_tallied(verdicts, sign=1)))
         return True
     counted_raw = await repository.verdicts_counted(call)

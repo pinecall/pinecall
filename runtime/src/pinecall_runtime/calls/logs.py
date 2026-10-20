@@ -26,6 +26,8 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.redis import LocalSignal, Signal
 from pinecall_runtime.wire.base import BatchedEntry, Entry, WireModel
 from pinecall_runtime.wire.events import EPHEMERAL_EVENTS, TERMINAL_EVENT
+from pinecall_runtime.wire.feed import ToolFailed, ToolRan
+from pinecall_runtime.wire.parts import ToolResult
 from pinecall_runtime.wire.state import State
 
 # Runs inline on every append, before append returns: for work that is part of the write.
@@ -414,6 +416,8 @@ class Logs:
     async def _feed(self, entry: Entry) -> None:
         if entry.type in METERED_TYPES:
             self.relay.local(USAGE_CHANNEL, entry.model_copy(update={"data": {}}))
+        if entry.type == "tool.result":
+            await self._announce_tool(entry)
         if entry.type not in ORG_EVENTS:
             return
         claimant = await self.claimant_of(entry)
@@ -425,6 +429,24 @@ class Logs:
         envs = tuple(Env) if claimant.env is None else (claimant.env,)
         for env in envs:
             self.relay.local(FEED_CHANNEL.format(org=claimant.org, env=env.value), entry)
+
+    # Every tool.result passes here, whichever gateway or worker wrote it: said with the tool's name and
+    # seconds, never its error, arguments or output, which are the call's content.
+    async def _announce_tool(self, entry: Entry) -> None:
+        claimant = await self.claimant_of(entry)
+        try:
+            result = ToolResult.parse(entry.data, entry.type)
+        except ValidationError:
+            return
+        if claimant is None or claimant.env is None or entry.call is None:
+            return
+        scope = Scope(claimant.org, claimant.env)
+        if result.error is None:
+            ran = ToolRan(call=entry.call, agent=entry.agent, name=result.name, duration_s=result.duration_s)
+            self.announce(scope, "tool.ran", ran)
+        else:
+            failed = ToolFailed(call=entry.call, agent=entry.agent, name=result.name, duration_s=result.duration_s)
+            self.announce(scope, "tool.failed", failed)
 
     # On every read, so readers asking for arbitrary names cannot grow the tables without bound.
     def _prune(self, *, but: str = "") -> None:

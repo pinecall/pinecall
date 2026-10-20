@@ -1,18 +1,21 @@
 /** One call: who is on it, the log as it arrives, and beside them the desk on a live call or the reading of a finished one. */
 
 import { type Entry } from "@pinecall/core/wire/envelope";
+import { type CallScore } from "@pinecall/core/wire/events-call";
 import { type State } from "@pinecall/core/wire/state";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { elapsed, isSpoken, prettyNumber } from "@pinecall/core/calls";
 import { medians } from "@pinecall/core/metrics";
 import { keepCallView, keptCallView, type CallView } from "../../lib/preferences";
 import { useScopes } from "../../lib/whoami";
-import { visitorOf } from "../../lib/format";
-import { Avatar, ButtonLink, Pill, usePane } from "../../ui";
+import { dayAndTime, visitorOf } from "../../lib/format";
+import { Avatar, Icon, Pill, usePane } from "../../ui";
 import { Desk } from "./desk";
-import { Actions, CostCard, Details, LatencyCard, Outcome, Player, recordingIn, ScoreCard, scoreIn, timeSpentIn } from "./over";
+import { Actions, Details, Player, recordingIn, scoreIn } from "./over";
 import { ChatView } from "./chat-view";
+import { Side } from "./side";
 import { Timeline } from "./timeline";
 import { traceOf } from "./trace-bars";
 import { TraceStep } from "./trace-step";
@@ -56,12 +59,13 @@ export function Call({
   const spoken = isSpoken(state);
   // A key that does not open `supervise` is refused every move: the desk is not drawn for it.
   const supervises = supervised && (scopes === null || scopes.includes("supervise"));
-  const read = useMemo(
-    () => ({ latencies: medians(watched.entries), score: scoreIn(watched.entries), spent: timeSpentIn(watched.entries, state) }),
-    [watched.entries, state],
-  );
+  const read = useMemo(() => ({ latencies: medians(watched.entries), score: scoreIn(watched.entries) }), [watched.entries]);
+  // A verdict asked for here (Re-judge) is the one shown, over the one the log was sealed with.
+  const [judged, setJudged] = useState<CallScore | null>(null);
 
   const pane = usePane({ name: "call.pane", initial: 360, min: 280, max: 640, side: "right" });
+  // The pane folds away from the head, and the conversation takes the width.
+  const [paneShown, setPaneShown] = useState(true);
   // Four ways to read the same call: as a chat — the bubbles, the tools as one line each — as the
   // transcript, as the whole log with every number, or as a trace of its stages on a time axis. The
   // one a person picked is the one the next call opens in; the chat is where a person who never picked starts.
@@ -84,15 +88,15 @@ export function Call({
       {recorded !== null && <Recorded call={call} />}
       {over && (
         <div className="call-foot">
-          <Details state={state} entries={watched.entries} beside={<Actions agent={state.agent || agent || ""} call={call} number={(state.direction === "outbound" ? state.to : state.from) ?? null} />} />
+          <Details state={state} entries={watched.entries} />
         </div>
       )}
     </>
   );
 
   return (
-    <div className="call" style={pane.style}>
-      {pane.handle}
+    <div className={paneShown ? "call" : "call call-folded"} style={pane.style}>
+      {paneShown && pane.handle}
       <div className="call-middle">
         <Head call={call} agent={agent} name={name} state={state} connection={watched.connection} failed={watched.error}>
           <span className="call-view" role="group" aria-label="how the call is read">
@@ -103,9 +107,18 @@ export function Call({
             ))}
           </span>
           {beside?.(over)}
-          <ButtonLink to={page} kind="primary" size="md">
-            Open the call ↗
-          </ButtonLink>
+          <button
+            type="button"
+            className={paneShown ? "call-head-icon call-head-icon-on" : "call-head-icon"}
+            title={paneShown ? "Hide the details" : "Show the details"}
+            aria-pressed={paneShown}
+            onClick={() => setPaneShown(!paneShown)}
+          >
+            <Icon name="pane" size={15} />
+          </button>
+          <Link to={page} className="call-head-icon" title="Open in its own page">
+            <Icon name="external" size={15} />
+          </Link>
         </Head>
         {view === "chat" ? (
           <ChatView entries={watched.entries} state={state} after={theEnd} />
@@ -116,23 +129,21 @@ export function Call({
         )}
         {foot}
       </div>
-      <aside className="call-pane" aria-label="what the call holds">
-        {/* A bar picked in the trace is what the reader is looking at: it comes before the rest. */}
-        {step !== undefined && <TraceStep bar={step} onClose={() => setPicked(null)} />}
-        {/* The desk is the live call's first thing: a supervisor opens the page to act on it. */}
-        {!over && supervises && <Desk call={call} live spoken={spoken} asked={state.attention ?? null} />}
-        {/* What the call came to, how fast it answered, how it was judged and what it cost: the rest is a page of its own. */}
-        <div className="call-over">
-          {over && <Outcome state={state} />}
-          <LatencyCard rows={read.latencies} />
-          {over && <ScoreCard call={call} base={`/calls/${call}`} score={read.score} turns={state.turns.length} ended compact />}
-          {state.cost !== null && state.cost.rows.length > 0 && <CostCard cost={state.cost} />}
-          <ButtonLink to={page} kind="primary">
-            Open the call's page
-          </ButtonLink>
-        </div>
-        {aside}
-      </aside>
+      {paneShown && (
+        <aside className="call-pane" aria-label="what the call holds">
+          {/* A bar picked in the trace is what the reader is looking at: it comes before the rest. */}
+          {step !== undefined && <TraceStep bar={step} onClose={() => setPicked(null)} />}
+          {/* The desk is the live call's first thing: a supervisor opens the page to act on it. */}
+          {!over && supervises && <Desk call={call} live spoken={spoken} asked={state.attention ?? null} />}
+          {/* What the call came to, how it was judged, how fast, what it cost, who ended it: the rest is the call's own page. */}
+          <Side state={state} score={judged ?? read.score} latencies={read.latencies} />
+          {aside}
+          {/* What a person does with a call that is over, at the pane's foot. */}
+          {over && (
+            <Actions agent={state.agent || agent || ""} call={call} number={(state.direction === "outbound" ? state.to : state.from) ?? null} onJudged={setJudged} />
+          )}
+        </aside>
+      )}
     </div>
   );
 }
@@ -169,9 +180,9 @@ function Head({
   return (
     <div className="call-head">
       <Avatar name={who} size={36} round tint={asking ? "amber" : over ? undefined : "green"} />
-      <div className="call-who">
-        <div className="call-who-line">
-          <span className="call-who-name" title={call}>
+      <div className="call-head-who">
+        <div className="call-head-line">
+          <span className="call-head-name" title={call}>
             {who}
           </span>
           {asking ? (
@@ -180,7 +191,8 @@ function Head({
             </Pill>
           ) : over ? (
             <Pill tone="gray" small>
-              {(state.end_reason ?? "ended").replace(/_/g, " ")}
+              <span className="call-head-dot" aria-hidden />
+              Ended
             </Pill>
           ) : (
             <Pill tone="green" small>
@@ -188,8 +200,14 @@ function Head({
             </Pill>
           )}
         </div>
-        <div className="call-who-sub">
-          {[address !== null && visitorOf(address) === null && prettyOrAsIs(address) !== who ? prettyOrAsIs(address) : null, state.channel, state.direction === "outbound" ? "outbound" : null, state.agent || agent || null]
+        <div className="call-head-sub">
+          {[
+            state.agent || agent || null,
+            address !== null && visitorOf(address) === null && prettyOrAsIs(address) !== who ? prettyOrAsIs(address) : null,
+            state.channel,
+            state.direction === "outbound" ? "outbound" : null,
+            state.started_at === null ? null : dayAndTime(state.started_at),
+          ]
             .filter((part): part is string => part !== null && part !== "")
             .join(" · ")}
           {failed !== null ? (

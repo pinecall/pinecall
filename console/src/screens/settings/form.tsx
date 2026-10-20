@@ -1,40 +1,36 @@
 /** Settings form, one section at a time: pipeline, conversation, memory, knowledge, bases. */
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { type TuningBody } from "@pinecall/core/wire/rest-org";
 import { type KnowledgeBase } from "@pinecall/core/wire/rest-retrieval";
 
 import type { Provider } from "../../lib/catalogue";
-import { Button, Input, Tabs } from "../../ui";
+import { Icon, Input, Tabs } from "../../ui";
 import { BasesSection } from "./bases";
 import { ConversationSection } from "./conversation";
-import { LanguageField } from "./language";
-import { RealtimeSection } from "./realtime";
+import { Pipeline, type Running, type Step } from "./pipeline";
 import type { Stage } from "../pipeline/door";
-import { EndOfTurnField, FixedByTheClass, PluginFields, TemperatureField } from "./plugin";
-import { StageSection, VoiceField } from "./stages";
+import { FixedByTheClass } from "./plugin";
 import { configOf, typedOf, type Change, type Modeled, type Plugin, type Typed } from "./typed";
 import { KnowledgeSection, MemorySection } from "./words";
 
-export type Section = "hears" | "decides" | "speaks" | "judged" | "conversation" | "memory" | "knowledge" | "bases";
+export type Section = "pipeline" | "conversation" | "memory" | "knowledge" | "bases";
 
-const SECTIONS: readonly { tab: Section; name: string }[] = [
-  { tab: "hears", name: "STT" },
-  { tab: "decides", name: "LLM" },
-  { tab: "speaks", name: "Voice" },
-  { tab: "judged", name: "Judge" },
-  { tab: "conversation", name: "Conversation" },
-  { tab: "memory", name: "Memory" },
-  { tab: "knowledge", name: "Knowledge" },
-  { tab: "bases", name: "Bases" },
+const SECTIONS: readonly { tab: Section; name: string; icon: ReactNode }[] = [
+  { tab: "pipeline", name: "Pipeline", icon: <Icon name="route" size={15} /> },
+  { tab: "conversation", name: "Conversation", icon: <Icon name="chat" size={15} /> },
+  { tab: "memory", name: "Memory", icon: <Icon name="memory" size={15} /> },
+  { tab: "knowledge", name: "Knowledge", icon: <Icon name="book" size={15} /> },
+  { tab: "bases", name: "Bases", icon: <Icon name="library" size={15} /> },
 ];
 
 // A key with `words` but not `pipeline` edits only the opening, memory and knowledge.
 const WORDS: readonly Section[] = ["conversation", "memory", "knowledge"];
 
 /** Sections a key may edit, in display order. */
-export function sectionsFor(wordsOnly: boolean): readonly { tab: Section; name: string }[] {
+export function sectionsFor(wordsOnly: boolean): readonly { tab: Section; name: string; icon: ReactNode }[] {
   return wordsOnly ? SECTIONS.filter((one) => WORDS.includes(one.tab)) : SECTIONS;
 }
 
@@ -50,8 +46,12 @@ export function SettingsForm({
   bases,
   fixed,
   running,
+  own,
   section,
   onPickSection,
+  step,
+  onPickStep,
+  bar,
   saving,
   error,
   onSave,
@@ -73,8 +73,15 @@ export function SettingsForm({
   fixed: ReadonlySet<string>;
   /** What the next call runs at each stage, where the class's value is read from; null while asked for. */
   running: { hears: Stage; decides: Stage; speaks: Stage; talks: Stage | null } | null;
+  /** The vendors this org runs on its own key; every other is lent by Pinecall. */
+  own: ReadonlySet<string>;
   section: Section;
   onPickSection: (section: Section) => void;
+  /** The stage open under the Pipeline's tiles. */
+  step: Step;
+  onPickStep: (step: Step) => void;
+  /** Where the save bar is drawn: under the scrolling page, so it never covers a field. */
+  bar: HTMLElement | null;
   saving: boolean;
   error: string | null;
   onSave: (config: TuningBody, ifVersion: number | null, note: string | null) => Promise<void>;
@@ -99,11 +106,7 @@ export function SettingsForm({
     else if (field === "realtime" && picked.vendor !== typed.realtime.vendor) setTyped({ ...typed, realtime: picked, realtime_options: "" });
     else setTyped({ ...typed, [field]: picked });
   };
-  // Picked TTS vendor, else the runtime default (null until the pipeline report arrives).
-  const speaking = typed.tts.vendor === "" ? (defaults["tts"] ?? null) : typed.tts.vendor;
-
-  const save = async (event: FormEvent): Promise<void> => {
-    event.preventDefault();
+  const save = async (): Promise<void> => {
     let config;
     try {
       config = configOf(typed, wordsOnly, standing, fixed);
@@ -115,64 +118,18 @@ export function SettingsForm({
     setSaved(true);
   };
 
+  const stages: Running | null =
+    running === null
+      ? null
+      : { hears: said(running.hears), decides: said(running.decides), speaks: said(running.speaks, true), talks: said(running.talks ?? undefined), language: running.hears.language };
+
   return (
-    <form className="ui-card set-form" onSubmit={(event) => void save(event)}>
+    <form className="set-form" onSubmit={(event) => event.preventDefault()}>
       <div className="set-tabs">
         <Tabs label="Settings" tabs={sectionsFor(wordsOnly)} on={section} onPick={onPickSection} />
       </div>
-      {section === "hears" && (
-        <StageSection modality="stt" title="Speech to text" blurb="What turns the caller's voice into words, and in which language." knob={typed.stt} providers={providers} defaults={defaults} models={models} onChange={knob("stt")} fixed={fixed.has("stt") ? { value: said(running?.hears) } : undefined}>
-          {!fixed.has("stt") && <EndOfTurnField endOfTurn={typed.end_of_turn} onChange={(picked) => change("end_of_turn", picked)} />}
-          {!fixed.has("stt") && <PluginFields modality="stt" vendor={vendorOf(typed.stt.vendor, defaults["stt"])} plugin={typed.plugins.stt} onChange={plug("stt")} />}
-          {fixed.has("language") ? <FixedByTheClass label="Language" value={running?.hears.language} /> : <LanguageField language={typed.language} onChange={(language) => change("language", language)} />}
-        </StageSection>
-      )}
-      {section === "decides" && (
-        <>
-          <StageSection modality="llm" title="Language model" blurb="The model that reads what the caller said and writes the answer." knob={typed.llm} providers={providers} defaults={defaults} models={models} onChange={knob("llm")} fixed={fixed.has("llm") ? { value: said(running?.decides) } : undefined}>
-            {!fixed.has("llm") && (
-              <>
-                <TemperatureField temperature={typed.temperature} onChange={(temperature) => change("temperature", temperature)} />
-                <PluginFields modality="llm" vendor={vendorOf(typed.llm.vendor, defaults["llm"])} plugin={typed.plugins.llm} onChange={plug("llm")} />
-              </>
-            )}
-          </StageSection>
-          <RealtimeSection
-            knob={typed.realtime}
-            options={typed.realtime_options}
-            providers={providers}
-            realtime={realtime}
-            fixed={fixed.has("realtime") ? { value: said(running?.talks ?? undefined) } : undefined}
-            onChange={knob("realtime")}
-            onOptions={(options) => change("realtime_options", options)}
-          />
-        </>
-      )}
-      {section === "speaks" && (
-        <StageSection modality="tts" title="Voice" blurb="What says the answer out loud, and in which voice." knob={typed.tts} providers={providers} defaults={defaults} models={models} onChange={knob("tts")} fixed={fixed.has("voice") ? { value: said(running?.speaks, true) } : undefined}>
-          {!fixed.has("voice") && (
-            <>
-              <VoiceField vendor={speaking} providers={providers} model={typed.tts.model === "" ? null : typed.tts.model} language={language} opening={typed.say} voice={typed.voice} onChange={(voice) => change("voice", voice)} />
-              <PluginFields modality="tts" vendor={vendorOf(typed.tts.vendor, defaults["tts"])} plugin={typed.plugins.tts} onChange={plug("tts")} />
-            </>
-          )}
-        </StageSection>
-      )}
-      {section === "judged" && (
-        <StageSection
-          modality="llm"
-          title="Judge model"
-          blurb="The model this agent's calls are judged on at hang-up. Unset, the org's choice in Quality ▸ Judges, else Pinecall's. On your org's own key — a model on your own server among them, through base_url — its evals are not billed."
-          knob={typed.judge}
-          providers={providers}
-          defaults={defaults}
-          models={models}
-          onChange={knob("judge")}
-          unset="The org's choice, else Pinecall's"
-          fixed={fixed.has("judge") ? { value: null } : undefined}
-        >
-          {!fixed.has("judge") && typed.judge.vendor !== "" && <PluginFields modality="judge" vendor={typed.judge.vendor} plugin={typed.plugins.judge} onChange={plug("judge")} />}
-        </StageSection>
+      {section === "pipeline" && (
+        <Pipeline typed={typed} change={change} knob={knob} plug={plug} providers={providers} defaults={defaults} models={models} realtime={realtime} fixed={fixed} running={stages} language={language} own={own} step={step} onStep={onPickStep} />
       )}
       {section === "conversation" && <ConversationSection typed={typed} wordsOnly={wordsOnly} fixed={fixed} change={change} />}
       {section === "memory" && (fixed.has("memory") ? <ClassOnly title="Memory" label="What it remembers and never keeps" /> : <MemorySection typed={typed} change={change} />)}
@@ -188,15 +145,29 @@ export function SettingsForm({
           }}
         />
       )}
-      <div className="set-save">
-        <Input className="set-save-note" value={typed.note} placeholder="Why, for the history (optional)" aria-label="Why, for the history (optional)" onChange={(event) => change("note", event.target.value)} />
-        <Button kind="primary" size="form" type="submit" disabled={saving}>
-          {saving ? "Saving…" : version === null ? "Save as the first version" : `Save as v${version + 1}`}
-        </Button>
-        <span className={(invalid ?? error) !== null ? "set-save-said set-save-error" : "set-save-said"}>
-          {invalid !== null ? invalid : error !== null ? error : saved ? "Kept. The next call runs on it." : "Every section is saved together, as one version. An empty field is the runtime's default."}
-        </span>
-      </div>
+      {bar !== null &&
+        createPortal(
+          <div className="set-save">
+            <Input
+              className="set-save-note"
+              value={typed.note}
+              placeholder="Why, for the history (optional)"
+              aria-label="Why, for the history (optional)"
+              onChange={(event) => change("note", event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void save();
+              }}
+            />
+            <span className={(invalid ?? error) !== null ? "set-save-said set-save-error" : "set-save-said"}>
+              {invalid !== null ? invalid : error !== null ? error : saved ? `Saved. The next call runs on ${version === null ? "it" : `v${version}`}.` : "Every section is saved together, as one version. An empty field is the runtime's default."}
+            </span>
+            <button type="button" className="set-save-button" disabled={saving} onClick={() => void save()}>
+              <Icon name="save" size={15} />
+              {saving ? "Saving…" : version === null ? "Save as the first version" : `Save as v${version + 1}`}
+            </button>
+          </div>,
+          bar,
+        )}
     </form>
   );
 }
@@ -206,10 +177,6 @@ function said(stage: Stage | undefined, voiced = false): string | null {
   if (stage === undefined) return null;
   const word = stage.model === null ? stage.vendor : `${stage.vendor}/${stage.model}`;
   return voiced && stage.voice_id !== null ? `${word} · ${stage.voice_id}` : word;
-}
-
-function vendorOf(picked: string, runtimeDefault: string | undefined): string {
-  return picked === "" ? (runtimeDefault ?? "the vendor") : picked;
 }
 
 /** A whole section the agent's class declares. */

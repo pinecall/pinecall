@@ -42,6 +42,7 @@ module Pinecall
         "error" => "ErrorEvent",
         "event.received" => "EventReceived",
         "fleet.full" => "FleetFull",
+        "judge.broke" => "JudgeBroke",
         "log.caught_up" => "LogCaughtUp",
         "log.gap" => "LogGap",
         "memory.ops" => "MemoryOps",
@@ -74,6 +75,8 @@ module Pinecall
         "supervisor.transferred" => "SupervisorTransferred",
         "supervisor.whispered" => "SupervisorWhispered",
         "tool.call" => "ToolCall",
+        "tool.failed" => "ToolFailed",
+        "tool.ran" => "ToolRan",
         "tool.result" => "ToolResult",
         "tools.changed" => "ToolsChanged",
         "track.published" => "TrackPublished",
@@ -122,14 +125,14 @@ module Pinecall
       }.freeze
 
       # Every event this protocol declares, in the schema's own order.
-      EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error evals.spent event.received fleet.full log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed release.changed room.opened room.sent run.changed spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched worker.changed].freeze
+      EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error evals.spent event.received fleet.full judge.broke log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed release.changed room.opened room.sent run.changed spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.failed tool.ran tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched worker.changed].freeze
 
       # Every command an app may send.
       COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.dtmf call.event call.hangup call.hold call.log call.mute call.opt_out call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze
 
       # Entries a store may drop and a slow reader may miss without harm: the entry's
       # own ephemeral flag defaults to this.
-      EPHEMERAL_EVENTS = %w[agent.transcript dev.request log.caught_up log.gap metrics.vad participant.speaking pong release.changed room.sent run.changed user.transcript worker.changed].to_set.freeze
+      EPHEMERAL_EVENTS = %w[agent.transcript dev.request judge.broke log.caught_up log.gap metrics.vad participant.speaking pong release.changed room.sent run.changed tool.failed tool.ran user.transcript worker.changed].to_set.freeze
 
       # The one event that ends a call: after it nothing more is true and the log seals.
       TERMINAL_EVENT = "call.score"

@@ -1,4 +1,4 @@
-"""Drift: each day's stage latencies and judges' verdicts by agent and config version, folded at the seal."""
+"""Drift: each day's stage latencies, verdicts and tools by agent, and the slowest turns, folded at the seal."""
 
 from datetime import date
 from typing import Any
@@ -66,3 +66,45 @@ class DriftCall(Model):
     verdicts: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
     tools_ran: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tools_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class ToolDay(Model):
+    """A tool's runs over one day and agent: how many, how many failed, its seconds, its last failure."""
+
+    __tablename__ = "tool_days"
+
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
+    holder: Mapped[str] = mapped_column(Text, primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    agent: Mapped[str] = mapped_column(Text, primary_key=True)
+    tool: Mapped[str] = mapped_column(Text, primary_key=True)
+    ran: Mapped[int] = mapped_column(Integer, nullable=False)
+    failed: Mapped[int] = mapped_column(Integer, nullable=False)
+    buckets: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
+    # The newest failing result of the day: its call, the moment it was written and its error.
+    last_error_call: Mapped[str | None] = mapped_column(Text)
+    last_error_at: Mapped[float | None] = mapped_column(Float)
+    last_error_text: Mapped[str | None] = mapped_column(Text)
+
+
+class SlowTurn(Model):
+    """One of a call's slowest turns: when the caller waited for first audio, and where the time went."""
+
+    __tablename__ = "slow_turns"
+    __table_args__ = (Index("slow_turns_by_day", "org", "env", "day"),)
+
+    call: Mapped[str] = mapped_column(Text, primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), nullable=False)
+    holder: Mapped[str] = mapped_column(Text, nullable=False)
+    agent: Mapped[str] = mapped_column(Text, nullable=False)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    at: Mapped[float] = mapped_column(Float, nullable=False)
+    name: Mapped[str | None] = mapped_column(Text)
+    e2e_s: Mapped[float] = mapped_column(Float, nullable=False)
+    hears_s: Mapped[float | None] = mapped_column(Float)
+    thinks_s: Mapped[float | None] = mapped_column(Float)
+    tools_s: Mapped[float | None] = mapped_column(Float)
+    speaks_s: Mapped[float | None] = mapped_column(Float)

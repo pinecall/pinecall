@@ -1,16 +1,476 @@
-/* Quality: the week's numbers, the held line beside what broke, the agents, and every judge in one table — and the form a judge is written in. */
+/* Quality: the window's ring and counts, the suggested fixes, the rules beside the calls the picked one broke — and the Judges tab's tiles and form. */
 
-.qly-split {
+/* ── the window ───────────────────────────────────────────────────────────── */
+
+.qly-top {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.qly-kept,
+.qly-count,
+.qly-fix,
+.qly-card {
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.qly-kept {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px 22px;
+}
+
+.qly-ring {
+  position: relative;
+  flex: none;
+  width: 84px;
+  height: 84px;
+}
+
+.qly-ring svg {
+  width: 84px;
+  height: 84px;
+  transform: rotate(-90deg);
+}
+
+.qly-ring-track,
+.qly-ring-fill {
+  fill: none;
+  stroke-width: 3.5;
+}
+
+.qly-ring-track {
+  stroke: light-dark(#ececf1, #2a2c3a);
+}
+
+.qly-ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+}
+
+.qly-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.qly-kept-words {
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.qly-kept-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.qly-kept-sub {
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+.qly-down {
+  color: var(--red);
+}
+
+.qly-up {
+  color: var(--green);
+}
+
+/* A bar a day: pale, the newest solid, a day nobody judged a stub. */
+.qly-days {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 28px;
+  margin-top: 6px;
+}
+
+.qly-day {
+  flex: 1;
+  max-width: 22px;
+  border-radius: 3px;
+  background: light-dark(#dcd8fa, #3a3560);
+}
+
+.qly-day-now {
+  background: var(--accent);
+}
+
+.qly-day-none {
+  background: var(--line);
+}
+
+.qly-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.qly-count {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  color: var(--ink);
+}
+
+.qly-count-link:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+}
+
+.qly-count-label {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.qly-count-value {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.qly-count-red {
+  color: var(--red);
+}
+
+.qly-count-amber {
+  color: var(--amber);
+}
+
+.qly-count-green {
+  color: var(--green);
+}
+
+.qly-count-sub {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* ── suggested fixes ──────────────────────────────────────────────────────── */
+
+.qly-fixes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qly-fixes-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qly-fixes-icon {
+  display: inline-flex;
+  color: var(--amber);
+}
+
+.qly-fixes-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.qly-fixes-meta {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.qly-fixes-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.qly-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px;
+}
+
+.qly-fix-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.qly-fix-what,
+.qly-fix-said {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.qly-fix-bad {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--red);
+}
+
+.qly-fix-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 7px;
+}
+
+.qly-fix-where {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* ── the rules, and the calls the picked one broke ────────────────────────── */
+
+.qly-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
   align-items: start;
 }
 
-@media (max-width: 1100px) {
-  .qly-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.qly-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.qly-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+.qly-card-head-stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.qly-card-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.qly-card-sub {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.qly-card-link {
+  font-size: 12.5px;
+  color: var(--accent);
+}
+
+.qly-rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px 52px;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 18px;
+  border: 0;
+  border-top: 1px solid var(--line-2);
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.qly-rule:hover {
+  background: var(--ground-3);
+}
+
+.qly-rule-on,
+.qly-rule-on:hover {
+  background: light-dark(rgb(20 22 40 / 0.04), rgb(145 132 217 / 0.1));
+}
+
+.qly-rule-words {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.qly-rule-said {
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qly-rule-name {
+  font-family: var(--face-fixed);
+  font-size: 11px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qly-rule-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qly-rule-pct {
+  font-size: 12.5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.qly-rule-track {
+  height: 5px;
+  border-radius: 3px;
+  background: light-dark(#ececf1, #2a2c3a);
+}
+
+.qly-rule-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.qly-rule-broke {
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--red);
+}
+
+.qly-faint {
+  color: var(--ink-4);
+}
+
+.qly-tone-green {
+  color: var(--green);
+}
+
+.qly-tone-amber {
+  color: var(--amber);
+}
+
+.qly-tone-red {
+  color: var(--red);
+}
+
+.qly-fill-green {
+  background: var(--green);
+}
+
+.qly-fill-amber {
+  background: var(--amber);
+}
+
+.qly-fill-red {
+  background: var(--red);
+}
+
+.qly-call {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line-2);
+}
+
+.qly-call-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qly-call-words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.qly-call-name {
+  font-weight: 500;
+}
+
+.qly-call-sub {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* The line the judge cites and why it broke, on a quiet ground of their own. */
+.qly-call-proof {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ground-3);
+}
+
+.qly-call-said {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.qly-call-seq {
+  flex: none;
+  padding-top: 1px;
+  font-family: var(--face-fixed);
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+.qly-call-why {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.qly-call-moves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  font-size: 12.5px;
+}
+
+.qly-call-move {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.qly-call-move:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.qly-call-done {
+  color: var(--ink-4);
 }
 
 .qly-quiet {
@@ -19,153 +479,6 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--ink-4);
-}
-
-.qly-num {
-  font-variant-numeric: tabular-nums;
-}
-
-.qly-held {
-  display: grid;
-  grid-template-columns: minmax(0, 140px) auto;
-  align-items: center;
-  gap: 10px;
-}
-
-/* ── the held line ────────────────────────────────────────────────────────── */
-
-.qly-chart {
-  position: relative;
-  padding: 6px 18px 12px;
-}
-
-.qly-chart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.qly-grid {
-  stroke: var(--line-2);
-  stroke-width: 1;
-}
-
-.qly-tick {
-  font-size: 10.5px;
-  fill: var(--ink-5);
-  font-variant-numeric: tabular-nums;
-}
-
-.qly-line {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.qly-dot {
-  fill: var(--accent);
-  stroke: var(--ground);
-  stroke-width: 2;
-}
-
-.qly-cross {
-  stroke: var(--line-hover);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.qly-hit {
-  fill: transparent;
-}
-
-.qly-tip {
-  position: absolute;
-  top: 6px;
-  transform: translateX(-50%);
-  padding: 7px 10px;
-  border: 1px solid var(--line-control);
-  border-radius: 9px;
-  background: var(--ground);
-  box-shadow: var(--shadow-pop);
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 3;
-}
-
-.qly-tip-head {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.qly-tip-row {
-  font-size: 12px;
-  color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── what broke ───────────────────────────────────────────────────────────── */
-
-.qly-broke {
-  display: flex;
-  flex-direction: column;
-  padding: 0 6px 6px;
-}
-
-.qly-broke-one {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--ink);
-}
-
-.qly-broke-one:hover {
-  background: var(--ground-3);
-  color: var(--ink);
-}
-
-.qly-broke-mark {
-  width: 7px;
-  height: 7px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: var(--red);
-}
-
-.qly-broke-words {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.qly-broke-who {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.qly-broke-agent {
-  font-weight: 400;
-  color: var(--ink-4);
-}
-
-.qly-broke-why {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-3);
-}
-
-.qly-broke-when {
-  font-size: 11.5px;
-  color: var(--ink-5);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ── the judges ───────────────────────────────────────────────────────────── */

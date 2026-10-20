@@ -1,30 +1,40 @@
-/* Settings: the corners table's foot, the form's sections and its save bar, a kept version. */
+/* Settings: the form's tabs and stages, its save bar, and beside it what is set now and its versions. */
 
-.set-corner-pick {
+/* Which corner a save writes: yours, or the team's that every corner falls back to. */
+.set-saving {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 2px 4px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
 }
 
-/* The form: the section tabs across the top, one section's fields with air around them, the
-   save bar at the foot. Every control has a label above and a sentence under, so a person who
-   has never seen the gateway knows what a value does before choosing it. */
-.set-tabs {
-  padding: 4px 18px 0;
-  border-bottom: 1px solid var(--line-2);
+.set-saving-label {
+  font-size: 11.5px;
+  color: var(--ink-5);
+}
+
+/* The form: the tabs across the top, then one tab's cards, and the save bar that stays at the foot.
+   Every control has a label above and a sentence under, so a person who has never seen the
+   gateway knows what a value does before choosing it. */
+.set-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .set-tabs .ui-tabs {
-  border-bottom: 0;
   margin-top: 0;
 }
 
+/* A stage, a section of words: a card of its own. */
 .set-section {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 22px 24px 26px;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .set-section-head {
@@ -37,15 +47,16 @@
 .set-section-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink);
 }
 
 .set-section-blurb {
   margin: 0;
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--ink-3);
+  text-wrap: pretty;
 }
 
 .set-row {
@@ -78,6 +89,11 @@
   color: var(--ink-4);
 }
 
+/* The line under a field that is not the first of its card: close to what it explains. */
+.set-help-under {
+  margin-top: -10px;
+}
+
 /* The attached bases as a small table: the base picked from a list, how much of it a turn reads,
    who searches it, and the floor its own chunks are kept above. */
 .set-bases {
@@ -104,11 +120,32 @@
 .set-save {
   display: flex;
   align-items: center;
-  gap: 14px;
   flex-wrap: wrap;
-  padding: 14px 24px;
+  gap: 10px 14px;
+  padding: 12px 32px;
   border-top: 1px solid var(--line-2);
-  background: var(--ground-4);
+  background: var(--ground);
+}
+
+.set-save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--solid);
+  color: var(--on-solid);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.set-save-button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .set-save-note {
@@ -117,7 +154,7 @@
 }
 
 .set-save-said {
-  flex: 1 1 260px;
+  flex: 1 1 160px;
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--ink-4);
@@ -127,7 +164,11 @@
   color: var(--red);
 }
 
+/* A version kept: its number as a chip, who and when, whether it is the one in force or can be rolled back to, why, and what it changed. */
 .set-version {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   padding: 10px 16px;
   border-top: 1px solid var(--line-3);
 }
@@ -135,19 +176,55 @@
 .set-version-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.set-version-chip {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--face-fixed);
+  font-size: 11.5px;
+}
+
+.set-version-who {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-version-now {
+  font-size: 11.5px;
+  color: var(--green);
+}
+
+.set-version-back {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent-ink);
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .set-version-note {
   font-size: 12.5px;
-  color: var(--ink-3);
+  color: var(--ink);
 }
 
 .set-version-changes {
-  margin-top: 4px;
-  font-size: 12.5px;
-  color: var(--ink-4);
+  font-family: var(--face-fixed);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
 }
 
 /* The page and, beside it, a pane of the Inspector's kind: what is set now, and its history. */
@@ -160,7 +237,15 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-.set-grid > .ui-page {
+/* The page that scrolls, and under it the save bar, which never does. */
+.set-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.set-column > .ui-page {
   min-width: 0;
 }
 
@@ -206,9 +291,9 @@
 
 .set-now-row {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 0;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
   border-bottom: 1px solid var(--line-2);
 }
 
@@ -217,14 +302,17 @@
 }
 
 .set-now-row dt {
-  font-size: 11.5px;
+  flex: none;
+  font-size: 12px;
   color: var(--ink-4);
 }
 
 .set-now-row dd {
   margin: 0;
-  font-size: 13px;
+  font-family: var(--face-fixed);
+  font-size: 12.5px;
   line-height: 1.45;
+  text-align: right;
   color: var(--ink);
   overflow-wrap: anywhere;
 }
@@ -239,11 +327,6 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--ink-4);
-}
-
-.set-pane .set-version-changes {
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 @media (max-width: 900px) {
@@ -271,6 +354,7 @@
 .set-voices-now {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
 }
 
@@ -316,8 +400,8 @@
   list-style: none;
   max-height: 380px;
   overflow-y: auto;
-  border: 1px solid var(--line-control);
-  border-radius: 10px;
+  border-radius: 11px;
+  box-shadow: inset 0 0 0 1px var(--line-control);
 }
 
 .set-voice {
@@ -387,4 +471,188 @@
   font-weight: 500;
   color: var(--accent-ink);
   text-align: center;
+}
+
+/* ── the pipeline: four tiles, the switch under them, the stage open below ── */
+
+.set-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.set-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.set-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ground-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.set-tile:hover {
+  box-shadow: inset 0 0 0 1px var(--line-control);
+}
+
+.set-tile-on,
+.set-tile-on:hover {
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.set-tile-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.set-tile-on .set-tile-name {
+  color: var(--accent-ink);
+}
+
+.set-tile-value {
+  font-family: var(--face-fixed);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-tile-under {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-realtime {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--ground-3);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+}
+
+.set-realtime-icon {
+  display: inline-flex;
+  color: var(--ink-3);
+}
+
+.set-realtime-words {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.set-realtime-title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.set-realtime-under {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+/* A pick among a few named things: chips, the one chosen in the accent, a quiet word beside each. */
+.set-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.set-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.set-pick:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-6);
+}
+
+.set-pick-on,
+.set-pick-on:hover {
+  background: var(--accent-selected);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent-ink);
+}
+
+.set-pick-mono {
+  font-family: var(--face-fixed);
+  font-size: 12.5px;
+}
+
+.set-pick-tag {
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+/* What most people never touch, folded under one word. */
+.set-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2);
+}
+
+.set-advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.set-caret {
+  display: inline-flex;
+  transform: rotate(-90deg);
+  transition: transform 0.12s;
+}
+
+.set-caret-open {
+  transform: none;
+}
+
+.set-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }

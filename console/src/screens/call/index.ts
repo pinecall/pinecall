@@ -4,3 +4,5 @@ export { Call } from "./call";
 export { CallShow } from "./show";
 export { Desk } from "./desk";
 export { LATENCY_NAMES } from "./over";
+export { rowsOf, type Row } from "./timeline-rows";
+export { useWatchedCall } from "./use-watched-call";

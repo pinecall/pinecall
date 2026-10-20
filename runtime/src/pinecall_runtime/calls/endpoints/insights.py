@@ -1,4 +1,4 @@
-"""A window of whole UTC days: the insights at a glance, the series day by day, and an agent's drift."""
+"""A window of whole UTC days: the insights at a glance, the series, tools, slow turns, and an agent's drift."""
 
 import re
 from datetime import UTC, date, datetime, timedelta
@@ -9,9 +9,9 @@ from fastapi import APIRouter, Query
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents.service import settings
 from pinecall_runtime.billing import service as billing
-from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import CallsKey
-from pinecall_runtime.calls.service import drift, usage
+from pinecall_runtime.calls.schemas import insights as schemas
+from pinecall_runtime.calls.service import drift, slow_turns, tool_days, usage
 from pinecall_runtime.calls.service.drift import Side, Tally
 from pinecall_runtime.calls.service.usage import AgentWindow, WindowDay
 from pinecall_runtime.enums import Stage
@@ -95,6 +95,7 @@ async def insights_series(
     if query.agent is not None:
         keys.check_agent(actor, query.agent)
     days = await usage.series_window(session, actor.scope, first, last, query.agent)
+    vendors = await drift.stages_of_window(session, actor.scope, first, last, query.agent)
     return schemas.Series(
         day=last.isoformat(),
         days=query.days,
@@ -121,6 +122,64 @@ async def insights_series(
             )
             for day in days
         ],
+        vendors=[
+            schemas.SeriesVendor(
+                stage=Stage(row.stage),
+                vendor=row.vendor or "",
+                model=row.model,
+                turns=row.tally.turns,
+                median_s=row.tally.median_s,
+                p95_s=row.tally.p95_s,
+            )
+            for row in vendors
+        ],
+    )
+
+
+# Folded when each call was sealed, like the series: one row per tool and day, added over the window.
+@router.get("/v1/insights/tools")
+async def insights_tools(
+    actor: CallsKey, session: Session, query: Annotated[schemas.InsightsQuery, Query()]
+) -> schemas.ToolsReport:
+    """Every tool of the window: results, failures, median seconds and the newest failure."""
+    first, last = _window(query)
+    if query.agent is not None:
+        keys.check_agent(actor, query.agent)
+    tools = await tool_days.tools_of_window(session, actor.scope, first, last, query.agent)
+    return schemas.ToolsReport(
+        day=last.isoformat(),
+        days=query.days,
+        agent=query.agent,
+        tools=[
+            schemas.ToolStat(
+                name=tool.name,
+                ran=tool.ran,
+                failed=tool.failed,
+                median_s=tool.median_s,
+                last_error=None
+                if tool.last_error is None
+                else schemas.ToolError(call=tool.last_error.call, at=tool.last_error.at, text=tool.last_error.text),
+            )
+            for tool in tools
+        ],
+    )
+
+
+# Each call keeps its three slowest turns when it is sealed; this lists the window's slowest of them.
+@router.get("/v1/insights/slow")
+async def insights_slow(
+    actor: CallsKey, session: Session, query: Annotated[schemas.SlowQuery, Query()]
+) -> schemas.SlowTurns:
+    """The slowest turns of the window with where each one's wait went, the slowest first."""
+    first, last = _window(query)
+    if query.agent is not None:
+        keys.check_agent(actor, query.agent)
+    turns = await slow_turns.slowest_of_window(session, actor.scope, first, last, query.agent, query.limit)
+    return schemas.SlowTurns(
+        day=last.isoformat(),
+        days=query.days,
+        agent=query.agent,
+        turns=[schemas.SlowTurn.model_validate(turn, from_attributes=True) for turn in turns],
     )
 
 

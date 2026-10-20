@@ -10,6 +10,11 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
+/* The pane folded away from the head: the conversation has the width. */
+.call-folded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .call-middle {
   min-width: 0;
   min-height: 0;
@@ -24,33 +29,77 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
 
-.call-who {
-  min-width: 0;
-  flex: 1 1 220px;
+.call-head-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  flex: 1 1 180px;
 }
 
-.call-who-line {
+.call-head-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
-.call-who-name {
+.call-head-name {
   font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.call-who-sub {
-  margin-top: 2px;
+.call-head-sub {
   font-size: 12.5px;
-  color: var(--ink-4);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The dot an ended call's pill carries, in the pill's own ink. */
+.call-head-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+
+/* The head's two icons: the pane folded or shown, and the call on its own page. */
+.call-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.call-head-icon:hover {
+  background: var(--ground-4);
+  color: var(--ink);
+}
+
+.call-head-icon-on {
+  background: var(--ground-4);
+  color: var(--ink);
 }
 
 .call-connection {
@@ -372,12 +421,19 @@ details.call-row > .call-line {
 
 /* ── the pane beside ──────────────────────────────────────────────────────── */
 
+/* A column, so the actions of a call that is over sit at its foot however little is above them. */
 .call-pane {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: auto;
   border-left: 1px solid var(--line);
   background: var(--ground-side);
+}
+
+.call-pane > * {
+  flex: none;
 }
 
 /* The pane breathes more than a card does: it is read at a glance, beside a call that moves. */
@@ -574,14 +630,6 @@ details.call-row > .call-line {
   margin: 0 14px;
 }
 
-/* And in the pane beside it, first: what it came to, how it was judged, how fast, what it cost. */
-.call-over {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--line);
-}
 
 /* Chat, transcript, log or trace: four words in the head, the one in force raised. */
 .call-view {
@@ -615,95 +663,6 @@ details.call-row > .call-line {
 }
 
 /* ── the call read as a chat ─────────────────────────────────────────────── */
-
-.call-chat {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.call-chat-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 20px 24px 28px;
-}
-
-.call-chat-line {
-  display: flex;
-}
-
-.call-chat-line-caller {
-  justify-content: flex-end;
-}
-
-.call-chat-bubble {
-  max-width: 78%;
-  margin: 0;
-  padding: 9px 14px;
-  border-radius: 18px;
-  font-size: 14px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.call-chat-agent {
-  background: var(--ground-4);
-  color: var(--ink);
-  border-bottom-left-radius: 6px;
-}
-
-.call-chat-caller {
-  background: var(--accent-selected);
-  color: var(--ink);
-  border-bottom-right-radius: 6px;
-}
-
-.call-chat-unsettled {
-  font-style: italic;
-  opacity: 0.7;
-}
-
-.call-chat-tool {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 10px;
-  border: 1px solid var(--line-control);
-  border-radius: 99px;
-  font-family: var(--face-fixed);
-  font-size: 11.5px;
-  color: var(--ink-3);
-}
-
-.call-chat-tool-name {
-  color: var(--ink-2);
-}
-
-.call-chat-tool-ok {
-  color: var(--green);
-}
-
-.call-chat-tool-bad {
-  color: var(--red);
-}
-
-.call-chat-tool-running {
-  color: var(--amber);
-}
-
-.call-chat-note {
-  align-self: center;
-  padding: 3px 12px;
-  border-radius: 99px;
-  background: var(--amber-soft);
-  color: var(--amber);
-  font-size: 12px;
-}
 
 /* The trace id: one line, the id clipped and a copy beside it, the collector's host under it. */
 .call-trace-id {
@@ -762,21 +721,5 @@ details.call-row > .call-line {
 
 .call-broken-why {
   color: var(--ink-2);
-}
-
-/* In the chat, a bubble or a tool and, under it, the judges that broke on it. */
-.call-chat-said {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.call-chat-broken > .call-chat-line .call-chat-bubble,
-.call-chat-broken > .call-chat-tool {
-  box-shadow: 0 0 0 2px var(--red-line);
-}
-
-.call-chat-broken > .call-broken-by {
-  padding: 0 4px;
 }
 

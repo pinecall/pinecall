@@ -4,3 +4,4 @@ export { Talk, Stage } from "./talk";
 export { Inspector } from "./inspector";
 export { Composer, Conversation } from "./lines";
 export { useRoom, type Talking } from "./use-room";
+export type { Line } from "./transcript";

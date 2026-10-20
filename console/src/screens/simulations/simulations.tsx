@@ -9,10 +9,9 @@ import { useSupervise } from "@pinecall/core/use-supervise";
 import { rowAt } from "../../lib/harness";
 import { useOrg } from "../../lib/org";
 import { useScopes } from "../../lib/whoami";
-import { percent, usd } from "../../lib/format";
-import { Button, Page, PageHead, Stat, Stats, Tabs } from "../../ui";
+import { Button, Page, PageHead } from "../../ui";
 import { RunsTable } from "./runs";
-import { Starter } from "./starter";
+import { Starter, type Typical } from "./starter";
 import { useRuns } from "./use-runs";
 import { isPinecalls } from "../personas/door";
 import { usePersonas } from "../personas/use-personas";
@@ -29,8 +28,7 @@ import "./simulations.css";
 export function Simulations(): ReactNode {
   const inView = useParams()["agent"] ?? "";
   const call = useParams()["call"];
-  const [search, setSearch] = useSearchParams();
-  const tab: Tab = search.get("tab") === "runs" ? "runs" : "call";
+  const [search] = useSearchParams();
   const navigate = useNavigate();
   const { agents } = useOrg();
   const spoken = search.get("spoken") === "1";
@@ -50,11 +48,12 @@ export function Simulations(): ReactNode {
   const [round, setRound] = useState(0);
 
   const read = useRuns(inView, round);
-  const [opening, setOpening] = useState(false);
 
-  const started = (next: string, voice: boolean): void => {
+  // One call started is the one to watch; several stay here, in Runs, as they come.
+  const started = (calls: string[], voice: boolean): void => {
     setRound((one) => one + 1);
-    void navigate(`${rowAt(inView, "simulations")}/${next}${voice ? "?spoken=1" : ""}`);
+    const only = calls.length === 1 ? calls[0] : undefined;
+    if (only !== undefined) void navigate(`${rowAt(inView, "simulations")}/${only}${voice ? "?spoken=1" : ""}`);
   };
 
   // A call open is the whole screen: its transcript, its ear, and the one move it has. Nothing open
@@ -73,62 +72,20 @@ export function Simulations(): ReactNode {
       </div>
     );
   }
-  const runs = read.runs ?? [];
-  const judged = runs.filter((run) => run.score !== null);
-  const held = judged.filter((run) => run.score?.passed === true).length;
-  const cost = runs.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0);
-  // Every caller is offered when asked for, or when a link named one.
-  const choosing = opening || preferred !== undefined;
-  const pick = (next: Tab): void => {
-    const kept = new URLSearchParams(search);
-    if (next === "runs") kept.set("tab", "runs");
-    else kept.delete("tab");
-    setSearch(kept, { replace: true });
+  // What a call of these takes and costs, read off the ones already made: the estimate under the button.
+  const done = (read.runs ?? []).filter((run) => run.ended_at !== null);
+  const typical: Typical = {
+    seconds: done.length === 0 ? null : done.reduce((sum, run) => sum + ((run.ended_at ?? run.started_at) - run.started_at), 0) / done.length,
+    usd: done.length === 0 ? null : done.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) / done.length,
   };
   return (
-    <Page>
-      <PageHead
-        title="Simulations"
-        lede="A model plays a persona against the agent, improvising every line from its goal, its manner and its own facts — written, or on a real line you can hear. Choose who calls and it starts."
-        ledeWidth={600}
-        actions={
-          tab === "call" && (
-            <Button size="base" onClick={() => setOpening(!choosing)}>
-              {choosing ? "Only the ones switched on" : "All callers"}
-            </Button>
-          )
-        }
-      />
-      <Tabs label="Simulations" tabs={[{ tab: "call", name: "New simulation" }, { tab: "runs", name: "Past runs", mark: read.runs === null ? undefined : <span className="sims-count">{read.total}</span> }]} on={tab} onPick={pick} />
-      {tab === "call" && (
-        <Starter
-          inView={inView}
-          agents={agents.map((one) => one.slug)}
-          agent={agent}
-          onAgent={setPicked}
-          personas={personas}
-          asking={asking}
-          asked={preferred}
-          all={choosing}
-          onStarted={started}
-        />
-      )}
-      {tab === "runs" && (
-        <>
-          <Stats min={170}>
-            <Stat label="Simulations" value={read.runs === null ? "—" : read.total} of={read.runs === null ? undefined : "in all"} />
-            <Stat label="Held" value={judged.length === 0 ? "—" : percent(held / judged.length)} of={judged.length === 0 ? undefined : `${String(held)} of ${String(judged.length)} judged`} />
-            <Stat label="Cost of these" value={read.runs === null ? "—" : usd(cost)} of={read.runs === null ? undefined : `${String(runs.length)} read`} />
-            <Stat label="On a call" value={runs.filter((run) => run.ended_at === null).length} />
-          </Stats>
-          <RunsTable inView={inView} read={read} />
-        </>
-      )}
+    <Page width={1060}>
+      <PageHead title="Simulations" lede="Pretend callers ring your agent before real ones do. Judges check every call." />
+      <Starter inView={inView} agents={agents.map((one) => one.slug)} agent={agent} onAgent={setPicked} personas={personas} asking={asking} asked={preferred} typical={typical} onStarted={started} />
+      <RunsTable inView={inView} read={read} />
     </Page>
   );
 }
-
-type Tab = "call" | "runs";
 
 // Stopping a simulation is hanging its call up, and there is no second door for it: the persona
 // is played in the gateway off this call's own log, and `call.ended` is where it learns to stop

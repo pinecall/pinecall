@@ -15,7 +15,7 @@ from pinecall_runtime.agents.service import prompts, tuning
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls.latencies import phone_legs
-from pinecall_runtime.calls.logs import Log
+from pinecall_runtime.calls.logs import Log, Logs
 from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.repository.heads import HeadRepository
@@ -34,6 +34,7 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.events import CallEnded, CallStarted, CallSummary, ErrorEvent, MemoryOps
+from pinecall_runtime.wire.feed import JudgeBroke
 from pinecall_runtime.wire.parts import MemoryOp
 from pinecall_runtime.wire.scores import CallScore
 from pinecall_runtime.wire.state import AgentTurn
@@ -96,6 +97,7 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
         finally:
             renewing.cancel()
             await asyncio.gather(renewing, return_exceptions=True)
+        announce_broken_judges(serving.logs, served.scope, served.call, served.agent, score)
         async with serving.handles.sessions.begin() as session:
             await drift_folded(session, served.call, entries, score)
             await _keep_as_case(session, serving, served, score)
@@ -115,6 +117,14 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
             )
         serving.logs.forget(served.call)
         serving.live.close_call(served.call)
+
+
+# The feed says which judge broke and on which call, nothing of why: the reason is the call's content.
+def announce_broken_judges(logs: Logs, scope: Scope, call: str, agent: str, score: CallScore) -> None:
+    """Say on the org's feed, once per judge, that it found the sealed call broken."""
+    for judgment in score.judges:
+        if judgment.verdict == "broken":
+            logs.announce(scope, "judge.broke", JudgeBroke(call=call, agent=agent, judge=judgment.name))
 
 
 # Between call.ended and call.summary, on the org's keys as they are now. A refusal at the cap

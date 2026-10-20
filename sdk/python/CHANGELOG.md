@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its
+  call, agent and name (and seconds): the org's feed says a tool answered or failed and a judge
+  found a call broken, never what it said.
+
 ## 0.11.6 — A tool's untyped parameter with a default takes the default's type (2026-10-19)
 
 - **A tool's parameter with a default and no annotation takes the default's type.** `cantidad=1`

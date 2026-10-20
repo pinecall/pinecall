@@ -1,42 +1,44 @@
-/** Post-call actions: re-check by code (ring 3), keep as a case or write as a candidate, or erase the call. */
+/** Post-call actions, at the foot of the pane: keep as a case, write as a golden, judge again, the do-not-call list, or erase the call. */
 
+import { type CallScore, CallScoreSchema } from "@pinecall/core/wire/events-call";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { saidBy } from "@pinecall/core/api";
+import { post, saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { useScopes } from "../../../lib/whoami";
-import { Button, Pill, type Tone } from "../../../ui";
+import { Button, Icon } from "../../../ui";
 import { keepCall } from "../../cases";
-import { promoteCall, replayCall, type Promoted, type Replayed } from "../../evals/door";
+import { promoteCall, type Promoted } from "../../evals/door";
 import { eraseCall, optOut } from "../../org-data";
 
-// Operator-facing labels for ring-3 verdicts, distinct from judge verdicts.
-const TONE: Record<string, Tone> = { held: "green", broken: "red", deferred: "amber", skipped: "muted" };
-
 /**
- * Ring 3 rebuilds the call from its log without re-running it. Keep puts the call in the org's
- * Cases, where the nightly plays it; a candidate is the same golden written into the directory of
- * the agent's `pinecall start`, for one that names the code and belongs in the repository.
- * CLI equivalents: `pinecall eval`, `pinecall cases keep`, `pinecall runs promote`.
+ * Keep puts the call in the org's Cases, where the nightly plays it; Golden writes the same call
+ * as a golden candidate into the directory of the agent's `pinecall start`, for one that belongs in
+ * the repository; Re-judge runs the hang-up judges over the call again and writes their verdict on
+ * its log — and is billed again, as the first judging was.
+ * CLI equivalents: `pinecall cases keep`, `pinecall runs promote`, `pinecall eval`.
  */
-export function Actions({ agent, call, number }: { agent: string; call: string; number: string | null }): ReactNode {
+export function Actions({ agent, call, number, onJudged }: { agent: string; call: string; number: string | null; onJudged: (score: CallScore) => void }): ReactNode {
   const credentials = useCredentials();
   const navigate = useNavigate();
   const scopes = useScopes();
-  const [busy, setBusy] = useState<"" | "check" | "keep" | "promote" | "erase" | "list">("");
+  const [busy, setBusy] = useState<"" | "judge" | "keep" | "promote" | "erase" | "list">("");
   const [sure, setSure] = useState(false);
   const [listed, setListed] = useState(false);
-  const [replayed, setReplayed] = useState<Replayed | null>(null);
+  const [judged, setJudged] = useState(false);
   const [promoted, setPromoted] = useState<Promoted | null>(null);
   const [kept, setKept] = useState<string | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
 
-  const does = async (what: "check" | "keep" | "promote"): Promise<void> => {
+  const does = async (what: "judge" | "keep" | "promote"): Promise<void> => {
     setBusy(what);
     setRefused(null);
     try {
-      if (what === "check") setReplayed(await replayCall(credentials, call));
+      if (what === "judge") {
+        onJudged(CallScoreSchema.parse(await post(credentials, `/v1/evals/judge/${encodeURIComponent(call)}?again=true`, {})));
+        setJudged(true);
+      }
       // Named by the call it came from, so a second keep of the same call is refused by name.
       else if (what === "keep") setKept((await keepCall(credentials, call, `kept-${call.slice(-6).toLowerCase()}`)).name);
       else setPromoted(await promoteCall(credentials, agent, call));
@@ -79,40 +81,40 @@ export function Actions({ agent, call, number }: { agent: string; call: string; 
     }
   };
 
-  // The list is written through `talk`; a key without it is not shown a button it would be refused.
+  // The list is written through `talk` and the judges are asked through `evals`: a key without one
+  // is not shown a button it would be refused.
   const mayList = number !== null && number.startsWith("+") && (scopes === null || scopes.includes("talk"));
+  const mayJudge = scopes === null || scopes.includes("evals");
 
   return (
     <div className="over-acts">
-      <div className="over-buttons" onMouseLeave={() => setSure(false)}>
-        <Button size="sm" disabled={busy !== ""} onClick={() => void does("check")}>
-          {busy === "check" ? "Checking…" : "Re-check by code"}
+      <Button disabled={busy !== "" || agent === "" || kept !== null} title="The org's Cases: approved, the nightly plays it" onClick={() => void does("keep")}>
+        <Icon name="flask" size={14} />
+        {busy === "keep" ? "Keeping…" : kept !== null ? "Kept as a case" : "Keep as a case"}
+      </Button>
+      <div className="over-acts-pair">
+        <Button disabled={busy !== "" || agent === ""} title="A golden candidate in the agent's test/candidates, in the directory of pinecall start" onClick={() => void does("promote")}>
+          <Icon name="golden" size={14} />
+          {busy === "promote" ? "Writing…" : "Golden"}
         </Button>
-        <Button size="sm" disabled={busy !== "" || agent === "" || kept !== null} title="The org's Cases: approved, the nightly plays it" onClick={() => void does("keep")}>
-          {busy === "keep" ? "Keeping…" : kept !== null ? "Kept as a case" : "Keep as a case"}
-        </Button>
-        <Button size="sm" disabled={busy !== "" || agent === ""} title="A golden file in the agent's test/candidates, in the directory of pinecall start" onClick={() => void does("promote")}>
-          {busy === "promote" ? "Writing…" : "Write as a candidate"}
-        </Button>
-        <Button size="sm" kind={sure ? "danger" : "secondary"} disabled={busy !== ""} onClick={() => void erase()}>
-          {busy === "erase" ? "Erasing…" : sure ? "Erase it for good" : "Erase this call"}
-        </Button>
-        {mayList && (
-          <Button size="sm" disabled={busy !== "" || listed} onClick={() => void stopCalling()}>
-            {busy === "list" ? "Listing…" : listed ? `${number} on the do-not-call list` : "Do not call this number"}
+        {mayJudge && (
+          <Button disabled={busy !== ""} title="Run the judges over this call again — billed again, as the first judging was" onClick={() => void does("judge")}>
+            <Icon name="refresh" size={14} />
+            {busy === "judge" ? "Judging…" : "Re-judge"}
           </Button>
         )}
       </div>
-      {replayed !== null && (
-        <div className="over-result">
-          <span className="over-result-lead">{replayed.passed ? "Holds by code" : "Does not hold by code"}</span>
-          {replayed.verdicts.map((verdict) => (
-            <Pill key={verdict.check} tone={TONE[verdict.status] ?? "muted"}>
-              {verdict.check} {verdict.status}
-            </Pill>
-          ))}
-        </div>
-      )}
+      <div className="over-acts-quiet" onMouseLeave={() => setSure(false)}>
+        {mayList && (
+          <button type="button" className="over-acts-link" disabled={busy !== "" || listed} onClick={() => void stopCalling()}>
+            {busy === "list" ? "Listing…" : listed ? `${number} is on the do-not-call list` : "Do not call"}
+          </button>
+        )}
+        <button type="button" className="over-acts-link over-acts-erase" disabled={busy !== ""} onClick={() => void erase()}>
+          {busy === "erase" ? "Erasing…" : sure ? "Erase it for good" : "Erase this call…"}
+        </button>
+      </div>
+      {judged && <div className="over-result">Judged again: the verdict above is the new one, written on the call's log.</div>}
       {kept !== null && (
         <div className="over-result">
           <span className="over-result-lead">Kept</span>

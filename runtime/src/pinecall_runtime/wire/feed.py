@@ -1,4 +1,4 @@
-"""What a feed says of a change no log holds: a run, a release, a worker, by their ids alone."""
+"""What a feed says of a change no log holds: a run, a release, a worker, a tool, a judge, by ids alone."""
 
 from pinecall_runtime.wire.base import WireModel
 
@@ -25,3 +25,29 @@ class WorkerChanged(WireModel):
     fleet: str
     up: bool
     cordoned: bool
+
+
+class ToolRan(WireModel):
+    """A tool of a call answered; its name and seconds, never its arguments or its output."""
+
+    call: str
+    agent: str
+    name: str
+    duration_s: float | None
+
+
+class ToolFailed(WireModel):
+    """A tool of a call failed or timed out; its name and seconds, never its error, arguments or output."""
+
+    call: str
+    agent: str
+    name: str
+    duration_s: float | None
+
+
+class JudgeBroke(WireModel):
+    """A judge found a sealed call broken; its name, never its reason or its evidence."""
+
+    call: str
+    agent: str
+    judge: str

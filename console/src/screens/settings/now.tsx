@@ -21,7 +21,7 @@ export function Now({ answer, corners, first }: { answer: TuningAnswer; corners:
   const row = answer[corner];
   return (
     <Card>
-      <CardHead title="What is set now" meta={answer.world} />
+      <CardHead title="What’s set now" meta={answer.world} />
       {corners.length > 1 && (
         <div className="set-now-pick">
           <Segmented options={corners.map((one) => ({ value: one, label: NAMES[one] }))} value={corner} onChange={setCorner} />
