@@ -19,6 +19,14 @@ export interface Wanted {
   packet_loss?: number;
   /** Spoken alone: what plays behind the caller at that level; the persona's own when left out. */
   ambience?: "television" | "cafe" | "office" | "street";
+  /** Who plays the caller this run, over the persona's own; each unsaid stays the persona's. */
+  played_by?: { llm?: string; tts?: string; voice?: string };
+}
+
+/** What a run names of who plays its callers: only the words chosen, or nothing at all. */
+export function playedBy(played: { llm: string; tts: string; voice: string }): Pick<Wanted, "played_by"> {
+  const chosen = Object.fromEntries(Object.entries(played).filter(([, word]) => word !== ""));
+  return Object.keys(chosen).length === 0 ? {} : { played_by: chosen };
 }
 
 /**

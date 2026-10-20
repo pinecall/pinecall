@@ -1,4 +1,4 @@
-"""A spoken simulation takes the personas a written one does: the agent's own and the library's."""
+"""A simulation plays the agent's own personas and the library's, and a run may name who plays the caller."""
 
 import httpx
 
@@ -32,3 +32,26 @@ async def test_a_persona_nobody_wrote_is_refused_by_its_name(gateway: Gateway, t
     answer = await placed(gateway, tenant, "nobody-wrote-me", agent)
     assert answer.status_code == 404
     assert "no persona called nobody-wrote-me" in answer.text
+
+
+async def simulated(gateway: Gateway, tenant: Tenant, agent: str, played_by: dict[str, str]) -> httpx.Response:
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "played_by": played_by}
+    return await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+
+
+async def test_a_run_played_on_a_vendor_this_box_lacks_is_refused_before_it_starts(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The run's own model and voice are checked as a persona's are when written: before the answer."""
+    answer = await simulated(gateway, tenant, agent, {"tts": "nonvendor"})
+    assert answer.status_code == 400
+    assert "no vendor named 'nonvendor'" in answer.text
+
+
+async def test_a_run_that_names_nobody_new_is_played_as_the_persona_is(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """An empty played_by changes nothing: the refusal is the one any simulation gets, nobody holding the agent."""
+    answer = await simulated(gateway, tenant, agent, {})
+    assert answer.status_code == 404
+    assert "no app holds agent" in answer.text

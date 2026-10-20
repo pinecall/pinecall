@@ -155,10 +155,13 @@ export const simulate = tool({
     background_noise: z.number().optional().describe("spoken calls: dB under the caller of what plays behind them"),
     ambience: z.enum(service.AMBIENCES).optional().describe("spoken calls: what plays behind the caller; the persona's own when left out"),
     packet_loss: z.number().min(0).max(1).optional().describe("spoken calls: the share of the caller's packets lost, 0 to 1"),
+    llm: z.string().optional().describe("the model that plays the caller this run (vendor/model); the persona's when left out"),
+    tts: z.string().optional().describe("the vendor the caller's voice is read by this run; the persona's when left out"),
+    caller_voice: z.string().optional().describe("the caller's voice this run, one of that vendor's (`voices`)"),
     wait_s: WAIT,
   },
   manual:
-    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time.",
+    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
   handler: async (args, ctx) => {
     const reached = await ctx.session.reach(ctx, args.agent);
     const going = ctx.session.simulations.get(reached.slug);
@@ -174,6 +177,9 @@ export const simulate = tool({
       judge: true,
       voice,
       turns: args.turns,
+      llm: args.llm,
+      tts: args.tts,
+      callerVoice: args.caller_voice,
       ...(voice ? { backgroundNoise: args.background_noise, ambience: args.ambience, packetLoss: args.packet_loss } : {}),
     });
     const transcript: string[] = [];
@@ -206,7 +212,8 @@ export const personas = tool({
     ambience: z.enum(service.AMBIENCES).optional().describe("what plays behind them on a spoken call, at background_noise dB under them"),
     background_noise: z.number().nullable().optional().describe("dB under the caller the ambience plays at; null for a quiet room"),
     llm: z.string().optional().describe("the model that plays them; the runtime's when left out"),
-    voice: z.string().optional().describe("their voice on a spoken call"),
+    tts: z.string().optional().describe("the vendor their voice is read by; the runtime's when left out: a voice the agent does not have"),
+    voice: z.string().optional().describe("their voice on a spoken call, one of that vendor's (`voices`)"),
     rename: z.string().optional().describe("`edit`: a new name"),
     n: z.number().int().min(1).max(10).optional().describe("`generate`: how many callers, 3 unless said"),
     from_call: z.string().optional().describe("`generate`: callers like this finished call's caller"),
@@ -230,6 +237,7 @@ export const personas = tool({
       facts: args.facts,
       rename: args.rename,
       llm: args.llm,
+      tts: args.tts,
       voice: args.voice,
       expects: args.expects,
       tags: args.tags,

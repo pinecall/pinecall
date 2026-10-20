@@ -22,7 +22,15 @@ function halves(word: string): [string, string] {
   return at < 0 ? [word, ""] : [word.slice(0, at), word.slice(at + 1)];
 }
 
-export function PlayedBy({ played, onChange }: { played: Played; onChange: (played: Played) => void }): ReactNode {
+/** What "" reads as where the picker is: a persona's runtime's choice, or a run's persona's own. */
+export interface Unsaid {
+  llm: string;
+  tts: string;
+}
+
+const THE_RUNTIMES: Unsaid = { llm: "The callers' model, the box's", tts: "The runtime's: a voice the agent does not have" };
+
+export function PlayedBy({ played, onChange, unsaid = THE_RUNTIMES }: { played: Played; onChange: (played: Played) => void; unsaid?: Unsaid }): ReactNode {
   const credentials = useCredentials();
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -53,7 +61,7 @@ export function PlayedBy({ played, onChange }: { played: Played; onChange: (play
         <div className="set-field">
           <Label>Model vendor</Label>
           <Select value={vendor} aria-label="Model vendor" onValueChange={(value) => onChange({ ...played, llm: value })}>
-            <SelectItem value="">The callers' model, the box's</SelectItem>
+            <SelectItem value="">{unsaid.llm}</SelectItem>
             {vendors("llm", vendor).map((name) => (
               <SelectItem key={name} value={name}>
                 {name}
@@ -78,7 +86,7 @@ export function PlayedBy({ played, onChange }: { played: Played; onChange: (play
         <div className="set-field">
           <Label>Voice vendor</Label>
           <Select value={speaker} aria-label="Voice vendor" onValueChange={(value) => onChange({ ...played, tts: value, voice: "" })}>
-            <SelectItem value="">The runtime's: a voice the agent does not have</SelectItem>
+            <SelectItem value="">{unsaid.tts}</SelectItem>
             {vendors("tts", speaker).map((name) => (
               <SelectItem key={name} value={name}>
                 {name}

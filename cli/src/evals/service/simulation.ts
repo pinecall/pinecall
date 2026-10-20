@@ -37,6 +37,10 @@ export const SimulateInput = z.object({
   backgroundNoise: z.number().optional(),
   ambience: z.enum(AMBIENCES, { error: `--ambience takes ${AMBIENCES.join(", ")}` }).optional(),
   packetLoss: z.number().min(0, A_LOSS).max(1, A_LOSS).optional(),
+  // Who plays the caller this run, over the persona's own: vendor/model, a voice's vendor, a voice id.
+  llm: z.string().min(1).optional(),
+  tts: z.string().min(1).optional(),
+  callerVoice: z.string().min(1).optional(),
 });
 export type SimulateInput = z.infer<typeof SimulateInput>;
 
@@ -74,6 +78,12 @@ export function exitCodeOf(said: Simulated): number {
   return said.score === null || said.score.passed !== false ? 0 : 1;
 }
 
+/** The persona as this run plays it: the run's model and voice over its own; another voice vendor drops its voice. */
+export function playedBy(persona: Persona, input: Pick<SimulateInput, "llm" | "tts" | "callerVoice">): Persona {
+  const voice = input.callerVoice ?? (input.tts === undefined ? persona.voice : null);
+  return { ...persona, llm: input.llm ?? persona.llm, tts: input.tts ?? persona.tts, voice };
+}
+
 /** The persona in the gateway's wire shape; unset optional fields are left out. */
 export function callerOf(persona: Persona): api.CallerPersona {
   const set = (value: string | null | undefined): value is string => value !== undefined && value !== null && value !== "";
@@ -94,7 +104,8 @@ export function callerOf(persona: Persona): api.CallerPersona {
  * One call at the agent against a model playing the persona in the gateway. A written call names the
  * app in its socket; a spoken one reaches whoever takes unclaimed calls, held by the runtime.
  */
-export async function simulate(ctx: Context, reached: Reached, persona: Persona, input: SimulateInput, listeners: SimulationListeners = {}): Promise<Simulated> {
+export async function simulate(ctx: Context, reached: Reached, written: Persona, input: SimulateInput, listeners: SimulationListeners = {}): Promise<Simulated> {
+  const persona = playedBy(written, input);
   const spoiled = input.backgroundNoise !== undefined || input.packetLoss !== undefined || input.ambience !== undefined;
   if (!input.voice && spoiled) throw new UsageError(ONLY_ON_A_LINE);
   const heard = new Heard(listeners);

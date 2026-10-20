@@ -1,5 +1,7 @@
 """The simulation endpoints: a persona put on the agent, the caller's next line, a spoken call placed."""
 
+from dataclasses import replace
+
 from fastapi import APIRouter
 
 from pinecall_runtime.accounts.service import keys
@@ -13,6 +15,7 @@ from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.postgres import Session
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session_
 
 router = APIRouter()
@@ -37,6 +40,8 @@ async def simulate(
     persona = await judging.persona_named(session, actor.org, body.agent, body.persona)
     if persona is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=body.persona, agent=body.agent))
+    if body.played_by is not None:
+        persona = await _played_by(session, persona, body.played_by)
     registration = serving.registry.serving(scope, body.agent, None)
     if registration is None:
         raise registry.NoApp(body.agent)
@@ -51,6 +56,17 @@ async def simulate(
         running = await service.written_call(session, serving, registration, placed)
         simulations.play(placed.call, _written(serving, running, placed))
     return schemas.SimulationStarted(call=placed.call, voice=body.voice)
+
+
+# A model or a voice this box lacks is refused before the answer, as when a persona is written.
+async def _played_by(session: Session, persona: judging.Persona, played: schemas.PlayedBy) -> judging.Persona:
+    chosen = played.model_dump(exclude_none=True)
+    # A voice belongs to its vendor: a run naming another vendor drops the persona's voice.
+    if "tts" in chosen and "voice" not in chosen:
+        chosen["voice"] = None
+    played_on = replace(persona, **chosen)
+    judging.check_persona_models(await providers.get_catalog(session), played_on.llm, played_on.tts, played_on.voice)
+    return played_on
 
 
 # The gateway holds the vendors' keys: the org's own when it brought one, else the box's lent.

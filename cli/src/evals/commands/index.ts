@@ -60,6 +60,9 @@ export function register(program: Command, ctx: Context): void {
     .option("--background-noise <dB>")
     .option("--ambience <what>")
     .option("--packet-loss <share>")
+    .option("--llm <vendor/model>", "the model that plays the caller this run; the persona's when unsaid")
+    .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
+    .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)
@@ -74,6 +77,9 @@ export function register(program: Command, ctx: Context): void {
         backgroundNoise: numberOf("--background-noise", flags.backgroundNoise),
         ambience: flags.ambience,
         packetLoss: numberOf("--packet-loss", flags.packetLoss),
+        llm: flags.llm,
+        tts: flags.tts,
+        callerVoice: flags.callerVoice,
       });
       const agent = ctx.agent("simulate", { file: flags.file, agent: flags.agent }).name;
       const said = await simulateAtTheTerminal(ctx, agent, input, listen);

@@ -21,10 +21,14 @@ Examples
 A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
 and its own facts — there is no script. The agent is whoever holds it — your \`pinecall start\`, a
 colleague's, production's with --prod; nothing is started here. The call lands in the log like
-any other. --background-noise, --ambience and --packet-loss are spoken runs only.
+any other. --background-noise, --ambience and --packet-loss are spoken runs only. --llm, --tts and
+--caller-voice play the caller on another model or voice for this run alone; the persona keeps its
+own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts
+as one simulation, and what its caller cost is kept with the call.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2
+  $ pinecall simulate --persona hurried --voice --tts google --caller-voice Puck
 `,
   eval: `
 One finished call rebuilt from its log and answered by the runtime's six CODE checks — consent,

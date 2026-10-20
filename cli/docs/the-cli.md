@@ -678,7 +678,8 @@ names a version of the corner the run plays on.
 
 ```
 pinecall simulate --persona <name> [--judge] [--turns n (15)] [--voice] [--listen]
-                  [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--agent <name>] [--file agent.tsx]
+                  [--background-noise dB] [--ambience cafe] [--packet-loss 0.05]
+                  [--llm vendor/model] [--tts vendor] [--caller-voice id] [--agent <name>] [--file agent.tsx]
 ```
 
 A model in the gateway plays the caller — every turn improvised from the persona's goal, its style
@@ -712,6 +713,14 @@ when that language has none), so the two sides are told apart by ear. The caller
 `--background-noise`, `--ambience` and `--packet-loss` spoil that line on purpose and are refused without it:
 `--background-noise` is dB under the caller of what plays behind it, `--ambience` which of `television`, `cafe`, `office` and `street` plays (the persona's own unless said);
 `--packet-loss` is the share of the caller's packets that never arrive, from 0 to 1, as `test` takes it.
+
+`--llm`, `--tts` and `--caller-voice` play the caller on another model or voice **for this run
+alone**: `--llm google/gemini-3.5-flash-lite`, `--tts google --caller-voice Puck`. The persona keeps
+its own; a `--tts` without `--caller-voice` drops the persona's voice for one of that vendor's that
+the agent does not have. A model or a vendor the runtime lacks is refused before the call. The
+caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one
+simulation of the org's `simulations`, and what its caller cost is kept with the call — the usage
+feed's `caller_cost_usd`.
 
 `--listen` puts the call on **this machine's speakers** while it happens: the same hidden `observe`
 seat the console's listen button takes, joined from Node, both tracks mixed onto whichever of

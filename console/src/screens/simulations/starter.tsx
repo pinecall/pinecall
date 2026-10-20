@@ -9,8 +9,9 @@ import { usd } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
 import { Chips, Icon, Input, Segmented, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
+import { PlayedBy, type Played } from "../personas/played-by";
 import { Callers, keyOf } from "./callers";
-import { startSimulation } from "./simulating";
+import { playedBy, startSimulation } from "./simulating";
 import "./starter.css";
 
 // How many turns a caller improvises when nobody said: the same fifteen `pinecall simulate` uses.
@@ -33,6 +34,10 @@ const BACKGROUNDS = [
 ] as const;
 
 type Background = (typeof BACKGROUNDS)[number]["value"];
+
+// Nobody chosen: each caller is played as its persona says.
+const THE_PERSONAS: Played = { llm: "", tts: "", voice: "" };
+const UNSAID = { llm: "Each persona's own model", tts: "Each persona's own voice" };
 
 // The line is written, or spoken — quiet, or with a voice and the street behind it.
 type Line = "written" | "quiet" | "noisy";
@@ -97,6 +102,8 @@ export function Starter({
   const [noise, setNoise] = useState(NOISE_DB);
   const [loss, setLoss] = useState(LOSS_PERCENT);
   const [background, setBackground] = useState<Background>("");
+  const [played, setPlayed] = useState<Played>(THE_PERSONAS);
+  const [choosing, setChoosing] = useState(false);
   const [all, setAll] = useState(asked !== undefined);
   const [calling, setCalling] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
@@ -136,6 +143,7 @@ export function Starter({
               persona: persona.name,
               voice: spoken,
               turns,
+              ...playedBy(played),
               ...(line === "noisy" ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
             }),
           );
@@ -208,6 +216,26 @@ export function Starter({
           </label>
         </div>
       )}
+
+      <div className="sim-played">
+        <button
+          type="button"
+          className="sim-link"
+          onClick={() => {
+            // Closed is the personas' own again, never a choice left behind out of sight.
+            if (choosing) setPlayed(THE_PERSONAS);
+            setChoosing(!choosing);
+          }}
+        >
+          {choosing ? "Play each caller as its persona says" : "Played by: each persona's own model and voice · change for this run"}
+        </button>
+        {choosing && (
+          <>
+            <PlayedBy played={played} onChange={setPlayed} unsaid={UNSAID} />
+            <p className="sim-note">For these calls alone; the personas keep their own. The callers run on the runtime's keys unless you brought that vendor's, and each call counts as one simulation.</p>
+          </>
+        )}
+      </div>
 
       {refused !== null && <p className="sim-refused">{refused}</p>}
       <div className="sim-foot">

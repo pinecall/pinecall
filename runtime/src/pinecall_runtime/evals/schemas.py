@@ -210,6 +210,15 @@ class PlaceVoiceCallResponse(Row):
     stopped_at_ceiling: bool = False
 
 
+class PlayedBy(Schema):
+    """Who plays the caller for one run, over the persona's own; each unsaid stays the persona's."""
+
+    # `vendor/model`, a vendor whose voices the caller is read in, and one of its voices' ids.
+    llm: str | None = None
+    tts: str | None = None
+    voice: str | None = None
+
+
 class SimulationRequest(Schema):
     """POST /v1/simulations, the body: the agent, one of its personas, a written or spoken line."""
 
@@ -224,6 +233,8 @@ class SimulationRequest(Schema):
     interferer_db: float | None = None
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
+    # The model, the voice's vendor and the voice this run alone is played on.
+    played_by: PlayedBy | None = None
 
 
 class SimulationStarted(Row):

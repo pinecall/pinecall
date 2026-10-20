@@ -259,7 +259,7 @@ The org's dataset: real calls and simulations kept as cases, grouped by the judg
 
 A model plays one of the agent's personas against the agent wherever it is held, written or spoken, and the call is judged at hang-up.
 
-`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time.
+`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -271,6 +271,9 @@ A model plays one of the agent's personas against the agent wherever it is held,
 | `background_noise` | a number |  | spoken calls: dB under the caller of what plays behind them |
 | `ambience` | `television` · `cafe` · `office` · `street` |  | spoken calls: what plays behind the caller; the persona's own when left out |
 | `packet_loss` | a number 0–1 |  | spoken calls: the share of the caller's packets lost, 0 to 1 |
+| `llm` | text |  | the model that plays the caller this run (vendor/model); the persona's when left out |
+| `tts` | text |  | the vendor the caller's voice is read by this run; the persona's when left out |
+| `caller_voice` | text |  | the caller's voice this run, one of that vendor's (`voices`) |
 | `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
@@ -366,7 +369,8 @@ The agent's simulated callers: Pinecall's library switched on or off, its own wr
 | `ambience` | `television` · `cafe` · `office` · `street` |  | what plays behind them on a spoken call, at background_noise dB under them |
 | `background_noise` | text |  | dB under the caller the ambience plays at; null for a quiet room |
 | `llm` | text |  | the model that plays them; the runtime's when left out |
-| `voice` | text |  | their voice on a spoken call |
+| `tts` | text |  | the vendor their voice is read by; the runtime's when left out: a voice the agent does not have |
+| `voice` | text |  | their voice on a spoken call, one of that vendor's (`voices`) |
 | `rename` | text |  | `edit`: a new name |
 | `n` | a whole number 1–10 |  | `generate`: how many callers, 3 unless said |
 | `from_call` | text |  | `generate`: callers like this finished call's caller |

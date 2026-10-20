@@ -36,8 +36,8 @@ rates, and whether it hung up because the call had spent the providers row's
 `caller.ceiling_usd` ([operator-api.md](operator-api.md)); the line that crosses it is the last
 one said. A model or a voice the rates do not price costs nothing here, as on a call.
 
-`POST /v1/simulations` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?}` is the
-simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
+`POST /v1/simulations` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?, ambience?,
+played_by?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
 calls it, so whatever holds it answers — a process deployed, on a server of the org's, or a
 developer's `pinecall start`. Spoken (`voice`, the default) it is the call above; written, it is
 the chat the widget has, each line the persona's model improvises said once the agent's whole
@@ -57,6 +57,10 @@ nor Pinecall has by that name, or nobody holding the agent in the key's world an
 org's limits as on a call, `simulations` among them. The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
 call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any call.
+`played_by` `{llm?, tts?, voice?}` plays the caller on another model, voice vendor or voice for this
+run alone, over the persona's own; each unsaid stays the persona's, and a `tts` with no `voice`
+drops the persona's voice for one of that vendor's the agent does not have. A model, a vendor or a
+voice the deployment lacks is `400` before the answer, as when a persona is written.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`
 

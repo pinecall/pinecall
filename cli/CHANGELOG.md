@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall simulate --llm --tts --caller-voice`: who plays the caller, for one run.** The model
+  and the voice a simulated caller is played on were the persona's alone; a run now names its own
+  and the persona keeps its. The MCP's `simulate` takes `llm`, `tts` and `caller_voice`, and its
+  `personas` takes `tts` beside `llm` and `voice`, as `pinecall personas add --tts` does.
+
 - **`pinecall judges agreement`: how far each judge can be trusted.** One line per labelled judge —
   labelled, compared, agreed, the rate, and trusted — from `GET /v1/evals/calibration`, which only
   `curl` read until now; `--org` for every agent's calls. The MCP's `judges` tool takes `agreement`.
