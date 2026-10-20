@@ -7,6 +7,7 @@ import logging
 import pkgutil
 import re
 import typing
+import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cache
@@ -207,9 +208,13 @@ def primary_language(language: str | None) -> str | None:
 # ── private ──
 
 
+# A plugin's own imports warn about what only it would use (clova's pydub: "Couldn't find ffmpeg"),
+# on every command of the operator's CLI; what a plugin says while it is imported is not ours to say.
 def _vendor(name: str, module: str) -> Vendor:
     try:
-        imported = importlib.import_module(module)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", (RuntimeWarning, SyntaxWarning))
+            imported = importlib.import_module(module)
     except ImportError as broken:
         logger.warning("the %s plugin does not import, so it builds nothing", name, exc_info=True)
         return Vendor(name, frozenset(), broken=str(broken))

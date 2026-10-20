@@ -63,8 +63,8 @@ async def next_line(body: schemas.NextLineRequest, actor: EvalsKey, serving: The
         return (await service.improvise_line(model, body)).answer
 
 
-# A persona is the agent's: a name nobody wrote for this agent is refused; one sent without a
-# name is played as sent.
+# A persona is the agent's own or Pinecall's library's, as the written simulation takes it: a name
+# that is neither is refused; one sent without a name is played as sent.
 @router.post("/v1/evals/voice")
 async def place_voice_call(
     body: schemas.PlaceVoiceCallRequest, actor: EvalsKey, serving: TheServing, session: Session
@@ -73,7 +73,7 @@ async def place_voice_call(
     keys.check_agent(actor, body.agent)
     scope = actor.scope
     persona = body.persona
-    if persona.name and await judging.get_persona(session, actor.org, body.agent, persona.name) is None:
+    if persona.name and await judging.persona_named(session, actor.org, body.agent, persona.name) is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=persona.name, agent=body.agent))
     # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
     if serving.registry.serving(scope, body.agent, None) is None:

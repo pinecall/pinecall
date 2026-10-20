@@ -206,7 +206,7 @@ URI; the chart runs one.
 
 ## Pricing a leg
 
-A phone leg is priced from `infra/seed/prices.csv`, by the longest prefix of
+A phone leg is priced from the providers row's rates (the package's list prices, `cli/local/prices.csv`), by the longest prefix of
 `<carrier>-<inbound|outbound>/<number>`, minutes begun billed whole. The prices carried are
 Twilio's; a leg through another carrier is recorded with its minutes and priced at nothing until
 its rows are added.

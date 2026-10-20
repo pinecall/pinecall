@@ -1,5 +1,6 @@
 """The local model servers `setup` brings up for its choices, the models pulled into them, the row seeded."""
 
+import contextlib
 import json
 import os
 import subprocess
@@ -10,7 +11,6 @@ from shutil import which
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.cli.command import Context
-from pinecall_runtime.cli.output import Printer
 from pinecall_runtime.cli.setup_models import LOCAL_EMBEDDER, LOCAL_STT, MODEL_PORTS, Choices, is_local, model_of
 from pinecall_runtime.cli.setup_row import row_of
 from pinecall_runtime.exceptions import Conflict, UpstreamError
@@ -18,15 +18,22 @@ from pinecall_runtime.providers import service as providers
 
 MODELS_FAILED = "docker compose could not bring the models up:\n{output}"
 PULL_FAILED = "pulling the models did not finish:\n{output}"
-ROW_THERE = "row        the providers row is there already: left as it is (the console edits it)"
 
 
-def models_up(where: Path, choices: Choices, *, host_ollama: bool) -> list[str]:
-    """The local servers up and their models pulled once; the lines that say what runs where."""
+def models_up(where: Path, choices: Choices, *, host_ollama: bool, card: bool = False) -> list[str]:
+    """The local servers up, on the card when there is one, and their models pulled once; what runs where."""
     voice = [name for name, choice in (("whisper", choices.stt), ("kokoro", choices.tts)) if is_local(choice)]
     on_ollama = ", ".join((LOCAL_EMBEDDER, *choices.local_models))
     served = [f"Ollama :{MODEL_PORTS['Ollama']} ({on_ollama}){' on this machine' if host_ollama else ''}"]
-    compose = ["docker", "compose", "-f", str(where / "models.yaml")]
+    compose = [
+        "docker",
+        "compose",
+        "--progress",
+        "quiet",
+        "-f",
+        str(where / "models.yaml"),
+        *(["-f", str(where / "models.gpu.yaml")] if card else []),
+    ]
     profiles = [*([] if host_ollama else ["--profile", "ollama"]), *(["--profile", "voice"] if voice else [])]
     ears = (model_of(choices.stt) if is_local(choices.stt) else None) or LOCAL_STT
     environment = {
@@ -34,7 +41,7 @@ def models_up(where: Path, choices: Choices, *, host_ollama: bool) -> list[str]:
         "LOCAL_LLM": choices.local_models[0] if choices.local_models else "",
         "LOCAL_STT": ears,
     }
-    serving = [*([] if host_ollama else ["ollama"]), *voice]
+    serving = [*([] if host_ollama else ["ollama", "ollama-warm"]), *voice]
     if serving:
         up = subprocess.run(
             [*compose, *profiles, "up", "-d", "--wait", *serving],
@@ -66,6 +73,41 @@ def models_up(where: Path, choices: Choices, *, host_ollama: bool) -> list[str]:
     if "kokoro" in voice:
         served.append(f"Kokoro :{MODEL_PORTS['Kokoro']}")
     return served
+
+
+def ours_running(where: Path, service: str) -> bool:
+    """Whether the models' compose already runs that service: what answers on its port is setup's own."""
+    listed = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "-f",
+            str(where / "models.yaml"),
+            "--profile",
+            "ollama",
+            "--profile",
+            "voice",
+            "ps",
+            "--status",
+            "running",
+            "--quiet",
+            service,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return listed.returncode == 0 and bool(listed.stdout.strip())
+
+
+def a_card_for_docker() -> bool:
+    """Whether this machine has an NVIDIA card and Docker can hand it to a container."""
+    if which("nvidia-smi") is None:
+        return False
+    runtimes = subprocess.run(
+        ["docker", "info", "--format", "{{json .Runtimes}}"], capture_output=True, text=True, check=False
+    )
+    return runtimes.returncode == 0 and "nvidia" in runtimes.stdout
 
 
 def pull_on_host(models: list[str]) -> None:
@@ -100,43 +142,47 @@ def warm_embedder() -> None:
 # ── all of it ──
 
 
-async def models(
-    runtime: Context, where: Path, choices: Choices, keys: dict[str, str], found: dict[str, str], *, out: Printer
-) -> None:
-    """The servers the choices need up, the keys they need kept, the row written: what `setup` does for the models."""
-    served = models_up(where, choices, host_ollama=providers.answers(MODEL_PORTS["Ollama"]))
-    out.line("serving    " + " · ".join(served) + " — open models, no account")
-    chosen = " · ".join(
-        f"{choice} {stage}"
-        for stage, choice in (
-            ("hears", choices.stt),
-            ("thinks", choices.llm),
-            ("speaks", choices.tts),
-            ("judges", choices.judging),
-            ("calls", choices.calling),
+# The first answer of a model Ollama just loaded waits for the card's kernels to be built: ~30 s for
+# gemma4:12b on an L4 (2026-10-20), and a call waits 10 s for a model. One word asked of each,
+# before setup says ready, so the first caller is answered as fast as the hundredth.
+def warm_thinking(models: tuple[str, ...]) -> None:
+    """One short answer asked of each open model that thinks, so none is cold when the first call comes."""
+    for model in models:
+        body = {
+            "model": model,
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 1,
+            "reasoning_effort": "none",
+        }
+        asked = urllib.request.Request(
+            f"http://127.0.0.1:{MODEL_PORTS['Ollama']}/v1/chat/completions",
+            data=json.dumps(body).encode(),
+            headers={"content-type": "application/json"},
         )
-        if not is_local(choice)
-    )
-    if chosen:
-        places = " · ".join(f"{variable} from {place}" for variable, place in found.items())
-        out.line(f"vendors    {chosen}" + (f" — keys: {places}" if places else ""))
-    out.line(f"turn       {choices.turn}")
-    if choices.judge is not None or choices.caller is not None:
-        out.line(f"judge      {choices.judging} · caller {choices.calling}")
-    await seed(runtime, row_of(choices), keys, out)
-    warm_embedder()
-
-
-async def seed(runtime: Context, row: providers.Catalog, credentials: dict[str, str], out: Printer) -> None:
-    """The row written unless one is there; each vendor's key given to the org `default` and held by the box."""
-    async with runtime.sessions.begin() as session:
         try:
+            with urllib.request.urlopen(asked, timeout=300):
+                pass
+        except OSError as failed:
+            raise UpstreamError(f"Ollama did not answer with {model}: {failed}") from failed
+
+
+async def models(runtime: Context, where: Path, choices: Choices, keys: dict[str, str], *, card: bool) -> None:
+    """The servers the choices need up, on the card when there is one, the keys kept, the row written."""
+    # An Ollama answering is this machine's own only when it is not the one an earlier setup started.
+    host_ollama = providers.answers(MODEL_PORTS["Ollama"]) and not ours_running(where, "ollama")
+    models_up(where, choices, host_ollama=host_ollama, card=card)
+    await seed(runtime, row_of(choices), keys)
+    warm_embedder()
+    warm_thinking(choices.local_models)
+
+
+async def seed(runtime: Context, row: providers.Catalog, credentials: dict[str, str]) -> None:
+    """The row written unless one is there (the console edits it after); each key given to `default` and the runtime."""
+    async with runtime.sessions.begin() as session:
+        with contextlib.suppress(Conflict):
             await providers.seed_catalog(session, row)
-            out.line("row        the providers row written: the console edits it from now on")
-        except Conflict:
-            out.line(ROW_THERE)
-    # The box holds the same keys: the judges at hang-up and the embedder run on the box's, never
-    # on an org's, and this machine is both the box and the org.
+    # The runtime holds the same keys and lends them: the judges at hang-up and the embedder run on
+    # the runtime's, never on an org's, and every org made later runs on them until it brings its own.
     async with runtime.sessions.begin() as session:
         found = await orgs.get_org(session, DEFAULT_ORG)
         for vendor, secret in credentials.items():

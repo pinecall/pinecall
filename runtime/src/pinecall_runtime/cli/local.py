@@ -4,24 +4,23 @@ import asyncio
 import base64
 import os
 import secrets
-import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 from collections.abc import Sequence
 from importlib.resources import files
 from pathlib import Path
 from shutil import which
-from typing import IO, Annotated
+from typing import Annotated
 
 import typer
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys
-from pinecall_runtime.cli import orgs
-from pinecall_runtime.cli.command import FOUND_WRONG, OK, Context, context_of, verb
+from pinecall_runtime.cli import orgs, processes
+from pinecall_runtime.cli import setup_server as server_
+from pinecall_runtime.cli.command import OK, Context, context_of, verb
 from pinecall_runtime.config import Settings
 from pinecall_runtime.enums import Env, KeyScope, Role
 from pinecall_runtime.exceptions import ConfigurationError, UpstreamError
@@ -41,7 +40,10 @@ SHIPPED = (
     "postgres/Dockerfile",
     "postgres/extensions.sql",
     "models.yaml",
+    "models.gpu.yaml",
     "providers.local.json",
+    "prices.csv",
+    "prices.LICENSE",
 )
 SERVICES = ("postgres", "redis", "livekit")
 GATEWAY_URL = "http://127.0.0.1:8080"
@@ -79,11 +81,10 @@ PINECALL_TOKEN_KEY={token}
 # On Linux, host.docker.internal is Docker's bridge, not loopback: LiveKit's webhooks need a gateway on every interface.
 LISTEN_EVERYWHERE = "PINECALL_GATEWAY_LISTEN=0.0.0.0:8080\n" if sys.platform == "linux" else ""
 UP = "local · Postgres :55433 · Redis :56380 · LiveKit :7880 · settings in {env}\nconsole   {gateway}/sandbox/"
-FIRST = (
-    "  the first time, in another terminal:\n"
-    "    pinecall-runtime local init --email you@example.com --person 'Your Name'"
-)
-RUNNING = "gateway and a sandbox worker running; Ctrl-C stops them, the services stay (local down)"
+FIRST = "  a runtime nobody set up yet: `pinecall-runtime setup` makes its admin and signs this machine in"
+SERVING = "{name}: up, kept up by Docker across reboots · logs: pinecall-runtime local logs"
+# Every profile the two compose files name, so `down` stops a server's services too.
+ALL_PROFILES = ("phone", "server", "server-livekit", "server-phone")
 DOWN = "local: the services stopped; the database and {env} are kept"
 WIPED = "local: the services stopped and the database deleted; {env} is kept"
 
@@ -107,27 +108,33 @@ async def local_up(
     ctx: typer.Context,
     services_only: Annotated[bool, typer.Option("--services-only", help="The services and the schema alone.")] = False,
 ) -> int:
-    """Bring the services up, migrate, draw the secrets once, then run the gateway and a worker."""
+    """The services up, the schema at this release, the secrets drawn once, the gateway and a worker; a server's too."""
     context = context_of(ctx)
     where = _where(ctx)
     compose = write_shipped(where)
     docker_or_refuse()
-    services_up(compose, SERVICES)
     env = where / "env"
     values = read_env(env)
-    history = await prepare_database(values, env)
+    server = server_.from_the_env(values)
+    services_up(compose, ("postgres", "redis") if server else SERVICES)
+    history = await prepare_database(values, env, production_fleet=server is not None)
+    if server is not None:
+        server_.bring_up(where, server, values, None, build=False)
+        server_.wait_for_https(server.name)
+        context.out.line(SERVING.format(name=f"https://{server.name}"))
+        return OK
     context.out.line(UP.format(env=env, gateway=GATEWAY_URL))
     if history.applied:
         context.out.line(FIRST)
     if services_only:
         return OK
-    return run_both(context, values, ["gateway"], ["worker", "start"])
+    return processes.run_both(context.out, values, ["gateway"], ["worker", "start"])
 
 
 def services_up(compose: Path, services: Sequence[str]) -> None:
     """`docker compose up` of those services, waited for, and each one's loopback port answering."""
     up = subprocess.run(
-        ["docker", "compose", "-f", str(compose), "up", "-d", "--build", "--wait", *services],
+        ["docker", "compose", "--progress", "quiet", "-f", str(compose), "up", "-d", "--build", "--wait", *services],
         capture_output=True,
         text=True,
         check=False,
@@ -139,8 +146,8 @@ def services_up(compose: Path, services: Sequence[str]) -> None:
             wait_for_port(name, port)
 
 
-async def prepare_database(values: dict[str, str], env: Path) -> platform.History:
-    """The schema brought to this release, and the sandbox fleet's key drawn once into the env file."""
+async def prepare_database(values: dict[str, str], env: Path, *, production_fleet: bool = False) -> platform.History:
+    """The schema at this release; the sandbox fleet's key, and a server's production fleet's, drawn once into env."""
     # The revisions read the process's own settings (`migrations/env.py`, `load_settings`): the local settings
     # become the process's here, as they are the children's (a clean machine reached for localhost:5432, 2026-10-17).
     os.environ.update(values)
@@ -148,14 +155,17 @@ async def prepare_database(values: dict[str, str], env: Path) -> platform.Histor
     try:
         history = await platform.apply_history(engine)
         await asyncio.to_thread(platform.upgrade_schema, tracked=history.tracked)
-        if "PINECALL_WORKER_KEY" not in values:
-            issue = keys.Issue(
-                org=DEFAULT_ORG, env=Env.sandbox, scopes=frozenset({KeyScope.fleet}), label="the sandbox fleet"
-            )
+        fleets = [("PINECALL_WORKER_KEY", Env.sandbox, "the sandbox fleet")]
+        if production_fleet:
+            fleets.append(("PINECALL_PRODUCTION_WORKER_KEY", Env.production, "the production fleet"))
+        for variable, fleet_env, label in fleets:
+            if variable in values:
+                continue
+            issue = keys.Issue(org=DEFAULT_ORG, env=fleet_env, scopes=frozenset({KeyScope.fleet}), label=label)
             async with session_maker(engine).begin() as session:
-                _, values["PINECALL_WORKER_KEY"] = await keys.issue_key(session, issue)
+                _, values[variable] = await keys.issue_key(session, issue)
             with env.open("a", encoding="utf-8") as out:
-                out.write(f"PINECALL_WORKER_KEY={values['PINECALL_WORKER_KEY']}\n")
+                out.write(f"{variable}={values[variable]}\n")
     finally:
         await engine.dispose()
     return history
@@ -171,9 +181,26 @@ async def local_down(
     where = _where(ctx)
     docker_or_refuse()
     wiped = ["-v"] if volumes else []
-    subprocess.run(["docker", "compose", "-f", str(where / "compose.yaml"), "down", *wiped], check=True)
+    profiles = [option for profile in ALL_PROFILES for option in ("--profile", profile)]
+    subprocess.run([*compose_files(where), *profiles, "down", *wiped], check=True)
     context_of(ctx).out.line((WIPED if volumes else DOWN).format(env=where / "env"))
     return OK
+
+
+@app.command("logs")
+@verb
+async def local_logs(
+    ctx: typer.Context,
+    service: Annotated[str | None, typer.Argument(help="gateway, worker-sandbox, worker-production, caddy…")] = None,
+) -> int:
+    """Follow a server's logs, every service's or one's; a laptop's are in the terminal `setup` runs in."""
+    where = _where(ctx)
+    docker_or_refuse()
+    profiles = [option for profile in ALL_PROFILES for option in ("--profile", profile)]
+    named = [service] if service else []
+    return subprocess.run(
+        [*compose_files(where), *profiles, "logs", "--follow", "--tail", "100", *named], check=False
+    ).returncode
 
 
 @app.command("init")
@@ -199,6 +226,20 @@ async def local_env(ctx: typer.Context) -> int:
     """Print the line a shell runs to use the local settings with any other verb."""
     context_of(ctx).out.secret(f"set -a; . {_where(ctx) / 'env'}; set +a")
     return OK
+
+
+def compose_files(where: Path) -> list[str]:
+    """`docker compose` on the services' file, and the server's laid over it where this machine is one."""
+    server = where / "server.yaml"
+    return ["docker", "compose", "-f", str(where / "compose.yaml"), *(["-f", str(server)] if server.is_file() else [])]
+
+
+def set_values(env: Path, changes: dict[str, str | None]) -> dict[str, str]:
+    """The env file with those names set (None: taken out), every other line kept; the pairs it now holds."""
+    kept = [line for line in env.read_text(encoding="utf-8").splitlines() if line.partition("=")[0] not in changes]
+    kept += [f"{name}={value}" for name, value in changes.items() if value is not None]
+    env.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    return read_env(env)
 
 
 def write_shipped(where: Path) -> Path:
@@ -253,48 +294,7 @@ def settings_of(values: dict[str, str]) -> Settings:
     return Settings.model_validate({**variables, "variables": variables})
 
 
-# Two processes of this same package, their lines told apart by a prefix, stopped together.
-def run_both(context: Context, values: dict[str, str], *verbs: list[str]) -> int:
-    """Run the verbs as child processes on the local settings until Ctrl-C; 1 when one failed."""
-    children = [
-        subprocess.Popen(
-            [sys.executable, "-m", "pinecall_runtime.cli", *verb],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env={**os.environ, **values},
-        )
-        for verb in verbs
-    ]
-    readers = [
-        threading.Thread(target=_relay, args=(child.stdout, verb[0]), daemon=True)
-        for child, verb in zip(children, verbs, strict=True)
-    ]
-    for reader in readers:
-        reader.start()
-    context.out.line(RUNNING)
-
-    def stop(_signal: int, _frame: object) -> None:
-        for child in children:
-            child.terminate()
-
-    signal.signal(signal.SIGINT, stop)
-    signal.signal(signal.SIGTERM, stop)
-    codes = [child.wait() for child in children]
-    for reader in readers:
-        reader.join(timeout=1)
-    return OK if all(code in (0, -signal.SIGTERM) for code in codes) else FOUND_WRONG
-
-
 def docker_or_refuse() -> None:
     """Docker on PATH, or the sentence that says what to install."""
     if which("docker") is None:
         raise ConfigurationError(NO_DOCKER)
-
-
-def _relay(out: IO[str] | None, prefix: str) -> None:
-    if out is None:
-        return
-    for line in out:
-        sys.stdout.write(f"{prefix:<8}| {line}")
-        sys.stdout.flush()

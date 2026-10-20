@@ -1,7 +1,7 @@
 """The row `setup` writes for each mix of local stages and vendors: defaults, tuning, judge, caller, rates."""
 
 from pinecall_runtime.cli import setup_models as models
-from pinecall_runtime.cli.setup_row import row_of
+from pinecall_runtime.cli.setup_row import list_prices, row_of
 
 
 def test_every_stage_local_names_the_three_servers_on_loopback() -> None:
@@ -69,3 +69,13 @@ def test_every_stage_on_a_vendor_leaves_the_ears_own_endpointing_and_the_embedde
     assert row.embedding is not None and row.embedding.url == "http://127.0.0.1:11434/v1"
     livekit = row_of(models.Choices(stt="deepgram", turn="livekit", llm="anthropic", tts="cartesia"))
     assert livekit.tuning["stt/deepgram"].turn_model == "v1-mini"
+
+
+def test_the_row_carries_the_list_prices_the_package_ships() -> None:
+    """A call on a vendor's key is priced from the first: the shipped list prices are the row's, open models free."""
+    row = row_of(models.ALL_KEYS)
+    shipped = list_prices()
+    assert shipped and set(shipped) <= set(row.rates)
+    assert row.rates["nova-3"].audio_seconds == shipped["nova-3"].audio_seconds
+    local = row_of(models.ALL_LOCAL)
+    assert local.rates[models.LOCAL_LLM].input == 0

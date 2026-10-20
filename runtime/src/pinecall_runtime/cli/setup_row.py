@@ -1,4 +1,4 @@
-"""The providers row `setup` writes for its choices: local stages on the openai plugin with a base_url, vendors bare."""
+"""The providers row `setup` writes: local stages on the openai plugin with a base_url, vendors bare, all priced."""
 
 import json
 from importlib.resources import files
@@ -23,7 +23,9 @@ THINKING = "llm/openai"
 def row_of(choices: Choices) -> providers.Catalog:
     """The providers row for the choices: each stage's default, the tuning, the judge, the caller, the rates."""
     shipped = _shipped(choices)
-    rates: dict[str, Any] = dict(shipped["rates"])
+    # The list prices the package ships, so a call on a vendor's key is priced from the first; open models at nothing.
+    rates: dict[str, Any] = {model: rate.model_dump(exclude_none=True) for model, rate in list_prices().items()}
+    rates.update(shipped["rates"])
     for model in choices.local_models:
         rates.setdefault(model, dict(shipped["rates"][_llm_model(choices)]))
     row: dict[str, object] = {"rates": rates, "embedding": shipped["embedding"]}
@@ -55,6 +57,12 @@ def row_of(choices: Choices) -> providers.Catalog:
         caller={"llm": caller, "ceiling_usd": shipped["caller"]["ceiling_usd"]},
     )
     return providers.Catalog.model_validate(row)
+
+
+def list_prices() -> dict[str, providers.Rate]:
+    """The vendors' list prices the package ships (`local/prices.csv`), by model."""
+    text = files("pinecall_runtime.cli").joinpath("local", "prices.csv").read_text(encoding="utf-8")
+    return providers.rates_from_csv(text)
 
 
 # The shipped row names the thinking and the ears by placeholders: the choices' own models go in.

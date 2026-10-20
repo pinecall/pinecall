@@ -147,6 +147,50 @@ def recommended(fits: providers.Recommendation) -> Choices:
     )
 
 
+# The runtime's defaults, what an agent naming no stage runs on: what the flags say, else the open
+# models that fit this machine, else the vendors.
+def choices_of(
+    models: str | None,
+    stt: str | None,
+    turn: str | None,
+    llm: str | None,
+    tts: str | None,
+    judge: str | None,
+    caller: str | None,
+    *,
+    chat_only: bool,
+) -> Choices | None:
+    """The runtime's defaults: what the flags say, else the open models that fit this machine, else the vendors."""
+    if models == "none":
+        return None
+    if models not in (None, "local", "keys"):
+        raise ValidationError(f"--models is local, keys or none, not {models!r}")
+    if models == "keys":
+        base = ALL_KEYS
+    elif models == "local":
+        base = ALL_LOCAL
+    else:
+        base = recommended(providers.recommend(providers.detect(os.environ)))
+    chosen = Choices(
+        stt=local_or_vendor(stt or base.stt),
+        turn=turn_of(turn or base.turn),
+        llm=local_or_vendor(llm or base.llm),
+        tts=local_or_vendor(tts or base.tts),
+        judge=local_or_vendor(judge) if judge else base.judge,
+        caller=local_or_vendor(caller) if caller else base.caller,
+    )
+    if chat_only:
+        chosen = Choices(
+            stt=LOCAL,
+            turn="smart-turn",
+            llm=chosen.llm,
+            tts=LOCAL,
+            judge=chosen.judge,
+            caller=chosen.caller,
+        )
+    return check_choices(chosen)
+
+
 # ── the keys ──
 
 
@@ -191,22 +235,16 @@ def keys_found(
     return given, found
 
 
-def said_loading(found: Mapping[str, str]) -> str:
-    """Where the keys were read from: the environment first, then each shell file holding one."""
-    places = sorted(set(found.values()), key=lambda place: (place != providers.THE_ENVIRONMENT, place))
-    where = " and ".join(places) if places else "the environment and the shell's files"
-    return f"loading providers from {where} …"
-
-
-def said_providers(loaded: Mapping[str, str]) -> str:
-    """The vendors an agent may name with no key to add: each one whose key was found."""
+def said_keys(loaded: Mapping[str, str], found: Mapping[str, str], *, server: bool) -> str:
+    """The vendors whose keys were found, where, and that the runtime lends them; or how to add one."""
     if not loaded:
-        return "providers  no keys found: `pinecall providers add <vendor>` adds one"
-    count = f"{len(loaded)} key found" if len(loaded) == 1 else f"{len(loaded)} keys found"
-    return f"providers  {' · '.join(sorted(loaded))} — {count}"
+        return "  keys      none found — `pinecall providers add <vendor>` adds one"
+    places = sorted(set(found.values()), key=lambda place: (place != providers.THE_ENVIRONMENT, place))
+    lent = "lent to every org" if server else "lent to your orgs"
+    return f"  keys      {' · '.join(sorted(loaded))} — found in {' and '.join(places)}, {lent}"
 
 
-def said_models(choices: Choices) -> str:
+def said_models(choices: Choices, *, card: bool = False) -> str:
     """The open models this machine serves: an agent naming none runs on them."""
     served = [
         *choices.local_models,
@@ -214,8 +252,8 @@ def said_models(choices: Choices) -> str:
         *(["kokoro"] if is_local(choices.tts) else []),
     ]
     if not served:
-        return "models     none served here: an agent runs on the providers"
-    return f"models     {' · '.join(served)} — open, served on this machine"
+        return "  models    none served here — calls run on the keys above"
+    return f"  models    {' · '.join(served)} — open, served here{' on the GPU' if card else ''}"
 
 
 # A variable's value and where it was: the environment, else the shell file setting it as plain

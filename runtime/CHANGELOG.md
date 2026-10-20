@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+- **`pinecall-runtime setup --domain <name>`: a runtime on a server, in one verb.** On Linux with
+  Docker and a name pointing at the machine, setup checks the name, puts Caddy in front with a
+  certificate from Let's Encrypt it renews itself, starts LiveKit facing out with a key pair drawn for
+  the machine, and runs the gateway and a worker per environment in Docker from this release, so it
+  all comes back after a reboot. `--livekit <wss-url>` runs it on a LiveKit of yours (LiveKit Cloud,
+  or one you run): the pair is tried first and the webhook to register is printed; a laptop refuses
+  it, since LiveKit must reach the runtime. `--phone` adds LiveKit's SIP. Run again, the server is
+  updated in place; `local up` brings it back, `local logs` follows it, `local down` stops it. The
+  browser joins `LIVEKIT_PUBLIC_URL` before the runtime's name, so an operator's own LiveKit is
+  joined where it is (a cluster, which sets it to the name, is unchanged).
+- **setup speaks plainly.** One line each for the keys found, the models, the services; the console's
+  person asked before anything slow, and not again on a later run; `--help` shows the three flags a
+  person uses and `--help-all` every flag a script does.
+- **A call on a vendor's key is priced from the first.** The list prices moved into the package
+  (`cli/local/prices.csv`, with the MIT notice of the voice-prices rows it took, which was missing),
+  and setup gives them to the providers row the first time it writes it; a rate the console edited
+  is never overwritten.
+- **The open models run on the GPU, and answer the first caller at once.** On a machine with an
+  NVIDIA card Docker can reach, setup runs Ollama, Whisper and Kokoro on it (the images
+  `infra/models` runs), where it ran their CPU images. A model's first answer waited for the card's
+  kernels (30 s after setup, 46 s after a reboot, on an L4) and the first call timed out: setup now
+  asks it one answer before it says ready, and `ollama-warm` does the same each time the machine
+  starts.
+- **setup runs again as it says it does.** A second run took the Ollama the first one started for
+  one of the machine's own and asked for an `ollama` binary; it now tells its own from a host's.
+  Postgres, Redis and LiveKit come back after a reboot (`restart: unless-stopped`). A compose that
+  fails says Docker's error, not the last screen of its progress, and a plugin's import warnings
+  (clova's pydub: "Couldn't find ffmpeg") no longer print on every command.
+- **A spoken simulation plays the library's personas.** `POST /v1/evals/voice` took only the
+  agent's own callers, so `pinecall simulate --voice --persona elderly-slow` was a 404 where the
+  written simulation played it; both now take the agent's own and the library's.
+
 - **A save in Studio is heard by the calls already open in the sandbox.** The socket that holds a
   Studio agent sent a call its prompt and its tools once, when it started, so a person trying the
   agent in the console and changing its instructions asked the old ones. Now a save makes the sandbox's

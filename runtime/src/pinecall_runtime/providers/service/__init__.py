@@ -1,6 +1,6 @@
 """The providers rules, one module per noun; what other domains use is named here once."""
 
-from pinecall_runtime.providers.schemas import Catalog, Embedding, TurnModel
+from pinecall_runtime.providers.schemas import Catalog, Embedding, Rate, TurnModel
 from pinecall_runtime.providers.service.advice import Advised, Served, advise, served_by
 from pinecall_runtime.providers.service.catalog import (
     get_catalog,
@@ -104,6 +104,7 @@ __all__ = [
     "ListedVoice",
     "Machine",
     "Pipeline",
+    "Rate",
     "RatesChange",
     "Recommendation",
     "Running",

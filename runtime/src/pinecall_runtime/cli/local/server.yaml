@@ -1,0 +1,80 @@
+# The runtime as a server: laid over compose.yaml by `pinecall-runtime setup --domain <name>`. Everything
+# runs in Docker and comes back after a reboot: Caddy answers the name with a certificate it renews
+# itself and hands /rtc to LiveKit and the rest to the gateway; the gateway and a worker per
+# environment run this release of the package. Each one is on the host's network, so the services'
+# loopback ports and the open models' are theirs as they are a laptop's; only Caddy (:80, :443),
+# LiveKit's media (:7881 tcp, :7882 udp) and, with --phone, SIP (:5060, RTP :10000-10019) face out.
+
+services:
+  caddy:
+    profiles: [server]
+    image: docker.io/library/caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
+    network_mode: host
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy-data:/data", "caddy-config:/config"]
+    restart: unless-stopped
+
+  # The LiveKit setup starts on a server: the media on the machine's public address, the pair drawn
+  # for this machine, the webhook to the gateway on loopback. Not started with --livekit.
+  livekit-server:
+    profiles: [server-livekit]
+    image: docker.io/livekit/livekit-server:v1.13.7@sha256:6fd3b7088874c4d119160dd688798dfec852bc014786d392caad15f6f63912a3
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes: ["./livekit.server.yaml:/etc/livekit.yaml:ro"]
+    network_mode: host
+    restart: unless-stopped
+    depends_on: [redis]
+
+  sip-server:
+    profiles: [server-phone]
+    image: docker.io/livekit/sip:v1.17.0@sha256:d3c6441eb0918a81ab9e48ba7df6f02c1eebbeace42c963b2c6a6e5418675671
+    network_mode: host
+    # The image reads its config at /sip/config.yaml.
+    volumes: ["./sip.server.yaml:/sip/config.yaml:ro"]
+    restart: unless-stopped
+    depends_on: [livekit-server]
+
+  gateway:
+    profiles: [server]
+    build:
+      context: ./runtime
+      args: {SPEC: "${PINECALL_RUNTIME_SPEC}"}
+    image: pinecall-runtime:${PINECALL_RUNTIME_VERSION}
+    command: ["pinecall-runtime", "gateway"]
+    network_mode: host
+    env_file: ./env
+    volumes: ["${PINECALL_RECORDINGS}:${PINECALL_RECORDINGS}", "cache:/root/.cache"]
+    restart: unless-stopped
+
+  worker-sandbox:
+    profiles: [server]
+    image: pinecall-runtime:${PINECALL_RUNTIME_VERSION}
+    pull_policy: never
+    command: ["pinecall-runtime", "worker", "start"]
+    network_mode: host
+    env_file: ./env
+    environment:
+      PINECALL_FLEET: pinecall-sandbox
+      PINECALL_WORKER_HTTP_PORT: "8182"
+    volumes: ["${PINECALL_RECORDINGS}:${PINECALL_RECORDINGS}", "cache:/root/.cache"]
+    restart: unless-stopped
+    depends_on: [gateway]
+
+  worker-production:
+    profiles: [server]
+    image: pinecall-runtime:${PINECALL_RUNTIME_VERSION}
+    pull_policy: never
+    command: ["pinecall-runtime", "worker", "start"]
+    network_mode: host
+    env_file: ./env
+    environment:
+      PINECALL_FLEET: pinecall
+      PINECALL_WORKER_KEY: ${PINECALL_PRODUCTION_WORKER_KEY}
+      PINECALL_WORKER_HTTP_PORT: "8183"
+    volumes: ["${PINECALL_RECORDINGS}:${PINECALL_RECORDINGS}", "cache:/root/.cache"]
+    restart: unless-stopped
+    depends_on: [gateway]
+
+volumes:
+  caddy-data:
+  caddy-config:
+  cache:

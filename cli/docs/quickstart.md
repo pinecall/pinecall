@@ -1,7 +1,7 @@
 # Quickstart
 
 From nothing to an agent that answers, in ten minutes. You install one command, sign in, create a project
-in the language you like, read what the model will see, talk to the agent, and run its first test.
+in the language you like, read what the model will see, hold the agent, talk to it, and run its first test.
 Everything runs in your org's **sandbox** on Pinecall Cloud: a space of your own to try things,
 where nothing reaches a real caller.
 
@@ -191,6 +191,26 @@ blocks, the stage the agent is in and the tools the model may call now. Change t
 it again.
 :::
 
+### Hold it
+
+```bash
+pinecall start
+```
+
+:::result
+```console
+front-desk · acme · sandbox · connected to https://cloud.pinecall.io · key from your sign-in (~/.pinecall/session.json) · tools 1
+talk to it  https://cloud.pinecall.io/sandbox/a/front-desk/playground
+doors    web
+```
+This is the process that answers: on your laptop now, on a server later. It holds the agent until
+Ctrl-C and prints every call as it happens. **Leave it running, and open a second terminal in the
+same folder** for what follows: `chat`, `test` and `simulate` talk to the agent this process holds,
+and start nothing themselves. The `talk to it` line is where to see the agent in the browser and talk
+to it by voice; `doors` is how callers reach it, the web for now, a phone number once you point one
+at it.
+:::
+
 ### Talk to it
 
 ```bash
@@ -261,23 +281,7 @@ The voice, the models, the language and what it knows by heart are **settings** 
 code: changing one needs no deploy. `pinecall console` opens the same settings in the browser,
 with every call the agent has had.
 
-### Answer calls
-
-```bash
-pinecall start
-```
-
-:::result
-```console
-front-desk · acme · sandbox · connected to https://cloud.pinecall.io · key from your sign-in (~/.pinecall/session.json) · tools 1
-talk to it  https://cloud.pinecall.io/sandbox/a/front-desk/playground
-doors    web
-```
-This is the process that answers: on your laptop now, on a server later. It holds the agent until
-Ctrl-C and prints every call as it happens. The `console` line is where to see the agent in the
-browser and talk to it by voice; `doors` is how callers reach it, the web for now, a phone number
-once you point one at it.
-:::
+### Go live
 
 To ship it, `pinecall deploy` uploads a TypeScript project and Pinecall runs it for you; a Python or
 Ruby agent runs on a server of yours with `pinecall start --prod`.

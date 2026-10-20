@@ -34,7 +34,6 @@ made by hand and nothing is built on a laptop.
 | `lab/` | calls with real audio and the vendors faked, against staging, measured (`terraform/modules/lab` is its generator) |
 | `local/` | the runtime on a laptop, and the Postgres image of the suites (`make local`, `make db`) |
 | `models/` | the open stack: three model servers on one GPU and the providers row that points the runtime at them |
-| `seed/prices.csv` | the list prices a deployment's rates start from (`pinecall-runtime providers prices`) |
 
 ## Your own values
 
@@ -122,6 +121,21 @@ migrations, the fleets' keys, the retention, a suite's Job), its own instances a
 namespace. They are enforced only once the cluster's dataplane enforces policies (Dataplane V2,
 `modules/gke`), which this cluster's does not yet: that change makes the cluster again, and is
 planned on its own.
+
+## The first person
+
+A cluster from nothing has no org and nobody to sign in. The first org and its admin, an operator
+of the deployment, in one line on a gateway; the invitation link is printed once:
+
+```console
+$ kubectl --context <the box's> exec deploy/pinecall-gateway -- \
+    pinecall-runtime init --email you@example.com --person "Your Name"
+```
+
+That person opens the link, sets a password, and from then on signs in at `https://<the name>` and
+with `pinecall login https://<the name>` from any machine. The runtime's vendor keys, what a new
+org is given and more orgs are [Your first org](https://docs.pinecall.io/self-hosting/your-first-org/),
+from the console's Box or the same `kubectl exec`.
 
 ## A pool an environment
 

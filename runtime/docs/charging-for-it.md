@@ -83,12 +83,15 @@ a WhatsApp message (Meta charges for templates only, and the runtime answers ins
 person opens), a number's monthly rental, the embeddings of a lookup or a push.
 
 The rates are the operator's, and a model or a leg without one is listed `unpriced` on the call,
-never priced at zero. The repository ships `infra/seed/prices.csv`, one row per model and unit
-(`vendor,model,unit,usd,as_of,source`: tokens per million; characters, seconds and minutes each),
-the models taken from [voice-prices](https://github.com/mahimailabs/voice-prices), Twilio's
-Elastic SIP Trunking from its US page, each checked against its source on the date its row says.
-They are list prices: a plan or a contract that pays less is an edit of the file, then
-`pinecall-runtime providers prices infra/seed/prices.csv --apply`. A trunk the platform reaches only by
+never priced at zero. The package ships list prices, `pinecall_runtime/cli/local/prices.csv`, one
+row per model and unit (`vendor,model,unit,usd,as_of,source`: tokens per million; characters,
+seconds and minutes each), the models taken from [voice-prices](https://github.com/mahimailabs/voice-prices)
+(MIT, its notice in `prices.LICENSE` beside the file), Twilio's Elastic SIP Trunking from its US
+page, each checked against its source on the date its row says. `pinecall-runtime setup` gives them
+to the providers row the first time it writes it, so a call on a vendor's key is priced from the
+first; `setup` writes the file into `~/.pinecall-runtime/local/` too. They are list prices: a plan
+or a contract that pays less is a file of your own, then `pinecall-runtime providers prices
+<file> --apply`. A trunk the platform reaches only by
 its address (a `sip` carrier account) is priced by rows named `sip-inbound/…` and
 `sip-outbound/…` the operator writes.
 

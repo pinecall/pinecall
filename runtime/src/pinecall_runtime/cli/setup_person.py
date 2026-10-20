@@ -3,6 +3,7 @@
 import json
 import os
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
@@ -12,6 +13,7 @@ from pinecall_runtime.cli import orgs as orgs_cli
 from pinecall_runtime.cli import setup_ask as ask
 from pinecall_runtime.cli.command import Context
 from pinecall_runtime.enums import Role
+from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping
 
 # Where the CLI keeps this machine's sign-in (`PINECALL_HOME` moves it): setup signs the machine in
@@ -26,43 +28,64 @@ DEV_KEY = "PINECALL_DEV_KEY"
 DEV_KEY_OF = "PINECALL_DEV_KEY_OF"
 DEV_KEY_LABEL = "this machine (pinecall-runtime setup)"
 
+# Who the console's admin is, kept in the env file, so a run after the first asks nothing.
+ADMIN = "PINECALL_CONSOLE_ADMIN"
 # Where nobody is asked: an address that reads as this machine's.
 NOBODY_ASKED = "admin@pinecall.local"
-CHANGES_IT = "`pinecall-runtime orgs password default {email}` changes it"
 # Nobody at a terminal and no line of stdin: no password is made up. The CLI is signed in anyway,
 # and `pinecall console` opens the console from it; a password is set when somebody wants one.
 NO_PASSWORD_YET = (
-    "console    {email} has no password yet: `pinecall-runtime orgs password default {email}` sets one; "
+    "  console   {email} has no password yet: `pinecall-runtime orgs password default {email}` sets one; "
     "`pinecall console` opens the console signed in"
 )
+NO_PASSWORD_ON_A_SERVER = "a server's console needs a password: --password-stdin with --yes, or answer when asked"
 
 
-async def the_person(
-    runtime: Context, email: str | None, person: str | None, asking: bool, password_stdin: bool
-) -> tuple[str, str]:
-    """The console's admin, made or found, an operator, a password asked or read from stdin: the line said, their id."""
-    address = email or (ask.email() if asking else NOBODY_ASKED)
-    name = person or address.split("@", 1)[0]
-    shortest = runtime.settings.min_password
+@dataclass(frozen=True)
+class Answers:
+    """Who signs in to the console, their name, and the password typed (None: none was asked for)."""
+
+    email: str
+    name: str
+    password: str | None
+
+
+def ask_person(
+    email: str | None, person: str | None, values: dict[str, str], *, asking: bool, password_stdin: bool, server: bool
+) -> Answers:
+    """Asked before anything slow: who signs in and their password; nothing on a run after the first."""
+    kept = values.get(ADMIN)
+    if kept and not email and not password_stdin:
+        return Answers(kept, person or kept.split("@", 1)[0], None)
+    if password_stdin:
+        address = email or kept or NOBODY_ASKED
+        return Answers(address, person or address.split("@", 1)[0], orgs_cli.read_secret_line())
+    if not asking:
+        if server:
+            raise ValidationError(NO_PASSWORD_ON_A_SERVER)
+        address = email or NOBODY_ASKED
+        return Answers(address, person or address.split("@", 1)[0], None)
+    address = email or ask.email()
+    return Answers(address, person or address.split("@", 1)[0], ask.password())
+
+
+async def the_person(runtime: Context, answers: Answers, env: Path) -> tuple[str | None, str]:
+    """The console's admin, made or found, an operator, the password set: a line to say, if any, and their id."""
     async with runtime.sessions.begin() as session:
         org = await orgs.get_org(session, DEFAULT_ORG)
-        kept = await members.memberships_of(session, address.strip().lower())
+        kept = await members.memberships_of(session, answers.email.strip().lower())
         found = next((one for one in kept if one.org == org.id), None)
-        if found is not None and found.password_hash is not None:
-            return f"console    {found.email} keeps their password: {CHANGES_IT.format(email=found.email)}", found.id
         if found is None:
-            invitee = members.Invitee(address, name, Role.admin)
+            invitee = members.Invitee(answers.email, answers.name, Role.admin)
             await members.invite(session, org.id, invitee, seats=None, vouched=True)
-            found = await members.member_by_email(session, org.id, address)
+            found = await members.member_by_email(session, org.id, answers.email)
         await members.set_operator(session, org.id, found.id, on=True)
-        if not asking and not password_stdin:
-            return NO_PASSWORD_YET.format(email=found.email), found.id
-        password = orgs_cli.read_secret_line() if password_stdin else ask.password()
-        await members.set_password(session, org.id, found.id, password, shortest)
-    return (
-        f"console    {found.email} signs in with the password typed: {CHANGES_IT.format(email=found.email)}",
-        found.id,
-    )
+        none_yet = found.password_hash is None and answers.password is None
+        if answers.password is not None:
+            await members.set_password(session, org.id, found.id, answers.password, runtime.settings.min_password)
+        said = NO_PASSWORD_YET.format(email=found.email) if none_yet else None
+    local.set_values(env, {ADMIN: found.email})
+    return said, found.id
 
 
 # A person's key, not a server's: in the sandbox a person's console shows that person's own copy of

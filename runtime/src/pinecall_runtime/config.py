@@ -150,11 +150,13 @@ class Settings(BaseSettings):
         return self.livekit_url
 
     def browser_livekit_url(self, env: Env) -> str:
-        """The LiveKit URL a browser joins for a call of the env."""
+        """The LiveKit URL a browser joins for a call of the env: a LiveKit of the operator's own wins over the name."""
         own = self.livekit_sandbox_url if env is Env.sandbox else None
-        if self.domain:
-            return f"wss://{self.domain}/sandbox" if own else f"wss://{self.domain}"
-        return own or self.livekit_public_url or self.livekit_url
+        if own:
+            return f"wss://{self.domain}/sandbox" if self.domain else own
+        if self.livekit_public_url:
+            return self.livekit_public_url
+        return f"wss://{self.domain}" if self.domain else self.livekit_url
 
     def sip_domain_of(self, env: Env) -> str | None:
         """The name a carrier sends that env's calls to: its SIP name, else the box's name."""

@@ -32,106 +32,145 @@ variable they read is
 ## `setup`
 
 ```
-pinecall-runtime setup [--dir <path>] [--email <address>] [--person "…"] [--password-stdin] [--yes]
-                       [--stt …] [--turn stt|smart-turn|livekit] [--llm …] [--tts …] [--judge …] [--caller …]
-                       [--models local|keys|none] [--chat-only] [--services-only] [--recommend]
+pinecall-runtime setup                                   a runtime on this machine
+pinecall-runtime setup --domain <name>                   a runtime on a server, with https
+                       [--livekit <wss-url>|here] [--phone]   your own LiveKit, or setup's; phone calls
+pinecall-runtime setup --help-all                        every flag, for a script
 ```
 
-This machine's runtime, from nothing to a class that answers, in one verb; run once, safe to run
-again. Typed with nothing after it, it does the right thing: it loads the providers whose keys it
-finds, serves the open models that fit the machine, and asks who signs in to the console. Each step
-is one line, skipped when already done: Docker found (else the sentence that says what to install),
-the providers and the models, the services up and the schema at this release, the console's admin,
-this machine signed in, the models served, and the gateway and a worker running as `local up` runs
-them. It is this machine's runtime, for the person at it: a runtime several people reach is a
-deployment ([on Kubernetes](../../infra/README.md)).
+A runtime from nothing to a class that answers, in one verb; run it again any time, and every step
+already done is skipped. Typed with nothing after it, it does the right thing: it loads the keys it
+finds, serves the open models that fit the machine, asks who signs in to the console, and signs this
+machine in. A runtime on a server is the same verb with the server's name.
 
-**The providers found, and the open models.** It asks no stage: what a call runs on is the
-agent's to name (`pinecall agent set --llm groq`, `--stt`, `--tts`, a realtime model such as
-`--realtime xai/grok-voice-3.0`, the console's Configure, or the class itself). Setup gives the
-runtime what an agent may name:
+**On this machine.** Postgres, Redis and LiveKit in Docker on loopback, the gateway and a sandbox
+worker in the terminal you ran it in (Ctrl-C stops them; `setup` or `local up` starts them again):
 
 ```console
-docker     compose 2.39.1
-loading providers from the environment and ~/.zshrc …
-providers  cartesia · deepgram · groq · xai — 4 keys found
-models     gemma4:12b · whisper · kokoro — open, served on this machine
+$ pinecall-runtime setup
+
+  Pinecall runtime · on this machine
+
+  keys      anthropic · deepgram — found in ~/.zshrc, lent to your orgs
+  models    gemma4:12b · whisper · kokoro — open, served here
+
+  Who signs in to the console?
+  email     ana@example.com
+  password  ••••••••
+  again     ••••••••
+
+  services  Postgres · Redis · LiveKit — this machine only
+
+  ✓ ready   http://127.0.0.1:8080/sandbox/
+  ✓ this machine is signed in — no `pinecall login` needed
+
+  Next, in another terminal:
+    npm i -g pinecall
+    pinecall new acme --agent front-desk && cd acme && npm install
+    pinecall start       # the agent, held here: leave it running
+    pinecall chat        # in a third terminal: talk to it
+
+Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again.
 ```
 
-**Every key found is loaded.** For each installed vendor it looks for the key's variable in the
-environment, then in the shell's files (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.bash_profile`,
-`~/.profile`) not loaded into this terminal; a key found is read and given to the org `default`
-and to the box, so an agent names that vendor with nothing to add. A key's value is never shown; a
-line that expands (`$(…)`, `$OTHER`) is not read. `pinecall providers add <vendor>` adds one later.
+**On a server (`--domain`).** Linux with Docker, and a name whose A record points at the machine.
+`setup` checks the name resolves here, puts Caddy in front on :80 and :443 with a certificate from
+Let's Encrypt it renews itself, starts LiveKit facing out (its media on :7881 tcp and :7882 udp, the
+machine's public address found by STUN, a key pair drawn for this machine), and runs the gateway and
+a worker for each environment in Docker, from this release of the package, so all of it comes back
+after a reboot. Open :80, :443, :7881/tcp and :7882/udp to the machine. The console's admin is the
+runtime's operator; a server always asks for a password (`--password-stdin` with `--yes`).
 
-**The open models are the ones that fit.** It reads the machine — the cards and their memory
-(`nvidia-smi`), Apple silicon and its unified memory, the RAM, whether an Ollama answers and which
-models it holds — and serves the best measured model whose memory fits the card beside the ears,
-the voice and the embedder (`providers/service/machine.py`: what each did when measured, the time
-to the first token, the memory it needs), with Whisper and Kokoro; a Mac thinks on its own Ollama
-(Metal) with the ears and the voice in CPU containers. They are also **the runtime's defaults**:
-what an agent naming no stage runs on. A machine with no GPU serves none, and its defaults are
-deepgram, anthropic and cartesia; a default's key found nowhere is asked for at a terminal, once,
-without echo, and refuses under `--yes` or with no terminal. `--recommend` prints what it read
-and what fits, as JSON. The flags (`--llm`, `--stt`, `--tts`, `--turn`, `--judge`, `--caller`,
-`--models local|keys|none`) set the defaults instead.
+```console
+$ pinecall-runtime setup --domain voice.example.com
 
-**The console's admin.** Every run makes sure somebody signs in to the console: the address
-`--email` names, or the one asked at a terminal (`admin@pinecall.local` where nobody is asked), an
-admin and an operator of the org `default`, with no invitation link. The password is typed twice
-without echo at a terminal, or read as one line of stdin with `--password-stdin`; where nobody is
-asked and no line is given (`--yes` in a script, the MCP's `runtime up`), no password is made up:
-the person has none until `orgs password default <email>` sets one, and `pinecall console` opens
-the console signed in from the CLI meanwhile. Run again, a person who has a password keeps it;
-`orgs password default <email>` changes it, and `pinecall team password` does from the CLI. More
-people are invited later, from the console's Team or with `orgs invite default <email>`.
+  Pinecall runtime · voice.example.com
 
-**This machine, signed in.** The admin's own key, drawn once into `<dir>/env` as
-`PINECALL_DEV_KEY`, is this machine's sign-in at `http://127.0.0.1:8080`, written into the CLI's
-`~/.pinecall/session.json` (`PINECALL_HOME` moves it; owner-only) as `pinecall login` writes one,
-the CLI's other gateways kept: the `pinecall` CLI here needs no login, and a project `pinecall new`
-makes here runs on this runtime, in `default`. A person's key, not a server's, because in the
-sandbox a person's console shows that person's own copy of the agents: what `pinecall start`
-holds is what the console they sign in to shows.
+  name      voice.example.com → 203.0.113.7 — this machine ✓
+  https     certificate from Let's Encrypt, renews itself
+  keys      anthropic · cartesia · deepgram — found in the environment, lent to every org
+  models    none served here — calls run on the keys above
 
-**The defaults, a stage at a time.** What an agent naming no stage runs on. Each of the ears
-(`--stt`), the thinking (`--llm`) and the voice (`--tts`) is `local` — an open model on this machine — or a vendor of yours, any plugin this
-build runs (`providers installed` lists them). `local/<model>` names the open model itself: any
-tag Ollama pulls for the thinking, any model Speaches loads for the ears; the voice is Kokoro.
-`--judge` and `--caller` choose, the same way, who judges a finished call and who improvises the
-simulated caller's lines; left out, both run on the thinking's model. `--turn` says who ends the
-caller's turn: `stt`, the ears' own endpointing (only for ears that have one: Whisper does not),
-`smart-turn` (Smart Turn v3) or `livekit` (its v1-mini), both read off the audio on the worker's
-CPU. A local stage runs through the `openai` plugin with a `base_url` of its own, the same three
-servers `infra/models/` runs on a card, in their CPU images: Ollama (:11434), Whisper on Speaches
-(:8000), Kokoro (:8880), every port on loopback, the models pulled once into Docker volumes; an
-Ollama already answering on :11434 is used instead of the container. Memory and documents embed on
-`bge-m3`, on Ollama, always: the embedder is never a choice, since changing it would blind every
-base and every memory. A vendor's key is read from its variable (`DEEPGRAM_API_KEY`,
-`<VENDOR>_API_KEY`) in the environment, else from the shell file that exports it as plain text,
-else asked once without echo at a terminal, and held sealed by the org `default` and by the
-box — the judges at hang-up and the simulated caller run on the box's keys, on the model chosen to
-think. The providers row is written for the choices and the console edits it from then on; a row
-already there is left as it is. `--models local` is every stage local, `--models keys` deepgram,
-anthropic and cartesia with the ears' own endpointing, `--models none` leaves the row to
-`providers seed`.
+  Who signs in to the console?
+  email     ana@example.com
+  password  ••••••••
+  again     ••••••••
 
-**`--recommend`** prints the machine's reading and the stack it fits, as JSON, setting nothing up:
-the machine (`cards`, `ram_gib`, `apple_silicon`, `docker`, `ollama_here`, `ollama_models`,
-`keys_found` by vendor with where each is), the `recommendation` (`stack`, `room_gib` for the
-thinking, each candidate with `fits`, `short_by_gib`, `first_token_s` and what it `did`, the
-`keys` by stage, the `notes`), for a script or an assistant that wants the reasons before running it.
+  services  Postgres · Redis · LiveKit
+  phone     off — `--phone` turns it on
 
-**`--chat-only`** is written calls alone: Postgres and Redis, no LiveKit, no worker, Ollama and
-nothing else, the row with no ears and no voice; `pinecall chat` and the written goldens work,
-a spoken call does not. `--services-only` stops before running the two processes, as `local up`'s
-does.
+  ✓ ready   https://voice.example.com
+  ✓ ana@example.com runs this runtime and is admin of org default
+
+  From your laptop:
+    npm i -g pinecall
+    pinecall login https://voice.example.com
+    pinecall new acme --agent front-desk && cd acme && npm install
+    pinecall start       # the agent, held here: leave it running
+    pinecall chat        # in another terminal: talk to it
+
+  More orgs: the console → Box → Organizations · logs: pinecall-runtime local logs
+```
+
+To update the server, upgrade the package and run the verb again: `uv tool upgrade pinecall-runtime
+&& pinecall-runtime setup` (the name, the LiveKit and the phone are kept; the schema migrates; the
+gateway and the workers restart on the new release). A machine that ran `setup` alone becomes a
+server the first time `--domain` is given.
+
+**Your own LiveKit (`--livekit`).** LiveKit Cloud or a LiveKit you run, instead of one `setup`
+starts: its URL, then its API key and secret, asked once (`--livekit-key`, `--livekit-secret-stdin`
+for a script). The pair is tried before anything is kept. LiveKit must reach the runtime with its
+events, so it is a server's: on a laptop `setup` refuses it in one sentence. The last lines are the one
+step left in LiveKit — its webhook, `https://<name>/v1/livekit/webhook`, signed with that key. The
+browser joins your LiveKit where it is; a phone call then goes through that LiveKit's own SIP, so
+`--phone` is refused beside it. `--livekit here` puts the LiveKit `setup` starts back, with a pair
+drawn for the machine again.
+
+**Phone calls (`--phone`).** LiveKit's SIP beside the LiveKit `setup` starts, on :5060, its audio on
+:10000-10019/udp: open them to your carrier alone. A number is then imported or bought as on any
+runtime ([telephony.md](telephony.md)).
+
+**The keys.** For each installed vendor `setup` looks for its variable (`DEEPGRAM_API_KEY`,
+`<VENDOR>_API_KEY`) in the environment, then in the shell's files (`~/.zshrc`, `~/.zprofile`,
+`~/.bashrc`, `~/.bash_profile`, `~/.profile`) not loaded into this terminal; a line that expands
+(`$(…)`, `$OTHER`) is not read, and no value is ever shown. A key found is the org `default`'s own
+and the runtime's, which lends it to every org made later until that org brings its own
+([limits.md](limits.md)). A default's key found nowhere is asked for once, without echo.
+
+**The models.** It reads the machine — its NVIDIA cards and their memory, Apple silicon, the RAM,
+whether an Ollama already answers — and serves the best measured model that fits beside the ears
+(Whisper), the voice (Kokoro) and the embedder (bge-m3), through the runtime's `openai` plugin with a
+`base_url` per stage; on a card Docker can reach, all of it runs on the GPU. A machine with no GPU
+serves none, and its defaults are deepgram, anthropic and cartesia. These are the runtime's
+defaults, what an agent naming no stage runs on; an agent names its own (`pinecall agent set
+--llm groq`).
+
+**The prices.** The first time it writes the providers row, `setup` gives it the list prices the
+package ships (`cli/local/prices.csv`, vendor by vendor, with the notice of the rows it took from
+voice-prices), so every call on a vendor's key is priced from the first; the open models cost
+nothing. After that the row is the console's: a run of `setup` never overwrites a rate, and
+`providers prices <file> --apply` changes them.
+
+**This machine, signed in.** On this machine, the console admin's own key is written into the CLI's
+`~/.pinecall/session.json` (`PINECALL_HOME` moves it) as `pinecall login` writes one: the `pinecall`
+CLI here needs no login, and a project `pinecall new` makes runs on this runtime, in `default`. A
+server signs nobody in: each person runs `pinecall login https://<name>` on their own machine.
+
+**For a script** (`--help-all` lists them): `--email`, `--person`, `--password-stdin`, `--yes`
+(ask nothing: a key missing refuses, and a laptop's admin gets no password until `orgs password`
+sets one); `--livekit-key`, `--livekit-secret-stdin`; `--from <wheel>` (a server's processes
+installed from that wheel rather than PyPI); `--models local|keys|none`, `--stt`, `--turn`, `--llm`,
+`--tts`, `--judge`, `--caller` (the defaults, a stage at a time: `local`, `local/<model>`, or a
+vendor); `--chat-only` (Postgres and Redis, the gateway and Ollama alone: written calls); 
+`--services-only`; `--recommend` (the machine's reading and the stack that fits, as JSON, nothing set
+up); `--dir` (`~/.pinecall-runtime/local` unless named).
 
 ## `local`
 
 ```
 pinecall-runtime local [--dir <path>] up [--services-only]
 pinecall-runtime local [--dir <path>] down [--volumes]
+pinecall-runtime local [--dir <path>] logs [<service>]
 pinecall-runtime local [--dir <path>] init --email <address> --person "<name>" [--org <slug>] [--name "…"]
 pinecall-runtime local [--dir <path>] env
 ```
@@ -145,9 +184,13 @@ key, the sandbox fleet's key), then runs the gateway on `http://127.0.0.1:8080` 
 included, the sandbox at `/sandbox/` — and a worker of the sandbox fleet, their lines prefixed
 `gateway |` and `worker  |`. Ctrl-C stops the two; the services stay. `--services-only` stops after
 the schema, for a checkout that runs the two from its sources (`make local-gateway`,
-`make local-worker`). Run `up` again any time: it keeps the secrets and the database.
+`make local-worker`). Run `up` again any time: it keeps the secrets and the database. On a server
+(`setup --domain` made it one) `up` brings every service back in Docker, waits for the name to
+answer over https, and returns: nothing runs in the terminal.
 
-`down` stops the services and keeps the database; `--volumes` deletes it. `init` is `init` below,
+`down` stops the services, a server's included, and keeps the database; `--volumes` deletes it.
+`logs` follows a server's: every service's, or one's (`gateway`, `worker-sandbox`,
+`worker-production`, `livekit-server`, `caddy`); a laptop's are in the terminal `setup` runs in. `init` is `init` below,
 run on the local settings, so the first org and person need no shell line. `env` prints that
 line, `set -a; . <dir>/env; set +a`, for any other verb against the local runtime. It needs Docker
 with the compose plugin: Docker Desktop on macOS and Windows, Docker Engine on Linux; without it
@@ -356,7 +399,7 @@ runs and whether the platform holds its key; `providers seed <file>` writes the 
 starts from, once: after it, the console edits it at `/v1/ops/providers`. `providers prices
 <file.csv> [--apply]` says what a prices file changes in the row's rates (new, changed, the same,
 and the models only the platform holds, which it keeps) and writes nothing until `--apply`; the
-repository ships `infra/seed/prices.csv`. `facts rebuild [--call <call>] [--org <org id>] [--since
+package ships `cli/local/prices.csv`. `facts rebuild [--call <call>] [--org <org id>] [--since
 YYYY-MM-DD]` folds each call's facts row (what the lists, the inbox and the insights read) again
 from its log — for a sealed call, the line a list shows of it too, which the seal writes and a list
 reads instead of folding the log — every call's when no flag is given, and writes the row where it
