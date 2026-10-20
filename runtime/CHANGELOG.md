@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Rotating one of the runtime's keys is one `box keys set`.** `setup` gives the org `default` each
+  key it finds as its own too; that copy stayed on the old key when the runtime's was replaced, so
+  the operator's own calls kept running on it. Now `box keys set` (and the console's Box settings ▸
+  Keys) puts the new key in every org whose own key was the old one, and `box keys rm` forgets those
+  copies with it. A key an org brought that is a different one is never touched.
 - **The last places that said the box's key say the runtime's.** The Overview's Limits card says
   *lent by the runtime*, the lends picker of an org and of admission is *The runtime's keys this org
   may use*, and `orgs provider-key rm` says the org's calls run on the runtime's key. The Box keys

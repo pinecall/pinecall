@@ -22,6 +22,10 @@ class ProviderKeyRepository(Repository[ProviderKey]):
         """Every vendor the org keyed, by name."""
         return await self.all(self.statement().where(ProviderKey.org == org).order_by(ProviderKey.vendor))
 
+    async def of_vendor(self, vendor: str) -> Sequence[ProviderKey]:
+        """Every org's row for the vendor, as a transaction of the box's, which names no org, sees them."""
+        return await self.all(self.statement().where(ProviderKey.vendor == vendor).order_by(ProviderKey.org))
+
     async def get(self, org: str, vendor: str) -> ProviderKey | None:
         """The org's row for the vendor."""
         return await self.one_or_none(self.statement().where(ProviderKey.org == org, ProviderKey.vendor == vendor))

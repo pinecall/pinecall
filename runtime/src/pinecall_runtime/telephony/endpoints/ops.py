@@ -57,9 +57,9 @@ async def put_numbers_account(
 
 
 @router.delete("/v1/ops/numbers-account", status_code=204)
-async def drop_numbers_account(_actor: TheOperator, session: Session) -> None:
+async def drop_numbers_account(_actor: TheOperator, handles: TheHandles, session: Session) -> None:
     """Forget it: the box buys no numbers from now on, and the ones it bought keep ringing."""
-    if not await accounts.drop_box_twilio(session):
+    if not await accounts.drop_box_twilio(session, handles.vault):
         raise NotFound(NO_NUMBERS_ACCOUNT)
 
 

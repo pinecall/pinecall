@@ -1,13 +1,18 @@
 """A stage on its key carries the row's options and request for its model, on the box's key as on the org's;
-a realtime model runs on the org's own alone."""
+a realtime model runs on the org's own alone; an org's copy of the box's key follows it."""
+
+import os
+import secrets
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.agents.declaration import AgentConfig, Model
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable
+from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service import Keyring, keyring, stage_on_its_key
-from tests.conftest import configured
+from tests.conftest import configured, make_tenant
 from tests.fakes import acme, talker
 
 THE_ROWS_OPTIONS = {"max_tokens": 4096, "caching": "ephemeral"}
@@ -68,3 +73,39 @@ def test_the_pipeline_carries_the_realtime_model_beside_the_llm_where_the_agent_
     built = keyring.build_pipeline(talking, configured(), keys)
     assert built.realtime is not None
     assert (built.realtime.vendor, built.realtime.model, built.llm.vendor) == (vendor, "voice-3", acme.ACME)
+
+
+# A vendor of this test alone: the box's acme key is every other test's.
+async def _keyed(sessions: async_sessionmaker[AsyncSession]) -> tuple[str, Vault, str, str]:
+    vendor, vault = f"rotated-{secrets.token_hex(4)}", Vault(os.environ["PINECALL_VAULT_KEY"])
+    copying, bringing = await make_tenant(sessions), await make_tenant(sessions)
+    async with sessions.begin() as session:
+        await keyring.put_box_credentials(session, vault, vendor, "the-old-key")
+        await keyring.put_own_credentials(session, vault, copying.org, vendor, "the-old-key")
+        await keyring.put_own_credentials(session, vault, bringing.org, vendor, "their-own-key")
+    return vendor, vault, copying.org, bringing.org
+
+
+async def test_a_rotated_box_key_takes_an_orgs_copy_of_it_along_and_leaves_a_key_the_org_brought(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    vendor, vault, copying, bringing = await _keyed(sessions)
+    async with sessions.begin() as session:
+        await keyring.put_box_credentials(session, vault, vendor, "the-new-key")
+    async with sessions.begin() as session:
+        assert (await keyring.box_credentials(session, vault))[vendor] == "the-new-key"
+        assert (await keyring.own_credentials(session, vault, copying))[vendor] == "the-new-key"
+        assert (await keyring.own_credentials(session, vault, bringing))[vendor] == "their-own-key"
+        await keyring.drop_box_credentials(session, vault, vendor)
+
+
+async def test_a_dropped_box_key_takes_an_orgs_copy_of_it_along_and_leaves_a_key_the_org_brought(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    vendor, vault, copying, bringing = await _keyed(sessions)
+    async with sessions.begin() as session:
+        assert await keyring.drop_box_credentials(session, vault, vendor)
+    async with sessions.begin() as session:
+        assert vendor not in await keyring.box_credentials(session, vault)
+        assert vendor not in await keyring.own_credentials(session, vault, copying)
+        assert (await keyring.own_credentials(session, vault, bringing))[vendor] == "their-own-key"

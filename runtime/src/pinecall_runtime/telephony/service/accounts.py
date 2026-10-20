@@ -151,9 +151,9 @@ async def put_box_twilio(session: AsyncSession, vault: Vault, account: TwilioAcc
     await providers.put_box_credentials(session, vault, BOX_ACCOUNT, account.model_dump(mode="json"))
 
 
-async def drop_box_twilio(session: AsyncSession) -> bool:
+async def drop_box_twilio(session: AsyncSession, vault: Vault) -> bool:
     """Forget it: the box buys no numbers from now on; whether it held one."""
-    return await providers.drop_box_credentials(session, BOX_ACCOUNT)
+    return await providers.drop_box_credentials(session, vault, BOX_ACCOUNT)
 
 
 # The box's own account, then each org's, an account two orgs brought counted once.

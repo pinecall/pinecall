@@ -91,6 +91,11 @@ born with what admission lends. The org reads it back in `GET /v1/limits` (`lend
 limits`, the MCP's `usage`, the console's Overview and Providers say which vendors are its own and
 which the runtime lends.
 
+`setup` gives the org `default` each key it finds as its own too, so the operator's own agents may name
+a plugin's options. That copy follows the runtime's key: `pinecall-runtime box keys set <vendor>` (or
+the console's Box settings ▸ Keys) puts the new key in every org whose own key was the old one, and
+`box keys rm` forgets those copies with it. A key an org brought that is a different one stays its own.
+
 A stage on a lent key runs as the operator configured it: the plugin's class and options are the
 providers row's alone. An agent that names its own (`builds`, `options`, from its class or its
 settings) runs that stage only on the org's own key, and is refused on a lent one — when the class

@@ -255,7 +255,10 @@ box admission set --env production|sandbox [--later] [--minutes n] [--messages n
 ```
 
 What the box itself holds. `keys` are its own vendor keys, the ones an org without its own runs on
-where `orgs lends` lets it: `set` reads the key from stdin and nothing reads it back. `numbers-account`
+where `orgs lends` lets it: `set` reads the key from stdin and nothing reads it back. An org whose own
+key for the vendor is the same key (`setup` gives `default` each key it finds) holds a copy: `set`
+replaces the copy with the new key and `rm` forgets it, so rotating a key is one `set`; a key an org
+brought that is a different one is never touched. `numbers-account`
 is the Twilio account the box buys numbers on for its orgs (`POST /v1/numbers/buy`, the console's *Buy a
 number here*): `set` reads the secret from stdin and tries the pair with Twilio before keeping it;
 without one the box sells no numbers. `admission` is what a newborn org is given — `set` writes one

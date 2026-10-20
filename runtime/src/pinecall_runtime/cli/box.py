@@ -61,7 +61,7 @@ async def box_key_rm(ctx: typer.Context, vendor: str) -> int:
     context = context_of(ctx)
     named = providers.installed_vendor(vendor)
     async with context.sessions.begin() as session:
-        if not await providers.drop_box_credentials(session, named):
+        if not await providers.drop_box_credentials(session, context.vault, named):
             raise NotFound(f"this box holds no key for {named}")
     context.out.line(f"the box holds no key for {named}: an org without its own is refused it")
     return OK
@@ -113,7 +113,7 @@ async def numbers_account_rm(ctx: typer.Context) -> int:
     """Forget the account: the box sells no numbers, and the ones it bought keep ringing."""
     context = context_of(ctx)
     async with context.sessions.begin() as session:
-        if not await telephony.drop_box_twilio(session):
+        if not await telephony.drop_box_twilio(session, context.vault):
             raise NotFound(NO_NUMBERS_ACCOUNT)
     context.out.line("the box buys no numbers now; the ones it bought keep ringing")
     return OK

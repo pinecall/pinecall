@@ -349,10 +349,10 @@ async def put_box_key(
 
 
 @router.delete("/v1/ops/provider-keys/{vendor}", status_code=204)
-async def drop_box_key(vendor: str, _actor: TheOperator, session: Session) -> None:
+async def drop_box_key(vendor: str, _actor: TheOperator, request: Request, session: Session) -> None:
     """The box stops offering the vendor on its key; 404 when it held none."""
     named = plugins.installed_vendor(vendor)
-    if not await keyring.drop_box_credentials(session, named):
+    if not await keyring.drop_box_credentials(session, _vault(request), named):
         raise NotFound(f"this box holds no key for {named}")
 
 

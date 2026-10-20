@@ -134,7 +134,7 @@ $ kubectl --context <the box's> exec deploy/pinecall-gateway -- \
 
 That person opens the link, sets a password, and from then on signs in at `https://<the name>` and
 with `pinecall login https://<the name>` from any machine. The runtime's vendor keys, what a new
-org is given and more orgs are [Your first org](https://docs.pinecall.io/self-hosting/your-first-org/),
+org is given and more orgs are [More orgs and keys](https://docs.pinecall.io/self-hosting/your-first-org/),
 from the console's Box or the same `kubectl exec`.
 
 ## A pool an environment
