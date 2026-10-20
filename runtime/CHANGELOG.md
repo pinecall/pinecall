@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.7 — A runtime on a server in one verb: setup --domain, your own LiveKit, the phone; the open models answer the first caller (2026-10-20)
 
 - **One word for the keys an org did not bring: the runtime's.** `GET /v1/providers/advice` says
   `runs_on: "lent by the runtime"` where it said `lent by the host`; the console, the CLI and the pages

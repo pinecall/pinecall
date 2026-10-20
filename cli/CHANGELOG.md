@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.7] — the agent `new` writes confirms the message; the runtime's keys are called that
 
 - **The agent `new` writes tells the caller their message reached the team.** Its view said the message
   reached the team and never asked the agent to say so; on an open model (gemma4:12b) the agent went
