@@ -41,33 +41,23 @@ def models_up(where: Path, choices: Choices, *, host_ollama: bool, card: bool = 
         "LOCAL_LLM": choices.local_models[0] if choices.local_models else "",
         "LOCAL_STT": ears,
     }
-    serving = [*([] if host_ollama else ["ollama", "ollama-warm"]), *voice]
+    serving = [*([] if host_ollama else ["ollama"]), *voice]
+    # Started (a service this release no longer names is taken down), the models pulled into them, then
+    # waited for: Ollama is healthy once its model answers.
     if serving:
-        up = subprocess.run(
-            [*compose, *profiles, "up", "-d", "--wait", *serving],
-            capture_output=True,
-            text=True,
-            check=False,
-            env=environment,
-        )
-        if up.returncode != 0:
-            raise UpstreamError(MODELS_FAILED.format(output=(up.stderr or up.stdout).strip()[-2000:]))
+        _compose(compose, profiles, ["up", "-d", "--remove-orphans", *serving], environment, MODELS_FAILED)
     # The puller takes one model a run: each model the thinking, the judge or the caller names.
     pulls = [*([] if host_ollama else [("ollama-models", model) for model in choices.local_models])]
     if "whisper" in voice:
         pulls.append(("whisper-model", ""))
     for puller, model in pulls:
-        pulled = subprocess.run(
-            [*compose, *profiles, "run", "--rm", puller],
-            capture_output=True,
-            text=True,
-            check=False,
-            env={**environment, **({"LOCAL_LLM": model} if model else {})},
-        )
-        if pulled.returncode != 0:
-            raise UpstreamError(PULL_FAILED.format(output=(pulled.stderr or pulled.stdout).strip()[-2000:]))
+        pulled = {**environment, **({"LOCAL_LLM": model} if model else {})}
+        _compose(compose, profiles, ["run", "--rm", puller], pulled, PULL_FAILED)
+    if serving:
+        _compose(compose, profiles, ["up", "-d", "--wait", *serving], environment, MODELS_FAILED)
     if host_ollama:
         pull_on_host([LOCAL_EMBEDDER, *choices.local_models])
+        warm_on_host(choices.local_models)
     if "whisper" in voice:
         served.append(f"Whisper :{MODEL_PORTS['Whisper']} ({ears})")
     if "kokoro" in voice:
@@ -142,28 +132,23 @@ def warm_embedder() -> None:
 # ── all of it ──
 
 
-# The first answer of a model Ollama just loaded waits for the card's kernels to be built: ~30 s for
-# gemma4:12b on an L4 (2026-10-20), and a call waits 10 s for a model. One word asked of each,
-# before setup says ready, so the first caller is answered as fast as the hundredth.
-def warm_thinking(models: tuple[str, ...]) -> None:
-    """One short answer asked of each open model that thinks, so none is cold when the first call comes."""
+# A Mac's own Ollama is warmed by setup alone: the container's healthcheck does it for the one setup runs.
+def warm_on_host(models: tuple[str, ...]) -> None:
+    """One short answer asked of each open model that thinks on this machine's own Ollama."""
     for model in models:
-        body = {
-            "model": model,
-            "messages": [{"role": "user", "content": "hi"}],
-            "max_tokens": 1,
-            "reasoning_effort": "none",
-        }
-        asked = urllib.request.Request(
-            f"http://127.0.0.1:{MODEL_PORTS['Ollama']}/v1/chat/completions",
-            data=json.dumps(body).encode(),
-            headers={"content-type": "application/json"},
+        warmed = subprocess.run(
+            ["ollama", "run", "--think=false", model, "hi"], capture_output=True, text=True, check=False
         )
-        try:
-            with urllib.request.urlopen(asked, timeout=300):
-                pass
-        except OSError as failed:
-            raise UpstreamError(f"Ollama did not answer with {model}: {failed}") from failed
+        if warmed.returncode != 0:
+            raise UpstreamError(PULL_FAILED.format(output=(warmed.stderr or warmed.stdout).strip()[-2000:]))
+
+
+def _compose(
+    compose: list[str], profiles: list[str], verb: list[str], environment: dict[str, str], failed: str
+) -> None:
+    done = subprocess.run([*compose, *profiles, *verb], capture_output=True, text=True, check=False, env=environment)
+    if done.returncode != 0:
+        raise UpstreamError(failed.format(output=(done.stderr or done.stdout).strip()[-2000:]))
 
 
 async def models(runtime: Context, where: Path, choices: Choices, keys: dict[str, str], *, card: bool) -> None:
@@ -173,7 +158,6 @@ async def models(runtime: Context, where: Path, choices: Choices, keys: dict[str
     models_up(where, choices, host_ollama=host_ollama, card=card)
     await seed(runtime, row_of(choices), keys)
     warm_embedder()
-    warm_thinking(choices.local_models)
 
 
 async def seed(runtime: Context, row: providers.Catalog, credentials: dict[str, str]) -> None:

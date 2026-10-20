@@ -20,6 +20,16 @@ services:
     volumes: [ollama:/root/.ollama]
     ports: ["127.0.0.1:11434:11434"]
     restart: unless-stopped
+    # Healthy is the thinking's model answering: the first answer after a start builds the card's
+    # kernels (30-46 s on an L4, 2026-10-20), so this is also what warms it, at every start of the
+    # machine, before `up --wait` says the server is ready; every ten minutes after, a word.
+    healthcheck:
+      test: ["CMD-SHELL", "ollama run --think=false ${LOCAL_LLM} hi >/dev/null"]
+      interval: 10m
+      timeout: 5m
+      start_period: 15m
+      start_interval: 10s
+      retries: 3
 
   # Pulls the two models once and loads the LLM, then exits.
   ollama-models:
@@ -36,24 +46,6 @@ services:
         ollama run ${LOCAL_LLM} "" >/dev/null
     depends_on: [ollama]
     restart: "no"
-
-  # After every start of the machine, not only setup's: the model's first answer waits for the
-  # card's kernels to be built (46 s on an L4 after a reboot, 2026-10-20), longer than a call waits.
-  # One answer asked of it, then it rests; Docker starts it again with the machine.
-  ollama-warm:
-    profiles: [ollama]
-    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
-    environment: {OLLAMA_HOST: "ollama:11434"}
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        until ollama list >/dev/null 2>&1; do sleep 2; done
-        until ollama list | grep -q "${LOCAL_LLM}"; do sleep 5; done
-        ollama run --think=false ${LOCAL_LLM} "Say hi in one word." >/dev/null || true
-        exec sleep infinity
-    depends_on: [ollama]
-    restart: unless-stopped
 
   kokoro:
     profiles: [voice]

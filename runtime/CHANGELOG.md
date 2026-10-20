@@ -25,9 +25,9 @@
 - **The open models run on the GPU, and answer the first caller at once.** On a machine with an
   NVIDIA card Docker can reach, setup runs Ollama, Whisper and Kokoro on it (the images
   `infra/models` runs), where it ran their CPU images. A model's first answer waited for the card's
-  kernels (30 s after setup, 46 s after a reboot, on an L4) and the first call timed out: setup now
-  asks it one answer before it says ready, and `ollama-warm` does the same each time the machine
-  starts.
+  kernels (30 s after setup, 46 s after a reboot, on an L4) and the first call timed out: Ollama's
+  container is healthy once its model answers, so `up --wait` says ready after the first answer, at
+  every start of the machine; a Mac's own Ollama is warmed by setup.
 - **setup runs again as it says it does.** A second run took the Ollama the first one started for
   one of the machine's own and asked for an `ollama` binary; it now tells its own from a host's.
   Postgres, Redis and LiveKit come back after a reboot (`restart: unless-stopped`). A compose that
