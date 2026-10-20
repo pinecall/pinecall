@@ -20,11 +20,13 @@ services:
     volumes: [ollama:/root/.ollama]
     ports: ["127.0.0.1:11434:11434"]
     restart: unless-stopped
-    # Healthy is the thinking's model answering: the first answer after a start builds the card's
-    # kernels (30-46 s on an L4, 2026-10-20), so this is also what warms it, at every start of the
-    # machine, before `up --wait` says the server is ready; every ten minutes after, a word.
+    # Healthy is the thinking's model answering a prompt as long as a call's: the first answer after
+    # a start builds the card's kernels (30-46 s on an L4, 2026-10-20), and a prompt past one batch
+    # (512 tokens) builds the ones a short prompt never reaches — a call's first turn waited for those
+    # too. So this is also what warms it, at every start of the machine, before `up --wait` says the
+    # server is ready; every ten minutes after, the same.
     healthcheck:
-      test: ["CMD-SHELL", "ollama run --think=false ${LOCAL_LLM} hi >/dev/null"]
+      test: ["CMD-SHELL", "ollama run --think=false ${LOCAL_LLM} \"$(seq -s ' ' 1 400) Reply: ok\" >/dev/null"]
       interval: 10m
       timeout: 5m
       start_period: 15m
