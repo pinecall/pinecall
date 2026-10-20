@@ -1,4 +1,4 @@
-"""What a feed says of a change no log holds: a run, a release, a worker, a tool, a judge; ids alone."""
+"""What a feed says of a change no log holds: a run, a release, a worker, a tool, a judge; by id."""
 
 from pinecall.wire.frames import WireModel
 

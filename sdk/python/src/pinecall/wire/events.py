@@ -1,4 +1,4 @@
-"""Every event a log or a feed holds, and the registry of them; the agent's and the control's are here."""
+"""Every event a log or a feed holds, and the registry of them; the agent's and the control's here."""
 
 from typing import Literal
 

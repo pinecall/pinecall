@@ -1,4 +1,4 @@
-"""Tests for the feed's events: a change no log holds goes on the wire by ids alone, and is ephemeral."""
+"""Tests for the feed's events: a change no log holds goes on the wire by ids alone, ephemeral."""
 
 from pinecall.wire.events import EPHEMERAL_EVENTS, EVENTS
 from pinecall.wire.events_feed import JudgeBroke, ToolFailed, ToolRan
