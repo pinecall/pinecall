@@ -59,7 +59,7 @@ export function LendsPicker({
         <>
           <div className="box-caption">Every model of these vendors</div>
           <div className="box-lends-vendors">
-            {vendors.length === 0 && <span className="ui-note">Pinecall holds no vendor key yet: add one in Box settings → Keys.</span>}
+            {vendors.length === 0 && <span className="ui-note">The runtime holds no vendor key yet: add one in Box settings → Keys.</span>}
             {vendors.map((name) => (
               <label key={name} className="box-lends-vendor">
                 <input type="checkbox" checked={entries.includes(name)} onChange={(event) => tick(name, event.target.checked)} />

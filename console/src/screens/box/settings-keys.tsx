@@ -53,7 +53,7 @@ function VendorKeys(): ReactNode {
 
   return (
     <Card>
-      <CardHead title="Vendor API keys" meta="Pinecall pays the model, voice and speech vendors with these when an org has no key of its own" />
+      <CardHead title="Vendor API keys" meta="The runtime's keys: an org with no key of its own runs its calls on the ones it is lent" />
       <div className="box-kvs">
         {kept.length === 0 && <span className="ui-note">No key saved yet: every org runs only on the keys it adds itself.</span>}
         {kept.map((name) => (
@@ -123,7 +123,7 @@ function TheNumbersAccount(): ReactNode {
 
   return (
     <Card>
-      <CardHead title="Twilio account for buying numbers" meta="When any org buys a phone number in Pinecall, it is bought on this account">
+      <CardHead title="Twilio account for buying numbers" meta="When an org buys a phone number on this runtime, it is bought on this account">
         <span className="box-head-moves">
           <Pill tone={held === null ? "gray" : "green"}>{held === null ? "not connected" : "connected"}</Pill>
         </span>

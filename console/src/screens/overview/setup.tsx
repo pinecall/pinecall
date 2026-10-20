@@ -51,7 +51,7 @@ export function Setup({ agents, limits }: { agents: number; limits: Limits | nul
       ]);
       if (limits !== null) {
         const keyed = vendors.length > 0 || limits.lends === null || limits.lends.length > 0;
-        if (!keyed) found.push({ done: false, name: "Add the keys your calls run on", why: "Every call needs a model, speech recognition and a voice. Pinecall lends you its keys, or you add your own.", action: "Providers", to: "/providers" });
+        if (!keyed) found.push({ done: false, name: "Add the keys your calls run on", why: "Every call needs a model, speech recognition and a voice. The runtime lends you its keys, or you add your own.", action: "Providers", to: "/providers" });
       }
       const ran = await read(credentials, "/v1/evals/runs", { limit: 1 }).then((answer) => ((answer as { runs?: unknown[] }).runs ?? []).length > 0, () => true);
       found.push({ done: ran, name: "Try it with a simulated caller", why: "A model plays a caller in writing, so it costs no call minutes. The judges score the conversation.", command: "pinecall simulate --persona hurried --judge", action: "Simulate", to: "/simulations" });

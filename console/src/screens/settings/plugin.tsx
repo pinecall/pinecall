@@ -37,7 +37,7 @@ export function PluginFields({ modality, vendor, plugin, onChange }: { modality:
       <div className="set-field">
         <Label>Plugin options</Label>
         <TextArea value={plugin.options} rows={3} aria-label="Plugin options" spellCheck={false} placeholder={example.options} onChange={(event) => onChange({ ...plugin, options: event.target.value })} />
-        <p className="set-help">Its keyword arguments as JSON, named as the plugin names them. Both run only on your org&apos;s own {vendor} key, never on one Pinecall lends.</p>
+        <p className="set-help">Its keyword arguments as JSON, named as the plugin names them. Both run only on your org&apos;s own {vendor} key, never on one the runtime lends.</p>
       </div>
     </div>
   );

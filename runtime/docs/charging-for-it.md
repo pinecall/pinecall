@@ -9,7 +9,7 @@ what a deployment run for one's own agents wants.
  ┌───────────────────── the runtime ─────────────────────────────────────────┐
  │  admission   what a NEW org is given, per world         /v1/ops/admission │
  │  quotas      what an org may use and keep, per world    /v1/ops/orgs/{org}/quotas │
- │  lends       which of the box's vendor keys it runs on  (a quota)          │
+ │  lends       which of the runtime's vendor keys it runs on  (a quota)      │
  │  usage       every call's consumption, with a cursor    /v1/ops/usage      │
  │  the log     credits.exhausted when a quota refuses                        │
  └───────────▲────────────────────────────────────────────────────────────────┘
