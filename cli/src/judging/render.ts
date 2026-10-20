@@ -4,7 +4,7 @@ import type { CallScore } from "@pinecall/agents/wire";
 
 import { BROKEN, HELD, money } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
+import type { Calibration, JudgeAgreement, JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
 
 export { BROKEN, HELD };
 
@@ -44,6 +44,32 @@ export function judge(row: JudgeRow): string[] {
   lines.push(`  asks     ${row.question}`);
   if (row.author) lines.push(`  set by   ${row.author}`);
   return lines;
+}
+
+export const NO_LABELS = (owner: JudgeOwner): string =>
+  `no judge of ${owner ?? "the org"} has been labelled yet: \`pinecall cases dismiss <case> --judge-was-wrong <judge>\` labels one, as does the console's Cases`;
+
+/** One line per labelled judge: the labels, how many were compared and agreed, the rate, and whether it is trusted. */
+export function agreement(owner: JudgeOwner, read: Calibration): string[] {
+  if (read.judges.length === 0) return [NO_LABELS(owner)];
+  const rows = table(
+    ["judge", "labelled", "compared", "agreed", "rate", "trusted"],
+    read.judges.map((row) => [row.judge, row.labelled, row.compared, row.agreed, rateOf(row), trustedOf(row, read)]),
+  );
+  return [...rows, `trusted from ${read.labels_to_judge} compared labels, agreeing with ${pct(read.agrees_at_least)} of them at least`];
+}
+
+function rateOf(row: JudgeAgreement): string {
+  return row.rate === null ? "—" : pct(row.rate);
+}
+
+function trustedOf(row: JudgeAgreement, read: Calibration): string {
+  if (row.trusted === null) return `? · ${read.labels_to_judge - row.compared} more to compare`;
+  return row.trusted ? "yes" : "no";
+}
+
+function pct(share: number): string {
+  return `${Math.round(share * 100)}%`;
 }
 
 export function changed(list: JudgeListChanged): string {

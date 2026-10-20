@@ -11,9 +11,9 @@ import { AGENT } from "./fields.js";
 
 export const judges = tool({
   name: "judges",
-  description: "Every judge the agent's calls meet: Pinecall's, switched on or off; the org's own and the agent's own, written or dropped; and one tried on finished calls.",
+  description: "Every judge the agent's calls meet: Pinecall's, switched on or off; the org's own and the agent's own, written or dropped; one tried on finished calls; and how often each agreed with the labels people gave.",
   schema: {
-    action: z.enum(["list", "add", "on", "off", "rm", "try"]).describe("list every judge; add one of your own (the same name again replaces it); on/off one of Pinecall's; rm one of your own; try one on finished calls, writing nothing"),
+    action: z.enum(["list", "add", "on", "off", "rm", "try", "agreement"]).describe("list every judge; add one of your own (the same name again replaces it); on/off one of Pinecall's; rm one of your own; try one on finished calls, writing nothing; agreement: how often each judge agreed with the labels people gave, and whether it is trusted"),
     agent: AGENT,
     org: z.boolean().optional().describe("the org's list: Pinecall's switched for every agent, and the org's own"),
     name: z.string().optional().describe("the judge's name: lowercase letters, digits and dashes"),
@@ -25,11 +25,12 @@ export const judges = tool({
     calls: z.array(z.string()).optional().describe("`try`: the calls, by id, instead of `last`"),
   },
   manual:
-    "`judges` is every question a model answers of the agent's finished calls, citing the turns. Pinecall's library (consent, grounded, promises, disclosed, identified, honoured-stop, ended-well, expected-outcome, relevance, repetition, sentiment; every one off until switched on) is switched with `on`/`off`, for the org (`org`) or one agent, and never dropped. Your own are written whole with `add`: a verdict, a score or a choice, on every call, simulations only or a trigger, reading the prompt, the evidence or the facts on request. Any judge may answer N/A, never billed; each that answers is one eval, not billed when the judge model is on the org's own key. `try` asks one judge — written, Pinecall's, or one only in this call's fields — of the agent's last calls and writes nothing.",
+    "`judges` is every question a model answers of the agent's finished calls, citing the turns. Pinecall's library (consent, grounded, promises, disclosed, identified, honoured-stop, ended-well, expected-outcome, relevance, repetition, sentiment; every one off until switched on) is switched with `on`/`off`, for the org (`org`) or one agent, and never dropped. Your own are written whole with `add`: a verdict, a score or a choice, on every call, simulations only or a trigger, reading the prompt, the evidence or the facts on request. Any judge may answer N/A, never billed; each that answers is one eval, not billed when the judge model is on the org's own key. `try` asks one judge — written, Pinecall's, or one only in this call's fields — of the agent's last calls and writes nothing. `agreement` is each judge against the labels people gave (`cases` with `judge_was_wrong`, or the console's Cases): labelled, compared, agreed, the rate, and `trusted` — null under `labels_to_judge` compared labels, then whether the rate reaches `agrees_at_least`.",
   handler: async (args, ctx) => {
     if (args.org === true && args.action === "try") throw new ToolRefused("try asks one agent's calls: name the agent, not the org");
     const owner = service.ownerOf(ctx, { org: args.org === true, agent: args.agent });
     if (args.action === "list") return await service.listJudges(ctx, owner);
+    if (args.action === "agreement") return await service.agreement(ctx, owner);
     if (args.name === undefined) throw new ToolRefused("the judge's name is needed");
     const flags = { asks: args.asks, answer: args.answer, when: args.when, reads: args.reads?.join(",") };
     if (args.action === "rm") return await service.removeJudge(ctx, owner, args.name);

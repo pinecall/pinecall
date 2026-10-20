@@ -427,13 +427,13 @@ The agent's simulated callers: Pinecall's library switched on or off, its own wr
 
 ## `judges`
 
-Every judge the agent's calls meet: Pinecall's, switched on or off; the org's own and the agent's own, written or dropped; and one tried on finished calls.
+Every judge the agent's calls meet: Pinecall's, switched on or off; the org's own and the agent's own, written or dropped; one tried on finished calls; and how often each agreed with the labels people gave.
 
-`judges` is every question a model answers of the agent's finished calls, citing the turns. Pinecall's library (consent, grounded, promises, disclosed, identified, honoured-stop, ended-well, expected-outcome, relevance, repetition, sentiment; every one off until switched on) is switched with `on`/`off`, for the org (`org`) or one agent, and never dropped. Your own are written whole with `add`: a verdict, a score or a choice, on every call, simulations only or a trigger, reading the prompt, the evidence or the facts on request. Any judge may answer N/A, never billed; each that answers is one eval, not billed when the judge model is on the org's own key. `try` asks one judge — written, Pinecall's, or one only in this call's fields — of the agent's last calls and writes nothing.
+`judges` is every question a model answers of the agent's finished calls, citing the turns. Pinecall's library (consent, grounded, promises, disclosed, identified, honoured-stop, ended-well, expected-outcome, relevance, repetition, sentiment; every one off until switched on) is switched with `on`/`off`, for the org (`org`) or one agent, and never dropped. Your own are written whole with `add`: a verdict, a score or a choice, on every call, simulations only or a trigger, reading the prompt, the evidence or the facts on request. Any judge may answer N/A, never billed; each that answers is one eval, not billed when the judge model is on the org's own key. `try` asks one judge — written, Pinecall's, or one only in this call's fields — of the agent's last calls and writes nothing. `agreement` is each judge against the labels people gave (`cases` with `judge_was_wrong`, or the console's Cases): labelled, compared, agreed, the rate, and `trusted` — null under `labels_to_judge` compared labels, then whether the rate reaches `agrees_at_least`.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
-| `action` | `list` · `add` · `on` · `off` · `rm` · `try` | required | list every judge; add one of your own (the same name again replaces it); on/off one of Pinecall's; rm one of your own; try one on finished calls, writing nothing |
+| `action` | `list` · `add` · `on` · `off` · `rm` · `try` · `agreement` | required | list every judge; add one of your own (the same name again replaces it); on/off one of Pinecall's; rm one of your own; try one on finished calls, writing nothing; agreement: how often each judge agreed with the labels people gave, and whether it is trusted |
 | `agent` | text |  | the agent's name; the project's only agent when left out |
 | `org` | true or false |  | the org's list: Pinecall's switched for every agent, and the org's own |
 | `name` | text |  | the judge's name: lowercase letters, digits and dashes |

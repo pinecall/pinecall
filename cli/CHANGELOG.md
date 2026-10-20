@@ -4,6 +4,12 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- **`pinecall judges agreement`: how far each judge can be trusted.** One line per labelled judge —
+  labelled, compared, agreed, the rate, and trusted — from `GET /v1/evals/calibration`, which only
+  `curl` read until now; `--org` for every agent's calls. The MCP's `judges` tool takes `agreement`.
+
 ## [0.11.7] — the agent `new` writes confirms the message; the runtime's keys are called that
 
 - **The agent `new` writes tells the caller their message reached the team.** Its view said the message

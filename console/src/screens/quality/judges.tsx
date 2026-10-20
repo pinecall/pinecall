@@ -11,6 +11,7 @@ import { JudgeForm } from "./judge-form";
 import { JudgeTile, type Standing } from "./judge-tile";
 import { dropJudge, PINECALL, writeJudge, type JudgeRow, type Whose } from "./judges-door";
 import { TryJudge } from "./try-judge";
+import { useAgreement } from "./use-agreement";
 import { useJudges } from "./use-judges";
 
 const ON_THE_BILL = "Turning a judge on costs one eval per call, unless your judges run on your own key. N/A is never billed.";
@@ -30,7 +31,8 @@ const shown = (judge: JudgeRow, show: Show): boolean => (show === "all" ? true :
  * agent's (the same, switched for it, the agent's switch winning, and its own). A judge of one's
  * own is written, edited and dropped at its own level and read from the other; Pinecall's are
  * switched, never dropped. The held-rate is over the newest judged calls the screen read; the
- * drift is a week against a month, drawn only when the process holding the agent counted it.
+ * drift is a week against a month, drawn only when the process holding the agent counted it; the
+ * agreement is each judge against the labels people gave, which a dismissed case writes.
  */
 export function Judges({ agent, rates, read, drifted }: { agent: string; rates: ReadonlyMap<string, HeldRate>; read: number; drifted: Drifted | null }): ReactNode {
   const whose: Whose = agent === "" ? null : agent;
@@ -41,7 +43,7 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
   const [trying, setTrying] = useState<string | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   const drift = drifted === null ? null : new Map(drifted.drift.judges.map((judge) => [judge.judge, judge]));
-  const standing: Standing = { rates, drift, threshold: drifted?.threshold ?? null };
+  const standing: Standing = { rates, drift, threshold: drifted?.threshold ?? null, agreement: useAgreement(whose) };
   const judges = (listed.judges ?? []).filter((judge) => shown(judge, show));
   const owner = agent === "" ? "org" : agent;
   // The org's own first, what somebody here wrote, then the agent's own; Pinecall's library after

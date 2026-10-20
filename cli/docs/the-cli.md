@@ -807,6 +807,7 @@ pinecall judges [list] [--org | --agent <name>] [--json]
 pinecall judges add <name> --asks '…' [--answer verdict|score|choice:a,b,c] [--when always|simulations|trigger:'…']
                     [--reads prompt,evidence,facts] [--org | --agent <name>] [--json]
 pinecall judges show <name> [--org | --agent <name>] [--json]
+pinecall judges agreement [--org | --agent <name>] [--json]
 pinecall judges on|off <name> [--org | --agent <name>] [--json]
 pinecall judges rm <name> [--org | --agent <name>] [--json]
 pinecall judges try <name> (--last <n> | --calls <id,id…>) [--asks '…' and add's flags] [--agent <name>] [--json]
@@ -874,6 +875,23 @@ A name is lower-case letters and digits joined by hyphens, as a verdict names it
 naming neither or both of `--last` and `--calls`, is refused here with **exit 2**, before it
 travels. A name the org and an agent would share is the gateway's refusal. `--json` prints what the
 gateway answered — `{"judges": […]}`, or the try's `{rows, evals, cost_usd}` — for every verb.
+
+`agreement` is how far each judge can be trusted: a person who knows what a judge should have said
+on a call labels it — `pinecall cases dismiss <case> --judge-was-wrong <judge>`, or the console's
+Cases — and the gateway puts every label beside the verdict that judge gave on the same call. One
+line per labelled judge: labelled, compared (labels whose call has a `held` or `broken` verdict from
+it), agreed, the rate, and `trusted` — `?` with how many more to compare until it is judged (10),
+then `yes` or `no` by whether it agreed with 80% of them at least. An untrusted judge keeps judging:
+the line says so, and nothing hides it. `--org` reads every agent's calls; nobody labelled yet is
+one line saying how.
+
+```console
+$ pinecall judges agreement
+judge             labelled  compared  agreed  rate  trusted
+offers-next-slot  12        11        8       73%   no
+consent           3         2         2       100%  ? · 8 more to compare
+trusted from 10 compared labels, agreeing with 80% of them at least
+```
 
 ## `judging`
 

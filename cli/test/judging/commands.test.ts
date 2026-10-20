@@ -28,6 +28,30 @@ describe("pinecall judges", () => {
     expect(missing.err).toContain("front-desk has no judge called nope");
   });
 
+  it("agreement prints each judge against its labels, and says how far an unjudged one is from being judged", async () => {
+    const sent = answer("get", "/v1/evals/calibration", {
+      judges: [
+        { judge: "offers-next-slot", labelled: 12, compared: 11, agreed: 8, rate: 0.727, trusted: false },
+        { judge: "consent", labelled: 3, compared: 2, agreed: 2, rate: 1, trusted: null },
+      ],
+      labels_to_judge: 10,
+      agrees_at_least: 0.8,
+    });
+    const ran = await run(["judges", "agreement"]);
+    expect(ran.code).toBe(0);
+    expect(sent[0]!.query).toEqual({ agent: "front-desk" });
+    expect(ran.out).toMatch(/offers-next-slot\s+12\s+11\s+8\s+73%\s+no/);
+    expect(ran.out).toMatch(/consent\s+3\s+2\s+2\s+100%\s+\? · 8 more to compare/);
+    expect(ran.out).toContain("trusted from 10 compared labels, agreeing with 80% of them at least");
+  });
+
+  it("agreement --org reads every agent's, and says how to label when nobody has", async () => {
+    const sent = answer("get", "/v1/evals/calibration", { judges: [], labels_to_judge: 10, agrees_at_least: 0.8 });
+    const ran = await run(["judges", "agreement", "--org"], { cwd: folder() });
+    expect(sent[0]!.query).toEqual({});
+    expect(ran.out).toContain("no judge of the org has been labelled yet: `pinecall cases dismiss <case> --judge-was-wrong <judge>`");
+  });
+
   it("--org lists the org's, from any folder", async () => {
     answer("get", "/v1/org/judges", { judges: [] });
     const ran = await run(["judges", "--org"], { cwd: folder() });

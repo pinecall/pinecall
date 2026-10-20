@@ -22,6 +22,10 @@ them may answer N/A — the question did not apply, never billed. It runs on eve
 simulated one, or on a trigger: a yes-or-no asked first, and a no is N/A. Each judge that answers
 is one eval; on a model of your org's own key (\`pinecall judging --model\`) evals are not billed.
 
+A judge is only worth its verdicts if it agrees with what a person would have said: dismissing a
+case with --judge-was-wrong labels the judge, and \`agreement\` is how often each judge agreed with
+its labels — trusted from 10 compared labels on, agreeing with 80% of them at least.
+
 Examples
   $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
   offers-next-slot written · 12 judge(s)
@@ -30,6 +34,9 @@ Examples
   $ pinecall judges try offers-next-slot --last 3
   CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  [seq 14]
   3 evals · $0.0031 · nothing was written
+  $ pinecall judges agreement
+  judge             labelled  compared  agreed  rate  trusted
+  offers-next-slot  12        11        8       73%   no
 `;
 
 const JUDGING = `
@@ -75,6 +82,15 @@ export function register(program: Command, ctx: Context): void {
       const found = list.judges.find((row) => row.name === name);
       if (found === undefined) throw new UsageError(`${owner(flags) ?? "the org"} has no judge called ${name}: \`pinecall judges\` names the ones there are`);
       ctx.io.result(found, render.judge);
+    });
+  judges
+    .command("agreement")
+    .description("how often each judge agreed with the labels people gave, and whether it is trusted")
+    .option("--org", "every agent's calls")
+    .option("--agent <name>", "one agent's, when the project holds more")
+    .action(async (flags) => {
+      const whose = owner(flags);
+      ctx.io.result(await service.agreement(ctx, whose), (read) => render.agreement(whose, read));
     });
   judges
     .command("add")

@@ -1,10 +1,10 @@
 /** The judging endpoints: the judges of the org or of one agent, one tried on calls, and whether the org's calls are judged. */
 
-import type { JudgeList, JudgeRequest, JudgeTried, JudgeTry, ModelConfig } from "@pinecall/agents/wire";
+import type { Calibration, JudgeList, JudgeRequest, JudgeTried, JudgeTry, ModelConfig } from "@pinecall/agents/wire";
 
 import { seg, type GatewayClient } from "./client.js";
 
-export type { JudgeList, JudgeRequest, JudgeRow, JudgeTried, JudgeTry, Judgment, ModelConfig } from "@pinecall/agents/wire";
+export type { Calibration, JudgeAgreement, JudgeList, JudgeRequest, JudgeRow, JudgeTried, JudgeTry, Judgment, ModelConfig } from "@pinecall/agents/wire";
 
 /** Whose judges: the org's (null), or one agent's by its slug. */
 export type JudgeOwner = string | null;
@@ -40,6 +40,11 @@ export function deleteJudge(gw: GatewayClient, owner: JudgeOwner, name: string):
 /** One judge asked of finished calls; nothing is written. Always an agent's. */
 export function tryJudge(gw: GatewayClient, agent: string, body: JudgeTry): Promise<JudgeTried> {
   return gw.post<JudgeTried>(`${judgesPath(agent)}/try`, body);
+}
+
+/** Each judge's agreement with the labels people gave on the key's env's calls: one agent's, or every agent's. */
+export function getCalibration(gw: GatewayClient, owner: JudgeOwner): Promise<Calibration> {
+  return gw.get<Calibration>("/v1/evals/calibration", owner === null ? undefined : { agent: owner });
 }
 
 export function getJudging(gw: GatewayClient): Promise<Judging> {

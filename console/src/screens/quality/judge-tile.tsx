@@ -1,4 +1,4 @@
-/** One judge as a tile: its creature, its question, how it answers and when, how it has held — and what to do with it. */
+/** One judge as a tile: its creature, its question, how it answers and when, how it has held, how far it is trusted — and what to do with it. */
 
 import type { ReactNode } from "react";
 
@@ -9,12 +9,15 @@ import type { HeldRate } from "./held-rates";
 import { Creature } from "./creature";
 import { answersOf, readsOf, whenOf } from "./judge-words";
 import { PINECALL, type JudgeRow } from "./judges-door";
+import type { Agreement } from "./use-agreement";
 
 /** Where the drift columns are: what a tile is drawn with, and what each verdict is read against. */
 export interface Standing {
   rates: ReadonlyMap<string, HeldRate>;
   drift: ReadonlyMap<string, JudgeDrift> | null;
   threshold: number | null;
+  /** Each judge against the labels people gave; null until read. */
+  agreement: Agreement | null;
 }
 
 export function JudgeTile({
@@ -97,13 +100,17 @@ export function JudgeTile({
   );
 }
 
-/** A judge's held-rate, or its two windows and the move between them where the drift is counted. */
+/** A judge's held-rate, or its two windows and the move between them where the drift is counted; then how far it is trusted. */
 function Standings({ name, standing }: { name: string; standing: Standing }): ReactNode {
+  const agreed = standing.agreement === null ? null : <Agreed name={name} agreement={standing.agreement} />;
   if (standing.drift === null) {
     return (
-      <Labelled label="held">
-        <Held rate={standing.rates.get(name)} />
-      </Labelled>
+      <>
+        <Labelled label="held">
+          <Held rate={standing.rates.get(name)} />
+        </Labelled>
+        {agreed}
+      </>
     );
   }
   const judged = standing.drift.get(name);
@@ -118,7 +125,38 @@ function Standings({ name, standing }: { name: string; standing: Standing }): Re
       <Labelled label="drift">
         <Drift delta={judged?.delta ?? null} threshold={standing.threshold} />
       </Labelled>
+      {agreed}
     </>
+  );
+}
+
+/** How often the judge agreed with the labels people gave: the rate over the compared labels, coloured once it is judged untrusted. */
+function Agreed({ name, agreement }: { name: string; agreement: Agreement }): ReactNode {
+  const judged = agreement.judges.get(name);
+  if (judged === undefined || judged.rate === null) {
+    return (
+      <Labelled label="agrees">
+        <span className="qly-rate ui-cell-faint" title="Nobody labelled this judge yet: dismissing a case says whether it was wrong.">
+          —
+        </span>
+      </Labelled>
+    );
+  }
+  const title =
+    judged.trusted === null
+      ? `${agreement.labelsToJudge - judged.compared} more labels to compare before it is judged`
+      : judged.trusted
+        ? `trusted: it agreed with ${percent(agreement.agreesAtLeast)} of its labels at least`
+        : `untrusted: it agreed with fewer than ${percent(agreement.agreesAtLeast)} of its labels`;
+  return (
+    <Labelled label={judged.trusted === false ? "agrees · untrusted" : "agrees"}>
+      <span className="qly-rate" title={title}>
+        <span className={judged.trusted === false ? "qly-pct qly-pct-bad" : "qly-pct"}>{percent(judged.rate)}</span>
+        <span className="ui-cell-faint">
+          {judged.agreed}/{judged.compared}
+        </span>
+      </span>
+    </Labelled>
   );
 }
 

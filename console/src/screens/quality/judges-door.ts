@@ -1,11 +1,11 @@
 /** Judges doors: the list a call meets (Pinecall's switched, the org's own, an agent's own), a judge written, switched, dropped or tried, and the model they run on. */
 
-import { JudgeListSchema, JudgeTriedSchema, type JudgeRequest, type JudgeRow, type JudgeTried, type JudgeTry } from "@pinecall/core/wire/rest-evals";
+import { CalibrationSchema, JudgeListSchema, JudgeTriedSchema, type Calibration, type JudgeAgreement, type JudgeRequest, type JudgeRow, type JudgeTried, type JudgeTry } from "@pinecall/core/wire/rest-evals";
 import { JudgingSettingsSchema, type JudgingRequest, type JudgingSettings } from "@pinecall/core/wire/rest-org";
 
 import { drop, post, put, read, type Credentials } from "@pinecall/core/api";
 
-export type { JudgeRequest, JudgeRow, JudgeTried, JudgingSettings };
+export type { Calibration, JudgeAgreement, JudgeRequest, JudgeRow, JudgeTried, JudgingSettings };
 
 /** Whose list: the org's (null: Pinecall's as the org switched them, and its own), or one agent's by its slug. */
 export type Whose = string | null;
@@ -33,6 +33,12 @@ export async function dropJudge(credentials: Credentials, whose: Whose, name: st
 /** Ask one judge of the agent's newest finished calls; nothing is kept. */
 export async function tryJudge(credentials: Credentials, agent: string, tried: JudgeTry): Promise<JudgeTried> {
   return JudgeTriedSchema.parse(await post(credentials, `/v1/agents/${encodeURIComponent(agent)}/judges/try`, tried));
+}
+
+/** Each judge against the labels people gave on this world's calls: one agent's, or every agent's (null). */
+export async function readAgreement(credentials: Credentials, whose: Whose): Promise<Calibration> {
+  const query = whose === null ? "" : `?agent=${encodeURIComponent(whose)}`;
+  return CalibrationSchema.parse(await read(credentials, `/v1/evals/calibration${query}`));
 }
 
 export async function readJudging(credentials: Credentials): Promise<JudgingSettings> {

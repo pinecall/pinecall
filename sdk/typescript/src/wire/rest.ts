@@ -389,3 +389,25 @@ export const JudgeTriedSchema = z.strictObject({
 });
 
 export type JudgeTried = z.infer<typeof JudgeTriedSchema>;
+
+/** One judge against the labels people gave: how many, how many compared, how many agreed, and whether it is trusted. */
+export const JudgeAgreementSchema = z.strictObject({
+  judge: z.string(),
+  labelled: z.int(),
+  compared: z.int(),
+  agreed: z.int(),
+  rate: z.number().nullable(),
+  /** null until enough labels were compared to say; false is a judge under its line. */
+  trusted: z.boolean().nullable(),
+});
+
+export type JudgeAgreement = z.infer<typeof JudgeAgreementSchema>;
+
+/** GET /v1/evals/calibration: each judge's agreement with the labels, and the line it is held to. */
+export const CalibrationSchema = z.strictObject({
+  judges: z.array(JudgeAgreementSchema),
+  labels_to_judge: z.int(),
+  agrees_at_least: z.number(),
+});
+
+export type Calibration = z.infer<typeof CalibrationSchema>;

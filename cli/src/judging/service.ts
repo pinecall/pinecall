@@ -7,7 +7,7 @@ import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 import * as providers from "../providers/service.js";
 
-export type { JudgeList, JudgeOwner, JudgeRequest, JudgeRow, JudgeTried, JudgeTry, Judging, Judgment, ModelConfig } from "../api/judging.js";
+export type { Calibration, JudgeAgreement, JudgeList, JudgeOwner, JudgeRequest, JudgeRow, JudgeTried, JudgeTry, Judging, Judgment, ModelConfig } from "../api/judging.js";
 
 // Mirrors the gateway's name rule so a bad name gets a readable error.
 const A_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -93,6 +93,11 @@ export function judgeRequestOf(flags: JudgeFlags): api.JudgeRequest {
 
 export async function listJudges(ctx: Context, owner: api.JudgeOwner): Promise<api.JudgeList> {
   return api.listJudges(ctx.gateway(), owner);
+}
+
+/** Each judge's agreement with the labels people gave: one agent's calls, or every agent's (the org). */
+export async function agreement(ctx: Context, owner: api.JudgeOwner): Promise<api.Calibration> {
+  return api.getCalibration(ctx.gateway(), owner);
 }
 
 export async function addJudge(ctx: Context, owner: api.JudgeOwner, name: string, flags: JudgeFlags): Promise<JudgeListChanged> {
