@@ -236,12 +236,12 @@ async def server_for(
         typed_key = key or ask.livekit_key()
         typed_secret = orgs_cli.read_secret_line() if secret_stdin else ask.livekit_secret()
         theirs = server_.TheirLiveKit(livekit, typed_key, typed_secret)
-    if theirs is not None:
-        # Tried every run, a kept pair too: the ✓ setup prints says the pair works today.
-        await server_.check_their_livekit(theirs)
     with_phone = phone or (kept.phone if kept else False)
     if theirs is not None and with_phone:
         raise ValidationError(server_.PHONE_ON_THEIR_LIVEKIT)
+    if theirs is not None:
+        # Tried every run, a kept pair too: the ✓ setup prints says the pair works today.
+        await server_.check_their_livekit(theirs)
     return server_.Server(name, theirs, phone=with_phone)
 
 
