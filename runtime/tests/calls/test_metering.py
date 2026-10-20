@@ -1,6 +1,6 @@
 """What a log meters: each summary, score and try a usage row, and the totals per org."""
 
-from pinecall_runtime.calls.metering import UNOWNED, lent_row, totals_by_org, usage_row
+from pinecall_runtime.calls.metering import UNOWNED, billed_row, totals_by_org, usage_row
 from pinecall_runtime.calls.repository.entries import Positioned
 from pinecall_runtime.calls.writer import METERED_TYPES
 from pinecall_runtime.kit.text import JsonObject
@@ -135,8 +135,15 @@ def test_the_metered_types_are_the_summary_the_score_and_a_try_and_nothing_else(
 
 
 def test_a_summary_whose_call_ran_on_the_boxs_key_counts_its_minutes_as_lent_and_one_on_its_own_keys_none() -> None:
-    lent = lent_row(usage_row(metered(1, "dental", "call.summary", a_summary([STT]), "CA_1")), ("deepgram", "google"))
-    own = lent_row(usage_row(metered(2, "dental", "call.summary", a_summary([STT]), "CA_2")), ())
+    lent = billed_row(usage_row(metered(1, "dental", "call.summary", a_summary([STT]), "CA_1")), ("deepgram", "google"))
+    own = billed_row(usage_row(metered(2, "dental", "call.summary", a_summary([STT]), "CA_2")), ())
     assert (lent.lent, lent.used.minutes, lent.used.lent_minutes) == (("deepgram", "google"), 2.0, 2.0)
     assert (own.lent, own.used.minutes, own.used.lent_minutes) == ((), 2.0, 0.0)
     assert totals_by_org([lent, own])["dental"].lent_minutes == 2.0
+
+
+def test_a_simulated_calls_caller_cost_is_counted_beside_the_calls_own() -> None:
+    simulated = {**a_summary([STT]), "simulated": True}
+    row = billed_row(usage_row(metered(1, "dental", "call.summary", simulated, "CA_1")), ("google",), 0.012)
+    assert (row.used.cost_usd, row.used.caller_cost_usd, row.used.simulations) == (0.02, 0.012, 1)
+    assert totals_by_org([row, row])["dental"].caller_cost_usd == 0.024

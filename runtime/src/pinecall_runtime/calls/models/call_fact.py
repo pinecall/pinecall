@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from sqlalchemy import Boolean, Float, Index, Integer, Text
+from sqlalchemy import Boolean, Float, Index, Integer, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,6 +50,9 @@ class CallFact(Model):
     last_in: Mapped[bool | None] = mapped_column(Boolean)
     # The vendors the call ran on the box's own key: the operator's to bill.
     lent: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    # What a simulated caller's own model and voice cost, on the box's keys: the call's cost is the
+    # agent's side, and the caller is the harness's, kept here when the simulation ends.
+    caller_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
     # What a list shows of the call, as its state said at the seal (`facts.line_of`): a list reads
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.

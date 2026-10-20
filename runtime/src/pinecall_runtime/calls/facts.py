@@ -144,6 +144,8 @@ class CallFacts:
     last_at: float | None = None
     last_in: bool | None = None
     lent: tuple[str, ...] = ()
+    # Not a fold: what a simulated caller's model and voice cost, kept when the simulation ends.
+    caller_cost_usd: float = 0.0
     # Not a fold either: the state's line, written at the seal (`line_of`), None while the call is live.
     line: JsonObject | None = None
 

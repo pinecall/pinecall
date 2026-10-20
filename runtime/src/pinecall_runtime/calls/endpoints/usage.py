@@ -93,6 +93,7 @@ def usage_row(row: UsageRow) -> schemas.UsageRow:
         simulated=used.simulations > 0,
         cost_usd=used.cost_usd,
         lent=list(row.lent),
+        caller_cost_usd=used.caller_cost_usd,
     )
 
 
@@ -110,6 +111,7 @@ def usage_totals(used: Usage) -> schemas.UsageTotals:
         simulations=used.simulations,
         cost_usd=used.cost_usd,
         lent_minutes=used.lent_minutes,
+        caller_cost_usd=used.caller_cost_usd,
     )
 
 

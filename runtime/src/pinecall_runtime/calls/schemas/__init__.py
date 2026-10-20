@@ -427,6 +427,8 @@ class UsageTotals(WireModel):
     cost_usd: float
     # The minutes of calls a stage of which ran on the box's own key.
     lent_minutes: float = 0.0
+    # What simulated callers' own models and voices cost, beside the calls' cost.
+    caller_cost_usd: float = 0.0
 
 
 # Flat, as v1 wrote it: a billing layer that reads the feed today reads it unchanged.
@@ -451,6 +453,8 @@ class UsageRow(WireModel):
     cost_usd: float
     # A call.summary's vendors that ran on the box's own key: the stages the operator paid for.
     lent: list[str] = Field(default_factory=list[str])
+    # A simulated call.summary's caller: what its own model and voice cost, beside the agent's cost_usd.
+    caller_cost_usd: float = 0.0
 
 
 class UsagePage(WireModel):

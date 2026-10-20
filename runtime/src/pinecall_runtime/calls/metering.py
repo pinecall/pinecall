@@ -38,6 +38,8 @@ class Usage:
     # The minutes of calls a stage of which ran on the box's own key: what a plan that includes
     # the box's vendors bills apart from the minutes an org ran on keys of its own.
     lent_minutes: float = 0.0
+    # What simulated callers' own models and voices cost, beside the calls' cost_usd: the harness's.
+    caller_cost_usd: float = 0.0
 
     def __add__(self, other: Self) -> Self:
         """The two added up, field by field."""
@@ -53,6 +55,7 @@ class Usage:
             simulations=self.simulations + other.simulations,
             cost_usd=self.cost_usd + other.cost_usd,
             lent_minutes=self.lent_minutes + other.lent_minutes,
+            caller_cost_usd=self.caller_cost_usd + other.caller_cost_usd,
         )
 
 
@@ -100,11 +103,11 @@ def usage_row(metered: Positioned) -> UsageRow:
             return row
 
 
-def lent_row(row: UsageRow, vendors: tuple[str, ...]) -> UsageRow:
-    """A summary's row with the vendors its call ran on the box's own key, and its minutes counted as lent."""
-    if not vendors:
-        return row
-    return replace(row, lent=vendors, used=replace(row.used, lent_minutes=row.used.minutes))
+def billed_row(row: UsageRow, vendors: tuple[str, ...], caller_cost_usd: float = 0.0) -> UsageRow:
+    """A summary's row with the vendors its call ran on the box's own key (its minutes counted as lent),
+    and what its simulated caller cost."""
+    used = replace(row.used, lent_minutes=row.used.minutes if vendors else 0.0, caller_cost_usd=caller_cost_usd)
+    return replace(row, lent=vendors, used=used)
 
 
 def totals_by_org(rows: Iterable[UsageRow]) -> dict[str, Usage]:

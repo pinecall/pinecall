@@ -142,14 +142,26 @@ class FactsRepository(Repository[CallFact]):
         )
         await self.session.execute(statement)
 
-    async def lent_of(self, calls: Sequence[str]) -> dict[str, tuple[str, ...]]:
-        """The vendors each of the calls ran on the box's own key, for the calls that ran on any."""
+    # Not a fold: a simulation's caller speaks line by line, and each simulation adds what it spent.
+    async def add_caller_cost(self, call: str, usd: float) -> None:
+        """Add what a simulated caller's model and voice cost to the call's facts."""
+        statement = insert(CallFact).values(call=call, caller_cost_usd=usd)
+        statement = statement.on_conflict_do_update(
+            index_elements=[CallFact.call],
+            set_={"caller_cost_usd": CallFact.caller_cost_usd + statement.excluded.caller_cost_usd},
+        )
+        await self.session.execute(statement)
+
+    async def billed_of(self, calls: Sequence[str]) -> dict[str, tuple[tuple[str, ...], float]]:
+        """For each of the calls that has either: the vendors it ran on the box's key, and its caller's cost."""
         if not calls:
             return {}
-        statement = select(CallFact.call, CallFact.lent).where(
-            CallFact.call.in_(list(calls)), func.cardinality(CallFact.lent) > 0
+        statement = select(CallFact.call, CallFact.lent, CallFact.caller_cost_usd).where(
+            CallFact.call.in_(list(calls)),
+            (func.cardinality(CallFact.lent) > 0) | (CallFact.caller_cost_usd > 0),
         )
-        return {call: tuple(lent) for call, lent in (await self.session.execute(statement)).all()}
+        rows = (await self.session.execute(statement)).all()
+        return {call: (tuple(lent), float(caller)) for call, lent, caller in rows}
 
     # Not a fold: the state's line at the seal, kept so a list reads it instead of folding the log.
     async def set_line(self, call: str, line: Mapping[str, Any]) -> None:

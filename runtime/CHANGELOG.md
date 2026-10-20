@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A simulation's caller is counted.** What a simulated caller's own model and voice cost was
+  computed to hold it to its ceiling and thrown away; the gateway now keeps it with the call's facts
+  when the simulation ends (migration 000005), and the usage feed reads it onto the call's summary
+  row and the org's totals as `caller_cost_usd`, beside the agent's side in `cost_usd`.
 - **The usage feed says which vendors a call ran on the platform's own keys.** A `call.summary`
   row carries `lent` (`["deepgram", "google"]`) and its minutes count as `lent_minutes` in the
   totals, so a billing layer can bill the minutes a plan includes on the platform's vendors apart

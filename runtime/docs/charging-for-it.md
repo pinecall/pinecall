@@ -44,12 +44,14 @@ says. What each quota counts and when it bites: [limits.md](limits.md).
 
 `GET /v1/ops/usage?after=&org=&limit=`, or the same as a stream with `Accept: text/event-stream`:
 one row per `call.summary`, `call.score` and `evals.spent`, each `{cursor, org, agent, call, type, at, minutes,
-messages, input_tokens, output_tokens, characters, judge_calls, evals, simulated, cost_usd, lent}` (v1's
-shape, flat, and three more), and the totals per org, which count `calls`, `simulations` and
-`lent_minutes` too. A `call.summary` row's `lent` is the vendors its call ran on the platform's own
-keys (`["deepgram", "google"]`), and its minutes count as `lent_minutes` when it names any: a plan
-that includes the platform's vendors bills those minutes, and the minutes an org ran on keys of its
-own, apart. A
+messages, input_tokens, output_tokens, characters, judge_calls, evals, simulated, cost_usd, lent,
+caller_cost_usd}` (v1's shape, flat, and four more), and the totals per org, which count `calls`,
+`simulations`, `lent_minutes` and `caller_cost_usd` too. A `call.summary` row's `lent` is the vendors
+its call ran on the platform's own keys (`["deepgram", "google"]`), and its minutes count as
+`lent_minutes` when it names any: a plan that includes the platform's vendors bills those minutes, and
+the minutes an org ran on keys of its own, apart. A simulated call's `caller_cost_usd` is what its
+simulated caller's own model and voice cost, on the platform's keys, beside the agent's side in
+`cost_usd`: the two are what a simulation cost the operator. A
 `call.score` row carries its `evals`, the judges that answered the call on the platform's key (on
 the org's own key, `0`); a `call.summary` row of a
 call a simulated caller played says `simulated: true` and counts no minutes, and a layer bills it

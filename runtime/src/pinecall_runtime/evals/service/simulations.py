@@ -276,6 +276,7 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
             turns = await on_the_line(serving, dispatch, speech, line, improvising(serving, placed.call, caller))
         finally:
             await speech.aclose()
+            await _kept(serving, placed.call, spending)
     return turns, spending
 
 
@@ -309,8 +310,19 @@ async def written_turns(serving: calls.Serving, running: session.Session, placed
         spending = Spending(await providers.get_catalog(session_))
     async with caller_model(serving, Scope(route.org, route.env), placed.persona) as model:
         caller = Caller(placed.persona, model, spending)
-        lines = await playing.converse(running, serving.logs, improvising(serving, placed.call, caller), placed.turns)
+        try:
+            lines = await playing.converse(
+                running, serving.logs, improvising(serving, placed.call, caller), placed.turns
+            )
+        finally:
+            await _kept(serving, placed.call, spending)
     return lines, spending
+
+
+# Kept whatever ended the call, a caller hanging up or the line failing: what it spent was spent.
+async def _kept(serving: calls.Serving, call: str, spending: Spending) -> None:
+    async with serving.handles.sessions.begin() as session_:
+        await calls.keep_caller_cost(session_, call, spending.usd)
 
 
 # The voice the agent speaks with on the caller's vendor: the one it declared, else the operator's

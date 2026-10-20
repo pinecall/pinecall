@@ -1,4 +1,5 @@
-"""The usage feed's page: a summary carries the vendors its call ran on the box's own key, kept with its facts."""
+"""The usage feed's page: a summary carries the vendors its call ran on the box's own key and its simulated
+caller's cost, both kept with its facts."""
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -41,3 +42,17 @@ async def test_a_summary_carries_the_vendors_its_call_ran_on_the_boxs_key_and_on
     rows = {row.call: row for row in await summaries_of(store, sessions, {call, own})}
     assert (rows[call].lent, rows[call].used.lent_minutes) == (("deepgram", "google"), 2.0)
     assert (rows[own].lent, rows[own].used.lent_minutes) == ((), 0.0)
+
+
+async def test_a_simulations_caller_cost_is_added_line_by_line_and_read_onto_its_summary(
+    store: Store, sessions: async_sessionmaker[AsyncSession], call: str, agent: str
+) -> None:
+    """Each simulation that ends adds what its caller spent; the feed reads the sum onto the call's summary."""
+    await store.append(call, agent, "call.summary", {**a_summary([STT]), "simulated": True}, ephemeral=False)
+    await store.writer.drain()
+    async with sessions.begin() as session:
+        await usage.keep_caller_cost(session, call, 0.004)
+        await usage.keep_caller_cost(session, call, 0.002)
+        await usage.keep_caller_cost(session, call, 0.0)
+    (row,) = await summaries_of(store, sessions, {call})
+    assert (row.lent, round(row.used.caller_cost_usd, 6), row.used.simulations) == ((), 0.006, 1)
