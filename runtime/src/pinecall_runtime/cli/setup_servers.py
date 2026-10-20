@@ -48,8 +48,6 @@ def models_up(where: Path, choices: Choices, *, host_ollama: bool, card: bool = 
         _compose(compose, profiles, ["up", "-d", "--remove-orphans", *serving], environment, MODELS_FAILED)
     # The puller takes one model a run: each model the thinking, the judge or the caller names.
     pulls = [*([] if host_ollama else [("ollama-models", model) for model in choices.local_models])]
-    if "whisper" in voice:
-        pulls.append(("whisper-model", ""))
     for puller, model in pulls:
         pulled = {**environment, **({"LOCAL_LLM": model} if model else {})}
         _compose(compose, profiles, ["run", "--rm", puller], pulled, PULL_FAILED)

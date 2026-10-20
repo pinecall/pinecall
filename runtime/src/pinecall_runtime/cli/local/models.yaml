@@ -55,6 +55,9 @@ services:
     ports: ["127.0.0.1:8880:8880"]
     restart: unless-stopped
 
+  # Healthy is the ears' model loaded and one second heard: it is downloaded into the volume the first
+  # time, and loaded on the card at every start of the machine (8.6 s on an L4 after a reboot,
+  # 2026-10-20), before `up --wait` says the server is ready rather than in a caller's first turn.
   whisper:
     profiles: [voice]
     image: ghcr.io/speaches-ai/speaches:latest-cpu@sha256:21e3df06d842fb7802ab470dd77c25f0e8c0d22950e8d8c6ae886e851af53ef8
@@ -63,35 +66,30 @@ services:
     volumes: [whisper:/home/ubuntu/.cache/huggingface/hub]
     ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
-
-  # Downloads the Whisper model into the volume once and loads it with one transcription, then exits.
-  whisper-model:
-    profiles: [voice]
-    image: ghcr.io/speaches-ai/speaches:latest-cpu@sha256:21e3df06d842fb7802ab470dd77c25f0e8c0d22950e8d8c6ae886e851af53ef8
-    entrypoint:
-      - python
-      - -c
-      - |
-        import random, time, urllib.request
-        url = "http://whisper:8000/v1/models/${LOCAL_STT}"
-        for _ in range(120):
-            try:
-                urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=900)
-                break
-            except OSError:
-                time.sleep(5)
-        wav = b"RIFF" + (36 + 32000).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
-        wav += (1).to_bytes(2, "little") * 2 + (16000).to_bytes(4, "little") + (32000).to_bytes(4, "little")
-        wav += (2).to_bytes(2, "little") + (16).to_bytes(2, "little") + b"data" + (32000).to_bytes(4, "little")
-        wav += bytes(random.getrandbits(8) for _ in range(32000))
-        body = (b"--x\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n"
-                b"${LOCAL_STT}\r\n--x\r\nContent-Disposition: form-data; "
-                b"name=\"file\"; filename=\"warm.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + wav + b"\r\n--x--\r\n")
-        urllib.request.urlopen(urllib.request.Request(
-            "http://whisper:8000/v1/audio/transcriptions", body,
-            {"Content-Type": "multipart/form-data; boundary=x"}), timeout=300)
-    depends_on: [whisper]
-    restart: "no"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import random, urllib.request
+          urllib.request.urlopen(urllib.request.Request(
+              "http://localhost:8000/v1/models/${LOCAL_STT}", method="POST"), timeout=1200)
+          wav = b"RIFF" + (36 + 32000).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+          wav += (1).to_bytes(2, "little") * 2 + (16000).to_bytes(4, "little") + (32000).to_bytes(4, "little")
+          wav += (2).to_bytes(2, "little") + (16).to_bytes(2, "little") + b"data" + (32000).to_bytes(4, "little")
+          wav += bytes(random.getrandbits(8) for _ in range(32000))
+          body = (b"--x\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n"
+                  b"${LOCAL_STT}\r\n--x\r\nContent-Disposition: form-data; "
+                  b"name=\"file\"; filename=\"warm.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + wav + b"\r\n--x--\r\n")
+          urllib.request.urlopen(urllib.request.Request(
+              "http://localhost:8000/v1/audio/transcriptions", body,
+              {"Content-Type": "multipart/form-data; boundary=x"}), timeout=300)
+      interval: 10m
+      timeout: 20m
+      start_period: 30m
+      start_interval: 10s
+      retries: 3
 
 volumes:
   ollama:
