@@ -162,3 +162,11 @@ def test_a_voice_whose_plugin_takes_one_goes_there_and_the_model_stays(monkeypat
     running = Running(vendor="v", credentials="k", model="flash-lite-tts", voice="Puck")
     given = _spoken(monkeypatch, VoiceAsAnArgument, running)
     assert (given["model"], given["voice_name"]) == ("flash-lite-tts", "Puck")
+
+
+def test_a_voice_is_not_refused_by_a_tts_with_no_voice_argument(monkeypatch: pytest.MonkeyPatch) -> None:
+    def the_class(_modality: Modality, _running: Running) -> type:
+        return VoiceIsTheModel
+
+    monkeypatch.setattr(stages, "_class_of", the_class)
+    stages._refuse_untaken("tts", Running(vendor="v", credentials="k"), ["voice"])  # pyright: ignore[reportPrivateUsage]

@@ -323,11 +323,16 @@ def _turn_knobs(turn: Turn | None) -> dict[str, object]:
     return given
 
 
+# A voice is never untaken by a tts: a plugin with no voice argument speaks it as its model.
 def _refuse_untaken(modality: Modality, running: Running, knobs: list[str]) -> None:
     if not knobs:
         return
     accepts = _parameters(_class_of(modality, running))
-    untaken = [knob for knob in knobs if not any(name in accepts for name in KNOB_NAMES[knob])]
+    untaken = [
+        knob
+        for knob in knobs
+        if not any(name in accepts for name in KNOB_NAMES[knob]) and not (modality == "tts" and knob == "voice")
+    ]
     if untaken:
         raise ValidationError(
             f"{running.vendor}'s {modality} takes no {', '.join(untaken)}, so a call would run without it: "
