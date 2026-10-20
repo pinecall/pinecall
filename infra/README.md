@@ -16,7 +16,7 @@ made by hand and nothing is built on a laptop.
 | `terraform/modules/addons` | CloudNativePG with its Barman Cloud plugin and cert-manager, External Secrets and KEDA, each its pinned chart |
 | `terraform/modules/backups` | the bucket Postgres's WAL and base backups go to, and the identity that writes them, which touches it alone |
 | `terraform/modules/edge` | the global address and a certificate for each name, proved by DNS before it points here, and a certificate of its own for services of the operator's own at the same endpoint (`services`); each environment's media address and its SIP name; the firewall (media open, 5060 to the carriers alone); the names in Route 53 |
-| `terraform/modules/notify` | optional (`firebase_project`): the Google identity a notifier of the operator's own signs Android's pushes as (Firebase Cloud Messaging alone), bound to its chart's service account |
+| `terraform/modules/notify` | optional (`firebase_project`): the Google identity a notifier of the operator's own signs its pushes as (Firebase Cloud Messaging alone), bound to its chart's service account |
 | `terraform/modules/kubeip` | the identity kubeip acts as: it gives each environment's media node the static address `modules/edge` reserves, and can do nothing else |
 | `terraform/modules/hosting` | the hosting cluster, optional (`hosting = true`): GKE Autopilot in a VPC of its own, where the orgs' hosted apps run, one gVisor pod each |
 | `terraform/modules/lab` | the voice lab's generator, beside a cluster made for a proof and destroyed after it (`lab = false`) |
@@ -299,7 +299,7 @@ A service of the operator's own (a notifier, billing) runs on the same cluster a
 released beside the runtime's and never part of it: its name (`services` in the environment) an
 `HTTPRoute` on this Gateway under `modules/edge`'s services certificate, its credentials the
 secret store's (`given_secrets`), the runtime reached at `http://pinecall-gateway:8080` with the
-ops key. A notifier that signs Android's pushes does it as `modules/notify`'s identity
+ops key. A notifier that signs pushes does it as `modules/notify`'s identity
 (`firebase_project`).
 
 ## Staging, made and destroyed
