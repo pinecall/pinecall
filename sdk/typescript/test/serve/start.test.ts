@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FakeGateway } from "../../src/client/testing/index.js";
 import { main } from "../../src/serve/index.js";
@@ -45,6 +45,9 @@ function anIo(env: Record<string, string>): Io & { written: () => string[]; said
 
 // A deadline in time, never a count of tries: on a loaded runner a 5 ms sleep takes far longer.
 const WITHIN_MS = 10_000;
+
+// A test waits on until() twice at most; vitest's default 5 s would cut it before its own deadline.
+vi.setConfig({ testTimeout: 2 * WITHIN_MS });
 
 async function until(found: () => boolean): Promise<void> {
   const deadline = Date.now() + WITHIN_MS;
