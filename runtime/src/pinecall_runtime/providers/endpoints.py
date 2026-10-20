@@ -45,6 +45,7 @@ from pinecall_runtime.providers.service import (
     machine,
     notes,
     plugins,
+    published,
     stages,
     trials,
     voices,
@@ -132,7 +133,8 @@ async def list_voices(
     tts: Annotated[str, Query(min_length=1)],
     language: Annotated[str | None, Query()] = None,
 ) -> VoicesListed:
-    """The voices the providers row lists for a vendor, else its plugin's; neither is a 404."""
+    """The voices the providers row lists for a vendor, else its plugin's, else those voicedex knows it publishes;
+    none is a 404. voicedex adds each voice's preview, gender and accent where the list lacks them."""
     configured = await catalog.get_catalog(session)
     named = plugins.installed_vendor(tts)
     spoken = plugins.primary_language(language)
@@ -140,12 +142,16 @@ async def list_voices(
     # The row lists this vendor's voices by language: one it lists none in is said as that.
     if not listed and spoken is not None and voices.listed_in_catalog(configured, named, None):
         raise NotFound(f"{named} lists no voice in {language}: drop --language to see every one")
-    if not listed and not keyring.lists_voices(named, ("tts",)):
-        raise voices.NotListed(named)
-    if not listed:
+    if not listed and keyring.lists_voices(named, ("tts",)):
         keys = await keyring.keys_of(session, _vault(request), actor.scope)
         stage = keyring.stage_on_its_key("tts", Voice(provider=named), configured, keys)
         listed = await voices.listed_by_vendor(dataclasses.replace(stage, language=spoken))
+    if not listed:
+        # The language as asked, so `es-AR` finds Argentine voices and `es` every Spanish one.
+        listed = list(published.voices_of(named, language))
+    if not listed:
+        raise voices.NotListed(named)
+    listed = published.described(named, listed)
     return VoicesListed(
         tts=tts,
         language=language,
@@ -405,6 +411,7 @@ def _listed_voice(item: voices.ListedVoice) -> ListedVoice | None:
         gender=str(detail.get("gender") or ""),
         country=str(detail.get("country") or ""),
         accent=str(detail.get("accent") or ""),
+        preview_url=str(detail["preview_url"]) if detail.get("preview_url") else None,
     )
 
 

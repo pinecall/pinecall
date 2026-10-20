@@ -227,6 +227,8 @@ class ListedVoice(WireModel):
     gender: str
     country: str
     accent: str
+    # A recording of the voice to play, where its vendor publishes one (voicedex); some need the vendor's key.
+    preview_url: str | None = None
 
 
 class VoicesListed(WireModel):

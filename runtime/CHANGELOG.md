@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **A picker offers every model a vendor publishes, and a voice comes with its preview.** The runtime
+  reads [voicedex](https://github.com/pinecall/voicedex) (PyPI `voicedex`, pinned), the catalogue of
+  what voice vendors publish of themselves. `GET /v1/providers` `models` lists, per stage and vendor,
+  the row's model first and then every current model whose id the vendor's API takes as a model — so
+  Cartesia's picker offers `sonic-3.6`, `sonic-3.5`, `sonic-3` instead of the plugin's default alone.
+  `GET /v1/voices` falls back, where neither the row nor the plugin lists any, to the voices voicedex
+  knows (Deepgram's, Rime's, Gemini's, xAI's…), and every listed voice gains `preview_url`, gender and
+  accent where its list lacked them. No vendor is named in code; prices are not read from it yet.
+
 ## 0.11.6 — A realtime call's waits are measured (2026-10-19)
 
 - **A voice call on a realtime model has its waits measured.** A realtime model's caller turn

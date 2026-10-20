@@ -9,7 +9,7 @@ Every vendor this build runs, and how **this org** may run each:
 ```json
 { "providers": [ { "name": "elevenlabs", "does": ["tts"], "availability": "offered", "ready": true, "broken": null, "voices_listed": true } ],
   "defaults": { "llm": "anthropic", "stt": "soniox", "tts": "elevenlabs" },
-  "models": { "tts/elevenlabs": ["eleven_flash_v2_5"] },
+  "models": { "tts/elevenlabs": ["eleven_flash_v2_5", "eleven_v4", "eleven_v4_turbo", "eleven_v3"] },
   "realtime": { "xai": ["grok-voice-latest", "grok-voice-3.0"] } }
 ```
 
@@ -17,7 +17,12 @@ A vendor is a livekit plugin installed on the platform; nothing in code lists th
 `yours` (the org brought its key), `offered` (the platform lends its own to this org), `bring your own`
 (installed, and no key would run it for this org) or `broken` (the plugin does not import, `broken`
 says why). `ready` is the first two. `voices_listed` says whether `GET /v1/voices` lists that
-vendor's voices. `defaults` and `models` are the platform's providers row. `realtime` is, by vendor,
+vendor's voices. `defaults` is the platform's providers row. `models` is, by stage and vendor, what a
+picker offers: the row's model for the vendor named alone first, then every model the vendor publishes
+for that stage whose id its API takes as a model, current ones only — read from
+[voicedex](https://github.com/pinecall/voicedex), the catalogue of what voice vendors publish of
+themselves, at the release this build pins (a family or a way of selling is no model: Polly's engines,
+Azure's ways of selling, a vendor whose voice is the model). `realtime` is, by vendor,
 the models that hear and speak themselves, as the vendor's plugin names them (the `Literal` its
 realtime class types its `model` as, else the `RealtimeModels` it lists): named as an agent's
 `realtime` — `xai/grok-voice-3.0`, in the settings or in `@realtime` — a voice call runs on that model
@@ -116,12 +121,16 @@ actually ran, and a lent fallback's usage is the operator's like any lent stage'
 
 `GET /v1/voices?tts=&language=` lists a vendor's voices, filtered to the language's primary tag
 when one is named: `{tts, language, voices: [{id, name, language, description, gender, country,
-accent}]}`. The voices the providers row lists for that vendor and language come first, in the
-row's order (`listed`, keyed `vendor/language`, [operator-api.md](operator-api.md)); where it lists
-none, the vendor's own as its plugin lists them, on the key a call would use, in the vendor's
-order. So a vendor whose plugin lists nothing — Cartesia's, among most — is listed by the row, as
-data, and no vendor is written in code. One listed by neither is `404`, before any key is asked
-for; one this build lacks is `400`. `voices_listed` in the catalogue is true for either.
+accent, preview_url}]}`. The voices the providers row lists for that vendor and language come first,
+in the row's order (`listed`, keyed `vendor/language`, [operator-api.md](operator-api.md)); where it
+lists none, the vendor's own as its plugin lists them, on the key a call would use, in the vendor's
+order; where its plugin lists none, the voices the vendor publishes as voicedex knows them, in the
+language as it was asked (`es-AR` finds the Argentine ones), no key asked for. Each voice then gets from
+voicedex what its list lacks — a `preview_url` to play, its gender, its accent — while what the list
+says of itself stands; an org's own cloned voice, which voicedex cannot know, comes as it was listed.
+Some vendors serve a preview only to their key (Cartesia's); `POST /v1/voices/sample` below says a
+line with any voice. No vendor is written in code. One listed by none of the three is `404`, before
+any key is asked for; one this build lacks is `400`. `voices_listed` in the catalogue is true for any.
 
 `POST /v1/voices/sample {tts, voice, model?, language?, text?}` says a line with that voice over
 the same path a call speaks on and answers the WAV itself, `audio/wav`, with `Server-Timing:

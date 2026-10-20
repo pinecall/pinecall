@@ -28,7 +28,7 @@ from pinecall_runtime.providers.schemas import (
     ProviderRow,
     Standing,
 )
-from pinecall_runtime.providers.service import plugins
+from pinecall_runtime.providers.service import plugins, published
 from pinecall_runtime.providers.service.catalog import tuning_of
 from pinecall_runtime.providers.service.plugins import (
     Credentials,
@@ -330,7 +330,9 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
                 ready=vendor.availability in READY,
                 env=None,
                 extra=vendor.name,
-                voices_listed=lists_voices(vendor.name, vendor.does) or _lists_any(catalog, vendor.name),
+                voices_listed=lists_voices(vendor.name, vendor.does)
+                or _lists_any(catalog, vendor.name)
+                or published.lists_voices(vendor.name),
                 availability=vendor.availability,
                 broken=vendor.broken,
             )
@@ -338,9 +340,22 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
         ],
         defaults=catalog.default_vendors,
         voices=[],
-        models={named: [model] for named, model in catalog.models.items()},
+        models=_offered(catalog, plugins.installed()),
         realtime={vendor.name: list(vendor.realtime) for vendor in plugins.installed().values() if vendor.realtime},
     )
+
+
+# The row's model for a vendor named alone comes first; then every model the vendor publishes for the
+# stage that its API takes by id, so a picker offers them all.
+def _offered(catalog: Catalog, installed: Mapping[str, Vendor]) -> dict[str, list[str]]:
+    offered = {named: [model] for named, model in catalog.models.items()}
+    for vendor in installed.values():
+        for stage in sorted(vendor.does):
+            named = f"{stage}/{vendor.name}"
+            models = [*offered.get(named, []), *published.models_of(vendor.name, stage)]
+            if models:
+                offered[named] = list(dict.fromkeys(models))
+    return offered
 
 
 # A plugin lists its voices when its TTS class has a `list_voices`; nothing is built to ask.

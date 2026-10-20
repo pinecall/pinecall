@@ -53,6 +53,9 @@ dependencies = [
   "typer>=0.15,<1",
   # `setup` at a terminal: a stage completed as it is typed, a secret typed without echo (cli/setup_ask.py).
   "prompt-toolkit>=3.0,<4",
+  # What each vendor publishes of itself — the models a picker offers, its voices with their previews —
+  # scraped into one database (github.com/pinecall/voicedex). Pinned: a new release is new data.
+  "voicedex==0.0.3",
 ]
 
 [project.optional-dependencies]
