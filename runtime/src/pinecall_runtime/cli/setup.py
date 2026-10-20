@@ -50,18 +50,25 @@ WEBHOOK = """
     https://{name}/v1/livekit/webhook
 """
 # A script's flags: every answer setup would ask, and the knobs a person never needs. `--help-all` shows them.
-SCRIPT = "for a script"
+SCRIPT = "For a script (every answer setup would ask, and every knob)"
 
 
 def _help_all(ctx: typer.Context, value: bool) -> None:
+    """The person's help, then the script's flags under a heading of their own; nothing is set up."""
     if not value or ctx.resilient_parsing:
         return
-    # typer carries its own click: its options are TyperOption, not click's Option.
-    for param in ctx.command.params:
-        if isinstance(param, TyperOption):
-            param.hidden = False
-    typer.echo(ctx.get_help())
+    formatter = ctx.make_formatter()
+    scripted = [param for param in ctx.command.params if isinstance(param, TyperOption) and param.hidden]
+    with formatter.section(SCRIPT):
+        formatter.write_dl([(_spelled(param, ctx), param.help or "") for param in scripted])
+    typer.echo(ctx.get_help() + "\n" + formatter.getvalue().rstrip())
     raise typer.Exit
+
+
+def _spelled(param: TyperOption, ctx: typer.Context) -> str:
+    """`--email <str>` or `-y, --yes`, as the person's block spells its own."""
+    names = ", ".join(sorted(param.opts, key=len))
+    return names if param.is_flag else f"{names} {param.make_metavar(ctx)}"
 
 
 @verb

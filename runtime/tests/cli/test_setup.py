@@ -53,3 +53,16 @@ async def test_their_livekit_is_given_back_for_the_one_setup_starts() -> None:
         "LIVEKIT_API_SECRET": "s",
     }
     assert await server_of(theirs, livekit=server_.HERE) == server_.Server(NAME)
+
+
+def test_help_shows_a_persons_three_flags_and_help_all_the_scripts_under_their_heading() -> None:
+    """A person reads --domain, --livekit and --phone; a script finds every answer under its own section."""
+    from typer.testing import CliRunner
+
+    from pinecall_runtime.cli import app
+
+    short = CliRunner().invoke(app, ["setup", "--help"]).output
+    assert "--domain" in short and "--email" not in short
+    long = CliRunner().invoke(app, ["setup", "--help-all"]).output
+    assert "For a script" in long and "--email <str>" in long and "-y, --yes" in long
+    assert long.index("--domain") < long.index("For a script") < long.index("--email")
