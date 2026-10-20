@@ -149,20 +149,6 @@ class Authenticator:
         return actor
 
 
-class OptionalAuthenticator:
-    """A dependency of an endpoint anyone may read: the request's actor when it carries a key (holding one of
-    the required scopes, as `Authenticator` asks), None when it carries none."""
-
-    def __init__(self, *scopes: KeyScope) -> None:
-        self.required = Authenticator(*scopes)
-
-    async def __call__(self, request: Request) -> Actor | None:
-        """None without a key; the actor, or 403, with one."""
-        if getattr(request.state, "actor", None) is None:
-            return None
-        return await self.required(request)
-
-
 def actor_of(request: Request) -> Actor | None:
     """The actor the middleware resolved, or None on an anonymous request."""
     return getattr(request.state, "actor", None)
