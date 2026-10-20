@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.7 — released with every other package
+
+- Nothing of the room changed: published at 0.11.7 with every other package.
+
 ## 0.11.6 — released with every other package
 
 - Nothing of the room changed: published at 0.11.6 with every other package.

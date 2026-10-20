@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.7 — The wire knows the feed's tool.ran, tool.failed and judge.broke (2026-10-20)
 
 - **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its
   call, agent and name (and seconds): the org's feed says a tool answered or failed and a judge
