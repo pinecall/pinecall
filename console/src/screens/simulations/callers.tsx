@@ -1,10 +1,9 @@
-/** The callers to choose from, as compact cards that are ticked — a name, and whom it rings: the agent's own, Pinecall's library and the ones switched off. */
+/** The callers to choose from, as one select of many: a field that shows who will call, opening a list of each caller's name and what it is about — the agent's own, Pinecall's library and the ones switched off. */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon, Pill, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
-import { Face } from "../personas/face";
 
 /** What picks a caller out: its owner, the agent it was written for, and its name. */
 export function keyOf(persona: Persona): string {
@@ -40,80 +39,119 @@ export interface CallersProps {
   all: boolean;
 }
 
-export function Callers({ inView, agents, agent, onAgent, personas, picked, onPick, all }: CallersProps): ReactNode {
+/** A heading of the list and the callers under it; `rings` says whom each rings when that is not the one agent. */
+interface Group {
+  title: string;
+  personas: Persona[];
+  rings: boolean;
+}
+
+function groupsOf({ inView, agent, personas, all }: CallersProps): Group[] {
   const ordered = inOrder(personas);
-  const card = (persona: Persona, rings?: string): ReactNode => <Caller key={keyOf(persona)} persona={persona} rings={rings} on={picked.has(keyOf(persona))} onPick={() => onPick(persona)} />;
   if (inView === "") {
     // Every agent in view: each agent's own callers ring it, Pinecall's library rings the one picked.
-    const own = ordered.filter((persona) => !isPinecalls(persona));
-    const library = ordered.filter((persona) => isPinecalls(persona) && (all || persona.on));
-    return (
-      <>
-        {own.length > 0 && <Group title="Written for your agents · each rings its own">{own.map((persona) => card(persona, persona.agent))}</Group>}
-        {library.length > 0 && (
-          <Group
-            title={
-              <span className="sim-group-pick">
-                Pinecall&apos;s callers · ring
-                {agents.length > 1 ? (
-                  <Select size="sm" value={agent} onValueChange={onAgent} aria-label="The agent Pinecall's callers ring">
-                    {agents.map((one) => (
-                      <SelectItem key={one} value={one}>
-                        {one}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                ) : (
-                  agent
-                )}
-              </span>
-            }
-          >
-            {library.map((persona) => card(persona))}
-          </Group>
-        )}
-      </>
-    );
+    return [
+      { title: "Written for your agents", personas: ordered.filter((persona) => !isPinecalls(persona)), rings: true },
+      { title: `Pinecall's callers · ring ${agent}`, personas: ordered.filter((persona) => isPinecalls(persona) && (all || persona.on)), rings: false },
+    ];
   }
   const on = ordered.filter(isOn);
   const off = ordered.filter((persona) => !isOn(persona));
-  return (
-    <>
-      {on.length > 0 && <Group title={`Ready to call ${agent}`}>{on.map((persona) => card(persona))}</Group>}
-      {(all || on.length === 0) && off.length > 0 && (
-        <Group title={on.length === 0 ? `Pinecall's callers · none is switched on for ${agent} yet, and any of them can still call it` : `Switched off for ${agent} · called by hand`}>{off.map((persona) => card(persona))}</Group>
-      )}
-    </>
-  );
+  return [
+    { title: `Ready to call ${agent}`, personas: on, rings: false },
+    { title: on.length === 0 ? "Pinecall's callers · none switched on yet, any can still call" : "Switched off · called by hand", personas: all || on.length === 0 ? off : [], rings: false },
+  ];
 }
 
-function Group({ title, children }: { title: ReactNode; children: ReactNode }): ReactNode {
+export function Callers(props: CallersProps): ReactNode {
+  const { inView, agents, agent, onAgent, personas, picked, onPick } = props;
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const groups = groupsOf(props).filter((group) => group.personas.length > 0);
+  const chosen = inOrder(personas).filter((persona) => picked.has(keyOf(persona)));
+
+  // Open, the list closes on a click anywhere else and on Escape, as a select's menu does.
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: MouseEvent): void => {
+      if (box.current !== null && !box.current.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+
+  const library = inView === "" && personas.some(isPinecalls);
   return (
-    <div className="sim-group">
-      <div className="sim-group-title">{title}</div>
-      <div className="sim-callers">{children}</div>
+    <div className="sim-menu">
+      <div className="sim-menu-pick" ref={box}>
+        <button type="button" className={open ? "sim-menu-field sim-menu-field-open" : "sim-menu-field"} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {chosen.length === 0 ? (
+            <span className="sim-menu-empty">Choose who calls…</span>
+          ) : (
+            <span className="sim-menu-said">{saidOf(chosen)}</span>
+          )}
+          <Icon name="chevron" size={15} />
+        </button>
+        {open && (
+          <div className="sim-menu-list" role="listbox" aria-multiselectable aria-label="Who calls">
+            {groups.map((group) => (
+              <div key={group.title} className="sim-menu-group">
+                <div className="sim-menu-title">{group.title}</div>
+                {group.personas.map((persona) => (
+                  <Row key={keyOf(persona)} persona={persona} rings={group.rings ? persona.agent : undefined} on={picked.has(keyOf(persona))} onPick={() => onPick(persona)} />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {library && agents.length > 1 && (
+        <span className="sim-menu-ring">
+          Pinecall&apos;s callers ring
+          <Select size="sm" value={agent} onValueChange={onAgent} aria-label="The agent Pinecall's callers ring">
+            {agents.map((one) => (
+              <SelectItem key={one} value={one}>
+                {one}
+              </SelectItem>
+            ))}
+          </Select>
+        </span>
+      )}
     </div>
   );
 }
 
-function Caller({ persona, rings, on, onPick }: { persona: Persona; rings?: string | undefined; on: boolean; onPick: () => void }): ReactNode {
-  const classes = ["sim-caller", on ? "sim-caller-on" : null, isOn(persona) ? null : "sim-caller-off"];
+// Who will call, in the field: two names, or two and how many more.
+function saidOf(chosen: readonly Persona[]): string {
+  const [first, second] = chosen;
+  if (second === undefined) return first?.name ?? "";
+  return chosen.length === 2 ? `${first!.name} and ${second.name}` : `${first!.name}, ${second.name} and ${String(chosen.length - 2)} more`;
+}
+
+function Row({ persona, rings, on, onPick }: { persona: Persona; rings?: string | undefined; on: boolean; onPick: () => void }): ReactNode {
   return (
-    <button type="button" className={classes.filter((one) => one !== null).join(" ")} aria-pressed={on} onClick={onPick}>
-      <Face name={persona.name} size={32} />
-      <span className="sim-caller-words">
-        <span className="sim-caller-name">
+    <button type="button" role="option" aria-selected={on} className={on ? "sim-menu-row sim-menu-row-on" : "sim-menu-row"} onClick={onPick}>
+      <span className="sim-menu-check" aria-hidden>
+        {on && <Icon name="tick" size={11} />}
+      </span>
+      <span className="sim-menu-words">
+        <span className="sim-menu-name">
           {persona.name}
+          {rings !== undefined && <span className="sim-menu-rings">rings {rings}</span>}
           {persona.tags.includes("red-team") && (
             <Pill tone="red" small>
               red-team
             </Pill>
           )}
         </span>
-        {rings !== undefined && <span className="sim-caller-rings">rings {rings}</span>}
-      </span>
-      <span className="sim-caller-check" aria-hidden>
-        {on && <Icon name="tick" size={11} />}
+        {persona.about !== "" && <span className="sim-menu-about">{persona.about}</span>}
       </span>
     </button>
   );

@@ -656,3 +656,136 @@
   flex-direction: column;
   gap: 18px;
 }
+
+/* Voice & models for one test room: a panel over the side of the room it applies to. */
+.set-test {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 20;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  border-left: 1px solid var(--line);
+  box-shadow: -12px 0 32px -18px rgb(0 0 0 / 0.35);
+}
+
+.set-test-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.set-test-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.set-test-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.set-test-under {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.set-test-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.set-test-close:hover {
+  background: var(--ground-4);
+}
+
+.set-test-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 18px 20px;
+}
+
+/* As a tab, the form sits on the page itself: the rows are its frame. */
+.set-test-tab > .set-test-body {
+  padding: 0;
+  overflow: visible;
+}
+
+/* The stages and the language as rows: a name, then two menus; in a narrow panel the name goes over them. */
+.set-test-rows {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.set-test-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.set-test-row + .set-test-row {
+  border-top: 1px solid var(--line);
+}
+
+.set-test-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.set-test-wide {
+  grid-column: 2 / -1;
+}
+
+@container (max-width: 520px) {
+  .set-test-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+
+  .set-test-label,
+  .set-test-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.set-test-quiet {
+  padding: 16px 18px;
+}
+
+.set-test-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.set-test-foot > .set-help {
+  margin: 0 auto 0 0;
+}

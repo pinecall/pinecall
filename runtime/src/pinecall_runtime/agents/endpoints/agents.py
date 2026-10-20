@@ -2,8 +2,9 @@
 
 import asyncio
 import dataclasses
+import json
 import time
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Query, Request, Response
 
@@ -26,7 +27,7 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import Channel, HoldPlayed, KeyScope
-from pinecall_runtime.exceptions import NotFound, PinecallError
+from pinecall_runtime.exceptions import NotFound, PinecallError, ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import handles_of
@@ -50,6 +51,20 @@ OGG = "audio/ogg"
 # ── what a worker asks ──
 
 
+# A test room's own values ride its signed dispatch to the worker, which says them again here as
+# JSON: checked again, so a worker's request can never change what a test room may not.
+def _read_test_values(text: str | None, scope: Scope) -> dict[str, Any]:
+    if not text:
+        return {}
+    try:
+        body: Any = json.loads(text)
+    except ValueError as bad:
+        raise ValidationError("test is the test room's values as a JSON object") from bad
+    if not isinstance(body, dict):
+        raise ValidationError("test is the test room's values as a JSON object")
+    return settings.check_test_values(cast("dict[str, Any]", body), env=scope.env)
+
+
 # A worker names the call it asks for before opening it (`for_call`: `call` would ask to act in an
 # opened call's scope), so a canary's share is picked by the call's id; a worker that names none
 # (an older one) is answered the version every call off the canary runs.
@@ -60,11 +75,13 @@ async def agent_config(
     request: Request,
     session: Session,
     for_call: Annotated[str | None, Query()] = None,
+    test: Annotated[str | None, Query()] = None,
 ) -> AgentConfig:
     """The agent as the scope runs it, for the call named: its declaration under the settings."""
     found = _registration_of(request, actor.scope, slug)
     catalog = await providers.get_catalog(session)
-    tuned, _ = await settings.tuned_for_call(session, found.config, actor.scope, catalog, Picked(call=for_call))
+    values = _read_test_values(test, actor.scope)
+    tuned, _ = await settings.tuned_for_call(session, found.config, actor.scope, catalog, Picked(call=for_call), values)
     return tuned
 
 
@@ -77,11 +94,13 @@ async def agent_credentials(
     request: Request,
     session: Session,
     for_call: Annotated[str | None, Query()] = None,
+    test: Annotated[str | None, Query()] = None,
 ) -> schemas.PipelineKeys:
     """The three stages a call of the agent runs, each on its key, and the org's collector."""
     found = _registration_of(request, actor.scope, slug)
     catalog = await providers.get_catalog(session)
-    tuned, _ = await settings.tuned_for_call(session, found.config, actor.scope, catalog, Picked(call=for_call))
+    values = _read_test_values(test, actor.scope)
+    tuned, _ = await settings.tuned_for_call(session, found.config, actor.scope, catalog, Picked(call=for_call), values)
     keys = await providers.keys_of(session, _vault(request), actor.scope)
     if KeyScope.fleet not in actor.scopes:
         keys = dataclasses.replace(keys, lends=frozenset())

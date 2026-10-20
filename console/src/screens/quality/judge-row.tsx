@@ -1,9 +1,9 @@
-/** One judge as a tile: its creature, its question, how it answers and when, how it has held, how far it is trusted — and what to do with it. */
+/** One judge as a row: its creature, its question, how it answers and when, how it has held, how far it is trusted — and what to do with it. */
 
 import type { ReactNode } from "react";
 
 import { percent } from "../../lib/format";
-import { Pill, Switch, TextAction } from "../../ui";
+import { Pill, Switch, TableRow, TextAction } from "../../ui";
 import { BEFORE_DAYS, NOW_DAYS, type JudgeDrift } from "./drift";
 import type { HeldRate } from "./held-rates";
 import { Creature } from "./creature";
@@ -11,7 +11,7 @@ import { answersOf, readsOf, whenOf } from "./judge-words";
 import { PINECALL, type JudgeRow } from "./judges-door";
 import type { Agreement } from "./use-agreement";
 
-/** Where the drift columns are: what a tile is drawn with, and what each verdict is read against. */
+/** Where the drift columns are: what a row is drawn with, and what each verdict is read against. */
 export interface Standing {
   rates: ReadonlyMap<string, HeldRate>;
   drift: ReadonlyMap<string, JudgeDrift> | null;
@@ -20,7 +20,10 @@ export interface Standing {
   agreement: Agreement | null;
 }
 
-export function JudgeTile({
+/** The columns a judge's row and its head share. */
+export const JUDGE_COLUMNS = "minmax(0, 2.4fr) minmax(0, 1.1fr) minmax(170px, auto) 170px";
+
+export function JudgeLine({
   row,
   mine,
   agent,
@@ -43,51 +46,38 @@ export function JudgeTile({
 }): ReactNode {
   const library = row.owner === PINECALL;
   const ours = row.owner === mine;
+  // A library judge says first what it saves you from; any other, the question it asks.
+  const said = library ? (row.why ?? row.summary ?? row.question) : row.question;
+  const reads = readsOf(row);
   return (
-    <article className={library && !row.on ? "ui-tile ui-tile-off" : "ui-tile"}>
-      <div className="ui-tile-top">
-        <Creature name={row.name} size={64} />
-        {library ? (
-          <Switch on={row.on} label={`${row.name} on`} onChange={onSwitch} />
-        ) : (
-          <Pill tone="violet" small>
-            {row.owner === "org" ? "the org's" : "yours"}
-          </Pill>
-        )}
-      </div>
-      <h3 className="ui-tile-name">{row.name}</h3>
-      {library && row.why ? (
-        <>
-          <p className="qly-tile-why">{row.why}</p>
-          <p className="qly-tile-asks">{row.summary ?? row.question}</p>
-        </>
-      ) : (
-        <p className="ui-tile-sub">{library ? (row.summary ?? row.question) : row.question}</p>
-      )}
-      <div className="ui-tile-tags">
-        {library && row.recommended && (
-          <Pill tone="green" small>
-            recommended
-          </Pill>
-        )}
-        <Pill tone="gray" small>
-          {answersOf(row)}
-        </Pill>
-        <span title={whenOf(row)}>
-          <Pill tone="gray" small>
-            {whenOf(row)}
-          </Pill>
+    <TableRow columns={JUDGE_COLUMNS}>
+      <span className={library && !row.on ? "qly-jrow-who qly-jrow-off" : "qly-jrow-who"}>
+        <Creature name={row.name} size={36} />
+        <span className="qly-jrow-words">
+          <span className="qly-jrow-name">
+            {row.name}
+            {!library && (
+              <Pill tone="violet" small>
+                {row.owner === "org" ? "the org's" : "yours"}
+              </Pill>
+            )}
+          </span>
+          <span className="qly-jrow-said" title={said}>
+            {said}
+          </span>
         </span>
-        {readsOf(row) !== "" && (
-          <Pill tone="gray" small>
-            reads {readsOf(row)}
-          </Pill>
-        )}
-      </div>
-      <div className="qly-tile-stand">
+      </span>
+      <span className="qly-jrow-how">
+        <span>{answersOf(row)}</span>
+        <span className="qly-jrow-faint" title={whenOf(row)}>
+          {whenOf(row)}
+          {reads === "" ? "" : ` · reads ${reads}`}
+        </span>
+      </span>
+      <span className="qly-jrow-stand">
         <Standings name={row.name} standing={standing} />
-      </div>
-      <footer className="ui-tile-foot qly-tile-actions">
+      </span>
+      <span className="qly-jrow-moves">
         {agent !== "" && <TextAction onClick={onTry}>Try</TextAction>}
         {ours && <TextAction onClick={onEdit}>Edit</TextAction>}
         {ours && (
@@ -95,8 +85,9 @@ export function JudgeTile({
             Drop
           </TextAction>
         )}
-      </footer>
-    </article>
+        {library && <Switch on={row.on} label={`${row.name} on`} onChange={onSwitch} />}
+      </span>
+    </TableRow>
   );
 }
 

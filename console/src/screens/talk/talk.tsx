@@ -6,7 +6,9 @@ import { Link, useParams } from "react-router";
 
 import { elapsed } from "@pinecall/core/calls";
 import { useCall } from "@pinecall/core/use-call";
+import { asking, said, type TestValues } from "../../lib/test-values";
 import { Icon, Refused, usePane } from "../../ui";
+import { TestValuesPanel } from "../settings";
 import { Inspector } from "./inspector";
 import { Composer, Conversation } from "./lines";
 import { useRoom, type Talking } from "./use-room";
@@ -21,20 +23,35 @@ import "./talk.css";
  */
 export function Talk(): ReactNode {
   const agent = useParams()["agent"] ?? "";
-  const live = useRoom(agent);
+  // The voice and models this room is tried with, other than the agent's own: asked for here, kept nowhere.
+  const [tried, setTried] = useState<TestValues | null>(null);
+  const [tuning, setTuning] = useState(false);
+  const live = useRoom(agent, tried);
   const pane = usePane({ name: "agent.inspector", initial: 330, min: 260, max: 620, side: "right" });
 
   return (
     <div className="talk-grid" style={pane.style}>
       {pane.handle}
-      <Stage agent={agent} live={live} />
+      <Stage
+        agent={agent}
+        live={live}
+        tune={
+          <>
+            <button type="button" className={asking(tried) ? "talk-tune talk-tune-on" : "talk-tune"} onClick={() => setTuning((was) => !was)} title={asking(tried) ? said(tried) : "Try another voice or model in this room"}>
+              <Icon name="sliders" size={14} />
+              {asking(tried) ? "Test values" : "Voice & models"}
+            </button>
+            {tuning && <TestValuesPanel agent={agent} values={tried} onApply={setTried} onClose={() => setTuning(false)} />}
+          </>
+        }
+      />
       <Inspector agent={agent} call={live.call} />
     </div>
   );
 }
 
 /** The conversation and its box, over the room it is handed: the Playground's, and Studio's preview beside its form. */
-export function Stage({ agent, live }: { agent: string; live: Talking }): ReactNode {
+export function Stage({ agent, live, tune }: { agent: string; live: Talking; tune?: ReactNode }): ReactNode {
   // Nothing said yet and no call: the heading and the box sit in the middle, as a chat opens.
   const fresh = live.lines.length === 0 && live.phase !== "live";
   return (
@@ -53,6 +70,7 @@ export function Stage({ agent, live }: { agent: string; live: Talking }): ReactN
         </>
       )}
       {live.call !== null && <Marks call={live.call} heard={live.heard} />}
+      {tune}
     </section>
   );
 }

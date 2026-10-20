@@ -1,14 +1,14 @@
-/** Every judge a call meets at hang-up, as tiles: Pinecall's switched on or off, the org's own, and the agent in view's own — what each asks, how it answers, how it has held, and its drift where it is counted. */
+/** Every judge a call meets at hang-up, as a card of rows per kind: Pinecall's switched on or off, the org's own, and the agent in view's own — what each asks, how it answers, how it has held, and its drift where it is counted. */
 
 import { useState, type ReactNode } from "react";
 
 import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { Button, Chips, Empty, Refused } from "../../ui";
+import { Button, Card, CardHead, Chips, Empty, Refused, TableHead } from "../../ui";
 import { BEFORE_DAYS, NOW_DAYS, type Drifted } from "./drift";
 import type { HeldRate } from "./held-rates";
 import { JudgeForm } from "./judge-form";
-import { JudgeTile, type Standing } from "./judge-tile";
+import { JUDGE_COLUMNS, JudgeLine, type Standing } from "./judge-row";
 import { dropJudge, PINECALL, writeJudge, type JudgeRow, type Whose } from "./judges-door";
 import { TryJudge } from "./try-judge";
 import { useAgreement } from "./use-agreement";
@@ -72,7 +72,7 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
   const tried = groups.flatMap((group) => group.rows).find((row) => row.name === trying);
 
   return (
-    <section className="ui-tiles-block">
+    <section className="qly-judges">
       <div className="qly-bar">
         <Chips options={SHOWS} value={show} onChange={setShow} />
         <span className="qly-bar-meta">{drift === null ? `held over the newest ${read} judged calls` : `held over the newest ${read} judged calls · drift: the last ${NOW_DAYS} days against the last ${BEFORE_DAYS}`}</span>
@@ -83,28 +83,30 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
       <p className="qly-bill">{ON_THE_BILL}</p>
       {editing !== null && <JudgeForm whose={whose} agent={agent} editing={editing === "new" ? null : editing} onSaved={saved} onClose={() => setEditing(null)} />}
       <Refused>{listed.error ?? refused}</Refused>
-      {groups.map((group) =>
-        group.rows.length === 0 ? null : (
-          <div key={group.title} className="ui-tiles-block">
-            <h2 className="ui-tiles-title">{group.title}</h2>
-            <div className="ui-tiles">
-              {group.rows.map((row) => (
-                <JudgeTile
-                  key={row.name}
-                  row={row}
-                  mine={owner}
-                  agent={agent}
-                  standing={standing}
-                  onSwitch={(on) => void asked(() => writeJudge(credentials, whose, row.name, { on }))}
-                  onTry={() => setTrying(trying === row.name ? null : row.name)}
-                  onEdit={() => setEditing(row)}
-                  onDrop={() => void asked(() => dropJudge(credentials, whose, row.name))}
-                />
-              ))}
-            </div>
-          </div>
-        ),
-      )}
+      {groups.map((group) => {
+        if (group.rows.length === 0) return null;
+        // "Title · what it is": the title heads the card, the rest is said beside it.
+        const [title, ...rest] = group.title.split(" · ");
+        return (
+          <Card key={group.title}>
+            <CardHead title={title ?? group.title} meta={rest.join(" · ")} />
+            <TableHead columns={JUDGE_COLUMNS} labels={["Judge", "Answers", drift === null ? "Held" : "Standing", ""]} />
+            {group.rows.map((row) => (
+              <JudgeLine
+                key={row.name}
+                row={row}
+                mine={owner}
+                agent={agent}
+                standing={standing}
+                onSwitch={(on) => void asked(() => writeJudge(credentials, whose, row.name, { on }))}
+                onTry={() => setTrying(trying === row.name ? null : row.name)}
+                onEdit={() => setEditing(row)}
+                onDrop={() => void asked(() => dropJudge(credentials, whose, row.name))}
+              />
+            ))}
+          </Card>
+        );
+      })}
       {tried !== undefined && <TryJudge agent={agent} name={tried.name} written={null} />}
       {agent !== "" && listed.judges !== null && groups[2]?.rows.length === 0 && show !== "on" && editing === null && (
         <Empty>No judge of {agent}&apos;s own yet. The first one is one question: what a good call of this agent has to have done.</Empty>

@@ -101,7 +101,7 @@ export function Sidebar({ agent, onSearch }: { agent: string; onSearch: () => vo
         )}
         {harness.length > 0 && (
           <>
-            <div className="side-group">Harness</div>
+            <div className="side-group">Evaluate</div>
             {harness.map((row) => link(table, row, prefix))}
           </>
         )}

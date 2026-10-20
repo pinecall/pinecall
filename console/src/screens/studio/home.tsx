@@ -8,9 +8,10 @@ import { useCredentials } from "@pinecall/core/credentials";
 import { dayAndTime } from "../../lib/format";
 import { inTheOtherWorld, WORLD } from "../../lib/mode";
 import { useScopes } from "../../lib/whoami";
-import { Button, Empty, Icon, Page, PageHead, Pill, Refused } from "../../ui";
+import { Button, Icon, Page, PageHead, Pill, Refused } from "../../ui";
 import { readStudioAgents, type StudioAgent } from "./door";
 import { NewAgent } from "./new-agent";
+import { Start } from "./start";
 
 // A link from production names the form to open: `?new=1` is the sandbox's Studio with it already there.
 const OPEN_FORM = "?new=1";
@@ -39,29 +40,34 @@ export function StudioHome(): ReactNode {
     };
   }, [credentials]);
 
+  // The move that makes an agent: production sends you to the sandbox's form, the sandbox opens it.
+  const move =
+    WORLD === "production" ? (
+      <Button kind="primary" onClick={() => window.location.assign(`${inTheOtherWorld(window.location.pathname)}${OPEN_FORM}`)}>
+        New agent in the sandbox
+      </Button>
+    ) : (
+      canMake && (
+        <Button kind="primary" onClick={() => setMaking(true)} disabled={making}>
+          New agent
+        </Button>
+      )
+    );
+  const none = agents !== null && agents.length === 0;
+
   return (
-    <Page width={900}>
+    <Page>
       <PageHead
         title="Studio"
         lede="Build an agent with no code: what it is told, how it opens a call, the requests it may make and what it collects. It answers in the sandbox first, and Deploy puts it in production."
-        actions={
-          WORLD === "production" ? (
-            <Button kind="primary" onClick={() => window.location.assign(`${inTheOtherWorld(window.location.pathname)}${OPEN_FORM}`)}>
-              New agent in the sandbox
-            </Button>
-          ) : (
-            canMake && (
-              <Button kind="primary" onClick={() => setMaking(true)} disabled={making}>
-                New agent
-              </Button>
-            )
-          )
-        }
+        ledeWidth={660}
+        // With nothing built yet the move is the start block's own, not said twice.
+        actions={none ? undefined : move}
       />
       {making && <NewAgent onCancel={() => setMaking(false)} />}
       <Refused>{refused}</Refused>
       {WORLD === "sandbox" && !canMake && <p className="sto-hint">A key that may run the org&apos;s apps builds agents here.</p>}
-      {agents !== null && agents.length === 0 && <Empty>{WORLD === "sandbox" ? "No agent has been built in Studio yet. New agent makes the first." : "Nothing built in Studio answers in production yet. Build one in the sandbox, then Deploy it."}</Empty>}
+      {none && !making && <Start move={move} note={WORLD === "sandbox" ? "Nothing is built in Studio yet. It takes a few minutes, and nothing answers a real caller until you deploy it." : "Nothing built in Studio answers in production yet. Agents are built in the sandbox, then deployed here."} />}
       {agents !== null && agents.length > 0 && (
         <div className="sto-home">
           {agents.map((one) => (

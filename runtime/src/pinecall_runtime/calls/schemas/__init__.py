@@ -90,6 +90,9 @@ class MintTokenRequest(WireModel):
     contact: str | None = None
     # Reaches the worker inside the signed dispatch: the browser reads it, never changes it.
     metadata: JsonObject = Field(default_factory=dict[str, Json])
+    # A test room's own voice and models, `stt`, `llm`, `tts`, `tts_model`, `voice`, `language` and
+    # `temperature`, over the agent's settings for this call alone; the sandbox's, and never kept.
+    tuning: JsonObject | None = None
     ttl_s: int | None = None
     log: Projection = "public"
     participant_identity: str | None = None

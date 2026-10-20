@@ -1,7 +1,9 @@
 """The worker's one way to the platform: the gateway over HTTP, on its fleet's key."""
 
 import base64
+import json
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping, Sequence
+from typing import Any
 
 import httpx
 from pydantic import TypeAdapter
@@ -78,15 +80,19 @@ class GatewayClient:
         ]
 
     # The call, not opened yet, is named so a canary's share is picked by its id.
-    async def agent(self, slug: str, scope: Scope, *, call: str | None = None) -> agents.AgentConfig:
-        """The agent as the scope runs it for the call: its declaration under the settings."""
-        params = _scope_params(scope) | ({} if call is None else {"for_call": call})
+    async def agent(
+        self, slug: str, scope: Scope, *, call: str | None = None, test: Mapping[str, Any] | None = None
+    ) -> agents.AgentConfig:
+        """The agent as the scope runs it for the call: its declaration under the settings, and a test room's values."""
+        params = _scope_params(scope) | ({} if call is None else {"for_call": call}) | _test_param(test)
         return _CONFIG.validate_python(await self._read("GET", f"/v1/agents/{slug}/config", params=params))
 
     # The one answer that carries keys, and it carries them to the fleet's key alone.
-    async def stages(self, slug: str, scope: Scope, *, call: str | None = None) -> agents.PipelineKeys:
+    async def stages(
+        self, slug: str, scope: Scope, *, call: str | None = None, test: Mapping[str, Any] | None = None
+    ) -> agents.PipelineKeys:
         """The three stages the call runs, each with the key it runs on, and where its traces go."""
-        params = _scope_params(scope) | ({} if call is None else {"for_call": call})
+        params = _scope_params(scope) | ({} if call is None else {"for_call": call}) | _test_param(test)
         text = await self._read("GET", f"/v1/agents/{slug}/provider-keys", params=params)
         return agents.PipelineKeys.model_validate(text)
 
@@ -366,3 +372,8 @@ def _scope_params(scope: Scope | None) -> dict[str, str]:
     if scope is None:
         return {}
     return {"org": scope.org, "env": scope.env, "holder": scope.holder}
+
+
+# A test room's values, said to the gateway as the JSON they rode the dispatch in.
+def _test_param(test: Mapping[str, Any] | None) -> dict[str, str]:
+    return {"test": json.dumps(dict(test), separators=(",", ":"))} if test else {}

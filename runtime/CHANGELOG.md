@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A test room can run another voice and other models, for its call alone.** `POST /v1/tokens`
+  takes `tuning` (`stt`, `llm`, `tts`, `tts_model`, `voice`, `language`, `temperature`) in the
+  sandbox, from a key that opens `pipeline`: the values ride the signed dispatch, the worker says them
+  when it reads the call's config and keys, and the gateway lays them over the agent's settings for
+  that call and keeps them nowhere. The console's Try it and Playground use it; the settings stay as
+  they were. `docs/protocol/tokens.md` says it.
 - **A simulation's caller is counted.** What a simulated caller's own model and voice cost was
   computed to hold it to its ceiling and thrown away; the gateway now keeps it with the call's facts
   when the simulation ends (migration 000005), and the usage feed reads it onto the call's summary

@@ -40,6 +40,7 @@ a client may not set.
 | `contact` | ours | the org's opaque id for the person; becomes `participant_metadata` |
 | `metadata` | ours | JSON sealed into the call, reaching the worker in the signed dispatch |
 | `ttl_s` | ours | 60 by default, 600 at most |
+| `tuning` | ours | a test room's own voice and models, over the agent's settings for this call alone and kept nowhere: `stt`, `llm`, `tts`, `tts_model`, `voice`, `language`, `temperature` (anything else is refused, `400`). The sandbox's, by a key that opens `pipeline`: `403` for production's or for a key without it. It rides the signed dispatch; the worker says it again when it reads the call's config and keys, where it is checked again |
 | `log` | ours | what the answer's `log_token` reads through: `public` (default) or `tenant` ([projections.md](projections.md)) |
 | `participant_identity` | LiveKit's | who the browser joins as; `web_<12 hex>` when absent, and the call's `from` |
 | `participant_attributes` | LiveKit's | published verbatim; the `pinecall.` prefix is ours and refused |

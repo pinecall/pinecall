@@ -6,22 +6,24 @@ import { useSearchParams } from "react-router";
 import { GatewayError, saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { dayAndTime } from "../../lib/format";
-import { Button, Icon, Refused, Tabs } from "../../ui";
+import { asking, type TestValues } from "../../lib/test-values";
+import { Button, Icon, Page, Refused, Tabs } from "../../ui";
 import { readSecrets } from "../secrets";
+import { TestValuesTab } from "../settings";
 import { Collection } from "./collect";
 import { deployStudioAgent, readCode, readStudioAgent, saveStudioAgent, type Definition, type StudioAgent } from "./door";
 import { changed } from "./draft";
 import { Head } from "./head";
 import { GreetingSection, Instructions } from "./instructions";
-import { Live } from "./live";
+import { Live, productionSaid } from "./live";
 import { Tip } from "./tip";
 import { Tools } from "./tools";
 import { TryIt } from "./try-it";
 
 const CONFLICT = 409;
 
-/** The four tabs of the definition. */
-type Tab = "instructions" | "greeting" | "tools" | "collect";
+/** The four tabs of the definition, and the voice and models the room beside is tried with. */
+type Tab = "instructions" | "greeting" | "tools" | "collect" | "voice";
 
 /** What the editor is doing, so one button at a time says so. */
 type Busy = "saving" | "deploying" | "downloading" | "reloading" | null;
@@ -40,6 +42,8 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
   const [production, setProduction] = useState<StudioAgent | null | undefined>(undefined);
   // Starting the chat over remounts it: another room, another conversation.
   const [round, setRound] = useState(0);
+  // The voice and models the room being tried runs on, other than the agent's own: asked for here, kept nowhere.
+  const [tried, setTried] = useState<TestValues | null>(null);
   const [params, setParams] = useSearchParams();
   const name = read.name;
   const dirty = changed(draft, read.definition);
@@ -130,6 +134,7 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
     { tab: "greeting" as const, name: "Greeting", icon: <Icon name="chat" size={15} /> },
     { tab: "tools" as const, name: "Tools", icon: <Icon name="plug" size={15} />, mark: draft.tools.length === 0 ? undefined : <span className="sto-tab-mark">{draft.tools.length}</span> },
     { tab: "collect" as const, name: "Data collection", icon: <Icon name="clipboard" size={15} />, mark: draft.collect === null || draft.collect === undefined ? undefined : <span className="sto-tab-mark">On</span> },
+    { tab: "voice" as const, name: "Voice & models", icon: <Icon name="sliders" size={15} />, mark: asking(tried) ? <span className="sto-tab-mark">Test</span> : undefined },
   ];
   const asked = params.get("tab");
   const tab: Tab = tabs.some((one) => one.tab === asked) ? (asked as Tab) : "instructions";
@@ -137,14 +142,15 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
   return (
     <div className="sto-grid">
       <div className="sto-form">
-        <div className="sto-form-in">
+        <Page>
           <Head
             name={name}
-            sub={`Release ${read.release} · saved by ${read.author} · ${dayAndTime(read.saved_at)}${read.stopped ? " · stopped" : ""}${dirty ? " · unsaved changes" : ""}`}
+            sub={[`Release ${read.release} · saved by ${read.author} · ${dayAndTime(read.saved_at)}`, read.stopped ? "stopped" : "", productionSaid(read.release, production), dirty ? "unsaved changes" : ""].filter((one) => one !== "").join(" · ")}
             busy={busy !== null}
             downloading={busy === "downloading"}
             saving={busy === "saving"}
             canSave={dirty && !stale}
+            live={<Live release={read.release} production={production} busy={busy === "deploying"} onDeploy={deploy} />}
             onDownload={() => void download()}
             onSave={() => void save()}
           />
@@ -157,14 +163,22 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
             </div>
           )}
           {said !== null && <p className="sto-said">{said}</p>}
-          <Tabs label="The agent's definition" tabs={tabs} on={tab} onPick={(picked) => setParams(picked === "instructions" ? {} : { tab: picked })} />
+          <div className="sto-tabs">
+            <Tabs label="The agent's definition" tabs={tabs} on={tab} onPick={(picked) => setParams(picked === "instructions" ? {} : { tab: picked })} />
+          </div>
           {tab === "instructions" && <Instructions text={draft.instructions} onChange={(instructions) => edit({ instructions })} tip={<Tip agent={name} />} />}
           {tab === "greeting" && <GreetingSection greeting={draft.greeting} onChange={(greeting) => edit({ greeting })} />}
           {tab === "tools" && <Tools agent={name} definition={draft} secrets={secrets} onChange={(tools) => edit({ tools })} />}
           {tab === "collect" && <Collection collect={draft.collect} secrets={secrets} onChange={(collect) => edit({ collect })} />}
-        </div>
+          {tab === "voice" && (
+            <div className="sto-panel">
+              <p className="sto-blurb">Try another voice or model in the chat on the right. Only that chat changes: {name}&apos;s saved settings stay as they are.</p>
+              <TestValuesTab agent={name} values={tried} onApply={setTried} />
+            </div>
+          )}
+        </Page>
       </div>
-      <TryIt key={round} agent={name} release={read.release} onReset={() => setRound((was) => was + 1)} foot={<Live release={read.release} dirty={dirty} production={production} busy={busy === "deploying"} onDeploy={deploy} />} />
+      <TryIt key={round} agent={name} release={read.release} values={tried} onReset={() => setRound((was) => was + 1)} />
     </div>
   );
 }

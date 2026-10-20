@@ -274,6 +274,30 @@ def dump_tuning(tuning: Tuning) -> dict[str, Any]:
     return dumped
 
 
+# What a test room may change for its own call: the voice, the models and the language they run in.
+TEST_KNOBS = frozenset({"stt", "llm", "tts", "tts_model", "voice", "language", "temperature"})
+NOT_FOR_A_TEST = "a test room changes only the voice and the models, so {names} {are} not its to set"
+
+
+def check_test_values(body: Mapping[str, Any] | None, *, env: Env) -> dict[str, Any]:
+    """The values a test room asks for, checked: the sandbox's alone, and only those knobs."""
+    if not body:
+        return {}
+    if env is not Env.sandbox:
+        raise Forbidden("a test room's own voice and models are the sandbox's: production runs the settings it has")
+    stray = sorted(set(body) - TEST_KNOBS)
+    if stray:
+        raise ValidationError(NOT_FOR_A_TEST.format(names=", ".join(stray), are="is" if len(stray) == 1 else "are"))
+    return dump_tuning(parse_tuning(body))
+
+
+def overlay_tuning(tuning: Tuning, values: Mapping[str, Any] | None) -> Tuning:
+    """The tuning with a test room's values over it, knob by knob."""
+    if not values:
+        return tuning
+    return TUNING.validate_python({**dump_tuning(tuning), **dump_tuning(parse_tuning(values))})
+
+
 def parse_tuning(body: Mapping[str, Any]) -> Tuning:
     """A tuning from a body, refused in the dataclass's own words."""
     try:
@@ -360,11 +384,20 @@ async def resolved_config(
 
 
 async def tuned_for_call(
-    session: AsyncSession, declared: AgentConfig, scope: Scope, catalog: providers.Catalog, picked: Picked | None = None
+    session: AsyncSession,
+    declared: AgentConfig,
+    scope: Scope,
+    catalog: providers.Catalog,
+    picked: Picked | None = None,
+    test: Mapping[str, Any] | None = None,
 ) -> tuple[AgentConfig, Versions]:
-    """The declaration under the scope's current settings, for a call: the config and its versions."""
+    """The declaration under the scope's current settings, for a call: the config and its versions.
+
+    `test` is a test room's own values, checked at its token, laid over the settings for this call alone.
+    """
     current = await current_settings(session, scope, declared.slug, picked)
-    return apply_tuning(declared, current.tuning, current.lexicon, defaults=catalog.default_vendors), current.versions
+    tuning = overlay_tuning(current.tuning, test)
+    return apply_tuning(declared, tuning, current.lexicon, defaults=catalog.default_vendors), current.versions
 
 
 def refuse_what_the_class_sets(declared: AgentConfig | None, slug: str, knobs: Sequence[str]) -> None:

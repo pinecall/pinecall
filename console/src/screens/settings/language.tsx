@@ -21,6 +21,11 @@ export function languagesWith(set: string): readonly string[] {
   return listed(Object.keys(NAMES), set);
 }
 
+/** A tag as the menus write it: `Spanish · es`, or a tag set elsewhere as set. */
+export function languageSaid(tag: string): string {
+  return NAMES[tag] === undefined ? `${tag} · as set` : `${NAMES[tag]} · ${tag}`;
+}
+
 export function LanguageField({ language, onChange }: { language: string; onChange: (language: string) => void }): ReactNode {
   return (
     <div className="set-row">
@@ -30,7 +35,7 @@ export function LanguageField({ language, onChange }: { language: string; onChan
           <SelectItem value="">Not set — the vendor&apos;s default</SelectItem>
           {languagesWith(language).map((tag) => (
             <SelectItem key={tag} value={tag}>
-              {NAMES[tag] === undefined ? `${tag} · as set` : `${NAMES[tag]} · ${tag}`}
+              {languageSaid(tag)}
             </SelectItem>
           ))}
         </Select>

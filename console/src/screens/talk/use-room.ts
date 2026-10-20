@@ -8,6 +8,7 @@ import { z } from "zod";
 import { post } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { ours } from "../../lib/ours";
+import { asking, type TestValues } from "../../lib/test-values";
 import {
   A_BEAT_MS,
   CHAT_TOPIC,
@@ -58,11 +59,20 @@ export interface Talking {
 // What `POST /v1/tokens` answers: LiveKit's two fields, and the call the token opens.
 const MintedSchema = z.object({ server_url: z.string(), participant_token: z.string(), call: z.string() });
 
-/** Speak with one agent from this tab. The token is minted through the CLI, which holds the key. */
-export function useRoom(agent: string): Talking {
+/**
+ * Speak with one agent from this tab. The token is minted through the CLI, which holds the key.
+ * `values` are a test room's own voice and models: they go with the token, so the call runs on them
+ * and the agent's settings stay as they are; changed while a room is open, the room is joined again.
+ */
+export function useRoom(agent: string, values: TestValues | null = null): Talking {
   const credentials = useCredentials();
   const [phase, setPhase] = useState<Phase>("idle");
   const [mode, setMode] = useState<Mode>("talk");
+  // Read when the token is minted, so a room joined after a change runs on the change.
+  const asked = useRef<TestValues | null>(values);
+  asked.current = values;
+  const standing = useRef({ phase, mode });
+  standing.current = { phase, mode };
   const [since, setSince] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
   const [call, setCall] = useState<string | null>(null);
@@ -207,7 +217,7 @@ export function useRoom(agent: string): Talking {
       if (first.current !== null && nobodyOpened.current === null) nobodyOpened.current = window.setTimeout(() => flush.current(), A_BEAT_MS);
     };
     try {
-      const minted = MintedSchema.parse(await post(credentials, "/v1/tokens", { agent, scope: joining }));
+      const minted = MintedSchema.parse(await post(credentials, "/v1/tokens", { agent, scope: joining, ...(asking(asked.current) ? { tuning: asked.current } : {}) }));
       const joined = new Room();
       room.current = joined;
       // Registered before the room is joined: a handler registered after connect misses the first words.
@@ -256,6 +266,20 @@ export function useRoom(agent: string): Talking {
     await joined.localParticipant.setMicrophoneEnabled(muted);
     setMuted(!muted);
   }, [muted]);
+
+  // Other values for the test room are another call: the room open is left and the same way of speaking joined again.
+  const wanted = JSON.stringify(values);
+  const was = useRef(wanted);
+  useEffect(() => {
+    if (was.current === wanted) return;
+    was.current = wanted;
+    const { phase: now, mode: how } = standing.current;
+    if (now !== "live" && now !== "connecting") return;
+    void (async () => {
+      await close();
+      await open(how);
+    })();
+  }, [wanted, close, open]);
 
   // Leaving the screen hangs up: a room nobody is looking at is a call nobody is on.
   useEffect(() => {

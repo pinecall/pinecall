@@ -1,41 +1,31 @@
-/** What production answers with, under the chat: the release it holds, whether it is the one in the sandbox, and the move that makes it so. */
+/** What production answers with, in the head: a word in the lede, and beside the save either Live or the move that deploys this release. */
 
 import type { ReactNode } from "react";
 
-import { Icon } from "../../ui";
+import { Button, Icon } from "../../ui";
 import type { StudioAgent } from "./door";
 
-export function Live({ release, dirty, production, busy, onDeploy }: { release: number; dirty: boolean; production: StudioAgent | null | undefined; busy: boolean; onDeploy: () => void }): ReactNode {
-  const same = production !== null && production !== undefined && production.release === release;
-  const title = production === undefined ? "Reading production…" : production === null ? "Not in production yet" : `Production answers with release ${String(production.release)}`;
-  const under =
-    production === undefined
-      ? ""
-      : production === null
-        ? `Deploy release ${String(release)} to answer there`
-        : same
-          ? dirty
-            ? "Same as the last save; the changes on this page are not in it"
-            : "Same as the sandbox"
-          : `Release ${String(release)} is not live yet`;
-  return (
-    <div className="sto-live">
-      <span className="sto-live-words">
-        <span className="sto-live-title">{title}</span>
-        {under !== "" && <span className="sto-live-under">{under}</span>}
+/** For the lede: where production stands against this release; nothing while it is read. */
+export function productionSaid(release: number, production: StudioAgent | null | undefined): string {
+  if (production === undefined) return "";
+  if (production === null) return "not in production yet";
+  return production.release === release ? "live in production" : `production answers with release ${String(production.release)}`;
+}
+
+export function Live({ release, production, busy, onDeploy }: { release: number; production: StudioAgent | null | undefined; busy: boolean; onDeploy: () => void }): ReactNode {
+  if (production === undefined) return null;
+  if (production !== null && production.release === release) {
+    return (
+      <span className="sto-live-on" title={`Production answers with release ${String(release)}`}>
+        <Icon name="tick" size={14} />
+        Live
       </span>
-      {same ? (
-        <span className="sto-live-on">
-          <Icon name="tick" size={14} />
-          Live
-        </span>
-      ) : (
-        production !== undefined && (
-          <button type="button" className="sto-live-deploy" disabled={busy} onClick={onDeploy}>
-            {busy ? "Deploying…" : `Deploy release ${String(release)}`}
-          </button>
-        )
-      )}
-    </div>
+    );
+  }
+  return (
+    <Button size="md" onClick={onDeploy} disabled={busy} title={production === null ? "Not in production yet" : `Production answers with release ${String(production.release)}`}>
+      <Icon name="zap" size={14} />
+      {busy ? "Deploying…" : `Deploy release ${String(release)}`}
+    </Button>
   );
 }

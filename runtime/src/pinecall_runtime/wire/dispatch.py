@@ -53,6 +53,9 @@ class Dispatch(BaseModel):
     worker_gone: bool = False
     entries_written: int = 0
     continues: str | None = None
+    # The voice and the models a test room asked for, over the agent's own for this call alone
+    # (agents/service/settings.py: test_values); the gateway signs it, the browser cannot change it.
+    tuning: dict[str, Any] = Field(default_factory=dict[str, Any])
 
     def dump(self) -> str:
         """As a job's metadata: compact JSON, absent fields absent."""

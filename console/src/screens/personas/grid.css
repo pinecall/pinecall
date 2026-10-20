@@ -41,42 +41,75 @@
   gap: 14px;
 }
 
-/* Pinecall's library folded under the agent's own callers: its title is the button that opens it. */
-.psn-fold {
+/* The roster: the filters, then a card of rows per kind of caller. */
+.psn-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.psn-who {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  padding: 14px 18px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--ground);
-  font: inherit;
-  text-align: left;
-  color: var(--ink-3);
-  cursor: pointer;
+  min-width: 0;
 }
 
-.psn-fold:hover {
-  border-color: var(--ink-5);
+/* One of Pinecall's not switched on for the agent: there, quieter. */
+.psn-who-off {
+  opacity: 0.6;
 }
 
-.psn-fold-title {
-  font-size: 14px;
-  font-weight: 600;
+.psn-who-words {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.psn-who-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--ink);
 }
 
-.psn-fold-said {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
+.psn-who-agent {
+  font-size: 12px;
+  font-weight: 400;
   color: var(--ink-4);
 }
 
-.psn-fold-open {
-  flex: none;
+.psn-who-said {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.psn-quiet {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.psn-held {
+  color: var(--green);
+}
+
+.psn-broke {
+  color: var(--red);
+}
+
+.psn-switch {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.psn-none {
+  margin: 0;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--accent);
+  color: var(--ink-4);
 }

@@ -55,86 +55,105 @@
   color: var(--ink);
 }
 
-.sim-group {
+/* Who calls: a field like a select's that shows the callers chosen, and under it the list of every caller. */
+.sim-menu {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.sim-group-title {
-  font-size: 12px;
+/* The field and its list, as wide as a select and not the card. */
+.sim-menu-pick {
+  position: relative;
+  width: min(100%, 440px);
+}
+
+.sim-menu-field {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-control);
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sim-menu-field:hover,
+.sim-menu-field-open {
+  border-color: var(--line-hover);
+}
+
+.sim-menu-empty,
+.sim-menu-said {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sim-menu-said {
+  color: var(--ink);
+}
+
+.sim-menu-list {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  width: max(100%, 440px);
+  z-index: 50;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line-control);
+  border-radius: 12px;
+  background: var(--ground-3);
+  box-shadow: var(--shadow-pop);
+}
+
+.sim-menu-group + .sim-menu-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.sim-menu-title {
+  padding: 6px 10px 4px;
+  font-size: 11.5px;
   color: var(--ink-4);
 }
 
-.sim-group-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sim-group-pick .ui-select {
-  width: 180px;
-}
-
-.sim-callers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-}
-
-/* A caller: a face, its name and whom it rings, and a tick that says it will call. */
-.sim-caller {
+.sim-menu-row {
+  width: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 11px 12px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 12px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--line-control);
+  border-radius: 8px;
+  background: transparent;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.sim-caller:hover {
-  box-shadow: inset 0 0 0 1px var(--ink-6);
-}
-
-.sim-caller-on,
-.sim-caller-on:hover {
-  background: var(--accent-selected);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
-}
-
-/* Switched off for the agent: the same card on a sunken ground, still a call away. */
-.sim-caller-off {
+.sim-menu-row:hover {
   background: var(--ground-4);
 }
 
-.sim-caller-words {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+.sim-menu-row-on {
+  background: var(--accent-selected);
 }
 
-.sim-caller-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.sim-caller-rings {
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: var(--indigo);
-}
-
-.sim-caller-check {
+.sim-menu-check {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,9 +165,52 @@
   color: #fff;
 }
 
-.sim-caller-on .sim-caller-check {
+.sim-menu-row-on .sim-menu-check {
   background: var(--accent);
   box-shadow: none;
+}
+
+.sim-menu-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sim-menu-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.sim-menu-rings {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-4);
+}
+
+.sim-menu-about {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.sim-menu-ring {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.sim-menu-ring .ui-select {
+  width: 180px;
 }
 
 .sim-options {

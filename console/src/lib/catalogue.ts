@@ -33,6 +33,14 @@ export function named(providers: readonly Provider[], word: string): Provider | 
   return providers.find((provider) => provider.name === word || provider.aliases.includes(word));
 }
 
+// Vendors whose name is not just its first letter raised.
+const BRANDS: Readonly<Record<string, string>> = { elevenlabs: "ElevenLabs", openai: "OpenAI", openrouter: "OpenRouter", xai: "xAI" };
+
+/** A vendor as a person reads it: `Deepgram`, `ElevenLabs`. */
+export function brandOf(name: string): string {
+  return BRANDS[name] ?? `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
 export type Modality = Provider["does"][number];
 
 export const MODALITIES = ["llm", "stt", "tts"] as const satisfies readonly Modality[];

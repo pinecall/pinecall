@@ -1,7 +1,8 @@
-/** Try it: the agent as it was last saved, answering a person who types or talks, or a caller a model plays — with, under it, what production answers with. */
+/** Try it: the agent as it was last saved, answering a person who types or talks, or a caller a model plays. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
+import { asking, type TestValues } from "../../lib/test-values";
 import { Icon, Segmented } from "../../ui";
 import { useRoom } from "../talk";
 import { fromRoom, Messages, type Message } from "./messages";
@@ -31,8 +32,8 @@ const HOWS: readonly { value: How; label: ReactNode }[] = [
   },
 ];
 
-export function TryIt({ agent, release, onReset, foot }: { agent: string; release: number; onReset: () => void; foot: ReactNode }): ReactNode {
-  const room = useRoom(agent);
+export function TryIt({ agent, release, values, onReset }: { agent: string; release: number; values: TestValues | null; onReset: () => void }): ReactNode {
+  const room = useRoom(agent, values);
   const { playing, play, stop } = usePlaying(agent);
   const [how, setHow] = useState<How>("type");
   const [over, setOver] = useState(false);
@@ -93,7 +94,7 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
       <div className="sto-chat-head">
         <span className="sto-chat-words">
           <span className="sto-chat-title">Try it</span>
-          <span className="sto-chat-under">Answers with release {release}</span>
+          <span className="sto-chat-under">Answers with release {release}{asking(values) ? " · on test values" : ""}</span>
         </span>
         <Segmented options={HOWS} value={how} onChange={pick} />
         <button type="button" className="sto-icon-button" title="Start over" aria-label="Start over" onClick={() => void startOver()}>
@@ -152,7 +153,6 @@ export function TryIt({ agent, release, onReset, foot }: { agent: string; releas
           </form>
         )}
       </div>
-      {foot}
     </aside>
   );
 }

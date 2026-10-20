@@ -70,8 +70,8 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     scope = Scope(route.org, route.env, dispatch.holder or "")
     context = context_of(ctx, dispatch, arrival, route, settings)
     config, keys, played = await asyncio.gather(
-        gateway.agent(route.agent, scope, call=context.call),
-        gateway.stages(route.agent, scope, call=context.call),
+        gateway.agent(route.agent, scope, call=context.call, test=dispatch.tuning),
+        gateway.stages(route.agent, scope, call=context.call, test=dispatch.tuning),
         gateway.hold_audio(route.agent, scope),
     )
     opened = await gateway.open(

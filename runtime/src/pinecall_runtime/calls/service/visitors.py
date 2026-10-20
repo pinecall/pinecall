@@ -2,10 +2,12 @@
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import keys, tokens
+from pinecall_runtime.agents.service import settings
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls.context import Contact, new_call_id
@@ -20,7 +22,7 @@ from pinecall_runtime.calls.schemas import (
 from pinecall_runtime.calls.service import openings
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.channels import service as channels
-from pinecall_runtime.enums import Channel
+from pinecall_runtime.enums import Channel, KeyScope
 from pinecall_runtime.exceptions import (
     Conflict,
     Forbidden,
@@ -110,6 +112,7 @@ async def mint_room_token(
         contact=body.contact or _contact_of(earlier),
         metadata=body.metadata,
         continues=None if earlier is None else earlier.call,
+        tuning=_ask_test_values(body, actor),
     )
     token = tokens.room_token(
         serving.signer,
@@ -125,6 +128,15 @@ async def mint_room_token(
         log_token=tokens.log_token(serving.signer, call, body.log),
         resume_token=tokens.resume_token(serving.signer, call),
     )
+
+
+# A test room's own voice and models are what the key that edits the pipeline may try, in the sandbox.
+def _ask_test_values(body: MintTokenRequest, actor: Actor) -> dict[str, Any]:
+    if not body.tuning:
+        return {}
+    if KeyScope.pipeline not in actor.scopes:
+        raise Forbidden("a key that opens `pipeline` tries another voice or model in a test room")
+    return settings.check_test_values(body.tuning, env=actor.env)
 
 
 # The number is the key's own agent's in the key's env: a key issues codes for its agents.

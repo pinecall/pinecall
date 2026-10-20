@@ -516,11 +516,69 @@
   color: var(--ink-4);
 }
 
-.qly-tile-stand {
-  margin-top: auto;
+/* The judges: a card of rows per kind — the creature and its question, how it answers, how it has held, the moves. */
+.qly-judges {
   display: flex;
-  gap: 18px;
-  min-height: 36px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.qly-jrow-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* One of Pinecall's not switched on: there, quieter. */
+.qly-jrow-off {
+  opacity: 0.6;
+}
+
+.qly-jrow-words {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qly-jrow-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.qly-jrow-said,
+.qly-jrow-how > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qly-jrow-said {
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+
+.qly-jrow-how {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.qly-jrow-faint {
+  color: var(--ink-4);
+}
+
+.qly-jrow-stand {
+  display: flex;
+  gap: 16px;
 }
 
 .qly-stand {
@@ -534,10 +592,11 @@
   color: var(--ink-4);
 }
 
-.qly-tile-actions {
-  margin-top: 0;
-  justify-content: flex-start;
-  gap: 14px;
+.qly-jrow-moves {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .qly-rate {
@@ -721,6 +780,3 @@
   }
 }
 
-/* A library judge's tile: what it saves you from first, what it asks under it, smaller. */
-.qly-tile-why { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
-.qly-tile-asks { margin: 4px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink-4); }

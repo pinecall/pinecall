@@ -5,9 +5,8 @@ import { Link } from "react-router";
 
 import { ago, duration, percent, usd } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
-import { Button, Chips, Empty, Icon, Pill } from "../../ui";
+import { Avatar, Button, Chips, Empty, Icon, Pill } from "../../ui";
 import type { PersonaRun } from "../personas/door";
-import { Face } from "../personas/face";
 import type { Runs } from "./use-runs";
 
 type Show = "all" | "broke" | "held" | "running";
@@ -51,7 +50,7 @@ export function RunsTable({ inView, read }: { inView: string; read: Runs }): Rea
         <div className="runs-list">
           {rows.map((run) => (
             <Link key={run.call} to={`${base}/${run.call}`} className="runs-row">
-              <Face name={run.persona ?? "?"} size={32} />
+              <Avatar name={run.persona ?? "?"} size={28} round />
               <span className="runs-words">
                 <span className="runs-name">{run.persona ?? "a caller"}</span>
                 <span className="runs-sub">

@@ -22,7 +22,7 @@ from websockets.asyncio.client import ClientConnection, connect
 # Read by the settings at import of anything that loads them: one set for the whole run, so the
 # vault that seals a key in a fixture opens it in the gateway.
 os.environ.setdefault("PINECALL_VAULT_KEY", Fernet.generate_key().decode())
-os.environ.setdefault("PINECALL_TOKEN_KEY", "a-token-key-for-the-suite")
+os.environ.setdefault("PINECALL_TOKEN_KEY", "a-token-key-for-the-suite-of-thirty-two-bytes")
 os.environ.setdefault("PINECALL_OPS_KEY", "the-suites-own-ops-key")
 os.environ.setdefault("LIVEKIT_API_KEY", "devkey")
 os.environ.setdefault("LIVEKIT_API_SECRET", "a-suite-only-livekit-secret-0123456789")
