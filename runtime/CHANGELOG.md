@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The last places that said the box's key say the runtime's.** The Overview's Limits card says
+  *lent by the runtime*, the lends picker of an org and of admission is *The runtime's keys this org
+  may use*, and `orgs provider-key rm` says the org's calls run on the runtime's key.
+
 ## 0.11.7 — A runtime on a server in one verb: setup --domain, your own LiveKit, the phone; the open models answer the first caller (2026-10-20)
 
 - **One word for the keys an org did not bring: the runtime's.** `GET /v1/providers/advice` says

@@ -91,19 +91,19 @@ export function Minutes({ meter, size }: { meter: MinutesMeter; size: "big" | "s
   );
 }
 
-/** What the box lends this org of one vendor: every model, some named models, or nothing. */
+/** What the runtime lends this org of one vendor: every model, some named models, or nothing. */
 export type Lending = "all" | "some" | "none";
 
-/** Whether a call may run on the box's key for this vendor: `lends` null lends every key the box holds. */
+/** Whether a call may run on the runtime's key for this vendor: `lends` null lends every key it holds. */
 export function lending(lends: string[] | null, vendor: string): Lending {
   if (lends === null || lends.includes(vendor)) return "all";
   return lends.some((entry) => entry.startsWith(`${vendor}/`)) ? "some" : "none";
 }
 
-/** Whose keys a call runs on, in one line: the org's own, then what the box lends it. */
+/** Whose keys a call runs on, in one line: the org's own, then what the runtime lends it. */
 export function keysSaid(brought: string[], lends: string[] | null): string {
   const yours = brought.length === 0 ? "Yours: none" : `Yours: ${[...brought].sort().join(", ")}`;
-  if (lends === null) return `${yours} · lent by the box: every vendor it holds a key for`;
-  if (lends.length === 0) return `${yours} · lent by the box: none — bring a key for every vendor`;
-  return `${yours} · lent by the box: ${lends.join(", ")}`;
+  if (lends === null) return `${yours} · lent by the runtime: every vendor it holds a key for`;
+  if (lends.length === 0) return `${yours} · lent by the runtime: none, bring a key for every vendor`;
+  return `${yours} · lent by the runtime: ${lends.join(", ")}`;
 }

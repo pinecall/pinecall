@@ -100,7 +100,7 @@ export function SettingsAdmission(): ReactNode {
         ))}
       </div>
       <div className="box-body">
-        <Field label="Pinecall vendor keys these orgs may use">
+        <Field label="The runtime's keys these orgs may use">
           <LendsPicker key={`${whose}:${world}`} vendors={vendors.value ?? []} lends={lent} onChange={setLends} />
         </Field>
       </div>

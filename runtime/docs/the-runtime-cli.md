@@ -237,9 +237,9 @@ orgs provider-key set|rm|list <org> <vendor>        # set reads the key from std
 ```
 
 `<org>` is an id or a slug. `quota` replaces the whole set of limits **for one environment** and keeps
-what the box lends the org there; `lends` is that alone — `all` every key the box holds, `none` none,
+what the runtime lends the org there; `lends` is that alone — `all` every key the runtime holds, `none` none,
 or the vendors and `vendor/model` entries named — and keeps the limits. A call runs on the org's own
-key for a vendor, else on the box's where it is lent, else it is refused ([limits.md](limits.md)); `dialling` the whole
+key for a vendor, else on the runtime's where it is lent, else it is refused ([limits.md](limits.md)); `dialling` the whole
 set of guards; `sso --off` is the break-glass; `provider-key set` reads from stdin because argv is
 what `ps` shows. `password` sets a person's password the same way, with no link: an invited person
 becomes active by it, a disabled one is refused until enabled.

@@ -229,14 +229,14 @@ async def provider_key_set(ctx: typer.Context, org: str, vendor: str) -> int:
 @vendor_keys_app.command("rm")
 @verb
 async def provider_key_rm(ctx: typer.Context, org: str, vendor: str) -> int:
-    """The org's key for a vendor taken back; its calls run on the box's from the next one."""
+    """The org's key for a vendor taken back; its calls run on the runtime's from the next one."""
     context = context_of(ctx)
     named = providers.installed_vendor(vendor)
     async with context.sessions.begin() as session:
         found = await orgs.get_org(session, org)
         if not await providers.drop_own_credentials(session, found.id, named):
             raise NotFound(f"org {found.slug} brought no key for {named}")
-    context.out.line(f"{org} runs {named} on the box's key from the next call")
+    context.out.line(f"{org} runs {named} on the runtime's key from the next call")
     return OK
 
 

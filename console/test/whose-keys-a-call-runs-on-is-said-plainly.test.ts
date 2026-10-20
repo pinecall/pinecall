@@ -5,8 +5,8 @@ import { describe, expect, test } from "vitest";
 import { keysSaid, lending } from "../src/lib/limits";
 import { startsAgain, usedOf } from "../src/screens/overview/limits-card";
 
-describe("what the box lends of a vendor", () => {
-  test("lends null lends every vendor the box holds a key for", () => {
+describe("what the runtime lends of a vendor", () => {
+  test("lends null lends every vendor the runtime holds a key for", () => {
     expect(lending(null, "cartesia")).toBe("all");
   });
 
@@ -23,12 +23,12 @@ describe("what the box lends of a vendor", () => {
 });
 
 describe("the keys line", () => {
-  test("names the org's own keys first, then what the box lends", () => {
-    expect(keysSaid(["openai", "anthropic"], ["google"])).toBe("Yours: anthropic, openai · lent by the box: google");
+  test("names the org's own keys first, then what the runtime lends", () => {
+    expect(keysSaid(["openai", "anthropic"], ["google"])).toBe("Yours: anthropic, openai · lent by the runtime: google");
   });
 
-  test("says a box that lends everything and a box that lends nothing in words", () => {
-    expect(keysSaid([], null)).toBe("Yours: none · lent by the box: every vendor it holds a key for");
+  test("says a runtime that lends everything and one that lends nothing in words", () => {
+    expect(keysSaid([], null)).toBe("Yours: none · lent by the runtime: every vendor it holds a key for");
     expect(keysSaid([], [])).toContain("bring a key for every vendor");
   });
 });

@@ -113,7 +113,7 @@ export function OrgLimits({ org, onSaved }: { org: OneOrg; onSaved: () => Promis
           ))}
         </div>
         <div className="box-body">
-          <Field label="Pinecall vendor keys this org may use">
+          <Field label="The runtime's keys this org may use">
             <LendsPicker key={env} vendors={vendors.value ?? []} lends={lends} onChange={setLends} />
           </Field>
         </div>
