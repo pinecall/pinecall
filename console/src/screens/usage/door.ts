@@ -19,7 +19,7 @@ const RowSchema = z.object({
   output_tokens: z.number(),
   characters: z.number(),
   judge_calls: z.number(),
-  /** The judges that answered this call on Pinecall's key: the evals billed (a call.score row's). */
+  /** The judges that answered this call on the runtime's key: the evals billed (a call.score row's). */
   evals: z.number(),
   /** A call.summary row of a call a simulated caller played: billed as one simulation, not minutes. */
   simulated: z.boolean(),

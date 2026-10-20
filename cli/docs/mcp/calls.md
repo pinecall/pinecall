@@ -461,7 +461,7 @@ Where the org posts its alerts — a monitor fired, the spend unusual, a quota o
 
 What the org has used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on, and whether its judges cost it evals.
 
-`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals and simulations start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the deployment lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.
+`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals and simulations start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the runtime lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -506,7 +506,7 @@ What the org has used of its limits this month in the environment — minutes, m
     "limit": 0,
     "used": 0
   },
-  "keys": "yours: anthropic · lent by the deployment: google, cartesia, deepgram",
+  "keys": "yours: anthropic · lent by the runtime: google, cartesia, deepgram",
   "evals_billed": true,
   "judge_model": "Pinecall's",
   "billing_url": "https://billing.pinecall.io/"

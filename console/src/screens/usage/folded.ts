@@ -9,7 +9,7 @@ export interface Sum {
   minutes: number;
   messages: number;
   judge_calls: number;
-  /** Judges that answered on Pinecall's key: what the evals meter bills. */
+  /** Judges that answered on the runtime's key: what the evals meter bills. */
   evals: number;
   /** Calls a simulated caller played: what the simulations meter bills. */
   simulations: number;

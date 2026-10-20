@@ -38,7 +38,7 @@ export function Settings(): ReactNode {
   const [history, setHistory] = useState<TuningHistory | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [bases, setBases] = useState<KnowledgeBase[] | null>(null);
-  // The vendors this org runs on its own key; every other is lent by Pinecall.
+  // The vendors this org runs on its own key; every other is lent by the runtime.
   const [own, setOwn] = useState<ReadonlySet<string>>(new Set());
   const [team, setTeam] = useState(false);
   const [saving, setSaving] = useState(false);

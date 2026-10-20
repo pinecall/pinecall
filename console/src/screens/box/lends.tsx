@@ -7,7 +7,7 @@ import { Button, Input, Segmented, Select, SelectItem, TextAction } from "../../
 type Mode = "all" | "some" | "none";
 
 const MODES = [
-  { value: "all", label: "All of Pinecall's keys" },
+  { value: "all", label: "All of the runtime's keys" },
   { value: "some", label: "Only some" },
   { value: "none", label: "None, its own keys only" },
 ] as const;
@@ -100,9 +100,9 @@ export function LendsPicker({
         </>
       )}
       <div className="box-limit-about">
-        {mode === "all" && "Whenever the org has no key of its own for a vendor, the call runs on Pinecall's key."}
+        {mode === "all" && "Whenever the org has no key of its own for a vendor, the call runs on the runtime's key."}
         {mode === "none" && "Calls run only on the org's own keys. A vendor it has no key for is refused."}
-        {mode === "some" && "Only what is ticked or listed runs on Pinecall's key. Anything else needs a key of the org's own."}
+        {mode === "some" && "Only what is ticked or listed runs on the runtime's key. Anything else needs a key of the org's own."}
       </div>
     </div>
   );

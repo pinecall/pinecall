@@ -91,7 +91,7 @@ export function SettingsDefaults(): ReactNode {
       <DefaultVoices voices={shown.voices} tts={shown.defaults["tts"]?.vendor ?? ""} onChange={(voices) => change({ voices })} />
 
       <Card>
-        <CardHead title="Judges and simulated callers" meta="they run on the box's keys, unless the org or agent names its own model" />
+        <CardHead title="Judges and simulated callers" meta="they run on the runtime's keys, unless the org or agent names its own model" />
         <div className="box-body">
           <div className="box-judge-grid">
             <span />

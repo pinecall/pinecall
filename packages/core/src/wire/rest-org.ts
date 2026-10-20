@@ -65,7 +65,7 @@ export const LimitsSchema = z.strictObject({
   agents: LimitSchema,
   seats: LimitSchema,
   numbers: LimitSchema,
-  /** This month's judges that answered on Pinecall's key, and calls a simulated caller played. */
+  /** This month's judges that answered on the runtime's key, and calls a simulated caller played. */
   evals: LimitSchema,
   simulations: LimitSchema,
   lends: z.array(z.string()).nullable(),

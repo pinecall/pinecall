@@ -18,8 +18,8 @@ export function source(one: Provider, brought: boolean, lends: string[] | null):
   if (brought) return { text: "Your key", tone: "green" };
   if (one.standing !== READY) return null;
   const lent: Lending = lending(lends, one.name);
-  if (lent === "all") return { text: "Pinecall's key", tone: "green" };
-  if (lent === "some") return { text: "Pinecall's key, some models", tone: "amber" };
+  if (lent === "all") return { text: "The runtime's key", tone: "green" };
+  if (lent === "some") return { text: "The runtime's key, some models", tone: "amber" };
   return null;
 }
 

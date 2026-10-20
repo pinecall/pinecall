@@ -1447,7 +1447,7 @@
           "limit": 0,
           "used": 0
         },
-        "keys": "yours: anthropic · lent by the deployment: google, cartesia, deepgram",
+        "keys": "yours: anthropic · lent by the runtime: google, cartesia, deepgram",
         "evals_billed": true,
         "judge_model": "Pinecall's",
         "billing_url": "https://billing.pinecall.io/"

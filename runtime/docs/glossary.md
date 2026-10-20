@@ -4,7 +4,7 @@
 |---|---|
 | **environment** | production or the sandbox. A property of a row (`env`) and of a key's prefix (`pc_live_`, `pc_test_`), never of a deployment: one gateway, one database and one name (`PINECALL_DOMAIN`) serve both, so the key or the `pinecall-env` header says the environment, never the address. The CLI and some messages call it the *world* |
 | **deployment** | one installation of the runtime: the gateways, the workers, LiveKit, SIP, Redis and Postgres, on one Kubernetes cluster (`infra/`). Pinecall Cloud is one; a self-hosted runtime is another |
-| **operator** | the person who runs a deployment: admits carriers, sets what a new org may use, holds the vendor keys the deployment lends |
+| **operator** | the person who runs a deployment: admits carriers, sets what a new org may use, holds the vendor keys the runtime lends |
 | **fleet** | the workers that answer one environment's calls, registered under one LiveKit agent name (`PINECALL_FLEET`). A sandbox call is only ever dispatched to the sandbox's fleet |
 | **scope** | the triple `(org, env, holder)` a request acts in: whose data, which environment, and which app socket holds the agent. Every endpoint resolves it from the key and the `pinecall-env` header. A key's *scopes* (`calls`, `numbers`, `team`…) are something else: what that key may open |
 | **endpoint** | one method and path of the gateway's HTTP API; [every-door.md](protocol/every-door.md) lists them all |
@@ -24,7 +24,7 @@
 | **relay** | the console asking a running app to do something — chat, render the view, run an eval — forwarded over the app socket and answered (`calls/endpoints/dev.py`) |
 | **visitor** | somebody in a browser: the room token that lets them into a call, and the four-digit code a caller keys to tie a page to a phone call (`calls/endpoints/visitors.py`) |
 | **thread** | one WhatsApp conversation with one contact: the gateway keeps it open (`calls/service/threads.py`) and the org reads it (`calls/endpoints/threads.py`) |
-| **keyring** | the vendor credentials a call may run on: the org's own, the deployment's, and what the deployment lends (`providers/service/keyring.py`) |
+| **keyring** | the vendor credentials a call may run on: the org's own, the deployment's, and what the runtime lends (`providers/service/keyring.py`) |
 | **golden** | a scripted conversation an agent is tested on: the state it opens in, the caller's lines, the facts injected, what is expected (`docs/protocol/evals.md`) |
 | **persona** | a synthetic caller a model plays one line at a time, with what it expects of the agent and how it acts on a spoken line: Pinecall's library (`judging/library/personas/`, switched per agent) or the agent's own |
 | **judge** | one question about a finished call that the judge model answers, citing the turns: `held`, `broken`, `deferred` or `skipped`; Pinecall's library (`judging/library/judges/`, switched per org and agent), or one an org writes for itself or for one agent |

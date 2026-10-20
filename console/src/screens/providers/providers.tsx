@@ -108,7 +108,7 @@ export function Providers(): ReactNode {
             {busy ? "Saving…" : "Save key"}
           </Button>
         </form>
-        <div className="prov-hint">A key you add is used for every call of this org from the next one, and takes the place of Pinecall's key for that vendor.</div>
+        <div className="prov-hint">A key you add is used for every call of this org from the next one, and takes the place of the runtime's key for that vendor.</div>
       </Card>
 
       <Refused>{refused}</Refused>

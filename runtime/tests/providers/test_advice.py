@@ -49,7 +49,7 @@ def test_what_the_host_lends_comes_before_the_orgs_own_key_and_a_key_to_bring_co
     """Lent by the host, the org runs it on nothing of its own; else on its own key; else it must bring one."""
     nothing_served = Served()
     lent = advise(configured(), Keyring(box={acme.ACME: "box-key"}, lends=None), nothing_served)
-    assert {one.runs_on for one in lent} == {"lent by the host"}
+    assert {one.runs_on for one in lent} == {"lent by the runtime"}
     assert stage_of(lent, "llm").choice == f"{acme.ACME}/{acme.MODEL}"
     not_lent = Keyring(box={acme.ACME: "box-key"}, own={acme.ACME: "own-key"}, lends=frozenset())
     assert {one.runs_on for one in advise(configured(), not_lent, nothing_served)} == {"your org's key"}

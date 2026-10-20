@@ -73,7 +73,7 @@ export function SettingsForm({
   fixed: ReadonlySet<string>;
   /** What the next call runs at each stage, where the class's value is read from; null while asked for. */
   running: { hears: Stage; decides: Stage; speaks: Stage; talks: Stage | null } | null;
-  /** The vendors this org runs on its own key; every other is lent by Pinecall. */
+  /** The vendors this org runs on its own key; every other is lent by the runtime. */
   own: ReadonlySet<string>;
   section: Section;
   onPickSection: (section: Section) => void;

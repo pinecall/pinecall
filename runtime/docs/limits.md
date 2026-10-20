@@ -1,5 +1,8 @@
 # Limits: what an org may use, and whose keys it runs on
 
+A runtime holds vendor keys and **lends** them to its orgs; an org may **bring** its own to pay its own
+vendors. A call runs on the org's key, else on a lent one, else is refused before it starts.
+
 ## Quotas, per environment
 
 An org has one set of limits in production and another in the sandbox: minutes, messages,
@@ -35,7 +38,7 @@ in both environments.
   to production ([protocol/studio.md](protocol/studio.md)): each is one hosted app. A later release
   of an app the org already has is never refused for it.
 - **Evals** (`evals`) are the judges that answered a call (held, broken or classified) on the
-  platform's key this month, a call's score and a judge tried on calls alike; a judge on the org's
+  runtime's key this month, a call's score and a judge tried on calls alike; a judge on the org's
   own key is never one. Past the limit a call still seals: the judges left are `skipped`, saying
   the month's evals are used up, and `credits.exhausted` lands once for that call.
 - **Simulations** (`simulations`) are the calls a simulated caller played this month: a persona's,
@@ -49,7 +52,7 @@ agent's log with the same numbers.
 
 ## What a new org is given
 
-What an org gets when it is made is the platform's `admission` setting (the console's Box settings ▸ Admission, `pinecall-runtime box admission`, or `PUT /v1/ops/admission`): the
+What an org gets when it is made is the runtime's `admission` setting (the console's Box settings ▸ Admission, `pinecall-runtime box admission`, or `PUT /v1/ops/admission`): the
 limits in each environment for a person's first org, and, when the platform gives one trial per person, the
 limits for any later org of the same address. A deployment with no such setting gives a new org no
 limits, which is what a self-hosted platform runs.
@@ -72,30 +75,30 @@ limits, which is what a self-hosted platform runs.
 
 ## Whose vendor keys a call runs on
 
-An org's own key for a vendor runs any model of that vendor, whatever the platform offers:
+An org's own key for a vendor runs any model of that vendor, whatever the runtime lends:
 
 ```bash
 pinecall providers add deepgram        # the org's own key, sealed; every Deepgram model is theirs to run
 ```
 
-Where an org brought no key, its calls run on the platform's, and only on what the org's `lends`
-says in that environment: **null** lends every key the platform holds, an **empty list** lends none, and
+Where an org brought no key, its calls run on the runtime's, and only on what the org's `lends`
+says in that environment: **null** lends every key the runtime holds, an **empty list** lends none, and
 otherwise each entry is a vendor (`deepgram`) or a vendor and a model prefix
 (`anthropic/claude-haiku-5-5`). A vendor nobody holds a key for is refused before the call
 opens. The operator sets it per org and environment with `pinecall-runtime orgs lends <org> --env
 <env> <list|all|none>`, which keeps the org's limits (`orgs quota` keeps its lends); a new org is
 born with what admission lends. The org reads it back in `GET /v1/limits` (`lends`): `pinecall
 limits`, the MCP's `usage`, the console's Overview and Providers say which vendors are its own and
-which the platform lends.
+which the runtime lends.
 
 A stage on a lent key runs as the operator configured it: the plugin's class and options are the
 providers row's alone. An agent that names its own (`builds`, `options`, from its class or its
 settings) runs that stage only on the org's own key, and is refused on a lent one — when the class
 registers, when the settings are set, and when a call's stages are handed out — naming the vendor
-and `pinecall providers add`. An option can point a plugin at another server; the platform's key
+and `pinecall providers add`. An option can point a plugin at another server; the runtime's key
 goes to the vendor and nowhere else.
 
-The **simulated caller** (its model and its voice) always runs on the platform's keys. The
+The **simulated caller** (its model and its voice) always runs on the runtime's keys. The
 **judge model** does too, the providers row's `judge`, unless the org names its own
 (`PUT /v1/org/judging`) or the agent does (its `judge`): a model on a key of the org's own, a
 local one among them, is the org's to pay and its evals are never billed; one on a key the
@@ -103,6 +106,6 @@ platform lends is lent as any stage is, by `lends`. A judge model the agent or t
 tried when it is saved, on the org's keys in every environment it would judge in, so a model nobody
 can key is refused there and never fails a hang-up. Neither the judge nor the caller spends the
 org's minutes or tokens; the org pays for them as **evals** (one judge that answered one call on the
-platform's key: `held`, `broken` or `classified`, never `na`) and **simulations** (one call a
+runtime's key: `held`, `broken` or `classified`, never `na`) and **simulations** (one call a
 simulated caller played), which `call.score`, `evals.spent` and `call.summary` carry and the usage
 feed counts ([charging-for-it.md](charging-for-it.md) §3), each held to its quota above.

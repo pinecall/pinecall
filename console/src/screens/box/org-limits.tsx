@@ -20,7 +20,7 @@ export const ABOUT: Record<Quota, { name: string; about: string }> = {
   numbers: { name: "Numbers", about: "Phone numbers bought through Pinecall" },
   seats: { name: "Seats", about: "People in the org, invited or active" },
   hosted_apps: { name: "Hosted apps", about: "Apps Pinecall runs for the org" },
-  evals: { name: "Evals", about: "Judge runs per month, on Pinecall's keys" },
+  evals: { name: "Evals", about: "Judge runs per month, on the runtime's keys" },
   simulations: { name: "Simulations", about: "Simulated test calls per month" },
   budget_usd: { name: "Budget, $", about: "Spend cap per month, both worlds" },
 };

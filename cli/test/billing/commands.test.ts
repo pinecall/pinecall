@@ -18,7 +18,7 @@ describe("pinecall limits", () => {
     expect(ran.out).toMatch(/simulations\s+0, no limit\n/);
     expect(ran.out).toMatch(/LLM tokens\s+20500\.5 of 1000000/);
     expect(ran.out).toMatch(/bought numbers\s+0 of 0\n/);
-    expect(ran.out).toContain("yours: anthropic · lent by the deployment: google, cartesia, deepgram");
+    expect(ran.out).toContain("yours: anthropic · lent by the runtime: google, cartesia, deepgram");
     expect(ran.out).not.toContain("more:");
   });
 
@@ -26,7 +26,7 @@ describe("pinecall limits", () => {
     answer("get", "/v1/limits", { ...LIMITS, lends: [], billing_url: "https://billing.pinecall.io/org" });
     answer("get", "/v1/provider-keys", { vendors: [] });
     const ran = await run(["limits"]);
-    expect(ran.out).toContain("yours: none · lent by the deployment: none, bring a key for every vendor");
+    expect(ran.out).toContain("yours: none · lent by the runtime: none, bring a key for every vendor");
     expect(ran.out).toContain("more: https://billing.pinecall.io/org");
   });
 

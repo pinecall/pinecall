@@ -38,7 +38,7 @@ export async function listProviderKeys(gw: GatewayClient): Promise<string[]> {
 export interface AdvisedStage {
   stage: Modality;
   choice: string;
-  /** `served here`, `lent by the host`, `your org's key` or `needs a key`. */
+  /** `served here`, `lent by the runtime`, `your org's key` or `needs a key`. */
   runs_on: string;
   /** The open models the host's server for this stage lists. */
   served: string[];

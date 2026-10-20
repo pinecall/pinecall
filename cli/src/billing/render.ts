@@ -24,12 +24,12 @@ export function meter(one: Limit): string {
   return one.limit === null ? `${used}, no limit` : `${used} of ${one.limit}`;
 }
 
-/** Whose keys a call runs on: the org's own, then what the deployment lends (null lends every key it holds). */
+/** Whose keys a call runs on: the org's own, then what the runtime lends (null lends every key it holds). */
 export function keysLine(brought: readonly string[], lends: readonly string[] | null): string {
   const yours = brought.length === 0 ? "yours: none" : `yours: ${[...brought].sort().join(", ")}`;
-  if (lends === null) return `${yours} · lent by the deployment: every vendor it holds a key for`;
-  if (lends.length === 0) return `${yours} · lent by the deployment: none, bring a key for every vendor`;
-  return `${yours} · lent by the deployment: ${lends.join(", ")}`;
+  if (lends === null) return `${yours} · lent by the runtime: every vendor it holds a key for`;
+  if (lends.length === 0) return `${yours} · lent by the runtime: none, bring a key for every vendor`;
+  return `${yours} · lent by the runtime: ${lends.join(", ")}`;
 }
 
 /** `1 Nov` from `2026-11-01`. */

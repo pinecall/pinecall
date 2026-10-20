@@ -25,7 +25,7 @@ export function Gives({ limits, world }: { limits: Limits | null; world: string 
         <div className="wel-fact">
           <strong>{lent ? "Nothing else to sign up for" : "Your own vendor keys"}</strong>
           <span>
-            {lent ? "The model, the speech recognition and the voice run on Pinecall's keys. You can use your own later, under " : "Your calls run on keys you add under "}
+            {lent ? "The model, the speech recognition and the voice run on the runtime's keys. You can use your own later, under " : "Your calls run on keys you add under "}
             <Link to="/providers">Providers</Link>.
           </span>
         </div>

@@ -40,7 +40,7 @@ export function StageSection({
   fixed?: { value: string | null } | undefined;
   /** What no vendor picked means, where it is not the runtime's default; no model is listed until one is. */
   unset?: string | undefined;
-  /** The vendors this org runs on its own key; every other is lent by Pinecall. */
+  /** The vendors this org runs on its own key; every other is lent by the runtime. */
   own: ReadonlySet<string>;
   children?: ReactNode;
   /** What most people never touch: folded away until asked for. */
@@ -70,7 +70,7 @@ export function StageSection({
   const options = known.includes(knob.model) || knob.model === "" ? known : [knob.model, ...known];
   const vendors: Pick[] = [
     { value: "", label: unset ?? "Runtime default", tag: unset === undefined ? runtimeDefault : undefined },
-    ...listed.map((one) => ({ value: one.name, label: one.name, mono: true, tag: !one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by Pinecall" })),
+    ...listed.map((one) => ({ value: one.name, label: one.name, mono: true, tag: !one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by the runtime" })),
   ];
   const picks: Pick[] = [
     { value: "", label: `${vendor}'s default`, tag: known[0] },

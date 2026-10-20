@@ -17,7 +17,7 @@ from pinecall_runtime.providers.service.plugins import installed
 
 # Whose key a stage would run on: an open model this host serves (none), one the host lends, the
 # org's own, or one the org has yet to bring.
-type RunsOn = Literal["served here", "lent by the host", "your org's key", "needs a key"]
+type RunsOn = Literal["served here", "lent by the runtime", "your org's key", "needs a key"]
 STAGES: tuple[Modality, ...] = ("stt", "llm", "tts")
 # Where a stage's server is said to be in the row: an OpenAI-compatible server lists its models.
 BASE_URL = "base_url"
@@ -76,7 +76,7 @@ def _stage(stage: Modality, catalog: Catalog, keys: Keyring, served: Served) -> 
     doing = _vendors_doing(stage, default)
     lent = [vendor for vendor in doing if vendor in keys.box and is_lent(keys.lends, vendor, None)]
     if lent:
-        return Advised(stage, _named(lent[0], stage, catalog), "lent by the host")
+        return Advised(stage, _named(lent[0], stage, catalog), "lent by the runtime")
     own = [vendor for vendor in doing if vendor in keys.own and _base_url(catalog, stage, vendor) is None]
     if own:
         return Advised(stage, _named(own[0], stage, catalog), "your org's key")

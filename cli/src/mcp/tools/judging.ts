@@ -68,7 +68,7 @@ export const usage = tool({
   description: "What the org has used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on, and whether its judges cost it evals.",
   schema: {},
   manual:
-    "`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals and simulations start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the deployment lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.",
+    "`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals and simulations start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the runtime lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.",
   handler: async (_args, ctx) => {
     const report = await billing.getLimits(ctx);
     const judgingNow = await service.getJudging(ctx);

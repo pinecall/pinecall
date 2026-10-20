@@ -1,4 +1,4 @@
-/** Admission: what a newborn org is given in each world — its limits, and the box's keys it may run on. */
+/** Admission: what a newborn org is given in each world — its limits, and the runtime's keys it may run on. */
 
 import { useCallback, useState, type ReactNode } from "react";
 

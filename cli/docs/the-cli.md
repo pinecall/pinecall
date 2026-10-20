@@ -1636,7 +1636,7 @@ the first (UTC); calls at once, agents, seats and bought numbers are what the or
 past a limit is a `429` naming it, and the agent's log gets `credits.exhausted`.
 
 The last line is **whose keys a call runs on**: the vendors the org brought keys for
-([`providers add`](#providers)), and the ones the deployment lends it. A vendor in neither refuses
+([`providers add`](#providers)), and the ones the runtime lends it. A vendor in neither refuses
 the call before it starts — bring a key for it.
 
 ```console
@@ -1651,7 +1651,7 @@ sandbox
   agents           1, no limit
   seats            2, no limit
   bought numbers   0 of 0
-  keys             yours: anthropic · lent by the deployment: google, cartesia, deepgram
+  keys             yours: anthropic · lent by the runtime: google, cartesia, deepgram
 ```
 
 The MCP's `usage` answers the same, keys included.

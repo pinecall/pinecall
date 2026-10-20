@@ -25,7 +25,7 @@ function standing(seconds: number, line: Monitor | undefined): "Healthy" | "Slow
 
 export function ProvidersCard({ vendors, monitors, agent }: { vendors: readonly SeriesVendor[]; monitors: readonly Monitor[]; agent: string }): ReactNode {
   const credentials = useCredentials();
-  // The vendors the org runs on its own key; every other is lent by Pinecall.
+  // The vendors the org runs on its own key; every other is lent by the runtime.
   const [own, setOwn] = useState<readonly string[]>([]);
   useEffect(() => {
     let gone = false;
@@ -50,7 +50,7 @@ export function ProvidersCard({ vendors, monitors, agent }: { vendors: readonly 
             <span className="obs-provider-stage">{one.name}</span>
             <span className="obs-provider-who">
               <span className="obs-provider-name">{at === null ? "—" : [at.vendor, at.model].filter((word) => word !== null).join(" · ")}</span>
-              {at !== null && <span className="obs-provider-key">{own.includes(at.vendor) ? "your key" : "lent by Pinecall"}</span>}
+              {at !== null && <span className="obs-provider-key">{own.includes(at.vendor) ? "your key" : "lent by the runtime"}</span>}
             </span>
             <span className="obs-provider-took">{at === null ? "—" : took(at.seconds)}</span>
             <span className={state === "Slow" ? "obs-provider-state obs-tone-amber" : "obs-provider-state obs-tone-green"}>

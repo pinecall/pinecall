@@ -14,7 +14,7 @@ on the first (UTC); the rest are what the org holds now. A bought number counts;
 imported from the org's own carrier account never does.
 
 The last line is whose keys a call runs on: the vendors the org brought keys for
-(`pinecall providers add`), and the ones the deployment lends it. A vendor in neither refuses the
+(`pinecall providers add`), and the ones the runtime lends it. A vendor in neither refuses the
 call before it starts — bring a key for it.
 
 Examples
@@ -25,5 +25,5 @@ Examples
     simulations     3, no limit
     bought numbers  0 of 0
     …
-    keys            yours: anthropic · lent by the deployment: google, cartesia, deepgram
+    keys            yours: anthropic · lent by the runtime: google, cartesia, deepgram
 

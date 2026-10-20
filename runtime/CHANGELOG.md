@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **One word for the keys an org did not bring: the runtime's.** `GET /v1/providers/advice` says
+  `runs_on: "lent by the runtime"` where it said `lent by the host`; the console, the CLI and the pages
+  say *the runtime's key*, where they said Pinecall's, the box's, the deployment's or the platform's.
 - **`pinecall-runtime setup --domain <name>`: a runtime on a server, in one verb.** On Linux with
   Docker and a name pointing at the machine, setup checks the name, puts Caddy in front with a
   certificate from Let's Encrypt it renews itself, starts LiveKit facing out with a key pair drawn for

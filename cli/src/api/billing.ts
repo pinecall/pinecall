@@ -19,7 +19,7 @@ export interface Limits {
   numbers: Limit;
   evals: Limit;
   simulations: Limit;
-  /** The vendors the deployment lends the org a key for; null lends every key it holds. */
+  /** The vendors the runtime lends the org a key for; null lends every key it holds. */
   lends: string[] | null;
   /** Where the org buys more, when the deployment sells plans. */
   billing_url: string | null;
