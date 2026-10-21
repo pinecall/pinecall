@@ -45,6 +45,8 @@ spec:
             {{- with .Values.turnstile.siteKey }}
             - name: PINECALL_TURNSTILE_SITE_KEY
               value: {{ . | quote }}
+            - name: PINECALL_TURNSTILE_SECRET
+              valueFrom: { secretKeyRef: { name: pinecall, key: PINECALL_TURNSTILE_SECRET } }
             {{- end }}
           ports: [{ name: http, containerPort: 8080 }]
           lifecycle:
