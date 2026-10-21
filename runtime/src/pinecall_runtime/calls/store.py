@@ -27,14 +27,22 @@ MOST_IN_A_BATCH = 256
 class Store:
     """The log tables on sessions the store opens and closes itself, one per read or write."""
 
-    def __init__(self, sessions: async_sessionmaker[AsyncSession], *, clock: Callable[[], float] = time.time) -> None:
+    def __init__(
+        self,
+        sessions: async_sessionmaker[AsyncSession],
+        *,
+        writing: async_sessionmaker[AsyncSession] | None = None,
+        clock: Callable[[], float] = time.time,
+    ) -> None:
         """Keep the sessions and the clock entries are stamped with; appends go through a writer."""
         self.sessions = sessions
         # ts is the runtime's clock, when it saw the event, never the database's.
         self.clock = clock
         # This process, as the holder of the seals it leases.
         self.lease_id = uuid4().hex
-        self.writer = Writer(sessions)
+        # The writer's own sessions when the process gave it a pool of its own (the gateway does,
+        # one connection per lane): an append then never waits on a request for a connection.
+        self.writer = Writer(writing or sessions)
 
     # ── appends ──
 

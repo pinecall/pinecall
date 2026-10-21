@@ -29,6 +29,7 @@ from pinecall_runtime.exceptions import (
 )
 from pinecall_runtime.kit.auth import Actor
 from pinecall_runtime.kit.text import Json, JsonObject
+from pinecall_runtime.postgres import DatabaseError, busy, is_cancellation
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire.base import Command, Entry, WireModel
@@ -65,6 +66,8 @@ STUDIOS = "{slug} is a Studio agent of this org: Studio holds it, so give your a
 KILLED = "killed"
 REFUSED = "refused"
 BAD_SHAPE = "bad_shape"
+# `error` code on a frame the database did not answer in time: the app sends it again.
+BUSY = "busy"
 NOT_JSON = "a frame is one JSON object: this one did not parse"
 DIAL = (
     "call.dial is not answered on the app socket: POST /v1/agents/{slug}/dial places a call, with the talk scope "
@@ -167,6 +170,15 @@ class AppSocket:
             await self.refuse(
                 command.agent, BAD_SHAPE if isinstance(refused, ValidationError) else REFUSED, str(refused), raw
             )
+        except DatabaseError as failed:
+            # The socket outlives a database that did not answer: closed, the app would reconnect
+            # and re-register its agents, and its calls would be parked and handed on for nothing;
+            # the frame is answered as busy and sent again (2026-10-21: a pool with no connection
+            # free cut an app's socket, and the entry it was sending was lost).
+            if is_cancellation(failed):
+                raise
+            logger.warning("app %s: %s was not applied, the database did not answer", self.id, command.type)
+            await self.refuse(command.agent, BUSY, str(busy()), raw)
 
     # What other gateways send this socket: a call they bound to it (served here and pumped down
     # it, from the seq they said), an entry for it (a console's dev.request), a stop, or a kill.
@@ -180,10 +192,20 @@ class AppSocket:
                 continue
             try:
                 async for data in listener:
-                    await self.hear(ForApp.model_validate_json(data))
+                    await self._heard(ForApp.model_validate_json(data))
             finally:
                 listener.close()
             await asyncio.sleep(INBOX_RETRY_S)
+
+    # A message the database did not answer (a binding read in a transaction) is logged and the
+    # inbox heard on: a task that died with it would leave the socket deaf for its whole life.
+    async def _heard(self, message: ForApp) -> None:
+        try:
+            await self.hear(message)
+        except DatabaseError as failed:
+            if is_cancellation(failed):
+                raise
+            logger.warning("app %s: a message of its inbox was not applied; the database did not answer", self.id)
 
     async def hear(self, message: ForApp) -> None:
         """One message of the inbox, applied."""

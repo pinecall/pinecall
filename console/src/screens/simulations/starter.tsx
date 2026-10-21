@@ -1,4 +1,4 @@
-/** Starting simulations: tick who calls, say how many calls each and how the line is (written, quiet or noisy), and run them — each one put on the agent and judged when it ends. */
+/** Starting simulations: tick who calls and say how the line is (written, quiet or noisy), and run them — each one put on the agent and judged when it ends. */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -7,7 +7,7 @@ import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { usd } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
-import { Chips, Icon, Input, Segmented, Select, SelectItem } from "../../ui";
+import { Icon, Input, Segmented, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
 import { PlayedBy, type Played } from "../personas/played-by";
 import { Callers, keyOf } from "./callers";
@@ -48,11 +48,9 @@ const LINES: readonly { value: Line; label: string }[] = [
   { value: "noisy", label: "Noisy" },
 ];
 
-const EACH: readonly { value: "1" | "3" | "5"; label: string }[] = [
-  { value: "1", label: "1" },
-  { value: "3", label: "3" },
-  { value: "5", label: "5" },
-];
+// The gateway holds an org to this many simulated calls on the line at once in a world: a run of
+// more starts these and says so, and the rest are started once one ends.
+const AT_ONCE = 3;
 
 /** What a call of these has cost and taken so far: the estimate under the button, read off the runs already made. */
 export interface Typical {
@@ -95,7 +93,6 @@ export function Starter({
 }): ReactNode {
   const credentials = useCredentials();
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const [each, setEach] = useState<"1" | "3" | "5">("1");
   // The screen is for listening: a spoken line unless somebody wants a written one.
   const [line, setLine] = useState<Line>("quiet");
   const [turns, setTurns] = useState(TURNS);
@@ -117,9 +114,12 @@ export function Starter({
     setPicked(new Set(personas.filter((one) => one.name === asked).map(keyOf)));
   }, [asked, personas]);
 
-  const chosen = (personas ?? []).filter((persona) => picked.has(keyOf(persona)));
-  const total = chosen.length * Number(each);
-  const hasOff = (personas ?? []).some((persona) => isPinecalls(persona) && !persona.on);
+  // A caller written for an agent no process holds cannot ring it: it is not offered.
+  const held = (personas ?? []).filter((persona) => isPinecalls(persona) || agents.includes(persona.agent));
+  const unheld = (personas ?? []).length - held.length;
+  const chosen = held.filter((persona) => picked.has(keyOf(persona)));
+  const total = chosen.length;
+  const hasOff = held.some((persona) => isPinecalls(persona) && !persona.on);
 
   const toggle = (persona: Persona): void => {
     const next = new Set(picked);
@@ -135,19 +135,17 @@ export function Starter({
     const calls: string[] = [];
     try {
       for (const persona of chosen) {
-        for (let at = 0; at < Number(each); at += 1) {
-          // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
-          calls.push(
-            await startSimulation(credentials, {
-              agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
-              persona: persona.name,
-              voice: spoken,
-              turns,
-              ...playedBy(played),
-              ...(line === "noisy" ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
-            }),
-          );
-        }
+        // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
+        calls.push(
+          await startSimulation(credentials, {
+            agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
+            persona: persona.name,
+            voice: spoken,
+            turns,
+            ...playedBy(played),
+            ...(line === "noisy" ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
+          }),
+        );
       }
     } catch (failed) {
       // What was refused is said, and what had started stays started: the screen carries on with those.
@@ -180,14 +178,15 @@ export function Starter({
         {agents.length === 0 && <p className="sim-note">No agent is running in this world: deploy one, or run pinecall start in its directory.</p>}
         {personas === null && asking !== null && <p className="sim-note">{asking}</p>}
         {personas !== null && personas.length === 0 && <p className="sim-note">No personas yet: write the first caller in Personas.</p>}
-        {personas !== null && personas.length > 0 && <Callers inView={inView} agents={agents} agent={agent} onAgent={onAgent} personas={personas} picked={picked} onPick={toggle} all={all} />}
+        {personas !== null && held.length > 0 && <Callers inView={inView} agents={agents} agent={agent} onAgent={onAgent} personas={held} picked={picked} onPick={toggle} all={all} />}
+        {unheld > 0 && (
+          <p className="sim-note">
+            {String(unheld)} {unheld === 1 ? "caller is" : "callers are"} written for an agent nobody runs right now, so {unheld === 1 ? "it is" : "they are"} not listed: deploy the agent, or run pinecall start in its directory.
+          </p>
+        )}
       </div>
 
       <div className="sim-options">
-        <div className="sim-option">
-          <span className="sim-label">Calls per persona</span>
-          <Chips options={EACH} value={each} onChange={setEach} />
-        </div>
         <div className="sim-option">
           <span className="sim-label">The line</span>
           <Segmented options={LINES} value={line} onChange={setLine} />
@@ -242,7 +241,7 @@ export function Starter({
         <span className="sim-foot-said">
           {total === 0
             ? "Tick who calls to run."
-            : [`${String(total)} ${total === 1 ? "call" : "calls"}`, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
+            : [`${String(total)} ${total === 1 ? "call" : "calls"}`, total > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
         </span>
         <button type="button" className="sim-run" disabled={calling || total === 0} onClick={() => void run()}>
           <Icon name="play" size={14} />

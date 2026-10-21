@@ -10,6 +10,7 @@ from typing import Never
 
 from livekit import rtc
 from livekit.agents import llm, tts
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import tokens
@@ -23,13 +24,15 @@ from pinecall_runtime.evals.schemas import NextLineRequest
 from pinecall_runtime.evals.service import playing, spoken
 from pinecall_runtime.evals.service.callers import Spending, heard_in, improvise_line
 from pinecall_runtime.evals.service.turns import NextLine, is_call_over
-from pinecall_runtime.exceptions import Conflict, PinecallError, QuotaExceeded, ServiceUnavailable
+from pinecall_runtime.exceptions import Conflict, PinecallError, QuotaExceeded, ServiceUnavailable, TooManyRequests
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.shared_state import SharedState
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.kit.time import epoch, today_in
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.redis import LocalSignal, Signal
 from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.dispatch import Dispatch
 
@@ -43,6 +46,27 @@ A_CALL_MAY_LAST_S = 15 * 60.0
 # A vendor that would not list its voices: the caller speaks in its plugin's own, the agent's too.
 NONE_LISTED = "%s listed no voice for a simulated caller to speak in: it speaks in the plugin's own"
 BROKE = "simulated call %s broke"
+
+# The calls a simulated caller may be on at once, per org and env, on every gateway of the box.
+# A simulation takes a seat of the fleet beside the real callers and a share of the gateway that
+# plays its caller: ten placed in one burst on 2026-10-21 saturated production's two workers and
+# sent five callers to the overflow.
+AT_ONCE = 3
+# The channel each gateway says its simulated calls on, and how often; a change is said at once.
+SIMULATING_CHANNEL = "simulating"
+SIMULATING_EVERY_S = 1.0
+_SIMULATING: TypeAdapter[dict[str, int]] = TypeAdapter(dict[str, int])
+TOO_MANY_AT_ONCE = "the org has {playing} simulated calls on the line in {env}, the most at once: wait for one to end"
+# How long a caller is told to wait before asking again: about a turn of a call.
+ASK_AGAIN_IN_S = 15
+
+
+class TooManyAtOnce(TooManyRequests):
+    """The org has AT_ONCE simulated calls on the line in the env already."""
+
+    def __init__(self, env: Env, playing: int) -> None:
+        """Say how many are on the line, and when to ask again."""
+        super().__init__(TOO_MANY_AT_ONCE.format(playing=playing, env=env.value), retry_after_s=ASK_AGAIN_IN_S)
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,35 +91,94 @@ class Placed:
     state: JsonObject = field(default_factory=dict[str, Json])
 
 
-class Simulations:
-    """The simulated calls this process plays after their endpoint answered; stopped with the process."""
+@dataclass(frozen=True, slots=True)
+class Playing:
+    """One simulated call on the line: whose it is, and its task when this process plays it apart."""
 
-    def __init__(self) -> None:
-        """Nothing playing."""
-        self.playing: dict[str, asyncio.Task[None]] = {}
+    scope: Scope
+    task: asyncio.Task[None] | None
+
+
+# Each gateway counts the calls it plays and says the count on the signal, as the calls at once
+# are counted: the count is exact from the moment a call is placed, before any worker opened it,
+# and a call never counts twice whichever gateway its worker reached.
+class Simulations:
+    """The simulated calls this process plays, and every gateway's count; stopped with the process."""
+
+    def __init__(self, signal: Signal | None = None) -> None:
+        """Nothing playing; the other gateways' counts heard on the signal."""
+        self.playing: dict[str, Playing] = {}
+        self.counted = SharedState(signal or LocalSignal(), SIMULATING_CHANNEL, _SIMULATING, {}, lambda: None)
+        self.counted.every_s = SIMULATING_EVERY_S
+        self.counted.gathered = self._playing_here
+
+    async def start(self) -> None:
+        """Hear the other gateways' counts, and say this one's."""
+        await self.counted.start()
 
     # The request's context goes with the task, so the call is played as the org that asked for it.
-    def play(self, call: str, played: Coroutine[object, object, object]) -> None:
+    def play(self, call: str, scope: Scope, played: Coroutine[object, object, object]) -> None:
         """Play the call on its own task, kept until it ends; a break is logged, never lost."""
 
         async def kept() -> None:
             await played
 
         task = asyncio.create_task(kept())
-        self.playing[call] = task
+        self.playing[call] = Playing(scope, task)
+        self._say()
         task.add_done_callback(lambda done: self._ended(call, done))
+
+    @asynccontextmanager
+    async def holding(self, call: str, scope: Scope) -> AsyncGenerator[None]:
+        """Count a call played inside the block, by the request that plays it."""
+        self.playing[call] = Playing(scope, None)
+        self._say()
+        try:
+            yield
+        finally:
+            self.playing.pop(call, None)
+            self._say()
+
+    def on_the_line(self, org: str, env: Env) -> int:
+        """How many of the org's simulated calls are on the line in the env, on every gateway."""
+        named = _named(org, env)
+        theirs = sum(heard.share.get(named, 0) for heard in self.counted.theirs.values())
+        return self._playing_here().get(named, 0) + theirs
 
     async def stop(self) -> None:
         """Stop every call still playing: each one's caller hangs up as its task is cancelled."""
-        playing = list(self.playing.values())
+        playing = [one.task for one in self.playing.values() if one.task is not None]
         for task in playing:
             task.cancel()
         await asyncio.gather(*playing, return_exceptions=True)
+        await self.counted.close()
 
     def _ended(self, call: str, done: asyncio.Task[None]) -> None:
         self.playing.pop(call, None)
+        self._say()
         if not done.cancelled() and done.exception() is not None:
             logger.error(BROKE, call, exc_info=done.exception())
+
+    def _playing_here(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for one in self.playing.values():
+            named = _named(one.scope.org, one.scope.env)
+            counts[named] = counts.get(named, 0) + 1
+        return counts
+
+    def _say(self) -> None:
+        self.counted.put(self._playing_here())
+
+
+def _named(org: str, env: Env) -> str:
+    return f"{org}|{env.value}"
+
+
+def admit_one_more(simulations: Simulations, scope: Scope) -> None:
+    """Admit one more simulated call of the org in the env; refused at AT_ONCE on the line."""
+    playing = simulations.on_the_line(scope.org, scope.env)
+    if playing >= AT_ONCE:
+        raise TooManyAtOnce(scope.env, playing)
 
 
 def calling_as(persona: judging.Persona) -> judging.CallerPersona:

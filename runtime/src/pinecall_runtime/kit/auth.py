@@ -15,6 +15,7 @@ from pinecall_runtime.enums import Env, KeyScope, Role
 from pinecall_runtime.exceptions import Forbidden, PinecallError, Unauthorized
 from pinecall_runtime.kit.handles import handles_of
 from pinecall_runtime.kit.websockets import refuse_socket
+from pinecall_runtime.postgres import busy, is_pool_timeout
 
 # The header a person's key names the env it acts in with; a server's key is its own env.
 ENV_HEADER = "pinecall-env"
@@ -117,8 +118,7 @@ class ActorMiddleware:
         request = HTTPConnection(scope, receive)
         sessions: async_sessionmaker[AsyncSession] = request.app.state.sessions
         try:
-            async with sessions() as session:
-                scope.setdefault("state", {})["actor"] = await self.resolve(request, session)
+            await self._resolve_into(scope, request, sessions)
         except PinecallError as refused:
             if scope["type"] == "websocket":
                 await refuse_socket(WebSocket(scope, receive, send), refused)
@@ -126,6 +126,19 @@ class ActorMiddleware:
                 await (await self.refuse(Request(scope, receive), refused))(scope, receive, send)
             return
         await self.app(scope, receive, send)
+
+    # The app's exception handlers never see a middleware's error: a pool with no connection free
+    # answered here would be uvicorn's 500 and a traceback, not the 503 every endpoint answers.
+    async def _resolve_into(
+        self, scope: ASGIScope, request: HTTPConnection, sessions: async_sessionmaker[AsyncSession]
+    ) -> None:
+        try:
+            async with sessions() as session:
+                scope.setdefault("state", {})["actor"] = await self.resolve(request, session)
+        except Exception as failed:
+            if is_pool_timeout(failed):
+                raise busy() from failed
+            raise
 
 
 class Authenticator:

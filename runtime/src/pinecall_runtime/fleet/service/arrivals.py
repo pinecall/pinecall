@@ -31,7 +31,7 @@ async def offer_arrival(offering: Offering, env: Env, event: WebhookEvent) -> st
     if not await rooms.left_alone(server, room):
         return None
     newest = _newest(await server.agent_dispatch.list_dispatch(room))
-    if newest is None or "/" in newest.agent_name or newest.state.jobs:
+    if newest is None or not names_a_fleet(newest.agent_name) or newest.state.jobs:
         return None
     dispatch = Dispatch.parse(newest.metadata).handed_in(event.participant.attributes)
     return await offering.offer(room, newest.agent_name, dispatch)
@@ -44,6 +44,14 @@ async def forget_settled(offering: Offering, event: WebhookEvent) -> None:
     agent_in = event.event == JOINED and event.participant.kind == ParticipantInfo.Kind.AGENT
     if event.room.name and (agent_in or event.event == FINISHED):
         await offering.forget(event.room.name)
+
+
+# LiveKit's own automatic dispatch names no agent (""): it goes to the workers registered with no
+# name, which none of ours is, and a room kept under it would be a room of no fleet (seen
+# 2026-10-21, on a simulated call's room once its agent left). A worker's name has the slash.
+def names_a_fleet(agent_name: str) -> bool:
+    """Whether a dispatch's agent name is a fleet's plain name, and so a call to place."""
+    return agent_name != "" and "/" not in agent_name
 
 
 def _a_person_may_be_alone(event: WebhookEvent) -> bool:

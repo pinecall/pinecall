@@ -1,4 +1,4 @@
-/** Hook that reads each finished call's `call.score` once. */
+/** Hook that reads each finished call's `call.score`, a few at a time, and keeps every one it read. */
 
 import { type CallScore } from "@pinecall/core/wire/events-call";
 import { type SessionLine } from "@pinecall/core/wire/rest";
@@ -12,6 +12,10 @@ import { isLive } from "@pinecall/core/calls";
 // Only the most recent ended calls are scored: one log read per call.
 const A_SCREENFUL = 20;
 
+// Reads in flight at once. Twenty at once, on every entry of the feed, took every connection of
+// the gateway's pool on 2026-10-21 and the console was answered 503.
+export const A_FEW = 4;
+
 /** A finished call with its score, or the read error. */
 export interface Scored {
   line: SessionLine;
@@ -21,36 +25,66 @@ export interface Scored {
   refused: string | null;
 }
 
-/** Scores for the ended calls among `lines`; each is read once and cached, since it never changes. */
+/** A score kept: what was read, and how far the log had got when it was read. */
+export interface Kept {
+  scored: Scored;
+  seq: number;
+}
+
+/**
+ * The rows of `ended` that want a read: never read, or read with no score while the log has
+ * moved since (the judges write the score after the call ends), and not already in flight.
+ */
+export function wanting(ended: readonly SessionLine[], held: ReadonlyMap<string, Kept>, inFlight: ReadonlySet<string>): SessionLine[] {
+  return ended.filter((line) => {
+    if (inFlight.has(line.call)) return false;
+    // A list that says the call has no score yet is believed: the read would find none.
+    if (line.score === null) return false;
+    const kept = held.get(line.call);
+    return kept === undefined || (kept.scored.score === null && line.last_seq > kept.seq);
+  });
+}
+
+/** Run `read` over `lines`, `few` at a time, `kept` told of each as it lands. */
+export async function aFewAtATime(lines: readonly SessionLine[], few: number, read: (line: SessionLine) => Promise<Scored>, kept: (line: SessionLine, scored: Scored) => void): Promise<void> {
+  const queue = [...lines];
+  const lane = async (): Promise<void> => {
+    for (let line = queue.shift(); line !== undefined; line = queue.shift()) kept(line, await read(line));
+  };
+  await Promise.all(Array.from({ length: Math.min(few, queue.length) }, lane));
+}
+
+/** Scores for the ended calls among `lines`; each is kept as it lands, and read again only while it has none. */
 export function useScores(lines: SessionLine[]): Scored[] {
   const credentials = useCredentials();
-  const held = useRef<Map<string, Scored>>(new Map());
-  const [scored, setScored] = useState<ReadonlyMap<string, Scored>>(held.current);
+  const held = useRef<Map<string, Kept>>(new Map());
+  const inFlight = useRef<Set<string>>(new Set());
+  const [scored, setScored] = useState<ReadonlyMap<string, Kept>>(held.current);
   const ended = lines.filter((line) => !isLive(line)).slice(0, A_SCREENFUL);
   // Keyed on content, not array identity: `lines` is a new array on every poll.
   const wanted = ended.map((line) => `${line.call}@${line.last_seq}`).join(" ");
 
   useEffect(() => {
-    let stopped = false;
-    const unread = ended.filter((line) => !held.current.has(line.call));
-
-    void (async () => {
-      const rows = await Promise.all(unread.map((line) => scoreOf(credentials, line)));
-      if (stopped || rows.length === 0) {
-        return;
-      }
-      for (const row of rows) {
-        held.current.set(row.line.call, row);
-      }
-      setScored(new Map(held.current));
-    })();
-
+    let gone = false;
+    const asked = wanting(ended, held.current, inFlight.current);
+    for (const line of asked) inFlight.current.add(line.call);
+    // A read outlasts the effect that started it: what lands is kept, whatever the list says now.
+    void aFewAtATime(
+      asked,
+      A_FEW,
+      (line) => scoreOf(credentials, line),
+      (line, row) => {
+        inFlight.current.delete(line.call);
+        held.current.set(line.call, { scored: row, seq: line.last_seq });
+        if (!gone) setScored(new Map(held.current));
+      },
+    );
     return () => {
-      stopped = true;
+      gone = true;
     };
   }, [wanted, credentials]);
 
-  return ended.map((line) => scored.get(line.call) ?? unread(line));
+  return ended.map((line) => scored.get(line.call)?.scored ?? unread(line));
 }
 
 // Errors stay per row so one unreadable entry doesn't fail the whole list.

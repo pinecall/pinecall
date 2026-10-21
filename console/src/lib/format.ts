@@ -100,6 +100,11 @@ export function webVisitor(id: string): string {
   return `Web visitor · ${id}`;
 }
 
+/** "Simulation · 3f7d": a simulated call named by its call id, as a web visitor is. */
+export function simulationOf(call: string): string {
+  return `Simulation · ${visitorId(call) ?? call}`;
+}
+
 /** Label for a web visitor address, or null for any other address. */
 export function visitorOf(address: string | null | undefined): string | null {
   const id = visitorId(address);

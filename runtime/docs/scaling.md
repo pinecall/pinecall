@@ -271,7 +271,11 @@ the room goes to the fleet's overflow (`<fleet>/overflow`, below): the caller he
 a call back is written. A fleet none of whose workers was heard in 12 s is one a gateway that just
 started knows nothing of yet (the next heartbeats, five seconds, tell it): its room waits for the
 next sweep, for up to 12 s from the caller's arrival, and only then goes to the overflow. Any gateway sweeps the rooms every 3 s; an offer is taken by the update that finds the
-count it read, so two gateways never offer one room twice. `fleet list` says each fleet's rooms
+count it read, so two gateways never offer one room twice. A dispatch that names no agent is
+LiveKit's own automatic one, to the workers registered with no name, which none of ours is: the
+gateway reads no call off it. A room kept under a fleet that is no environment's (the operator
+renamed the fleet between the arrival and the sweep) is let go at its next offer, with one line in
+the journal, not swept until it ages out. `fleet list` says each fleet's rooms
 waiting for a worker in the last ten minutes, and `/metrics` as `pinecall_fleet{what="waiting"}`:
 a number that is not 0 is a call that LiveKit or a worker dropped. Each offer is a line in the
 gateway's journal, `room <call>: offered to <fleet>/<worker>: 3 seats free, heard 2 s ago`, so

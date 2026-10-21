@@ -2,8 +2,11 @@
 
 import { type SessionLine } from "@pinecall/core/wire/rest";
 
-import { byDay, isLive, prettyNumber, wantsAPerson, type CallDay } from "@pinecall/core/calls";
-import { duration, lettersFor, utcDay, visitorOf } from "../../lib/format";
+import { byDay, isLive, isSimulated, prettyNumber, wantsAPerson, type CallDay } from "@pinecall/core/calls";
+import { duration, lettersFor, simulationOf, utcDay, visitorOf } from "../../lib/format";
+
+/** How a simulated call's row says who was on it. */
+export const A_SIMULATED_CALL = "simulated caller";
 
 /** One person's calls with this agent, newest first. */
 export interface Thread {
@@ -22,11 +25,18 @@ function addressOf(line: SessionLine): string | null {
   return line.direction === "outbound" ? line.to : line.from;
 }
 
+// Every simulation comes from the one simulated caller: grouped by address, six run this morning
+// would be one thread showing the last. Each is a conversation of its own, keyed by its call.
+function contactOf(line: SessionLine): string {
+  if (isSimulated(line)) return line.call;
+  return line.caller?.id ?? line.caller?.phone ?? addressOf(line) ?? line.call;
+}
+
 /** The calls grouped by who was on them, the thread with the newest call first. */
 export function threadsOf(lines: readonly SessionLine[]): Thread[] {
   const found = new Map<string, Thread>();
   for (const line of lines) {
-    const contact = line.caller?.id ?? line.caller?.phone ?? addressOf(line) ?? line.call;
+    const contact = contactOf(line);
     const standing = found.get(contact);
     if (standing === undefined) {
       found.set(contact, { contact, name: line.caller?.name ?? null, handle: handleOf(line), lines: [line], latest: line });
@@ -58,6 +68,7 @@ export function threadDays(threads: readonly Thread[]): CallDay<Thread>[] {
 }
 
 function handleOf(line: SessionLine): string {
+  if (isSimulated(line)) return A_SIMULATED_CALL;
   const address = addressOf(line);
   if (address === null) return line.channel === "web" ? "web visitor" : "—";
   if (address.startsWith("+")) return prettyNumber(address);
@@ -67,12 +78,14 @@ function handleOf(line: SessionLine): string {
 /** What a thread is called: its name, its number, or the web visitor as the Calls list names them. */
 export function titleOf(thread: Thread): string {
   if (thread.name !== null && thread.name !== "") return thread.name;
+  if (thread.handle === A_SIMULATED_CALL) return simulationOf(thread.contact);
   if (thread.contact.startsWith("+")) return prettyNumber(thread.contact);
   return visitorOf(thread.contact) ?? thread.contact;
 }
 
-/** Two letters for a person, one for a web visitor, a number's last two digits for a number nobody named. */
+/** Two letters for a person, one for a web visitor or a simulation, a number's last two digits for a number nobody named. */
 export function lettersOf(thread: Thread): string | undefined {
+  if (thread.handle === A_SIMULATED_CALL) return "S";
   return lettersFor(thread.name, thread.handle === "web visitor" ? "web" : thread.contact);
 }
 

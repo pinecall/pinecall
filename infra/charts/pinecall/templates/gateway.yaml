@@ -28,6 +28,8 @@ spec:
             {{- include "pinecall.livekits" . | nindent 12 }}
             - name: PINECALL_GATEWAY_LISTEN
               value: 0.0.0.0:8080
+            - name: PINECALL_DB_POOL
+              value: {{ .Values.gateway.dbPool | quote }}
             - name: PINECALL_TRUSTED_PROXIES
               value: {{ .Values.gateway.trustedProxies | quote }}
             - name: PINECALL_METRICS_FROM

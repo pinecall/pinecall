@@ -57,5 +57,7 @@ media:
   nodeNetwork: 10.120.0.0/22
 gateway:
   podNetwork: 10.121.0.0/16
+  # Postgres connections per gateway: 2 for the log writer, the rest for the endpoints (the chart's default is 10).
+  dbPool: 20
   # Google's load balancer's ranges, and its own address (modules/edge's ingress_address).
   trustedProxies: 35.191.0.0/16,130.211.0.0/22,203.0.113.1/32

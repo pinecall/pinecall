@@ -57,6 +57,10 @@ media:
 
 gateway:
   replicas: 2
+  # The Postgres connections each gateway holds (PINECALL_DB_POOL, docs/the-environment.md): two
+  # are its log writer's, the rest its endpoints'. Every gateway's share must fit the database's
+  # max_connections (100 unless charts/postgres is told otherwise) beside the migrations and the retention.
+  dbPool: 10
   # The load balancer's addresses, the only X-Forwarded-For believed (comma-separated CIDRs: on
   # Google Cloud, 35.191.0.0/16,130.211.0.0/22 and the ingress's own address). Unset, none is, and
   # every request is counted by the address that reached the pod.

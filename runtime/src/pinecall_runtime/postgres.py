@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy import Connection, event, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -21,6 +22,7 @@ from sqlalchemy.orm import SessionTransaction
 from sqlalchemy.pool import QueuePool
 
 from pinecall_runtime.config import Settings
+from pinecall_runtime.exceptions import ServiceUnavailable
 
 # Row-level security (migration 0096): a transaction that names an org sees and writes that org's
 # rows alone; one that names none is the box's, as the operator's endpoints and the loops are. The
@@ -40,6 +42,20 @@ POOL_WAIT_S = 2.0
 # The one name an endpoint catches of the database's: a scrape or a health line that must still
 # answer when Postgres does not.
 DatabaseError = SQLAlchemyError
+
+# What a request is told when every connection was taken for POOL_WAIT_S: the same sentence from
+# an endpoint, the middleware that resolves its actor, and an app's socket. A worker retries a 503.
+NO_CONNECTION = "the database is busy: no connection came free within {wait:g} s; try again"
+
+
+def busy() -> ServiceUnavailable:
+    """The refusal of a request that found no connection free in time."""
+    return ServiceUnavailable(NO_CONNECTION.format(wait=POOL_WAIT_S))
+
+
+def is_pool_timeout(error: BaseException) -> bool:
+    """Whether a database error is the pool's: every connection taken for POOL_WAIT_S."""
+    return isinstance(error, PoolTimeout)
 
 
 # A task cancelled while it waits on Postgres gets its CancelledError back wrapped in the driver's
@@ -82,10 +98,13 @@ def create_engine(settings: Settings, *, pool_size: int | None = None) -> AsyncE
     return engine
 
 
+# The listener is the class's, so a process with two engines (the endpoints', the log writer's)
+# registers it once: twice would name the org twice a transaction.
 def session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """Sessions on the engine: no autoflush surprises, objects usable after commit."""
     maker = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
-    event.listen(SyncSession, "after_begin", _scope_transaction)
+    if not event.contains(SyncSession, "after_begin", _scope_transaction):
+        event.listen(SyncSession, "after_begin", _scope_transaction)
     return maker
 
 

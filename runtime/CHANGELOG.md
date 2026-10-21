@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **An org has at most three simulated calls on the line at once in each environment.** Counted on
+  every gateway together, from the moment a simulation is placed until its caller hangs up:
+  `POST /v1/simulations` and `POST /v1/evals/voice` refuse the fourth `429` with `Retry-After`.
+  Ten placed in one burst on 2026-10-21 saturated production's two workers, sent five callers
+  to the overflow and took the gateways' Postgres pool. `docs/limits.md` says the rule.
+- **The log writer has Postgres connections of its own.** `PINECALL_DB_POOL` is now two pools,
+  as `docs/the-environment.md` always said: one connection per lane for the writer, the rest
+  for the endpoints, so an append never waits on a request for a connection and a request never
+  waits on an append. The chart's `gateway.dbPool` sets it (10 unless set).
+- **A pool with no connection free is a `503` everywhere, and an app's socket outlives it.** The
+  middleware that resolves a request's key answered uvicorn's 500 and a traceback when the pool
+  was out; it answers the same `503` every endpoint does. An app's socket closed on the frame the
+  database did not answer, and the entry it carried was lost: the frame is answered as `error`
+  `busy`, recoverable, and the socket stays; a message of its inbox that failed the same way is
+  logged, and the inbox heard on.
+- **A room kept under a fleet of no environment's is let go at once.** LiveKit's own automatic
+  dispatch names no agent; read as a fleet's plain name, it kept a simulated call's room once its
+  agent left, and two gateways warned of it eighty times before it aged out. Such a dispatch is
+  nobody's now, and a room whose fleet is no environment's is forgotten at its next offer with one
+  line in the journal.
 - **A tool chain never says the same sentence twice.** A model that chains tools in one answer
   wrote its line again in each round ("Let me note that down." before one tool, then before the
   next). The words that open a round are held while they could still be a sentence the agent said

@@ -6,6 +6,14 @@ import { type State } from "./wire/state.js";
 /** Placeholder for a missing value. */
 export const NOTHING = "—";
 
+/** The address every simulated call comes from (the runtime's `A_SIMULATED_CALLER`). */
+export const A_SIMULATED_CALLER = "simulated_caller";
+
+/** A call a model played the caller of: a simulation, never a person. */
+export function isSimulated(line: Pick<SessionLine, "from">): boolean {
+  return line.from === A_SIMULATED_CALLER;
+}
+
 /** Ringing, dialling or connected. */
 export function isLive(line: Pick<SessionLine, "status">): boolean {
   return line.status !== "ended";

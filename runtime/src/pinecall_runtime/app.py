@@ -22,6 +22,7 @@ from pinecall_runtime.agents.service.prompts import PromptCache
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.tasks import reap_forever
+from pinecall_runtime.calls.writer import LANES
 from pinecall_runtime.config import Settings, load_settings
 from pinecall_runtime.evals import service as evals
 from pinecall_runtime.exceptions import (
@@ -39,7 +40,7 @@ from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.middleware import AllowedOrigins, BodyCeiling
 from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.livekit import key_pair, open_servers
-from pinecall_runtime.postgres import POOL_WAIT_S, STATEMENT_TIMEOUT_MS, box_task, create_engine, session_maker
+from pinecall_runtime.postgres import STATEMENT_TIMEOUT_MS, box_task, busy, create_engine, session_maker
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.redis import open_signal
 from pinecall_runtime.studio import service as studio
@@ -50,8 +51,8 @@ logger = logging.getLogger(__name__)
 NO_SIGNING = "PINECALL_TOKEN_KEY: the gateway signs its log and code tokens with it"
 NO_EMBEDDER = "the gateway starts with no embedder: %s"
 NO_BOX_MAIL = "PINECALL_SMTP_URL does not read (%s): the box sends no email of its own"
-# The two ways a database too busy to answer now shows; a worker outlasts a 503 and retries.
-NO_CONNECTION = "the database is busy: no connection came free within {wait:g} s; try again"
+# The second way a database too busy to answer now shows (the first is the pool's, `busy`); a
+# worker outlasts a 503 and retries.
 TOO_SLOW = "the database took more than {took:g} s to answer; try again"
 QUERY_CANCELED = "57014"
 INTERNAL = "the gateway failed to answer this request"
@@ -86,14 +87,19 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         raise ConfigurationError(NO_SIGNING)
     livekit_key, livekit_secret = key_pair(settings)
     vault = Vault(None if settings.vault_key is None else settings.vault_key.get_secret_value())
-    engine = create_engine(settings)
+    # Two pools of the one PINECALL_DB_POOL: the log writer's own, one connection per lane, so an
+    # append never waits for an endpoint and an endpoint never waits for an append; the rest the
+    # endpoints and the loops share.
+    engine = create_engine(settings, pool_size=settings.db_pool - len(LANES))
     stack.push_async_callback(engine.dispose)
+    writing = create_engine(settings, pool_size=len(LANES))
+    stack.push_async_callback(writing.dispose)
     sessions = session_maker(engine)
     http = await stack.enter_async_context(httpx.AsyncClient())
     servers = await stack.enter_async_context(open_servers(settings))
     signal = await stack.enter_async_context(open_signal(settings))
     handles = Handles(settings, vault, http, servers, signal, sessions)
-    logs = calls.Logs(calls.Store(sessions), signal)
+    logs = calls.Logs(calls.Store(sessions, writing=session_maker(writing)), signal)
     # Pushed before everything that appends on its way out, so it runs after them and before the
     # engine closes: every append a request was promised is written.
     stack.push_async_callback(logs.store.writer.drain)
@@ -129,7 +135,8 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     outbox = mail.Outbox(sessions, vault, _box_mailbox(settings))
     stack.push_async_callback(outbox.drain)
     # Pushed after the wiring, so the calls stop before the logs and the engine close under them.
-    simulations = evals.Simulations()
+    simulations = evals.Simulations(signal)
+    await simulations.start()
     stack.push_async_callback(simulations.stop)
     runner = evals.Runner(sessions)
     stack.push_async_callback(runner.stop)
@@ -188,7 +195,7 @@ async def answer_refusal(_request: Request, error: Exception) -> Response:
 async def answer_busy(request: Request, error: Exception) -> Response:
     """A full pool or a statement past its timeout, answered 503 with its one sentence."""
     if isinstance(error, PoolTimeout):
-        return await answer_refusal(request, ServiceUnavailable(NO_CONNECTION.format(wait=POOL_WAIT_S)))
+        return await answer_refusal(request, busy())
     if isinstance(error, DBAPIError) and getattr(error.orig, "sqlstate", None) == QUERY_CANCELED:
         return await answer_refusal(request, ServiceUnavailable(TOO_SLOW.format(took=STATEMENT_TIMEOUT_MS / 1000)))
     logger.error("the database refused a request", exc_info=error)

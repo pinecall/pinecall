@@ -11,8 +11,11 @@ from pinecall_runtime.evals.service.runs import (
     put_run,
 )
 from pinecall_runtime.evals.service.simulations import (
+    AT_ONCE,
     Placed,
     Simulations,
+    TooManyAtOnce,
+    admit_one_more,
     admit_simulation,
     caller_model,
     caller_voice,
@@ -26,12 +29,15 @@ from pinecall_runtime.evals.service.spoken import Line, described, line_of
 from pinecall_runtime.evals.service.suites import start_suite
 
 __all__ = [
+    "AT_ONCE",
     "Line",
     "Placed",
     "Played",
     "Runner",
     "Simulations",
     "Spending",
+    "TooManyAtOnce",
+    "admit_one_more",
     "admit_simulation",
     "caller_model",
     "caller_voice",

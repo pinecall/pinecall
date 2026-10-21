@@ -44,7 +44,14 @@ in both environments.
 - **Simulations** (`simulations`) are the calls a simulated caller played this month: a persona's,
   a spoken golden's. One past the limit is refused before it opens, and a run that reaches it
   stops where it is. A simulated call never counts minutes, and neither does a call an eval run
-  opened.
+  opened. Besides the month's count, **an org has at most three simulated calls on the line at
+  once in each environment**, on every gateway of the platform together: a simulation takes a
+  seat of the fleet beside the real callers and a share of the gateway that plays its caller, and
+  ten placed in one burst saturated a fleet of two workers and sent five callers to the overflow.
+  The fourth is refused `429` with `Retry-After` (`the org has 3 simulated calls on the line in
+  sandbox, the most at once: wait for one to end`), counted from the moment a simulation is
+  placed until its caller hangs up; the console's Simulations starts what it can and says so. A
+  simulated call the worker opens is a call like any other to `concurrent_calls`.
 
 A refusal is a `429` whose sentence names the quota, what was used and the limit
 (`the org has used 30 of its 30 minutes in the sandbox`), and `credits.exhausted` lands in the

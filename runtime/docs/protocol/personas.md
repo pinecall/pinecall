@@ -55,7 +55,9 @@ the caller of the `ambience` it names: a `television` (a voice read in the calle
 (chatter over a room), an `office` (a hum), a `street` (traffic swelling and fading), each the
 same sound every run. What can be refused is refused before the answer: a persona neither the agent
 nor Pinecall has by that name, or nobody holding the agent in the key's world and scope, `404`; the
-org's limits as on a call, `simulations` among them. The answer is `{call, voice}` at once,
+org's limits as on a call, `simulations` among them, and the org's simulated calls already on the
+line in the world — three at most, on every gateway together, `429` with `Retry-After` for the
+fourth ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
 call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any call.
 `played_by` `{llm?, tts?, voice?}` plays the caller on another model, voice vendor or voice for this

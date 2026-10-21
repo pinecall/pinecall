@@ -76,14 +76,19 @@ class Offering:
             Offer(room=room, fleet=fleet, dispatch=carried, seen_at=now, worker=None, offers=0)
         )
 
+    # A fleet no env's calls go to (the operator renamed it, or the room was kept by a dispatch
+    # that names no fleet) has no LiveKit to hold the room and no worker to take it: kept, the room
+    # would be swept every few seconds until it aged out, saying so each time (2026-10-21: one
+    # room, two gateways, eighty warnings).
     async def offer_again(self, offer: Offer) -> str | None:
         """Offer the room to the worker it should go to now; the name, or None if not offered."""
         now = time.time()
         async with self.sessions.begin() as session:
             env = envs.env_of_fleet(await envs.fleets(session), offer.fleet)
             if env is None:
+                await OfferRepository(session).forget(offer.room)
                 logger.warning(
-                    "room %s: fleet %s is no env's, so no LiveKit holds its room; not offered", offer.room, offer.fleet
+                    "room %s: fleet %r is no env's, so no LiveKit holds its room; let go", offer.room, offer.fleet
                 )
                 return None
             target = await self._target(session, offer, now)

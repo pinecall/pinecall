@@ -40,6 +40,19 @@ def mine(rows: Sequence[Positioned], *calls: str) -> list[Positioned]:
     return [row for row in rows if row.entry.call in calls]
 
 
+# ── the writer's sessions ──
+
+
+def test_the_writer_writes_on_the_sessions_of_its_own_when_it_is_given_them(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    """The gateway gives it a pool of its own, so an append never waits on a request for a connection."""
+    shared = Store(sessions)
+    assert shared.writer.sessions is sessions
+    apart = async_sessionmaker(sessions.kw["bind"])
+    assert Store(sessions, writing=apart).writer.sessions is apart
+
+
 # ── seqs ──
 
 
