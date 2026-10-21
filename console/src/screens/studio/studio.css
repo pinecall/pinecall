@@ -522,3 +522,96 @@
   line-height: 1.45;
   color: var(--ink-4);
 }
+
+/* ── a new agent: one name, in a dialog over the screen ── */
+
+.sto-new-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16vh 16px 16px;
+  background: var(--scrim);
+}
+
+.sto-new {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 440px;
+  max-width: 100%;
+  padding: 24px;
+  border: 1px solid var(--line-control);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--accent-soft), transparent 120px), var(--ground);
+  box-shadow: var(--shadow-pop);
+}
+
+.sto-new-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.sto-new-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.sto-new-words {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sto-new-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.sto-new-said {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.sto-new-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sto-new-field .ui-label {
+  margin: 0;
+}
+
+.sto-new-hint {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+.sto-new-wrong {
+  color: var(--red);
+}
+
+.sto-new-field .ui-input[aria-invalid="true"] {
+  border-color: var(--red-line);
+}
+
+.sto-new-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
