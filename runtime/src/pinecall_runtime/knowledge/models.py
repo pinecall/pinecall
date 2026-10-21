@@ -108,4 +108,4 @@ class KnowledgeChunk(Model):
     # The base's, on every chunk: each language's partial BM25 index reads its own rows.
     language: Mapped[str] = mapped_column(Text, nullable=False)
     # `text`, a piece of the file; `ask`, a question the piece at the same ordinal answers.
-    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False, default="text")
