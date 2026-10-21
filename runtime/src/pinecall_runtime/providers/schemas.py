@@ -123,6 +123,9 @@ class Catalog(Schema):
     defaults: dict[Modality, Stage]
     # `tts/elevenlabs`: the model a vendor named alone runs, where the plugin's own is not.
     models: dict[str, str] = Field(default_factory=dict[str, str])
+    # `stt/cartesia`: the models a picker offers of a vendor for a stage, beside the one `models` names;
+    # `providers models <file> --apply` writes them from the models file, `setup` the ones the package ships.
+    offered: dict[str, tuple[str, ...]] = Field(default_factory=dict[str, tuple[str, ...]])
     # `cartesia/es`: the voice an agent that names none speaks with.
     voices: dict[str, str] = Field(default_factory=dict[str, str])
     # `cartesia/es`: the voices a picker offers, where the vendor's plugin lists none of its own.

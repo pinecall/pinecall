@@ -28,7 +28,9 @@ def row_of(choices: Choices) -> providers.Catalog:
     rates.update(shipped["rates"])
     for model in choices.local_models:
         rates.setdefault(model, dict(shipped["rates"][_llm_model(choices)]))
-    row: dict[str, object] = {"rates": rates, "embedding": shipped["embedding"]}
+    # The models the package ships of each vendor, so a picker offers them from the first.
+    offered = {named: list(models) for named, models in list_models().items()}
+    row: dict[str, object] = {"rates": rates, "offered": offered, "embedding": shipped["embedding"]}
     defaults: dict[str, dict[str, str]] = {}
     tuning: dict[str, dict[str, object]] = {}
     for stage, choice in (("stt", choices.stt), ("llm", choices.llm), ("tts", choices.tts)):
@@ -63,6 +65,12 @@ def list_prices() -> dict[str, providers.Rate]:
     """The vendors' list prices the package ships (`local/prices.csv`), by model."""
     text = files("pinecall_runtime.cli").joinpath("local", "prices.csv").read_text(encoding="utf-8")
     return providers.rates_from_csv(text)
+
+
+def list_models() -> dict[str, tuple[str, ...]]:
+    """The vendors' models the package ships (`local/models.csv`), by stage and vendor."""
+    text = files("pinecall_runtime.cli").joinpath("local", "models.csv").read_text(encoding="utf-8")
+    return providers.offered_from_csv(text)
 
 
 # The shipped row names the thinking and the ears by placeholders: the choices' own models go in.

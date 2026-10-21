@@ -44,6 +44,7 @@ SHIPPED = (
     "providers.local.json",
     "prices.csv",
     "prices.LICENSE",
+    "models.csv",
 )
 SERVICES = ("postgres", "redis", "livekit")
 GATEWAY_URL = "http://127.0.0.1:8080"

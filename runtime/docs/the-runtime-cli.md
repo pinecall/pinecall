@@ -402,7 +402,9 @@ runs and whether the platform holds its key; `providers seed <file>` writes the 
 starts from, once: after it, the console edits it at `/v1/ops/providers`. `providers prices
 <file.csv> [--apply]` says what a prices file changes in the row's rates (new, changed, the same,
 and the models only the platform holds, which it keeps) and writes nothing until `--apply`; the
-package ships `cli/local/prices.csv`. `facts rebuild [--call <call>] [--org <org id>] [--since
+package ships `cli/local/prices.csv`. `providers models <file.csv> [--apply]` the same for what a
+picker offers of each vendor by stage (`vendor,stage,model,name,as_of,source`, written by `voicedex
+models`); the package ships `cli/local/models.csv`, which `setup` writes into the row. `facts rebuild [--call <call>] [--org <org id>] [--since
 YYYY-MM-DD]` folds each call's facts row (what the lists, the inbox and the insights read) again
 from its log — for a sealed call, the line a list shows of it too, which the seal writes and a list
 reads instead of folding the log — every call's when no flag is given, and writes the row where it

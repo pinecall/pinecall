@@ -112,6 +112,35 @@ async def providers_prices(
     return OK
 
 
+# Shown by default, as prices is: a file written by mistake replaces what the console set.
+@app.command("models")
+@verb
+async def providers_models(
+    ctx: typer.Context,
+    file: Annotated[Path, typer.Argument(help="A CSV: vendor,stage,model,name,as_of,source.")],
+    apply: Annotated[bool, typer.Option("--apply", help="Write them into the box's row.")] = False,
+) -> int:
+    """What a models file changes in what the box offers of each vendor, and with --apply, the models written."""
+    context = context_of(ctx)
+    written = providers.offered_from_csv(file.read_text(encoding="utf-8"))
+    async with context.sessions.begin() as session:
+        catalog = await providers.get_catalog(session)
+        change = providers.offered_changed(catalog.offered, written)
+        if apply:
+            await providers.put_catalog(session, catalog.model_copy(update={"offered": {**catalog.offered, **written}}))
+    if context.out.as_json:
+        context.out.data({"change": change, "written": apply})
+        return OK
+    for mark, named in (("+", change.added), ("~", change.changed)):
+        context.out.lines([f"{mark} {one}" for one in named])
+    context.out.line(
+        f"{len(change.added)} new, {len(change.changed)} changed, {len(change.unchanged)} the same, "
+        f"{len(change.only_on_the_box)} only on the box and kept"
+    )
+    context.out.line("written" if apply else "nothing written: --apply writes them")
+    return OK
+
+
 @memory_app.command("reembed")
 @verb
 async def memory_reembed(ctx: typer.Context) -> int:

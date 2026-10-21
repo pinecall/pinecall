@@ -1,0 +1,166 @@
+# What a picker offers of each vendor, by stage: every current model whose id the vendor's API takes
+# as its `model`, written by `voicedex models` (github.com/pinecall/voicedex) from each vendor's own
+# pages and APIs, read on `as_of` at `source`. `setup` writes them into the providers row;
+# `pinecall-runtime providers models <file> --apply` writes a newer file. The row's `models` names
+# the one a vendor runs when none is picked.
+vendor,stage,model,name,as_of,source
+anthropic,llm,claude-haiku-5-5,Claude Haiku 5.5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-sonnet-5-5,Claude Sonnet 5.5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-5-5,Claude Opus 5.5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-fable-5-1,Claude Fable 5.1,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-5,Claude Opus 5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-sonnet-5,Claude Sonnet 5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-fable-5,Claude Fable 5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-4-8,Claude Opus 4.8,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-4-7,Claude Opus 4.7,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-sonnet-4-6,Claude Sonnet 4.6,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-4-6,Claude Opus 4.6,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-opus-4-5-20251101,Claude Opus 4.5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-haiku-4-5-20251001,Claude Haiku 4.5,2026-10-19,https://api.anthropic.com/v1/models
+anthropic,llm,claude-sonnet-4-5-20250929,Claude Sonnet 4.5,2026-10-19,https://api.anthropic.com/v1/models
+assemblyai,stt,universal-3-5-pro,Universal-3.5 Pro,2026-10-19,https://www.assemblyai.com/pricing.md
+assemblyai,stt,universal-2,Universal-2,2026-10-19,https://www.assemblyai.com/pricing.md
+assemblyai,stt,universal-3-6-pro,Universal-3.6 Pro Realtime,2026-10-19,https://www.assemblyai.com/pricing.md
+assemblyai,stt,universal-streaming-english,Universal-Streaming English,2026-10-19,https://www.assemblyai.com/pricing.md
+assemblyai,stt,universal-streaming-multilingual,Universal-Streaming Multilingual,2026-10-19,https://www.assemblyai.com/pricing.md
+cartesia,tts,sonic-3.6,sonic-3.6,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md
+cartesia,tts,sonic-3.5,sonic-3.5,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/tts-models/older-models.md
+cartesia,tts,sonic-3,sonic-3,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/tts-models/older-models.md
+cartesia,stt,ink-2,ink-2,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/stt/latest.md
+cartesia,stt,ink-preview,ink-preview,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/stt/latest.md
+cartesia,stt,ink-whisper,ink-whisper,2026-10-19,https://docs.cartesia.ai/build-with-cartesia/stt/older-models.md
+deepgram,stt,base,base,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,enhanced,enhanced,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,flux-general-en,flux-general-en,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,flux-general-multi,flux-general-multi,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,nova,nova,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,nova-2,nova-2,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,nova-3,nova-3,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,whisper-base,whisper-base,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,whisper-large,whisper-large,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,whisper-medium,whisper-medium,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,whisper-small,whisper-small,2026-10-20,https://api.deepgram.com/v1/models
+deepgram,stt,whisper-tiny,whisper-tiny,2026-10-20,https://api.deepgram.com/v1/models
+elevenlabs,tts,eleven_v4,Eleven v4,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_v4_turbo,Eleven v4 Turbo,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_v3,Eleven v3,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_v3_conversational,Eleven v3 Conversational,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_multilingual_v2,Eleven Multilingual v2,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_flash_v2_5,Eleven Flash v2.5,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_turbo_v2_5,Eleven Turbo v2.5,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_turbo_v2,Eleven Turbo v2,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,tts,eleven_flash_v2,Eleven Flash v2,2026-10-19,https://api.elevenlabs.io/v1/models
+elevenlabs,stt,scribe_v2,scribe_v2,2026-10-19,https://elevenlabs.io/pricing/api
+elevenlabs,stt,scribe_v2_realtime,scribe_v2_realtime,2026-10-19,https://elevenlabs.io/pricing/api
+google,llm,gemini-4-argon,gemini-4-argon,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.8-flash,gemini-3.8-flash,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.6-flash,gemini-3.6-flash,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,stt,gemini-3.5-transcribe-live,gemini-3.5-transcribe-live,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,stt,gemini-3.5-transcribe,gemini-3.5-transcribe,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.5-flash-lite,gemini-3.5-flash-lite,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.1-flash-lite,gemini-3.1-flash-lite,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.1-pro-preview,gemini-3.1-pro-preview,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3.1-pro-preview-customtools,gemini-3.1-pro-preview-customtools,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,tts,gemini-3.8-flash-tts,gemini-3.8-flash-tts,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,tts,gemini-3.8-flash-lite-tts,gemini-3.8-flash-lite-tts,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,tts,gemini-3.1-flash-tts-preview,gemini-3.1-flash-tts-preview,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-3-flash-preview,gemini-3-flash-preview,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-2.5-pro,gemini-2.5-pro,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-2.5-flash,gemini-2.5-flash,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,llm,gemini-2.5-flash-lite,gemini-2.5-flash-lite,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,tts,gemini-2.5-flash-preview-tts,gemini-2.5-flash-preview-tts,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+google,tts,gemini-2.5-pro-preview-tts,gemini-2.5-pro-preview-tts,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt
+groq,llm,llama-3.1-8b-instant,llama-3.1-8b-instant,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,llama-3.3-70b-versatile,llama-3.3-70b-versatile,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,openai/gpt-oss-120b,openai/gpt-oss-120b,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,openai/gpt-oss-20b,openai/gpt-oss-20b,2026-10-19,https://console.groq.com/docs/models.md
+groq,stt,whisper-large-v3,whisper-large-v3,2026-10-19,https://console.groq.com/docs/models.md
+groq,stt,whisper-large-v3-turbo,whisper-large-v3-turbo,2026-10-19,https://console.groq.com/docs/models.md
+groq,tts,canopylabs/orpheus-arabic-saudi,canopylabs/orpheus-arabic-saudi,2026-10-19,https://console.groq.com/docs/models.md
+groq,tts,canopylabs/orpheus-v1-english,canopylabs/orpheus-v1-english,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,meta-models/muse-spark-open,meta-models/muse-spark-open,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,minimaxai/minimax-m2.7,minimaxai/minimax-m2.7,2026-10-19,https://console.groq.com/docs/models.md
+groq,llm,qwen/qwen3.8-27b,qwen/qwen3.8-27b,2026-10-19,https://console.groq.com/docs/models.md
+inworld,tts,inworld-tts-2,Realtime TTS-2,2026-10-20,https://inworld.ai/pricing
+inworld,tts,inworld-tts-2-flash,Realtime TTS-2 Flash,2026-10-20,https://inworld.ai/pricing
+inworld,stt,inworld/inworld-stt-1,inworld/inworld-stt-1,2026-10-20,https://inworld.ai/pricing
+mistralai,llm,mistral-large-4,Mistral Large 4,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,mistral-large-2512,Mistral Large 3,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,mistral-medium-3-5,Mistral Medium 3.5,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,mistral-small-2603,Mistral Small 4,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,ministral-14b-2512,Ministral 3 14B,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,ministral-8b-2512,Ministral 3 8B,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,ministral-3b-2512,Ministral 3 3B,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,stt,voxtral-mini-2602,Voxtral Mini Transcribe 2,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,tts,voxtral-mini-tts-2603,Voxtral TTS,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,zai-glm-5-3,Z.ai GLM 5.3,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+mistralai,llm,codestral-2508,Codestral,2026-10-19,https://docs.mistral.ai/inference/pricing.md
+openai,llm,gpt-6-astra,gpt-6-astra,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-6.1-sol,gpt-6.1-sol,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-6-luna,gpt-6-luna,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-6-sol,gpt-6-sol,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.6-sol,gpt-5.6-sol,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.6-terra,gpt-5.6-terra,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.6-luna,gpt-5.6-luna,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.5,gpt-5.5,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.5-pro,gpt-5.5-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.4,gpt-5.4,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.4-mini,gpt-5.4-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.4-nano,gpt-5.4-nano,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.4-pro,gpt-5.4-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.2,gpt-5.2,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.2-pro,gpt-5.2-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5.1,gpt-5.1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5,gpt-5,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5-mini,gpt-5-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5-nano,gpt-5-nano,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-5-pro,gpt-5-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4.1,gpt-4.1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4.1-mini,gpt-4.1-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4.1-nano,gpt-4.1-nano,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4o,gpt-4o,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4o-2024-05-13,gpt-4o-2024-05-13,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4o-mini,gpt-4o-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o1,o1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o1-pro,o1-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o3-pro,o3-pro,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o3,o3,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o4-mini,o4-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,o3-mini,o3-mini,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4-turbo-2024-04-09,gpt-4-turbo-2024-04-09,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-4-0613,gpt-4-0613,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-3.5-turbo,gpt-3.5-turbo,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-3.5-turbo-0125,gpt-3.5-turbo-0125,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-3.5-turbo-1106,gpt-3.5-turbo-1106,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,gpt-3.5-turbo-instruct,gpt-3.5-turbo-instruct,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,davinci-002,davinci-002,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,llm,babbage-002,babbage-002,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,tts,gpt-4o-mini-tts,gpt-4o-mini-tts,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,tts,tts-1,tts-1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,tts,tts-1-hd,tts-1-hd,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-live-transcribe,gpt-live-transcribe,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-realtime-whisper,gpt-realtime-whisper,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-transcribe,gpt-transcribe,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-4o-transcribe,gpt-4o-transcribe,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-4o-mini-transcribe,gpt-4o-mini-transcribe,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,gpt-4o-transcribe-diarize,gpt-4o-transcribe-diarize,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+openai,stt,whisper-1,whisper-1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
+rime,tts,coda,coda,2026-10-19,https://users.rime.ai/data/voices/voice_details.json
+rime,tts,mistv3,mistv3,2026-10-19,https://users.rime.ai/data/voices/voice_details.json
+soniox,stt,stt-rt-v5,Speech-to-Text Real-time v5,2026-10-19,https://api.soniox.com/v1/models
+soniox,stt,stt-async-v5,Speech-to-Text Async v5,2026-10-19,https://api.soniox.com/v1/models
+soniox,tts,tts-rt-v2,tts-rt-v2,2026-10-19,https://soniox.com/docs/tts/models.mdx
+speechmatics,stt,enhanced,enhanced,2026-10-19,https://docs.speechmatics.com/speech-to-text/models.md
+speechmatics,stt,standard,standard,2026-10-19,https://docs.speechmatics.com/speech-to-text/models.md
+speechmatics,stt,melia-1,melia-1,2026-10-19,https://docs.speechmatics.com/speech-to-text/models.md
+speechmatics,stt,oak-1,oak-1,2026-10-19,https://docs.speechmatics.com/speech-to-text/models.md
+speechmatics,stt,linden-1,linden-1,2026-10-19,https://docs.speechmatics.com/speech-to-text/models.md
+xai,llm,grok-4.7,grok-4.7,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.6,grok-4.6,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.5,grok-4.5,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.3,grok-4.3,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.20-0309-reasoning,grok-4.20-0309-reasoning,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.20-0309-non-reasoning,grok-4.20-0309-non-reasoning,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-build-0.1,grok-build-0.1,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,llm,grok-4.20-multi-agent-0309,grok-4.20-multi-agent-0309,2026-10-20,https://docs.x.ai/developers/pricing.md
+xai,stt,grok-voice-transcribe-2.0,grok-voice-transcribe-2.0,2026-10-20,https://docs.x.ai/developers/model-capabilities/audio/speech-to-text.md

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A picker offers every model of a vendor, and only what the org is lent.** The providers row
+  gains `offered` (`stt/cartesia`: the models a picker lists), written by `pinecall-runtime providers
+  models <file.csv> --apply` from the file `voicedex models` writes (`vendor,stage,model,name,as_of,
+  source`); the package ships `cli/local/models.csv` and `setup` writes it into the row. `GET
+  /v1/providers` `models` lists, by stage and vendor, the row's default first and then what it
+  offers — kept to the models the platform lends the org where it lends by model, and a vendor
+  lent by model is `offered` rather than `bring your own`. Before, a picker saw the row's one model
+  or nothing, and a vendor lent only by model was not listed at all.
 - **An org has at most three simulated calls on the line at once in each environment.** Counted on
   every gateway together, from the moment a simulation is placed until its caller hangs up:
   `POST /v1/simulations` and `POST /v1/evals/voice` refuse the fourth `429` with `Retry-After`.

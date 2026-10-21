@@ -355,9 +355,25 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
         ],
         defaults=catalog.default_vendors,
         voices=[],
-        models={named: [model] for named, model in catalog.models.items()},
+        models=_models_offered(catalog, keys),
         realtime={vendor.name: list(vendor.realtime) for vendor in plugins.installed().values() if vendor.realtime},
     )
+
+
+# What a picker offers this org of each vendor and stage: the row's default first, then the models the
+# row offers, kept to what the box lends the org where it lends by model (an entry names no stage, so
+# a model the row does not list is offered nowhere). On the org's own key, every one.
+def _models_offered(catalog: Catalog, keys: Keyring) -> dict[str, list[str]]:
+    offered: dict[str, list[str]] = {}
+    for named in sorted({*catalog.models, *catalog.offered}):
+        vendor = named.partition(SEPARATOR)[2]
+        default = [catalog.models[named]] if named in catalog.models else []
+        listed = list(dict.fromkeys([*default, *catalog.offered.get(named, ())]))
+        if vendor not in keys.own and keys.lends is not None and vendor not in keys.lends:
+            listed = [model for model in listed if is_lent(keys.lends, vendor, model)]
+        if listed:
+            offered[named] = listed
+    return offered
 
 
 # A plugin lists its voices when its TTS class has a `list_voices`; nothing is built to ask.
@@ -446,9 +462,14 @@ def _availability_of(vendor: Vendor, keys: Keyring) -> Availability:
         return "broken"
     if vendor.name in keys.own:
         return "yours"
-    if vendor.name in keys.box and is_lent(keys.lends, vendor.name, None):
+    if vendor.name in keys.box and _lends_any_of(keys.lends, vendor.name):
         return "offered"
     return "bring your own"
+
+
+# A vendor lent whole, or by any one of its models: the picker lists those.
+def _lends_any_of(lends: frozenset[str] | None, vendor: str) -> bool:
+    return is_lent(lends, vendor, None) or any(entry.startswith(f"{vendor}{SEPARATOR}") for entry in lends or ())
 
 
 def _lists_any(catalog: Catalog, vendor: str) -> bool:

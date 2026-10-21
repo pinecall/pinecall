@@ -1,11 +1,10 @@
-/** The three stages of a turn as sections: the vendor and the model picked from lists, and the voice. */
+/** The three stages of a turn as sections: the vendor and the model picked from two selects, and the voice. */
 
 import type { ReactNode } from "react";
 
-import { doing, named, type Provider } from "../../lib/catalogue";
-import { Label } from "../../ui";
+import { brandOf, doing, named, type Provider } from "../../lib/catalogue";
+import { Label, Select, SelectItem } from "../../ui";
 import { Advanced } from "./advanced";
-import { Choice, type Pick } from "./choice";
 import { FixedByTheClass } from "./plugin";
 import type { Knob, Modality } from "./typed";
 import { VoiceById } from "./voice-by-id";
@@ -59,7 +58,7 @@ export function StageSection({
     );
   }
   // Only what this box can run: a vendor with a key here. One with no key is a line that would go
-  // out silent; one with no models listed runs its own default, which the Model row says. A vendor
+  // out silent; one with no models listed runs its own default, which the help under the selects says. A vendor
   // set from the terminal that has no key still shows, said so, rather than a list that quietly
   // reads as "nothing chosen".
   const ready = doing(providers, modality).filter((one) => one.ready);
@@ -68,38 +67,44 @@ export function StageSection({
   const listed = ready.some((one) => one.name === knob.vendor) ? ready : knob.vendor === "" ? ready : [{ name: knob.vendor, ready: false } as Provider, ...ready];
   const known = models[`${modality}/${vendor}`] ?? [];
   const options = known.includes(knob.model) || knob.model === "" ? known : [knob.model, ...known];
-  const vendors: Pick[] = [
-    { value: "", label: unset ?? "Runtime default", tag: unset === undefined ? runtimeDefault : undefined },
-    ...listed.map((one) => ({ value: one.name, label: one.name, mono: true, tag: !one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by the runtime" })),
-  ];
-  const picks: Pick[] = [
-    { value: "", label: `${vendor}'s default`, tag: known[0] },
-    ...options.map((name) => ({ value: name, label: name, mono: true, tag: known.includes(name) ? undefined : "as set" })),
-  ];
+  const whose = (one: Provider): string => (!one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by the runtime");
+  const showsModel = unset === undefined || knob.vendor !== "";
   return (
     <section className="set-section">
       <div className="set-section-head">
         <h2 className="set-section-title">{title}</h2>
         <p className="set-section-blurb">{blurb}</p>
       </div>
-      <div className="set-field">
-        <Label>Vendor</Label>
-        <Choice label="Vendor" picks={vendors} value={knob.vendor} onPick={(value) => onChange({ vendor: value, model: "" })} />
-        <p className="set-help">Only vendors this box has a key for. Add one in Providers.</p>
-      </div>
-      {(unset === undefined || knob.vendor !== "") && (
+      <div className="set-row">
         <div className="set-field">
-          <Label>Model</Label>
-          {known.length === 0 ? (
-            <p className="set-help">{vendor} runs its own default; there is no model to pick.</p>
-          ) : (
-            <>
-              <Choice label="Model" picks={picks} value={knob.model} onPick={(value) => onChange({ ...knob, model: value })} />
-              <p className="set-help">The default is the one tuned for phone calls.</p>
-            </>
-          )}
+          <Label>Vendor</Label>
+          <Select value={knob.vendor} aria-label={`${title}: vendor`} onValueChange={(value) => onChange({ vendor: value, model: "" })}>
+            <SelectItem value="">{unset ?? (runtimeDefault === "" ? "Runtime default" : `Runtime default · ${brandOf(runtimeDefault)}`)}</SelectItem>
+            {listed.map((one) => (
+              <SelectItem key={one.name} value={one.name}>
+                {brandOf(one.name)} · {whose(one)}
+              </SelectItem>
+            ))}
+          </Select>
         </div>
-      )}
+        {showsModel && (
+          <div className="set-field">
+            <Label>Model</Label>
+            <Select value={knob.model} aria-label={`${title}: model`} disabled={known.length === 0} onValueChange={(value) => onChange({ ...knob, model: value })}>
+              <SelectItem value="">{brandOf(vendor)}&apos;s default</SelectItem>
+              {options.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {known.includes(name) ? name : `${name} (as set)`}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+        )}
+      </div>
+      <p className="set-help">
+        Only vendors this box has a key for; add one in Providers.
+        {showsModel && (known.length === 0 ? ` ${brandOf(vendor)} runs its own default model; none is listed to pick.` : " The default is the model the runtime runs when none is picked.")}
+      </p>
       {children}
       {advanced !== undefined && advanced !== null && advanced !== false && <Advanced>{advanced}</Advanced>}
     </section>

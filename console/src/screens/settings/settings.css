@@ -574,50 +574,6 @@
   color: var(--ink-4);
 }
 
-/* A pick among a few named things: chips, the one chosen in the accent, a quiet word beside each. */
-.set-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.set-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--line-control);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.set-pick:hover {
-  box-shadow: inset 0 0 0 1px var(--ink-6);
-}
-
-.set-pick-on,
-.set-pick-on:hover {
-  background: var(--accent-selected);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
-  color: var(--accent-ink);
-}
-
-.set-pick-mono {
-  font-family: var(--face-fixed);
-  font-size: 12.5px;
-}
-
-.set-pick-tag {
-  font-size: 11px;
-  color: var(--ink-4);
-}
-
 /* What most people never touch, folded under one word. */
 .set-advanced {
   display: flex;
