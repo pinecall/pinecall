@@ -56,7 +56,6 @@ PORTS: dict[str, tuple[int, str]] = {
 }
 # Docker says a container is healthy before the host's side of its port answers: a moment, on a Mac.
 PORTS_WITHIN_S = 60.0
-
 NO_DOCKER = (
     "Docker is not here: install Docker Desktop (macOS, Windows) or Docker Engine with the compose "
     "plugin, start it, and run this again"

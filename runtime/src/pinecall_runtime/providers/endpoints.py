@@ -41,6 +41,7 @@ from pinecall_runtime.providers.schemas import (
 from pinecall_runtime.providers.service import (
     advice,
     catalog,
+    held,
     keyring,
     machine,
     notes,
@@ -77,7 +78,7 @@ async def catalogue(actor: ProvidersKey, request: Request, session: Session) -> 
 @router.get("/v1/provider-keys")
 async def own_vendors(actor: ProvidersKey, session: Session) -> VendorsResponse:
     """The vendors the org brought its own credentials for."""
-    return VendorsResponse(vendors=await keyring.own_vendors(session, actor.org))
+    return VendorsResponse(vendors=await held.own_vendors(session, actor.org))
 
 
 @router.put("/v1/provider-keys/{vendor}", status_code=204)
@@ -86,17 +87,17 @@ async def bring_key(
 ) -> None:
     """Keep the org's own credentials for a vendor; its calls run on them from the next one."""
     named = plugins.installed_vendor(vendor)
-    credentials = keyring.credentials_from(body)
+    credentials = held.credentials_from(body)
     stages.check_credentials(named, credentials)
     await trials.try_key(plugins.installed()[named], credentials, await catalog.get_catalog(session))
-    await keyring.put_own_credentials(session, _vault(request), actor.org, named, credentials)
+    await held.put_own_credentials(session, _vault(request), actor.org, named, credentials)
 
 
 @router.delete("/v1/provider-keys/{vendor}", status_code=204)
 async def take_key_back(vendor: str, actor: ProvidersKey, session: Session) -> None:
     """Forget the org's credentials for a vendor; its calls run on the box's from the next one."""
     named = plugins.installed_vendor(vendor)
-    if not await keyring.drop_own_credentials(session, actor.org, named):
+    if not await held.drop_own_credentials(session, actor.org, named):
         raise NotFound(f"this org brought no key for {named}")
 
 
@@ -334,7 +335,7 @@ async def put_providers(body: Catalog, _actor: TheOperator, session: Session) ->
 @router.get("/v1/ops/provider-keys")
 async def box_vendors(_actor: TheOperator, request: Request, session: Session) -> VendorsResponse:
     """The vendors the box holds a key for, never the key."""
-    credentials = await keyring.box_credentials(session, _vault(request))
+    credentials = await held.box_credentials(session, _vault(request))
     return VendorsResponse(vendors=sorted(set(credentials) - {NUMBERS_ACCOUNT}))
 
 
@@ -343,16 +344,16 @@ async def put_box_key(
     vendor: str, body: ProviderKeyRequest, _actor: TheOperator, request: Request, session: Session
 ) -> None:
     """The box's own credentials for a vendor; orgs it lends to run on them from the next call."""
-    named, credentials = plugins.installed_vendor(vendor), keyring.credentials_from(body)
+    named, credentials = plugins.installed_vendor(vendor), held.credentials_from(body)
     await trials.try_key(plugins.installed()[named], credentials, await catalog.get_catalog(session))
-    await keyring.put_box_credentials(session, _vault(request), named, credentials)
+    await held.put_box_credentials(session, _vault(request), named, credentials)
 
 
 @router.delete("/v1/ops/provider-keys/{vendor}", status_code=204)
 async def drop_box_key(vendor: str, _actor: TheOperator, request: Request, session: Session) -> None:
     """The box stops offering the vendor on its key; 404 when it held none."""
     named = plugins.installed_vendor(vendor)
-    if not await keyring.drop_box_credentials(session, _vault(request), named):
+    if not await held.drop_box_credentials(session, _vault(request), named):
         raise NotFound(f"this box holds no key for {named}")
 
 
@@ -364,7 +365,7 @@ async def org_vendors(named: str, _actor: TheOperator, session: Session) -> Vend
     """The vendors the org brought its own credentials for, never the credentials."""
     with box_wide():
         org = await orgs.get_org(session, named)
-        return VendorsResponse(vendors=await keyring.own_vendors(session, org.id))
+        return VendorsResponse(vendors=await held.own_vendors(session, org.id))
 
 
 @router.put("/v1/ops/orgs/{named}/provider-keys/{vendor}", status_code=204)
@@ -372,12 +373,12 @@ async def put_org_vendor_key(
     named: str, vendor: str, body: ProviderKeyRequest, _actor: TheOperator, request: Request, session: Session
 ) -> None:
     """The org's own credentials for a vendor, set for it; its calls run on them next."""
-    named_vendor, credentials = plugins.installed_vendor(vendor), keyring.credentials_from(body)
+    named_vendor, credentials = plugins.installed_vendor(vendor), held.credentials_from(body)
     stages.check_credentials(named_vendor, credentials)
     await trials.try_key(plugins.installed()[named_vendor], credentials, await catalog.get_catalog(session))
     with box_wide():
         org = await orgs.get_org(session, named)
-        await keyring.put_own_credentials(session, _vault(request), org.id, named_vendor, credentials)
+        await held.put_own_credentials(session, _vault(request), org.id, named_vendor, credentials)
 
 
 @router.delete("/v1/ops/orgs/{named}/provider-keys/{vendor}", status_code=204)
@@ -386,7 +387,7 @@ async def drop_org_vendor_key(named: str, vendor: str, _actor: TheOperator, sess
     named_vendor = plugins.installed_vendor(vendor)
     with box_wide():
         org = await orgs.get_org(session, named)
-        if not await keyring.drop_own_credentials(session, org.id, named_vendor):
+        if not await held.drop_own_credentials(session, org.id, named_vendor):
             raise NotFound(f"org {org.slug} brought no key for {named_vendor}")
 
 

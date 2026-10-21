@@ -10,20 +10,22 @@ from pinecall_runtime.providers.service.catalog import (
     seed_catalog,
     tuning_of,
 )
-from pinecall_runtime.providers.service.keyring import (
-    Keyring,
-    Pipeline,
+from pinecall_runtime.providers.service.held import (
     box_credentials,
-    build_pipeline,
-    catalogue_of,
     credentials_from,
     drop_box_credentials,
     drop_own_credentials,
-    keys_of,
     own_vendors,
-    parse_lending,
     put_box_credentials,
     put_own_credentials,
+)
+from pinecall_runtime.providers.service.keyring import (
+    Keyring,
+    Pipeline,
+    build_pipeline,
+    catalogue_of,
+    keys_of,
+    parse_lending,
     refuse_what_cannot_run,
     running_on,
     stage_on_its_key,
