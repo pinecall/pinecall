@@ -11,6 +11,7 @@ from pinecall_runtime.knowledge.service.cutter import cut
 from pinecall_runtime.knowledge.service.embedder import Embedder
 from pinecall_runtime.knowledge.service.language import Language
 from tests.conftest import needs_the_database
+from tests.fakes.embeddings import Embeddings
 
 pytestmark = needs_the_database
 
@@ -160,3 +161,22 @@ async def test_a_question_the_section_answers_finds_it_and_the_model_reads_the_s
         files = await bases.list_files(session, scope, "clinica")
     assert files is not None
     assert {item.path: item.chunks for item in files} == {"precios.md": 2, "horario.md": 1}
+
+
+async def test_a_golden_embeds_its_questions_in_one_request_and_scores_each(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, vendor: Embeddings, scope: Scope
+) -> None:
+    """Three questions are one trip to the embedder, and each is scored against what it found."""
+    async with sessions.begin() as session:
+        await bases.put_base(session, embedder, scope, a_push("clinica", ("precios.md", PRICES), ("horario.md", HOURS)))
+    before = len(vendor.requests)
+    questions = [
+        bases.Question("cuánto cuesta una limpieza", ("precios.md",)),
+        bases.Question("qué días abren", ("horario.md",)),
+        bases.Question("hacen ortodoncia", ("ortodoncia.md",)),
+    ]
+    async with sessions() as session:
+        score = await bases.ask_golden(session, embedder, scope, "clinica", questions, k=2)
+    assert len(vendor.requests) == before + 1
+    assert score.questions == 3
+    assert [miss.question.asks for miss in score.misses] == ["hacen ortodoncia"]

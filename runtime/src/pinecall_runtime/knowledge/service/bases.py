@@ -50,6 +50,8 @@ class SearchQuery:
     k: int
     # A chunk's fused score must reach its own base's floor; 0.0 is none.
     bases: Mapping[str, float]
+    # The query's vector, where the caller embedded it already (a golden embeds its questions at once).
+    vector: list[float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,7 +180,7 @@ async def search(session: AsyncSession, embedder: Embedder, scope: Scope, query:
             raise WrongModel(copy.base, copy.model, embedder.model)
     if not copies:
         return Searched(found=[], evidence="none", model=embedder.model)
-    [vector] = await embedder.embed([query.query])
+    [vector] = [query.vector] if query.vector is not None else await embedder.embed([query.query])
     room = ranking.CANDIDATES_PER_BRANCH * len(copies)
     hits = await repository.search(scope, copies, vector=halfvec(vector), words=query.query, room=room)
     floored = [hit for hit in ranking.relative_to_the_best(hits) if hit.fused >= query.bases[hit.row["base"]]]
@@ -201,15 +203,17 @@ async def search(session: AsyncSession, embedder: Embedder, scope: Scope, query:
     return Searched(found=found, evidence=ranking.evidence_of(ranking.top_cosine(hits)), model=embedder.model)
 
 
-# One question at a time, each with the base alone at full weight: what a turn would have found.
+# Every question embedded in one go, then each searched with the base alone at full weight: what
+# a turn would have found, without a round trip to the embedder per question.
 async def ask_golden(
     session: AsyncSession, embedder: Embedder, scope: Scope, base: str, questions: Sequence[Question], k: int
 ) -> Score:
     """Each question asked of the base, and recall@k and nDCG@10 over every answer."""
+    vectors = await embedder.embed([question.asks for question in questions])
     answered: list[Answered] = []
-    for question in questions:
-        searched = await search(session, embedder, scope, SearchQuery(query=question.asks, k=k, bases={base: 0.0}))
-        answered.append(Answered(question, searched.found))
+    for question, vector in zip(questions, vectors, strict=True):
+        asked = SearchQuery(query=question.asks, k=k, bases={base: 0.0}, vector=vector)
+        answered.append(Answered(question, (await search(session, embedder, scope, asked)).found))
     return score_docs(answered, k)
 
 

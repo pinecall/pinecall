@@ -174,7 +174,7 @@ async def test_one_list_per_document_comes_back_in_the_order_the_documents_went_
 ) -> None:
     documents = await an_embedder(client, slept).embed_documents([["uno"], ["dos", "tres"], []])
     assert [len(vectors) for vectors in documents] == [1, 2, 0]
-    assert [body["input"] for body in vendor.sent()] == [[["uno"]], [["dos", "tres"]]]
+    assert vendor.documents() == [[["uno"], ["dos", "tres"]]]
 
 
 async def test_a_query_is_a_document_of_one_chunk_so_it_shares_the_chunks_space(
@@ -201,7 +201,8 @@ async def test_a_document_longer_than_the_context_goes_out_in_windows_of_it(
     long = ["palabra " * 8_000] * 3
     [vectors] = await an_embedder(client, slept).embed_documents([long])
     assert len(vectors) == 3
-    assert [len(texts) for texts in vendor.inputs()] == [2, 1]
+    [windows] = vendor.documents()
+    assert [len(window) for window in windows] == [2, 1]
 
 
 async def test_a_window_holds_chunks_while_their_tokens_fit_and_a_long_one_goes_alone(
@@ -210,10 +211,72 @@ async def test_a_window_holds_chunks_while_their_tokens_fit_and_a_long_one_goes_
     embedder = an_embedder(client, slept)
     await embedder.embed_documents([["uno dos", "tres", "cuatro"]])
     await embedder.embed_documents([["palabra " * 20_000, "cuatro cinco"]])
-    assert [body["input"] for body in vendor.sent()] == [
+    assert vendor.documents() == [
         [["uno dos", "tres", "cuatro"]],
-        [["palabra " * 20_000]],
-        [["cuatro cinco"]],
+        [["palabra " * 20_000], ["cuatro cinco"]],
+    ]
+
+
+async def test_many_queries_go_out_as_one_request_of_one_chunk_documents(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    vectors = await an_embedder(client, slept).embed(["uno", "dos", "tres"])
+    assert len(vectors) == 3
+    assert vendor.documents() == [[["uno"], ["dos"], ["tres"]]]
+
+
+async def test_documents_go_out_five_hundred_and_twelve_to_a_request_at_most(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    await an_embedder(client, slept).embed(["hola"] * 1_000)
+    assert [len(documents) for documents in vendor.documents()] == [512, 488]
+
+
+async def test_documents_go_out_while_their_tokens_fit_a_request(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    # 20 000 words are 26 000 tokens a window: three fit a request's 100 000, the fourth does not.
+    await an_embedder(client, slept).embed_documents([["palabra " * 20_000]] * 4)
+    assert [len(documents) for documents in vendor.documents()] == [3, 1]
+
+
+async def test_a_reply_with_fewer_documents_than_were_sent_is_refused(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    item = {"data": [{"index": 0, "data": [{"embedding": int8_vector([3] * 1024)}]}]}
+    vendor.script = [httpx.Response(200, json=item)]
+    with pytest.raises(EmbedderUnreachable, match="1 documents for the 2 it was sent"):
+        await an_embedder(client, slept).embed(["uno", "dos"])
+
+
+async def test_documents_that_say_their_index_are_put_back_in_that_order(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    vendor.script = [
+        httpx.Response(
+            200,
+            json={
+                "data": [
+                    {"index": 1, "data": [{"embedding": int8_vector([-3] * 1024)}]},
+                    {"index": 0, "data": [{"embedding": int8_vector([3] * 1024)}]},
+                ]
+            },
+        )
+    ]
+    first, second = await an_embedder(client, slept).embed(["uno", "dos"])
+    assert (first[0] > 0, second[0] < 0) == (True, True)
+
+
+async def test_a_request_of_several_documents_refused_for_its_size_is_split_into_halves_of_them(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    vendor.script = [refused(200, TOO_BIG)]
+    vectors = await an_embedder(client, slept).embed(["uno", "dos", "tres", "cuatro"])
+    assert len(vectors) == 4
+    assert vendor.documents() == [
+        [["uno"], ["dos"], ["tres"], ["cuatro"]],
+        [["uno"], ["dos"]],
+        [["tres"], ["cuatro"]],
     ]
 
 

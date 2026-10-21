@@ -29,6 +29,8 @@ TOKENS_PER_WORD = 1.3
 # margin is for the estimate.
 WINDOW_TOKENS = 24_000
 REQUEST_TOKENS = 100_000
+# A contextual request carries many documents, each its own context (Perplexity: 512 at most).
+MOST_DOCUMENTS = 512
 # Only a refusal about size is split: halving a credential refusal fails it twice.
 TOO_BIG = re.compile(
     r"exceeds maximum|too many tokens|maximum context length|reduce the length|input is too "
@@ -96,6 +98,7 @@ class _Row(BaseModel):
 
 class _Rows(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
+    index: int | None = None
     data: list[_Row]
 
 
@@ -131,20 +134,21 @@ class Embedder:
         """One unit vector per text, in order; on `contextual` each text is a one-chunk document."""
         waits = self._client.timeout
         if self.embedding.shape == "contextual":
-            return [(await self._sent([text], waits))[0] for text in texts]
+            return [vectors[0] for vectors in await self._contexts([[text] for text in texts], waits)]
         return [vector for batch in _windows(texts, REQUEST_TOKENS) for vector in await self._sent(batch, waits)]
 
     async def embed_documents(self, documents: list[list[str]]) -> list[list[list[float]]]:
         """One list of unit vectors per document, one per chunk, in order."""
         if self.embedding.shape == "contextual":
-            return [
-                [
-                    vector
-                    for window in _windows(chunks, WINDOW_TOKENS)
-                    for vector in await self._sent(window, PUSH_TIMEOUT)
-                ]
-                for chunks in documents
+            # A document past the context goes out as windows of it, each its own context.
+            windows = [
+                (at, window) for at, chunks in enumerate(documents) for window in _windows(chunks, WINDOW_TOKENS)
             ]
+            answered = await self._contexts([window for _, window in windows], PUSH_TIMEOUT)
+            cut: list[list[list[float]]] = [[] for _ in documents]
+            for (at, _), vectors in zip(windows, answered, strict=True):
+                cut[at].extend(vectors)
+            return cut
         every = [chunk for chunks in documents for chunk in chunks]
         flat = [vector for batch in _windows(every, REQUEST_TOKENS) for vector in await self._sent(batch, PUSH_TIMEOUT)]
         cut: list[list[list[float]]] = []
@@ -153,10 +157,40 @@ class Embedder:
             flat = flat[len(chunks) :]
         return cut
 
+    # Documents go out as many to a request as its tokens and its count allow.
+    async def _contexts(self, documents: list[list[str]], waits: httpx.Timeout) -> list[list[list[float]]]:
+        return [
+            vectors
+            for batch in _batches(documents, REQUEST_TOKENS, MOST_DOCUMENTS)
+            for vectors in await self._sent_contexts(batch, waits)
+        ]
+
+    # A split keeps the order: the first half's documents, then the second's; one document refused
+    # alone is split into two of its chunks, as a window too big for the vendor is.
+    async def _sent_contexts(
+        self, documents: list[list[str]], waits: httpx.Timeout, *, depth: int = 0
+    ) -> list[list[list[float]]]:
+        try:
+            return self._contextual_vectors(await self._posted(self._contextual_body(documents), waits), documents)
+        except EmbedderUnreachable as refused:
+            if depth >= MAX_SPLITS or not TOO_BIG.search(refused.words):
+                raise
+            if len(documents) == 1 and len(documents[0]) == 1:
+                raise
+        if len(documents) == 1:
+            [chunks] = documents
+            middle = len(chunks) // 2
+            first = await self._sent_contexts([chunks[:middle]], waits, depth=depth + 1)
+            second = await self._sent_contexts([chunks[middle:]], waits, depth=depth + 1)
+            return [[*first[0], *second[0]]]
+        middle = len(documents) // 2
+        first = await self._sent_contexts(documents[:middle], waits, depth=depth + 1)
+        return [*first, *await self._sent_contexts(documents[middle:], waits, depth=depth + 1)]
+
     # A split keeps the order: the first half's vectors, then the second's.
     async def _sent(self, texts: list[str], waits: httpx.Timeout, *, depth: int = 0) -> list[list[float]]:
         try:
-            return self._vectors(await self._posted(texts, waits), len(texts))
+            return self._vectors(await self._posted(self._flat_body(texts), waits), len(texts))
         except EmbedderUnreachable as refused:
             if depth >= MAX_SPLITS or len(texts) == 1 or not TOO_BIG.search(refused.words):
                 raise
@@ -164,8 +198,7 @@ class Embedder:
         first = await self._sent(texts[:middle], waits, depth=depth + 1)
         return [*first, *await self._sent(texts[middle:], waits, depth=depth + 1)]
 
-    async def _posted(self, texts: list[str], waits: httpx.Timeout) -> bytes:
-        body = self._body(texts)
+    async def _posted(self, body: dict[str, Any], waits: httpx.Timeout) -> bytes:
         attempt = 0
         while True:
             try:
@@ -187,30 +220,49 @@ class Embedder:
             return answer.content
 
     # The request names the encoding: the reply is decoded as asked, never guessed from its bytes.
-    def _body(self, texts: list[str]) -> dict[str, Any]:
-        wanted = self.embedding
-        if wanted.shape == "contextual":
-            return {
-                "model": wanted.model,
-                "input": [list(texts)],
-                "encoding_format": "base64_int8",
-                "dimensions": wanted.dimensions,
-            }
+    def _contextual_body(self, documents: list[list[str]]) -> dict[str, Any]:
         return {
-            "model": wanted.model,
+            "model": self.embedding.model,
+            "input": [list(chunks) for chunks in documents],
+            "encoding_format": "base64_int8",
+            "dimensions": self.embedding.dimensions,
+        }
+
+    def _flat_body(self, texts: list[str]) -> dict[str, Any]:
+        return {
+            "model": self.embedding.model,
             "input": list(texts),
             "encoding_format": "float",
-            "dimensions": wanted.dimensions,
+            "dimensions": self.embedding.dimensions,
         }
+
+    def _contextual_vectors(self, content: bytes, documents: list[list[str]]) -> list[list[list[float]]]:
+        try:
+            answered = _Documents.model_validate_json(content).data
+        except PydanticValidationError as unread:
+            raise self._unreachable(f"a reply that is not its vectors: {unread}") from unread
+        if len(answered) != len(documents):
+            raise self._unreachable(f"{len(answered)} documents for the {len(documents)} it was sent")
+        ordered = (
+            answered if any(one.index is None for one in answered) else sorted(answered, key=lambda one: one.index or 0)
+        )
+        cut: list[list[list[float]]] = []
+        for document, chunks in zip(ordered, documents, strict=True):
+            if len(document.data) != len(chunks):
+                raise self._unreachable(f"{len(document.data)} vectors for {len(chunks)} chunks")
+            cut.append(self._checked([self._decoded(row.embedding) for row in self._in_order(document.data)]))
+        return cut
 
     def _vectors(self, content: bytes, sent: int) -> list[list[float]]:
         try:
-            rows = self._rows(content)
+            rows = _Rows.model_validate_json(content).data
         except PydanticValidationError as unread:
             raise self._unreachable(f"a reply that is not its vectors: {unread}") from unread
         if len(rows) != sent:
             raise self._unreachable(f"{len(rows)} vectors for {sent} chunks")
-        vectors = [self._decoded(row.embedding) for row in self._in_order(rows)]
+        return self._checked([self._decoded(row.embedding) for row in self._in_order(rows)])
+
+    def _checked(self, vectors: list[list[float]]) -> list[list[float]]:
         widths = sorted({len(vector) for vector in vectors})
         if widths and widths != [self.embedding.dimensions]:
             answered = " and ".join(str(width) for width in widths)
@@ -219,14 +271,6 @@ class Embedder:
                 f"{self.embedding.dimensions}"
             )
         return [_unit(vector) for vector in vectors]
-
-    def _rows(self, content: bytes) -> list[_Row]:
-        if self.embedding.shape == "embeddings":
-            return _Rows.model_validate_json(content).data
-        documents = _Documents.model_validate_json(content).data
-        if len(documents) != 1:
-            raise self._unreachable(f"{len(documents)} documents for the one it was sent")
-        return documents[0].data
 
     # Sorting alone is not enough: indexes 0, 0, 2 sort cleanly and give two chunks one vector.
     def _in_order(self, rows: list[_Row]) -> list[_Row]:
@@ -298,6 +342,22 @@ def _windows(texts: list[str], budget: int) -> Iterator[list[str]]:
         tokens += cost
     if window:
         yield window
+
+
+# Whole documents, while their tokens fit the request and their count the vendor's; one over the
+# budget goes alone.
+def _batches(documents: list[list[str]], budget: int, most: int) -> Iterator[list[list[str]]]:
+    batch: list[list[str]] = []
+    tokens = 0
+    for chunks in documents:
+        cost = sum(estimated_tokens(chunk) for chunk in chunks)
+        if batch and (tokens + cost > budget or len(batch) == most):
+            yield batch
+            batch, tokens = [], 0
+        batch.append(chunks)
+        tokens += cost
+    if batch:
+        yield batch
 
 
 def _key_of(vendor: str, key: plugins.Credentials) -> str:

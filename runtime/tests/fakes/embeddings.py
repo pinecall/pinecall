@@ -43,8 +43,12 @@ class Embeddings:
         return [json.loads(request.content) for request in self.requests]
 
     def inputs(self) -> list[list[str]]:
-        """The texts of every request, in order: a contextual one's are its one window."""
+        """The texts of every request, in order: a contextual one's are every chunk of its documents."""
         return [_texts_of(request) for request in self.requests]
+
+    def documents(self) -> list[list[list[str]]]:
+        """The documents of every contextual request, in order."""
+        return [json.loads(request.content)["input"] for request in self.requests]
 
     def _answer(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -58,7 +62,11 @@ class Embeddings:
             return httpx.Response(400, json={"error": {"message": TOO_BIG}})
         if request.url.path.endswith(CONTEXTUALIZED):
             vector = int8_vector([self.byte] * self.width)
-            rows = [{"data": [{"embedding": vector} for _ in texts]}]
+            documents = json.loads(request.content)["input"]
+            rows = [
+                {"index": at, "data": [{"index": place, "embedding": vector} for place in range(len(chunks))]}
+                for at, chunks in enumerate(documents)
+            ]
             return httpx.Response(200, json={"data": rows})
         rows = [{"index": at, "embedding": [self.value] * self.width} for at in range(len(texts))]
         return httpx.Response(200, json={"object": "list", "data": rows})
@@ -105,4 +113,6 @@ def int8_vector(values: list[int]) -> str:
 
 def _texts_of(request: httpx.Request) -> list[str]:
     data = json.loads(request.content)
-    return data["input"][0] if request.url.path.endswith(CONTEXTUALIZED) else data["input"]
+    if request.url.path.endswith(CONTEXTUALIZED):
+        return [chunk for chunks in data["input"] for chunk in chunks]
+    return data["input"]
