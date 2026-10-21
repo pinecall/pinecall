@@ -1,4 +1,4 @@
-"""The Markdown cutter: a file into pieces under a token cap, each with its heading path."""
+"""The Markdown cutter: a file into pieces under a token cap, each with its heading path and its questions."""
 
 import hashlib
 import re
@@ -22,16 +22,21 @@ A_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 # Front matter is metadata: left in, a scraped site's became a chunk per page.
 FRONT_MATTER = "---\n"
 A_CLOSING_RULE = re.compile(r"^---[ \t]*$", re.MULTILINE)
+# An HTML comment is for the author, never for the model or an index; the `asks` ones carry the
+# questions the section answers, one a line, invisible on any site that renders the file.
+A_COMMENT = re.compile(r"<!--(.*?)-->", re.DOTALL)
+ASKS = "asks"
 
 
 @dataclass(frozen=True, slots=True)
 class Piece:
-    """One chunk of a file before it is embedded: its heading path and its body."""
+    """One chunk of a file before it is embedded: its heading path, its body, and the questions it answers."""
 
     path: str
     heading: str | None
     ordinal: int
     text: str
+    asks: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +48,11 @@ class Cut:
     sha256: str
     pieces: tuple[Piece, ...]
 
+    @property
+    def rows(self) -> int:
+        """How many rows the file becomes: its pieces and the questions they answer."""
+        return sum(1 + len(piece.asks) for piece in self.pieces)
+
 
 def cut(path: str, text: str) -> Cut:
     """The file cut once, with the hash a later push compares against."""
@@ -51,11 +61,12 @@ def cut(path: str, text: str) -> Cut:
 
 
 def chunks_of(path: str, text: str) -> list[Piece]:
-    """The file cut at its headings, each piece under the cap, in file order."""
+    """The file cut at its headings, each piece under the cap, in file order; a section's questions ride its first."""
     pieces: list[Piece] = []
-    for heading, body in _sections_of(_without_front_matter(text)):
-        for group in _under_the_cap(body, heading):
-            pieces.append(Piece(path, heading, len(pieces), group))
+    for heading, commented in _sections_of(_without_front_matter(text)):
+        body, asks = _without_comments(commented)
+        for at, group in enumerate(_under_the_cap(body, heading)):
+            pieces.append(Piece(path, heading, len(pieces), group, asks if at == 0 else ()))
     return pieces
 
 
@@ -88,6 +99,45 @@ def _without_front_matter(text: str) -> str:
         return text
     closed = A_CLOSING_RULE.search(text, len(FRONT_MATTER))
     return text[closed.end() :].lstrip("\n") if closed else text
+
+
+# Outside a code fence a comment is dropped whole; an `asks` comment gives its lines first. Inside
+# a fence a comment is code and stays.
+def _without_comments(body: str) -> tuple[str, tuple[str, ...]]:
+    kept: list[str] = []
+    asks: list[str] = []
+    for fenced, run in _runs_of(body):
+        if fenced:
+            kept.append(run)
+            continue
+        for comment in A_COMMENT.finditer(run):
+            lines = [line.strip() for line in comment.group(1).strip().splitlines()]
+            if lines and lines[0] == ASKS:
+                asks.extend(line for line in lines[1:] if line)
+        kept.append(A_COMMENT.sub("", run))
+    return "".join(kept), tuple(dict.fromkeys(asks))
+
+
+# The body as runs of lines, each fenced or not, with their line breaks.
+def _runs_of(body: str) -> Iterator[tuple[bool, str]]:
+    fence: str | None = None
+    run: list[str] = []
+    fenced = False
+    for line in body.split("\n"):
+        opened = A_FENCE.match(line)
+        if opened is not None and fence in {None, opened.group(1)}:
+            if fence is None:
+                if run:
+                    yield fenced, "\n".join(run) + "\n"
+                run, fenced, fence = [line], True, opened.group(1)
+                continue
+            run.append(line)
+            yield True, "\n".join(run) + "\n"
+            run, fenced, fence = [], False, None
+            continue
+        run.append(line)
+    if run:
+        yield fenced, "\n".join(run)
 
 
 # A level-n heading closes the open headings of level n and deeper.

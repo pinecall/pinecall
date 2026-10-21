@@ -38,8 +38,8 @@ class Push:
 
     @property
     def chunks(self) -> int:
-        """How many chunks the files were cut into."""
-        return sum(len(item.pieces) for item in self.files)
+        """How many rows the files become: their pieces and the questions those answer, each a chunk of the quota."""
+        return sum(item.rows for item in self.files)
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,9 +248,16 @@ async def _written(
         )
         for piece, vector in zip(pieces, vectors, strict=True)
     ]
-    files = [
-        FileToWrite(path=item.path, text=item.text, sha256=item.sha256, chunks=len(item.pieces)) for item in changed
+    # A question is embedded alone, as a query is, so it sits in the space the questions arrive in.
+    asked = [(piece, question) for piece in pieces for question in piece.asks]
+    answers_vectors = await embedder.embed([question for _, question in asked]) if asked else []
+    chunks += [
+        ChunkToWrite(
+            path=piece.path, heading=piece.heading, ordinal=piece.ordinal, text=question, embedding=vector, kind="ask"
+        )
+        for (piece, question), vector in zip(asked, answers_vectors, strict=True)
     ]
+    files = [FileToWrite(path=item.path, text=item.text, sha256=item.sha256, chunks=item.rows) for item in changed]
     # Unbounded: a base of thousands of chunks is that many rows into two indexes.
     async with unbounded(session):
         await repository.write(

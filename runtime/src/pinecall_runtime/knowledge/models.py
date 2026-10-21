@@ -83,7 +83,7 @@ class KnowledgeFile(Model):
 
 
 class KnowledgeChunk(Model):
-    """One chunk of a file: its heading path, its order, its text and its vector."""
+    """One chunk of a file: its heading path, its order, its text and its vector; or a question that chunk answers."""
 
     __tablename__ = "knowledge_chunks"
     __table_args__ = (
@@ -107,3 +107,5 @@ class KnowledgeChunk(Model):
     embedding: Mapped[list[float]] = mapped_column(Vector(), nullable=False)
     # The base's, on every chunk: each language's partial BM25 index reads its own rows.
     language: Mapped[str] = mapped_column(Text, nullable=False)
+    # `text`, a piece of the file; `ask`, a question the piece at the same ordinal answers.
+    kind: Mapped[str] = mapped_column(Text, nullable=False)

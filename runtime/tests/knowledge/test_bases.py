@@ -20,6 +20,7 @@ HOURS = "# Horario\n\nAbrimos de lunes a viernes, de nueve a siete.\n"
 
 
 SUPERVISING = "# Supervising a live call\n\nA supervisor listens, whispers to the agent and takes the call over.\n"
+ASKED = "# Precios\n\n<!-- asks\n¿Cuánto sale una limpieza?\n-->\n\nUna limpieza cuesta 40 euros y dura media hora.\n"
 
 
 def a_push(base: str, *files: tuple[str, str], language: Language | None = None) -> bases.Push:
@@ -143,3 +144,19 @@ async def test_a_file_put_beside_the_others_speaks_the_bases_language(
     async with sessions.begin() as session:
         await bases.put_file(session, embedder, scope, a_push("clinica", ("supervising.md", SUPERVISING)))
     assert await language_kept(sessions, scope, "clinica") == "spanish"
+
+
+async def test_a_question_the_section_answers_finds_it_and_the_model_reads_the_section(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """Asked in the question's own words, the search hands back the section's text, never the question."""
+    async with sessions.begin() as session:
+        await bases.put_base(session, embedder, scope, a_push("clinica", ("precios.md", ASKED), ("horario.md", HOURS)))
+    searched = await asked(sessions, embedder, scope, "¿Cuánto sale una limpieza?", "clinica")
+    assert searched.found[0].path == "precios.md"
+    assert "40 euros" in searched.found[0].text
+    assert "¿Cuánto sale" not in searched.found[0].text
+    async with sessions() as session:
+        files = await bases.list_files(session, scope, "clinica")
+    assert files is not None
+    assert {item.path: item.chunks for item in files} == {"precios.md": 2, "horario.md": 1}

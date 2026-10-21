@@ -2038,6 +2038,12 @@ $ pinecall docs push
 clinica-norte · 7 files · 41 chunks · 812 ms      # base · sent · became · took
 ```
 
+**The questions a section answers travel with it.** An HTML comment is never a chunk — a note to the
+author stays the author's — but one is read: `<!-- asks … -->` under a heading, the questions that
+section answers, one a line, invisible wherever the file is rendered. Each is indexed beside the
+section in a caller's own words and counts as a chunk of the quota
+([knowledge-bases.md](https://docs.pinecall.io/concepts/knowledge-bases/)).
+
 **The base speaks a language.** Its words are stemmed with that language's rules, so a caller's
 *sábados* finds *sábado* and an English reader's *supervise* finds *supervising*. `--language` says it
 (`en`, `es`, `pt`, `fr`, `de`, `it`, `nl`, or the configuration's name); left out, the gateway counts

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A section carries the questions it answers, and a comment never reaches a chunk.** An HTML
+  comment outside a code fence is dropped from the body, where it used to be indexed and handed
+  to the model. One is read: `<!-- asks … -->` under a heading, one question a line, each a row of
+  `knowledge_chunks` (`kind = 'ask'`, migration 000008) beside the section's first piece, embedded
+  alone as a query is; found, it hands back the section's text, and a question and its section
+  found together are one hit. A question counts as a chunk of the quota and in a file's count
+  (`docs/retrieval/spec.md`).
 - **A golden question may name several pages that answer it.** `POST /v1/knowledge/{base}/eval`
   takes `expects` as a heading path or a list of them, any one of which answers; a miss names the
   list. The FAQ's one line and the guide it points at are both right, and a golden that could name

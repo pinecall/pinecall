@@ -24,7 +24,8 @@ org = :org AND env = :env AND (base, holder) IN (
 )
 """
 
-# The chunks around each found one, under the same heading of the same file, in the file's order.
+# The chunks around each found one, under the same heading of the same file, in the file's order;
+# a question found hands back the text it sits beside, never itself.
 SECTIONS = text("""
 SELECT wanted.at, chunk.text
 FROM unnest(CAST(:ats AS integer[]), CAST(:bases AS text[]), CAST(:holders AS text[]), CAST(:paths AS text[]),
@@ -34,10 +35,11 @@ JOIN knowledge_chunks AS chunk ON chunk.org = :org AND chunk.env = :env
     AND chunk.base = wanted.base AND chunk.holder = wanted.holder AND chunk.path = wanted.path
     AND chunk.heading IS NOT DISTINCT FROM wanted.heading
     AND chunk.ordinal BETWEEN wanted.first AND wanted.last
+    AND chunk.kind = 'text'
 ORDER BY wanted.at, chunk.ordinal
 """)
 
-KNOWLEDGE_COLUMNS = ("base", "holder", "path", "heading", "ordinal", "text")
+KNOWLEDGE_COLUMNS = ("base", "holder", "path", "heading", "ordinal", "text", "kind")
 
 
 # One partial BM25 index a language (migrations/versions/…000007), read where its predicate is
@@ -55,13 +57,14 @@ def lexical_of(language: str) -> Lexical:
 
 @dataclass(frozen=True, slots=True)
 class ChunkToWrite:
-    """One chunk as the write inserts it."""
+    """One row as the write inserts it: a piece of text, or a question the piece at that ordinal answers."""
 
     path: str
     heading: str | None
     ordinal: int
     text: str
     embedding: list[float]
+    kind: str = "text"
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,6 +238,7 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
                     text=chunk.text,
                     embedding=chunk.embedding,
                     language=language,
+                    kind=chunk.kind,
                 )
                 for chunk in chunks
             ]

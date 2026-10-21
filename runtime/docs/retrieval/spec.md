@@ -51,7 +51,27 @@ A base is a folder of Markdown pushed whole (`PUT /v1/knowledge/{base}`) or a fi
 each piece kept under 350 tokens and cut again at a paragraph or a sentence when a section runs
 long; a fenced code block is one paragraph whatever blank lines it holds, and is never cut, so a
 class is never split between two of its members. A piece carries its heading path in the text
-both indexes read, `Tarifas › Revisión`. Front matter is not a chunk. A file keeps the SHA-256 of the text it was cut from, so a push embeds only
+both indexes read, `Tarifas › Revisión`. Front matter is not a chunk, and an HTML comment never
+reaches one: it is the author's, dropped from the body outside a code fence. **One comment is
+read**: an `asks` comment, the questions the section answers, one a line:
+
+```markdown
+## Co-payments
+
+<!-- asks
+how much is my co-payment?
+do I pay anything at the visit?
+-->
+
+A visit is fifteen euros at the desk, the rest is billed to the insurer.
+```
+
+Each question is a row of its own beside the section's first piece, embedded alone as a query is,
+so it sits in the space the callers' questions arrive in; found, it hands back the section's text,
+never itself, and a question and its section found together are one hit. A question counts as a
+chunk against the quota. Invisible on any site that renders the file, the questions are written by
+the author beside the text they answer, or generated from it by a script and kept with the
+documents, never maintained apart from them. A file keeps the SHA-256 of the text it was cut from, so a push embeds only
 the files that changed and the rest are kept as they were; a push that changes nothing costs one
 statement and no embedding.
 
