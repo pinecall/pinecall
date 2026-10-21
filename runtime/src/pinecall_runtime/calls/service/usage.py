@@ -127,6 +127,11 @@ async def keep_caller_cost(session: AsyncSession, call: str, usd: float) -> None
         await FactsRepository(session).add_caller_cost(call, usd)
 
 
+async def keep_caller_played(session: AsyncSession, call: str, *, llm: str, tts: str | None, voice: str | None) -> None:
+    """Keep who plays a simulated caller with the call's facts: its lines' model, its voice's, the voice."""
+    await FactsRepository(session).keep_caller(call, {"caller_llm": llm, "caller_tts": tts, "caller_voice": voice})
+
+
 # Not in the summary: the gateway keeps both with the call's facts — the lent vendors at the seal,
 # the caller's cost when the simulation ends — and the log's wire stays the one every SDK reads.
 async def _billed(session: AsyncSession, rows: list[UsageRow]) -> list[UsageRow]:

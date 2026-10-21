@@ -146,6 +146,10 @@ class CallFacts:
     lent: tuple[str, ...] = ()
     # Not a fold: what a simulated caller's model and voice cost, kept when the simulation ends.
     caller_cost_usd: float = 0.0
+    # Nor who played that caller, kept when the simulation starts: its lines' model, its voice's, the voice.
+    caller_llm: str | None = None
+    caller_tts: str | None = None
+    caller_voice: str | None = None
     # Not a fold either: the state's line, written at the seal (`line_of`), None while the call is live.
     line: JsonObject | None = None
 

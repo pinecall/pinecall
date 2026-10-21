@@ -97,7 +97,11 @@ expected-outcome judge holds the call to them and the model playing the caller n
 lacks is refused when written, not in the middle of a run. `GET
 /v1/agents/{slug}/personas/{name}/runs` pages the calls the persona made to that agent in the
 key's environment, newest first, each with its turns, how it ended, its cost in
-US dollars and the judges' score.
+US dollars and the judges' score, and who played the caller as it ran: `played_by` `{llm, tts,
+voice}` (`vendor/model` of its lines and of its voice, `tts` and `voice` null on a written call;
+the row null for a call simulated before the runtime kept it) and `caller_cost_usd`, what that
+caller cost. `GET /v1/simulations` pages every simulated call the same way, or the agents named's
+(`?agent=`, once or more), and `?call=` reads one.
 
 ## Callers written for the agent — `POST /v1/agents/{slug}/personas/generate`
 

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A tool chain never says the same sentence twice.** A model that chains tools in one answer
+  wrote its line again in each round ("Let me note that down." before one tool, then before the
+  next). The words that open a round are held while they could still be a sentence the agent said
+  since the caller last spoke, dropped once they are one, and let through as soon as they are not
+  (`session/repeats.py`); the tools are still called.
+- **A simulated call says who played its caller.** `call_facts` keeps the model of its lines, its
+  voice's vendor and model, and the voice, as it ran (migration 000006); `GET /v1/simulations`
+  carries them on each row as `played_by` with `caller_cost_usd`, and `?call=` reads one call.
 - **A simulation names who plays its caller.** `POST /v1/simulations` takes `played_by` (`llm`,
   `tts`, `voice`): the model, the voice's vendor and the voice this run alone is played on, over the
   persona's own. A model, a vendor or a voice the runtime lacks is `400` before the call starts, as

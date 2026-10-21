@@ -15,6 +15,7 @@ import { Avatar, Icon, Pill, usePane } from "../../ui";
 import { Desk } from "./desk";
 import { Actions, Details, Player, recordingIn, scoreIn } from "./over";
 import { ChatView } from "./chat-view";
+import { Models } from "./models";
 import { Side } from "./side";
 import { Timeline } from "./timeline";
 import { traceOf } from "./trace-bars";
@@ -137,6 +138,7 @@ export function Call({
           {!over && supervises && <Desk call={call} live spoken={spoken} asked={state.attention ?? null} />}
           {/* What the call came to, how it was judged, how fast, what it cost, who ended it: the rest is the call's own page. */}
           <Side state={state} score={judged ?? read.score} latencies={read.latencies} />
+          <Models call={call} state={state} entries={watched.entries} />
           {aside}
           {/* What a person does with a call that is over, at the pane's foot. */}
           {over && (

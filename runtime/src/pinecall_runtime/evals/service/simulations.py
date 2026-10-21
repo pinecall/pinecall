@@ -139,11 +139,24 @@ async def refuse_an_opened_call(session_: AsyncSession, call: str) -> None:
 # ── the caller ──
 
 
+@dataclass(frozen=True, slots=True)
+class CallerModel:
+    """The model a caller's lines are improvised on, and its `vendor/model` as it runs."""
+
+    llm: llm.LLM[Never]
+    named: str
+
+
+def named(stage: providers.Running) -> str:
+    """A stage as it runs, `vendor/model`, or the vendor alone on its plugin's own model."""
+    return stage.vendor if not stage.model else f"{stage.vendor}/{stage.model}"
+
+
 # Read in a transaction of its own: the model is held for a whole call, and no connection is.
 @asynccontextmanager
 async def caller_model(
     serving: calls.Serving, scope: Scope, persona: judging.CallerPersona
-) -> AsyncGenerator[llm.LLM[Never]]:
+) -> AsyncGenerator[CallerModel]:
     """The model that improvises the caller's lines: the persona's, else the box's caller's."""
     async with serving.handles.sessions.begin() as session_:
         configured = await providers.get_catalog(session_)
@@ -152,9 +165,10 @@ async def caller_model(
     declared = tuning.model_named(persona.llm or None, "llm", in_use=configured.default_vendors["llm"]) or (
         None if row is None else Model(provider=row.vendor, model=row.model or "")
     )
-    model = providers.llm_of(providers.stage_on_its_key("llm", declared, configured, keys))
+    stage = providers.stage_on_its_key("llm", declared, configured, keys)
+    model = providers.llm_of(stage)
     try:
-        yield model
+        yield CallerModel(model, named(stage))
     finally:
         await model.aclose()
 
@@ -268,7 +282,8 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
         running = await caller_voice(session_, serving, scope, placed.agent, persona)
     async with caller_model(serving, scope, persona) as model:
         speech = providers.tts_of(running)
-        caller = Caller(persona, model, spending, speech)
+        caller = Caller(persona, model.llm, spending, speech)
+        await _played_by(serving, placed.call, model.named, running)
         # The caller murmurs in the language it speaks: the line learns it here, with the voice.
         localised = dataclasses.replace(placed.line, language=running.language)
         line = spoken.SpokenLine("", "", placed.call, placed.turns, localised)
@@ -309,7 +324,8 @@ async def written_turns(serving: calls.Serving, running: session.Session, placed
     async with serving.handles.sessions.begin() as session_:
         spending = Spending(await providers.get_catalog(session_))
     async with caller_model(serving, Scope(route.org, route.env), placed.persona) as model:
-        caller = Caller(placed.persona, model, spending)
+        caller = Caller(placed.persona, model.llm, spending)
+        await _played_by(serving, placed.call, model.named, None)
         try:
             lines = await playing.converse(
                 running, serving.logs, improvising(serving, placed.call, caller), placed.turns
@@ -317,6 +333,13 @@ async def written_turns(serving: calls.Serving, running: session.Session, placed
         finally:
             await _kept(serving, placed.call, spending)
     return lines, spending
+
+
+# Kept as the call starts, so the call's page names who plays the caller while it plays.
+async def _played_by(serving: calls.Serving, call: str, model: str, voice: providers.Running | None) -> None:
+    tts, chosen = (None, None) if voice is None else (named(voice), voice.voice)
+    async with serving.handles.sessions.begin() as session_:
+        await calls.keep_caller_played(session_, call, llm=model, tts=tts, voice=chosen)
 
 
 # Kept whatever ended the call, a caller hanging up or the line failing: what it spent was spent.

@@ -39,6 +39,11 @@ export async function readSimulations(credentials: Credentials, agents: readonly
   return PersonaRunListSchema.parse(await read(credentials, "/v1/simulations", params));
 }
 
+/** One simulated call's row, by its id: who played the caller and what it cost; null for a call no persona made. */
+export async function readSimulation(credentials: Credentials, call: string): Promise<PersonaRun | null> {
+  return PersonaRunListSchema.parse(await read(credentials, "/v1/simulations", { call })).runs[0] ?? null;
+}
+
 /** Create, replace or rename a persona; resolves to the updated list. */
 export async function writePersona(credentials: Credentials, agent: string, name: string, written: Written): Promise<Persona[]> {
   return PersonaListSchema.parse(await put(credentials, door(agent, name), written)).personas;

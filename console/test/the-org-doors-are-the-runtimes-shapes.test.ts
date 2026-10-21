@@ -111,6 +111,8 @@ const A_RUN = {
   outcome: "Le confirmé el turno del jueves a las diez.",
   cost_usd: 0.0069,
   score: { held: 3, judged: 4, passed: false, reason: "never read the address back" },
+  played_by: { llm: "google/gemini-3.5-flash-lite", tts: "google/gemini-3.8-flash-lite-tts", voice: "Puck" },
+  caller_cost_usd: 0.0006,
 };
 
 test("the runs pane asks one agent's caller's door, pages with the gateway's own cursor, and parses a run whole", async () => {

@@ -44,6 +44,8 @@ class PersonaRunFilters:
     persona: str | None = None
     before: str | None = None
     agents: tuple[str, ...] = ()
+    # One simulated call by its id.
+    call: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +102,7 @@ where head.org = :org and head.env = :env and head.holder = :holder
   and (cast(:agent as text) is null or head.agent = :agent)
   and (cardinality(cast(:agents as text[])) = 0 or head.agent = any(cast(:agents as text[])))
   and (cast(:persona as text) is null or f.persona = :persona)
+  and (cast(:call as text) is null or head.log = :call)
 """
 
 FOUND_COUNT = text("select count(*) as total " + MATCHING)
@@ -149,6 +152,14 @@ class FactsRepository(Repository[CallFact]):
         statement = statement.on_conflict_do_update(
             index_elements=[CallFact.call],
             set_={"caller_cost_usd": CallFact.caller_cost_usd + statement.excluded.caller_cost_usd},
+        )
+        await self.session.execute(statement)
+
+    async def keep_caller(self, call: str, played: Mapping[str, str | None]) -> None:
+        """Keep who played the call's simulated caller: `caller_llm`, `caller_tts`, `caller_voice`."""
+        statement = insert(CallFact).values(call=call, **played)
+        statement = statement.on_conflict_do_update(
+            index_elements=[CallFact.call], set_={name: statement.excluded[name] for name in played}
         )
         await self.session.execute(statement)
 
@@ -213,6 +224,7 @@ class FactsRepository(Repository[CallFact]):
             "agent": wanted.agent,
             "agents": list(wanted.agents),
             "persona": wanted.persona,
+            "call": wanted.call,
         }
         total = (await self.session.execute(PERSONA_RUNS_COUNT, params)).scalar_one()
         page = {**params, "before": wanted.before, "limit": limit + 1}

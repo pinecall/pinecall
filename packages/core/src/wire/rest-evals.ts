@@ -162,6 +162,10 @@ export const PersonaRunSchema = z.strictObject({
   outcome: z.string().nullable(),
   cost_usd: z.number().nullable(),
   score: SessionScoreSchema.nullable(),
+  /** Who played the caller as it ran: `vendor/model` of its lines and of its voice, and the voice; null before the runtime kept it. */
+  played_by: z.strictObject({ llm: z.string().nullable(), tts: z.string().nullable(), voice: z.string().nullable() }).nullable(),
+  /** What that caller's lines and voice cost, in US dollars. */
+  caller_cost_usd: z.number(),
 });
 
 export type PersonaRun = z.infer<typeof PersonaRunSchema>;

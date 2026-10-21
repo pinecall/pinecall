@@ -4,6 +4,7 @@ caller's cost, both kept with its facts."""
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.calls.metering import UsageRow
+from pinecall_runtime.calls.models import CallFact
 from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.service import usage
 from pinecall_runtime.calls.store import Store
@@ -56,3 +57,16 @@ async def test_a_simulations_caller_cost_is_added_line_by_line_and_read_onto_its
         await usage.keep_caller_cost(session, call, 0.0)
     (row,) = await summaries_of(store, sessions, {call})
     assert (row.lent, round(row.used.caller_cost_usd, 6), row.used.simulations) == ((), 0.006, 1)
+
+
+async def test_who_played_a_simulated_caller_is_kept_with_its_facts_and_kept_again_as_the_last_said(
+    sessions: async_sessionmaker[AsyncSession], call: str
+) -> None:
+    """A run that names another voice writes over the first: the facts say who played the caller last."""
+    async with sessions.begin() as session:
+        await usage.keep_caller_played(session, call, llm="google/gemini-3.5-flash-lite", tts=None, voice=None)
+        await usage.keep_caller_played(session, call, llm="google/gemini-3.5-flash-lite", tts="google", voice="Puck")
+    async with sessions() as session:
+        kept = await session.get(CallFact, call)
+    assert kept is not None
+    assert (kept.caller_llm, kept.caller_tts, kept.caller_voice) == ("google/gemini-3.5-flash-lite", "google", "Puck")

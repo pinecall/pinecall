@@ -56,7 +56,7 @@ from pinecall_runtime.calls.service.stranded import stranded
 from pinecall_runtime.calls.service.text import TextSetup, open_text, open_text_as
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.calls.service.traceback import traceback_of
-from pinecall_runtime.calls.service.usage import keep_caller_cost
+from pinecall_runtime.calls.service.usage import keep_caller_cost, keep_caller_played
 from pinecall_runtime.calls.store import Store
 
 __all__ = [
@@ -119,6 +119,7 @@ __all__ = [
     "judge_call",
     "judge_of",
     "keep_caller_cost",
+    "keep_caller_played",
     "keep_days",
     "kill_agent",
     "known_here",

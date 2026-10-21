@@ -76,7 +76,7 @@ async def next_line(body: schemas.NextLineRequest, actor: EvalsKey, serving: The
     throttle = AttemptThrottle(serving.handles.sessions, LINES_A_MINUTE)
     await throttle.check(f"{actor.org} evals/caller", TOO_MANY_LINES)
     async with service.caller_model(serving, actor.scope, body.persona) as model:
-        return (await service.improvise_line(model, body)).answer
+        return (await service.improvise_line(model.llm, body)).answer
 
 
 # A persona is the agent's own or Pinecall's library's, as the written simulation takes it: a name

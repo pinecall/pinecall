@@ -61,15 +61,46 @@
   opacity: 0.6;
 }
 
-/* Erase sits at the far end whether or not the do-not-call link is there. */
-.over-acts-erase {
-  margin-left: auto;
+/* Erasing is apart from what a call is used for: below a line, quiet until asked, then said in words. */
+.over-erase {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.over-erase-ask {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+
+.over-erase-ask:hover:not(:disabled) {
   color: var(--red);
 }
 
-.over-acts-erase:hover:not(:disabled) {
-  color: var(--red);
-  text-decoration: underline;
+.over-erase-said {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.over-erase-moves {
+  display: flex;
+  gap: 8px;
+}
+
+.over-erase-moves .ui-button {
+  width: auto;
+  height: 30px;
+  padding: 0 12px;
 }
 
 .over-result {

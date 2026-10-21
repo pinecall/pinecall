@@ -267,6 +267,10 @@ class PersonaRunRow(Row):
     outcome: str | None
     cost_usd: float | None
     score: SessionScore | None
+    # Who played the caller as it ran (`vendor/model` of its lines and its voice, and the voice),
+    # and what that cost; None for a call simulated before the runtime kept it.
+    played_by: PlayedBy | None = None
+    caller_cost_usd: float = 0.0
 
 
 class PersonaRunList(Row):
@@ -288,3 +292,5 @@ class SimulationQuery(PersonaRunQuery):
     """Every simulated call, or the agents named's: where the page continues, and how many."""
 
     agent: list[str] = Field(default_factory=list[str])
+    # One simulated call, by its id.
+    call: str | None = None

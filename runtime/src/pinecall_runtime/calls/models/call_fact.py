@@ -53,6 +53,11 @@ class CallFact(Model):
     # What a simulated caller's own model and voice cost, on the box's keys: the call's cost is the
     # agent's side, and the caller is the harness's, kept here when the simulation ends.
     caller_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default=text("0"))
+    # Who played that caller, as it ran: `vendor/model` of its lines, the voice's `vendor/model` and
+    # the voice. NULL for a call nobody simulated.
+    caller_llm: Mapped[str | None] = mapped_column(Text)
+    caller_tts: Mapped[str | None] = mapped_column(Text)
+    caller_voice: Mapped[str | None] = mapped_column(Text)
     # What a list shows of the call, as its state said at the seal (`facts.line_of`): a list reads
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.

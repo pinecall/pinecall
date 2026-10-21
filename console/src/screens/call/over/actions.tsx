@@ -49,12 +49,8 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
     }
   };
 
-  // Nothing brings an erased call back, so the first press only asks; the trail keeps the row.
+  // Nothing brings an erased call back: it is asked first, in words, and the trail keeps the row.
   const erase = async (): Promise<void> => {
-    if (!sure) {
-      setSure(true);
-      return;
-    }
     setBusy("erase");
     setRefused(null);
     try {
@@ -104,15 +100,31 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
           </Button>
         )}
       </div>
-      <div className="over-acts-quiet" onMouseLeave={() => setSure(false)}>
-        {mayList && (
+      {mayList && (
+        <div className="over-acts-quiet">
           <button type="button" className="over-acts-link" disabled={busy !== "" || listed} onClick={() => void stopCalling()}>
-            {busy === "list" ? "Listing…" : listed ? `${number} is on the do-not-call list` : "Do not call"}
+            {busy === "list" ? "Listing…" : listed ? `${number} is on the do-not-call list` : "Do not call this number again"}
+          </button>
+        </div>
+      )}
+      <div className="over-erase">
+        {sure ? (
+          <>
+            <p className="over-erase-said">Its log, its recording and the memories it taught are erased for good. The audit trail keeps one line saying so.</p>
+            <div className="over-erase-moves">
+              <Button kind="danger" size="sm" disabled={busy !== ""} onClick={() => void erase()}>
+                {busy === "erase" ? "Erasing…" : "Erase for good"}
+              </Button>
+              <Button size="sm" disabled={busy !== ""} onClick={() => setSure(false)}>
+                Keep it
+              </Button>
+            </div>
+          </>
+        ) : (
+          <button type="button" className="over-erase-ask" disabled={busy !== ""} onClick={() => setSure(true)}>
+            Erase this call
           </button>
         )}
-        <button type="button" className="over-acts-link over-acts-erase" disabled={busy !== ""} onClick={() => void erase()}>
-          {busy === "erase" ? "Erasing…" : sure ? "Erase it for good" : "Erase this call…"}
-        </button>
       </div>
       {judged && <div className="over-result">Judged again: the verdict above is the new one, written on the call's log.</div>}
       {kept !== null && (
