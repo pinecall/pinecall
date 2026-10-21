@@ -1,9 +1,22 @@
-"""The worker builds its stages from the gateway's answer: the realtime model only where one was handed out."""
+"""The worker's stages from the gateway's answer, the realtime model only where handed out; a hang-up ends the call."""
+
+from typing import cast
 
 from pinecall_runtime.agents.schemas import PipelineKeys, RunningStage
-from pinecall_runtime.jobs.service.job import pipeline_of
+from pinecall_runtime.calls.service import CALLER_HUNG_UP
+from pinecall_runtime.jobs.service.job import follow_command, pipeline_of
+from pinecall_runtime.session import service as session
+from pinecall_runtime.wire.base import Command
 
 STAGE = RunningStage(vendor="acme", credentials="k", model="acme-1")
+
+
+async def test_the_callers_hang_up_on_the_stream_is_the_caller_gone_and_no_command_of_the_apps() -> None:
+    """The gateway's own word on the stream ends the call as the caller's; the session is never asked to apply it."""
+    gone: list[str] = []
+    said = Command(type=CALLER_HUNG_UP, agent="clinica-norte", call="call_1", id=None, data={})
+    await follow_command(cast(session.Session, object()), said, lambda: gone.append("caller"))
+    assert gone == ["caller"]
 
 
 def test_an_answer_with_no_realtime_model_builds_none() -> None:

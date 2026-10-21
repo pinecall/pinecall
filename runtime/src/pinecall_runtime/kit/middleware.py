@@ -19,10 +19,17 @@ type Origins = Callable[[Scope], tuple[str, ...]]
 
 # Read per request: the settings are loaded by the lifespan, after the middleware is built.
 class AllowedOrigins:
-    """CORS under a prefix for the origins allowed; any page may GET the paths `any_page` matches."""
+    """CORS under a prefix for the origins allowed; any page GETs what `any_page` matches, POSTs `any_page_says`."""
 
     def __init__(
-        self, app: ASGIApp, *, prefix: str, origins: Origins, headers: tuple[str, ...], any_page: re.Pattern[str]
+        self,
+        app: ASGIApp,
+        *,
+        prefix: str,
+        origins: Origins,
+        headers: tuple[str, ...],
+        any_page: re.Pattern[str],
+        any_page_says: re.Pattern[str],
     ) -> None:
         """Nothing allowed until `origins` says what."""
         self.app = app
@@ -30,6 +37,7 @@ class AllowedOrigins:
         self.origins = origins
         self.headers = headers
         self.any_page = any_page
+        self.any_page_says = any_page_says
         self.cors: tuple[tuple[str, ...], CORSMiddleware] | None = None
         self.reads = CORSMiddleware(
             app,
@@ -39,6 +47,8 @@ class AllowedOrigins:
             expose_headers=READ_EXPOSED,
             max_age=PREFLIGHT_KEPT_S,
         )
+        # A token in the URL and an empty body: no header a browser asks leave for, no credentials.
+        self.says = CORSMiddleware(app, allow_origins=("*",), allow_methods=("POST",), max_age=PREFLIGHT_KEPT_S)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Route an allowed origin's request through CORS, and anything else straight in."""
@@ -50,6 +60,9 @@ class AllowedOrigins:
         allowed = self.origins(scope) if origin else ()
         if origin and origin not in allowed and self.any_page.match(path):
             await self.reads(scope, receive, send)
+            return
+        if origin and origin not in allowed and self.any_page_says.match(path):
+            await self.says(scope, receive, send)
             return
         if not origin or origin not in allowed:
             await self.app(scope, receive, send)

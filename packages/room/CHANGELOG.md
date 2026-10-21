@@ -4,6 +4,14 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`leave()` says the hang-up at the gateway's door.** The hang-up published on the room's data
+  channel was lost with the seat that left the same instant, and the call waited five minutes for a
+  visitor who had hung up: its cost and its score came five minutes late. `leave()` now posts
+  `/v1/calls/{call}/hangup` with the call's own token first, `keepalive`, and the call ends at once;
+  the data channel still says it after, for a gateway of the version before.
+
 ## 0.11.7 — released with every other package
 
 - Nothing of the room changed: published at 0.11.7 with every other package.

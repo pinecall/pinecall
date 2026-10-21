@@ -80,10 +80,14 @@ gets a new session that opens on the old one's history
   reload, a closed tab and a dropped line look alike to LiveKit (`CLIENT_INITIATED`). It waits five
   minutes (`A_VISITOR_RETURNS_S`), and the visitor's room outlives them as long
   (`departure_timeout`, LiveKit's own 20 s otherwise). A phone caller's call still ends with the leg.
-- **A hang-up is said.** Since a hang-up disconnects the seat as a reload does, the widget says it
-  first: any payload on the DataChannel topic `pinecall.hangup` from a seat of the call's own
-  (`talk` or `chat`) ends the call at once, as `caller_hung_up`. A browser that disconnects without
-  it leaves the call to wait.
+- **A hang-up is said.** Since a hang-up disconnects the seat as a reload does, the page says it
+  first: `POST /v1/calls/{call}/hangup?token=` with the call's own token (`log_token` or
+  `participant_token`), from any page, `202`, and the call ends at once as `caller_hung_up`. Over
+  HTTP, with `fetch`'s `keepalive`, so a tab that closes the same instant still completes it. The
+  DataChannel topic `pinecall.hangup` from a seat of the call's own (`talk` or `chat`) says the
+  same, for a page that has no token at hand — but a seat that leaves the room as it publishes
+  loses the message with the room more often than not, so a page says it at the door. A browser
+  that disconnects without either leaves the call to wait.
 - **The resume token.** Every answer carries `resume_token`, signed with the gateway's own key,
   naming the call and nothing else, for 30 days. It joins no room and reads no log. The browser keeps
   it beside the conversation; the backend sends it back as `resume`, with the org's key as for any

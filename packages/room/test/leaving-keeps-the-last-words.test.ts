@@ -34,12 +34,17 @@ describe("leaving", () => {
     expect(store.state.connection).toBe("ended");
   });
 
-  it("says the visitor hung up before the seat goes, so the call does not wait for them", async () => {
+  it("says the visitor hung up at the gateway's door and in the room before the seat goes, so the call does not wait for them", async () => {
     const { store, gateway, livekit } = aRoom();
     gateway.answer(LOG, { stream: [framed(TALKED)], then: "hold" });
     await store.start("chat");
     await store.leave();
 
+    // At the door first, with the call's own token, asked to outlive the page; then in the room.
+    const said = gateway.requests.filter((asked) => asked.method === "POST");
+    expect(said.map((asked) => [asked.url, asked.keepalive])).toEqual([
+      ["https://cloud.pinecall.io/v1/calls/call_1/hangup?token=log_1", true],
+    ]);
     expect(livekit.room.localParticipant.published).toEqual([{ data: "{}", topic: "pinecall.hangup" }]);
   });
 

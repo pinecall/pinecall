@@ -64,6 +64,8 @@ API_PREFIX = "/v1/"
 ALLOWED_HEADERS = ("authorization", "content-type", ENV_HEADER, HOLDER_HEADER, "last-event-id")
 # A token of one call reads its own endpoints from any page: GET only, no credentials.
 A_PAGES_READS = re.compile(r"^/v1/(calls/[^/]+/(events|state|recording)|codes/[^/]+)$")
+# And says its own hang-up: the one POST a page makes with a token, as its tab closes.
+A_PAGE_HANGS_UP = re.compile(r"^/v1/calls/[^/]+/hangup$")
 # The most any request carries, above every endpoint's own cap (a hold melody 20 MiB, a hosted
 # app's source 10 MiB): a body past it is refused as it streams in, never held whole in memory.
 LARGEST_BODY = 32 * 1024 * 1024
@@ -216,7 +218,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Pinecall gateway", lifespan=lifespan, docs_url="/v1/docs", redoc_url="/v1/redoc")
     app.add_middleware(ActorMiddleware, resolve=resolve_actor, refuse=answer_refusal)
     app.add_middleware(
-        AllowedOrigins, prefix=API_PREFIX, origins=_origins_of, headers=ALLOWED_HEADERS, any_page=A_PAGES_READS
+        AllowedOrigins,
+        prefix=API_PREFIX,
+        origins=_origins_of,
+        headers=ALLOWED_HEADERS,
+        any_page=A_PAGES_READS,
+        any_page_says=A_PAGE_HANGS_UP,
     )
     app.add_middleware(BodyCeiling, most=LARGEST_BODY)
     api.mount(app)

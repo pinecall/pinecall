@@ -1,4 +1,4 @@
-"""What a reader reads: the org's feed, every entry or the types asked for, and what a call's own token may not."""
+"""What a reader reads: the feed, every entry or the types asked, what a call's token may not, whose hang-up it says."""
 
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
@@ -42,3 +42,35 @@ async def test_a_calls_own_token_reads_its_log_and_never_its_prompt(
         refused = await gateway.http.get(f"/v1/calls/{taken['call']}/prompt", params={"token": token})
         assert refused.status_code == 403, refused.text
         assert "read with a key" in refused.text
+
+
+@needs_the_services
+async def test_a_hang_up_is_the_callers_own_said_with_the_calls_token_and_nobody_elses(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """A key is told to end with a verb, another call's token is refused, and the call's own is heard."""
+    async with holding(gateway, tenant, agent):
+        minted = [
+            (
+                await gateway.http.post("/v1/tokens", json={"agent": agent, "scope": "talk"}, headers=tenant.person)
+            ).json()
+            for _ in range(2)
+        ]
+    mine, theirs = minted[0], minted[1]
+    with_a_key = await gateway.http.post(f"/v1/calls/{mine['call']}/hangup", headers=tenant.server)
+    assert with_a_key.status_code == 403, with_a_key.text
+    assert "the verb end" in with_a_key.text
+    not_mine = await gateway.http.post(f"/v1/calls/{mine['call']}/hangup", params={"token": theirs["log_token"]})
+    assert not_mine.status_code == 403, not_mine.text
+    # Minted and never answered by a worker: there is no call to end, and the page is told so.
+    for token in (mine["log_token"], mine["participant_token"]):
+        heard = await gateway.http.post(f"/v1/calls/{mine['call']}/hangup", params={"token": token})
+        assert heard.status_code == 404, heard.text
+    # Any page may say it: the preflight of a foreign origin is answered, with POST allowed.
+    asked = await gateway.http.options(
+        f"/v1/calls/{mine['call']}/hangup",
+        headers={"origin": "https://a-page.example", "access-control-request-method": "POST"},
+    )
+    assert asked.status_code == 200, asked.text
+    assert asked.headers["access-control-allow-origin"] == "*"
+    assert "POST" in asked.headers["access-control-allow-methods"]

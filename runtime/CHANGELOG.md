@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A page's hang-up is said at the door, and the call ends at once.** A hang-up said on the room's
+  DataChannel (`pinecall.hangup`) is lost with the seat that leaves as it publishes it, and the call
+  then waited `A_VISITOR_RETURNS_S` (five minutes) for a visitor who had hung up: every call of
+  pinecall.io's own page and of the widget ended five minutes late, its cost and its judges with it.
+  `POST /v1/calls/{call}/hangup?token=`, with the call's own token, from any page, `202`: the gateway
+  tells whatever runs the call (`caller.hung_up` on the call's command channel, the gateway's own
+  word, never an app's) and it ends as `caller_hung_up`. A key is `403` (`tokens.md`, `gateway-api.md`).
 - **A seat in a call's room is handed nothing but the call itself.** LiveKit hosts a session for
   every seat of the room unless told not to, on `lk.agent.session`: a visitor's page could read the
   raw turns, every tool's arguments and results, and the agent's prompt by asking for it. The call's

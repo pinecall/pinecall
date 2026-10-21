@@ -17,7 +17,7 @@ import { LogFold } from "./log/fold.js";
 import { followLog, type Connection, type Ending } from "./log/follow.js";
 import type { SseMessage } from "./log/sse.js";
 import { joinSeat, type Seat, type Speaking } from "./seat/join.js";
-import { gatewayOf, readingOf } from "./reading.js";
+import { gatewayOf, hangingUp, readingOf } from "./reading.js";
 import { loadLivekit, type LivekitModule } from "./seat/livekit.js";
 import { hiddenSink } from "./seat/sink.js";
 import type { Code, Minted } from "./server/index.js";
@@ -104,6 +104,8 @@ interface Conversation {
   /** The asking after a code, while the page is expecting a call. */
   waiting: AbortController | null;
   linger: ReturnType<typeof setTimeout> | null;
+  /** Says the visitor hung up at the gateway's door (reading.ts); null until the call has a token to say it with. */
+  hangUp: (() => void) | null;
 }
 
 /** A room for one visitor. Nothing opens until a verb is called. */
@@ -135,7 +137,7 @@ export function room(options: RoomOptions): RoomStore {
     if (closed || busy()) return null;
     if (now !== null) void shut(now);
     const fold = new LogFold((why) => options.onSkipped?.(why));
-    const c: Conversation = { mode, fold, seat: null, stopFollow: null, waiting: null, linger: null };
+    const c: Conversation = { mode, fold, seat: null, stopFollow: null, waiting: null, linger: null, hangUp: null };
     now = c;
     publish({ ...idle(), phase: "opening", mode, connection: "connecting" });
     return c;
@@ -149,7 +151,7 @@ export function room(options: RoomOptions): RoomStore {
 
   // The call is over for the visitor. The seat goes now; the log is read a while longer, because
   // the agent's last words, the cost and the score are entries that arrive after the room closed.
-  // A seat the visitor left by choice says it hung up; any other leaves the call to wait for them.
+  // A seat the visitor left by choice says it hung up, at the door and in the room; any other leaves the call to wait.
   const end = (c: Conversation, parting: (seat: Seat) => Promise<void> = (seat) => seat.leave()): Promise<void> => {
     publish({ phase: "ended", wantsSound: false, speaking: QUIET });
     c.waiting?.abort();
@@ -280,6 +282,7 @@ export function room(options: RoomOptions): RoomStore {
       if (!current(c) || store.state.phase !== "opening") return;
       const reading = readingOf(options, minted.call, minted.log_token, minted);
       if (reading === null) return fail(c, NO_LOG_TOKEN);
+      c.hangUp = hangingUp(options, minted.call, minted.log_token ?? minted.participant_token);
       publish({ call: minted.call, recording: reading.recording, resume: minted.resume_token ?? "" });
       // The call id exists before the room is joined, so the log is followed from its first entry
       // rather than from wherever the room happened to open.
@@ -301,6 +304,7 @@ export function room(options: RoomOptions): RoomStore {
       if (!current(c) || store.state.phase !== "opening") return;
       const reading = readingOf(options, placed.call, placed.log_token);
       if (reading === null) return fail(c, NO_LOG_TOKEN);
+      if (placed.log_token) c.hangUp = hangingUp(options, placed.call, placed.log_token);
       publish({ call: placed.call, phase: "ringing", recording: reading.recording });
       follow(c, reading.log);
     },
@@ -325,6 +329,7 @@ export function room(options: RoomOptions): RoomStore {
       if (claim.kind === "failed") return fail(c, claim.error);
       const reading = readingOf(options, claim.call, claim.log_token ?? undefined);
       if (reading === null) return fail(c, NO_LOG_TOKEN);
+      if (claim.log_token) c.hangUp = hangingUp(options, claim.call, claim.log_token);
       publish({ call: claim.call, phase: "live", recording: reading.recording });
       follow(c, reading.log);
     },
@@ -339,6 +344,7 @@ export function room(options: RoomOptions): RoomStore {
     async leave() {
       const c = now;
       if (c === null || !busy()) return;
+      c.hangUp?.();
       const leaving = end(c, (seat) => seat.hangUp());
       let wake = (): void => {};
       const waited = new Promise<void>((done) => {

@@ -14,6 +14,9 @@ export type Scene =
 /** One request the gateway saw. */
 export interface Asked {
   url: string;
+  method: string;
+  /** Asked to outlive the page: a hang-up said as the tab closes. */
+  keepalive: boolean;
   lastEventId: string | null;
   accept: string | null;
   aborted: boolean;
@@ -67,6 +70,8 @@ export class FakeGateway {
     const headers = new Headers(init?.headers);
     const asked: Asked = {
       url,
+      method: init?.method ?? "GET",
+      keepalive: init?.keepalive === true,
       lastEventId: headers.get("last-event-id"),
       accept: headers.get("accept"),
       aborted: false,

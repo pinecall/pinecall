@@ -15,6 +15,7 @@ from pinecall_runtime.calls.logs import Log
 from pinecall_runtime.calls.service.peers import (
     ANSWER_CHANNEL,
     APP_CHANNEL,
+    CALLER_HUNG_UP,
     COMMANDS_CHANNEL,
     SUPERVISOR_VERB,
     Elsewhere,
@@ -344,6 +345,9 @@ class Live:
         try:
             if command.type == SUPERVISOR_VERB:
                 await served.running.supervise(SupervisorVerb.model_validate(command.data))
+            elif command.type == CALLER_HUNG_UP:
+                if served.running.ended is None:
+                    served.running.hang_up("caller_hung_up", "caller")
             else:
                 model = command_of(command)
                 declare_for_the_call(served, model)

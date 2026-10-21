@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pinecall_runtime.accounts.service import keys, tokens
 from pinecall_runtime.calls.repository.heads import HeadRepository
 from pinecall_runtime.calls.schemas import SeatResponse, VerbResponse
-from pinecall_runtime.calls.service.peers import SUPERVISOR_VERB, send_command
+from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, SUPERVISOR_VERB, send_command
 from pinecall_runtime.calls.service.serving import NO_SUCH_CALL, Serving
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import ReadKind
@@ -60,6 +60,20 @@ async def send_verb(serving: Serving, call: str, verb: Verb, by: Supervisor) -> 
     if not await send_command(serving.handles.signal, sent):
         raise NotFound(NO_SUCH_CALL.format(call=call))
     return VerbResponse(call=call, verb=verb.verb, seq=None)
+
+
+# A hang-up said on the room's data channel is lost when the page leaves the room the same instant,
+# and the call then waits for a caller who is not coming back. Said here, it reaches the call.
+async def caller_hung_up(serving: Serving, call: str) -> None:
+    """The caller hung up: whatever runs the call ends it now, as the caller's own hang-up."""
+    state = await serving.logs.reading(call).snapshot()
+    if state.seq == 0:
+        raise NotFound(NO_SUCH_CALL.format(call=call))
+    if await serving.logs.store.is_sealed(call):
+        raise Conflict(IS_OVER.format(call=call))
+    said = Command(type=CALLER_HUNG_UP, agent=state.agent, call=call, data={})
+    if not await send_command(serving.handles.signal, said):
+        raise NotFound(NO_SUCH_CALL.format(call=call))
 
 
 # The one record of who asked, which is what audits a dial and an erasure.

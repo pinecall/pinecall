@@ -164,6 +164,12 @@ class VerbResponse(WireModel):
     seq: int | None
 
 
+class HangupResponse(WireModel):
+    """The caller's hang-up heard; the call ends as `caller_hung_up`."""
+
+    call: str
+
+
 class OpenCallRequest(WireModel):
     """What a worker opens a call with, and says again to a gateway that forgot it."""
 

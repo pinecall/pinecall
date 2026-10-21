@@ -813,6 +813,8 @@ class PinecallWidget extends HTMLElement {
     this.codeClock = null;
     // The conversation under way, as it is being kept.
     this.current = null;
+    // The call under way and a token of its own, to say its hang-up at the gateway's door.
+    this.hangup = null;
   }
 
   // ── the visitor's conversations, kept in this browser ─────────────────────────
@@ -1369,9 +1371,18 @@ class PinecallWidget extends HTMLElement {
 
   /**
    * Tell the agent the visitor hung up. A reload and a hang-up both leave the room alike, and a call
-   * whose visitor left waits for them to come back: said, it ends at once instead.
+   * whose visitor left waits for them to come back: said, it ends at once instead. Said at the
+   * gateway's door first, over HTTP with the call's own token and `keepalive`, which a closing tab
+   * still completes; the room's data channel says it too, for a gateway of the version before, but a
+   * seat that leaves as it publishes loses that one with the room more often than not.
    */
   async hungUp() {
+    const door = this.hangup;
+    this.hangup = null;
+    if (door) {
+      const said = `${this.gateway}/v1/calls/${encodeURIComponent(door.call)}/hangup?token=${encodeURIComponent(door.token)}`;
+      fetch(said, { method: "POST", keepalive: true }).catch(() => undefined);
+    }
     const room = this.room;
     if (!room) return;
     // Never waited on for long: a data channel that does not answer must not hold the hang-up.
@@ -1481,6 +1492,7 @@ class PinecallWidget extends HTMLElement {
     lines.insertAdjacentHTML("beforebegin", `<span class="status"></span>`);
     this.status(this.words.onTheLine(this.name), "live");
     this.transcript = new Transcript(lines, () => this.showTools(), this.words);
+    this.hangup = { call: standing.call, token: standing.log_token };
     const call = encodeURIComponent(standing.call);
     this.transcript.follow(
       `${this.gateway}/v1/calls/${call}/events?types=${LOG_TYPES}&after=0&token=${encodeURIComponent(standing.log_token)}`,
@@ -1609,6 +1621,8 @@ class PinecallWidget extends HTMLElement {
     await this.leave();
     this.streamLines.clear();
     const minted = await this.token(scope, earlier?.resume ?? null);
+    // What a hang-up is said with at the gateway's door: the call and a token of its own.
+    this.hangup = { call: minted.call, token: minted.log_token ?? minted.participant_token };
     const room = new Room();
     this.room = room;
     this.greeted = new Promise((resolve) => {
@@ -1673,6 +1687,7 @@ class PinecallWidget extends HTMLElement {
    */
   async leave(ended = false) {
     if (ended) await this.hungUp();
+    this.hangup = null;
     const room = this.room;
     this.room = null;
     clearInterval(this.phonePoll);

@@ -167,7 +167,8 @@ Carrying one on asks your `token-url` with the conversation's `resume` token, ke
 visitor back within five minutes (a reload, a tab closed and opened again) is the same call, which
 waited for them; later, Pinecall opens a new call whose agent reads what was said and does not
 greet again. Either way it stays one conversation in the menu. Closing the panel or reloading is
-not hanging up; **Hang up** and **End chat** are, and the call ends at once.
+not hanging up; **Hang up** and **End chat** are, said at the gateway's door with the call's own
+token before the widget leaves the room, and the call ends at once.
 
 ## The look
 

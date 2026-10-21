@@ -181,7 +181,9 @@ What comes back depends on when:
   said in it, and does not greet again. The new call's log holds only what is said from now on, so
   the page draws the earlier lines from what it kept itself.
 
-`leave()` is a hang-up: the seat says so before it goes, and the call ends at once. A page that is
+`leave()` is a hang-up: it is said at the gateway's door first (`POST /v1/calls/{call}/hangup`
+with the call's own token, `keepalive`, so a closing tab still completes it), then in the room
+as the seat goes, and the call ends at once. A page that is
 closed or reloaded says nothing, and its call waits. A resume token lives thirty days, and only
 your server's key can spend it.
 

@@ -16,6 +16,9 @@ from pinecall_runtime.wire.signal import Bound, ForApp
 COMMANDS_CHANNEL = "cmd:{call}"
 # The one verb a desk sends, which a written call's session takes as a supervisor's.
 SUPERVISOR_VERB = "supervisor.verb"
+# The caller's own hang-up, said at the gateway's door: whatever runs the call ends it at once. Not
+# an app's command: the gateway's alone, so no app can hang up in the caller's name.
+CALLER_HUNG_UP = "caller.hung_up"
 # Each app socket's inbox, listened to by the gateway holding it while it is open.
 APP_CHANNEL = "app:{app}"
 # Where a dev.request's answer goes back to the gateway that asked it.

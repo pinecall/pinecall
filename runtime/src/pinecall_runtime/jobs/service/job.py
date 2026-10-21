@@ -138,7 +138,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     room.when_the_caller_is_gone(caller_gone)
     widget = widget_for(gateway, call, ctx.room, caller_gone) if route.channel is Channel.web else None
     logger.info(ANSWERED_IN, time.monotonic() - began)
-    commands = asyncio.create_task(_follow_commands(gateway, running, context.call))
+    commands = asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone))
     timer = asyncio.create_task(
         session.keep_time(running, _limit_of(config, opened, route, typed=typed), exhausted=None)
     )
@@ -199,6 +199,14 @@ def telemetry_of(keys: agents.PipelineKeys) -> compliance.Telemetry | None:
 
 
 # The refusal is the call's own entry, written by its writer like any other.
+async def follow_command(running: session.Session, command: Command, caller_gone: Callable[[], None]) -> None:
+    """One command on the call's stream: the caller's own hang-up, or one of the app's."""
+    if command.type == calls.CALLER_HUNG_UP:
+        caller_gone()
+        return
+    await apply_command(running, command)
+
+
 async def apply_command(running: session.Session, command: Command) -> None:
     """Apply one of the app's commands; a refusal is an `error` entry on the call."""
     try:
@@ -316,10 +324,12 @@ def _carried_history(opened: calls.OpenCallResponse) -> llm.ChatContext | None:
 
 
 # A stream that ends means the gateway went away: it is opened again; a 4xx ends it.
-async def _follow_commands(gateway: GatewayClient, running: session.Session, call: str) -> None:
+async def _follow_commands(
+    gateway: GatewayClient, running: session.Session, call: str, caller_gone: Callable[[], None]
+) -> None:
     async def listen() -> None:
         async for command in gateway.commands(call):
-            await apply_command(running, command)
+            await follow_command(running, command, caller_gone)
 
     await again(listen, None, f"the commands of {call}")
 

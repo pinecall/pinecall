@@ -87,6 +87,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/calls/{call}/golden` | evals | The golden a finished call makes from a seq on, its expect from its broken verdicts. |
 | `GET` | `/v1/calls/{call}/events` | calls · fleet | A call's entries above the cursor: a page, or a stream that ends with the call. |
 | `POST` | `/v1/calls/{call}/events` | app · fleet | Write one entry of a call this gateway serves. |
+| `POST` | `/v1/calls/{call}/hangup` | — | The caller hung up: the call ends now, as `caller_hung_up`; with the call's own token alone. |
 | `GET` | `/v1/calls/{call}/judging` | app · fleet | Whether the call's org judges its calls at hang-up. |
 | `POST` | `/v1/calls/{call}/listen` | supervise | A hidden seat that hears one live call. |
 | `POST` | `/v1/calls/{call}/lookup` | app · fleet | Recall or search for a call served here, answered as the model reads it. |
