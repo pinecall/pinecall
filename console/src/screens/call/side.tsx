@@ -1,4 +1,4 @@
-/** The pane beside a call, read at a glance: what it came to, each judge in a line, and four tiles — how fast, what it cost, how many turns, who ended it. */
+/** The pane beside a call, read at a glance: what it came to, each judge in a line, four tiles — how fast, what it cost, how many turns, who ended it — and what is put under them. */
 
 import { type Judgment } from "@pinecall/core/wire/events";
 import { type CallScore } from "@pinecall/core/wire/events-call";
@@ -12,7 +12,7 @@ import { answerOf } from "../../lib/judgment";
 import { Icon, type IconName } from "../../ui";
 import "./side.css";
 
-export function Side({ state, score, latencies }: { state: State; score: CallScore | null; latencies: Median[] }): ReactNode {
+export function Side({ state, score, latencies, children }: { state: State; score: CallScore | null; latencies: Median[]; children?: ReactNode }): ReactNode {
   const over = state.status === "ended";
   return (
     <div className="call-side">
@@ -33,6 +33,8 @@ export function Side({ state, score, latencies }: { state: State; score: CallSco
         />
         {over && state.end_reason !== null && <Ended state={state} reason={state.end_reason} />}
       </div>
+      {/* What follows the tiles in the same column, at its margins: the models on the line. */}
+      {children}
     </div>
   );
 }

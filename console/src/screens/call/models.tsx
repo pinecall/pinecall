@@ -67,34 +67,53 @@ export function Models({ call, state, entries }: { call: string; state: State; e
 
   const agent = agentModels(state);
   const played = run?.played_by ?? null;
+  const cost = run !== null && run.caller_cost_usd > 0 ? usd(run.caller_cost_usd) : null;
   return (
-    <section className="call-side-part" aria-label="the models on the line">
-      <h3 className="call-side-head">Models</h3>
-      <dl className="call-models">
-        <Line role="Agent hears" ran={agent.hears} />
-        <Line role="Agent thinks" ran={agent.thinks} />
-        <Line role="Agent speaks" ran={agent.speaks} />
-        {persona !== null && (
-          <>
-            <dt className="call-models-who">{persona}</dt>
-            <dd className="call-models-who-sub">{run !== null && run.caller_cost_usd > 0 ? `the simulated caller · ${usd(run.caller_cost_usd)}` : "the simulated caller"}</dd>
-            <Line role="Caller thinks" ran={played?.llm == null ? null : { model: played.llm, provider: null }} />
-            {played?.tts != null && <Line role="Caller speaks" ran={{ model: played.voice ? `${played.tts} · ${played.voice}` : played.tts, provider: null }} />}
-            {played === null && <dd className="call-models-none">{refused ?? (run === null ? "Reading who played it…" : "Not kept for a call this old.")}</dd>}
-          </>
-        )}
-      </dl>
-    </section>
+    <>
+      <section className="call-side-part" aria-label="the models on the line">
+        <div className="call-side-head-line">
+          <h3 className="call-side-head">Models</h3>
+          <span className="call-side-head-meta">the agent</span>
+        </div>
+        <div className="call-models">
+          <Line role="Hears" ran={agent.hears} />
+          <Line role="Thinks" ran={agent.thinks} />
+          <Line role="Speaks" ran={agent.speaks} />
+        </div>
+      </section>
+      {persona !== null && (
+        <section className="call-side-part" aria-label="who played the caller">
+          <div className="call-side-head-line">
+            <h3 className="call-side-head">Simulated caller</h3>
+            {cost !== null && <span className="call-side-head-meta">{cost}</span>}
+          </div>
+          <div className="call-models">
+            <div className="call-models-row">
+              <span className="call-models-role">Persona</span>
+              <span className="call-models-model">{persona}</span>
+            </div>
+            {played === null ? (
+              <p className="call-models-none">{refused ?? (run === null ? "Reading who played it…" : "Its models were not kept for a call this old.")}</p>
+            ) : (
+              <>
+                <Line role="Thinks" ran={played.llm == null ? null : { model: played.llm, provider: null }} />
+                {played.tts != null && <Line role="Speaks" ran={{ model: played.voice ? `${played.tts} · ${played.voice}` : played.tts, provider: null }} />}
+              </>
+            )}
+          </div>
+        </section>
+      )}
+    </>
   );
 }
 
 function Line({ role, ran }: { role: string; ran: Ran | null }): ReactNode {
   return (
-    <>
-      <dt className="call-models-role">{role}</dt>
-      <dd className="call-models-model" title={ran?.provider ?? undefined}>
-        {ran === null ? <span className="call-models-none">—</span> : ran.model}
-      </dd>
-    </>
+    <div className="call-models-row">
+      <span className="call-models-role">{role}</span>
+      <span className={ran === null ? "call-models-model call-models-model-none" : "call-models-model"} title={ran === null ? undefined : [ran.provider, ran.model].filter(Boolean).join(" · ")}>
+        {ran === null ? "—" : ran.model}
+      </span>
+    </div>
   );
 }
