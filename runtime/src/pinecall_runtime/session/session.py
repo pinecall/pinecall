@@ -409,10 +409,8 @@ class Session:
     # The caller is pinned before livekit subscribes, or it links the first seat of a kind it
     # accepts, a supervisor's as soon as a caller's. A written call in a room hears no audio.
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
-    # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit.
-    # `session_host` is said too: left unset, livekit hosts the session for every seat of the room,
-    # sending each one the raw turns, the tools' arguments and results, and the prompt on request.
-    # A seat reads the call through its log, in its token's projection, and nothing else.
+    # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit. No
+    # session host: it hands every seat the raw turns, the tools and the prompt (projections.md).
     async def _open(self, history: llm.ChatContext) -> None:
         self.listener.hold = self.hold
         spoken = is_spoken(self.live, self.built)
