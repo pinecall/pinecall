@@ -29,6 +29,7 @@
     "./score": "./src/score.ts",
     "./scopes": "./src/scopes.ts",
     "./login": "./src/login.ts",
+    "./signup": "./src/signup.ts",
     "./session-key": "./src/session-key.ts",
     "./whoami": "./src/whoami.ts",
     "./members": "./src/members.ts",

@@ -55,11 +55,11 @@ export function Accept({
   };
 
   return (
-    <WayIn>
+    <WayIn
+      title="Choose your password"
+      lede="This link came from an invitation, or from an admin resetting your password. It opens once; the password you pick here is the one you sign in with from now on."
+    >
       <form onSubmit={(event) => void submit(event)}>
-        <h1 className="login-title">Choose your password</h1>
-        <p className="login-lede">This link came from an invitation, or from an admin resetting your password. It opens once; the password you pick here is the one you sign in with from now on.</p>
-
         <div className="login-label-row">
           <label className="login-label" htmlFor="accept-password">
             Password
@@ -91,7 +91,7 @@ export function Accept({
           required
         />
 
-        <button className="login-go" type="submit" disabled={busy} style={{ marginTop: 8 }}>
+        <button className="login-go" type="submit" disabled={busy}>
           {busy ? "Joining…" : "Join"}
         </button>
 

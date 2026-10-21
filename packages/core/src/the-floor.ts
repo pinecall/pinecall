@@ -14,6 +14,8 @@ const DiscoveredSchema = z.looseObject({
   mail: z.boolean().optional(),
   /** Google sign-in is configured. */
   google: z.boolean().optional(),
+  /** Cloudflare Turnstile's site key: the page draws the widget and every password, sign-up and reset carries its token. */
+  turnstile: z.string().nullish(),
 });
 
 /** The gateway's discovery document. */

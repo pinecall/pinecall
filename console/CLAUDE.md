@@ -41,7 +41,8 @@ was deployed with, whatever this checkout says.
 - `../packages/core/src/` — what any supervisor app stands on, imported as `@pinecall/core/<module>`
   and taken as SOURCE by the app's bundler (nothing here is compiled): `api.ts` (the fetch, the one
   place a header is spelled), `credentials.tsx`, `the-floor.ts` (`/.well-known/pinecall`, read
-  before any key), `theme.ts`, `login.ts`, `session-key.ts`, `whoami.ts` (who a key is, and the
+  before any key), `theme.ts`, `login.ts`, `signup.ts` (the sign-up doors; the screen draws them
+  only where the floor says `signup`), `session-key.ts`, `whoami.ts` (who a key is, and the
   org's word), `members.ts` (an org's people, the `team` door), `agents.ts` (the agents held now,
   `GET /v1/agents`), `initials.ts`, the SSE reader `stream.ts` (`openSse` for any stream, `openLog` for a log's entries) and the hooks over it (`use-call`,
   `use-floor`, `log-pages`), the org's feed opened once per page (`feed.ts`) and `use-fed` over it — the one way a screen

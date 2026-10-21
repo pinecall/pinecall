@@ -27,6 +27,7 @@ async def gateway_info(request: Request, outbox_: OutboxDep, brand: BrandDep) ->
         mail=await outbox_.mailbox_for(None) is not None,
         brand=schemas.BrandRow(name=brand.name, logo_url=brand.logo_url, accent=brand.accent),
         google=False,
+        turnstile=settings.turnstile_site_key,
     )
 
 

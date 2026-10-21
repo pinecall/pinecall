@@ -12,6 +12,7 @@ from pinecall_runtime.accounts.auth import (
     PublicUrl,
     SignInsDep,
     ThePerson,
+    TurnstileDep,
 )
 from pinecall_runtime.accounts.service import keys, members, orgs, signin
 from pinecall_runtime.enums import MemberStatus
@@ -28,7 +29,9 @@ ONE_OR_THE_OTHER = "log in with org, email and password, or with a code: one of 
 
 
 @router.post("/v1/login")
-async def sign_in(body: schemas.SignIn, client: Client, session: Session, sign_ins_: SignInsDep) -> schemas.KeyIssued:
+async def sign_in(
+    body: schemas.SignIn, client: Client, session: Session, sign_ins_: SignInsDep, turnstile_: TurnstileDep
+) -> schemas.KeyIssued:
     """A key for a person and a device, from a password, or from a one-time code."""
     if body.code is not None:
         if body.org is not None or body.email is not None or body.password is not None:
@@ -39,6 +42,8 @@ async def sign_in(body: schemas.SignIn, client: Client, session: Session, sign_i
         return schemas.KeyIssued.minted(signed.key, signed.secret)
     if body.email is None or body.password is None:
         raise ValidationError(ONE_OR_THE_OTHER)
+    # A code is one use and minted by a signed-in page or a terminal; a password is what a stranger tries.
+    await turnstile_.check(body.turnstile, "login", client)
     await sign_ins_.attempts.check(f"{client} {body.org or '*'}/{body.email}", body.email)
     asking = signin.PasswordSignIn(body.email, body.password, body.org, body.device)
     signed = await signin.sign_in_with_password(session, asking)
@@ -47,9 +52,10 @@ async def sign_in(body: schemas.SignIn, client: Client, session: Session, sign_i
 
 @router.post("/v1/login/orgs")
 async def sign_in_orgs(
-    body: schemas.SignInOrgs, client: Client, session: Session, sign_ins_: SignInsDep
+    body: schemas.SignInOrgs, client: Client, session: Session, sign_ins_: SignInsDep, turnstile_: TurnstileDep
 ) -> schemas.SignInOrgList:
     """The orgs an address and a password open, minting nothing."""
+    await turnstile_.check(body.turnstile, "login", client)
     await sign_ins_.attempts.check(f"{client} */{body.email}", body.email)
     opened = await signin.orgs_a_password_opens(session, body.email, body.password)
     if not opened:
@@ -130,8 +136,10 @@ async def forget_password(
     sign_ins_: SignInsDep,
     outbox_: OutboxDep,
     brand: BrandDep,
+    turnstile_: TurnstileDep,
 ) -> schemas.Empty:
     """Mail a one-time link that sets the password, where one can go; 202 whoever asks."""
+    await turnstile_.check(body.turnstile, "password_reset", client)
     await sign_ins_.attempts.check(f"{client} */{body.email}", body.email)
     await signin.mail_password_reset(session, outbox_, body.email, base, brand)
     return schemas.Empty()

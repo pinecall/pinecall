@@ -10,6 +10,17 @@
 - **A call's own token never reads its prompt.** `GET /v1/calls/{call}/prompt` let a page's token
   in, `log_token` or `participant_token`, though `gateway-api.md` always said a key's read alone:
   it is `403` now.
+- **The sign-up is the console's, and the doors a stranger knocks at take a Turnstile token.** As
+  Langfuse, PostHog and Supabase have it: the sign-up form lives in the app beside the sign-in, shown
+  only where the gateway says `PINECALL_SIGNUP` is on, and the gateway refuses it alone. `PINECALL_SIGNUP_KEY`
+  and the `X-Pinecall-Client` header are gone with the page that sent them (pinecall.io's, now a
+  redirect). `POST /v1/signup` takes `org` or makes the slug of `name` (`kit/text.py:slug_of`), so no
+  page derives one. `PINECALL_TURNSTILE_SITE_KEY` and `PINECALL_TURNSTILE_SECRET` put Cloudflare
+  Turnstile on a password (`/v1/login`, `/v1/login/orgs`), a sign-up and its resend, and a forgotten
+  password: `/.well-known/pinecall` carries the site key as `turnstile`, each of those bodies carries
+  the token as `turnstile`, and the gateway verifies it with Cloudflare for that door on the platform's
+  name, refusing `403` without it or when Cloudflare does not answer. Unset, nothing changes.
+  `docs/the-environment.md` and `docs/protocol/people.md` say it.
 - **A picker offers every model of a vendor, and only what the org is lent.** The providers row
   gains `offered` (`stt/cartesia`: the models a picker lists), written by `pinecall-runtime providers
   models <file.csv> --apply` from the file `voicedex models` writes (`vendor,stage,model,name,as_of,

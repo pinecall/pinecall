@@ -13,12 +13,19 @@ No key. What a sign-in page reads first:
 
 ```json
 {"version": "0.1.1", "signup": false, "min_password": 8, "mail": true,
- "brand": {"name": "Pinecall", "logo_url": null, "accent": "#5b3df5"}, "google": false}
+ "brand": {"name": "Pinecall", "logo_url": null, "accent": "#5b3df5"}, "google": false,
+ "turnstile": null}
 ```
 
-`signup` is `PINECALL_SIGNUP`; `min_password` is `PINECALL_MIN_PASSWORD` (0 is no rule); `mail`
+`signup` is `PINECALL_SIGNUP`, and the console shows its sign-up only where it is true;
+`min_password` is `PINECALL_MIN_PASSWORD` (0 is no rule); `mail`
 says whether the platform itself can post a letter (an org's own mailbox is not counted), so the page
-knows whether "Forgot your password?" can promise one; `brand` is the platform's. Platform-wide "Continue
+knows whether "Forgot your password?" can promise one; `brand` is the platform's. `turnstile` is
+Cloudflare Turnstile's site key where the operator set one (`PINECALL_TURNSTILE_SITE_KEY`): the page
+draws the widget and every password, sign-up, resend and reset below carries the token it yields as
+`turnstile`; the gateway verifies it with Cloudflare for that door, on this platform's name, and
+refuses `403 the captcha was not passed` without it, as it does when Cloudflare does not answer.
+`null`, and no door asks for one. Platform-wide "Continue
 with Google" is not in this version: `google` is always `false`, and `GET /v1/login/google` and
 its callback answer `503`.
 
@@ -42,7 +49,7 @@ Never the key nor its hash. With no key it is `401 this door takes an API key`.
 No key. The body says one of two things, and a body with both or neither is `400`:
 
 ```json
-{"email": "ana@clinica.test", "password": "…", "org": "clinica-norte", "device": "phone"}
+{"email": "ana@clinica.test", "password": "…", "org": "clinica-norte", "device": "phone", "turnstile": "…"}
 {"code": "lc_…", "device": "chrome"}
 ```
 
@@ -56,7 +63,9 @@ key in the org's list, so it is revoked on its own.
 Every address is five tries a minute from one place, whatever the password: the sixth is
 `429 too many attempts for …: try again in a minute`. The same count holds `POST /v1/login/orgs`,
 `POST /v1/login/reset` and `POST /v1/login/sso/discover`. Behind the platform's own Caddy the place is
-the person's address.
+the person's address. Where the platform has Turnstile, a password (here and at `/v1/login/orgs`)
+is checked with Cloudflare before it is counted, and refused `403` without a token; a code never
+is, being one use and minted by a page already signed in.
 
 A code gives a copy of the key that minted it: the same org, environment, scopes and person, dying when
 it dies, labelled `console` unless `device` says. A code is spent once and lives five minutes;
@@ -96,9 +105,10 @@ same person, labelled with its `device` and dying with the browser's key. The te
 /v1/login/pairings/{code}/key?wait_s=25`, which the gateway holds until a browser approves (up to 25 s, the most it holds): `202 {}` when the wait ran out with nobody approved, `{key}` once, `404` after. Without `wait_s` it answers at once. A word
 lives ten minutes; one collected, dead or invented is the same `404`, and a second approval `409`.
 
-## A forgotten password — `POST /v1/login/reset {email}`
+## A forgotten password — `POST /v1/login/reset {email, turnstile}`
 
-No key. Always `202 {}`, for an address known or not. Where the person is active in an org that
+No key. Always `202 {}`, for an address known or not (`403` first where the platform has Turnstile
+and the token is missing or refused: nothing is mailed, and nothing is said of the address). Where the person is active in an org that
 signs in with passwords, one letter goes, through the platform's own mailbox and never an org's, with
 a one-use link to `/invitations/<token>`; the link proves the address, so the password it sets is
 the person's one, in every org. A member still invited gets none, since their invitation is the
@@ -176,20 +186,25 @@ is one `404`. The row stays.
 
 ## Sign-up — `/v1/signup`
 
-Shut unless the operator sets `PINECALL_SIGNUP` (`404` naming it). With `PINECALL_SIGNUP_KEY` set,
-the three endpoints take that bearer key alone, and the address they count is the
-`X-Pinecall-Client` the page in front of them sends; without it that header is never believed.
+Shut unless the operator sets `PINECALL_SIGNUP` (`404` naming it); the console's `/signup` is the
+page that knocks, and it shows itself only where `/.well-known/pinecall` says `signup` is true.
+Every self-hosted gateway serves that page, which is why the switch is the gateway's and not the
+page's. The address counted is the request's own, behind the trusted proxies.
 
-`POST {org, name, email, person, password, device}` keeps the sign-up and mails six digits:
-`202 {email, code_expires_at}`, never the code, and no org yet. A deployment that cannot mail takes
-none (`503`). Every address is answered alike, so the endpoint says nobody whether one has an
+`POST {org, name, email, person, password, device, turnstile}` keeps the sign-up and mails six digits:
+`202 {email, code_expires_at}`, never the code, and no org yet. `org` is the slug; left out, the
+slug is made of `name` (accents dropped, lowercase words joined by dashes), so a page never derives
+one — a sign-up with neither is `400`. A deployment that cannot mail takes
+none (`503`), and one with Turnstile refuses `403` a token missing or refused, before anything is
+counted. Every address is answered alike, so the endpoint says nobody whether one has an
 account: an address with a password signs up with it, and with another is mailed that it has an
 account instead of a code; one invited somewhere is mailed to accept that first. A slug taken is
 `409`. `POST /v1/signup/verify {email, code}` makes
 the org, allowed what the platform's admission gives a newborn org, its admin active, and answers
-`201` with the key shape plus `slug`, `member`, and a login `code` for the console. A code lives
+`201` with the key shape plus `slug`, `member`, and a login `code` for the console; the console
+keeps the key and opens the sandbox on it. A code lives
 15 minutes and six tries; a wrong, burned or expired code is `400` in its words, and an address
-nobody signed up with reads as a wrong code. `POST /v1/signup/resend {email}` mails a new code
+nobody signed up with reads as a wrong code. `POST /v1/signup/resend {email, turnstile}` mails a new code
 and kills the first; `202 {}` whoever asks.
 
 ## The org's provider — `/v1/org/sso`, `/v1/login/sso`

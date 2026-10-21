@@ -115,6 +115,17 @@ store:
 # answers it and the console's Upgrade opens it. Unset, the runtime bills nobody.
 billingUrl: ""
 
+# Whether a stranger may make an org at the console's /signup (PINECALL_SIGNUP): off, and the
+# page says so and the door refuses. It needs the platform's mailbox for the six-digit code.
+signup: false
+
+# Cloudflare Turnstile on a password, a sign-up and a forgotten password (docs/the-environment.md):
+# the site key the console draws the widget with, and its secret in Secret Manager as
+# `<prefix>turnstile-secret`, put by the operator (terraform/modules/secrets, `given`). Unset, no
+# door asks for a token.
+turnstile:
+  siteKey: ""
+
 overflow:
   says: ""
 

@@ -12,12 +12,12 @@ import { CredentialsProvider } from "@pinecall/core/credentials";
 import { loginToOrg, loginWithCode, type Signed } from "@pinecall/core/login";
 import { forgetThisBrowser } from "./lib/notifier";
 import { LeavingProvider } from "./lib/leaving";
-import { inTheWorld, WORLD, WORLD_BASE } from "./lib/mode";
+import { inTheWorld, pageOf, WORLD, WORLD_BASE } from "./lib/mode";
 import { forgetKey, keepCorner, keepKey, keptCorner, keptKey } from "./lib/session-key";
 import { WhoamiProvider } from "./lib/whoami";
 import { WorldProvider } from "./lib/world";
 import { router } from "./router";
-import { Accept, Login } from "./screens/login";
+import { Accept, Login, SignUp, Verify, VERIFY } from "./screens/login";
 import "./ui/ui.css";
 
 const root = document.getElementById("root");
@@ -34,6 +34,10 @@ const LOGIN = "login";
 
 // Invitation token stays in the URL until accepted so the card survives a reload.
 const INVITATIONS = /^\/invitations\/([^/]+)\/?$/;
+
+// The sign-up and its mailed code, under either world's base; the gateway says whether they open.
+const SIGNUP = /^\/signup\/?$/;
+const VERIFYING = new RegExp(`^${VERIFY}/?$`);
 
 function theInvitationInTheAddress(): string | null {
   const found = INVITATIONS.exec(window.location.pathname);
@@ -104,6 +108,19 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
   };
 
   if (key === null) {
+    const page = pageOf(window.location.pathname);
+    if (SIGNUP.test(page)) return <SignUp base={API_BASE} />;
+    if (VERIFYING.test(page)) {
+      // A new org opens in the sandbox, whichever world's page the code was typed on.
+      return (
+        <Verify
+          base={API_BASE}
+          onSigned={(proof) => {
+            void keepKey(proof.key).then(() => window.location.assign(inTheWorld("sandbox", "/")));
+          }}
+        />
+      );
+    }
     const token = theInvitationInTheAddress();
     if (token !== null) {
       return (

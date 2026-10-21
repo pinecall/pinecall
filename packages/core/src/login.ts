@@ -5,7 +5,7 @@ import { z } from "zod";
 import { answered, gatewayUrl, post, read, type Credentials } from "./api";
 
 // Response of every door that mints a key (POST /v1/login and friends).
-const SignedSchema = z.object({
+export const SignedSchema = z.object({
   key: z.string(),
   key_id: z.string(),
   org: z.string(),
@@ -33,13 +33,17 @@ export async function aLoginCode(credentials: Credentials): Promise<string> {
   return CodeSchema.parse(await post(credentials, "/v1/login/codes", {})).code;
 }
 
+// The token Turnstile's widget yielded, where the gateway names a site key (the-floor.ts); one use.
+export type TurnstileToken = string | null;
+
 /** Sign in with email and password; `org` picks one when the person has several. */
 export async function loginWithPassword(
   base: string,
   who: { org?: string; email: string; password: string },
   device: string,
+  turnstile: TurnstileToken = null,
 ): Promise<Signed> {
-  return login(base, { ...who, org: who.org === undefined || who.org === "" ? null : who.org, device });
+  return login(base, { ...who, org: who.org === undefined || who.org === "" ? null : who.org, device, turnstile });
 }
 
 // GET /v1/login/orgs; `here` marks the org this key opens.
@@ -84,11 +88,16 @@ export type Opens = z.infer<typeof OpensSchema>["orgs"][number];
  * Orgs these credentials open, for the sign-in org picker. Mints no key; shares the login throttle.
  * Null when the gateway lacks the door.
  */
-export async function orgsForPassword(base: string, email: string, password: string): Promise<Opens[] | null> {
+export async function orgsForPassword(
+  base: string,
+  email: string,
+  password: string,
+  turnstile: TurnstileToken = null,
+): Promise<Opens[] | null> {
   const answer = await fetch(gatewayUrl(base, "/v1/login/orgs"), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, turnstile }),
   });
   if (answer.status === 404 || answer.status === 405) return null;
   return OpensSchema.parse(await answered(answer)).orgs;

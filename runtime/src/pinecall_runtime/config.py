@@ -68,7 +68,10 @@ class Settings(BaseSettings):
     token_key: SecretStr | None = Field(None, alias="PINECALL_TOKEN_KEY")
     vault_key: SecretStr | None = Field(None, alias="PINECALL_VAULT_KEY")
     signup: bool = Field(False, alias="PINECALL_SIGNUP")
-    signup_key: SecretStr | None = Field(None, alias="PINECALL_SIGNUP_KEY")
+    # Cloudflare Turnstile on the doors a stranger knocks at (a password, a sign-up, a reset):
+    # the site key the page draws the widget with, the secret the gateway verifies its token with.
+    turnstile_site_key: str | None = Field(None, alias="PINECALL_TURNSTILE_SITE_KEY")
+    turnstile_secret: SecretStr | None = Field(None, alias="PINECALL_TURNSTILE_SECRET")
     approve_hooked: bool = Field(False, alias="PINECALL_APPROVE_HOOKED")
     cloud: bool = Field(False, alias="PINECALL_CLOUD")
     billing_url: str | None = Field(None, alias="PINECALL_BILLING_URL")
@@ -136,6 +139,14 @@ class Settings(BaseSettings):
         missing = [name for name, value in named.items() if value is None]
         if self.recordings_bucket is not None and missing:
             raise ValueError(f"PINECALL_RECORDINGS_BUCKET needs {', '.join(missing)}")
+        return self
+
+    # A secret without a site key would refuse every password while the page shows no widget;
+    # a site key without a secret would draw a widget nothing verifies.
+    @model_validator(mode="after")
+    def _turnstile_is_both_keys_or_neither(self) -> "Settings":
+        if (self.turnstile_site_key is None) != (self.turnstile_secret is None):
+            raise ValueError("PINECALL_TURNSTILE_SITE_KEY and PINECALL_TURNSTILE_SECRET are set together, or neither")
         return self
 
     @property

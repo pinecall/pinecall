@@ -1,7 +1,6 @@
 """Who may call the accounts endpoints, how a request's actor is resolved, and what the endpoints reach for."""
 
 from dataclasses import replace
-from hmac import compare_digest
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -13,8 +12,9 @@ from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.accounts.service.keys import KeyCache
 from pinecall_runtime.accounts.service.mail import Outbox
 from pinecall_runtime.accounts.service.signin import Pairings, SignIns, SignUps
+from pinecall_runtime.accounts.service.turnstile import Turnstile
 from pinecall_runtime.enums import Env, KeyScope
-from pinecall_runtime.exceptions import NotFound, Unauthorized
+from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit import jwt as tokens
 from pinecall_runtime.kit.auth import (
     ENV_HEADER,
@@ -31,8 +31,6 @@ from pinecall_runtime.kit.auth import (
 from pinecall_runtime.kit.handles import handles_of
 from pinecall_runtime.platform import service as platform
 from pinecall_runtime.postgres import Session, scope_to
-
-CLIENT_HEADER = "x-pinecall-client"
 
 
 async def resolve_actor(request: HTTPConnection, session: AsyncSession) -> Actor | None:
@@ -132,6 +130,13 @@ def min_password(request: Request) -> int:
     return handles_of(request).settings.min_password
 
 
+def turnstile_of(request: Request) -> Turnstile:
+    """The box's Turnstile: Cloudflare's verifier where the operator set a secret, else one that passes all."""
+    handles = handles_of(request)
+    secret = handles.settings.turnstile_secret
+    return Turnstile(handles.http, None if secret is None else secret.get_secret_value(), handles.settings.domain)
+
+
 async def brand_of(session: Session) -> platform.Brand:
     """The box's brand."""
     return await platform.get_brand(session)
@@ -146,21 +151,16 @@ BrandDep = Annotated[platform.Brand, Depends(brand_of)]
 PublicUrl = Annotated[str, Depends(public_url)]
 Client = Annotated[str, Depends(client_of)]
 MinPassword = Annotated[int, Depends(min_password)]
+TurnstileDep = Annotated[Turnstile, Depends(turnstile_of)]
 
 
-# The address a sign-up is counted by; refused where sign-ups are shut or shielded by a page's key.
 def signup_client(request: Request) -> str:
-    """The address a sign-up is counted by."""
-    settings = handles_of(request).settings
-    if not settings.signup:
+    """The address a sign-up is counted by; refused where sign-ups are shut."""
+    if not handles_of(request).settings.signup:
         raise NotFound(
             "sign-ups are not open on this box: its operator sets PINECALL_SIGNUP, or makes the org and invites you"
         )
-    if settings.signup_key is None:
-        return client_of(request)
-    if not compare_digest(authorization_of(request) or "", settings.signup_key.get_secret_value()):
-        raise Unauthorized("the sign-up endpoints take the key of the page in front of them")
-    return request.headers.get(CLIENT_HEADER, "").strip() or client_of(request)
+    return client_of(request)
 
 
 SignupClient = Annotated[str, Depends(signup_client)]

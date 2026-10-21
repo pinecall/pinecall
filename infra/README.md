@@ -187,8 +187,9 @@ Ingress had served kept.
 Terraform draws most of a cluster's secrets. The ones an environment names in `given`
 (`terraform/modules/secrets`) are made empty, and the operator puts each once, piped, so that no
 state and no terminal holds it: `vault-key` is the key the database is sealed under (a database
-moved in from elsewhere, as production's was on 2026-10-04, keeps the key it was sealed under), and `s3-access-key-id` with `s3-secret-access-key` are the object
-store's key, made by hand. The environment's `given_secrets` lists them.
+moved in from elsewhere, as production's was on 2026-10-04, keeps the key it was sealed under), `s3-access-key-id` with `s3-secret-access-key` are the object
+store's key, made by hand, and `turnstile-secret` is Cloudflare Turnstile's, where the values name
+its site key (`turnstile.siteKey`). The environment's `given_secrets` lists them.
 
 ```console
 $ <the value> | gcloud secrets versions add pinecall-<env>-<name> --data-file=-

@@ -10,13 +10,14 @@ from pinecall_runtime.accounts.auth import (
     SignInsDep,
     SignupClient,
     SignUpsDep,
+    TurnstileDep,
 )
 from pinecall_runtime.accounts.service import emails, members, orgs, signin
 from pinecall_runtime.exceptions import (
     ServiceUnavailable,
     ValidationError,
 )
-from pinecall_runtime.kit.text import parse_email, parse_slug
+from pinecall_runtime.kit.text import parse_email, parse_slug, slug_of
 from pinecall_runtime.postgres import Session
 
 router = APIRouter()
@@ -26,6 +27,15 @@ REFUSED_SIGNUP: dict[signin.Refusal, str] = {
     "expired": "that code has expired: ask for a new one",
     "burned": "too many tries: ask for a new code",
 }
+
+
+def the_slug_asked(body: schemas.SignUp) -> str:
+    """The org's slug: the one typed, else made of its name; the page never derives one."""
+    if body.org is not None and body.org.strip():
+        return parse_slug(body.org.strip())
+    if body.name is not None and body.name.strip():
+        return slug_of(body.name)
+    raise ValidationError("an org has a name, or a slug: one of the two")
 
 
 @router.post("/v1/signup", status_code=202)
@@ -38,15 +48,17 @@ async def sign_up(
     sign_ups_: SignUpsDep,
     outbox_: OutboxDep,
     brand: BrandDep,
+    turnstile_: TurnstileDep,
 ) -> schemas.CodeMailed:
     """Keep the sign-up and mail its six digits; every address is answered alike."""
     if await outbox_.mailbox_for(None) is None:
         raise ServiceUnavailable(
             "this box cannot mail a code: its operator sets PINECALL_SMTP_URL and PINECALL_MAIL_FROM"
         )
+    await turnstile_.check(body.turnstile, "signup", client)
     await sign_ins_.attempts.check(f"{client} signup", "sign-ups from here")
     email = parse_email(body.email)
-    slug = parse_slug(body.org)
+    slug = the_slug_asked(body)
     if not body.person.strip():
         raise ValidationError("a person has a name: it is what a seat says when they sit")
     hashed = await members.hashed_password(body.password, shortest)
@@ -97,8 +109,10 @@ async def resend_code(
     sign_ups_: SignUpsDep,
     outbox_: OutboxDep,
     brand: BrandDep,
+    turnstile_: TurnstileDep,
 ) -> schemas.Empty:
     """A new code for a sign-up still waiting; the same answer for any address."""
+    await turnstile_.check(body.turnstile, "signup_resend", client)
     await sign_ins_.attempts.check(f"{client} signup/resend", "sign-ups from here")
     renewed = await sign_ups_.renew(body.email.strip().lower())
     if renewed is not None:

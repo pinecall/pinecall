@@ -38,6 +38,14 @@ spec:
             - name: PINECALL_BILLING_URL
               value: {{ . | quote }}
             {{- end }}
+            {{- if .Values.signup }}
+            - name: PINECALL_SIGNUP
+              value: "true"
+            {{- end }}
+            {{- with .Values.turnstile.siteKey }}
+            - name: PINECALL_TURNSTILE_SITE_KEY
+              value: {{ . | quote }}
+            {{- end }}
           ports: [{ name: http, containerPort: 8080 }]
           lifecycle:
             preStop: { sleep: { seconds: 30 } }

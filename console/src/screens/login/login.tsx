@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { GatewayError } from "@pinecall/core/api";
-import { discovered } from "@pinecall/core/the-floor";
+import { discovered, type Discovered } from "@pinecall/core/the-floor";
 import { gatewayHasSso, googleUrl, loginWithPassword, orgsForPassword, ssoOrgsFor, ssoUrl, type Opens, type Signed, type SsoOrg } from "@pinecall/core/login";
 import { DEVICE } from "../../lib/device";
+import { inTheWorld, WORLD } from "../../lib/mode";
+import { useTurnstile } from "./turnstile";
 import { WayIn } from "./way-in";
 
 /**
- * Sign-in only, no registration: the console ships in every self-hosted runtime, so a sign-up form
- * would risk open registration. One login for both worlds.
+ * One login for both worlds. A sign-up is offered only where the gateway says it takes one
+ * (`/.well-known/pinecall`): the console ships in every self-hosted runtime.
  * The gateway returns one refusal for every failure so it doesn't reveal which orgs exist.
  */
 export function Login({ base, onSigned }: { base: string; onSigned: (signed: Signed) => void }): ReactNode {
@@ -21,7 +23,9 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
   // SSO providers return refusals in the query string.
   const [refused, setRefused] = useState<string | null>(() => new URLSearchParams(window.location.search).get("refused"));
   const [forgot, setForgot] = useState(false);
-  const [hasGoogle, setHasGoogle] = useState(false);
+  const [floor, setFloor] = useState<Discovered | null>(null);
+  // Where the gateway has Turnstile, a password goes with a token; the picker's lookup spends one too.
+  const captcha = useTurnstile(floor?.turnstile, "login");
   // Asked on password blur, not per keystroke: the door shares the login throttle.
   const [opens, setOpens] = useState<Opens[] | null>(null);
   const [known, setKnown] = useState(true);
@@ -36,9 +40,9 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     void gatewayHasSso(base).then((has) => {
       if (!gone) setHasSso(has);
     });
-    // SSO is shown only when the gateway advertises it.
+    // Google, a sign-up and the captcha are shown only when the gateway advertises them.
     void discovered(base).then((said) => {
-      if (!gone) setHasGoogle(said.google === true);
+      if (!gone) setFloor(said);
     });
     return () => {
       gone = true;
@@ -68,10 +72,11 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
 
   const askOrgs = async (): Promise<void> => {
     const pair = `${email.trim()}\n${password}`;
-    if (email.trim() === "" || password === "" || pair === asked.current) return;
+    // The widget still solving: the lookup waits for a later blur, and the sign-in itself still works.
+    if (email.trim() === "" || password === "" || pair === asked.current || !captcha.ready) return;
     asked.current = pair;
     try {
-      const listed = await orgsForPassword(base, email.trim(), password);
+      const listed = await orgsForPassword(base, email.trim(), password, captcha.spend());
       if (listed === null) {
         setKnown(false);
         return;
@@ -90,7 +95,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     setBusy(true);
     setRefused(null);
     try {
-      onSigned(await loginWithPassword(base, { org: org.trim(), email: email.trim(), password }, DEVICE));
+      onSigned(await loginWithPassword(base, { org: org.trim(), email: email.trim(), password }, DEVICE, captcha.spend()));
     } catch (failed) {
       setRefused(failed instanceof GatewayError ? failed.message : String(failed));
     } finally {
@@ -98,12 +103,20 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     }
   };
 
+  const hasGoogle = floor?.google === true;
   return (
-    <WayIn>
+    <WayIn
+      title="Sign in"
+      lede="Use the email and password you were invited with."
+      aside={
+        floor?.signup === true ? (
+          <>
+            New here? <a href={inTheWorld(WORLD, "/signup")}>Create an account</a>
+          </>
+        ) : undefined
+      }
+    >
       <form onSubmit={(event) => void submit(event)}>
-        <h1 className="login-title">Sign in</h1>
-        <p className="login-lede">Use the email and password you were invited with.</p>
-
         <label className="login-label" htmlFor="login-email">
           Email
         </label>
@@ -182,7 +195,9 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
           )
         )}
 
-        <button className="login-go" type="submit" disabled={busy}>
+        {captcha.widget}
+
+        <button className="login-go" type="submit" disabled={busy || !captcha.ready}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
 

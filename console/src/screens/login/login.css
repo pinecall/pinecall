@@ -1,74 +1,105 @@
-/* The way in: sign in, choose a password, this machine is not signed in. */
+/* The way in: sign in, sign up, the mailed code, a password chosen — one night sky, one frosted panel — and the /cli card. */
 
 .login {
+  --login-bg: #13141f;
+  --login-title: #f4f4f7;
+  --login-text: #e9e9ed;
+  --login-sub: #b2b6ca;
+  --login-quiet: #8d91a6;
+  --login-accent: #9184d9;
+  --login-a300: #d2cefd;
+  --login-line: rgba(233, 233, 237, 0.1);
+  --login-field: rgba(9, 10, 18, 0.55);
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  background: var(--ground);
+  padding: clamp(40px, 7vh, 72px) 16px clamp(96px, 16vh, 180px);
+  background: var(--login-bg);
+  color: var(--login-text);
+  color-scheme: dark;
 }
 
-.login-side {
+/* The sky: the page's night over the image's top, so the words sit on the night and the clouds rise under the panel. */
+.login-sky {
+  position: absolute;
+  inset: auto 0 0;
+  height: min(78%, 760px);
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--login-bg) 0%, rgba(19, 20, 31, 0.7) 30%, rgba(19, 20, 31, 0) 70%),
+    url(/close-sky-fd998742.webp) center bottom / cover no-repeat;
+}
+
+.login-in {
+  position: relative;
+  max-width: 440px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 32px 40px;
-  min-height: 640px;
+  align-items: center;
+  text-align: center;
 }
 
 .login-logo {
-  display: block;
   height: 22px;
   width: auto;
-  align-self: flex-start;
-}
-
-/* The wordmark is ink: one drawn dark for daylight, one drawn light for the dark theme. */
-.login-logo-dark {
-  display: none;
-}
-
-:root[data-theme="dark"] .login-logo-daylight {
-  display: none;
-}
-
-:root[data-theme="dark"] .login-logo-dark {
-  display: block;
-}
-
-.login-form {
-  width: 100%;
-  max-width: 352px;
-  margin: 0 auto;
-  padding: 40px 0;
+  margin-bottom: 36px;
 }
 
 .login-title {
-  margin: 0 0 7px;
-  font-size: 26px;
-  font-weight: 650;
-  letter-spacing: -0.7px;
+  margin: 0;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.08;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--login-title);
+  text-wrap: balance;
 }
 
 .login-lede {
-  margin: 0 0 28px;
-  color: var(--ink-3);
-  font-size: 14px;
-  line-height: 1.5;
+  margin: 12px 0 0;
+  max-width: 46ch;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--login-sub);
+  text-wrap: pretty;
+}
+
+.login-lede b {
+  font-weight: 500;
+  color: var(--login-text);
+  overflow-wrap: anywhere;
+}
+
+/* The panel: frosted, so the clouds show through its lower half. */
+.login-panel {
+  align-self: stretch;
+  margin-top: 32px;
+  padding: 26px;
+  text-align: left;
+  border-radius: 22px;
+  background: rgba(23, 25, 40, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    inset 0 0 0 1px var(--login-line),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 40px 90px -30px rgba(5, 5, 15, 0.8);
 }
 
 .login-label {
   display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
+  margin-bottom: 7px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--login-sub);
 }
 
 .login-label-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
 .login-label-row .login-label {
@@ -77,49 +108,98 @@
 
 .login-hint {
   font-size: 12.5px;
-  color: var(--ink-4);
+  color: var(--login-quiet);
 }
 
 .login-input {
   width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  margin-bottom: 14px;
-  border: 1px solid var(--line-field);
-  border-radius: 9px;
-  background: var(--ground);
-  font-size: 14px;
-  color: var(--ink);
+  height: 46px;
+  padding: 0 14px;
+  margin-bottom: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--login-field);
+  box-shadow: inset 0 0 0 1px var(--login-line);
+  color: var(--login-text);
+  caret-color: var(--login-accent);
+  font: inherit;
+  font-size: 15px;
+  transition: box-shadow 0.15s, background-color 0.15s;
+}
+
+.login-input:hover {
+  box-shadow: inset 0 0 0 1px rgba(233, 233, 237, 0.2);
 }
 
 .login-input:focus {
-  border-color: var(--accent);
-  box-shadow: var(--accent-ring);
+  outline: none;
+  background: rgba(9, 10, 18, 0.7);
+  box-shadow:
+    inset 0 0 0 1px var(--login-accent),
+    0 0 0 4px rgba(145, 132, 217, 0.18);
 }
 
 .login-input-secret {
   letter-spacing: 0.1em;
 }
 
+/* The password, with the eye that shows it. */
+.login-secret {
+  position: relative;
+}
+
+.login-secret .login-input {
+  padding-right: 48px;
+}
+
+.login-eye {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--login-quiet);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.login-eye:hover,
+.login-eye[aria-pressed="true"] {
+  color: var(--login-text);
+}
+
+/* The six digits, one glance. */
+.login-code {
+  height: 64px;
+  font-family: var(--face-fixed);
+  font-size: 28px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  text-align: center;
+}
+
 .login-workspace {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 40px;
-  padding: 0 12px;
+  height: 46px;
+  padding: 0 14px;
   margin-bottom: 22px;
-  border: 1px solid var(--line-field);
-  border-radius: 9px;
-  background: var(--ground);
-}
-
-.login-workspace:hover {
-  border-color: var(--line-hover-2);
+  border-radius: 12px;
+  background: var(--login-field);
+  box-shadow: inset 0 0 0 1px var(--login-line);
 }
 
 .login-workspace:focus-within {
-  border-color: var(--accent);
-  box-shadow: var(--accent-ring);
+  box-shadow:
+    inset 0 0 0 1px var(--login-accent),
+    0 0 0 4px rgba(145, 132, 217, 0.18);
 }
 
 .login-workspace-tile {
@@ -127,8 +207,8 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--login-accent);
+  color: var(--login-bg);
   display: grid;
   place-items: center;
   font-size: 10px;
@@ -141,54 +221,210 @@
   height: 100%;
   border: 0;
   background: transparent;
-  font-size: 14px;
-  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  color: var(--login-text);
+}
+
+select.login-workspace-input {
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Cloudflare's widget, where the gateway asks for one: nothing until it is drawn. */
+.login-turnstile {
+  margin-bottom: 16px;
+}
+
+.login-turnstile:empty {
+  display: none;
 }
 
 .login-go {
   width: 100%;
-  height: 42px;
+  height: 48px;
   border: 0;
-  border-radius: 9px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 14px;
-  font-weight: 550;
+  border-radius: 999px;
+  background: #ececf0;
+  color: var(--login-bg);
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s;
 }
 
 .login-go:hover {
-  background: var(--accent-hover);
+  background: #fff;
 }
 
 .login-go:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
 }
 
 .login-refused {
   margin: 14px 0 0;
-  font-size: 13px;
-  color: var(--red);
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #ff9c9c;
 }
 
-.login-note {
-  margin: 22px 0 0;
-  color: var(--ink-4);
+.login-note,
+.login-forgot {
+  margin: 18px 0 0;
+  color: var(--login-quiet);
   font-size: 12.5px;
   line-height: 1.6;
 }
 
-.login-foot {
-  margin: 0;
-  color: var(--ink-5);
+.login-forgot {
+  margin: -6px 0 16px;
+}
+
+.login-link,
+.login-resend {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
   font-size: 12.5px;
+  color: var(--login-a300);
+  cursor: pointer;
+}
+
+.login-resend {
+  font-size: inherit;
+}
+
+.login-resend:disabled {
+  color: var(--login-quiet);
+  cursor: default;
+}
+
+/* The ways out, on the clouds themselves. */
+.login-aside {
+  margin: 24px 0 0;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--login-text);
+  text-shadow: 0 1px 12px rgba(19, 20, 31, 0.9);
+}
+
+.login-aside a,
+.login-note a {
+  color: var(--login-a300);
+}
+
+.login-aside a:hover,
+.login-note a:hover,
+.login-link:hover {
+  color: #fff;
+}
+
+.login-foot {
+  margin: 28px 0 0;
+  color: var(--login-quiet);
+  font-size: 12.5px;
+  text-shadow: 0 1px 12px rgba(19, 20, 31, 0.9);
 }
 
 .login-command {
-  color: var(--ink-2);
+  color: var(--login-text);
   font-weight: 500;
+}
+
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.login-or-line {
+  flex: 1;
+  height: 1px;
+  background: var(--login-line);
+}
+
+.login-or-word {
+  color: var(--login-quiet);
+  font-size: 12px;
+}
+
+.login-sso {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--login-field);
+  box-shadow: inset 0 0 0 1px var(--login-line);
+  color: var(--login-text);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.login-sso:hover {
+  box-shadow: inset 0 0 0 1px rgba(233, 233, 237, 0.2);
+}
+
+.login-sso:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.login-sso + .login-sso {
+  margin-top: 10px;
+}
+
+.login-sso-glyph {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--login-accent);
+}
+
+.login-sso-pick {
+  margin-top: 14px;
+}
+
+.login-sso-pick .login-workspace {
+  margin-bottom: 0;
+}
+
+.login-sso-note {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--login-sub);
+  line-height: 1.5;
+}
+
+/* The card /cli shows inside the console, on the console's own palette. */
+.login-card {
+  max-width: 460px;
+  margin: 12vh auto 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow: var(--shadow-card);
+}
+
+.login-card .login-title {
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+}
+
+.login-card .login-lede {
+  margin-bottom: 20px;
+  color: var(--ink-3);
 }
 
 .login-commands {
@@ -203,212 +439,19 @@
   white-space: pre;
 }
 
-.login-show {
-  background: var(--ground-3);
-  border-left: 1px solid var(--line);
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 22px;
-}
-
-.login-show-words {
-  max-width: 420px;
-}
-
-.login-show-title {
-  margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  text-wrap: pretty;
-}
-
-.login-show-lede {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 14px;
-  line-height: 1.6;
-  text-wrap: pretty;
-}
-
-.login-show-card {
-  max-width: 420px;
-  background: var(--ground);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-}
-
-.login-show-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--line-2);
-}
-
-.login-show-today {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.login-show-count {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--ink-4);
-}
-
-.login-show-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line-3);
-}
-
-.login-show-row:last-child {
-  border-bottom: 0;
-}
-
-.login-show-name {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.login-show-line {
-  font-size: 12px;
-  color: var(--ink-4);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.login-show-channel {
-  flex: none;
-  font-size: 11.5px;
-  color: var(--ink-5);
-}
-
-/* The card /cli shows inside the console. */
-.login-card {
-  max-width: 460px;
-  margin: 12vh auto 0;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--ground);
-  box-shadow: var(--shadow-card);
-}
-
-.login-card .login-title {
-  font-size: 22px;
-  letter-spacing: -0.5px;
-}
-
-.login-card .login-lede {
-  margin-bottom: 20px;
-}
-
-@media (max-width: 860px) {
-  .login {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 560px) {
+  .login-panel {
+    padding: 20px;
+    border-radius: 18px;
   }
 
-  .login-show {
-    display: none;
+  .login-sky {
+    height: 60%;
   }
 
-  .login-side {
-    padding: 24px 16px;
+  /* 16px: an iPhone zooms into any field smaller than that. */
+  .login-input,
+  .login-workspace-input {
+    font-size: 16px;
   }
-}
-
-.login-link {
-  border: 0;
-  background: none;
-  padding: 0;
-  font-size: 12.5px;
-  color: var(--accent);
-  cursor: pointer;
-}
-
-.login-forgot {
-  margin: -6px 0 14px;
-  font-size: 12.5px;
-  color: var(--ink-3);
-  line-height: 1.5;
-}
-
-select.login-workspace-input {
-  appearance: none;
-  cursor: pointer;
-}
-
-.login-or {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 20px 0;
-}
-
-.login-or-line {
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
-
-.login-or-word {
-  color: var(--ink-5);
-  font-size: 12px;
-}
-
-.login-sso {
-  width: 100%;
-  height: 42px;
-  border: 1px solid var(--line-field);
-  border-radius: 9px;
-  background: var(--ground);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-}
-
-.login-sso:hover {
-  border-color: var(--line-hover-2);
-  background: var(--ground-side);
-}
-
-.login-sso:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.login-sso-glyph {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: var(--solid);
-}
-
-.login-sso-pick {
-  margin-top: 14px;
-}
-
-.login-sso-pick .login-workspace {
-  margin-bottom: 0;
-}
-
-.login-sso-note {
-  margin: 12px 0 0;
-  font-size: 12.5px;
-  color: var(--ink-3);
-  line-height: 1.5;
 }

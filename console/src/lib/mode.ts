@@ -26,11 +26,14 @@ export function inTheWorld(world: World, pathname: string): string {
   return base === "/" ? pathname : `${base}${pathname}`;
 }
 
+/** The browser's path as the router's: its world's prefix taken off. */
+export function pageOf(pathname: string): string {
+  return worldOf(pathname) === "sandbox" ? pathname.slice(baseOf("sandbox").length) || "/" : pathname;
+}
+
 /** The same screen in the other world: the browser's path with `/sandbox` taken off or put on. */
 export function inTheOtherWorld(pathname: string): string {
-  const here = worldOf(pathname);
-  const bare = here === "sandbox" ? pathname.slice(baseOf("sandbox").length) || "/" : pathname;
-  return inTheWorld(here === "sandbox" ? "production" : "sandbox", bare);
+  return inTheWorld(worldOf(pathname) === "sandbox" ? "production" : "sandbox", pageOf(pathname));
 }
 
 // The tests import this module in node, where there is no window at all: a page that was never

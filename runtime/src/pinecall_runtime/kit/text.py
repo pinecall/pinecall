@@ -1,6 +1,7 @@
 """Small parsers for the words the API takes: slugs, addresses, phone numbers, JSON."""
 
 import re
+import unicodedata
 from collections.abc import Mapping
 from typing import Any, TypeIs
 
@@ -31,6 +32,15 @@ def parse_slug(word: str) -> str:
     if not A_SLUG.match(word):
         raise ValidationError(f"a slug is lowercase words joined by dashes, not {word!r}")
     return word
+
+
+def slug_of(name: str) -> str:
+    """The slug a name makes: accents dropped, lowercase words joined by dashes, 63 at most."""
+    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")[:63].rstrip("-")
+    if not slug:
+        raise ValidationError(f"a name makes a slug out of its letters and digits, and {name!r} has none")
+    return slug
 
 
 def parse_e164(number: str) -> str:

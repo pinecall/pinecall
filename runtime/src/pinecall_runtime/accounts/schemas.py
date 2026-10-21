@@ -246,6 +246,14 @@ class GatewayInfo(Row):
     mail: bool
     brand: BrandRow
     google: bool
+    # Turnstile's site key where the operator set one: the page draws the widget, and every
+    # password, sign-up and reset carries its token. None, and no door asks for one.
+    turnstile: str | None
+
+
+# The token Turnstile's widget yields, carried by every request a stranger makes that costs
+# something: a password tried, a letter mailed. Ignored where the box has no Turnstile.
+type TurnstileToken = str | None
 
 
 # ── signing in ──
@@ -259,6 +267,7 @@ class SignIn(Schema):
     password: str | None = None
     code: str | None = None
     device: str | None = None
+    turnstile: TurnstileToken = None
 
 
 class SignInOrgs(Schema):
@@ -266,6 +275,7 @@ class SignInOrgs(Schema):
 
     email: str
     password: str
+    turnstile: TurnstileToken = None
 
 
 class SignInOrgRow(Row):
@@ -318,6 +328,7 @@ class ForgotPassword(Schema):
     """POST /v1/login/reset."""
 
     email: str
+    turnstile: TurnstileToken = None
 
 
 class Empty(Row):
@@ -356,14 +367,15 @@ class KeyCollected(Row):
 
 
 class SignUp(Schema):
-    """POST /v1/signup."""
+    """POST /v1/signup: the org's slug, or its name alone and the slug is made of it."""
 
-    org: str
+    org: str | None = None
     name: str | None = None
     email: str
     person: str
     password: str
     device: str | None = None
+    turnstile: TurnstileToken = None
 
 
 class CodeMailed(Row):
@@ -385,6 +397,7 @@ class ResendCode(Schema):
     """POST /v1/signup/resend."""
 
     email: str
+    turnstile: TurnstileToken = None
 
 
 # ── the org's identity provider ──
