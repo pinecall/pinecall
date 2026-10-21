@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from pinecall_runtime.enums import Env
-from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, TooManyAtOnce, admit_one_more
+from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, TooManyAtOnce
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.redis import LocalSignal
 from tests.conftest import Gateway, Tenant, until
@@ -85,9 +85,11 @@ async def waiting_on(ended: asyncio.Event) -> None:
     await ended.wait()
 
 
-async def test_a_call_counts_from_the_moment_it_is_placed_until_it_ends() -> None:
+async def test_a_call_counts_from_the_moment_it_is_admitted_until_it_ends() -> None:
     simulations = Simulations()
     ended = asyncio.Event()
+    simulations.admit("call_1", ACME)
+    assert simulations.on_the_line(ACME.org, ACME.env) == 1
     simulations.play("call_1", ACME, waiting_on(ended))
     assert simulations.on_the_line(ACME.org, ACME.env) == 1
     assert simulations.on_the_line(ACME.org, Env.production) == 0
@@ -97,9 +99,12 @@ async def test_a_call_counts_from_the_moment_it_is_placed_until_it_ends() -> Non
     await simulations.stop()
 
 
-async def test_a_call_played_by_the_request_itself_counts_for_as_long_as_it_plays() -> None:
+async def test_a_call_refused_after_it_was_admitted_gives_its_place_back() -> None:
     simulations = Simulations()
-    async with simulations.holding("call_1", ACME):
+    simulations.admit("call_1", ACME)
+    simulations.release("call_1")
+    assert simulations.on_the_line(ACME.org, ACME.env) == 0
+    async with simulations.admitted("call_2", ACME):
         assert simulations.on_the_line(ACME.org, ACME.env) == 1
     assert simulations.on_the_line(ACME.org, ACME.env) == 0
     await simulations.stop()
@@ -109,17 +114,41 @@ async def test_the_fourth_of_an_orgs_calls_in_an_env_is_refused_and_told_when_to
     simulations = Simulations()
     ended = asyncio.Event()
     for n in range(AT_ONCE):
-        admit_one_more(simulations, ACME)
+        simulations.admit(f"call_{n}", ACME)
         simulations.play(f"call_{n}", ACME, waiting_on(ended))
     with pytest.raises(TooManyAtOnce, match="3 simulated calls on the line in sandbox") as refused:
-        admit_one_more(simulations, ACME)
+        simulations.admit("call_4", ACME)
     assert refused.value.status == 429 and refused.value.retry_after_s is not None
     # Another org, and the org's other env, are not held to this org's calls.
-    admit_one_more(simulations, OTHER)
-    admit_one_more(simulations, Scope(ACME.org, Env.production))
+    simulations.admit("call_5", OTHER)
+    simulations.admit("call_6", Scope(ACME.org, Env.production))
     ended.set()
     await until(lambda: simulations.on_the_line(ACME.org, ACME.env) == 0)
-    admit_one_more(simulations, ACME)
+    simulations.admit("call_7", ACME)
+    await simulations.stop()
+
+
+# Four requests at once on one gateway, each awaiting its database between the count and the
+# call's start (2026-10-21: four placed in one burst were all answered 200).
+async def test_a_burst_on_one_gateway_never_passes_the_ceiling() -> None:
+    simulations = Simulations()
+    ended = asyncio.Event()
+    refused: list[str] = []
+
+    async def placed(call: str) -> None:
+        try:
+            simulations.admit(call, ACME)
+        except TooManyAtOnce:
+            refused.append(call)
+            return
+        await asyncio.sleep(0.01)
+        simulations.play(call, ACME, waiting_on(ended))
+
+    await asyncio.gather(*(placed(f"call_{n}") for n in range(6)))
+    assert len(refused) == 3
+    assert simulations.on_the_line(ACME.org, ACME.env) == AT_ONCE
+    ended.set()
+    await until(lambda: simulations.on_the_line(ACME.org, ACME.env) == 0)
     await simulations.stop()
 
 
@@ -132,13 +161,15 @@ async def test_every_gateway_counts_the_calls_the_others_play() -> None:
     try:
         # The listeners subscribe on their first turn; a count said before it is said again each beat.
         await asyncio.sleep(0)
-        here.play("call_1", ACME, waiting_on(ended))
-        here.play("call_2", ACME, waiting_on(ended))
+        for call in ("call_1", "call_2"):
+            here.admit(call, ACME)
+            here.play(call, ACME, waiting_on(ended))
         await until(lambda: there.on_the_line(ACME.org, ACME.env) == 2)
+        there.admit("call_3", ACME)
         there.play("call_3", ACME, waiting_on(ended))
         await until(lambda: here.on_the_line(ACME.org, ACME.env) == 3)
         with pytest.raises(TooManyAtOnce):
-            admit_one_more(there, ACME)
+            there.admit("call_4", ACME)
         ended.set()
         await until(lambda: here.on_the_line(ACME.org, ACME.env) == 0)
     finally:

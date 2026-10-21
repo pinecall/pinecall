@@ -46,17 +46,24 @@ async def simulate(
     registration = serving.registry.serving(scope, body.agent, None)
     if registration is None:
         raise registry.NoApp(body.agent)
-    service.admit_one_more(simulations, scope)
-    await service.admit_simulation(session, serving, scope, body.agent)
-    caller = service.calling_as(persona)
-    line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
-    placed = service.Placed(calls.new_call_id(), body.agent, caller, body.turns, line, dict(persona.state))
-    if body.voice:
-        await service.claim_new_call(session, serving, placed.call, body.agent, scope)
-        simulations.play(placed.call, scope, _spoken(serving, scope, placed))
-    else:
-        running = await service.written_call(session, serving, registration, placed)
-        simulations.play(placed.call, scope, _written(serving, running, placed))
+    call = calls.new_call_id()
+    # The place on the line is taken before anything is awaited, and given back if what follows
+    # refuses the call: a burst of requests can never all pass the count together.
+    simulations.admit(call, scope)
+    try:
+        await service.admit_simulation(session, serving, scope, body.agent)
+        caller = service.calling_as(persona)
+        line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
+        placed = service.Placed(call, body.agent, caller, body.turns, line, dict(persona.state))
+        if body.voice:
+            await service.claim_new_call(session, serving, placed.call, body.agent, scope)
+            simulations.play(placed.call, scope, _spoken(serving, scope, placed))
+        else:
+            running = await service.written_call(session, serving, registration, placed)
+            simulations.play(placed.call, scope, _written(serving, running, placed))
+    except BaseException:
+        simulations.release(call)
+        raise
     return schemas.SimulationStarted(call=placed.call, voice=body.voice)
 
 
@@ -101,14 +108,13 @@ async def place_voice_call(
     # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
     if serving.registry.serving(scope, body.agent, None) is None:
         raise registry.NoApp(body.agent)
-    service.admit_one_more(simulations, scope)
-    await service.admit_simulation(session, serving, scope, body.agent)
-    await service.claim_new_call(session, serving, body.call, body.agent, scope)
-    line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)
-    placed = service.Placed(body.call, body.agent, persona, body.turns, line, dict(body.state))
-    # The request's writes are done: the call is played with no connection of the pool held for it.
-    await session.commit()
-    async with simulations.holding(body.call, scope):
+    async with simulations.admitted(body.call, scope):
+        await service.admit_simulation(session, serving, scope, body.agent)
+        await service.claim_new_call(session, serving, body.call, body.agent, scope)
+        line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)
+        placed = service.Placed(body.call, body.agent, persona, body.turns, line, dict(body.state))
+        # The request's writes are done: the call is played with no connection of the pool held for it.
+        await session.commit()
         turns, spending = await service.spoken_call(serving, scope, placed)
     return schemas.PlaceVoiceCallResponse(
         call=body.call,

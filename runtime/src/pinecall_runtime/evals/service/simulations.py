@@ -100,8 +100,11 @@ class Playing:
 
 
 # Each gateway counts the calls it plays and says the count on the signal, as the calls at once
-# are counted: the count is exact from the moment a call is placed, before any worker opened it,
-# and a call never counts twice whichever gateway its worker reached.
+# are counted: a call takes its place the instant it is admitted, with no await between the
+# count and the place, so a burst on one gateway never passes the ceiling; the other gateways'
+# counts are heard the instant they change, so a burst split between two may pass it by what
+# both admitted in that instant, as concurrent_calls may. A call never counts twice whichever
+# gateway its worker reached.
 class Simulations:
     """The simulated calls this process plays, and every gateway's count; stopped with the process."""
 
@@ -116,9 +119,22 @@ class Simulations:
         """Hear the other gateways' counts, and say this one's."""
         await self.counted.start()
 
+    def admit(self, call: str, scope: Scope) -> None:
+        """Give the call its place on the line now, or refuse it: the org has AT_ONCE there already."""
+        playing = self.on_the_line(scope.org, scope.env)
+        if playing >= AT_ONCE:
+            raise TooManyAtOnce(scope.env, playing)
+        self.playing[call] = Playing(scope, None)
+        self._say()
+
+    def release(self, call: str) -> None:
+        """Give the call's place back: it was refused after it was admitted, or it ended."""
+        if self.playing.pop(call, None) is not None:
+            self._say()
+
     # The request's context goes with the task, so the call is played as the org that asked for it.
     def play(self, call: str, scope: Scope, played: Coroutine[object, object, object]) -> None:
-        """Play the call on its own task, kept until it ends; a break is logged, never lost."""
+        """Play the admitted call on its own task, kept until it ends; a break is logged, never lost."""
 
         async def kept() -> None:
             await played
@@ -129,15 +145,13 @@ class Simulations:
         task.add_done_callback(lambda done: self._ended(call, done))
 
     @asynccontextmanager
-    async def holding(self, call: str, scope: Scope) -> AsyncGenerator[None]:
-        """Count a call played inside the block, by the request that plays it."""
-        self.playing[call] = Playing(scope, None)
-        self._say()
+    async def admitted(self, call: str, scope: Scope) -> AsyncGenerator[None]:
+        """The call's place on the line for the block, which plays it: admitted first, let go after."""
+        self.admit(call, scope)
         try:
             yield
         finally:
-            self.playing.pop(call, None)
-            self._say()
+            self.release(call)
 
     def on_the_line(self, org: str, env: Env) -> int:
         """How many of the org's simulated calls are on the line in the env, on every gateway."""
@@ -154,8 +168,7 @@ class Simulations:
         await self.counted.close()
 
     def _ended(self, call: str, done: asyncio.Task[None]) -> None:
-        self.playing.pop(call, None)
-        self._say()
+        self.release(call)
         if not done.cancelled() and done.exception() is not None:
             logger.error(BROKE, call, exc_info=done.exception())
 
@@ -172,13 +185,6 @@ class Simulations:
 
 def _named(org: str, env: Env) -> str:
     return f"{org}|{env.value}"
-
-
-def admit_one_more(simulations: Simulations, scope: Scope) -> None:
-    """Admit one more simulated call of the org in the env; refused at AT_ONCE on the line."""
-    playing = simulations.on_the_line(scope.org, scope.env)
-    if playing >= AT_ONCE:
-        raise TooManyAtOnce(scope.env, playing)
 
 
 def calling_as(persona: judging.Persona) -> judging.CallerPersona:
