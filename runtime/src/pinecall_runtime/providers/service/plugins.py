@@ -100,6 +100,9 @@ class Vendor:
     broken: str | None = None
     # The models that hear and speak themselves, by name: the agent's `realtime` names one for its voice calls.
     realtime: tuple[str, ...] = ()
+    # The model each stage's class builds when none is named, where its constructor says one (Deepgram's
+    # `nova-3`); a plugin that decides inside says nothing here.
+    defaults: Mapping[Modality, str] = field(default_factory=dict[Modality, str])
 
 
 @dataclass(frozen=True)
@@ -222,12 +225,29 @@ def _vendor(name: str, module: str) -> Vendor:
     # A realtime model is the LLM stage of the calls it runs, whatever else the plugin exports.
     if realtime_path(imported) is not None:
         does.add("llm")
-    return Vendor(name, frozenset(does), realtime=realtime_models(imported))
+    return Vendor(name, frozenset(does), realtime=realtime_models(imported), defaults=default_models(imported, does))
 
 
 def class_path(module: object, modality: Modality) -> str | None:
     """Where the module keeps its class for that stage (`LLM`, `responses.LLM`), or None."""
     return next((path for path in CLASS_PATHS[modality] if isinstance(_at(module, path), type)), None)
+
+
+def default_models(module: object, does: set[Modality]) -> dict[Modality, str]:
+    """The model each stage's class builds when none is named, where its `model` argument defaults to one."""
+    found: dict[Modality, str] = {}
+    for modality in sorted(does):
+        path = class_path(module, modality)
+        made = None if path is None else _at(module, path)
+        if not isinstance(made, type):
+            continue
+        try:
+            argument = inspect.signature(made).parameters.get("model")
+        except (TypeError, ValueError):
+            continue
+        if argument is not None and isinstance(argument.default, str) and argument.default:
+            found[modality] = argument.default
+    return found
 
 
 def realtime_path(module: object) -> str | None:

@@ -37,6 +37,8 @@ export interface PipelineProps {
   providers: readonly Provider[];
   defaults: Readonly<Record<string, string>>;
   models: Readonly<Record<string, readonly string[]>>;
+  /** By "<modality>/<vendor>", the model a call runs when none is picked, where the runtime knows it. */
+  runsOn: Readonly<Record<string, string>>;
   realtime: Readonly<Record<string, readonly string[]>>;
   fixed: ReadonlySet<string>;
   running: Running | null;
@@ -47,16 +49,16 @@ export interface PipelineProps {
   onStep: (step: Step) => void;
 }
 
-// The wire word a stage runs: what is picked, else the runtime's default and that vendor's first model.
-function runs(picked: Knob, modality: "stt" | "llm" | "tts", defaults: PipelineProps["defaults"], models: PipelineProps["models"]): string {
+// The wire word a stage runs: what is picked, else the runtime's default vendor and the model that runs on it when none is picked.
+function runs(picked: Knob, modality: "stt" | "llm" | "tts", defaults: PipelineProps["defaults"], runsOn: PipelineProps["runsOn"]): string {
   if (picked.vendor !== "" && picked.model !== "") return wordOf(picked);
   const vendor = picked.vendor === "" ? (defaults[modality] ?? "") : picked.vendor;
-  const model = picked.model === "" ? models[`${modality}/${vendor}`]?.[0] : picked.model;
+  const model = picked.model === "" ? runsOn[`${modality}/${vendor}`] : picked.model;
   return model === undefined ? vendor : `${vendor}/${model}`;
 }
 
 export function Pipeline(props: PipelineProps): ReactNode {
-  const { typed, change, knob, plug, providers, defaults, models, realtime, fixed, running, language, own, step, onStep } = props;
+  const { typed, change, knob, plug, providers, defaults, models, runsOn, realtime, fixed, running, language, own, step, onStep } = props;
   const [realtimeOn, setRealtimeOn] = useState(typed.realtime.vendor !== "");
   const speaking = typed.tts.vendor === "" ? (defaults["tts"] ?? null) : typed.tts.vendor;
   const vendorOf = (picked: string, fallback: string | undefined): string => (picked === "" ? (fallback ?? "the vendor") : picked);
@@ -67,7 +69,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
     const classes: Record<Step, string | null | undefined> = { hears: fixed.has("stt") ? running?.hears : undefined, decides: fixed.has("llm") ? running?.decides : undefined, speaks: fixed.has("voice") ? running?.speaks : undefined, judged: fixed.has("judge") ? "" : undefined };
     const fromClass = classes[at];
     const picked = at === "hears" ? typed.stt : at === "decides" ? typed.llm : at === "speaks" ? typed.tts : typed.judge;
-    const value = fromClass !== undefined ? (fromClass === null || fromClass === "" ? "set by the class" : fromClass) : at === "judged" && picked.vendor === "" ? "the org's choice" : runs(picked, tile.modality, defaults, models);
+    const value = fromClass !== undefined ? (fromClass === null || fromClass === "" ? "set by the class" : fromClass) : at === "judged" && picked.vendor === "" ? "the org's choice" : runs(picked, tile.modality, defaults, runsOn);
     const under = { hears: typed.language === "" ? "language not set" : `language ${typed.language}`, decides: typed.temperature === "" ? "default temperature" : `temperature ${typed.temperature}`, speaks: typed.voice === "" ? "the model's own voice" : `as ${typed.voice}`, judged: "at hang-up" }[at];
     return { value, under };
   };
@@ -139,6 +141,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
           providers={providers}
           defaults={defaults}
           models={models}
+          runs={runsOn}
           own={own}
           onChange={knob("stt")}
           fixed={fixed.has("stt") ? { value: running?.hears ?? null } : undefined}
@@ -161,6 +164,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
           providers={providers}
           defaults={defaults}
           models={models}
+          runs={runsOn}
           own={own}
           onChange={knob("llm")}
           fixed={fixed.has("llm") ? { value: running?.decides ?? null } : undefined}
@@ -178,6 +182,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
           providers={providers}
           defaults={defaults}
           models={models}
+          runs={runsOn}
           own={own}
           onChange={knob("tts")}
           fixed={fixed.has("voice") ? { value: running?.speaks ?? null } : undefined}
@@ -195,6 +200,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
           providers={providers}
           defaults={defaults}
           models={models}
+          runs={runsOn}
           own={own}
           onChange={knob("judge")}
           unset="The org's choice, else Pinecall's"

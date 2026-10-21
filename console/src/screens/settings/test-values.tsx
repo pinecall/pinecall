@@ -156,7 +156,8 @@ function StageRow({ modality, icon, label, running, knob, report, own, onChange 
   const ready = doing(report.providers, modality).filter((one: Provider) => one.ready && one.name !== running.vendor);
   const vendor = knob.vendor === "" ? running.vendor : knob.vendor;
   const known = report.models[`${modality}/${vendor}`] ?? [];
-  const standing = knob.vendor === "" ? (running.model ?? known[0]) : known[0];
+  const runsOn = report.runs[`${modality}/${vendor}`];
+  const standing = knob.vendor === "" ? (running.model ?? runsOn) : runsOn;
   return (
     <div className="set-test-row">
       <span className="set-test-label">
@@ -173,7 +174,7 @@ function StageRow({ modality, icon, label, running, knob, report, own, onChange 
         ))}
       </Select>
       <Select value={knob.model} aria-label={`${label}: model`} disabled={known.length === 0} onValueChange={(picked) => onChange({ vendor: knob.vendor === "" && picked !== "" ? running.vendor : knob.vendor, model: picked })}>
-        <SelectItem value="">{standing === undefined || standing === null ? "Default" : `${standing} (${knob.vendor === "" ? "current" : "recommended"})`}</SelectItem>
+        <SelectItem value="">{standing === undefined || standing === null ? "Default" : `${standing} (${knob.vendor === "" ? "current" : "default"})`}</SelectItem>
         {known.filter((name) => name !== standing).map((name) => (
           <SelectItem key={name} value={name}>
             {name}

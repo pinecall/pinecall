@@ -48,6 +48,8 @@ export const ReportSchema = z.object({
   // Default vendor per stage, and curated models per "<modality>/<vendor>" (default first).
   defaults: z.record(z.string(), z.string()),
   models: z.record(z.string(), z.array(z.string())),
+  /** By "<modality>/<vendor>", the model a call runs when none is picked, where the runtime knows it. */
+  runs: z.record(z.string(), z.string()),
   // By vendor, the models that hear and speak themselves: an LLM pick that needs no ears and no voice.
   realtime: z.record(z.string(), z.array(z.string())),
   calls: z.int(),

@@ -42,6 +42,7 @@ export function SettingsForm({
   providers,
   defaults,
   models,
+  runs,
   realtime,
   bases,
   fixed,
@@ -65,6 +66,8 @@ export function SettingsForm({
   providers: readonly Provider[];
   defaults: Readonly<Record<string, string>>;
   models: Readonly<Record<string, readonly string[]>>;
+  /** By "<modality>/<vendor>", the model a call runs when none is picked. */
+  runs: Readonly<Record<string, string>>;
   /** By vendor, the models that hear and speak themselves: one picked runs the voice calls alone. */
   realtime: Readonly<Record<string, readonly string[]>>;
   /** Bases in this world for the Bases section; null while loading. */
@@ -129,7 +132,7 @@ export function SettingsForm({
         <Tabs label="Settings" tabs={sectionsFor(wordsOnly)} on={section} onPick={onPickSection} />
       </div>
       {section === "pipeline" && (
-        <Pipeline typed={typed} change={change} knob={knob} plug={plug} providers={providers} defaults={defaults} models={models} realtime={realtime} fixed={fixed} running={stages} language={language} own={own} step={step} onStep={onPickStep} />
+        <Pipeline typed={typed} change={change} knob={knob} plug={plug} providers={providers} defaults={defaults} models={models} runsOn={runs} realtime={realtime} fixed={fixed} running={stages} language={language} own={own} step={step} onStep={onPickStep} />
       )}
       {section === "conversation" && <ConversationSection typed={typed} wordsOnly={wordsOnly} fixed={fixed} change={change} />}
       {section === "memory" && (fixed.has("memory") ? <ClassOnly title="Memory" label="What it remembers and never keeps" /> : <MemorySection typed={typed} change={change} />)}

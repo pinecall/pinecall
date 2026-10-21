@@ -5,7 +5,7 @@ LLM on the Responses API in its `responses` module (xAI's Grok); its realtime mo
 import types
 from typing import Literal
 
-from pinecall_runtime.providers.service.plugins import class_path, realtime_models, realtime_path
+from pinecall_runtime.providers.service.plugins import class_path, default_models, realtime_models, realtime_path
 
 
 class LLM:
@@ -13,7 +13,17 @@ class LLM:
 
 
 class STT:
-    """Ears."""
+    """Ears, building one model when none is named."""
+
+    def __init__(self, *, model: str = "ears-3") -> None:
+        self.model = model
+
+
+class TTS:
+    """A voice that decides its model inside."""
+
+    def __init__(self, *, model: str | None = None) -> None:
+        self.model = model
 
 
 class Talks:
@@ -45,6 +55,11 @@ def test_an_llm_kept_in_the_responses_module_is_found_there() -> None:
 def test_the_top_of_the_module_comes_first() -> None:
     module = types.SimpleNamespace(LLM=LLM, responses=types.SimpleNamespace(LLM=STT))
     assert class_path(module, "llm") == "LLM"
+
+
+def test_a_stages_default_model_is_what_its_class_builds_when_none_is_named_and_none_where_it_decides_inside() -> None:
+    module = types.SimpleNamespace(LLM=LLM, STT=STT, TTS=TTS)
+    assert default_models(module, {"llm", "stt", "tts"}) == {"stt": "ears-3"}
 
 
 def test_a_realtime_class_in_the_realtime_module_lists_the_models_its_model_argument_types() -> None:

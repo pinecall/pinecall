@@ -9,7 +9,9 @@
   /v1/providers` `models` lists, by stage and vendor, the row's default first and then what it
   offers — kept to the models the platform lends the org where it lends by model, and a vendor
   lent by model is `offered` rather than `bring your own`. Before, a picker saw the row's one model
-  or nothing, and a vendor lent only by model was not listed at all.
+  or nothing, and a vendor lent only by model was not listed at all. `runs` says, by stage and
+  vendor, which model a call runs when none is picked — the row's, else the plugin's own — and it
+  comes first in `models`; the console names it as the default.
 - **An org has at most three simulated calls on the line at once in each environment.** Counted on
   every gateway together, from the moment a simulation is placed until its caller hangs up:
   `POST /v1/simulations` and `POST /v1/evals/voice` refuse the fourth `429` with `Retry-After`.

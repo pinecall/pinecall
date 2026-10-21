@@ -380,6 +380,8 @@ class PipelineReport(WireModel):
     providers: list[ProviderRow]
     defaults: dict[Modality, str]
     models: dict[str, list[str]]
+    # By stage and vendor, the model a call runs when none is picked, as GET /v1/providers says it.
+    runs: dict[str, str]
     # By vendor, the models that hear and speak themselves, as GET /v1/providers lists them.
     realtime: dict[str, list[str]]
     calls: int

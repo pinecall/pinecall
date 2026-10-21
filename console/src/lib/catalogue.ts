@@ -53,6 +53,8 @@ export const CatalogueSchema = z.object({
   voices: z.array(z.string()),
   /** Curated models by "<modality>/<vendor>", default first. */
   models: z.record(z.string(), z.array(z.string())),
+  /** By "<modality>/<vendor>", the model a call runs when none is picked, where the runtime knows it. */
+  runs: z.record(z.string(), z.string()),
   /** By vendor, the models that hear and speak themselves, as the vendor's plugin names them. */
   realtime: z.record(z.string(), z.array(z.string())),
 });

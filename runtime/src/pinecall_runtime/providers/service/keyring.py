@@ -356,19 +356,34 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
         defaults=catalog.default_vendors,
         voices=[],
         models=_models_offered(catalog, keys),
+        runs=runs_of(catalog, plugins.installed()),
         realtime={vendor.name: list(vendor.realtime) for vendor in plugins.installed().values() if vendor.realtime},
     )
 
 
-# What a picker offers this org of each vendor and stage: the row's default first, then the models the
+# The model a call on a vendor runs when none is picked: the row's, else the one the plugin builds
+# where its constructor says one.
+def runs_of(catalog: Catalog, installed: Mapping[str, Vendor]) -> dict[str, str]:
+    """By `stage/vendor`, the model that runs when none is picked, where it is known."""
+    runs = {
+        f"{stage}{SEPARATOR}{vendor.name}": model
+        for vendor in installed.values()
+        for stage, model in vendor.defaults.items()
+    }
+    runs.update(catalog.models)
+    return runs
+
+
+# What a picker offers this org of each vendor and stage: the one that runs first, then the models the
 # row offers, kept to what the box lends the org where it lends by model (an entry names no stage, so
 # a model the row does not list is offered nowhere). On the org's own key, every one.
 def _models_offered(catalog: Catalog, keys: Keyring) -> dict[str, list[str]]:
     offered: dict[str, list[str]] = {}
+    runs = runs_of(catalog, plugins.installed())
     for named in sorted({*catalog.models, *catalog.offered}):
         vendor = named.partition(SEPARATOR)[2]
-        default = [catalog.models[named]] if named in catalog.models else []
-        listed = list(dict.fromkeys([*default, *catalog.offered.get(named, ())]))
+        first = [runs[named]] if named in runs else []
+        listed = list(dict.fromkeys([*first, *catalog.offered.get(named, ())]))
         if vendor not in keys.own and keys.lends is not None and vendor not in keys.lends:
             listed = [model for model in listed if is_lent(keys.lends, vendor, model)]
         if listed:

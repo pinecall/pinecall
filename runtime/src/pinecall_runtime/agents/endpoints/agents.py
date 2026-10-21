@@ -195,6 +195,7 @@ async def pipeline_report(
         providers=listed.providers,
         defaults=listed.defaults,
         models=listed.models,
+        runs=listed.runs,
         realtime=listed.realtime,
         calls=counted,
         medians=[schemas.Measured(name=row.name, seconds=row.seconds, turns=row.turns) for row in medians],

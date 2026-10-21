@@ -169,6 +169,7 @@ export function Settings(): ReactNode {
                 providers={report?.providers ?? []}
                 defaults={report?.defaults ?? {}}
                 models={report?.models ?? {}}
+                runs={report?.runs ?? {}}
                 realtime={report?.realtime ?? {}}
                 bases={bases}
                 fixed={new Set(answer.fixed)}

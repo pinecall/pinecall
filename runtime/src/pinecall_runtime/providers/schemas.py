@@ -179,6 +179,9 @@ class Catalogue(WireModel):
     # The picker reads GET /v1/voices; no names are curated in code.
     voices: list[str]
     models: dict[str, list[str]]
+    # `stt/deepgram`: the model a call runs when none is picked — the row's, else the plugin's own where
+    # it says one — and the first of `models`; a vendor absent here decides inside its plugin.
+    runs: dict[str, str]
     # `xai`: the models that hear and speak themselves, as the vendor's plugin lists them; the agent's
     # `realtime` names one, and its voice calls run on it with no ears and no voice of their own.
     realtime: dict[str, list[str]]

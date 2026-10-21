@@ -20,6 +20,7 @@ export function StageSection({
   providers,
   defaults,
   models,
+  runs,
   onChange,
   fixed,
   unset,
@@ -34,6 +35,8 @@ export function StageSection({
   providers: readonly Provider[];
   defaults: Readonly<Record<string, string>>;
   models: Readonly<Record<string, readonly string[]>>;
+  /** By "<modality>/<vendor>", the model a call runs when none is picked, where the runtime knows it. */
+  runs: Readonly<Record<string, string>>;
   onChange: (knob: Knob) => void;
   /** Set when the agent's class declares this stage: what it runs, read-only. */
   fixed?: { value: string | null } | undefined;
@@ -66,6 +69,7 @@ export function StageSection({
   const vendor = knob.vendor === "" ? runtimeDefault : knob.vendor;
   const listed = ready.some((one) => one.name === knob.vendor) ? ready : knob.vendor === "" ? ready : [{ name: knob.vendor, ready: false } as Provider, ...ready];
   const known = models[`${modality}/${vendor}`] ?? [];
+  const runsOn = runs[`${modality}/${vendor}`];
   const options = known.includes(knob.model) || knob.model === "" ? known : [knob.model, ...known];
   const whose = (one: Provider): string => (!one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by the runtime");
   const showsModel = unset === undefined || knob.vendor !== "";
@@ -91,7 +95,7 @@ export function StageSection({
           <div className="set-field">
             <Label>Model</Label>
             <Select value={knob.model} aria-label={`${title}: model`} disabled={known.length === 0} onValueChange={(value) => onChange({ ...knob, model: value })}>
-              <SelectItem value="">{brandOf(vendor)}&apos;s default</SelectItem>
+              <SelectItem value="">{runsOn === undefined ? `${brandOf(vendor)}'s default` : `${runsOn} (default)`}</SelectItem>
               {options.map((name) => (
                 <SelectItem key={name} value={name}>
                   {known.includes(name) ? name : `${name} (as set)`}
@@ -103,7 +107,7 @@ export function StageSection({
       </div>
       <p className="set-help">
         Only vendors this box has a key for; add one in Providers.
-        {showsModel && (known.length === 0 ? ` ${brandOf(vendor)} runs its own default model; none is listed to pick.` : " The default is the model the runtime runs when none is picked.")}
+        {showsModel && (known.length === 0 ? ` ${brandOf(vendor)} runs its own default model; none is listed to pick.` : " The default is what runs when none is picked.")}
       </p>
       {children}
       {advanced !== undefined && advanced !== null && advanced !== false && <Advanced>{advanced}</Advanced>}

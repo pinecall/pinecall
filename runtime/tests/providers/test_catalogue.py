@@ -36,6 +36,18 @@ def offering() -> providers.Catalog:
 def test_the_catalogue_lists_the_rows_default_first_and_then_what_the_row_offers() -> None:
     listed = keyring.catalogue_of(offering(), Keyring(own={acme.ACME: "own-key"}))
     assert listed.models == {"stt/acme": ["acme-ears", "acme-ears-2", "acme-ears-3"], "llm/acme": ["acme-2"]}
+    # Every installed plugin's own default is in `runs` beside it; the row's word is acme's.
+    assert listed.runs["stt/acme"] == "acme-ears"
+
+
+def test_where_the_row_names_no_default_the_plugins_own_runs_and_comes_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    installed = plugins.installed()
+    says = dataclasses.replace(installed[acme.ACME], defaults={"llm": "acme-1", "stt": "acme-ears-9"})
+    monkeypatch.setattr(plugins, "installed", lambda: {acme.ACME: says})
+    listed = keyring.catalogue_of(offering(), Keyring(own={acme.ACME: "own-key"}))
+    # The row's word wins over the plugin's for the ears; the plugin's stands for the model.
+    assert listed.runs == {"stt/acme": "acme-ears", "llm/acme": "acme-1"}
+    assert listed.models["llm/acme"] == ["acme-1", "acme-2"]
 
 
 def test_an_org_lent_one_model_of_a_vendor_is_offered_that_model_alone_and_the_vendor_with_it() -> None:
