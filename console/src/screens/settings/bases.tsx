@@ -51,7 +51,7 @@ export function BasesSection({ rows, offered, onChange }: { rows: readonly Attac
                 {(offered ?? []).some((one) => one.base === row.base) ? null : <SelectItem value={row.base}>{row.base} · not pushed in this world</SelectItem>}
                 {(offered ?? []).map((one) => (
                   <SelectItem key={one.base} value={one.base} disabled={one.base !== row.base && attached.has(one.base)}>
-                    {one.base} · {one.chunks} chunks
+                    {one.base} · {one.chunks} chunks · {one.language}
                   </SelectItem>
                 ))}
               </Select>
@@ -94,7 +94,7 @@ export function BasesSection({ rows, offered, onChange }: { rows: readonly Attac
             <SelectItem value={ATTACH}>{offered === null ? "Asking the gateway…" : free.length === 0 ? "Every pushed base is attached" : "Pick one…"}</SelectItem>
             {free.map((one) => (
               <SelectItem key={one.base} value={one.base}>
-                {one.base} · {one.chunks} chunks
+                {one.base} · {one.chunks} chunks · {one.language}
               </SelectItem>
             ))}
           </Select>

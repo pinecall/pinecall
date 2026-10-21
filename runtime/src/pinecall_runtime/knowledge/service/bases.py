@@ -21,6 +21,7 @@ from pinecall_runtime.knowledge.service.cutter import (
     where,
 )
 from pinecall_runtime.knowledge.service.embedder import Embedder, WrongModel, halfvec
+from pinecall_runtime.knowledge.service.language import Language, detected
 from pinecall_runtime.knowledge.service.ranking import Evidence, Figures
 from pinecall_runtime.postgres import unbounded
 
@@ -32,6 +33,8 @@ class Push:
     base: str
     files: tuple[Cut, ...]
     at: datetime
+    # The language the push says; None is counted from the files' words, or kept from the base.
+    language: Language | None = None
 
     @property
     def chunks(self) -> int:
@@ -78,10 +81,10 @@ class Searched:
 
 @dataclass(frozen=True, slots=True)
 class Question:
-    """A golden question and the heading path that should answer it."""
+    """A golden question and the heading paths any one of which answers it."""
 
     asks: str
-    expects: str
+    expects: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +231,7 @@ async def _written(
 ) -> None:
     repository = KnowledgeRepository(session)
     own = await repository.own(scope, push.base)
+    language = push.language or _language_kept(own, keep) or detected([item.text for item in push.files])
     known: dict[str, str] = {}
     if own is not None and own.model == embedder.model:
         known = {
@@ -254,6 +258,7 @@ async def _written(
             push.base,
             model=embedder.model,
             dimensions=embedder.embedding.dimensions,
+            language=language,
             at=push.at,
             keep=keep,
             changed=files,
@@ -261,8 +266,18 @@ async def _written(
         )
 
 
-# Only the first match counts: a base that repeats itself answered once.
+# One file put beside the others speaks the base's language; a folder pushed whole says its own.
+def _language_kept(own: KnowledgeBase | None, keep: list[str] | None) -> str | None:
+    return own.language if own is not None and keep is None else None
+
+
+# Only the first match counts: a base that repeats itself answered once, and any of the paths answers.
 def _rank(item: Answered) -> int | None:
     return next(
-        (at for at, chunk in enumerate(item.found, start=1) if answers(chunk.where, item.question.expects)), None
+        (
+            at
+            for at, chunk in enumerate(item.found, start=1)
+            if any(answers(chunk.where, expected) for expected in item.question.expects)
+        ),
+        None,
     )

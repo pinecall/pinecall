@@ -15,9 +15,11 @@ from pinecall_runtime.wire.parts import KnowledgeFile
 
 # The base is replaced whole, never merged.
 class KnowledgePush(WireModel):
-    """PUT /v1/knowledge/{base}, the body: the tenant's folder as of now."""
+    """PUT /v1/knowledge/{base}, the body: the tenant's folder as of now, and the language it is written in."""
 
     files: list[KnowledgeFile]
+    # `en` or `english`; left out, counted from the files' words.
+    language: str | None = None
 
 
 class KnowledgePushed(WireModel):
@@ -34,6 +36,7 @@ class KnowledgeBase(WireModel):
     base: str
     chunks: int
     model: str
+    language: str
     pushed_at: float
 
 
@@ -100,10 +103,15 @@ class KnowledgeFilePushed(WireModel):
 
 # A chunk answers when its file and heading path start with `expects`, never by substring.
 class GoldenQuestion(WireModel):
-    """One question of a base's golden: what somebody asks, and the chunk that should answer."""
+    """One question of a base's golden: what somebody asks, and the chunk that should answer, or any of several."""
 
     asks: str
-    expects: str
+    expects: str | list[str]
+
+    @property
+    def any_of(self) -> tuple[str, ...]:
+        """The heading paths that answer, one or several."""
+        return (self.expects,) if isinstance(self.expects, str) else tuple(self.expects)
 
 
 class KnowledgeGolden(WireModel):
@@ -114,10 +122,10 @@ class KnowledgeGolden(WireModel):
 
 
 class GoldenMiss(WireModel):
-    """One question whose chunk was not among the k returned, and what came back instead."""
+    """One question none of whose chunks was among the k returned, and what came back instead."""
 
     asks: str
-    expects: str
+    expects: list[str]
     found: list[str]
 
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **A golden question may name several pages that answer it.** `POST /v1/knowledge/{base}/eval`
+  takes `expects` as a heading path or a list of them, any one of which answers; a miss names the
+  list. The FAQ's one line and the guide it points at are both right, and a golden that could name
+  only one counted the other as a miss (`docs/retrieval/spec.md`).
+- **A knowledge base speaks a language, and its words are stemmed in it.** The one BM25 index
+  stemmed every base with the Spanish rules, English ones too, so `supervise` never found
+  *supervising*. `knowledge_bases.language` (`PUT /v1/knowledge/{base}` body `language`, `pinecall
+  docs push --language en`; unsaid, counted from the files' function words, `simple` when they say
+  nothing clearly) and one partial BM25 index per configuration (`english`, `spanish`, `portuguese`,
+  `french`, `german`, `italian`, `dutch`, `simple`), read where the base's language says; several
+  bases in several languages are still one search. Migration 000007 marks every base so far
+  `spanish`, what the one index was. `GET /v1/knowledge` and `docs list` show it
+  (`docs/retrieval/spec.md`).
 ## 0.11.8 — A page's hang-up ends the call at once, a seat is handed nothing but its call, and the sign-up is the console's (2026-10-21)
 
 - **A page's hang-up is said at the door, and the call ends at once.** A hang-up said on the room's

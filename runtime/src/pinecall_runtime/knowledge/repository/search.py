@@ -15,6 +15,8 @@ RRF_K = 60
 ITERATIVE_SCAN = text("SET LOCAL hnsw.iterative_scan = relaxed_order")
 
 # `<@>` is BM25 negated, lower is better, and 0 when no term matched: those rows are no match.
+# The word branch is one scored list per lexical index asked, each over its own rows (a partial
+# index is read only where its predicate is repeated), unioned before they are ranked together.
 HYBRID = """
 WITH dense AS (
     SELECT id, RANK() OVER (ORDER BY distance) AS r FROM (
@@ -27,8 +29,7 @@ WITH dense AS (
 sparse AS (
     SELECT id, RANK() OVER (ORDER BY score) AS r FROM (
         SELECT id, score FROM (
-            SELECT id, text <@> to_bm25query(:words, '{text_index}') AS score FROM {table}
-            WHERE ({scope})
+            {worded}
         ) AS scored
         WHERE score < 0
         ORDER BY score
@@ -45,6 +46,15 @@ SELECT CAST(fusion.id AS text) AS hit_id, fusion.fused AS hit_fused,
 FROM fusion JOIN {table} AS found ON found.id = fusion.id
 ORDER BY fusion.fused DESC, fusion.id
 """
+WORDED = "SELECT id, text <@> to_bm25query(:words, '{index}') AS score FROM {table} WHERE ({scope}) AND ({rows})"
+
+
+@dataclass(frozen=True, slots=True)
+class Lexical:
+    """One BM25 index to read, and the predicate that picks its rows (`true` for a whole index)."""
+
+    index: str
+    rows: str = "true"
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +70,7 @@ class Hit:
 async def hybrid(
     session: AsyncSession,
     table: str,
-    text_index: str,
+    lexical: Sequence[Lexical],
     scope: str,
     same_space: str,
     columns: Sequence[str],
@@ -73,7 +83,9 @@ async def hybrid(
     """Up to `room` rows from each branch, fused by reciprocal rank, the best first."""
     query = HYBRID.format(
         table=table,
-        text_index=text_index,
+        worded=" UNION ALL ".join(
+            WORDED.format(index=one.index, table=table, scope=scope, rows=one.rows) for one in lexical
+        ),
         scope=scope,
         same_space=same_space,
         k=RRF_K,

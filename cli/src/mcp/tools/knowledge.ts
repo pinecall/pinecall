@@ -14,6 +14,7 @@ export const docs = tool({
     action: z.enum(["push", "list", "eval", "attach", "detach", "attached"]).describe("push the agent's docs folder as a base; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base"),
     agent: AGENT,
     base: z.string().optional().describe("the base's name; the agent's own when left out"),
+    language: z.string().optional().describe("`push`: the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out"),
     k: z.number().int().min(1).max(50).optional().describe("`attach` and `eval`: how many chunks a turn reads"),
     mode: z.enum(["retrieved", "tool"]).optional().describe("`attach`: searched before every turn, or a tool the model calls"),
     min_score: z.number().min(0).max(1).optional().describe("`attach`: chunks under this share of the best one are dropped"),
@@ -24,7 +25,7 @@ export const docs = tool({
   handler: async (args, ctx) => {
     if (args.action === "list") return await service.listBases(ctx);
     if (args.action === "attached") return { attached: render.attachments(await service.listAttached(ctx)) };
-    if (args.action === "push") return (await service.pushDocs(ctx, { agent: args.agent, base: args.base }))[0];
+    if (args.action === "push") return (await service.pushDocs(ctx, { agent: args.agent, base: args.base, language: args.language }))[0];
     if (args.action === "eval") return (await service.evalDocs(ctx, { agent: args.agent, base: args.base, k: args.k }))[0];
     const base = args.base ?? ctx.agent(`docs ${args.action}`, { agent: args.agent }).name;
     if (args.action === "attach") {

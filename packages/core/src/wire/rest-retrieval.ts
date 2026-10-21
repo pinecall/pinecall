@@ -2,10 +2,10 @@
 
 import { z } from "zod";
 
-/** One question whose expected chunk was not among the k returned, and what came back instead. */
+/** One question none of whose expected chunks was among the k returned (any of them answers), and what came back instead. */
 export const GoldenMissSchema = z.strictObject({
   asks: z.string(),
-  expects: z.string(),
+  expects: z.array(z.string()),
   found: z.array(z.string()),
 });
 
@@ -37,11 +37,12 @@ export const KnowledgePushedSchema = z.strictObject({
   took_ms: z.number(),
 });
 
-/** One knowledge base as the list draws it: its name, its size, and when it was last pushed. */
+/** One knowledge base as the list draws it: its name, its size, the language its words are stemmed in, and when it was last pushed. */
 export const KnowledgeBaseSchema = z.strictObject({
   base: z.string(),
   chunks: z.int(),
   model: z.string(),
+  language: z.string(),
   pushed_at: z.number(),
 });
 

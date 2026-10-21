@@ -23,6 +23,7 @@ export const NOT_ATTACHED = (agent: string, base: string): string => `${base} is
 export const PushDocsInput = z.object({
   dir: z.string().min(1).optional(),
   base: z.string().min(1).optional(),
+  language: z.string().min(1).optional(),
   agent: z.string().min(1).optional(),
   file: z.string().min(1).optional(),
 });
@@ -89,14 +90,14 @@ export async function pushDocs(ctx: Context, input: PushDocsInput): Promise<(Doc
     const homes = ctx.agents({ file: input.file, agent: input.agent });
     if (homes.length > 1) {
       return Promise.all(
-        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, home.name) : { agent: home.name, skipped: `no documents at ${home.docs}` })),
+        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, input.language, home.name) : { agent: home.name, skipped: `no documents at ${home.docs}` })),
       );
     }
     const home = homes[0]!;
-    return [await pushOne(ctx, home.docs, home.name)];
+    return [await pushOne(ctx, home.docs, home.name, input.language)];
   }
   const home = input.dir !== undefined && input.base !== undefined ? undefined : ctx.agent("docs push", { file: input.file, agent: input.agent });
-  return [await pushOne(ctx, input.dir ?? home!.docs, input.base ?? home!.name)];
+  return [await pushOne(ctx, input.dir ?? home!.docs, input.base ?? home!.name, input.language)];
 }
 
 export async function listBases(ctx: Context): Promise<api.KnowledgeList> {
@@ -192,12 +193,12 @@ export function kReadWith(answer: api.TuningAnswer | null, base: string): number
   return (corner?.config.bases ?? []).find((one) => one.base === base)?.k ?? undefined;
 }
 
-async function pushOne(ctx: Context, dir: string, base: string, agent?: string): Promise<DocsPushed> {
+async function pushOne(ctx: Context, dir: string, base: string, language: string | undefined, agent?: string): Promise<DocsPushed> {
   const directory = resolve(dir);
   if (!isDirectory(directory)) throw new UsageError(NO_DIRECTORY(directory));
   const files = markdownUnder(directory);
   if (files.length === 0) throw new UsageError(NO_MARKDOWN(directory));
-  const pushed = await api.pushBase(ctx.gateway(), base, files);
+  const pushed = await api.pushBase(ctx.gateway(), base, files, language);
   return { ...(agent === undefined ? {} : { agent }), ...pushed, files: files.length };
 }
 

@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.enums import Env
 from pinecall_runtime.knowledge.models import KnowledgeBase, KnowledgeChunk
-from pinecall_runtime.knowledge.repository.search import RRF_K, Hit, hybrid
+from pinecall_runtime.knowledge.repository.bases import lexical_of
+from pinecall_runtime.knowledge.repository.search import RRF_K, Hit, Lexical, hybrid
 from pinecall_runtime.knowledge.service.embedder import halfvec
 from pinecall_runtime.knowledge.service.ranking import (
     CANDIDATES_PER_BRANCH,
@@ -19,7 +20,7 @@ from pinecall_runtime.knowledge.service.ranking import (
 from tests.conftest import Tenant, make_tenant, needs_the_database
 
 BASE = "clinica-norte"
-TEXT_INDEX = "knowledge_chunks_text_bm25"
+SPANISH = lexical_of("spanish")
 SCOPE = "org = :org AND env = 'production' AND holder = '' AND base = :base"
 
 
@@ -29,12 +30,27 @@ def toward(*weights: float) -> list[float]:
     return [weight / length for weight in weights] + [0.0] * (1024 - len(weights))
 
 
-async def kept(sessions: async_sessionmaker[AsyncSession], org: str, path: str, said: str, vector: list[float]) -> None:
+async def kept(
+    sessions: async_sessionmaker[AsyncSession],
+    org: str,
+    path: str,
+    said: str,
+    vector: list[float],
+    language: str = "spanish",
+) -> None:
     """A chunk of the base, as a push would have written it."""
     async with sessions.begin() as session:
         session.add(
             KnowledgeChunk(
-                org=org, env=Env.production, holder="", base=BASE, path=path, ordinal=0, text=said, embedding=vector
+                org=org,
+                env=Env.production,
+                holder="",
+                base=BASE,
+                path=path,
+                ordinal=0,
+                text=said,
+                embedding=vector,
+                language=language,
             )
         )
 
@@ -48,13 +64,14 @@ async def found(
     room: int = CANDIDATES_PER_BRANCH,
     base: str = BASE,
     same_space: str = "true",
+    lexical: list[Lexical] | None = None,
 ) -> list[Hit]:
     """What the search finds in the base, in one transaction."""
     async with sessions.begin() as session:
         return await hybrid(
             session,
             "knowledge_chunks",
-            TEXT_INDEX,
+            lexical or [SPANISH],
             SCOPE,
             same_space,
             ("path", "text"),
@@ -82,6 +99,7 @@ async def org(sessions: async_sessionmaker[AsyncSession], tenant: Tenant) -> str
                 base=BASE,
                 model="embed-flat-1",
                 dimensions=1024,
+                language="spanish",
                 chunks=0,
             )
         )
@@ -191,11 +209,47 @@ async def test_the_scan_goes_on_past_the_index_first_candidates_in_the_same_tran
     """The search turns on the iterative scan for its own transaction."""
     async with sessions.begin() as session:
         await hybrid(
-            session, "knowledge_chunks", TEXT_INDEX, SCOPE, "true", ("path",), {"org": org, "base": BASE},
+            session, "knowledge_chunks", [SPANISH], SCOPE, "true", ("path",), {"org": org, "base": BASE},
             vector=halfvec(toward(1, 0)), words="lunes", room=5,
         )  # fmt: skip
         scan = (await session.execute(text("SELECT current_setting('hnsw.iterative_scan')"))).scalar_one()
     assert scan == "relaxed_order"
+
+
+@needs_the_database
+async def test_a_word_is_stemmed_by_the_rows_language_and_not_by_anothers(
+    sessions: async_sessionmaker[AsyncSession], org: str
+) -> None:
+    """An English chunk answers `supervise` for `supervising`; the same words as a Spanish row do not."""
+    await kept(sessions, org, "english.md", "Supervising a live call from the console", toward(1, 0), "english")
+    await kept(sessions, org, "spanish.md", "Supervising a live call from the console", toward(0, 1), "spanish")
+    hits = await found(
+        sessions,
+        org,
+        vector=toward(0, 0, 1),
+        words="supervise",
+        lexical=[lexical_of("english"), SPANISH],
+        same_space="false",
+    )
+    assert paths(hits) == ["english.md"]
+
+
+@needs_the_database
+async def test_two_languages_asked_together_are_one_word_branch(
+    sessions: async_sessionmaker[AsyncSession], org: str
+) -> None:
+    """A Spanish base and an English one searched at once each answer by their own stemmer."""
+    await kept(sessions, org, "horario.md", "Abrimos de lunes a viernes, cerramos los sábados", toward(1, 0), "spanish")
+    await kept(sessions, org, "hours.md", "We open on weekdays and close on Saturdays", toward(0, 1), "english")
+    hits = await found(
+        sessions,
+        org,
+        vector=toward(0, 0, 1),
+        words="sábado saturday",
+        lexical=[SPANISH, lexical_of("english")],
+        same_space="false",
+    )
+    assert sorted(paths(hits)) == ["horario.md", "hours.md"]
 
 
 # ── what the hits are made into ──

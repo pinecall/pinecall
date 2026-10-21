@@ -2007,6 +2007,7 @@ nothing, `--remove` takes it out. Every tool, and every assistant's file:
 pinecall docs push [dir] [--base <name>] [--agent <name>] [--file agent.tsx]
 pinecall docs list
 pinecall docs drop <base>
+pinecall docs push [dir] [--base <name>] [--language <code>] [--agent <name>] [--file agent.tsx]
 pinecall docs eval [docs.json] [--base <name>] [--k <n>] [--agent <name>] [--file agent.tsx]
 pinecall docs attach <base> [--k <n>] [--mode retrieved|tool] [--min-score <x>] [--agent <slug>] [--team]
 pinecall docs detach <base> [--agent <slug>] [--team]
@@ -2036,6 +2037,12 @@ and `drop` read the same environment.
 $ pinecall docs push
 clinica-norte · 7 files · 41 chunks · 812 ms      # base · sent · became · took
 ```
+
+**The base speaks a language.** Its words are stemmed with that language's rules, so a caller's
+*sábados* finds *sábado* and an English reader's *supervise* finds *supervising*. `--language` says it
+(`en`, `es`, `pt`, `fr`, `de`, `it`, `nl`, or the configuration's name); left out, the gateway counts
+it from the files' own function words, and a folder that says none clearly — tables, names — is
+indexed with no stemming at all. `list` shows each base's.
 
 **`attach` says an agent reads a base.** It is one field of the agent's settings (`bases`),
 written as the next version of the corner — yours, the team's with `--team`, production's with
@@ -2068,7 +2075,8 @@ pinecall docs attach <base> --agent clinica-norte`. A base attached and never pu
 the same way, naming `pinecall docs push`.
 
 `eval` asks the base every question of a golden — `agents/<name>/test/goldens/docs.json`, a JSON list of
-`{asks, expects}`, where `expects` is the heading path the answer should carry — and prints
+`{asks, expects}`, where `expects` is the heading path the answer should carry, or a list of paths
+any of which does — and prints
 `recall@k` and `nDCG@10`, computed by code with **no model in the loop**, plus every question it
 missed and what came back instead. **With no `--k` it asks with the k this agent reads that base
 with** — the attachment's, in this corner — because a golden asks what a turn gets: a base

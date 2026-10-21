@@ -43,7 +43,7 @@ class ContactMemory(Model):
 
 
 class KnowledgeBase(Model):
-    """One base in one scope: the model it was embedded with, how many chunks, when it was pushed."""
+    """One base in one scope: the model it was embedded with, its language, how many chunks, when it was pushed."""
 
     __tablename__ = "knowledge_bases"
 
@@ -55,6 +55,8 @@ class KnowledgeBase(Model):
     dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
     chunks: Mapped[int] = mapped_column(Integer, nullable=False)
     pushed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+    # The text-search configuration its words are stemmed with (service/language.py).
+    language: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class KnowledgeFile(Model):
@@ -103,3 +105,5 @@ class KnowledgeChunk(Model):
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(), nullable=False)
+    # The base's, on every chunk: each language's partial BM25 index reads its own rows.
+    language: Mapped[str] = mapped_column(Text, nullable=False)

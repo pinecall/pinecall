@@ -20,7 +20,7 @@ describe("pinecall docs", () => {
 
   it("eval exits 1 on a miss, and names the question and what came back", async () => {
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
-    answer("post", "/v1/knowledge/:base/eval", { ...SCORE, recall_at_k: 0, misses: [{ asks: "When are you open?", expects: "hours.md", found: ["pricing.md"] }] });
+    answer("post", "/v1/knowledge/:base/eval", { ...SCORE, recall_at_k: 0, misses: [{ asks: "When are you open?", expects: ["hours.md"], found: ["pricing.md"] }] });
     const ran = await run(["docs", "eval"], { cwd: project(["front-desk"], { "agents/front-desk/test/goldens/docs.json": GOLDEN }) });
     expect(ran.code).toBe(1);
     expect(ran.out).toContain("front-desk · pplx-embed-v1 · 1 questions · recall@8 0.00 · nDCG@10 0.93 · 410 ms");

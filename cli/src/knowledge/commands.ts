@@ -86,6 +86,7 @@ export function register(program: Command, ctx: Context): void {
     .description("every *.md under a directory sent as a base, replaced whole")
     .argument("[dir]", "the folder; agents/<name>/docs/ of the agent when left out")
     .option("--base <name>", "the base's name; the agent's slug when left out")
+    .option("--language <code>", "the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .action(async (dir, flags) => ctx.io.result(await service.pushDocs(ctx, service.PushDocsInput.parse({ dir, ...flags })), render.pushed));

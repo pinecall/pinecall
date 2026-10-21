@@ -37,9 +37,9 @@ export function listBases(gw: GatewayClient): Promise<KnowledgeList> {
   return gw.get<KnowledgeList>("/v1/knowledge");
 }
 
-/** The base is replaced whole, never merged. */
-export function pushBase(gw: GatewayClient, base: string, files: KnowledgeFile[]): Promise<KnowledgePushed> {
-  return gw.put<KnowledgePushed>(`/v1/knowledge/${seg(base)}`, { files });
+/** The base is replaced whole, never merged; `language` left out is counted from the files' words. */
+export function pushBase(gw: GatewayClient, base: string, files: KnowledgeFile[], language: string | undefined): Promise<KnowledgePushed> {
+  return gw.put<KnowledgePushed>(`/v1/knowledge/${seg(base)}`, { files, ...(language === undefined ? {} : { language }) });
 }
 
 export async function deleteBase(gw: GatewayClient, base: string): Promise<void> {

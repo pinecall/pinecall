@@ -25,6 +25,7 @@ from pinecall_runtime.knowledge.service import bases, extraction, memory
 from pinecall_runtime.knowledge.service.bases import Push, Question
 from pinecall_runtime.knowledge.service.cutter import cut
 from pinecall_runtime.knowledge.service.embedder import NO_EMBEDDER, Embedder, embedder_for
+from pinecall_runtime.knowledge.service.language import language_of
 from pinecall_runtime.knowledge.service.memory import GoldenQuestion
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.providers import service as providers
@@ -54,7 +55,12 @@ async def push_base(
     """Replace the base with the folder: cut, embedded where it changed, indexed."""
     started = time.perf_counter()
     embedder = await _embedder(request, session)
-    push = Push(base=base, files=tuple(cut(item.path, item.text) for item in body.files), at=now())
+    push = Push(
+        base=base,
+        files=tuple(cut(item.path, item.text) for item in body.files),
+        at=now(),
+        language=language_of(body.language),
+    )
     await bases.admit_push(session, actor.scope, push, path=None)
     await bases.put_base(session, embedder, actor.scope, push)
     return schemas.KnowledgePushed(base=base, chunks=push.chunks, took_ms=(time.perf_counter() - started) * 1000)
@@ -66,7 +72,11 @@ async def list_bases(actor: KnowledgeKey, session: Session) -> schemas.Knowledge
     return schemas.KnowledgeList(
         bases=[
             schemas.KnowledgeBase(
-                base=item.base, chunks=item.chunks, model=item.model, pushed_at=item.pushed_at.timestamp()
+                base=item.base,
+                chunks=item.chunks,
+                model=item.model,
+                language=item.language,
+                pushed_at=item.pushed_at.timestamp(),
             )
             for item in await bases.list_bases(session, actor.scope)
         ]
@@ -158,7 +168,7 @@ async def evaluate_base(
     k = body.k or DEFAULT_CHUNKS_PER_TURN
     started = time.perf_counter()
     score = await bases.ask_golden(
-        session, embedder, actor.scope, base, [Question(item.asks, item.expects) for item in body.questions], k
+        session, embedder, actor.scope, base, [Question(item.asks, item.any_of) for item in body.questions], k
     )
     return schemas.KnowledgeScore(
         base=base,
@@ -170,7 +180,9 @@ async def evaluate_base(
         took_ms=(time.perf_counter() - started) * 1000,
         misses=[
             schemas.GoldenMiss(
-                asks=miss.question.asks, expects=miss.question.expects, found=[chunk.where for chunk in miss.found]
+                asks=miss.question.asks,
+                expects=list(miss.question.expects),
+                found=[chunk.where for chunk in miss.found],
             )
             for miss in score.misses
         ],

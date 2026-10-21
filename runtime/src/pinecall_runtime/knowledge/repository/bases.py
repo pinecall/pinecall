@@ -1,20 +1,20 @@
 """The knowledge tables: bases, their files and their chunks, in one scope and the org's copy beneath it."""
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, delete, func, select, text
+from sqlalchemy import ColumnElement, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import distinct_on
 
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
 from pinecall_runtime.knowledge.models import KnowledgeBase, KnowledgeChunk, KnowledgeFile
-from pinecall_runtime.knowledge.repository.search import Hit, hybrid
+from pinecall_runtime.knowledge.repository.search import Hit, Lexical, hybrid
 
-KNOWLEDGE_TEXT_INDEX = "knowledge_chunks_text_bm25"
 # A found chunk comes back as its section: the chunks of its heading this many either side of it.
 SECTION_SPAN = 2
 
@@ -38,6 +38,19 @@ ORDER BY wanted.at, chunk.ordinal
 """)
 
 KNOWLEDGE_COLUMNS = ("base", "holder", "path", "heading", "ordinal", "text")
+
+
+# One partial BM25 index a language (migrations/versions/…000007), read where its predicate is
+# repeated. A language is a word the service chose from a closed set (service/language.py), so it
+# is written into the statement, where a bound parameter would hide the predicate from the planner.
+A_LANGUAGE = re.compile(r"^[a-z]+$")
+
+
+def lexical_of(language: str) -> Lexical:
+    """The index of the chunks in this language, and the rows it covers."""
+    if not A_LANGUAGE.match(language):
+        raise ValueError(f"no lexical index for {language!r}")
+    return Lexical(f"knowledge_chunks_{language}_bm25", f"language = '{language}'")
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +166,7 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
         *,
         model: str,
         dimensions: int,
+        language: str,
         at: datetime,
         keep: Sequence[str] | None,
         changed: Sequence[FileToWrite],
@@ -169,12 +183,18 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
                     base=base,
                     model=model,
                     dimensions=dimensions,
+                    language=language,
                     chunks=0,
                     pushed_at=at,
                 )
             )
         else:
-            await self.update(row, model=model, dimensions=dimensions, pushed_at=at)
+            if row.language != language:
+                # The chunks kept move to the new language's index with the base; nothing is embedded again.
+                await self.session.execute(
+                    update(KnowledgeChunk).where(*_owned_chunks(scope, base)).values(language=language)
+                )
+            await self.update(row, model=model, dimensions=dimensions, language=language, pushed_at=at)
         changed_paths = [file.path for file in changed]
         gone: ColumnElement[bool] = KnowledgeChunk.path.in_(changed_paths)
         if keep is not None:
@@ -214,6 +234,7 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
                     ordinal=chunk.ordinal,
                     text=chunk.text,
                     embedding=chunk.embedding,
+                    language=language,
                 )
                 for chunk in chunks
             ]
@@ -261,7 +282,7 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
         return await hybrid(
             self.session,
             "knowledge_chunks",
-            KNOWLEDGE_TEXT_INDEX,
+            [lexical_of(language) for language in dict.fromkeys(copy.language for copy in copies)],
             KNOWLEDGE_SCOPE,
             "true",
             KNOWLEDGE_COLUMNS,

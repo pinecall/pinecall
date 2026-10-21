@@ -56,7 +56,17 @@ the files that changed and the rest are kept as they were; a push that changes n
 statement and no embedding.
 
 Every chunk is found by its vector and by its words: one query embedded once, two index scans
-(`halfvec` cosine, BM25 in Spanish text configuration), fused by rank in SQL.
+(`halfvec` cosine, BM25), fused by rank in SQL. **A base speaks a language**: the text-search
+configuration its words are stemmed with, one of `english`, `spanish`, `portuguese`, `french`,
+`german`, `italian`, `dutch` or `simple` (no stemming), said by the push (`language`, as `en` or
+`english`) or counted from the files' function words when it says none, `simple` when they say
+nothing clearly (a table of names). Each language has a partial BM25 index of its own over the
+chunks in it, so `supervise` finds *supervising* in an English base and *sábados* finds *sábado* in
+a Spanish one; a file put beside the others speaks the base's language, and a folder pushed again
+in another language moves every chunk kept to the new index without embedding it again. Several
+bases in several languages searched together are one word branch: each index read over its own
+rows, the lists unioned before they are ranked. A contact's memory is still read with the Spanish
+configuration (deferred, below).
 
 What a turn is handed is sections, not loose pieces, as megabrain handed them in v1: a chunk found
 comes back as its section, the chunks of the same heading two either side of it joined in the
@@ -138,7 +148,8 @@ twice. On every call, the hang-up panel's `grounded` judge checks what the agent
 the chunks it was handed, so the rate of `held` over calls carrying `docs.sources` is the
 precision of retrieval on real traffic, at no extra cost. Offline, a golden per base
 (`POST /v1/knowledge/{base}/eval`: `[{asks, expects}]`, `expects` a heading path a person can
-write by reading their own documents) gives `recall@k` and `nDCG@10` by code alone; a golden per
+write by reading their own documents, or a list of them any one of which answers) gives
+`recall@k` and `nDCG@10` by code alone; a golden per
 agent's memory (`POST /v1/contacts/memory/eval`: `[{holds, asks, expects}]`) writes each
 question's facts to a scratch contact, asks, and deletes them, so what is measured is the ranking
 a call would get. A question is never softened so a change can pass. A memory fact answers when
@@ -152,3 +163,6 @@ knows the substance and not the wording.
 - **BM25 first as a gate.** A short turn with a low lexical score need not be embedded at all;
   measurable with figure 3 once the golden exists to say what it costs in recall.
 - **A monitor over `memory.ops`**, reading for a fact that reads like an instruction.
+- **Memory in the call's language.** `contact_memories` has the one Spanish index; a fact is
+  written in the call's language, which the agent declares, so the same partial index per language
+  fits once a golden of English callers says what the Spanish stemmer misses.

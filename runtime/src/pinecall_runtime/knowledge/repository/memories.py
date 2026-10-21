@@ -11,7 +11,7 @@ from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
 from pinecall_runtime.knowledge.models import ContactMemory
-from pinecall_runtime.knowledge.repository.search import Hit, hybrid
+from pinecall_runtime.knowledge.repository.search import Hit, Lexical, hybrid
 
 MEMORY_TEXT_INDEX = "contact_memories_text_bm25"
 MEMORY_NOW = "org = :org AND env = :env AND holder = :holder AND contact = :contact AND invalidated_at IS NULL"
@@ -122,7 +122,7 @@ class MemoryRepository(Repository[ContactMemory]):
         return await hybrid(
             self.session,
             "contact_memories",
-            MEMORY_TEXT_INDEX,
+            [Lexical(MEMORY_TEXT_INDEX)],
             MEMORY_NOW if as_of is None else MEMORY_THEN,
             SAME_MODEL,
             MEMORY_COLUMNS,

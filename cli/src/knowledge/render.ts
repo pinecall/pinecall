@@ -20,7 +20,7 @@ export function pushed(results: (DocsPushed | DocsSkipped)[]): string[] {
 
 export function bases(found: KnowledgeList): string[] {
   if (found.bases.length === 0) return [NO_BASES];
-  return found.bases.map((base) => `${base.base} · ${base.chunks} chunks · pushed ${date(base.pushed_at)}`);
+  return found.bases.map((base) => `${base.base} · ${base.chunks} chunks · ${base.language} · pushed ${date(base.pushed_at)}`);
 }
 
 export function dropped({ base }: { base: string }): string {
@@ -34,7 +34,7 @@ export function scores(results: (KnowledgeScore | DocsSkipped)[]): string[] {
 
 export function score(one: KnowledgeScore): string[] {
   const figures = `${one.base} · ${one.model} · ${one.questions} questions · recall@${one.k} ${one.recall_at_k.toFixed(2)} · nDCG@10 ${one.ndcg_at_10.toFixed(2)} · ${Math.round(one.took_ms)} ms`;
-  return [figures, ...one.misses.map((missed) => `  missed: ${missed.asks} → wanted ${missed.expects}, got ${missed.found[0] ?? "nothing"}`)];
+  return [figures, ...one.misses.map((missed) => `  missed: ${missed.asks} → wanted ${missed.expects.join(" or ")}, got ${missed.found[0] ?? "nothing"}`)];
 }
 
 export function attached(done: BaseAttached): string {
