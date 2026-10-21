@@ -78,6 +78,7 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "clock",
             "listener",
             "echo",
+            "repeats",
         }
     ),
     # The judges' and the personas' texts the box ships, read by judging's service.

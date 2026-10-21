@@ -15,6 +15,7 @@ from pinecall_runtime.session.hearing import loops
 from pinecall_runtime.session.listener import transcript_of
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.prompt import Blocks, as_asked, request
+from pinecall_runtime.session.repeats import SaidThisTurn, text_of, unrepeated
 from pinecall_runtime.session.tools import Waiting
 from pinecall_runtime.wire.events import ErrorEvent
 
@@ -54,6 +55,8 @@ class CallAgent(Agent):
         # announcement: then no tool it calls is announced. Tools chained in one answer, each a
         # round of the model's, are announced once.
         self.said_this_turn = False
+        # The sentences said since then, so no round of a tool chain says one of them again.
+        self.said = SaidThisTurn()
 
     # Runs before the request and livekit times it, so the lookups here are the ones already
     # running (started on an interim) or quick ones. No speech handle exists yet.
@@ -61,6 +64,7 @@ class CallAgent(Agent):
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
         """Collect this turn's lookups and write the ones that did not run."""
         self.said_this_turn = False
+        self.said.clear()
         for skipped in await self.lookups.turn_ended(new_message.text_content or ""):
             self.call.writing.write("error", skipped)
 
@@ -70,6 +74,7 @@ class CallAgent(Agent):
         if line and not self.said_this_turn:
             self.live.say(line)
             self.said_this_turn = True
+            self.said.say(line)
 
     # Lookups and dynamic blocks go into this request only, so the cached prefix (instructions
     # and history) stays the same bytes from turn to turn. The wait for the first token plays the
@@ -97,13 +102,12 @@ class CallAgent(Agent):
                 self.call.writing.write("error", ErrorEvent(code=LLM_TIMEOUT, message=why, recoverable=True))
                 yield _late_in(self.call.config.language)
                 return
-            if isinstance(first, llm.ChatChunk | str):
-                self.said_this_turn |= _has_words(first)
-                yield first
-            async for chunk in thought:
-                if isinstance(chunk, llm.ChatChunk | str):
-                    self.said_this_turn |= _has_words(chunk)
-                    yield chunk
+            spoken: list[str] = []
+            async for chunk in unrepeated(_answer(first, thought), self.said):
+                self.said_this_turn |= _has_words(chunk)
+                spoken.append(text_of(chunk))
+                yield chunk
+            self.said.say("".join(spoken))
 
     # Runs on what was played, so an interrupted reply's transcript stops where its audio did; a
     # written call plays everything. Aligned speech yields one timed string per word, and the
@@ -196,6 +200,15 @@ def _joined(pending: Sequence[str | TimedString], text: str) -> str | TimedStrin
         return text
     end = last.end_time if last.end_time is not NOT_GIVEN else first.end_time
     return TimedString(text, start_time=first.start_time, end_time=end)
+
+
+async def _answer(first: object, rest: AsyncIterator[object]) -> AsyncIterator[llm.ChatChunk | str]:
+    """The model's answer from its first piece on: its words and its tool calls."""
+    if isinstance(first, llm.ChatChunk | str):
+        yield first
+    async for chunk in rest:
+        if isinstance(chunk, llm.ChatChunk | str):
+            yield chunk
 
 
 def _late_in(language: str | None) -> str:

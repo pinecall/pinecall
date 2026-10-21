@@ -123,6 +123,7 @@ async def _unanswered(session: Session, text: str) -> None:
 
 async def _begin_turn(session: Session, text: str) -> None:
     session.agent.said_this_turn = False
+    session.agent.said.clear()
     for skipped in await session.lookups.turn_ended(text):
         await session.call.writing.write("error", skipped)
 
