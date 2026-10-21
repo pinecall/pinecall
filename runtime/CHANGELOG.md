@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.8 — A page's hang-up ends the call at once, a seat is handed nothing but its call, and the sign-up is the console's (2026-10-21)
 
 - **A page's hang-up is said at the door, and the call ends at once.** A hang-up said on the room's
   DataChannel (`pinecall.hangup`) is lost with the seat that leaves as it publishes it, and the call

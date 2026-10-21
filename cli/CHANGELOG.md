@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.11.8] — a simulation names who plays its caller; how far each judge can be trusted
 
 - **`pinecall simulate --llm --tts --caller-voice`: who plays the caller, for one run.** The model
   and the voice a simulated caller is played on were the persona's alone; a run now names its own

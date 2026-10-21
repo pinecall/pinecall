@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.8 — released with every other package (2026-10-21)
+
+- Nothing of the Python SDK changed: published at 0.11.8 with every other package.
+
 ## 0.11.7 — The wire knows the feed's tool.ran, tool.failed and judge.broke (2026-10-20)
 
 - **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its
