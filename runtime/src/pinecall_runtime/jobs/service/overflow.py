@@ -108,7 +108,7 @@ async def _say_once(ctx: JobContext, writing: session.Writing, voice: providers.
         logger.warning("nobody joined %s in %.0fs: leaving", ctx.room.name, A_CALLER_MAY_TAKE_S)
         return
     speaking: AgentSession[None] = AgentSession(tts=providers.tts_of(voice))
-    await speaking.start(Agent(instructions=says), room=ctx.room, record=False)  # pyright: ignore[reportUnknownMemberType]
+    await speaking.start(Agent(instructions=says), room=ctx.room, record=False, session_host=False)  # pyright: ignore[reportUnknownMemberType]
     await speaking.say(says, allow_interruptions=False)
     writing.write("agent.transcript", sentence_entry(says))
     await speaking.aclose()

@@ -10,6 +10,11 @@ in `log/readers.py`.
 | an org's key (the tenant's process, the console, the CLI) | **tenant** |
 | a token bound to one call (a browser, a page's `log_token`) | **public**, or what the mint asked (`log: tenant`) |
 
+The room is no way around this table: a seat hears the call and reads it through its log, and the
+session is never hosted for the room's seats (LiveKit's `lk.agent.session`, which would hand any of
+them the raw turns, the tools' arguments and results, and the prompt). A call's prompt
+(`GET /v1/calls/{call}/prompt`) is read with a key alone, whatever a token's projection.
+
 ## Tenant: everything, the declared PII masked
 
 Every entry and every field, with what the agent declared private masked: a state field declared

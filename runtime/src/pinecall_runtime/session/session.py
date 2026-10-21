@@ -410,6 +410,9 @@ class Session:
     # accepts, a supervisor's as soon as a caller's. A written call in a room hears no audio.
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit.
+    # `session_host` is said too: left unset, livekit hosts the session for every seat of the room,
+    # sending each one the raw turns, the tools' arguments and results, and the prompt on request.
+    # A seat reads the call through its log, in its token's projection, and nothing else.
     async def _open(self, history: llm.ChatContext) -> None:
         self.listener.hold = self.hold
         spoken = is_spoken(self.live, self.built)
@@ -421,7 +424,7 @@ class Session:
         )
         room = NOT_GIVEN if self.room is None else self.room.room
         self.listener.listen(self.built)
-        await self.live.start(self.agent, room=room, room_options=options, record=False)  # pyright: ignore[reportUnknownMemberType]
+        await self.live.start(self.agent, room=room, room_options=options, record=False, session_host=False)  # pyright: ignore[reportUnknownMemberType]
         echo.cancel(self.live, self.call.context.channel)
         if self.room is not None:
             self.recorder = await recording.record(self.live, self.call.recording, self.room.room, self.room.kind_of)

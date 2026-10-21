@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A seat in a call's room is handed nothing but the call itself.** LiveKit hosts a session for
+  every seat of the room unless told not to, on `lk.agent.session`: a visitor's page could read the
+  raw turns, every tool's arguments and results, and the agent's prompt by asking for it. The call's
+  session and the overflow's say `session_host=False`; a seat reads the call through its log, in
+  its token's projection (`docs/protocol/projections.md`).
+- **A call's own token never reads its prompt.** `GET /v1/calls/{call}/prompt` let a page's token
+  in, `log_token` or `participant_token`, though `gateway-api.md` always said a key's read alone:
+  it is `403` now.
 - **A picker offers every model of a vendor, and only what the org is lent.** The providers row
   gains `offered` (`stt/cartesia`: the models a picker lists), written by `pinecall-runtime providers
   models <file.csv> --apply` from the file `voicedex models` writes (`vendor,stage,model,name,as_of,

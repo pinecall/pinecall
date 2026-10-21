@@ -1109,6 +1109,17 @@ async def test_a_supervisor_taking_a_line_on_plain_hold_ends_the_hold_for_them(
 
 
 @needs_the_database
+async def test_a_seat_in_the_room_is_never_handed_the_session_itself(box: Box, server: Server) -> None:
+    """Hosted, livekit sends every seat the raw turns and the tools, and the prompt to one that asks."""
+    session = spoken_call(box, NOBODY)
+    where = _a_room(box, session.call, server)
+    await session.start(room=where)
+    # livekit's session host listens on this topic; registering it again would raise had it started.
+    where.room.register_byte_stream_handler("lk.agent.session", lambda _reader, _identity: None)
+    await session.close()
+
+
+@needs_the_database
 async def test_every_one_of_the_six_verbs_lands_in_the_callers_log(
     box: Box, store: Store, call: str, server: Server
 ) -> None:

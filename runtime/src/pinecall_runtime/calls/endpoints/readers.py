@@ -37,6 +37,7 @@ router = APIRouter()
 # Short: a reconnect resumes losslessly from Last-Event-ID.
 RETRY_MS = 1000
 NO_SUCH_CALL = "no call {call} in this key's org and env"
+PROMPT_TAKES_A_KEY = "a call's prompt is read with a key: a token of the call reads its log, never its prompt"
 
 
 @router.get("/v1/calls/{call}/events", response_model=None)
@@ -114,6 +115,8 @@ async def call_prompt(
     call: str, reader: ReaderDep, serving: TheServing, session: Session
 ) -> schemas.CallPromptResponse:
     """Every block of prompt the call was told, in order, each with its words when kept."""
+    if reader.visit is not None:
+        raise Forbidden(PROMPT_TAKES_A_KEY)
     await check_readable(session, serving, reader, call)
     kept = await lists.head_of_call(session, call)
     entries = await serving.logs.store.whole(call)
