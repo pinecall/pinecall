@@ -27,7 +27,11 @@ that write none (Whisper) start it on the final, while the end of the turn is st
 What a turn waits for it is a budget: 250 ms on a spoken call, 3 s on a written one
 (`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A lookup that is late is
 cancelled and the turn goes on without it; a lookup that cannot run at all is a recoverable
-`error` entry, `search_skipped` or `recall_skipped`, saying why.
+`error` entry, `search_skipped` or `recall_skipped`, saying why. A lookup started early keeps what
+had been heard as its query: asking again on the final would cost the time it saved. So a spoken
+turn's retrieved search reads its opening words, and every turn only its own: a follow-up ("and how
+much is that?") is searched without the turn before it, which is what a tool that searches is
+for, its query written by the model with the whole conversation in front of it.
 
 Neither runs on a turn with no letter in it: a number being read out finds nothing in a prose
 index, and a caller's digits are the last thing to send to an embedder.
@@ -169,7 +173,8 @@ the chunks it was handed, so the rate of `held` over calls carrying `docs.source
 precision of retrieval on real traffic, at no extra cost. Offline, a golden per base
 (`POST /v1/knowledge/{base}/eval`: `[{asks, expects}]`, `expects` a heading path a person can
 write by reading their own documents, or a list of them any one of which answers) gives
-`recall@k` and `nDCG@10` by code alone; a golden per
+`recall@k` and `nDCG@10` by code alone (how to raise them, step by step, is
+[A knowledge base that answers](a-knowledge-base-that-answers.md)); a golden per
 agent's memory (`POST /v1/contacts/memory/eval`: `[{holds, asks, expects}]`) writes each
 question's facts to a scratch contact, asks, and deletes them, so what is measured is the ranking
 a call would get. A question is never softened so a change can pass. A memory fact answers when
