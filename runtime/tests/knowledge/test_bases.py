@@ -147,6 +147,30 @@ async def test_a_file_put_beside_the_others_speaks_the_bases_language(
     assert await language_kept(sessions, scope, "clinica") == "spanish"
 
 
+async def test_a_push_answers_the_language_the_base_speaks(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """What the push counted, or was told, comes back with the push, so the tenant sees `simple` at once."""
+    async with sessions.begin() as session:
+        counted = await bases.put_base(session, embedder, scope, a_push("clinica", ("precios.md", PRICES)))
+        said = await bases.put_base(
+            session, embedder, scope, a_push("console", ("s.md", SUPERVISING), language="dutch")
+        )
+        undecided = await bases.put_base(session, embedder, scope, a_push("names", ("names.md", "# Vidal\n\nAna\n")))
+    assert (counted, said, undecided) == ("spanish", "dutch", "simple")
+
+
+async def test_a_base_begun_with_a_file_that_said_no_language_is_counted_again_with_the_next(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """A table of names starts the base `simple`; the prose put beside it makes the base speak, and moves the table."""
+    async with sessions.begin() as session:
+        first = await bases.put_file(session, embedder, scope, a_push("clinica", ("names.md", "# Vidal\n\nAna\n")))
+        second = await bases.put_file(session, embedder, scope, a_push("clinica", ("precios.md", PRICES)))
+    assert (first, second) == ("simple", "spanish")
+    assert await language_kept(sessions, scope, "clinica") == "spanish"
+
+
 async def test_a_question_the_section_answers_finds_it_and_the_model_reads_the_section(
     sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
 ) -> None:

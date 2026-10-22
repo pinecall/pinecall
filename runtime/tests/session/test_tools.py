@@ -352,6 +352,54 @@ async def test_the_pair_is_replaced_whole_every_turn_and_holds_nothing_between_t
 
 
 @needs_the_database
+async def test_a_turn_that_says_more_than_its_first_words_is_looked_up_again_on_what_it_said(
+    box: Box,
+) -> None:
+    """The early run on the interim is a guess; the turn's text is searched, and the pair records it."""
+    box.found["search"] = {"chunks": [{"text": "el menú del día"}]}
+    lookups = _lookups(box, AgentConfig(slug="a", bases=(Docs(base="precios"),)))
+    lookups.heard_so_far("hola buenas quería saber")
+    assert await lookups.turn_ended("hola buenas quería saber qué hay de menú hoy") == []
+    assert [arguments["query"] for _, arguments in box.lookups] == [
+        "hola buenas quería saber",
+        "hola buenas quería saber qué hay de menú hoy",
+    ]
+    called, _ = lookups.items
+    assert isinstance(called, llm.FunctionCall)
+    assert json.loads(called.arguments) == {"query": "hola buenas quería saber qué hay de menú hoy"}
+
+
+@needs_the_database
+async def test_an_early_answer_stands_in_for_a_late_one_and_the_late_run_is_cancelled(box: Box) -> None:
+    """The run on the turn's text misses the budget: the early run's answer is handed over, under its own query."""
+    box.found["search"] = {"chunks": [{"text": "abrimos a las nueve"}]}
+    late = "hola buenas quería saber el horario de los sábados"
+
+    async def slow_on_the_final(tool: PlatformTool, arguments: JsonObject, speech: str | None) -> JsonObject:
+        if arguments.get("query") == late:
+            await asyncio.sleep(5)
+        return await box.lookup(tool, arguments, speech)
+
+    lookups = Lookups(_call(box, AgentConfig(slug="a", bases=(Docs(base="precios"),))), slow_on_the_final, 100)
+    lookups.heard_so_far("hola buenas quería saber")
+    assert await lookups.turn_ended(late) == []
+    called, answered = lookups.items
+    assert isinstance(called, llm.FunctionCall) and isinstance(answered, llm.FunctionCallOutput)
+    assert json.loads(called.arguments) == {"query": "hola buenas quería saber"}
+    assert json.loads(answered.output) == {"chunks": [{"text": "abrimos a las nueve"}]}
+    assert lookups.running is None
+
+
+@needs_the_database
+async def test_a_turn_that_ends_as_its_first_words_is_looked_up_once(box: Box) -> None:
+    """The early run's query is the turn's text: nothing is asked twice."""
+    lookups = _lookups(box, AgentConfig(slug="a", bases=(Docs(base="precios"),)))
+    lookups.heard_so_far("qué hay de menú hoy")
+    await lookups.turn_ended("qué hay de menú hoy")
+    assert [arguments["query"] for _, arguments in box.lookups] == ["qué hay de menú hoy"]
+
+
+@needs_the_database
 async def test_docs_in_tool_mode_run_nothing_before_the_turn_and_still_answer_the_model(
     box: Box,
 ) -> None:
@@ -359,7 +407,7 @@ async def test_docs_in_tool_mode_run_nothing_before_the_turn_and_still_answer_th
     lookups = _lookups(box, AgentConfig(slug="a", bases=(Docs(base="b", mode="tool"),)))
     await lookups.turn_ended("horario")
     assert box.lookups == []
-    answered = await lookups.called(ToolUse("m1", "search", {"query": "horario"}))
+    answered = await lookups.called(ToolUse("m1", "search", {"query": "horario"}), "sp_1")
     assert json.loads(answered) == {"chunks": [{"text": "abrimos a las nueve"}]}
 
 
@@ -392,7 +440,7 @@ async def test_one_lookup_that_fails_leaves_the_other_ones_pair_standing(box: Bo
 
 
 @needs_the_database
-async def test_an_interim_of_enough_words_starts_the_run_and_the_pair_carries_its_prefix(
+async def test_an_interim_of_enough_words_starts_the_run_once_and_the_turn_is_looked_up_on_its_text(
     box: Box,
 ) -> None:
     box.found["recall"] = {"facts": [{"text": "vegetariano"}]}
@@ -400,10 +448,13 @@ async def test_an_interim_of_enough_words_starts_the_run_and_the_pair_carries_it
     lookups.heard_so_far("quiero saber qué hay")
     lookups.heard_so_far("quiero saber qué hay de menú")
     await lookups.turn_ended("quiero saber qué hay de menú hoy")
-    assert box.lookups == [("recall", {"contact": "+59899123456", "query": "quiero saber qué hay"})]
+    assert box.lookups == [
+        ("recall", {"contact": "+59899123456", "query": "quiero saber qué hay"}),
+        ("recall", {"contact": "+59899123456", "query": "quiero saber qué hay de menú hoy"}),
+    ]
     called = lookups.items[0]
     assert isinstance(called, llm.FunctionCall)
-    assert json.loads(called.arguments)["query"] == "quiero saber qué hay"
+    assert json.loads(called.arguments)["query"] == "quiero saber qué hay de menú hoy"
 
 
 @needs_the_database
@@ -456,7 +507,7 @@ async def test_a_lookup_the_model_called_that_fails_is_its_tool_error(box: Box) 
     box.failing.add("recall")
     lookups = _lookups(box, MEMORY)
     with pytest.raises(llm.ToolError, match="recall did not run: the recall index did not answer"):
-        await lookups.called(ToolUse("m1", "recall", {"query": "x"}))
+        await lookups.called(ToolUse("m1", "recall", {"query": "x"}), "sp_1")
 
 
 @needs_the_database

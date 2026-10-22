@@ -72,10 +72,10 @@ async def found(
             session,
             "knowledge_chunks",
             lexical or [SPANISH],
-            SCOPE,
-            same_space,
             ("path", "text"),
             {"org": org, "base": base},
+            scope=SCOPE,
+            same_space=same_space,
             vector=halfvec(vector),
             words=words,
             room=room,
@@ -209,8 +209,8 @@ async def test_the_scan_goes_on_past_the_index_first_candidates_in_the_same_tran
     """The search turns on the iterative scan for its own transaction."""
     async with sessions.begin() as session:
         await hybrid(
-            session, "knowledge_chunks", [SPANISH], SCOPE, "true", ("path",), {"org": org, "base": BASE},
-            vector=halfvec(toward(1, 0)), words="lunes", room=5,
+            session, "knowledge_chunks", [SPANISH], ("path",), {"org": org, "base": BASE},
+            scope=SCOPE, vector=halfvec(toward(1, 0)), words="lunes", room=5,
         )  # fmt: skip
         scan = (await session.execute(text("SELECT current_setting('hnsw.iterative_scan')"))).scalar_one()
     assert scan == "relaxed_order"
@@ -250,6 +250,33 @@ async def test_two_languages_asked_together_are_one_word_branch(
         same_space="false",
     )
     assert sorted(paths(hits)) == ["horario.md", "hours.md"]
+
+
+@needs_the_database
+async def test_each_lexical_index_is_a_ranked_list_of_its_own_so_two_corpora_are_never_compared(
+    sessions: async_sessionmaker[AsyncSession], org: str
+) -> None:
+    """The best row of each language's index ranks first in its list: both weigh 1 / (60 + 1), whatever BM25 said."""
+    await kept(sessions, org, "horario.md", "Abrimos de lunes a viernes, cerramos los sábados", toward(1, 0), "spanish")
+    await kept(sessions, org, "hours.md", "We open on weekdays and close on Saturdays", toward(0, 1), "english")
+    hits = await found(
+        sessions,
+        org,
+        vector=toward(0, 0, 1),
+        words="sábado saturday",
+        lexical=[SPANISH, lexical_of("english")],
+        same_space="false",
+    )
+    assert {hit.row["path"]: round(hit.fused, 6) for hit in hits} == {
+        "horario.md": round(1 / 61, 6),
+        "hours.md": round(1 / 61, 6),
+    }
+
+
+def test_a_language_outside_the_closed_set_has_no_index_and_is_refused_before_postgres() -> None:
+    """`swedish` names no index: the refusal says the set, and no statement is built."""
+    with pytest.raises(ValueError, match="no lexical index for 'swedish': one of english, spanish"):
+        lexical_of("swedish")
 
 
 # ── what the hits are made into ──

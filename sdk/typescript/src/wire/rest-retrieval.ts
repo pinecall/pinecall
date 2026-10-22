@@ -35,6 +35,8 @@ export type KnowledgeScore = z.infer<typeof KnowledgeScoreSchema>;
 export const KnowledgePushedSchema = z.strictObject({
   base: z.string(),
   chunks: z.int(),
+  /** The text-search configuration its words are stemmed with; `simple` (no stemming) when the files said no language clearly. */
+  language: z.string(),
   took_ms: z.number(),
 });
 

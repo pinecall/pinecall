@@ -14,39 +14,40 @@ RRF_K = 60
 # them out: one tenant's rows among every tenant's would otherwise come back short, or empty.
 ITERATIVE_SCAN = text("SET LOCAL hnsw.iterative_scan = relaxed_order")
 
-# `<@>` is BM25 negated, lower is better, and 0 when no term matched: those rows are no match.
-# The word branch is one scored list per lexical index asked, each over its own rows (a partial
-# index is read only where its predicate is repeated), unioned before they are ranked together.
+# Every branch is one ranked list: the vectors, and the words of each lexical index asked, since
+# two indexes' BM25 scores are over two corpora and compare only within one. A row's fused score
+# is the sum of 1 / (k + rank) over the lists it is in.
 HYBRID = """
-WITH dense AS (
+WITH ranked AS (
     SELECT id, RANK() OVER (ORDER BY distance) AS r FROM (
         SELECT id, embedding <=> CAST(:q AS halfvec) AS distance FROM {table}
         WHERE ({scope}) AND ({same_space})
         ORDER BY embedding <=> CAST(:q AS halfvec)
         LIMIT :room
     ) AS nearest
-),
-sparse AS (
-    SELECT id, RANK() OVER (ORDER BY score) AS r FROM (
-        SELECT id, score FROM (
-            {worded}
-        ) AS scored
-        WHERE score < 0
-        ORDER BY score
-        LIMIT :room
-    ) AS worded
+    {worded}
 ),
 fusion AS (
-    SELECT coalesce(dense.id, sparse.id) AS id,
-        (coalesce(1.0 / ({k} + dense.r), 0) + coalesce(1.0 / ({k} + sparse.r), 0))::float8 AS fused
-    FROM dense FULL OUTER JOIN sparse ON dense.id = sparse.id
+    SELECT id, SUM(1.0 / ({k} + r))::float8 AS fused FROM ranked GROUP BY id
 )
 SELECT CAST(fusion.id AS text) AS hit_id, fusion.fused AS hit_fused,
     1 - (found.embedding <=> CAST(:q AS halfvec)) AS hit_cosine, {columns}
 FROM fusion JOIN {table} AS found ON found.id = fusion.id
 ORDER BY fusion.fused DESC, fusion.id
 """
-WORDED = "SELECT id, text <@> to_bm25query(:words, '{index}') AS score FROM {table} WHERE ({scope}) AND ({rows})"
+# `<@>` is BM25 negated, lower is better, and 0 when no term matched: those rows are no match.
+# The ORDER BY on the operator with the LIMIT under it is what pg_textsearch reads as a top-k
+# scan of the index; scored in a plain SELECT, every row of the scope was scored one by one.
+WORDED = """
+    UNION ALL
+    SELECT id, RANK() OVER (ORDER BY score) AS r FROM (
+        SELECT id, text <@> to_bm25query(:words, '{index}') AS score FROM {table}
+        WHERE ({scope}) AND ({rows})
+        ORDER BY text <@> to_bm25query(:words, '{index}')
+        LIMIT :room
+    ) AS worded_{at}
+    WHERE score < 0
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,20 +72,21 @@ async def hybrid(
     session: AsyncSession,
     table: str,
     lexical: Sequence[Lexical],
-    scope: str,
-    same_space: str,
     columns: Sequence[str],
     params: Mapping[str, Any],
     *,
+    scope: str,
+    same_space: str = "true",
     vector: str,
     words: str,
     room: int,
 ) -> list[Hit]:
-    """Up to `room` rows from each branch, fused by reciprocal rank, the best first."""
+    """Up to `room` rows from the vectors and from each lexical index, fused by reciprocal rank, the best first."""
     query = HYBRID.format(
         table=table,
-        worded=" UNION ALL ".join(
-            WORDED.format(index=one.index, table=table, scope=scope, rows=one.rows) for one in lexical
+        worded="".join(
+            WORDED.format(index=one.index, table=table, scope=scope, rows=one.rows, at=at)
+            for at, one in enumerate(lexical)
         ),
         scope=scope,
         same_space=same_space,

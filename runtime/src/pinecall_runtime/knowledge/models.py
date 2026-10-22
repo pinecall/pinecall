@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import REAL, TIMESTAMP, ForeignKey, ForeignKeyConstraint, Index, Integer, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
@@ -42,6 +43,23 @@ class ContactMemory(Model):
     model: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
 
+# Each has a partial BM25 index of its own (migrations/versions/…000007); `simple` stems nothing.
+type Language = Literal["english", "spanish", "portuguese", "french", "german", "italian", "dutch", "simple"]
+LANGUAGES: tuple[Language, ...] = ("english", "spanish", "portuguese", "french", "german", "italian", "dutch", "simple")
+UNDECIDED: Language = "simple"
+# A push may say the language as its ISO code or as the configuration's name.
+BY_CODE: dict[str, Language] = {
+    "en": "english",
+    "es": "spanish",
+    "pt": "portuguese",
+    "fr": "french",
+    "de": "german",
+    "it": "italian",
+    "nl": "dutch",
+}
+BY_NAME: dict[str, Language] = {language: language for language in LANGUAGES}
+
+
 class KnowledgeBase(Model):
     """One base in one scope: the model it was embedded with, its language, how many chunks, when it was pushed."""
 
@@ -55,7 +73,7 @@ class KnowledgeBase(Model):
     dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
     chunks: Mapped[int] = mapped_column(Integer, nullable=False)
     pushed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
-    # The text-search configuration its words are stemmed with (service/language.py).
+    # The text-search configuration its words are stemmed with: one of LANGUAGES.
     language: Mapped[str] = mapped_column(Text, nullable=False)
 
 

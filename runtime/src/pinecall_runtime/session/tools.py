@@ -134,9 +134,9 @@ class Toolbox:
             raise StopResponse
         return text
 
-    async def _run_lookup(self, use: ToolUse, _context: RunContext[None]) -> str:
+    async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)
-        return await self.lookups.called(use)
+        return await self.lookups.called(use, context.speech_handle.id)
 
     # end_call closes the session as livekit's own initiative, which reads as a drain: the reason
     # is written down first, and the tool with it, since it never reaches the app.

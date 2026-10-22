@@ -10,11 +10,15 @@ export const NOTHING_ATTACHED = "no agent reads a base here: `pinecall docs atta
 const DIM = "\u001b[2m";
 const PLAIN = "\u001b[0m";
 
-/** One push per line: base, files, chunks and time taken; an agent passed over says why. */
+/** A base whose files said no language clearly is stemmed in none: the line says how to say it. */
+const NO_LANGUAGE = "no language counted from the files, so no stemming: say it with --language <code>";
+
+/** One push per line: base, files, chunks, the language its words are stemmed in and time taken; an agent passed over says why. */
 export function pushed(results: (DocsPushed | DocsSkipped)[]): string[] {
   return results.map((one) => {
     if ("skipped" in one) return `${one.agent} · ${one.skipped}`;
-    return `${one.base} · ${one.files} files · ${one.chunks} chunks · ${Math.round(one.took_ms)} ms`;
+    const language = one.language === "simple" ? NO_LANGUAGE : one.language;
+    return `${one.base} · ${one.files} files · ${one.chunks} chunks · ${language} · ${Math.round(one.took_ms)} ms`;
   });
 }
 

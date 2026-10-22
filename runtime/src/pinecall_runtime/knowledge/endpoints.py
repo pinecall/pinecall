@@ -62,8 +62,10 @@ async def push_base(
         language=language_of(body.language),
     )
     await bases.admit_push(session, actor.scope, push, path=None)
-    await bases.put_base(session, embedder, actor.scope, push)
-    return schemas.KnowledgePushed(base=base, chunks=push.chunks, took_ms=(time.perf_counter() - started) * 1000)
+    language = await bases.put_base(session, embedder, actor.scope, push)
+    return schemas.KnowledgePushed(
+        base=base, chunks=push.chunks, language=language, took_ms=(time.perf_counter() - started) * 1000
+    )
 
 
 @router.get("/v1/knowledge")
@@ -134,9 +136,9 @@ async def put_file(
     embedder = await _embedder(request, session)
     push = Push(base=base, files=(cut(path, body.text),), at=now())
     await bases.admit_push(session, actor.scope, push, path=path)
-    await bases.put_file(session, embedder, actor.scope, push)
+    language = await bases.put_file(session, embedder, actor.scope, push)
     return schemas.KnowledgeFilePushed(
-        base=base, path=path, chunks=push.chunks, took_ms=(time.perf_counter() - started) * 1000
+        base=base, path=path, chunks=push.chunks, language=language, took_ms=(time.perf_counter() - started) * 1000
     )
 
 

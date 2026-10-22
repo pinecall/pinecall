@@ -27,11 +27,14 @@ that write none (Whisper) start it on the final, while the end of the turn is st
 What a turn waits for it is a budget: 250 ms on a spoken call, 3 s on a written one
 (`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A lookup that is late is
 cancelled and the turn goes on without it; a lookup that cannot run at all is a recoverable
-`error` entry, `search_skipped` or `recall_skipped`, saying why. A lookup started early keeps what
-had been heard as its query: asking again on the final would cost the time it saved. So a spoken
-turn's retrieved search reads its opening words, and every turn only its own: a follow-up ("and how
-much is that?") is searched without the turn before it, which is what a tool that searches is
-for, its query written by the model with the whole conversation in front of it.
+`error` entry, `search_skipped` or `recall_skipped`, saying why. A lookup started early is a
+guess at the question from its first words; the turn's text is the question. When the text says
+more than the early run was given, it is looked up again and waited for within the budget, and
+the early answer stands in for a late one, so a spoken turn is never answered from "hi, I wanted
+to ask" when "what do Saturdays cost" came in time. Each pair in the request records the query it
+answers. Every turn is searched on its own words alone: a follow-up ("and how much is that?") is
+searched without the turn before it, which is what a tool that searches is for, its query written
+by the model with the whole conversation in front of it.
 
 Neither runs on a turn with no letter in it: a number being read out finds nothing in a prose
 index, and a caller's digits are the last thing to send to an embedder.
@@ -79,17 +82,22 @@ documents, never maintained apart from them. A file keeps the SHA-256 of the tex
 the files that changed and the rest are kept as they were; a push that changes nothing costs one
 statement and no embedding.
 
-Every chunk is found by its vector and by its words: one query embedded once, two index scans
-(`halfvec` cosine, BM25), fused by rank in SQL. **A base speaks a language**: the text-search
+Every chunk is found by its vector and by its words: one query embedded once, one scan of the
+HNSW index and one top-`room` scan of each BM25 index asked, each a ranked list of its own, fused
+by reciprocal rank in SQL (a row's score is the sum of 1 / (60 + rank) over the lists it is in).
+Two BM25 indexes score over two corpora, so their scores are never ordered together: only ranks
+are. **A base speaks a language**: the text-search
 configuration its words are stemmed with, one of `english`, `spanish`, `portuguese`, `french`,
 `german`, `italian`, `dutch` or `simple` (no stemming), said by the push (`language`, as `en` or
 `english`) or counted from the files' function words when it says none, `simple` when they say
-nothing clearly (a table of names). Each language has a partial BM25 index of its own over the
+nothing clearly (a table of names); the push's answer says which. A base begun with a file that
+said nothing clearly is counted again with every file put beside it, so the prose that follows a
+table makes the base speak. Each language has a partial BM25 index of its own over the
 chunks in it, so `supervise` finds *supervising* in an English base and *sábados* finds *sábado* in
 a Spanish one; a file put beside the others speaks the base's language, and a folder pushed again
 in another language moves every chunk kept to the new index without embedding it again. Several
-bases in several languages searched together are one word branch: each index read over its own
-rows, the lists unioned before they are ranked. A contact's memory is still read with the Spanish
+bases in several languages searched together read each language's index over its own rows, one
+ranked list each. A contact's memory is still read with the Spanish
 configuration (deferred, below).
 
 What a turn is handed is sections, not loose pieces, as megabrain handed them in v1: a chunk found
@@ -147,8 +155,10 @@ the model wrote into its arguments.
 | `metrics.eou` | `on_user_turn_completed_delay`: what retrieval cost the person on the line |
 | `metrics.llm` | `prompt_tokens`, `prompt_cached_tokens`: what the passages cost in tokens |
 
-`speech_id` joins a lookup to the turn it served, so every figure below is a per-turn figure. No
-entry is written when a lookup did not run: an empty `docs.sources` would read to the grounded
+A lookup the model called carries the `speech_id` of the line it was called on. A lookup the
+platform ran before the turn carries none: it runs before the turn's item exists, so it is joined
+to its turn by order, the `docs.sources` and `memory.ops` entries written before a `turn.user`
+being that turn's. No entry is written when a lookup did not run: an empty `docs.sources` would read to the grounded
 judge as a search that found nothing.
 
 ## The figures
@@ -185,6 +195,11 @@ knows the substance and not the wording.
 
 - **A reranker.** An absolute signal over the candidates would let a score gate a lookup; it is a
   different design, and it waits for a golden that says what the fusion misses.
+- **A reranker's place is known.** After the fusion and before the sections, on every lookup the
+  model calls and on every written turn; on a spoken turn only when it is back within the
+  budget, the fused order handed over otherwise and the entry saying so. A self-hosted
+  cross-encoder (bge-reranker-v2-m3 on one GPU) scores sixty candidates in 50–110 ms; a hosted one
+  takes 170–460 ms, which no spoken turn has beside the embed.
 - **BM25 first as a gate.** A short turn with a low lexical score need not be embedded at all;
   measurable with figure 3 once the golden exists to say what it costs in recall.
 - **A monitor over `memory.ops`**, reading for a fact that reads like an instruction.

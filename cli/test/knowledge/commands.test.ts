@@ -11,11 +11,11 @@ const GOLDEN = JSON.stringify([{ asks: "When are you open?", expects: "hours.md"
 const SCORE = { base: "front-desk", model: "pplx-embed-v1", questions: 1, k: 8, recall_at_k: 1, ndcg_at_10: 0.931, took_ms: 410.2, misses: [] };
 
 describe("pinecall docs", () => {
-  it("push prints the base, the files, the chunks and the time", async () => {
-    answer("put", "/v1/knowledge/:base", { base: "front-desk", chunks: 12, took_ms: 830.4 });
+  it("push prints the base, the files, the chunks, the language and the time", async () => {
+    answer("put", "/v1/knowledge/:base", { base: "front-desk", chunks: 12, language: "english", took_ms: 830.4 });
     const ran = await run(["docs", "push"], { cwd: project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours" }) });
     expect(ran.code).toBe(0);
-    expect(ran.out).toBe("front-desk · 1 files · 12 chunks · 830 ms\n");
+    expect(ran.out).toBe("front-desk · 1 files · 12 chunks · english · 830 ms\n");
   });
 
   it("eval exits 1 on a miss, and names the question and what came back", async () => {

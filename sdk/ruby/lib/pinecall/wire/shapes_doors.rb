@@ -59,6 +59,7 @@ module Pinecall
         "KnowledgePushed" => {
           base: { kind: :str, required: true },
           chunks: { kind: :int, required: true },
+          language: { kind: :str, required: true },
           took_ms: { kind: :float, required: true }
         }.freeze,
         "KnowledgeList" => {

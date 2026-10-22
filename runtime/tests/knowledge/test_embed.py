@@ -397,6 +397,20 @@ async def test_an_index_set_that_is_not_every_position_once_is_refused_however_t
         await an_embedder(client, slept, FLAT).embed(["uno", "dos", "tres"])
 
 
+async def test_documents_indexed_with_one_position_twice_are_refused_as_rows_are(
+    vendor: Embeddings, client: httpx.AsyncClient, slept: list[float]
+) -> None:
+    """Sorted, 0, 0, 2 would hand two documents one list: the reply is refused by its indexes."""
+    vendor.script = [
+        httpx.Response(
+            200,
+            json={"data": [{"index": at, "data": [{"embedding": int8_vector([3] * 1024)}]} for at in (0, 0, 2)]},
+        )
+    ]
+    with pytest.raises(EmbedderUnreachable, match=r"indexed \[0, 0, 2\], not 0 to 2"):
+        await an_embedder(client, slept).embed(["uno", "dos", "tres"])
+
+
 # ── refusals, retries and splits ──
 
 

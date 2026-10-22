@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **A search reads its indexes, not its rows.** The word branch scored every chunk of the scope
+  one by one and sorted them (600–800 ms on a base of 6 000 rows); each BM25 index is read as a
+  top-`room` scan now, one ranked list a language, fused with the vectors' by rank
+  (`docs/retrieval/spec.md`).
+- **A spoken turn is searched on what it said.** The lookups started on a turn's first four
+  words kept those words as the query ("hello, I wanted to" was what every turn searched); the
+  turn's text is looked up again when it says more and waited for within the budget, the early
+  answer standing in for a late one. A lookup the model calls carries its `speech_id`; one the
+  platform runs is joined to its turn by order, as the spec now says (`docs/retrieval/spec.md`).
+- **A push answers the language the base speaks** (`KnowledgePushed.language`,
+  `KnowledgeFilePushed.language`; `docs push` prints it, and says how to say one when the files
+  said none). A base begun with a file that said no language clearly is counted again with every
+  file put beside it. A language outside the closed set is refused before a statement is built.
+- A file from Windows is read as LF before it is hashed and cut, so its front matter is dropped
+  as any other's; a comment opened in one section and closed in the next reaches neither. The
+  embedder refuses a reply that indexes two documents at one position, as it did two rows.
+
 - **A section carries the questions it answers, and a comment never reaches a chunk.** An HTML
   comment outside a code fence is dropped from the body, where it used to be indexed and handed
   to the model. One is read: `<!-- asks … -->` under a heading, one question a line, each a row of

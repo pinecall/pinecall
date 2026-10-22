@@ -1,6 +1,5 @@
 """The knowledge tables: bases, their files and their chunks, in one scope and the org's copy beneath it."""
 
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,7 +11,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
-from pinecall_runtime.knowledge.models import KnowledgeBase, KnowledgeChunk, KnowledgeFile
+from pinecall_runtime.knowledge.models import LANGUAGES, KnowledgeBase, KnowledgeChunk, KnowledgeFile
 from pinecall_runtime.knowledge.repository.search import Hit, Lexical, hybrid
 
 # A found chunk comes back as its section: the chunks of its heading this many either side of it.
@@ -39,19 +38,16 @@ JOIN knowledge_chunks AS chunk ON chunk.org = :org AND chunk.env = :env
 ORDER BY wanted.at, chunk.ordinal
 """)
 
-KNOWLEDGE_COLUMNS = ("base", "holder", "path", "heading", "ordinal", "text", "kind")
+KNOWLEDGE_COLUMNS = ("base", "holder", "path", "heading", "ordinal", "text")
 
 
 # One partial BM25 index a language (migrations/versions/…000007), read where its predicate is
-# repeated. A language is a word the service chose from a closed set (service/language.py), so it
-# is written into the statement, where a bound parameter would hide the predicate from the planner.
-A_LANGUAGE = re.compile(r"^[a-z]+$")
-
-
+# repeated. A language is one of the closed set, so it is written into the statement, where a
+# bound parameter would hide the predicate from the planner.
 def lexical_of(language: str) -> Lexical:
     """The index of the chunks in this language, and the rows it covers."""
-    if not A_LANGUAGE.match(language):
-        raise ValueError(f"no lexical index for {language!r}")
+    if language not in LANGUAGES:
+        raise ValueError(f"no lexical index for {language!r}: one of {', '.join(LANGUAGES)}")
     return Lexical(f"knowledge_chunks_{language}_bm25", f"language = '{language}'")
 
 
@@ -287,10 +283,9 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
             self.session,
             "knowledge_chunks",
             [lexical_of(language) for language in dict.fromkeys(copy.language for copy in copies)],
-            KNOWLEDGE_SCOPE,
-            "true",
             KNOWLEDGE_COLUMNS,
             params,
+            scope=KNOWLEDGE_SCOPE,
             vector=vector,
             words=words,
             room=room,

@@ -50,3 +50,22 @@ def test_a_file_counts_its_pieces_and_their_questions_as_rows() -> None:
     """Three questions over two pieces: five rows against the quota."""
     assert cut("prices.md", PRICES).rows == 5
     assert cut("install.md", CODE).rows == 1
+
+
+def test_a_file_from_windows_is_read_as_one_text_and_its_front_matter_goes() -> None:
+    """CRLF is LF: the front matter is dropped, the hash is the LF file's, and the pieces are the same."""
+    front = "---\ntitle: Prices\n---\n\n" + PRICES
+    assert cut("prices.md", front.replace("\n", "\r\n")) == cut("prices.md", front)
+    assert [piece.text for piece in cut("prices.md", front.replace("\n", "\r\n")).pieces] == [
+        "A check-up is forty euros.",
+        "We take every insurer.",
+    ]
+
+
+def test_a_comment_opened_in_one_section_and_closed_in_the_next_reaches_neither() -> None:
+    """The author hid both halves and the heading between them: one section, no `<!--`, `-->` or draft in it."""
+    crossing = "# Prices\n\nForty euros. <!-- draft:\n\n## Insurance\n\nnot yet --> We take every insurer.\n"
+    [prices] = chunks_of("prices.md", crossing)
+    assert prices.heading == "Prices"
+    assert "draft" not in prices.text and "<!--" not in prices.text and "-->" not in prices.text
+    assert prices.text.startswith("Forty euros.") and prices.text.endswith("We take every insurer.")

@@ -21,7 +21,7 @@ from pinecall_runtime.knowledge.service.cutter import (
     where,
 )
 from pinecall_runtime.knowledge.service.embedder import Embedder, WrongModel, halfvec
-from pinecall_runtime.knowledge.service.language import Language, detected
+from pinecall_runtime.knowledge.service.language import BY_NAME, UNDECIDED, Language, detected
 from pinecall_runtime.knowledge.service.ranking import Evidence, Figures
 from pinecall_runtime.postgres import unbounded
 
@@ -141,17 +141,17 @@ async def admit_push(session: AsyncSession, scope: Scope, push: Push, *, path: s
     await billing.admit_push(session, scope.org, scope.env, keeping=kept - replaced + push.chunks)
 
 
-async def put_base(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> None:
-    """Replace the holder's base with the push; only the files whose text changed are embedded."""
-    await _written(session, embedder, scope, push, keep=[item.path for item in push.files])
+async def put_base(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Language:
+    """Replace the holder's base with the push, only the files whose text changed embedded; the language it speaks."""
+    return await _written(session, embedder, scope, push, keep=[item.path for item in push.files])
 
 
-async def put_file(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> None:
-    """Put the push's files beside the base's others, beginning the base when there is none."""
+async def put_file(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Language:
+    """Put the push's files beside the base's others, beginning the base when there is none; the language it speaks."""
     own = await KnowledgeRepository(session).own(scope, push.base)
     if own is not None and own.model != embedder.model:
         raise WrongModel(push.base, own.model, embedder.model)
-    await _written(session, embedder, scope, push, keep=None)
+    return await _written(session, embedder, scope, push, keep=None)
 
 
 async def drop_base(session: AsyncSession, scope: Scope, base: str) -> bool:
@@ -232,15 +232,16 @@ def score_docs(answered: Sequence[Answered], k: int) -> Score:
 # embedded again. The vendor answers before the statement runs, so no connection waits on it.
 async def _written(
     session: AsyncSession, embedder: Embedder, scope: Scope, push: Push, *, keep: list[str] | None
-) -> None:
+) -> Language:
     repository = KnowledgeRepository(session)
     own = await repository.own(scope, push.base)
-    language = push.language or _language_kept(own, keep) or detected([item.text for item in push.files])
+    had: Sequence[KnowledgeFile] = ()
+    if own is not None:
+        had = await repository.files_of(scope.org, scope.env, scope.holder, push.base)
+    language = push.language or _language_kept(own, keep) or detected(_texts_of(push, had, keep))
     known: dict[str, str] = {}
     if own is not None and own.model == embedder.model:
-        known = {
-            file.path: file.sha256 for file in await repository.files_of(scope.org, scope.env, scope.holder, push.base)
-        }
+        known = {file.path: file.sha256 for file in had}
     changed = [item for item in push.files if known.get(item.path) != item.sha256]
     documents = [[indexed_text(piece) for piece in item.pieces] for item in changed if item.pieces]
     embedded = await embedder.embed_documents(documents) if documents else []
@@ -275,11 +276,23 @@ async def _written(
             changed=files,
             chunks=chunks,
         )
+    return language
 
 
-# One file put beside the others speaks the base's language; a folder pushed whole says its own.
-def _language_kept(own: KnowledgeBase | None, keep: list[str] | None) -> str | None:
-    return own.language if own is not None and keep is None else None
+# One file put beside the others speaks the base's language; a folder pushed whole says its own. A
+# base whose files said no language clearly is counted again with every file put, so one that
+# began with a table of names speaks the language of the prose put beside it.
+def _language_kept(own: KnowledgeBase | None, keep: list[str] | None) -> Language | None:
+    if own is None or keep is not None or own.language == UNDECIDED:
+        return None
+    return BY_NAME[own.language]
+
+
+# What the language is counted from: the folder pushed, or the file put and the files it joins.
+def _texts_of(push: Push, had: Sequence[KnowledgeFile], keep: list[str] | None) -> list[str]:
+    pushed = {item.path: item.text for item in push.files}
+    kept = {} if keep is not None else {file.path: file.text for file in had}
+    return list({**kept, **pushed}.values())
 
 
 # Only the first match counts: a base that repeats itself answered once, and any of the paths answers.

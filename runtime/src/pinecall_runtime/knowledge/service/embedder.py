@@ -243,11 +243,8 @@ class Embedder:
             raise self._unreachable(f"a reply that is not its vectors: {unread}") from unread
         if len(answered) != len(documents):
             raise self._unreachable(f"{len(answered)} documents for the {len(documents)} it was sent")
-        ordered = (
-            answered if any(one.index is None for one in answered) else sorted(answered, key=lambda one: one.index or 0)
-        )
         cut: list[list[list[float]]] = []
-        for document, chunks in zip(ordered, documents, strict=True):
+        for document, chunks in zip(self._in_order(answered), documents, strict=True):
             if len(document.data) != len(chunks):
                 raise self._unreachable(f"{len(document.data)} vectors for {len(chunks)} chunks")
             cut.append(self._checked([self._decoded(row.embedding) for row in self._in_order(document.data)]))
@@ -272,8 +269,9 @@ class Embedder:
             )
         return [_unit(vector) for vector in vectors]
 
-    # Sorting alone is not enough: indexes 0, 0, 2 sort cleanly and give two chunks one vector.
-    def _in_order(self, rows: list[_Row]) -> list[_Row]:
+    # Sorting alone is not enough: indexes 0, 0, 2 sort cleanly and give two chunks one vector,
+    # or two documents one list.
+    def _in_order[Indexed: (_Row, _Rows)](self, rows: list[Indexed]) -> list[Indexed]:
         if any(row.index is None for row in rows):
             return rows
         ordered = sorted(rows, key=lambda row: row.index or 0)

@@ -2035,7 +2035,7 @@ and `drop` read the same environment.
 
 ```console
 $ pinecall docs push
-clinica-norte · 7 files · 41 chunks · 812 ms      # base · sent · became · took
+clinica-norte · 7 files · 41 chunks · spanish · 812 ms      # base · sent · became · stemmed in · took
 ```
 
 **The questions a section answers travel with it.** An HTML comment is never a chunk — a note to the
@@ -2048,7 +2048,8 @@ section in a caller's own words and counts as a chunk of the quota
 *sábados* finds *sábado* and an English reader's *supervise* finds *supervising*. `--language` says it
 (`en`, `es`, `pt`, `fr`, `de`, `it`, `nl`, or the configuration's name); left out, the gateway counts
 it from the files' own function words, and a folder that says none clearly — tables, names — is
-indexed with no stemming at all. `list` shows each base's.
+indexed with no stemming at all: the push's line says so and how to say one (`no language counted
+from the files, so no stemming: say it with --language <code>`). `list` shows each base's.
 
 **`attach` says an agent reads a base.** It is one field of the agent's settings (`bases`),
 written as the next version of the corner — yours, the team's with `--team`, production's with

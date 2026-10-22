@@ -19,8 +19,9 @@ from pinecall_runtime.wire.parts import PlatformTool
 logger = logging.getLogger(__name__)
 
 NOT_LOOKED_UP = "{tool} did not run: {why}"
-# Shorter turns are greetings and acknowledgements. Four words take over a second to say, longer
-# than a lookup, so the results are there when the caller stops.
+# An early run needs this much to start on: shorter, an interim is a greeting or a filler word.
+# Four words take over a second to say, longer than a lookup, so an answer is in when the caller
+# stops.
 WORDS_ENOUGH_TO_SEARCH_WITH = 4
 # What a spoken turn waits for recall and search after the caller stops, and a written one.
 VOICE_LOOKUP_MS = 250
@@ -99,9 +100,9 @@ class Lookups:
         retrieved = any(docs.mode == "retrieved" for docs in config.bases)
         return recall + (("search",) if retrieved else ())
 
-    # Started on the first transcript worth a query, interim or final, so the results are in when
-    # the turn ends. One run a turn: a second embed is paid for. Every turn ends, since livekit folds a short
-    # transcript into the next one, so the run is always consumed.
+    # Started on the first transcript worth a query, interim or final, so an answer is in when the
+    # turn ends. Every turn ends, since livekit folds a short transcript into the next one, so the
+    # run is always consumed.
     def heard_so_far(self, text: str) -> None:
         """Start this turn's lookups on what the caller has said so far, once."""
         tools = self.run_before_each_turn
@@ -111,25 +112,32 @@ class Lookups:
             return
         self.running = self._start(tools, text)
 
-    # A run started early keeps its prefix as the query: it ranks the same chunks, and asking
-    # again would cost the time it saved. The pair records the query that was sent.
+    # The early run is a guess at the question from its first words; the turn's text is the
+    # question. When the text says more, it is looked up again and waited for within the budget,
+    # and the early answer stands in for a late one. Each pair records the query it answers.
     async def turn_ended(self, query: str) -> list[ErrorEvent]:
         """This turn's pairs, within the budget; one recoverable entry per lookup that failed."""
         self.items = ()
-        running, self.running = self.running, None
+        early, self.running = self.running, None
         tools = self.run_before_each_turn
         # A turn of digits is a number read out: it finds nothing and would send it to the
         # embedder. No entry either: the grounded judge would read it as a failed lookup.
-        if not tools or (running is None and not _could_be_a_query(query)):
+        if not tools or (early is None and not _could_be_a_query(query)):
             return []
-        run = running or self._start(tools, query)
-        return self._came_back(tools, run.query, await self._within_the_budget(run.tasks))
+        final = early if early is not None and early.query == query else self._start(tools, query)
+        answered = await self._within_the_budget(final.tasks)
+        queries = [final.query] * len(tools)
+        if early is not None and early is not final:
+            for at, fallback in enumerate(self._settled(early.tasks)):
+                if isinstance(answered[at], TimeoutError) and not isinstance(fallback, TimeoutError):
+                    answered[at], queries[at] = fallback, early.query
+        return self._came_back(tools, queries, answered)
 
-    async def called(self, use: ToolUse) -> str:
-        """A lookup the model called itself; a failure is its ToolError, read in its own turn."""
+    async def called(self, use: ToolUse, speech: str | None) -> str:
+        """A lookup the model called itself, on the line it spoke; a failure is its ToolError, read in its own turn."""
         tool: PlatformTool = "recall" if use.name == RECALL.name else "search"
         try:
-            output = await self.lookup(tool, use.arguments, None)
+            output = await self.lookup(tool, use.arguments, speech)
         except Exception as failed:
             raise ToolError(NOT_LOOKED_UP.format(tool=tool, why=str(failed) or type(failed).__name__)) from failed
         return json.dumps(output, ensure_ascii=False)
@@ -160,6 +168,10 @@ class Lookups:
         pending = [task for task in tasks if not task.done()]
         if pending:
             await asyncio.wait(pending, timeout=self.budget_ms / 1000)
+        return self._settled(tasks)
+
+    # What each task answered by now; one still running is cancelled and counts as late.
+    def _settled(self, tasks: Sequence["asyncio.Task[JsonObject | BaseException]"]) -> list[JsonObject | BaseException]:
         answered: list[JsonObject | BaseException] = []
         for task in tasks:
             if task.done():
@@ -172,11 +184,11 @@ class Lookups:
     # Empty results are left out: empty tool rounds make the model stop calling the tenant's
     # own tools.
     def _came_back(
-        self, tools: Sequence[PlatformTool], query: str, answered: Sequence[JsonObject | BaseException]
+        self, tools: Sequence[PlatformTool], queries: Sequence[str], answered: Sequence[JsonObject | BaseException]
     ) -> list[ErrorEvent]:
         items: list[llm.ChatItem] = []
         skipped: list[ErrorEvent] = []
-        for tool, answer in zip(tools, answered, strict=True):
+        for tool, query, answer in zip(tools, queries, answered, strict=True):
             if isinstance(answer, BaseException):
                 why = NOT_LOOKED_UP.format(tool=tool, why=str(answer) or type(answer).__name__)
                 skipped.append(ErrorEvent(code=f"{tool}_skipped", message=why, recoverable=True))

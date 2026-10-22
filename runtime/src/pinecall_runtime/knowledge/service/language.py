@@ -2,25 +2,11 @@
 
 import re
 from collections import Counter
-from typing import Literal
 
 from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.knowledge.models import BY_CODE, BY_NAME, LANGUAGES, UNDECIDED, Language
 
-# Each has a partial BM25 index of its own (migrations/versions/…000007); `simple` stems nothing.
-type Language = Literal["english", "spanish", "portuguese", "french", "german", "italian", "dutch", "simple"]
-LANGUAGES: tuple[Language, ...] = ("english", "spanish", "portuguese", "french", "german", "italian", "dutch", "simple")
-UNDECIDED: Language = "simple"
-# A push may say the language as its ISO code or as the configuration's name.
-BY_CODE: dict[str, Language] = {
-    "en": "english",
-    "es": "spanish",
-    "pt": "portuguese",
-    "fr": "french",
-    "de": "german",
-    "it": "italian",
-    "nl": "dutch",
-}
-BY_NAME: dict[str, Language] = {language: language for language in LANGUAGES}
+__all__ = ["BY_CODE", "BY_NAME", "LANGUAGES", "UNDECIDED", "Language", "detected", "language_of"]
 
 
 def _words(said: str) -> frozenset[str]:

@@ -23,10 +23,13 @@ class KnowledgePush(WireModel):
 
 
 class KnowledgePushed(WireModel):
-    """PUT /v1/knowledge/{base}, the answer: the base, the chunks it became, how long it took."""
+    """PUT /v1/knowledge/{base}, the answer: the base, its chunks, the language it speaks, how long it took."""
 
     base: str
     chunks: int
+    # The text-search configuration its words are stemmed with: said by the push, or counted from
+    # the files; `simple` (no stemming) when they said nothing clearly.
+    language: str
     took_ms: float
 
 
@@ -98,6 +101,7 @@ class KnowledgeFilePushed(WireModel):
     base: str
     path: str
     chunks: int
+    language: str
     took_ms: float
 
 

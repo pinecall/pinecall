@@ -54,8 +54,11 @@ class Cut:
         return sum(1 + len(piece.asks) for piece in self.pieces)
 
 
+# A file from Windows ends its lines with CRLF; read as LF, the same text pushed either way is one
+# hash and is embedded once.
 def cut(path: str, text: str) -> Cut:
     """The file cut once, with the hash a later push compares against."""
+    text = text.replace("\r\n", "\n")
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return Cut(path, text, digest, tuple(chunks_of(path, text)))
 
@@ -63,7 +66,7 @@ def cut(path: str, text: str) -> Cut:
 def chunks_of(path: str, text: str) -> list[Piece]:
     """The file cut at its headings, each piece under the cap, in file order; a section's questions ride its first."""
     pieces: list[Piece] = []
-    for heading, commented in _sections_of(_without_front_matter(text)):
+    for heading, commented in _sections_of(_without_stray_comments(_without_front_matter(text))):
         body, asks = _without_comments(commented)
         for at, group in enumerate(_under_the_cap(body, heading)):
             pieces.append(Piece(path, heading, len(pieces), group, asks if at == 0 else ()))
@@ -101,6 +104,20 @@ def _without_front_matter(text: str) -> str:
     return text[closed.end() :].lstrip("\n") if closed else text
 
 
+# A comment is dropped from the file whole before it is cut, so one opened in a section and closed
+# in the next reaches neither; the `asks` ones stay for the section they sit in to read.
+def _without_stray_comments(text: str) -> str:
+    kept: list[str] = []
+    for fenced, run in _runs_of(text):
+        kept.append(run if fenced else A_COMMENT.sub(lambda found: found.group(0) if _asks(found) else "", run))
+    return "".join(kept)
+
+
+def _asks(comment: re.Match[str]) -> list[str] | None:
+    lines = [line.strip() for line in comment.group(1).strip().splitlines()]
+    return lines[1:] if lines and lines[0] == ASKS else None
+
+
 # Outside a code fence a comment is dropped whole; an `asks` comment gives its lines first. Inside
 # a fence a comment is code and stays.
 def _without_comments(body: str) -> tuple[str, tuple[str, ...]]:
@@ -111,9 +128,7 @@ def _without_comments(body: str) -> tuple[str, tuple[str, ...]]:
             kept.append(run)
             continue
         for comment in A_COMMENT.finditer(run):
-            lines = [line.strip() for line in comment.group(1).strip().splitlines()]
-            if lines and lines[0] == ASKS:
-                asks.extend(line for line in lines[1:] if line)
+            asks.extend(line for line in _asks(comment) or () if line)
         kept.append(A_COMMENT.sub("", run))
     return "".join(kept), tuple(dict.fromkeys(asks))
 

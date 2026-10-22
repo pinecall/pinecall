@@ -9,7 +9,7 @@ import { testContext } from "../../support/context.js";
 import { SETTINGS, tuningRow } from "../../support/fixtures.js";
 import { folder, project, write } from "../../support/project.js";
 
-const PUSHED = { base: "front-desk", chunks: 12, took_ms: 830.4 };
+const PUSHED = { base: "front-desk", chunks: 12, language: "english", took_ms: 830.4 };
 const SCORE = { base: "front-desk", model: "pplx-embed-v1", questions: 2, k: 4, recall_at_k: 1, ndcg_at_10: 0.93, took_ms: 410, misses: [] };
 const GOLDEN = JSON.stringify([{ asks: "When are you open?", expects: "hours.md" }, { asks: "Do you take insurance?", expects: "insurance.md" }]);
 
@@ -29,7 +29,7 @@ describe("push", () => {
     const { ctx } = testContext({ cwd: root });
     expect(await service.pushDocs(ctx, {})).toEqual([
       { agent: "front-desk", skipped: `no documents at ${root}/agents/front-desk/docs` },
-      { agent: "sales", base: "sales", chunks: 12, took_ms: 830.4, files: 1 },
+      { agent: "sales", base: "sales", chunks: 12, language: "english", took_ms: 830.4, files: 1 },
     ]);
   });
 
