@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **The runtime's hold melody plays again.** An agent nobody chose a melody for was documented and
+  shown as playing the runtime's own, and played silence: the worker built a melody only from an
+  uploaded clip. `default` is the clip livekit ships for holding now, on the worker's disk with
+  the package, and `GET /v1/agents/{slug}/pipeline/hold-audio/audio` serves it too, so the
+  console's Listen plays it instead of a 404. A written call plays no melody.
+- **The org says how long the melody waits.** `PUT /v1/agents/{slug}/pipeline/hold-audio/after
+  {after_s}` sets the seconds of the agent's quiet before it starts, 0 to 30; null gives back the
+  runtime's 2.5. `HoldAudio.after_s` is the wait that plays, read by the worker at the call's
+  start; `hold_audio.after_s` and `played = 'default'` kept as a row (migration 000009), so
+  choosing what plays keeps the wait (`docs/protocol/pipeline-api.md`).
+
 ## 0.11.9 — A search reads its indexes and a spoken turn is searched on what it said (2026-10-22)
 
 - **A search reads its indexes, not its rows.** The word branch scored every chunk of the scope

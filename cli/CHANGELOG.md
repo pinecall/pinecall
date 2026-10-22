@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall pipeline melody`: the hold melody from the terminal.** What a caller hears while a
+  tool runs or the model is slow: `show`, `upload <file>`, `default`, `off`, and `after
+  <seconds>`, the seconds of the agent's quiet before it starts (2.5 unless set; `after default`
+  gives it back). One choice per agent per environment; `--prod` sets production's.
+
 ## [0.11.9] — `docs push --language`, a golden question with several pages, the questions a section answers
 
 - **`pinecall docs push --language <code>`: the language a base speaks.** `en`, `es`, `pt`, `fr`,

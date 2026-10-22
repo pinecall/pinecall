@@ -326,26 +326,42 @@ class JudgingRequest(WireModel):
 # ── the pipeline, the hold melody, the widget ──
 
 
-class HoldAudio(WireModel):
-    """What a caller hears while a tool runs: the box's melody, silence, or the org's own clip."""
+# Seconds of the agent's quiet before the melody starts, when the org set none: a tool or a model
+# that answers inside it plays nothing. The org's own is held between the two bounds.
+HOLD_AFTER_S = 2.5
+SOONEST_AFTER_S = 0.0
+LATEST_AFTER_S = 30.0
 
-    played: HoldPlayed | Literal["default"]
+
+class HoldAudio(WireModel):
+    """What a caller hears while a tool runs, and after how long: the runtime's melody, silence, or the org's clip."""
+
+    played: HoldPlayed
     sha256: str | None = None
     seconds: float | None = None
     name: str | None = None
+    # The wait that plays: the org's, else the runtime's.
+    after_s: float = HOLD_AFTER_S
 
     @classmethod
     def of(cls, row: HoldAudioRow | None) -> Self:
-        """What the agent plays, from its row; the default when it has none."""
+        """What the agent plays, from its row; the runtime's melody after its own wait when it has none."""
         if row is None:
-            return cls(played="default")
-        return cls(played=row.played, sha256=row.sha256, seconds=row.seconds, name=row.name)
+            return cls(played=HoldPlayed.default)
+        after_s = HOLD_AFTER_S if row.after_s is None else row.after_s
+        return cls(played=row.played, sha256=row.sha256, seconds=row.seconds, name=row.name, after_s=after_s)
 
 
 class PlayedRequest(WireModel):
-    """PUT /v1/agents/{slug}/pipeline/hold-audio/played: the box's melody back, or silence."""
+    """PUT /v1/agents/{slug}/pipeline/hold-audio/played: the runtime's melody back, or silence."""
 
     played: Literal["default", "off"]
+
+
+class AfterRequest(WireModel):
+    """PUT /v1/agents/{slug}/pipeline/hold-audio/after: seconds of quiet before the melody; null is the runtime's."""
+
+    after_s: float | None
 
 
 class PipelineStage(WireModel):

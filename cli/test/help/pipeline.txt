@@ -7,10 +7,100 @@ Options:
   --agent <slug>
   -h, --help      display help for command
 
+Commands:
+  melody          what a caller hears while a tool runs or the model is slow,
+                  and after how long
+
 The three legs of the pipeline as the NEXT call would be built — the vendor, the model and the
 one knob worth showing — the opening, and the medians livekit measured over the agent's recent
 calls. Setting them is `pinecall agent set`.
 
+
+$ pinecall pipeline melody --help
+Usage: pinecall pipeline melody [options] [command]
+
+what a caller hears while a tool runs or the model is slow, and after how long
+
+Options:
+  -h, --help                 display help for command
+
+Commands:
+  show [options]             what plays and after how many seconds of quiet
+  upload [options] <file>    a file of yours as the melody, from the next call
+  default [options]          the runtime's own melody back
+  off [options]              nothing plays: the caller hears silence
+  after [options] <seconds>  seconds of the agent's quiet before the melody
+                             starts
+  help [command]             display help for command
+
+The melody plays while a tool runs, and while the model has not said its first word, once the
+agent has been quiet for the wait: a tool or a model that answers inside it plays nothing, and the
+melody stops at the answer. It plays under the agent's voice at 60 %, looped, on the phone and on
+the web alike, from the next call; a written call plays none.
+
+default is the runtime's own melody, off is silence, upload sends a file of yours (the gateway
+converts it once, to Ogg Opus). after sets the wait in seconds, 2.5 when you set none; choosing
+what plays keeps the wait. One choice per agent per environment, whoever holds the agent:
+--prod sets production's.
+
+Examples
+  $ pinecall pipeline melody
+  $ pinecall pipeline melody upload espera.mp3
+  $ pinecall pipeline melody after 1.5
+  $ pinecall pipeline melody off --prod
+
+
+$ pinecall pipeline melody show --help
+Usage: pinecall pipeline melody show [options]
+
+what plays and after how many seconds of quiet
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall pipeline melody upload --help
+Usage: pinecall pipeline melody upload [options] <file>
+
+a file of yours as the melody, from the next call
+
+Arguments:
+  file            a wav, an mp3, an ogg, a flac or an m4a, up to 20 MB and five
+                  minutes
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall pipeline melody default --help
+Usage: pinecall pipeline melody default [options]
+
+the runtime's own melody back
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall pipeline melody off --help
+Usage: pinecall pipeline melody off [options]
+
+nothing plays: the caller hears silence
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall pipeline melody after --help
+Usage: pinecall pipeline melody after [options] <seconds>
+
+seconds of the agent's quiet before the melody starts
+
+Arguments:
+  seconds         0 to 30, or default for the runtime's own
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
 
 $ pinecall pipeline set --help
 Usage: pinecall pipeline set [options]

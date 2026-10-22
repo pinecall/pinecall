@@ -24,7 +24,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/agents/{slug}/dev/memory/{verb}` | memory | A memory verb, answered by the process that answers the console for the agent. |
 | `POST` | `/v1/agents/{slug}/dev/view/{verb}` | calls | The side panel beside a conversation, rendered by the app serving the call. |
 | `POST` | `/v1/agents/{slug}/dial` | talk | Place a call as the agent, after its guards: the call it became, before anything rings. |
-| `GET` | `/v1/agents/{slug}/hold-audio` | app · fleet | What a caller of the agent hears while a tool runs. |
+| `GET` | `/v1/agents/{slug}/hold-audio` | app · fleet | What a caller of the agent hears while a tool runs, and after how long. |
 | `GET` | `/v1/agents/{slug}/hold-audio/audio` | app · fleet | The org's own clip, Ogg Opus. |
 | `GET` | `/v1/agents/{slug}/lexicon` | pipeline · words | The agent's words as this key sees them: yours, the team's and production's. |
 | `PUT` | `/v1/agents/{slug}/lexicon` | pipeline · words | The agent's next lexicon in this scope or the team's. |
@@ -51,10 +51,11 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/simulations` | evals | Put one of the agent's personas on it, written or spoken, against whoever holds it; the call's id at once. |
 | `GET` | `/v1/simulations` | evals | Every simulated call in the key's environment and scope, or the agents named's (`?agent=`, once or more), whichever persona, newest first. |
 | `GET` | `/v1/agents/{slug}/pipeline` | pipeline | The agent's three stages, the catalogue, and the latencies of its last calls. |
-| `GET` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | What the agent plays while a tool runs: the platform's melody, silence, or a clip of its own. |
+| `GET` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip. |
 | `PUT` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | A file of the org's as the agent's melody, from the next call on. |
-| `GET` | `/v1/agents/{slug}/pipeline/hold-audio/audio` | pipeline | The agent's own clip, Ogg Opus, to hear before a caller does. |
-| `PUT` | `/v1/agents/{slug}/pipeline/hold-audio/played` | pipeline | The platform's melody back, or silence; an uploaded clip is forgotten either way. |
+| `GET` | `/v1/agents/{slug}/pipeline/hold-audio/audio` | pipeline | The melody the agent plays, its own clip or the runtime's, Ogg, to hear before a caller does. |
+| `PUT` | `/v1/agents/{slug}/pipeline/hold-audio/played` | pipeline | The runtime's melody back, or silence; an uploaded clip is forgotten either way, the wait kept. |
+| `PUT` | `/v1/agents/{slug}/pipeline/hold-audio/after` | pipeline | Seconds of the agent's quiet before the melody starts, from the next call on; null is the runtime's. |
 | `GET` | `/v1/agents/{slug}/provider-keys` | app · fleet | The three stages a call of the agent runs, each on the key it runs on, and the org's collector for its traces. |
 | `GET` | `/v1/agents/{slug}/rings-for` | fleet | Where a production ring from this phone goes: a developer's scope and fleet, or nowhere. |
 | `GET` | `/v1/agents/{slug}/sessions` | calls | The agent's newest calls, one row each. |

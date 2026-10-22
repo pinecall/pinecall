@@ -50,6 +50,24 @@ Examples
   $ pinecall agent list --prod
 `;
 
+const MELODY = `
+The melody plays while a tool runs, and while the model has not said its first word, once the
+agent has been quiet for the wait: a tool or a model that answers inside it plays nothing, and the
+melody stops at the answer. It plays under the agent's voice at 60 %, looped, on the phone and on
+the web alike, from the next call; a written call plays none.
+
+default is the runtime's own melody, off is silence, upload sends a file of yours (the gateway
+converts it once, to Ogg Opus). after sets the wait in seconds, 2.5 when you set none; choosing
+what plays keeps the wait. One choice per agent per environment, whoever holds the agent:
+--prod sets production's.
+
+Examples
+  $ pinecall pipeline melody
+  $ pinecall pipeline melody upload espera.mp3
+  $ pinecall pipeline melody after 1.5
+  $ pinecall pipeline melody off --prod
+`;
+
 const LEXICON = `
 The lexicon is the agent's says and hears, which the class never sets. add says how a word is
 spoken; hear names the words the ears must know; rm takes words out of both. Whole and
@@ -233,6 +251,31 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .addHelpText("after", PIPELINE)
     .action(async (flags) => ctx.io.result(await service.showPipeline(ctx, flags.agent), render.pipeline));
+  const melody = pipeline.command("melody").description("what a caller hears while a tool runs or the model is slow, and after how long").addHelpText("after", MELODY);
+  melody
+    .command("show", { isDefault: true })
+    .description("what plays and after how many seconds of quiet")
+    .option("--agent <slug>")
+    .action(async (flags) => ctx.io.result(await service.showMelody(ctx, flags.agent), render.melody));
+  melody
+    .command("upload")
+    .description("a file of yours as the melody, from the next call")
+    .argument("<file>", "a wav, an mp3, an ogg, a flac or an m4a, up to 20 MB and five minutes")
+    .option("--agent <slug>")
+    .action(async (file, flags) => ctx.io.result(await service.uploadMelody(ctx, flags.agent, file), render.melody));
+  for (const [played, said] of [["default", "the runtime's own melody back"], ["off", "nothing plays: the caller hears silence"]] as const) {
+    melody
+      .command(played)
+      .description(said)
+      .option("--agent <slug>")
+      .action(async (flags) => ctx.io.result(await service.chooseMelody(ctx, flags.agent, played), render.melody));
+  }
+  melody
+    .command("after")
+    .description("seconds of the agent's quiet before the melody starts")
+    .argument("<seconds>", "0 to 30, or default for the runtime's own")
+    .option("--agent <slug>")
+    .action(async (seconds, flags) => ctx.io.result(await service.waitBeforeMelody(ctx, flags.agent, service.AfterInput.parse(seconds)), render.melody));
   // The six knobs moved into the settings: the old verbs name where, instead of "too many arguments".
   for (const moved of ["set", "clear"]) pipeline.command(moved, { hidden: true }).allowUnknownOption().allowExcessArguments().action(() => { throw new UsageError(`pipeline ${moved} is \`pinecall agent ${moved}\` now: the stages are fields of the settings`); });
 

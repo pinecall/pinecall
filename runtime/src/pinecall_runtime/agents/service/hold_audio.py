@@ -1,12 +1,14 @@
-"""An uploaded hold melody converted once, here, so no worker decodes a tenant's file mid-call."""
+"""The hold melody's audio: the runtime's own, and an upload converted once here so no worker decodes it mid-call."""
 
 import io
 from dataclasses import dataclass
+from pathlib import Path
 
 import av
 from av.audio.stream import AudioStream
 from av.container import InputContainer
 from av.error import FFmpegError
+from livekit.agents.voice.background_audio import BuiltinAudioClip
 
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.opus import drain_opus
@@ -48,6 +50,12 @@ class Converted:
 
     audio: bytes
     seconds: float
+
+
+# The worker plays it and the gateway lets a person hear it, from the same file.
+def runtime_melody() -> Path:
+    """The runtime's own melody: the clip livekit ships for holding, on this disk with the package."""
+    return Path(BuiltinAudioClip.HOLD_MUSIC.path())
 
 
 def convert_upload(data: bytes) -> Converted:

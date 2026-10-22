@@ -26,7 +26,7 @@ from pinecall_runtime.agents.service.widgets import Clip, Look
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.compliance import service as compliance
-from pinecall_runtime.enums import Channel, HoldPlayed, KeyScope
+from pinecall_runtime.enums import Channel, KeyScope
 from pinecall_runtime.exceptions import NotFound, PinecallError, ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.crypto import Vault
@@ -206,7 +206,7 @@ async def pipeline_report(
 # The melody and the widget are the agent's in an env, whoever holds it.
 @router.get("/v1/agents/{slug}/pipeline/hold-audio")
 async def hold_audio_of(slug: KnownAgent, actor: PipelineKey, session: Session) -> schemas.HoldAudio:
-    """What the agent plays while a tool runs: the box's melody, silence, or a clip of its own."""
+    """What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip."""
     return schemas.HoldAudio.of(await widgets.get_hold_audio(session, actor.org, actor.env, slug))
 
 
@@ -229,10 +229,10 @@ async def upload_hold_audio(
 
 @router.get("/v1/agents/{slug}/pipeline/hold-audio/audio")
 async def hold_audio_clip(slug: KnownAgent, actor: PipelineKey, session: Session) -> Response:
-    """The agent's own clip, Ogg Opus, to hear before a caller does."""
-    audio = await widgets.get_hold_clip(session, actor.org, actor.env, slug)
+    """The melody the agent plays, its own clip or the runtime's, Ogg, to hear before a caller does."""
+    audio = await widgets.hold_clip_heard(session, actor.org, actor.env, slug)
     if audio is None:
-        raise NotFound(f"agent {slug} plays no clip of its own: the box's melody is the worker's, off or default")
+        raise NotFound(f"agent {slug} plays nothing while a tool runs: its melody is off")
     return Response(audio, media_type=OGG)
 
 
@@ -240,12 +240,18 @@ async def hold_audio_clip(slug: KnownAgent, actor: PipelineKey, session: Session
 async def choose_hold_audio(
     slug: KnownAgent, body: schemas.PlayedRequest, actor: PipelineKey, session: Session
 ) -> schemas.HoldAudio:
-    """The box's melody back, or silence; an uploaded clip is forgotten either way."""
+    """The runtime's melody back, or silence; an uploaded clip is forgotten either way, the wait kept."""
     if body.played == "default":
-        await widgets.forget_hold(session, actor.org, actor.env, slug)
-        return schemas.HoldAudio(played="default")
-    await widgets.silence_hold(session, actor.org, actor.env, slug)
-    return schemas.HoldAudio(played=HoldPlayed.off)
+        return schemas.HoldAudio.of(await widgets.forget_hold(session, actor.org, actor.env, slug))
+    return schemas.HoldAudio.of(await widgets.silence_hold(session, actor.org, actor.env, slug))
+
+
+@router.put("/v1/agents/{slug}/pipeline/hold-audio/after")
+async def wait_before_hold(
+    slug: KnownAgent, body: schemas.AfterRequest, actor: PipelineKey, session: Session
+) -> schemas.HoldAudio:
+    """Seconds of the agent's quiet before the melody starts, from the next call on; null is the runtime's."""
+    return schemas.HoldAudio.of(await widgets.wait_before_hold(session, actor.org, actor.env, slug, body.after_s))
 
 
 # ── the widget ──

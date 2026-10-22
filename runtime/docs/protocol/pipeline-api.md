@@ -45,18 +45,21 @@ next call; this endpoint reads.
 
 ## The hold melody — `GET` · `PUT /v1/agents/{slug}/pipeline/hold-audio`
 
-What a caller hears while a tool runs or the model has not said its first word: the platform's melody,
-silence, or a clip the org uploaded. It starts after 2.5 s of the agent being quiet, so a tool or a
-model that answers inside that plays nothing, and stops at the answer. One choice per agent per
-environment, whoever holds it.
+What a caller hears while a tool runs, while the model has not said its first word, and while the
+line is held: the runtime's melody, silence, or a clip the org uploaded. It starts once the agent
+has been quiet for `after_s` seconds, so a tool or a model that answers inside the wait plays
+nothing, and it stops at the answer. It loops under the agent's voice at 60 %, on the phone and
+on the web alike; a written call plays none. One choice per agent per environment, whoever holds
+it, read by the next call.
 
 ```json
-{ "played": "custom", "name": "espera.mp3", "seconds": 41.2, "sha256": "9f2c…" }
+{ "played": "custom", "name": "espera.mp3", "seconds": 41.2, "sha256": "9f2c…", "after_s": 2.5 }
 ```
 
-`default` is the platform's own melody, `off` is silence, `custom` an uploaded clip with the name it
-arrived under, its length, and the sha256 of the **converted** bytes, which is what a worker
-recognises a clip it already fetched by.
+`default` is the runtime's own melody (the clip livekit ships for holding), and what an agent
+nobody chose for plays; `off` is silence; `custom` an uploaded clip with the name it arrived
+under, its length, and the sha256 of the **converted** bytes, which is what a worker recognises a
+clip it already fetched by. `after_s` is the wait that plays: the org's, else the runtime's 2.5.
 
 `PUT …/hold-audio?name=` uploads one, and **the body is the file**: a wav, an mp3, an ogg, a flac
 or an m4a, told apart by its first bytes and nothing else (FFmpeg is named the container and probes
@@ -64,9 +67,12 @@ nothing, so a playlist or a script it would otherwise follow is no audio here); 
 is converted here, once, to Ogg Opus 48 kHz mono, so no worker decodes a stranger's upload
 mid-call; `400` in a sentence for a file that is no audio, one longer than five minutes or shorter
 than a second, `400` over 20 MB.
-`GET …/hold-audio/audio` is the org's own clip, `audio/ogg`, to hear before a caller does; `404`
-while the agent plays no clip of its own. `PUT …/hold-audio/played {played: "default" | "off"}`
-needs no file; an uploaded clip is forgotten either way.
+`GET …/hold-audio/audio` is what the agent plays, `audio/ogg`, to hear before a caller does: the
+org's clip, or the runtime's melody; `404` while it plays nothing. `PUT …/hold-audio/played
+{played: "default" | "off"}` needs no file; an uploaded clip is forgotten either way.
+`PUT …/hold-audio/after {after_s: 1.5}` sets the wait, from 0 to 30 seconds, and `null` gives back
+the runtime's; `400` in a sentence out of that range. Choosing what plays keeps the wait, and
+setting the wait keeps what plays. `pinecall pipeline melody` is the same five, from a terminal.
 
 The worker's own reads are `GET /v1/agents/{slug}/hold-audio` and `…/audio`, on the fleet's key,
 in the call's scope.

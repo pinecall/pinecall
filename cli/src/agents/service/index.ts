@@ -1,6 +1,7 @@
 /** Agents: what the org set over the class, per corner and versioned; the lexicon; the pipeline; the processes; the voices. */
 
 export { cornerName, cornerRead, cornerWritten, holdsACorner, readSettings, rowToStartFrom, versionGuarded, writeCorner, type Change, type CornerWritten, type TuningAnswer, type TuningBody, type TuningRow } from "./corners.js";
+export { AfterInput, chooseMelody, showMelody, uploadMelody, waitBeforeMelody, type HoldMelody } from "./melody.js";
 export { hearWords, lexiconHistory, removeWords, sayWord, SayWordInput, showLexicon, WordsInput, type LexiconAnswer, type LexiconHistory, type LexiconRow, type Words } from "./lexicon.js";
 export {
   countTools,

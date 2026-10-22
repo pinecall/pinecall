@@ -48,7 +48,7 @@ path end to end, with every output under it.
 | [`agent`](#agent) | the agent's settings — yours, the team's, production's — set, knowledge, history, diff, rollback, pull, push | yes |
 | [`kill`](#kill) | an admin's: every app holding the agent in the env lets go of it and keeps its others; nothing is erased | yes |
 | [`lexicon`](#lexicon) | an agent's words: how the voice says them and what the ears must know | yes |
-| [`pipeline`](#pipeline) | what it hears, decides and speaks with, as the next call would be built | yes |
+| [`pipeline`](#pipeline) | what it hears, decides and speaks with, as the next call would be built; `melody`, what a caller hears while a tool runs | yes |
 | [`line`](#line) | which phone is yours, and whose terminal a call from anybody else's rings in | yes |
 | [`numbers`](#numbers) | which number reaches which agent, in the environment it answers in, and which the org's accounts own free | yes |
 | [`carriers`](#carriers) | the org's carrier accounts — a Twilio account, a SIP peer, a WhatsApp number — where its numbers live | yes |
@@ -1478,6 +1478,39 @@ The three legs as the **next** call would be built. It reads and nothing else: t
 claude-haiku-5-5` (a model, the vendor in use), and `--llm haiku` (a tier, expanded to the id its
 provider answers to, exactly as `pinecall test --model haiku` expands it). `pinecall pipeline set`
 and `clear` say so and exit 2. `pinecall providers` lists every vendor a stage may be moved onto.
+
+### `pipeline melody`
+
+```
+pinecall pipeline melody [show] [--agent <slug>]
+pinecall pipeline melody upload <file> [--agent <slug>]
+pinecall pipeline melody default | off [--agent <slug>]
+pinecall pipeline melody after <seconds | default> [--agent <slug>]
+```
+
+```console
+$ pinecall pipeline melody
+plays   the runtime's melody
+after   2.5 s of the agent's quiet
+$ pinecall pipeline melody upload espera.mp3
+plays   espera.mp3 · 41.2 s, looped
+after   2.5 s of the agent's quiet
+$ pinecall pipeline melody after 1.5
+plays   espera.mp3 · 41.2 s, looped
+after   1.5 s of the agent's quiet
+```
+
+What a caller hears while a tool runs, and while the model has not said its first word. It starts
+once the agent has been quiet for the wait, so a tool or a model that answers inside it plays
+nothing, and it stops at the answer. It plays looped under the agent's voice, on the phone and on
+the web alike, from the next call; a written call plays none.
+
+`default` is the runtime's own melody, and what an agent nobody chose for plays. `off` is silence.
+`upload` sends a wav, an mp3, an ogg, a flac or an m4a, up to 20 MB and five minutes, which the
+gateway converts once; a file it cannot read is refused in a sentence. `after` sets the wait in
+seconds, from 0 to 30, and `after default` gives back the runtime's 2.5. Choosing what plays keeps
+the wait, and setting the wait keeps what plays. There is one choice per agent per environment,
+whoever holds the agent: `--prod` sets production's. The console's Pipeline screen shows the same.
 
 ## `supervise`
 

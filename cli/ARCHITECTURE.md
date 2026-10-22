@@ -75,7 +75,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | file | lines | what it is |
 |---|---|---|
 | `api/accounts.ts` | 120 | The accounts endpoints: who a key is, the sign-in pairing, the person's orgs, the console's login codes, the org's secrets and its people. |
-| `api/agents.ts` | 165 | The agents endpoints: an agent's settings and their versions, its lexicon, its pipeline, the apps holding it, and a vendor's voices. |
+| `api/agents.ts` | 196 | The agents endpoints: an agent's settings and their versions, its lexicon, its pipeline, the apps holding it, and a vendor's voices. |
 | `api/alerts.ts` | 90 | The alerts endpoints: monitors, the org's webhook, its telemetry collector. |
 | `api/billing.ts` | 32 | The billing endpoint: what the org may use in an env and what it used. |
 | `api/calls.ts` | 119 | The calls endpoints: an agent's calls, one call's state, its log paged or followed, the supervisor's verbs, a listen seat, the chat socket. |
@@ -134,11 +134,12 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `agents/commands.ts` | 285 | `pinecall agent | lexicon | pipeline | voices`: what the org set over the class, its words, what it runs on, the voices to pick. |
-| `agents/render.ts` | 264 | Agents as a terminal reads them: the settings table, versions, a diff, the lexicon, the pipeline, the apps, the voices. |
+| `agents/commands.ts` | 331 | `pinecall agent | lexicon | pipeline | voices`: what the org set over the class, its words, what it runs on, the voices to pick. |
+| `agents/render.ts` | 271 | Agents as a terminal reads them: the settings table, versions, a diff, the lexicon, the pipeline, the apps, the voices. |
 | `agents/service/corners.ts` | 103 | The three corners of an agent's settings — yours, the team's, production's — and how a write lands on one. |
-| `agents/service/index.ts` | 46 | Agents: what the org set over the class, per corner and versioned; the lexicon; the pipeline; the processes; the voices. |
+| `agents/service/index.ts` | 47 | Agents: what the org set over the class, per corner and versioned; the lexicon; the pipeline; the processes; the voices. |
 | `agents/service/lexicon.ts` | 77 | An agent's lexicon: how the voice says a word and what the ears must know, whole and versioned like the settings. |
+| `agents/service/melody.ts` | 47 | The hold melody: what a caller hears while a tool runs or the model is slow — the runtime's, none, or a file of the org's — and after how long. |
 | `agents/service/running.ts` | 122 | What an agent runs with: its pipeline as the next call would be built, the processes holding the org's agents, and a vendor's voices. |
 | `agents/service/settings.ts` | 264 | An agent's settings: the fields, set and cleared as the next version of a corner, their versions, and a corner as a file. |
 

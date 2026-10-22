@@ -5,7 +5,7 @@ import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 import type { CornerWritten } from "./service/corners.js";
 import { date } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed } from "./service/index.js";
+import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type HoldMelody, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed } from "./service/index.js";
 
 // Max cell width; longer values are truncated so three columns fit.
 const A_CELL = 40;
@@ -211,6 +211,13 @@ export function pipeline(report: PipelineReport): string[] {
     for (const [vendor, why] of off) lines.push(`  ${vendor} is not available here: ${why}`);
   }
   return lines;
+}
+
+/** What a caller hears while a tool runs or the model is slow, and after how many seconds of the agent's quiet. */
+export function melody(held: HoldMelody): string[] {
+  const plays = held.played === "off" ? "nothing" : held.played === "default" ? "the runtime's melody" : `${held.name ?? "an uploaded file"}${held.seconds === null ? "" : ` · ${held.seconds} s`}, looped`;
+  const after = held.played === "off" ? `${held.after_s} s, kept for when a melody plays again` : `${held.after_s} s of the agent's quiet`;
+  return [`plays   ${plays}`, `after   ${after}`];
 }
 
 /** Every app connected in the env, one line each: id, agents, corner, host and address, SDK, connected since. */

@@ -61,7 +61,7 @@ export function HoldMelody({ agent }: { agent: string }): ReactNode {
 
   return (
     <Card>
-      <CardHead title="Hold melody" meta="what the caller hears while a tool runs — phone and web alike, from the next call" />
+      <CardHead title="Hold melody" meta="what the caller hears while a tool runs or the model is slow — phone and web alike, from the next call" />
       <div className="pipe-hold">
         <div className="pipe-hold-now">
           <b>{held === null ? "…" : held.played === "off" ? "Off" : (held.name ?? "Your file")}</b>
@@ -70,7 +70,7 @@ export function HoldMelody({ agent }: { agent: string }): ReactNode {
               ? "Asking the gateway."
               : held.played === "off"
                 ? "Silence while a tool runs."
-                : `${held.played === "default" ? "The runtime's own" : "Uploaded"} · ${held.seconds ?? "?"} s, looped under the wait at 60 %, after 0.6 s.`}
+                : `${held.played === "default" ? "The runtime's own" : `Uploaded · ${held.seconds ?? "?"} s`}, looped under the wait at 60 %, after ${held.after_s} s of quiet.`}
           </span>
         </div>
         <div className="pipe-hold-actions">

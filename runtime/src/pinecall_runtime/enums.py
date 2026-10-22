@@ -175,8 +175,9 @@ class Stage(StrEnum):
 
 
 class HoldPlayed(StrEnum):
-    """What an agent plays while a tool runs."""
+    """What an agent plays while a tool runs: the runtime's melody, nothing, or the org's clip."""
 
+    default = "default"
     off = "off"
     custom = "custom"
 

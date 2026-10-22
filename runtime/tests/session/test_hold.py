@@ -85,6 +85,23 @@ async def test_the_melody_waits_for_the_agent_to_stop_talking(
     melody.ended()
 
 
+async def test_the_orgs_own_wait_holds_over_the_runtimes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(hold_module, "GRACE_S", 5.0)
+    melody = HoldMusic(Path("hold.ogg"), after_s=0.01)
+    player = Player()
+    melody.player = player
+    melody.began()
+    await asyncio.sleep(0.05)
+    assert player.played == [("hold.ogg", True)]
+    melody.ended()
+    patient = HoldMusic(Path("hold.ogg"), after_s=5.0)
+    patient.player = Player()
+    patient.began()
+    await asyncio.sleep(0.05)
+    assert patient.player.played == []
+    patient.ended()
+
+
 def a_wav(seconds: float, *, rate: int = 16_000) -> bytes:
     """A sine of that length, mono, as a person would upload it."""
     out = io.BytesIO()

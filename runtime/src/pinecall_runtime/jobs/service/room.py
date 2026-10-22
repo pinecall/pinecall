@@ -11,8 +11,9 @@ from pathlib import Path
 from livekit import rtc
 
 from pinecall_runtime.accounts.service import tokens
+from pinecall_runtime.agents import service as agents
 from pinecall_runtime.calls import service as calls
-from pinecall_runtime.enums import Channel
+from pinecall_runtime.enums import Channel, HoldPlayed
 from pinecall_runtime.exceptions import GatewayUnavailable
 from pinecall_runtime.jobs.service.client import GatewayClient
 from pinecall_runtime.kit.auth import Scope
@@ -44,14 +45,18 @@ async def seat_of(room: rtc.Room, channel: Channel, *, typed: bool) -> str | Non
     return None
 
 
-# The default clip is the box's data, not the wheel's: a box that holds none plays silence.
+# A written call hears nothing, so it plays no melody.
 async def hold_music_for(
-    gateway: GatewayClient, agent: str, scope: Scope, played: str, sha256: str | None
+    gateway: GatewayClient, agent: str, scope: Scope, held: agents.HoldAudio, *, typed: bool
 ) -> session.HoldMusic | None:
-    """The org's own clip, from this box's cache or fetched into it; None for the default."""
-    if played != "custom" or sha256 is None:
+    """The melody the agent plays, after its wait: the runtime's, or the org's own clip from this box's cache."""
+    if typed or held.played is HoldPlayed.off:
         return None
-    cached = HOLD_CACHE / f"{sha256}.ogg"
+    if held.played is HoldPlayed.default:
+        return session.HoldMusic(agents.runtime_melody(), held.after_s)
+    if held.sha256 is None:
+        return None
+    cached = HOLD_CACHE / f"{held.sha256}.ogg"
     if not cached.is_file():
         try:
             audio = await gateway.hold_clip(agent, scope)
@@ -59,7 +64,7 @@ async def hold_music_for(
             logger.warning("the hold clip of %s could not be fetched: the call plays none", agent)
             return None
         await asyncio.to_thread(_write_beside, cached, audio)
-    return session.HoldMusic(cached)
+    return session.HoldMusic(cached, held.after_s)
 
 
 # Only the gateway numbers a log, so a widget is sent what is read back from it, projected for

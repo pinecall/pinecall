@@ -8,6 +8,7 @@ from sqlalchemy import (
     TIMESTAMP,
     BigInteger,
     Boolean,
+    Float,
     ForeignKey,
     Identity,
     Index,
@@ -77,7 +78,7 @@ class AgentWidget(Model):
 
 
 class HoldAudio(Model):
-    """Off, or a custom Ogg Opus clip with its hash, length and name."""
+    """The runtime's melody, off, or a custom Ogg Opus clip with its hash, length and name; and how long it waits."""
 
     __tablename__ = "hold_audio"
 
@@ -89,6 +90,8 @@ class HoldAudio(Model):
     sha256: Mapped[str | None] = mapped_column(Text)
     seconds: Mapped[float | None] = mapped_column(REAL)
     name: Mapped[str | None] = mapped_column(Text)
+    # Seconds of the agent's quiet before the melody starts; null is the runtime's own.
+    after_s: Mapped[float | None] = mapped_column(Float)
     set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
 
 

@@ -120,6 +120,37 @@ export function getPipeline(gw: GatewayClient, agent: string): Promise<PipelineR
   return gw.get<PipelineReport>(`/v1/agents/${seg(agent)}/pipeline`);
 }
 
+/** `GET /v1/agents/{slug}/pipeline/hold-audio`: what a caller hears while a tool runs, and after how many seconds of quiet. */
+export interface HoldMelody {
+  played: "default" | "off" | "custom";
+  sha256: string | null;
+  seconds: number | null;
+  name: string | null;
+  after_s: number;
+}
+
+function melodyOf(agent: string): string {
+  return `/v1/agents/${seg(agent)}/pipeline/hold-audio`;
+}
+
+export function getMelody(gw: GatewayClient, agent: string): Promise<HoldMelody> {
+  return gw.get<HoldMelody>(melodyOf(agent));
+}
+
+/** The file as it is, no multipart: the gateway tells the format by its first bytes and converts it once. */
+export function uploadMelody(gw: GatewayClient, agent: string, audio: Buffer, name: string): Promise<HoldMelody> {
+  return gw.request<HoldMelody>(melodyOf(agent), { method: "PUT", body: audio, query: { name } });
+}
+
+export function chooseMelody(gw: GatewayClient, agent: string, played: "default" | "off"): Promise<HoldMelody> {
+  return gw.put<HoldMelody>(`${melodyOf(agent)}/played`, { played });
+}
+
+/** Seconds of quiet before the melody starts; null is the runtime's own wait. */
+export function waitBeforeMelody(gw: GatewayClient, agent: string, after_s: number | null): Promise<HoldMelody> {
+  return gw.put<HoldMelody>(`${melodyOf(agent)}/after`, { after_s });
+}
+
 export async function listApps(gw: GatewayClient): Promise<AppProcess[]> {
   return (await gw.get<AppList>("/v1/apps")).apps;
 }

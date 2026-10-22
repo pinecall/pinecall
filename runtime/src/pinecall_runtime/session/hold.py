@@ -8,12 +8,14 @@ from pathlib import Path
 from livekit import rtc
 from livekit.agents.voice.background_audio import AudioConfig, BackgroundAudioPlayer, PlayHandle
 
+from pinecall_runtime.agents import service as agents
+
 logger = logging.getLogger(__name__)
 
 # The hold melody sits under the agent's voice, since a phone leg has no volume of its own. A
-# tool that answers inside the grace plays nothing.
+# tool that answers inside the grace plays nothing; the grace is the org's, else the runtime's.
 VOLUME = 0.6
-GRACE_S = 2.5
+GRACE_S = agents.HOLD_AFTER_S
 FADE_IN_S = 0.4
 FADE_OUT_S = 0.3
 
@@ -21,9 +23,10 @@ FADE_OUT_S = 0.3
 class HoldMusic:
     """The melody played while a tool runs or the line is held, shared by what overlaps."""
 
-    def __init__(self, clip: Path) -> None:
-        """A melody not yet in any room."""
+    def __init__(self, clip: Path, after_s: float | None = None) -> None:
+        """A melody not yet in any room, that starts after that many seconds of quiet."""
         self.clip = clip
+        self.after_s = after_s
         self.player: BackgroundAudioPlayer | None = None
         self.handle: PlayHandle | None = None
         self.running = 0
@@ -84,7 +87,7 @@ class HoldMusic:
     # is quiet; checked again after it, since livekit may speak another round's preamble.
     async def _after_the_grace(self) -> None:
         await self.quiet.wait()
-        await asyncio.sleep(GRACE_S)
+        await asyncio.sleep(GRACE_S if self.after_s is None else self.after_s)
         if self.running == 0 or not self.quiet.is_set() or self.player is None:
             return
         melody = AudioConfig(str(self.clip), volume=VOLUME, fade_in=FADE_IN_S, fade_out=FADE_OUT_S)

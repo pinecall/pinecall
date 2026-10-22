@@ -118,7 +118,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
         legs=telephony.Legs(trunk=partial(_trunk_for, gateway, context), sent_on=partial(_sent_on, gateway, context)),
         claim=partial(_claim, gateway, context.call),
     )
-    hold = await hold_music_for(gateway, route.agent, scope, played.played, played.sha256)
+    hold = await hold_music_for(gateway, route.agent, scope, played, typed=typed)
     await running.start(
         room=room,
         hold=hold,
