@@ -13,6 +13,10 @@ RRF_K = 60
 # `hnsw.iterative_scan` makes the index scan past its first 40 candidates when the scope filters
 # them out: one tenant's rows among every tenant's would otherwise come back short, or empty.
 ITERATIVE_SCAN = text("SET LOCAL hnsw.iterative_scan = relaxed_order")
+# A prepared statement is planned for its values every time: planned once for any org and any copy,
+# it estimated a few dozen rows for every copy and scored them all by hand, a second a search, where
+# the index scans take ten milliseconds. Planning costs a millisecond.
+PLANNED_FOR_ITS_VALUES = text("SET LOCAL plan_cache_mode = force_custom_plan")
 
 # Every branch is one ranked list: the vectors, and the words of each lexical index asked, since
 # two indexes' BM25 scores are over two corpora and compare only within one. A row's fused score
@@ -94,6 +98,7 @@ async def hybrid(
         columns=", ".join(f"found.{column}" for column in columns),
     )
     await session.execute(ITERATIVE_SCAN)
+    await session.execute(PLANNED_FOR_ITS_VALUES)
     rows = (await session.execute(text(query), {**params, "q": vector, "words": words, "room": room})).mappings().all()
     return [
         Hit(

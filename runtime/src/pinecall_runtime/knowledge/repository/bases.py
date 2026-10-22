@@ -17,11 +17,15 @@ from pinecall_runtime.knowledge.repository.search import Hit, Lexical, hybrid
 # A found chunk comes back as its section: the chunks of its heading this many either side of it.
 SECTION_SPAN = 2
 
-KNOWLEDGE_SCOPE = """
-org = :org AND env = :env AND (base, holder) IN (
-    SELECT copy.base, copy.holder FROM unnest(CAST(:bases AS text[]), CAST(:holders AS text[])) AS copy (base, holder)
-)
-"""
+
+# Each copy is a pair of equalities the planner estimates from the column statistics. Asked as a
+# join on two unnested arrays, it guessed a hundred rows for a copy of six thousand, chose to score
+# every row of the copy by hand over the two index scans, and a search took a second (2026-10-22).
+def knowledge_scope(copies: int) -> str:
+    """The rows of these copies of the org's bases in the env, one `(base, holder)` pair each."""
+    pairs = " OR ".join(f"(base = :base_{at} AND holder = :holder_{at})" for at in range(copies))
+    return f"org = :org AND env = :env AND ({pairs})"
+
 
 # The chunks around each found one, under the same heading of the same file, in the file's order;
 # a question found hands back the text it sits beside, never itself.
@@ -273,19 +277,16 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
         self, scope: Scope, copies: Sequence[KnowledgeBase], *, vector: str, words: str, room: int
     ) -> list[Hit]:
         """The hybrid search over the chunks of these copies."""
-        params = {
-            "org": scope.org,
-            "env": scope.env.value,
-            "bases": [copy.base for copy in copies],
-            "holders": [copy.holder for copy in copies],
-        }
+        params: dict[str, Any] = {"org": scope.org, "env": scope.env.value}
+        for at, copy in enumerate(copies):
+            params[f"base_{at}"], params[f"holder_{at}"] = copy.base, copy.holder
         return await hybrid(
             self.session,
             "knowledge_chunks",
             [lexical_of(language) for language in dict.fromkeys(copy.language for copy in copies)],
             KNOWLEDGE_COLUMNS,
             params,
-            scope=KNOWLEDGE_SCOPE,
+            scope=knowledge_scope(len(copies)),
             vector=vector,
             words=words,
             room=room,

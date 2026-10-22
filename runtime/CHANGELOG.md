@@ -3,8 +3,10 @@
 ## Unreleased
 
 - **A search reads its indexes, not its rows.** The word branch scored every chunk of the scope
-  one by one and sorted them (600–800 ms on a base of 6 000 rows); each BM25 index is read as a
-  top-`room` scan now, one ranked list a language, fused with the vectors' by rank
+  one by one and sorted them; each BM25 index is read as a top-`room` scan now, one ranked list a
+  language, fused with the vectors' by rank. And the statement is planned for its values: planned
+  once for any org and any copy, Postgres guessed a few dozen rows for a copy of six thousand and
+  scored them all by hand, a second a search where the two index scans take ten milliseconds
   (`docs/retrieval/spec.md`).
 - **A spoken turn is searched on what it said.** The lookups started on a turn's first four
   words kept those words as the query ("hello, I wanted to" was what every turn searched); the

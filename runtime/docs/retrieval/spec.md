@@ -86,7 +86,9 @@ Every chunk is found by its vector and by its words: one query embedded once, on
 HNSW index and one top-`room` scan of each BM25 index asked, each a ranked list of its own, fused
 by reciprocal rank in SQL (a row's score is the sum of 1 / (60 + rank) over the lists it is in).
 Two BM25 indexes score over two corpora, so their scores are never ordered together: only ranks
-are. **A base speaks a language**: the text-search
+are. The statement is planned for its values on every search (`plan_cache_mode`): a plan made once
+for any org and any copy estimates a copy at a few dozen rows and scores every row by hand, a
+second where the two index scans take ten milliseconds. **A base speaks a language**: the text-search
 configuration its words are stemmed with, one of `english`, `spanish`, `portuguese`, `french`,
 `german`, `italian`, `dutch` or `simple` (no stemming), said by the push (`language`, as `en` or
 `english`) or counted from the files' function words when it says none, `simple` when they say
