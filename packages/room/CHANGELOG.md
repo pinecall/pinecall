@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.9 — released with every other package (2026-10-22)
+
+- Nothing of `@pinecall/room` changed: published at 0.11.9 with every other package.
+
 ## 0.11.8 — `leave()` says the hang-up at the gateway's door
 
 - **`leave()` says the hang-up at the gateway's door.** The hang-up published on the room's data

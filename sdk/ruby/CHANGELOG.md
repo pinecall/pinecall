@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.9] — the wire knows a base's language and a golden's alternatives (2026-10-22)
+
+- **The wire knows a base's language and a golden's alternatives.** `KnowledgeBase.language` and
+  `KnowledgePushed.language`; `GoldenQuestion.expects` is a heading path or a list of them, and
+  `GoldenMiss.expects` a list.
+
 ## [0.11.8] — released with every other package (2026-10-21)
 
 - Nothing of the gem changed: published at 0.11.8 with every other package.

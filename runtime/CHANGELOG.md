@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.9 — A search reads its indexes and a spoken turn is searched on what it said (2026-10-22)
 
 - **A search reads its indexes, not its rows.** The word branch scored every chunk of the scope
   one by one and sorted them; each BM25 index is read as a top-`room` scan now, one ranked list a

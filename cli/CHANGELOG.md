@@ -4,6 +4,21 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.9] — `docs push --language`, a golden question with several pages, the questions a section answers
+
+- **`pinecall docs push --language <code>`: the language a base speaks.** `en`, `es`, `pt`, `fr`,
+  `de`, `it`, `nl` or the configuration's name; left out, the gateway counts it from the files'
+  words. The push's line says which (`clinica-norte · 7 files · 41 chunks · spanish · 812 ms`),
+  and when the files said none clearly it says how to say one. `docs list` shows each base's.
+  The MCP's `docs` tool takes `language` on `push`.
+
+- **A golden question may name several pages.** `expects` in `docs.json` is a heading path or a
+  list of them, any one of which answers; a miss names the list.
+
+- **The questions a section answers travel with it.** `<!-- asks … -->` under a heading, one a
+  line, indexed beside the section in a caller's own words; every other HTML comment is dropped
+  from the base.
+
 ## [0.11.8] — a simulation names who plays its caller; how far each judge can be trusted
 
 - **`pinecall simulate --llm --tts --caller-voice`: who plays the caller, for one run.** The model
