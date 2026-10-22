@@ -59,6 +59,8 @@ Arguments:
 
 Options:
   --base <name>       the base's name; the agent's slug when left out
+  --language <code>   the language the files are written in (en, es, pt, fr, de,
+                      it, nl); counted from their words when left out
   --agent <name>
   --file <agent.tsx>
   -h, --help          display help for command

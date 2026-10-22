@@ -14,6 +14,7 @@ The documents the agent searches: a folder pushed as a base, attached to the age
 | `action` | `push` · `list` · `eval` · `attach` · `detach` · `attached` | required | push the agent's docs folder as a base; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base |
 | `agent` | text |  | the agent's name; the project's only agent when left out |
 | `base` | text |  | the base's name; the agent's own when left out |
+| `language` | text |  | `push`: the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out |
 | `k` | a whole number 1–50 |  | `attach` and `eval`: how many chunks a turn reads |
 | `mode` | `retrieved` · `tool` |  | `attach`: searched before every turn, or a tool the model calls |
 | `min_score` | a number 0–1 |  | `attach`: chunks under this share of the best one are dropped |

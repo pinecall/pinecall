@@ -151,11 +151,11 @@ class Embedder:
             return cut
         every = [chunk for chunks in documents for chunk in chunks]
         flat = [vector for batch in _windows(every, REQUEST_TOKENS) for vector in await self._sent(batch, PUSH_TIMEOUT)]
-        cut: list[list[list[float]]] = []
+        sliced: list[list[list[float]]] = []
         for chunks in documents:
-            cut.append(flat[: len(chunks)])
+            sliced.append(flat[: len(chunks)])
             flat = flat[len(chunks) :]
-        return cut
+        return sliced
 
     # Documents go out as many to a request as its tokens and its count allow.
     async def _contexts(self, documents: list[list[str]], waits: httpx.Timeout) -> list[list[list[float]]]:
