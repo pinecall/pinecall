@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.10] — `pinecall pipeline melody`: the hold melody from the terminal
 
 - **`pinecall pipeline melody`: the hold melody from the terminal.** What a caller hears while a
   tool runs or the model is slow: `show`, `upload <file>`, `default`, `off`, and `after

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.10 — The hold melody plays by default and waits as long as the org says (2026-10-22)
 
 - **The runtime's hold melody plays again.** An agent nobody chose a melody for was documented and
   shown as playing the runtime's own, and played silence: the worker built a melody only from an
