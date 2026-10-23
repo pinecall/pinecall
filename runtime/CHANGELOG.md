@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.19 — the simulated caller, one phone per person, voices by language (2026-10-23)
 
 - **A Studio definition naming a secret the environment lacks says which environment**: a deploy to
   production that misses a production secret said `which this env has none of`. (found by the 2026-10-23

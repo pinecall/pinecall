@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.19 — released with the CLI's reload on save (2026-10-23)
+
+- Nothing of the Python SDK changed: published at 0.11.19 with every other package.
+
 ## 0.11.18 — released with the runtime's settings fixes (2026-10-23)
 
 - Nothing of the Python SDK changed: published at 0.11.18 with every other package.
