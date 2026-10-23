@@ -4,11 +4,11 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.11] — a case written by hand reads as one
 
 - **A case written by hand reads as one.** The gateway now keeps cases a person wrote in the console
-  (`source: "person"`, no call): `cases show` says `written by hand (<env>) · written by <who>` where a
-  call's case says `from <call>`, and `cases forget` names no call for it.
+  (`source: "person"`, no call): `cases show` says `written by <who> (by hand, <env>)` where a
+  call's case says `from <call>`, and its `broke` says no call made it, and `cases forget` names no call for it.
 
 ## [0.11.10] — `pinecall pipeline melody`: the hold melody from the terminal
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.11 — A person writes a case by hand (2026-10-23)
 
 - **A person writes a case by hand.** `PUT /v1/agents/{slug}/cases/{name} {golden, held_out}`
   keeps a golden no call made as an approved case of the agent, `source: "person"`, played by the
