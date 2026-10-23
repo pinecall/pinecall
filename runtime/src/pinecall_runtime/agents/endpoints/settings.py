@@ -77,10 +77,11 @@ async def settings_diff(
     actor: WordsKey,
     session: Session,
     against: Annotated[Literal["team", "production"], Query()] = "production",
+    team: Annotated[bool, Query()] = False,
 ) -> schemas.SettingsDiffResponse:
-    """This key's scope's newest against the team's or production's, and which fields differ."""
+    """This key's corner's newest (the team's with `team`) against the team's or production's; the fields that differ."""
     kept = await settings.tuning_side_by_side(session, actor.scope, slug)
-    ours = kept.yours if actor.scope.holder else kept.team
+    ours = kept.team if team or not actor.scope.holder else kept.yours
     theirs = kept.production if against == "production" else kept.team
     return schemas.SettingsDiffResponse(
         ours=None if ours is None else _settings_row(ours),

@@ -22,6 +22,7 @@ export const ImportNumberInput = z.object({
   agent: z.string().min(1),
   account: z.string().min(1).optional(),
   channel: z.enum(["phone", "whatsapp"]).optional(),
+  move: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
 export type ImportNumberInput = z.infer<typeof ImportNumberInput>;

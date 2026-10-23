@@ -347,6 +347,7 @@ async def _said_out_loud(
         # Refused, the run stops where it is, as for any quota (_judged_suite).
         await simulations.admit_simulation(session_, serving, scope, registration.slug)
         voice = await players.caller_voice(session_, serving, scope, registration.slug, None)
+        notice = await simulations.opens_with_a_notice(session_, scope, voice.language)
     lines = [turn.say for turn in golden.turns if turn.say is not None]
     dispatch = Dispatch(
         agent=registration.slug,
@@ -366,7 +367,7 @@ async def _said_out_loud(
     line = spoken.Line(
         interferer_db=body.interferer_db, packet_loss=body.packet_loss, ambience=body.ambience or "television"
     )
-    placed = spoken.SpokenLine("", "", opened.call, len(lines), line)
+    placed = spoken.SpokenLine("", "", opened.call, len(lines), line, notice=notice)
     try:
         await simulations.on_the_line(serving, dispatch, speech, placed, scripted)
     finally:

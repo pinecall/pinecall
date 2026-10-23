@@ -6,7 +6,10 @@ import { gzipSync } from "node:zlib";
 
 import ignore, { type Ignore } from "ignore";
 
-import { PinecallError } from "../errors.js";
+import { PinecallError, UsageError } from "../errors.js";
+
+// The gateway's own sentence: a release holds files and folders, and a link is refused before it is sent.
+export const NOT_A_FILE = (path: string): string => `${path} is a link or a device: a release holds files and folders only`;
 
 // The box installs the dependencies itself; .env holds the keys, which travel as secrets instead.
 const NEVER = new Set(["node_modules", ".venv", "__pycache__", ".git", "dist", ".pinecall", ".DS_Store"]);
@@ -56,6 +59,7 @@ function walked(root: string, folder: string, ignoring: readonly Ignored[]): str
     if (NEVER.has(entry.name) || ignored(rules, path, entry.isDirectory())) continue;
     if (entry.isDirectory()) found.push(...walked(root, path, rules));
     else if (entry.isFile()) found.push(relative(root, path).split(sep).join("/"));
+    else throw new UsageError(NOT_A_FILE(relative(root, path).split(sep).join("/")));
   }
   return found;
 }

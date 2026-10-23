@@ -38,6 +38,7 @@ export const numbers = tool({
     agent: z.string().optional().describe("`import`, `buy`: the agent that answers it"),
     channel: z.enum(["phone", "whatsapp"]).optional().describe("`import`, `buy`: phone unless it is a WhatsApp number"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
+    move: z.boolean().optional().describe("`import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks"),
     country: z.string().optional().describe("`buy`: the country, two letters (ES, US)"),
     area_code: z.string().optional().describe("`buy`: an area code, digits only"),
     dry_run: z.boolean().optional().describe("`import`, `buy`: true (the default) answers the steps and writes nothing; false does them"),
@@ -53,7 +54,7 @@ export const numbers = tool({
       return await service.buyNumber(ctx, service.BuyNumberInput.parse({ country: args.country, agent: args.agent, areaCode: args.area_code, channel: args.channel, dryRun }));
     }
     if (args.number === undefined || args.agent === undefined) throw new ToolRefused("import takes the number and the agent that answers it");
-    return await service.importNumber(ctx, service.ImportNumberInput.parse({ number: args.number, agent: args.agent, account: args.account, channel: args.channel, dryRun }));
+    return await service.importNumber(ctx, service.ImportNumberInput.parse({ number: args.number, agent: args.agent, account: args.account, channel: args.channel, move: args.move === true, dryRun }));
   },
 });
 

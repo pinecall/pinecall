@@ -148,9 +148,9 @@ export async function settingsHistory(ctx: Context, agent: string | undefined, t
   return { agent: name, history: await api.getSettingsHistory(ctx.gateway(), name, team) };
 }
 
-export async function settingsDiff(ctx: Context, agent: string | undefined, against: "team" | "production"): Promise<{ agent: string; against: string; diff: TuningDiff }> {
+export async function settingsDiff(ctx: Context, agent: string | undefined, against: "team" | "production", team = false): Promise<{ agent: string; against: string; diff: TuningDiff }> {
   const name = agentNamed(ctx, agent);
-  return { agent: name, against, diff: await api.getSettingsDiff(ctx.gateway(), name, against) };
+  return { agent: name, against, diff: await api.getSettingsDiff(ctx.gateway(), name, against, team) };
 }
 
 export async function rollbackSettings(ctx: Context, version: number, options: WriteOptions): Promise<{ agent: string; answer: TuningAnswer }> {

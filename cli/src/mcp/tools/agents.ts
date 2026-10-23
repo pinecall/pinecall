@@ -15,7 +15,7 @@ export const agent = tool({
   schema: {
     action: z.enum(["show", "set", "clear", "history", "diff", "rollback", "knowledge"]).describe("show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart"),
     agent: AGENT,
-    settings: service.SettingsInput.optional().describe("`set`: the fields to set, named as `pinecall agent set` names its flags"),
+    settings: service.SettingsInput.strict().optional().describe("`set`: the fields to set, named as `pinecall agent set` names its flags, with the values the flags take: strings (`voice`, `tts`, `llm` as `vendor/model`, `language`, `greeting`, `hangup`), numbers (`temperature`, `endpointing-ms`, `min-interruption-words`, `eot-threshold`, `max-duration` in minutes 1 to 60 or the string `off`), `on`/`off` strings (`record`, `greeting-interruptible`), `end-of-turn` one of stt, livekit, smart-turn, objects for the `*-options`, arrays of strings for `remember` and `forget`. A field that is none of these is refused by name"),
     fields: z.array(z.enum(service.FIELDS)).optional().describe("`clear`: the fields to take out of your corner (the team's holds again for each)"),
     all: z.boolean().optional().describe("`clear`: every field of the corner, instead of `fields`"),
     team: z.boolean().optional().describe("write the team's settings (the org's own) instead of your own"),

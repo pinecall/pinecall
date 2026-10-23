@@ -2,6 +2,7 @@
 
 import pytest
 
+from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.studio.schemas import Definition
 from pinecall_runtime.studio.service import definition as defined
@@ -35,7 +36,7 @@ def clinic(**changes: object) -> Definition:
 
 def test_a_definition_whose_secrets_the_env_holds_is_accepted() -> None:
     """Every name once, https throughout, the secret set: nothing to say."""
-    defined.check(clinic(), {"AGENDA_KEY"})
+    defined.check(clinic(), {"AGENDA_KEY"}, Env.sandbox)
 
 
 @pytest.mark.parametrize(
@@ -57,7 +58,7 @@ def test_a_definition_whose_secrets_the_env_holds_is_accepted() -> None:
 def test_a_definition_no_call_could_run_is_refused_with_a_sentence(changes: dict[str, object], said: str) -> None:
     """A reserved name, a URL off TLS, a name twice, an undeclared path parameter, a secret in a URL."""
     with pytest.raises(ValidationError, match=said.replace("{", r"\{").replace("}", r"\}")):
-        defined.check(clinic(**changes), {"AGENDA_KEY"})
+        defined.check(clinic(**changes), {"AGENDA_KEY"}, Env.sandbox)
 
 
 def a_tool(**changes: object) -> dict[str, object]:
@@ -93,7 +94,7 @@ def test_a_secret_named_anywhere_but_a_headers_value_is_refused_with_one_sentenc
 ) -> None:
     """The instructions, a description, a greeting, a URL: every string of the definition, one sentence."""
     with pytest.raises(ValidationError) as refused:
-        defined.check(clinic(**changes), {"AGENDA_KEY"})
+        defined.check(clinic(**changes), {"AGENDA_KEY"}, Env.sandbox)
     assert str(refused.value) == (
         f"{where} names {{{{secrets.AGENDA_KEY}}}} outside a header: a secret travels in a header alone"
     )
@@ -102,13 +103,13 @@ def test_a_secret_named_anywhere_but_a_headers_value_is_refused_with_one_sentenc
 def test_a_secret_in_a_headers_value_stays_where_it_belongs() -> None:
     """The one place a secret may be named, on a tool and on data collection."""
     headed = {"collect": {"fields": [{"name": "n"}], "headers": [{"name": "X-Key", "value": "{{secrets.AGENDA_KEY}}"}]}}
-    defined.check(clinic(**headed), {"AGENDA_KEY"})
+    defined.check(clinic(**headed), {"AGENDA_KEY"}, Env.sandbox)
 
 
 def test_a_secret_the_env_lacks_is_refused_naming_where_it_is_set() -> None:
     """A deploy to production checks production's secrets: a missing one is said before a call."""
-    with pytest.raises(ValidationError, match=r"AGENDA_KEY.*Secrets"):
-        defined.check(clinic(), set())
+    with pytest.raises(ValidationError, match=r"AGENDA_KEY, which production has none of: set it there.*Secrets"):
+        defined.check(clinic(), set(), Env.production)
 
 
 def test_the_declaration_carries_the_greeting_the_tools_the_fields_and_the_hang_up() -> None:

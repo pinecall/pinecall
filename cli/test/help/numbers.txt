@@ -68,6 +68,8 @@ Options:
   --agent <slug>
   --account <id>       the account that owns it, when the org has several
   --channel <channel>  phone | whatsapp
+  --move               take the number off the trunk it is on now, when it
+                       answers in another environment or for another agent
   --dry-run            print the steps and write nothing
   -h, --help           display help for command
 

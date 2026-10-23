@@ -50,7 +50,8 @@ distrusts, and say in the tool's own description where its output comes from.
   call of that contact.
 - **A tool that acts can be read back.** A tool declared with `confirm` has its outcome said to the
   caller in the operator's words, and an irreversible tool declared without one is refused when the
-  agent is declared; the `consent` judge checks, after the call, that every
+  agent is declared — from a class that cannot happen, since a `confirm` is what makes a tool
+  irreversible there; the refusal is for an app speaking the wire's `agent.configure` itself; the `consent` judge checks, after the call, that every
   irreversible tool ran after the caller agreed to it.
 
 ## What a tenant should do

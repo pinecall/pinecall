@@ -82,3 +82,40 @@ function eventLineOf(text: string): EventLine | undefined {
     return undefined;
   }
 }
+
+/**
+ * One `Serving` over whichever serve entry answers now: a listener added here hears every one of them
+ * in turn, and the app read is the current one's, so a reload changes the entry and nothing above it.
+ */
+export class Relay implements Serving {
+  private readonly listeners = new Set<(line: EventLine) => void>();
+  private unfollow: () => void;
+
+  constructor(private current: Serving) {
+    this.unfollow = this.current.onEvent((line) => this.heard(line));
+  }
+
+  /** The serve entry answering from now on. */
+  follow(next: Serving): void {
+    this.unfollow();
+    this.current = next;
+    this.unfollow = next.onEvent((line) => this.heard(line));
+  }
+
+  app(slug: string): string | undefined {
+    return this.current.app(slug);
+  }
+
+  registered(slug: string): Promise<string> {
+    return this.current.registered(slug);
+  }
+
+  onEvent(listener: (line: EventLine) => void): () => void {
+    this.listeners.add(listener);
+    return () => void this.listeners.delete(listener);
+  }
+
+  private heard(line: EventLine): void {
+    for (const listener of this.listeners) listener(line);
+  }
+}

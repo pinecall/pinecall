@@ -16,7 +16,7 @@ Run the agent's goldens through the agent wherever it is held, under every model
 | `grep` | text |  | only goldens whose name holds this |
 | `models` | a list of texts |  | a column per model: vendor/model, a model, or a tier (haiku); the agent's own when left out |
 | `voice` | true or false |  | say the goldens out loud on a real line (the files alone: cases are played written) |
-| `background_noise` | a number |  | spoken runs: dB under the caller of what plays behind them |
+| `background_noise` | a number 0–60 |  | spoken runs: how many dB under the caller what plays behind them is, 0 to 60 (15 when noise is asked for and none said; a smaller number is louder) |
 | `ambience` | `television` · `cafe` · `office` · `street` |  | spoken runs: what plays behind the caller |
 | `packet_loss` | a number 0–1 |  | spoken runs: the share of the caller's packets lost, 0 to 1 |
 | `files` | true or false |  | the golden files alone, without the dataset; nothing said plays the files and every approved case both, as `pinecall test` does |

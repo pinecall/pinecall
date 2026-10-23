@@ -13,7 +13,7 @@ import * as service from "./service/index.js";
 const LOGIN = `
 Prints a link and opens it. You sign in there — in a browser, where a password belongs — and
 the page hands this terminal a key of its OWN, minted for you and labelled as this machine, so
-it is revoked on its own from Tokens. Nothing types a password into a shell. Once per machine and
+it is revoked on its own from the console's API keys. Nothing types a password into a shell. Once per machine and
 gateway: every verb on this machine runs on it.
 
 A project says which org it runs in, in the pinecall.json \`pinecall new\` writes at its root, and
@@ -23,7 +23,7 @@ line says which.
 
 With no URL it is ${CLOUD_URL}, and it says so before anything is kept. A runtime on this
 machine (\`pinecall-runtime setup\`) signs this machine in by itself. A server signs in nowhere: a
-server's token from Tokens, in its secrets as PINECALL_KEY, which wins over any sign-in.
+server's token from the console's API keys, in its secrets as PINECALL_KEY, which wins over any sign-in.
 
 Examples
   $ pinecall login https://pinecall.example.com

@@ -53,7 +53,7 @@ it has one:
 | `{"tool", "args"?, "within_ms"?}` | the turn's next tool call is this one, with these arguments among its own | livekit's `next_event(type="function_call")` |
 | `{"no_tool"}` | no call of this tool in the turn | livekit's `contains_function_call` |
 | `{"reply": {"says"?, "says_any"?, "not"?, "intent"?, "within_ms"?}}` | the turn's next message says these phrases (by code, case-blind), and `intent` holds of it | livekit's `next_event(type="message")`, its `judge(llm, intent=)` on the run's judge model |
-| `{"end": "agent"}` | the call ended in this turn, by this side | the session |
+| `{"end": "agent"}` | the call ended in this turn, by this side (the agent ends one only when it may hang up: `hangup` set, or the class calling it) | the session |
 | `{"nothing_else": true}` | nothing follows the step before it in the turn | livekit's `no_more_events` |
 
 The first step that breaks ends the golden there: no later turn is played, and `expect` is not
@@ -100,7 +100,7 @@ One run per agent at a time: a second is `409` naming the run in flight.
 
 `voice: true` says each golden out loud through the environment's fleet: the room is dispatched, the
 caller's lines are spoken (under `interferer_db` of the `ambience` named — a television unless
-said — and `packet_loss`, when set), the room is deleted, and the call is judged once its worker sealed it. The worker builds the
+said; dB under the caller, 0 to 60 — and `packet_loss`, 0 to 1, when set), the room is deleted, and the call is judged once its worker sealed it. The worker builds the
 session from the declaration, so a spoken run refuses `models` and a golden that pins `today`; it
 has no test run to assert steps on, so it refuses a golden with an `event` turn or a `then`, and
 judges the final `expect` alone.
@@ -118,7 +118,7 @@ it, which is what a release asks for. `version: 4` builds every call of the run 
 the agent's settings in the scope of the app that holds it, instead of the one standing (a
 candidate, a canary's: see [settings-api.md](settings-api.md)); a version the scope never had is
 `404`. Beside `models`, it is how a run compares a candidate with what runs now. A run of cases is
-refused in production (`403`): a case is a real caller's words, and it is played only in the
+refused in production (`403` when an app holds the agent there; `404 no app holds agent …` when none does): a case is a real caller's words, and it is played only in the
 sandbox, as written calls through the app a developer holds there, never through production's
 app, whose tools act for real, and never out loud or on a phone.
 

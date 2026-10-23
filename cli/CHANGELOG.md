@@ -4,6 +4,44 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- **Bare `pinecall` prints the verbs by what they are for, on one screen, and exits 0**; `pinecall --help`
+  is the whole map. It printed 109 lines and exited 2. (found by the 2026-10-23 eval, A F2)
+- **A pipe whose reader closed ends the verb quietly**: `pinecall chat --events | head -1` died with an
+  `EPIPE` stack. (found by the 2026-10-23 eval, A F10)
+- **A `.ts` persona file loads again**, through tsx's own import, and a `.json` one holding `{ goal, style,
+  facts?, state? }` is a persona too; a file that is neither is refused naming the shape. `personas push` and
+  the plain `personas` failed with `Cannot find module …?v=`. (found by the 2026-10-23 eval, F F2)
+- **`pinecall start` prints the kill**: the `error` the gateway sends an app — `<agent> was killed by
+  <name>` — is a line of the screen. (found by the 2026-10-23 eval, J F3)
+- **`data policy` says the +1 floor whenever the org's setting is wider than it**, not only when it is
+  unset. (found by the 2026-10-23 eval, J F4)
+- **`deploy` refuses a link or a device in the folder** with the gateway's sentence, instead of skipping
+  it in silence. (found by the 2026-10-23 eval, I F1)
+- **`numbers import --move`** takes a number off the trunk it is on now, as the `409` asks. (found by the
+  2026-10-23 eval, K F8)
+- **`agent diff --team`** reads the team's corner against production's. (found by the 2026-10-23 eval, J F6)
+- **`sessions log` narrowed to a page that kept nothing says the log goes on**, before the `more:` line.
+  (found by the 2026-10-23 eval, A F11)
+- **`runtime recommend` on an old `pinecall-runtime` names the version it needs** (0.11.3) and the
+  upgrade, instead of argparse's own refusal. (found by the 2026-10-23 eval, L B3)
+- **`generate --help` links the page that exists** (`concepts/expectations`). (found by the 2026-10-23 eval,
+  A F7)
+- **The MCP's `test run` and `simulate run` answer the run's id even at `wait_s: 0`**: the timer starts once
+  the run has begun. (found by the 2026-10-23 eval, L D3)
+- **The MCP's `numbers import` takes `move`**, as the `409` asks; `agent set` refuses a field nobody set
+  by name and says the value each field takes; `background_noise` is validated (dB under the caller, 0 to
+  60); `project new`'s `path` is said to be the parent; Studio's `headers`, `params` and `collect.fields`
+  shapes, a broken save's sentence, and `watch` on an ended call are written as the product does them;
+  the pages' account ids are whole and the `voices` example names its vendor. (found by the 2026-10-23
+  eval, L B5, L D4, L D6, L D8–L D12, L D14)
+- **`pinecall start` reloads the class on save**, as four pages promised and only the MCP host did: the
+  agent's folder is watched, a burst of writes is one reload, the next process registers before the one
+  before drains, and a save that does not load leaves the version before answering and says why. The host
+  and `start` share the one implementation (`dev/reload.ts`); a Ruby or Python agent held by `start` reloads
+  too. (found by the 2026-10-23 eval, A F1)
+
 ## [0.11.18] — numbers held by another org, a blank lexicon word
 
 - **`numbers available` tells a number another org holds from one routed nowhere**: "held by another org"

@@ -41,7 +41,7 @@ class RunSuiteRequest(Schema):
     app: str | None = None
     # Each golden said out loud, through the env's fleet, under this noise when named.
     voice: bool = False
-    interferer_db: float | None = None
+    interferer_db: float | None = Field(default=None, ge=0, le=60)
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
 
@@ -191,7 +191,7 @@ class PlaceVoiceCallRequest(Schema):
     turns: int = Field(default=6, ge=1, le=40)
     # dB of the ambience under the caller's voice; absent is a clean line. The ambience named
     # plays instead of the persona's own.
-    interferer_db: float | None = None
+    interferer_db: float | None = Field(default=None, ge=0, le=60)
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
     # The state the agent opens the call in: the persona's, as `pinecall simulate` reads it.
@@ -230,7 +230,7 @@ class SimulationRequest(Schema):
     turns: int = Field(default=15, ge=1, le=40)
     # Spoken alone: dB of the ambience under the caller's voice, which ambience, and the share
     # of packets lost; each unsaid is the persona's own.
-    interferer_db: float | None = None
+    interferer_db: float | None = Field(default=None, ge=0, le=60)
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
     # The model, the voice's vendor and the voice this run alone is played on.

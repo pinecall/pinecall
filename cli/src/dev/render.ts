@@ -62,3 +62,13 @@ export function lineUnavailable(why: string): string {
 export function consoleLine(url: string): string {
   return `console  ${url}   (opens within five minutes, once)`;
 }
+
+/** The line a reload prints: the version of the class answering now. */
+export function reloadedLine(version: number): string {
+  return `reloaded · version ${version} answering`;
+}
+
+/** The line a save that does not load prints: the version before keeps answering, and the load's own sentence. */
+export function notReloadedLine(version: number, why: string): string {
+  return `the save does not load, version ${version} keeps answering: ${why}`;
+}

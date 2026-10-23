@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 import { createContext } from "./context.js";
 import { Cancelled, errorMessage, PinecallError } from "./errors.js";
 import { systemIO, type IO } from "./kit/io.js";
-import { createProgram } from "./program.js";
+import { createProgram, MAP } from "./program.js";
 
 // 0 did it · 1 what was measured did not hold · 2 it could not run (the arguments, the settings, a refusal, the network) · 130 stopped.
 const CANNOT_RUN = 2;
@@ -26,6 +26,16 @@ export async function main(
 ): Promise<number> {
   const stopping = new AbortController();
   const ctx = createContext({ io, processEnv, cwd, signal: stopping.signal });
+  // `pinecall chat --events | head -1`: the reader closed the pipe. What was being said has nobody to
+  // hear it, so the verb is asked to stop and nothing is printed, as a shell's SIGPIPE would. The
+  // listener stays for the process's life: a last line written after the verb returned fails the same way.
+  let readerLeft = false;
+  const onPipeClosed = (failed: NodeJS.ErrnoException): void => {
+    if (failed.code !== "EPIPE") throw failed;
+    readerLeft = true;
+    stopping.abort(new Cancelled());
+  };
+  io.stdout.on("error", onPipeClosed);
   // A signal asks the verb to stop through the Context. A verb that does not listen (a plain fetch)
   // would hold the process: unless something else handles the signal (`start` passes it to its
   // child, which drains), the signal is raised again after a grace, with the default it had.
@@ -40,16 +50,17 @@ export async function main(
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
   try {
-    const program = await createProgram(ctx, argv);
     if (argv.length === 0) {
-      program.outputHelp();
-      return CANNOT_RUN;
+      io.print(MAP);
+      return 0;
     }
+    const program = await createProgram(ctx, argv);
     await ctx.prepare();
     await program.parseAsync([...argv], { from: "user" });
+    if (readerLeft) return 0;
     return stopping.signal.aborted ? new Cancelled().exit : 0;
   } catch (failed) {
-    return exitWith(failed, io);
+    return readerLeft ? 0 : exitWith(failed, io);
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);

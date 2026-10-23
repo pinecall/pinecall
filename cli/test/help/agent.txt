@@ -187,6 +187,7 @@ this corner against the team's or production's
 Options:
   --agent <slug>
   --against <corner>  team or production (default: "production")
+  --team              the team's corner against production's, instead of yours
   -h, --help          display help for command
 
 $ pinecall agent rollback --help

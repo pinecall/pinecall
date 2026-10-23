@@ -158,15 +158,15 @@ What the agent hears, decides and speaks with — the vendors and models of each
   },
   "decides": {
     "vendor": "anthropic",
-    "model": null,
+    "model": "claude-haiku-5-5",
     "voice_id": null,
     "language": null
   },
   "speaks": {
     "vendor": "cartesia",
     "model": null,
-    "voice_id": null,
-    "language": null
+    "voice_id": "de38f545-c574-44e8-9b54-a7d6fec1c6b1",
+    "language": "es"
   },
   "greeting": {
     "say": "Thanks for calling. How can I help?",
@@ -187,7 +187,7 @@ What the agent hears, decides and speaks with — the vendors and models of each
       "env": null,
       "extra": "anthropic",
       "voices_listed": false,
-      "availability": "offered",
+      "availability": "yours",
       "broken": null
     },
     {
@@ -233,7 +233,8 @@ What the agent hears, decides and speaks with — the vendors and models of each
       "turns": 20
     }
   ],
-  "unavailable_reasons": {}
+  "unavailable_reasons": {},
+  "talks": null
 }
 ```
 
@@ -266,7 +267,7 @@ The vendors an agent may run on: what each does, whether it is ready, and whose 
       "env": null,
       "extra": "anthropic",
       "voices_listed": false,
-      "availability": "offered",
+      "availability": "yours",
       "broken": null
     },
     {

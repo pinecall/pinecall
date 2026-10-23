@@ -338,13 +338,13 @@ class AgentRegistry:
     # ── the developers' phones ──
 
     def calls_from(self, env: Env, number: str, holder: str) -> None:
-        """Send rings from this phone to this person's scope; the last one said wins."""
+        """Send rings from this phone to this person's scope: their one phone, in place of the one before."""
+        self.forget_calls_from(env, holder)
         self._assign(self._mine_phones, env, number, holder)
 
     def forget_calls_from(self, env: Env, holder: str) -> list[str]:
         """Forget every phone of this person, and say which."""
-        gone = sorted(n for (env_, n), owner in self.phones.items() if env_ == env and owner == holder)
-        for number in gone:
+        for number in (gone := self.phones_of(env, holder)):
             self._assign(self._mine_phones, env, number, None)
         return gone
 

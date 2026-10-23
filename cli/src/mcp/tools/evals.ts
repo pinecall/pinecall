@@ -13,6 +13,8 @@ const DAY_S = 86_400;
 /** Something long a tool started and a later call of it waits for: its answer, and what it has said so far. */
 export interface InFlight {
   pending: Promise<unknown>;
+  /** Settles once there is something to say so far: the run's id, the call's first line. */
+  begun: Promise<unknown>;
   soFar(): unknown;
 }
 
@@ -25,7 +27,7 @@ export const test = tool({
     grep: z.string().optional().describe("only goldens whose name holds this"),
     models: z.array(z.string()).optional().describe("a column per model: vendor/model, a model, or a tier (haiku); the agent's own when left out"),
     voice: z.boolean().optional().describe("say the goldens out loud on a real line (the files alone: cases are played written)"),
-    background_noise: z.number().optional().describe("spoken runs: dB under the caller of what plays behind them"),
+    background_noise: z.number().min(0, "background_noise is dB under the caller, 0 to 60").max(60, "background_noise is dB under the caller, 0 to 60").optional().describe("spoken runs: how many dB under the caller what plays behind them is, 0 to 60 (15 when noise is asked for and none said; a smaller number is louder)"),
     ambience: z.enum(service.AMBIENCES).optional().describe("spoken runs: what plays behind the caller"),
     packet_loss: z.number().min(0).max(1).optional().describe("spoken runs: the share of the caller's packets lost, 0 to 1"),
     files: z.boolean().optional().describe("the golden files alone, without the dataset; nothing said plays the files and every approved case both, as `pinecall test` does"),
@@ -59,8 +61,10 @@ export const test = tool({
     const goldens = input.files ? service.matching(await service.goldensIn([home.goldens]), args.grep) : [];
     if (goldens.length === 0 && !service.playsCases(input)) throw new ToolRefused(`no golden${args.grep === undefined ? "" : ` matching ${args.grep}`} in ${home.goldens}`);
     let id: string | null = null;
-    const pending = service.runSuite(ctx, reached.slug, goldens, input, reached.app, { onStarted: (started) => (id = started) }).then((report) => ({ ...report, env: ctx.env }));
-    const started: InFlight = { pending, soFar: () => ({ status: "running", run: id, says: "call test with action wait to keep waiting, or runs show with this id" }) };
+    let begun: (started: string) => void = () => undefined;
+    const idKnown = new Promise<string>((known) => (begun = known));
+    const pending = service.runSuite(ctx, reached.slug, goldens, input, reached.app, { onStarted: (started) => begun((id = started)) }).then((report) => ({ ...report, env: ctx.env }));
+    const started: InFlight = { pending, begun: idKnown, soFar: () => ({ status: "running", run: id, says: "call test with action wait to keep waiting, or runs show with this id" }) };
     ctx.session.runs.set(reached.slug, started);
     return await waited(ctx.session.runs, reached.slug, started, args.wait_s ?? WAIT_S);
   },
@@ -191,10 +195,12 @@ export const simulate = tool({
       ...(voice ? { backgroundNoise: args.background_noise, ambience: args.ambience, packetLoss: args.packet_loss } : {}),
     });
     const transcript: string[] = [];
+    let begun: (call: string) => void = () => undefined;
+    const opened = new Promise<string>((known) => (begun = known));
     const pending = service
-      .simulate(ctx, { slug: reached.slug, app: () => reached.app }, persona, input, { onEntry: (entry) => transcriptLine(transcript, entry) })
+      .simulate(ctx, { slug: reached.slug, app: () => reached.app }, persona, input, { onOpened: (call) => begun(call), onEntry: (entry) => transcriptLine(transcript, entry) })
       .then((said) => ({ call: said.call, transcript, score: said.score, medians: said.medians, env: ctx.env }));
-    const started: InFlight = { pending, soFar: () => ({ status: "running", transcript_so_far: [...transcript], says: "call simulate with action wait to keep waiting" }) };
+    const started: InFlight = { pending, begun: opened, soFar: () => ({ status: "running", transcript_so_far: [...transcript], says: "call simulate with action wait to keep waiting" }) };
     ctx.session.simulations.set(reached.slug, started);
     return await waited(ctx.session.simulations, reached.slug, started, args.wait_s ?? WAIT_S);
   },
@@ -261,9 +267,11 @@ export const personas = tool({
 });
 
 // A run or a simulation outlives the host's patience: past the wait, what it has so far, and a later `wait` picks it up.
+// `wait_s: 0` still answers the run's id: the timer starts once the run has begun, not before.
 async function waited(inFlight: Map<string, InFlight>, agent: string, going: InFlight, waitS: number): Promise<unknown> {
   const late = Symbol("late");
   try {
+    await Promise.race([going.begun, going.pending.catch(() => undefined)]);
     const done = await Promise.race([going.pending, new Promise((rung) => setTimeout(() => rung(late), waitS * 1000))]);
     if (done === late) return going.soFar();
     inFlight.delete(agent);

@@ -96,8 +96,8 @@ export function getSettingsHistory(gw: GatewayClient, agent: string, team: boole
   return gw.get<TuningHistory>(`${settingsOf(agent)}/history`, { team });
 }
 
-export function getSettingsDiff(gw: GatewayClient, agent: string, against: "team" | "production"): Promise<TuningDiff> {
-  return gw.get<TuningDiff>(`${settingsOf(agent)}/diff`, { against });
+export function getSettingsDiff(gw: GatewayClient, agent: string, against: "team" | "production", team = false): Promise<TuningDiff> {
+  return gw.get<TuningDiff>(`${settingsOf(agent)}/diff`, team ? { against, team: "true" } : { against });
 }
 
 export function rollbackSettings(gw: GatewayClient, agent: string, version: number, team: boolean): Promise<TuningAnswer> {

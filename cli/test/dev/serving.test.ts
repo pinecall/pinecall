@@ -4,7 +4,7 @@ import { PassThrough } from "node:stream";
 
 import { describe, expect, it } from "vitest";
 
-import { servedByTheGateway, servingFrom, type EventLine } from "../../src/dev/serving.js";
+import { Relay, servedByTheGateway, servingFrom, type EventLine } from "../../src/dev/serving.js";
 
 const line = (type: string, agent: string, data: Record<string, unknown> = {}): string => `${JSON.stringify({ type, agent, data })}\n`;
 
@@ -43,5 +43,26 @@ describe("the lines", () => {
 
   it("an agent the gateway serves names no app", () => {
     expect(servedByTheGateway("front-desk").app()).toBeUndefined();
+  });
+});
+
+describe("the relay", () => {
+  it("a listener hears the entry answering now, and the next one once followed; the app read is the current one's", async () => {
+    const first = servingFrom(new PassThrough(), new PassThrough());
+    const second = new PassThrough();
+    const relay = new Relay(first);
+    const heard: string[] = [];
+    relay.onEvent((one) => heard.push(`${one.type}@${one.data["app"]}`));
+    const next = servingFrom(second, new PassThrough());
+    second.write(line("agent.registered", "front-desk", { app: "app_2" }));
+    await new Promise((settled) => setImmediate(settled));
+    expect(heard).toEqual([]);
+    expect(relay.app("front-desk")).toBeUndefined();
+    relay.follow(next);
+    second.write(line("call.started", "front-desk", { app: "app_2" }));
+    await new Promise((settled) => setImmediate(settled));
+    expect(heard).toEqual(["call.started@app_2"]);
+    expect(relay.app("front-desk")).toBe("app_2");
+    expect(await relay.registered("front-desk")).toBe("app_2");
   });
 });

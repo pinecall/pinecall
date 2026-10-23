@@ -19,6 +19,7 @@ from pinecall_runtime.agents.service import registry
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
+from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.evals.schemas import NextLineRequest, PlayedBy
 from pinecall_runtime.evals.service import playing, spoken
@@ -339,19 +340,28 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
     async with serving.handles.sessions.begin() as session_:
         spending = Spending(await providers.get_catalog(session_))
         running = await caller_voice(session_, serving, scope, placed.agent, persona)
+        notice = await opens_with_a_notice(session_, scope, running.language)
     async with caller_model(serving, scope, persona) as model:
         speech = providers.tts_of(running)
         caller = Caller(persona, model.llm, spending, speech)
         await _played_by(serving, placed.call, model.named, running)
         # The caller murmurs in the language it speaks: the line learns it here, with the voice.
         localised = dataclasses.replace(placed.line, language=running.language)
-        line = spoken.SpokenLine("", "", placed.call, placed.turns, localised)
+        line = spoken.SpokenLine("", "", placed.call, placed.turns, localised, notice=notice)
         try:
             turns = await on_the_line(serving, dispatch, speech, line, improvising(serving, placed.call, caller))
         finally:
             await speech.aclose()
             await _kept(serving, placed.call, spending)
     return turns, spending
+
+
+# The agent says the org's recording notice before its greeting: a caller that did not expect it would
+# take it for the opening and talk over the greeting.
+async def opens_with_a_notice(session_: AsyncSession, scope: Scope, language: str | None) -> bool:
+    """Whether a spoken call of this org opens with a recording notice."""
+    policy = (await compliance.policy_of(session_, scope.org)).policy
+    return compliance.notice_of(policy, language) is not None
 
 
 # Opened at once, so a refusal — the org's limits, nobody holding the agent — is the request's;

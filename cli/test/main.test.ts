@@ -1,20 +1,43 @@
 /** The entry: every failure one sentence on stderr and one exit code — 0 did it, 1 what was measured did not hold, 2 it could not run, 130 stopped. */
 
 import { readFileSync } from "node:fs";
+import { Writable } from "node:stream";
 
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it } from "vitest";
 
+import { main } from "../src/main.js";
+import { StreamIO } from "../src/kit/io.js";
 import { answer, GATEWAY, refuse, server } from "./support/gateway.js";
+import { folder } from "./support/project.js";
 import { run } from "./support/run.js";
 
 const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 
 describe("the exit codes", () => {
-  it("nothing typed prints the whole CLI and exits 2", async () => {
+  it("nothing typed prints the verbs by what they are for, on one screen, and exits 0", async () => {
     const ran = await run([]);
-    expect(ran.code).toBe(2);
-    expect(ran.out).toContain("Usage: pinecall [options] [command]");
+    expect(ran.code).toBe(0);
+    expect(ran.out.split("\n").length).toBeLessThanOrEqual(20);
+    expect(ran.out).toContain("start · console · chat");
+    expect(ran.out).toContain("pinecall --help");
+  });
+
+  it("the reader of a pipe that closed is nobody to print for: no stack, exit 0", async () => {
+    const closed = new Writable({
+      write(_chunk, _encoding, done) {
+        done(Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+      },
+    });
+    const err: string[] = [];
+    const stderr = new Writable({
+      write(chunk: Buffer, _encoding, done) {
+        err.push(chunk.toString());
+        done();
+      },
+    });
+    expect(await main(["--version"], new StreamIO(closed, stderr), { PINECALL_HOME: folder() }, folder())).toBe(0);
+    expect(err.join("")).toBe("");
   });
 
   it("--help and --version are answers, exit 0", async () => {

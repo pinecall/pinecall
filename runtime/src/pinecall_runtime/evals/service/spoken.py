@@ -17,6 +17,7 @@ from pinecall_runtime.evals.service.tempo import Stretcher
 from pinecall_runtime.evals.service.turns import A_BEAT_S, Landed, NextLine, answered, speak_turns, speaking
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.session import service as session
 
 # 10 ms of 16-bit mono per frame, the cadence livekit's examples publish at.
 FRAME_MS = 10
@@ -77,13 +78,15 @@ class Line:
 
 @dataclass(frozen=True, slots=True)
 class SpokenLine:
-    """A spoken call as the caller joins it: the room's address, its token, the call, its turns."""
+    """A spoken call as the caller joins it: the room's address, its token, the call, its turns, its notice."""
 
     url: str
     token: str
     call: str
     turns: int
     line: Line
+    # Whether the agent says the org's recording notice before its greeting.
+    notice: bool = False
 
 
 class CallerLeg:
@@ -99,12 +102,16 @@ class CallerLeg:
         self.track = rtc.LocalAudioTrack.create_audio_track(judging.A_SIMULATED_CALLER, self.source)
         # When the caller began its last line, by the log's clock: its answer comes after it.
         self.said_at = logs.store.clock()
+        # Set once the caller decided to talk over the answer: its next line is said with no pause.
+        self.cutting_in = False
 
     # The line is spoken as the vendor sends it, never held until it is whole: a caller that
     # waited for its last word before its first was seconds late on every turn.
     async def say(self, line: str) -> None:
-        """Speak one line into the room, after the caller's pause, through the line's noise."""
-        await asyncio.sleep(self.spoken.line.pause_s)
+        """Speak one line into the room, after the caller's pause (none when cutting in), through the line's noise."""
+        if not self.cutting_in:
+            await asyncio.sleep(self.spoken.line.pause_s)
+        self.cutting_in = False
         self.said_at = self.logs.store.clock()
         await self._speak(line)
 
@@ -119,21 +126,26 @@ class CallerLeg:
             async for frame in on_the_line(pieces, self.spoken.line, self.interferer):
                 await self.source.capture_frame(rtc.AudioFrame(frame, SAMPLE_RATE, CHANNELS, len(frame) // 2))
 
-    # Cut in some way into the answer, as a person does: never at its first word. A caller that cuts
-    # in asks for its line once it has cut in: the answer it talks over has not landed. A caller
-    # that murmurs waits for the answer like any other, its "mm-hmm" said along the way.
+    # Cut in some way into the answer, as a person does: never at its first word. A caller that cuts in
+    # asks for its line the moment the agent begins — what it talks over, it has not heard — and says
+    # it with no pause, or the answer is over before it opens its mouth. A caller that murmurs waits for
+    # the answer like any other, its "mm-hmm" said along the way.
     async def line_answered(self, lines: int, landed: Landed) -> bool:
-        """Wait until the agent answered this many lines, or cut in once it started answering."""
+        """Wait until the agent answered this many lines, or cut in once it started answering: True to speak."""
         line = self.spoken.line
         if lines and line.dice.random() < line.interrupts:
             await speaking(self.logs, self.spoken.call, since=self.said_at)
+            landed()
             await asyncio.sleep(line.dice.uniform(*CUT_IN_AFTER_S))
-            return False
+            self.cutting_in = True
+            return True
         if lines and line.dice.random() < line.backchannels:
             await speaking(self.logs, self.spoken.call, since=self.said_at)
             await asyncio.sleep(line.dice.uniform(*MURMUR_AFTER_S))
             await self.murmur(murmur_of(line))
-        return await answered(self.logs, self.spoken.call, lines, since=self.said_at, landed=landed)
+        return await answered(
+            self.logs, self.spoken.call, lines, since=self.said_at, landed=landed, notice=self.spoken.notice
+        )
 
 
 def murmur_of(line: Line) -> str:
@@ -295,6 +307,9 @@ async def run_spoken(spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs
             said_count = await speak_turns(spoken.turns, next_line, leg.say, leg.line_answered)
             # Waited again, whole: hanging up at once would cut the agent's last answer.
             await answered(logs, spoken.call, said_count, since=leg.said_at)
+            # Said before leaving, as a widget's hang-up is: the call ends caller_hung_up now, not drained
+            # once the room is deleted, with the silence between the two billed.
+            await room.local_participant.publish_data(b"{}", reliable=True, topic=session.HANGUP)
             return said_count
         finally:
             await room.disconnect()

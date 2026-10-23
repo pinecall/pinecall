@@ -91,7 +91,8 @@ export function scoreLines(score: Record<string, unknown> | undefined): string[]
 export function log(page: LogPage, after: number): string[] {
   // A page the types narrowed can keep nothing and still have more after it.
   const width = Math.max(0, ...page.entries.map((entry) => entry.type.length));
-  const lines = page.entries.length === 0 ? [`${page.call} · nothing kept after seq ${after}`] : page.entries.map((entry) => entryLine(entry, width));
+  const nothing = page.next === null ? `${page.call} · nothing kept after seq ${after}` : `${page.call} · nothing of these types in this page, after seq ${after}; the log goes on`;
+  const lines = page.entries.length === 0 ? [nothing] : page.entries.map((entry) => entryLine(entry, width));
   if (page.next !== null) lines.push("", `more: pinecall sessions log ${page.call} --after ${page.next}`);
   return lines;
 }
@@ -172,8 +173,11 @@ export function reads(found: Reads): string[] {
 export function policy(row: OrgPolicyRow): string[] {
   const { retention_days: days, calling_hours: hours, per_number_day: count, disclosure } = row.policy;
   const kept = days === null || days === undefined ? "every sealed call is kept until it is erased" : `a sealed call is erased ${days} day(s) after it started`;
-  const rung = hours === null || hours === undefined ? "a number is rung at any hour of its day (a +1 number: 8-21)" : `a number is rung from ${hours.from}:00 to ${hours.until}:00 of its own day`;
-  const often = count === null || count === undefined ? "no limit of calls to one number a day (a +1 number: 3)" : `one number is rung at most ${count} time(s) a day`;
+  // The +1 floor holds whatever the org sets: said whenever the setting is wider than it, or unset.
+  const hoursFloor = hours === null || hours === undefined || hours.from < 8 || hours.until > 21 ? " (a +1 number: 8-21)" : "";
+  const countFloor = count === null || count === undefined || count > 3 ? " (a +1 number: 3)" : "";
+  const rung = hours === null || hours === undefined ? `a number is rung at any hour of its day${hoursFloor}` : `a number is rung from ${hours.from}:00 to ${hours.until}:00 of its own day${hoursFloor}`;
+  const often = count === null || count === undefined ? `no limit of calls to one number a day${countFloor}` : `one number is rung at most ${count} time(s) a day${countFloor}`;
   const consent = row.policy.consent_everywhere === true ? "every number needs a consent on file" : "a +1 number needs a consent on file";
   const opens = disclosure === null || disclosure === undefined ? 'the platform\'s sentence ("This is an automated assistant calling on behalf of …")' : disclosure === "" ? "nothing: the agent's own greeting must disclose it" : `"${disclosure}"`;
   const notice = row.policy.recording_notice === false ? "a recorded call says nothing of it" : 'a recorded call says "This call may be recorded."';

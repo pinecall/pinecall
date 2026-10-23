@@ -50,6 +50,7 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 | `agent` | text |  | `import`, `buy`: the agent that answers it |
 | `channel` | `phone` · `whatsapp` |  | `import`, `buy`: phone unless it is a WhatsApp number |
 | `account` | text |  | `available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them) |
+| `move` | true or false |  | `import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks |
 | `country` | text |  | `buy`: the country, two letters (ES, US) |
 | `area_code` | text |  | `buy`: an area code, digits only |
 | `dry_run` | true or false |  | `import`, `buy`: true (the default) answers the steps and writes nothing; false does them |
@@ -78,7 +79,7 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
       "rings": "broken",
       "last_call_at": null,
       "via": null,
-      "account": "AC5f…e442"
+      "account": "AC5f7c1e0a4d9b2f4e6a8c3d5f7a9b1c2d3e"
     }
   ]
 }
@@ -107,7 +108,7 @@ The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account'
   "carriers": [
     {
       "kind": "twilio",
-      "account": "AC5f…e442",
+      "account": "AC5f7c1e0a4d9b2f4e6a8c3d5f7a9b1c2d3e",
       "label": "",
       "networks": []
     }

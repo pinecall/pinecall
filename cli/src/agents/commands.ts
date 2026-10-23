@@ -169,9 +169,11 @@ export function register(program: Command, ctx: Context): void {
     .description("this corner against the team's or production's")
     .option("--agent <slug>")
     .option("--against <corner>", "team or production", "production")
+    .option("--team", "the team's corner against production's, instead of yours")
     .action(async (flags) => {
       if (flags.against !== "team" && flags.against !== "production") throw new UsageError("--against takes team or production");
-      ctx.io.result(await service.settingsDiff(ctx, flags.agent, flags.against), render.diff);
+      if (flags.team === true && flags.against === "team") throw new UsageError("--team is the team's corner against production's: leave --against out, or say production");
+      ctx.io.result(await service.settingsDiff(ctx, flags.agent, flags.against, flags.team === true), render.diff);
     });
   agent
     .command("rollback")

@@ -117,10 +117,11 @@ anything is tried or kept. A set whose plugin class or options would run on a ke
 lends is `409 llm options and builds run on the org's own openai key, and this agent's llm would run
 on the platform's: …`, nothing kept. Answers the `GET` shape.
 
-## `GET …/settings/history?team=&limit=` · `GET …/settings/diff?against=team|production` · `POST …/settings/rollback {version, team}`
+## `GET …/settings/history?team=&limit=` · `GET …/settings/diff?against=team|production&team=` · `POST …/settings/rollback {version, team}`
 
 One scope's versions, newest first, each with who set it and why. This key's scope's newest
-against the team's or production's newest, with the fields that differ by name. One version copied
+against the team's or production's newest, with the fields that differ by name; `team=true` reads the
+team's corner as ours instead of the person's, which is how a team checks its corner equals production's. One version copied
 forward as the next one, `note: "rollback to v{n}"`; `404` for a version the scope never had.
 Rollback takes `pipeline`.
 

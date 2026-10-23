@@ -150,6 +150,35 @@ def test_the_greeting_said_and_the_agent_listening_opens_the_line() -> None:
     assert is_line_open(log, now=5.0)
 
 
+# G B3 (2026-10-23): the caller took "This call may be recorded." for the opening and spoke over the greeting.
+def test_behind_a_recording_notice_the_first_turn_is_the_notice_and_the_greeting_opens_the_line() -> None:
+    notice_said = a_log(
+        ("agent.state", "listening"),
+        ("agent.state", "speaking"),
+        "turn.agent",
+        ("agent.state", "listening"),
+    )
+    assert is_line_open(notice_said, now=5.0)
+    assert not is_line_open(notice_said, now=5.0, notice=True)
+    greeted = a_log(
+        ("agent.state", "listening"),
+        ("agent.state", "speaking"),
+        "turn.agent",
+        ("agent.state", "listening"),
+        ("agent.state", "speaking"),
+        "turn.agent",
+        ("agent.state", "listening"),
+    )
+    assert is_line_open(greeted, now=8.0, notice=True)
+
+
+def test_behind_a_notice_an_agent_with_no_greeting_is_believed_after_a_quiet_while() -> None:
+    log = a_log(("agent.state", "speaking"), "turn.agent", ("agent.state", "listening"))
+    last = log[-1].ts
+    assert not is_line_open(log, now=last + A_SILENT_OPENING_S - 0.1, notice=True)
+    assert is_line_open(log, now=last + A_SILENT_OPENING_S, notice=True)
+
+
 def test_an_agent_that_opens_with_nothing_is_believed_after_a_quiet_while() -> None:
     log = a_log(("agent.state", "listening"))
     assert not is_line_open(log, now=1.0 + A_SILENT_OPENING_S - 0.1)

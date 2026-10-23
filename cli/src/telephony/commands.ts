@@ -88,10 +88,11 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--agent <slug>")
     .option("--account <id>", "the account that owns it, when the org has several")
     .option("--channel <channel>", "phone | whatsapp")
+    .option("--move", "take the number off the trunk it is on now, when it answers in another environment or for another agent")
     .option("--dry-run", "print the steps and write nothing")
     .action(async (number, flags) =>
       withAccountHint(async () => {
-        const input = service.ImportNumberInput.parse({ number, agent: flags.agent, account: flags.account, channel: flags.channel, dryRun: flags.dryRun === true });
+        const input = service.ImportNumberInput.parse({ number, agent: flags.agent, account: flags.account, channel: flags.channel, move: flags.move === true, dryRun: flags.dryRun === true });
         ctx.io.result(await service.importNumber(ctx, input), render.imported);
       }),
     );

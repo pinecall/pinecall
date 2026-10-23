@@ -13,7 +13,7 @@ The agent's settings — voice, models, language, greeting, memory policy, knowl
 |---|---|---|---|
 | `action` | `show` · `set` · `clear` · `history` · `diff` · `rollback` · `knowledge` | required | show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart |
 | `agent` | text |  | the agent's name; the project's only agent when left out |
-| `settings` | an object of `voice` · `tts` · `tts-model` · `stt` · `llm` · `temperature` · `llm-builds` · `llm-options` · `realtime` · `realtime-options` · `stt-builds` · `stt-options` · `tts-builds` · `tts-options` · `judge` · `judge-builds` · `judge-options` · `language` · `greeting` · `greeting-interruptible` · `end-of-turn` · `hangup` · `endpointing-ms` · `min-interruption-words` · `eot-threshold` · `eager-eot-threshold` · `record` · `max-duration` · `remember` · `forget` |  | `set`: the fields to set, named as `pinecall agent set` names its flags |
+| `settings` | an object of `voice` · `tts` · `tts-model` · `stt` · `llm` · `temperature` · `llm-builds` · `llm-options` · `realtime` · `realtime-options` · `stt-builds` · `stt-options` · `tts-builds` · `tts-options` · `judge` · `judge-builds` · `judge-options` · `language` · `greeting` · `greeting-interruptible` · `end-of-turn` · `hangup` · `endpointing-ms` · `min-interruption-words` · `eot-threshold` · `eager-eot-threshold` · `record` · `max-duration` · `remember` · `forget` |  | `set`: the fields to set, named as `pinecall agent set` names its flags, with the values the flags take: strings (`voice`, `tts`, `llm` as `vendor/model`, `language`, `greeting`, `hangup`), numbers (`temperature`, `endpointing-ms`, `min-interruption-words`, `eot-threshold`, `max-duration` in minutes 1 to 60 or the string `off`), `on`/`off` strings (`record`, `greeting-interruptible`), `end-of-turn` one of stt, livekit, smart-turn, objects for the `*-options`, arrays of strings for `remember` and `forget`. A field that is none of these is refused by name |
 | `fields` | a list of `voice` · `tts` · `tts-model` · `tts-builds` · `tts-options` · `stt` · `stt-builds` · `stt-options` · `end-of-turn` · `llm` · `temperature` · `llm-builds` · `llm-options` · `realtime` · `realtime-options` · `judge` · `judge-builds` · `judge-options` · `language` · `greeting` · `hangup` · `turn` · `memory` · `record` · `max-duration` · `knowledge` · `bases` |  | `clear`: the fields to take out of your corner (the team's holds again for each) |
 | `all` | true or false |  | `clear`: every field of the corner, instead of `fields` |
 | `team` | true or false |  | write the team's settings (the org's own) instead of your own |
@@ -121,6 +121,7 @@ A voice vendor's voices in a language: the id an agent's voice setting takes, th
 
 ```json title="called with"
 {
+  "tts": "cartesia",
   "language": "es",
   "country": "ES"
 }

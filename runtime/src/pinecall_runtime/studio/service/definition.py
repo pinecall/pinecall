@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
+from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.session import service as session
 from pinecall_runtime.studio.schemas import CollectedField, Definition, Header, HttpTool, ParamType
@@ -39,7 +40,7 @@ NOT_JSON = "a Studio release is a definition: {why}"
 TWO_TOOLS = "two tools are called {name}: a model calls a tool by its name, so each is one"
 RESERVED_NAME = "{name} is the platform's own tool: call yours something else"
 NOT_HTTPS = "{where}: {url} is not an https:// URL; Studio reaches the public internet over TLS alone"
-NO_SUCH_SECRET = "{where} names the secret {name}, which this env has none of: set it in Settings ▸ Secrets"
+NO_SUCH_SECRET = "{where} names the secret {name}, which {env} has none of: set it there, in Settings ▸ Secrets"
 SECRET_OUTSIDE = "{where} names {{{{secrets.{name}}}}} outside a header: a secret travels in a header alone"
 PATH_PARAM_UNDECLARED = "tool {tool}: its URL names {{{param}}}, which is none of its parameters"
 TWO_PARAMS = "tool {tool}: two parameters are called {name}"
@@ -60,8 +61,8 @@ def dumped(definition: Definition) -> bytes:
 
 
 # Refused when it is saved, never discovered on a call: what the shapes alone cannot say.
-def check(definition: Definition, secrets: Collection[str]) -> None:
-    """Refuse a definition no call could run: names twice, a URL off TLS, a secret out of a header or this env lacks."""
+def check(definition: Definition, secrets: Collection[str], env: Env) -> None:
+    """Refuse a definition no call could run: names twice, a URL off TLS, a secret out of a header or `env` lacks."""
     _check_secrets_stay_in_headers(definition)
     names: set[str] = set()
     for tool in definition.tools:
@@ -70,7 +71,7 @@ def check(definition: Definition, secrets: Collection[str]) -> None:
         if tool.name in names:
             raise ValidationError(TWO_TOOLS.format(name=tool.name))
         names.add(tool.name)
-        _check_tool(tool, secrets)
+        _check_tool(tool, secrets, env)
     collect = definition.collect
     if collect is None:
         return
@@ -82,7 +83,7 @@ def check(definition: Definition, secrets: Collection[str]) -> None:
     if collect.send_to is not None:
         _check_url("data collection", collect.send_to)
     for header in collect.headers:
-        _check_secrets_are_set(f"data collection's header {header.name}", header.value, secrets)
+        _check_secrets_are_set(f"data collection's header {header.name}", header.value, secrets, env)
 
 
 def declaration(definition: Definition) -> AgentConfig:
@@ -200,7 +201,7 @@ def _wanted(field: CollectedField) -> str:
     return f"- {field.name} ({field.type}{', required' if field.required else ', optional'}){about}"
 
 
-def _check_tool(tool: HttpTool, secrets: Collection[str]) -> None:
+def _check_tool(tool: HttpTool, secrets: Collection[str], env: Env) -> None:
     where = f"tool {tool.name}"
     _check_url(where, tool.url)
     params: set[str] = set()
@@ -212,7 +213,7 @@ def _check_tool(tool: HttpTool, secrets: Collection[str]) -> None:
         if named not in params:
             raise ValidationError(PATH_PARAM_UNDECLARED.format(tool=tool.name, param=named))
     for header in tool.headers:
-        _check_secrets_are_set(f"{where}'s header {header.name}", header.value, secrets)
+        _check_secrets_are_set(f"{where}'s header {header.name}", header.value, secrets, env)
 
 
 def _check_url(where: str, url: str) -> None:
@@ -245,8 +246,8 @@ def _strings(item: object, path: str) -> Iterator[tuple[str, str]]:
             yield from _strings(entry, f"{path}.{named if isinstance(named, str) else index}")
 
 
-def _check_secrets_are_set(where: str, text: str, secrets: Collection[str]) -> None:
+def _check_secrets_are_set(where: str, text: str, secrets: Collection[str], env: Env) -> None:
     for path in A_PLACEHOLDER.findall(text):
         head, _, name = path.partition(".")
         if head == SECRETS and name not in secrets:
-            raise ValidationError(NO_SUCH_SECRET.format(where=where, name=name))
+            raise ValidationError(NO_SUCH_SECRET.format(where=where, name=name, env=env.value))

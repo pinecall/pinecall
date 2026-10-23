@@ -331,15 +331,15 @@
         },
         "decides": {
           "vendor": "anthropic",
-          "model": null,
+          "model": "claude-haiku-5-5",
           "voice_id": null,
           "language": null
         },
         "speaks": {
           "vendor": "cartesia",
           "model": null,
-          "voice_id": null,
-          "language": null
+          "voice_id": "de38f545-c574-44e8-9b54-a7d6fec1c6b1",
+          "language": "es"
         },
         "greeting": {
           "say": "Thanks for calling. How can I help?",
@@ -360,7 +360,7 @@
             "env": null,
             "extra": "anthropic",
             "voices_listed": false,
-            "availability": "offered",
+            "availability": "yours",
             "broken": null
           },
           {
@@ -406,7 +406,8 @@
             "turns": 20
           }
         ],
-        "unavailable_reasons": {}
+        "unavailable_reasons": {},
+        "talks": null
       }
     }
   ],
@@ -427,7 +428,7 @@
             "env": null,
             "extra": "anthropic",
             "voices_listed": false,
-            "availability": "offered",
+            "availability": "yours",
             "broken": null
           },
           {
@@ -482,6 +483,7 @@
   "voices": [
     {
       "args": {
+        "tts": "cartesia",
         "language": "es",
         "country": "ES"
       },
@@ -573,7 +575,7 @@
             "rings": "broken",
             "last_call_at": null,
             "via": null,
-            "account": "AC5f…e442"
+            "account": "AC5f7c1e0a4d9b2f4e6a8c3d5f7a9b1c2d3e"
           }
         ]
       }
@@ -588,7 +590,7 @@
         "carriers": [
           {
             "kind": "twilio",
-            "account": "AC5f…e442",
+            "account": "AC5f7c1e0a4d9b2f4e6a8c3d5f7a9b1c2d3e",
             "label": "",
             "networks": []
           }
@@ -1333,7 +1335,8 @@
             ],
             "broke": []
           }
-        ]
+        ],
+        "refused": []
       }
     }
   ],

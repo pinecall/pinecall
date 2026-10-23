@@ -23,6 +23,9 @@ registers in the sandbox and answers the sandbox's console; with --prod, in prod
 At the root of a project of several agents — agents/<name>/agent.tsx — every agent at once, in one
 process, each line prefixed by its slug; --agent <name> runs one of them.
 
+A save under an agent's folder reloads it: the next process registers, then the one before drains
+its calls to it; a save that does not load leaves the one before answering and says why.
+
 Ctrl-C or SIGTERM: the agent's process drains its calls to the next holder and leaves; a second
 signal kills it. --inspect is Node's own flag, given to a TypeScript agent's process.
 

@@ -14,8 +14,10 @@ import { line as describeLine } from "../telephony/render.js";
 import { runOnce, serveStart, spawnServing, type Child } from "./child.js";
 import { createCompanion, type Companion } from "./companion.js";
 import { consoleAddress, consoleUrl, TALK, whyNoConsole } from "./console.js";
+import { onSaves, Releases } from "./reload.js";
 import * as render from "./render.js";
 import { listenTo, live, plain, type PlainAgent, type Running } from "./screens.js";
+import { Relay, type Serving } from "./serving.js";
 
 /** What `start` takes: which agents, and how it shows them. */
 export const StartInput = z.object({
@@ -59,22 +61,69 @@ export async function start(ctx: Context, input: StartInput): Promise<number> {
   }
   const args = [...homes.flatMap((home) => ["--file", home.file, "--slug", home.name]), "--events"];
   const first = homes[0]!;
-  const child = spawnServing(serveStart(ctx.gateway(), first.file, "start", args, { root: first.root, inspect: input.inspect }, ctx.processEnv), { other: ctx.io.stderr, signals: process });
+  const spawned = (): Child => spawnServing(serveStart(ctx.gateway(), first.file, "start", args, { root: first.root, inspect: input.inspect }, ctx.processEnv), { other: ctx.io.stderr, signals: process });
+  const child = spawned();
+  const relay = new Relay(child);
   // Before the registrations are read, so agent.registered is the first line of a pipe.
-  if (input.events) child.onEvent((line) => ctx.io.stdout.write(`${JSON.stringify(line)}\n`));
+  if (input.events) relay.onEvent((line) => ctx.io.stdout.write(`${JSON.stringify(line)}\n`));
   for (const home of homes) await child.registered(home.name);
-  const companion = createCompanion(ctx, homes, child);
+  const releases = reloading(ctx, homes, child, spawned, relay);
+  const unwatch = onSaves(homes.map((home) => home.root), () => void releases.reload());
+  const companion = createCompanion(ctx, homes, relay);
   try {
     await companion.pc.connect();
-    const running: Running = { gone: Promise.race([child.exited, companionStopped(ctx, companion, child)]), leave: () => child.stop() };
+    const running: Running = {
+      gone: Promise.race([goneWhileAnswering(releases), companionStopped(ctx, companion, releases)]),
+      leave: () => releases.current.stop(),
+    };
     if (input.events) return await running.gone;
-    if (input.ui) return await live(ctx.io, running, listenTo(child, first.name), { slug: first.name, url: ctx.gateway().url });
-    const agents = await Promise.all(homes.map(async (home): Promise<PlainAgent> => plainAgent(ctx, home, child, who)));
+    if (input.ui) return await live(ctx.io, running, listenTo(relay, first.name), { slug: first.name, url: ctx.gateway().url });
+    const agents = await Promise.all(homes.map(async (home): Promise<PlainAgent> => plainAgent(ctx, home, relay, who)));
     return await plain(ctx.io, running, agents, ctx.gateway().url);
   } finally {
+    unwatch();
+    await releases.close();
     await companion.close();
-    await child.stop();
+    await releases.current.stop();
   }
+}
+
+// A save starts the next process; once every agent registered there, the one before drains. A save
+// that does not load — the entry left, or registered nothing in time — leaves the one before answering
+// and says why; the next save tries again. One line per reload, on stderr with the rest of the prose.
+function reloading(ctx: Context, homes: AgentHome[], child: Child, spawned: () => Child, relay: Relay): Releases<Child> {
+  return new Releases(
+    child,
+    async () => {
+      const next = spawned();
+      try {
+        for (const home of homes) await next.registered(home.name);
+      } catch (failed) {
+        await next.stop();
+        throw failed;
+      }
+      relay.follow(next);
+      return next;
+    },
+    ({ version, broken }) => {
+      if (broken === undefined) ctx.io.info(render.reloadedLine(version));
+      else ctx.io.warn(render.notReloadedLine(version, broken));
+    },
+  );
+}
+
+// The process answering left on its own: `start` ends with its code, as a process manager expects. One
+// let go by a reload is not it.
+function goneWhileAnswering(releases: Releases<Child>): Promise<number> {
+  return new Promise((gone) => {
+    const follow = (child: Child): void => {
+      void child.exited.then((code) => {
+        if (releases.current === child) gone(code);
+      });
+    };
+    follow(releases.current);
+    releases.onReplaced(follow);
+  });
 }
 
 /** A signed-in console link: one-use, five minutes, so the key itself never travels; the page spends it for a key of its own. */
@@ -83,11 +132,11 @@ export async function consoleLink(ctx: Context, slug: string | undefined, screen
   return consoleUrl(gw.url, gw.env, slug, await accounts.createLoginCode(ctx), screen);
 }
 
-async function plainAgent(ctx: Context, home: AgentHome, child: Child, who: accounts.Whoami): Promise<PlainAgent> {
+async function plainAgent(ctx: Context, home: AgentHome, serving: Serving, who: accounts.Whoami): Promise<PlainAgent> {
   const { source } = ctx.credentials();
   return {
     slug: home.name,
-    heard: listenTo(child, home.name),
+    heard: listenTo(serving, home.name),
     connected: render.connectedLine({ slug: home.name, url: ctx.gateway().url, tools: await countTools(ctx, home.name), org: accounts.orgOf(who), env: who.env, source }),
     after: () => linesOnceUp(ctx, home.name),
   };
@@ -119,14 +168,15 @@ async function talkLine(ctx: Context, slug: string): Promise<string> {
 }
 
 // An org member's Stop on the companion lets the console go; the agent's process is told to leave too.
-async function companionStopped(ctx: Context, companion: Companion, child: Child): Promise<number> {
+async function companionStopped(ctx: Context, companion: Companion, releases: Releases<Child>): Promise<number> {
   await new Promise<void>((done) =>
     companion.pc.onStopped((why) => {
       ctx.io.info(why);
       done();
     }),
   );
-  return await child.stop();
+  await releases.close();
+  return await releases.current.stop();
 }
 
 function named(homes: AgentHome[]): string {

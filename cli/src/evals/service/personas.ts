@@ -1,6 +1,6 @@
 /** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, and the file-kept ones pushed once. */
 
-import { readdir, stat } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -9,6 +9,7 @@ import { z } from "zod";
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError, errorMessage } from "../../errors.js";
+import { readJsonFile } from "../../kit/json-file.js";
 import * as providers from "../../providers/service.js";
 import { AMBIENCES } from "./suite.js";
 
@@ -201,6 +202,9 @@ export function factsOf(said: string[]): Record<string, string> {
   return facts;
 }
 
+const PERSONA_FILES = new Set([".ts", ".json"]);
+export const NOT_A_PERSONA_FILE = (file: string): string => `${file} is no persona: a .ts file default-exports { goal, style, facts?, state? }, a .json file is that object`;
+
 /** A persona file as it was written before the gateway kept them. */
 interface FilePersona {
   name: string;
@@ -210,24 +214,28 @@ interface FilePersona {
   state?: Record<string, unknown>;
 }
 
-// The files are TypeScript a project never builds; tsx is loaded only here.
+// A `.ts` file is TypeScript a project never builds, loaded through tsx's own import — a namespace of
+// its own per call, so an edited file is read again; a `.json` file is read as it is.
 async function personasInFiles(folder: string): Promise<FilePersona[]> {
   const names = await readdir(resolve(folder)).catch(() => []);
-  const files = names.filter((name) => extname(name) === ".ts").sort();
-  if (files.length === 0) return [];
-  const { register } = await import("tsx/esm/api");
-  const unregister = register();
-  try {
-    return await Promise.all(
-      files.map(async (name) => {
-        const file = join(resolve(folder), name);
-        // Cache-bust by mtime so an edited file is re-imported.
-        const loaded = (await import(`${pathToFileURL(file).href}?v=${(await stat(file)).mtimeMs}`)) as { default?: unknown };
-        if (typeof loaded.default !== "object" || loaded.default === null) throw new UsageError(`${file} has no default-exported persona`);
-        return { ...(loaded.default as FilePersona), name: basename(file, extname(file)) };
-      }),
-    );
-  } finally {
-    await unregister();
-  }
+  const files = names.filter((name) => PERSONA_FILES.has(extname(name))).sort();
+  return await Promise.all(
+    files.map(async (name) => {
+      const file = join(resolve(folder), name);
+      const loaded = extname(name) === ".json" ? readJsonFile<unknown>("a persona file", file) : await personaModule(file);
+      if (typeof loaded !== "object" || loaded === null || typeof (loaded as FilePersona).goal !== "string" || typeof (loaded as FilePersona).style !== "string") {
+        throw new UsageError(NOT_A_PERSONA_FILE(file));
+      }
+      return { ...(loaded as FilePersona), name: basename(file, extname(file)) };
+    }),
+  );
+}
+
+// A file in a folder with no `"type": "module"` is compiled as CommonJS, and its default export arrives
+// one level down (`module.exports.default`).
+async function personaModule(file: string): Promise<unknown> {
+  const { tsImport } = await import("tsx/esm/api");
+  const loaded = (await tsImport(pathToFileURL(file).href, import.meta.url)) as { default?: unknown; "module.exports"?: { default?: unknown } };
+  const commonjs = loaded["module.exports"];
+  return commonjs === undefined ? loaded.default : (commonjs.default ?? commonjs);
 }

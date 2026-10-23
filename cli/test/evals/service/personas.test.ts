@@ -7,6 +7,7 @@ import * as personas from "../../../src/evals/service/personas.js";
 import { answer } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { A_PERSONA } from "../../support/fixtures.js";
+import { folder, write } from "../../support/project.js";
 
 const LIBRARY = { ...A_PERSONA, name: "confused-elder", owner: "pinecall", on: false };
 
@@ -93,5 +94,29 @@ describe("facts", () => {
   it("are what=said, repeated", () => {
     expect(personas.factsOf(["their phone=305 555 0101", "name = Luis"])).toEqual({ "their phone": "305 555 0101", name: "Luis" });
     expect(() => personas.factsOf(["Luis"])).toThrow(/a fact is what=said/);
+  });
+});
+
+describe("personas in files", () => {
+  it("a .ts file default-exporting one and a .json file holding one are both pushed, named by the file", async () => {
+    const root = folder();
+    write(root, "test/personas/from-ts.ts", "export default { goal: 'move an appointment', style: 'hurried', facts: { phone: 305 }, state: { patient: 'Ana' } };\n");
+    write(root, "test/personas/from-json.json", JSON.stringify({ goal: "ask the hours", style: "plain" }));
+    const sent = answer("put", "/v1/agents/front-desk/personas/:name", (request) => [{ ...A_PERSONA, name: request.path.split("/").at(-1) }]);
+    const { ctx } = testContext();
+    const pushed = await personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`);
+    expect(pushed.pushed).toEqual(["from-json", "from-ts"]);
+    expect(sent.map((one) => one.body)).toEqual([
+      { goal: "ask the hours", style: "plain", about: "", facts: {}, state: {} },
+      { goal: "move an appointment", style: "hurried", about: "", facts: { phone: "305" }, state: { patient: "Ana" } },
+    ]);
+  });
+
+  it("a file that is no persona is refused naming the shape", async () => {
+    const root = folder();
+    write(root, "test/personas/empty.json", "{}");
+    const { ctx } = testContext();
+    await expect(personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`)).rejects.toThrow(UsageError);
+    await expect(personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`)).rejects.toThrow("a .ts file default-exports { goal, style, facts?, state? }, a .json file is that object");
   });
 });

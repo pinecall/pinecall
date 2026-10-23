@@ -11,6 +11,8 @@ import { WAIT, WAIT_S } from "./fields.js";
 
 export const NO_RUNTIME =
   'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then run this again';
+/** `setup --recommend` arrived in pinecall-runtime 0.11.3; an older one answers argparse's own refusal. */
+export const TOO_OLD = "this machine's pinecall-runtime is older than 0.11.3, the first with `setup --recommend`: `uv tool upgrade pinecall-runtime`, then run this again";
 /** The line `setup` prints when the runtime answers and the processes are about to run. */
 const READY = "ready";
 /** How many of the runtime's lines an answer carries. */
@@ -48,7 +50,7 @@ export const runtime = tool({
     wait_s: WAIT,
   },
   manual:
-    "`runtime` is for a person who wants the runtime on their own machine, with no account. Call `recommend` first: it reads the machine — its card or its Mac's memory and what is left for the models, Docker, the Ollama here and the models it holds, and where each vendor's key is (the environment or a shell file; never its value) — and answers the stack that fits it, each measured model with whether it fits and what it did. Show the person that stack and ask whether a stage should change; then `up` runs `pinecall-runtime setup --yes` on it, or on the stages given (`stt`, `turn`, `llm`, `tts`, `judge`, `caller`: `local`, `local/<model>` — any model Ollama holds — or a vendor). `up` brings Postgres, Redis and LiveKit up in Docker, writes the schema, makes the console's admin (`email`) with no password — none is made up where nobody is at a terminal: `pinecall-runtime orgs password default <email>` sets one in a terminal, and `console_url` opens the console signed in meanwhile — signs this machine in to the runtime in `~/.pinecall/session.json` (so `whoami`, `chat`, `test` and `start` work with no `login`) and pulls the local models once — minutes, the first time. A vendor's key is read from the environment or the person's shell files; one found nowhere refuses by name, and the person sets it in a terminal. `up` answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway, the worker and the services; the database and the sign-in are kept. A project made while the runtime runs here names it in its pinecall.json.",
+    "`runtime` is for a person who wants the runtime on their own machine, with no account; it needs pinecall-runtime 0.11.3 or newer on the machine, and an older one is refused naming the upgrade. Call `recommend` first: it reads the machine — its card or its Mac's memory and what is left for the models, Docker, the Ollama here and the models it holds, and where each vendor's key is (the environment or a shell file; never its value) — and answers the stack that fits it, each measured model with whether it fits and what it did. Show the person that stack and ask whether a stage should change; then `up` runs `pinecall-runtime setup --yes` on it, or on the stages given (`stt`, `turn`, `llm`, `tts`, `judge`, `caller`: `local`, `local/<model>` — any model Ollama holds — or a vendor). `up` brings Postgres, Redis and LiveKit up in Docker, writes the schema, makes the console's admin (`email`) with no password — none is made up where nobody is at a terminal: `pinecall-runtime orgs password default <email>` sets one in a terminal, and `console_url` opens the console signed in meanwhile — signs this machine in to the runtime in `~/.pinecall/session.json` (so `whoami`, `chat`, `test` and `start` work with no `login`) and pulls the local models once — minutes, the first time. A vendor's key is read from the environment or the person's shell files; one found nowhere refuses by name, and the person sets it in a terminal. `up` answers within `wait_s` with the lines printed so far; call `status` until a line says ready, then `whoami`. `down` stops the gateway, the worker and the services; the database and the sign-in are kept. A project made while the runtime runs here names it in its pinecall.json.",
   handler: async (args, ctx) => {
     const home = homeOf(ctx.processEnv);
     const started = ctx.session.runtime;
@@ -90,6 +92,7 @@ function requireInstalled(env: NodeJS.ProcessEnv): void {
 /** What `pinecall-runtime setup --recommend` prints: the machine and the stack that fits it, as it says them. */
 function recommended(env: NodeJS.ProcessEnv): unknown {
   const read = spawnSync("pinecall-runtime", ["setup", "--recommend"], { encoding: "utf8", env });
+  if (read.status !== 0 && /invalid choice: 'setup'/.test(read.stderr)) throw new ToolRefused(TOO_OLD);
   if (read.status !== 0) throw new ToolRefused(`pinecall-runtime could not read this machine: ${lastLines((read.stderr + read.stdout).split("\n")).join(" ")}`);
   return JSON.parse(read.stdout) as unknown;
 }

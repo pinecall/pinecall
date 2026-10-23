@@ -5,7 +5,7 @@ import inspect
 import io
 import time
 import wave
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -146,6 +146,19 @@ def _value(value: object) -> Any:
     if a_list(value):
         return [_value(item) for item in value]
     return str(value)
+
+
+# A plugin that lists its voices with no language cannot be narrowed by one: every voice would pass
+# the filter, and a person asking for Spanish would read 150 voices in every tongue.
+NO_LANGUAGE_LISTED = (
+    "{vendor} lists its voices with no language, so --language {language} cannot narrow them: drop it and pick by name"
+)
+
+
+def check_narrowable(vendor: str, listed: Sequence[ListedVoice], language: str | None) -> None:
+    """Refuse a language on a listing that carries none; nothing on a listing that does, or on no language."""
+    if language is not None and listed and not any(item.detail.get("language") for item in listed):
+        raise ValidationError(NO_LANGUAGE_LISTED.format(vendor=vendor, language=language))
 
 
 def _listed(row: Mapping[str, Any]) -> ListedVoice | None:

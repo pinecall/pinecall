@@ -89,7 +89,7 @@ async def create_agent(
         raise Conflict(TAKEN.format(name=name))
     if held:
         raise Conflict(HELD_BY_CODE.format(name=name))
-    defined.check(definition, await secret_names(session, org, env))
+    defined.check(definition, await secret_names(session, org, env), env)
     await _open(session, app, by=by)
     await _keep(session, app, definition, by=by, note=note)
     return await read_agent(session, org, env, name)
@@ -110,7 +110,7 @@ async def save_agent(
     standing = await read_agent(session, org, env, name)
     if based_on is not None and based_on != standing.release:
         raise ReleaseMoved(standing.release)
-    defined.check(definition, await secret_names(session, org, env))
+    defined.check(definition, await secret_names(session, org, env), env)
     if definition != standing.definition:
         await _keep(session, hosting.App(org=org, env=env, name=name), definition, by=by, note=note)
     return await read_agent(session, org, env, name)
@@ -129,7 +129,7 @@ async def deploy_agent(
     chosen = standing.definition
     if release is not None and release != standing.release:
         chosen = defined.parsed((await hosting.source_of(session, sandbox, release)).data)
-    defined.check(chosen, await secret_names(session, org, Env.production))
+    defined.check(chosen, await secret_names(session, org, Env.production), Env.production)
     production = hosting.App(org=org, env=Env.production, name=name)
     kind = await hosting.kind_of(session, production)
     if kind is None:
@@ -156,7 +156,7 @@ async def try_tool(
     tool = next((item for item in definition.tools if item.name == name), None)
     if tool is None:
         raise NotFound(NO_TOOL.format(name=name))
-    defined.check(definition, await secret_names(session, org, env))
+    defined.check(definition, await secret_names(session, org, env), env)
     secrets = await hosting.environment_of(session, vault, org, env)
     values = {"call": {"from": "+15550100", "to": "+15550199", "channel": "web"}, "metadata": {}, "secrets": secrets}
     request = fetch.request_of(tool, arguments, values)

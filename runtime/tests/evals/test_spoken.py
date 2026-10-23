@@ -1,12 +1,19 @@
 """Tests for a persona on a real line: the audio it says, when it may speak, when it hangs up."""
 
+import asyncio
 import math
+import time
 from array import array
 from collections.abc import AsyncIterator, Sequence
+from types import SimpleNamespace
+from typing import Never, cast
 
+import pytest
 from livekit import rtc
+from livekit.agents import tts
 
 import pinecall_runtime.evals.service.spoken as spoken
+from pinecall_runtime.calls import service as calls
 from pinecall_runtime.evals.service.spoken import (
     FRAME_MS,
     LOST,
@@ -257,3 +264,29 @@ def test_the_line_is_the_requests_noise_or_else_the_personas_and_carries_how_it_
     named = line_of(behavior, 20.0, 0.1, "street")
     assert (named.interferer_db, named.packet_loss, named.interrupts) == (20.0, 0.1, 0.4)
     assert named.ambience == "street"
+
+
+# G B2 (2026-10-23): a caller that cut in asked for its line only then, and paused before it as before any
+# line, so the answer it meant to talk over was over by the time it spoke.
+async def test_a_caller_that_cuts_in_asks_for_its_line_as_the_agent_begins_and_says_it_with_no_pause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def began(*_: object, **__: object) -> None:
+        return None
+
+    monkeypatch.setattr(spoken, "speaking", began)
+    monkeypatch.setattr(spoken, "CUT_IN_AFTER_S", (0.0, 0.0))
+    logs = cast(calls.Logs, SimpleNamespace(store=SimpleNamespace(clock=time.time)))
+    line = Line(interrupts=1.0, pause_s=30.0)
+    leg = spoken.CallerLeg(spoken.SpokenLine("ws://box", "t", "call_1", 3, line), cast(tts.TTS[Never], None), logs, b"")
+    said: list[str] = []
+
+    async def speak(text: str) -> None:
+        said.append(text)
+
+    monkeypatch.setattr(leg, "_speak", speak)
+    asked: list[bool] = []
+    assert await leg.line_answered(1, lambda: asked.append(True)) is True
+    assert asked == [True]
+    await asyncio.wait_for(leg.say("wait, the Tuesday one"), 1.0)
+    assert said == ["wait, the Tuesday one"]

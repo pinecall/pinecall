@@ -47,15 +47,21 @@ def is_call_over(entries: Sequence[Entry]) -> bool:
     return any(entry.type == "call.ended" for entry in entries)
 
 
-def is_line_open(entries: Sequence[Entry], now: float) -> bool:
-    """Whether the agent finished its opening, or has none, and listens."""
+def is_line_open(entries: Sequence[Entry], now: float, *, notice: bool = False) -> bool:
+    """Whether the agent finished its opening, or has none, and listens; behind a notice, its greeting too."""
     states = [(index, entry) for index, entry in enumerate(entries) if entry.type == "agent.state"]
     if not states:
         return False
     spoke = [index for index, entry in enumerate(entries) if entry.type == "turn.agent"]
     index, last = states[-1]
     if spoke:
-        return _state_of(last) == LISTENING and index > spoke[-1]
+        listens = _state_of(last) == LISTENING and index > spoke[-1]
+        # "This call may be recorded." is a turn of its own, said before the greeting: a caller that took it
+        # for the opening spoke over the greeting. One turn is the notice until the greeting follows, or
+        # until the agent has listened long enough to have none.
+        if notice and len(spoke) < 2:
+            return listens and now - last.ts >= A_SILENT_OPENING_S
+        return listens
     only_listened = all(_state_of(entry) == LISTENING for _, entry in states)
     return only_listened and now - states[0][1].ts >= A_SILENT_OPENING_S
 
@@ -95,9 +101,15 @@ def is_agent_busy(entries: Sequence[Entry]) -> bool:
 # The log's own clock stamps its entries, so it is the clock the caller's silence is read by:
 # `since` is when the caller began its line, before the agent could have heard it.
 async def answered(
-    logs: calls.Logs, call: str, lines: int, *, since: float | None = None, landed: Landed | None = None
+    logs: calls.Logs,
+    call: str,
+    lines: int,
+    *,
+    since: float | None = None,
+    landed: Landed | None = None,
+    notice: bool = False,
 ) -> bool:
-    """Wait until the agent answered `lines` lines (its opening when 0): True, or False if not."""
+    """Wait until the agent answered `lines` lines (its opening when 0, past a notice when `notice`); False if not."""
     if since is None:
         since = logs.store.clock()
     subscription = await logs.reading(call).follow(CONVERSATION)
@@ -114,7 +126,9 @@ async def answered(
             if is_call_over(entries):
                 return False
             done = (
-                is_line_open(entries, logs.store.clock()) if opening else has_answer_landed(entries, lines, since=since)
+                is_line_open(entries, logs.store.clock(), notice=notice)
+                if opening
+                else has_answer_landed(entries, lines, since=since)
             )
             if done and not was_done and landed is not None:
                 landed()

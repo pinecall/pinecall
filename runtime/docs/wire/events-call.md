@@ -175,7 +175,7 @@ Data: `AvatarMetrics`, in [metrics.md](metrics.md).
 
 ### `metrics.eot`
 
-One end-of-turn prediction: livekit's EOTInferenceMetrics, every field. Has no speech_id; it belongs to the call.
+One end-of-turn prediction: livekit's EOTInferenceMetrics, every field. Has no speech_id; it belongs to the call. Written only where a turn model runs on the worker (Smart Turn, LiveKit's): ears that end the turn themselves (Deepgram Flux) write none.
 
 Data: `EOTInferenceMetrics`, in [metrics.md](metrics.md).
 
@@ -205,7 +205,7 @@ Data: `RealtimeModelMetrics`, in [metrics.md](metrics.md).
 
 ### `metrics.stt`
 
-One STT request or stream segment as the session measured it: livekit's STTMetrics, every field. Has no speech_id; it belongs to the call.
+One STT request or stream segment as the session measured it: livekit's STTMetrics, every field. Has no speech_id; it belongs to the call. Ears that stream and end the turn themselves (Deepgram Flux) report none, and their `transcription_delay` is near zero: the transcript is final when the turn ends.
 
 Data: `STTMetrics`, in [metrics.md](metrics.md).
 

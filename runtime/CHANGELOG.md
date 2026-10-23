@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- **A Studio definition naming a secret the environment lacks says which environment**: a deploy to
+  production that misses a production secret said `which this env has none of`. (found by the 2026-10-23
+  eval, I note)
+- **A simulated caller that interrupts does interrupt.** It asked for its line only once it had cut in, and
+  paused before it as before any line, so the answer it meant to talk over was done by the time it spoke:
+  with `interrupts 0.6` not one of eight replies was interrupted. It asks for the line as the agent begins
+  and says it with no pause. (found by the 2026-10-23 eval, G B2)
+- **A simulated caller waits for the greeting behind the recording notice.** It took "This call may be
+  recorded." for the opening and spoke over the greeting; one turn is the notice when the org says one,
+  until the greeting follows or the agent has listened long enough to have none. (found by the 2026-10-23
+  eval, G B3)
+- **A simulated caller's leaving ends the call `caller_hung_up` at once**, as a widget's hang-up does;
+  the call ended `drained` 12 s later when the room was deleted, the dead air billed. (found by the
+  2026-10-23 eval, G D4)
+- **`GET /v1/voices` refuses a `language` on a vendor whose plugin lists its voices with none** (ElevenLabs'),
+  saying so, instead of passing every voice through the filter. (found by the 2026-10-23 eval, L B4)
+- **A spoken run's `interferer_db` is 0 to 60**, dB under the caller, refused outside. (found by the 2026-10-23
+  eval, L D14)
+- **A person has one phone at a time: `PUT /v1/line/from` replaces the one before**, and `DELETE` forgets
+  that one. Said twice, both phones rang the person's copy, and the forget took every phone they had ever
+  said, a colleague's test number among them. (found by the 2026-10-23 eval, K F2)
+- **`GET …/settings/diff?team=true` reads the team's corner as ours**, so a team can see its corner
+  against production's; before, the diff read the person's own corner alone and showed a difference after
+  the push that made the team's equal. (found by the 2026-10-23 eval, J F6)
+
 ## 0.11.18 — settings name their model, a written chat on the Responses API, late lines never lost (2026-10-23)
 
 - **A vendor alone is refused for `llm` and `judge`, and a model alone stays on the vendor in use.** `--llm

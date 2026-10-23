@@ -147,6 +147,7 @@ async def list_voices(
         keys = await keyring.keys_of(session, _vault(request), actor.scope)
         stage = keyring.stage_on_its_key("tts", Voice(provider=named), configured, keys)
         listed = await voices.listed_by_vendor(dataclasses.replace(stage, language=spoken))
+        voices.check_narrowable(named, listed, language)
     return VoicesListed(
         tts=tts,
         language=language,

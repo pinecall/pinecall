@@ -252,18 +252,19 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `dev/handlers/runs.ts` | 75 | The console's Runs screens: a real call promoted to a candidate beside the goldens, the judges' drift, the reproductions a suite wrote. |
 | `dev/handlers/screen.ts` | 40 | What every console screen's handlers stand on, and how a failure of theirs is told to the console. |
 | `dev/handlers/suite.ts` | 117 | The console's Tests and Simulations screens: goldens and personas played through the agent this process serves. |
-| `dev/render.ts` | 64 | The lines `pinecall start` prints once an agent is registered: connected, its routes, its line. |
+| `dev/reload.ts` | 113 | A save reloads the agent: its folder watched, a burst of writes settled into one reload, the next copy answering before the one before drains. |
+| `dev/render.ts` | 74 | The lines `pinecall start` prints once an agent is registered: connected, its routes, its line, a reload. |
 | `dev/screen.ts` | 101 | The live terminal view as pure functions: events in, screen text out. |
 | `dev/screens.ts` | 142 | `pinecall start` output modes: the plain log and the full-screen view, over the agent's process. |
-| `dev/serving.ts` | 84 | What a serve entry says on its `--events` stdout: one wire entry a line, read into apps and events. |
-| `dev/start.ts` | 136 | `pinecall start` as a process: the serve entry started and watched, the companion connected, the lines printed until it leaves. |
+| `dev/serving.ts` | 121 | What a serve entry says on its `--events` stdout: one wire entry a line, read into apps and events; a relay over whichever entry answers now. |
+| `dev/start.ts` | 186 | `pinecall start` as a process: the serve entry started and watched, reloaded on a save, the companion connected, the lines printed until it leaves. |
 
 ### `mcp/` — the MCP server over the domains' services
 
 | file | lines | what it is |
 |---|---|---|
 | `mcp/agent-host/framework.ts` | 74 | A TypeScript project with nothing installed runs on the framework this server ships, lent to the agent's thread alone: nothing is written into the project. |
-| `mcp/agent-host/held.ts` | 186 | An agent the MCP server holds: in a thread of its own, or attached to the process that already holds it, and reloaded on a save. |
+| `mcp/agent-host/held.ts` | 159 | An agent the MCP server holds: in a thread of its own, or attached to the process that already holds it, and reloaded on a save. |
 | `mcp/agent-host/thread.ts` | 149 | An agent served in a worker thread of this process: the project's own serve entry, its `main` called with the thread's streams. |
 | `mcp/commands.ts` | 51 | `pinecall mcp`: the MCP server an assistant runs this CLI as, and `install`, which adds it to every assistant here. |
 | `mcp/install/configs.ts` | 56 | Somebody else's config file, with exactly one entry changed: Pinecall's. Their servers, settings and comments stay. |

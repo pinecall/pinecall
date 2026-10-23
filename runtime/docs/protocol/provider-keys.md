@@ -125,7 +125,9 @@ actually ran, and a lent fallback's usage is the operator's like any lent stage'
 
 ## The voices
 
-`GET /v1/voices?tts=&language=` lists a vendor's voices, filtered to the language's primary tag
+`GET /v1/voices?tts=&language=` lists a vendor's voices, filtered to the language's primary tag (a vendor whose
+plugin lists its voices with no language cannot be narrowed by one: `400 <vendor> lists its voices with no
+language, so --language <tag> cannot narrow them: drop it and pick by name`)
 when one is named: `{tts, language, voices: [{id, name, language, description, gender, country,
 accent}]}`. The voices the providers row lists for that vendor and language come first, in the
 row's order (`listed`, keyed `vendor/language`, [operator-api.md](operator-api.md)); where it lists

@@ -19,7 +19,7 @@ key, no gateway, and never over a file that is there.
 agent <name> is agents/<name>/: the class, its ring-0 test and one golden, in the project's
 language. golden <name> is agents/<agent>/test/goldens/<name>.json: a turn for each caller's line
 (--say, in order), and the tools the whole call must make (--tool, its expect). What must follow
-each turn and the rest of expect are added by hand (docs.pinecall.io/concepts/golden-expectations).
+each turn and the rest of expect are added by hand (docs.pinecall.io/concepts/expectations).
 
 Examples
   $ pinecall g golden asks-for-a-refund --say "Hi, I want a refund." --say "It's Ana Ruiz." --tool takeMessage

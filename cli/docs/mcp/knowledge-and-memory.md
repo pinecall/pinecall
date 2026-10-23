@@ -150,6 +150,7 @@ Hold memory's writing to its cases: each written call in agents/<agent>/test/mem
       ],
       "broke": []
     }
-  ]
+  ],
+  "refused": []
 }
 ```

@@ -43,6 +43,23 @@ export function versionIsAVerbs(argv: readonly string[]): boolean {
   return verb !== -1 && argv.slice(verb).some((word) => A_VERSION_FLAG.test(word));
 }
 
+/** What bare `pinecall` prints: the verbs by what they are for, on one screen; `--help` is the whole map. */
+export const MAP = `pinecall — an agent's project in any language, against the Pinecall gateway
+
+  sign in, make a project     login · whoami · new · generate · mcp
+  run it, talk to it          start · console · chat · prompt · kill
+  the phone                   line · numbers · carriers · callbacks
+  its settings                agent · lexicon · pipeline · voices · providers
+  test it                     test · simulate · personas · judges · judging · eval · runs · cases
+  what happened               sessions · supervise · data · limits
+  knowledge and memory        docs · memory · remember
+  going live                  deploy · studio · secrets · team · telemetry
+  watching it                 monitors · webhook · alerts
+
+  pinecall <verb> --help      the verb's flags · pinecall --help  every verb on one page
+  --prod anywhere on the line runs that one command in production; --json answers as one object
+  docs.pinecall.io/cli/overview`;
+
 /** The whole CLI: `pinecall [--prod] [--json] <verb> …`, every domain's verbs registered; `argv` is the line it is made for. */
 export async function createProgram(ctx: Context, argv: readonly string[] = []): Promise<Command> {
   const root = new Command("pinecall").description("An agent's project in any language, against the Pinecall gateway.");

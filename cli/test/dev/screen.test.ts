@@ -17,6 +17,11 @@ describe("the view", () => {
     expect(screen.events).toHaveLength(2);
   });
 
+  it("a refusal the gateway sends the app — a kill — is a line of the transcript", () => {
+    const screen = absorb(screenFor("front-desk", "https://gateway.test"), event("error", { code: "killed", message: "front-desk was killed by ana" }));
+    expect(screen.transcript.map((line) => line.text)).toEqual(["front-desk was killed by ana"]);
+  });
+
   it("the state panel marks what changed, and says when there is none", () => {
     expect(statePanel({}, [])).toEqual(["  (no state yet)"]);
     expect(statePanel({ patient: "Ana", notes: "x".repeat(80) }, ["patient"])).toEqual(["● patient: Ana", `  notes: ${"x".repeat(59)}…`]);

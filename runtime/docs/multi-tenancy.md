@@ -52,7 +52,10 @@ What a request sees is a **corner**: the org, the environment, and in the sandbo
 | a person's | the sandbox | that person's own copy |
 
 An agent's tuning and lexicon, and knowledge, are kept per corner; a person's sandbox corner falls back,
-knob by knob, to the org's own. An admin may open a colleague's sandbox corner to look at it.
+knob by knob, to the org's own. An admin may open a colleague's sandbox corner to look at it. The other
+way round is closed on purpose: a sandbox server token reads the org's corner and never a person's, so a
+base a person pushed with their sign-in is not in the token's `GET /v1/knowledge`, and a call their
+`pinecall start` held is read with their key.
 
 ## The database holds the org too
 
