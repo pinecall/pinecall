@@ -164,3 +164,21 @@ async def test_a_written_call_whose_session_closed_unsealed_is_reaped_and_one_th
     assert await reaper.reap(quiet.serving(live), 10_000.0) == [named["closed"], named["gone"]]
     for call in (named["closed"], named["open"], named["worker"]):
         live.close_call(call)
+
+
+# A call sealed here is let go by its own seal once its bookkeeping is done: while that runs, the app's late
+# line must still find the call, to be refused and named.
+@needs_the_database
+async def test_a_call_this_gateway_is_still_sealing_is_left_to_its_seal(
+    store: Store, sessions: async_sessionmaker[AsyncSession], tenant: Tenant, agent: str
+) -> None:
+    live = Live()
+    serving = cast(Serving, SimpleNamespace(live=live, logs=Logs(store), handles=SimpleNamespace(sessions=sessions)))
+    call = f"CA_sealing_{agent[-6:]}"
+    served_here(live, store, call, agent)
+    await store.claim(call, agent, tenant.org, Claim(Scope(tenant.org, Env.sandbox)))
+    await store.seal(call)
+    async with live.calls[call].sealing:
+        assert await reaper.let_go(serving, time.monotonic()) == []
+        assert call in live.calls
+    assert await reaper.let_go(serving, time.monotonic()) == [call]

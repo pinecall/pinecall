@@ -27,8 +27,9 @@ in that environment; `429` past 50 live codes for one agent.
 With the code token, as the bearer or `?token=`. `?wait=1` holds the request until a call claims the
 code, 25 s at most (under a proxy's idle 30), then answers as it stands: `{code, status, expires_at,
 call, log_token}`, `status` one of `waiting`, `claimed` (the call, and a log token for it minted now)
-or `expired` (`200`: it is an answer). `403` for a token of another code, `404` for a code nobody
-issued. Any origin may ask.
+or `expired` (`200`, once: the first ask after the time is told so, and the code is let go, so the next
+ask is `404`). `403` for a token of another code — a code nobody issued among them, since the token
+names the code it reads; `404` for a code the token names that nobody holds any more. Any origin may ask.
 
 ## The claim — `POST /v1/calls/{call}/claim` and `call.claim`
 

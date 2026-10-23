@@ -57,7 +57,7 @@ scope's newest version writes none and answers the one standing: a version says 
 agent here, or its class declares none. Each scope's **own** newest, or null when that scope set nothing; never the fallthrough, because
 `if_version` is about the scope being written. `config` carries only the knobs the row set: `voice`,
 `tts`, `tts_model`, `stt`, `llm` (the three model knobs take `vendor/model`, a vendor alone to keep
-its own default model, or a model alone on whichever vendor is in use), `temperature` (the
+its own default model for the ears and the voice; for `llm` and `judge` a vendor alone is refused, a model is named — or a model alone, kept as `vendor/model` on the vendor the corner ran before, else the class's or the default), `temperature` (the
 model's, in its vendor's range; unset, the vendor's default), `end_of_turn` (who ends the
 caller's turn: `stt`, the ears themselves where the row says they can, `livekit` or `smart-turn`, a
 model on the worker; unset, the row's choice for the vendor), `llm_builds`, `stt_builds`,
@@ -166,5 +166,5 @@ answers `{world, yours, team, production, fixed}`, each scope `{holder, version,
 set_at, lexicon: {said: [{word, spoken}], heard: [string]}}` and `fixed` the halves the class
 declares. `PUT {lexicon, if_version, note, team}` is the whole lexicon, with the same `409`, a
 `409 hears set by the class of …` when it changes a half the class declares, and a blank word
-refused. `GET /v1/agents/{slug}/lexicon/history?team=&limit=`. All three open to `pipeline`
+refused with `400 the lexicon: a word is not blank` (the CLI refuses it before asking, with the verb's form). `GET /v1/agents/{slug}/lexicon/history?team=&limit=`. All three open to `pipeline`
 or `words`.

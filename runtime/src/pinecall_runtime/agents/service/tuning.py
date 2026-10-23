@@ -10,6 +10,8 @@ from pinecall_runtime.wire.parts import ModelConfig
 
 # Model ids carry slashes of their own (`openai/gpt-5` on LiveKit Inference): the first ends the vendor.
 SEPARATOR = "/"
+# A vendor has no model of its own to think with: ears and a voice have a default, a model is named.
+NAME_THE_MODEL = "{vendor} alone names no model: name it, `--llm {vendor}/<model>`"
 REALTIME_TAKES = (
     "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
 )
@@ -83,7 +85,7 @@ def realtime_from_wire(wanted: ModelConfig | None) -> Model | None:
 
 
 def model_named(text: str | None, modality: Modality, *, in_use: str) -> Model | None:
-    """`vendor/model`, a vendor alone, or a model on the vendor in use; None when none is named."""
+    """`vendor/model`, a vendor alone (never for `llm`), or a model on the vendor in use; None when none is named."""
     if text is None:
         return None
     word = text.strip()
@@ -91,6 +93,8 @@ def model_named(text: str | None, modality: Modality, *, in_use: str) -> Model |
     if slash:
         return Model(provider=providers.vendor_doing(vendor.lower(), modality), model=model)
     if providers.is_installed(word.lower()):
+        if modality == "llm":
+            raise ValidationError(NAME_THE_MODEL.format(vendor=word.lower()))
         return Model(provider=providers.vendor_doing(word.lower(), modality), model="")
     return Model(provider=providers.vendor_doing(in_use, modality), model=word)
 

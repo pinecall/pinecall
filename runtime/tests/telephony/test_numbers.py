@@ -1,5 +1,6 @@
 """A number imported, bought, released and moved: at the carrier, on each env's LiveKit, in the routes."""
 
+import re
 from dataclasses import replace
 
 import pytest
@@ -8,7 +9,7 @@ from livekit.protocol.sip import CreateSIPInboundTrunkRequest, SIPInboundTrunkIn
 from pinecall_runtime.channels.models import Route
 from pinecall_runtime.channels.service.routes import RouteWrite, get_route, managed_in, put_route, routes_of_org
 from pinecall_runtime.enums import Channel, Env, NetworkState, RouteOrigin
-from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable
+from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable, ValidationError
 from pinecall_runtime.telephony.schemas import WhatsappAccount
 from pinecall_runtime.telephony.service import accounts, networks, sip
 from pinecall_runtime.telephony.service.fence import TWILIO_SIGNALLING
@@ -351,3 +352,34 @@ async def test_a_whatsapp_accounts_number_is_listed_from_meta_and_imported_on_th
         assert (await owned_numbers(session, line.handles, line.scope()))[1][0].imported
         line.graph.refusal = (401, "Session has expired")
         assert (await owned_numbers(session, line.handles, line.scope()))[1] == []
+
+
+async def test_a_phone_number_is_not_imported_as_a_whatsapp_route(line: Line) -> None:
+    """A WhatsApp route is the number a WhatsApp Business account is, never a phone number renamed."""
+    number = a_number()
+    await line.brought()
+    line.twilio.owns(number)
+    with pytest.raises(ValidationError, match="comes through the org's WhatsApp Business account"):
+        await imported(line, NumberImport(line.scope(), "recepcion", number, channel=Channel.whatsapp))
+    at_meta = WhatsappAccount.model_validate({"phone_number_id": "1055", "access_token": "the org's"})
+    async with line.sessions.begin() as session:
+        await accounts.put_carrier(session, line.handles.vault, line.org, at_meta)
+    with pytest.raises(ValidationError, match=re.escape(f"Meta says it is {line.graph.number}")):
+        await imported(line, NumberImport(line.scope(), "recepcion", number, channel=Channel.whatsapp, account="1055"))
+    async with line.sessions() as session:
+        assert await routes_of_org(session, line.org, Env.production) == []
+
+
+async def test_what_the_account_owns_says_which_number_another_org_holds(line: Line) -> None:
+    """A number another org routes cannot be imported here: the list says so instead of 'not routed here'."""
+    mine, theirs = a_number(), a_number()
+    await line.brought()
+    line.twilio.owns(mine)
+    line.twilio.owns(theirs)
+    other = await make_tenant(line.sessions)
+    held = Route(org=other.org, agent="agenda", channel=Channel.phone, number=theirs, env=Env.production)
+    async with line.sessions.begin() as session:
+        await put_route(session, held, RouteWrite(origin=RouteOrigin.typed))
+    async with line.sessions() as session:
+        _, owned = await owned_numbers(session, line.handles, line.scope())
+    assert {item.number: item.held_elsewhere for item in owned} == {mine: False, theirs: True}

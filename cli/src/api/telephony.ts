@@ -36,6 +36,8 @@ export interface OwnedNumber {
   number: string;
   name: string;
   imported: boolean;
+  /** Routed by another org of this deployment: not importable here until that org lets it go. */
+  held_elsewhere: boolean;
   account: string;
 }
 

@@ -251,14 +251,17 @@ def _on_the_line(facts: CallFacts, line: CallRinging | CallDialing | CallStarted
     caller = line.caller
     direction = line.direction if isinstance(line, CallStarted) else None
     persona = line.persona if isinstance(line, CallStarted) else None
+    went = direction or ("outbound" if isinstance(line, CallDialing) else "inbound")
+    # The far end is the contact when nobody named one: the number that called, or the one called.
+    far_end = line.to if went == "outbound" else line.from_
     return replace(
         facts,
         channel=line.channel,
-        direction=direction or ("outbound" if isinstance(line, CallDialing) else "inbound"),
+        direction=went,
         from_number=line.from_,
         to_number=line.to,
         name=facts.name if caller is None else caller.name or facts.name,
-        contact=(caller.id if caller is not None and caller.id else None) or line.from_,
+        contact=(caller.id if caller is not None and caller.id else None) or far_end,
         persona=persona or facts.persona,
         spoken=facts.spoken or line.channel == SPOKEN_CHANNEL,
     )

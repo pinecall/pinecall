@@ -17,6 +17,7 @@ from pinecall_runtime.channels.service.routes import (
     remove_route,
     resolve_route,
     route_at,
+    routes_held_by_others,
     routes_of_org,
 )
 from pinecall_runtime.channels.service.whatsapp import (
@@ -66,6 +67,7 @@ __all__ = [
     "remove_route",
     "resolve_route",
     "route_at",
+    "routes_held_by_others",
     "routes_of_org",
     "send_text",
 ]

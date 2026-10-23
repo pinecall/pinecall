@@ -1,15 +1,23 @@
 """Where alerts go: an org's own URL, and the operator's, which every org's alerts reach too."""
 
+import asyncio
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.alerts.repository import WebhookRepository
 from pinecall_runtime.exceptions import NotFound, ValidationError
+from pinecall_runtime.kit import dns
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.platform import service as platform
 
 NOT_A_URL = "a webhook is an http(s) URL an alert can be posted to, not {said!r}"
+NOT_ON_THE_INTERNET = (
+    "a webhook is posted to the public internet: {host} is a private, local or link-local address, "
+    "which the box must not reach on an org's word"
+)
+NOT_RESOLVED = "a webhook is posted to a host that resolves: {host} does not"
 ALERTS_GO_NOWHERE = "this org posts its alerts nowhere: `pinecall webhook set <url>` names a URL"
 THE_OPERATOR_HEARS_NOTHING = (
     "the box posts its orgs' alerts nowhere: `pinecall-runtime box alerts set <url>` names a URL"
@@ -36,6 +44,22 @@ async def webhook_of(session: AsyncSession, vault: Vault, org: str) -> Webhook |
     if row is None:
         return None
     return Webhook(url=row.url, secret=vault.open(row.ciphertext) if row.ciphertext else None)
+
+
+# The box posts to this URL on the org's word: one that resolves inside the box, the cluster or a
+# private network would make it a door into them, so the door resolves the host and holds it to the
+# internet before the service keeps it.
+async def check_reaches_the_internet(webhook: Webhook) -> None:
+    """Refuse a URL whose host is local, private or link-local, or resolves to such an address."""
+    host = (urlsplit(webhook.url).hostname or "").lower()
+    if not host or host == "localhost" or host.endswith(dns.LOCAL_SUFFIXES):
+        raise ValidationError(NOT_ON_THE_INTERNET.format(host=host or webhook.url))
+    try:
+        addresses = await asyncio.to_thread(dns.resolve, host)
+    except OSError as unresolved:
+        raise ValidationError(NOT_RESOLVED.format(host=host)) from unresolved
+    if not dns.all_public(addresses):
+        raise ValidationError(NOT_ON_THE_INTERNET.format(host=host))
 
 
 async def put_webhook(session: AsyncSession, vault: Vault, org: str, webhook: Webhook) -> None:

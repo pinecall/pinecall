@@ -57,4 +57,4 @@ def test_a_vendor_the_org_keyed_or_the_box_lends_is_taken_and_a_persona_that_nam
 def test_a_vendor_the_box_holds_a_key_for_and_does_not_lend_the_org_is_refused_naming_what_it_may_run() -> None:
     nothing_lent = Keyring(box={acme.ACME: "acme-key"}, lends=frozenset())
     with pytest.raises(Forbidden, match="not lent to this org"):
-        check_persona_keys(configured(), nothing_lent, acme.ACME, None)
+        check_persona_keys(configured(), nothing_lent, f"{acme.ACME}/{acme.MODEL}", None)

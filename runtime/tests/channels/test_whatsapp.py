@@ -205,9 +205,14 @@ async def test_the_orgs_own_meta_token_answers_and_an_org_without_one_answers_on
     async with sessions.begin() as session:
         await providers.put_box_credentials(session, vault, "whatsapp", app)
         await accounts.put_carrier(session, vault, tenant.org, at_meta)
-    async with sessions() as session:
-        assert await accounts.meta_token_for(session, vault, tenant.org, number) == "the org's"
-        assert await accounts.meta_token_for(session, vault, other.org, number) == "the box's"
+    # The box's app is every test's database: left behind, it opens the door the others find closed.
+    try:
+        async with sessions() as session:
+            assert await accounts.meta_token_for(session, vault, tenant.org, number) == "the org's"
+            assert await accounts.meta_token_for(session, vault, other.org, number) == "the box's"
+    finally:
+        async with sessions.begin() as session:
+            await providers.drop_box_credentials(session, vault, "whatsapp")
 
 
 # ── a message read once ──

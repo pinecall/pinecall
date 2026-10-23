@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 # The prefix says the env, so a key pasted into the wrong one is caught before it knocks. A
 # person's one key is production's: it opens the sandbox too, and the request names the env.
-PREFIX = KEY_PREFIX
 KEY_BYTES = 32
 ID_PREFIX = "k_"
 
@@ -165,7 +164,7 @@ class Issue:
 
 async def issue_key(session: AsyncSession, issue: Issue) -> tuple[ApiKey, str]:
     """Mint a key: the row keeps its fingerprint, the secret is handed back this once."""
-    secret = f"{PREFIX[issue.env]}{random_token(KEY_BYTES)}"
+    secret = f"{KEY_PREFIX[issue.env]}{random_token(KEY_BYTES)}"
     key = ApiKey(
         id=random_id(ID_PREFIX),
         hash=fingerprint(secret),

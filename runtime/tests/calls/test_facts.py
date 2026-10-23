@@ -191,3 +191,15 @@ def test_a_voice_priced_by_the_second_is_the_voices_cost_not_the_ears() -> None:
     }
     facts = fold(CallFacts(call="CA_x"), logged("call.summary", summary))
     assert (facts.cost_stt_usd, facts.cost_tts_usd) == (0.0065, 0.005)
+
+
+def test_an_outbound_calls_contact_is_the_number_called_when_nobody_named_one() -> None:
+    """An outbound call files under the far end, so an erasure by the number called finds it."""
+    dialled = fold(
+        CallFacts(call="CA_x"),
+        logged(
+            "call.dialing",
+            {"channel": "phone", "from": "+34910000001", "to": "+34600000002", "caller": None},
+        ),
+    )
+    assert (dialled.direction, dialled.contact) == ("outbound", "+34600000002")

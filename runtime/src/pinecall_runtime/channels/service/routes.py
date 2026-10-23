@@ -98,6 +98,11 @@ async def held_elsewhere(session: AsyncSession, org: str, number: str) -> bool:
     return await RouteRepository(session).held_elsewhere(org, number)
 
 
+async def routes_held_by_others(session: AsyncSession, org: str) -> Sequence[Route]:
+    """Every route another org of this box holds."""
+    return await RouteRepository(session).held_by_others(org)
+
+
 async def remove_route(session: AsyncSession, org: str, number: str) -> bool:
     """Forget the org's route at the number; whether there was one."""
     return await RouteRepository(session).remove(org, number)

@@ -27,7 +27,7 @@ from pinecall_runtime.agents.repository import (
     LexiconRepository,
 )
 from pinecall_runtime.agents.service.canaries import bucket_of
-from pinecall_runtime.agents.service.tuning import apply_tuning
+from pinecall_runtime.agents.service.tuning import SEPARATOR, apply_tuning
 from pinecall_runtime.enums import Env, KeyScope
 from pinecall_runtime.exceptions import Conflict, Forbidden, ValidationError
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Actor, Scope
@@ -96,7 +96,7 @@ class VersionMoved(Conflict):
     """The scope was written since the writer read it."""
 
     def __init__(self, newest: int) -> None:
-        super().__init__(f"this scope is at v{newest} now, not the version you read: read it again, then set again")
+        super().__init__(f"this corner is at v{newest} now, not the version you read: read it again, then set again")
 
 
 class SetByTheClass(Conflict):
@@ -346,6 +346,7 @@ async def write_tuning(
     kept = await tuning_side_by_side(session, scope, agent)
     newest_row = kept.team if scope.holder == THE_ORGS_OWN else kept.yours
     newest = Tuning() if newest_row is None else newest_row.value
+    wanted = _on_the_vendor_in_use(wanted, newest)
     # Nothing changes, nothing is written: a version says what moved.
     if newest_row is not None and wanted == newest:
         return newest_row.version
@@ -363,8 +364,9 @@ async def write_tuning(
     if opens_the_pipeline:
         providers.refuse_untaken_knobs(stages.stt, stages.tts, wanted)
         for stage, knobs in STAGE_KNOBS.items():
-            if any(_changes(wanted, newest, knob) for knob in knobs):
-                await providers.try_stage(stage, getattr(stages, stage), wanted.turn)
+            moved = {knob: getattr(wanted, knob) for knob in knobs if _changes(wanted, newest, knob)}
+            if moved:
+                await providers.try_stage(stage, getattr(stages, stage), wanted.turn, tried=moved)
         if stages.realtime is not None and any(_changes(wanted, newest, knob) for knob in REALTIME_KNOBS):
             await providers.try_realtime(stages.realtime)
     return await put_tuning(session, scope, agent, wanted, written)
@@ -411,9 +413,29 @@ def written_to(scope: Scope, *, team: bool) -> Scope:
 # ── private ──
 
 
+# A knob set, and one cleared: the body is the corner whole, so a knob it leaves out is one taken out.
 def _changes(wanted: Tuning, newest: Tuning, knob: str) -> bool:
     value: object = getattr(wanted, knob)
-    return value is not None and value != getattr(newest, knob)
+    return bool(value != getattr(newest, knob))
+
+
+# `--llm claude-sonnet-5` names a model on the vendor the corner runs now, and is kept as that vendor's
+# (`anthropic/claude-sonnet-5`), so what is stored says it whole; a vendor nobody set yet leaves the model
+# alone for the class's vendor, else the default. The judge reads the same way.
+def _on_the_vendor_in_use(wanted: Tuning, newest: Tuning) -> Tuning:
+    return dataclasses.replace(
+        wanted, llm=_vendor_said(wanted.llm, newest.llm), judge=_vendor_said(wanted.judge, newest.judge)
+    )
+
+
+def _vendor_said(text: str | None, before: str | None) -> str | None:
+    if text is None or before is None:
+        return text
+    word = text.strip()
+    vendor, slash, _ = before.partition(SEPARATOR)
+    if slash and SEPARATOR not in word and not providers.is_installed(word.lower()):
+        return f"{vendor}{SEPARATOR}{word}"
+    return text
 
 
 def _words_only(wanted: Tuning, newest: Tuning) -> Tuning:

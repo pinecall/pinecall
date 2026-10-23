@@ -6,10 +6,10 @@ import logging
 import time
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
-from typing import override
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from websockets.asyncio.client import ClientConnection
 
 from pinecall_runtime.calls.service import seal
 from pinecall_runtime.kit.text import JsonObject
@@ -49,22 +49,14 @@ async def a_hung_up_call(gateway: Gateway, tenant: Tenant, agent: str) -> AsyncG
         yield call
 
 
-# The writer's own logger, heard directly: what another test did to the root's handlers or to pytest's
-# capture in the same worker cannot hide what the writer said.
-class Journal(logging.Handler):
-    """Every line a logger said, kept."""
-
-    def __init__(self) -> None:
-        super().__init__(logging.WARNING)
-        self.lines: list[str] = []
-
-    @override
-    def emit(self, record: logging.LogRecord) -> None:
-        self.lines.append(record.getMessage())
-
-    @property
-    def text(self) -> str:
-        return "\n".join(self.lines)
+async def drained(app: ClientConnection) -> list[str]:
+    """Every frame the socket still holds, read in the second it takes, each cut short."""
+    frames: list[str] = []
+    try:
+        while True:
+            frames.append(str(await asyncio.wait_for(app.recv(), 1))[:160])
+    except TimeoutError:
+        return frames
 
 
 def lines_of(entries: list[JsonObject]) -> list[str]:
@@ -132,12 +124,8 @@ async def test_a_call_done_for_a_call_that_was_sealed_already_is_dropped_without
 # gateway's journal names it. The seal's bookkeeping after the score is held open until the line was sent, so
 # the call is still served when it arrives: without that, the app's frame races the call being let go.
 async def test_a_line_logged_after_the_log_was_sealed_is_refused_and_the_journal_names_it(
-    monkeypatch: pytest.MonkeyPatch, gateway: Gateway, tenant: Tenant, agent: str
+    monkeypatch: pytest.MonkeyPatch, gateway: Gateway, tenant: Tenant, agent: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    said = Journal()
-    writer = logging.getLogger(writing.__name__)
-    monkeypatch.setattr(writer, "disabled", False)
-    writer.addHandler(said)
     line_sent = asyncio.Event()
     folded = seal.drift_folded
 
@@ -151,10 +139,16 @@ async def test_a_line_logged_after_the_log_was_sealed_is_refused_and_the_journal
         late: JsonObject = {"name": "too-late", "data": {}}
         await app.send(json.dumps({"type": "call.log", "agent": agent, "call": call, "data": late}))
         try:
-            await until(lambda: "custom 'too-late'" in said.text, WITHIN_S)
+            await until(lambda: "custom 'too-late'" in caplog.text, WITHIN_S)
+        except AssertionError:
+            # Said once, so a failure here explains itself: what the app was answered, and how the writer's
+            # logger stood, instead of "it never happened".
+            answered = await drained(app)
+            writer = logging.getLogger(writing.__name__)
+            how = f"disabled={writer.disabled} propagate={writer.propagate} level={writer.getEffectiveLevel()}"
+            raise AssertionError(f"the journal never named the line; the app was answered {answered}; {how}") from None
         finally:
-            writer.removeHandler(said)
             line_sent.set()
         lines = lines_of(await sealed_log(gateway, tenant, call))
     assert "custom:too-late" not in lines
-    assert f"call {call}: the log refused a batch of 1 (custom 'too-late')" in said.text
+    assert f"call {call}: the log refused a batch of 1 (custom 'too-late')" in caplog.text

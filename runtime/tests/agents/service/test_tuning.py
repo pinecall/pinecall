@@ -51,3 +51,9 @@ def test_the_settings_llm_never_names_a_realtime_model(vendor: str) -> None:
 def test_the_classs_realtime_wins_over_the_settings(vendor: str) -> None:
     declared = AgentConfig(slug="kala", realtime=Model(vendor, "voice-1"), fixed=frozenset({"realtime"}))
     assert _tuned(Tuning(realtime=f"{vendor}/voice-3"), declared).realtime == Model(vendor, "voice-1")
+
+
+def test_a_vendor_alone_names_no_model_to_think_with() -> None:
+    """`--llm acme` is refused naming the form: a model is named, the ears and a voice have a default."""
+    with pytest.raises(ValidationError, match=r"acme alone names no model: name it, `--llm acme/<model>`"):
+        _tuned(Tuning(llm=ACME), AgentConfig(slug="kala"))

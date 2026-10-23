@@ -262,11 +262,12 @@ class CarrierList(WireModel):
 
 
 class OwnedNumberRow(WireModel):
-    """A number an account owns, and whether this env imported it."""
+    """A number an account owns: whether this env imported it, or another org of this box holds it."""
 
     number: str
     name: str
     imported: bool
+    held_elsewhere: bool
     account: str
 
 

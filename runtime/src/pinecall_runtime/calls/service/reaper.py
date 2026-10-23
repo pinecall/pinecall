@@ -95,11 +95,13 @@ def end_parked(serving: Serving, now: float) -> list[str]:
 
 # A call sealed on another gateway ends its readers there; here it is only let go of, so it no
 # longer counts against its org's calls at once, and idle calls first seen here go with it. A call
-# whose head is gone was erased, which only a sealed call is: it holds no seat either.
+# whose head is gone was erased, which only a sealed call is: it holds no seat either. A call this
+# gateway is sealing is its seal's to let go, after the bookkeeping that follows the score: let go
+# here, an app's line arriving meanwhile would find no call and be lost without a word.
 async def let_go(serving: Serving, now: float) -> list[str]:
     """Stop serving the calls sealed or erased elsewhere, and the ones first seen here that went idle."""
     serving.live.let_idle_go(now)
-    served = list(serving.live.calls)
+    served = [call for call, held in serving.live.calls.items() if not held.sealing.locked()]
     async with serving.handles.sessions() as session:
         heads = await HeadRepository(session).among(served)
     gone = [call for call in served if call not in heads or heads[call].sealed]

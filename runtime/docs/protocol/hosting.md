@@ -51,8 +51,8 @@ a rollback to it is `404`.
 
 An upload is read before it is kept, and refused with a `400` that says why:
 
-- over 10 MB packed, over 100 MB unpacked, or more than 5 000 files (leave `node_modules` and
-  build output out: the platform installs the dependencies itself);
+- over 10 MiB packed (`413`, refused as it streams in), over 100 MB unpacked, or more than 5 000 files
+  (`400`; leave `node_modules` and build output out: the platform installs the dependencies itself);
 - anything but a gzipped tarball;
 - a path that leaves the project's folder (`../`, an absolute path), or a member that is a link
   or a device. A release holds files and folders only.

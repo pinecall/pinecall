@@ -1247,7 +1247,7 @@ with the values the corner holds, and `clear` of a field your corner does not se
 exit 2 before anything travels. **A write puts only what it moved in your corner**: the gateway
 builds a call field by field from the nearest corner that sets each, so the fields you never
 touched keep following the team's. `clear` takes fields out of your corner, so the team's hold
-again for them; a whole corner is `clear --all`, never a `clear` that forgot to name a field.
+again for them; a whole corner is `clear --all`, never a `clear` that forgot to name a field. A field the class declares is refused by `clear` as it is by `set`, with the same `409` naming the class.
 
 ```console
 $ pinecall agent
@@ -1306,7 +1306,7 @@ take, is refused in its own words. **They run only on the org's own key for the 
 Pinecall lends, the set is refused with `llm options and builds run on the org's own openai key, and
 this agent's llm would run on the platform's: add yours with pinecall providers add openai, or take them
 out` — an option can point a plugin at another server, and a lent key never goes anywhere but the
-vendor. `--temperature` is the model's, in the vendor's own range, and runs on any key.
+vendor. `--temperature` is the model's, in the vendor's own range, and runs on any key; a model that takes none (Anthropic's Haiku 5.5 and later refuse it) refuses the set in the vendor's words.
 
 **A voice call can run on a realtime model while a written call keeps the LLM.** `pinecall
 providers` lists, per vendor, the models that hear and speak themselves (xAI's `grok-voice-3.0`,
@@ -1316,7 +1316,7 @@ on any call, while `--llm` keeps answering its written calls (the chat, WhatsApp
 `--realtime xai`, is its plugin's own realtime model. `--realtime-option key=value` passes one of its
 keyword arguments as the plugin names it (`--realtime-option voice=eve`, Grok's voice); like a
 plugin's own options, the realtime model runs on the org's own key for the vendor alone — on a key
-Pinecall lends the set is refused with `409 a realtime model runs on the org's own xai key, …`. A set
+Pinecall lends the set is refused with `409 a realtime model runs on the org's own xai key, …`; on a deployment where nobody holds a key for the vendor at all, with `503 xai has no key: the org brought none and the box holds none`. A set
 that changes it builds it once before anything is kept, so a model or an option the vendor does not
 take is refused in our words. No class is named: the runtime builds the plugin's realtime one. An
 `--llm` that names a realtime model is refused, `400 xai/grok-voice-3.0 hears and speaks itself, so it
@@ -1383,9 +1383,14 @@ and nothing is written; `pinecall agent clear language` takes it out of the corn
 
 **A model knob takes a tier by its short name.** `--llm haiku` · `sonnet` · `opus` are expanded
 here to the model id the provider answers to — the same table `pinecall test --model` reads — so
-the corner never holds a name that is a 404 at the vendor. `haiku` is `claude-haiku-5-5`. `--llm <vendor>/<model>`, a vendor
-alone and a model alone travel as typed; a word that names no model at all (an empty one, half a
-`vendor/model`) is refused with exit 2 and nothing is written.
+the corner never holds a name that is a 404 at the vendor. `haiku` is `claude-haiku-5-5`. `--llm <vendor>/<model>`
+travels as typed. **A model alone rides the vendor the corner runs now**: `--llm claude-sonnet-5` after
+`anthropic/claude-haiku-5-5` is kept as `anthropic/claude-sonnet-5`, so what is stored says it whole;
+with no vendor set before, the class's vendor or the deployment's default takes it. **A vendor alone is
+refused** (`openai alone names no model: name it, --llm openai/<model>`): a model has no default to think
+with, where `--tts <vendor>` and `--stt <vendor>` have one. A word that names no model at all (an empty
+one, half a `vendor/model`) is refused with exit 2 and nothing is written. A set a vendor refuses names
+what was tried beside the vendor's words: `deepgram refused the ears this sets (endpointing_ms 400): …`.
 
 **Three corners.** In the sandbox your key has a corner of its own: what you `set` is yours, and a
 colleague's next call does not hear it — so two developers testing two voices never change each
@@ -1653,13 +1658,15 @@ $ pinecall numbers import +34910000001 --agent clinica-norte --account AC9876…
 
 **Which numbers there are to import is `numbers available`** (`GET /v1/numbers/available`): every
 number the org's Twilio accounts own, every page of Twilio's, one per line with its name at the
-carrier and its account, and `routed here` or `not routed here` for the environment asked. `--account` asks
-one account of several. It is per environment: a number production routes reads `not routed here` in the
-sandbox, so look with `--prod` before importing one there.
+carrier and its account, and `routed here`, `held by another org` or `not routed here` for the environment asked.
+`--account` asks one account of several. It is per environment: a number production routes reads `not routed
+here` in the sandbox, so look with `--prod` before importing one there.
 
-**`not routed here` is not `free`.** The list knows what **this org** routes in this environment, and
-nothing about a number held on another org's trunk of the same Twilio account: that one is found out
-at import, as a `409` naming the trunk and asking for `move`. `numbers import <number> --agent <slug>
+**`not routed here` is not `free`.** The list knows what **this org** routes in this environment and which
+numbers **another org of this deployment** routes (`held by another org`: not importable here until that
+org lets it go), and nothing about a number held on another trunk of the same Twilio account: that one is
+found out at import, as a `409` naming the trunk and asking for `move` (`numbers import … --move` takes it
+off there first). `numbers import <number> --agent <slug>
 --dry-run` is the check, and a `409` is a number to leave alone. A SIP peer owns what it owns and
 lists nothing; its import takes the number as typed.
 
@@ -1689,8 +1696,8 @@ number counts against the org's `numbers` limit in that environment, and an impo
 the verb ends with the count:
 
 ```console
-$ pinecall numbers buy --country ES --area 91 --agent clinica-norte --dry-run --prod
-  Twilio: buy +34915550000: to do
+$ pinecall numbers buy --country US --area 415 --agent clinica-norte --dry-run --prod
+  Twilio: buy +14155550000: to do
   …
   bought numbers in this env: 0 of 2
   nothing bought: drop --dry-run to buy +34915550000
@@ -1945,7 +1952,8 @@ What the org keeps in the environment the key acts in (`--prod` for production),
 `erase call` takes one ended call: its log, its facts, the memories it taught and its recording,
 in one transaction (`DELETE /v1/calls/{call}`); a call still running is refused. `erase contact` is
 a person's "delete my data": every call they were on in the environment and every fact kept of them
-(`DELETE /v1/contacts/{contact}`), by the number or the id the call carried. Neither can be undone,
+(`DELETE /v1/contacts/{contact}`), by the number or the id the call carried — the number that called, or
+on an outbound call the number called. Neither can be undone,
 so both ask for `--yes`. What the law asks the org to keep stays: a consent recorded and a place on
 the do-not-call list are the org's records about the number, not facts about the person, and
 `data consent <number>` reads them after the erasure as before. The dial ledger keeps the numbers and the time of a call, never what was
@@ -2531,7 +2539,7 @@ alerts go to https://hooks.example.com/pinecall · signed
 
 Where this org's alerts are posted beyond the agent's log, the list above and the admins' mail: a URL of your own, optional — Slack, PagerDuty,
 your backend. Every alert — a monitor that fired (`monitor.fired`), today's spend three times
-the usual (`spend.unusual`), a quota that ran out (`credits.exhausted`) — is posted as it is
+the usual (`spend.unusual`), a quota that ran out (`credits.exhausted`) — is posted as it is. The URL is on the public internet: one whose host is local, private or link-local, or resolves there (`127.0.0.1`, `10.…`, `169.254.…`, `localhost`, `*.internal`), is refused, since the deployment would post into itself on an org's word
 written, as JSON `{type, org, env, agent, at, data}` with `x-pinecall-event` naming the type,
 tried twice within five seconds; a URL that fails is logged and the log keeps the alert. `set`
 takes the URL on the command line and, with `--secret`, the secret from stdin — typed without echo

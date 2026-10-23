@@ -165,7 +165,13 @@ async def list_available_numbers(
     return schemas.AvailableNumbers(
         kind=kind,
         numbers=[
-            schemas.OwnedNumberRow(number=item.number, name=item.name, imported=item.imported, account=item.account)
+            schemas.OwnedNumberRow(
+                number=item.number,
+                name=item.name,
+                imported=item.imported,
+                account=item.account,
+                held_elsewhere=item.held_elsewhere,
+            )
             for item in owned
         ],
     )

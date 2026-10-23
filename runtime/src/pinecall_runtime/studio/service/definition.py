@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
 from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.session import service as session
 from pinecall_runtime.studio.schemas import CollectedField, Definition, Header, HttpTool, ParamType
 from pinecall_runtime.studio.service import rules
 from pinecall_runtime.wire.parts import (
@@ -23,9 +24,8 @@ from pinecall_runtime.wire.parts import (
 # The tool data collection adds: the model hands it what the caller said, field by field.
 COLLECT = "collect"
 # The hang-up tool the session gives a model that may end the call: its call and its result are the session's.
-END_CALL = "end_call"
 # The platform's own tools and argument, which a Studio tool may never be called.
-RESERVED = frozenset({COLLECT, END_CALL, "current_date", "recall", "search", "say"})
+RESERVED = frozenset({COLLECT, session.END_CALL, "current_date", "recall", "search", "say"})
 # `{{secrets.NAME}}`, `{{call.from}}`, `{{metadata.order}}`: a dotted path, nothing else.
 A_PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][\w.]*)\s*\}\}")
 # A URL's own `{id}`: a parameter of the tool's, filled from the model's arguments.

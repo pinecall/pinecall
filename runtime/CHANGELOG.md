@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- **A vendor alone is refused for `llm` and `judge`, and a model alone stays on the vendor in use.** `--llm
+  google` was taken as a model named `google` on whatever vendor ran before; `--llm gpt-4.1-mini` on a corner
+  running anthropic was kept as an anthropic model. A vendor alone now says to name the model
+  (`--llm google/<model>`); a model alone is kept as `vendor/model` on the vendor the corner ran before.
+  The rule holds for a persona's `--llm` too. (found by the 2026-10-23 eval, C B1)
+- **A refused trial names the knobs that were tried** (Deepgram's `Invalid response status` now says which
+  setting it refused), and a `clear` counts as a change: clearing a field the class fixes is refused like
+  setting it, and a refusal over a moved version says which version the corner is at. (found by the
+  2026-10-23 eval, C B2, C B3, C D2)
+- **A written chat runs on `responses.LLM`.** OpenAI's Responses socket asks LiveKit for its HTTP session,
+  which exists only inside a job, so every written turn on it failed with `Connection error.`; the gateway
+  now binds that session for its whole life, as a job process does. (found by the 2026-10-23 eval, C B4)
+- **An app's line logged while its call is still sealing is refused and named, never lost.** The reaper let
+  go of every call whose log said sealed, including one this gateway was still sealing, so a `call.log` that
+  arrived in that window found no call and vanished without a word.
+- **A phone number is never a WhatsApp route.** `numbers import +34600000000 --channel whatsapp` through a
+  Twilio account was taken; a WhatsApp route through an account is now the number the org's WhatsApp Business
+  account is, as Meta names it, else `400`. (found by the 2026-10-23 eval, K F1)
+- **`GET /v1/numbers/available` says which numbers another org's trunk holds** (`held_elsewhere`), so the CLI
+  can tell "held by another org" from "not routed here". (found by the 2026-10-23 eval, L B5)
+- **An outbound call's contact is the number it rang**, not the org's own caller id, so `data erase contact` and
+  memory reach the person who was called.
+- **A webhook must reach the public internet**: a URL on localhost, a `.local`/`.internal` name or a host
+  that resolves to a private address is refused with `400`, as delivery would have refused every post.
+
 ## 0.11.17 — the wire keeps its promises: routes, resumes, nulls, declarations, a page's own events (2026-10-23)
 
 - **`agent.registered` says the routes the agent answers, and a registration that names a number the org

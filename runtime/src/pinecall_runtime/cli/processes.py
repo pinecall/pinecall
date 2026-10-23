@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 import typer
 import uvicorn
+from livekit.agents.utils import http_context
 
 from pinecall_runtime import runner, worker
 from pinecall_runtime.app import announce_closing, app
@@ -67,7 +68,11 @@ async def gateway(ctx: typer.Context) -> int:
     # the vendors (/metrics, /v1/providers) instead, the 45 held the loop 5 s while requests waited
     # (production, 2026-10-04).
     providers.installed()
-    await Stopping(config).serve()
+    # A written call runs its model here, outside any LiveKit job, and a plugin that opens its socket
+    # with LiveKit's http session (OpenAI's `responses.LLM`) finds none: bound around the server, every
+    # request's task inherits the one session, as a job's tasks do.
+    async with http_context.open():
+        await Stopping(config).serve()
     return OK
 
 

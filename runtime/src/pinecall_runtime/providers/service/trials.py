@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+from collections.abc import Mapping
 from typing import Never
 
 from livekit import rtc
@@ -31,9 +32,21 @@ ONCE = APIConnectOptions(max_retry=0, timeout=10.0)
 SILENCE = rtc.AudioFrame(data=bytes(RATE), sample_rate=RATE, num_channels=1, samples_per_channel=RATE // 2)
 
 
-async def try_stage(stage: Modality, running: Running, turn: Turn | None = None, *, what: str | None = None) -> None:
-    """The stage asked one small thing; the vendor's no is ValidationError, its silence UpstreamError."""
+async def try_stage(
+    stage: Modality,
+    running: Running,
+    turn: Turn | None = None,
+    *,
+    what: str | None = None,
+    tried: Mapping[str, object] | None = None,
+) -> None:
+    """The stage asked one small thing; the vendor's no is ValidationError, its silence UpstreamError.
+
+    `tried` names the knobs this set moved, so a refusal says what was tried beside the vendor's words.
+    """
     named = what or f"the {STAGE_NAMES[stage]} this sets"
+    if tried:
+        named += " (" + ", ".join(f"{knob} {value}" for knob, value in tried.items()) + ")"
     try:
         # Outside a call there is no job to lend the plugins its HTTP session: it is opened here.
         async with asyncio.timeout(TRY_S), http_context.open():

@@ -34,6 +34,7 @@ from pinecall_runtime.alerts.service.spend import SpendLedger, Unusual, unusual_
 from pinecall_runtime.alerts.service.webhooks import (
     THE_OPERATOR_HEARS_NOTHING,
     Webhook,
+    check_reaches_the_internet,
     delete_operator_webhook,
     delete_webhook,
     operator_webhook_of,
@@ -60,6 +61,7 @@ __all__ = [
     "Webhook",
     "alerts_of",
     "check_monitors",
+    "check_reaches_the_internet",
     "create_monitor",
     "credits_exhausted",
     "credits_refused",

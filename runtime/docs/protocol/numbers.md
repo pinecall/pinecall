@@ -103,7 +103,7 @@ production: … off trunk …`). A trunk or a rule left listing no number is del
 lists none takes every number.
 
 Refusals: `404` no account, or a number the account does not own; `400` a channel with no number
-or a number that is not E.164; `409` several accounts and none named, a number another org's trunk
+or a number that is not E.164, a `channel: whatsapp` for a number that is not the one the org's WhatsApp Business account is (Meta names it; a phone number is never a WhatsApp route), `422` a body missing `number` or `agent`; `409` several accounts and none named, a number another org's trunk
 on this deployment already lists (livekit-sip refuses an INVITE two trunks list, so nothing is written),
 or a number attached to another trunk of the same Twilio account — its name and where it points
 are in the sentence, and `move: true` takes it off there first; `503` no `PINECALL_DOMAIN`; `502`

@@ -19,6 +19,7 @@ from pinecall_runtime.kit.dns import resolve
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.postgres import box_task, box_wide
 from pinecall_runtime.redis import Signal
+from pinecall_runtime.session import service as session
 from pinecall_runtime.studio.schemas import Definition
 from pinecall_runtime.studio.service import definition as defined
 from pinecall_runtime.studio.service import fetch
@@ -160,7 +161,7 @@ class StudioSocket:
             case "tool.call":
                 called = ToolCall.model_validate(data)
                 # The session writes the hang-up's call and its result itself: a second result is a lie.
-                if called.name != defined.END_CALL:
+                if called.name != session.END_CALL:
                     self._spawn(self._tool(agent, call, called))
             case "turn.user" | "turn.agent" if run is not None:
                 run.transcript.append({"role": kind.removeprefix("turn."), "text": str(data.get("text", ""))})

@@ -38,7 +38,7 @@ export function ownedLine(one: OwnedNumber): string {
   const said = [one.number];
   if (one.name !== "" && one.name !== one.number) said.push(one.name);
   if (one.account !== undefined) said.push(one.account);
-  said.push(one.imported ? "routed here" : "not routed here");
+  said.push(one.imported ? "routed here" : one.held_elsewhere ? "held by another org" : "not routed here");
   return said.join(" · ");
 }
 

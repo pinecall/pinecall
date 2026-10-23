@@ -17,12 +17,15 @@ export interface Words {
   heard: string[];
 }
 
+const A_WORD = "a word of the lexicon is not blank: `pinecall lexicon add <word> --say '<how it is said>'`";
+const HOW_IT_IS_SAID = "--say takes how the voice says the word, and it is not blank";
+
 /** What `lexicon add` takes: the word as written, and how the voice says it. */
-export const SayWordInput = WriteOptions.extend({ word: z.string().min(1), say: z.string().min(1) });
+export const SayWordInput = WriteOptions.extend({ word: z.string().min(1, A_WORD), say: z.string().min(1, HOW_IT_IS_SAID) });
 export type SayWordInput = z.infer<typeof SayWordInput>;
 
 /** What `lexicon hear` and `rm` take: the words. */
-export const WordsInput = WriteOptions.extend({ words: z.array(z.string().min(1)).min(1) });
+export const WordsInput = WriteOptions.extend({ words: z.array(z.string().min(1, A_WORD)).min(1, A_WORD) });
 export type WordsInput = z.infer<typeof WordsInput>;
 
 export async function showLexicon(ctx: Context, agent: string | undefined): Promise<LexiconAnswer> {

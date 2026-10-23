@@ -18,6 +18,7 @@ from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.text import parse_e164
 from pinecall_runtime.telephony.schemas import WhatsappAccount
 from pinecall_runtime.telephony.service import accounts, catalog, networks, records, sip
+from pinecall_runtime.telephony.service.accounts import CarrierAccount
 from pinecall_runtime.telephony.service.fence import (
     Fence,
     declared_networks,
@@ -37,6 +38,11 @@ from pinecall_runtime.telephony.service.twilio import (
 logger = logging.getLogger(__name__)
 
 # Whose it is stays theirs: the sentence names no org and no trunk.
+NOT_A_WHATSAPP_ACCOUNT = (
+    "a WhatsApp number comes through the org's WhatsApp Business account: `pinecall carriers add whatsapp` first, "
+    "then import the number that account is"
+)
+NOT_THIS_ACCOUNTS_NUMBER = "{number} is not the number the WhatsApp Business account is: Meta says it is {display}"
 HELD_ELSEWHERE = (
     "{number} is held by another org on this box, so nothing was written: if it is yours, ask the box's operator"
 )
@@ -102,11 +108,13 @@ class Plan:
 
 @dataclass(frozen=True, slots=True)
 class OwnedNumber:
-    """A number one of the org's accounts owns, and whether this env already imported it."""
+    """A number one of the org's accounts owns: whether this env imported it, or another org holds it."""
 
     number: str
     name: str
     imported: bool
+    # Routed by another org of this box: it cannot be imported here until that org lets it go.
+    held_elsewhere: bool
     account: str
 
 
@@ -186,6 +194,7 @@ async def owned_numbers(
     if not carriers:
         raise NotFound(accounts.NO_CARRIER)
     imported = {route.number for route in await channels.routes_of_org(session, scope.org, scope.env)}
+    elsewhere = {route.number for route in await channels.routes_held_by_others(session, scope.org)}
     controlled = [
         (carrier, control)
         for carrier in carriers
@@ -196,6 +205,7 @@ async def owned_numbers(
             number=number.phone_number,
             name=number.friendly_name or number.phone_number,
             imported=number.phone_number in imported,
+            held_elsewhere=number.phone_number in elsewhere,
             account=carrier.id,
         )
         for carrier, control in controlled
@@ -204,7 +214,7 @@ async def owned_numbers(
     for carrier in carriers:
         meta = accounts.meta_of(carrier)
         if meta is not None:
-            owned += await _at_meta(handles.http, meta, imported)
+            owned += await _at_meta(handles.http, meta, imported, elsewhere)
     lister = controlled[0][0] if controlled else carriers[0]
     return lister.account.kind, owned
 
@@ -245,6 +255,8 @@ async def _survey_import(session: AsyncSession, handles: Handles, wanted: Number
     fleets = await fleet.fleets(session)
     await _check_via(session, wanted)
     carrier = None if wanted.hooked else await accounts.carrier_named(session, handles.vault, org, wanted.account)
+    if wanted.channel is Channel.whatsapp:
+        await _a_whatsapp_number(handles, carrier, number)
     if carrier is not None and wanted.networks:
         raise ValidationError(
             f"a {carrier.account.kind} account takes no networks: they are the fence of a number you hook"
@@ -270,6 +282,20 @@ async def _survey_import(session: AsyncSession, handles: Handles, wanted: Number
     if control is not None and wanted.channel is Channel.phone:
         survey.at_twilio = await _at_twilio(handles, control, number, env, move=wanted.move)
     return await _survey_sfu(session, handles, survey)
+
+
+# A WhatsApp route is Meta's: through an account, the number is the one the org's WhatsApp Business
+# account is, as Meta names it, never a phone number typed with `--channel whatsapp`. Hooked, the org
+# points Meta at the box itself and there is no account to ask.
+async def _a_whatsapp_number(handles: Handles, carrier: CarrierAccount | None, number: str) -> None:
+    if carrier is None:
+        return
+    meta = accounts.meta_of(carrier)
+    if meta is None:
+        raise ValidationError(NOT_A_WHATSAPP_ACCOUNT)
+    display, _ = await channels.display_number(handles.http, meta.access_token, meta.phone_number_id)
+    if display != number:
+        raise ValidationError(NOT_THIS_ACCOUNTS_NUMBER.format(number=number, display=display))
 
 
 # A catalog carrier is the operator's to admit; its networks are the number's whole fence.
@@ -420,14 +446,22 @@ def _steps(survey: Survey, *, done: bool) -> list[str]:
 
 
 # A token Meta refuses (they expire) leaves the account listed with no number, said in the log.
-async def _at_meta(http: httpx.AsyncClient, account: WhatsappAccount, imported: set[str]) -> list[OwnedNumber]:
+async def _at_meta(
+    http: httpx.AsyncClient, account: WhatsappAccount, imported: set[str], elsewhere: set[str]
+) -> list[OwnedNumber]:
     try:
         number, name = await channels.display_number(http, account.access_token, account.phone_number_id)
     except UpstreamError:
         logger.warning("Meta did not say which number %s is", account.phone_number_id, exc_info=True)
         return []
     return [
-        OwnedNumber(number=number, name=name or number, imported=number in imported, account=account.phone_number_id)
+        OwnedNumber(
+            number=number,
+            name=name or number,
+            imported=number in imported,
+            held_elsewhere=number in elsewhere,
+            account=account.phone_number_id,
+        )
     ]
 
 

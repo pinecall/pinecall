@@ -62,10 +62,10 @@ async def get_webhook(actor: ProvidersKey, handles: TheHandles, session: Session
 
 @router.put("/v1/webhook", status_code=204)
 async def put_webhook(body: schemas.WebhookRequest, actor: ProvidersKey, handles: TheHandles, session: Session) -> None:
-    """Keep the org's webhook; its alerts are posted there from the next one."""
-    await service.put_webhook(
-        session, handles.vault, actor.org, service.Webhook(url=body.url, secret=body.secret or None)
-    )
+    """Keep the org's webhook; its alerts are posted there from the next one. A URL into the box is refused."""
+    webhook = service.Webhook(url=body.url, secret=body.secret or None)
+    await service.check_reaches_the_internet(webhook)
+    await service.put_webhook(session, handles.vault, actor.org, webhook)
 
 
 @router.delete("/v1/webhook", status_code=204)

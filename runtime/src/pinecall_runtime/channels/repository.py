@@ -124,6 +124,12 @@ class RouteRepository(Repository[Route]):
             statement = select(exists().where(Route.number == number, Route.org != org))
             return bool((await self.session.execute(statement)).scalar_one())
 
+    async def held_by_others(self, org: str) -> Sequence[Route]:
+        """Every route another org of this box holds, so a list can say which numbers are taken."""
+        with box_wide():
+            statement = select(Route).where(Route.org != org)
+            return (await self.session.execute(statement)).scalars().all()
+
     async def remove(self, org: str, number: str) -> bool:
         """Forget the org's route at the number; whether there was one."""
         return bool(await self.changed(delete(Route).where(Route.org == org, Route.number == number)))
