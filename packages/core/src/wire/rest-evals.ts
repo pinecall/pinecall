@@ -361,8 +361,8 @@ export const EvalCaseSchema = z.strictObject({
   decided_by: z.string().nullable(),
   /** The group of cases its judge broke on; null for one a person kept. */
   group: z.string().nullish(),
-  /** A real call, or a simulation a persona played. */
-  source: z.enum(["call", "simulation"]).nullish(),
+  /** A real call, a simulation a persona played, or a person who wrote it by hand (no call: `source_call` is ""). */
+  source: z.enum(["call", "simulation", "person"]).nullish(),
   persona: z.string().nullish(),
 });
 
@@ -374,6 +374,14 @@ export const EvalCaseListSchema = z.strictObject({
   pending: z.number(),
   pending_at_most: z.number(),
 });
+
+/** PUT /v1/agents/{slug}/cases/{name}, the body: a golden a person wrote, held out of the nightly or not. */
+export const WriteCaseSchema = z.strictObject({
+  golden: GoldenSchema,
+  held_out: z.boolean().optional(),
+});
+
+export type WriteCase = z.infer<typeof WriteCaseSchema>;
 
 /** PATCH /v1/evals/cases/{id}, the body: what a person decided; each field sent is written. */
 export const CaseDecisionSchema = z.strictObject({

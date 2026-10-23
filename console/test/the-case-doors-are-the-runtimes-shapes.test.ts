@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import { z } from "zod";
 
-import { decideCase, decideGroup, keepCall, readCases, readGroups } from "../src/screens/cases/door";
+import { decideCase, decideGroup, keepCall, readCases, readGroups, writeCase } from "../src/screens/cases/door";
 
 const CREDENTIALS = { base: "/", key: "pk_test" };
 
@@ -72,6 +72,15 @@ test("a decision is a PATCH of the case by its id, and keeping a call is a POST 
   answering({ ...A_CASE, status: "approved", author: "m_ana", broke: [] });
   await keepCall(CREDENTIALS, "call_29d7c7", "kept-29d7c7");
   expect(asked.at(-1)).toMatchObject({ method: "POST", body: { call: "call_29d7c7", name: "kept-29d7c7" } });
+});
+
+test("a case written by hand is a PUT under the agent by its name, and comes back a person's with no call", async () => {
+  const golden = { name: "no-dice-un-precio", turns: [{ say: "¿Cuánto cuesta una resonancia?" }], expect: { not: ["€"], grounded: true } };
+  answering({ ...A_CASE, name: golden.name, golden, source_call: "", author: "m_ana", status: "approved", broke: [], source_version: null, source: "person" });
+  const written = await writeCase(CREDENTIALS, "clinica-norte", golden.name, { golden, held_out: false });
+  expect(written.source).toBe("person");
+  expect(asked.at(-1)).toMatchObject({ method: "PUT", body: { golden, held_out: false } });
+  expect(asked.at(-1)?.url).toContain("/v1/agents/clinica-norte/cases/no-dice-un-precio");
 });
 
 // runtime wire/rest/evals.py: CaseGroup, as evals/groups.py keeps the cases one judge broke on.

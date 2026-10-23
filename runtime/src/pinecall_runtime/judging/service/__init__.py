@@ -46,6 +46,7 @@ from pinecall_runtime.judging.service.cases import (
     pick_cases,
     promote_case,
     waiting_cases,
+    write_case,
 )
 from pinecall_runtime.judging.service.catalog import (
     Seated,
@@ -229,6 +230,7 @@ __all__ = [
     "switches_for",
     "turn_scores",
     "waiting_cases",
+    "write_case",
     "write_judge",
     "write_library_persona",
     "write_personas",

@@ -34,7 +34,7 @@ export function CaseView({ agent, kept, onDecided }: { agent: string; kept: Eval
 
       <Section title="What broke">
         {kept.broke.length === 0 ? (
-          <p className="cs-none">Nothing: a person kept this call.</p>
+          <p className="cs-none">{kept.source === "person" ? "Nothing: a person wrote this case." : "Nothing: a person kept this call."}</p>
         ) : (
           <ul className="cs-broke">
             {kept.broke.map((one) => (
@@ -68,9 +68,16 @@ export function CaseView({ agent, kept, onDecided }: { agent: string; kept: Eval
       <CaseRun agent={agent} kept={kept} />
 
       <footer className="cs-doc-foot">
-        Kept {kept.author === "the hang-up panel" ? "at hang-up" : `by ${kept.author}`}, {dayAndTime(kept.created_at)}, from a{" "}
-        <a href={inTheWorld(kept.source_env, `/calls/${encodeURIComponent(kept.source_call)}`)}>{kept.source_env} call</a>
-        {kept.source_version !== null && ` on settings v${kept.source_version}`}.{kept.decided_by !== null && ` Decided by ${kept.decided_by}.`}
+        {kept.source === "person" ? (
+          <>Written by {kept.author}, {dayAndTime(kept.created_at)}, in the {kept.source_env}.</>
+        ) : (
+          <>
+            Kept {kept.author === "the hang-up panel" ? "at hang-up" : `by ${kept.author}`}, {dayAndTime(kept.created_at)}, from a{" "}
+            <a href={inTheWorld(kept.source_env, `/calls/${encodeURIComponent(kept.source_call)}`)}>{kept.source_env} call</a>
+            {kept.source_version !== null && ` on settings v${kept.source_version}`}.
+          </>
+        )}
+        {kept.decided_by !== null && ` Decided by ${kept.decided_by}.`}
       </footer>
     </article>
   );

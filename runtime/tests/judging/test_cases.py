@@ -12,7 +12,7 @@ from pinecall_runtime.judging.service import cases
 from pinecall_runtime.judging.service.cases import Born, Promoted, cut_at, expect_of, golden_of
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.wire.base import Entry
-from pinecall_runtime.wire.goldens import Expect
+from pinecall_runtime.wire.goldens import Expect, Golden, Turn
 from pinecall_runtime.wire.scores import CallScore, Judgment, JudgmentEvidence
 from tests.conftest import Tenant, needs_the_database
 from tests.judging.factories import AGENT, BOOK, CALL, a_log, agent, before_the_yes, caller
@@ -261,3 +261,41 @@ async def test_a_person_decides_a_case_and_the_nightly_plays_only_what_was_appro
         assert await cases.pick_cases(session, tenant.org, AGENT, [], every=True) == []
         with pytest.raises(NotFound):
             await cases.decide_case(session, "another-org", first.id, in_the_repo, by="m_ana")
+
+
+@needs_the_database
+async def test_a_person_writes_a_case_by_hand_writes_it_again_and_never_over_a_calls(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """Written approved with no call; the same name rewrites the golden and keeps the rest; a call's name is refused."""
+    golden = Golden(
+        name="ignored", turns=[Turn(say="¿Cuánto cuesta una resonancia?")], expect=Expect.model_validate({"not": ["€"]})
+    )
+    writing = Promoted(tenant.org, Env.sandbox, "no-dice-un-precio", "m_ana")
+    async with sessions.begin() as session:
+        written = await cases.write_case(session, golden, AGENT, writing)
+    assert (written.name, written.golden.name) == ("no-dice-un-precio", "no-dice-un-precio")
+    assert (written.source, written.status, written.source_call, written.broke) == (
+        CaseSource.person,
+        CaseStatus.approved,
+        "",
+        [],
+    )
+    again = golden.model_copy(update={"expect": Expect.model_validate({"not": ["€", "euros"]})})
+    async with sessions.begin() as session:
+        rewritten = await cases.write_case(
+            session, again, AGENT, Promoted(tenant.org, Env.sandbox, written.name, "m_bo")
+        )
+    assert (rewritten.id, rewritten.author, rewritten.golden.expect.not_said) == (written.id, "m_ana", ["€", "euros"])
+    async with sessions.begin() as session:
+        await cases.keep_at_hangup(
+            session, a_call(1), a_score(breaking("promises")), Born(tenant.org, Env.sandbox, AGENT, None)
+        )
+        (born,) = await cases.list_cases(session, tenant.org, AGENT, CaseStatus.pending)
+        with pytest.raises(Conflict, match="not written by hand"):
+            await cases.write_case(session, golden, AGENT, Promoted(tenant.org, Env.sandbox, born.name, "m_ana"))
+    async with sessions() as session:
+        nightly = await cases.pick_cases(session, tenant.org, AGENT, [], every=True)
+    assert [one.name for one in nightly] == ["no-dice-un-precio"]
+    with pytest.raises(ValidationError, match="a person kept it"):
+        cases.check_decision(rewritten, CaseDecision(status=CaseStatus.dismissed, judge_was_wrong="grounded"))

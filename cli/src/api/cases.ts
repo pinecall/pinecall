@@ -28,7 +28,7 @@ export interface EvalCase {
   kept_in_repo: boolean;
   decided_by: string | null;
   group?: string | null;
-  source?: "call" | "simulation";
+  source?: "call" | "simulation" | "person";
   persona?: string | null;
 }
 

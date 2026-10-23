@@ -1,4 +1,4 @@
-/** Cases doors: the org's dataset read for one agent, a call kept as a case, and what a person decides. */
+/** Cases doors: the org's dataset read for one agent, a call kept as a case, one written by hand, and what a person decides. */
 
 import {
   type CaseDecision,
@@ -11,11 +11,12 @@ import {
   type GeneratedPersonas,
   GeneratedPersonasSchema,
   type Proposal,
+  type WriteCase,
 } from "@pinecall/core/wire/rest-evals";
 
-import { patch, post, read, type Credentials } from "@pinecall/core/api";
+import { patch, post, put, read, type Credentials } from "@pinecall/core/api";
 
-export type { CaseDecision, CaseGroup, EvalCase, Proposal };
+export type { CaseDecision, CaseGroup, EvalCase, Proposal, WriteCase };
 
 const groupDoor = (id: string): string => `/v1/evals/groups/${encodeURIComponent(id)}`;
 
@@ -68,4 +69,12 @@ export async function decideCase(credentials: Credentials, id: string, decision:
  */
 export async function keepCall(credentials: Credentials, call: string, name: string): Promise<EvalCase> {
   return EvalCaseSchema.parse(await post(credentials, "/v1/evals/cases", { call, name }));
+}
+
+/**
+ * Write a golden as a case of the agent, approved from the start: a person wrote it, so no call is
+ * behind it. The same name again rewrites a case the person wrote; one a call made is refused (409).
+ */
+export async function writeCase(credentials: Credentials, agent: string, name: string, body: WriteCase): Promise<EvalCase> {
+  return EvalCaseSchema.parse(await put(credentials, `/v1/agents/${encodeURIComponent(agent)}/cases/${encodeURIComponent(name)}`, body));
 }

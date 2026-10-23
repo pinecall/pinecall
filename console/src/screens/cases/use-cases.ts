@@ -16,6 +16,8 @@ export interface Cases {
   decided: (kept: EvalCase) => void;
   /** A group as a door answered it: replaced; decided whole, its cases read again. */
   grouped: (group: CaseGroup) => void;
+  /** A case a person wrote: put first in the list, or replaced when they wrote it again. */
+  written: (kept: EvalCase) => void;
 }
 
 export function useCases(agent: string): Cases {
@@ -50,5 +52,9 @@ export function useCases(agent: string): Cases {
     if (group.status !== "pending") setRound((was) => was + 1);
   }, []);
 
-  return { listed, groups, asking, decided, grouped };
+  const written = useCallback((kept: EvalCase): void => {
+    setListed((was) => (was === null ? was : { ...was, cases: [kept, ...was.cases.filter((each) => each.id !== kept.id)] }));
+  }, []);
+
+  return { listed, groups, asking, decided, grouped, written };
 }

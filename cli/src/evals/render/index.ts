@@ -65,7 +65,7 @@ export function oneCase(one: EvalCase): string[] {
   ];
   return [
     `${one.name} · ${one.status} · ${one.agent}`,
-    `  from ${one.source_call} (${one.source_env}${version}) · kept by ${one.author} · ${date(one.created_at)}`,
+    `  ${fromWhere(one)}${version}) · ${one.source === "person" ? "written" : "kept"} by ${one.author} · ${date(one.created_at)}`,
     ...marks.map((line) => `  ${line}`),
     "",
     "  broke",
@@ -85,6 +85,11 @@ export function caseKept(one: EvalCase): string[] {
   return [`${one.name} kept · ${one.status} · ${one.agent} · from ${one.source_call}`, `  expect  ${JSON.stringify(one.golden.expect ?? {})}`];
 }
 
+// Where a case came from, the parenthesis left open for the version: a call, or a person's hand in an env.
+function fromWhere(one: EvalCase): string {
+  return one.source === "person" ? `written by hand (${one.source_env}` : `from ${one.source_call} (${one.source_env}`;
+}
+
 export function caseDecided(one: EvalCase, wrong?: string): string {
   if (one.status === "approved") return `${one.name} approved: the nightly plays it`;
   if (one.status === "pending") return `${one.name} pending again`;
@@ -92,7 +97,7 @@ export function caseDecided(one: EvalCase, wrong?: string): string {
 }
 
 export function caseForgotten(one: EvalCase): string {
-  return `${one.name} forgotten: the call it came from, ${one.source_call}, stays`;
+  return one.source === "person" ? `${one.name} forgotten` : `${one.name} forgotten: the call it came from, ${one.source_call}, stays`;
 }
 
 export function casePulled({ path, case: marked }: { path: string; case: EvalCase }): string[] {

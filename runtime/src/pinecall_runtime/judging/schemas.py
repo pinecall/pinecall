@@ -236,6 +236,14 @@ class PromoteCaseRequest(Schema):
     held_out: bool = False
 
 
+class WriteCaseRequest(Schema):
+    """PUT /v1/agents/{slug}/cases/{name}, the body: the golden a person wrote, held out or not."""
+
+    golden: Golden
+    # Left out of a nightly run, read only when a run names it.
+    held_out: bool = False
+
+
 class BrokeOn(WireModel):
     """A judge that broke on the call a case was kept from, and why."""
 
@@ -265,7 +273,7 @@ class CaseRow(Row):
     decided_by: str | None = None
     # The group of cases its judge broke on, for this agent; None for one a person kept.
     group: str | None = Field(default=None, validation_alias="group_id", serialization_alias="group")
-    # A real call, or a simulation a persona played (named here).
+    # A real call, a simulation a persona played (named here), or a person who wrote it by hand.
     source: CaseSource = CaseSource.call
     persona: str | None = None
 

@@ -110,6 +110,11 @@ class CaseRepository(Repository[EvalCase]):
         statement = self.statement().where(EvalCase.org == org, EvalCase.agent == agent, chosen).order_by(EvalCase.name)
         return await self.all(statement)
 
+    async def named(self, org: str, agent: str, name: str) -> EvalCase | None:
+        """The agent's case of that name, or None."""
+        statement = self.statement().where(EvalCase.org == org, EvalCase.agent == agent, EvalCase.name == name)
+        return await self.one_or_none(statement)
+
     async def get(self, org: str, case: str) -> EvalCase | None:
         """One of the org's cases, or None for another org's or nobody's."""
         return await self.one_or_none(self.statement().where(EvalCase.id == case, EvalCase.org == org))

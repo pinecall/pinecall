@@ -148,6 +148,8 @@ class CaseSource(StrEnum):
 
     call = "call"
     simulation = "simulation"
+    # Written by hand, in the console or through the API: no call made it.
+    person = "person"
 
 
 class JudgeAnswer(StrEnum):

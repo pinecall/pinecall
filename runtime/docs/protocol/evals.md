@@ -120,7 +120,7 @@ refused in production (`403`): a case is a real caller's words, and it is played
 sandbox, as written calls through the app a developer holds there, never through production's
 app, whose tools act for real, and never out loud or on a phone.
 
-## The dataset — `POST` · `GET /v1/evals/cases`, `PATCH` · `DELETE /v1/evals/cases/{id}`, `GET /v1/calls/{call}/golden`
+## The dataset — `POST` · `GET /v1/evals/cases`, `PATCH` · `DELETE /v1/evals/cases/{id}`, `PUT /v1/agents/{slug}/cases/{name}`, `GET /v1/calls/{call}/golden`
 
 Real calls are the dataset, and the loop that keeps it is: a call a judge broke on is kept at
 hang-up as a **pending** case; a person reads it, reproduces it (`cases: [name]` on a run),
@@ -187,6 +187,29 @@ give, as at hang-up. The key must read the call, as a replay's does: a productio
 with a key of production. The case is the org's, in both environments, and played in the sandbox.
 A call still going is `409`, one whose caller said nothing is `409`, and a name the agent has
 already is `409`.
+
+**Written by hand.** A person writes a golden as a case with no call behind it: the console's
+**Cases ▸ New case**, for an agent written as a class or in Studio.
+
+```
+PUT /v1/agents/recepcion/cases/no-dice-un-precio
+{"golden": {"name": "no-dice-un-precio",
+            "turns": [{"say": "¿Cuánto cuesta una resonancia?"}],
+            "expect": {"not": ["€"], "grounded": true}},
+ "held_out": false}
+
+{"id": "case_9b21…", "agent": "recepcion", "name": "no-dice-un-precio", "golden": {…},
+ "source_call": "", "source_env": "sandbox", "held_out": false, "author": "m_ana",
+ "status": "approved", "broke": [], "source_version": null, "kept_in_repo": false,
+ "source": "person"}
+```
+
+The path names the case: the golden's own `name` is written over with it. It is `approved` from
+the start, `source: "person"`, in the key's environment, and the nightly plays it as any other.
+The same name again rewrites its golden and `held_out`, and keeps its id, author, status and age;
+a name a call or a simulation made is `409`, so a hand never rewrites what a judge broke on. A case
+written by hand broke on no judge, so `judge_was_wrong` on it is `400`. It names no call, so
+erasing a call or a contact never reaches it; erasing the org does.
 
 **Read as a golden, kept nowhere.** `GET /v1/calls/{call}/golden?name=&from_seq=` answers the
 golden the call makes, with the same derived `expect`; `from_seq` opens it in the state the call

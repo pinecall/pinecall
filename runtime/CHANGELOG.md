@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A person writes a case by hand.** `PUT /v1/agents/{slug}/cases/{name} {golden, held_out}`
+  keeps a golden no call made as an approved case of the agent, `source: "person"`, played by the
+  nightly as any other. The same name again rewrites it; a name a call or a simulation made is
+  `409`. The console's **Cases ▸ New case** writes it, for an agent written as a class or in
+  Studio, and the Cases screen now lists the cases a person kept or wrote, which joined no group
+  and were listed nowhere. Migration `000010` admits `person` among a case's sources.
+
 ## 0.11.10 — The hold melody plays by default and waits as long as the org says (2026-10-22)
 
 - **The runtime's hold melody plays again.** An agent nobody chose a melody for was documented and

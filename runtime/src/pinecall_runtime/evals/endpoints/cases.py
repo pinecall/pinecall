@@ -1,11 +1,11 @@
-"""The dataset endpoints: a call kept as a case or read as a golden, the inbox, a case decided."""
+"""The dataset endpoints: a call kept as a case or read as a golden, one written by hand, the inbox, a case decided."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
 from pinecall_runtime.accounts.service import keys
-from pinecall_runtime.agents.auth import KnownFilter
+from pinecall_runtime.agents.auth import KnownAgent, KnownFilter
 from pinecall_runtime.calls.auth import Reader, TheServing, check_readable
 from pinecall_runtime.enums import CaseStatus
 from pinecall_runtime.evals import schemas
@@ -45,6 +45,21 @@ async def promote_case(
         source_version=version,
     )
     return await judging.promote_case(session, golden, agent, promoting)
+
+
+# Written in the key's env, as a kept call is in its call's; played in the sandbox like every case.
+@router.put("/v1/agents/{slug}/cases/{name}", response_model_exclude_unset=True)
+async def write_case(
+    slug: KnownAgent,
+    name: Annotated[str, Path(min_length=1)],
+    body: judged.WriteCaseRequest,
+    actor: EvalsKey,
+    session: Session,
+) -> judged.CaseRow:
+    """Write a golden as a case of the agent, by hand; their own name again rewrites it."""
+    keys.check_agent(actor, slug)
+    writing = judging.Promoted(org=actor.org, env=actor.env, name=name, author=asked_by(actor), held_out=body.held_out)
+    return await judging.write_case(session, body.golden, slug, writing)
 
 
 # What `pinecall runs promote` writes to the agent's test/candidates: the same golden a case would hold,

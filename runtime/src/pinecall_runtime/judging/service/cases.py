@@ -44,6 +44,10 @@ UNPLAYABLE = frozenset({"expected-outcome"})
 NAMED_BY_WORDS = 4
 
 TAKEN = "agent {agent} has a case named {name} already: forget it first, or promote under another"
+NOT_WRITTEN_BY_HAND = (
+    "agent {agent}'s case {name} was kept from {source} {call}, not written by hand: "
+    "forget it first, or write another name"
+)
 NOTHING_SAID = "call {call} has no line of the caller's to play again"
 NO_SUCH_CASE = "no case {id} in this key's org"
 UNKNOWN_CASES = "agent {agent} has no case named {names}"
@@ -60,7 +64,7 @@ ALREADY = "case {name} is already {status}"
 
 @dataclass(frozen=True, slots=True)
 class Promoted:
-    """A finished call to keep as a case: whose, from which env, named how, by whom."""
+    """A golden to keep as a case, a finished call's or a person's own: whose, from which env, named how, by whom."""
 
     org: str
     env: Env
@@ -217,6 +221,42 @@ async def promote_case(session: AsyncSession, golden: Golden, agent: str, promot
     except IntegrityError as taken:
         raise Conflict(TAKEN.format(agent=agent, name=promoting.name)) from taken
     return CaseRow.of(row)
+
+
+# A case a person wrote is theirs to write again: the same name rewrites its golden and held-out,
+# and keeps its status, author and age. A name a call or a simulation made is refused, so a hand
+# never rewrites the evidence a judge broke on.
+async def write_case(session: AsyncSession, golden: Golden, agent: str, writing: Promoted) -> CaseRow:
+    """Keep a golden a person wrote as an approved case of the agent; their own name again rewrites it."""
+    named = golden.model_copy(update={"name": writing.name})
+    repository = CaseRepository(session)
+    had = await repository.named(writing.org, agent, writing.name)
+    if had is None:
+        row = EvalCase(
+            id=random_id("case_", 6),
+            org=writing.org,
+            agent=agent,
+            name=writing.name,
+            golden=named.dump(),
+            source_call="",
+            source_env=writing.env,
+            held_out=writing.held_out,
+            author=writing.author,
+            status=CaseStatus.approved,
+            broke=[],
+            source=CaseSource.person,
+        )
+        try:
+            async with session.begin_nested():
+                await repository.add(row)
+        except IntegrityError as taken:
+            raise Conflict(TAKEN.format(agent=agent, name=writing.name)) from taken
+        return CaseRow.of(row)
+    if had.source is not CaseSource.person:
+        raise Conflict(
+            NOT_WRITTEN_BY_HAND.format(agent=agent, name=writing.name, source=had.source, call=had.source_call)
+        )
+    return CaseRow.of(await repository.update(had, golden=named.dump(), held_out=writing.held_out))
 
 
 async def list_cases(
