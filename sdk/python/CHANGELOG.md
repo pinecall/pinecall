@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.14 — released with every other package (2026-10-23)
+
+- Nothing of the Python SDK changed: published at 0.11.14 with every other package.
+
 ## 0.11.13 — the wire knows `app.failed` (2026-10-23)
 
 - **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by

@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.14] — docs push upserts, docs pull and rm, cases add, test plays files and dataset, alerts
 
 - **The docs folder is a checkout of the base.** `pinecall docs push` writes the folder's files into
   the base by path and keeps the base's other files, so a document added in the console survives

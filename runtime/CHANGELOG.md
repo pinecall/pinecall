@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.14 — The folder is a checkout, every alert is kept and mailed, the operator hears them (2026-10-23)
 
 - **A push puts files by path; `?replace=true` makes the base the folder.** `PUT /v1/knowledge/{base}`
   writes the files it names and keeps the base's others, so a file the console put survives
