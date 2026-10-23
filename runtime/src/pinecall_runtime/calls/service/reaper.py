@@ -116,7 +116,15 @@ def _livekits_of(servers: Servers, orphan: Unsealed) -> list[api.LiveKitAPI]:
     return list(dict.fromkeys(servers.values()))
 
 
-# Duration ends at the last entry, not now: reaping late bills no extra minutes.
+# Duration ends at the last entry, not now: reaping late bills no extra minutes. A call that never
+# started lasted nothing: measured from no start, it was billed every second since 1970 (2026-10-23).
+def lasted(orphan: Unsealed) -> float:
+    """How long the reaped call lasted, in seconds: from its start to its last entry, or none."""
+    if orphan.started_at is None:
+        return 0.0
+    return max(orphan.last_at - orphan.started_at, 0.0)
+
+
 async def _finish(serving: Serving, orphan: Unsealed, reason: EndReason) -> bool:
     store = serving.logs.store
     if not await store.lease_seal(orphan.call, LEASED_S):
@@ -129,7 +137,7 @@ async def _finish(serving: Serving, orphan: Unsealed, reason: EndReason) -> bool
                 reason=reason,
                 ended_by="platform",
                 ended_at=orphan.last_at,
-                duration_s=max(orphan.last_at - orphan.started_at, 0.0),
+                duration_s=lasted(orphan),
             )
             await log.append("call.ended", ended.dump())
         if "call.summary" not in written_types:

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A reaped call that never started lasts nothing.** The reaper measured an opening nobody joined
+  from a start of 0, so its `call.ended` and summary said it lasted since 1970 and the org's month
+  read some 29.9 million minutes: one such call put every org with a `minutes` limit past it. The
+  orphan's start is now null when the call never reached `call.started`, and it is reaped as
+  lasting 0 s (`calls/service/reaper.py`, `lasted`). A summary already written that way stays in its
+  log; erasing that call takes it out of the month's usage.
+
 - **A hosted app may be a Python project.** A release whose agents are `agents/*/agent.py` is
   installed with uv into its own `.venv` (`uv.lock` when it has one) on the CPython of the app
   image, and `pinecall start` runs it as it runs a TypeScript one. `infra/images/app` is that

@@ -55,7 +55,8 @@ class Unsealed:
 
     call: str
     agent: str
-    started_at: float
+    # None for a call that never reached call.started: an opening nobody joined.
+    started_at: float | None
     last_at: float
     channel: str | None
     # None for a log no scope ever claimed.
@@ -69,7 +70,7 @@ class Unsealed:
 # the whole window: at 300 calls held the reaper sealed calls 36 ms after they opened (2026-10-01).
 UNSEALED_SPOKEN = text("""
 select head.log as call, head.agent,
-       coalesce(head.started_at, 0) as started_at,
+       head.started_at,
        coalesce(max(entry.ts), head.started_at, extract(epoch from opening.opened_at)) as last_at,
        null as channel, head.env
 from call_log_head head
@@ -88,7 +89,7 @@ limit :limit
 
 UNSEALED_WRITTEN = text("""
 select head.log as call, head.agent,
-       coalesce(head.started_at, 0) as started_at,
+       head.started_at,
        coalesce(max(entry.ts), head.started_at, 0) as last_at, f.channel, head.env
 from call_log_head head
 join call_facts f on f.call = head.log
@@ -297,7 +298,7 @@ class HeadRepository(Repository[CallLogHead]):
             Unsealed(
                 call=str(row.call),
                 agent=str(row.agent or ""),
-                started_at=float(row.started_at),
+                started_at=None if row.started_at is None else float(row.started_at),
                 last_at=float(row.last_at),
                 channel=row.channel,
                 env=None if row.env is None else Env(row.env),
