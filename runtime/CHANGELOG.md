@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.17 — the wire keeps its promises: routes, resumes, nulls, declarations, a page's own events (2026-10-23)
 
 - **`agent.registered` says the routes the agent answers, and a registration that names a number the org
   never routed to it is refused.** The registration's `routes` were taken and dropped, so every

@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.17] — released with the runtime's wire fixes (2026-10-23)
+
+- Nothing of the gem changed: published at 0.11.17 with every other package.
+
 ## [0.11.16] — no object prints the API key, a failing view or hook fails its call, values reach the wire as fields (2026-10-23)
 
 - **SECURITY: no object of the gem prints the API key any more.** `Client` and its connection held the key

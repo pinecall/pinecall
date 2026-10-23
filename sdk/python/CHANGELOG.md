@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.17 — released with the runtime's wire fixes (2026-10-23)
+
+- Nothing of the Python SDK changed: published at 0.11.17 with every other package.
+
 ## 0.11.16 — a failing view or hook fails its call, every write names its author, pii masked everywhere (2026-10-23)
 
 - **A view that cannot be rendered fails its call**: the opening no longer stops half way (no state, no
