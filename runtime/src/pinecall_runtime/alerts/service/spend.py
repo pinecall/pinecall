@@ -6,9 +6,8 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.alerts.service.delivery import Logs, raise_alert
+from pinecall_runtime.alerts.service.delivery import Alerting, raise_alert
 from pinecall_runtime.kit.auth import Scope
-from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.wire.events import SpendUnusual
 
 # Today is unusual once it costs this many times the org's usual day, the mean of its trailing
@@ -63,8 +62,7 @@ async def unusual_spend(ledger: SpendLedger, org: str, at: float) -> Unusual | N
 # Said once a day on the agent's log, and held up on /metrics for as long as it is unusual.
 async def watch_spend(
     session: AsyncSession,
-    handles: Handles,
-    logs: Logs,
+    alerting: Alerting,
     counters: SpendCounter,
     scope: Scope,
     agent: str,
@@ -80,7 +78,7 @@ async def watch_spend(
     alert = SpendUnusual(
         org=scope.org, day=found.day, today_usd=found.today_usd, usual_usd=found.usual_usd, multiple=found.multiple
     )
-    await raise_alert(session, handles, logs, scope, agent, alert)
+    await raise_alert(session, alerting, scope, agent, alert)
 
 
 def _start_of_day(at: float) -> float:

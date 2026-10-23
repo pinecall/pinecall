@@ -36,6 +36,18 @@ export interface Webhook {
   signed: boolean;
 }
 
+/** One alert the gateway kept: whose, what kind, its data, whether it was mailed, when. */
+export interface Alert {
+  id: string;
+  org: string;
+  env: "production" | "sandbox";
+  agent: string | null;
+  kind: string;
+  data: Record<string, unknown>;
+  mailed: boolean;
+  at: string;
+}
+
 /** `POST /v1/webhook/test`: whether the URL answered 2xx. */
 export interface WebhookTest {
   sent: boolean;
@@ -87,4 +99,9 @@ export async function setCollector(gw: GatewayClient, endpoint: string, headers:
 
 export async function deleteCollector(gw: GatewayClient): Promise<void> {
   await gw.delete("/v1/telemetry");
+}
+
+/** `GET /v1/alerts`: the org's alerts in the key's env, newest first. */
+export async function listAlerts(gw: GatewayClient, limit: number): Promise<Alert[]> {
+  return (await gw.get<{ alerts: Alert[] }>(`/v1/alerts?limit=${limit}`)).alerts;
 }

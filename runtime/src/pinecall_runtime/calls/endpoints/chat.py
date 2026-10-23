@@ -178,9 +178,7 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
                         at=serving.logs.store.clock(),
                     )
                 except QuotaExceeded as refused:
-                    await alerts.credits_exhausted(
-                        session_, serving.handles, serving.logs, scope, running.call.config.slug, refused
-                    )
+                    await alerts.credits_exhausted(session_, serving, scope, running.call.config.slug, refused)
                     await session.end_text(running, "timeout", "platform")
                     await _closed(websocket, str(refused), code_of(refused))
                     return

@@ -78,6 +78,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `WS` | `/v1/apps` | app | An app holds its agents here, answers their tools, and sends their calls' commands. |
 | `POST` | `/v1/apps/{app}/stop` | app | Tell the app it was stopped, and close its socket. |
 | `POST` | `/v1/agents/{slug}/kill` | team and app (an admin) | Let go of the agent in every app that holds it in the env, whoever's; the apps keep their other agents, and nothing is erased. |
+| `GET` | `/v1/alerts` | providers | The org's alerts in the key's environment, newest first (`?limit=`, 200 at most, `?before=`): kept 90 days whether or not they were mailed or posted. |
 | `GET` | `/v1/callbacks` | calls | The org's callbacks in the key's environment, oldest first, a page at a time. |
 | `POST` | `/v1/callbacks` | app · fleet | Somebody the overflow told to wait for a call back, on the agent's log. |
 | `POST` | `/v1/calls` | app · fleet | Open a call's log, serve it to its agent's socket, say its minutes and its first words. |
@@ -219,6 +220,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/numbers/{number}/env` | numbers | Move the number into the other environment: its row and the two rules. |
 | `GET` | `/v1/ops/admission` | operator | What a newborn org is given in each environment; nothing limited on a deployment that never said. |
 | `PUT` | `/v1/ops/admission` | operator | What a newborn org is given, replaced whole. |
+| `GET` | `/v1/ops/alerts` | operator | Every org's alerts kept, or one org's (`?org=`, `?env=`), newest first: what broke for the platform's tenants. |
 | `GET` | `/v1/ops/brand` | operator | What the platform's letters and sign-in page are called and painted with. |
 | `PUT` | `/v1/ops/brand` | operator | The brand changed field by field: one left out stays, an empty one goes to the default. |
 | `GET` | `/v1/ops/carrier-networks` | operator | Every network an org asked 5060 to open to, or those in one state, oldest first. |

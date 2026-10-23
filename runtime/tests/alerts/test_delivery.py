@@ -1,12 +1,18 @@
-"""An alert raised: on the agent's log when it is one agent's, and posted to the org's webhook either way."""
+"""An alert raised: kept always, mailed to the admins once an hour per subject, posted where a webhook is set."""
 
 import json
 import os
+from dataclasses import dataclass, field
+from datetime import timedelta
 
 import httpx
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.accounts.service.emails import Email
+from pinecall_runtime.alerts.models import Alert
 from pinecall_runtime.alerts.service.delivery import raise_alert
+from pinecall_runtime.alerts.service.kept import KEPT_DAYS, alerts_of, forget_alerts
 from pinecall_runtime.alerts.service.webhooks import (
     Webhook,
     delete_operator_webhook,
@@ -19,6 +25,7 @@ from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.kit.time import now
 from pinecall_runtime.redis import LocalSignal
 from pinecall_runtime.wire.feed import AppFailed
 from tests.conftest import Tenant, needs_the_database
@@ -26,6 +33,7 @@ from tests.fakes.livekit import per_world
 from tests.fakes.webhooks import Receiver
 
 VAULT = Vault(os.environ["PINECALL_VAULT_KEY"])
+OPERATORS_URL = "https://hooks.example.test/alerts?the-operator"
 
 
 class WrittenLogs:
@@ -52,47 +60,93 @@ class WrittenLogs:
             return None
 
 
+@dataclass
+class Posted:
+    """The outbox as the alert sees it: every email handed over, and from whose mailbox."""
+
+    sent: list[tuple[str | None, Email]] = field(default_factory=list[tuple[str | None, Email]])
+
+    async def post(self, org: str | None, email: Email) -> bool:
+        """Kept, as sent."""
+        self.sent.append((org, email))
+        return True
+
+
+@dataclass
+class Alerting:
+    """What raising an alert reaches, as the gateway's Serving holds it."""
+
+    handles: Handles
+    logs: WrittenLogs
+    outbox: Posted
+
+
 @needs_the_database
-async def test_an_apps_alert_is_posted_to_the_webhook_with_no_agent_and_written_on_no_log(
+async def test_an_alert_is_kept_mailed_to_the_admins_once_an_hour_and_posted_where_a_webhook_is_set(
     sessions: async_sessionmaker[AsyncSession], tenant: Tenant
 ) -> None:
-    receiver, logs = Receiver(), WrittenLogs()
-    async with sessions.begin() as session:
-        await put_webhook(session, VAULT, tenant.org, Webhook(url=receiver.url))
-    failed = AppFailed(app="support", host="support-r4-e8033b63", release=4, why="secrets: 403")
+    receiver, logs, outbox = Receiver(), WrittenLogs(), Posted()
+    scope = Scope(tenant.org, Env.sandbox)
+    failed = AppFailed(app="support", host="support-r4-e8033b63", release=4, why="secrets: 403\nmore lines")
     servers = per_world()
     async with httpx.AsyncClient(transport=httpx.MockTransport(receiver.answer)) as http:
-        handles = Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions)
-        async with sessions() as session:
-            await raise_alert(session, handles, logs, Scope(tenant.org, Env.sandbox), None, failed)
+        alerting = Alerting(Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions), logs, outbox)
+        # No webhook anywhere: kept and mailed all the same.
+        async with sessions.begin() as session:
+            await raise_alert(session, alerting, scope, None, failed)
+        assert receiver.heard == []
+        # Within the hour, the same app again: kept, not mailed again; the org's webhook hears it.
+        async with sessions.begin() as session:
+            await put_webhook(session, VAULT, tenant.org, Webhook(url=receiver.url))
+            await raise_alert(session, alerting, scope, None, failed)
+        # The operator's webhook hears it too, the same body.
+        async with sessions.begin() as session:
+            await put_operator_webhook(session, VAULT, Webhook(url=OPERATORS_URL, secret="ops-secret"))
+            await raise_alert(session, alerting, scope, None, failed)
+            await delete_operator_webhook(session)
     for server in servers.values():
         await server.aclose()
     assert logs.written == []
-    (posted,) = receiver.heard
-    body = json.loads(posted.content)
-    assert posted.headers["x-pinecall-event"] == "app.failed"
+    mine = [email for org, email in outbox.sent if org == tenant.org]
+    (mailed,) = mine
+    assert mailed.to == f"admin@{tenant.slug}.test"
+    assert mailed.subject == "support went down · The suite's org (sandbox)"
+    assert "secrets: 403" in mailed.text and "more lines" not in mailed.text
+    to_the_org = [posted for posted in receiver.heard if str(posted.url) == receiver.url]
+    to_the_operator = [posted for posted in receiver.heard if str(posted.url) == OPERATORS_URL]
+    assert (len(to_the_org), len(to_the_operator)) == (2, 1)
+    body = json.loads(to_the_operator[0].content)
     assert (body["type"], body["org"], body["env"], body["agent"]) == ("app.failed", tenant.org, "sandbox", None)
-    assert body["data"] == {"app": "support", "host": "support-r4-e8033b63", "release": 4, "why": "secrets: 403"}
+    assert to_the_operator[0].headers["x-pinecall-signature"].startswith("sha256=")
+    async with sessions() as session:
+        kept = await alerts_of(session, scope)
+    assert [(row.kind, row.subject, row.mailed) for row in kept] == [
+        ("app.failed", "support", False),
+        ("app.failed", "support", False),
+        ("app.failed", "support", True),
+    ]
 
 
 @needs_the_database
-async def test_the_operator_hears_every_orgs_alert_too_even_one_that_named_no_webhook(
+async def test_an_alert_past_its_days_is_forgotten_and_a_newer_one_kept(
     sessions: async_sessionmaker[AsyncSession], tenant: Tenant
 ) -> None:
-    operator, logs = Receiver(), WrittenLogs()
-    async with sessions.begin() as session:
-        await put_operator_webhook(session, VAULT, Webhook(url=operator.url, secret="ops-secret"))
-    failed = AppFailed(app="support", host="support-r4-e8033b63", release=4, why="exited again")
+    scope = Scope(tenant.org, Env.production)
+    logs, outbox = WrittenLogs(), Posted()
+    failed = AppFailed(app="support", host="support-r1-aaaaaaaa", release=1, why="exited")
     servers = per_world()
-    async with httpx.AsyncClient(transport=httpx.MockTransport(operator.answer)) as http:
-        handles = Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions)
-        async with sessions() as session:
-            await raise_alert(session, handles, logs, Scope("org_with_no_webhook", Env.production), None, failed)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(Receiver().answer)) as http:
+        alerting = Alerting(Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions), logs, outbox)
+        async with sessions.begin() as session:
+            await raise_alert(session, alerting, scope, None, failed)
+            await raise_alert(session, alerting, scope, None, failed)
     for server in servers.values():
         await server.aclose()
-    (posted,) = operator.heard
-    body = json.loads(posted.content)
-    assert (body["type"], body["org"], body["env"]) == ("app.failed", "org_with_no_webhook", "production")
-    assert posted.headers["x-pinecall-signature"].startswith("sha256=")
     async with sessions.begin() as session:
-        await delete_operator_webhook(session)
+        (newest, oldest) = await alerts_of(session, scope)
+        aged = now() - timedelta(days=KEPT_DAYS + 1)
+        await session.execute(update(Alert).where(Alert.id == oldest.id).values(at=aged))
+    async with sessions.begin() as session:
+        assert await forget_alerts(session, now()) >= 1
+        left = (await session.execute(select(Alert.id).where(Alert.org == tenant.org))).scalars().all()
+    assert left == [newest.id]

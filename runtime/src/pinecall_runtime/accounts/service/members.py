@@ -285,6 +285,17 @@ async def remove_member(session: AsyncSession, org: str, member_id: str) -> None
     await members.delete(member)
 
 
+async def admins_of(session: AsyncSession, org: str) -> list[str]:
+    """The addresses of the org's admins who may sign in: who an alert of the org is mailed to."""
+    return sorted({member.email for member in await MemberRepository(session).active_admins(org)})
+
+
+async def operators_of_the_box(session: AsyncSession) -> list[str]:
+    """The addresses of the box's operators who may sign in: who every org's alerts are mailed to."""
+    with box_wide():
+        return sorted({member.email for member in await MemberRepository(session).active_operators()})
+
+
 async def list_members(session: AsyncSession, org: str) -> Sequence[Member]:
     """The org's people, oldest first, the disabled ones too."""
     return await MemberRepository(session).list_of_org(org)

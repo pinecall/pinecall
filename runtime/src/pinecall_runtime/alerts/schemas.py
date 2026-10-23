@@ -1,11 +1,11 @@
-"""The bodies of the monitors and webhook endpoints."""
+"""The bodies of the monitors, webhook and alerts endpoints."""
 
-from datetime import date
-from typing import Literal, Self
+from datetime import date, datetime
+from typing import Any, Literal, Self
 
 from pydantic import Field, field_serializer, model_validator
 
-from pinecall_runtime.enums import MonitorMetric
+from pinecall_runtime.enums import Env, MonitorMetric
 from pinecall_runtime.kit.schemas import Row, Schema
 
 # A monitor's number is read over one of these many days, today included.
@@ -75,3 +75,22 @@ class WebhookTestResponse(Row):
 
     sent: bool
     error: str | None
+
+
+class AlertRow(Row):
+    """One alert kept: whose, what kind, about what, when, and whether it was mailed."""
+
+    id: str
+    org: str
+    env: Env
+    agent: str | None
+    kind: str
+    data: dict[str, Any]
+    mailed: bool
+    at: datetime
+
+
+class AlertList(Row):
+    """The alerts asked for, newest first."""
+
+    alerts: list[AlertRow]

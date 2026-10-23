@@ -1,10 +1,11 @@
-"""Retention: calls past their org's days (the policy), call records and dials past two years."""
+"""Retention: calls past their org's days (the policy), call records and dials past two years, alerts past 90 days."""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Scope
@@ -30,12 +31,13 @@ class Due:
 
 @dataclass(frozen=True, slots=True)
 class Nightly:
-    """What one night did: the calls erased, the records, dials and message ids forgotten, the days."""
+    """What one night did: the calls erased, the records, dials, message ids and alerts forgotten, the days."""
 
     erased: list[str]
     records: int
     dials: int
     seen: int
+    alerts: int
     days: calls.DaysKept
 
 
@@ -72,11 +74,12 @@ async def forget_dials(session: AsyncSession, now: float) -> int:
 
 
 async def run_nightly(sessions: async_sessionmaker[AsyncSession], recordings: calls.Recordings, now: float) -> Nightly:
-    """The night's run: the calls due, the old records, dials and message ids, and the log's days."""
+    """The night's run: the calls due, the old records, dials, message ids and alerts, and the log's days."""
     erased = await purge(sessions, recordings, now)
     async with sessions.begin() as session:
         records = await forget_records(session, now)
         dials = await forget_dials(session, now)
         seen = await channels.forget_seen_before(session, datetime.fromtimestamp(now, UTC))
+        old_alerts = await alerts.forget_alerts(session, datetime.fromtimestamp(now, UTC))
         days = await calls.keep_days(session, now)
-    return Nightly(erased=erased, records=records, dials=dials, seen=seen, days=days)
+    return Nightly(erased=erased, records=records, dials=dials, seen=seen, alerts=old_alerts, days=days)

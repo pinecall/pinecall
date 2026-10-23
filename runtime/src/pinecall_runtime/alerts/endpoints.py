@@ -1,10 +1,14 @@
-"""The alerts endpoints: the env's monitors, and the org's webhook set, read, taken back and proven."""
+"""The alerts endpoints: the env's monitors, the org's webhook set, read, dropped and proven, every alert kept."""
 
-from fastapi import APIRouter
+from datetime import datetime
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 
 from pinecall_runtime.agents.auth import NO_SUCH_AGENT, TheRegistry
 from pinecall_runtime.alerts import schemas, service
-from pinecall_runtime.alerts.auth import EvalsKey, ProvidersKey
+from pinecall_runtime.alerts.auth import EvalsKey, ProvidersKey, TheOperator
+from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit.auth import Actor
 from pinecall_runtime.kit.handles import TheHandles
@@ -78,3 +82,31 @@ async def test_webhook(actor: ProvidersKey, handles: TheHandles, session: Sessio
     sent = service.payload_of(actor.scope, None, service.A_TEST, dict(A_TEST_SAYS))
     error = await service.post_alert(handles.http, webhook, sent)
     return schemas.WebhookTestResponse(sent=error is None, error=error)
+
+
+# ── the alerts kept ──
+
+Limit = Annotated[int, Query(ge=1, le=service.MOST_READ)]
+
+
+@router.get("/v1/alerts")
+async def list_alerts(
+    actor: ProvidersKey, session: Session, limit: Limit = service.READ, before: datetime | None = None
+) -> schemas.AlertList:
+    """The org's alerts in the key's env, newest first: kept whether or not they were mailed or posted."""
+    found = await service.alerts_of(session, actor.scope, limit=limit, before=before)
+    return schemas.AlertList(alerts=[schemas.AlertRow.model_validate(row, from_attributes=True) for row in found])
+
+
+@router.get("/v1/ops/alerts")
+async def list_every_orgs_alerts(
+    _actor: TheOperator,
+    session: Session,
+    org: str | None = None,
+    env: Env | None = None,
+    limit: Limit = service.READ,
+    before: datetime | None = None,
+) -> schemas.AlertList:
+    """Every org's alerts, or one org's, newest first: what broke for the box's tenants."""
+    found = await service.every_orgs_alerts(session, org=org, env=env, limit=limit, before=before)
+    return schemas.AlertList(alerts=[schemas.AlertRow.model_validate(row, from_attributes=True) for row in found])

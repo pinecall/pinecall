@@ -1,4 +1,4 @@
-/** Alerts, a tab of Settings: where the org's alerts are posted — a webhook of its own, set with a secret, proven with a test — beside the bell. */
+/** Alerts, a tab of Settings: the org's alerts kept, and where they are posted — a webhook of its own, optional — beside the mail and the bell. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -7,6 +7,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { Button, Card, CardHead, Field, Input, KV, Page, PageHead, Pill, Refused, TextAction } from "../../ui";
 import { dropWebhook, putWebhook, readWebhook, testWebhook, type Webhook } from "./door";
+import { Recent } from "./recent";
 import "./alerts.css";
 
 /** What sends an alert, in plain words, with the event name a server receives. */
@@ -110,14 +111,16 @@ export function Alerts(): ReactNode {
         ledeWidth={660}
         lede={
           <>
-            Get a message in Slack, PagerDuty or your own server when something needs attention. People also get alerts in the bell; each person picks theirs under{" "}
-            <Link to="/notifications">Notifications</Link>.
+            Every alert is kept here and mailed to the org's admins. Connect a webhook to get it in Slack, PagerDuty or your own server too. People also get alerts in
+            the bell; each person picks theirs under <Link to="/notifications">Notifications</Link>.
           </>
         }
       />
 
+      <Recent />
+
       <Card>
-        <CardHead title="Where alerts are sent" action={webhook === undefined ? undefined : <Pill tone={webhook === null ? "gray" : "green"}>{webhook === null ? "Not connected" : "Connected"}</Pill>} />
+        <CardHead title="Webhook (optional)" action={webhook === undefined ? undefined : <Pill tone={webhook === null ? "gray" : "green"}>{webhook === null ? "Not connected" : "Connected"}</Pill>} />
         {webhook !== undefined && webhook !== null && (
           <div className="alr-rows">
             <KV label="URL" keyWidth={90}>
@@ -151,7 +154,7 @@ export function Alerts(): ReactNode {
           <Button kind="primary" size="md" type="submit" disabled={busy || url.trim() === ""}>
             {busy ? "Saving…" : webhook ? "Replace" : "Connect"}
           </Button>
-          {webhook === null && <span className="alr-hint">Until you connect one, alerts show only in the bell and on the agents' logs.</span>}
+          {webhook === null && <span className="alr-hint">Without one, alerts are still kept here and mailed to the admins.</span>}
         </form>
       </Card>
 

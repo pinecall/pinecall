@@ -4,6 +4,7 @@ import time
 
 import typer
 
+from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.cli.command import OK, context_of, verb
 from pinecall_runtime.retention import service as retention
@@ -39,6 +40,7 @@ async def retention_run(ctx: typer.Context) -> int:
     context.out.line(f"{len(night.erased)} calls erased past their org's days")
     context.out.line(f"{night.records} call records and {night.dials} dials forgotten past 24 months")
     context.out.line(f"{night.seen} WhatsApp message ids forgotten past Meta's 7 days of retries")
+    context.out.line(f"{night.alerts} alerts forgotten past {alerts.KEPT_DAYS} days")
     context.out.line(
         f"days of the log: {len(night.days.made)} made ahead, {len(night.days.dropped)} dropped once empty"
     )

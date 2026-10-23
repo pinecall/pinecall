@@ -4,6 +4,11 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall alerts`: what the org was told.** Every alert of the environment, newest first, kept
+  90 days whether or not a webhook is set, and whether it was mailed; `--limit`, `--prod`.
+
 ## [0.11.13] — released with every other package
 
 - Nothing of the CLI changed: published at 0.11.13 with every other package.

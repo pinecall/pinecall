@@ -2372,6 +2372,21 @@ headers sealed and never reads them back: the bare verb prints the URL and the h
 `clear` stops the export; the calls' logs stay on Pinecall either way. Langfuse takes two headers,
 piped one line each: [Export traces](https://docs.pinecall.io/guides/export-traces/).
 
+## `alerts`
+
+```console
+$ pinecall alerts
+when              kind               about          agent        mailed
+2026-10-23 09:33  app.failed         support        —            yes
+2026-10-22 18:02  monitor.fired      slow answers   front-desk   yes
+2026-10-22 11:40  credits.exhausted  minutes        front-desk   no
+```
+
+What this org was told, newest first: every alert of the environment (`--prod` for production's),
+kept 90 days whether or not a webhook is set. Each one is mailed to the org's admins and the
+platform's operators, once an hour per monitor, app or quota, and `mailed` says whether this one
+was; the webhook below is optional. `--limit` says how many, 50 unless said, 200 at most.
+
 ## `monitors`
 
 ```console
@@ -2416,7 +2431,7 @@ $ pinecall webhook
 alerts go to https://hooks.example.com/pinecall · signed
 ```
 
-Where this org's alerts are posted beyond the agent's log: a URL of your own — Slack, PagerDuty,
+Where this org's alerts are posted beyond the agent's log, the list above and the admins' mail: a URL of your own, optional — Slack, PagerDuty,
 your backend. Every alert — a monitor that fired (`monitor.fired`), today's spend three times
 the usual (`spend.unusual`), a quota that ran out (`credits.exhausted`) — is posted as it is
 written, as JSON `{type, org, env, agent, at, data}` with `x-pinecall-event` naming the type,

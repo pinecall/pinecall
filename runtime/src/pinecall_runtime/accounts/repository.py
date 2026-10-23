@@ -58,6 +58,18 @@ class MemberRepository(Repository[Member]):
         """The org's people, oldest first, the disabled ones too."""
         return await self.all(self.statement().where(Member.org == org).order_by(Member.created_at, Member.id))
 
+    async def active_admins(self, org: str) -> Sequence[Member]:
+        """The org's admins who may sign in, oldest first."""
+        statement = self.statement().where(
+            Member.org == org, Member.role == Role.admin, Member.status == MemberStatus.active
+        )
+        return await self.all(statement.order_by(Member.created_at, Member.id))
+
+    async def active_operators(self) -> Sequence[Member]:
+        """The box's operators who may sign in, in every org. Read box-wide by the caller."""
+        statement = self.statement().where(Member.operator, Member.status == MemberStatus.active)
+        return await self.all(statement.order_by(Member.created_at, Member.id))
+
     async def list_of_person(self, email: str) -> Sequence[Member]:
         """Every membership of the address, oldest first. Read box-wide by the caller."""
         return await self.all(self.statement().where(Member.email == email).order_by(Member.created_at, Member.id))

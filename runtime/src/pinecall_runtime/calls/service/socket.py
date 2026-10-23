@@ -276,7 +276,7 @@ class AppSocket:
             try:
                 await billing.admit_agent(session, scope.org, scope.env, holding=len(others))
             except QuotaExceeded as refused:
-                await alerts.credits_exhausted(session, self.serving.handles, self.serving.logs, scope, slug, refused)
+                await alerts.credits_exhausted(session, self.serving, scope, slug, refused)
                 raise
         await self.send(await self.registry.register(self.id, scope, slug, wanted))
         # A console takes no call it did not open; an app takes the calls a previous one left.

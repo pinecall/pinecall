@@ -159,6 +159,15 @@ def signup_code_email(to: str, code: str, person: str, brand: platform.Brand) ->
     )
 
 
+def alert_email(to: str, brand: platform.Brand, *, title: str, said: str, whose: str, link: str | None) -> Email:
+    """An alert of an org, mailed to a person who keeps an eye on it: what happened, and where to look."""
+    footer = f"Sent by {brand.name} for {whose} · every alert is listed under Settings ▸ Alerts"
+    look = "" if link is None else _button("Open the console", link, brand.accent) + _fallback(link)
+    body = _heading(title) + _paragraph(said) + look
+    text = "\n\n".join([title, said, *([] if link is None else [f"Open the console:\n\n{link}"]), footer])
+    return Email(to, f"{title} · {whose}", text, _framed(said, body, footer, brand))
+
+
 def _linked(to: str, link: LinkDetails, brand: platform.Brand, wording: _Wording) -> Email:
     quiet = ["This link opens once."]
     if wording.unbidden:

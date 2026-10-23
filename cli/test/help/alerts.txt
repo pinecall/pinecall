@@ -1,0 +1,20 @@
+$ pinecall alerts --help
+Usage: pinecall alerts [options]
+
+what this org was told, newest first: every alert kept, mailed or not, posted or
+not
+
+Options:
+  --limit <n>  how many, at most 200 (default: "50")
+  -h, --help   display help for command
+
+Every alert of the org in this env — a monitor that fired (monitor.fired), today's spend three
+times the usual (spend.unusual), a quota that ran out (credits.exhausted), a hosted app that went
+down (app.failed) — is kept for 90 days whether or not a webhook is set. Each is mailed to the
+org's admins and the box's operators, once an hour per monitor, app or quota; "mailed" says whether
+this one was. --prod reads production's.
+
+Examples
+  $ pinecall alerts
+  $ pinecall alerts --prod --limit 10
+

@@ -113,9 +113,12 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     roster = fleet.Roster(signal, on_change=lambda event: logs.announce_to_the_box("worker.changed", event))
     await _started(stack, roster)
     offering = fleet.Offering(sessions, servers, roster)
+    outbox = mail.Outbox(sessions, vault, _box_mailbox(settings))
+    stack.push_async_callback(outbox.drain)
     serving = calls.Serving(
         handles=handles,
         logs=logs,
+        outbox=outbox,
         live=live,
         registry=registry,
         signer=tokens.Signer(livekit_key, livekit_secret, settings.token_key.get_secret_value()),
@@ -134,8 +137,6 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     await _started(stack, holder)
     key_cache = keys.KeyCache(sessions, signal)
     await _started(stack, key_cache)
-    outbox = mail.Outbox(sessions, vault, _box_mailbox(settings))
-    stack.push_async_callback(outbox.drain)
     # Pushed after the wiring, so the calls stop before the logs and the engine close under them.
     simulations = evals.Simulations(signal)
     await simulations.start()

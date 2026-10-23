@@ -207,7 +207,7 @@ async def admit_simulation(session_: AsyncSession, serving: calls.Serving, scope
     try:
         await billing.admit_simulation(session_, scope.org, scope.env, at=epoch())
     except QuotaExceeded as refused:
-        await alerts.credits_exhausted(session_, serving.handles, serving.logs, scope, agent, refused)
+        await alerts.credits_exhausted(session_, serving, scope, agent, refused)
         raise
 
 

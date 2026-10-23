@@ -202,7 +202,7 @@ async def _judged_suite(serving: calls.Serving, suite: Suite, scope: Scope) -> s
             return await _every_golden(serving, dataclasses.replace(suite, judge=model))
     except QuotaExceeded as refused:
         async with serving.handles.sessions.begin() as session_:
-            await alerts.credits_exhausted(session_, serving.handles, serving.logs, scope, suite.body.agent, refused)
+            await alerts.credits_exhausted(session_, serving, scope, suite.body.agent, refused)
         return str(refused)
     except TimeoutError:
         return runs.TOOK_TOO_LONG.format(minutes=runs.A_RUN_MAY_TAKE_S // 60)

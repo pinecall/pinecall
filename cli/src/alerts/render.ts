@@ -1,8 +1,9 @@
 /** Alerts as a terminal reads them: the monitors table, one monitor, the webhook, the collector. */
 
 import { table } from "../kit/table.js";
-import type { Collector, Monitor, Webhook, WebhookTest } from "./service.js";
+import type { Alert, Collector, Monitor, Webhook, WebhookTest } from "./service.js";
 
+export const NO_ALERTS = "no alert kept for this org here: none was raised, or none in the last 90 days";
 export const NO_MONITORS = "this org watches nothing · `pinecall monitors add` names a number and its line";
 export const NO_WEBHOOK = "this org posts its alerts nowhere · `pinecall webhook set <url>` names a URL";
 export const NO_COLLECTOR = "this org sends its traces nowhere · `pinecall telemetry set <url>` names a collector";
@@ -53,4 +54,18 @@ export function collectorCleared(): string {
 
 function fired(monitor: Monitor): string {
   return monitor.fired_on === null ? "never fired" : `fired ${monitor.fired_on} at ${monitor.fired_value}`;
+}
+
+/** What an alert is about, read off its data: the monitor, the app, the quota; the org's spend has none. */
+function about(one: Alert): string {
+  const named = one.data["name"] ?? one.data["app"] ?? one.data["quota"];
+  return typeof named === "string" ? named : "—";
+}
+
+export function alerts(found: Alert[]): string[] {
+  if (found.length === 0) return [NO_ALERTS];
+  return table(
+    ["when", "kind", "about", "agent", "mailed"],
+    found.map((one) => [one.at.slice(0, 16).replace("T", " "), one.kind, about(one), one.agent ?? "—", one.mailed ? "yes" : "no"]),
+  );
 }

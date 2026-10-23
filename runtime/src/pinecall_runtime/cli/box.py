@@ -220,6 +220,29 @@ async def box_alerts_set(
     return OK
 
 
+# Read off the database, every org's unless one is named: what the box's tenants were told.
+@alerts_app.command("list")
+@verb
+async def box_alerts_list(
+    ctx: typer.Context,
+    org: Annotated[str | None, typer.Option(help="one org's, by id")] = None,
+    limit: Annotated[int, typer.Option(min=1, max=alerts.MOST_READ)] = alerts.READ,
+) -> int:
+    """Every org's alerts kept, newest first: when, whose, which kind, and whether it was mailed."""
+    context = context_of(ctx)
+    async with context.sessions() as session:
+        found = await alerts.every_orgs_alerts(session, org=org, limit=limit)
+    if not found:
+        context.out.line("no alert kept: none was raised, or none in the last 90 days")
+        return OK
+    for row in found:
+        mailed = "mailed" if row.mailed else "not mailed"
+        context.out.line(
+            f"{row.at:%Y-%m-%d %H:%M}  {row.org}  {row.env.value}  {row.kind}  {row.subject or '—'}  {mailed}"
+        )
+    return OK
+
+
 @alerts_app.command("rm")
 @verb
 async def box_alerts_rm(ctx: typer.Context) -> int:

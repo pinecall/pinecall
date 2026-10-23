@@ -1,12 +1,12 @@
-"""The monitors and the org's webhook row; and the org's spend by day, read off the calls' facts."""
+"""The monitors, the org's webhook row, the alerts kept; and the org's spend by day, read off the calls' facts."""
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import delete, func, update
 from sqlalchemy.dialects.postgresql import insert as upsert
 
-from pinecall_runtime.alerts.models import Monitor, OrgWebhook
+from pinecall_runtime.alerts.models import Alert, Monitor, OrgWebhook
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.repository import Repository
 
@@ -57,3 +57,36 @@ class WebhookRepository(Repository[OrgWebhook]):
     async def drop(self, org: str) -> bool:
         """Forget where the org's alerts went; whether they went anywhere."""
         return await self.changed(delete(OrgWebhook).where(OrgWebhook.org == org)) > 0
+
+
+class AlertRepository(Repository[Alert]):
+    """Every alert kept: an org's newest first, the box's across orgs, and the old ones forgotten."""
+
+    model = Alert
+
+    async def newest(self, org: str | None, env: Env | None, *, limit: int, before: datetime | None) -> Sequence[Alert]:
+        """The newest alerts, of one org and env or of every one; those before a moment, when given."""
+        statement = self.statement()
+        if org is not None:
+            statement = statement.where(Alert.org == org)
+        if env is not None:
+            statement = statement.where(Alert.env == env)
+        if before is not None:
+            statement = statement.where(Alert.at < before)
+        return await self.all(statement.order_by(Alert.at.desc(), Alert.id.desc()).limit(limit))
+
+    async def mailed_since(self, org: str, env: Env, kind: str, subject: str, since: datetime) -> bool:
+        """Whether an alert of this kind and subject was mailed since then."""
+        statement = self.statement().where(
+            Alert.org == org,
+            Alert.env == env,
+            Alert.kind == kind,
+            Alert.subject == subject,
+            Alert.mailed,
+            Alert.at >= since,
+        )
+        return await self.count(statement) > 0
+
+    async def forget_before(self, cut: datetime) -> int:
+        """Forget every alert raised before the cut; how many."""
+        return await self.changed(delete(Alert).where(Alert.at < cut))

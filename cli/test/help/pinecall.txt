@@ -91,6 +91,8 @@ Commands:
   studio                         agents built in the console's Studio: made,
                                  pulled to a file and pushed back, a tool tried,
                                  deployed, their code
+  alerts [options]               what this org was told, newest first: every
+                                 alert kept, mailed or not, posted or not
   monitors                       the numbers this org watches — latency, the
                                  judges, escalations, tools, spend — and the
                                  line each must not cross

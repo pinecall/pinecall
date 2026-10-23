@@ -327,9 +327,7 @@ class Threads:
                             at=self.serving.logs.store.clock(),
                         )
                     except QuotaExceeded as refused:
-                        await alerts.credits_exhausted(
-                            session_, self.serving.handles, self.serving.logs, scope, running.call.config.slug, refused
-                        )
+                        await alerts.credits_exhausted(session_, self.serving, scope, running.call.config.slug, refused)
                         await session.end_text(running, "timeout", "platform")
                         return
                 try:

@@ -6,7 +6,7 @@ import * as api from "../api/alerts.js";
 import type { Context } from "../context.js";
 import { PinecallError, UsageError } from "../errors.js";
 
-export { METRICS, type Collector, type Metric, type Monitor, type Webhook, type WebhookTest } from "../api/alerts.js";
+export { METRICS, type Alert, type Collector, type Metric, type Monitor, type Webhook, type WebhookTest } from "../api/alerts.js";
 
 /** What `monitors add` takes: a number, the line and its side, the window, the agent or every one. */
 export const AddMonitorInput = z.object({
@@ -89,4 +89,9 @@ export async function setCollector(ctx: Context, input: SetCollectorInput): Prom
 export async function clearCollector(ctx: Context): Promise<{ cleared: true }> {
   await api.deleteCollector(ctx.gateway());
   return { cleared: true };
+}
+
+/** The org's alerts in this env, newest first: kept whether or not they were mailed or posted. */
+export async function listAlerts(ctx: Context, limit: number): Promise<api.Alert[]> {
+  return api.listAlerts(ctx.gateway(), limit);
 }

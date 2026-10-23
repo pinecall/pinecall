@@ -193,7 +193,7 @@ async def admit_call(session: AsyncSession, serving: Serving, scope: Scope, agen
             at=serving.logs.store.clock(),
         )
     except QuotaExceeded as refused:
-        await alerts.credits_exhausted(session, serving.handles, serving.logs, scope, agent, refused)
+        await alerts.credits_exhausted(session, serving, scope, agent, refused)
         raise
 
 

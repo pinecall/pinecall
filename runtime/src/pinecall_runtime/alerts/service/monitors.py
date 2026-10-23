@@ -10,12 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pinecall_runtime.alerts.models import Monitor
 from pinecall_runtime.alerts.repository import MonitorRepository
 from pinecall_runtime.alerts.schemas import MonitorRequest
-from pinecall_runtime.alerts.service.delivery import Logs, raise_alert
+from pinecall_runtime.alerts.service.delivery import Alerting, raise_alert
 from pinecall_runtime.enums import MonitorMetric
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Scope
 from pinecall_runtime.kit.crypto import random_id
-from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.time import day_of
 from pinecall_runtime.wire.events import MonitorFired
 
@@ -150,7 +149,7 @@ async def delete_monitor(session: AsyncSession, scope: Scope, monitor_id: str) -
 # what the series count). Each fires once a day, on the sealed call's agent's log, with the value
 # that crossed.
 async def check_monitors(
-    session: AsyncSession, handles: Handles, logs: Logs, scope: Scope, agent: str, *, series: Series, at: float
+    session: AsyncSession, alerting: Alerting, scope: Scope, agent: str, *, series: Series, at: float
 ) -> None:
     """Say, once a day per monitor, that a number of the env crossed its line."""
     env_wide = dataclasses.replace(scope, holder=THE_ORGS_OWN)
@@ -175,7 +174,7 @@ async def check_monitors(
             env=scope.env,
             day=day.isoformat(),
         )
-        await raise_alert(session, handles, logs, scope, agent, fired)
+        await raise_alert(session, alerting, scope, agent, fired)
 
 
 def crossed(monitor: Monitor, value: float) -> bool:

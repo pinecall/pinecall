@@ -59,6 +59,9 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
   answers `{account_sid, label}` and never the secret, `404` when the platform holds none, and then it
   sells no numbers (`sells: false` in the carriers catalog). `DELETE` stops it selling; the numbers it
   bought keep ringing. The account is no vendor of a call: `/v1/ops/provider-keys` never lists it.
+- `GET /v1/ops/alerts`: every org's alerts kept, newest first, `{alerts: [{id, org, env, agent, kind, data, mailed, at}]}`;
+  `?org=` and `?env=` narrow it, `?limit=` (50, 200 at most) and `?before=` page it. The same rows each org reads at
+  `GET /v1/alerts`, the same alerts the operator's webhook is posted (`pinecall-runtime box alerts`).
 - `GET` · `PUT /v1/ops/admission`: what a newborn org is given in each environment, `{first: {env:
   quotas}, later: {env: quotas} | null}`: `first` for a person's first org, `later`, when set, for
   any other (one trial per person). Read when an org is made; a deployment that never said gives none.

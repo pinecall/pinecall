@@ -8,7 +8,7 @@ from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.accounts.service import tokens
+from pinecall_runtime.accounts.service import mail, tokens
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.agents.service import prompts as agents_prompts
 from pinecall_runtime.agents.service import registry as agents_registry
@@ -51,6 +51,8 @@ class Serving:
 
     handles: Handles
     logs: Logs
+    # Every email the gateway sends: an alert's, among them.
+    outbox: mail.Outbox
     live: Live
     registry: agents_registry.AgentRegistry
     signer: tokens.Signer

@@ -225,7 +225,7 @@ async def runner_heartbeat(
             elif await service.record_failed(session, app, report.host, why=report.why, runner=body.runner):
                 # The first report of this host failing is the org's alert; the next beats repeat nothing.
                 failed = AppFailed(app=report.name, host=report.host, release=release, why=report.why)
-                await alerts.raise_alert(session, handles, serving.logs, Scope(report.org, env), None, failed)
+                await alerts.raise_alert(session, serving, Scope(report.org, env), None, failed)
             changed = ReleaseChanged(app=report.name, release=release or 0)
             serving.logs.announce(Scope(report.org, env), "release.changed", changed)
         for logs in body.logs:

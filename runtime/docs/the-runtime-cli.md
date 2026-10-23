@@ -260,7 +260,7 @@ box numbers-account show · box numbers-account set --account-sid <AC…> [--use
 box admission show
 box admission set --env production|sandbox [--later] [--minutes n] [--messages n] [--evals n] [--simulations n] …
                   [--budget-usd n] [--lends <vendor[/model],…|all|none>]
-box alerts show · box alerts set <url> [--secret] · box alerts rm                    # --secret reads it from stdin
+box alerts list [--org <id>] [--limit n] · box alerts show · box alerts set <url> [--secret] · box alerts rm
 ```
 
 What the box itself holds. `keys` are its own vendor keys, the ones an org without its own runs on
@@ -274,9 +274,11 @@ without one the box sells no numbers. `admission` is what a newborn org is given
 environment's limits and lends for a person's first org (`--later`: any later one), the rest of the row
 as it stands; `--lends` left out lends every key. `alerts` is where the operator hears every org's
 alerts: each one — a monitor fired, unusual spend, a quota run out, a hosted app that went down — is
-posted to this URL as well as to the org's own, the same JSON body (`org` and `env` name whose it is,
-`x-pinecall-event` the kind, signed with the secret when one is given); an org that named no URL of
-its own still reaches the operator. The doors are [protocol/operator-api.md](protocol/operator-api.md).
+kept 90 days (`list`, every org's newest first, or one's with `--org`), mailed to the org's admins and
+the box's operators (once an hour per monitor, app or quota), and posted to the URL `set` names as
+well as to the org's own, the same JSON body (`org` and `env` name whose it is, `x-pinecall-event`
+the kind, signed with the secret when one is given; `--secret` reads it from stdin). A webhook is
+never needed: an org that named no URL of its own is still kept, mailed and seen by the operator. The doors are [protocol/operator-api.md](protocol/operator-api.md).
 
 ```
 $ printf '%s\n' "$CARTESIA_API_KEY" | pinecall-runtime box keys set cartesia
@@ -404,7 +406,8 @@ embeds every fact another model wrote under the platform's embedder. `retention 
 calls past their org's `retention_days` (`PUT /v1/org/policy`), oldest first; `retention run`
 erases them, each through the erasure path with `retention` as who asked, 5 000 a run at most,
 then forgets the detail records of erased phone calls, and the dials, older than 24 months, and
-the WhatsApp message ids claimed more than 7 days ago ([whatsapp.md](protocol/whatsapp.md));
+the WhatsApp message ids claimed more than 7 days ago ([whatsapp.md](protocol/whatsapp.md)) and the alerts
+raised more than 90 days ago;
 then makes the log's days a week ahead (`call_log` is partitioned by UTC day; a row no day holds lands in `call_log_default`, and a day the default already holds rows of is named and not made) and drops each past day nothing is left in; the CronJob `pinecall-retention` runs it at 04:00 UTC every night. `doctor`'s `days` line names rows in the default and fewer than two days made ahead. `traceback <number> [--since
 YYYY-MM-DD]` answers a carrier's traceback: every phone call with the number, still kept or erased
 with its record, and every dial to it placed or refused, with the org, the environment, the number shown

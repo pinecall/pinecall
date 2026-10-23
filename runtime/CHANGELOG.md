@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Every alert is kept and mailed; the webhook is optional.** A monitor that fired, unusual spend,
+  a quota run out, a hosted app that went down: each is a row of `alerts` (migration `000011`),
+  kept 90 days (the nightly retention forgets older), read at `GET /v1/alerts` by the org and
+  `GET /v1/ops/alerts` by the operator, and mailed to the org's admins and the box's operators once
+  an hour per monitor, app or quota, through the org's mailbox or the box's. The org's webhook and
+  the operator's are posted as before when set; an org that set none was told nothing until now.
+  `pinecall-runtime box alerts list` reads every org's. Raising an alert takes the gateway's
+  `Serving` whole, which now holds the outbox.
 - **The operator hears every org's alerts.** `pinecall-runtime box alerts set <url> [--secret]`
   names a URL every alert is posted to beside the org's own, the same body; `show` and `rm`. An
   org that named no webhook still reaches the operator: a tenant's app down 23 hours on 2026-10-23

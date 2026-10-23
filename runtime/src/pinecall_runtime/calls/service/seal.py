@@ -104,17 +104,14 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
             at = serving.logs.store.clock()
             await alerts.watch_spend(
                 session,
-                serving.handles,
-                serving.logs,
+                serving,
                 serving.counters,
                 served.scope,
                 served.agent,
                 ledger=SpendRepository(session),
                 at=at,
             )
-            await alerts.check_monitors(
-                session, serving.handles, serving.logs, served.scope, served.agent, series=usage.series_window, at=at
-            )
+            await alerts.check_monitors(session, serving, served.scope, served.agent, series=usage.series_window, at=at)
         serving.logs.forget(served.call)
         serving.live.close_call(served.call)
 
@@ -141,7 +138,7 @@ async def remember(session: AsyncSession, serving: Serving, served: Served) -> k
         kept = await knowledge.facts_kept(session, served.scope.org, served.scope.env)
         await billing.admit_memory(session, served.scope.org, served.scope.env, kept=kept)
     except QuotaExceeded as refused:
-        await alerts.credits_exhausted(session, serving.handles, serving.logs, served.scope, served.agent, refused)
+        await alerts.credits_exhausted(session, serving, served.scope, served.agent, refused)
         op = MemoryOp(op="remember", contact=heard.contact, facts=[], took_ms=0.0)
         await served.log.append("memory.ops", MemoryOps(ops=[op]).dump())
         return knowledge.MemoryWrite(op=op, usage=None)
@@ -310,7 +307,7 @@ async def _score(serving: Serving, served: Served) -> CallScore:
         if any(judgment.reason == judging.OUT_OF_EVALS for judgment in score.judges):
             limit = (await billing.get_quotas(session, served.scope.org, served.scope.env)).evals or 0
             refused = QuotaExceeded(judging.OUT_OF_EVALS, quota="evals", used=limit, limit=limit)
-            await alerts.credits_exhausted(session, serving.handles, serving.logs, served.scope, served.agent, refused)
+            await alerts.credits_exhausted(session, serving, served.scope, served.agent, refused)
     return score
 
 

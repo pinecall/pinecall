@@ -1,4 +1,4 @@
-/** `pinecall monitors | webhook | telemetry`: what the org watches, where its alerts go, where its traces go. */
+/** `pinecall alerts | monitors | webhook | telemetry`: what the org was told, what it watches, where its alerts and traces go. */
 
 import type { Command } from "@commander-js/extra-typings";
 
@@ -66,7 +66,32 @@ Examples
       --header Authorization --header x-langfuse-ingestion-version
 `;
 
+const ALERTS = `
+Every alert of the org in this env — a monitor that fired (monitor.fired), today's spend three
+times the usual (spend.unusual), a quota that ran out (credits.exhausted), a hosted app that went
+down (app.failed) — is kept for 90 days whether or not a webhook is set. Each is mailed to the
+org's admins and the box's operators, once an hour per monitor, app or quota; "mailed" says whether
+this one was. --prod reads production's.
+
+Examples
+  $ pinecall alerts
+  $ pinecall alerts --prod --limit 10
+`;
+
+function limitOf(said: string): number {
+  const limit = Number(said);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new UsageError(`--limit: a whole number from 1 to 200, not ${said}`);
+  return limit;
+}
+
 export function register(program: Command, ctx: Context): void {
+  program
+    .command("alerts")
+    .description("what this org was told, newest first: every alert kept, mailed or not, posted or not")
+    .option("--limit <n>", "how many, at most 200", "50")
+    .addHelpText("after", ALERTS)
+    .action(async (flags) => ctx.io.result(await service.listAlerts(ctx, limitOf(flags.limit)), render.alerts));
+
   const monitors = program
     .command("monitors")
     .description("the numbers this org watches — latency, the judges, escalations, tools, spend — and the line each must not cross")
