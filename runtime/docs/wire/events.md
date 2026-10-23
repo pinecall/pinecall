@@ -10,6 +10,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `agent.registered` | agent | no | [events-control.md](events-control.md) | The gateway accepted an agent.register: this socket now speaks for the agent and answers its routes. |
 | `agent.state` | call | no | [events-call.md](events-call.md) | The agent's state changed, in the session's own words. |
 | `agent.transcript` | call | yes | [events-call.md](events-call.md) | One delta of the reply the agent is giving, never the reply so far: in a voice call one word, as the voice plays it, with the seconds it was aligned to; in a written call one model token. |
+| `app.failed` | feed | yes | [events-control.md](events-control.md) | A hosted app did not build, start or stay up: the org's alert, posted to its webhook; no log holds it. |
 | `attention.answered` | call | no | [events-control.md](events-control.md) | An ask for a person settled: a supervisor took the line, or the wait ran out and the agent has the caller back. |
 | `attention.requested` | call | no | [events-control.md](events-control.md) | The agent asked for a person: the caller is on hold and waits for a supervisor to take the line. |
 | `call.attached` | call | no | [events-call.md](events-call.md) | A live call is now served by this socket, mid-conversation: the socket that held it drained, or died, or the gateway restarted. |

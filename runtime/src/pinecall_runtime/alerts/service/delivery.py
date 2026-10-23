@@ -17,6 +17,7 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.kit.time import epoch
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.events import CreditsExhausted, MonitorFired, SpendUnusual
+from pinecall_runtime.wire.feed import AppFailed
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,12 @@ EVENT_HEADER = "x-pinecall-event"
 SIGNATURE_HEADER = "x-pinecall-signature"
 A_TEST = "webhook.test"
 A_SERVER_ERROR = 500
-# The alerts, each under the type the agent's log writes it as.
+# The alerts, each under the type the agent's log writes it as; an app's names no agent.
 KIND_OF: dict[type[WireModel], str] = {
     MonitorFired: "monitor.fired",
     SpendUnusual: "spend.unusual",
     CreditsExhausted: "credits.exhausted",
+    AppFailed: "app.failed",
 }
 
 
@@ -54,11 +56,12 @@ class Logs(Protocol):
 
 
 async def raise_alert(
-    session: AsyncSession, handles: Handles, logs: Logs, scope: Scope, agent: str, alert: WireModel
+    session: AsyncSession, handles: Handles, logs: Logs, scope: Scope, agent: str | None, alert: WireModel
 ) -> None:
-    """Write the alert on the agent's log; post it to the org's webhook when it set one."""
+    """Write the alert on the agent's log, when it is one agent's; post it to the org's webhook when it set one."""
     kind, data = KIND_OF[type(alert)], alert.dump()
-    await logs.agent(agent).append(kind, data)
+    if agent is not None:
+        await logs.agent(agent).append(kind, data)
     webhook = await webhook_of(session, handles.vault, scope.org)
     if webhook is None:
         return

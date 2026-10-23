@@ -96,7 +96,9 @@ runs on when it registers, so `registered` is true once an app socket of the org
 that host: the release is serving.
 
 A report says a host went `live` or `failed` (with `why`, 2 000 characters at most). It is kept
-only while that host is still the one wanted. A host reported failed comes back `failed: true`, and
+only while that host is still the one wanted. The first report of a host failing is the org's
+`app.failed` alert, posted to its webhook ([alerts](../../../docs/pages/guides/alerts.md)) with
+the host, the release and `why`; the beats after it repeat nothing. A host reported failed comes back `failed: true`, and
 the runner leaves it alone until a release or a secret makes the next host. `logs_wanted` is true
 for a minute after somebody asked for the app's logs: the runner reads its pod's last 300 lines —
 its install's, when it never got to run — and sends them with its next beat.

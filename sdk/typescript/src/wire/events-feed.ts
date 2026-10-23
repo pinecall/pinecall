@@ -2,6 +2,14 @@
 
 import { z } from "zod";
 
+/** A hosted app did not build, start or stay up: the org's alert, posted to its webhook, on no agent's log. */
+export const AppFailedSchema = z.strictObject({
+  app: z.string(),
+  host: z.string(),
+  release: z.int().nullish(),
+  why: z.string(),
+});
+
 /** A hosted app's release changed where it stands: uploaded, live, failed or replaced. */
 export const ReleaseChangedSchema = z.strictObject({
   app: z.string(),

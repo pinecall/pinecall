@@ -28,6 +28,7 @@ from pinecall_runtime.hosting.service.apps import (
     key_of,
     list_apps,
     open_app,
+    record_failed,
     record_live,
     release_of,
     releases_of,
@@ -182,6 +183,23 @@ async def test_an_app_opened_is_hosted_on_a_live_server_token_kept_sealed(
     assert row.key_fingerprint == fingerprint(token)
     minted = await hosted_keys(sessions, tenant.org)
     assert [(key.env, key.revoked_at is None) for key in minted] == [(Env.sandbox, True), (Env.sandbox, False)]
+
+
+@needs_the_database
+async def test_a_host_reported_failed_is_news_once_and_the_next_host_failing_is_news_again(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    app = App(org=tenant.org, env=Env.sandbox, name="support")
+    await opened(sessions, app, "first", "second")
+    first, second = host_of(app, 1, "a" * 64, ""), host_of(app, 2, "b" * 64, "")
+    async with sessions.begin() as session:
+        await record_live(session, app, first, runner="runner-sandbox")
+        assert await record_failed(session, app, first, why="exited 1", runner="runner-sandbox")
+        assert not await record_failed(session, app, first, why="exited 1 again", runner="runner-sandbox")
+        assert await record_failed(session, app, second, why="secrets: 403", runner="runner-sandbox")
+        assert not await record_failed(session, app, second, why="secrets: 403", runner="runner-sandbox")
+        row = (await session.execute(select(HostedApp).where(HostedApp.org == tenant.org))).scalar_one()
+    assert (row.failed_host, row.failed_why) == (second, "secrets: 403")
 
 
 @needs_the_database

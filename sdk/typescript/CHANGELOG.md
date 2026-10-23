@@ -5,6 +5,11 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by
+  the console; an app acts on none of it.
+
 ## [0.11.12] — `onMemory` runs
 
 - **`onMemory` runs.** Declared since the hooks were, never called: `memory.ops` now reaches it,

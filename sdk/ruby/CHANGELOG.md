@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by
+  the console; an app acts on none of it.
+
 ## [0.11.12] — `on_memory` runs (2026-10-23)
 
 - **`on_memory` runs.** Declared, never called: `memory.ops` now reaches it with the wire's ops,

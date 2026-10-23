@@ -280,9 +280,13 @@ async def record_live(session: AsyncSession, app: App, host: str, *, runner: str
     )
 
 
-async def record_failed(session: AsyncSession, app: App, host: str, *, why: str, runner: str) -> None:
-    """Record that the host did not build, start or stay up, and why."""
-    await HostedAppRepository(session).failed(app.org, app.env, app.name, host=host, why=why, runner=runner)
+async def record_failed(session: AsyncSession, app: App, host: str, *, why: str, runner: str) -> bool:
+    """Record that the host did not build, start or stay up, and why; True the first time this host is."""
+    repository = HostedAppRepository(session)
+    found = await repository.get(app.org, app.env, app.name)
+    news = found is not None and found.failed_host != host
+    await repository.failed(app.org, app.env, app.name, host=host, why=why, runner=runner)
+    return news
 
 
 async def delete_app(session: AsyncSession, app: App) -> str:

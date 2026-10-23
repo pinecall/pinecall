@@ -29,6 +29,7 @@ from pinecall.wire.events_call import (
     SupervisorWhispered,
 )
 from pinecall.wire.events_feed import (
+    AppFailed,
     JudgeBroke,
     ReleaseChanged,
     RunChanged,
@@ -89,6 +90,7 @@ from pinecall.wire.state import State
 EPHEMERAL_EVENTS: frozenset[str] = frozenset(
     {
         "agent.transcript",
+        "app.failed",
         "dev.request",
         "judge.broke",
         "log.caught_up",
@@ -297,6 +299,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "agent.registered": AgentRegistered,
     "agent.state": AgentStateChanged,
     "agent.transcript": AgentTranscript,
+    "app.failed": AppFailed,
     "attention.answered": AttentionAnswered,
     "attention.requested": AttentionRequested,
     "call.attached": CallAttached,

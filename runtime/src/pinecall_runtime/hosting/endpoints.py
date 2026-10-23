@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from pinecall_runtime.accounts.auth import KeyCacheDep
+from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
@@ -22,7 +23,7 @@ from pinecall_runtime.kit.handles import Handles, TheHandles
 from pinecall_runtime.kit.http import capped_body
 from pinecall_runtime.postgres import Session, box_wide
 from pinecall_runtime.studio import service as studio
-from pinecall_runtime.wire.feed import ReleaseChanged
+from pinecall_runtime.wire.feed import AppFailed, ReleaseChanged
 
 router = APIRouter()
 
@@ -218,11 +219,14 @@ async def runner_heartbeat(
     with box_wide():
         for report in body.reports:
             app = service.App(org=report.org, env=env, name=report.name)
+            release = service.release_of(report.host)
             if report.state == "live":
                 await service.record_live(session, app, report.host, runner=body.runner)
-            else:
-                await service.record_failed(session, app, report.host, why=report.why, runner=body.runner)
-            changed = ReleaseChanged(app=report.name, release=service.release_of(report.host) or 0)
+            elif await service.record_failed(session, app, report.host, why=report.why, runner=body.runner):
+                # The first report of this host failing is the org's alert; the next beats repeat nothing.
+                failed = AppFailed(app=report.name, host=report.host, release=release, why=report.why)
+                await alerts.raise_alert(session, handles, serving.logs, Scope(report.org, env), None, failed)
+            changed = ReleaseChanged(app=report.name, release=release or 0)
             serving.logs.announce(Scope(report.org, env), "release.changed", changed)
         for logs in body.logs:
             app = service.App(org=logs.org, env=env, name=logs.name)

@@ -14,6 +14,7 @@ const POSTED: { type: string; name: string; when: string }[] = [
   { type: "monitor.fired", name: "A monitor fired", when: "A number you watch, like answer speed, went past the limit you set. At most once a day per monitor." },
   { type: "spend.unusual", name: "Unusual spend", when: "Today's calls cost three times a usual day. Once a day." },
   { type: "credits.exhausted", name: "Out of quota", when: "A call or message was refused because a limit ran out." },
+  { type: "app.failed", name: "An app went down", when: "An app Pinecall hosts for you did not build, start or stay up. Once per failure; Apps says why." },
 ];
 
 const A_POST = `POST <your URL>

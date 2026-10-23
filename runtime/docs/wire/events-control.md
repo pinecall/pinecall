@@ -42,6 +42,17 @@ The gateway accepted an agent.register: this socket now speaks for the agent and
 | `sdk` | `string` | no | The SDK and version the app runs, as it reported them. |
 | `env` | `Env` | no | The environment the key that registered it opens: production, or sandbox. Absent on entries written before keys knew where they were, which read as production. |
 
+### `app.failed`
+
+A hosted app did not build, start or stay up: the runner reported its host failed, and this is the first report of that host. The org's alert, posted to its webhook with `agent` null, said once per host that fails; written on no log, since an app is no one agent's: `GET /v1/hosted` holds `failed_why` until a release or a secret makes the next host.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `app` | `string` | yes | The hosted app's name. |
+| `host` | `string` | yes | The host that failed: the app, its release and a stamp. |
+| `release` | `integer | null` | no | The release the host ran, when its name says one. |
+| `why` | `string` | yes | What the runner saw: the install's or the start's last lines, or the refusal it met; 2 000 characters at most. |
+
 ### `attention.answered`
 
 An ask for a person settled: a supervisor took the line, or the wait ran out and the agent has the caller back.

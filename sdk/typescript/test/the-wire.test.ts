@@ -85,6 +85,7 @@ const IGNORED: Record<string, string> = {
   "agent.detached": "the gateway's record that a socket let the agent go",
   "agent.state": THE_GATEWAYS,
   "agent.transcript": "a partial line, for a live screen",
+  "app.failed": THE_GATEWAYS,
   "user.transcript": "a partial line, for a live screen",
   "user.state": THE_GATEWAYS,
   "attention.requested": THE_GATEWAYS,

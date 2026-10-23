@@ -103,6 +103,7 @@ class ConformanceTest < Minitest::Test
     "dtmf.received" => "a tone the caller keyed; an app that reads a menu takes it with call.on",
     "fleet.full" => THE_GATEWAYS,
     "release.changed" => THE_GATEWAYS,
+    "app.failed" => THE_GATEWAYS,
     "run.changed" => THE_GATEWAYS,
     "tool.ran" => THE_GATEWAYS,
     "tool.failed" => THE_GATEWAYS,

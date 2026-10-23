@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by
+  the console; an app acts on none of it.
+
 ## 0.11.12 — released with every other package (2026-10-23)
 
 - Nothing of the Python SDK changed: published at 0.11.12 with every other package.

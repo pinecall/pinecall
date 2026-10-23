@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **An app that goes down says so.** The first time the runner reports a host of a hosted app
+  failed — it did not build, start or stay up — the org's webhook is posted `app.failed` with the
+  app, the host, its release and the runner's last lines; the beats after it repeat nothing. A
+  tenant's app was down 23 hours on 2026-10-23 and nothing said so. An app is no one agent's, so the
+  alert goes on no log and names `agent: null`; **Agents ▸ Apps** and `GET /v1/hosted` hold why.
+
 ## 0.11.12 — What the pages said and the code did not, and a hosted app restarted comes back (2026-10-23)
 
 - **A transfer on a written conversation fails as a transfer.** `call.transfer` on a chat or a

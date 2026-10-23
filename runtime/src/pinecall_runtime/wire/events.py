@@ -7,7 +7,15 @@ from pydantic import Field
 from pinecall_runtime.enums import Channel, Direction, Env, Medium
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.wire.base import Entry, WireModel
-from pinecall_runtime.wire.feed import JudgeBroke, ReleaseChanged, RunChanged, ToolFailed, ToolRan, WorkerChanged
+from pinecall_runtime.wire.feed import (
+    AppFailed,
+    JudgeBroke,
+    ReleaseChanged,
+    RunChanged,
+    ToolFailed,
+    ToolRan,
+    WorkerChanged,
+)
 from pinecall_runtime.wire.metrics import (
     AgentTurnMetrics,
     AvatarMetrics,
@@ -56,6 +64,7 @@ from pinecall_runtime.wire.state import State
 EPHEMERAL_EVENTS: frozenset[str] = frozenset(
     {
         "agent.transcript",
+        "app.failed",
         "dev.request",
         "judge.broke",
         "log.caught_up",
@@ -602,6 +611,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "agent.registered": AgentRegistered,
     "agent.state": AgentStateChanged,
     "agent.transcript": AgentTranscript,
+    "app.failed": AppFailed,
     "attention.answered": AttentionAnswered,
     "attention.requested": AttentionRequested,
     "call.attached": CallAttached,

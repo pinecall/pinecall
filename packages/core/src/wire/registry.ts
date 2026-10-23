@@ -61,6 +61,7 @@ import {
   CallTransferredSchema,
 } from "./events-call.js";
 import {
+  AppFailedSchema,
   JudgeBrokeSchema,
   ReleaseChangedSchema,
   RunChangedSchema,
@@ -98,6 +99,7 @@ export const EVENT_SCHEMAS = {
   "agent.registered": AgentRegisteredSchema,
   "agent.state": AgentStateChangedSchema,
   "agent.transcript": AgentTranscriptSchema,
+  "app.failed": AppFailedSchema,
   "attention.answered": AttentionAnsweredSchema,
   "attention.requested": AttentionRequestedSchema,
   "call.attached": CallAttachedSchema,

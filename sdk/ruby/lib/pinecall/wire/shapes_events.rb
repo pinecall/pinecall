@@ -258,6 +258,12 @@ module Pinecall
           workers: { kind: :int, required: true },
           active: { kind: :int, required: true }
         }.freeze,
+        "AppFailed" => {
+          app: { kind: :str, required: true },
+          host: { kind: :str, required: true },
+          release: { kind: :int, null: true },
+          why: { kind: :str, required: true }
+        }.freeze,
         "ReleaseChanged" => {
           app: { kind: :str, required: true },
           release: { kind: :int, required: true }

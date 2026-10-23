@@ -92,6 +92,7 @@ import {
   CallTransferredSchema,
 } from "./events-call.js";
 import {
+  AppFailedSchema,
   JudgeBrokeSchema,
   ReleaseChangedSchema,
   RunChangedSchema,
@@ -129,6 +130,7 @@ export const EVENT_SCHEMAS = {
   "agent.registered": AgentRegisteredSchema,
   "agent.state": AgentStateChangedSchema,
   "agent.transcript": AgentTranscriptSchema,
+  "app.failed": AppFailedSchema,
   "attention.answered": AttentionAnsweredSchema,
   "attention.requested": AttentionRequestedSchema,
   "call.attached": CallAttachedSchema,
@@ -206,7 +208,7 @@ export const EVENT_SCHEMAS = {
 export type EventType = keyof typeof EVENT_SCHEMAS;
 
 /** Events a store may drop and a slow reader may miss: the entry's ephemeral flag defaults to this. */
-export const EPHEMERAL_EVENTS: ReadonlySet<EventType> = new Set<EventType>(["agent.transcript", "dev.request", "judge.broke", "log.caught_up", "log.gap", "metrics.vad", "participant.speaking", "pong", "release.changed", "room.sent", "run.changed", "tool.failed", "tool.ran", "user.transcript", "worker.changed"]);
+export const EPHEMERAL_EVENTS: ReadonlySet<EventType> = new Set<EventType>(["agent.transcript", "app.failed", "dev.request", "judge.broke", "log.caught_up", "log.gap", "metrics.vad", "participant.speaking", "pong", "release.changed", "room.sent", "run.changed", "tool.failed", "tool.ran", "user.transcript", "worker.changed"]);
 
 /** Every command by its wire type; the codec looks the schema up here. */
 export const COMMAND_SCHEMAS = {

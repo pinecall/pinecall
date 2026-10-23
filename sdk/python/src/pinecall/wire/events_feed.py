@@ -3,6 +3,15 @@
 from pinecall.wire.frames import WireModel
 
 
+class AppFailed(WireModel):
+    """A hosted app did not build, start or stay up: the org's alert, on no agent's log."""
+
+    app: str
+    host: str
+    release: int | None = None
+    why: str
+
+
 class ReleaseChanged(WireModel):
     """A hosted app's release changed where it stands: uploaded, live, failed or replaced."""
 

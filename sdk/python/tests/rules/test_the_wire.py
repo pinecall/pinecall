@@ -86,6 +86,7 @@ IGNORED: dict[str, str] = {
             "docs.sources",
             "fleet.full",
             "release.changed",
+            "app.failed",
             "run.changed",
             "tool.ran",
             "tool.failed",
