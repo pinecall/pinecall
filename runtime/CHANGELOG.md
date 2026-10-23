@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.18 — settings name their model, a written chat on the Responses API, late lines never lost (2026-10-23)
 
 - **A vendor alone is refused for `llm` and `judge`, and a model alone stays on the vendor in use.** `--llm
   google` was taken as a model named `google` on whatever vendor ran before; `--llm gpt-4.1-mini` on a corner

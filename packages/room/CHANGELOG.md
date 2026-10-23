@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.18 — released with the runtime's settings fixes (2026-10-23)
+
+- Nothing of `@pinecall/room` changed: published at 0.11.18 with every other package.
+
 ## 0.11.17 — the ticket's real ceiling (2026-10-23)
 
 - **`MintOptions.ttl_s` says the gateway's real ceiling**: past a day it is cut to a day, where the comment
