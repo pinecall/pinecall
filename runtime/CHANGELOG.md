@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Hosted apps run on `infra/images/app` on cloud.pinecall.io**: Node 24, uv and CPython 3.13, with
+  the system's certificate roots. CPython reads them and Node's slim image has none, so a hosted
+  Python app could not verify the gateway's certificate.
+
 - **A reaped call that never started lasts nothing.** The reaper measured an opening nobody joined
   from a start of 0, so its `call.ended` and summary said it lasted since 1970 and the org's month
   read some 29.9 million minutes: one such call put every org with a `minutes` limit past it. The
