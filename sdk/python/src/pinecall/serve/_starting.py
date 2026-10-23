@@ -31,7 +31,10 @@ def client_from(env: Mapping[str, str], *, prod: bool) -> Client:
     world = "production" if prod else env.get("PINECALL_ENV") or None
     if world is not None and world not in WORLDS:
         raise CannotServe(f"PINECALL_ENV is sandbox or production, not {world}")
-    return Client(url, key, world)
+    client = Client(url, key, world)
+    # The name a hosted app's runner gave it: the gateway knows the release by it.
+    client.host = env.get("PINECALL_HOST") or client.host
+    return client
 
 
 async def start(

@@ -17,7 +17,7 @@ export const deploy = tool({
     wait_s: WAIT,
   },
   manual:
-    "`deploy` uploads the project as a release — what its `.gitignore` files leave in, never `node_modules`, `.git`, `dist` or any `.env` — and Pinecall installs it and starts its agents; the release before keeps answering until the new one's agents register, so no call is cut. It follows the release for `wait_s` and answers whether it is live or why it failed; `wait` follows it further. `logs` reads the app's last lines. TypeScript projects only. Removing an app is never a tool: `pinecall deploy rm` in a terminal.",
+    "`deploy` uploads the project as a release — what its `.gitignore` files leave in, never `node_modules`, `.venv`, `.git`, `dist` or any `.env` — and Pinecall installs it and starts its agents; the release before keeps answering until the new one's agents register, so no call is cut. It follows the release for `wait_s` and answers whether it is live or why it failed; `wait` follows it further. `logs` reads the app's last lines. TypeScript and Python projects, one language each. Removing an app is never a tool: `pinecall deploy rm` in a terminal.",
   handler: async (args, ctx) => {
     if (args.action === "list") return { apps: await service.listApps(ctx) };
     const name = service.appName(ctx, args.name);

@@ -10,7 +10,7 @@ import { folder, write } from "../support/project.js";
 describe("a release", () => {
   it("leaves out dependencies, builds, git and every .env, and what a .gitignore names where it sits", () => {
     const root = folder();
-    for (const path of ["package.json", "agents/front-desk/agent.ts", ".env", ".env.production", "node_modules/x/index.js", "dist/main.js", "agents/front-desk/scratch.log", "agents/.gitignore"]) write(root, path, path === "agents/.gitignore" ? "*.log\n" : "x");
+    for (const path of ["package.json", "agents/front-desk/agent.ts", ".env", ".env.production", "node_modules/x/index.js", ".venv/bin/python", "agents/front-desk/__pycache__/agenda.pyc", "dist/main.js", "agents/front-desk/scratch.log", "agents/.gitignore"]) write(root, path, path === "agents/.gitignore" ? "*.log\n" : "x");
     expect(projectFiles(root)).toEqual(["agents/.gitignore", "agents/front-desk/agent.ts", "package.json"]);
     expect([isLeftOut(".env.local"), isLeftOut("src/.envoy.ts")]).toEqual([true, false]);
   });

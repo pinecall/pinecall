@@ -91,7 +91,9 @@ sentences; small methods; 150 lines is the norm. Tests read as sentences.
 
 - **The serve entry reads its door from `PINECALL_URL`, `PINECALL_KEY` and `PINECALL_ENV`**, and
   from nothing else: no `.env`, no flag. The CLI resolved them and set them on the child; a serve
-  entry that read a file would serve another org than the one the CLI showed.
+  entry that read a file would serve another org than the one the CLI showed. `PINECALL_HOST`,
+  when set, is the machine it registers as: a hosted app's runner names it, and the gateway knows
+  the release by it.
 - **A tool with no docstring is refused,** because without one no model can choose it; and
   `@tool({ stage })` on a class with no `stage` field is refused too.
 - **The class docstring lives above the class,** where `toString()` cannot see it, and parameter

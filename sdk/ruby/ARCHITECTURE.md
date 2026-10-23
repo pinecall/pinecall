@@ -273,6 +273,8 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
 
 - **The door is the environment's, and nothing else:** `PINECALL_URL`, `PINECALL_KEY`,
   `PINECALL_ENV` (`--prod` forces production). Missing → one sentence, exit 2. Never an argv.
+  `PINECALL_HOST`, when set, is the machine it registers as, this one's hostname otherwise: a
+  hosted app's runner names its host, and the gateway knows the release by it.
 - **The slug is the folder's**, `--slug`; a class whose `slug "…"` says another is refused.
 - **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the
   gateway wrote it, `agent.registered` first (the listener is in place before the socket opens).

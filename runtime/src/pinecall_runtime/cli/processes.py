@@ -26,6 +26,9 @@ NOT_LOOPBACK = (
     "(a pod's says PINECALL_GATEWAY_LISTEN)"
 )
 
+# The runner of what `pinecall deploy` sends a runtime of one's own.
+RUNNER = ["runner", "start"]
+
 # Google's load balancer keeps an idle connection to a gateway 600 s and sends the next request
 # down it: the gateway must keep it longer (Google says 620 s), or a request meets a closed socket
 # and the caller a 503.

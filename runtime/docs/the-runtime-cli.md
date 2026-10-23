@@ -25,9 +25,11 @@ every interface, so the LiveKit container's webhooks reach it, and the console a
 and a server's gateway stays on loopback behind Caddy). `worker start` is a worker of the fleet
 `PINECALL_FLEET` names, until told to stop or cordoned; `worker overflow` the one that answers when
 the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
-opens running, one gVisor pod each: the runner is itself a pod of the hosting cluster
+opens running. On the hosting cluster it runs one gVisor pod each and is itself a pod there
 (`charts/hosting`), outside the runtime's own cluster ([../infra/README.md](../../infra/README.md),
-"Hosting"). Every
+"Hosting"); with `PINECALL_RUNNER_ENGINE=processes`, as `local up` runs it, each release is a
+process of this machine under `PINECALL_RUNNER_HOME`, installed with the machine's own npm and uv
+and fenced by nothing, since the code there is the machine owner's, and its apps stop with it. Every
 variable they read is
 [the-environment.md](the-environment.md).
 
@@ -44,6 +46,8 @@ A runtime from nothing to a class that answers, in one verb; run it again any ti
 already done is skipped. Typed with nothing after it, it does the right thing: it loads the keys it
 finds, serves the open models that fit the machine, asks who signs in to the console, and signs this
 machine in. A runtime on a server is the same verb with the server's name.
+On a laptop it then runs the gateway, a worker and the runner, which runs what `pinecall deploy`
+sends here as processes of this machine.
 
 **On this machine.** Postgres, Redis and LiveKit in Docker on loopback, the gateway and a sandbox
 worker in the terminal you ran it in (Ctrl-C stops them; `setup` or `local up` starts them again).
@@ -188,15 +192,18 @@ from anywhere. `up` writes the Docker Compose files the package ships into `--di
 (`~/.pinecall-runtime/local` unless named), brings up Postgres (17, with pgvector and
 pg_textsearch, built once), Redis and LiveKit on loopback ports of their own, migrates the schema,
 draws the machine's secrets once into `<dir>/env` (0600: the vault key, the ops key, the token
-key, the sandbox fleet's key), then runs the gateway on `http://127.0.0.1:8080` — the console
-included, the sandbox at `/sandbox/` — and a worker of the sandbox fleet, their lines prefixed
-`gateway |` and `worker  |`. Ctrl-C stops the two; the services stay. `--services-only` stops after
-the schema, for a checkout that runs the two from its sources (`make local-gateway`,
-`make local-worker`). Run `up` again any time: it keeps the secrets and the database. On a server
-(`setup --domain` made it one) `up` brings every service back in Docker, waits for the name to
-answer over https, and returns: nothing runs in the terminal.
+key, the sandbox fleet's and the sandbox runner's keys), then runs the gateway on
+`http://127.0.0.1:8080` — the console included, the sandbox at `/sandbox/` — a worker of the
+sandbox fleet, and the sandbox's runner, which runs what `pinecall deploy` sends here as processes
+of this machine (`runner start` above); their lines are prefixed `gateway |`, `worker  |` and
+`runner  |`. Ctrl-C stops the three, and the deployed apps with them; the services stay.
+`--services-only` stops after the schema, for a checkout that runs the processes from its sources
+(`make local-gateway`, `make local-worker`). Run `up` again any time: it keeps the secrets and the
+database. On a server (`setup --domain` made it one) `up` brings every service back in Docker, waits
+for the name to answer over https, and returns: nothing runs in the terminal.
 
-`down` stops the services, a server's included, and keeps the database; `--volumes` deletes it.
+`down` stops the services, a server's included, and keeps the database; `--volumes` deletes it, and
+the next `up` draws the box's keys again, since the database that knew them is gone.
 `logs` follows a server's: every service's, or one's (`gateway`, `worker-sandbox`,
 `worker-production`, `livekit-server`, `caddy`); a laptop's are in the terminal `setup` runs in. `init` is `init` below,
 run on the local settings, so the first org and person need no shell line. `env` prints that

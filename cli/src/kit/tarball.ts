@@ -9,7 +9,7 @@ import ignore, { type Ignore } from "ignore";
 import { PinecallError } from "../errors.js";
 
 // The box installs the dependencies itself; .env holds the keys, which travel as secrets instead.
-const NEVER = new Set(["node_modules", ".git", "dist", ".pinecall", ".DS_Store"]);
+const NEVER = new Set(["node_modules", ".venv", "__pycache__", ".git", "dist", ".pinecall", ".DS_Store"]);
 
 const A_DOTENV = /^\.env(\..*)?$/;
 

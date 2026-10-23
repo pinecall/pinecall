@@ -1,4 +1,4 @@
-"""`local`: the runtime whole on one machine: the services in Docker, the schema, the gateway and a worker."""
+"""`local`: the runtime whole on one machine: the services in Docker, the schema, the gateway, a worker, a runner."""
 
 import asyncio
 import base64
@@ -15,6 +15,7 @@ from shutil import which
 from typing import Annotated
 
 import typer
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from pinecall_runtime.accounts.models import DEFAULT_ORG
 from pinecall_runtime.accounts.service import keys
@@ -63,6 +64,17 @@ NO_DOCKER = (
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 NOT_ANSWERING = "{service} did not answer on 127.0.0.1:{port} within {seconds:.0f} s: `docker compose ps`"
 
+# The box's own keys of the sandbox, drawn into the env file: its fleet's, and its runner's. A key
+# the database does not know (deleted with `down --volumes`, the env file kept) is drawn again.
+BOX_KEYS = (
+    ("PINECALL_WORKER_KEY", KeyScope.fleet, Env.sandbox, "the sandbox fleet"),
+    ("PINECALL_RUNNER_KEY", KeyScope.runner, Env.sandbox, "the sandbox runner"),
+)
+# A server's production fleet too: its worker answers production's calls.
+PRODUCTION_FLEET_KEY = ("PINECALL_PRODUCTION_WORKER_KEY", KeyScope.fleet, Env.production, "the production fleet")
+# A release deployed here runs as a process of this machine: the code is its owner's own. Written
+# into the env file when missing, so one older than the runner gets it too.
+RUNNER_ENGINE = ("PINECALL_RUNNER_ENGINE", "processes")
 # The settings the gateway and the worker run on here: the services on loopback, a dev LiveKit pair, secrets drawn once.
 SETTINGS = """DATABASE_URL=postgresql://pinecall:pinecall@127.0.0.1:55433/pinecall
 PINECALL_REDIS_URL=redis://127.0.0.1:56380/0
@@ -86,7 +98,7 @@ SERVING = "{name}: up, kept up by Docker across reboots · logs: pinecall-runtim
 # Every profile the two compose files name, so `down` stops a server's services too.
 ALL_PROFILES = ("phone", "server", "server-livekit", "server-phone")
 DOWN = "local: the services stopped; the database and {env} are kept"
-WIPED = "local: the services stopped and the database deleted; {env} is kept"
+WIPED = "local: the services stopped and the database deleted; {env} is kept, its keys drawn again on the next up"
 
 Dir = Annotated[Path, typer.Option("--dir", help="Where this machine keeps its local runtime.")]
 
@@ -128,7 +140,7 @@ async def local_up(
         context.out.line(FIRST)
     if services_only:
         return OK
-    return processes.run_both(context.out, values, ["gateway"], ["worker", "start"])
+    return processes.run_both(context.out, values, ["gateway"], ["worker", "start"], processes.RUNNER)
 
 
 def services_up(compose: Path, services: Sequence[str]) -> None:
@@ -155,20 +167,33 @@ async def prepare_database(values: dict[str, str], env: Path, *, production_flee
     try:
         history = await platform.apply_history(engine)
         await asyncio.to_thread(platform.upgrade_schema, tracked=history.tracked)
-        fleets = [("PINECALL_WORKER_KEY", Env.sandbox, "the sandbox fleet")]
-        if production_fleet:
-            fleets.append(("PINECALL_PRODUCTION_WORKER_KEY", Env.production, "the production fleet"))
-        for variable, fleet_env, label in fleets:
-            if variable in values:
-                continue
-            issue = keys.Issue(org=DEFAULT_ORG, env=fleet_env, scopes=frozenset({KeyScope.fleet}), label=label)
-            async with session_maker(engine).begin() as session:
-                _, values[variable] = await keys.issue_key(session, issue)
-            with env.open("a", encoding="utf-8") as out:
-                out.write(f"{variable}={values[variable]}\n")
+        await draw_box_keys(engine, values, env, production_fleet=production_fleet)
     finally:
         await engine.dispose()
+    if RUNNER_ENGINE[0] not in values:
+        write_variable(env, values, *RUNNER_ENGINE)
     return history
+
+
+async def draw_box_keys(
+    engine: AsyncEngine, values: dict[str, str], env: Path, *, production_fleet: bool = False
+) -> None:
+    """Each box key missing from the env file, or one its database does not know, drawn and written."""
+    wanted = (*BOX_KEYS, PRODUCTION_FLEET_KEY) if production_fleet else BOX_KEYS
+    async with session_maker(engine).begin() as session:
+        for variable, scope, key_env, label in wanted:
+            if variable in values and await keys.verify_key(session, values[variable]) is not None:
+                continue
+            issue = keys.Issue(org=DEFAULT_ORG, env=key_env, scopes=frozenset({scope}), label=label)
+            _, secret = await keys.issue_key(session, issue)
+            write_variable(env, values, variable, secret)
+
+
+def write_variable(env: Path, values: dict[str, str], variable: str, value: str) -> None:
+    """The variable's line in the env file, replaced or added, and the value in the settings."""
+    values[variable] = value
+    kept = [line for line in env.read_text(encoding="utf-8").splitlines() if not line.startswith(f"{variable}=")]
+    env.write_text("".join(f"{line}\n" for line in [*kept, f"{variable}={value}"]), encoding="utf-8")
 
 
 @app.command("down")

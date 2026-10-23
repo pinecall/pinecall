@@ -9,6 +9,7 @@ import { testContext } from "../support/context.js";
 import { project, write } from "../support/project.js";
 
 const SERVED = JSON.stringify({ name: "clinica", dependencies: { "@pinecall/agents": "^0.10.1" } });
+const PYTHON = '[project]\nname = "clinica"\nversion = "0.1.0"\ndependencies = ["pinecall>=0.11,<1"]\n';
 const A_RELEASE = { name: "clinica", release: 4, sha256: "9f86d081884c7d659a2feaa0c55ad015", bytes: 20_480, author: "ana@clinica.test", note: "", created_at: 1_792_150_000 };
 const AN_APP = { name: "clinica", release: 4, live_release: 3, failed_why: null, stopped: false, created_by: "ana@clinica.test", created_at: 1_792_000_000 };
 
@@ -26,11 +27,34 @@ describe("a release", () => {
     await expect(service.uploadRelease(ctx, "clinica", "")).rejects.toThrow(service.NOT_SERVABLE(["@pinecall/agents"]));
   });
 
-  it("is refused for an agent in another language: Pinecall hosts TypeScript", async () => {
+  it("is refused for an agent in a language Pinecall does not install", async () => {
     const root = project([], { "package.json": SERVED });
     write(root, "agents/sales/agent.rb", "class Sales < Pinecall::Agent; end\n");
     const { ctx } = testContext({ cwd: root });
-    await expect(service.uploadRelease(ctx, "clinica", "")).rejects.toThrow(/Pinecall hosts TypeScript projects/);
+    await expect(service.uploadRelease(ctx, "clinica", "")).rejects.toThrow(/Pinecall hosts TypeScript and Python projects/);
+  });
+
+  it("is refused for agents in two languages: a release runs one", async () => {
+    const root = project(["front-desk"], { "package.json": SERVED, "pyproject.toml": PYTHON });
+    write(root, "agents/sales/agent.py", "class Sales(Agent): ...\n");
+    const { ctx } = testContext({ cwd: root });
+    await expect(service.uploadRelease(ctx, "clinica", "")).rejects.toThrow(service.ONE_LANGUAGE(["typescript", "python"]));
+  });
+
+  it("of a Python project is refused with no pyproject.toml, which uv installs it from", async () => {
+    const root = project([]);
+    write(root, "agents/sales/agent.py", "class Sales(Agent): ...\n");
+    const { ctx } = testContext({ cwd: root });
+    await expect(service.uploadRelease(ctx, "clinica", "")).rejects.toThrow(service.NO_PYPROJECT);
+  });
+
+  it("of a Python project is uploaded with no package.json to depend on the framework", async () => {
+    const sent = answer("post", "/v1/hosted/:name/releases", A_RELEASE);
+    const root = project([], { "pyproject.toml": PYTHON });
+    write(root, "agents/sales/agent.py", "class Sales(Agent): ...\n");
+    const { ctx } = testContext({ cwd: root });
+    expect((await service.uploadRelease(ctx, "clinica", "")).release).toBe(4);
+    expect(sent[0]!.type).toBe("application/gzip");
   });
 
   it("is uploaded as a gzipped tarball, its note in the query, cut to a line", async () => {

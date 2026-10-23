@@ -104,6 +104,9 @@ module Pinecall
 
       def sdk = "pinecall-ruby-testing/#{VERSION}"
 
+      # Same as `Pinecall::Client#host`: the machine it says it runs on.
+      def host = Socket.gethostname
+
       # Same signature as `Pinecall::Client#agent`.
       def agent(slug, **options)
         @agents[slug] = Client::Agent.new(slug, options, self)

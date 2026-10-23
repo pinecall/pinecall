@@ -1,7 +1,7 @@
 # Production
 
-How a Python agent runs where its callers reach it. There are two ways, and neither is Pinecall's
-own servers yet.
+How a Python agent runs where its callers reach it. There are three ways: inside your own app, as
+a process of its own on your server, or on Pinecall's servers.
 
 ## The server's token
 
@@ -65,8 +65,11 @@ stderr, each line timed: when a call opened, and every entry read with how late 
 
 What the agent searches is pushed before the deploy, not with it: `pinecall docs push --prod`.
 
-## Not hosted by Pinecall yet
+## (c) Pinecall runs it
 
-`pinecall deploy` runs a project on Pinecall's own servers in a Node container, and a Python
-project is not one of those yet — `pinecall deploy` says so, and says to run (a) or (b) on your
-own server instead. Python in the runner's image and an install step are a plan of their own.
+`pinecall deploy`, from the project's root, uploads it as a release and Pinecall runs (b) for you:
+it installs the project with uv on CPython 3.13 — `uv sync --frozen --no-dev` from `uv.lock`, else
+`uv sync --no-dev` from `pyproject.toml`, which must list `pinecall` — and starts `pinecall start`
+over it, with the org's secrets (`pinecall secrets`) and a token of the app's own in its
+environment. `.venv` and `__pycache__` never travel. Packages with native code need a wheel for
+linux-x64: nothing is compiled. The whole guide is [Deploy to Pinecall](https://docs.pinecall.io/guides/deploy/).

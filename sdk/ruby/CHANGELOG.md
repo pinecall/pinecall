@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's
+  hostname (`Client#host`). A hosted app's runner names each host, and the gateway knows a release
+  is serving by it, on a machine that runs several.
+
 ## [0.11.14] — the wire knows `KnowledgePushed.kept` (2026-10-23)
 
 - **`KnowledgePushed.kept`**: the files of the base a push did not name and kept.

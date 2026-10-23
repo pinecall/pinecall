@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **A hosted app may be a Python project.** A release whose agents are `agents/*/agent.py` is
+  installed with uv into its own `.venv` (`uv.lock` when it has one) on the CPython of the app
+  image, and `pinecall start` runs it as it runs a TypeScript one. `infra/images/app` is that
+  image: Node 24, uv and CPython 3.13; on Node's own image a Python release fails its install and
+  says so.
+
+- **`pinecall deploy` to a runtime of your own, with no cluster.** `local up` (and `setup`) runs a
+  third process, the sandbox's runner, with `PINECALL_RUNNER_ENGINE=processes`: each release is a
+  process of the machine under `PINECALL_RUNNER_HOME`, installed with its own npm and uv, fenced by
+  nothing (the code is the machine owner's), stopped with the runner. Its key is drawn once into
+  the env file beside the fleet's. Every host is started with `PINECALL_HOST`, its name, which the
+  SDKs' serve entries register as, so the gateway knows a release is serving on a machine that runs
+  several; and `GET /v1/runner/apps/{org}/{name}/environment` on a box with no name leaves
+  `PINECALL_URL` out instead of answering `503`, and the runner hands its apps the address it dials.
+
+- **`local up` draws a box key again when its database does not know it.** `down --volumes`
+  deleted the database and kept the env file, so the next `up` ran the worker on a fleet key
+  nobody had minted. A key the database does not know is drawn again and its line replaced.
+
 ## 0.11.14 — The folder is a checkout, every alert is kept and mailed, the operator hears them (2026-10-23)
 
 - **A push puts files by path; `?replace=true` makes the base the folder.** `PUT /v1/knowledge/{base}`

@@ -211,9 +211,9 @@ async def setup(
     if services_only:
         return OK
     return (
-        processes.run_both(out, values, ["gateway"])
+        processes.run_both(out, values, ["gateway"], processes.RUNNER)
         if chat_only
-        else processes.run_both(out, values, ["gateway"], ["worker", "start"])
+        else processes.run_both(out, values, ["gateway"], ["worker", "start"], processes.RUNNER)
     )
 
 

@@ -7,6 +7,7 @@ import signal
 import socket
 import time
 from collections.abc import Mapping, Sequence
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 
 import httpx
@@ -27,7 +28,8 @@ from pinecall_runtime.hosting.schemas import (
     RunnerReport,
     WantedApp,
 )
-from pinecall_runtime.hosting.service.cluster import CLI_HOME, Cluster, Container, Engine, Launch, in_cluster
+from pinecall_runtime.hosting.service.cluster import Cluster, Engine, in_cluster
+from pinecall_runtime.hosting.service.hosts import Container, Hosts, Launch
 from pinecall_runtime.hosting.service.plan import (
     Failed,
     Revive,
@@ -39,6 +41,7 @@ from pinecall_runtime.hosting.service.plan import (
     label_of,
     planned,
 )
+from pinecall_runtime.hosting.service.processes import Processes
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +52,10 @@ PRINTED_NOTHING = "(the process printed nothing)"
 # What a person asking for an app's logs is sent: its process's last lines.
 SENT_LINES = 300
 LONGEST_WHY = 2000
-START = (f"{CLI_HOME}/bin/pinecall", "start")
+START = ("start",)
 NO_KEY = "PINECALL_RUNNER_KEY: a runner signs in to its gateway with its env's runner key"
 NOT_THE_RELEASE = "release {release}'s sources are not the ones uploaded: sha256 differs"
-START_FAILED = "the cluster could not start the release; it said:\n{output}"
+START_FAILED = "the release could not be started; it said:\n{output}"
 GATEWAY_REFUSED = "the gateway answered {status}: {text}"
 
 # A release is (org, name, release): what the gateway numbers and what a pod carries.
@@ -63,8 +66,10 @@ type Release = tuple[str, str, int]
 class Runner:
     """An env's runner: what it holds between two beats, and the steps it has in hand."""
 
-    cluster: Cluster
+    hosts: Hosts
     gateway: httpx.AsyncClient
+    # The gateway as this runner reaches it, which is how its hosts reach it too.
+    address: str
     reports: list[RunnerReport] = field(default_factory=list[RunnerReport])
     logs: list[AppLogs] = field(default_factory=list[AppLogs])
     # One task per app with steps under way; an app with one is left alone this beat.
@@ -92,7 +97,7 @@ class Runner:
         """Make the pods what the gateway wants; the long steps go on past this beat."""
         # Finished first: a step that ends after the listing would be planned again on a stale one.
         self._finished()
-        containers = await self.cluster.pods(wanted.env.value)
+        containers = await self.hosts.running(wanted.env.value)
         for label, steps in planned(wanted.apps, containers, now).items():
             if label not in self.working:
                 self.working[label] = asyncio.create_task(self._done(wanted.env, steps, now))
@@ -100,11 +105,12 @@ class Runner:
         self._swept(wanted.apps, containers)
 
     async def close(self) -> None:
-        """Leave: every step under way is cut short; the pods go on without the runner."""
+        """Leave: every step under way is cut short; the hosts go on as their place says."""
         for task in self.working.values():
             task.cancel()
         await asyncio.gather(*self.working.values(), return_exceptions=True)
         self.working.clear()
+        await self.hosts.close()
 
     def _finished(self) -> None:
         for label, task in list(self.working.items()):
@@ -121,12 +127,12 @@ class Runner:
                 case Revive(app, container, crashed):
                     await self._revived(env, app, container, now, crashed=crashed)
                 case Stop(container):
-                    await self.cluster.stop(container.name)
+                    await self.hosts.stop(container.name)
                     logger.info("stopped %s", container.name)
                 case WentLive(app):
                     self._report(app, "live", "")
                 case Failed(app, why, container):
-                    output = await self.cluster.logs(container.name, LAST_LINES)
+                    output = await self.hosts.logs(container.name, LAST_LINES)
                     self._report(app, "failed", why.format(output=_tail(output)))
 
     async def _started(
@@ -134,7 +140,9 @@ class Runner:
     ) -> None:
         try:
             digest = await self._fetched(app, release)
-            environment = await self._environment(app)
+            # The gateway names its address when the box has a name, else the one this runner dials; the
+            # process registers as its host, which is how the gateway knows the release is serving.
+            environment = {"PINECALL_URL": self.address, **await self._environment(app), "PINECALL_HOST": host}
         except UpstreamError as failure:
             self._report(app, "failed", str(failure))
             return
@@ -144,11 +152,12 @@ class Runner:
             host=host,
             release=release,
             sha256=digest,
-            command=[*START, "--prod"] if env is Env.production else list(START),
+            source=self.sources[digest],
+            arguments=[*START, "--prod"] if env is Env.production else list(START),
             exits=exits,
         )
         try:
-            await self.cluster.start(launch, environment)
+            await self.hosts.start(launch, environment)
         except UpstreamError as failure:
             self._report(app, "failed", START_FAILED.format(output=str(failure)))
             return
@@ -158,13 +167,13 @@ class Runner:
     # exit of the process's own counts towards giving up; the cluster's evictions never do. The
     # exits still in the window ride the new pod, so a runner restarted finds them there.
     async def _revived(self, env: Env, app: WantedApp, container: Container, now: float, *, crashed: bool) -> None:
-        output = await self.cluster.logs(container.name, SENT_LINES)
+        output = await self.hosts.logs(container.name, SENT_LINES)
         self.logs.append(AppLogs(org=app.org, name=app.name, host=container.name, lines=output))
         how = "exited" if crashed else "was evicted by the cluster"
         logger.warning("%s: %s %s, run again:\n%s", label_of(app), container.name, how, _tail(output))
         counted = crashes_within(container.exits, now)
         exits = (*counted, now) if crashed else tuple(counted)
-        await self.cluster.stop(container.name, grace_s=0)
+        await self.hosts.stop(container.name, grace_s=0)
         await self._started(env, app, container.name, container.release, exits=exits)
 
     # The wanted release is checked against the digest the gateway kept when it was uploaded; an
@@ -196,7 +205,7 @@ class Runner:
             host = app.host if app.host in ours else next(iter(ours), None)
             if not app.logs_wanted or host is None:
                 continue
-            output = await self.cluster.logs(host, SENT_LINES)
+            output = await self.hosts.logs(host, SENT_LINES)
             self.logs.append(AppLogs(org=app.org, name=app.name, host=host, lines=output))
 
     # A release no pod runs and nobody wants is no longer anybody's to fetch.
@@ -234,31 +243,22 @@ def sources_app(runner: Runner) -> Starlette:
 
 
 async def run_runner(settings: Settings) -> int:
-    """Keep the env's hosted apps running until told to stop; the apps go on without it."""
+    """Keep the env's hosted apps running until told to stop."""
     if settings.runner_key is None:
         raise ConfigurationError(NO_KEY)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for each in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(each, stop.set)
-    engine = Engine(
-        image=settings.runner_image,
-        runtime_class=settings.runner_runtime_class,
-        namespace=settings.runner_namespace,
-        sources_url=settings.runner_sources_url,
-    )
     headers = {"Authorization": f"Bearer {settings.runner_key.get_secret_value()}"}
     async with (
         httpx.AsyncClient(base_url=settings.gateway_url, headers=headers, timeout=30.0) as gateway,
-        in_cluster(engine).http as kube,
+        AsyncExitStack() as stack,
     ):
-        runner = Runner(cluster=Cluster(http=kube, engine=engine), gateway=gateway)
-        server = uvicorn.Server(
-            uvicorn.Config(
-                sources_app(runner), host=settings.runner_listen, port=settings.runner_port, log_level="warning"
-            )
-        )
-        serving = asyncio.create_task(server.serve())
+        if settings.runner_engine == "processes":
+            runner = Runner(hosts=Processes(settings.runner_home), gateway=gateway, address=settings.gateway_url)
+        else:
+            runner = await _on_the_cluster(settings, gateway, stack)
         name = socket.gethostname().split(".")[0]
         while not stop.is_set():
             try:
@@ -270,9 +270,30 @@ async def run_runner(settings: Settings) -> int:
             except TimeoutError:
                 continue
         await runner.close()
+    return 0
+
+
+# A pod fetches its release from the runner by digest: the cluster's runner serves the sources.
+async def _on_the_cluster(settings: Settings, gateway: httpx.AsyncClient, stack: AsyncExitStack) -> Runner:
+    engine = Engine(
+        image=settings.runner_image,
+        runtime_class=settings.runner_runtime_class,
+        namespace=settings.runner_namespace,
+        sources_url=settings.runner_sources_url,
+    )
+    kube = await stack.enter_async_context(in_cluster(engine).http)
+    runner = Runner(hosts=Cluster(http=kube, engine=engine), gateway=gateway, address=settings.gateway_url)
+    server = uvicorn.Server(
+        uvicorn.Config(sources_app(runner), host=settings.runner_listen, port=settings.runner_port, log_level="warning")
+    )
+    serving = asyncio.create_task(server.serve())
+
+    async def stopped() -> None:
         server.should_exit = True
         await serving
-    return 0
+
+    stack.push_async_callback(stopped)
+    return runner
 
 
 def _tail(output: str) -> str:

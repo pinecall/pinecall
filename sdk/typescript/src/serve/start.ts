@@ -59,14 +59,16 @@ function paired(files: string[], slugs: string[]): Served[] {
   return files.map((file, at) => ({ file, slug: slugs[at]! }));
 }
 
+// PINECALL_HOST is the name a hosted app's runner gave it: the gateway knows the release by it.
 function clientFrom(env: Io["env"]): Pinecall {
   const url = env["PINECALL_URL"];
   const apiKey = env["PINECALL_KEY"];
   if (url === undefined || url === "" || apiKey === undefined || apiKey === "") throw new CannotServe(NO_DOOR);
+  const host = env["PINECALL_HOST"] || undefined;
   const world = env["PINECALL_ENV"];
-  if (world === undefined || world === "") return new Pinecall({ url, apiKey });
+  if (world === undefined || world === "") return new Pinecall({ url, apiKey, ...(host === undefined ? {} : { host }) });
   if (!WORLDS.includes(world as World)) throw new CannotServe(`PINECALL_ENV is sandbox or production, not ${world}`);
-  return new Pinecall({ url, apiKey, env: world as World });
+  return new Pinecall({ url, apiKey, env: world as World, ...(host === undefined ? {} : { host }) });
 }
 
 // A console's own process takes only the calls that name it; the class draws the panel.

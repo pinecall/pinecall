@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from pinecall_runtime.hosting.schemas import WantedApp
-from pinecall_runtime.hosting.service.cluster import Container
+from pinecall_runtime.hosting.service.hosts import Container
 
 # From the app's process starting to the gateway seeing its agents: past it, the release failed.
 REGISTERS_WITHIN_S = 120.0

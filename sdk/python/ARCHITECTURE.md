@@ -233,6 +233,8 @@ python -m pinecall.serve prompt --file agents/x/agent.py --slug x [--state field
 
 - **The door is the environment's, and nothing else:** `PINECALL_URL`, `PINECALL_KEY`,
   `PINECALL_ENV` (`--prod` forces production). Missing → one sentence, exit 2. Never an argv.
+  `PINECALL_HOST`, when set, is the machine it registers as, this one's hostname otherwise: a
+  hosted app's runner names its host, and the gateway knows the release by it.
 - **A refusal is a sentence, exit 2**: a file that cannot be served, a declaration refused, a
   gateway that refuses the registration (a slug of another org, a key it does not take).
 - **`PINECALL_LOG=debug`** (or `info`) writes the package's `pinecall` logger to stderr, each line

@@ -104,6 +104,16 @@ class ServeTest < Minitest::Test
     refute_nil @gateway.next_frame("agent.drain")
   end
 
+  def test_it_registers_as_the_host_a_runner_named
+    running = started(environment: env("PINECALL_HOST" => "support-r3-0a1b2c3d"))
+    registered = @gateway.next_frame("agent.register")
+    until_registered
+    @signals.push(:signalled)
+    running.value
+
+    assert_equal "support-r3-0a1b2c3d", registered[:data][:host]
+  end
+
   def test_a_consoles_process_takes_no_unclaimed_call_and_prod_names_production
     running = started("--console", "--prod")
     registered = @gateway.next_frame("agent.register")

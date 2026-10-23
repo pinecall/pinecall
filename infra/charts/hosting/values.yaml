@@ -13,7 +13,8 @@ project: ""
 secretPrefix: ""
 # modules/hosting's runner identity, the one that reads those keys and nothing else.
 serviceAccount: ""
-# Every hosted app's image, and the runtime class its pod runs under (GKE Sandbox's gVisor).
+# Every hosted app's image, and the runtime class its pod runs under (GKE Sandbox's gVisor). Node's
+# own runs TypeScript projects alone; infra/images/app, built into the registry, runs Python ones too.
 appImage: docker.io/library/node:24-slim
 runtimeClass: gvisor
 appsNamespace: pinecall-apps

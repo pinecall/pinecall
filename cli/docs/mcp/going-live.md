@@ -7,7 +7,7 @@ tool's own schema, as the assistant sees it — and one real call, answered by P
 
 Run the project on Pinecall: a release uploaded and followed until live; the apps, their releases, their logs, a rollback, stop and start.
 
-`deploy` uploads the project as a release — what its `.gitignore` files leave in, never `node_modules`, `.git`, `dist` or any `.env` — and Pinecall installs it and starts its agents; the release before keeps answering until the new one's agents register, so no call is cut. It follows the release for `wait_s` and answers whether it is live or why it failed; `wait` follows it further. `logs` reads the app's last lines. TypeScript projects only. Removing an app is never a tool: `pinecall deploy rm` in a terminal.
+`deploy` uploads the project as a release — what its `.gitignore` files leave in, never `node_modules`, `.venv`, `.git`, `dist` or any `.env` — and Pinecall installs it and starts its agents; the release before keeps answering until the new one's agents register, so no call is cut. It follows the release for `wait_s` and answers whether it is live or why it failed; `wait` follows it further. `logs` reads the app's last lines. TypeScript and Python projects, one language each. Removing an app is never a tool: `pinecall deploy rm` in a terminal.
 
 | parameter | takes | | what it is |
 |---|---|---|---|

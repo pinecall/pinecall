@@ -11,12 +11,13 @@ its own, which a runtime may have or not (`infra/README.md`, "Hosting");
 `GET /v1/hosted` says which release serves and why the newest failed. What the process is started
 with is the org's secrets, its token and the environment's address, and the command is always
 `pinecall start` (`--prod` in production), run by the platform's own `pinecall`, the newest of
-the minor the runtime names (`^0.11.0`), installed when the pod starts: a hosted project is a Node
-project with `@pinecall/agents` in its dependencies, and the CLI is never one of them. A Ruby or a Python project is not hosted: it runs `pinecall start --prod` on a
-server of its own, and `pinecall deploy` says so.
+the minor the runtime names (`^0.11.0`), installed when the pod starts. A hosted project is a Node
+project with `@pinecall/agents` in its dependencies, or a Python project with `pinecall` in its
+`pyproject.toml`, and the CLI is never one of them. A Ruby project is not hosted: it runs
+`pinecall start --prod` on a server of its own, and `pinecall deploy` says so.
 
 From a terminal, the endpoints are two verbs of the `pinecall` CLI:
-`pinecall deploy` packs the folder (never `node_modules` or a `.env`), uploads it and follows it
+`pinecall deploy` packs the folder (never `node_modules`, `.venv` or a `.env`), uploads it and follows it
 until it is live or failed, with `list`, `releases`, `logs`, `rollback <n>`, `stop`, `start` and `rm`; `pinecall secrets`
 sets, lists and drops the org's secrets. Their page is `cli/docs/the-cli.md`.
 
@@ -87,13 +88,15 @@ opens `runner`, a scope no org's key and no person's role holds: it is minted on
 |---|---|
 | `POST /v1/runner/heartbeat {runner, reports: [{org, name, host, state, why}], logs: [{org, name, host, lines}]}` | keeps the reports and the logs, counts the time each serving app served, and answers the key's environment and every app of it that has a release and is not stopped: `{world, apps: [{org, name, release, sha256, host, registered, failed, logs_wanted, live_host}]}`. `live_host` is the host that last went live, `null` before one did. A runner reads the answer leniently, so a gateway may add fields before its runners know them: **the runner is upgraded first** |
 | `GET /v1/runner/apps/{org}/{name}/releases/{release}/source` | the tarball, of any org in the key's environment |
-| `GET /v1/runner/apps/{org}/{name}/environment` | `{environment: {…}}`: the org's secrets in that environment opened, `PINECALL_KEY` (the app's token) and `PINECALL_URL` (the platform's address for that environment; `503` on a deployment with no name) |
+| `GET /v1/runner/apps/{org}/{name}/environment` | `{environment: {…}}`: the org's secrets in that environment opened, `PINECALL_KEY` (the app's token) and `PINECALL_URL` (the platform's address for that environment, when the deployment has a name; with none it is left out, and the runner hands its apps the address it dials the platform at itself) |
 
 **A host is one release under one set of secrets.** `host` is the name the release's process is
 to run under, `<name>-r<release>-<eight hex>`; the hex is of the org, the environment, the name, the release and the org's
-secrets as they are, so two orgs never share a host name on a machine, and so an upload and a changed secret are both a new host. The SDK says the machine it
-runs on when it registers, so `registered` is true once an app socket of the org says it runs on
-that host: the release is serving.
+secrets as they are, so two orgs never share a host name on a machine, and so an upload and a changed secret are both a new host. The runner starts every host
+with `PINECALL_HOST` set to its name, which the SDK's serve entry registers as the machine it runs
+on (a pod's hostname is that name already; a process on a machine that runs several is told it),
+so `registered` is true once an app socket of the org says it runs on that host: the release is
+serving.
 
 A report says a host went `live` or `failed` (with `why`, 2 000 characters at most). It is kept
 only while that host is still the one wanted. The first report of a host failing is the org's
@@ -115,13 +118,25 @@ cluster evicted (memory or disk pressure) is run again at once; neither counts a
 ride the pod itself (an annotation, `pinecall.io/exits`), so a runner restarted counts on. A host that never went live
 and exits is failed at once: a release that does not start is not tried again.
 
-A host is one pod: its first container fetches the release's sources from the runner of its environment
+On the hosting cluster a host is one pod: its first container fetches the release's sources from the runner of its environment
 by their digest (the runner checked them against the uploaded one), installs the dependencies
 the lockfile names and, on a volume of its own, the platform's `pinecall`; its second runs that
-`pinecall start` over them, both read-only. Both run as a user that
+`pinecall start` over them, both read-only. A release whose agents are `agents/*/agent.py` is
+installed with uv into the project's own `.venv` (`uv sync --frozen --no-dev` from `uv.lock`, else
+`uv sync --no-dev`), on the CPython the app image carries (`infra/images/app`), which `pinecall
+start` then runs the agents with; any other release with pnpm or npm. On an app image with no uv a
+Python release fails its install, and says so. Both run as a user that
 is not root, with no service account token, no capability, the public resolvers, and a scratch
 of their own (`TMPDIR`); the hosting cluster's network policy lets a pod reach the internet and
 its runner's sources, and nothing private. The environment is a secret of that one pod, mounted
 read-only, which the container's own shell reads before it becomes `pinecall start`: a secret named
 like `LD_PRELOAD` or `PATH` is the app's own, never the runner's. A pod that went with its node
 leaves that secret behind; the host started again replaces it.
+
+On a runtime whose runner runs processes (`PINECALL_RUNNER_ENGINE=processes`, as `local up` runs it;
+[../the-environment.md](../the-environment.md)) a host is a process of that machine instead, in a
+folder of its own: the release is laid down there, installed the same way with the machine's own
+npm and uv, and `pinecall start` run over it with the environment above and, of the runner's own,
+only `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` and `SSL_CERT_FILE`. Nothing fences it: the code
+there is the machine owner's. Its hosts stop with the runner, drained; a runner that died leaves
+them running, and the next drains and removes them before it starts anything.

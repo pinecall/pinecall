@@ -3,15 +3,8 @@
 from collections.abc import Mapping
 
 from pinecall_runtime.hosting.schemas import WantedApp
-from pinecall_runtime.hosting.service.cluster import (
-    APP_ANNOTATION,
-    EXITS_ANNOTATION,
-    Container,
-    Engine,
-    Launch,
-    containers_in,
-    pod,
-)
+from pinecall_runtime.hosting.service.cluster import APP_ANNOTATION, EXITS_ANNOTATION, Engine, containers_in, pod
+from pinecall_runtime.hosting.service.hosts import Container, Launch
 from pinecall_runtime.hosting.service.plan import (
     CRASH_WINDOW_S,
     EXITED,
@@ -122,7 +115,9 @@ def test_the_exits_are_read_off_the_pods_annotation_and_a_stray_value_reads_as_n
 
 def test_the_pod_started_carries_the_exits_of_the_process_it_continues() -> None:
     engine = Engine(image="runtime:1", runtime_class="gvisor", namespace="apps", sources_url="http://runner")
-    launch = Launch(env="sandbox", app="org_1/support", host=HOST, release=3, sha256="f" * 64, command=["start"])
+    launch = Launch(
+        env="sandbox", app="org_1/support", host=HOST, release=3, sha256="f" * 64, source=b"", arguments=["start"]
+    )
     assert EXITS_ANNOTATION not in pod(engine, launch)["metadata"]["annotations"]
     continued = Launch(
         env="sandbox",
@@ -130,7 +125,8 @@ def test_the_pod_started_carries_the_exits_of_the_process_it_continues() -> None
         host=HOST,
         release=3,
         sha256="f" * 64,
-        command=["start"],
+        source=b"",
+        arguments=["start"],
         exits=(9970.0, NOW),
     )
     annotations = pod(engine, continued)["metadata"]["annotations"]

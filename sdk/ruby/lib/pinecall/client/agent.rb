@@ -61,7 +61,7 @@ module Pinecall
       # Register the slug and send the config. Runs on every reconnect.
       def open
         registered = ask("agent.register", lands_as: "agent.registered", data: {
-                           routes: @routes, sdk: @client.sdk, host: Socket.gethostname,
+                           routes: @routes, sdk: @client.sdk, host: @client.host,
                            takes_unclaimed: @takes_unclaimed
                          })
         # Each connection gets a new app id.

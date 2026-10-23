@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall deploy` runs a Python project.** A project whose agents are `agent.py` is uploaded with
+  its `pyproject.toml` and Pinecall installs it with uv on CPython 3.13 (`uv.lock` when it has one);
+  `.venv` and `__pycache__` never travel. A project with agents in two languages, or a Python one
+  with no `pyproject.toml`, is refused before anything is sent. Ruby is still run on your own server.
+
 ## [0.11.14] — docs push upserts, docs pull and rm, cases add, test plays files and dataset, alerts
 
 - **The docs folder is a checkout of the base.** `pinecall docs push` writes the folder's files into
