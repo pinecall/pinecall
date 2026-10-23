@@ -12,7 +12,9 @@ from pinecall_runtime.wire.parts import (
     GreetingConfig,
     MemoryConfig,
     ModelConfig,
+    PromptBlockSpec,
     Pronunciation,
+    TurnConfig,
     VoiceConfig,
 )
 from tests.fakes import talker
@@ -65,12 +67,37 @@ def test_a_field_sent_empty_goes_back_to_the_settings_and_one_left_out_stays_fix
     assert with_app_fields(current, Declared(voice=None)).fixed == frozenset({"llm"})
 
 
+def test_a_field_sent_null_keeps_no_value_of_the_class_and_every_field_takes_null() -> None:
+    """The value the class had fixed goes with it: the org's settings fill the field, not the class's last word."""
+    declared = with_app_fields(NOTHING, Declared(language="fr-FR", record=False, uses_knowledge=True))
+    assert (declared.language, declared.record, declared.uses_knowledge) == ("fr-FR", False, True)
+
+    taken_back = with_app_fields(declared, Declared(language=None, record=None, uses_knowledge=None))
+    assert (taken_back.language, taken_back.record, taken_back.uses_knowledge) == (None, True, False)
+    assert taken_back.fixed == frozenset()
+
+
 def test_a_voice_the_class_declares_names_its_vendor_and_the_voice() -> None:
-    """A voice without its vendor, or without the voice, is refused naming the decorator."""
-    with pytest.raises(ValidationError, match=r"@voice\('<vendor>', '<voice>'\)"):
+    """A voice without its vendor, or without the voice, is refused naming the wire's fields and the decorator."""
+    with pytest.raises(ValidationError, match=r"`provider` and `voice_id` \(or `name`\) on the wire, @voice\("):
         with_app_fields(NOTHING, Declared(voice=VoiceConfig(voice_id="v-1")))
     with pytest.raises(ValidationError, match="names its vendor and the voice"):
         with_app_fields(NOTHING, Declared(voice=VoiceConfig(provider=ACME)))
+
+
+def test_a_static_block_after_a_dynamic_one_is_refused_by_name() -> None:
+    """The static blocks are the cached prefix: the layout is every static block, then every dynamic one."""
+    late = [PromptBlockSpec(name="view", region="dynamic"), PromptBlockSpec(name="rules", region="static")]
+    with pytest.raises(ValidationError, match="static rules comes after a dynamic one"):
+        with_app_fields(NOTHING, Declared(prompt=late))
+
+
+def test_a_turn_threshold_outside_the_band_the_ears_take_is_refused_when_declared() -> None:
+    """A class is held to the bands a setting is: outside one the ears refuse the connection."""
+    with pytest.raises(ValidationError, match=r"eot_threshold 0\.95 is outside 0\.5 to 0\.9"):
+        with_app_fields(NOTHING, Declared(turn=TurnConfig(eot_threshold=0.95)))
+    with pytest.raises(ValidationError, match=r"eager_eot_threshold 0\.2 is outside 0\.3 to 0\.9"):
+        with_app_fields(NOTHING, Declared(turn=TurnConfig(eager_eot_threshold=0.2)))
 
 
 def test_a_vendor_not_installed_or_not_doing_the_stage_is_refused_when_declared(thinker: str) -> None:

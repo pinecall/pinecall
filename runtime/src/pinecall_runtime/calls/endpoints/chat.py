@@ -27,11 +27,10 @@ from pinecall_runtime.exceptions import (
     NotFound,
     PinecallError,
     QuotaExceeded,
-    Unauthorized,
     ValidationError,
 )
 from pinecall_runtime.judging import service as judging
-from pinecall_runtime.kit.auth import Actor, Scope, check_scopes
+from pinecall_runtime.kit.auth import Actor, Scope, check_scopes, no_actor
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.kit.time import today_in
 from pinecall_runtime.kit.websockets import close_reason, code_of, refuse_socket
@@ -109,7 +108,7 @@ async def _closed(websocket: WebSocket, reason: str, code: int = NORMAL_CLOSURE)
 def _chatting(websocket: WebSocket, serving: Serving) -> tuple[Registration, str | None]:
     actor: Actor | None = getattr(websocket.state, "actor", None)
     if actor is None:
-        raise Unauthorized("this endpoint takes an API key")
+        raise no_actor(websocket)
     check_scopes(actor, (KeyScope.talk,))
     slug = websocket.query_params.get("agent", "")
     check_agent(actor, slug)

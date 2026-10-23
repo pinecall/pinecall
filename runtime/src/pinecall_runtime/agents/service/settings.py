@@ -16,7 +16,6 @@ from pinecall_runtime.agents.declaration import (
     Lexicon,
     Modality,
     Tuning,
-    Turn,
     Version,
     Versions,
 )
@@ -66,9 +65,6 @@ PIPELINE_ONLY = (
     "max_duration_s",
     "llm_timeout_s",
 )
-# The ears that take these knobs take them only inside these bands and refuse the connection
-# outside one, so the call runs deaf.
-BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
 TUNING_KNOBS = tuple(field.name for field in dataclasses.fields(Tuning))
 # Every knob's name in the declaration, where the two differ.
 DECLARED_AS = {
@@ -365,7 +361,6 @@ async def write_tuning(
     if config.judge is not None:
         providers.stage_on_its_key("llm", config.judge, catalog, vault_keyring)
     if opens_the_pipeline:
-        _refuse_out_of_band(wanted.turn)
         providers.refuse_untaken_knobs(stages.stt, stages.tts, wanted)
         for stage, knobs in STAGE_KNOBS.items():
             if any(_changes(wanted, newest, knob) for knob in knobs):
@@ -419,13 +414,6 @@ def written_to(scope: Scope, *, team: bool) -> Scope:
 def _changes(wanted: Tuning, newest: Tuning, knob: str) -> bool:
     value: object = getattr(wanted, knob)
     return value is not None and value != getattr(newest, knob)
-
-
-def _refuse_out_of_band(turn: Turn | None) -> None:
-    for knob, (low, high) in BANDS.items():
-        value = None if turn is None else getattr(turn, knob)
-        if value is not None and not low <= value <= high:
-            raise ValidationError(f"{knob} {value} is outside {low} to {high}, the band the ears take it in")
 
 
 def _words_only(wanted: Tuning, newest: Tuning) -> Tuning:

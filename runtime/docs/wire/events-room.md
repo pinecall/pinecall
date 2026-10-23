@@ -11,7 +11,7 @@ A fact arrived from outside the conversation: the tenant's backend sent call.eve
 | `name` | `string` | yes | The event's name, dotted, as the agent declared it: slot.released, form.submitted. |
 | `data` | `object` | yes | Whatever came with it, as JSON. The app reads it; the platform never does. |
 | `source` | `EventSource` | yes | Where an outside fact came from: the tenant's backend over the app socket (app), or a participant's browser over the DataChannel (participant). |
-| `identity` | `string` | no | The participant that sent it, for source participant. Absent when the app did. |
+| `identity` | `string` | no | The participant that sent it, for source participant. `null` when the app did. |
 
 ### `participant.joined`
 

@@ -42,7 +42,9 @@ request acts in, its scopes, whose it is, and whether it may act in production:
 
 `email` is the one name a person carries into every org; a server's token has none. `operator`
 says the person runs the platform; `visiting` that they are inside an org they are no member of.
-Never the key nor its hash. With no key it is `401 this endpoint takes an API key`.
+Never the key nor its hash. With no key it is `401 this endpoint takes an API key`; with one that
+opens nothing — revoked, mistyped, another deployment's — `401 this key opens nothing here`, which
+says to sign in again or mint a new one, and never which of the three it was.
 
 ## Signing in — `POST /v1/login`
 

@@ -2,7 +2,9 @@
 
 Every endpoint of the gateway, method and path, the scope a key must open for it, and what it does in
 one line. `—` is an endpoint that reads any key as who it is, or none (a sign-in page, Meta's webhook,
-LiveKit's, a page's token); `operator` is the platform's own key or an operator's ([operator-api.md](operator-api.md));
+LiveKit's, a page's token), and refuses with `403` one that is not its kind: a server's token at a
+person's door (`GET /v1/login/orgs`), another code's token (`GET /v1/codes/{code}`), a verify token
+that is not the box's (`GET /v1/whatsapp/webhook`); `operator` is the platform's own key or an operator's ([operator-api.md](operator-api.md));
 `loopback` is an endpoint the platform's own machine alone may knock, with no key.
 The pages that say each family whole: [gateway-api.md](gateway-api.md).
 

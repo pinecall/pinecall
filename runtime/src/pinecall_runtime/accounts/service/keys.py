@@ -21,7 +21,7 @@ from pinecall_runtime.exceptions import (
     Unauthorized,
     ValidationError,
 )
-from pinecall_runtime.kit.auth import THE_ORGS_OWN, Actor, Person, Scope
+from pinecall_runtime.kit.auth import KEY_PREFIX, THE_ORGS_OWN, Actor, Person, Scope
 from pinecall_runtime.kit.crypto import fingerprint, random_id, random_token
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.time import now
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 # The prefix says the env, so a key pasted into the wrong one is caught before it knocks. A
 # person's one key is production's: it opens the sandbox too, and the request names the env.
-PREFIX: Mapping[Env, str] = {Env.production: "pc_live_", Env.sandbox: "pc_test_"}
+PREFIX = KEY_PREFIX
 KEY_BYTES = 32
 ID_PREFIX = "k_"
 

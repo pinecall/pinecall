@@ -4,6 +4,11 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`MintOptions.ttl_s` says the gateway's real ceiling**: past a day it is cut to a day, where the comment
+  said 600 s. (found by the 2026-10-23 eval, K note)
+
 ## 0.11.16 — the wire knows a hook's cause and the call's metadata (2026-10-23)
 
 - **The wire's `StateCause` knows a `hook` kind**, as the runtime writes it for `onCall` and `onMemory`, and

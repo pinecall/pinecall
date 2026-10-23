@@ -23,7 +23,11 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.wire.parts import AgentConfig as Declaration
 from pinecall_runtime.wire.parts import GreetingConfig, VoiceConfig
 
-NO_VENDOR = "a voice the class declares names its vendor and the voice: @voice('<vendor>', '<voice>')"
+NO_VENDOR = (
+    "a voice names its vendor and the voice: `provider` and `voice_id` (or `name`) on the wire, "
+    "@voice('<vendor>', '<voice>') in a class"
+)
+OUT_OF_ORDER = "the prompt is every static block, then every dynamic one: static {block} comes after a dynamic one"
 
 
 # Sent as null, a setting goes back to the org's; left out, it stays as it was declared before.
@@ -33,12 +37,12 @@ def with_app_fields(current: AgentConfig, declaration: Declaration) -> AgentConf
     changed: dict[str, Any] = _settings_fixed(current, declaration)
     if "prompt" in sent:
         changed["prompt"] = (
-            tuple(PromptBlock(block.name, block.region) for block in declaration.prompt)
+            _in_order(tuple(PromptBlock(block.name, block.region) for block in declaration.prompt))
             if declaration.prompt
             else DEFAULT_LAYOUT
         )
     if "uses_knowledge" in sent:
-        changed["uses_knowledge"] = declaration.uses_knowledge
+        changed["uses_knowledge"] = bool(declaration.uses_knowledge)
     if "tools" in sent:
         changed["tools"] = tuple(
             ToolSpec(
@@ -62,6 +66,16 @@ def with_app_fields(current: AgentConfig, declaration: Declaration) -> AgentConf
     return dataclasses.replace(current, **changed)
 
 
+# The static blocks are the cached prefix: one after a dynamic block would be re-sent on every turn,
+# and the cache would never hold.
+def _in_order(layout: tuple[PromptBlock, ...]) -> tuple[PromptBlock, ...]:
+    regions = [block.region for block in layout]
+    if "dynamic" in regions and "static" in regions[regions.index("dynamic") :]:
+        late = next(block.name for block in layout[regions.index("dynamic") :] if block.region == "static")
+        raise ValidationError(OUT_OF_ORDER.format(block=late))
+    return layout
+
+
 def changed_by(declaration: Declaration) -> list[str]:
     """The fields a declaration sets, sorted."""
     return sorted(declaration.model_fields_set)
@@ -73,14 +87,23 @@ def _settings_fixed(current: AgentConfig, declaration: Declaration) -> dict[str,
     changed: dict[str, Any] = {}
     fixed = set(current.fixed)
     for name in declaration.model_fields_set & converted.keys():
+        field, value = converted[name]
         if getattr(declaration, name) is None:
+            # The class lets go of it: the field holds no value of its own, and the org's settings fill it.
             fixed.discard(name)
+            changed[field] = _undeclared(field)
             continue
         fixed.add(name)
-        field, value = converted[name]
         changed[field] = value
     changed["fixed"] = frozenset(fixed)
     return changed
+
+
+def _undeclared(field: str) -> object:
+    found = next(item for item in dataclasses.fields(AgentConfig) if item.name == field)
+    if found.default_factory is not dataclasses.MISSING:
+        return found.default_factory()
+    return found.default
 
 
 # Each setting a class may declare, by the declaration's name: the config's field it becomes and

@@ -349,6 +349,14 @@ COMMANDS: dict[str, type[WireModel]] = {
 }
 
 
+def said_as(command: WireModel) -> str:
+    """The command as the wire names it: `call.mute`, or a supervisor's verb as `supervise <verb>`."""
+    verb = getattr(command, "verb", None)
+    if isinstance(verb, str):
+        return f"supervise {verb}"
+    return next((name for name, model in COMMANDS.items() if isinstance(command, model)), type(command).__name__)
+
+
 def command_of(command: Command) -> WireModel:
     """The command's data as the model its type names; an unknown type is refused."""
     model = COMMANDS.get(command.type)

@@ -2,7 +2,7 @@
 
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Literal
 
@@ -101,6 +101,9 @@ class Visitor:
     subject: str | None = None
     name: str | None = None
     dispatch: RoomConfiguration | None = None
+    # The page's own attributes, published as given, and the org's opaque contact id as the metadata.
+    attributes: Mapping[str, str] = field(default_factory=dict[str, str])
+    metadata: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,8 +186,10 @@ def room_token(signer: Signer, call: str, scope: RoomScope, visitor: Visitor) ->
         .with_identity(visitor.identity or random_id(A_VISITOR, 6))
         .with_grants(grants)
         .with_ttl(timedelta(seconds=visitor.expires_at - time.time()))
-        .with_attributes({**who, SCOPE_ATTRIBUTE: scope})
+        .with_attributes({**visitor.attributes, **who, SCOPE_ATTRIBUTE: scope})
     )
+    if visitor.metadata is not None:
+        token = token.with_metadata(visitor.metadata)
     if visitor.dispatch is not None:
         token = token.with_room_config(visitor.dispatch)
     return token.to_jwt()
@@ -198,9 +203,11 @@ def seat_token(signer: Signer, call: str, scope: RoomScope, actor: Actor) -> Sea
     return Seat(call, identity, room_token(signer, call, scope, visitor), subject, actor.name)
 
 
-def log_token(signer: Signer, call: str, projection: Projection) -> str:
-    """A token that reads one call's log and recording through the projection; it opens no room."""
-    return _unjoinable(signer, call, READ_TTL_S, {SCOPE_ATTRIBUTE: "read", PROJECTION_ATTRIBUTE: projection})
+# A page reads the events it sent itself: its log token is the identity it is seated as, when it has one.
+def log_token(signer: Signer, call: str, projection: Projection, *, viewer: str | None = None) -> str:
+    """A token that reads one call's log and recording through the projection, as the viewer; it opens no room."""
+    attributes = {SCOPE_ATTRIBUTE: "read", PROJECTION_ATTRIBUTE: projection}
+    return _unjoinable(signer, call, READ_TTL_S, attributes, subject=viewer)
 
 
 def code_token(signer: Signer, code: str, agent: str, env: Env, expires_at: float) -> str:
@@ -286,10 +293,12 @@ async def spend_token(session: AsyncSession, call: str, scope: Scope, agent: str
     return "minted_elsewhere" if row.spent_at is None else "already_spent"
 
 
-def _unjoinable(signer: Signer, room: str, ttl_s: float, attributes: dict[str, str]) -> str:
+def _unjoinable(
+    signer: Signer, room: str, ttl_s: float, attributes: dict[str, str], *, subject: str | None = None
+) -> str:
     moment = int(time.time())
     claims = {
-        "sub": random_id(A_VISITOR, 6),
+        "sub": subject or random_id(A_VISITOR, 6),
         "iat": moment,
         "exp": moment + int(ttl_s),
         "video": {"room": room, "roomJoin": False},

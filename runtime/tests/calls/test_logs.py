@@ -1,6 +1,8 @@
-"""The org's feed: what it says of a tool that ran, and that it says nothing of what the tool did."""
+"""The org's feed: what it says of a tool that ran and nothing of what it did; and a reader's markers."""
 
 import asyncio
+from collections.abc import AsyncGenerator
+from typing import cast
 
 from pinecall_runtime.agents.declaration import Versions
 from pinecall_runtime.calls.fanout import Subscription
@@ -60,3 +62,15 @@ async def test_a_tool_of_another_env_is_not_said_on_this_envs_feed(store: Store,
     production.close()
     assert [entry async for entry in production] == []
     sandbox.close()
+
+
+async def test_a_reader_resumed_at_the_end_is_told_it_caught_up_by_the_agent_whose_log_it_is(
+    store: Store, call: str, agent: str
+) -> None:
+    """A reader's log is made before anybody says whose it is: its marker names the agent the entries do."""
+    await store.claim(call, agent, ORG, Claim(Scope(ORG, Env.sandbox), Versions(config=1)))
+    written = await Logs(store).writing(call, agent).append("custom", {"name": "x", "data": {}})
+    reading = Logs(store).reading(call).stream(after=written.seq)
+    caught_up = await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)
+    assert (caught_up.type, caught_up.agent) == ("log.caught_up", agent)
+    await cast(AsyncGenerator[Entry], reading).aclose()

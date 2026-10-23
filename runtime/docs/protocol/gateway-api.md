@@ -49,9 +49,9 @@ the agent must be that call's org's.
 
 **The one exception to the header** is `?token=`, because an `EventSource` cannot set one: only a
 token of ours for one call (a page's `log_token`), never an API key, since a URL ends up in an access
-log.
+log. A key there is `401 a log is read with a key, or with a token of that call`.
 
-**Refusals** are `{"detail": "…"}` under the status, and the sentence names the fix: `401` no key;
+**Refusals** are `{"detail": "…"}` under the status, and the sentence names the fix: `401` no key, or a key that opens nothing (revoked, mistyped, another deployment's: the sentence says sign in again or mint one, and never which);
 `403` a key that does not open the endpoint, or another environment's; `404` a thing that is not there, and
 another org's call, whose existence is nobody else's business; `409` a request that disagrees with
 what is stored; `400` or `422` a body that is not the shape; `413` a body over 32 MiB, more than
@@ -157,26 +157,29 @@ predates that refusal is sealed all the same, as one that never wrote it.
 `GET /v1/calls/{call}/events` answers a page of JSON, `{entries, live, next}`, or with
 `Accept: text/event-stream` the same entries as a stream that ends where the log does, at
 `call.score`. `after` is the cursor (a reconnecting `EventSource` sends `Last-Event-ID`; the higher
-wins), `limit` up to 500, `types` a comma list, `durable=1` drops the ephemeral entries, `token` a
-page's log token. `next` is the last seq the page read, so a filtered page still moves you on. The
+wins), `limit` up to 500, `types` a comma list (the entries a stream ends or catches up on —
+`call.ended`, `call.score`, `log.caught_up`, `log.gap` — pass it always), `durable=1` drops the
+ephemeral entries, `token` a page's log token. `next` is the last seq the page read, so a filtered page still moves you on. The
 SSE frames are `id: <seq>`, `event: <type>`, `data: <the entry>`, a `: ping` every 25 s.
 
 A reader may watch before there is anything to read. A call id no worker has opened yet reads as
 an empty log to any key, so a backend that minted a token can tail the call it names before the
 caller arrives; a call id is random, and nothing is in it until its org's worker opens it, after
-which only its org reads it (`404` to anyone else). An agent's own log reads the same way while no
-org has registered the slug, so `pinecall logs` can wait for a first `start`; once an org holds
-it, it is that org's alone.
+which only its org reads it (`404` to anyone else). An agent's own log is read once the org has held
+the slug, and resumes from `after` or `Last-Event-ID` as a call's does; a slug the org never held is
+`404`, as every endpoint of an agent answers a name typed wrong. In the sandbox its `agent.*` entries
+are ephemeral (a laptop registers again on every restart): a reader following it sees them, a page
+read later does not.
 
 | endpoint | |
 |---|---|
 | `GET /v1/agents/{slug}/calls` | an agent's own log: registrations, declarations, errors, and every entry about the agent rather than a call ([../wire/events.md](../wire/events.md), scope `agent`) |
 | `GET /v1/calls/{call}/state` | the call reduced |
 | `GET /v1/calls/{call}/recording` | the audio, seekable; a written call keeps none. It is kept sealed ([../security/private-values.md](../security/private-values.md)) and answered as recorded |
-| `GET /v1/agents/{slug}/sessions` · `GET /v1/sessions` | one line per call, filtered, counted and paged, in the reader's scope |
+| `GET /v1/agents/{slug}/sessions` · `GET /v1/sessions` | one line per call, newest first, in the reader's scope: `limit` 1 to 200 (20 unless asked), `agent`, `channel`, `q` (words of the call), and `before`, the `next` the page before answered, for the page below it; any other parameter is `422` |
 | `GET /v1/calls/{call}/settings` | the exact settings the call was built on |
 | `GET /v1/calls/{call}/prompt` | the exact prompt the call was told: `{call, blocks: [{seq, name, hash, chars, text}]}`, one per `prompt.changed` in order, each block's words as the org kept them under its hash the first time a gateway met them (a call's knowledge when it opened, an app's `prompt.set`), once per distinct text and never per call; `text` is null for a block nobody kept (a call from before they were kept). A key's read, never a page's token |
-| `GET /v1/events` | the org's floor as it changes, in the environment the key acts in: agents registered and detached, calls ringing, starting and ending, sealed and judged (`call.summary` · `call.score`, with `data` empty), a person asked for and taken, an eval run changing (`run.changed`), a hosted app's release changing (`release.changed`), a tool of a call answering or failing (`tool.ran` · `tool.failed`) and a judge finding a sealed call broken (`judge.broke`), each with only its ids and names — the run and the release are read at their own doors, and the three of the calls carry no content: no arguments, output, error, reason or evidence, which are read off the call's log. `?types=a.b,c.d` keeps those types alone, as a log's stream takes it |
+| `GET /v1/events` | the org's floor as it changes, in the environment the key acts in: agents registered and detached, calls ringing, starting and ending, sealed and judged (`call.summary` · `call.score`, with `data` empty), a person asked for and taken, an eval run changing (`run.changed`), a hosted app's release changing (`release.changed`), a tool of a call answering or failing (`tool.ran` · `tool.failed`) and a judge finding a sealed call broken (`judge.broke`), each with only its ids and names — the run and the release are read at their own doors, and the three of the calls carry no content: no arguments, output, error, reason or evidence, which are read off the call's log. `call.started` and `call.ended` carry their entry's data as the call's log holds it (who called, from where, why it ended), projected for the reader as the log is. `?types=a.b,c.d` keeps those types alone, as a log's stream takes it |
 
 What each reader receives is its projection: [projections.md](projections.md).
 

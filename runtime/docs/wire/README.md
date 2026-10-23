@@ -44,7 +44,10 @@ role; each typed block the session emits (`LLMMetrics`, `STTMetrics`, `TTSMetric
 `RealtimeModelMetrics`, `AvatarMetrics`) is its own `metrics.<block>` entry with every
 field, joined to the turn by `speech_id`; `call.summary` carries the per-model usage rows
 the session sums and the provider cost in US dollars, row by row. A text session fills
-what it can measure; an absent field is absent, never zero. The full table is at the end.
+what it can measure; an absent field is absent, never zero. A few fields a reader folds are
+`null` rather than absent when nothing knew them: `turn.user`'s `language` and
+`transcript_confidence` on a written call, `event.received`'s `identity` when the app sent the fact.
+The full table is at the end.
 
 The join: livekit gives the caller's finished turn, the end-of-turn decision and the reply
 that follows one `speech_id`. So `turn.user`, `metrics.eou`, `metrics.llm`, `metrics.tts`

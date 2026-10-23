@@ -37,7 +37,7 @@ The gateway accepted an agent.register: this socket now speaks for the agent and
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `routes` | `Route[]` | yes | The endpoints the agent now answers. |
+| `routes` | `Route[]` | yes | The endpoints the agent now answers in this environment: `web` always, and each number the org routed to it (`pinecall numbers import`). A registration that names a number the org never routed to the agent is refused, naming the verb that routes it. |
 | `app` | `string` | yes | This socket, opaque and minted by the gateway: `?app=<id>` on the chat endpoint asks to be served by it. |
 | `sdk` | `string` | no | The SDK and version the app runs, as it reported them. |
 | `env` | `Env` | no | The environment the key that registered it opens: production, or sandbox. Absent on entries written before keys knew where they were, which read as production. |
@@ -74,7 +74,7 @@ The agent asked for a person: the caller is on hold and waits for a supervisor t
 
 ### `callback.requested`
 
-Somebody asked to be called back: a phone caller the overflow agent answered, a web visitor who left a number at the widget, or a caller who asked the agent for one (call.callback). Written into the agent's own log; the tenant's app reads it and places the call.
+Somebody asked to be called back: a phone caller the overflow agent answered, a web visitor who left a number at the widget, or a caller who asked the agent for one (call.callback). The overflow's and the widget's are written into the agent's own log, since no call holds them; one the agent asked for is written into that call's log, beside what the caller said. `GET /v1/callbacks` lists both, once each; the tenant's app reads them there and places the call.
 
 | field | type | required | meaning |
 |---|---|---|---|

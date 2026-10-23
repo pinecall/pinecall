@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from pinecall_runtime.calls.service.live import Live, Served, declare_for_the_ca
 from pinecall_runtime.calls.service.peers import Handoff, Taking, send_command, tell_handoff
 from pinecall_runtime.calls.service.serving import Serving, claim_code, known_here
 from pinecall_runtime.calls.service.threads import Threads
+from pinecall_runtime.channels import service as channels
 from pinecall_runtime.enums import Channel, ConsentKind
 from pinecall_runtime.exceptions import (
     Conflict,
@@ -27,11 +28,12 @@ from pinecall_runtime.exceptions import (
     ServiceUnavailable,
     ValidationError,
 )
-from pinecall_runtime.kit.auth import Actor
+from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.postgres import DatabaseError, busy, is_cancellation
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.session import service as session
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire.base import Command, Entry, WireModel
 from pinecall_runtime.wire.commands import (
@@ -49,7 +51,7 @@ from pinecall_runtime.wire.commands import (
     command_of,
 )
 from pinecall_runtime.wire.events import ErrorEvent, Pong
-from pinecall_runtime.wire.parts import ToolResult
+from pinecall_runtime.wire.parts import Route, ToolResult
 from pinecall_runtime.wire.signal import Bound, ForApp
 
 logger = logging.getLogger(__name__)
@@ -87,6 +89,12 @@ NO_CODE = "no code {code} is waiting for agent {agent}: nobody issued it, it exp
 SEARCHES_WITH_NOTHING = (
     "{slug} searches its bases, and none is attached to it in {env}: pinecall docs attach <base> --agent {slug}"
 )
+NOT_ROUTED = (
+    "{number} on {channel} is not a route of {slug} in {env}: a number reaches an agent once imported, "
+    "`pinecall numbers import {number} --agent {slug}`"
+)
+NO_NUMBER = "a {channel} route names its number: only web answers with none"
+PLATFORMS_OWN = "{name} is the platform's own tool and the session answers it: an app answers none"
 # How long a socket waits for the signal before listening again for the calls bound to it.
 INBOX_RETRY_S = 1.0
 
@@ -277,12 +285,14 @@ class AppSocket:
         scope = self.scope
         others = self.registry.slugs_of(scope.org) - {slug}
         async with self.serving.handles.sessions.begin() as session:
+            # What the registry writes is the registration as answered: the routes the agent really has.
+            answered = wanted.model_copy(update={"routes": await answered_routes(session, scope, slug, wanted.routes)})
             try:
                 await billing.admit_agent(session, scope.org, scope.env, holding=len(others))
             except QuotaExceeded as refused:
                 await alerts.credits_refused(self.serving, scope, slug, refused)
                 raise
-        await self.send(await self.registry.register(self.id, scope, slug, wanted))
+        await self.send(await self.registry.register(self.id, scope, slug, answered))
         # A console takes no call it did not open; an app takes the calls a previous one left, on
         # this gateway and on the others, which are told it took the agent.
         if wanted.takes_unclaimed:
@@ -319,6 +329,10 @@ class AppSocket:
     # once per call id, and whoever waits reads it there.
     async def _answered(self, command: Command, result: ToolResult) -> None:
         self._holds(command.agent)
+        # The session writes end_call's result itself: an app's would be a second one, and could win.
+        if result.name == session.END_CALL:
+            await self.refuse(command.agent, REFUSED, PLATFORMS_OWN.format(name=session.END_CALL), command.dump())
+            return
         served = None if command.call is None else self.live.calls.get(command.call)
         ours = served is not None and served.scope.org == self.scope.org and served.agent == command.agent
         if (
@@ -411,6 +425,28 @@ class AppSocket:
             await self.send(Entry.unstored(slug, kind, event.dump()))
             return
         await self.send(await self.serving.logs.agent(slug).append(kind, event.dump()))
+
+
+# A number reaches an agent through the org's routes (`pinecall numbers import`), never through a
+# registration: what the app says it answers is checked against them, and agent.registered says what
+# the agent really answers, web always among it.
+async def answered_routes(session: AsyncSession, scope: Scope, slug: str, wanted: Sequence[Route]) -> list[Route]:
+    """The routes the agent answers in the scope's env; one the app names and the org never routed is refused."""
+    rows = [row for row in await channels.routes_of_org(session, scope.org, scope.env) if row.agent == slug]
+    labels = {(route.channel, route.number): route.label for route in wanted}
+    held = [Route(channel=Channel.web, number=None, label=labels.get((Channel.web, None)))] + [
+        Route(channel=row.channel, number=row.number, label=labels.get((row.channel, row.number))) for row in rows
+    ]
+    for route in wanted:
+        if route.channel is Channel.web:
+            continue
+        if route.number is None:
+            raise ValidationError(NO_NUMBER.format(channel=route.channel.value))
+        if not any(had.channel is route.channel and had.number == route.number for had in held):
+            raise ValidationError(
+                NOT_ROUTED.format(number=route.number, channel=route.channel.value, slug=slug, env=scope.env.value)
+            )
+    return held
 
 
 def _named(raw: Json, field: str) -> str:

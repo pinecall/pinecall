@@ -12,6 +12,7 @@ from pinecall_runtime.accounts.service import keys, tokens
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.repository.heads import HeadRepository
 from pinecall_runtime.calls.service.live import Served
+from pinecall_runtime.calls.service.openings import opening_of
 from pinecall_runtime.calls.service.serving import NO_SUCH_CALL, Serving, get_served, is_the_fleet
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import KeyScope, ReadKind
@@ -140,7 +141,10 @@ async def check_readable(session: AsyncSession, serving: Serving, reader: Reader
         raise NotFound(NO_SUCH_CALL.format(call=call))
     if reader.actor is not None:
         keys.check_agent(reader.actor, kept.agent)
-    return serving.registry.declared(kept.agent)
+    # What is public of a call is what it opened declaring, not what whoever holds its agent now does:
+    # a call read after its app left, or in the other env, is projected by its own declaration.
+    opened = await opening_of(session, call)
+    return opened.config if opened is not None else serving.registry.declared(kept.agent)
 
 
 # A person's read and a server's are written down, by the person or the key; a visitor reads

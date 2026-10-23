@@ -1,5 +1,6 @@
-"""What a reader reads: the feed, every entry or the types asked, what a call's token may not, whose hang-up it says."""
+"""What a reader reads: the feed, every entry or the types asked, an agent's log resumed, what a token may not."""
 
+from pinecall_runtime.wire.events import ErrorEvent
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
 AS_A_STREAM = {"accept": "text/event-stream"}
@@ -74,3 +75,19 @@ async def test_a_hang_up_is_the_callers_own_said_with_the_calls_token_and_nobody
     assert asked.status_code == 200, asked.text
     assert asked.headers["access-control-allow-origin"] == "*"
     assert "POST" in asked.headers["access-control-allow-methods"]
+
+
+# A reconnecting EventSource says where it was with Last-Event-ID: an agent's own log resumes from it, as
+# a call's does, instead of replaying every entry it kept.
+@needs_the_services
+async def test_an_agents_own_log_resumes_after_the_last_event_id(gateway: Gateway, tenant: Tenant, agent: str) -> None:
+    async with holding(gateway, tenant, agent):
+        log = gateway.app.state.serving.logs.agent(agent)
+        first = await log.append("error", ErrorEvent(code="refused", message="one", recoverable=True).dump())
+        await log.append("error", ErrorEvent(code="refused", message="two", recoverable=True).dump())
+    read = await gateway.http.get(
+        f"/v1/agents/{agent}/calls",
+        headers={**tenant.server, "accept": "application/json", "last-event-id": str(first.seq)},
+    )
+    assert read.status_code == 200, read.text
+    assert [entry["data"]["message"] for entry in read.json()["entries"] if entry["type"] == "error"] == ["two"]

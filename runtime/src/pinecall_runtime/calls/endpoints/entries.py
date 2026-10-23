@@ -10,8 +10,8 @@ from pinecall_runtime.calls.auth import serving_of
 from pinecall_runtime.calls.service.live import Served
 from pinecall_runtime.calls.service.serving import Serving, check_entry, count_append, get_served
 from pinecall_runtime.enums import KeyScope
-from pinecall_runtime.exceptions import PinecallError, Unauthorized
-from pinecall_runtime.kit.auth import Actor, check_scopes
+from pinecall_runtime.exceptions import PinecallError
+from pinecall_runtime.kit.auth import Actor, check_scopes, no_actor
 from pinecall_runtime.kit.websockets import refuse_socket
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def entries_socket(websocket: WebSocket, call: str) -> None:
     actor: Actor | None = getattr(websocket.state, "actor", None)
     try:
         if actor is None:
-            raise Unauthorized("this endpoint takes an API key")
+            raise no_actor(websocket)
         check_scopes(actor, (KeyScope.app, KeyScope.fleet))
         async with serving.handles.sessions.begin() as session:
             served = await get_served(session, serving, actor, call)

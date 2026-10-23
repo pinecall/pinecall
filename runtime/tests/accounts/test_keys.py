@@ -77,8 +77,12 @@ def test_an_unknown_scope_for_a_server_is_refused_and_none_asked_is_the_servers_
 async def test_a_key_revoked_through_the_api_is_refused_on_its_very_next_request(
     gateway: Gateway, tenant: Tenant
 ) -> None:
-    """Every gateway forgets a revoked key at once: no cached verification keeps it open."""
+    """Every gateway forgets a revoked key at once, and says it is a key that opens nothing, not a missing one."""
     assert (await gateway.http.get("/v1/agents", headers=tenant.server)).status_code == 200
     revoked = await gateway.http.post(f"/v1/keys/{fingerprint(tenant.server_key)}/revoke", headers=tenant.person)
     assert revoked.status_code == 200, revoked.text
-    assert (await gateway.http.get("/v1/agents", headers=tenant.server)).status_code == 401
+    refused = await gateway.http.get("/v1/agents", headers=tenant.server)
+    assert refused.status_code == 401
+    assert "this key opens nothing here" in refused.json()["detail"]
+    nothing = await gateway.http.get("/v1/agents")
+    assert nothing.json()["detail"] == "this endpoint takes an API key"

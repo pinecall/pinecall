@@ -75,6 +75,7 @@ async def stream_agent_events(
     serving: TheServing,
     request: Request,
     query: Annotated[schemas.LogQuery, Query()],
+    last_event_id: Annotated[str | None, Header()] = None,
 ) -> StreamingResponse | schemas.LogPage:
     """An agent's own log: its registrations, its declarations, its errors. It never ends."""
     if reader.actor is None:
@@ -83,13 +84,14 @@ async def stream_agent_events(
     if owner is not None and owner != reader.actor.org:
         raise NoApp(slug)
     config = serving.registry.declared(slug)
+    cursor = max(query.after, _seq_of(last_event_id))
     only = parse_filter(query.types, durable=query.durable)
     if sse.wants_sse(request):
-        entries = serving.logs.agent(slug).stream(after=query.after, only=only)
+        entries = serving.logs.agent(slug).stream(after=cursor, only=only)
         return sse.streamed(
             sse.paced(_projected(entries, reader, config, ends=False), closing=request.app.state.closing)
         )
-    read = await serving.logs.store.since(f"@{slug}", after=query.after, limit=query.limit)
+    read = await serving.logs.store.since(f"@{slug}", after=cursor, limit=query.limit)
     return _page(read, only, reader, config, live=True)
 
 

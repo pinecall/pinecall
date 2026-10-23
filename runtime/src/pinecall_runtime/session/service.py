@@ -14,12 +14,13 @@ from pinecall_runtime.session.text import (
     taken_up,
     text_session,
 )
-from pinecall_runtime.session.tools import result_text
+from pinecall_runtime.session.tools import END_CALL, result_text
 from pinecall_runtime.session.voice import smart_turn, voice_session
 from pinecall_runtime.session.widget import Reading, Widget
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S, Writing
 
 __all__ = [
+    "END_CALL",
     "WRITTEN_WITHIN_S",
     "Call",
     "CallRoom",

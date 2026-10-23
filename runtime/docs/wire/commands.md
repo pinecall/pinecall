@@ -10,7 +10,7 @@ What reaches the gateway: the commands an app sends over its socket, each with t
 | `agent.reply` | call | `turn.agent` | Make the model speak now, guided by an instruction it reads and the caller never hears: 'tell them a slot at 10:15 just opened'. |
 | `agent.say` | call | `turn.agent` | Make the agent say this text now, verbatim, outside the model's turn: a greeting, a read-back, a system notice. |
 | `call.attention` | call | `attention.requested`, `call.line`, `attention.answered` | Ask for a person without sending the caller anywhere: the call waits on hold until a supervisor takes the line, or until wait_s passes with nobody taking it. |
-| `call.callback` | call | `callback.requested` | Write down that the caller wants to be called back. |
+| `call.callback` | call | `callback.requested` | Write down that the caller wants to be called back, on the call's log; `GET /v1/callbacks` lists it. |
 | `call.claim` | call | `call.claimed` | The caller said the code a page shows: bind this call to it, so the page follows the call from here. |
 | `call.dial` | agent | `call.dialing` | Place an outbound call as this agent. Refused on the app socket (`no_handler`): `POST /v1/agents/{slug}/dial` places it. |
 | `call.done` | call | nothing | Say the app's end hook ran and everything it wrote was sent: the call's seal waits for this, a few seconds at most, so a line logged in the hook lands. |
@@ -63,7 +63,7 @@ Lands in the log as: `agent.registered`.
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `routes` | `Route[]` | yes | The endpoints this agent answers. A number may belong to one agent at a time. |
+| `routes` | `Route[]` | yes | The endpoints the app expects the agent to answer, checked, never routed: a number reaches an agent once the org imported it (`pinecall numbers import`), and one named here that the org never routed to this agent in this environment is refused with that verb. `[]` asks nothing; `web` needs no number. agent.registered answers the routes the agent really has. |
 | `sdk` | `string` | no | The SDK and version the app runs: pinecall/2.0.0. |
 | `host` | `string` | no | The machine the app runs on, as it names itself: what a person reading the org's live processes reads to tell a laptop from a server. |
 | `takes_unclaimed` | `boolean` | no | Whether this socket may be handed a call that named no app — every phone call, and every web call that did not ask for one. A console holds the agent to serve the call it opens itself and says false, so a real caller is never answered from somebody's terminal. Absent means yes. |
@@ -248,6 +248,15 @@ The app's answer to a dev.request: what the verb produced, or the refusal it end
 | `id` | `string` | yes | The dev.request this answers. |
 | `result` | `object` | no | What the verb produced, as the verb's own answer: the call that opened, the run's id, the roster, the score. |
 | `refused` | `DevRefusal` | no | Why the verb did not run, in the words the console shows: the status it travels under, and the sentence. |
+
+### `DevRefusal`
+
+Why a dev verb did not run: what the console shows in place of its answer.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `status` | `integer` | yes | The HTTP status the console's request is answered with: 404 for a thing the class does not have, 422 for an argument it refused. |
+| `detail` | `string` | yes | The sentence, as the console shows it. |
 
 ### `participant.mute`
 

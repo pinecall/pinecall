@@ -50,6 +50,7 @@ from pinecall_runtime.wire.commands import (
     ToolsSet,
     TransferVerb,
     WhisperVerb,
+    said_as,
 )
 from pinecall_runtime.wire.parts import EndedBy, EndReason, Supervisor
 
@@ -72,7 +73,7 @@ NOBODY_HOLDS = "nobody holds the line, so there is nothing to give back"
 ALREADY_WAITING = "the caller is already waiting for a person"
 # The app's tool timeout must outlast the wait it asks for; the runtime does not extend it.
 NOBODY_TOOK_IT = "nobody took the line within {wait_s:g}s"
-NOT_HERE = "{command} is not something this call does"
+NOT_HERE = "{command} acts on a call's line, and this call is written: it has no audio and no room"
 NO_LINE = "a written conversation has no line to transfer"
 
 
@@ -373,7 +374,7 @@ class Session:
                 failed = wire.CallTransferred(to=command.to, mode=None, ok=False, error=NO_LINE)
                 await self.call.writing.write("call.transferred", failed)
                 return
-            raise Forbidden(NOT_HERE.format(command=type(command).__name__))
+            raise Forbidden(NOT_HERE.format(command=said_as(command)))
         if isinstance(command, TransferVerb | CallTransfer):
             await self._transfer(self.room, CallTransfer(to=command.to, mode=command.mode), by=by)
             return

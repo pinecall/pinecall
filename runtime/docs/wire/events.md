@@ -23,7 +23,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `call.started` | call | no | [events-call.md](events-call.md) | Media is up: the caller and the agent can hear each other, or the text session is open. |
 | `call.summary` | call | no | [events-call.md](events-call.md) | What the call was about, how it went, what it consumed and what that cost. |
 | `call.transferred` | call | no | [events-call.md](events-call.md) | A transfer asked for by the agent or a supervisor finished, one way or the other. |
-| `callback.requested` | agent | no | [events-control.md](events-control.md) | Somebody asked to be called back: a phone caller the overflow agent answered, a web visitor who left a number at the widget, or a caller who asked the agent for one (call.callback). |
+| `callback.requested` | agent · call | no | [events-control.md](events-control.md) | Somebody asked to be called back: a phone caller the overflow agent answered, a web visitor who left a number at the widget (both on the agent's own log), or a caller who asked the agent for one (call.callback, on the call's log). |
 | `code.claimed` | agent | no | [events-control.md](events-control.md) | A code is off the table: a call claimed it, or it expired with none. |
 | `code.issued` | agent | no | [events-control.md](events-control.md) | A page asked for a code to show beside the agent's phone number (POST /v1/codes): the four digits a caller keys to bind their call to that page. |
 | `confirm.declined` | call | no | [events-app.md](events-app.md) | The caller did not say yes, or the request lapsed. |
@@ -84,3 +84,5 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `user.transcript` | call | yes | [events-call.md](events-call.md) | Words from the caller as the recognizer hears them. |
 | `vendor.switched` | call | no | [events-call.md](events-call.md) | A stage's vendor failed or came back, and the vendor that serves the stage now. |
 | `worker.changed` | feed | yes | [events-control.md](events-control.md) | A worker of a fleet was first heard, cordoned, uncordoned, or stopped being heard. |
+
+The agent's own `agent.*` entries are kept in production's log. In the sandbox they are written ephemeral, since a laptop registers its agent again on every restart: a reader following the agent's log at the time sees them, a page read after does not.

@@ -342,12 +342,12 @@ What the call cost in provider fees, informational, in US dollars, the currency 
 
 ### `VoiceConfig`
 
-Which voice speaks for the agent: the name it was asked for, or the id the provider knows it by.
+Which voice speaks for the agent: its vendor and the voice, by the id the vendor knows it by or the name the vendor gives it. A declaration names both, or is refused naming the two fields (`provider` and `voice_id` or `name`) and, for a class, `@voice('<vendor>', '<voice>')`; the platform keeps no list of voices of its own.
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `name` | `string` | no | The voice as the app wrote it: one of the platform's curated names, or a provider's own id. Resolved to a provider and an id when the app declares itself, so an unknown name is refused there and never at the first utterance. |
-| `provider` | `string` | no | The TTS provider: elevenlabs, cartesia, rime, hume, or any other vendor LiveKit reaches. Absent when the curated name decides it. Naming it changes what voice_id means: the runtime passes the id through as that vendor's own, because only ElevenLabs' shape is known here. |
+| `name` | `string` | no | The voice by the name its vendor gives it, where the vendor takes a name for its id; `voice_id` wins when both are sent. |
+| `provider` | `string` | no | The TTS vendor: elevenlabs, cartesia, rime, hume, or any other vendor installed as a LiveKit plugin. Required in a declaration (a settings row may leave it to the default voice); the id is passed through as that vendor's own. |
 | `model` | `string` | no | The provider's model, when the default is not wanted. |
 | `voice_id` | `string` | no | The provider's id for the voice, in that provider's own shape — a 20-character ElevenLabs id, a Cartesia uuid, a Rime speaker name. |
 | `builds` | `string` | no | A class of the vendor's LiveKit plugin other than its TTS, by its name there; a dotted name reaches into a module of the plugin. Absent, the operator's for the vendor, or the plugin's TTS. |
@@ -462,7 +462,7 @@ What memory keeps about a contact across calls, and what it must never keep. Bot
 
 ### `AgentConfig`
 
-What an app declares about its agent: the prompt's layout, the language, the tools, whether it searches its bases itself, and who may see and send what. Every field is optional so a configure can change one thing. The environment — language, voice, models, greeting, hangup, turn, says, hears, knowledge, docs, memory, record — is the agent's settings' unless the class declares it: **what the class declares wins** over the settings for that agent, which may not set it while the class does (`409`, and the settings doors list it under `fixed`). Sent as null, a field is the settings' again; left out of a configure, it stays as the class last declared it.
+What an app declares about its agent: the prompt's layout, the language, the tools, whether it searches its bases itself, and who may see and send what. Every field is optional so a configure can change one thing. The environment — language, voice, models, greeting, hangup, turn, says, hears, knowledge, docs, memory, record — is the agent's settings' unless the class declares it: **what the class declares wins** over the settings for that agent, which may not set it while the class does (`409`, and the settings doors list it under `fixed`). Sent as null, a field is the settings' again; left out of a configure, it stays as the class last declared it. An `agent.configure` is checked before it is taken, so what cannot run is refused when it is declared and never on a call: every model and voice it names is tried on the org's keys (a vendor nobody keyed is refused in the sentence a call would have closed with), and so are its own plugin options or a realtime model on a key the platform lends, ears asked to end the turn that cannot, a search with no base attached, a turn threshold outside its band, and a static block after a dynamic one.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -483,7 +483,7 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `hangup` | `HangupConfig` | no | When the agent hangs up by itself. Declared, it wins over the settings'. |
 | `record` | `boolean` | no | Whether this agent's calls keep their audio; the platform records the whole room, so what is kept is what everybody on the call heard. Declared, it wins over the settings'. |
 | `tools` | `ToolSpec[]` | no | Every tool the agent may ever see. Which ones are visible now is tools.set. |
-| `uses_knowledge` | `boolean` | no | Whether the class searches the knowledge base itself (this.knowledge.search). An environment with no base attached to the agent refuses the registration, so a tool that would find nothing is refused at boot and not on a call. |
+| `uses_knowledge` | `boolean` | no | Whether the class searches the knowledge base itself (this.knowledge.search). An environment with no base attached to the agent refuses the registration, so a tool that would find nothing is refused at boot and not on a call. Sent as null, it is false. |
 | `state_fields` | `StateFieldSpec[]` | no | Who may see each field of the app's state. A field not listed is tenant: seen by the tenant's readers, never by the public. |
 | `view` | `ViewSpec` | no | The panel this agent draws beside a conversation, or absent when it draws none. |
 | `events` | `EventSpec[]` | no | The outside events this agent accepts and from whom. Anything else is refused before it touches the log. |

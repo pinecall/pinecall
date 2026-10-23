@@ -218,8 +218,11 @@ class Log:
                 over = self.sealed or await self._store.is_sealed(self.name)
                 for entry in await self._store.whole(self.name, after=cursor):
                     cursor = entry.seq
+                    self.agent = self.agent or entry.agent
                     if only.passes(entry):
                         yield entry
+                if not self.agent and cursor:
+                    self.agent = await self._said_by(cursor)
                 yield self._marker(cursor, "log.caught_up", {"seq": cursor})
                 if over:
                     return
@@ -284,6 +287,11 @@ class Log:
             await tap(entry)
         if entry.type == TERMINAL_EVENT and self.call is not None:
             await self.seal()
+
+    # A reader's log is made before anybody says whose it is: a marker names the agent its entries do.
+    async def _said_by(self, seq: int) -> str:
+        said = await self._store.since(self.name, after=seq - 1, limit=1)
+        return said[0].agent if said else ""
 
     def _marker(self, seq: int, kind: str, data: JsonObject) -> Entry:
         return Entry(seq=seq, ts=time.time(), call=self.call, agent=self.agent, type=kind, ephemeral=True, data=data)

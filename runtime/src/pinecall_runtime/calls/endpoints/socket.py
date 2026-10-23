@@ -10,8 +10,8 @@ from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.calls.service.socket import NOT_JSON, AppSocket
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.enums import KeyScope
-from pinecall_runtime.exceptions import PinecallError, Unauthorized
-from pinecall_runtime.kit.auth import Actor, check_scopes
+from pinecall_runtime.exceptions import PinecallError
+from pinecall_runtime.kit.auth import Actor, check_scopes, no_actor
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.kit.websockets import close_reason, refuse_socket
@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-TAKES_A_KEY = "this endpoint takes an API key"
 # The most a socket waits for its inbox to be heard on: the signal answers or says it is down within two seconds.
 INBOX_HEARD_WITHIN_S = 5.0
 
@@ -31,7 +30,7 @@ async def apps_socket(websocket: WebSocket) -> None:
     actor: Actor | None = getattr(websocket.state, "actor", None)
     try:
         if actor is None:
-            raise Unauthorized(TAKES_A_KEY)
+            raise no_actor(websocket)
         check_scopes(actor, (KeyScope.app,))
     except PinecallError as refused:
         await refuse_socket(websocket, refused)

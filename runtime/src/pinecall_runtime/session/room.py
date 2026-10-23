@@ -29,6 +29,7 @@ from pinecall_runtime.wire.commands import (
     ParticipantRemove,
     RoomInvite,
     RoomSend,
+    said_as,
 )
 from pinecall_runtime.wire.parts import ParticipantKind, TrackKind, TrackSource, TransferMode
 from pinecall_runtime.wire.room import (
@@ -147,7 +148,7 @@ class CallRoom:
             case CallDtmf():
                 await self._tones(command)
             case _:
-                self._failed(type(command).__name__, f"{type(command).__name__} is not something this call does")
+                self._failed(said_as(command), f"{said_as(command)} is not a verb of a call's room")
 
     # Success is written by the room itself, as participant.joined of kind sip.
     async def _invite(self, wanted: RoomInvite) -> None:

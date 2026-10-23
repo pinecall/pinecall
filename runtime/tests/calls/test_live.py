@@ -19,7 +19,7 @@ from tests.conftest import needs_the_database
 from tests.session.conftest import AGENT, context_of
 
 APP = "app_1"
-NO_ROOM = "RoomSend is not something this call does"
+NO_ROOM = "room.send acts on a call's line, and this call is written"
 
 
 class Written:

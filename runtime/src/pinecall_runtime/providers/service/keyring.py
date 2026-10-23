@@ -234,8 +234,10 @@ def parse_lending(entries: Iterable[str]) -> frozenset[str]:
 
 
 # Checked where an agent declares itself and where its settings are set, not first on a call.
+# Every stage the agent names is tried on its key here, when it is declared: a vendor nobody keyed is
+# refused at agent.configure in the sentence a call would have closed with, never on the first call.
 def refuse_what_cannot_run(config: AgentConfig, catalog: Catalog, keys: Keyring) -> None:
-    """Refuse a plugin of its own or a realtime model on a lent key, or an end of turn a stage cannot have."""
+    """Refuse a stage with no key, its own plugin or a realtime model on a lent key, or an end of turn it lacks."""
     stages: tuple[tuple[Modality, Model | Voice | None], ...] = (
         ("llm", config.llm),
         ("stt", config.stt),
@@ -243,7 +245,7 @@ def refuse_what_cannot_run(config: AgentConfig, catalog: Catalog, keys: Keyring)
         ("llm", config.judge),
     )
     for modality, declared in stages:
-        if declared is not None and _names_its_own(declared):
+        if declared is not None:
             stage_on_its_key(modality, declared, catalog, keys)
     if config.realtime is not None:
         talking_of(config.realtime, keys)
@@ -362,11 +364,6 @@ def _ended_by(chosen: Running, end_of_turn: EndOfTurn) -> Running:
     return dataclasses.replace(
         chosen, ends_the_turn=False, turn_model="smart-turn-v3" if end_of_turn == "smart-turn" else "v1-mini"
     )
-
-
-def _names_its_own(declared: Model | Voice) -> bool:
-    ends = isinstance(declared, Model) and declared.end_of_turn is not None
-    return ends or declared.builds is not None or bool(declared.options)
 
 
 def _a_snapshot_of(entry: str, model: str) -> bool:

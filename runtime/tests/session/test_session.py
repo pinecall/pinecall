@@ -402,7 +402,7 @@ async def test_the_agents_transfer_on_a_written_call_fails_as_a_transfer_and_the
 async def test_a_supervisors_transfer_on_a_call_with_no_room_is_refused_by_name(box: Box) -> None:
     session = a_session(box, NOBODY)
     await session.start()
-    with pytest.raises(Forbidden, match="TransferVerb is not something this call does"):
+    with pytest.raises(Forbidden, match="supervise transfer acts on a call's line, and this call is written"):
         await session.supervise(supervised(TransferVerb(to="+59829000000")))
     await text.end_text(session, "caller_hung_up", "caller")
 

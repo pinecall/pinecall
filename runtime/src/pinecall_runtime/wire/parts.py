@@ -352,9 +352,10 @@ class AgentConfig(WireModel):
     docs: DocsConfig | None = None
     memory: MemoryConfig | None = None
     hangup: HangupConfig | None = None
-    record: bool = True
+    # Sent as null, a setting is the org's settings' again; `uses_knowledge` null is false.
+    record: bool | None = True
     tools: list[ToolSpec] | None = None
-    uses_knowledge: bool = False
+    uses_knowledge: bool | None = False
     state_fields: list[StateFieldSpec] | None = None
     view: ViewSpec | None = None
     events: list[EventSpec] | None = None

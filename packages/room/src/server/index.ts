@@ -44,7 +44,7 @@ export interface MintOptions {
   url: string;
   agent: string;
   scope: "talk" | "chat";
-  /** How long the ticket lives. The gateway's default is 60 s, and 600 s the most. */
+  /** How long the ticket lives. The gateway's default is 60 s; past a day (86 400 s) it is cut to a day. */
   ttl_s?: number | undefined;
   /** Who is calling: memory files the call under it. */
   contact?: string | undefined;

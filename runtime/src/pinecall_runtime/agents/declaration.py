@@ -31,6 +31,9 @@ NO_LIMIT = 0
 LONGEST_TOOL_S = 300
 # What a tool is given to answer when it declares no timeout_s.
 DEFAULT_TOOL_TIMEOUT_S = 30.0
+# The ears that take these knobs take them only inside these bands and refuse the connection
+# outside one, so the call runs deaf: a setting and a declaration are held to them alike.
+TURN_BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
 # The argument the platform adds to every tool: the line the model says as the tool runs.
 SAY = "say"
 
@@ -80,6 +83,10 @@ class Turn:
             value = getattr(self, name)
             if value is not None and value < 0:
                 raise ValidationError(f"{name} is a count, 0 or more")
+        for knob, (low, high) in TURN_BANDS.items():
+            value = getattr(self, knob)
+            if value is not None and not low <= value <= high:
+                raise ValidationError(f"{knob} {value} is outside {low} to {high}, the band the ears take it in")
         # Deepgram rejects the connection when eager > eot, leaving the call without STT.
         eager, eot = self.eager_eot_threshold, self.eot_threshold
         if eager is not None and eot is not None and eager > eot:

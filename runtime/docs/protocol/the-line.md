@@ -33,9 +33,13 @@ fence: the colleague a caller is put through to never had to ring the org. `room
 the same way.
 
 `mode` is optional; unsaid, it is cold for a caller on a SIP leg and warm for one in a browser.
-Asked by name, it is refused rather than swapped. A written conversation has no line: the command
-is refused as an `error` entry (`refused`, "CallTransfer is not something this call does") on the
-agent's log, and no `call.transferred` is written; `call.attention` is the way to a person there.
+Asked by name, it is refused rather than swapped. A written conversation has no line: the app's
+`call.transfer` is answered at once with `call.transferred` `ok: false`, `error` "a written
+conversation has no line to transfer", so a tool that awaits it hears no and goes on;
+`call.attention` is the way to a person there. The other verbs of the line (`call.mute`,
+`call.dtmf`, `room.invite`, `participant.remove` and a supervisor's `transfer`) are refused on a
+written call as an `error` entry, `refused`, naming the verb: "call.mute acts on a call's line, and
+this call is written: it has no audio and no room".
 
 ## Asking for a person
 

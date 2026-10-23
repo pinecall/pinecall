@@ -24,6 +24,13 @@ HOLDER_HEADER = "pinecall-corner"
 
 # Holder value for org-owned rows: an empty string, not NULL, because it is part of primary keys.
 THE_ORGS_OWN = ""
+TAKES_A_KEY = "this endpoint takes an API key"
+NOT_A_LIVE_KEY = (
+    "this key opens nothing here: revoked, mistyped or another deployment's. "
+    "Sign in again with `pinecall login`, or mint a new one"
+)
+# What every key of ours starts with, by the env it acts in.
+KEY_PREFIX: dict[Env, str] = {Env.production: "pc_live_", Env.sandbox: "pc_test_"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +92,15 @@ class Actor:
     def opens(self, *scopes: KeyScope) -> bool:
         """Whether the key holds any of the scopes."""
         return any(scope in self.scopes for scope in scopes)
+
+
+# A key that was sent and opens nothing is told apart from no key, so the sentence names the fix;
+# whether it was revoked, mistyped or another deployment's is nobody's to learn from the answer.
+def no_actor(connection: HTTPConnection) -> Unauthorized:
+    """The 401 for a request that reached a key's endpoint with no live key."""
+    secret = authorization_of(connection)
+    sent = secret is not None and secret.startswith(tuple(KEY_PREFIX.values()))
+    return Unauthorized(NOT_A_LIVE_KEY if sent else TAKES_A_KEY)
 
 
 def authorization_of(request: HTTPConnection) -> str | None:
@@ -152,7 +168,7 @@ class Authenticator:
         """The actor; 401 without one, 403 without the scopes."""
         actor: Actor | None = getattr(request.state, "actor", None)
         if actor is None:
-            raise Unauthorized("this endpoint takes an API key")
+            raise no_actor(request)
         if self.persons_only and actor.person is None:
             raise Forbidden("this endpoint is a person's: a server's token does not open it")
         if self.scopes and not actor.opens(*self.scopes):

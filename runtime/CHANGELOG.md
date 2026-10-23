@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased
+
+- **`agent.registered` says the routes the agent answers, and a registration that names a number the org
+  never routed to it is refused.** The registration's `routes` were taken and dropped, so every
+  `agent.registered` said `[]` and a phone number another org held was accepted in silence. The answer now
+  lists `web` and every number the org routed to the agent in that environment, carrying the labels the app
+  gave them; a phone or WhatsApp route the org never gave it is refused naming `pinecall numbers import`,
+  and one with no number is refused too (`calls/service/socket.py`, `answered_routes`). (found by the
+  2026-10-23 eval, M B5)
+- **An agent's own log resumes from `Last-Event-ID`**, as a call's log does, instead of replaying every entry
+  it kept to a reconnecting `EventSource`. (found by the 2026-10-23 eval, M B2)
+- **A field an `agent.configure` sends as `null` holds no value of the class any more.** `null` took the
+  field out of what the class fixes but left the class's last value in the config, so `language: null`
+  kept `fr-FR`; and `record` and `uses_knowledge` refused `null` as a shape error, so a configure that
+  cleared every field was refused whole. The field now goes back to the settings' (`uses_knowledge` to
+  false). (found by the 2026-10-23 eval, M B6)
+- **A declaration is held to the rules the settings are.** A turn threshold outside the band the ears take
+  (`eot_threshold` 0.5 to 0.9, `eager_eot_threshold` 0.3 to 0.9) was refused for a setting and taken from a
+  class, which then ran the call deaf; a static prompt block after a dynamic one was taken too, which
+  re-sent the cached prefix on every turn. Both are refused at `agent.configure` (the bands live in `Turn`
+  itself now, one rule for both); a voice refusal names the wire's fields beside the decorator. (found by
+  the 2026-10-23 eval, M B7)
+- **A model on a vendor nobody keyed is refused when it is declared.** `agent.configure` tried a stage on its
+  key only when it named a plugin of its own, so `llm: {provider: "xai"}` was taken and the first call
+  closed `4503 xai has no key`; every stage the agent names is tried at configure now, in that same
+  sentence. (found by the 2026-10-23 eval, M D10)
+- **A page reads the events it sent, with its own attributes and its contact.** A page's `log_token` named a
+  random reader, never the identity its room token seats, so an `event.received` the page sent was never
+  shown back to it; and `participant_attributes` were checked and dropped, and the contact never became the
+  participant's metadata. The log token now reads as the seated identity, the attributes are published as
+  given, and the contact is the metadata (`accounts/service/tokens.py`, `calls/service/visitors.py`). (found
+  by the 2026-10-23 eval, M B8, M B9)
+- **A call is projected by the declaration it opened with.** Which of its fields are `public` was read from
+  whoever held the agent now, production's first, so a page that read its call after the app left, or a
+  sandbox call while production held the agent, saw an empty state; the call's own kept config decides it.
+  (found by the 2026-10-23 eval, M B11)
+- **`log.caught_up` names the agent** whose log it is, on a reader that resumed with nothing left to replay.
+  (found by the 2026-10-23 eval, M B12)
+- **An app's answer to `end_call` is refused.** The session writes that tool's result itself; an app's was a
+  second result that could arrive first. (found by the 2026-10-23 eval, I F5, L B6)
+- **A verb a written call cannot do is refused by its wire name**, "call.mute acts on a call's line, and this
+  call is written", never by a class name ("CallMute is not something this call does"). (found by the
+  2026-10-23 eval, M D7, L B2)
+- **A key that opens nothing is told apart from no key**: a revoked, mistyped or foreign key is `401 this key
+  opens nothing here`, with the fix, where it read as `this endpoint takes an API key`. (found by the
+  2026-10-23 eval, J N3)
+- **The wire's pages say what the gateway does**: the sandbox's `agent.*` entries are ephemeral, an unheld
+  slug's agent log is `404`, `callback.requested` is on the call's log when the agent asked for it, `types`
+  always passes the entries a stream ends on, `/sessions`' parameters, `?token=` with a key, the feed's
+  `call.started`/`call.ended` data, the `—` legend, the nullable fields, `DevRefusal`, and the smallest app
+  runs as pasted. (found by the 2026-10-23 eval, M B1, M B3, M B4, M D1–M D9)
+
 ## 0.11.16 — every finding of the eval closed: seats, quotas, privacy, the wire's promises (2026-10-23)
 
 - **A worker's `call.started` with no `caller` is refused `400` naming the field, and a call whose start

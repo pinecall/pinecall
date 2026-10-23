@@ -359,7 +359,7 @@ class AgentRegistry:
     # ── claiming ──
 
     async def register(self, owner: SocketId, scope: Scope, slug: str, wanted: AgentRegister) -> Entry:
-        """This socket holds the agent from now on; agent.registered is written on its log."""
+        """This socket holds the agent from now on; agent.registered, with the routes it answers, on its log."""
         owner_org = await self.logs.store.owner(slug)
         if owner_org is not None and owner_org != scope.org:
             raise AnotherOrgs(slug)
@@ -377,7 +377,7 @@ class AgentRegistry:
                 **wanted.model_dump(include={"sdk", "takes_unclaimed", "answers_dev", "says_done"}),
             )
         )
-        data = AgentRegistered(routes=[], app=owner, sdk=wanted.sdk, env=scope.env)
+        data = AgentRegistered(routes=list(wanted.routes), app=owner, sdk=wanted.sdk, env=scope.env)
         return await self._write(scope.env, slug, "agent.registered", data)
 
     async def configure(

@@ -118,14 +118,20 @@ async def mint_room_token(
         serving.signer,
         call,
         scope,
-        tokens.Visitor(expires_at=expires_at, identity=visitor, dispatch=fleet.room_dispatch(the_fleet, carried)),
+        tokens.Visitor(
+            expires_at=expires_at,
+            identity=visitor,
+            dispatch=fleet.room_dispatch(the_fleet, carried),
+            attributes=body.participant_attributes,
+            metadata=carried.contact,
+        ),
     )
     await tokens.record_minted(session, call, org_scope, agent, scope, expires_at)
     return MintTokenResponse(
         server_url=serving.handles.settings.browser_livekit_url(org_scope.env),
         participant_token=token,
         call=call,
-        log_token=tokens.log_token(serving.signer, call, body.log),
+        log_token=tokens.log_token(serving.signer, call, body.log, viewer=visitor),
         resume_token=tokens.resume_token(serving.signer, call),
     )
 
@@ -250,13 +256,18 @@ async def _resumed(session: AsyncSession, serving: Serving, org_scope: Scope, bo
 # and the call goes on. No dispatch rides the token, so no second call can open from it.
 def _back_in(serving: Serving, org_scope: Scope, body: MintTokenRequest, earlier: Earlier) -> MintTokenResponse:
     ttl = min(body.ttl_s or tokens.ONE_VISIT_TTL_S, LONGEST_VISIT_TTL_S)
-    seated = tokens.Visitor(expires_at=time.time() + ttl, identity=earlier.caller)
+    seated = tokens.Visitor(
+        expires_at=time.time() + ttl,
+        identity=earlier.caller,
+        attributes=body.participant_attributes,
+        metadata=_contact_of(earlier),
+    )
     token = tokens.room_token(serving.signer, earlier.call, _visit_scope(body.scope), seated)
     return MintTokenResponse(
         server_url=serving.handles.settings.browser_livekit_url(org_scope.env),
         participant_token=token,
         call=earlier.call,
-        log_token=tokens.log_token(serving.signer, earlier.call, body.log),
+        log_token=tokens.log_token(serving.signer, earlier.call, body.log, viewer=earlier.caller),
         resume_token=tokens.resume_token(serving.signer, earlier.call),
     )
 
