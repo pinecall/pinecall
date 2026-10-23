@@ -42,12 +42,12 @@ describe("pinecall docs", () => {
     ]);
   });
 
-  it("rm says the file is gone, and a file the base has not is the gateway's sentence with exit 1", async () => {
+  it("rm says the file is gone, and a file the base has not is the gateway's sentence with exit 2, as a name typed wrong is", async () => {
     answer("delete", "/v1/knowledge/:base/files/*");
     expect((await run(["docs", "rm", "hours.md"])).out).toBe("hours.md gone from front-desk\n");
     refuse("delete", "/v1/knowledge/:base/files/*", 404, "no file prices.md in the base front-desk");
     const ran = await run(["docs", "rm", "prices.md"]);
-    expect(ran.code).toBe(1);
+    expect(ran.code).toBe(2);
     expect(ran.err).toContain("no file prices.md in the base front-desk");
   });
 
