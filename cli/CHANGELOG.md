@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.16] — every refusal exits 2, `test --version` plays the version, `limits` shows every limit
 
 - **`pinecall test --version 2` plays the run on that version of the agent's settings.** The CLI's own
   `-v, --version` was a root option, which commander reads anywhere on the line, so it won over the verb's

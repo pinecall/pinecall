@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.16 — every finding of the eval closed: seats, quotas, privacy, the wire's promises (2026-10-23)
 
 - **A worker's `call.started` with no `caller` is refused `400` naming the field, and a call whose start
   or end the seal cannot read is sealed all the same.** The worker's three append endpoints took a
