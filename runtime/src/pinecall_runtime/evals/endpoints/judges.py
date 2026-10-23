@@ -3,6 +3,8 @@
 from fastapi import APIRouter
 
 from pinecall_runtime.agents.auth import KnownAgent
+from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.agents.service import settings
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals.auth import EvalsKey
@@ -12,6 +14,7 @@ from pinecall_runtime.judging import schemas
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Actor, Scope
 from pinecall_runtime.postgres import Session
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.wire.scores import CallScore, EvalsSpent
 
 router = APIRouter()
@@ -118,6 +121,11 @@ async def _tried(
     entries, declared = await readable(session, serving, actor, call)
     if not is_over(entries):
         return _not_judged(call, NOT_FINISHED)
+    # As the seal reads it: the agent's settings over its class, for the judge it names is theirs to set.
+    configured = await providers.get_catalog(session)
+    declared, _ = await settings.tuned_for_call(
+        session, declared or AgentConfig(slug=entries[0].agent), actor.scope, configured, settings.Picked(call=call)
+    )
     if spec.on is judging.JudgeRunsWhen.simulations and not judging.case_of(entries, declared).simulated:
         return _not_judged(call, ON_SIMULATIONS.format(name=spec.name))
     panel = judging.alone(spec, await calls.panel_for(session, actor.org, entries, declared))

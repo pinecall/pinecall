@@ -8,6 +8,7 @@ module Pinecall
     # `Fiber[]` is inherited by child fibers and separate per thread.
     module Author
       KEY = :pinecall_author
+      CALL = :pinecall_author_call
 
       module_function
 
@@ -16,14 +17,20 @@ module Pinecall
         Fiber[KEY]
       end
 
-      # Run the block with state writes attributed to `name`.
-      def with(name)
-        held = Fiber[KEY]
+      # The model's id for the tool call the current author is running, or nil.
+      def call_id
+        Fiber[CALL]
+      end
+
+      # Run the block with state writes attributed to `name`; a tool also says the model's `call_id`.
+      def with(name, call_id = nil)
+        held = [Fiber[KEY], Fiber[CALL]]
         Fiber[KEY] = name
+        Fiber[CALL] = call_id
         begin
           yield
         ensure
-          Fiber[KEY] = held
+          Fiber[KEY], Fiber[CALL] = held
         end
       end
     end

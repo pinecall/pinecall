@@ -98,6 +98,8 @@ export const CallStartedSchema = z.strictObject({
   medium: MediumSchema.nullish(),
   /** The state the call opens in, when whoever opened it asked for one (a golden, a persona, `?state=`); absent otherwise. */
   state: z.record(z.string(), z.unknown()).nullish(),
+  /** What the call was opened with and sealed: the token's `metadata`, as sent; absent when none. */
+  metadata: z.record(z.string(), z.unknown()).nullish(),
 });
 
 /** A call changed hands without ending. */

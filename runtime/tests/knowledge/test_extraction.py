@@ -46,10 +46,17 @@ def scripted(answer: str) -> Running:
     return Running(ACME, "a-key", model=MODEL, options={"replies": [[answer]]})
 
 
-def heard(*spoken: Spoken, policy: MemoryPolicy = THE_POLICY) -> Heard:
+def heard(*spoken: Spoken, policy: MemoryPolicy = THE_POLICY, language: str | None = None) -> Heard:
     """A phone call of the contact's that hung up at HUNG_UP."""
     return Heard(
-        contact=CONTACT, call="call_1", channel=Channel.phone, policy=policy, tools=(), spoken=list(spoken), at=HUNG_UP
+        contact=CONTACT,
+        call="call_1",
+        channel=Channel.phone,
+        policy=policy,
+        tools=(),
+        spoken=list(spoken),
+        at=HUNG_UP,
+        language=language,
     )
 
 
@@ -152,6 +159,37 @@ def test_a_short_word_of_a_fact_never_matches_a_tool_by_its_first_letters() -> N
     assert extraction.admit_ops(ops, THE_POLICY, ("agendarCita", "yield"), set()) == ops
 
 
+# ── what a category is filed under ──
+
+
+def test_a_category_is_filed_under_the_policys_entry_as_written_and_anything_else_under_other() -> None:
+    """Case and spacing aside the model's word is the entry; `usual doctor` is not `su médico habitual`."""
+    ops = [
+        Op(op="add", text="Es alérgica a la penicilina", category=" ALERGIAS "),
+        Op(op="add", text="Su médico es el doctor Vidal", category="Su  Médico habitual"),
+        Op(op="add", text="Su médico de siempre es Vidal", category="médico habitual"),
+        Op(op="add", text="Prefiere la mañana", category=None),
+    ]
+    filed = extraction.admit_ops(ops, CLARAS_POLICY, (), set())
+    assert [op.category for op in filed] == ["alergias", "su médico habitual", "other", "other"]
+    assert [op.text for op in filed] == [op.text for op in ops]
+
+
+def test_an_update_is_filed_like_an_add_and_an_invalidate_has_nothing_to_file() -> None:
+    """The category of an update is read against the list; an invalidate carries none."""
+    ops = [Op(op="update", of="k1", text="Prefiere la tarde", category="Preference"), Op(op="invalidate", of="k2")]
+    assert extraction.admit_ops(ops, THE_POLICY, (), {"k1", "k2"}) == [
+        Op(op="update", of="k1", text="Prefiere la tarde", category="preference"),
+        Op(op="invalidate", of="k2"),
+    ]
+
+
+def test_a_forgotten_category_is_refused_before_it_can_be_filed_as_other() -> None:
+    """The forget list reads what the model wrote: a fact under `Religion` is never `other`."""
+    ops = [Op(op="add", text="Es católico", category="Religion"), Op(op="add", text="Es católico", category="faith")]
+    assert [op.category for op in extraction.admit_ops(ops, THE_POLICY, (), set())] == ["other"]
+
+
 # ── what the model is asked ──
 
 
@@ -176,6 +214,68 @@ async def test_with_nothing_known_the_model_is_told_so_and_no_forget_line_is_wri
     system, shown = said_to(models[0])
     assert "Never write anything about" not in system
     assert shown.startswith("Nothing is known")
+
+
+async def test_the_model_is_told_to_copy_a_category_and_write_in_the_third_person(models: list[AcmeLLM]) -> None:
+    """Categories exactly as written, and facts about the contact, never in the contact's voice."""
+    await extraction.ask_model(scripted("[]"), heard(Spoken("user", "I prefer mornings")), [])
+    system, _ = said_to(models[0])
+    assert "copied exactly as written" in system
+    assert 'in the third person and never in their own voice ("Allergic to penicillin.", "Prefers mornings.")' in system
+
+
+async def test_the_model_is_told_the_language_the_call_was_held_in(models: list[AcmeLLM]) -> None:
+    """Said by the recognizer or the agent: the tag is in the system message, whatever the agent's lines are in."""
+    call = heard(Spoken("user", "I'm allergic to penicillin"), Spoken("agent", "Anotado"), language="en")
+    await extraction.ask_model(scripted("[]"), call, [])
+    assert "written in en, the language this call was held in" in said_to(models[0])[0]
+
+
+async def test_with_no_language_said_the_model_writes_in_the_callers(models: list[AcmeLLM]) -> None:
+    """A written call of an agent that declares none: the language of the lines marked `user`, not the agent's."""
+    await extraction.ask_model(scripted("[]"), heard(Spoken("user", "I'm allergic to penicillin")), [])
+    system = said_to(models[0])[0]
+    assert "in the language the contact speaks in the lines marked `user`" in system
+    assert "the language this call was held in" not in system
+
+
+ENGLISH_CALLER = "Hi, you can call me Marta. I'm allergic to penicillin and I always prefer mornings."
+SPANISH_CALLER = "Hola, soy Marta y soy alérgica a la penicilina, y prefiero siempre las mañanas."
+
+
+def test_the_calls_language_is_the_one_the_caller_spoke() -> None:
+    """The recognizer's word first, whatever the lines or the setting say; then what the caller's own lines say."""
+    turns = [
+        Spoken("user", "hola", "es"),
+        Spoken("agent", "hi"),
+        Spoken("user", "sí", "es"),
+        Spoken("user", "ok", "en"),
+    ]
+    assert extraction.language_of(turns, "en") == "es"
+    assert extraction.language_of([Spoken("user", SPANISH_CALLER)], "en") == "spanish"
+
+
+def test_a_written_english_call_of_an_agent_set_to_spanish_is_english() -> None:
+    """The setting is not the caller's language: the agent's Spanish lines and `es` do not make the call Spanish."""
+    turns = [Spoken("user", ENGLISH_CALLER), Spoken("agent", "Hola Marta, ¿en qué puedo ayudarle?")]
+    assert extraction.language_of(turns, "es") == "english"
+
+
+def test_the_agents_language_stands_in_only_where_the_callers_lines_tell_nothing() -> None:
+    """Too little to count, or digits alone: the setting, else nobody's."""
+    turns = [Spoken("user", "ok"), Spoken("agent", "hola, ¿en qué puedo ayudarle?", "es")]
+    assert extraction.language_of(turns, "en") == "en"
+    assert extraction.language_of([Spoken("user", "6 0 0 1 2 3")], None) is None
+
+
+async def test_a_golden_is_asked_in_the_language_its_caller_spoke_else_the_agents(models: list[AcmeLLM]) -> None:
+    """`pinecall remember` asks as a hang-up would: the case's caller lines first, the agent's setting after."""
+    english = ExtractionGolden.model_validate({"name": "english", "said": [("caller", ENGLISH_CALLER)]})
+    unsaid = ExtractionGolden.model_validate({"name": "unsaid", "said": [("caller", "Soy Marta")]})
+    for case in (english, unsaid):
+        await extraction.extract_case(scripted("[]"), case, policy=THE_POLICY, tools=(), language="es", at=HUNG_UP)
+    assert "written in english, the language this call was held in" in said_to(models[0])[0]
+    assert "written in es, the language this call was held in" in said_to(models[1])[0]
 
 
 # ── remember: what a hang-up writes ──
@@ -233,6 +333,26 @@ async def test_a_fact_written_carries_its_embedding_model_and_the_tokens_come_ba
     )
     assert [fact.model for fact in await history_of(sessions, scope)] == [FLAT.model]
     assert len(models) == 1
+
+
+@needs_the_database
+async def test_a_fact_is_written_under_the_policys_category_as_written_or_under_other(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """The model's `Health ` is the policy's `health`; a word the policy does not have is `other`."""
+    answer = (
+        '[{"op": "add", "text": "Allergic to penicillin.", "category": "Health "},'
+        ' {"op": "add", "text": "Prefers mornings.", "category": "time of day"}]'
+    )
+    done = await remembered(sessions, embedder, scope, answer, heard(language="en"))
+    assert [(fact.text, fact.category) for fact in done.op.facts] == [
+        ("Allergic to penicillin.", "health"),
+        ("Prefers mornings.", "other"),
+    ]
+    assert {(fact.text, fact.category) for fact in await history_of(sessions, scope)} == {
+        ("Allergic to penicillin.", "health"),
+        ("Prefers mornings.", "other"),
+    }
 
 
 @needs_the_database
@@ -320,6 +440,15 @@ def test_a_category_the_call_taught_about_and_nothing_was_written_under_is_a_fai
     assert [item.check for item in answer.broke] == ["writes"]
     assert "cómo prefiere que le llamen" in answer.broke[0].detail
     assert judged(a_case(expect=ExtractionExpected(writes=["alergias"])), an_add("x", "ALERGIAS")).held
+
+
+def test_a_fact_the_model_filed_outside_the_list_breaks_the_category_it_was_for_and_says_what_it_was_filed_as() -> None:
+    """`médico habitual` is not `su médico habitual`: the case breaks, and the report shows `other` was written."""
+    case = a_case(expect=ExtractionExpected(writes=["su médico habitual"]))
+    answer = judged(case, an_add("Su médico de siempre es la doctora Moreno.", "médico habitual"))
+    assert [item.check for item in answer.broke] == ["writes"]
+    assert "was: ['other']" in answer.broke[0].detail
+    assert answer.wrote == ["add · other · Su médico de siempre es la doctora Moreno."]
 
 
 def test_a_forgotten_fact_is_refused_and_a_card_number_kept_elsewhere_is_the_failure() -> None:

@@ -1,6 +1,8 @@
 """The call.started entry: who called whom, on what, when, and what the call opened in."""
 
-from pinecall_runtime.calls.context import CallContext
+from dataclasses import asdict
+
+from pinecall_runtime.calls.context import CallContext, Contact
 from pinecall_runtime.enums import Direction, Medium
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.wire import events as wire
@@ -21,7 +23,7 @@ def started(context: CallContext, at: float, worker: str | None, *, medium: Medi
         "run": context.run,
         "persona": context.persona,
         "expects": list(context.expects) or None,
-        "caller": None,
+        "caller": _caller_of(context.contact),
         "started_at": at,
         "env": context.env.value,
         "medium": medium.value,
@@ -32,4 +34,13 @@ def started(context: CallContext, at: float, worker: str | None, *, medium: Medi
         started["state"] = dict(context.state)
     if context.pinned_day:
         started["today"] = context.pinned_day.isoformat()
+    if context.metadata:
+        started["metadata"] = dict(context.metadata)
     return wire.CallStarted.parse(started, "call.started")
+
+
+# The contact the call was opened with is who is on the line: the hook reads it as `call.contact`, the
+# facts file the call under it and an erasure by it finds the call. Nothing named, nobody yet.
+def _caller_of(contact: Contact | None) -> JsonObject | None:
+    named = {} if contact is None else {field: value for field, value in asdict(contact).items() if value is not None}
+    return named or None

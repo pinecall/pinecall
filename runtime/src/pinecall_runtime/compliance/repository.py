@@ -88,9 +88,9 @@ class ReadRepository(Repository[Read]):
         statement = insert(Read).from_select(["org", "env", "subject", "what", "reader"], row)
         await self.session.execute(statement)
 
-    async def of_org(self, org: str, *, subject: str | None = None, limit: int = A_PAGE) -> Sequence[Read]:
-        """The org's reads, newest first, of one subject when named."""
-        statement = self.statement().where(Read.org == org)
+    async def of_env(self, org: str, env: Env, *, subject: str | None = None, limit: int = A_PAGE) -> Sequence[Read]:
+        """The org's reads in the env, newest first, of one subject when named."""
+        statement = self.statement().where(Read.org == org, Read.env == env)
         if subject is not None:
             statement = statement.where(Read.subject == subject)
         return await self.all(statement.order_by(Read.at.desc(), Read.id.desc()).limit(limit))

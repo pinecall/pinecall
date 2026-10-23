@@ -49,15 +49,19 @@ and remove work on it by name. Every endpoint here takes a key that opens `app`.
 **Refused when it is saved**, with a sentence, never on a call: two tools of one name, a tool
 called as one of the platform's own (`collect`, `end_call`, `current_date`, `recall`, `search`,
 `say`), a URL that is not `https://`, a `{param}` in a URL that is none of the tool's parameters, a
-secret named outside a header, and a secret the env has none of. A deploy checks production's own
-secrets: one set in the sandbox alone is said before production answers a call.
+secret named anywhere but a header's value (the instructions, a greeting, a description, a URL: every
+string of the definition is read, with one sentence saying which), and a secret the env has none of. A
+deploy checks production's own secrets: one set in the sandbox alone is said before production answers
+a call.
 
 **The fence.** The gateway reaches what a tenant typed, so every request is held to the public
 internet: `https` only, the name resolved and every address public (never loopback, private,
 link-local — the cloud's metadata address — or a name the box answers to, `.svc`, `.internal`),
 no redirect followed, the answer read up to 256 KB, the tool's own timeout (10 s unless it says,
 30 s at most). A secret travels in the request's headers alone: never in the prompt, the log, a
-`tool.call` or a `tool.result`. The name is resolved before the request and again by the HTTP
+`tool.call` or a `tool.result`. An API that sends it back (one that echoes the headers it got) has
+its value masked as `***` in the answer, by value and wherever it came back, before the model, the
+log, the `tool.result` or Try's answer holds it. The name is resolved before the request and again by the HTTP
 client, so a DNS answer that changes between the two is not ruled out: the webhooks of
 [alerts](gateway-api.md) take the same risk.
 
@@ -75,7 +79,9 @@ is refused: a slug is one agent.
 For each call the socket is sent the call's entries as any app is: at `call.started` (or
 `call.attached`, rebuilding the call from its state) it sends `state.set` with what is collected,
 `prompt.set` for `identity`, `tools` and `view`, and `tools.set`; at `tool.call` it sends the
-request or runs `collect`, then `tool.result`; at `call.ended` it posts the results. In the sandbox a
+request or runs `collect`, then `tool.result`; at `call.ended` it posts the results. The one `tool.call`
+it leaves alone is `end_call`, the hang-up the model uses when `end_when_done` lets it: the session
+writes that call and its result itself, so the call has one result. In the sandbox a
 save reaches the calls already open: the socket sends again the blocks that changed and
 `tools.set`, so a call's next turn runs on the new definition (the console's Try it is one). In
 production a call keeps the definition it opened on while it runs on that gateway, and a deploy

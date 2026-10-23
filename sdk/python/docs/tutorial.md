@@ -72,12 +72,12 @@ Four things are worth naming, because they are the whole design:
 - **A tool's docstring is what the model reads about that tool, and its signature is the schema.**
   The annotations become the JSON Schema the model fills, and the same model validates what it
   sends before your method runs: a `Literal` is an enum, a default makes a parameter optional.
-  `pii=` names the arguments that carry personal data and are masked in the log; one naming a
-  parameter the method has not is refused when the class is created, by name — as is a tool with no
+  `pii=` names the arguments that carry personal data: the log masks their values wherever the
+  agent wrote them down; one naming a parameter the method has not is refused when the class is created, by name — as is a tool with no
   docstring, a `*args`, or a `stage=` the `Literal` does not hold.
 - **Annotated fields are the state, and tools are the only writers.** `self.patient = …` renders the
-  prompt again and writes a `state.changed` line carrying the tool's own name; the same assignment
-  anywhere else raises `UnauthoredWrite`. Each field is a descriptor, so the writer *is* the
+  prompt again and writes a `state.changed` line whose `cause` names the tool and the model's call of
+  it, one line for each field it writes; the same assignment anywhere else raises `UnauthoredWrite`. Each field is a descriptor, so the writer *is* the
   recorder, and the author rides a `ContextVar`, so two calls served at once never mix.
 - **The view is a template, beside the class.** `views/<slug>.jinja` is the convention, so nothing
   names it, and every state field is in scope under its own name. Not one framework tag is in it,

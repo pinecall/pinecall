@@ -31,8 +31,8 @@ every command the agent sent, and lets the test say what happened next.
 
 | you write | what happens |
 |---|---|
-| `gateway.call_started(from:, channel:, id:, state:)` | a call opens, `on_call` runs, then `state:` (what `call.started` carries when a golden or a persona opened it) is written over the hook's, and the first prompt goes out. Returns the handle |
-| `call.tool("free_slots", day: "Tuesday")` | the model calls a tool. Returns the `tool.result` the agent sent back |
+| `gateway.call_started(from:, to:, channel:, direction:, caller:, metadata:, id:, state:)` | a call opens, `on_call` runs, then `state:` (what `call.started` carries when a golden or a persona opened it) is written over the hook's, and the first prompt goes out. Returns the handle |
+| `call.tool("free_slots", day: "Tuesday")` | the model calls a tool. Returns the whole `tool.result` the agent sent back: `{ call_id:, name:, output:, duration_s: }`, with `error:` in place of `output:` when the tool raised. What the tool returned is `[:output]`, as the model reads it |
 | `call.said("Tuesday works for me")` | the caller said something |
 | `call.fact("agenda.changed", { slots: [] })` | a fact from the tenant's backend. `from: "participant"` for a browser |
 | `call.ended` | the call is over, `on_end` runs |
@@ -63,6 +63,12 @@ def test_a_phone_call_offers_two_slots
   assert_includes by_phone.prompt, "Offer at most two"
 end
 
+def test_a_tuesday_is_answered_with_the_slots_the_agenda_has
+  call = @gateway.call_started(from: "+34600123456")
+
+  assert_equal ["Tuesday 10:00", "Tuesday 11:00"], call.tool("free_slots", day: "Tuesday")[:output]
+end
+
 def test_a_slot_nobody_offered_is_refused_instead_of_booked
   call = @gateway.call_started(from: "+34600123456")
   call.tool("free_slots", day: "Tuesday")
@@ -78,8 +84,8 @@ end
 ```
 
 A tool that raises is not a broken test: the model is waiting for an answer and reads the message
-as the tool's own result, so `call.tool(...)` gives you back `{ error: "…" }` and the call carries
-on. That is what you assert on.
+as the tool's own result, so `call.tool(...)` gives you back a result with `error: "…"` and no
+`output:`, and the call carries on. That is what you assert on.
 
 ## Without mounting anything
 
@@ -190,7 +196,7 @@ facts memory already holds about that caller, and what must come of it. One file
 | `holds` | what memory already holds about this caller. They are shown to the model with ids, and nothing is written to or read from the memory table |
 | `plants` | sentences somebody tried to get into memory. Planting one IS the assertion: admission must refuse every one of them |
 | `channel` | `phone` (the default), `web` or `whatsapp`, as the model is told it |
-| `expect.writes` | every category named got at least one fact. The words are the org's memory policy, `pinecall memory policy --remember` — a category the policy never names is refused as a bug in the golden, not run |
+| `expect.writes` | every category named got at least one fact. The words are the org's memory policy, `pinecall memory policy --remember` — a category the policy never names is refused as a bug in the golden, not run. A fact the model files under a word the policy does not have is written as `other`, which satisfies no `writes` |
 | `expect.never` | no fact was written under any of these. Your class's own `forget:` words |
 | `expect.never_says` | **the sharper one**: no fact CARRIES this value, under whatever category. Matched on the words as they fold and on the digits alone, so `4242 4242 4242 4242` catches `4242424242424242` too |
 | `expect.invalidates` | every held fact named here was superseded — and, the mirror, **no other held fact was**. That is the half that catches a model which replaces whatever it touches |

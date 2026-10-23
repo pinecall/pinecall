@@ -54,6 +54,8 @@ class CallStarted(WireModel):
     state: JsonObject | None = None
     # The day the call runs in, on a call an eval run opened: a golden may pin it.
     today: str | None = None
+    # What the call was opened with and sealed: the token's `metadata`, as sent.
+    metadata: JsonObject | None = None
 
 
 class CallAttached(WireModel):

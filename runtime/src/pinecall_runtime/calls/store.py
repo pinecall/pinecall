@@ -167,6 +167,11 @@ class Store:
         async with self.sessions.begin() as session:
             await PrivateRepository(session).keep(log, rows)
 
+    async def private_tool_calls(self, log: str, after: int) -> list[tuple[Entry, str]]:
+        """The tool.call entries above `after` that kept private values, with them sealed."""
+        async with self.sessions() as session:
+            return await PrivateRepository(session).of_tool_calls(log, after)
+
     async def private_of_entry(self, log: str, seq: int) -> str | None:
         """The sealed private value of one entry, or None."""
         async with self.sessions() as session:

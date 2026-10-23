@@ -3,7 +3,8 @@
 import pytest
 
 from pinecall.errors import WireError
-from pinecall.wire.events_turn import StateCauseEvent, StateCauseTool, StateChanged
+from pinecall.wire.events_turn import StateChanged
+from pinecall.wire.parts import StateCauseEvent, StateCauseHook, StateCauseTool
 
 
 def test_a_state_change_names_its_cause_and_the_cause_is_told_apart_by_its_kind() -> None:
@@ -21,6 +22,11 @@ def test_a_state_change_names_its_cause_and_the_cause_is_told_apart_by_its_kind(
         "state.changed",
     )
     assert isinstance(by_a_fact.cause, StateCauseEvent)
+    by_a_hook = StateChanged.read(
+        {"state": {}, "changed": [], "cause": {"kind": "hook", "hook": "on_call"}},
+        "state.changed",
+    )
+    assert isinstance(by_a_hook.cause, StateCauseHook)
 
 
 def test_a_cause_of_a_kind_nobody_declared_is_refused() -> None:

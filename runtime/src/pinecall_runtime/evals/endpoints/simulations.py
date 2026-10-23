@@ -1,7 +1,5 @@
 """The simulation endpoints: a persona put on the agent, the caller's next line, a spoken call placed."""
 
-from dataclasses import replace
-
 from fastapi import APIRouter
 
 from pinecall_runtime.accounts.service import keys
@@ -42,17 +40,17 @@ async def simulate(
     if persona is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=body.persona, agent=body.agent))
     if body.played_by is not None:
-        persona = await _played_by(session, persona, body.played_by)
+        persona = await service.played_on(session, persona, body.played_by)
     registration = serving.registry.serving(scope, body.agent, None)
     if registration is None:
         raise registry.NoApp(body.agent)
     call = calls.new_call_id()
+    caller = service.calling_as(persona)
     # The place on the line is taken before anything is awaited, and given back if what follows
     # refuses the call: a burst of requests can never all pass the count together.
     simulations.admit(call, scope)
     try:
-        await service.admit_simulation(session, serving, scope, body.agent)
-        caller = service.calling_as(persona)
+        await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice)
         line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
         placed = service.Placed(call, body.agent, caller, body.turns, line, dict(persona.state))
         if body.voice:
@@ -65,17 +63,6 @@ async def simulate(
         simulations.release(call)
         raise
     return schemas.SimulationStarted(call=placed.call, voice=body.voice)
-
-
-# A model or a voice this box lacks is refused before the answer, as when a persona is written.
-async def _played_by(session: Session, persona: judging.Persona, played: schemas.PlayedBy) -> judging.Persona:
-    chosen = played.model_dump(exclude_none=True)
-    # A voice belongs to its vendor: a run naming another vendor drops the persona's voice.
-    if "tts" in chosen and "voice" not in chosen:
-        chosen["voice"] = None
-    played_on = replace(persona, **chosen)
-    judging.check_persona_models(await providers.get_catalog(session), played_on.llm, played_on.tts, played_on.voice)
-    return played_on
 
 
 # The gateway holds the vendors' keys: the org's own when it brought one, else the box's lent.
@@ -109,7 +96,7 @@ async def place_voice_call(
     if serving.registry.serving(scope, body.agent, None) is None:
         raise registry.NoApp(body.agent)
     async with simulations.admitted(body.call, scope):
-        await service.admit_simulation(session, serving, scope, body.agent)
+        await service.admit_simulation(session, serving, scope, body.agent, persona, voice=True)
         await service.claim_new_call(session, serving, body.call, body.agent, scope)
         line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)
         placed = service.Placed(body.call, body.agent, persona, body.turns, line, dict(body.state))

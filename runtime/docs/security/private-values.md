@@ -1,9 +1,10 @@
 # Private values — what a call's log keeps of what an agent declared private
 
 An agent may mark values private in two places: a tool's arguments (`pii` on the tool, a list of
-argument names) and the fields of its state (a field declared with visibility `pii`). This page is
-what the runtime does with them, so a tenant can say where a phone number the caller gave ends up,
-and check it.
+argument names) and the fields of its state (a field declared with visibility `pii`). A field is
+private by its name. An argument is private by its **value**: what the model gave for it is private
+wherever the agent wrote it down afterwards. This page is what the runtime does with them, so a
+tenant can say where a phone number the caller gave ends up, and check it.
 
 ## Masked when written, not when read
 
@@ -14,26 +15,46 @@ applied once, where the entry is written, by the gateway, and every reader reads
 
 | entry | what the log keeps |
 |---|---|
-| `tool.call` | `arguments`, with every name the tool lists under `pii` as `***` |
-| `state.changed` · `call.attached` | `state`, with every field declared `pii` as `***` |
+| `tool.call` | `arguments`, with every name the tool lists under `pii` as `***`, and the private values inside the other arguments |
+| `tool.result` | `output`, `error` and `summary`, with the private values inside them |
+| `state.changed` · `call.attached` | `state`, with every field declared `pii` as `***`, and the private values inside the other fields |
+| `custom` | `data`, with the private values inside it: the lines the agent logged |
 
 The key stays, so a reader knows a value exists; the value goes whole, so nothing of it leaks
 through its type. The declaration read is the one the call was opened on, with what a
 `session.configure` sent for that call alone.
 
+## What a private value is, and where it is masked
+
+The values of the arguments a tool lists under `pii`, from the moment their `tool.call` is written:
+strings, numbers, and every string and number inside a list or an object an argument was. A blank
+is no value, and neither is one shorter than three characters (`LEAST_SECRET_CHARS`): `7`, `ok` or
+`Al` cannot be told from a word, and hunting it would mask every such digit or word written after
+it; the argument itself is still `***` by its name. In every entry of the table above a leaf equal
+to a value becomes `***` whole, a number only when it is the value whole, and a string that holds
+one as a whole word has it replaced (`"Saved for Ana"` is `"Saved for ***"`, `Banana` and `Anabel`
+are not touched), the longer value before a shorter one it holds.
+
+A call is not one gateway's: the gateway that writes a `state.changed` or a `tool.result` may not be
+the one that wrote the `tool.call`. Before it writes an entry that could repeat a private value it
+reads the `tool.call` rows other gateways sealed since it last looked, so a call spread over
+gateways masks the same values as one on a single gateway. An agent that declares nothing private is
+never read for it: nothing is masked, sealed or asked of the store.
+
 ## What still has the value, and why
 
-Masking must not change the call, and three things in it need the value itself:
+Masking must not change the call, and four things in it need the value itself:
 
 | who | why | how it gets it |
 |---|---|---|
 | the app's socket | it runs the tool with the arguments, and its state is its own | the gateway sends it the entry as it was written: from memory when it wrote it, read back from the sealed copy when another gateway did |
 | the socket that takes a call over | `call.attached` hands it the state to carry on from | read back from the sealed copy |
-| a written call taken up after a restart | the model reads its earlier tool calls as they were made | read back from the sealed copy |
+| a written call taken up after a restart | the model reads its earlier tool calls and their results as they were made | read back from the sealed copy |
+| the model, when another gateway answered | the gateway the worker asked reads the app's answer off the log | read back from the sealed copy |
 
-The sealed copy is a row of `call_private` per entry that held a private value: the values
-alone, one Fernet token under `PINECALL_VAULT_KEY`, keyed by the entry's log and seq. Nothing reads
-it but those three paths; the doors that read a log, the export, the judges and the facts never do.
+The sealed copy is a row of `call_private` per entry that held a private value: the original of what
+was masked (a member of the arguments, the state or the data, or a whole `output`), one Fernet token
+under `PINECALL_VAULT_KEY`, keyed by the entry's log and seq. Nothing reads it but those paths; the doors that read a log, the export, the judges and the facts never do.
 `pinecall-runtime vault rotate` re-seals it with every other secret, and an erasure (of the call, of
 a contact, of the org, or the nightly retention run) deletes it with the log. A value sealed under
 a key the vault no longer lists reads as `***`.
@@ -46,8 +67,9 @@ everything the call says; it keeps nothing after it.
 - **What was said.** The caller who reads out their phone number is heard, transcribed and kept
   in `turn.user`; an agent's reply that repeats it is kept in `turn.agent`. Transcripts are never
   touched.
-- **A tool's result.** `pii` names arguments; what the tool answered is kept as it came, and is
-  what the model read.
+- **A value that never was a private argument.** A name your own database gave back, and no
+  argument carried, is private only if the state field that holds it is declared `pii`: the log
+  knows the values the model gave, and the fields the agent named.
 - **Metrics, and the call's own numbers** (`from`, `to`), which a call is found by.
 
 ## Recordings

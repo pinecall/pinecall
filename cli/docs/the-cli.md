@@ -9,7 +9,8 @@ can do too. Which environment a verb acts in, and what is yours against what is 
 One module per group, each registering its verbs on the one command tree; every group's module is
 loaded on every invocation. `pinecall` with nothing after it prints the whole CLI on one screen; `pinecall
 <group> --help` prints that group's flags, after a subverb too (`pinecall memory policy --help`);
-and `pinecall --version` (`-v`) prints the version installed. Most groups have a default verb:
+and `pinecall --version` (`-v`) prints the version installed — before a verb only: after one,
+`--version` is that verb's own flag (`pinecall test --version 2`, below). Most groups have a default verb:
 `pinecall numbers` is `numbers list`, `pinecall memory <contact>` is `memory show <contact>`,
 `pinecall deploy` is `deploy up`, `pinecall providers` is `providers catalog`. `docs`, `data`,
 `data erase`, `generate` and `carriers add` have none, and print their help. `--prod` and `--json`
@@ -403,7 +404,8 @@ is passed to the agent's process once, which sends `agent.drain` for every agent
 the live calls to another process holding the agent, or keeps them for the next one that
 registers, and the tools running now are let finish, up to 30 s. One line on stderr says what
 happened — `draining · 1 live call kept for the next process · 1 tool finished` — and then both
-processes exit. A kept call waits two minutes for the next process; none coming, the gateway ends it
+processes exit. A kept call waits two minutes for the next process, whichever gateway that one
+connects to; none coming, the gateway ends it
 (`app_detached`), since a caller left talking to nobody for longer has been let down already. A second signal kills the agent's process at once, and so does one it has not left
 by in 40 s. If `start` itself is killed, the agent's process sees its stdin close and drains on its
 own. Give it that long under its manager ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md), "(c)").
@@ -569,7 +571,10 @@ its class's path, and it is the same word in every verb that reads one (`test`, 
 `remember`, `personas`, `docs`, `memory`); `--agent` names one agent of a project of several, by
 its folder's name, and is required there because a chat talks to one.
 
-`--as` is who is calling — the id memory files the call under. `--state file [--case n]` opens the
+`--as` is who is calling: the call's contact, the id memory files it under. It is the call's
+`call.started.caller` in its log and its state, what the agent's hook reads as `call.contact`
+(`from` stays the visitor id the chat came through), and what `pinecall data erase contact` finds
+the call by. `--state file [--case n]` opens the
 call in a state: the same goldens file `prompt` reads. It rides the call's socket (`?state=`) and
 the gateway puts it on the call's `call.started`, so it opens a call in a colleague's agent too. `--events` prints the wire instead. `--prod` talks to production's
 agent, while your org lets you act there; nothing said is the sandbox.
@@ -624,7 +629,10 @@ Every golden of `agents/<name>/test/goldens/` (at a project's root, each agent's
 **wherever it is held** — your `pinecall start`, a colleague's, production's with `--prod`; nothing
 is started here — scored by the gateway's judges, printed as a matrix. Exits 1
 when a golden did not hold. One agent with no goldens yet is told where to write one and exits 2;
-in a project, an agent with none is named and skipped. Every broken golden is
+in a project, an agent with none is named and skipped. A run that cannot start exits 2 as well, in
+one sentence: another run already going on the agent (named by its id, as below), or a golden the
+gateway's schema refuses (named by the golden and the field: `golden x, turns: List should have at
+most 40 items after validation, not 41`). Every broken golden is
 written whole to `.pinecall/evals/<run>/<golden>.json` — the golden as written, the verdicts, and
 **the requests the model answered**, which the log deliberately keeps only a hash of.
 
@@ -666,13 +674,17 @@ goldens out loud on a real line, which rings the agent as a phone does: at whoev
 at that many dB under them, and `--packet-loss` drops that share of their packets — a fraction
 from 0 to 1 (`0.05` is one in twenty), as `simulate` takes it. A spoken call has
 no test run to assert steps on: `--voice` refuses a golden with an `event` turn or a `then`, and
-judges the final `expect` alone.
+judges the final `expect` alone. The audio flags are for a spoken run and are refused without
+`--voice`, exit 2, as `simulate` refuses them. A spoken run plays the golden files alone — the
+dataset's cases are a real caller's words, played as written calls — so `--voice` asks for none:
+`pinecall test --voice --grep reserva` says the matching goldens out loud, and `--voice` beside
+`--dataset` or `--case` is the gateway's refusal.
 
 **The files and the dataset play together.** A case is a golden the gateway keeps: a real call
 kept at hang-up, or one a person wrote by hand ([`cases`](#cases)). With nothing said, `test` plays
 the golden files of `agents/<name>/test/goldens/` **and** the approved dataset — every case of the
 agent a person approved that is not held out and not kept in the repository, what a nightly asks
-for — and marks each line of the matrix `file` or `case`. `--files` plays the files alone, as a run
+for (a `--voice` run plays the files alone, above) — and marks each line of the matrix `file` or `case`. `--files` plays the files alone, as a run
 did before; `--dataset` plays the dataset alone, and `agents/<name>/test/goldens/` is not read, so a
 project with no goldens yet is not refused. `--case <name>`, repeated, plays those cases by name
 alone, whatever their status — a `pending` one too, which is how the call that broke is reproduced
@@ -736,15 +748,24 @@ when that language has none), so the two sides are told apart by ear. The caller
 `--llm`, `--tts` and `--caller-voice` play the caller on another model or voice **for this run
 alone**: `--llm google/gemini-3.5-flash-lite`, `--tts google --caller-voice Puck`. The persona keeps
 its own; a `--tts` without `--caller-voice` drops the persona's voice for one of that vendor's that
-the agent does not have. A model or a vendor the runtime lacks is refused before the call. The
-caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one
-simulation of the org's `simulations`, and what its caller cost is kept with the call — the usage
-feed's `caller_cost_usd`.
+the agent does not have. A model or a vendor the runtime lacks, or one nobody keyed for the org, is refused before the call opens, and so is a run past the org's `simulations`
+(`429`, and `credits.exhausted` on the agent's log): a refused run opens no call and counts nothing. The
+caller runs on the runtime's keys unless the org brought that vendor's; each run that opens counts as one
+simulation of the org's `simulations` from the moment its call begins (`limits` adds it when the call ends), and what its caller cost is kept with the call — the usage
+feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` names it).
 
 `--listen` puts the call on **this machine's speakers** while it happens: the same hidden `observe`
 seat the console's listen button takes, joined from Node, both tracks mixed onto whichever of
 `ffplay`, `play`, `aplay` or `pw-play` you have. It turns `--voice` on and says so, because a
-written call has no audio in it. `--judge` reads back the `call.score` the log seals on.
+written call has no audio in it. `--judge` reads back the `call.score` the log seals on, and the
+exit follows it: 0 when every judge held, 1 when one answered `broken`, and **2 when nobody judged
+the call** — no judge is on for the agent, only `n/a` and classifications came back, the evals ran
+out, or no `call.score` came within a minute — with the reason in one sentence, because a call nobody
+looked at must never open a gate.
+
+A refusal ends the command at once: the gateway's own sentence on stderr — a vendor nobody keyed is
+its 503, a model or vendor the runtime does not have its 400 — and exit 2, as for every refusal; a call `simulate` had
+already opened is hung up, never left holding one of the org's seats.
 
 ## `personas`
 
@@ -788,7 +809,7 @@ price-shopper written · 3 persona(s)
 `add` writes one whole; `edit` changes what is named and leaves the rest, and `--rename` moves it
 to another name. `--llm`, `--tts` and `--voice` say how the caller is played, in the words
 `agent set` takes for the agent — the model that improvises it, the vendor and the voice its lines
-are read in — and a vendor or a voice the platform does not have is refused when it is written. Unset,
+are read in — and a vendor or a voice the platform does not have, or a vendor nobody keyed for the org, is refused when it is written. Unset,
 the runtime chooses: its default model, and a voice the agent does not have; `edit --voice ''`
 clears one back. `--expect '…'`, repeated, is what the caller expects of the agent, one verifiable
 line each, written "The agent should …": the `expected-outcome` judge holds every call of theirs to
@@ -856,13 +877,13 @@ reads, its question; a name the list has not is refused with exit 2.
 
 ```console
 $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
-offers-next-slot written · 12 judge(s)
+offers-next-slot written · 12 judge(s) in the list
 
 $ pinecall judges add call-reason --asks "Why did the person call?" --answer choice:book,cancel,question
-call-reason written · 13 judge(s)
+call-reason written · 13 judge(s) in the list
 
 $ pinecall judges off relevance --org
-relevance off · 11 judge(s)
+relevance off · 11 judge(s) in the list
 
 $ pinecall judges
 consent           pinecall       on  verdict                       always  Every irreversible tool ran only after the caller agreed to that action.
@@ -889,7 +910,7 @@ did not apply — and N/A is never billed. Each judge that answers is one **eval
 of your org's own key ([`judging`](#judging)) evals are not billed.
 
 `on` and `off` switch one of Pinecall's; one of your own runs while it is written, and the gateway
-refuses a switch of it with **exit 1**, naming `rm`; a name nobody wrote is **exit 2**. `rm` drops one
+refuses a switch of it with **exit 2**, naming `rm`, as it does a name nobody wrote. `rm` drops one
 of your own; Pinecall's are never dropped, and the refusal names `off`. `try` asks one judge of the agent's newest finished
 calls (`--last`, 1 to 50) or of the calls named (`--calls`), and writes nothing: a judge already
 written, or Pinecall's, by its name alone; one not yet saved, written whole with `--asks` and
@@ -925,22 +946,31 @@ trusted from 10 compared labels, agreeing with 80% of them at least
 
 ```
 pinecall judging                                             whether calls are judged, and on what
-pinecall judging [on|off] [--model <vendor/model | haiku | sonnet | opus> [--option key=value …] | --platform] [--json]
+pinecall judging [on|off] [--model <vendor/model | haiku | sonnet | opus> [--option key=value …] | --platform] [--agent <name>] [--json]
 ```
 
 Every finished call of the org is judged at hang-up unless judging is `off`. The judges run on
 Pinecall's judge model, and each judge that answers is one eval on the org's bill. `--model` names
 a model of your own instead — `vendor/model`, or a tier, `haiku` · `sonnet` · `opus`, as `agent set` takes it — for every agent's calls (an agent's own `pinecall agent set --judge`
-wins over it); the gateway tries it on the org's keys before it keeps it. On the org's own key for
+wins over it); the gateway tries it on the org's keys before it keeps it — one small request, and a
+model its vendor turns away is refused in the vendor's words, naming the model, with nothing changed. On the org's own key for
 its vendor (`pinecall providers add`) the model's bill is yours and **its evals are never billed**;
 a local model is your vendor's plugin pointed at your server — `--option base_url=…`, repeated
 `key=value` like `agent set`'s, run on your own key alone. On a key Pinecall lends the evals are
 billed as on Pinecall's, under the platform's ceiling per call. `--platform` goes back to
 Pinecall's model. The judge is asked for a tool call, so the model must call tools.
 
+The line is the org's. `--agent <name>` adds one for that agent: the model its own settings name
+for its calls (`pinecall agent set --judge`), or that its class declares, which win over the org's,
+whose key that is, and whether its evals are billed.
+
 ```console
 $ pinecall judging
 judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call
+
+$ pinecall judging --agent front-desk
+judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call
+  front-desk · judged on openai/gpt-5.4-mini · your own key: evals not billed
 
 $ pinecall judging --model openai/qwen3-32b --option base_url=http://gpu.internal:8000/v1
 judging on · openai/qwen3-32b · base_url="http://gpu.internal:8000/v1" · your own openai key: evals not billed
@@ -948,7 +978,7 @@ judging on · openai/qwen3-32b · base_url="http://gpu.internal:8000/v1" · your
 
 `on` and `off` keep the model; `--model` keeps on or off. A model with no vendor (`qwen3`), `--model`
 beside `--platform`, or `--option` with no `--model` is refused with **exit 2** before anything is
-asked; a model the org's keys cannot run is the gateway's refusal, **exit 1**.
+asked; a model the org's keys cannot run is the gateway's refusal, **exit 2**.
 
 ## `eval`
 
@@ -1165,12 +1195,15 @@ call_5b1f0e9d2c7a4e8f9a1b3c5d7e9f1a2b
 `sessions log <call>` is the call's log as the runtime keeps it, an entry a line: its seq, its time
 in UTC, its type, and what it says — the turns, each tool call with its arguments and what it
 answered or why it was refused, the agent's states, and the rest (metrics, cost, the verdicts) as
-their data, cut at 160 characters. A page reads 200 entries (`--limit`, 1 to 500), and while
+their data, cut at 160 characters (a search's `docs.sources` shows its query and little else: the
+chunks it found are in `--json`). A page reads 200 entries (`--limit`, 1 to 500), and while
 there is more after it, it ends with the line that reads on (`--after <seq>`): the last seq the
 gateway read, so `--types turn.user,tool.call,tool.result`, which keeps only those, never ends the
 reading early — a page it narrowed to a few entries, or to none, still says where to go on.
 `--json` prints the page whole, `{call, entries, next, live}`, as the MCP's `call` tool answers
-it. A tool argument the agent declared `pii` is in the log as `***`, and so it is here.
+it. What the agent declared `pii` is in the log as `***`, and so it is here: the tool's argument
+and the same value wherever the agent wrote it down — the state that took it, what a tool answered,
+a line it logged. What was said (`turn.user`, `turn.agent`) is not touched.
 
 ```console
 $ pinecall sessions log call_5b1f0e9d2c7a4e8f9a1b3c5d7e9f1a2b --after 40 --types turn.user,turn.agent,tool.call,tool.result,agent.state
@@ -1431,19 +1464,21 @@ pinecall kill [agent]                    … and with --prod, in production
 An admin's verb: the agent let go by **every** app that holds it in the environment, whoever's
 process it is — a colleague's `pinecall start`, a deploy, the org's own server. Each app is sent an
 `error` coded `killed` on that agent (`POST /v1/agents/{slug}/kill`, a key that opens both `team`
-and `app`): it prints `<agent> ✗ <agent> was killed by <name>`, keeps answering for its other
-agents, and does not declare this one again when its socket comes back. The agent's live calls move
-as on a drain, to another holder or parked. From that moment it is in no `agent list`, no console
-and no playground.
+and `app`): a `pinecall start` holding it prints `<agent>  ✗ <agent> was killed by <name>`, and every
+app keeps answering for its other agents and does not declare this one again when its socket comes
+back. A `pinecall start` is two apps — the agent's process and the CLI's own socket beside it, which
+answers the console — so one kill lets go of both, and the process is the one that prints. The
+agent's live calls move as on a drain, to another holder or parked. From that moment it is in no
+`agent list`, no console and no playground.
 
 Nothing is erased: its settings and their versions, its calls and their logs stay, and an app that
 declares it again — a `pinecall start` restarted, a save that reloads the class — holds it again.
 Without `agent`, the agent beside the class; from any folder, the slug named. A key that is not an
-admin's is refused with exit 1; an agent no app holds in the env is the gateway's 404, exit 2.
+admin's is refused with exit 2; an agent no app holds in the env is the gateway's 404, exit 2.
 
 ```console
 $ pinecall kill front-desk
-killed front-desk in sandbox: one app let go of it (app_7) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again
+killed front-desk in sandbox: 2 apps let go of it (app_7, app_8) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again
 ```
 
 ## `lexicon`
@@ -1700,7 +1735,7 @@ back: the gateway seals each secret under the platform's vault key and answers t
 - **Twilio.** `--user` is an API key SID (make one at Twilio → Account → API keys, and revoke it
   there any time) or the account SID again, with the auth token as the secret. The pair is tried
   against Twilio before anything is kept, so a pair Twilio refuses is `Twilio refused these
-  credentials` and exit 1. With a Twilio account the platform finds the trunk that points at it, or
+  credentials` and exit 2. With a Twilio account the platform finds the trunk that points at it, or
   makes one, when a number is imported.
 - **A SIP peer.** `--address` is each network it calls from, repeated: an IPv4 address or a network
   no wider than a `/24`, public. Each one **waits for the operator** to approve it before
@@ -1709,7 +1744,7 @@ back: the gateway seals each secret under the platform's vault key and answers t
   registers with.
 - **WhatsApp.** `--phone-number-id` is the number's id at Meta, and the access token is the secret.
   Meta is asked for that number with that token before anything is kept, so an id or a token Meta
-  does not open is `Meta does not open WhatsApp number <id> with this token: …` and exit 1.
+  does not open is `Meta does not open WhatsApp number <id> with this token: …` and exit 2.
 
 `add` with an account the org already holds **replaces its secret**: that is how a key is rotated.
 An account's id is its own: Twilio's account SID, the peer's username, Meta's phone number id.
@@ -1729,9 +1764,11 @@ pinecall limits [--prod]
 
 **What the org may use in this environment, and what it used.** Every limit the deployment gave the
 org (`GET /v1/limits`) as what is used of it; a limit with no number is no limit, and `0` refuses
-everything. Minutes, messages, LLM tokens, evals and simulations are this month's and start again on
-the first (UTC); calls at once, agents, seats and bought numbers are what the org holds now. A refusal
-past a limit is a `429` naming it, and the agent's log gets `credits.exhausted`.
+everything. Minutes, messages, LLM tokens, evals, simulations and the budget (the dollars its calls
+cost, sandbox and production together) are this month's and start again on the first (UTC); calls at
+once, agents, seats, bought numbers, hosted apps, memory facts and knowledge chunks are what the org
+holds now. A refusal past a limit is a `429` naming it, and the agent's log gets `credits.exhausted`,
+whichever limit it was.
 
 The last line is **whose keys a call runs on**: the vendors the org brought keys for
 ([`providers add`](#providers)), and the ones the runtime lends it. A vendor in neither refuses
@@ -1740,16 +1777,20 @@ the call before it starts — bring a key for it.
 ```console
 $ pinecall limits
 sandbox
-  minutes          12 of 30 · starts again 1 Nov
-  messages         41, no limit
-  LLM tokens       18210, no limit
-  evals            40 of 100 · starts again 1 Nov
-  simulations      3, no limit
-  calls at once    0 of 1
-  agents           1, no limit
-  seats            2, no limit
-  bought numbers   0 of 0
-  keys             yours: anthropic · lent by the runtime: google, cartesia, deepgram
+  minutes           12 of 30 · starts again 1 Nov
+  messages          41, no limit
+  LLM tokens        18210, no limit
+  evals             40 of 100 · starts again 1 Nov
+  simulations       3, no limit
+  budget            $1.20, no limit
+  calls at once     0 of 1
+  agents            1, no limit
+  seats             2, no limit
+  bought numbers    0 of 0
+  hosted apps       0, no limit
+  memory facts      14, no limit
+  knowledge chunks  226, no limit
+  keys              yours: anthropic · lent by the runtime: google, cartesia, deepgram
 ```
 
 The MCP's `usage` answers the same, keys included.
@@ -1919,10 +1960,12 @@ $ pinecall data erase contact +14155550142 --yes
 `retention` for the nightly run, `operator` for an org erased whole. It outlives the org.
 
 `reads` is who read the org's calls (`GET /v1/org/reads`): a person reading a call's log or its
-recording at the console or with their key, the operator reading one off the platform, and a traceback
-the operator ran on a number — once an hour per reader, call and kind, newest first; a call id or
-a number after it narrows the list to that one. A server's key and a visitor's page write nothing.
-It is the access log a breach notification starts from.
+recording at the console or with their key, a server's key reading one (its key id is the reader),
+the operator reading one off the platform, and a traceback the operator ran on a number — once an
+hour per reader, call and kind, newest first; a call id or a number after it narrows the list to that
+one. It is the environment's own, the sandbox's or, with `--prod`, production's. A visitor's page
+reading its own call and the fleet serving it write nothing. It is the access log a breach
+notification starts from.
 
 `policy` is the org's compliance settings, one row at `GET`·`PUT /v1/org/policy`, read with no flag
 and changed a field at a time (the row is read and written back whole, so the other fields stay):
@@ -2117,7 +2160,7 @@ and `drop` read the same environment.
 
 ```console
 $ pinecall docs push
-clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · sent · left as they were · became · stemmed in · took
+clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · files sent · base's others left as they were · chunks of the files sent · stemmed in · took
 $ pinecall docs pull
 agents/clinica-norte/docs/horarios.md  unchanged
 agents/clinica-norte/docs/seguros.md   written
@@ -2127,7 +2170,9 @@ precios-2024.md gone from clinica-norte
 ```
 
 `· 1 kept` is the file of the base the push did not touch — the one the console added — and
-`· README.md skipped` closes the line when the folder's README stayed behind.
+`· README.md skipped` closes the line when the folder's README stayed behind. The line counts what the push
+sent: its files and the chunks they were cut into, so with a file kept it adds up to less than `docs list`,
+which counts the whole base.
 
 **The questions a section answers travel with it.** An HTML comment is never a chunk — a note to the
 author stays the author's — but one is read: `<!-- asks … -->` under a heading, the questions that
@@ -2244,7 +2289,9 @@ Each case costs ONE model call, the very one a hang-up makes, run by the gateway
 categories the agent's holder declared — your `pinecall start`, a colleague's, production's with
 `--prod`; nothing is started here. Every answer is judged by code: a category is the class's own word, a
 value is a literal, a supersession is an id — never one sentence compared to another, because two
-ways of writing one fact are one fact.
+ways of writing one fact are one fact. A fact the model files under a word the policy does not have is
+written as `other`, and a case that expects the policy's word breaks, the report showing `kept` the
+`add · other · …` it got.
 
 ---
 
@@ -2337,11 +2384,13 @@ release, numbered, never edited.
 `pull` writes the newest release as `{"release": N, "definition": {…}}` to `<name>.studio.json`
 (`--out` names another file); edit it and `push` saves it as the next release **based on N**, then
 writes the new number into the file, so the next push goes over it. If someone saved in between —
-in the console or another terminal — the gateway refuses it (409, exit 1) and nothing is kept:
+in the console or another terminal — the gateway refuses it (409, exit 2) and nothing is kept:
 pull again and edit that. A file that is not what `pull` writes is refused before anything is sent,
 naming the field; a push in which nothing changed keeps the release it was. A header's value
 names a secret as `{{secrets.NAME}}`, set with [`secrets`](#secrets) — never the secret itself, in the
-file or anywhere else; a definition that names a secret the environment does not have is refused.
+file or anywhere else; a definition that names a secret the environment does not have is refused, and
+so is one that names a secret anywhere but a header's value — the instructions, a description, a URL.
+An answer that repeats a secret back is shown with `***` in its place.
 
 The sandbox's agents unless `--prod`. `deploy` is asked from the sandbox and lands in production: it
 takes a person's key that may act there, and the secrets the definition names must be set in
@@ -2499,12 +2548,13 @@ verification snippet per language.
 | | |
 |---|---|
 | `0` | it did what it says |
-| `1` | the thing being measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold, the run itself broke (its reason printed with the report) — or the gateway refused, in its own words |
-| `2` | this command cannot run: no key, a flag that is not a flag, a name nothing answers to (an agent, a persona, a judge, a monitor, a run — the gateway's 404 too), a verb that moved (`pipeline set` is `agent set` now) |
+| `1` | the thing measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold, the run itself broke (its reason printed with the report) |
+| `2` | this command could not run, and measured nothing: no key, a flag that is not a flag, a name nothing answers to, an input refused, **any refusal of the gateway** — 400, 401, 403, 404, 409, 422, 429, 503, in its own words — the network down, a verb that moved (`pipeline set` is `agent set` now) |
 | `130` | stopped: Ctrl-C (or SIGTERM) on a verb, which is not a failure |
 
-A call **nobody judged** is not a pass: `simulate --judge` exits non-zero for it, because "nobody
-looked at this" must never open a gate.
+A call **nobody judged** is not a pass: `simulate --judge` exits 2 for it, with the reason, because
+"nobody looked at this" must never open a gate. A step in CI fails on either 1 or 2; 1 says the agent
+is what failed, 2 says the check never ran.
 
 ## What each verb knocks at
 

@@ -3,6 +3,7 @@
 import asyncio
 import time
 
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.session.session import Session
 from pinecall_runtime.wire.events import CreditsExhausted
 
@@ -22,11 +23,15 @@ async def keep_time(session: Session, limit_s: int, *, exhausted: CreditsExhaust
         return
     warned_at = limit_s - WARNED_BEFORE_S if limit_s >= 2 * WARNED_BEFORE_S else limit_s / 2
     await asyncio.sleep(warned_at)
-    if not session.call.a_person_has_the_line:
-        session.live.generate_reply(instructions=CLOSING)
+    # A warning that cannot be given is said, and the limit still holds: the timer that ended on it
+    # would leave the call with no ceiling.
+    with survived("warning the agent that its time is nearly up", session.call.context.call):
+        if not session.call.a_person_has_the_line:
+            session.live.generate_reply(instructions=CLOSING)
     await asyncio.sleep(limit_s - warned_at)
     if exhausted is not None:
-        await session.call.writing.write("credits.exhausted", exhausted)
+        with survived("saying the credits are exhausted", session.call.context.call):
+            await session.call.writing.write("credits.exhausted", exhausted)
     session.hang_up("timeout", "platform")
 
 

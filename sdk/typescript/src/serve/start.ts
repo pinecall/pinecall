@@ -7,6 +7,7 @@ import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.j
 import { mount, type Mounted } from "../runtime/connect.js";
 import { drainLine, askedToLeave, drainedUnlessSignalledAgain } from "./leaving.js";
 import { eventLine, personLine } from "./lines.js";
+import { Masking } from "./masking.js";
 import { CannotServe, loadServed } from "./load.js";
 import type { Io } from "./io.js";
 import { viewingFrom } from "./viewing.js";
@@ -37,8 +38,9 @@ export async function start(argv: string[], io: Io): Promise<number> {
   });
   const served = paired(values.file ?? [], values.slug ?? []);
   const pc = clientFrom(io.env);
-  for (const one of served) await held(pc, one, values.console === true);
-  said(pc, io, values.events === true);
+  const masking = new Map<string, Masking>();
+  for (const one of served) masking.set(one.slug, new Masking((await held(pc, one, values.console === true)).options));
+  said(pc, io, values.events === true, masking);
   try {
     await pc.connect();
     if ((await askedToLeave(pc, io)) !== "stopped") {
@@ -85,11 +87,15 @@ async function held(pc: Pinecall, one: Served, console: boolean): Promise<Mounte
 
 // Listening starts before connect, so agent.registered is the first line. A lost gateway is one
 // line per outage, on err so --events stays the wire alone.
-function said(pc: Pinecall, io: Io, events: boolean): void {
+function said(pc: Pinecall, io: Io, events: boolean, masking: Map<string, Masking>): void {
   pc.onEntries((entry) => {
-    const line = events ? eventLine(entry) : personLine(entry);
+    // What it prints is what the call's log keeps: a value the agent declared private never reaches a terminal.
+    const shown = masking.get(entry.agent)?.entry(entry) ?? entry;
+    const line = events ? eventLine(shown) : personLine(shown);
     if (line !== null) io.out.write(`${line}\n`);
   });
+  // On err because out is the wire the CLI folds; a person's own lines (`personLine`) already say it.
+  if (events) pc.onKilled((slug, why) => io.err.write(`${slug}  ✗ ${why}\n`));
   let lost = false;
   pc.onErrors((failed) => {
     if (!aLostSocket(failed)) return void io.err.write(`${failed.stack ?? failed.message}\n`);

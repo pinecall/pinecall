@@ -6,11 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pinecall_runtime.calls.metering import UsageRow
 from pinecall_runtime.calls.models import CallFact
 from pinecall_runtime.calls.repository.facts import FactsRepository
+from pinecall_runtime.calls.repository.heads import Claim
 from pinecall_runtime.calls.service import usage
 from pinecall_runtime.calls.store import Store
+from pinecall_runtime.enums import Env
+from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.text import JsonObject
-from tests.calls.factories import a_summary
-from tests.conftest import needs_the_database
+from tests.calls.factories import CALLER, LINE, a_summary
+from tests.conftest import Tenant, needs_the_database
 
 pytestmark = needs_the_database
 
@@ -70,3 +73,35 @@ async def test_who_played_a_simulated_caller_is_kept_with_its_facts_and_kept_aga
         kept = await session.get(CallFact, call)
     assert kept is not None
     assert (kept.caller_llm, kept.caller_tts, kept.caller_voice) == ("google/gemini-3.5-flash-lite", "google", "Puck")
+
+
+# The store's clock ticks from 1.0, so a call these tests begin started a second or two into the epoch.
+NOW = 10.0
+
+
+async def begun(store: Store, tenant: Tenant, agent: str, call: str, *, persona: str | None) -> None:
+    """A call of the tenant's sandbox that has started, as a simulated caller's when it names a persona."""
+    await store.claim(call, agent, tenant.org, Claim(Scope(tenant.org, Env.sandbox)))
+    started: JsonObject = {**LINE, "direction": "inbound", "caller": CALLER, "started_at": 1.0}
+    if persona is not None:
+        started["persona"] = persona
+    await store.append(call, agent, "call.started", started, ephemeral=False)
+    await store.writer.drain()
+
+
+async def on_the_line(sessions: async_sessionmaker[AsyncSession], tenant: Tenant, env: Env = Env.sandbox) -> int:
+    async with sessions() as session:
+        return await usage.simulating(session, tenant.org, env, at=NOW)
+
+
+async def test_a_simulated_call_that_began_counts_as_one_on_the_line_until_its_summary_is_written(
+    store: Store, sessions: async_sessionmaker[AsyncSession], tenant: Tenant, call: str, agent: str
+) -> None:
+    """H F3: the meter counts a simulation when its call ends, and a burst begun before any ended passed the limit."""
+    await begun(store, tenant, agent, f"{call}-sim", persona="in-a-hurry")
+    await begun(store, tenant, agent, f"{call}-person", persona=None)
+    assert await on_the_line(sessions, tenant) == 1
+    assert await on_the_line(sessions, tenant, Env.production) == 0
+    await store.append(f"{call}-sim", agent, "call.summary", {**a_summary([]), "simulated": True}, ephemeral=False)
+    await store.writer.drain()
+    assert await on_the_line(sessions, tenant) == 0

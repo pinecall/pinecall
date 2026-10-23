@@ -102,7 +102,8 @@ a directory earns its place there by having a line in that table (§13).
 | `recall.ts` | a `memory.ops` entry → the words this call has been told about the caller, which is what `remembers()` answers from |
 | `environment.ts` | `ENVIRONMENT`: the settings a class may declare — `language`, `voice`, `llm`, `stt`, `judge`, `greeting`, `hangup`, `turn`, `says`, `hears`, `knowledge`, `docs`, `memory`, `record` — read off the class (`environmentOf`, its statics and what `@voice`/`@llm`/`@stt`/`@judge` set) into the declaration, where each wins over the agent's settings; and `refuseTheEnvironment`, which stops a class that declares one on the instance, where it would be a call's state |
 | `dispatch.ts` | an outside fact off the wire, gated by the declaration and handed to `onEvent` — one at a time, in order |
-| `run-tool.ts` | one tool call: the args checked against the spec, the method run through the instance, the result cut to its `preview` |
+| `cause.ts` | the cause a `state.set` names for a write, from its author: the tool and the model's call id, the event and its entry, or the hook |
+| `run-tool.ts` | one tool call: the args checked against the spec, the method run through the instance, the result cut to its `preview`; a class never handed its source (`typesKnown`) is told so, not that a string is no object |
 
 ### `src/serve/` — the entry the CLI starts an agent with
 
@@ -113,10 +114,11 @@ writes nowhere else and a test hands in its own.
 | file | what it is |
 |---|---|
 | `index.ts` | `main`: `start` or `prompt`, a refusal (`CannotServe`, a class's `DeclarationRefused`, a flag `parseArgs` refused) is its sentence and exit 2; the is-entry guard |
-| `start.ts` | `start --file <f> --slug <s> [--file --slug]… [--console] [--events]`: the door from `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` and nothing else, and `PINECALL_HOST` as the machine it registers as (a hosted app's host, which the gateway knows its release by); each class loaded and mounted under its slug (`--console`: `takesUnclaimed: false`); its socket answers `view.render` and refuses every other dev verb, which are the CLI's |
+| `start.ts` | `start --file <f> --slug <s> [--file --slug]… [--console] [--events]`: the door from `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` and nothing else, and `PINECALL_HOST` as the machine it registers as (a hosted app's host, which the gateway knows its release by); each class loaded and mounted under its slug (`--console`: `takesUnclaimed: false`); its socket answers `view.render` and refuses every other dev verb, which are the CLI's; an agent an admin killed is one line on `err` (`<slug>  ✗ <the gateway's sentence>`) |
 | `prompt.ts` | `prompt --file <f> --slug <s> [--state field=json]… [--channel] [--medium] [--show-machine]`: the class opened in the state the pairs name, its prompt printed, and its machine under it when asked |
 | `load.ts` | a tenant's class loaded with tsx and handed its own source (`loadAgent`); `loadServed` refuses a class whose `static slug` is not the one it is served as; `instanceFor` is one instance with a line to answer on, for the pages that print a prompt |
 | `lines.ts` | `--events`: one line per wire entry, `{type, agent, call, data}` as the gateway wrote it, `agent.registered` first; without it a few lines for a person; `aLostSocket` |
+| `masking.ts` | what `start` prints of an entry: the values its agent declared private masked as the call's log masks them |
 | `leaving.ts` | asked to leave — SIGINT or SIGTERM, the end of its stdin, a stop from the org — then a drain unless a second signal says now, and the line that says where the calls went |
 | `viewing.ts` · `machine.ts` | `view.render`: the class's view drawn as panel nodes; the state machine on one page |
 
@@ -152,7 +154,7 @@ Beside `src/`:
 | `ToolSpec` | `src/wire/defs.ts` | `name`, `description`, `parameters`, `side_effect`, `confirm?`, `pii?`, `timeout_s?` — the wire's own shape, imported, never copied |
 | `StateFieldSpec` | `agent/visibility.ts` | `name`, `visibility` (`public` · `tenant` · `pii`) |
 | `EventSpec` / `EventDecl` | `agent/accepts.ts` | `name`, `from: ("app"|"participant")[]` |
-| `EventMeta` | `agent/accepts.ts` | `source`, `identity?`, `seq` — `seq` numbered by **this call's** stream of events, not by the wire |
+| `EventMeta` | `agent/accepts.ts` | `source`, `identity?`, `seq` — the log's seq of the `event.received` entry |
 | `Call` (hook) | `agent/lifecycle.ts` | `id`, `contact`, `from?`, `channel?`, `medium?` |
 | `MemoryOp` | `agent/lifecycle.ts` | `op: "remember"|"forget"`, `key`, `value?` |
 
@@ -160,7 +162,7 @@ Beside `src/`:
 
 | entity | where | fields |
 |---|---|---|
-| `CallWorld` | `call/call.ts` | `id`, `contact`, `from?`, `channel?`, `medium` (`voice` or `text`: the gateway's, else the one the channel implies), `today?`, `claimed`, `room`, `history`, `cause`, `numbered()`, `search()`, `claim()` |
+| `CallWorld` | `call/call.ts` | `id`, `contact`, `from?`, `to?`, `channel?`, `direction?`, `caller?` (`name`, `phone`, `email`), `metadata` (what the call was opened with, sealed), `medium` (`voice` or `text`: the gateway's, else the one the channel implies), `today?`, `claimed`, `room`, `history`, `cause`, `search()`, `claim()` |
 | `Found` | `call/call.ts` | one chunk a search found, as the model reads it: where it came from, and its text |
 | `Transferred` · `Attended` | `call/call.ts` | what a transfer and an ask for a person came to: `ok`, and who or why not |
 | `Knowledge` | `agent/knowledge.ts` | `search(query, {k?})` — what `this.knowledge` is |
@@ -342,25 +344,33 @@ the class and the socket know about each other.
    says whether the class searches (`uses_knowledge`).
    `pc.agent(slug, options)` declares it. Nothing is sent until `pc.connect()`.
 2. **`call.started`** → `start()`: a fresh instance, `seal`ed; `setLast` and `setCall` hand it the
-   store and its `CallWorld`; `runHook(onCall)`; then `startIn()` applies `call.started.state`, the
-   state a golden, a persona or `?state=` asked for — after `onCall` so it is not overwritten,
-   before the first render so the model never reads a state the call was not in.
-3. **The opening send** — `call.setState(snapshot)`, then `sync()`. Only after that does the bridge
-   start listening, so `onCall` writing five fields is one prompt and not five.
-4. **On every change** — `state.set` with the field that moved; when the write came from an event,
-   one `state.cause` line naming it; then `sync()`.
+   store and its `CallWorld`; the log's lines are forwarded from here on, so a line a hook logs
+   lands; `runHook(onCall)`; then `startIn()` applies `call.started.state`, the state a golden, a
+   persona or `?state=` asked for — after `onCall` so it is not overwritten, before the first
+   render so the model never reads a state the call was not in.
+3. **The opening send** — `call.setState(snapshot)`, with the hook as its cause when `onCall`
+   wrote anything, then `sync()`. Only after that does the bridge start following changes, so
+   `onCall` writing five fields is one prompt and not five.
+4. **On every change** — `state.set` with the field that moved and its `cause`, from who wrote it
+   (`runtime/cause.ts`): the tool and the model's call id (on the async context), the event handler
+   and the entry it ran for, or the hook; then `sync()`.
 5. **`sync()`** renders and compares each block against what **this call** was last sent under
    that name: one `prompt.set <name>` per block whose text differs (a block never sent counts as
    empty, so an empty block is never sent), then `tools.set` only if the visible list differs.
-   Re-sending identical text is a cache miss for nothing.
+   Re-sending identical text is a cache miss for nothing. A view that throws (a write in `render()`
+   is `UnauthoredWrite`) fails its call and no other: the model keeps the view it had, the log gets
+   a `render.failed` line and the process a warning.
 6. **A tool call** — the SDK routes it to the instance serving that call; unknown call, unknown
    tool and a failed tool all come back as one `tool.result` carrying `error`, because a turn that
-   never gets one waits forever.
+   never gets one waits forever — all but `end_call`, which the platform answers itself.
 7. **An outside fact** — `dispatch.ts` checks the **pair** (name, source) against `static events`.
    An event declared `from: ["app"]` that arrives from a browser is somebody else's event with our
    name on it, and the hook never sees it (one warning per call and name, not one per second).
    Events run **one at a time, in wire order**, so `call.cause` names the event actually running.
-8. **`call.ended`** → the listeners are dropped, `onEnd` runs, `this.call` is cleared.
+   A hook that throws (`hooked`, for `onCall`, `onEvent`, `onMemory` and `onEnd`) fails its call and no
+   other: a `hook.failed` line in the call's log naming the hook and the error, a `console.warn`, and the
+   bridge goes on to what follows it.
+8. **`call.ended`** → the listeners are dropped, `onEnd` runs (its log lines still land), `this.call` is cleared.
 9. **`call.attached`** → a call handed to this process mid-conversation (another process drained
    or died, or the gateway restarted): `adopt()` builds the instance, `restore()`s the state the
    gateway sent, runs no `onCall`, and sends the whole prompt and the tools. A call this process
@@ -448,7 +458,7 @@ line the test deletes.
 | `views/` | `agent`, `wire` |
 | `runtime/` | `agent`, `call`, `views`, `client`, `wire` |
 | `serve/` | `agent`, `call`, `views`, `runtime`, `client`, `wire`, `tsx` |
-| `src/index.ts` | `agent`, `call`, `views`, `runtime` |
+| `src/index.ts` | `agent`, `call`, `views`, `runtime`, `zod` |
 
 `test/the-wire.test.ts` holds the SDK to its wire: every command of the registry is sent by the
 file its table names (or is said to be nobody's here: dialling, the desk's verbs, the gateway's

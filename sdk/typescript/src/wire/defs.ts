@@ -18,6 +18,8 @@ export type Medium = z.infer<typeof MediumSchema>;
 /** Inbound: the public reached the agent. Outbound: the agent reached out (a dial). */
 export const DirectionSchema = z.enum(["inbound", "outbound"]);
 
+export type Direction = z.infer<typeof DirectionSchema>;
+
 /**
  * Which of the two worlds a key opens, and so which world an agent is held in and a call ran in. A
  * key is issued into one; an agent registered on it and every call it takes carry that one; a door
@@ -201,6 +203,41 @@ export const ToolResultSchema = z.strictObject({
 });
 
 export type ToolResult = z.infer<typeof ToolResultSchema>;
+
+/**
+ * The tool the platform puts in front of a model that may hang up. Its tool.call and its
+ * tool.result are both the platform's, so an app answers none.
+ */
+export const END_CALL = "end_call";
+
+/** A tool call's result changed the state: the tool's method wrote the field while it ran. */
+export const StateCauseToolSchema = z.strictObject({
+  kind: z.literal("tool"),
+  tool: z.string(),
+  call_id: z.string(),
+});
+
+/** A fact from outside changed the state: the app's handler for an event.received wrote the field. */
+export const StateCauseEventSchema = z.strictObject({
+  kind: z.literal("event"),
+  name: z.string(),
+  seq: z.int(),
+});
+
+/** A lifecycle hook changed the state: the one that ran when the call started, or on a memory write. */
+export const StateCauseHookSchema = z.strictObject({
+  kind: z.literal("hook"),
+  hook: z.enum(["on_call", "on_memory"]),
+});
+
+/** What made a write to the state: a tool, a fact from outside or a hook. Told apart by kind. */
+export const StateCauseSchema = z.discriminatedUnion("kind", [
+  StateCauseToolSchema,
+  StateCauseEventSchema,
+  StateCauseHookSchema,
+]);
+
+export type StateCause = z.infer<typeof StateCauseSchema>;
 
 /**
  * One thing remembered about a contact: a sentence, where it came from, and how well it matched

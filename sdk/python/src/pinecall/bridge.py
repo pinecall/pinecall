@@ -10,11 +10,13 @@ from dataclasses import dataclass, field
 
 from pydantic import TypeAdapter
 
-from pinecall import _accepts, _config, _running, _searching, _state, _tools
+from pinecall import _accepts, _author, _config, _running, _searching, _state, _tools
 from pinecall._agent_socket import AgentSocket, Tool
 from pinecall._calls import Call
+from pinecall._cause import cause_of
 from pinecall._config import slug_of
-from pinecall.agent import Agent, EventMeta, LastCall, Logged
+from pinecall._failures import hooked, unrendered
+from pinecall.agent import Agent, EventMeta, LastCall
 from pinecall.blocks import LAYOUT, render
 from pinecall.call import CallLine, CallWorld
 from pinecall.client import Client, Found
@@ -88,7 +90,7 @@ def mount(
     declared: dict[str, _tools.Declared] = getattr(cls, "_pinecall_tools")  # noqa: B009 - the class's own
     tools = [Tool(one.spec, runner(cls, live, one.spec)) for one in declared.values()]
     held = client.agent(
-        slug or slug_of(cls), config_of(cls), tools, takes_unclaimed=takes_unclaimed
+        slug or slug_of(cls), config_of(cls), tools, takes_unclaimed=takes_unclaimed, says_done=True
     )
 
     def serve(call: Call) -> Live:
@@ -102,6 +104,8 @@ def mount(
             loop,
         )
         served = Live(agent.serving(world), world, call)
+        # Before the hooks run, so a line logged in `on_call` lands; `on_end`'s lands too.
+        served.stops["log"] = agent.on_log(lambda line: call.log(line.name, as_object(line.data)))
         live[call.id] = served
         asyncio.ensure_future(work(served))  # noqa: RUF006 - it ends with the call, which ends it
         return served
@@ -184,7 +188,11 @@ def line_of(call: Call) -> CallLine:
         id=call.id,
         contact=contact or "",
         from_=call.from_,
+        to=call.to,
         channel=call.channel or "phone",
+        direction=call.direction,
+        caller=call.contact,
+        metadata=call.metadata,
         medium=call.medium,
         today=call.today,
         claimed=call.claimed,
@@ -208,13 +216,16 @@ async def work(served: Live) -> None:
 async def opening(served: Live, state: JsonObject | None) -> None:
     """Run `on_call`, open in the state asked for, send it all, then follow every change."""
     logger.debug("%s: opening", served.call.id)
-    await _running.run("hook:on_call", served.agent.on_call, served.world)
+    author = _author.hook("on_call")
+    await hooked(served.call, "on_call", _running.run(author, served.agent.on_call, served.world))
+    wrote = any(change.author == author for change in served.agent.changes())
     if state:
         served.agent.start_in(state)
     # The prompt before the state: the caller's first turn needs the prompt, only the log reads
     # the state, and a state with a pii field is sealed before the gateway reads the next command.
     synced(served)
-    served.call.set_state(jsonable(served.agent.snapshot()))
+    cause = cause_of(author, served.world) if wrote else None
+    served.call.set_state(jsonable(served.agent.snapshot()), cause=cause)
     logger.debug("%s: opened", served.call.id)
     follow(served)
 
@@ -238,26 +249,21 @@ async def finished(served: Live) -> None:
     """Stop rendering; `on_end` runs with the log still open, so a farewell line lands."""
     for kind in ("state", "entries"):
         served.stops.pop(kind, lambda: None)()
-    await _running.run("hook:on_end", served.agent.on_end, served.world)
+    ending = _running.run(_author.hook("on_end"), served.agent.on_end, served.world)
+    await hooked(served.call, "on_end", ending)
     served.stops.pop("log", lambda: None)()
     served.agent.serving(None)
+    # After every line the hook logged, whether it ran or raised: the gateway seals the call on this
+    # word, and a line sent after the seal is refused.
+    served.call.done()
 
 
 def follow(served: Live) -> None:
-    """From now on: every write is sent with its cause, every log line, every entry folded in."""
+    """From now on: every write is sent with its cause, every entry folded in."""
     agent, world, call = served.agent, served.world, served.call
 
-    def logged(line: Logged) -> None:
-        call.log(line.name, as_object(line.data))
-
     def changed(change: _state.Change) -> None:
-        call.set_state(jsonable(agent.snapshot()), [change.field])
-        # state.set carries no cause: it is logged beside it.
-        if world.cause is not None:
-            name, seq = world.cause
-            call.log(
-                "state.cause", {"field": change.field, "kind": "event", "name": name, "seq": seq}
-            )
+        call.set_state(jsonable(agent.snapshot()), [change.field], cause_of(change.author, world))
         synced(served)
 
     def heard(type_: str, event: WireModel, _: Call) -> None:
@@ -274,16 +280,15 @@ def follow(served: Live) -> None:
         if type_ in ("turn.user", "call.claimed"):
             synced(served)
 
-    served.stops |= {
-        "log": agent.on_log(logged),
-        "state": agent.on_change(changed),
-        "entries": call.on_any(heard),
-    }
+    served.stops |= {"state": agent.on_change(changed), "entries": call.on_any(heard)}
 
 
 async def remembered(served: Live, ops: MemoryOps) -> None:
     """Hand what memory read or wrote to `on_memory`, after the view already says it."""
-    await _running.run("hook:on_memory", served.agent.on_memory, list(ops.ops), served.world)
+    running = _running.run(
+        _author.hook("on_memory"), served.agent.on_memory, list(ops.ops), served.world
+    )
+    await hooked(served.call, "on_memory", running)
 
 
 def received(served: Live, fact: EventReceived) -> None:
@@ -298,14 +303,15 @@ def received(served: Live, fact: EventReceived) -> None:
                 fact.source,
             )
         return
-    meta = EventMeta(fact.source, served.world.numbered(), fact.identity)
+    meta = EventMeta(fact.source, served.call.seq, fact.identity)
 
     async def run() -> None:
         served.world.cause = (fact.name, meta.seq)
         try:
-            await _running.run(
-                f"event:{fact.name}", served.agent.on_event, fact.name, dict(fact.data), meta
+            running = _running.run(
+                _author.event(fact.name), served.agent.on_event, fact.name, dict(fact.data), meta
             )
+            await hooked(served.call, "on_event", running, event=fact.name)
         finally:
             served.world.cause = None
 
@@ -313,7 +319,19 @@ def received(served: Live, fact: EventReceived) -> None:
 
 
 def synced(served: Live) -> None:
-    """Send each block whose text changed since this call's last send; the tools if they moved."""
+    """Send each block whose text changed since this call's last send; the tools if they moved.
+
+    A view that cannot be rendered fails its call and no other: the model keeps the view it had,
+    and the log says why.
+    """
+    try:
+        show(served)
+    except Exception as failed:  # noqa: BLE001 - a class's own failure is the call's, never the loop's
+        unrendered(served.call, failed)
+
+
+def show(served: Live) -> None:
+    """Send what changed of the prompt and the tools."""
     with served.lock:
         rendered = render(served.agent, served.world.line(), remembered=served.remembered)
         for block in rendered.blocks:

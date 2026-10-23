@@ -108,6 +108,15 @@ async def credits_exhausted(
     await raise_alert(session, alerting, scope, agent, alert)
 
 
+# Said in a transaction of its own: a request about to be refused rolls its own back, and an alert the
+# refusal took with it was never kept — `pinecall alerts` did not list it, and the hourly mail, which
+# looks for the one before it, was sent again with every refusal.
+async def credits_refused(alerting: Alerting, scope: Scope, agent: str, refused: QuotaExceeded) -> None:
+    """Say that a quota ran out as `credits_exhausted` does, for a refusal that is about to be raised."""
+    async with alerting.handles.sessions.begin() as own:
+        await credits_exhausted(own, alerting, scope, agent, refused)
+
+
 async def post_alert(http: httpx.AsyncClient, webhook: Webhook, sent: JsonObject) -> str | None:
     """Post the payload, again on a connection error or a 5xx; None on a 2xx, else why not."""
     body = json.dumps(sent, separators=(",", ":")).encode()

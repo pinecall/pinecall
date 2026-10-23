@@ -58,6 +58,7 @@ module Pinecall
       @errors = []
       @entries = []
       @stops = []
+      @kills = []
       @connects = []
       @listeners = Listeners.new { |error| on_error(error) }
       @connection = Connection.new(
@@ -75,6 +76,9 @@ module Pinecall
     def agent(slug, **options)
       @agents[slug] = Agent.new(slug, options, self)
     end
+
+    # What a log line or an exception prints of the client: its door and its agents, never the key.
+    def inspect = "#<#{self.class} #{@url} env=#{@env.inspect} agents=#{@agents.keys.inspect}>"
 
     # Declared agents by slug.
     def agents = @agents.dup
@@ -121,6 +125,13 @@ module Pinecall
     def on_stopped(&listener)
       @stops << listener
       -> { @stops.delete(listener) }
+    end
+
+    # Called when an admin lets go of one of this client's agents: the listener takes its slug and the
+    # gateway's sentence. The socket stays open for the others. Returns a lambda that unsubscribes.
+    def on_killed(&listener)
+      @kills << listener
+      -> { @kills.delete(listener) }
     end
 
     # True while the socket is up.
@@ -180,13 +191,19 @@ module Pinecall
       return if agent.nil?
 
       guarded { agent.take(entry) }
-      @agents.delete(entry.agent) if killed?(entry)
+      killed(entry) if killed?(entry)
     end
 
     # An `error` coded `stopped` for no agent: a member of the org pressed Stop.
     def stop?(entry) = entry.type == "error" && entry.agent.to_s.empty? && entry.data[:code] == STOPPED
 
     def killed?(entry) = entry.type == "error" && entry.data[:code] == KILLED
+
+    # The agent is no longer declared, so a reconnect leaves it out; then whoever asked to know.
+    def killed(entry)
+      @agents.delete(entry.agent)
+      @kills.each { |listener| guarded { listener.call(entry.agent, entry.data[:message]) } }
+    end
 
     # With no stop listener the stop is reported as an error, so it is never silent.
     # Every agent registered again, then whoever asked to know.

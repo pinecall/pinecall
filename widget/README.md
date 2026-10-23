@@ -77,8 +77,8 @@ Return Pinecall's response unchanged: `201` with
 `{ "server_url", "participant_token", "call", "log_token", "resume_token" }` (`log_token` reads
 that call's log and opens no room; `resume_token` is what the widget keeps to carry the
 conversation on). Pass `resume` on as it came: only your key can spend it.
-`ttl_s` defaults to 60; a longer one is cut to a day (86400). `metadata` is sealed into the call: the agent can read it and
-the browser cannot alter it. Errors come as `{ "detail": "…" }` (`404` unknown agent, `429` quota
+`ttl_s` defaults to 60; a longer one is cut to a day (86400). `metadata` is sealed into the call: the agent reads it as `this.call.metadata`
+(`call.started` carries it), and the browser cannot alter it. Errors come as `{ "detail": "…" }` (`404` unknown agent, `429` quota
 spent, `503` fleet full); pass them through and the widget shows `detail`. `room_name`,
 `participant_name` and `participant_metadata` are rejected with `400`.
 

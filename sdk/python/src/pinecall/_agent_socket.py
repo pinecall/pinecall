@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
 
+from pinecall import _author
 from pinecall._calls import Call, CallBook
 from pinecall._listeners import AnyListener, Listener, Listeners
 from pinecall.errors import DevRefused, NotConnected, Refused
@@ -30,7 +31,7 @@ from pinecall.wire.events import (
 )
 from pinecall.wire.events_turn import ToolCall
 from pinecall.wire.frames import Entry, WireModel
-from pinecall.wire.parts import AgentConfig, DevVerb, ToolResult, ToolSpec
+from pinecall.wire.parts import END_CALL, AgentConfig, DevVerb, ToolResult, ToolSpec
 
 if TYPE_CHECKING:
     from pinecall.client import Client
@@ -64,6 +65,8 @@ class Role:
 
     takes_unclaimed: bool = True
     answers_dev: bool = False
+    # Sends call.done once a call's end hook ran: the gateway's seal waits for the hook's lines.
+    says_done: bool = False
 
 
 @dataclass
@@ -125,6 +128,7 @@ class AgentSocket:
         }
         asked |= {"takes_unclaimed": self._role.takes_unclaimed}
         asked |= {"answers_dev": True} if self._role.answers_dev else {}
+        asked |= {"says_done": True} if self._role.says_done else {}
         registered = await self._ask(
             "agent.register", AgentRegister.model_validate(asked), AgentRegistered
         )
@@ -170,7 +174,7 @@ class AgentSocket:
         call = None if entry.call is None else self.calls.of(entry.call, entry.ts)
         self._settle(entry.type, event)
         if call is not None:
-            call.take(entry.type, event)
+            call.take(entry.type, event, entry.seq)
         self._listeners.emit(entry.type, event, call)
         self._client.seen(entry.type, event, call)
         if isinstance(event, DevRequest):
@@ -186,6 +190,9 @@ class AgentSocket:
         started = time.monotonic()
         answer = {"call_id": asked.call_id, "name": asked.name}
         if tool is None:
+            # The platform answers its own tool, and an answer from here would race it.
+            if asked.name == END_CALL:
+                return
             call.tool_result(
                 ToolResult.model_validate(
                     answer | {"error": f"this app declares no tool called {asked.name}"}
@@ -193,9 +200,10 @@ class AgentSocket:
             )
             return
         try:
-            output = tool.run(asked.arguments, call)
-            if inspect.isawaitable(output):
-                output = await output
+            with _author.calling(asked.call_id):
+                output = tool.run(asked.arguments, call)
+                if inspect.isawaitable(output):
+                    output = await output
             answer |= {"output": output}
         except Exception as failed:  # noqa: BLE001 - what the tool raised is its answer, for the model
             answer |= {"error": str(failed) or type(failed).__name__}

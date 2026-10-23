@@ -19,6 +19,7 @@ const KEY = "pk_test";
 const SLUG = "clinica-norte";
 const A_HOST = "support-r3-0a1b2c3d";
 const AGENT = fileURLToPath(new URL("./clinic/agents/clinica-norte/agent.tsx", import.meta.url));
+const DESK = fileURLToPath(new URL("./private/agents/desk/agent.ts", import.meta.url));
 
 let gateway: FakeGateway | null = null;
 
@@ -84,6 +85,41 @@ describe("the wire on stdout", () => {
   it("registers under the slug it was given, and a console's process takes no unclaimed call", async () => {
     const { io, running, held } = await serving("--console");
     expect(held.commandsOf("agent.register")[0]).toMatchObject({ agent: SLUG, data: { takes_unclaimed: false } });
+    (io.input as PassThrough).end();
+    await running;
+  });
+});
+
+describe("what it prints of a value the agent declared private", () => {
+  it("is the call's log's own: masked in the tool call, the state that holds it and what the tool answered", async () => {
+    const held = await FakeGateway.start({ apiKey: KEY });
+    gateway = held;
+    const io = anIo({ PINECALL_URL: held.url, PINECALL_KEY: KEY });
+    const running = main(["start", "--file", DESK, "--slug", "desk", "--events"], io);
+    await until(() => held.commandsOf("agent.configure").length > 0);
+
+    held.emit("desk", "CA_1", "tool.call", { call_id: "tc_1", name: "takeMessage", arguments: { name: "Ana Lopez" } });
+    held.emit("desk", "CA_1", "state.changed", { state: { message: { name: "Ana Lopez" } }, changed: ["message"] });
+    held.emit("desk", "CA_1", "tool.result", { call_id: "tc_1", name: "takeMessage", output: "Ana Lopez" });
+    await until(() => io.written().some((line) => line.includes('"tool.result"')));
+
+    const printed = io.written().join("\n");
+    expect(printed).toContain('"arguments":{"name":"***"}');
+    expect(printed).toContain('"state":{"message":{"name":"***"}}');
+    expect(printed).not.toContain("Ana Lopez");
+    (io.input as PassThrough).end();
+    await running;
+  });
+});
+
+describe("an agent an admin killed", () => {
+  it("is one line on err, `<slug>  ✗` and the gateway's sentence, while the wire stays on out", async () => {
+    const { io, running, held } = await serving("--events");
+    held.kill(SLUG, `${SLUG} was killed by Ana`);
+    await until(() => io.said().includes("✗"));
+
+    expect(io.said()).toBe(`${SLUG}  ✗ ${SLUG} was killed by Ana\n`);
+    expect(io.written().some((line) => line.includes("was killed by Ana"))).toBe(true);
     (io.input as PassThrough).end();
     await running;
   });

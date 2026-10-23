@@ -15,7 +15,8 @@ module Pinecall
           sdk: { kind: :str },
           host: { kind: :str },
           takes_unclaimed: { kind: :bool, default: true },
-          answers_dev: { kind: :bool, default: false }
+          answers_dev: { kind: :bool, default: false },
+          says_done: { kind: :bool, default: false }
         }.freeze,
         "AgentReply" => {
           instructions: { kind: :str, required: true },
@@ -50,6 +51,7 @@ module Pinecall
           name: { kind: :str, required: true },
           data: { kind: :json, required: true }
         }.freeze,
+        "CallDone" => {}.freeze,
         "CallHangup" => {
           reason: { kind: :str }
         }.freeze,
@@ -99,7 +101,8 @@ module Pinecall
         }.freeze,
         "StateSet" => {
           state: { kind: :json, required: true },
-          changed: { kind: :list, items: { kind: :str } }
+          changed: { kind: :list, items: { kind: :str } },
+          cause: { kind: :ref, ref: "StateCause" }
         }.freeze,
         "SupervisorVerb" => {
           by: { kind: :ref, ref: "Supervisor", required: true },

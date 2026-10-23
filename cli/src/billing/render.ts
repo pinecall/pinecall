@@ -10,7 +10,8 @@ export function limits(report: LimitsReport): string[] {
   const next = startsAgain(report.starts_again);
   const pairs: [string, string][] = QUOTAS.map((quota) => {
     const one = report.limits[quota.name];
-    return [quota.label, quota.monthly && one.limit !== null ? `${meter(one)} · starts again ${next}` : meter(one)];
+    const shown = quota.dollars === true ? dollars(one) : meter(one);
+    return [quota.label, quota.monthly && one.limit !== null ? `${shown} · starts again ${next}` : shown];
   });
   pairs.push(["keys", keysLine(report.brought, report.limits.lends)]);
   const lines = [report.env, ...fields(pairs).map((line) => `  ${line}`)];
@@ -22,6 +23,12 @@ export function limits(report: LimitsReport): string[] {
 export function meter(one: Limit): string {
   const used = Number.isInteger(one.used) ? String(one.used) : one.used.toFixed(1);
   return one.limit === null ? `${used}, no limit` : `${used} of ${one.limit}`;
+}
+
+/** One quota in dollars, to the cent: `$4.25 of $60`, or `$4.25, no limit`. */
+export function dollars(one: Limit): string {
+  const used = `$${one.used.toFixed(2)}`;
+  return one.limit === null ? `${used}, no limit` : `${used} of $${one.limit}`;
 }
 
 /** Whose keys a call runs on: the org's own, then what the runtime lends (null lends every key it holds). */

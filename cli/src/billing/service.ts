@@ -8,9 +8,26 @@ export type { Limit, Limits } from "../api/billing.js";
 
 /** One quota as the report names it: monthly ones start again on the first of the month (UTC), the rest are what the org holds now. */
 export interface Quota {
-  name: keyof Pick<api.Limits, "minutes" | "messages" | "llm_tokens" | "evals" | "simulations" | "concurrent_calls" | "agents" | "seats" | "numbers">;
+  name: keyof Pick<
+    api.Limits,
+    | "minutes"
+    | "messages"
+    | "llm_tokens"
+    | "evals"
+    | "simulations"
+    | "budget_usd"
+    | "concurrent_calls"
+    | "agents"
+    | "seats"
+    | "numbers"
+    | "hosted_apps"
+    | "memory_facts"
+    | "knowledge_chunks"
+  >;
   label: string;
   monthly: boolean;
+  /** The quota is dollars, shown with its cents. */
+  dollars?: boolean;
 }
 
 /** The quotas in print order. */
@@ -20,10 +37,14 @@ export const QUOTAS: readonly Quota[] = [
   { name: "llm_tokens", label: "LLM tokens", monthly: true },
   { name: "evals", label: "evals", monthly: true },
   { name: "simulations", label: "simulations", monthly: true },
+  { name: "budget_usd", label: "budget", monthly: true, dollars: true },
   { name: "concurrent_calls", label: "calls at once", monthly: false },
   { name: "agents", label: "agents", monthly: false },
   { name: "seats", label: "seats", monthly: false },
   { name: "numbers", label: "bought numbers", monthly: false },
+  { name: "hosted_apps", label: "hosted apps", monthly: false },
+  { name: "memory_facts", label: "memory facts", monthly: false },
+  { name: "knowledge_chunks", label: "knowledge chunks", monthly: false },
 ];
 
 /** What `limits` answers: the env's limits, the vendors the org brought keys for, and the day the monthly quotas start again. */

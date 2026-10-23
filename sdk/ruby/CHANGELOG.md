@@ -4,6 +4,58 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **SECURITY: no object of the gem prints the API key any more.** `Client` and its connection held the key
+  in an instance variable and Ruby's default `inspect` printed it (and the websocket driver's
+  `Authorization` header), as did every object holding a client (`Serve::Held`, `Client::Agent`, a `p`, an
+  exception that interpolated one, a log line); both now say their door and their agents, never the key.
+  (found by the 2026-10-23 eval, J F8 side note)
+- **The serve entry no longer prints the values an agent declared private.** `--events` printed every entry
+  as the gateway wrote it, so a tool's `pii` arguments, the state fields declared `pii` and a private value
+  echoed in a tool's answer or a logged line reached the terminal; they are masked as the call's log masks
+  them (by name, and by value as a whole word once a tool call carried it, never a value shorter than three
+  characters). (found by the 2026-10-23 eval, A F3, B D7, L D7)
+- **A `Data` or a `Struct` reaches the wire as its fields, wherever a Ruby value becomes JSON.** A tool's
+  return, a state field, a logged line or a payload holding one was sent as its `inspect` string
+  (`knowledge.search(…)` handed the model `"#<data Pinecall::CallWorld::Found …>"`); every command's data
+  now passes through one `Wire::Codec.plain` before it is validated, and `call.log` of a `Data` or a
+  `Struct` is its fields. (found by the 2026-10-23 eval, D D-2)
+- **A view that raises fails its own call and nothing else.** The call's log gets a `render.failed` entry
+  with the exception's class and message, the model keeps the view it had and the process goes on; before,
+  the first render's failure left the call without a prompt and without a trace in its log. (found by the
+  2026-10-23 eval, B B8)
+- **A hook that raises fails its own call and nothing else.** `on_call`, `on_event`, `on_memory` and `on_end`
+  raised through the call's job thread, which only printed a line: the call was left without a prompt, an
+  `on_event`'s cause stayed on the next write and an `on_end` never said `call.done`. The call's log now
+  gets a `hook.failed` entry naming the hook (and the event) and the error, and the call goes on with what
+  the hook wrote. (found by the 2026-10-23 eval, B B8)
+- **Every state write names its author on the wire.** Each `state.set` carries `cause`: the tool and the
+  model's id for its call, the outside fact (name and the entry's seq), or the hook (`on_call`,
+  `on_memory`); only the first write of a tool had one, from the runtime, and a hook's none. The
+  `state.cause` log line is gone, `on_event`'s `meta[:seq]` is the entry's seq, and the wire knows
+  `StateCauseHook`, `StateSet.cause` and `CallStarted.metadata`. A client tool's `run` takes the model's
+  call id as a third argument. (found by the 2026-10-23 eval, B B4)
+- **A line logged in `on_call` lands in the call's log.** The log was forwarded only after the hook had run.
+  (found by the 2026-10-23 eval, B B3)
+- **The gem sends `call.done` after the end hook, and registers `says_done`**, so the gateway's seal waits
+  for what the hook logs before it seals the log. (found by the 2026-10-23 eval, S2)
+- **`call.to`, `call.direction`, `call.caller` and `call.metadata`** are on the call a tool or a hook reads,
+  as in the TypeScript package; the testing gateway's `call_started` takes `direction:` and `metadata:`.
+  (found by the 2026-10-23 eval, K F6)
+- **A stop from the org leaves no `IOError: closed stream` behind.** The driver's answer to the gateway's
+  close frame was written to a socket this side had already closed and reported as an error; a write after
+  this side closed on purpose is not one. (found by the 2026-10-23 eval, J F2)
+- **`Pinecall.serve`'s `held.stop` says where the calls went**, one line on stderr as the serve entry does
+  (`draining · no live calls`); `Serve::Held.new` takes `err:`. (found by the 2026-10-23 eval, J F8)
+- **The serve entry says when an admin kills one of its agents**: one line on stderr, `<slug>  ✗ <slug> was
+  killed by <name>`, and `Client#on_killed` hands over the slug and the sentence. (found by the 2026-10-23
+  eval, J F3)
+- **The app no longer answers `end_call`.** The platform writes that call and its result itself; an error
+  result from the app was a second one. (found by the 2026-10-23 eval, R2)
+- **The testing page shows what `call.tool` returns when the tool succeeds**: `{ call_id:, name:, output:,
+  duration_s: }`, the tool's value under `[:output]`. (found by the 2026-10-23 eval, D R0-1)
+
 ## [0.11.15] — the serve entry registers as its host (2026-10-23)
 
 - **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's

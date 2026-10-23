@@ -68,6 +68,11 @@ export const LimitsSchema = z.strictObject({
   /** This month's judges that answered on the runtime's key, and calls a simulated caller played. */
   evals: LimitSchema,
   simulations: LimitSchema,
+  /** What the org keeps now, the apps the runtime hosts for it, and the dollars its calls cost this month in both worlds. */
+  memory_facts: LimitSchema,
+  knowledge_chunks: LimitSchema,
+  hosted_apps: LimitSchema,
+  budget_usd: LimitSchema,
   lends: z.array(z.string()).nullable(),
   billing_url: z.string().nullable(),
   // The world these limits are of: the one the request acted in.

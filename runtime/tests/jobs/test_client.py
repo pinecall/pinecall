@@ -14,7 +14,7 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.exceptions import GatewayUnavailable
 from pinecall_runtime.fleet.schemas import HeartbeatRequest
-from pinecall_runtime.jobs.service.client import GatewayClient, gateway_at
+from pinecall_runtime.jobs.service.client import GatewayClient, _command_of, gateway_at
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.session.writing import Writing
 from pinecall_runtime.wire.events import Custom
@@ -214,3 +214,16 @@ async def test_a_gateway_that_is_not_there_is_a_refusal_and_never_a_traceback() 
         )
     assert refused.value.answered is None
     await client.aclose()
+
+
+# A frame of the command stream this worker cannot read (a gateway newer than it) ended the stream with
+# an exception its follower did not retry: the call was deaf to every command after it.
+def test_a_command_frame_this_worker_cannot_read_is_skipped_and_one_it_can_is_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    assert _command_of({"type": 7}, "call_1") is None
+    read = _command_of(
+        {"type": "state.set", "agent": "clinica-norte", "call": "call_1", "id": None, "data": {}}, "call_1"
+    )
+    assert read is not None and read.type == "state.set"
+    assert "reading a command of the app failed on call_1" in caplog.text

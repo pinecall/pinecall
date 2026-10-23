@@ -108,7 +108,7 @@ A page asked for a code to show beside the agent's phone number (POST /v1/codes)
 
 ### `credits.exhausted`
 
-The gateway refused a call, a written turn or a register because one of the org's quotas ran out. Written into the agent's own log, which is the org's, before the endpoint says no.
+The gateway refused a call, a simulation, a written turn or a register because one of the org's quotas ran out. Written into the agent's own log, which is the org's, before the endpoint says no, once for each refusal whichever quota it was (`concurrent_calls` and `simulations` too); the org's admins are mailed once an hour for each quota.
 
 | field | type | required | meaning |
 |---|---|---|---|

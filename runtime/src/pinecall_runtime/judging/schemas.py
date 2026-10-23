@@ -369,7 +369,8 @@ class LabelRequest(Schema):
 
     call: str
     judge: str = Field(min_length=1)
-    held: bool
+    # A word is no answer: "yes" was read as true and kept.
+    held: bool = Field(strict=True)
     note: str | None = None
 
 

@@ -132,6 +132,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     threads = calls.Threads(serving, registry)
     await threads.load()
     await _started(stack, threads)
+    await _started(stack, calls.Handoffs(live, registry))
     # The agents built in Studio, held by this gateway on its own app socket.
     holder = studio.Holder(serving, threads, http)
     await _started(stack, holder)

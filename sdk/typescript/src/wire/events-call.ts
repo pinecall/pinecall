@@ -95,6 +95,8 @@ export const CallStartedSchema = z.strictObject({
   state: z.record(z.string(), z.unknown()).nullish(),
   /** The day the call runs in, `YYYY-MM-DD`, on a call an eval run opened (a golden may pin it); absent on every other call. */
   today: z.string().nullish(),
+  /** What the call was opened with and sealed: the token's `metadata`, as sent; absent when none. */
+  metadata: z.record(z.string(), z.unknown()).nullish(),
 });
 
 /** A call changed hands without ending. */

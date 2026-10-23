@@ -90,6 +90,7 @@ class Log:
     async def append(self, kind: str, data: JsonObject | None = None, *, ephemeral: bool | None = None) -> Entry:
         """Write the entry, its private values masked, publish it, run the taps, seal at the end."""
         forgettable = kind in EPHEMERAL_EVENTS if ephemeral is None else ephemeral
+        await self._knowing([kind])
         written = self._split(kind, data or {})
         entry = await self._store.append(self.call, self.agent, kind, written.kept, ephemeral=forgettable)
         await self._seal_aside(self._keep_open([(entry, written)]))
@@ -101,6 +102,7 @@ class Log:
         """Write and publish a durable entry unless the log holds one of its type; None then."""
         if self.call is None:
             raise ValidationError(f"agent {self.agent}: only a call's log is looked at")
+        await self._knowing([kind])
         written = self._split(kind, data)
         entry = await self._store.append_first(self.call, self.agent, kind, written.kept)
         if entry is not None:
@@ -114,6 +116,7 @@ class Log:
         """Write and publish a tool.result unless the log holds its answer already; None then."""
         if self.call is None:
             raise ValidationError(f"agent {self.agent}: only a call's log asks tools")
+        await self._knowing(["tool.result"])
         written = self._split("tool.result", data)
         entry = await self._store.append_answer(self.call, self.agent, written.kept)
         if entry is not None:
@@ -135,6 +138,7 @@ class Log:
     # keeps the ones kept already: a batch whose seal broke is kept whole by the worker's retry.
     async def append_many(self, entries: Sequence[BatchedEntry], *, after: int) -> list[Entry]:
         """Write a worker's batch once, then publish and tap each entry in order as append does."""
+        await self._knowing([item.type for item in entries])
         written = [self._split(item.type, item.data) for item in entries]
         unnumbered = [
             Unnumbered(
@@ -157,18 +161,25 @@ class Log:
     async def opened(self, entry: Entry) -> Entry:
         """The entry as its writer wrote it, for the app's socket: the private values back in."""
         values = self.private_values.get(entry.seq)
-        if values is None and self.privacy is not None and private.may_be_private(entry.type):
-            values = private.opened_values(self.privacy.vault, await self._store.private_of_entry(self.name, entry.seq))
+        privacy = self.privacy
+        if values is None and privacy is not None and privacy.active and private.may_be_private(entry.type):
+            values = private.opened_values(privacy.vault, await self._store.private_of_entry(self.name, entry.seq))
             if values:
                 self.private_values[entry.seq] = values
-        return private.restored(entry, values)
+        opened = private.restored(entry, values)
+        if privacy is not None:
+            privacy.learn(opened.type, opened.data)
+        return opened
 
     async def whole(self) -> list[Entry]:
         """Every entry of the log as its writer wrote it, the private values sealed aside opened."""
         if self.privacy is None:
             return await self._store.whole(self.name)
         entries, sealed = await self._store.whole_with_private(self.name)
-        return private.opened_all(self.privacy.vault, entries, sealed)
+        opened = private.opened_all(self.privacy.vault, entries, sealed)
+        for entry in opened:
+            self.privacy.learn(entry.type, entry.data)
+        return opened
 
     async def seal(self) -> None:
         """Seal the call's log in the store and end every live reader."""
@@ -231,9 +242,22 @@ class Log:
             cursor = to_seq
 
     def _split(self, kind: str, data: JsonObject) -> private.Split:
-        if self.privacy is None:
+        privacy = self.privacy
+        if privacy is None or not privacy.active:
             return private.Split(data, {})
-        return private.split(kind, data, self.privacy.config)
+        privacy.learn(kind, data)
+        return private.split(kind, data, privacy.config, privacy.secrets())
+
+    # Another gateway may have asked the app for a tool whose arguments are private: what it sealed
+    # is read before an entry that could repeat the values is written, or they would go in the clear.
+    async def _knowing(self, kinds: Iterable[str]) -> None:
+        privacy = self.privacy
+        if privacy is None or not privacy.active or not any(private.may_be_private(kind) for kind in kinds):
+            return
+        for entry, sealed in await self._store.private_tool_calls(self.name, privacy.through):
+            opened = private.restored(entry, private.opened_values(privacy.vault, sealed))
+            privacy.learn(opened.type, opened.data)
+            privacy.through = max(privacy.through, entry.seq)
 
     def _keep_open(self, written: Iterable[tuple[Entry, private.Split]]) -> list[tuple[int, JsonObject]]:
         aside = [(entry.seq, split.private) for entry, split in written if split.private]

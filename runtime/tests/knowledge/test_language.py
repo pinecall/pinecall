@@ -41,6 +41,25 @@ def test_a_text_with_no_function_words_is_simple() -> None:
     assert detected([]) == "simple"
 
 
+# The 2026-10-23 eval's table: its last row's `Y8` was read as the Spanish `y`, and the base as Spanish.
+A_TABLE_OF_CODES = (
+    "# Rates\n\n| code | zone | rate |\n|---|---|---|\n| A1 | N | 10 |\n| B2 | S | 12 |\n| C3 | E | 15 |\n"
+    "| D4 | W | 18 |\n\n## Codes\n\n| id | tag |\n|---|---|\n| X9 | QQ |\n| Y8 | ZZ |\n| W7 | PP |\n"
+)
+A_TABLE_OF_LOTS = "# SKU\n\n| SKU | QTY | LOT |\n|---|---|---|\n| KX-100 | 40 | L7731 |\n| ZR-310 | 77 | L7733 |\n"
+
+
+@pytest.mark.parametrize("table", [A_TABLE_OF_CODES, A_TABLE_OF_LOTS])
+def test_the_letters_of_a_code_are_not_words(table: str) -> None:
+    """`Y8`, `A1` and `L7731` are codes: a table of them says no language and is `simple`."""
+    assert detected([table]) == "simple"
+
+
+def test_a_code_among_prose_changes_nothing() -> None:
+    """The words of the prose decide; a count or a code beside them is not one."""
+    assert detected([f"{ENGLISH}\n\nSee Y8 and 2nd floor, lot L7731."]) == "english"
+
+
 def test_the_files_are_counted_together() -> None:
     """A folder is one language: the words of every file are counted as one text."""
     assert detected([ENGLISH, ENGLISH, A_TABLE]) == "english"

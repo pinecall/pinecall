@@ -135,6 +135,14 @@ describe("a call", () => {
     expect(threw?.data["error"]).toBe("el hueco ya no existe");
   });
 
+  it("answers nothing for end_call, which the platform answers itself, and still answers a tool nobody declared", async () => {
+    const call = await serving();
+    gateway.emit(AGENT, call.id, "tool.call", { call_id: "toolu_05", name: "end_call", arguments: {} });
+    gateway.emit(AGENT, call.id, "tool.call", { call_id: "toolu_06", name: "cancel_everything", arguments: {} });
+
+    await vi.waitFor(() => expect(gateway.commandsOf("tool.result").map((sent) => sent.data["call_id"])).toEqual(["toolu_06"]));
+  });
+
   it("hands a refusal to the model and prints nothing, because the model is the one waiting", async () => {
     const printed = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const nobodyWaiting = vi.fn();

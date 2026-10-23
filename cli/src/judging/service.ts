@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { cornerRead, readSettings } from "../agents/service/corners.js";
 import * as api from "../api/judging.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
@@ -59,12 +60,28 @@ export const SetJudgingInput = z.object({
   model: z.string().min(1).optional(),
   options: z.record(z.string(), z.unknown()).optional(),
   platform: z.boolean().default(false),
+  /** An agent whose own judge the answer says beside the org's. */
+  agent: z.string().min(1).optional(),
 });
 export type SetJudgingInput = z.infer<typeof SetJudgingInput>;
 
 /** The org's judging and what it costs: the model, whose key it runs on, whether evals are billed. */
 export interface JudgingReport extends api.Judging {
   /** Whether the org brought a key for the model's vendor, so its evals are not billed. */
+  own_key: boolean;
+  /** The judge the agent named with `--agent` is asked for, over the org's; absent when none was named. */
+  agent?: AgentJudging;
+}
+
+/** What one agent's calls are judged on: the model its own settings name, the class's own, or the org's. */
+export interface AgentJudging {
+  agent: string;
+  /** `vendor/model` as the agent's settings name it; null when they name none. */
+  judge: string | null;
+  options: Record<string, unknown>;
+  /** The class declares `@judge`: no setting is read for it. */
+  declared: boolean;
+  /** Whether the org brought a key for that model's vendor, so its evals are not billed. */
   own_key: boolean;
 }
 
@@ -130,8 +147,8 @@ export async function tryJudge(ctx: Context, input: TryJudgeInput): Promise<api.
   return api.tryJudge(ctx.gateway(), agent, body);
 }
 
-export async function getJudging(ctx: Context): Promise<JudgingReport> {
-  return reported(ctx, await api.getJudging(ctx.gateway()));
+export async function getJudging(ctx: Context, agent?: string): Promise<JudgingReport> {
+  return withAgent(ctx, await reported(ctx, await api.getJudging(ctx.gateway())), agent);
 }
 
 /** Judging on or off, and the model it runs on; the endpoint takes the whole, so what is not changed travels as it stands. */
@@ -139,10 +156,10 @@ export async function setJudging(ctx: Context, input: SetJudgingInput): Promise<
   const model = modelWanted(input);
   const gw = ctx.gateway();
   const standing = await api.getJudging(gw);
-  if (input.on === undefined && model === undefined) return reported(ctx, standing);
+  if (input.on === undefined && model === undefined) return withAgent(ctx, await reported(ctx, standing), input.agent);
   const on = input.on ?? standing.on;
   const kept = model === undefined ? (standing.model ?? null) : model;
-  return reported(ctx, await api.setJudging(gw, kept === null ? { on } : { on, model: kept }));
+  return withAgent(ctx, await reported(ctx, await api.setJudging(gw, kept === null ? { on } : { on, model: kept })), input.agent);
 }
 
 /** The model a command line names: one of yours, null for Pinecall's, undefined when it names none. */
@@ -156,6 +173,19 @@ function modelWanted(input: SetJudgingInput): api.ModelConfig | null | undefined
   const named = providers.parseModelPath(input.model);
   if (named === undefined) throw new UsageError(`--model ${input.model} names no model: vendor/model, or one of ${Object.keys(providers.SHORT_NAMES).join(" · ")}`);
   return input.options === undefined ? named : { ...named, options: input.options };
+}
+
+// An agent's own `--judge` wins over the org's: it is read from the settings this key reads, the class's from `fixed`.
+async function withAgent(ctx: Context, report: JudgingReport, named: string | undefined): Promise<JudgingReport> {
+  if (named === undefined) return report;
+  const agent = ctx.slug("judging", { agent: named });
+  const answer = await readSettings(ctx, agent);
+  const config = cornerRead(answer)?.config;
+  const judge = config?.judge ?? null;
+  const { vendors } = await providers.listProviderKeys(ctx);
+  const vendor = judge === null ? undefined : providers.parseModelPath(judge)?.provider;
+  const options = config?.judge_options ?? {};
+  return { ...report, agent: { agent, judge, options, declared: answer.fixed.includes("judge"), own_key: vendor !== undefined && vendors.includes(vendor) } };
 }
 
 async function reported(ctx: Context, judging: api.Judging): Promise<JudgingReport> {

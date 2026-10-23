@@ -53,12 +53,12 @@ describe("pinecall studio", () => {
     expect((await run(["studio", "push", "front-desk", "--file", "desk.json"], { cwd: root })).out).toBe("front-desk: nothing in desk.json changed — still release 3\n");
   });
 
-  it("push refused with a 409 exits 1 and says to pull again", async () => {
+  it("push refused with a 409 exits 2 and says to pull again", async () => {
     refuse("put", "/v1/studio/agents/:name", 409, "this agent is at release 5 now, not the one you read: read it again, then save");
     const root = folder();
     write(root, "front-desk.studio.json", JSON.stringify({ release: 3, definition: DEFINITION }));
     const ran = await run(["studio", "push", "front-desk"], { cwd: root });
-    expect(ran.code).toBe(1);
+    expect(ran.code).toBe(2);
     expect(ran.err).toContain("`pinecall studio pull front-desk` writes it again");
   });
 

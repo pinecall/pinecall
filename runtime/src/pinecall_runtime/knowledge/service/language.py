@@ -51,7 +51,10 @@ EXCLUSIVE: dict[Language, frozenset[str]] = {
     language: words - frozenset().union(*(other for name, other in STOPWORDS.items() if name != language))
     for language, words in STOPWORDS.items()
 }
-A_WORD = re.compile(r"[a-záéíóúàèìòùâêîôûäëïöüñçãõ]+")
+# A word is a whole run of letters: the letters inside a code or a count (`Y8` is not the Spanish
+# `y`, `2nd` is not `nd`) say nothing of the language. The 2026-10-23 eval's table of rates was
+# counted Spanish for the one `Y8` in its last row.
+A_WORD = re.compile(r"(?<!\w)[^\W\d_]+(?!\w)")
 # Under this share of a language's own function words no language is said: a tariff table, a list
 # of names.
 LEAST_SHARE = 0.02

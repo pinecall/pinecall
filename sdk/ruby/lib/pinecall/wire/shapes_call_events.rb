@@ -100,7 +100,8 @@ module Pinecall
           worker: { kind: :str, null: true },
           medium: { kind: :ref, ref: "Medium", null: true },
           state: { kind: :json },
-          today: { kind: :str, null: true }
+          today: { kind: :str, null: true },
+          metadata: { kind: :json }
         }.freeze,
         "CallSummary" => {
           reason: { kind: :ref, ref: "EndReason", required: true },

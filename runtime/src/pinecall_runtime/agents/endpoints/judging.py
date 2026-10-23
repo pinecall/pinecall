@@ -5,11 +5,19 @@ from fastapi import APIRouter
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.agents import schemas
 from pinecall_runtime.agents.auth import CallsKey, TheOperator, TheRegistry, UsageKey
+from pinecall_runtime.agents.declaration import Model
 from pinecall_runtime.agents.service.tuning import model_from_wire
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.enums import Env
-from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
+from pinecall_runtime.exceptions import (
+    Conflict,
+    Forbidden,
+    NotFound,
+    ServiceUnavailable,
+    UpstreamError,
+    ValidationError,
+)
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.handles import TheHandles
 from pinecall_runtime.postgres import Session, box_wide
@@ -30,7 +38,8 @@ async def get_judging(actor: CallsKey, session: Session) -> schemas.JudgingSetti
 
 
 # The model is tried on the org's keys in each env, since both judge their calls on it: one the org
-# cannot key there, or a plugin of its own on a lent key, is refused naming the env.
+# cannot key there, a plugin of its own on a lent key, or a model its vendor turns away, is refused
+# naming the env; asked once for each key it would run on, in the words of the vendor's no.
 @router.put("/v1/org/judging")
 async def put_judging(
     body: schemas.JudgingRequest, actor: UsageKey, handles: TheHandles, session: Session
@@ -39,11 +48,15 @@ async def put_judging(
     model = model_from_wire(body.model, "llm")
     if model is not None:
         catalog = await providers.get_catalog(session)
+        tried: list[providers.Running] = []
         for env in Env:
             keyring = await providers.keys_of(session, handles.vault, Scope(actor.org, env))
             try:
-                providers.stage_on_its_key("llm", model, catalog, keyring)
-            except (Forbidden, ServiceUnavailable, Conflict) as refused:
+                stage = providers.stage_on_its_key("llm", model, catalog, keyring)
+                if stage not in tried:
+                    await providers.try_stage("llm", stage, what=f"the judge model {_named(model)}")
+                    tried.append(stage)
+            except (Forbidden, ServiceUnavailable, Conflict, ValidationError, UpstreamError) as refused:
                 raise type(refused)(IN_THE_ENV.format(env=env.value, refused=refused)) from refused
     await orgs.set_judging(session, actor.org, on=body.on)
     await orgs.set_judge_model(session, actor.org, body.model)
@@ -66,6 +79,10 @@ async def move_agent(
             raise NotFound(NO_SUCH_AGENT.format(slug=body.agent))
         numbers, stayed = await channels.move_routes_with_agent(session, body.agent, org.id)
     return schemas.AgentMoved(agent=body.agent, org=org.slug, logs=moved, numbers=numbers, stayed=stayed)
+
+
+def _named(model: Model) -> str:
+    return f"{model.provider}/{model.model}" if model.model else model.provider
 
 
 async def _judging(session: Session, org: str) -> schemas.JudgingSettings:

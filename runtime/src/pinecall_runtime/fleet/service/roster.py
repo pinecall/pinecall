@@ -13,6 +13,7 @@ from pinecall_runtime.fleet.schemas import (
     HeartbeatResponse,
     WorkerStatus,
 )
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.shared_state import Assigned, SharedState, newest
 from pinecall_runtime.redis import LocalSignal, Signal
 from pinecall_runtime.wire.feed import WorkerChanged
@@ -149,7 +150,8 @@ class Roster:
         for key, seat in list(self.heard_here.items()):
             if key not in self._down and not heard_lately(seat, now):
                 self._down.add(key)
-                self._tell(seat, up=False)
+                with survived("saying a worker is silent", seat.worker):
+                    self._tell(seat, up=False)
 
     def _tell(self, seat: WorkerStatus, *, up: bool) -> None:
         if self._on_change is not None:

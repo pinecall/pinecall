@@ -27,6 +27,7 @@ const COMMANDS: Record<string, string> = {
   "call.callback": "call/call.ts",
   "call.opt_out": "call/call.ts",
   "call.log": "client/calls.ts",
+  "call.done": "client/calls.ts",
   "call.event": "client/calls.ts",
   "prompt.set": "client/calls.ts",
   "tools.set": "client/calls.ts",

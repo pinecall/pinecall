@@ -12,8 +12,8 @@ module Pinecall
     # `error` naming the command's id.
     Command = Data.define(:type, :agent, :call, :id, :data)
 
-    # An entry read as what it means: the wire type, and the payload that type names.
-    Event = Data.define(:type, :data)
+    # An entry read as what it means: the wire type, the payload that type names, and the entry's seq.
+    Event = Data.define(:type, :data, :seq)
 
     # JSON encoding and decoding. Keys are symbols in Ruby and strings on the wire; both are
     # snake_case, so unlike TypeScript there is no key renaming.
@@ -33,7 +33,7 @@ module Pinecall
         raise WireError, "unknown event type: #{entry.type}" if shape.nil?
 
         Validate.call!(shape, entry.data, where: entry.type)
-        Event.new(type: entry.type, data: entry.data)
+        Event.new(type: entry.type, data: entry.data, seq: entry.seq)
       end
 
       # Build a command frame, validating its data and then the whole envelope. Validating here
@@ -42,11 +42,23 @@ module Pinecall
         shape = Registry::COMMANDS[type]
         raise WireError, "unknown command type: #{type}" if shape.nil?
 
+        data = plain(data)
         Validate.call!(shape, data, where: type)
         frame = { type:, agent:, call:, data: }
         frame[:id] = id unless id.nil?
         Validate.call!("Command", frame, where: type)
         Command.new(type:, agent:, call:, id:, data:)
+      end
+
+      # A Ruby value as the JSON the wire carries: a `Data` or a `Struct` is its fields, wherever it sits in
+      # an array or a hash, since `JSON.generate` would send its `inspect`.
+      def plain(value)
+        case value
+        when Data, Struct then plain(value.to_h)
+        when Hash then value.to_h { |key, inner| [key, plain(inner)] }
+        when Array then value.map { |inner| plain(inner) }
+        else value
+        end
       end
 
       # A frame as JSON text. A command without an id omits the key (the schema refuses null);

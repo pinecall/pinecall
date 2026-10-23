@@ -18,7 +18,10 @@ from pinecall_runtime.calls.context import CallContext, Contact, Route, new_call
 from pinecall_runtime.calls.fanout import Subscription
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.calls.service.text import open_text, resume_text, tokens_of
+from pinecall_runtime.calls.service.usage import keep_caller_played
 from pinecall_runtime.enums import Channel, Direction, KeyScope
+from pinecall_runtime.evals import service as evals
+from pinecall_runtime.evals.schemas import PlayedBy
 from pinecall_runtime.exceptions import (
     Conflict,
     NotFound,
@@ -39,6 +42,8 @@ router = APIRouter()
 
 NOT_TAKEN_UP = "call {call} cannot be taken up: it is over, or not this agent's; open a new one"
 NOT_A_STATE = "?state= is the state the call opens in: a JSON object of the class's fields"
+NOT_PLAYED_BY = "?played_by= is who plays the persona this run: a JSON object of llm, tts and voice, each a string"
+PLAYED_BY_NEEDS_A_PERSONA = "?played_by= says who plays a persona: name it with ?persona="
 A_STATE_AT_MOST = 16 * 1024
 _A_STATE: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
 OVER = "the call ended: {reason}"
@@ -63,7 +68,10 @@ async def chat(websocket: WebSocket) -> None:
                     raise Conflict(NOT_TAKEN_UP.format(call=again))
             else:
                 context = await _chat_context(session_, websocket, serving, registration)
+                played = await _admitted_as_a_simulation(session_, websocket, serving, registration)
                 running = await open_text(session_, serving, registration, context)
+                if played is not None:
+                    await keep_caller_played(session_, context.call, llm=played, tts=None, voice=None)
     except PinecallError as refused:
         await refuse_socket(websocket, refused)
         return
@@ -135,6 +143,35 @@ async def _chat_context(
         holder=scope.holder or None,
         state=_opening_state(websocket),
     )
+
+
+# A persona on the call makes it a simulation, which is admitted before anything opens, as the
+# gateway's own simulations are: past the org's simulations, or a caller on a vendor nobody keyed,
+# is the refusal of the socket, never a call opened and left open. `?played_by=` is the run's model
+# over the persona's own, as POST /v1/simulations takes it; the model that plays is kept with the call.
+async def _admitted_as_a_simulation(
+    session_: Session, websocket: WebSocket, serving: Serving, registration: Registration
+) -> str | None:
+    named = websocket.query_params.get("persona") or None
+    played = websocket.query_params.get("played_by")
+    if named is None:
+        if played is not None:
+            raise ValidationError(PLAYED_BY_NEEDS_A_PERSONA)
+        return None
+    scope = registration.scope
+    persona = await judging.persona_named(session_, scope.org, registration.slug, named)
+    if persona is None:
+        raise NotFound(judging.NO_SUCH_PERSONA.format(name=named, agent=registration.slug))
+    if played is not None:
+        persona = await evals.played_on(session_, persona, _played_by(played))
+    return await evals.admit_simulation(session_, serving, scope, registration.slug, evals.calling_as(persona))
+
+
+def _played_by(query: str) -> PlayedBy:
+    try:
+        return PlayedBy.model_validate_json(query)
+    except PydanticValidationError:
+        raise ValidationError(NOT_PLAYED_BY) from None
 
 
 def _opening_state(websocket: WebSocket) -> JsonObject:

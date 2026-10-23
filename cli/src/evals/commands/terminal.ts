@@ -126,6 +126,7 @@ export async function simulateAtTheTerminal(ctx: Context, agent: string, input: 
   // Listening is best effort: no player or room library must not fail the simulation.
   let ear: Promise<{ leave(): Promise<void> } | null> = Promise.resolve(null);
   let joined = false;
+  // The seat is left however the call ended: a refusal included, or a listener still joined holds the process.
   const said = await service.simulate(ctx, { slug: agent }, persona, input, {
     onOpened: (call) => {
       if (!listen || joined) return;
@@ -148,8 +149,9 @@ export async function simulateAtTheTerminal(ctx: Context, agent: string, input: 
       const metrics = entry.type === "turn.agent" ? `  ${metricsLine(entry.data["metrics"] as Record<string, unknown> | undefined)}` : "";
       ctx.io.print(`${line.mark} ${line.text}${metrics}`);
     },
+  }).finally(async () => {
+    await (await ear)?.leave();
   });
-  await (await ear)?.leave();
   ctx.io.result(said, render.simulated);
   return said;
 }

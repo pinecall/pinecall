@@ -94,7 +94,8 @@ second where the two index scans take ten milliseconds. **A base speaks a langua
 configuration its words are stemmed with, one of `english`, `spanish`, `portuguese`, `french`,
 `german`, `italian`, `dutch` or `simple` (no stemming), said by the push (`language`, as `en` or
 `english`) or counted from the files' function words when it says none, `simple` when they say
-nothing clearly (a table of names); the push's answer says which. A base begun with a file that
+nothing clearly (a table of names or codes: a word is a whole run of letters, so the `Y8` of a row
+is not a Spanish `y`); the push's answer says which. A base begun with a file that
 said nothing clearly is counted again with every file put beside it, so the prose that follows a
 table makes the base speak. Each language has a partial BM25 index of its own over the
 chunks in it, so `supervise` finds *supervising* in an English base and *sábados* finds *sábado* in
@@ -213,5 +214,8 @@ knows the substance and not the wording.
   measurable with figure 3 once the golden exists to say what it costs in recall.
 - **A monitor over `memory.ops`**, reading for a fact that reads like an instruction.
 - **Memory in the call's language.** `contact_memories` has the one Spanish index; a fact is
-  written in the call's language, which the agent declares, so the same partial index per language
-  fits once a golden of English callers says what the Spanish stemmer misses.
+  written in the language the caller spoke on the call (what the recognizer heard from them, else
+  what their own lines say by the function-word count a base's language is counted with, and only
+  where that tells nothing the agent's `language`) and in the third person, and recall hands it
+  back as written, so the same partial index per language fits once a golden of English callers
+  says what the Spanish stemmer misses.

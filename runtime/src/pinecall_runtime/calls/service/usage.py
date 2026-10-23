@@ -13,12 +13,15 @@ from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.repository.series import A_DAY_S, SeriesRepository
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.calls.writer import METERED_TYPES
-from pinecall_runtime.enums import Channel
+from pinecall_runtime.enums import Channel, Env
+from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.postgres import box_wide
 
 CHANNELS = tuple(channel.value for channel in Channel)
 SUMMARY = "call.summary"
+# A simulated call plays a quarter of an hour at most, and is summed up a moment after it ends.
+A_SIMULATION_MAY_BE_ON_THE_LINE_S = 60 * 60.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +122,12 @@ async def metered_page(store: Store, session: AsyncSession, *, after: int, limit
     read = [usage_row(item) for item in await store.across(METERED_TYPES, after=after, limit=limit)]
     kept = [row for row in read if org is None or row.org == org]
     return MeteredPage(rows=await _billed(session, kept), next=read[-1].cursor if read else None)
+
+
+async def simulating(session: AsyncSession, org: str, env: Env, *, at: float) -> int:
+    """The simulated calls of the org in the env that began and are not yet summed up: not in its usage yet."""
+    since = at - A_SIMULATION_MAY_BE_ON_THE_LINE_S
+    return await FactsRepository(session).simulating(org, env, since, judging.A_SIMULATED_CALLER)
 
 
 async def keep_caller_cost(session: AsyncSession, call: str, usd: float) -> None:

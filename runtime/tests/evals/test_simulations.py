@@ -4,12 +4,14 @@ import asyncio
 
 import httpx
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.billing import service as billing
 from pinecall_runtime.enums import Env
 from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, TooManyAtOnce
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.redis import LocalSignal
-from tests.conftest import Gateway, Tenant, until
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, until, used_of
 
 ACME = Scope("org_acme", Env.sandbox)
 OTHER = Scope("org_other", Env.sandbox)
@@ -44,8 +46,10 @@ async def test_a_persona_nobody_wrote_is_refused_by_its_name(gateway: Gateway, t
     assert "no persona called nobody-wrote-me" in answer.text
 
 
-async def simulated(gateway: Gateway, tenant: Tenant, agent: str, played_by: dict[str, str]) -> httpx.Response:
-    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "played_by": played_by}
+async def simulated(
+    gateway: Gateway, tenant: Tenant, agent: str, played_by: dict[str, str], *, voice: bool = False
+) -> httpx.Response:
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": voice, "turns": 1, "played_by": played_by}
     return await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
 
 
@@ -75,6 +79,58 @@ async def test_a_spoken_call_whose_caller_names_a_vendor_this_box_lacks_is_refus
     answer = await gateway.http.post("/v1/evals/voice", json=call, headers=tenant.server)
     assert answer.status_code == 400
     assert "no vendor named 'nonvendor'" in answer.text
+
+
+# ── what refuses a simulation is asked before its call opens ──
+
+
+async def said_on_the_log(gateway: Gateway, tenant: Tenant, agent: str) -> list[tuple[str, float, int]]:
+    """The credits.exhausted entries of the agent's own log: quota, used, limit."""
+    answer = await gateway.http.get(
+        f"/v1/agents/{agent}/calls", headers={**tenant.server, "accept": "application/json"}
+    )
+    said = [entry["data"] for entry in answer.json()["entries"] if entry["type"] == "credits.exhausted"]
+    return [(one["quota"], one["used"], one["limit"]) for one in said]
+
+
+@needs_the_services
+async def test_a_run_whose_caller_is_on_a_vendor_nobody_keyed_is_refused_before_a_call_opens_or_is_counted(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """F F3 and F F4: the 503 was heard after the call was opened, which nobody hung up, and counted."""
+    async with holding(gateway, tenant, agent):
+        for voice in (False, True):
+            answer = await simulated(gateway, tenant, agent, {"llm": "openai/gpt-5.4-mini"}, voice=voice)
+            assert answer.status_code == 503
+            assert "openai has no key: the org brought none and the box holds none" in answer.text
+        assert await used_of(gateway, tenant, "concurrent_calls") == 0
+    assert await used_of(gateway, tenant, "simulations") == 0
+
+
+@needs_the_services
+async def test_a_spoken_caller_whose_voice_is_on_a_vendor_nobody_keyed_is_refused_before_its_call_is_claimed(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    async with holding(gateway, tenant, agent):
+        answer = await simulated(gateway, tenant, agent, {"tts": "openai"}, voice=True)
+    assert answer.status_code == 503
+    assert "openai has no key" in answer.text
+
+
+@needs_the_services
+async def test_a_simulation_past_the_orgs_simulations_is_refused_before_it_opens_and_said_on_the_agents_log(
+    sessions: async_sessionmaker[AsyncSession], gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """H F3 and H F6: written and spoken alike, past the limit nothing opens and the refusal is kept."""
+    async with sessions.begin() as session:
+        await billing.set_quotas(session, tenant.org, Env.sandbox, billing.Quotas(simulations=0))
+    async with holding(gateway, tenant, agent):
+        for voice in (False, True):
+            answer = await simulated(gateway, tenant, agent, {}, voice=voice)
+            assert answer.status_code == 429
+            assert "0 of its 0 simulations in the sandbox" in answer.text
+        assert await used_of(gateway, tenant, "concurrent_calls") == 0
+        assert await said_on_the_log(gateway, tenant, agent) == [("simulations", 0, 0)] * 2
 
 
 # ── the calls on the line at once ──

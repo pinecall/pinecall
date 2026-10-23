@@ -87,6 +87,7 @@ export class Pinecall implements AgentGateway {
   readonly #errors = new Set<(error: Error) => void>();
   readonly #connects = new Set<() => void>();
   readonly #stops = new Set<(why: string) => void>();
+  readonly #kills = new Set<(slug: string, why: string) => void>();
   readonly #entries = new Set<(entry: Entry) => void>();
   readonly #connection: Connection;
 
@@ -201,6 +202,17 @@ export class Pinecall implements AgentGateway {
   }
 
   /**
+   * Called when an admin lets go of one of this client's agents: its slug and the gateway's
+   * sentence. The socket stays open for the others, and the agent is not declared again.
+   */
+  onKilled(listener: (slug: string, why: string) => void): () => void {
+    this.#kills.add(listener);
+    return () => {
+      this.#kills.delete(listener);
+    };
+  }
+
+  /**
    * Every entry the socket receives, as the gateway wrote it (snake_case), before any agent takes
    * it — other agents' entries and the client's own errors included.
    */
@@ -290,7 +302,20 @@ export class Pinecall implements AgentGateway {
     } catch (failed) {
       this.onError(asError(failed));
     }
-    if (killed(entry)) this.#agents.delete(entry.agent);
+    const why = killedFor(entry);
+    if (why !== null) this.#killed(entry.agent, why);
+  }
+
+  // The agent is no longer declared, so a reconnect leaves it out; then whoever asked to know.
+  #killed(slug: string, why: string): void {
+    this.#agents.delete(slug);
+    for (const listener of this.#kills) {
+      try {
+        listener(slug, why);
+      } catch (failed) {
+        this.onError(asError(failed));
+      }
+    }
   }
 
   // With no stop listener, report the stop as an error so it is not silent.
@@ -347,8 +372,9 @@ function detailOf(text: string): string {
   }
 }
 
-function killed(entry: Entry): boolean {
-  if (entry.type !== "error") return false;
+/** The gateway's sentence when the entry says an admin let go of its agent, else null. */
+function killedFor(entry: Entry): string | null {
+  if (entry.type !== "error") return null;
   const said = eventOf(entry);
-  return said.type === "error" && said.data.code === KILLED;
+  return said.type === "error" && said.data.code === KILLED ? said.data.message : null;
 }

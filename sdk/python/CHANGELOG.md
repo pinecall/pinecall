@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **A view that cannot be rendered fails its call**: the opening no longer stops half way (no state, no
+  following) when the view raises; the call's log gets a `render.failed` line and the model keeps the view
+  it had. (found by the 2026-10-23 eval, B B8)
+- **A hook that raises fails its call, not the rest of it**: the call's log gets a `hook.failed` line naming
+  the hook (and the event) and the error, and the opening no longer stops half way when `on_call` raises.
+  (found by the 2026-10-23 eval, B B8)
+- **Every state write carries its author on the wire** (`StateSet.cause`: tool and call id, event and
+  entry, or hook `on_call`/`on_memory`), and `EventMeta.seq` is the log's seq of the entry (it was a per-call
+  counter); the `state.cause` custom line is gone. (found by the 2026-10-23 eval, B B4)
+- **A line logged in `on_call` lands on the call's log**, as `on_end`'s already did. (found by the 2026-10-23
+  eval, B B3)
+- **The SDK sends `call.done` after the end hook, and registers `says_done`**, so the gateway's seal waits for
+  what the hook logs before it seals the log. (found by the 2026-10-23 eval, S2)
+- **`call.to`, `call.direction`, `call.caller` and `call.metadata`** (the token's, sealed). (found by the
+  2026-10-23 eval, K F6)
+- **`python -m pinecall.serve start` prints what the log keeps** (private values masked), says on stderr
+  when an admin kills an agent (`Client.on_killed`), and the client no longer answers `end_call`. (found by
+  the 2026-10-23 eval, A F3, J F3, R2)
+
 ## 0.11.15 — the serve entry registers as its host (2026-10-23)
 
 - **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's

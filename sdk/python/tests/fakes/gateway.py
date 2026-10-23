@@ -72,9 +72,16 @@ class FakeGateway:
 
     async def emit(
         self, agent: str, call: str | None, type_: str, data: Mapping[str, object]
-    ) -> None:
-        """Write an entry to the socket holding `agent`."""
-        await self._holders[agent].send_str(self._entry(agent, call, type_, data))
+    ) -> int:
+        """Write an entry to the socket holding `agent`; its seq."""
+        entry = self._entry(agent, call, type_, data)
+        await self._holders[agent].send_str(entry)
+        return cast("int", json.loads(entry)["seq"])
+
+    async def kill(self, agent: str, why: str) -> None:
+        """An admin let go of one agent: the `killed` error on it, the socket left open."""
+        killed = {"code": "killed", "message": why, "recoverable": False}
+        await self._holders[agent].send_str(self._entry(agent, None, "error", killed))
 
     async def cut(self) -> None:
         """Drop every socket as a gateway that went away does."""

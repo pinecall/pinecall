@@ -55,7 +55,8 @@ simulated caller's own model and voice cost, on the platform's keys, beside the 
 `call.score` row carries its `evals`, the judges that answered the call on the platform's key (on
 the org's own key, `0`); a `call.summary` row of a
 call a simulated caller played says `simulated: true` and counts no minutes, and a layer bills it
-as one simulation; a call an eval run opened and wrote counts no minutes either. A `evals.spent`
+as one simulation; a call an eval run opened and wrote counts no minutes either, and neither does a
+written call (a chat, a written simulation): its row says `minutes: 0`, its turns being the `messages` it spends, and a spoken call's row says `messages: 0`. A `evals.spent`
 row (on the agent's log, `call` empty) carries the evals of a judge tried on finished calls. The cursor is the store's position: a consumer that keeps the last one resumes
 and counts nothing twice. It skips nothing either: a row's position is given as it is written, not
 as it commits, so every write of a metered row takes one lock and holds it to its commit, and the

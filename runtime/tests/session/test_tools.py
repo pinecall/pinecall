@@ -38,8 +38,8 @@ def _answered_in(store: Store, call: str) -> Answered:
 
     async def answered(call_id: str) -> ToolResult | None:
         async with store.sessions() as session:
-            data = await EntryRepository(session).tool_answered(call, call_id)
-        return None if data is None else ToolResult.model_validate(data)
+            answered = await EntryRepository(session).tool_answered(call, call_id)
+        return None if answered is None else ToolResult.model_validate(answered.data)
 
     return answered
 

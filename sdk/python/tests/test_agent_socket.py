@@ -158,3 +158,18 @@ async def test_configuring_sends_the_declaration_with_the_fields_changed(
     }
     await asyncio.sleep(0)
     await client.close()
+
+
+async def test_end_call_gets_no_result_from_the_app_because_the_platform_answers_it_itself(
+    gateway: FakeGateway,
+) -> None:
+    client = await connected(gateway)
+    await gateway.emit(
+        "clinica", "CA_1", "tool.call", {"call_id": "tc_1", "name": "end_call", "arguments": {}}
+    )
+    await gateway.emit(
+        "clinica", "CA_1", "tool.call", {"call_id": "tc_2", "name": "pay", "arguments": {}}
+    )
+    answers = await results(gateway, 1)
+    assert [answer["call_id"] for answer in answers] == ["tc_2"]
+    await client.close()

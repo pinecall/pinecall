@@ -29,7 +29,7 @@ call and no view renders it.
 |---|---|
 | `channelRules = false` | leaves out the `<channel>` part of the prompt: how to write for a voice, a website's chat, WhatsApp |
 | `static slug = "front-desk"` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) under `mount`. A class served under another slug is refused |
-| `static events = { "slot.released": { from: ["app"] } }` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call |
+| `static events: EventDeclarations = { "slot.released": { from: ["app"] } }` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call. The type is there because TypeScript reads `["app"]` in a bare literal as `string[]` |
 
 ### The environment: the settings', or the class's
 
@@ -175,9 +175,9 @@ the model sends is checked against it before the method runs.
 | `confirm` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `preview` | how many items of a list the *model* sees. The state keeps every one |
-| `pii` | the parameters that carry personal data, masked in the log |
+| `pii` | the parameters that carry personal data: the log masks their values wherever the agent wrote them down (`state.changed`, `tool.result` and a line you log too), and `pinecall start` prints the log's version |
 | `timeout` | how many seconds the platform waits for this method: 30 unless set, 300 at most |
-| `params` | an explicit zod schema, when the signature is not enough |
+| `params` | an explicit zod schema, when the signature is not enough: `import { z } from "@pinecall/agents"` |
 
 A tool that throws does not crash the call: its message becomes the tool's result, marked as an
 error, and the model reads it. Throw a sentence a model can use — "Tuesday has no free slots" —
@@ -192,13 +192,21 @@ override async onCall(call: Call) {   // a call started; writes here are authore
   if (this.patient) this.stage = "choose";
 }
 
-override onEnd(call: Call) {          // a line logged here still lands
+override onEnd(call: Call) {          // a line logged here still lands, though the call is over
   this.log("outcome", { stage: this.stage });
 }
 
 override onEvent(name: string, data: Record<string, unknown>, meta: EventMeta) {}   // an accepted outside fact
 override onMemory(ops: MemoryOp[], call: Call) {}   // memory read or written: each op's `op` and `facts`
 ```
+
+After `onEnd` the SDK sends `call.done`, and the gateway waits for it, up to three seconds, before it seals
+the call: a log is closed to lines once sealed, so a line `onEnd` logs later than that is refused, and the
+gateway's journal names it.
+
+A hook that throws fails its call and no other: the call's log gets a `hook.failed` line naming the
+hook (and the event, for `onEvent`) and the error, stderr one line, and the call goes on with what the
+hook had written.
 
 `onCall` runs before the first prompt goes out, so the model never reads a state the call was not
 in; the state a golden or a persona opens the call in is applied after it, so the hook never
@@ -280,6 +288,7 @@ Every one of these is refused before any call, with a message that says what to 
 | `pii: ["dni"]` on a tool with no `dni` | `tool book: pii names parameters the tool has; unknown: dni` |
 | `stage` on a class with no `stage` field | `tool book: stage names a value of this agent's own stage field, and ClinicaNorte declares none; add \`stage: Stages<"…"> = "…"\` to the class, or ask when(state) instead` |
 | `@tool` on something that is not a method | `@tool goes on a method; … is not one` |
+| a tool with an argument named `say`, which every tool carries for the model's own line | `bad_shape: tool echo: 'say' is the platform's argument, never a tool's own`, said by the gateway when `pinecall start` registers the agent |
 | `@state({ pii: true, visibility: "public" })` | `two different answers to one question; write one` |
 | both `@render(Prompt)` and a `render()` method | `ClinicaNorte declares both @render(Prompt) and a render() method; two ways to answer one question — keep one` |
 | two `@view` decorators | `ClinicaNorte declares two views (…); a class draws one panel` |

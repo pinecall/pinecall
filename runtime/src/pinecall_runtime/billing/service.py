@@ -272,13 +272,15 @@ async def admit_hosted_app(session: AsyncSession, org: str, env: Env, *, hosting
     _refuse_past(await get_quotas(session, org, env), env, "hosted_apps", hosting)
 
 
-async def admit_simulation(session: AsyncSession, org: str, env: Env, *, at: float) -> None:
+# A simulation counts once its call ends, and a call begun is a simulation admitted: `playing` is those
+# that have begun and not ended yet, so a burst of them cannot all pass the limit together.
+async def admit_simulation(session: AsyncSession, org: str, env: Env, *, at: float, playing: int = 0) -> None:
     """Admit one more call a simulated caller plays."""
     quotas = await get_quotas(session, org, env)
     if quotas.simulations is None:
         return
     used = await get_usage(session, org, env, month_of(at))
-    _refuse_past(quotas, env, "simulations", used.simulations)
+    _refuse_past(quotas, env, "simulations", used.simulations + playing)
 
 
 async def admit_evals(session: AsyncSession, org: str, env: Env, *, at: float) -> int | None:

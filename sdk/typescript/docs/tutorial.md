@@ -74,12 +74,12 @@ Four things are worth naming, because they are the whole design:
   words the model reads.
 - **A tool's docstring is what the model reads about that tool, and its signature is the schema.**
   The parameters' types become the JSON Schema the model fills, and what it sends is checked
-  against it before your method runs. `pii` names the arguments that carry personal data and are
-  masked in the log; one naming a parameter the method has not is refused when the class loads, by
-  name — as is a tool with no docstring.
+  against it before your method runs. `pii` names the arguments that carry personal data: the log
+  masks their values wherever the agent wrote them down; one naming a parameter the method has not
+  is refused when the class loads, by name — as is a tool with no docstring.
 - **Fields are the state, and tools are the only writers.** `this.patient = …` renders the prompt
-  again and writes a `state.changed` line carrying the tool's own name; the same assignment
-  anywhere else throws `UnauthoredWrite`.
+  again and writes a `state.changed` line whose `cause` names the tool and the model's call of it,
+  one line for each field it writes; the same assignment anywhere else throws `UnauthoredWrite`.
 - **The view is `render()`**: JSX that renders to text, with the state in `this`. It is the only
   part of the prompt that differs between two turns of a call.
 

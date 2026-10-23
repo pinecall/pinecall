@@ -12,7 +12,7 @@ from pinecall_runtime.agents import service as agents
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import AnyonesServedCall, TheServedCall, TheServing, WorkerKey
 from pinecall_runtime.calls.service import seal, worker
-from pinecall_runtime.calls.service.serving import check_kind, claim_code, count_append, look_up
+from pinecall_runtime.calls.service.serving import check_entry, claim_code, count_append, look_up
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit import sse
 from pinecall_runtime.postgres import Session
@@ -46,7 +46,7 @@ async def reopen_call(
 @router.post("/v1/calls/{call}/events")
 async def append_entry(body: schemas.AppendEntryRequest, served: TheServedCall, serving: TheServing) -> Entry:
     """Write one entry of a call this gateway serves."""
-    check_kind(body.type)
+    check_entry(body.type, body.data)
     began = time.perf_counter()
     entry = await served.log.append(body.type, body.data, ephemeral=body.ephemeral)
     count_append(serving.counters, time.perf_counter() - began, [entry])
@@ -60,7 +60,7 @@ async def append_entries(
 ) -> schemas.AppendEntriesResponse:
     """Write a worker's batch of a call this gateway serves, once and in order."""
     for item in body.entries:
-        check_kind(item.type)
+        check_entry(item.type, item.data)
     began = time.perf_counter()
     entries = await served.log.append_many(body.entries, after=body.after)
     count_append(serving.counters, time.perf_counter() - began, entries)
@@ -71,6 +71,13 @@ async def append_entries(
 async def seal_call(body: schemas.SealCallRequest, served: TheServedCall, serving: TheServing) -> None:
     """Price the call, write its summary and score, and seal its log."""
     await seal.seal(serving, served, body, lent=body.lent)
+
+
+# What the session of a worker's call heard of the app: its end hook ran, what it wrote was sent.
+@router.post("/v1/calls/{call}/done", status_code=204)
+async def app_done(served: TheServedCall) -> None:
+    """The app's end hook ran: the seal that waits for it goes on."""
+    served.hooked.set()
 
 
 @router.post("/v1/calls/{call}/tools")

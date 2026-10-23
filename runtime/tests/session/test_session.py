@@ -76,7 +76,7 @@ from pinecall_runtime.wire.commands import (
 )
 from pinecall_runtime.wire.metrics import ModelUsage
 from pinecall_runtime.wire.parts import AgentConfig as Declared
-from pinecall_runtime.wire.parts import Supervisor, ToolResult
+from pinecall_runtime.wire.parts import StateCauseHook, StateCauseTool, Supervisor, ToolResult
 from pinecall_runtime.wire.parts import ToolSpec as WiredTool
 from tests.conftest import needs_the_database, until
 from tests.fakes.acme import ACME
@@ -326,6 +326,29 @@ async def test_an_event_the_app_sent_is_the_cause_of_the_next_state(box: Box, st
     states = [entry.data for entry in entries if entry.type == "state.changed"]
     assert states[0]["cause"] == {"kind": "event", "name": "paid", "seq": received.seq}
     assert "cause" not in states[1]
+
+
+@needs_the_database
+async def test_every_write_an_app_authors_carries_its_cause_and_a_hook_is_its_own_kind(
+    box: Box, store: Store, call: str
+) -> None:
+    session = a_session(box, BOOKING)
+    await session.start()
+    await session.apply(CallEvent(name="paid", data={"eur": 30}))
+    await session.apply(StateSet(state={"a": 1}, changed=["a"], cause=StateCauseHook(kind="hook", hook="on_call")))
+    book = StateCauseTool(kind="tool", tool="book", call_id="t1")
+    await session.apply(StateSet(state={"a": 1, "b": 2}, changed=["b"], cause=book))
+    await session.apply(StateSet(state={"a": 1, "b": 2, "c": 3}, changed=["c"], cause=book))
+    await session.apply(StateSet(state={"a": 1, "b": 2, "c": 3, "d": 4}, changed=["d"]))
+    await text.end_text(session, "caller_hung_up", "caller")
+    states = [entry.data for entry in await store.whole(call) if entry.type == "state.changed"]
+    # The event the platform saw is spent on the first write, which the app named a hook's.
+    assert [state.get("cause") for state in states] == [
+        {"kind": "hook", "hook": "on_call"},
+        {"kind": "tool", "tool": "book", "call_id": "t1"},
+        {"kind": "tool", "tool": "book", "call_id": "t1"},
+        None,
+    ]
 
 
 @needs_the_database
@@ -1382,7 +1405,8 @@ async def _pieces(*pieces: str) -> AsyncIterator[str]:
 
 
 async def no_audio() -> AsyncIterator[rtc.AudioFrame]:
-    for frame in ():
+    frames: tuple[rtc.AudioFrame, ...] = ()
+    for frame in frames:
         yield frame
 
 

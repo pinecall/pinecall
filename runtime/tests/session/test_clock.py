@@ -2,6 +2,8 @@
 
 import asyncio
 import time
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from livekit.agents import llm
@@ -101,3 +103,27 @@ async def test_the_agent_is_told_a_minute_before_a_limit_of_two_minutes_or_more(
     monkeypatch.undo()
     await session.close()
     assert slept[:2] == [240, 60]
+
+
+# A warning that could not be given (the session had closed under it) ended the timer, and the call it
+# watched had no ceiling: the limit is the call's, the warning only a courtesy before it.
+async def test_a_warning_that_cannot_be_given_is_said_and_the_limit_still_holds(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    ended: list[tuple[str, str]] = []
+
+    def broken(**_said: object) -> None:
+        raise RuntimeError("the session is closed")
+
+    def hang_up(reason: str, by: str) -> None:
+        ended.append((reason, by))
+
+    session = SimpleNamespace(
+        call=SimpleNamespace(a_person_has_the_line=False, context=SimpleNamespace(call="call_1")),
+        live=SimpleNamespace(generate_reply=broken),
+        hang_up=hang_up,
+    )
+    monkeypatch.setattr(clock, "WARNED_BEFORE_S", 0.1)
+    await clock.keep_time(cast(Session, session), 1, exhausted=None)
+    assert ended == [("timeout", "platform")]
+    assert "warning the agent that its time is nearly up failed on call_1" in caplog.text

@@ -1,9 +1,8 @@
 """`CallWorld`: the live call an agent serves — its line, its room, its turns, and its verbs."""
 
 import asyncio
-import itertools
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pinecall import _answers
 from pinecall._answers import Answer, Attended, Transferred, Waiting
@@ -11,7 +10,7 @@ from pinecall._calls import interruptible
 from pinecall._room import History, Participant, Room, Seat, Turn
 from pinecall.client import Found
 from pinecall.errors import PinecallError
-from pinecall.wire._names import Channel, JsonObject, Medium
+from pinecall.wire._names import Channel, Direction, JsonObject, Medium
 from pinecall.wire.commands import (
     AgentReply,
     AgentSay,
@@ -29,7 +28,7 @@ from pinecall.wire.commands import (
 from pinecall.wire.events_call import AttentionAnswered, CallClaimed, CallEnded, CallTransferred
 from pinecall.wire.events_turn import AgentTurnEnded, UserTurnEnded
 from pinecall.wire.frames import WireModel
-from pinecall.wire.parts import TransferMode
+from pinecall.wire.parts import Contact, TransferMode
 from pinecall.wire.room import ParticipantJoined, ParticipantLeft, ParticipantSpeaking
 
 # How long `say` and `reply` wait for the turn they asked for.
@@ -67,7 +66,11 @@ class CallLine:
     id: str
     contact: str = ""
     from_: str | None = None
+    to: str | None = None
     channel: Channel = "phone"
+    direction: Direction | None = None
+    caller: Contact | None = None
+    metadata: JsonObject = field(default_factory=JsonObject)
     medium: Medium | None = None
     today: str | None = None
     claimed: str | None = None
@@ -90,7 +93,15 @@ class CallWorld:
         self.id = line.id
         self.contact = line.contact
         self.from_ = line.from_
+        self.to = line.to
+        """The number called, or the agent a visitor reached."""
         self.channel: Channel = line.channel
+        self.direction = line.direction
+        """`inbound` when the public reached the agent, `outbound` when the agent dialed."""
+        self.caller = line.caller
+        """Who is on the line as far as the platform knows: `name`, `phone`, `email`; or None."""
+        self.metadata = line.metadata
+        """What the call was opened with and sealed, as a token's `metadata`; empty when none."""
         self.medium: Medium = line.medium or ("text" if line.channel == "whatsapp" else "voice")
         self.today = line.today
         """The day the call opened, `YYYY-MM-DD`."""
@@ -103,7 +114,6 @@ class CallWorld:
         self.history = History()
         self.cause: tuple[str, int] | None = None
         """The outside event a hook is running for, so a write in it can name what caused it."""
-        self._numbers = itertools.count(1)
         self._speaking: Waiting[bool] = Waiting(loop)
         self._transfers: Waiting[Transferred] = Waiting(loop)
         self._asks: Waiting[Attended] = Waiting(loop)
@@ -111,10 +121,6 @@ class CallWorld:
     def line(self) -> Line:
         """The call as the prompt reads it."""
         return Line(self.channel, self.medium, self.claimed)
-
-    def numbered(self) -> int:
-        """The next number of this call's own outside events."""
-        return next(self._numbers)
 
     # ── the verbs ──
 

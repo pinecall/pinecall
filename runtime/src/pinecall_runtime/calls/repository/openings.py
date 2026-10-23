@@ -6,8 +6,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
-from pinecall_runtime.calls.models import CallConfig, CallOpening, CallPrivate
+from pinecall_runtime.calls.models import CallConfig, CallLog, CallOpening, CallPrivate
+from pinecall_runtime.calls.repository.entries import COLUMNS, entry_of
 from pinecall_runtime.kit.repository import Repository
+from pinecall_runtime.wire.base import Entry
 
 
 class OpeningRepository(Repository[CallOpening]):
@@ -58,6 +60,16 @@ class PrivateRepository(Repository[CallPrivate]):
         """Every sealed value of the log, by seq."""
         statement = select(CallPrivate.seq, CallPrivate.sealed).where(CallPrivate.log == log)
         return {int(seq): str(sealed) for seq, sealed in (await self.session.execute(statement)).all()}
+
+    async def of_tool_calls(self, log: str, after: int) -> list[tuple[Entry, str]]:
+        """The tool.call entries of the log above `after` that kept private values, each with them sealed."""
+        statement = (
+            select(*(getattr(CallLog, name) for name in COLUMNS), CallPrivate.sealed)
+            .join(CallPrivate, (CallPrivate.log == CallLog.log) & (CallPrivate.seq == CallLog.seq))
+            .where(CallLog.log == log, CallLog.type == "tool.call", CallLog.seq > after)
+            .order_by(CallLog.seq)
+        )
+        return [(entry_of(row), str(row.sealed)) for row in (await self.session.execute(statement)).all()]
 
     async def of_entry(self, log: str, seq: int) -> str | None:
         """The sealed value of one entry, or None when it kept none."""

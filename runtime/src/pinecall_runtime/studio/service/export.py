@@ -11,7 +11,20 @@ from pinecall_runtime.studio.service.definition import A_PLACEHOLDER, COLLECT
 
 TS_TYPE: dict[ParamType, str] = {"string": "string", "number": "number", "integer": "number", "boolean": "boolean"}
 # What `{{…}}` becomes in the class: the call's own fields, the secrets as the process's environment.
-IN_THE_CLASS = {"call.from": "this.call.from", "call.channel": "this.call.channel", "call.today": "this.call.today"}
+# Only what the framework's `this.call` carries; a value Studio fills that it does not (`metadata`
+# under more than one key) is left empty, and the class says where (`_left_empty`).
+IN_THE_CLASS = {
+    "call.from": "this.call.from",
+    "call.to": "this.call.to",
+    "call.channel": "this.call.channel",
+    "call.direction": "this.call.direction",
+    "call.today": "this.call.today",
+    "caller.name": "this.call.caller?.name",
+    "caller.phone": "this.call.caller?.phone",
+    "caller.email": "this.call.caller?.email",
+}
+# `{{metadata.order}}`: a key of what the call was opened with, which `this.call.metadata` holds.
+A_METADATA_KEY = re.compile(r"metadata\.(\w+)")
 GITIGNORE = "node_modules/\n.env\n"
 
 
@@ -39,6 +52,7 @@ def class_of(name: str, release: int, definition: Definition) -> str:
     dynamic = A_PLACEHOLDER.search(definition.instructions) is not None
     lines = [
         f"// {name}: exported from Pinecall Studio, release {release}. The class is the agent now: edit it here.",
+        *_left_empty(definition),
         "",
         f'import {{ Agent, {"improvise, " if _improvised(definition) else ""}tool }} from "@pinecall/agents";',
         "",
@@ -69,6 +83,30 @@ def class_of(name: str, release: int, definition: Definition) -> str:
             lines += ["", *_on_end(definition)]
     lines += ["", *_render(definition, dynamic), "}", "", *_http_helper()]
     return "\n".join(lines) + "\n"
+
+
+# The `{{…}}` Studio filled that `this.call` cannot say: each is empty in the class, and the class says which.
+def _left_empty(definition: Definition) -> list[str]:
+    collect = definition.collect
+    templated = [definition.instructions]
+    for http_tool in definition.tools:
+        templated += [http_tool.url, *(header.value for header in http_tool.headers)]
+    if collect is not None:
+        templated += [*([] if collect.send_to is None else [collect.send_to]), *(h.value for h in collect.headers)]
+    paths = {path for text in templated for path in A_PLACEHOLDER.findall(text)}
+    named = sorted(path for path in paths if _in_the_class(path) is None and not path.startswith("secrets."))
+    if not named:
+        return []
+    said = ", ".join("{{" + path + "}}" for path in named)
+    return [f"// Studio filled {said} from the call; the class reads no such value, so each is empty below."]
+
+
+def _in_the_class(placeholder: str) -> str | None:
+    """The expression that reads a call value in the class, or None when `this.call` has none."""
+    if placeholder in IN_THE_CLASS:
+        return IN_THE_CLASS[placeholder]
+    key = A_METADATA_KEY.fullmatch(placeholder)
+    return None if key is None else f"this.call.metadata[{json.dumps(key.group(1))}]"
 
 
 def _method(http_tool: HttpTool) -> list[str]:
@@ -228,8 +266,8 @@ def _template(text: str, *, paths: bool = False) -> str:
             out.append("${encodeURIComponent(String(" + path_param + ' ?? ""))}')
         elif placeholder.startswith("secrets."):
             out.append("${process.env." + placeholder.removeprefix("secrets.") + ' ?? ""}')
-        elif placeholder in IN_THE_CLASS:
-            out.append("${" + IN_THE_CLASS[placeholder] + ' ?? ""}')
+        elif (expression := _in_the_class(placeholder)) is not None:
+            out.append("${" + expression + ' ?? ""}')
     out.append(_escaped(text[at:]))
     return "`" + "".join(out) + "`"
 

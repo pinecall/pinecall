@@ -1,5 +1,6 @@
 """What a call is while it runs, spoken or written: its state, and what the app's commands write."""
 
+import contextlib
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,7 +13,7 @@ from pinecall_runtime.calls.context import CallContext
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.session.hearing import AgentWords, TurnPolicy, policy_for
-from pinecall_runtime.session.writing import AppendMany, Writing
+from pinecall_runtime.session.writing import WRITTEN_WITHIN_S, AppendMany, Writing
 from pinecall_runtime.wire.commands import (
     CallCallback,
     CallLog,
@@ -25,13 +26,19 @@ from pinecall_runtime.wire.events import (
     CallbackRequested,
     Custom,
     EventReceived,
-    StateCause,
-    StateCauseEvent,
     StateChanged,
     ToolsChanged,
 )
 from pinecall_runtime.wire.metrics import ModelUsage
-from pinecall_runtime.wire.parts import Contact, EventSource, PlatformTool, Supervisor, ToolResult
+from pinecall_runtime.wire.parts import (
+    Contact,
+    EventSource,
+    PlatformTool,
+    StateCause,
+    StateCauseEvent,
+    Supervisor,
+    ToolResult,
+)
 
 # `sp_<n>`: numbered on from the highest in the log when a call is taken up again.
 SPEECH = "sp_"
@@ -54,6 +61,7 @@ class ToolUse:
 type RunTool = Callable[[ToolUse, str | None], Awaitable[ToolResult]]
 type Lookup = Callable[[PlatformTool, JsonObject, str | None], Awaitable[JsonObject]]
 type Seal = Callable[[list[ModelUsage], str], Awaitable[None]]
+type Done = Callable[[], Awaitable[None]]
 
 
 # What a session reaches outside the process its call runs in. In the gateway these are the
@@ -66,6 +74,9 @@ class Platform:
     tool: RunTool
     lookup: Lookup
     seal: Seal
+    # Tells the gateway, whose seal waits for it, that the app's end hook ran and what it wrote was
+    # sent; None where nothing waits for it.
+    done: Done | None = None
 
 
 class Call:
@@ -145,10 +156,13 @@ class Call:
         """Whether the model must not answer: a supervisor holds the line, or one is awaited."""
         return self.taken_by is not None or self.waiting_for_a_person
 
+    # The app says who wrote it when it knows, which is every write of an SDK: a tool's second
+    # write and a hook's are authored too. What the platform saw running is for an app that does not.
     async def set_state(self, wanted: StateSet) -> None:
-        """The app's whole state, and what it answers when a tool or an event caused it."""
+        """The app's whole state, and what caused it: the app's word, else the tool or event running."""
         changed = wanted.changed if wanted.changed is not None else sorted(wanted.state)
-        cause, self.cause = self.cause, None
+        guessed, self.cause = self.cause, None
+        cause = wanted.cause or guessed
         written = StateChanged(state=wanted.state, changed=changed)
         if cause is not None:
             written.cause = cause
@@ -165,6 +179,15 @@ class Call:
     async def log_custom(self, wanted: CallLog) -> None:
         """A line of the app's own, as it sent it."""
         await self.writing.write("custom", Custom(name=wanted.name, data=wanted.data))
+
+    # Every line the app sent before this one is appended already (each command is applied in turn and
+    # awaits its write), and what is still queued is flushed first: the seal goes on after the last of them.
+    async def app_finished(self) -> None:
+        """The app's end hook ran and what it wrote is sent: tell the seal that waits for it."""
+        with contextlib.suppress(TimeoutError):
+            await self.writing.flush(WRITTEN_WITHIN_S)
+        if self.platform.done is not None:
+            await self.platform.done()
 
     async def call_back(self, wanted: CallCallback) -> None:
         """A callback the agent took, in the call's log, where the callbacks endpoint collects it."""

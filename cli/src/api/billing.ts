@@ -19,6 +19,11 @@ export interface Limits {
   numbers: Limit;
   evals: Limit;
   simulations: Limit;
+  /** Facts remembered and chunks of documents kept, the apps the runtime hosts, and the dollars spent this month in both envs. */
+  memory_facts: Limit;
+  knowledge_chunks: Limit;
+  hosted_apps: Limit;
+  budget_usd: Limit;
   /** The vendors the runtime lends the org a key for; null lends every key it holds. */
   lends: string[] | null;
   /** Where the org buys more, when the deployment sells plans. */

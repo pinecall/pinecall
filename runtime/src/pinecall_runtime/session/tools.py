@@ -18,8 +18,8 @@ from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.session.call import Call, ToolUse
 from pinecall_runtime.session.lookups import Lookups, platform_tools
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S
-from pinecall_runtime.wire.events import ErrorEvent, StateCauseTool, ToolCall
-from pinecall_runtime.wire.parts import ToolResult
+from pinecall_runtime.wire.events import ErrorEvent, ToolCall
+from pinecall_runtime.wire.parts import StateCauseTool, ToolResult
 
 # Runs one tool the model called and returns what the model reads of it.
 type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str]]

@@ -14,17 +14,18 @@ from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import tokens
-from pinecall_runtime.agents.declaration import AgentConfig, Model, Voice
-from pinecall_runtime.agents.service import registry, settings, tuning
+from pinecall_runtime.agents.declaration import Voice
+from pinecall_runtime.agents.service import registry
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.enums import Channel, Direction, Env
-from pinecall_runtime.evals.schemas import NextLineRequest
+from pinecall_runtime.evals.schemas import NextLineRequest, PlayedBy
 from pinecall_runtime.evals.service import playing, spoken
 from pinecall_runtime.evals.service.callers import Spending, heard_in, improvise_line
+from pinecall_runtime.evals.service.players import caller_model, caller_stage, caller_voice, named, voice_vendor
 from pinecall_runtime.evals.service.turns import NextLine, is_call_over
-from pinecall_runtime.exceptions import Conflict, PinecallError, QuotaExceeded, ServiceUnavailable, TooManyRequests
+from pinecall_runtime.exceptions import Conflict, QuotaExceeded, ServiceUnavailable, TooManyRequests
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
@@ -43,8 +44,6 @@ NO_LINE = "the simulated call could not be held: {broke}"
 NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a call id nobody opened"
 # Longer than any run, so the caller's token never ends a call first.
 A_CALL_MAY_LAST_S = 15 * 60.0
-# A vendor that would not list its voices: the caller speaks in its plugin's own, the agent's too.
-NONE_LISTED = "%s listed no voice for a simulated caller to speak in: it speaks in the plugin's own"
 BROKE = "simulated call %s broke"
 
 # The calls a simulated caller may be on at once, per org and env, on every gateway of the box.
@@ -202,13 +201,47 @@ def calling_as(persona: judging.Persona) -> judging.CallerPersona:
     )
 
 
-async def admit_simulation(session_: AsyncSession, serving: calls.Serving, scope: Scope, agent: str) -> None:
-    """A simulated call admitted, or refused with credits.exhausted on the agent's log."""
+# Everything that can refuse a simulation is asked here, before a call is claimed or opened: a
+# refusal after it left a call nobody hung up and a simulation that was counted (2026-10-23).
+async def admit_simulation(
+    session_: AsyncSession,
+    serving: calls.Serving,
+    scope: Scope,
+    agent: str,
+    persona: judging.CallerPersona | None = None,
+    *,
+    voice: bool = False,
+) -> str | None:
+    """A simulated call admitted before anything opens, or refused; the model that plays its caller.
+
+    Past the org's simulations is refused with credits.exhausted on the agent's log. A caller whose
+    model, or whose voice when spoken, is on a vendor nobody keyed is refused as its run would be.
+    """
     try:
-        await billing.admit_simulation(session_, scope.org, scope.env, at=epoch())
+        playing = await calls.simulating(session_, scope.org, scope.env, at=epoch())
+        await billing.admit_simulation(session_, scope.org, scope.env, at=epoch(), playing=playing)
     except QuotaExceeded as refused:
-        await alerts.credits_exhausted(session_, serving, scope, agent, refused)
+        await alerts.credits_refused(serving, scope, agent, refused)
         raise
+    if persona is None:
+        return None
+    configured = await providers.get_catalog(session_)
+    keys = await providers.keys_of(session_, serving.handles.vault, scope)
+    if voice:
+        vendor, model = voice_vendor(configured, persona)
+        providers.stage_on_its_key("tts", Voice(provider=vendor, model=model), configured, keys)
+    return named(caller_stage(configured, keys, persona))
+
+
+async def played_on(session_: AsyncSession, persona: judging.Persona, played: PlayedBy) -> judging.Persona:
+    """The persona as one run plays it, over its own; a model or a voice this box lacks is refused."""
+    chosen = played.model_dump(exclude_none=True)
+    # A voice belongs to its vendor: a run naming another vendor drops the persona's voice.
+    if "tts" in chosen and "voice" not in chosen:
+        chosen["voice"] = None
+    played_by = dataclasses.replace(persona, **chosen)
+    judging.check_persona_models(await providers.get_catalog(session_), played_by.llm, played_by.tts, played_by.voice)
+    return played_by
 
 
 # The head is claimed in the caller's scope before the room is offered, so the worker opens it
@@ -223,69 +256,6 @@ async def refuse_an_opened_call(session_: AsyncSession, call: str) -> None:
     """Refuse a call id somebody already opened: a simulated caller is put on a new one alone."""
     if await calls.head_of_call(session_, call) is not None:
         raise Conflict(NOT_A_NEW_CALL.format(call=call))
-
-
-# ── the caller ──
-
-
-@dataclass(frozen=True, slots=True)
-class CallerModel:
-    """The model a caller's lines are improvised on, and its `vendor/model` as it runs."""
-
-    llm: llm.LLM[Never]
-    named: str
-
-
-def named(stage: providers.Running) -> str:
-    """A stage as it runs, `vendor/model`, or the vendor alone on its plugin's own model."""
-    return stage.vendor if not stage.model else f"{stage.vendor}/{stage.model}"
-
-
-# Read in a transaction of its own: the model is held for a whole call, and no connection is.
-@asynccontextmanager
-async def caller_model(
-    serving: calls.Serving, scope: Scope, persona: judging.CallerPersona
-) -> AsyncGenerator[CallerModel]:
-    """The model that improvises the caller's lines: the persona's, else the box's caller's."""
-    async with serving.handles.sessions.begin() as session_:
-        configured = await providers.get_catalog(session_)
-        keys = await providers.keys_of(session_, serving.handles.vault, scope)
-    row = None if configured.caller is None else configured.caller.llm
-    declared = tuning.model_named(persona.llm or None, "llm", in_use=configured.default_vendors["llm"]) or (
-        None if row is None else Model(provider=row.vendor, model=row.model or "")
-    )
-    stage = providers.stage_on_its_key("llm", declared, configured, keys)
-    model = providers.llm_of(stage)
-    try:
-        yield CallerModel(model, named(stage))
-    finally:
-        await model.aclose()
-
-
-# The caller speaks in the agent's language and never in the agent's own voice.
-async def caller_voice(
-    session_: AsyncSession, serving: calls.Serving, scope: Scope, agent: str, persona: judging.CallerPersona | None
-) -> providers.Running:
-    """The caller's voice: the persona's, else one of the vendor's that is not the agent's."""
-    configured = await providers.get_catalog(session_)
-    holding = serving.registry.serving(scope, agent, None)
-    config = AgentConfig(slug=agent)
-    if holding is not None and holding.scope.org == scope.org:
-        config, _ = await settings.tuned_for_call(session_, holding.config, holding.scope, configured)
-    in_use = configured.default_vendors["tts"]
-    named = None if persona is None else tuning.model_named(persona.tts or None, "tts", in_use=in_use)
-    vendor = in_use if named is None else named.provider
-    model = None if named is None else named.model or None
-    keys = await providers.keys_of(session_, serving.handles.vault, scope)
-    agents = _voice_the_agent_speaks(config, configured, keys, vendor)
-    chosen = spoken.pick_caller_voice(
-        configured.voices, vendor, agents, config.language, None if persona is None else persona.voice
-    )
-    unnamed = providers.stage_on_its_key("tts", Voice(provider=vendor, model=model), configured, keys)
-    if chosen is None:
-        chosen = await _another_listed(configured, unnamed, agents, config.language)
-    stage = providers.stage_on_its_key("tts", Voice(provider=vendor, model=model, voice_id=chosen), configured, keys)
-    return dataclasses.replace(stage, voice=chosen, language=config.language)
 
 
 # The caller leaving ends the call as a hang-up, which the worker writes; the room is deleted after,
@@ -435,42 +405,3 @@ async def _played_by(serving: calls.Serving, call: str, model: str, voice: provi
 async def _kept(serving: calls.Serving, call: str, spending: Spending) -> None:
     async with serving.handles.sessions.begin() as session_:
         await calls.keep_caller_cost(session_, call, spending.usd)
-
-
-# The voice the agent speaks with on the caller's vendor: the one it declared, else the operator's
-# for its language, else its plugin's own default, which is what its pipeline gives it; on another
-# vendor no voice of the caller's can be the agent's.
-def _voice_the_agent_speaks(
-    config: AgentConfig, configured: providers.Catalog, keys: providers.Keyring, vendor: str
-) -> str | None:
-    declared = config.voice or Voice(provider=configured.default_vendors["tts"])
-    if declared.provider != vendor:
-        return None
-    row = configured.voices.get(f"{vendor}/{providers.primary_language(config.language)}")
-    if declared.voice_id or row:
-        return declared.voice_id or row
-    return providers.default_voice(providers.stage_on_its_key("tts", declared, configured, keys))
-
-
-# The operator gave no voice the agent is not speaking in: the vendor's own, the row's listing
-# first, in the agent's language before any other. A vendor that lists none leaves the plugin's.
-async def _another_listed(
-    configured: providers.Catalog, unnamed: providers.Running, agents: str | None, language: str | None
-) -> str | None:
-    spoken_in = providers.primary_language(language)
-    try:
-        listed = providers.listed_in_catalog(configured, unnamed.vendor, spoken_in) or await providers.listed_by_vendor(
-            dataclasses.replace(unnamed, language=spoken_in)
-        )
-    except PinecallError:
-        logger.warning(NONE_LISTED, unnamed.vendor, exc_info=True)
-        return None
-    others = [voice for voice in listed if voice.id != agents]
-    same_language = [voice for voice in others if _speaks(voice, spoken_in)]
-    found = (same_language or others)[:1]
-    return found[0].id if found else None
-
-
-def _speaks(voice: providers.ListedVoice, language: str | None) -> bool:
-    its_own = str(voice.detail.get("language") or "")
-    return language is None or its_own == "" or its_own.startswith(language)

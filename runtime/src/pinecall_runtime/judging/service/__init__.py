@@ -19,6 +19,7 @@ from pinecall_runtime.judging.service.calibration import (
     Label,
     Where,
     calibration_of,
+    check_labellable,
     label_call,
 )
 from pinecall_runtime.judging.service.case import (
@@ -102,6 +103,7 @@ from pinecall_runtime.judging.service.personas import NOT_A_SWITCH as NOT_A_PERS
 from pinecall_runtime.judging.service.personas import (
     Played,
     StoredPersona,
+    check_persona_keys,
     check_persona_models,
     delete_persona,
     every_persona,
@@ -174,6 +176,8 @@ __all__ = [
     "calibration_of",
     "case_of",
     "check_decision",
+    "check_labellable",
+    "check_persona_keys",
     "check_persona_models",
     "conversation_of",
     "cut_at",

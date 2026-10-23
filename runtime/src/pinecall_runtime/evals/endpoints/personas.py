@@ -16,6 +16,7 @@ from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUn
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Actor, Scope
+from pinecall_runtime.kit.handles import TheHandles
 from pinecall_runtime.kit.time import epoch
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.providers import service as providers
@@ -86,13 +87,17 @@ async def generate_personas(
     )
 
 
-# A model or a vendor this box lacks is refused when written, not on the call that plays it.
+# A model or a vendor this box lacks, or that nobody keyed, is refused when written, not on the call that
+# plays it.
 @router.put("/v1/agents/{slug}/personas/{name}")
 async def put_persona(
-    slug: KnownAgent, name: str, body: judged.PersonaRequest, actor: EvalsKey, session: Session
+    slug: KnownAgent, name: str, body: judged.PersonaRequest, actor: EvalsKey, handles: TheHandles, session: Session
 ) -> judged.PersonaList:
     """Write one of the agent's callers whole, or rename one from `was`; or switch Pinecall's."""
-    judging.check_persona_models(await providers.get_catalog(session), body.llm, body.tts, body.voice)
+    configured = await providers.get_catalog(session)
+    judging.check_persona_models(configured, body.llm, body.tts, body.voice)
+    keyring = await providers.keys_of(session, handles.vault, actor.scope)
+    judging.check_persona_keys(configured, keyring, body.llm, body.tts)
     if name in judging.library_personas():
         await judging.write_library_persona(session, actor.org, slug, name, body, by=asked_by(actor))
     else:

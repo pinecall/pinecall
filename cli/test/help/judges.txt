@@ -42,9 +42,9 @@ its labels — trusted from 10 compared labels on, agreeing with 80% of them at 
 
 Examples
   $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
-  offers-next-slot written · 12 judge(s)
+  offers-next-slot written · 12 judge(s) in the list
   $ pinecall judges off relevance --org
-  relevance off · 12 judge(s)
+  relevance off · 12 judge(s) in the list
   $ pinecall judges try offers-next-slot --last 3
   CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  [seq 14]
   3 evals · $0.0031 · nothing was written

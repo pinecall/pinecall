@@ -1,6 +1,7 @@
 /** `this.call`: the live call an agent instance serves — its room, turns and verbs. */
 
-import { type Medium } from "../wire/defs.js";
+import type { Camel } from "../wire/codec.js";
+import type { Contact, Direction, Medium } from "../wire/defs.js";
 
 import type { Call as HookCall } from "../agent/lifecycle.js";
 import { History } from "./history.js";
@@ -60,6 +61,10 @@ export const NO_GATEWAY_TO_SEARCH = "this call cannot search: no gateway is serv
 
 /** Line facts the call needs beyond what the room's entries carry. */
 export interface CallLine extends HookCall {
+  to?: string;
+  direction?: Direction;
+  caller?: Camel<Contact>;
+  metadata?: Record<string, unknown>;
   today?: string;
   claimed?: string | null;
 }
@@ -72,7 +77,15 @@ export class CallWorld implements HookCall {
   readonly id: string;
   readonly contact: string;
   readonly from?: string;
+  /** The number called, or the agent a visitor reached. */
+  readonly to?: string;
   readonly channel?: string;
+  /** `inbound` when the public reached the agent, `outbound` when the agent dialed. */
+  readonly direction?: Direction;
+  /** Who is on the line as far as the platform knows: `name`, `phone`, `email`; absent when nobody is named. */
+  readonly caller?: Camel<Contact>;
+  /** What the call was opened with and sealed, such as a token's `metadata`; empty when none. */
+  readonly metadata: Record<string, unknown>;
   /** Spoken (`voice`) or written (`text`). A gateway that does not say gets it from the channel. */
   readonly medium: Medium;
   /** The day this call opened, `YYYY-MM-DD`. */
@@ -89,7 +102,6 @@ export class CallWorld implements HookCall {
   #asks: ((attended: Attended) => void)[] = [];
   /** The event being dispatched, so a write inside onEvent can name its cause. */
   cause: { name: string; seq: number } | null = null;
-  #events = 0;
 
   constructor(
     line: CallLine,
@@ -100,16 +112,15 @@ export class CallWorld implements HookCall {
     this.id = line.id;
     this.contact = line.contact;
     if (line.from !== undefined) this.from = line.from;
+    if (line.to !== undefined) this.to = line.to;
     if (line.channel !== undefined) this.channel = line.channel;
+    if (line.direction !== undefined) this.direction = line.direction;
+    if (line.caller !== undefined) this.caller = line.caller;
+    this.metadata = line.metadata ?? {};
     this.medium = line.medium ?? (line.channel === "whatsapp" ? "text" : "voice");
     if (line.today !== undefined) this.today = line.today;
     if (line.claimed !== undefined) this.claimed = line.claimed;
     this.room = new Room(out);
-  }
-
-  /** Next sequence number for this call's events (independent of the wire's seq). */
-  numbered(): number {
-    return (this.#events += 1);
   }
 
   /** A handle to one participant, e.g. `call.participant(id).mute()`. */

@@ -2,11 +2,12 @@
 
 import { readFileSync } from "node:fs";
 
+import { http, HttpResponse } from "msw/http";
 import { describe, expect, it } from "vitest";
 
-import { PinecallError, UsageError } from "../../../src/errors.js";
+import { GatewayError, UsageError } from "../../../src/errors.js";
 import * as suite from "../../../src/evals/service/suite.js";
-import { answer, refuse, stream } from "../../support/gateway.js";
+import { answer, GATEWAY, refuse, server, stream } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { aRun } from "../../support/fixtures.js";
 import { folder } from "../../support/project.js";
@@ -31,6 +32,15 @@ describe("what a run sends", () => {
     const { ctx } = testContext();
     await suite.startSuite(ctx, "front-desk", [], suite.SuiteInput.parse({ voice: true, backgroundNoise: 15, ambience: "cafe", packetLoss: 0.05, cases: ["double-booked", "double-booked"], version: 3 }));
     expect(sent[0]!.body).toEqual({ agent: "front-desk", goldens: [], cases: ["double-booked"], version: 3, voice: true, interferer_db: 15, ambience: "cafe", packet_loss: 0.05 });
+  });
+
+  it("the audio flags without --voice are refused, as `simulate` refuses them, and nothing is sent", async () => {
+    const sent = answer("post", "/v1/evals/run", aRun());
+    const { ctx } = testContext();
+    for (const spoiled of [{ packetLoss: 0.05 }, { backgroundNoise: 12 }, { ambience: "cafe" }]) {
+      await expect(suite.startSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse(spoiled))).rejects.toMatchObject({ exit: 2, message: suite.ONLY_ON_A_LINE });
+    }
+    expect(sent).toEqual([]);
   });
 
   it("a run the gateway answered running is followed until its row says it is over", async () => {
@@ -65,6 +75,14 @@ describe("what plays", () => {
     expect(suite.whatPlays({ cases: ["x"], files: true })).toEqual({ files: true, dataset: false });
   });
 
+  it("a spoken run plays the files alone: its dataset is a real caller's words, played written", () => {
+    expect(suite.whatPlays({ voice: true })).toEqual({ files: true, dataset: false });
+    expect(suite.whatPlays({ voice: true, paths: true })).toEqual({ files: true, dataset: false });
+    expect(suite.whatPlays({ voice: false })).toEqual({ files: true, dataset: true });
+    // Asked for out loud, the cases are still asked: the gateway's own refusal says why they cannot.
+    expect(suite.whatPlays({ voice: true, dataset: true })).toEqual({ files: false, dataset: true });
+  });
+
   it("the dataset rides beside the goldens as `dataset: true`, and the report says which goldens were sent as files", async () => {
     stream("/v1/events");
     const sent = answer("post", "/v1/evals/run", aRun());
@@ -90,8 +108,24 @@ describe("a run", () => {
     answer("get", "/v1/evals/runs/:id", { ...aRun(), id: "run_7", status: "running" });
     const { ctx } = testContext();
     const failed = suite.runSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse({}), undefined);
-    await expect(failed).rejects.toBeInstanceOf(PinecallError);
+    // A run that cannot start is 2, "cannot run", not 1, "something it measures did not hold".
+    await expect(failed).rejects.toBeInstanceOf(UsageError);
     await expect(failed).rejects.toThrow("a run is already going on front-desk (run_7) — pinecall runs show run_7 to watch it");
+  });
+
+  it("refused for a golden its schema cannot take is told by the golden's name and the field, exit 2", async () => {
+    const complaint = { loc: ["body", "goldens", 1, "turns"], msg: "List should have at most 40 items after validation, not 41" };
+    server.use(http.post(`${GATEWAY}/v1/evals/run`, () => HttpResponse.json({ detail: [complaint, { loc: ["body", "goldens", 0], msg: "Input should be a valid dictionary" }, { loc: ["body", "version"], msg: "Input should be a valid integer" }] }, { status: 422 })));
+    const { ctx } = testContext();
+    const failed = suite.runSuite(ctx, "front-desk", [GOLDEN, { ...GOLDEN, name: "long-one" }], suite.SuiteInput.parse({}), undefined);
+    await expect(failed).rejects.toBeInstanceOf(UsageError);
+    await expect(failed).rejects.toThrow("the gateway refused the run: golden long-one, turns: List should have at most 40 items after validation, not 41; golden books-thursday: Input should be a valid dictionary; version: Input should be a valid integer");
+  });
+
+  it("every other refusal stays the gateway's own: 1, in its words", async () => {
+    refuse("post", "/v1/evals/run", 429, "the org has used 4 of its 4 concurrent calls in the sandbox");
+    const { ctx } = testContext();
+    await expect(suite.runSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse({}), undefined)).rejects.toEqual(new GatewayError(429, "the org has used 4 of its 4 concurrent calls in the sandbox"));
   });
 
   // A run that held writes no reproduction: one that broke writes into the process's own folder, which writeReproductions covers below.

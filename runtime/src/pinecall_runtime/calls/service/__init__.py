@@ -23,7 +23,7 @@ from pinecall_runtime.calls.schemas import (
     RecordingKeyResponse,
     SealCallRequest,
 )
-from pinecall_runtime.calls.service.binding import attach, attach_parked, hand_on
+from pinecall_runtime.calls.service.binding import Handoffs, attach, attach_parked, hand_on
 from pinecall_runtime.calls.service.codes import Codes
 from pinecall_runtime.calls.service.counters import VendorCounters
 from pinecall_runtime.calls.service.days import Kept as DaysKept
@@ -56,7 +56,7 @@ from pinecall_runtime.calls.service.stranded import stranded
 from pinecall_runtime.calls.service.text import TextSetup, open_text, open_text_as
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.calls.service.traceback import traceback_of
-from pinecall_runtime.calls.service.usage import keep_caller_cost, keep_caller_played
+from pinecall_runtime.calls.service.usage import keep_caller_cost, keep_caller_played, simulating
 from pinecall_runtime.calls.store import Store
 
 __all__ = [
@@ -76,6 +76,7 @@ __all__ = [
     "Contact",
     "DaysKept",
     "Filter",
+    "Handoffs",
     "Inbox",
     "ListFilters",
     "Live",
@@ -146,6 +147,7 @@ __all__ = [
     "samples",
     "sealed_among",
     "send_command",
+    "simulating",
     "stranded",
     "traceback_of",
     "unanswered_tools",

@@ -98,7 +98,7 @@ module Pinecall
       # back as JSON is a string, and is the declared stage it names.
       def restore(state)
         state = state.transform_keys(&:to_sym)
-        Author.with(Author.current || "restore") do
+        Author.with(Author.current || "restore", Author.call_id) do
           self.class.declared_state.each_key do |name|
             value = state.key?(name) ? state[name] : nil
             write_state(name, name == :stage ? declared_stage(value) : value)

@@ -52,7 +52,7 @@ export {
 } from "./personas.js";
 export { readPolicy, replayCall, type Replayed, type Verdict } from "./replay.js";
 export { diffRuns, DRIFT_CALLS, drifted, DriftInput, driftOf, listRuns, movedBetween, PromoteInput, promoteCall, RUNS_MOST, RunsLimit, secondsOf, showRun, THRESHOLD, type Drift, type JudgeDrift, type Moved, type Promoted, type Rate } from "./runs.js";
-export { callerOf, exitCodeOf, ONLY_ON_A_LINE, SimulateInput, simulate, TURNS, type Reached, type Simulated, type SimulationListeners } from "./simulation.js";
+export { callerOf, requireHeld, SimulateInput, simulate, TURNS, type Reached, type Simulated, type SimulationListeners } from "./simulation.js";
 export {
   AMBIENCES,
   busyWith,
@@ -61,6 +61,7 @@ export {
   held,
   mediansOf,
   modelsOf,
+  ONLY_ON_A_LINE,
   playsCases,
   reportOf,
   REPRODUCTIONS,

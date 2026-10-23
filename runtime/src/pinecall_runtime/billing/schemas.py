@@ -55,6 +55,12 @@ class Limits(Row):
     # This month's judges that answered on the platform's key, and calls a simulated caller played.
     evals: Limit
     simulations: Limit
+    # What the org keeps now (facts, chunks, the apps the box hosts), and the dollars its calls cost this
+    # month in both envs together: every quota an operator can set is shown, set or not.
+    memory_facts: Limit
+    knowledge_chunks: Limit
+    hosted_apps: Limit
+    budget_usd: Limit
     lends: list[str] | None
     billing_url: str | None
     world: Env

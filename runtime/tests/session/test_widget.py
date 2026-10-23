@@ -3,7 +3,10 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
+from typing import cast
 
+import pytest
 from livekit import rtc
 
 from pinecall_runtime.agents.declaration import AgentConfig
@@ -228,3 +231,48 @@ async def test_a_widget_joining_late_is_caught_up_and_then_nothing_arrives_twice
     ]
     assert to_the_late == sorted(set(to_the_late))
     assert to_the_late[-1] == 2
+
+
+# A widget the room could not publish to (it left as the entry went) ended the call's one tail, and
+# every widget of the call was left on the state it had.
+async def test_a_widget_that_cannot_be_sent_an_entry_does_not_end_the_tail_nor_stale_the_others(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    published: list[tuple[str, int]] = []
+
+    async def publish_data(packed: bytes, *, topic: str, destination_identities: list[str]) -> None:
+        [identity] = destination_identities
+        if identity == "web_gone":
+            raise RuntimeError("the participant left")
+        published.append((identity, cast(int, json.loads(packed)["seq"])))
+
+    def entry_at(seq: int) -> Entry:
+        return Entry(
+            seq=seq, ts=float(seq), call="call_1", agent="clinica-norte", type="custom", ephemeral=False, data={}
+        )
+
+    async def state(_viewer: str) -> tuple[JsonObject, int]:
+        return {}, 0
+
+    async def since(_after: int) -> AsyncIterator[Entry]:
+        for _ in ():
+            yield entry_at(0)
+
+    async def tail(_after: int) -> AsyncIterator[Entry]:
+        for seq in (1, 2):
+            yield entry_at(seq)
+
+    def public(entry: Entry, _viewer: str) -> JsonObject | None:
+        return {"seq": entry.seq}
+
+    room = SimpleNamespace(local_participant=SimpleNamespace(publish_data=publish_data))
+    widget = Widget(
+        cast(Call, SimpleNamespace(context=SimpleNamespace(call="call_1"))),
+        cast(rtc.Room, room),
+        Reading(state=state, since=since, tail=tail, public=public),
+    )
+    widget.audience = {"web_gone": 0, "web_here": 0}
+    await widget._tail(0)
+    assert published == [("web_here", 1), ("web_here", 2)]
+    assert widget.audience == {"web_gone": 2, "web_here": 2}
+    assert "sending an entry to a widget failed on call_1 for web_gone" in caplog.text

@@ -39,6 +39,8 @@ src/pinecall/
   _spec.py                   one tool as the gateway receives it: the arguments' model, its schema, what is refused
   _doc.py                    a docstring as the model reads it: one line, and what `Args:` says of each parameter
   _running.py                a tenant's method run under its author: a `def` or an `async def`, from a loop or not
+  _cause.py                  the cause a `state.set` names for a write: the tool and its call id, the event and its entry, or the hook
+  _failures.py               what a class's own failure leaves on its call: `hooked` (a hook that raised), `unrendered` (a view that failed)
   _accepts.py                the outside events a class accepts, and from whom; what reaches `on_event`
   _searching.py              whether a class searches its bases, read off its own file with `ast`
   _rules.py                  the framework's words: the rules, the protocols, the channel's; word for word TS and Ruby
@@ -62,7 +64,8 @@ src/pinecall/
     _prompting.py            `prompt`: the page offline, and `--show-machine`
     _viewing.py              `view.render`, the one console verb an agent's own process answers
     _held.py                 what a process holds, and leaving: a drain, then the socket, once
-    _lines.py                the wire entry a line for the CLI, a line for a person, the drain line
+    _lines.py                the wire entry a line for the CLI, a line for a person, the drain line, an agent killed
+    _masking.py              what it prints of an entry: the values the agent declared private, masked as the log masks them
   observe.py                 reading a log: one page (`history`), or the stream from a cursor on (`observe`)
 docs/                        the pages a person writing an agent reads: README · writing-an-agent · the-view
   py.typed                   the package is typed (PEP 561)
@@ -201,16 +204,22 @@ class and the socket.
    golden, a persona or `?state=` asked for — is applied after the hook so it is not overwritten,
    and before the first render so the model never reads a state the call was not in.
 3. **The opening send** — `prompt.set` for each block that says something and `tools.set`, then
-   one `state.set`: the caller's first turn waits on the prompt, and only the log reads the state. Only then does the bridge follow the instance, so a hook writing five fields
-   is one prompt and not five.
-4. **On every write** — `state.set` with the field that moved; when an outside event caused it,
-   a `state.cause` line naming it; then the sync.
+   one `state.set`, its cause the hook when `on_call` wrote anything: the caller's first turn waits on the prompt, and only the log reads the state. Only then does the bridge follow the instance, so a hook writing five fields
+   is one prompt and not five. The log's lines are forwarded from the first moment, so a line `on_call` logs lands.
+4. **On every write** — `state.set` with the field that moved and its `cause` (`_cause.py`), from
+   who wrote it: the tool and the model's call id (a `ContextVar`), the event handler and the entry
+   it ran for, or the hook; then the sync.
 5. **The sync** renders every block and compares each with what this call was last sent:
    `prompt.set` only for a block whose text differs (a block never sent counts as empty),
    `tools.set` only when the visible list differs. A tool's thread and the loop both sync, under
-   one lock.
+   one lock. A view that raises fails its call and no other: the model keeps the view it had, the
+   log gets a `render.failed` line and the process a warning.
+   A hook that raises (`hooked`) is the call's failure too: a `hook.failed` line in its log naming the
+   hook and the error, a warning, and the job goes on to what follows it (the opening still sends the
+   state and follows the instance).
 6. **A tool call** runs on the instance serving that call — an `async def` on the loop, a `def`
-   on a thread — and its answer is made JSON; a call no longer served answers with an error.
+   on a thread — and its answer is made JSON; a call no longer served answers with an error. A tool
+   the app does not declare gets an error answer too, but `end_call`, which the platform answers itself.
 7. **An outside event** reaches `on_event` only from a sender the class accepts, one at a time,
    in order, its writes authored `event:<name>`. **The view again** on the caller's turn, on
    `call.claimed`, and on `memory.ops` at once, not queued behind a running job: the runtime holds

@@ -58,6 +58,7 @@ lib/pinecall/
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
   serve/loading.rb           its flags, the class in a file, a state field by field
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
+  serve/masking.rb           what `--events` prints of an agent's entries: the values it declared `pii`, masked
   serve/viewing.rb           `view.render`, the one console verb an agent's own process answers
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
   client/connection.rb       the WS: the key at the door, backoff on the way back, a ping
@@ -129,7 +130,8 @@ diffed, and no view renders it. The class is the contract; what it runs on is th
 **State** is declared with `state`, and the rules are enforced in code:
 
 - **Tools are the only writers.** After `seal`, a write with no author raises `UnauthoredWrite`.
-  An author is set by `tool` (its own name), by `run_hook` (`hook:on_call`) or by `restore`.
+  An author is set by `tool` (its own name, and the model's id for the call), by `run_hook`
+  (`hook:on_call`) or by `restore`.
 - **The author rides `Fiber[]`,** never a module-level stack: one process serves many calls at
   once, and two tools running at the same time must not read each other's name.
 - **A derived field is state.** `state(:identified) { !patient.nil? }` is exactly what a `when`
@@ -183,7 +185,10 @@ with `remembers?`, which the runtime answers, and say a sentence of its own abou
 ## 7. The call, and what a class may do to it
 
 Everything on `call` was reduced from entries the client already receives; every verb is one
-command on the wire. There is no LiveKit in this repository at all.
+command on the wire. There is no LiveKit in this repository at all. What the call is — `id`, `from`,
+`to`, `channel`, `medium`, `direction`, `caller`, `metadata`, `today` — is the line `call.started`
+carries, named as the wire and the TypeScript package name it (`caller` shadows `Kernel#caller` on
+`CallWorld`, and nowhere else).
 
 | the class writes | the command | it lands as |
 |---|---|---|
@@ -213,25 +218,36 @@ The call ending answers every verb still waiting (`the call ended before it was 
 2. **`call.started`** → a fresh instance, `seal`ed, given its `CallWorld`; `on_call` runs;
    `call.started.state` — the state a golden, a persona or `?state=` asked for — is applied after
    the hook so it is not overwritten, before the first render so the model never reads a state
-   the call was not in.
+   the call was not in. What the class logs is forwarded from before the hook, so a `log` in
+   `on_call` lands in the call's log.
 3. **The opening send** — `state.set`, then `sync`. Only then does the bridge start listening, so
-   a hook writing five fields is one prompt and not five.
-4. **On every change** — `state.set` with the field that moved; when the write came from an
-   outside fact, one `state.cause` line naming it; then `sync`.
+   a hook writing five fields is one prompt and not five. When `on_call` wrote, that `state.set`
+   names the fields it wrote and the hook as its cause.
+4. **On every change** — `state.set` with the field that moved and who made the write, as the wire's
+   `StateCause`: the tool and the model's id for its call, the outside fact (its name and the seq of
+   its entry), or the hook (`on_call`, `on_memory`); then `sync`. A write the wire has no word for
+   (a restore) says nothing.
 5. **`sync`** renders every block and compares each against what **this call** was last sent:
    `prompt.set <name>` only for a block whose text differs (a block never sent counts as empty, so
    an empty one costs nothing), `tools.set` only if the visible list differs. Re-sending identical
-   text is a cache miss for nothing.
+   text is a cache miss for nothing. A view (or a `when`) that raises fails its own call: one
+   `render.failed` entry with the exception's class and message goes to the call's log, the model keeps
+   the view it had, and the process goes on. A hook that raises fails its call the same way, through
+   `hooked`: one `hook.failed` entry naming the hook (and the event, for `on_event`), the call goes on
+   with what the hook wrote, `on_event` still clears `world.cause`, and `on_end` still closes the log
+   and says `call.done`.
 6. **A tool call** — routed to the instance serving that call, run on a thread of its own; an
    unknown call, an unknown tool and a tool that raised all come back as one `tool.result`
-   carrying `error`, because a turn that never gets one waits forever.
+   carrying `error`, because a turn that never gets one waits forever; except `end_call`, the
+   platform's own, whose call and result it writes itself, so the app answers none.
 7. **An outside fact** — the pair (name, source) is checked against `accepts`. Facts run one at a
    time, in the order they arrived, on that call's own thread.
    **The view again** — on the caller's turn (the view answers the turn being taken), on
    `call.claimed` (the caller can see the page), and on `memory.ops`, whose recalled facts become
    what `remembers?` answers from: none of them is a state change, so nothing else would render.
 8. **`call.ended`** → nothing may render for this call any more; `on_end` runs, and the log stays
-   open one hook longer so a farewell line still lands.
+   open one hook longer so a farewell line still lands; then the bridge sends `call.done`, which the
+   gateway's seal waits for (three seconds at most) before it closes the call's log to lines.
 9. **`call.attached`** → a call handed to this process mid-conversation (another process drained
    or died, or the gateway restarted): a sealed instance is `restore`d to the state the gateway
    kept, no `on_call` runs, and the whole prompt and the tools are sent. A call this process
@@ -252,15 +268,19 @@ no CLI. It knows the wire (`lib/pinecall/wire/`) and `websocket-driver`.
   test is what found it.)
 - **The key travels as `Authorization: Bearer`**, never in a URL, because a URL ends up in a log.
 - **It reads nothing from the environment.** `Client.new(url:, api_key:, env:)` is given all
-  three; `env` names the world in `pinecall-env`, on the socket and on a REST request alike.
+  three; `env` names the world in `pinecall-env`, on the socket and on a REST request alike. Neither
+  the client nor its connection prints the key: `inspect` says the door and the agents, since a log
+  line or an exception prints what `inspect` says.
 - **One REST door of its own:** `client.search(call, query, k:)`, the gateway's lookup for a call
   this client serves, through `Client::Rest`; a refusal comes back as `Refused` carrying the
   gateway's own `detail`. The org's bases, memory and keys are the one CLI's verbs.
 - **Leaving.** `drain` asks every agent to drain and waits for the tools running, up to 30 s;
   a stop from the org (`error` coded `stopped`, for no agent) closes the socket for good and goes
-  to `on_stopped`; an agent killed (`error` coded `killed`, on that agent) is dropped from the
-  agents the client declares, so a reconnect leaves it out and the others go on; `on_entries`
-  hands over every entry as the gateway wrote it.
+  to `on_stopped`, and the close frame the gateway sends behind it is answered into a socket this
+  side already closed, which is no error; an agent killed (`error` coded `killed`, on that agent) is
+  dropped from the agents the client declares, so a reconnect leaves it out and the others go on,
+  and goes to `on_killed` with its slug and the gateway's sentence; `on_entries` hands over every
+  entry as the gateway wrote it.
 
 ## 10. The serve contract
 
@@ -277,12 +297,21 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
   hosted app's runner names its host, and the gateway knows the release by it.
 - **The slug is the folder's**, `--slug`; a class whose `slug "…"` says another is refused.
 - **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the
-  gateway wrote it, `agent.registered` first (the listener is in place before the socket opens).
+  gateway wrote it, `agent.registered` first (the listener is in place before the socket opens). A
+  value the agent declared private is not printed: the arguments its tools list under `pii` and the
+  state fields declared `pii` are masked by name, and the values of those arguments, once a tool call
+  carried them, wherever else the agent wrote them down (a state field, a tool's answer, a logged
+  line) — whole tokens only, and never a value shorter than three characters. What was said is never
+  masked (`Serve::Masking`, as the TypeScript and Python entries do).
 - **`--console`:** `takes_unclaimed: false` — a console's process takes only the calls it opened.
 - **Leaving:** SIGINT, SIGTERM or the end of its stdin (the CLI that started it is gone) drains,
   then closes; a second signal closes at once, and the end of stdin after a signal is the same ask
   (the CLI sends both); a stop from the org closes without draining. A
-  trap only pushes onto a queue: the main thread does the leaving.
+  trap only pushes onto a queue: the main thread does the leaving. `Held#stop` is what drains and
+  closes, and the one line on stderr saying where the calls went is its own, so `Pinecall.serve`'s
+  `held.stop` says it as the serve entry does.
+- **An agent an admin killed** (`pinecall kill`) is one line on stderr, `<slug>  ✗ <the gateway's
+  sentence>`, and the process goes on holding its other agents; stdout stays the wire's.
 - **The console's verbs** are answered by the CLI's companion; the one this process could answer,
   `view.render`, is refused 404 `a Ruby agent draws no panel`, by the client's default handler.
 
@@ -301,7 +330,10 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
 The wire is the runtime's, and `lib/pinecall/wire/` (`Pinecall::Wire`) keeps what this gem speaks
 of it: the frames (`Entry`, `Command`, `Event`), the registries, the shapes the validator walks
 (split by family: parts, the agent's config, metrics, the events, the commands, the doors), the
-validator and the reducer. No gem of the runtime's is read. `test/wire/golden/` is the runtime's
+validator and the reducer. No gem of the runtime's is read. Every command's data passes through
+`Codec.plain` before it is validated, so a `Data` or a `Struct` — in a tool's return, a state field,
+a logged line, a payload — leaves as its fields, wherever it sits in an array or a hash, and not as
+the `inspect` string `JSON.generate` would make of it. `test/wire/golden/` is the runtime's
 golden call log, and `test/wire/reduce_test.rb` holds the reducer to the state it folds to.
 
 ## 13. Packaging

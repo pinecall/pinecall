@@ -12,6 +12,7 @@ from pinecall_runtime.fleet.repository import OfferRepository
 from pinecall_runtime.fleet.schemas import WorkerStatus
 from pinecall_runtime.fleet.service import envs, rooms
 from pinecall_runtime.fleet.service.roster import REFUSED_AT, Roster, accepting_of, overflow_name
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.livekit import Servers
 from pinecall_runtime.wire.dispatch import Dispatch
 
@@ -126,7 +127,13 @@ class Offering:
             offers = OfferRepository(session)
             await offers.age_out(now - FORGOTTEN_AFTER_S)
             due = list(await offers.due(now - OFFERED_AGAIN_AFTER_S, SWEPT_AT_MOST))
-        return [offer.room for offer in due if await self.offer_again(offer) is not None]
+        offered: list[str] = []
+        # Oldest first: a room that cannot be offered is said and left, or no room behind it ever would be.
+        for offer in due:
+            with survived("offering a room again", offer.room):
+                if await self.offer_again(offer) is not None:
+                    offered.append(offer.room)
+        return offered
 
     async def waiting(self, now: float) -> dict[str, int]:
         """Each fleet's rooms with a caller that no worker opened yet."""

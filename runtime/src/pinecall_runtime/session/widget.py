@@ -13,6 +13,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from pinecall_runtime.accounts.service import tokens
 from pinecall_runtime.exceptions import PinecallError
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import JsonObject, a_mapping
 from pinecall_runtime.session.call import Call
 from pinecall_runtime.wire.base import Entry
@@ -119,8 +120,11 @@ class Widget:
         async for entry in self.reading.tail(after):
             self.cursor = entry.seq
             for identity, sent in sorted(self.audience.items()):
-                if entry.seq > sent:
-                    await self._send(entry, identity)
+                # A widget that cannot be sent an entry is said with its call and identity, and the
+                # others are sent it: a tail that ended on one would leave every widget of the call stale.
+                with survived("sending an entry to a widget", f"{self.call.context.call} for {identity}"):
+                    if entry.seq > sent:
+                        await self._send(entry, identity)
                 # A widget that left while this was sent is not added back.
                 if identity in self.audience:
                     self.audience[identity] = max(sent, entry.seq)

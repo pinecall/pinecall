@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { answer, refuse } from "../support/gateway.js";
-import { A_JUDGE, A_LIBRARY_JUDGE, JUDGING } from "../support/fixtures.js";
+import { A_JUDGE, A_LIBRARY_JUDGE, JUDGING, SETTINGS, tuningRow } from "../support/fixtures.js";
 import { folder } from "../support/project.js";
 import { run } from "../support/run.js";
 
@@ -62,13 +62,13 @@ describe("pinecall judges", () => {
     const sent = answer("put", "/v1/agents/:slug/judges/:name", { judges: [A_JUDGE] });
     const ran = await run(["judges", "add", "offers-next-slot", "--asks", A_JUDGE.question, "--answer", "score"]);
     expect(sent[0]!.body).toEqual({ question: A_JUDGE.question, answer: "score", when: "always" });
-    expect(ran.out).toBe("offers-next-slot written · 1 judge(s)\n");
+    expect(ran.out).toBe("offers-next-slot written · 1 judge(s) in the list\n");
   });
 
   it("rm of one of Pinecall's: the gateway's 409 in its words, which name the verb that switches it off", async () => {
     refuse("delete", "/v1/agents/:slug/judges/:name", 409, "consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off");
     const ran = await run(["judges", "rm", "consent"]);
-    expect(ran.code).toBe(1);
+    expect(ran.code).toBe(2);
     expect(ran.err).toBe("pinecall: the gateway answered 409: consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off\n");
   });
 
@@ -100,6 +100,31 @@ describe("pinecall judging", () => {
     answer("get", "/v1/org/judging", JUDGING);
     const ran = await run(["judging"]);
     expect(ran.out).toBe("judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call\n");
+  });
+
+  it("--agent says a line more: the judge the agent's own settings name, and whose key it runs on", async () => {
+    answer("get", "/v1/org/judging", JUDGING);
+    const sent = answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("m_1", 4, { judge: "openai/gpt-5.4-mini" }) });
+    answer("get", "/v1/provider-keys", { vendors: ["openai"] });
+    const ran = await run(["judging", "--agent", "front-desk"]);
+    expect(sent[0]!.path).toBe("/v1/agents/front-desk/settings");
+    expect(ran.out).toBe("judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call\n  front-desk · judged on openai/gpt-5.4-mini · your own key: evals not billed\n");
+  });
+
+  it("--agent on an agent with no judge of its own says its calls are judged as the org's; a class's own wins over both", async () => {
+    answer("get", "/v1/org/judging", JUDGING);
+    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    answer("get", "/v1/provider-keys", { vendors: [] });
+    expect((await run(["judging", "--agent", "front-desk"])).out).toContain("  front-desk · no judge model of its own: its calls are judged as above\n");
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, fixed: ["judge"] });
+    expect((await run(["judging", "--agent", "front-desk"])).out).toContain("  front-desk · the class declares its own judge model");
+  });
+
+  it("without --agent it is the org's line alone, and asks nothing of any agent", async () => {
+    answer("get", "/v1/org/judging", JUDGING);
+    const asked = answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    await run(["judging"]);
+    expect(asked).toHaveLength(0);
   });
 
   it("off is one word, and keeps the model", async () => {

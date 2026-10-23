@@ -12,7 +12,7 @@ from pinecall_runtime.calls.logs import Log
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable
 from pinecall_runtime.kit.text import JsonObject
-from pinecall_runtime.session.call import Call
+from pinecall_runtime.session.call import Call, Platform
 from pinecall_runtime.session.writing import MOST_A_BATCH, MOST_QUEUED, Writing
 from pinecall_runtime.wire.base import BatchedEntry, Entry
 from pinecall_runtime.wire.commands import SessionConfigure, ToolsSet
@@ -146,7 +146,7 @@ async def test_a_refused_batch_refuses_each_of_its_entries_and_the_next_still_go
     taken = await writing.write("custom", _custom("también"))
     await writing.close(5)
     assert kept == ["también"]
-    assert writing.refused == ["custom", "custom"]
+    assert writing.refused == ["custom 'no'", "custom 'tampoco'"]
     assert all(isinstance(future.exception(), Conflict) for future in refused)
     assert (taken.seq, writing.after) == (1, 1)
 
@@ -201,7 +201,7 @@ async def test_a_close_past_its_budget_lets_the_queue_go_rather_than_wait_for_ev
     writing.write("custom", _custom("dos"))
     await asyncio.wait_for(writing.close(0.05), 1)
     assert writing.draining is None
-    assert writing.refused == ["custom", "custom"]
+    assert writing.refused == ["custom 'uno'", "custom 'dos'"]
 
 
 @needs_the_database
@@ -329,3 +329,42 @@ async def test_a_configure_declares_for_this_call_and_sets_its_state(box: Box, s
         ("agent.configured", ["language"]),
         ("state.changed", ["step"]),
     ]
+
+
+# The app's word after its end hook says the seal may go on: it comes after what the app wrote before it.
+@needs_the_database
+async def test_the_apps_end_hook_done_is_said_to_the_platform_after_its_lines_were_written(
+    box: Box, store: Store, call: str
+) -> None:
+    said: list[str] = []
+
+    async def done() -> None:
+        said.append("done")
+
+    platform = Platform(append_many=box.log.append_many, tool=box.tool, lookup=box.lookup, seal=box.seal, done=done)
+    ending = Call(context_of(call), AgentConfig(slug="clinica-norte"), platform)
+    ending.writing.open()
+    ending.writing.write("custom", _custom("closed"))
+    await ending.app_finished()
+    assert said == ["done"]
+    assert [entry.data["name"] for entry in await store.whole(call)] == ["closed"]
+    await ending.writing.close(5)
+
+
+async def test_a_call_whose_platform_waits_for_nothing_takes_the_apps_word_and_goes_on(box: Box) -> None:
+    await Call(context_of("call_1"), AgentConfig(slug="clinica-norte"), box.platform()).app_finished()
+
+
+# An app's line logged after the log was sealed is lost; its name is what the warning keeps of it.
+async def test_a_line_the_sealed_log_refused_is_named_in_what_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    async def sealed(_entries: list[BatchedEntry], *, after: int) -> list[Entry]:
+        raise Conflict(f"call call_1 has ended: its batch cannot be appended after {after}")
+
+    writing = Writing(sealed, "call_1")
+    writing.open()
+    lost = writing.write("custom", _custom("closed"))
+    with pytest.raises(Conflict):
+        await lost
+    await writing.close(5)
+    assert "the log refused a batch of 1 (custom 'closed')" in caplog.text
+    assert "the log refused 1 entries (custom 'closed')" in caplog.text

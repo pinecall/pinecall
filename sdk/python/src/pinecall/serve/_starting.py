@@ -9,6 +9,7 @@ from pinecall.client import Client
 from pinecall.serve._held import Held
 from pinecall.serve._lines import drain_line, said
 from pinecall.serve._loading import CannotServe, Flags, load_served
+from pinecall.serve._masking import Masking
 from pinecall.serve._viewing import answered
 from pinecall.wire._names import Env, JsonObject
 from pinecall.wire.parts import DevVerb
@@ -43,7 +44,6 @@ async def start(
     """Hold every agent named until a reason to leave arrives on `asked`; 0 once they left."""
     client = client_from(env, prod=flags.prod)
     classes = [(served.slug, load_served(served)) for served in flags.served]
-    printer = said(client, out, err, events=flags.events)
     mounted: list[Mounted] = []
     for slug, cls in classes:
         held = mount(cls, client, slug=slug, takes_unclaimed=not flags.console)
@@ -55,6 +55,8 @@ async def start(
 
         held.agent.on_dev(dev)
         mounted.append(held)
+    masking = {one.slug: Masking(one.agent.config) for one in mounted}
+    printer = said(client, out, err, masking, events=flags.events)
 
     def stopped(why: str) -> None:
         err.write(why + "\n")

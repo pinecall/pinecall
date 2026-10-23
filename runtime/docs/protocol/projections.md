@@ -19,7 +19,8 @@ them the raw turns, the tools' arguments and results, and the prompt). A call's 
 
 Every entry and every field, with what the agent declared private masked: a state field declared
 `pii` reads as `***` in `state.changed`, in `call.attached` and in the reduced state, and an
-argument a tool lists under `pii` reads as `***` in `tool.call`. The key stays, so a reader knows a
+argument a tool lists under `pii` reads as `***` in `tool.call`; the value the model gave for it is
+masked as well wherever the agent wrote it down (`state.changed`, `tool.result`, a line it logged). The key stays, so a reader knows a
 value exists; the value goes whole, so nothing leaks through its type. The mask is applied when the
 entry is written, so the log holds it masked and every reader reads it so; this projection masks
 again, by the reader's declaration, what a log written before that holds in clear

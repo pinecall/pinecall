@@ -1,6 +1,6 @@
 """The parts events, commands and state share: the wire's words and its common shapes."""
 
-from typing import Literal, TypeAlias
+from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AliasChoices, Field
 
@@ -137,6 +137,38 @@ class ToolResult(WireModel):
     error: str | None = None
     summary: str | None = None
     duration_s: float | None = None
+
+
+class StateCauseTool(WireModel):
+    """A tool call's result changed the state: the tool's method wrote the field while it ran."""
+
+    kind: Literal["tool"] = "tool"
+    tool: str
+    call_id: str
+
+
+class StateCauseEvent(WireModel):
+    """A fact from outside changed the state: the app's handler for an event wrote the field."""
+
+    kind: Literal["event"] = "event"
+    name: str
+    seq: int
+
+
+class StateCauseHook(WireModel):
+    """A lifecycle hook changed the state: the one that ran when the call started, or on memory."""
+
+    kind: Literal["hook"] = "hook"
+    hook: Literal["on_call", "on_memory"]
+
+
+StateCause: TypeAlias = Annotated[
+    StateCauseTool | StateCauseEvent | StateCauseHook, Field(discriminator="kind")
+]
+
+# The tool the platform puts in front of a model that may hang up; its tool.call and tool.result
+# are both the platform's, so an app answers none.
+END_CALL = "end_call"
 
 
 class MemoryFact(WireModel):

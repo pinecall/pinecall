@@ -36,7 +36,7 @@ soften a question so a change can pass.
 
 Examples
   $ pinecall docs push
-  clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · sent · left as they were · became · stemmed in · took
+  clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · files sent · base's others left as they were · chunks of the files sent · stemmed in · took
   $ pinecall docs pull
   agents/clinica-norte/docs/horarios.md  written
   agents/clinica-norte/docs/precios.md   unchanged

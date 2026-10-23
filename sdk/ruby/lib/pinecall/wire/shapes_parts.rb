@@ -337,6 +337,10 @@ module Pinecall
           name: { kind: :str, required: true },
           seq: { kind: :int, required: true }
         }.freeze,
+        "StateCauseHook" => {
+          kind: { kind: :const, const: "hook", required: true },
+          hook: { kind: :enum, values: %w[on_call on_memory], required: true }
+        }.freeze,
       }.freeze
     end
   end

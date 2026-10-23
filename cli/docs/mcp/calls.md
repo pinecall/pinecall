@@ -514,7 +514,7 @@ What the org was told in the environment, newest first: every alert kept — a m
 
 What the org has used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on, and whether its judges cost it evals.
 
-`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals and simulations start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the runtime lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.
+`usage` answers “what does this cost?”: each quota as `{limit, used}` (a null limit is no limit; minutes, messages, evals, simulations and the budget in dollars start again on the first of the month, UTC), `keys` — the vendors the org brought keys for and the ones the runtime lends it; a vendor in neither refuses the call — and `evals_billed` — false when the org's judges run on its own key, where evals are never billed. Past `evals` a call's judges left are skipped; past `simulations` a simulation is refused. `billing_url` is where the org buys more, when the deployment sells plans.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -543,6 +543,10 @@ What the org has used of its limits this month in the environment — minutes, m
     "limit": 10,
     "used": 3
   },
+  "budget_usd": {
+    "limit": null,
+    "used": 0.84
+  },
   "concurrent_calls": {
     "limit": 1,
     "used": 0
@@ -558,6 +562,18 @@ What the org has used of its limits this month in the environment — minutes, m
   "numbers": {
     "limit": 0,
     "used": 0
+  },
+  "hosted_apps": {
+    "limit": 1,
+    "used": 0
+  },
+  "memory_facts": {
+    "limit": null,
+    "used": 14
+  },
+  "knowledge_chunks": {
+    "limit": null,
+    "used": 226
   },
   "keys": "yours: anthropic · lent by the runtime: google, cartesia, deepgram",
   "evals_billed": true,

@@ -7,7 +7,9 @@ from pinecall_runtime.billing import schemas, service
 from pinecall_runtime.billing.auth import AnyKey, TheOperator
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.channels import service as channels
+from pinecall_runtime.hosting import service as hosting
 from pinecall_runtime.kit.time import month_of
+from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.postgres import Session, box_wide
 from pinecall_runtime.providers import service as providers
 
@@ -20,7 +22,8 @@ async def limits(actor: AnyKey, serving: TheServing, session: Session) -> schema
     """Each quota of the key's env as {limit, used}, the lends, and where to buy more."""
     org, env = actor.org, actor.env
     quotas = await service.get_quotas(session, org, env)
-    used = await service.get_usage(session, org, env, month_of(serving.logs.store.clock()))
+    month = month_of(serving.logs.store.clock())
+    used = await service.get_usage(session, org, env, month)
     return schemas.Limits(
         minutes=schemas.Limit(limit=quotas.minutes, used=used.minutes),
         messages=schemas.Limit(limit=quotas.messages, used=used.messages),
@@ -31,6 +34,12 @@ async def limits(actor: AnyKey, serving: TheServing, session: Session) -> schema
         numbers=schemas.Limit(limit=quotas.numbers, used=await channels.managed_in(session, org, env)),
         evals=schemas.Limit(limit=quotas.evals, used=used.evals),
         simulations=schemas.Limit(limit=quotas.simulations, used=used.simulations),
+        memory_facts=schemas.Limit(limit=quotas.memory_facts, used=await knowledge.facts_kept(session, org, env)),
+        knowledge_chunks=schemas.Limit(
+            limit=quotas.knowledge_chunks, used=await knowledge.chunks_kept(session, org, env)
+        ),
+        hosted_apps=schemas.Limit(limit=quotas.hosted_apps, used=len(await hosting.list_apps(session, org, env))),
+        budget_usd=schemas.Limit(limit=quotas.budget_usd, used=await service.spent_in_month(session, org, month)),
         lends=None if quotas.lends is None else sorted(quotas.lends),
         billing_url=serving.handles.settings.billing_url,
         world=env,

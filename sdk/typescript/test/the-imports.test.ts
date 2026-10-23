@@ -22,8 +22,8 @@ const MAY_IMPORT: Record<string, string[]> = {
   "runtime": ["agent", "call", "views", "client", "wire"],
   // The entry the CLI starts an agent with; `tsx` is imported lazily, for a tenant's .ts.
   "serve": ["agent", "call", "views", "runtime", "client", "wire", "tsx"],
-  // src/index.ts: the public surface.
-  "": ["agent", "call", "views", "runtime"],
+  // src/index.ts: the public surface, and zod, which `params` is a schema of.
+  "": ["agent", "call", "views", "runtime", "zod"],
 };
 
 /** The table entry for a file: the longest declared prefix of its path. */

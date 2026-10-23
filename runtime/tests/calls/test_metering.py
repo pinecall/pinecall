@@ -3,6 +3,7 @@
 from pinecall_runtime.calls.metering import UNOWNED, billed_row, totals_by_org, usage_row
 from pinecall_runtime.calls.repository.entries import Positioned
 from pinecall_runtime.calls.writer import METERED_TYPES
+from pinecall_runtime.enums import Opener
 from pinecall_runtime.kit.text import JsonObject
 from tests.calls.factories import CALL, a_summary, entry
 
@@ -34,11 +35,14 @@ A_SCORE: JsonObject = {
 }
 
 
-def metered(position: int, org: str | None, kind: str, data: JsonObject, call: str = CALL) -> Positioned:
+def metered(
+    position: int, org: str | None, kind: str, data: JsonObject, call: str = CALL, opened_by: Opener | None = None
+) -> Positioned:
     return Positioned(
         position=position,
         org=org,
         entry=entry(position, kind, data).model_copy(update={"call": call}),
+        opened_by=opened_by,
     )
 
 
@@ -55,6 +59,29 @@ def test_a_summary_a_simulated_caller_played_counts_one_simulation_and_no_minute
     simulated = {**a_summary([LLM]), "simulated": True}
     used = usage_row(metered(7, "dental", "call.summary", simulated)).used
     assert (used.simulations, used.calls, used.minutes) == (1, 1, 0.0)
+
+
+def test_a_written_call_the_gateway_opened_spends_messages_and_no_minutes() -> None:
+    """J F9: two seconds of chat were two seconds of the org's minutes, and of the minutes its plan bills."""
+    written = usage_row(metered(7, "dental", "call.summary", a_summary([LLM]), opened_by=Opener.gateway)).used
+    assert (written.calls, written.minutes, written.messages, written.input_tokens) == (1, 0.0, 8, 900)
+
+
+def test_a_spoken_call_the_fleet_or_an_app_opened_spends_minutes_and_no_messages() -> None:
+    """One quota for each kind of call: a call's turns were messages whoever spoke them."""
+    for opener in (Opener.fleet, Opener.app):
+        spoken = usage_row(metered(7, "dental", "call.summary", a_summary([LLM]), opened_by=opener)).used
+        assert (spoken.calls, spoken.minutes, spoken.messages, spoken.input_tokens) == (1, 2.0, 0, 900)
+
+
+def test_a_call_opened_before_heads_said_who_opened_it_counts_as_it_always_did() -> None:
+    unknown = usage_row(metered(7, "dental", "call.summary", a_summary([LLM]), opened_by=None)).used
+    assert (unknown.calls, unknown.minutes, unknown.messages) == (1, 2.0, 8)
+
+
+def test_a_written_calls_minutes_are_not_billed_as_lent_either() -> None:
+    row = usage_row(metered(1, "dental", "call.summary", a_summary([STT]), opened_by=Opener.gateway))
+    assert billed_row(row, ("google",)).used.lent_minutes == 0.0
 
 
 def test_a_written_golden_of_an_eval_run_counts_no_minutes_and_no_simulation() -> None:

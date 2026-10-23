@@ -51,6 +51,8 @@ export interface ChatOpening {
   contact?: string | undefined;
   /** The simulated persona; the gateway records it on `call.started` for attribution. */
   persona?: string | undefined;
+  /** Who plays that persona this run, over its own: the gateway refuses a model it cannot run before it opens the call. */
+  playedBy?: { llm?: string | undefined; tts?: string | undefined; voice?: string | undefined } | undefined;
   /** The state the call opens in, carried on its `call.started`. */
   state?: Record<string, unknown> | undefined;
   /** A call to resume, after the gateway dropped the socket. */
@@ -113,6 +115,7 @@ export function chatUrl(gw: GatewayClient, agent: string, opening: ChatOpening =
   if (opening.app !== undefined) url.searchParams.set("app", opening.app);
   if (opening.contact !== undefined) url.searchParams.set("contact", opening.contact);
   if (opening.persona !== undefined) url.searchParams.set("persona", opening.persona);
+  if (opening.playedBy !== undefined) url.searchParams.set("played_by", JSON.stringify(opening.playedBy));
   if (opening.state !== undefined) url.searchParams.set("state", JSON.stringify(opening.state));
   if (opening.call !== undefined) url.searchParams.set("call", opening.call);
   return url.toString();

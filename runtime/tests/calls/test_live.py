@@ -1,12 +1,12 @@
 """The calls a gateway serves: a refused command is answered, the stream goes on, a caller's hang-up ends the call."""
 
 import asyncio
-from typing import cast
+from typing import cast, override
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.logs import Log
 from pinecall_runtime.calls.service.live import Live, Served
-from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, send_command
+from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, COMMANDS_CHANNEL, send_command
 from pinecall_runtime.calls.service.tool_calls import ToolCalls
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel, Env
@@ -120,4 +120,37 @@ async def test_the_callers_hang_up_ends_a_written_call_the_gateway_runs_as_their
         await asyncio.sleep(0.01)
     assert running.ended == ("caller_hung_up", "caller")
     assert running.applied == []
+    live.close_call(call)
+
+
+class Breaking(Written):
+    """A written call's session that breaks on a room's command, with what no refusal of ours is."""
+
+    @override
+    async def apply(self, command: WireModel) -> None:
+        """Raise what is not a PinecallError for a room's command, take the others."""
+        if isinstance(command, RoomSend):
+            raise RuntimeError("the session broke")
+        await super().apply(command)
+
+
+# A command the stream could not read, or the session broke on, ended the call's listener with an
+# exception that nobody read: every command after it (a supervisor's end) was lost in silence.
+@needs_the_database
+async def test_a_command_the_stream_cannot_read_or_the_session_breaks_on_does_not_end_its_listener(
+    store: Store, call: str
+) -> None:
+    live = Live()
+    running = Breaking()
+    await served_here(live, store, call, running)
+    live.signal.publish(COMMANDS_CHANNEL.format(call=call), b"this is not a command")
+    drawn = Command(type="room.send", agent=AGENT, call=call, id=None, data={"topic": "kala.ui", "data": {}})
+    assert await send_command(live.signal, drawn)
+    state = Command(type="state.set", agent=AGENT, call=call, id=None, data={"state": {"cart": []}})
+    assert await send_command(live.signal, state)
+    for _ in range(100):
+        if running.applied:
+            break
+        await asyncio.sleep(0.01)
+    assert [type(applied).__name__ for applied in running.applied] == ["StateSet"]
     live.close_call(call)

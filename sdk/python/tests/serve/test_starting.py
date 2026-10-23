@@ -65,6 +65,17 @@ async def test_the_first_line_is_the_registration_and_a_signal_drains_then_leave
     assert len(gateway.commands_of("agent.drain")) == 1
 
 
+async def test_a_served_class_registers_saying_it_sends_call_done_after_its_end_hook(
+    gateway: FakeGateway, tmp_path: Path
+) -> None:
+    running, asked, _, _ = await started(gateway, flags_of(tmp_path))
+    data = gateway.commands_of("agent.register")[0]["data"]
+    assert isinstance(data, dict)
+    assert data["says_done"] is True
+    asked.put_nowait(SIGNALLED)
+    assert await running == 0
+
+
 async def test_a_consoles_process_takes_no_call_it_did_not_open(
     gateway: FakeGateway, tmp_path: Path
 ) -> None:

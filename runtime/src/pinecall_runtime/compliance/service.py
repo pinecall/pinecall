@@ -128,9 +128,9 @@ async def record_read(session: AsyncSession, scope: Scope, subject: str, what: R
         logger.warning("the read of %s by %s went unrecorded; the read goes on", subject, by, exc_info=True)
 
 
-async def list_reads(session: AsyncSession, org: str, *, subject: str | None = None) -> list[ReadRow]:
-    """The org's reads, newest first, of one call or number when named."""
-    rows = await ReadRepository(session).of_org(org, subject=subject)
+async def list_reads(session: AsyncSession, scope: Scope, *, subject: str | None = None) -> list[ReadRow]:
+    """The reads in the scope's env, newest first, of one call or number when named."""
+    rows = await ReadRepository(session).of_env(scope.org, scope.env, subject=subject)
     return [
         ReadRow(subject=row.subject, what=row.what, env=row.env, reader=row.reader, at=row.at.timestamp())
         for row in rows

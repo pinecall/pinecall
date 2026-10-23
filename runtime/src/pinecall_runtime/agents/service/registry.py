@@ -146,6 +146,8 @@ class Registration:
     takes_unclaimed: bool = True
     # True for the CLI's companion: the console's dev verbs go to it.
     answers_dev: bool = False
+    # True for an SDK that sends call.done once a call's end hook ran: a seal waits for it.
+    says_done: bool = False
     # When it was claimed, on any gateway, so the newest holder is known across all of them.
     claimed: float = 0.0
     # Set by agent.drain: its tools still answer, it takes no new call.
@@ -371,9 +373,8 @@ class AgentRegistry:
                 scope=scope,
                 owner=owner,
                 config=config,
-                sdk=wanted.sdk,
-                takes_unclaimed=wanted.takes_unclaimed,
-                answers_dev=wanted.answers_dev,
+                # What the app said it is, as it said it: its SDK, and which calls and verbs it takes.
+                **wanted.model_dump(include={"sdk", "takes_unclaimed", "answers_dev", "says_done"}),
             )
         )
         data = AgentRegistered(routes=[], app=owner, sdk=wanted.sdk, env=scope.env)

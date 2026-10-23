@@ -29,6 +29,7 @@ from pinecall_runtime.exceptions import (
     UpstreamError,
 )
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.time import today_in
 from pinecall_runtime.postgres import box_task
 from pinecall_runtime.session import service as session
@@ -241,7 +242,8 @@ class Threads:
         except ServiceUnavailable:
             return False
 
-    # Claimed and read by the gateway it landed on: here it is only heard.
+    # Claimed and read by the gateway it landed on: here it is only heard. A message that cannot be
+    # read, or heard here, is said with its number and the next is heard.
     async def _handed_here(self) -> None:
         signal = self.serving.live.signal
         channel = THREAD_CHANNEL.format(gateway=self.serving.live.owners.id)
@@ -253,20 +255,21 @@ class Threads:
                 continue
             try:
                 async for data in listener:
-                    await self._take_on(_INBOUND.validate_json(data))
+                    await self._take_on(data)
             finally:
                 listener.close()
             await asyncio.sleep(HANDED_RETRY_S)
 
-    async def _take_on(self, inbound: channels.Inbound) -> None:
-        async with self.serving.handles.sessions.begin() as session_:
-            route = await _route_of(session_, inbound)
-            if route is None:
-                return
-            try:
-                await self._hear(session_, route, inbound)
-            except PinecallError as refused:
-                logger.warning("whatsapp: a message handed on by another gateway was not read: %s", refused)
+    async def _take_on(self, data: bytes) -> None:
+        with survived("reading a WhatsApp message handed on by another gateway") as reading:
+            inbound = _INBOUND.validate_json(data)
+        if reading.failed:
+            return
+        with survived("hearing a WhatsApp message handed on by another gateway", inbound.number):
+            async with self.serving.handles.sessions.begin() as session_:
+                route = await _route_of(session_, inbound)
+                if route is not None:
+                    await self._hear(session_, route, inbound)
 
     # A conversation this process never saw is taken up from its log while it has idle time left.
     async def _take_up(
@@ -316,28 +319,25 @@ class Threads:
                 if answer is None:
                     await running.close()
                     return
-                async with self.serving.handles.sessions.begin() as session_:
-                    try:
-                        await billing.admit_turn(
-                            session_,
-                            scope.org,
-                            scope.env,
-                            turns=running.call.turns,
-                            tokens=tokens_of(running.usage),
-                            at=self.serving.logs.store.clock(),
-                        )
-                    except QuotaExceeded as refused:
-                        await alerts.credits_exhausted(session_, self.serving, scope, running.call.config.slug, refused)
-                        await session.end_text(running, "timeout", "platform")
-                        return
-                try:
+                # One message that cannot be answered is said with its call: the contact's next one is.
+                with survived("answering a WhatsApp message", running.call.context.call):
+                    async with self.serving.handles.sessions.begin() as session_:
+                        try:
+                            await billing.admit_turn(
+                                session_,
+                                scope.org,
+                                scope.env,
+                                turns=running.call.turns,
+                                tokens=tokens_of(running.usage),
+                                at=self.serving.logs.store.clock(),
+                            )
+                        except QuotaExceeded as refused:
+                            await alerts.credits_exhausted(
+                                session_, self.serving, scope, running.call.config.slug, refused
+                            )
+                            await session.end_text(running, "timeout", "platform")
+                            return
                     await session.hear_text(running, answer)
-                except PinecallError:
-                    logger.warning(
-                        "whatsapp: a turn of call %s failed and was not answered",
-                        running.call.context.call,
-                        exc_info=True,
-                    )
         finally:
             self.open.pop(key, None)
             self.serving.live.owners.holding("|".join(key), here=False)

@@ -122,13 +122,14 @@ Media is up: the caller and the agent can hear each other, or the text session i
 | `expects` | `string[] | null` | no | What that simulated caller expects of the agent, one verifiable demand a line ("The agent should…"), as the persona said it when the call opened. Carried on the call's own first entry so the expected-outcome judge — and any judging later — reads what the call was made under, whatever the persona says since. Absent or null: it expected nothing, and that judge answers N/A. |
 | `accepts_when` | `string | null` | no | Read, never written: the sentence a simulation opened before 0.1.46 carried for when its caller hung up satisfied, before `expects`. An older log still reads; nothing judges it. |
 | `declines_when` | `string | null` | no | Read, never written: the sentence for when that caller hung up unsatisfied, beside `accepts_when`. |
-| `caller` | `Contact | null` | yes | Who is on the line, as far as the platform knows now. |
+| `caller` | `Contact | null` | yes | Who is on the line, as far as the platform knows now. `null` when nobody is known, never absent: a worker's `call.started` without it is refused `400`. |
 | `started_at` | `number` | yes | When media came up, unix seconds. |
 | `env` | `Env` | no | The environment this call ran in: the one the key that holds its agent opens. Absent on entries written before keys knew where they were, which read as production. |
 | `worker` | `string | null` | no | The worker that ran the call, as its heartbeats name it (`PINECALL_WORKER_NAME`, or its machine's short hostname) within its environment's fleet. Absent on a written call, which the gateway runs, and on a call a worker of an older release ran. |
 | `medium` | `Medium | null` | no | How the call is had: `voice` when it runs in a room, spoken; `text` when it is a written session. A `web` call is either. Absent from a gateway before this release, and an app reading it then falls back to its channel (`phone` spoken, `whatsapp` written). |
 | `state` | `object` | no | The state the call opens in, when whoever opened it asked for one: a golden, a persona, or `?state=` on the chat endpoint. The app applies it after its call hook and before the first render. Absent otherwise: the call opens in the class's own state. |
 | `today` | `string | null` | no | The day the call runs in, `YYYY-MM-DD`, when a golden pinned one (`today` in the golden): the model is told that day, and the app reads it here rather than off `started_at`. Absent on every other call, which runs on the day `started_at` falls on. |
+| `metadata` | `object` | no | What the call was opened with and sealed: the `metadata` of the token a page minted (`POST /v1/tokens`) or of the dial, as sent. The app reads it as `call.metadata`; the public projection drops it. Absent when the call was opened with none. |
 
 ### `call.summary`
 
@@ -138,13 +139,13 @@ What the call was about, how it went, what it consumed and what that cost. Writt
 |---|---|---|---|
 | `reason` | `EndReason` | yes | Why the call is over. |
 | `outcome` | `string` | yes | One line on how it went, in the agent's words: booked, no slot, wrong number. |
-| `duration_s` | `number` | yes | Seconds of conversation. |
+| `duration_s` | `number` | yes | Seconds of conversation. A spoken call spends minutes and no messages; a written call, which the gateway opens and runs, spends its `turns` as messages and no minutes. |
 | `turns` | `integer` | yes | How many turns, both sides together. |
 | `usage` | `ModelUsage[]` | yes | One row per model used, as the session summed them. |
 | `cost` | `Cost` | yes | What the call cost in provider fees and, when the platform priced its own compute (`pinecall-compute`), the platform's, in US dollars; informational. |
 | `recording` | `string` | no | Where the recorder wrote the recording, when one was made; `GET /v1/calls/{call}/recording` serves it from wherever it is kept, reading only the file's name from this path: on the disk it is always `<PINECALL_RECORDINGS>/<call>/audio.ogg` or `audio.sealed`, never another file. |
 | `simulated` | `boolean` | no | A simulated caller, not a person, was on the other end: a persona's call, or a golden the simulated caller played out loud. It counts as one simulation and never as minutes. |
-| `run` | `string | null` | no | The eval run that opened this call. A written golden's call counts no minutes and no simulation (its evals are counted); one played out loud is `simulated`. |
+| `run` | `string | null` | no | The eval run that opened this call. A written golden's call counts no minutes, as no written call does, and no simulation (its evals are counted); one played out loud is `simulated`. |
 
 ### `call.transferred`
 

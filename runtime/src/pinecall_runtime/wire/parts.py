@@ -1,6 +1,6 @@
 """The parts events, commands and state share: the wire's words and its common shapes."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import AliasChoices, Field
 
@@ -150,6 +150,32 @@ class ToolResult(WireModel):
     error: str | None = None
     summary: str | None = None
     duration_s: float | None = None
+
+
+class StateCauseTool(WireModel):
+    """A tool call's result changed the state."""
+
+    kind: Literal["tool"] = "tool"
+    tool: str
+    call_id: str
+
+
+class StateCauseEvent(WireModel):
+    """A fact from outside changed the state."""
+
+    kind: Literal["event"] = "event"
+    name: str
+    seq: int
+
+
+class StateCauseHook(WireModel):
+    """A lifecycle hook of the app changed the state."""
+
+    kind: Literal["hook"] = "hook"
+    hook: Literal["on_call", "on_memory"]
+
+
+type StateCause = Annotated[StateCauseTool | StateCauseEvent | StateCauseHook, Field(discriminator="kind")]
 
 
 class MemoryFact(WireModel):

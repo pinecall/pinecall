@@ -183,12 +183,14 @@ def is_simulated_start(started: CallStarted | None) -> bool:
     return started is not None and (started.persona is not None or started.from_ == A_SIMULATED_CALLER)
 
 
-# A persona's call, or a golden's played by the simulated caller: each is one simulation billed.
+# A persona's call, or a golden's played by the simulated caller: each is one simulation billed. A
+# start this version cannot read says nobody simulated: the seal that asks goes on without it.
 def is_simulated(entries: Sequence[Entry]) -> bool:
     """Whether a simulated caller, not a person, was on the other end of the call."""
     for entry in entries:
         if entry.type == "call.started":
-            return is_simulated_start(CallStarted.model_validate(entry.data))
+            started = _read(entry)
+            return is_simulated_start(started if isinstance(started, CallStarted) else None)
     return False
 
 

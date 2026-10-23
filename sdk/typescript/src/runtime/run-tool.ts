@@ -1,5 +1,6 @@
 /** Runs one tool call: validates args, calls the method, trims the result to its preview. */
 
+import { typesKnown } from "../agent/docstrings.js";
 import type { ToolDeclaration } from "../agent/tools.js";
 
 /** A tool failure with a message for the model. The SDK sends it as `tool.result.error`. */
@@ -9,6 +10,8 @@ export class ToolFailed extends Error {
     this.name = "ToolFailed";
   }
 }
+
+const ERASED = "its parameter types were erased when the file was compiled; hand the class its own source with describe(AgentClass, source)";
 
 interface Parameters {
   properties?: Record<string, { type?: string }>;
@@ -75,7 +78,9 @@ export async function runTool(
 ): Promise<unknown> {
   const complaints = validate(declaration, args);
   if (complaints.length > 0) {
-    throw new ToolFailed(`${declaration.name}: ${complaints.join("; ")}`);
+    // Types the compiler erased read as objects, so the complaint would be about the schema, not the arguments.
+    const cause = typesKnown(agent.constructor, declaration.name) ? complaints.join("; ") : ERASED;
+    throw new ToolFailed(`${declaration.name}: ${cause}`);
   }
   const method = (agent as Record<string, unknown>)[declaration.name];
   if (typeof method !== "function") {

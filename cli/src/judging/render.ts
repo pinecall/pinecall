@@ -4,7 +4,7 @@ import type { CallScore } from "@pinecall/agents/wire";
 
 import { BROKEN, HELD, money } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { Calibration, JudgeAgreement, JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
+import type { AgentJudging, Calibration, JudgeAgreement, JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
 
 export { BROKEN, HELD };
 
@@ -73,7 +73,7 @@ function pct(share: number): string {
 }
 
 export function changed(list: JudgeListChanged): string {
-  return `${list.done} · ${list.judges.length} judge(s)`;
+  return `${list.done} · ${list.judges.length} judge(s) in the list`;
 }
 
 /** What a try answered: a line per call, then the evals and their cost. */
@@ -86,17 +86,31 @@ export function tried(one: JudgeTried): string[] {
   return [...lines, `${one.evals} eval${one.evals === 1 ? "" : "s"} · ${money(one.cost_usd)} · nothing was written`];
 }
 
-/** The org's judging in one line: on or off, the model, whose key, and whether evals are billed. */
+/** The org's judging in one line: on or off, the model, whose key, and whether evals are billed; a line more for `--agent`'s own. */
 export function judging(report: JudgingReport): string {
   const said = [report.on ? "judging on" : "judging off — no call is judged at hang-up"];
   const model = report.model ?? null;
   const ceiling = report.ceiling_usd === null ? "" : ` · ceiling $${report.ceiling_usd.toFixed(2)} a call`;
-  if (model === null) return [...said, `Pinecall's judge model · evals billed${ceiling}`].join(" · ");
+  const own = report.agent === undefined ? [] : [agentJudging(report.agent, report)];
+  if (model === null) return [[...said, `Pinecall's judge model · evals billed${ceiling}`].join(" · "), ...own].join("\n");
   said.push(`${model.provider}/${model.model}`);
-  const options = Object.entries(model.options ?? {}).map(([key, value]) => `${key}=${JSON.stringify(value)}`);
-  if (options.length > 0) said.push(options.join(" · "));
+  said.push(...optionsOf(model.options));
   said.push(report.own_key ? `your own ${model.provider} key: evals not billed` : `${model.provider} on a key Pinecall lends: evals billed${ceiling}`);
-  return said.join(" · ");
+  return [said.join(" · "), ...own].join("\n");
+}
+
+// What the agent's calls are judged on: its own judge wins over the org's, a class's `@judge` over both.
+function agentJudging(one: AgentJudging, org: JudgingReport): string {
+  if (one.declared) return `  ${one.agent} · the class declares its own judge model, which wins over the settings and the org's`;
+  if (one.judge === null) return `  ${one.agent} · no judge model of its own: its calls are judged as above${org.on ? "" : ", when judging is on"}`;
+  const said = [one.agent, `judged on ${one.judge}`, ...optionsOf(one.options)];
+  said.push(one.own_key ? "your own key: evals not billed" : "on a key Pinecall lends: evals billed");
+  return `  ${said.join(" · ")}`;
+}
+
+function optionsOf(options: Record<string, unknown> | null | undefined): string[] {
+  const kept = Object.entries(options ?? {}).map(([key, value]) => `${key}=${JSON.stringify(value)}`);
+  return kept.length === 0 ? [] : [kept.join(" · ")];
 }
 
 /** One judgment as a line: its mark, what it answered (a word, a choice, a score out of 5), its reason, the seqs it cites. */

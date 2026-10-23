@@ -16,6 +16,7 @@ class ConformanceTest < Minitest::Test
     "participant.mute" => "Pinecall::CallWorld::Seat#mute",
     "participant.remove" => "Pinecall::CallWorld::Seat#remove",
     "call.log" => "Pinecall::CallWorld#log",
+    "call.done" => "Pinecall::Client::Call#done",
     "call.hangup" => "Pinecall::CallWorld#hangup",
     "call.opt_out" => "Pinecall::CallWorld#opt_out",
     "call.transfer" => "Pinecall::CallWorld#transfer",

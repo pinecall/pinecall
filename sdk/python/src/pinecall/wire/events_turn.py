@@ -1,8 +1,6 @@
 """What happens inside a conversation: the turns, the tools, the state, an outside fact."""
 
-from typing import Annotated, Literal, TypeAlias
-
-from pydantic import Field
+from typing import Literal
 
 from pinecall.wire._names import EventSource, JsonObject
 from pinecall.wire.frames import WireModel
@@ -14,6 +12,7 @@ from pinecall.wire.parts import (
     AgentState,
     DocSource,
     MemoryOp,
+    StateCause,
     UserState,
 )
 
@@ -79,25 +78,6 @@ class PromptChanged(WireModel):
     name: str
     hash: str
     chars: int
-
-
-class StateCauseTool(WireModel):
-    """A tool call's result changed the state."""
-
-    kind: Literal["tool"] = "tool"
-    tool: str
-    call_id: str
-
-
-class StateCauseEvent(WireModel):
-    """A fact from outside changed the state."""
-
-    kind: Literal["event"] = "event"
-    name: str
-    seq: int
-
-
-StateCause: TypeAlias = Annotated[StateCauseTool | StateCauseEvent, Field(discriminator="kind")]
 
 
 class StateChanged(WireModel):

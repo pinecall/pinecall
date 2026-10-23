@@ -188,7 +188,7 @@ pydantic model a nested object, `"3"` for an `int` is `3`. A parameter with no a
 | `confirm=` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce=` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `preview=` | how many rows of a list the *model* sees. The state keeps every row |
-| `pii=` | the parameters that carry personal data, masked in the log |
+| `pii=` | the parameters that carry personal data: the log masks their values wherever the agent wrote them down (`state.changed`, `tool.result` and a line you log too), and `pinecall start` prints the log's version |
 | `timeout=` | how many seconds the platform waits for this method |
 
 A tool may be a `def` or an `async def`. In a call, an `async def` runs on the event loop and a
@@ -213,6 +213,14 @@ class ClinicaNorte(Agent):
     ) -> None: ...  # an accepted outside fact
     def on_memory(self, ops: list[MemoryOp], call: CallWorld) -> None: ...  # memory read or written
 ```
+
+After `on_end` the SDK sends `call.done`, and the gateway waits for it, up to three seconds, before it
+seals the call: a log is closed to lines once sealed, so a line `on_end` logs later than that is refused,
+and the gateway's journal names it.
+
+A hook that raises fails its call and no other: the call's log gets a `hook.failed` line naming the
+hook (and the event, for `on_event`) and the error, the process one warning, and the call goes on
+with what the hook had written.
 
 Each may be a `def` or an `async def`. `on_call` runs before the first prompt goes out, so the
 model never reads a state the call was not in; the state a golden or a persona opens the call in
@@ -300,6 +308,7 @@ call, and never as a refusal from a gateway:
 | `stage="pay"` where the `Literal` has no `"pay"` | `pay is not one of this agent's stages (identify, book)` |
 | `stage=` on a class with no `stage` | `…declares none; add stage: Literal["identify", "book"] to the class` |
 | `stage: str` | `stage names the values it may hold: stage: Literal["identify", "book"]` |
+| a tool with an argument named `say`, which every tool carries for the model's own line | `bad_shape: tool echo: 'say' is the platform's argument, never a tool's own`, said by the gateway when `pinecall start` registers the agent, not on import |
 | a field named like the agent's own (`snapshot`, `log`, `call`…) | `` `snapshot` is a name the agent itself uses; call the field otherwise`` |
 | a tool named like the agent's own method | `a tool named so would hide the agent's own log` |
 | an `accepts` sender that is not `app` or `participant` | `'browser' sends nothing; an event comes from app or participant` |

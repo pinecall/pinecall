@@ -36,6 +36,8 @@ export type Latencies = Record<string, Medians>;
 
 export const AMBIENCES = ["television", "cafe", "office", "street"] as const;
 
+export const ONLY_ON_A_LINE = "--background-noise, --ambience and --packet-loss are about audio: add --voice";
+
 /** A spoken run's line: noise under the caller, what plays, and the share of packets lost. */
 export const SpokenInput = z.object({
   voice: z.boolean().default(false),
@@ -44,6 +46,11 @@ export const SpokenInput = z.object({
   packetLoss: z.number().min(0, "--packet-loss is a share of the packets: a number from 0 to 1, such as 0.05").max(1, "--packet-loss is a share of the packets: a number from 0 to 1, such as 0.05").optional(),
 });
 export type SpokenInput = z.infer<typeof SpokenInput>;
+
+/** Whether a run names one of the flags that spoil the line on purpose: noise, an ambience, lost packets. */
+export function spoilsTheLine(input: Pick<SpokenInput, "backgroundNoise" | "ambience" | "packetLoss">): boolean {
+  return input.backgroundNoise !== undefined || input.ambience !== undefined || input.packetLoss !== undefined;
+}
 
 /** What one suite plays: the golden files or not, the models (a column each), the cases beside them, the settings version, the line. */
 export const SuiteInput = SpokenInput.extend({
@@ -61,18 +68,20 @@ export interface PlayAsked {
   dataset?: boolean | undefined;
   cases?: string[] | undefined;
   paths?: boolean | undefined;
+  voice?: boolean | undefined;
 }
 
 /**
  * What plays, from what was typed. Nothing typed plays the files and the approved dataset both;
  * `--files` the files alone, `--dataset` or `--case` the cases alone; paths named play beside
- * whatever cases were asked for.
+ * whatever cases were asked for. A spoken run adds no dataset of its own: cases are real callers'
+ * words, played as written calls, and the gateway refuses them out loud.
  */
 export function whatPlays(asked: PlayAsked): { files: boolean; dataset: boolean } {
   const cases = asked.cases !== undefined;
   return {
     files: asked.files === true || asked.paths === true || (!cases && asked.dataset !== true),
-    dataset: asked.dataset === true || (!cases && asked.files !== true),
+    dataset: asked.dataset === true || (!cases && asked.files !== true && asked.voice !== true),
   };
 }
 
@@ -126,6 +135,7 @@ export function modelsOf(names: string[]): api.ModelConfig[] {
  */
 export async function startSuite(ctx: Context, agent: string, goldens: Golden[], input: SuiteInput, app?: string): Promise<api.EvalRun> {
   if (goldens.length === 0 && !playsCases(input)) throw new UsageError("no golden to play: name the goldens, or --case / --dataset");
+  if (!input.voice && spoilsTheLine(input)) throw new UsageError(ONLY_ON_A_LINE);
   const models = modelsOf(input.models);
   return api.startRun(ctx.gateway(), {
     agent,
@@ -142,6 +152,15 @@ export async function busyWith(ctx: Context, agent: string, refused: GatewayErro
   const newest = (await api.listRuns(ctx.gateway(), 1, agent))[0];
   if (newest?.status !== "running") return refused.message;
   return `a run is already going on ${agent} (${newest.id}) — pinecall runs show ${newest.id} to watch it`;
+}
+
+// A 422 places a golden by its number in the list (`goldens.3.turns: …`); a person finds it by its name.
+const OF_A_GOLDEN = /(^|; )goldens\.(\d+)(?:\.([^:]+))?: /g;
+
+/** The gateway's 422 over the goldens sent, as one sentence: each golden by its name, and the field that is wrong. */
+export function refusedGoldens(goldens: Golden[], refused: GatewayError): string {
+  const named = refused.detail.replace(OF_A_GOLDEN, (_whole, lead: string, at: string, field: string | undefined) => `${lead}golden ${goldens[Number(at)]?.name ?? `#${at}`}${field === undefined ? "" : `, ${field}`}: `);
+  return `the gateway refused the run: ${named}`;
 }
 
 /** Whether every golden held. */
@@ -286,14 +305,15 @@ export interface SuiteListeners {
  * Run a suite to its end: the gateway answers the run as it starts it, stored and `running`, and
  * plays it after; this side follows it on the org's feed (`run.changed`) until its row says it is
  * over, so a front can draw each golden as it lands. A 409 is the agent's run already going, told
- * by its id.
+ * by its id, and a 422 a golden the gateway's schema refuses: both are a run that cannot start, exit 2.
  */
 export async function runSuite(ctx: Context, agent: string, goldens: Golden[], input: SuiteInput, app: string | undefined, listeners: SuiteListeners = {}): Promise<SuiteReport> {
   let started: api.EvalRun;
   try {
     started = await startSuite(ctx, agent, goldens, input, app);
   } catch (failed) {
-    if (failed instanceof GatewayError && failed.status === 409) throw new PinecallError(await busyWith(ctx, agent, failed));
+    if (failed instanceof GatewayError && failed.status === 409) throw new UsageError(await busyWith(ctx, agent, failed));
+    if (failed instanceof GatewayError && failed.status === 422) throw new UsageError(refusedGoldens(goldens, failed));
     throw failed;
   }
   listeners.onStarted?.(started.id);

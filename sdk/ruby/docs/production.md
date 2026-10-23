@@ -14,7 +14,8 @@ their production switch is on, but a server should not run on a person.
 
 When the app is already a Ruby process that stays up — a Rails app's worker, a Sinatra service —
 the agent can live in it. `Pinecall.serve` mounts the class on a client of its own, connects, and
-hands back what it holds; `stop` drains the calls to the next holder and closes:
+hands back what it holds; `stop` drains the calls to the next holder, closes, and says in one line on
+stderr where the calls went (`draining · no live calls` when there were none):
 
 ```ruby
 require "pinecall"

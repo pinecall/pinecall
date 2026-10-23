@@ -1,5 +1,140 @@
 # Changelog
 
+## Unreleased
+
+- **A worker's `call.started` with no `caller` is refused `400` naming the field, and a call whose start
+  or end the seal cannot read is sealed all the same.** The worker's three append endpoints took a
+  `call.started` without `caller` (`Contact | null`, required), the summary read it back with a strict model
+  and the seal answered `500` on every try: the call stayed `live`, `DELETE` said `409 still running` and it
+  held one of its org's `concurrent_calls` until the gateway restarted. `call.started` and `call.ended` are
+  now read where they are sent (`calls/service/serving.py`, `check_entry`); a log that already holds one the
+  seal cannot read is summed up as one the call never wrote (`seal.py`, `sum_up`; `judging.is_simulated`
+  too); and what the seal does after the score runs in a `try/finally`, so a call that is sealed leaves
+  `Live.calls` whatever the bookkeeping after it does. (found by the 2026-10-23 eval, M B10)
+- **A call that ended holds no seat, whoever sealed it, and no call the reaper cannot seal stops the
+  reaper.** A call is counted by the gateway that opened it, a worker seals it on whichever gateway its
+  requests hash to, and the opener lets it go at the reaper's next pass; `reap_forever` caught four
+  classes of error and ended for good on the first pydantic one, and `let_go` looked only for heads that
+  say sealed, so an erased call held its seat for ever. Each part of a pass now runs alone and survives
+  what it raises, `reap` seals the calls behind one it cannot, `let_go` lets go of a call whose head is
+  gone, and a written call whose session closed unsealed is reaped (`calls/tasks.py`,
+  `calls/service/reaper.py`). (found by the 2026-10-23 eval, K F5)
+- **The next `pinecall start` takes the call the last one parked, on whichever gateway each of them is.**
+  A call is parked by the gateway that opened it, but only the gateway a socket was on ever handed calls
+  to it: a process that registered on another gateway never got the parked call, its tools waited out their
+  30 s and the call ended `app_detached` two minutes later; and when the socket that left was on a gateway
+  that did not open the call, the opener never learned it had left. A socket that takes an agent now says so
+  to every gateway, a copy that loses its socket says so to the opener, which hands the call on or parks
+  it (`calls/service/binding.py`, `Handoffs`, one `handoff` channel), and a pass of the reaper hands on what
+  that word lost. (found by the 2026-10-23 eval, B B2)
+- **Every loop of the runtime goes on after what one pass or one item raises.** The reaper, the offers'
+  sweep, the roster's tick, the SIP rebuild, every share's beat and listener, the handoff, thread,
+  socket-inbox, revocation and relay listeners, the signal's sender and listener, the lease renewals, the
+  command followers (gateway and worker), the worker's heartbeat, the runner's beat, the pump and the
+  widget tail each caught a list of error classes or none, and one raise outside it ended the loop for
+  good with nothing but an unread task exception; each now says what failed and on which call, org or
+  room (`kit/loops.py`, `survived`) and goes on to the next item and the next pass. (found by the
+  2026-10-23 eval, K F5 and the sweep after it)
+- **A line an app logs from its end hook lands.** A call's log is sealed by `call.score`, and a line the
+  app logged after it was refused with a gateway warning and nothing else. The seal now waits, up to
+  `END_HOOK_WAITED_S` (3 s), for the app that said `says_done` at registration to send `call.done` after
+  its end hook; a worker's session says it to the gateway on `POST /v1/calls/{call}/done` and follows the
+  app's commands until the seal is over; a line refused anyway is named in the warning, and one written
+  after the call's writer closed is refused at once and named too, instead of waiting in a queue nobody
+  drains (`session/writing.py`). (found by the 2026-10-23 eval, S2)
+- **A written call opened as a contact is that contact's.** `call.started` always wrote `caller: null`, so
+  `pinecall chat --as <contact>` reached memory but not the log, the call's state, the app's hook (`call.contact` was the
+  visitor id) or the call's facts: `data erase contact` found no call and the caller's name stayed readable. The entry now
+  carries the contact the call was opened with, and a written call taken up again after a restart keeps it
+  (`session/started.py`, `calls/service/text.py`). A call's own facts row written before this keeps the visitor id. (found by
+  the 2026-10-23 eval, J F7, B B5, A F8)
+- **`GET /v1/org/reads` is the key's environment's own.** It listed the reads of both environments, so `data reads --prod`
+  showed the sandbox's too; the endpoint now filters by the key's environment (`compliance/`). (found by the 2026-10-23
+  eval, J F5)
+- **A secret an API echoes back is masked in a Studio tool's answer.** The substituted value of every secret a request's
+  headers name is replaced by `***` in the answer, by value and wherever it came back, before the model, the call's log,
+  `tool.result` or Try holds it (`studio/service/fetch.py`). (found by the 2026-10-23 eval, I F3)
+- **A Studio definition names a secret in a header's value and nowhere else.** The refusal covered a tool's URL and data
+  collection's URL; the instructions, a greeting, a description and every other string were accepted. One validator reads
+  every string of the definition and refuses with one sentence naming where (`studio/service/definition.py`). (found by the
+  2026-10-23 eval, I F4)
+- **A Studio agent that ends the call has one `end_call` result.** The Studio socket answered the session's own `end_call`
+  `tool.call` with "this agent has no such tool", a second `tool.result` that sometimes won; it now leaves the hang-up to the
+  session (`studio/service/holder.py`). (found by the 2026-10-23 eval, I F5, L B6)
+- **One quota for each kind of call: a written call spends messages and no minutes, a spoken call minutes and no
+  messages.** A `pinecall chat`, the console's playground, a written simulation or a golden played as text counted
+  its seconds as the org's minutes, in its `minutes` limit and in the minutes a plan bills (the usage feed's rows
+  carried them), and a spoken call's turns were messages. The fold now reads who opened the call's log
+  (`call_log_head.opened_by`: only the gateway opens written sessions) in `usage_row` and, by migration `000013`, in
+  the database's `entry_usage`; a call opened before heads said who opened them counts both, as it did, and
+  `pinecall-runtime usage rebuild` counts the months already counted by the same rule. (found by the 2026-10-23
+  eval, J F9 and H F8)
+- **A simulation is admitted before its call opens, and a refused one opens nothing and counts nothing.**
+  `POST /v1/simulations`, `POST /v1/evals/voice` and the written chat a `pinecall simulate` opens
+  (`/v1/chat?persona=`, which now takes `played_by=`) ask the org's `simulations` (`429`, with `credits.exhausted`
+  on the agent's log for each refusal) and the caller's model, and its voice when spoken, on the org's keys (`503`
+  for a vendor nobody keyed, `400` for one not installed) before any call is claimed; they were asked in the
+  background after the call was open, which left it open and counted as a simulation. A simulation begun weighs on
+  the limit from then on, so a burst cannot all pass it. (found by the 2026-10-23 eval, F F3, F F4, H F3 and H F6)
+- **A call refused for any quota writes `credits.exhausted`, is kept as an alert, mailed and posted.** A written or
+  outbound call was admitted without the writer the voice path uses, and the writer, said inside the request about to
+  be refused, was rolled back with it: the alert row was never kept and the hourly mail was sent again with every
+  refusal. `alerts.credits_refused` says it in a transaction of its own. (found by the 2026-10-23 eval, H F2)
+- **A judge tried on an agent whose judge is on the org's own key counts no evals.** `judges try` judged with the
+  agent's class and never its settings, so its judge was the platform's; it builds the config as the seal does.
+  (found by the 2026-10-23 eval, C B5)
+- **`GET /v1/limits` shows every limit**: `memory_facts`, `knowledge_chunks`, `hosted_apps` and `budget_usd` beside
+  the nine it had, each `{limit, used}`. (found by the 2026-10-23 eval, C B6)
+- **`judging --model` tries the model on the org's keys before it keeps it.** `PUT /v1/org/judging` only resolved
+  the key; a model its vendor turns away is now refused in the vendor's words, naming it, and nothing is changed.
+  (found by the 2026-10-23 eval, F F6)
+- **A persona written for a vendor nobody keyed is refused when it is written** (`503 xai has no key: the org brought
+  none and the box holds none`), not on its first run. (found by the 2026-10-23 eval, F F1)
+- **A calibration label names a judge the agent's calls meet and one that answers a verdict**: `404` for a name no
+  list has, `409` for a judge that answers a score or a choice, `422` for a `held` that is not a boolean; nothing
+  refused is kept. (found by the 2026-10-23 eval, F F7)
+- **A written simulation records who played its caller**: the run's `played_by` was null for every run the CLI played;
+  `/v1/chat?persona=` keeps the model (`?played_by=` names the run's own) with the call when it opens. (found by the
+  2026-10-23 eval, F F8)
+- **Memory writes each fact in the language the caller spoke, in the third person.** The
+  extraction prompt said only "the contact's own language", so an English call taught Spanish
+  first-person facts ("Soy alérgica a la penicilina.") and the next call answered in Spanish. It is now
+  told the caller's language (the recognizer's on the caller's turns, else the language their own lines
+  say, and only where those say nothing clearly the agent's `language`) and asked for "Allergic to
+  penicillin."; a written English call of an agent set to `es` keeps English facts, and recall hands
+  the fact back as written (`knowledge/service/extraction.py`, `lookups.py`). (found by the
+  2026-10-23 eval, D D-3)
+- **A fact is filed under one of the memory policy's own words, or under `other`.** The category was
+  only a request to the model, so `usual doctor` was written beside the policy's `their usual
+  doctor` and a golden naming the policy's word broke on drift. Admission now reads the model's word
+  against `remember`, ignoring case and spacing, and files anything else as `other`; a `--forget`
+  category is still refused first (`extraction.py`, `admit_ops`). (found by the 2026-10-23 eval, D D-4)
+- **A table of names or codes is a base with no stemming, not a Spanish one.** The language counter
+  read the letters inside a code as words, so the `y` of `Y8` made a table of rates `spanish`. A word
+  is now a whole run of letters (`knowledge/service/language.py`, `A_WORD`). (found by the
+  2026-10-23 eval, D D-1)
+- **A call's log masks a private value wherever the agent wrote it down.** `pii` masked the argument in
+  `tool.call` and nothing else: the value the model gave came back in the `state.changed` of the field that
+  took it, in the `tool.result` that echoed it and in a line the agent logged. The value of every argument a
+  tool lists under `pii` is now masked, where it stands as a whole word and when it is at least three
+  characters (a shorter one would mask every such digit or word), in all four, with the originals sealed
+  aside and read back for the app, a takeover, a written call picked up again and the model's own result,
+  on any gateway; what was said is never touched. (found by the 2026-10-23 eval, A F3, B D7, L D7)
+- **`state.set` says who wrote it, and a hook is a kind of cause.** `StateSet` takes `cause` and
+  `StateCause` gains `{"kind": "hook", "hook": "on_call" | "on_memory"}`; the runtime named the tool or
+  event it saw running, once, for the first write after it, and knew nothing of hooks, so a tool's second
+  write and every hook's had no author. An app that says nothing still gets the old guess. (found by the
+  2026-10-23 eval, B B4)
+- **`call.started` carries the `metadata` the call was opened with** (a token's, sealed), for the app to
+  read as `this.call.metadata`; the public projection drops it. (found by the 2026-10-23 eval, K F6)
+- **A hosted Studio agent reads `{{metadata.x}}` from the call's `metadata`**, the token's, as its exported
+  class does, and no longer from the state the call opened in. (found by the 2026-10-23 eval, K F6)
+- **A Studio agent's exported class reads `{{call.to}}`, `{{call.direction}}`, `{{caller.name}}`,
+  `{{caller.phone}}`, `{{caller.email}}` and `{{metadata.<key>}}` from `this.call`**, as it already did
+  `{{call.from}}`, `{{call.channel}}` and `{{call.today}}`; a `metadata` path deeper than one key stays
+  empty and the class says so in a comment, instead of dropping it in silence. (found by the 2026-10-23
+  eval, I F6, K F6)
+
 ## 0.11.15 — Pinecall hosts Python projects, and a runtime of one's own runs what it is sent (2026-10-23)
 
 - **Hosted apps run on `infra/images/app` on cloud.pinecall.io**: Node 24, uv and CPython 3.13, with

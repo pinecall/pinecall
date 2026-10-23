@@ -29,6 +29,8 @@ SOCKETS_CHANNEL = "sockets"
 OWNED_CHANNEL = "owned"
 # Where a gateway hands a WhatsApp message on to the one holding its contact's thread.
 THREAD_CHANNEL = "thread:{gateway}"
+# What every gateway hears about the sockets that take an agent and the ones that let a call go.
+HANDOFF_CHANNEL = "handoff"
 
 
 @dataclass(frozen=True)
@@ -50,8 +52,34 @@ class Owned:
     threads: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class Taking:
+    """A socket took an agent in a scope: the calls parked for it, on any gateway, are its to take."""
+
+    app: str
+    scope: Scope
+    agent: str
+
+
+@dataclass(frozen=True)
+class Unbound:
+    """A socket let a call go on the gateway that held it: the gateway that opened the call hands it on."""
+
+    call: str
+    app: str
+
+
+@dataclass(frozen=True)
+class Handoff:
+    """One message of the handoff channel: a socket that took an agent, or a call a socket let go."""
+
+    taking: Taking | None = None
+    unbound: Unbound | None = None
+
+
 _ROWS: TypeAdapter[tuple[SocketRow, ...]] = TypeAdapter(tuple[SocketRow, ...])
 _OWNED: TypeAdapter[Owned] = TypeAdapter(Owned)
+_HANDOFF: TypeAdapter[Handoff] = TypeAdapter(Handoff)
 
 
 class Elsewhere:
@@ -147,10 +175,21 @@ async def send_command(signal: Signal, command: Command) -> bool:
 
 
 # Lossy, as the signal is: a bound call whose notice was lost is told again when its worker asks
-# a tool, and parked calls are handed on at every pass.
+# a tool, and parked calls are handed on at every pass of the reaper.
 def tell_bound(signal: Signal, app: str, bound: Bound) -> None:
     """Tell the gateway holding the socket that the call is bound to it, from this seq."""
     signal.publish(APP_CHANNEL.format(app=app), ForApp(bound=bound).model_dump_json().encode())
+
+
+# Lossy, as the signal is: a call whose notice was lost is handed on at the reaper's next pass.
+def tell_handoff(signal: Signal, message: Handoff) -> None:
+    """Tell every gateway that a socket took an agent, or that one let a call go."""
+    signal.publish(HANDOFF_CHANNEL, _HANDOFF.dump_json(message, exclude_none=True))
+
+
+def heard_handoff(data: bytes) -> Handoff:
+    """One message of the handoff channel, read."""
+    return _HANDOFF.validate_json(data)
 
 
 async def tell_app(signal: Signal, app: str, message: ForApp) -> bool:

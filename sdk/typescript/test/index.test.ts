@@ -91,6 +91,7 @@ const PUBLIC = [
     "voice",
     "withAuthor",
     "withAuthorAsync",
+    "z",
 ];
 
 describe("the package's public surface", () => {

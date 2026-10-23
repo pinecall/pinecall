@@ -26,13 +26,14 @@ from pinecall_runtime.calls.service.live import Served
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.compliance import service as compliance
-from pinecall_runtime.exceptions import PinecallError, QuotaExceeded, ServiceUnavailable
+from pinecall_runtime.exceptions import PinecallError, QuotaExceeded, ServiceUnavailable, ValidationError
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.telephony import service as telephony
-from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.base import Entry, WireModel
 from pinecall_runtime.wire.events import CallEnded, CallStarted, CallSummary, ErrorEvent, MemoryOps
 from pinecall_runtime.wire.feed import JudgeBroke
 from pinecall_runtime.wire.parts import MemoryOp
@@ -62,6 +63,10 @@ LEASED_S = 15.0
 LOOKED_AGAIN_S = 0.5
 # How long a request waits on another gateway's seal before it says so: the worker asks again.
 WAITED_AT_MOST_S = 25.0
+# How long a seal waits for the app that holds the call to say its end hook ran (call.done), when the
+# app says it will: what the hook logs lands only before `call.score`, which seals the log. An app
+# that never answers costs the call this much and no more.
+END_HOOK_WAITED_S = 3.0
 
 
 class SealedElsewhere(ServiceUnavailable):
@@ -90,6 +95,7 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
             if all(entry.type != "call.summary" for entry in entries):
                 await _price(serving, served, sealing, lent)
             score = await _score(serving, served)
+            await _app_ended(serving, served)
             await served.log.append("call.score", score.dump())
         except BaseException:
             await store.release_seal(served.call)
@@ -97,23 +103,29 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
         finally:
             renewing.cancel()
             await asyncio.gather(renewing, return_exceptions=True)
-        announce_broken_judges(serving.logs, served.scope, served.call, served.agent, score)
-        async with serving.handles.sessions.begin() as session:
-            await drift_folded(session, served.call, entries, score)
-            await _keep_as_case(session, serving, served, score)
-            at = serving.logs.store.clock()
-            await alerts.watch_spend(
-                session,
-                serving,
-                serving.counters,
-                served.scope,
-                served.agent,
-                ledger=SpendRepository(session),
-                at=at,
-            )
-            await alerts.check_monitors(session, serving, served.scope, served.agent, series=usage.series_window, at=at)
-        serving.logs.forget(served.call)
-        serving.live.close_call(served.call)
+        # The score sealed the log: the call is over whatever its bookkeeping after it does, and a call
+        # left in Live.calls here holds its org's seat until the process restarts.
+        try:
+            announce_broken_judges(serving.logs, served.scope, served.call, served.agent, score)
+            async with serving.handles.sessions.begin() as session:
+                await drift_folded(session, served.call, entries, score)
+                await _keep_as_case(session, serving, served, score)
+                at = serving.logs.store.clock()
+                await alerts.watch_spend(
+                    session,
+                    serving,
+                    serving.counters,
+                    served.scope,
+                    served.agent,
+                    ledger=SpendRepository(session),
+                    at=at,
+                )
+                await alerts.check_monitors(
+                    session, serving, served.scope, served.agent, series=usage.series_window, at=at
+                )
+        finally:
+            serving.logs.forget(served.call)
+            serving.live.close_call(served.call)
 
 
 # The feed says which judge broke and on which call, nothing of why: the reason is the call's content.
@@ -264,8 +276,8 @@ async def drift_folded(session: AsyncSession, call: str, entries: Sequence[Entry
 async def sum_up(session: AsyncSession, store: Store, log: Log, sealing: SealCallRequest) -> None:
     """call.summary: how the call ended, what it used, what that cost."""
     entries = await store.whole(log.name)
-    ended = next((entry for entry in reversed(entries) if entry.type == "call.ended"), None)
-    over = None if ended is None else CallEnded.model_validate(ended.data)
+    over = _readable(CallEnded, next((entry for entry in reversed(entries) if entry.type == "call.ended"), None))
+    started = _readable(CallStarted, next((entry for entry in entries if entry.type == "call.started"), None))
     state = reduce(entries)
     duration = 0.0 if over is None else over.duration_s
     catalog = await providers.get_catalog(session)
@@ -278,7 +290,7 @@ async def sum_up(session: AsyncSession, store: Store, log: Log, sealing: SealCal
         cost=providers.cost_of(sealing.usage, catalog, legs=phone_legs(entries), seconds=duration),
         recording=sealing.recording,
         simulated=judging.is_simulated(entries),
-        run=_run_of(entries),
+        run=None if started is None else started.run,
     )
     # Once per log: two gateways sealing one call (a lease lapsed under a stalled seal) price it once.
     await log.append_first("call.summary", summary.dump())
@@ -328,10 +340,40 @@ async def _sealed_elsewhere(serving: Serving, served: Served) -> bool:
     return True
 
 
+# The app is sent call.ended when it is written and answers with its end hook: a line the hook logs, a
+# state it writes, lands only if it is appended before call.score, which seals the log and from which
+# a later append is refused. The wait is on the app's own word (call.done), after the work the seal
+# has to do anyway, so an app that answers in the time the judges take costs the call nothing.
+async def _app_ended(serving: Serving, served: Served) -> None:
+    if not _says_done(serving, served):
+        return
+    try:
+        await asyncio.wait_for(served.hooked.wait(), END_HOOK_WAITED_S)
+    except TimeoutError:
+        logger.warning(
+            "call %s: its app did not say its end hook ran within %g s; the log is sealed without it, "
+            "and a line the hook logs later is refused",
+            served.call,
+            END_HOOK_WAITED_S,
+        )
+
+
+# The socket the call is bound to, else the one that would take a new call of its agent, and whether it
+# promised call.done: an SDK of before, or a console, is not waited for.
+def _says_done(serving: Serving, served: Served) -> bool:
+    registry = serving.registry
+    bound = None if served.app is None else registry.on_socket(served.app, served.scope.env, served.agent)
+    holder = bound or registry.serving(served.scope, served.agent, None)
+    return holder is not None and holder.says_done
+
+
 async def _renew(store: Store, call: str) -> None:
     while True:
         await asyncio.sleep(LEASED_S / 3)
-        await store.renew_seal(call, LEASED_S)
+        # A renewal that failed is said and tried again a third of the lease on: the loop that ended
+        # on it would let the lease lapse under a seal still running, and another gateway take it.
+        with survived("renewing a seal's lease", call):
+            await store.renew_seal(call, LEASED_S)
 
 
 # A call a judge broke on waits in the org's inbox as a case. Like drift, it is kept after the
@@ -351,9 +393,23 @@ async def _keep_as_case(session: AsyncSession, serving: Serving, served: Served,
         logger.warning("call %s was not kept as a case", served.call, exc_info=True)
 
 
-def _run_of(entries: Sequence[Entry]) -> str | None:
-    started = next((entry for entry in entries if entry.type == "call.started"), None)
-    return None if started is None else CallStarted.model_validate(started.data).run
+# The summary reads the call's first and last words: one this version cannot read counts as one
+# the call never wrote, and the call seals all the same. The worker's endpoints refuse such an
+# entry now; a log written before they did may hold one (2026-10-23: a call.started with no
+# `caller` was taken, and its seal answered 500 for ever).
+def _readable[T: WireModel](model: type[T], entry: Entry | None) -> T | None:
+    if entry is None:
+        return None
+    try:
+        return model.parse(entry.data, entry.type)
+    except ValidationError:
+        logger.warning(
+            "call %s: its %s at seq %d is unreadable, and the seal goes on without it",
+            entry.call,
+            entry.type,
+            entry.seq,
+        )
+        return None
 
 
 # Read once a call: the panel spends what is left in its order, and a refusal is a judge skipped.

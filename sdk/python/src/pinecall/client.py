@@ -91,11 +91,12 @@ class Client:
         self._errors: list[Callable[[Exception], None]] = []
         self._connected: list[Callable[[], None]] = []
         self._stopped: list[Callable[[str], None]] = []
+        self._killed: list[Callable[[str, str], None]] = []
         self._listeners: Listeners[Call | None] = Listeners(self.on_error)
         handlers = Handlers(self._declare_all, self._take, self.on_error, self._ping_all)
         self._connection = Connection(url, self._signing, handlers, ping_s=ping_s, backoff=backoff)
 
-    def agent(
+    def agent(  # noqa: PLR0913 - one keyword for each thing the socket says of itself when it registers
         self,
         slug: str,
         config: AgentConfig | None = None,
@@ -103,6 +104,7 @@ class Client:
         *,
         takes_unclaimed: bool = True,
         answers_dev: bool = False,
+        says_done: bool = False,
     ) -> AgentSocket:
         """Hold an agent on this socket; nothing is sent until `connect`.
 
@@ -112,8 +114,10 @@ class Client:
             tools: each tool's spec and what runs when the model calls it.
             takes_unclaimed: a call that names no app may come here; a console's process says no.
             answers_dev: this socket answers the console's asks for the agent, and declares nothing.
+            says_done: this process sends `call.done` once a call's end hook ran, so the gateway's
+                seal waits for the lines the hook logs (a mounted agent class does).
         """
-        role = Role(takes_unclaimed=takes_unclaimed, answers_dev=answers_dev)
+        role = Role(takes_unclaimed=takes_unclaimed, answers_dev=answers_dev, says_done=says_done)
         held = AgentSocket(slug, self, config or AgentConfig(), tools, role)
         self._agents[slug] = held
         return held
@@ -188,6 +192,13 @@ class Client:
         """A person of the org stopped this app: the socket is closed for good."""
         return _kept(self._stopped, listener)
 
+    def on_killed(self, listener: Callable[[str, str], None]) -> Callable[[], None]:
+        """An admin let go of one of this app's agents: its slug and the gateway's sentence.
+
+        The socket stays open for the others, and the agent is not declared again.
+        """
+        return _kept(self._killed, listener)
+
     # ── reading a log ──
 
     async def history(
@@ -256,8 +267,13 @@ class Client:
         held = self._agents.get(entry.agent)
         if held is not None:
             held.take(entry)
-            if _killed(entry):
+            if (why := _killed_for(entry)) is not None:
                 del self._agents[entry.agent]
+                for listener in list(self._killed):
+                    try:
+                        listener(entry.agent, why)
+                    except Exception as failed:  # noqa: BLE001 - a listener's failure is said, never raised
+                        self.on_error(failed)
 
     async def _stop(self, why: str) -> None:
         await self._connection.close()
@@ -303,8 +319,9 @@ def detail_of(answered: httpx.Response) -> str:
     return answered.text
 
 
-def _killed(entry: Entry) -> bool:
+def _killed_for(entry: Entry) -> str | None:
+    """The gateway's sentence when the entry says an admin let go of its agent, else None."""
     if entry.type != "error":
-        return False
+        return None
     said = event_of(entry)
-    return isinstance(said, ErrorEvent) and said.code == KILLED
+    return said.message if isinstance(said, ErrorEvent) and said.code == KILLED else None

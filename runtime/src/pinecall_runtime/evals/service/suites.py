@@ -16,7 +16,7 @@ from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.evals.schemas import OpenedCall, RunRow, RunSuiteRequest, ScoreRow
-from pinecall_runtime.evals.service import playing, runs, simulations, spoken
+from pinecall_runtime.evals.service import players, playing, runs, simulations, spoken
 from pinecall_runtime.exceptions import Forbidden, NotFound, QuotaExceeded, ServiceUnavailable, ValidationError
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
@@ -346,7 +346,7 @@ async def _said_out_loud(
     async with serving.handles.sessions.begin() as session_:
         # Refused, the run stops where it is, as for any quota (_judged_suite).
         await simulations.admit_simulation(session_, serving, scope, registration.slug)
-        voice = await simulations.caller_voice(session_, serving, scope, registration.slug, None)
+        voice = await players.caller_voice(session_, serving, scope, registration.slug, None)
     lines = [turn.say for turn in golden.turns if turn.say is not None]
     dispatch = Dispatch(
         agent=registration.slug,

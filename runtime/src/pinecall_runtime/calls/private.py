@@ -2,8 +2,10 @@
 
 import json
 import logging
-from collections.abc import Sequence
-from dataclasses import dataclass
+import re
+from collections.abc import Collection, Sequence
+from dataclasses import dataclass, field
+from typing import cast
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.exceptions import ServiceUnavailable
@@ -16,19 +18,66 @@ logger = logging.getLogger(__name__)
 # The key stays, so a reader knows a value exists; the value goes whole, so its type does not leak.
 MASK = "***"
 
-# The entries whose data carries the app's state, masked against the state fields declared pii.
+# A value shorter than this is never learned as a secret: "7", "ok" or "Al" cannot be told from a
+# word, and masking it would mask every such digit or word the agent writes after it. The argument
+# is still masked by its name; only its value is not hunted in what else was written.
+LEAST_SECRET_CHARS = 3
+
+# What the agent wrote down, by entry: the fields of its data a private value may be in. A tool's
+# arguments and what it answered, the state it holds, and the lines it logged itself. What was said
+# (turn.user, turn.agent) is the caller's and the model's words, never masked.
+WRITTEN_DOWN: dict[str, tuple[str, ...]] = {
+    "tool.call": ("arguments",),
+    "tool.result": ("output", "error", "summary"),
+    "state.changed": ("state",),
+    "call.attached": ("state",),
+    "custom": ("data",),
+}
+
+# The entries whose state is masked field by field against the fields declared pii.
 CARRY_STATE = frozenset({"state.changed", "call.attached"})
 
-# A tool's arguments, masked against the names its declaration lists under pii.
+# A tool's arguments, masked against the names its declaration lists under pii, and where the
+# values of those arguments are learned.
 CARRY_ARGUMENTS = "tool.call"
 
 
-@dataclass(frozen=True)
+@dataclass
 class Privacy:
-    """What a call's writer masks by: the vault it seals with, the declaration it reads."""
+    """What a call's writer masks by: the vault it seals with, the declaration it reads, and the values.
+
+    `values` are the private values the call's tool calls carried, learned as they are written or
+    forwarded: every later entry the agent wrote is masked of them, wherever they appear.
+    """
 
     vault: Vault
     config: AgentConfig
+    values: set[str] = field(default_factory=set[str])
+    # The newest tool.call whose values were asked of the store, so a gateway asks for what is new.
+    through: int = 0
+
+    @property
+    def active(self) -> bool:
+        """Whether the declaration names anything private at all: when not, nothing is masked or sealed."""
+        pii_fields = any(seen == "pii" for seen in self.config.state_fields.values())
+        return pii_fields or any(spec.pii for spec in self.config.tools)
+
+    def learn(self, kind: str, data: JsonObject) -> None:
+        """Take the values of the arguments a tool.call lists under pii as private from here on."""
+        if kind != CARRY_ARGUMENTS:
+            return
+        spec = self.config.tools_by_name.get(str(data.get("name")))
+        arguments = data.get("arguments")
+        if spec is None or not a_mapping(arguments):
+            return
+        for name in spec.pii:
+            self.values.update(
+                leaf for leaf in _leaves(cast("Json", arguments.get(name))) if len(leaf) >= LEAST_SECRET_CHARS
+            )
+
+    def secrets(self) -> list[str]:
+        """The private values, the longest first, so one that holds another is masked whole."""
+        return sorted(self.values, key=len, reverse=True)
 
 
 @dataclass(frozen=True)
@@ -39,19 +88,28 @@ class Split:
     private: JsonObject
 
 
-def split(kind: str, data: JsonObject, config: AgentConfig) -> Split:
-    """The entry with every value its agent declared private masked, and those values apart."""
-    marked = _marked(kind, data, config)
-    if marked is None:
+def split(kind: str, data: JsonObject, config: AgentConfig, secrets: Sequence[str] = ()) -> Split:
+    """The entry with every value its agent declared private masked, and those values apart.
+
+    A tool's arguments and a state field are private by name; whatever else the agent wrote down
+    is masked of `secrets` wherever one stands as a whole word, in a string or as a whole leaf.
+    """
+    fields = WRITTEN_DOWN.get(kind)
+    if fields is None:
         return Split(data, {})
-    field, names = marked
-    values = data.get(field)
-    if not a_mapping(values):
-        return Split(data, {})
-    private: JsonObject = {name: value for name, value in values.items() if name in names}
-    if not private:
-        return Split(data, {})
-    return Split({**data, field: {**values, **dict.fromkeys(private, MASK)}}, {field: private})
+    found = _Secrets.of(secrets)
+    declared = _declared(kind, data, config)
+    kept = dict(data)
+    private: JsonObject = {}
+    for name in fields:
+        if name not in data:
+            continue
+        by_name = declared[1] if declared is not None and declared[0] == name else frozenset[str]()
+        masked, aside = _masked(data[name], by_name, found)
+        if aside is not None:
+            kept[name] = masked
+            private[name] = aside
+    return Split(kept, private) if private else Split(data, {})
 
 
 def masked_state(app_state: JsonObject, config: AgentConfig) -> JsonObject:
@@ -64,16 +122,16 @@ def restored(entry: Entry, private: JsonObject | None) -> Entry:
     if not private:
         return entry
     data = dict(entry.data)
-    for field, values in private.items():
-        kept = data.get(field)
-        if isinstance(kept, dict) and isinstance(values, dict):
-            data[field] = {**kept, **values}
+    for field_, original in private.items():
+        kept = data.get(field_)
+        # A field of members gets back the members that were masked; any other, itself.
+        data[field_] = {**kept, **original} if isinstance(kept, dict) and isinstance(original, dict) else original
     return entry.model_copy(update={"data": data})
 
 
 def may_be_private(kind: str) -> bool:
     """Whether an entry of this kind can carry a value its agent declared private."""
-    return kind == CARRY_ARGUMENTS or kind in CARRY_STATE
+    return kind in WRITTEN_DOWN
 
 
 def sealed_values(vault: Vault, values: JsonObject) -> str:
@@ -103,10 +161,75 @@ def _opened(vault: Vault, token: str | None) -> JsonObject | None:
     return values if isinstance(values, dict) else None
 
 
-def _marked(kind: str, data: JsonObject, config: AgentConfig) -> tuple[str, frozenset[str]] | None:
+def _declared(kind: str, data: JsonObject, config: AgentConfig) -> tuple[str, frozenset[str]] | None:
     if kind == CARRY_ARGUMENTS:
         spec = config.tools_by_name.get(str(data.get("name")))
         return None if spec is None else ("arguments", spec.pii)
     if kind in CARRY_STATE:
         return "state", frozenset(name for name, seen in config.state_fields.items() if seen == "pii")
     return None
+
+
+@dataclass(frozen=True)
+class _Secrets:
+    """The private values as one pattern for strings and one set for numbers."""
+
+    pattern: re.Pattern[str] | None
+    whole: frozenset[str]
+
+    @classmethod
+    def of(cls, secrets: Sequence[str]) -> "_Secrets":
+        """A value is a secret where it stands as a whole word: `Ana` is no part of `Banana` or `Anabel`.
+
+        The longest alternative comes first, so a value that holds another is masked whole.
+        """
+        if not secrets:
+            return cls(None, frozenset())
+        ordered = sorted(secrets, key=len, reverse=True)
+        words = "|".join(re.escape(secret) for secret in ordered)
+        return cls(re.compile(rf"(?<!\w)(?:{words})(?!\w)"), frozenset(ordered))
+
+
+# A field of members is masked member by member, so the originals kept aside are the members
+# that changed; any other value is masked whole and kept whole.
+def _masked(value: Json, by_name: Collection[str], secrets: _Secrets) -> tuple[Json, Json | None]:
+    if not a_mapping(value):
+        scrubbed = _scrubbed(value, secrets)
+        return (scrubbed, value) if scrubbed != value else (value, None)
+    masked: JsonObject = {}
+    aside: JsonObject = {}
+    for name, member in value.items():
+        replaced = MASK if name in by_name else _scrubbed(member, secrets)
+        if replaced != member or name in by_name:
+            masked[name] = replaced
+            aside[name] = member
+    return ({**value, **masked}, aside) if aside else (value, None)
+
+
+# A leaf that is a private value goes whole; a string that holds one as a word has it replaced, so
+# the rest of what it said stays readable. What a number reads as is how a tool's argument was written.
+def _scrubbed(value: Json, secrets: _Secrets) -> Json:
+    if secrets.pattern is None:
+        return value
+    if isinstance(value, str):
+        return secrets.pattern.sub(MASK, value)
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, int | float):
+        return MASK if str(value) in secrets.whole else value
+    if isinstance(value, list):
+        return [_scrubbed(item, secrets) for item in value]
+    return {name: _scrubbed(member, secrets) for name, member in value.items()}
+
+
+# Every string and number inside a value, as text; a blank is no secret, it would mask everything.
+def _leaves(value: Json) -> list[str]:
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, bool) or value is None:
+        return []
+    if isinstance(value, int | float):
+        return [str(value)]
+    if isinstance(value, list):
+        return [leaf for item in value for leaf in _leaves(item)]
+    return [leaf for member in value.values() for leaf in _leaves(member)]

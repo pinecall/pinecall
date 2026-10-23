@@ -222,11 +222,13 @@ pinecall chat
 ```console
 ‹ Hi, I'm Ana Lopez. Please tell the manager my last order arrived broken.
 → takeMessage({"name":"***","about":"last order arrived broken"})
+← takeMessage {"name":"***","about":"last order arrived broken"}
 › Got it, Ana. Your message has reached the team. Goodbye!
 ```
-`‹` is you, typing. `→` is a tool the model called, with its arguments: the name shows as `***`
-because the class marked it as personal data, which is masked in the log. `›` is the agent's
-answer. The agent runs on your machine, so a breakpoint in `takeMessage` stops there. Ctrl-D hangs
+`‹` is you, typing. `→` is a tool the model called, with its arguments, and `←` what it answered:
+the name shows as `***` in both because the class marked it as personal data, and the log masks
+that value wherever the agent wrote it down. What you and the agent said is not touched. `›` is the
+agent's answer. The agent runs on your machine, so a breakpoint in `takeMessage` stops there. Ctrl-D hangs
 up.
 :::
 

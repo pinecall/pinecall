@@ -8,7 +8,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import serving_of
 from pinecall_runtime.calls.service.live import Served
-from pinecall_runtime.calls.service.serving import Serving, check_kind, count_append, get_served
+from pinecall_runtime.calls.service.serving import Serving, check_entry, count_append, get_served
 from pinecall_runtime.enums import KeyScope
 from pinecall_runtime.exceptions import PinecallError, Unauthorized
 from pinecall_runtime.kit.auth import Actor, check_scopes
@@ -49,7 +49,7 @@ async def _answer(websocket: WebSocket, serving: Serving, served: Served, call: 
     try:
         body = schemas.AppendEntriesRequest.parse_json(raw, "entries")
         for item in body.entries:
-            check_kind(item.type)
+            check_entry(item.type, item.data)
         serving.live.in_use(call, time.monotonic())
         began = time.perf_counter()
         entries = await served.log.append_many(body.entries, after=body.after)

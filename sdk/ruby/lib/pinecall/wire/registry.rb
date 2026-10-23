@@ -101,6 +101,7 @@ module Pinecall
         "call.callback" => "CallCallback",
         "call.claim" => "CallClaim",
         "call.dial" => "CallDial",
+        "call.done" => "CallDone",
         "call.dtmf" => "CallDtmf",
         "call.event" => "CallEvent",
         "call.hangup" => "CallHangup",
@@ -129,7 +130,7 @@ module Pinecall
       EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript app.failed attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error evals.spent event.received fleet.full judge.broke log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed release.changed room.opened room.sent run.changed spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.failed tool.ran tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched worker.changed].freeze
 
       # Every command an app may send.
-      COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.dtmf call.event call.hangup call.hold call.log call.mute call.opt_out call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze
+      COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.done call.dtmf call.event call.hangup call.hold call.log call.mute call.opt_out call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze
 
       # Entries a store may drop and a slow reader may miss without harm: the entry's
       # own ephemeral flag defaults to this.
@@ -149,6 +150,7 @@ module Pinecall
         "call.callback" => %w[callback.requested],
         "call.claim" => %w[call.claimed],
         "call.dial" => %w[call.dialing],
+        "call.done" => [],
         "call.dtmf" => [],
         "call.event" => %w[event.received],
         "call.hangup" => %w[call.ended],

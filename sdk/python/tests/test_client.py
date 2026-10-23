@@ -230,3 +230,17 @@ async def test_a_command_whose_data_is_not_its_shape_never_leaves(gateway: FakeG
     with pytest.raises(WireError, match=r"agent\.say carries a AgentSay, not a Ping"):
         client.send("agent.say", "clinica-norte", "CA_1", Ping(), "x")
     await client.close()
+
+
+async def test_a_client_asked_to_hear_of_a_kill_is_told_the_slug_and_the_sentence_once(
+    gateway: FakeGateway,
+) -> None:
+    client = client_of(gateway)
+    client.agent("front-desk")
+    told: list[tuple[str, str]] = []
+    client.on_killed(lambda slug, why: told.append((slug, why)))
+    await client.connect()
+    await gateway.kill("front-desk", "front-desk was killed by Ana")
+    await gateway.until(lambda: told != [])
+    assert told == [("front-desk", "front-desk was killed by Ana")]
+    await client.close()

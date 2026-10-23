@@ -2,6 +2,7 @@
 
 from pinecall_runtime.evals.service.callers import Spending, heard_in, improvise_line
 from pinecall_runtime.evals.service.checks import irreversible_tools, replay
+from pinecall_runtime.evals.service.players import caller_model, caller_voice
 from pinecall_runtime.evals.service.playing import Played, converse, drive
 from pinecall_runtime.evals.service.runs import (
     Runner,
@@ -16,10 +17,9 @@ from pinecall_runtime.evals.service.simulations import (
     Simulations,
     TooManyAtOnce,
     admit_simulation,
-    caller_model,
-    caller_voice,
     calling_as,
     claim_new_call,
+    played_on,
     spoken_call,
     written_call,
     written_turns,
@@ -51,6 +51,7 @@ __all__ = [
     "line_of",
     "list_runs",
     "new_run",
+    "played_on",
     "put_run",
     "replay",
     "spoken_call",

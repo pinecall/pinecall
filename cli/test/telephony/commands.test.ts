@@ -30,7 +30,7 @@ describe("pinecall numbers", () => {
   it("import names the --account flag when the gateway says the org holds several", async () => {
     refuse("post", "/v1/numbers", 409, "the org holds 2 accounts: name one of them");
     const ran = await run(["numbers", "import", "+34910000000", "--agent", "front-desk"]);
-    expect(ran.code).toBe(1);
+    expect(ran.code).toBe(2);
     expect(ran.err).toContain("--account <id>");
   });
 

@@ -39,9 +39,11 @@ it("ends the call with the message it took", async () => {
 ```
 
 > [!WARNING]
-> Skip `describe(...)` and the first tool refuses to build: `tool takeMessage: without a docstring
-> no model can choose it`. The transpiler strips comments, so the class needs its own source handed
-> back.
+> Skip `describe(...)` and the types are gone: the transpiler erased them, so `runTool` cannot tell a
+> string from an object and says so, `takeMessage: its parameter types were erased when the file was
+> compiled; hand the class its own source with describe(AgentClass, source)`. A transpiler that strips
+> comments as well takes the docstring, and the tool refuses to build: `tool takeMessage: without a
+> docstring no model can choose it`. Either way the class needs its own source handed back.
 
 ## The helpers
 

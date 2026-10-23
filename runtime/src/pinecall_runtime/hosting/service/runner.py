@@ -42,6 +42,7 @@ from pinecall_runtime.hosting.service.plan import (
     planned,
 )
 from pinecall_runtime.hosting.service.processes import Processes
+from pinecall_runtime.kit.loops import survived
 
 logger = logging.getLogger(__name__)
 
@@ -201,12 +202,14 @@ class Runner:
     # The host asked for, else the one still serving while it installs.
     async def _logs_asked_for(self, apps: Sequence[WantedApp], containers: Sequence[Container]) -> None:
         for app in apps:
-            ours = [each.name for each in containers if each.app == label_of(app)]
-            host = app.host if app.host in ours else next(iter(ours), None)
-            if not app.logs_wanted or host is None:
-                continue
-            output = await self.hosts.logs(host, SENT_LINES)
-            self.logs.append(AppLogs(org=app.org, name=app.name, host=host, lines=output))
+            # An app whose logs cannot be read is said, and the apps after it are read all the same.
+            with survived("reading an app's logs", label_of(app)):
+                ours = [each.name for each in containers if each.app == label_of(app)]
+                host = app.host if app.host in ours else next(iter(ours), None)
+                if not app.logs_wanted or host is None:
+                    continue
+                output = await self.hosts.logs(host, SENT_LINES)
+                self.logs.append(AppLogs(org=app.org, name=app.name, host=host, lines=output))
 
     # A release no pod runs and nobody wants is no longer anybody's to fetch.
     def _swept(self, apps: Sequence[WantedApp], containers: Sequence[Container]) -> None:
@@ -259,18 +262,22 @@ async def run_runner(settings: Settings) -> int:
             runner = Runner(hosts=Processes(settings.runner_home), gateway=gateway, address=settings.gateway_url)
         else:
             runner = await _on_the_cluster(settings, gateway, stack)
-        name = socket.gethostname().split(".")[0]
-        while not stop.is_set():
-            try:
-                await runner.reconcile(await runner.beat(name), time.time())
-            except (UpstreamError, httpx.HTTPError):
-                logger.warning("runner: this beat did nothing", exc_info=True)
-            try:
-                await asyncio.wait_for(stop.wait(), BEAT_S)
-            except TimeoutError:
-                continue
+        await beating(runner, socket.gethostname().split(".")[0], stop)
         await runner.close()
     return 0
+
+
+# A beat that did nothing is said and the next comes: the runner that ended on an answer it could not
+# read would leave every hosted app of its env unmanaged until it was restarted.
+async def beating(runner: Runner, name: str, stop: asyncio.Event) -> None:
+    """Beat every few seconds until told to stop."""
+    while not stop.is_set():
+        with survived("the runner's beat"):
+            await runner.reconcile(await runner.beat(name), time.time())
+        try:
+            await asyncio.wait_for(stop.wait(), BEAT_S)
+        except TimeoutError:
+            continue
 
 
 # A pod fetches its release from the runner by digest: the cluster's runner serves the sources.

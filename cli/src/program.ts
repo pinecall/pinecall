@@ -30,11 +30,23 @@ const DOMAINS: (() => Promise<{ register: Register }>)[] = [
   () => import("./mcp/commands.js"),
 ];
 
-/** The whole CLI: `pinecall [--prod] [--json] <verb> …`, every domain's verbs registered. */
-export async function createProgram(ctx: Context): Promise<Command> {
-  const program = new Command("pinecall")
-    .description("An agent's project in any language, against the Pinecall gateway.")
-    .version(version(), "-v, --version")
+// `-v`, `--version` and `--version=2`: the word the root's version flag and a verb's own both answer to.
+const A_VERSION_FLAG = /^(-v|--version(=.*)?)$/;
+
+/**
+ * Whether the line gives `-v` or `--version` to a verb, because it comes after one: `test --version 2`
+ * is a version of the agent's settings. Commander reads a program's option anywhere on the line, so
+ * the root's flag would win over the verb's and print this CLI's version in its place.
+ */
+export function versionIsAVerbs(argv: readonly string[]): boolean {
+  const verb = argv.findIndex((word) => !word.startsWith("-"));
+  return verb !== -1 && argv.slice(verb).some((word) => A_VERSION_FLAG.test(word));
+}
+
+/** The whole CLI: `pinecall [--prod] [--json] <verb> …`, every domain's verbs registered; `argv` is the line it is made for. */
+export async function createProgram(ctx: Context, argv: readonly string[] = []): Promise<Command> {
+  const root = new Command("pinecall").description("An agent's project in any language, against the Pinecall gateway.");
+  const program = (versionIsAVerbs(argv) ? root : root.version(version(), "-v, --version"))
     .option("--prod", "act in production for this one command (the sandbox otherwise)")
     .option("--json", "answer with one JSON object on stdout")
     .exitOverride()

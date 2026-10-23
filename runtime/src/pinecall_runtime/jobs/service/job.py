@@ -27,6 +27,7 @@ from pinecall_runtime.jobs.service.room import hold_music_for, seat_of, widget_f
 from pinecall_runtime.jobs.service.stream import again
 from pinecall_runtime.jobs.service.traces import OrgSpans, attributes_of
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.kit.time import today_in
 from pinecall_runtime.providers import service as providers
@@ -105,9 +106,16 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     )
 
     # Registered before anything else can fail: a call that dies in its setup still seals.
-    # livekit reads a shutdown callback's `__code__`, which a `partial` has not.
+    # livekit reads a shutdown callback's `__code__`, which a `partial` has not. The stream of the
+    # app's commands is followed until the seal is over, not until the shutdown begins (livekit runs
+    # the callbacks at once, together): the app answers `call.ended` with the lines its end hook
+    # logs and with call.done, and the seal waits for them.
+    following: list[asyncio.Task[None]] = []
+
     async def close(_reason: str) -> None:
         await running.close()
+        for task in following:
+            task.cancel()
         spans.release()
 
     ctx.add_shutdown_callback(close)
@@ -138,14 +146,14 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     room.when_the_caller_is_gone(caller_gone)
     widget = widget_for(gateway, call, ctx.room, caller_gone) if route.channel is Channel.web else None
     logger.info(ANSWERED_IN, time.monotonic() - began)
-    commands = asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone))
+    following.append(asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone)))
     timer = asyncio.create_task(
         session.keep_time(running, _limit_of(config, opened, route, typed=typed), exhausted=None)
     )
     # A chat in a room is the one call with no ceiling: it ends after ten quiet minutes instead.
     quiet = typed and not route.channel.has_a_number
     silence = asyncio.create_task(session.end_when_quiet(running, A_CHAT_WAITS_S if quiet else 0))
-    ctx.add_shutdown_callback(_let_go(ctx, running, room, widget, commands, timer, silence))
+    ctx.add_shutdown_callback(_let_go(ctx, running, room, widget, timer, silence))
 
 
 def context_of(
@@ -272,7 +280,10 @@ def _platform_of(
     async def lookup(tool_name: PlatformTool, arguments: JsonObject, speech: str | None) -> JsonObject:
         return await gateway.lookup(call, tool_name, arguments, speech)
 
-    return session.Platform(append_many=append_many, tool=tool, lookup=lookup, seal=seal)
+    async def done() -> None:
+        await gateway.done(call)
+
+    return session.Platform(append_many=append_many, tool=tool, lookup=lookup, seal=seal, done=done)
 
 
 # A recording the worker could not seal is dropped (recorder.py): the seal names none.
@@ -327,9 +338,12 @@ def _carried_history(opened: calls.OpenCallResponse) -> llm.ChatContext | None:
 async def _follow_commands(
     gateway: GatewayClient, running: session.Session, call: str, caller_gone: Callable[[], None]
 ) -> None:
+    # A command the session could not apply is said with its call and the next is heard: a follower
+    # that ended on one would leave the call deaf to its hang-up and to a supervisor's end.
     async def listen() -> None:
         async for command in gateway.commands(call):
-            await follow_command(running, command, caller_gone)
+            with survived("a command of the app", call):
+                await follow_command(running, command, caller_gone)
 
     await again(listen, None, f"the commands of {call}")
 

@@ -28,9 +28,9 @@ its labels — trusted from 10 compared labels on, agreeing with 80% of them at 
 
 Examples
   $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
-  offers-next-slot written · 12 judge(s)
+  offers-next-slot written · 12 judge(s) in the list
   $ pinecall judges off relevance --org
-  relevance off · 12 judge(s)
+  relevance off · 12 judge(s) in the list
   $ pinecall judges try offers-next-slot --last 3
   CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  [seq 14]
   3 evals · $0.0031 · nothing was written
@@ -43,14 +43,20 @@ const JUDGING = `
 Every finished call of the org is judged at hang-up unless judging is off. The judges run on
 Pinecall's judge model, and each judge that answers is one eval on your bill — unless you name a
 model of your own: --model is the model every agent's calls are judged on (an agent's own
-\`pinecall agent set --judge\` wins over it), tried on your org's keys before it is kept. On your
+\`pinecall agent set --judge\` wins over it), tried on your org's keys before it is kept: a model its
+vendor turns away is refused, in the vendor's words, and nothing is changed. On your
 org's own key for its vendor (\`pinecall providers add\`) the model's bill is yours and its evals
 are never billed; a local model is your vendor's plugin pointed at your server, --option
-base_url=… --platform goes back to Pinecall's model.
+base_url=… --platform goes back to Pinecall's model. The line is the org's: --agent adds one
+for that agent, saying the model its own settings (or its class) name for its calls, whose key it
+is, and whether its evals are billed.
 
 Examples
   $ pinecall judging
   judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call
+  $ pinecall judging --agent front-desk
+  judging on · Pinecall's judge model · evals billed · ceiling $0.05 a call
+    front-desk · judged on openai/gpt-5.4-mini · your own key: evals not billed
   $ pinecall judging --model openai/qwen3-32b --option base_url=http://gpu.internal:8000/v1
   $ pinecall judging off
 `;
@@ -148,6 +154,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--model <vendor/model>", "a model of yours, or haiku · sonnet · opus")
     .option("--option <key=value>", "one keyword argument of the model's plugin, its value read as JSON; again for another", repeated)
     .option("--platform", "Pinecall's judge model again")
+    .option("--agent <name>", "also say what this agent's calls are judged on: its own --judge, the class's, or the org's")
     .addHelpText("after", JUDGING)
     .action(async (verb, flags) => {
       if (verb !== undefined && verb !== "on" && verb !== "off") throw new UsageError(`judging takes on or off, not ${verb}`);
@@ -156,6 +163,7 @@ export function register(program: Command, ctx: Context): void {
         model: flags.model,
         options: parseKeyValues("option", flags.option),
         platform: flags.platform === true,
+        agent: flags.agent,
       });
       ctx.io.result(await service.setJudging(ctx, input), render.judging);
     });

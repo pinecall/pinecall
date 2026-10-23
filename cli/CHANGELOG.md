@@ -4,6 +4,53 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall test --version 2` plays the run on that version of the agent's settings.** The CLI's own
+  `-v, --version` was a root option, which commander reads anywhere on the line, so it won over the verb's
+  `--version <n>`: the CLI printed its version, played nothing and exited 0 — a green gate that tested
+  nothing. The root has the flag only when the line gives it to no verb; `pinecall --version` and `-v` are
+  unchanged. (found by the 2026-10-23 eval, E B1)
+- **BREAKING: every refusal of the gateway is exit 2, in the gateway's own sentence; exit 1 is only what was
+  measured and did not hold.** A 400, 401, 403, 404, 409, 422, 429 or 503 — a name nothing answers to, a run
+  already going, an input the schema refuses, a quota, a vendor with no key — stopped the command from
+  running and measured nothing, yet all but the 404 were exit 1, the code of a golden that broke. A step in CI
+  still fails on either; 1 now says the agent is what failed, 2 that the check never ran. `test` tells a second
+  run by its id and a golden the schema refuses by its name and field (`golden x, turns: List should have at
+  most 40 items …`), where it printed `goldens.0.turns: …`. (found by the 2026-10-23 eval, E D9)
+- **`pinecall simulate` exits at once when the gateway refuses the caller's next line, and hangs the call up.**
+  The written call's socket stayed open after the 503 or 400, which held the process (and the call, with
+  its seat, until the command was killed); it is closed however the run ends, and so is a `--listen` seat.
+  (found by the 2026-10-23 eval, F F3)
+- **`pinecall simulate --judge` exits 2, with the reason, for a call nobody judged.** No judge on, only
+  `n/a` and classifications, the evals used up, or no `call.score` within a minute used to exit 0, a silent
+  green in CI; a judge that answered `broken` is still exit 1. (found by the 2026-10-23 eval, F F5)
+- **`pinecall test` refuses `--packet-loss`, `--background-noise` and `--ambience` without `--voice`, as
+  `simulate` does.** A written run ignored them and ran green. (found by the 2026-10-23 eval, G D5)
+- **`pinecall test --voice --grep <golden>` plays the matching golden out loud.** A spoken run with nothing
+  said asked the gateway for the approved dataset as well, which a spoken run cannot play, so it was refused
+  even when the agent had no case; it plays the golden files alone now, in the CLI and in the MCP's `test`
+  tool (`--voice` beside `--dataset` or `--case` is still the gateway's refusal). (found by the 2026-10-23
+  eval, G B1)
+- **`pinecall simulate` says who plays the caller when it opens the call**, so the gateway refuses a model it
+  cannot run before the call exists and keeps the model with the run. (found by the 2026-10-23 eval, F F3
+  and F F8)
+- **`pinecall limits` prints every limit**: the budget (`$4.25 of $60`), hosted apps, memory facts and
+  knowledge chunks beside the rest; the MCP's `usage` answers them too. (found by the 2026-10-23 eval, C B6)
+- **`pinecall judging --agent <name>` says what an agent's calls are judged on**: its own `--judge`, its
+  class's, or the org's, and whose key it is; `judges add|off|…` says `n judge(s) in the list`, the size of
+  the list, which read as a count of the judges on. (found by the 2026-10-23 eval, C D4)
+- **`docs push`'s help says what the line counts.** The legend called the chunks what the files "became",
+  which read as the base's; it now says files sent, the base's others left as they were, and the chunks of
+  the files sent, and `docs list` counts the whole base. The guide for reading a call's searches shows
+  `--json` for each chunk's base, path and heading, which the one-line view cuts. (found by the 2026-10-23
+  eval, D D-6)
+- **The `chat --as`, `data reads`, `studio` and `kill` pages say what the product does**: `--as` is the
+  call's contact and where it shows; `reads` is the environment's own and a server's key is recorded; a
+  secret is named in a header's value alone and an answer that repeats one shows `***`; a `pinecall start`
+  of a Ruby agent is two apps, and which one prints the kill line. (found by the 2026-10-23 eval, J F7,
+  J F5, I F3, I F4, J F3)
+
 ## [0.11.15] — `pinecall deploy` runs a Python project
 
 - **`pinecall deploy` runs a Python project.** A project whose agents are `agent.py` is uploaded with

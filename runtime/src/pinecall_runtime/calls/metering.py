@@ -6,6 +6,7 @@ from dataclasses import dataclass, field, replace
 from typing import Self
 
 from pinecall_runtime.calls.repository.entries import Positioned
+from pinecall_runtime.enums import Opener
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.wire.events import CallSummary, event_of
 from pinecall_runtime.wire.metrics import LLMModelUsage, TTSModelUsage
@@ -15,6 +16,12 @@ logger = logging.getLogger(__name__)
 
 UNOWNED = "unowned"
 A_MINUTE_S = 60.0
+# The gateway opens a call as a written session and nothing else (calls/service/text.py): a call
+# spoken in a room is opened by the fleet's worker or by an app. The same words are `opened_by` in the
+# totals' fold (migrations/versions/20261023_000013). A call whose head says neither, opened before heads
+# said who opened them, counts as it always did: its minutes and its turns both.
+WRITTEN_CALLS_OPENER = Opener.gateway
+SPOKEN_CALLS_OPENERS = frozenset({Opener.fleet, Opener.app})
 
 
 # cost_usd is the vendors' estimate, what the call cost the operator, never what is charged.
@@ -92,7 +99,7 @@ def usage_row(metered: Positioned) -> UsageRow:
         return row
     match data:
         case CallSummary():
-            return replace(row, used=_used_by_a_call(data))
+            return replace(row, used=_used_by_a_call(data, metered.opened_by))
         case CallScore() | EvalsSpent():
             # Evals the org's own key answered are counted nowhere: they are never billed.
             evals = 0 if data.own_key else data.evals
@@ -120,15 +127,18 @@ def totals_by_org(rows: Iterable[UsageRow]) -> dict[str, Usage]:
 
 # Tokens are counted from the LLM rows and characters from the TTS rows; every other row's
 # audio seconds are already the call's minutes.
-# A simulated call is a simulation and an eval run's call is the run's: neither spends minutes.
-def _used_by_a_call(summary: CallSummary) -> Usage:
+# A simulated call is a simulation and an eval run's call is the run's: neither spends minutes. One
+# quota for each kind of call: a spoken call spends minutes and no messages, a written one messages
+# and no minutes.
+def _used_by_a_call(summary: CallSummary, opened_by: Opener | None) -> Usage:
     llm = [row for row in summary.usage if isinstance(row, LLMModelUsage)]
     tts = [row for row in summary.usage if isinstance(row, TTSModelUsage)]
-    not_minutes = summary.simulated or summary.run is not None
+    not_minutes = summary.simulated or summary.run is not None or opened_by is WRITTEN_CALLS_OPENER
+    not_messages = opened_by in SPOKEN_CALLS_OPENERS
     return Usage(
         calls=1,
         minutes=0.0 if not_minutes else summary.duration_s / A_MINUTE_S,
-        messages=summary.turns,
+        messages=0 if not_messages else summary.turns,
         input_tokens=sum(row.input_tokens or 0 for row in llm),
         output_tokens=sum(row.output_tokens or 0 for row in llm),
         characters=sum(row.characters_count or 0 for row in tts),

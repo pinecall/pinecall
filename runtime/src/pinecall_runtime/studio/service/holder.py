@@ -158,7 +158,10 @@ class StudioSocket:
                 attached = CallAttached.model_validate(data)
                 await self._started(agent, call, attached.started, attached.state)
             case "tool.call":
-                self._spawn(self._tool(agent, call, ToolCall.model_validate(data)))
+                called = ToolCall.model_validate(data)
+                # The session writes the hang-up's call and its result itself: a second result is a lie.
+                if called.name != defined.END_CALL:
+                    self._spawn(self._tool(agent, call, called))
             case "turn.user" | "turn.agent" if run is not None:
                 run.transcript.append({"role": kind.removeprefix("turn."), "text": str(data.get("text", ""))})
             case "call.ended" if run is not None:
@@ -177,7 +180,7 @@ class StudioSocket:
         definition = self.agents.get(agent)
         if definition is None:
             return
-        run = Run(agent=agent, definition=definition, values=_values(started))
+        run = Run(agent=agent, definition=definition, values=values_of(started))
         fields = {item.name for item in definition.collect.fields} if definition.collect else set[str]()
         opened = restored if restored is not None else (started.state or {})
         run.collected = {name: value for name, value in opened.items() if name in fields}
@@ -355,17 +358,22 @@ class Holder:
                 continue
             try:
                 async for data in listener:
-                    org, _, env = data.decode().partition("|")
+                    named = data.decode(errors="replace")
                     try:
+                        org, _, env = named.partition("|")
                         await self.refresh(org, Env(env))
                     except Exception:
-                        logger.exception("studio: the agents of %s in %s were not held again", org, env)
+                        logger.exception("studio: the agents named %r were not held again", named)
             finally:
                 listener.close()
             await asyncio.sleep(LISTEN_RETRY_S)
 
 
-def _values(started: CallStarted) -> dict[str, Any]:
+# `{{metadata.x}}` is what the call was opened with, which `call.started` carries as `metadata`: the
+# same thing the exported class reads as `this.call.metadata`. The state a golden or `?state=` opens
+# a call in is another thing, and is not read here.
+def values_of(started: CallStarted) -> dict[str, Any]:
+    """What a Studio agent's `{{…}}` read, from the call's `call.started`."""
     caller = started.caller.model_dump(mode="json", exclude_none=True) if started.caller is not None else {}
     return {
         "call": {
@@ -377,7 +385,7 @@ def _values(started: CallStarted) -> dict[str, Any]:
             "today": started.today,
         },
         "caller": caller,
-        "metadata": started.state or {},
+        "metadata": started.metadata or {},
     }
 
 

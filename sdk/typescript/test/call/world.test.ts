@@ -78,6 +78,36 @@ function instance(): FrontDesk {
   return agent as FrontDesk;
 }
 
+it("reads who and where from call.started: the number called, the direction, the caller, and what the call was opened with", async () => {
+  gateway.emit(SLUG, CALL, "call.started", {
+    channel: "phone",
+    direction: "outbound",
+    from: "+34910000001",
+    to: "+34600000009",
+    caller: { id: "ct_1", name: "Ana", phone: "+34600000009", email: "ana@example.com" },
+    metadata: { order: "A-17" },
+    started_at: Date.now() / 1000,
+  });
+  await settled();
+
+  const call = instance().call;
+  expect(call.to).toBe("+34600000009");
+  expect(call.direction).toBe("outbound");
+  expect(call.caller).toEqual({ id: "ct_1", name: "Ana", phone: "+34600000009", email: "ana@example.com" });
+  expect(call.metadata).toEqual({ order: "A-17" });
+});
+
+it("has no caller and empty metadata on a call nobody named and nothing was sealed into", async () => {
+  started();
+  await settled();
+
+  const call = instance().call;
+  expect(call.caller).toBeUndefined();
+  expect(call.metadata).toEqual({});
+  expect(call.direction).toBe("inbound");
+  expect(call.to).toBe("front-desk");
+});
+
 it("declares a decorated field public and leaves an undecorated one to the wire's default", () => {
   const config = commands("agent.configure")[0]?.["config"] as { state_fields?: { name: string; visibility: string }[] };
   expect(config.state_fields).toEqual([{ name: "slot", visibility: "public" }]);
@@ -95,14 +125,15 @@ it("declares its two events with the sources each accepts", () => {
 it("hands an event declared from app to onEvent, authored by the event and caused by it in the log", async () => {
   started();
   await settled();
-  gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "10:15" }, source: "app" });
+  const heard = gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "10:15" }, source: "app" });
   await settled();
 
   expect(instance().slot).toBe("10:15");
   const written = changes(instance()).find((change) => change.field === "slot");
   expect(written?.author).toBe("event:slot.released");
-  const cause = commands("call.log").find((data) => data["name"] === "state.cause");
-  expect(cause?.["data"]).toEqual({ field: "slot", kind: "event", name: "slot.released", seq: 1 });
+  const sent = commands("state.set").find((data) => data["changed"] !== undefined);
+  expect(sent?.["cause"]).toEqual({ kind: "event", name: "slot.released", seq: heard.seq });
+  expect(commands("call.log").filter((data) => data["name"] === "state.cause")).toEqual([]);
 });
 
 it("never hands the hook a name that source may not send, and warns once and not twice", async () => {
@@ -125,10 +156,10 @@ it("tells an in-process observer about an event the hook accepted", async () => 
   await settled();
   const heard: { name: string; meta: EventMeta }[] = [];
   instance().on("event", (event) => heard.push({ name: event.name, meta: event.meta }));
-  gateway.emit(SLUG, CALL, "event.received", { name: "ui.viewing", data: { page: "prices" }, source: "participant", identity: CALLER });
+  const sent = gateway.emit(SLUG, CALL, "event.received", { name: "ui.viewing", data: { page: "prices" }, source: "participant", identity: CALLER });
   await settled();
 
-  expect(heard).toEqual([{ name: "ui.viewing", meta: { source: "participant", identity: CALLER, seq: 1 } }]);
+  expect(heard).toEqual([{ name: "ui.viewing", meta: { source: "participant", identity: CALLER, seq: sent.seq } }]);
 });
 
 it("reflects who joined, who is speaking and who left in call.room", async () => {
@@ -218,13 +249,13 @@ it("reduces the caller's turn and the agent's into the call's history", async ()
 it("dispatches two events one after another, so each write names its own event as the cause", async () => {
   started();
   await settled();
-  gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "10:15" }, source: "app" });
-  gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "11:00" }, source: "app" });
+  const first = gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "10:15" }, source: "app" });
+  const second = gateway.emit(SLUG, CALL, "event.received", { name: "slot.released", data: { when: "11:00" }, source: "app" });
   await settled();
 
   expect(instance().slot).toBe("11:00");
-  const causes = commands("call.log")
-    .filter((data) => data["name"] === "state.cause")
-    .map((data) => (data["data"] as { seq: number }).seq);
-  expect(causes).toEqual([1, 2]);
+  const causes = commands("state.set")
+    .filter((data) => data["cause"] !== undefined)
+    .map((data) => (data["cause"] as { seq: number }).seq);
+  expect(causes).toEqual([first.seq, second.seq]);
 });

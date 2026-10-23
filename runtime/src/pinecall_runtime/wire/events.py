@@ -1,6 +1,6 @@
 """Every event a log holds, and the registry that maps a type to its shape."""
 
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -43,6 +43,7 @@ from pinecall_runtime.wire.parts import (
     Projection,
     QuotaName,
     Route,
+    StateCause,
     Supervisor,
     ToolResult,
     TransferMode,
@@ -194,6 +195,7 @@ class CallStarted(WireModel):
     medium: Medium | None = None
     state: dict[str, Any] | None = None
     today: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class CallAttached(WireModel):
@@ -472,25 +474,6 @@ class PromptChanged(WireModel):
     name: str
     hash: str
     chars: int
-
-
-class StateCauseTool(WireModel):
-    """A tool call's result changed the state."""
-
-    kind: Literal["tool"] = "tool"
-    tool: str
-    call_id: str
-
-
-class StateCauseEvent(WireModel):
-    """A fact from outside changed the state."""
-
-    kind: Literal["event"] = "event"
-    name: str
-    seq: int
-
-
-type StateCause = Annotated[StateCauseTool | StateCauseEvent, Field(discriminator="kind")]
 
 
 class StateChanged(WireModel):

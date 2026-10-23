@@ -39,8 +39,8 @@ async def put_policy(body: schemas.OrgPolicy, actor: TeamKey, session: Session) 
 async def list_reads(
     actor: TeamKey, session: Session, subject: Annotated[str | None, Query()] = None
 ) -> schemas.ReadsResponse:
-    """Who read the org's calls, recordings, exports and memory; of one subject when named."""
-    return schemas.ReadsResponse(reads=await service.list_reads(session, actor.org, subject=subject))
+    """Who read the org's calls, recordings, exports and memory in the key's env; of one subject when named."""
+    return schemas.ReadsResponse(reads=await service.list_reads(session, actor.scope, subject=subject))
 
 
 # ── telemetry ──

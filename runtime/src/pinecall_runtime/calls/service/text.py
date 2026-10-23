@@ -8,11 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.agents.declaration import AgentConfig, Versions
 from pinecall_runtime.agents.service import registry, settings
-from pinecall_runtime.billing import service as billing
-from pinecall_runtime.calls.context import CallContext, Route
+from pinecall_runtime.calls.context import CallContext, Contact, Route
 from pinecall_runtime.calls.repository.heads import Claim, HeadRepository
 from pinecall_runtime.calls.schemas import LookupRequest, SealCallRequest
-from pinecall_runtime.calls.service import openings
+from pinecall_runtime.calls.service import openings, visitors
 from pinecall_runtime.calls.service.binding import attach
 from pinecall_runtime.calls.service.live import Served
 from pinecall_runtime.calls.service.seal import seal
@@ -69,13 +68,7 @@ async def open_text_as(
 ) -> session.Session:
     """A new written call on this setup, admitted and unstarted."""
     scope = registration.scope
-    await billing.admit_call(
-        session_,
-        scope.org,
-        scope.env,
-        running=serving.live.running(scope.org, scope.env),
-        at=serving.logs.store.clock(),
-    )
+    await visitors.admit_call(session_, serving, scope, registration.slug)
     await serving.logs.store.claim(
         context.call, registration.slug, scope.org, Claim(scope, setup.versions, opened_by=Opener.gateway)
     )
@@ -139,8 +132,13 @@ def _session(
     async def sealed(usage: list[ModelUsage], outcome: str) -> None:
         await seal(serving, served, SealCallRequest(usage=usage, outcome=outcome))
 
+    async def hooked() -> None:
+        served.hooked.set()
+
     looking = lookup if recalled is None else judging.golden_lookup(recalled, lookup, served.log.append)
-    platform = session.Platform(append_many=served.log.append_many, tool=served.tools.run, lookup=looking, seal=sealed)
+    platform = session.Platform(
+        append_many=served.log.append_many, tool=served.tools.run, lookup=looking, seal=sealed, done=hooked
+    )
     call = session.Call(served.context, served.config, platform)
     running = session.text_session(call, model, serving.handles.settings.text_lookup_budget_ms)
     serving.live.set_session(served.call, running)
@@ -166,5 +164,7 @@ def _as_it_opened(
         caller=caller or call,
         route=route,
         today=today,
+        # The contact the call opened with is on its call.started: memory files what it teaches there.
+        contact=None if data is None or data.caller is None else Contact(**data.caller.model_dump(exclude_none=True)),
         holder=scope.holder or None,
     )

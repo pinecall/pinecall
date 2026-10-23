@@ -25,7 +25,15 @@ SENT_BY: dict[str, tuple[str, ...]] = {
         "call.opt_out",
     ),
     "_room.py": ("room.invite", "participant.mute", "participant.remove"),
-    "_calls.py": ("call.log", "call.event", "prompt.set", "tools.set", "state.set", "tool.result"),
+    "_calls.py": (
+        "call.log",
+        "call.done",
+        "call.event",
+        "prompt.set",
+        "tools.set",
+        "state.set",
+        "tool.result",
+    ),
     "_agent_socket.py": ("agent.register", "agent.configure", "agent.drain", "dev.answer", "ping"),
 }
 

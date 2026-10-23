@@ -18,7 +18,7 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.knowledge.schemas import FoundChunk, SearchFound
 from pinecall_runtime.knowledge.service import bases, memory
 from pinecall_runtime.knowledge.service.embedder import Embedder, EmbedderUnreachable, WrongModel
-from pinecall_runtime.knowledge.service.extraction import Heard, Spoken
+from pinecall_runtime.knowledge.service.extraction import Heard, Spoken, language_of
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.events import (
     AgentTurnEnded,
@@ -98,14 +98,16 @@ def heard_in(
     """What the extraction model reads of a finished call; None when nothing is to be kept."""
     if contact is None or config.memory is None:
         return None
+    spoken = [turn for entry in entries if (turn := _spoken(entry)) is not None]
     return Heard(
         contact=contact,
         call=call,
         channel=channel,
         policy=config.memory,
         tools=tuple(tool.name for tool in config.tools),
-        spoken=[spoken for entry in entries if (spoken := _spoken(entry)) is not None],
+        spoken=spoken,
         at=at,
+        language=language_of(spoken, config.language),
     )
 
 
@@ -195,7 +197,8 @@ def _query(request: LookupRequest) -> str:
 
 def _spoken(entry: Entry) -> Spoken | None:
     if entry.type == "turn.user":
-        return Spoken(role="user", text=UserTurnEnded.parse(entry.data, "turn.user").text)
+        heard = UserTurnEnded.parse(entry.data, "turn.user")
+        return Spoken(role="user", text=heard.text, language=heard.language)
     if entry.type == "turn.agent":
         return Spoken(role="agent", text=AgentTurnEnded.parse(entry.data, "turn.agent").text)
     return None

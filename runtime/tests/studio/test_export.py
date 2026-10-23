@@ -50,3 +50,35 @@ def test_the_project_is_a_zip_of_the_framework_s_layout() -> None:
     } <= names
     assert '"@pinecall/agents": "^0.13.0"' in zipped.read("clinica-norte/package.json").decode()
     assert "`AGENDA_KEY`" in zipped.read("clinica-norte/AGENTS.md").decode()
+
+
+def test_every_call_value_studio_fills_that_this_call_carries_is_an_expression() -> None:
+    """The number called, the direction, the caller's name, phone and email, and a key of the metadata."""
+    asking = clinic(
+        instructions=(
+            "From {{call.from}} to {{call.to}}, {{call.direction}}: {{caller.name}} {{caller.phone}}"
+            " {{caller.email}}, order {{metadata.order}}."
+        )
+    )
+    written = export.class_of("clinica-norte", 3, asking)
+    assert (
+        '${this.call.from ?? ""} to ${this.call.to ?? ""}, ${this.call.direction ?? ""}: '
+        '${this.call.caller?.name ?? ""} ${this.call.caller?.phone ?? ""} ${this.call.caller?.email ?? ""}, '
+        'order ${this.call.metadata["order"] ?? ""}.'
+    ) in written
+    assert "Studio filled" not in written
+
+
+def test_a_call_value_this_call_does_not_carry_is_said_in_the_class_instead_of_lost() -> None:
+    """`{{metadata.order.id}}` is deeper than a key of `this.call.metadata`: empty, and the class says so."""
+    asking = clinic(instructions="Order {{metadata.order.id}} on {{call.channel}}.")
+    written = export.class_of("clinica-norte", 3, asking)
+    assert 'Order  on ${this.call.channel ?? ""}.' in written
+    assert (
+        "// Studio filled {{metadata.order.id}} from the call; the class reads no such value, so each is empty below."
+    ) in written
+
+
+def test_a_class_whose_values_all_exist_on_the_call_says_nothing_of_the_ones_it_lacks() -> None:
+    """The clinic names `{{call.from}}` and a secret in a header: nothing is left empty."""
+    assert "Studio filled" not in export.class_of("clinica-norte", 3, clinic())

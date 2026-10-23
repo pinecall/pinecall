@@ -3,7 +3,7 @@
 import { type Camel } from "../wire/codec.js";
 import { type Medium, type MemoryOp as WireMemoryOp } from "../wire/defs.js";
 
-import { withAuthorAsync } from "./authors.js";
+import { hookAuthor, withAuthorAsync } from "./authors.js";
 import type { EventMeta } from "./accepts.js";
 
 /** The call passed to lifecycle hooks. */
@@ -37,5 +37,5 @@ export function runHook<K extends HookName>(
   ...args: Parameters<Lifecycle[K]>
 ): Promise<unknown> {
   const method = agent[hook] as (...rest: unknown[]) => unknown;
-  return withAuthorAsync(`hook:${hook}`, () => method.apply(agent, args));
+  return withAuthorAsync(hookAuthor(hook), () => method.apply(agent, args));
 }

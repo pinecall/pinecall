@@ -38,7 +38,7 @@ export function register(program: Command, ctx: Context): void {
     .addHelpText("after", HELP.test)
     .action(async (paths, flags) => {
       const input = service.SuiteInput.parse({
-        ...service.whatPlays({ files: flags.files, dataset: flags.dataset, cases: flags.case, paths: paths.length > 0 }),
+        ...service.whatPlays({ files: flags.files, dataset: flags.dataset, cases: flags.case, paths: paths.length > 0, voice: flags.voice }),
         voice: flags.voice === true,
         backgroundNoise: numberOf("--background-noise", flags.backgroundNoise),
         ambience: flags.ambience,
@@ -83,8 +83,7 @@ export function register(program: Command, ctx: Context): void {
         callerVoice: flags.callerVoice,
       });
       const agent = ctx.agent("simulate", { file: flags.file, agent: flags.agent }).name;
-      const said = await simulateAtTheTerminal(ctx, agent, input, listen);
-      if (service.exitCodeOf(said) !== 0) throw new PinecallError("a judge answered broken");
+      service.requireHeld(await simulateAtTheTerminal(ctx, agent, input, listen));
     });
 
   program

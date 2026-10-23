@@ -304,14 +304,24 @@ export const StateCauseEventSchema = z.strictObject({
   seq: z.int(),
 });
 
-/** What changed the state: a tool's result, or a fact from outside. Told apart by kind. */
-export const StateCauseSchema = z.discriminatedUnion("kind", [StateCauseToolSchema, StateCauseEventSchema]);
+/** A lifecycle hook changed the state: the one that ran when the call started, or on a memory write. */
+export const StateCauseHookSchema = z.strictObject({
+  kind: z.literal("hook"),
+  hook: z.enum(["on_call", "on_memory"]),
+});
+
+/** What made a write to the state: a tool, a fact from outside or a hook. Told apart by kind. */
+export const StateCauseSchema = z.discriminatedUnion("kind", [
+  StateCauseToolSchema,
+  StateCauseEventSchema,
+  StateCauseHookSchema,
+]);
 
 export type StateCause = z.infer<typeof StateCauseSchema>;
 
 /**
- * The app's declared state changed. A tool's result or an outside fact caused it, and the cause
- * says which; the whole state travels so a reader never needs the previous entry.
+ * The app's declared state changed. A tool, an outside fact or a lifecycle hook caused it, and the
+ * cause says which; the whole state travels so a reader never needs the previous entry.
  */
 export const StateChangedSchema = z.strictObject({
   state: z.record(z.string(), z.unknown()),

@@ -4,8 +4,9 @@ import json
 import logging
 import re
 import time
+from collections import Counter
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Literal
 
@@ -21,6 +22,7 @@ from pinecall_runtime.knowledge.models import ContactMemory
 from pinecall_runtime.knowledge.schemas import ExtractionBroke, ExtractionGolden, ExtractionJudged
 from pinecall_runtime.knowledge.service import memory
 from pinecall_runtime.knowledge.service.embedder import Embedder
+from pinecall_runtime.knowledge.service.language import UNDECIDED, detected
 from pinecall_runtime.knowledge.service.memory import NAMES_A_FACT, OP_NAMES, WRITES, Op, OpName, Taught, fold_text
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.providers.service import plugins
@@ -34,6 +36,9 @@ SHORTEST_TOOL_WORD = 4
 # The golden names the speaker `caller`; the model reads it as `user`.
 CALLER = "caller"
 
+# What a category the model did not copy from the policy is filed under.
+OTHER = "other"
+
 # JSON so the answer is parsed strictly: prose yields no ops.
 INSTRUCTIONS = """\
 You keep a contact center's memory of one contact, so that the next call starts where this one \
@@ -42,10 +47,19 @@ will be useful on a later call. Never write what the agent said, never what is a
 and nothing outside these categories, which are the tenant's own words: {remember}.
 {forget}
 Answer with a JSON array and nothing else; an empty array is a good answer. Each element is one of:
-  {{"op": "add", "text": "...", "category": "<one of the categories>"}}
-  {{"op": "update", "of": "<the id of a known fact>", "text": "...", "category": "..."}}
+  {{"op": "add", "text": "...", "category": "<one of the categories, copied exactly as written>"}}
+  {{"op": "update", "of": "<the id of a known fact>", "text": "...", "category": "<as above>"}}
   {{"op": "invalidate", "of": "<the id of a known fact>"}}
-Every text is one short sentence about the contact, in the contact's own language."""
+Every text is one short sentence about the contact, in the third person and never in their own voice \
+("Allergic to penicillin.", "Prefers mornings."), {language}."""
+# A later call reads each fact back as it was written, and the agent answers in its language.
+CALL_LANGUAGE = (
+    "written in {tag}, the language this call was held in, whatever language the categories or the agent's lines are in"
+)
+CALLER_LANGUAGE = (
+    "written in the language the contact speaks in the lines marked `user`, whatever language "
+    "the categories or the agent's lines are in"
+)
 NEVER_KEEP = "Never write anything about: {forget}. Whatever the call says of it stays out."
 KNOWN = "Already known (id · category · text):\n{facts}"
 NOTHING_KNOWN = "Nothing is known about this contact yet."
@@ -59,10 +73,11 @@ A_HUMP = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 # Not the log entry: tool payloads never reach the extraction model.
 @dataclass(frozen=True, slots=True)
 class Spoken:
-    """One turn of a call as the extraction model reads it."""
+    """One turn of a call as the extraction model reads it; a caller's carries the language heard."""
 
     role: Literal["user", "agent"]
     text: str
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +91,8 @@ class Heard:
     tools: tuple[str, ...]
     spoken: list[Spoken]
     at: datetime
+    # The language facts are written in; None when the recognizer, the caller's lines and the agent all say none.
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,32 +169,51 @@ def parse_ops(answer: str) -> list[Op]:
     return [op for op in map(_op_of, decoded) if op is not None]
 
 
-# Admission at write time: filtering what is read back is not enough once a fact is stored.
+# Admission at write time: filtering what is read back is not enough once a fact is stored. A fact
+# the policy lets through is filed under one of its own categories: the model asked for one and may
+# not have copied it, so what it wrote is read against the list, and `other` is what no entry matches.
 def admit_ops(ops: Sequence[Op], policy: MemoryPolicy, tools: Sequence[str], known: Collection[str]) -> list[Op]:
-    """The ops the policy lets through, given the ids of the contact's current facts."""
-    forgotten = {word.casefold() for word in policy.forget}
-    named: set[str] = set()
-    kept: list[Op] = []
-    for op in ops:
-        if op.category is not None and op.category.casefold() in forgotten:
-            continue
-        if op.text and _names_a_tool(op.text, tools):
-            logger.warning("a fact naming one of the agent's own tools was not written")
-            continue
-        if op.op in NAMES_A_FACT:
-            if op.of is None or op.of not in known or op.of in named:
-                continue
-            named.add(op.of)
-        kept.append(op)
-    return kept
+    """The ops the policy lets through, filed under its categories, given the ids of the contact's current facts."""
+    return [kept for _, kept in _admission(ops, policy, tools, known) if kept is not None]
+
+
+def filed_under(category: str | None, remember: Sequence[str]) -> str:
+    """The policy's entry as written that the category names, case and spacing aside; `other` when none."""
+    wanted = fold_text(category or "")
+    return next((entry for entry in remember if fold_text(entry) == wanted), OTHER)
+
+
+# The caller's language, as they spoke it: a written call of an agent set to Spanish whose caller
+# writes English is an English call. The agent's setting only stands in where nothing else tells.
+def language_of(spoken: Sequence[Spoken], declared: str | None) -> str | None:
+    """The language the caller spoke on the call: the recognizer's, else their own lines', else the agent's."""
+    heard = Counter(turn.language for turn in spoken if turn.role == "user" and turn.language)
+    if heard:
+        return heard.most_common(1)[0][0]
+    written = detected([turn.text for turn in spoken if turn.role == "user"])
+    return declared if written == UNDECIDED else written
 
 
 async def extract_case(
-    model: plugins.Running, case: ExtractionGolden, *, policy: MemoryPolicy, tools: tuple[str, ...], at: datetime
+    model: plugins.Running,
+    case: ExtractionGolden,
+    *,
+    policy: MemoryPolicy,
+    tools: tuple[str, ...],
+    language: str | None,
+    at: datetime,
 ) -> ExtractionJudged:
     """One case's call asked of the model as a hang-up would ask it, and the answer judged."""
+    spoken = said_in(case)
     heard = Heard(
-        contact=case.name, call=None, channel=case.channel, policy=policy, tools=tools, spoken=said_in(case), at=at
+        contact=case.name,
+        call=None,
+        channel=case.channel,
+        policy=policy,
+        tools=tools,
+        spoken=spoken,
+        at=at,
+        language=language_of(spoken, language),
     )
     known = [KnownFact(fact_id, None, text) for fact_id, text in _held_ids(case).items()]
     answered = await ask_model(model, heard, known)
@@ -214,8 +250,9 @@ def judge_extraction(
 ) -> ExtractionJudged:
     """The model's ops through admission, and the case's five checks over what was written."""
     known = _held_ids(case)
-    wrote = admit_ops(ops, policy, tools, known)
-    refused = [op for op in ops if not any(op is item for item in wrote)]
+    decided = _admission(ops, policy, tools, known)
+    wrote = [kept for _, kept in decided if kept is not None]
+    refused = [op for op, kept in decided if kept is None]
     category = next(iter(policy.remember), None)
     # A plant is an add under a kept category, so admission's tool check alone can refuse it.
     plants = [Op(op="add", text=text, category=category) for text in case.plants]
@@ -251,7 +288,11 @@ def _asking(heard: Heard, known: Sequence[KnownFact]) -> llm.ChatContext:
     policy = heard.policy
     forget = NEVER_KEEP.format(forget=", ".join(policy.forget)) if policy.forget else ""
     asking = llm.ChatContext.empty()
-    asking.add_message(role="system", content=INSTRUCTIONS.format(remember=", ".join(policy.remember), forget=forget))
+    language = CALL_LANGUAGE.format(tag=heard.language) if heard.language else CALLER_LANGUAGE
+    asking.add_message(
+        role="system",
+        content=INSTRUCTIONS.format(remember=", ".join(policy.remember), forget=forget, language=language),
+    )
     shown = (
         KNOWN.format(facts="\n".join(f"- {item.id} · {item.category or '-'} · {item.text}" for item in known))
         if known
@@ -275,6 +316,31 @@ def _op_of(item: object) -> Op | None:
         return None
     category = str(item.get("category") or "").strip()
     return Op(op=name, text=text, category=category or None, of=of if isinstance(of, str) else None)
+
+
+# Each op with what admission made of it: None when refused. The forget list reads the category the
+# model gave, before the filing: a fact under a forgotten category is refused, never filed as `other`.
+def _admission(
+    ops: Sequence[Op], policy: MemoryPolicy, tools: Sequence[str], known: Collection[str]
+) -> list[tuple[Op, Op | None]]:
+    forgotten = {word.casefold() for word in policy.forget}
+    named: set[str] = set()
+    decided: list[tuple[Op, Op | None]] = []
+    for op in ops:
+        if op.category is not None and op.category.casefold() in forgotten:
+            decided.append((op, None))
+            continue
+        if op.text and _names_a_tool(op.text, tools):
+            logger.warning("a fact naming one of the agent's own tools was not written")
+            decided.append((op, None))
+            continue
+        if op.op in NAMES_A_FACT:
+            if op.of is None or op.of not in known or op.of in named:
+                decided.append((op, None))
+                continue
+            named.add(op.of)
+        decided.append((op, replace(op, category=filed_under(op.category, policy.remember)) if op.op in WRITES else op))
+    return decided
 
 
 # A fact naming one of the agent's tools could grant it a permission ("book without asking"):

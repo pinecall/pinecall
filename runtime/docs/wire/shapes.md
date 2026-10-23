@@ -235,6 +235,41 @@ What came back from running a tool in the app's process. Either an output or an 
 | `summary` | `string` | no | A one-line version of the output for the console and for memory, when the app wrote one. |
 | `duration_s` | `number` | no | How long the app's method took, in seconds. |
 
+### `StateCauseTool`
+
+A tool call's result changed the state: the tool's method wrote the field while it ran.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `kind` | `"tool"` | yes | The kind of cause. |
+| `tool` | `string` | yes | The tool's name, as declared in its ToolSpec. |
+| `call_id` | `string` | yes | The model's id for the tool call that ran the method, the one its tool.call and tool.result carry. |
+
+### `StateCauseEvent`
+
+A fact from outside changed the state: the app's handler for an event.received wrote the field.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `kind` | `"event"` | yes | The kind of cause. |
+| `name` | `string` | yes | The event's name, dotted, as the agent declared it: slot.released. |
+| `seq` | `integer` | yes | The seq of the event.received entry the handler ran for. |
+
+### `StateCauseHook`
+
+A lifecycle hook of the app changed the state: the one that ran when the call started, or when memory was read or written.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `kind` | `"hook"` | yes | The kind of cause. |
+| `hook` | `"on_call" | "on_memory"` | yes | Which hook: the one that runs when the call starts, or the one that runs when memory was read or written. |
+
+### `StateCause`
+
+What made a write to the state, told apart by kind.
+
+One of `StateCauseTool`, `StateCauseEvent`, `StateCauseHook`, told apart by `kind`.
+
 ### `MemoryFact`
 
 One thing remembered about a contact: a sentence, where it came from, and how well it matched when recalled.
@@ -243,7 +278,7 @@ One thing remembered about a contact: a sentence, where it came from, and how we
 |---|---|---|---|
 | `id` | `string` | no | The fact's id in the memory store. |
 | `text` | `string` | yes | The fact itself, as one sentence: 'prefers mornings', 'allergic to penicillin'. |
-| `category` | `string` | no | The tenant's own word for what kind of fact this is, from its memory.remember list: 'alergias', 'preference'. |
+| `category` | `string` | no | The tenant's own word for what kind of fact this is, from its memory.remember list: 'alergias', 'preference'; `other` when the extraction model answered a word the list does not have. |
 | `score` | `number` | no | How well it matched the recall query, 0 to 1. Absent when remembering, which has no query. |
 | `source` | `string` | no | The call this fact was extracted from, when known. |
 

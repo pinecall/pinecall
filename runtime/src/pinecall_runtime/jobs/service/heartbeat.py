@@ -15,6 +15,7 @@ from pinecall_runtime.exceptions import ConfigurationError, GatewayUnavailable
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.jobs.service.client import GatewayClient
 from pinecall_runtime.jobs.service.measures import LastMinute
+from pinecall_runtime.kit.loops import survived
 
 logger = logging.getLogger(__name__)
 
@@ -121,18 +122,21 @@ class Heartbeats:
     async def run(self) -> None:
         """Beat until cordoned; then ask the worker to leave."""
         while True:
-            try:
-                answered = await self.gateway.heartbeat(self.beat())
-            except GatewayUnavailable as refused:
-                logger.warning("heartbeat: %s", refused)
-            else:
-                if answered.cordoned:
-                    logger.warning("cordoned by the gateway: draining, then leaving")
-                    self.cordoned = True
-                    self.leave.set()
-                    return
-                if self.server.id != UNREGISTERED:
-                    self.ready.set()
+            # A beat that cannot be made or read is said and the next is made: a worker that stopped
+            # beating is a worker the gateway forgets, still holding its calls.
+            with survived("the worker's heartbeat"):
+                try:
+                    answered = await self.gateway.heartbeat(self.beat())
+                except GatewayUnavailable as refused:
+                    logger.warning("heartbeat: %s", refused)
+                else:
+                    if answered.cordoned:
+                        logger.warning("cordoned by the gateway: draining, then leaving")
+                        self.cordoned = True
+                        self.leave.set()
+                        return
+                    if self.server.id != UNREGISTERED:
+                        self.ready.set()
             await asyncio.sleep(fleet.HEARTBEAT_S)
 
 

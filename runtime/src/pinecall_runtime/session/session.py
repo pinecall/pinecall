@@ -32,6 +32,7 @@ from pinecall_runtime.wire.commands import (
     AgentSay,
     CallAttention,
     CallCallback,
+    CallDone,
     CallEvent,
     CallHangup,
     CallHold,
@@ -224,6 +225,8 @@ class Session:
                 await self.call.receive(command.name, command.data, source="app")
             case CallLog():
                 await self.call.log_custom(command)
+            case CallDone():
+                await self.call.app_finished()
             case CallCallback():
                 await self.call.call_back(command)
             case SessionConfigure():

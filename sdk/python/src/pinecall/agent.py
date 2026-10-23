@@ -227,7 +227,7 @@ class Agent:
 
     def run_hook(self, hook: str, *args: object) -> object:
         """Run a hook to its end, its writes authored `hook:<name>`, as a call does."""
-        return _running.called(f"hook:{hook}", getattr(self, hook), *args)
+        return _running.called(_author.hook(hook), getattr(self, hook), *args)
 
     # ── the log ──
 

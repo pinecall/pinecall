@@ -9,6 +9,7 @@ import {
   MemoryOpSchema,
   ProjectionSchema,
   ScoreVerdictSchema,
+  StateCauseSchema,
   SupervisorSchema,
   TransferModeSchema,
   UserStateSchema,
@@ -274,26 +275,9 @@ export const PromptChangedSchema = z.strictObject({
   chars: z.int(),
 });
 
-/** A tool call's result changed the state. */
-export const StateCauseToolSchema = z.strictObject({
-  kind: z.literal("tool"),
-  tool: z.string(),
-  call_id: z.string(),
-});
-
-/** A fact from outside changed the state: the app's handler for an event.received moved a field. */
-export const StateCauseEventSchema = z.strictObject({
-  kind: z.literal("event"),
-  name: z.string(),
-  seq: z.int(),
-});
-
-/** What changed the state: a tool's result, or a fact from outside. Told apart by kind. */
-export const StateCauseSchema = z.discriminatedUnion("kind", [StateCauseToolSchema, StateCauseEventSchema]);
-
 /**
- * The app's declared state changed. A tool's result or an outside fact caused it, and the cause
- * says which; the whole state travels so a reader never needs the previous entry.
+ * The app's declared state changed. A tool, an outside fact or a lifecycle hook caused it, and the
+ * cause says which; the whole state travels so a reader never needs the previous entry.
  */
 export const StateChangedSchema = z.strictObject({
   state: z.record(z.string(), z.unknown()),

@@ -24,7 +24,7 @@ export const test = tool({
     agent: AGENT,
     grep: z.string().optional().describe("only goldens whose name holds this"),
     models: z.array(z.string()).optional().describe("a column per model: vendor/model, a model, or a tier (haiku); the agent's own when left out"),
-    voice: z.boolean().optional().describe("say the goldens out loud on a real line"),
+    voice: z.boolean().optional().describe("say the goldens out loud on a real line (the files alone: cases are played written)"),
     background_noise: z.number().optional().describe("spoken runs: dB under the caller of what plays behind them"),
     ambience: z.enum(service.AMBIENCES).optional().describe("spoken runs: what plays behind the caller"),
     packet_loss: z.number().min(0).max(1).optional().describe("spoken runs: the share of the caller's packets lost, 0 to 1"),
@@ -35,7 +35,7 @@ export const test = tool({
     wait_s: WAIT,
   },
   manual:
-    "`test run` runs the goldens in `agents/<agent>/test/goldens/` through the agent — the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started — the gateway driving and scoring each conversation, a column per model in `models`. It answers the matrix once done — every golden held or broken, with the evidence, each call's latency, and a reproduction written under `.pinecall/evals/` for each that broke — or, past `wait_s`, the run's id: call `test wait` to keep waiting. One run per agent at a time. A spoken run (`voice`) can add noise and packet loss. `case` names cases of the org's dataset to play instead of the goldens — a pending one too, which reproduces the call that broke — and `dataset` plays every approved one; cases play in the sandbox only. `version` runs every call on that version of the agent's settings. The run plays on the key's corner: a person's own in the sandbox, where CI's server token plays on the team's.",
+    "`test run` runs the goldens in `agents/<agent>/test/goldens/` through the agent — the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started — the gateway driving and scoring each conversation, a column per model in `models`. It answers the matrix once done — every golden held or broken, with the evidence, each call's latency, and a reproduction written under `.pinecall/evals/` for each that broke — or, past `wait_s`, the run's id: call `test wait` to keep waiting. One run per agent at a time. A spoken run (`voice`) plays the golden files alone — cases are real callers' words, played written — and can add noise and packet loss. `case` names cases of the org's dataset to play instead of the goldens — a pending one too, which reproduces the call that broke — and `dataset` plays every approved one; cases play in the sandbox only. `version` runs every call on that version of the agent's settings. The run plays on the key's corner: a person's own in the sandbox, where CI's server token plays on the team's.",
   handler: async (args, ctx) => {
     const reached = await ctx.session.reach(ctx, args.agent);
     const going = ctx.session.runs.get(reached.slug);
@@ -45,7 +45,7 @@ export const test = tool({
     }
     if (going !== undefined) throw new ToolRefused(`a run of ${reached.slug} is in flight: call test with action wait for it`);
     const input = service.SuiteInput.parse({
-      ...service.whatPlays({ files: args.files, dataset: args.dataset, cases: args.case, paths: false }),
+      ...service.whatPlays({ files: args.files, dataset: args.dataset, cases: args.case, paths: false, voice: args.voice }),
       voice: args.voice === true,
       backgroundNoise: args.background_noise,
       ambience: args.ambience,

@@ -125,7 +125,7 @@ module Pinecall
     def doc: () -> String?
     def tools: () -> Array[spec]
     def visible_tools: () -> Array[spec]
-    def run_tool: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+    def run_tool: (String | Symbol, ?Hash[Symbol, untyped], ?String?) -> untyped
     def snapshot: () -> state
     def restore: (state) -> Agent
     def start_in: (state) -> Agent
@@ -156,8 +156,10 @@ module Pinecall
 
     module Author
       KEY: Symbol
+      CALL: Symbol
       def self?.current: () -> String?
-      def self?.with: [T] (String) { () -> T } -> T
+      def self?.call_id: () -> String?
+      def self?.with: [T] (String, ?String?) { () -> T } -> T
     end
 
     module Doc
@@ -221,14 +223,18 @@ module Pinecall
     attr_reader id: String
     attr_reader contact: String?
     attr_reader from: String?
+    attr_reader to: String?
     attr_reader channel: String?
+    attr_reader direction: String?
+    attr_reader caller: Hash[Symbol, untyped]?
+    attr_reader metadata: Hash[Symbol, untyped]
     attr_reader medium: String
     attr_reader today: String
     attr_reader claimed: String?
     attr_accessor cause: Hash[Symbol, untyped]?
-    def initialize: (id: String, ?contact: String?, ?from: String?, ?channel: String?, ?medium: String?, ?today: String, ?claimed: String?,
-                     ?searching: (^(String, Integer?) -> Array[Hash[Symbol, untyped]])?) { (String, Hash[Symbol, untyped]) -> untyped } -> void
-    def numbered: () -> Integer
+    def initialize: (id: String, ?contact: String?, ?from: String?, ?to: String?, ?channel: String?, ?direction: String?,
+                     ?caller: Hash[Symbol, untyped]?, ?metadata: Hash[Symbol, untyped]?, ?medium: String?, ?today: String,
+                     ?claimed: String?, ?searching: (^(String, Integer?) -> Array[Hash[Symbol, untyped]])?) { (String, Hash[Symbol, untyped]) -> untyped } -> void
     def say: (String, **untyped) -> bool
     def reply: (String, **untyped) -> bool
     def search: (String, ?k: Integer?) -> Array[Found]
@@ -271,6 +277,7 @@ module Pinecall
     def drain: (?answer_s: Numeric, ?tools_s: Numeric) -> Drained
     def on_entries: () { (untyped) -> void } -> ^() -> void
     def on_stopped: () { (String) -> void } -> ^() -> void
+    def on_killed: () { (String, String) -> void } -> ^() -> void
     def sdk: () -> String
     def agent: (String, **untyped) -> Client::Agent
     def agents: () -> Hash[String, Client::Agent]
@@ -314,6 +321,8 @@ module Pinecall
       attr_reader claimed: String?
       attr_reader run: String?
       attr_reader medium: String?
+      attr_reader direction: String?
+      attr_reader metadata: Hash[Symbol, untyped]
       attr_reader today: String
       attr_accessor status: String
       attr_accessor channel: String?
@@ -325,11 +334,12 @@ module Pinecall
       def reply: (String, **untyped) -> untyped
       def set_prompt: (String | Symbol, String) -> untyped
       def set_tools: (Array[Hash[Symbol, untyped]]) -> untyped
-      def set_state: (Hash[Symbol, untyped], ?Array[Symbol | String]?) -> untyped
+      def set_state: (Hash[Symbol, untyped], ?Array[Symbol | String]?, ?Hash[Symbol, untyped]?) -> untyped
       def tool_result: (Hash[Symbol, untyped]) -> untyped
       def event: (String, Hash[Symbol, untyped]) -> untyped
       def hangup: (?String?) -> untyped
       def log: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+      def done: () -> untyped
       def command: (String, Hash[Symbol, untyped]) -> untyped
       def take: (untyped) -> void
       def on: (String) { (Hash[Symbol, untyped], Call) -> void } -> ^() -> void
@@ -381,10 +391,18 @@ module Pinecall
       def initialize: (file: String, slug: String) -> void
     end
 
+    class Masking
+      MASK: String
+      LEAST_SECRET_LENGTH: Integer
+      WRITTEN_DOWN: Hash[String, Array[Symbol]]
+      def initialize: (Hash[Symbol, untyped]) -> void
+      def entry: (untyped) -> untyped
+    end
+
     class Held
       attr_reader client: Client
       attr_reader mounted: Array[Bridge::Mounted]
-      def initialize: (Client, Array[Bridge::Mounted]) -> void
+      def initialize: (Client, Array[Bridge::Mounted], ?err: IO) -> void
       def stop: () -> Client::Drained
       def close: () -> untyped
       def join: () -> untyped

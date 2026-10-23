@@ -20,9 +20,11 @@ module Pinecall
         @client = client
         @routes = options[:routes] || []
         @takes_unclaimed = options.fetch(:takes_unclaimed, true)
+        # Sends `call.done` once a call's end hook ran: the gateway's seal waits for the hook's lines.
+        @says_done = options.fetch(:says_done, false)
         @tools = {}
         @waiting = []
-        @config = options.reject { |key, _| %i[routes tools takes_unclaimed].include?(key) }
+        @config = options.reject { |key, _| %i[routes tools takes_unclaimed says_done].include?(key) }
         @app = nil
         @running = []
         @dev = nil
@@ -46,7 +48,8 @@ module Pinecall
 
       # Replace the tools; sent with the next `configure`.
       #
-      # A tool is `{ **spec, run: ->(arguments, call) { … } }`.
+      # A tool is `{ **spec, run: ->(arguments, call, call_id) { … } }`: `call_id` is the model's id for the
+      # call, which a state write it makes names as its cause.
       def declare(tools)
         @tools = tools.to_h { |tool| [tool[:name].to_s, tool] }
         @config = @config.merge(tools: tools.map { |tool| tool.reject { |key, _| key == :run } })
@@ -62,7 +65,7 @@ module Pinecall
       def open
         registered = ask("agent.register", lands_as: "agent.registered", data: {
                            routes: @routes, sdk: @client.sdk, host: @client.host,
-                           takes_unclaimed: @takes_unclaimed
+                           takes_unclaimed: @takes_unclaimed, **(@says_done ? { says_done: true } : {})
                          })
         # Each connection gets a new app id.
         @app = registered[:app]
@@ -117,12 +120,17 @@ module Pinecall
       def run_tool(event, call)
         call_id, name, arguments = event.data.values_at(:call_id, :name, :arguments)
         tool = @tools[name.to_s]
-        return call.tool_result({ call_id:, name:, error: "this app declares no tool called #{name}" }) if tool.nil?
+        if tool.nil?
+          # The platform answers its own tool, and an answer from here would race it.
+          return if name == Wire::Enums::END_CALL
+
+          return call.tool_result({ call_id:, name:, error: "this app declares no tool called #{name}" })
+        end
 
         running = Thread.new do
           started = now
           begin
-            output = tool[:run].call(arguments || {}, call)
+            output = tool[:run].call(arguments || {}, call, call_id)
             call.tool_result({ call_id:, name:, output:, duration_s: now - started })
           rescue StandardError => e
             # Report the exception to the model as the tool's `error`.

@@ -118,3 +118,56 @@ def test_data_collections_post_carries_the_fields_and_its_headers() -> None:
     )
     assert built.method == "POST" and built.headers == {"X-Key": "s3cret"}
     assert json.dumps(built.body) == '{"fields": {"a": 1}}'
+
+
+def echo_of(secret: str) -> httpx.MockTransport:
+    """An API that sends back whatever it was sent: the header's value, as a field, a key and a sentence."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent = request.headers["authorization"]
+        if request.url.params.get("day") == "plain":
+            return httpx.Response(200, text=f"you sent {sent}")
+        if request.url.params.get("day") == "denied":
+            return httpx.Response(401, json={"detail": f"bad key {secret}"})
+        if request.url.params.get("day") == "long":
+            return httpx.Response(200, text="x" * (fetch.LARGEST_ANSWER - 3) + secret + "y" * 10)
+        return httpx.Response(200, json={"headers": {"Authorization": sent}, secret: 1, "said": f'key "{secret}"'})
+
+    return httpx.MockTransport(answer)
+
+
+async def asked(secret: str, day: str) -> fetch.Answer:
+    """The lookup sent to the echoing API with a secret of this value in its header."""
+    built = fetch.request_of(lookup(), {"doctor": "vidal", "day": day}, {"secrets": {"KEY": secret}})
+    async with httpx.AsyncClient(transport=echo_of(secret)) as http:
+        return await fetch.send(http, built, name="slots", timeout_s=5, resolver=lambda _: PUBLIC)
+
+
+async def test_an_answer_that_repeats_a_secret_has_it_masked_by_value_wherever_it_came_back() -> None:
+    """The header it was sent in, a key, a sentence: `***`, whatever the field is called."""
+    answered = await asked("s3cret", "2026-10-21")
+    assert answered.body == {"headers": {"Authorization": "Bearer ***"}, "***": 1, "said": 'key "***"'}
+
+
+async def test_a_secret_with_a_quote_or_a_backslash_is_masked_as_json_writes_it() -> None:
+    """The echo in a JSON body is escaped, so the value alone would not be found there."""
+    answered = await asked('s3"c\\r', "2026-10-21")
+    assert "s3" not in json.dumps(answered.body) and "***" in json.dumps(answered.body)
+
+
+async def test_a_text_body_a_refusal_and_a_cut_answer_are_masked_too() -> None:
+    """Not JSON: the text; a 401: its body; past the ceiling: cut after the mask, so no half of it is left."""
+    assert (await asked("s3cret", "plain")).body == "you sent Bearer ***"
+    refused = await asked("s3cret", "denied")
+    assert refused.status == 401 and refused.body == {"detail": "bad key ***"}
+    assert refused.error == "slots answered 401"
+    cut = await asked("s3cret", "long")
+    assert isinstance(cut.body, str) and "s3" not in cut.body and "***" in cut.body
+
+
+def test_the_request_knows_the_secrets_it_carries_longest_first_and_a_secret_set_to_nothing_none() -> None:
+    """Two secrets in one header, one holding the other, are masked whole; an empty one is nothing to hide."""
+    headers = [Header(name="Authorization", value="{{secrets.SHORT}} {{secrets.LONG}} {{secrets.EMPTY}}")]
+    values = {"secrets": {"SHORT": "abc", "LONG": "abcdef", "EMPTY": "", "UNNAMED": "other"}}
+    carried = fetch.post_of("https://crm.example.com/calls", headers, {}, values).secrets
+    assert carried[:2] == ("abcdef", "abc") and "other" not in carried and "" not in carried

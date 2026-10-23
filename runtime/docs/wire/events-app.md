@@ -80,13 +80,13 @@ A block of the prompt was rewritten. The text stays out of the log; its hash and
 
 ### `state.changed`
 
-The app's declared state changed. A tool's result or an outside fact caused it, and the cause says which; the whole state travels so a reader never needs the previous entry.
+The app's declared state changed. A tool, an outside fact or a lifecycle hook caused it, and the cause says which; the whole state travels so a reader never needs the previous entry. Each write is one entry: a tool that writes three fields leaves three, each with its cause.
 
 | field | type | required | meaning |
 |---|---|---|---|
 | `state` | `object` | yes | The app's state after the change, whole, as the app declares it: its fields are the object's fields. |
 | `changed` | `string[]` | yes | The names of the fields that changed. |
-| `cause` | `StateCause` | no | What changed it, when the platform knows: the tool whose result moved a field, or the outside fact the app's handler acted on. |
+| `cause` | `StateCause` | no | Who made the write, as the app said it in `state.set`: the tool whose method ran, the outside fact the app's handler acted on, or the hook. Absent when nobody said and the platform saw nothing running. |
 
 ### `tool.call`
 

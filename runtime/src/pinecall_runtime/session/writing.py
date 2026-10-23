@@ -23,6 +23,7 @@ MOST_A_BATCH = 64
 # queued, so a gateway that was away never leaves a hole in the log.
 MOST_QUEUED = 4096
 SHED = "call {call}: {queued} entries wait for the log, so {kind} was shed"
+CLOSED = "call {call}: its log is sealed and its writer closed, so {kind} was refused"
 # What a call waits for its log to take what it wrote; past it, at the end, the gateway's reaper
 # seals what the call could not.
 WRITTEN_WITHIN_S = 20.0
@@ -43,6 +44,9 @@ class Writing:
         self.after = after
         self.refused: list[str] = []
         self.shed: list[str] = []
+        # Set by `close`: a write after it has no task to send it, and is refused at once instead of
+        # waiting in the queue for ever with nothing said.
+        self.closed = False
 
     def open(self) -> None:
         """Start sending."""
@@ -61,6 +65,13 @@ class Writing:
             _refuse(written, ServiceUnavailable(SHED.format(call=self.call, queued=waiting, kind=kind)))
             return written
         entry = BatchedEntry(type=kind, data=event.dump(), ephemeral=ephemeral, ts=time.time())
+        if self.closed:
+            # An app's line after the log was sealed and this writer closed: named, as a refused batch is.
+            named = _named(entry)
+            logger.warning("call %s: the log refused a batch of %d (%s): the writer is closed", self.call, 1, named)
+            self.refused.append(named)
+            _refuse(written, ServiceUnavailable(CLOSED.format(call=self.call, kind=named)))
+            return written
         self.queued.put_nowait((entry, written))
         return written
 
@@ -76,6 +87,7 @@ class Writing:
             logger.warning(
                 "call %s: %d entries never reached the log within %gs", self.call, self.queued.qsize(), within_s
             )
+        self.closed = True
         if self.draining is not None:
             await aio.cancel_and_wait(self.draining)
             self.draining = None
@@ -104,14 +116,18 @@ class Writing:
     # A refused batch never ends the call: the client retries what is transient with the same
     # `after`, so what fails here is a refusal of the whole batch, counted and named at close.
     async def _send(self, batch: list[tuple[BatchedEntry, asyncio.Future[Entry]]]) -> None:
-        kinds = [entry.type for entry, _ in batch]
+        kinds = [_named(entry) for entry, _ in batch]
         try:
             numbered = await self.append_many([entry for entry, _ in batch], after=self.after)
         except asyncio.CancelledError:
             self.refused += kinds
             raise
         except Exception as refused:
-            logger.warning("call %s: the log refused a batch of %d", self.call, len(batch), exc_info=True)
+            # What was lost is named: an app's line logged after the log was sealed is gone, and its name is
+            # the only trace of it (a call ended in its end hook lands before call.score, never after).
+            logger.warning(
+                "call %s: the log refused a batch of %d (%s)", self.call, len(batch), ", ".join(kinds), exc_info=True
+            )
             self.refused += kinds
             for _, written in batch:
                 if not written.done():
@@ -121,6 +137,12 @@ class Writing:
         for (_, written), entry in zip(batch, numbered, strict=True):
             if not written.done():
                 written.set_result(entry)
+
+
+# An app's own line is named by what it called it: that, not "custom", is what was lost.
+def _named(entry: BatchedEntry) -> str:
+    name = entry.data.get("name")
+    return f"custom {name!r}" if entry.type == "custom" and isinstance(name, str) else entry.type
 
 
 # Most entries are queued and never awaited: read here, the refusal is not logged a second time

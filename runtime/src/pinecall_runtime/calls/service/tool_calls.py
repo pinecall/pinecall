@@ -110,7 +110,7 @@ class ToolCalls:
     async def _heard(self, call_id: str, after: int) -> ToolResult:
         async for entry in self.log.stream(after=after, only=RESULTS):
             if entry.type == "tool.result" and entry.data.get("call_id") == call_id:
-                return ToolResult.model_validate(entry.data)
+                return ToolResult.model_validate((await self.log.opened(entry)).data)
         # The call ended with no answer: the deadline answers.
         unanswered: asyncio.Future[ToolResult] = asyncio.get_running_loop().create_future()
         return await unanswered

@@ -12,7 +12,7 @@ import httpx
 
 from pinecall_runtime.kit.dns import Address, all_public, is_local_name, resolve
 from pinecall_runtime.studio.schemas import Header, HttpTool
-from pinecall_runtime.studio.service.definition import A_PATH_PARAM, rendered
+from pinecall_runtime.studio.service.definition import A_PATH_PARAM, A_PLACEHOLDER, SECRETS, rendered
 
 # What the model reads of an answer: past this it is cut, and the model is told so.
 LARGEST_ANSWER = 256 * 1024
@@ -21,6 +21,8 @@ NO_ANSWER = "{tool} did not answer within {seconds:g}s"
 UNREACHABLE = "{tool} could not be reached: {why}"
 REFUSED = "{tool} answered {status}"
 CUT = "[the answer was cut at {limit} KB]"
+# What stands where an answer repeated a secret's value.
+MASK = "***"
 
 # Resolving is the box's DNS: a test hands its own, so a fake API on loopback is reachable there.
 type Resolve = Callable[[str], list[Address]]
@@ -45,6 +47,9 @@ class Request:
     headers: dict[str, str]
     query: dict[str, Any]
     body: dict[str, Any] | None
+    # Every way the secrets in the headers may be written back, longest first: an answer that repeats
+    # one (an API that echoes what it was sent) never reaches the model, the log or the console.
+    secrets: tuple[str, ...] = ()
 
 
 def request_of(tool: HttpTool, arguments: Mapping[str, Any], values: Mapping[str, Any]) -> Request:
@@ -56,14 +61,15 @@ def request_of(tool: HttpTool, arguments: Mapping[str, Any], values: Mapping[str
     declared = {param.name for param in tool.params}
     rest = {name: value for name, value in rest.items() if name in declared}
     headers = _headers(tool.headers, values)
+    hidden = _secrets_in(tool.headers, values)
     if tool.method == "GET" or tool.method == "DELETE":
-        return Request(tool.method, url, headers, rest, None)
-    return Request(tool.method, url, headers, {}, rest)
+        return Request(tool.method, url, headers, rest, None, hidden)
+    return Request(tool.method, url, headers, {}, rest, hidden)
 
 
 def post_of(url: str, headers: list[Header], body: dict[str, Any], values: Mapping[str, Any]) -> Request:
     """A POST of data collection's results to the URL the definition names."""
-    return Request("POST", url, _headers(headers, values), {}, body)
+    return Request("POST", url, _headers(headers, values), {}, body, _secrets_in(headers, values))
 
 
 async def send(
@@ -92,7 +98,7 @@ async def send(
         return Answer(None, None, NO_ANSWER.format(tool=name, seconds=timeout_s), _since(started))
     except httpx.HTTPError as failed:
         return Answer(None, None, UNREACHABLE.format(tool=name, why=failed), _since(started))
-    body = _body(answered)
+    body = _body(answered, request.secrets)
     error = None if answered.is_success else REFUSED.format(tool=name, status=answered.status_code)
     return Answer(answered.status_code, body, error, _since(started))
 
@@ -101,9 +107,28 @@ def _headers(headers: list[Header], values: Mapping[str, Any]) -> dict[str, str]
     return {header.name: rendered(header.value, values) for header in headers}
 
 
+# The values of the secrets the headers name, as text and as JSON writes it (a quote or a non-ASCII
+# character in a secret is escaped in a body that echoes it), the longest first so a secret that holds
+# another is masked whole. A secret set to nothing has nothing to hide.
+def _secrets_in(headers: list[Header], values: Mapping[str, Any]) -> tuple[str, ...]:
+    held: Mapping[str, Any] = values.get(SECRETS) or {}
+    written: set[str] = set()
+    for header in headers:
+        for path in A_PLACEHOLDER.findall(header.value):
+            head, _, name = path.partition(".")
+            value = held.get(name) if head == SECRETS else None
+            if isinstance(value, str) and value:
+                written |= {value, json.dumps(value)[1:-1], json.dumps(value, ensure_ascii=False)[1:-1]}
+    return tuple(sorted(written, key=len, reverse=True))
+
+
+# The secrets' values are taken out of the text, by value and whatever field they came back in, before
+# it is cut or read as JSON: a cut through one would leave half of it, and a key may be the echo.
 # Read whole and cut after: httpx has read it already, and the cap is on what the model reads.
-def _body(answered: httpx.Response) -> Any:
+def _body(answered: httpx.Response, secrets: tuple[str, ...]) -> Any:
     text = answered.text
+    for secret in secrets:
+        text = text.replace(secret, MASK)
     if len(text) > LARGEST_ANSWER:
         return f"{text[:LARGEST_ANSWER]}\n{CUT.format(limit=LARGEST_ANSWER >> 10)}"
     try:

@@ -322,6 +322,26 @@ def test_the_turns_of_a_call_are_what_memory_reads_and_its_tools_are_named() -> 
     assert [(turn.role, turn.text) for turn in heard.spoken] == [("user", "Hola, soy Marta"), ("agent", "Hola Marta")]
 
 
+def held_in(config: AgentConfig, entries: list[Entry]) -> str | None:
+    """The language a finished call of the contact is read in."""
+    heard = heard_in(CALL, Channel.phone, CONTACT, config, entries, at=NOW)
+    assert heard is not None
+    return heard.language
+
+
+def test_a_call_is_held_in_the_language_the_caller_spoke_and_the_setting_only_stands_in() -> None:
+    """The recognizer's language, else what the caller's lines say, else the agent's setting, else none."""
+    turn: JsonObject = {"speech_id": "sp_1", "text": "I'm allergic to penicillin", "metrics": {}}
+    nothing: JsonObject = {**turn, "text": "ok"}
+    declared = AgentConfig(slug=AGENT, memory=KEEPS, language="es")
+    undeclared = AgentConfig(slug=AGENT, memory=KEEPS)
+    heard = [an_entry(1, "turn.user", {**turn, "language": "fr"})]
+    assert held_in(declared, heard) == "fr"
+    assert held_in(declared, [an_entry(1, "turn.user", turn)]) == "english"
+    assert held_in(declared, [an_entry(1, "turn.user", nothing)]) == "es"
+    assert held_in(undeclared, [an_entry(1, "turn.user", nothing)]) is None
+
+
 def test_nothing_is_read_for_an_agent_with_no_policy_or_a_caller_nobody_knows() -> None:
     """No policy, or no contact: nothing for the extraction model."""
     assert heard_in(CALL, Channel.phone, CONTACT, AgentConfig(slug=AGENT), [], at=NOW) is None

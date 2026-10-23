@@ -337,3 +337,15 @@ export function methodParams(ctor: Function, name: string): ParamDoc[] {
   }
   return [];
 }
+
+/**
+ * Whether the method's parameter types can be trusted: its class was handed its source, or the
+ * source still says them. A transpiled class read through `toString()` has none.
+ */
+export function typesKnown(ctor: Function, name: string): boolean {
+  for (const current of chain(ctor)) {
+    const found = docsOf(current).methods.get(name);
+    if (found) return registered.has(current) || found.params.every((param) => param.type !== undefined);
+  }
+  return true;
+}

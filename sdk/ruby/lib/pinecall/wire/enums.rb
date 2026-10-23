@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Every closed list of the wire this gem reads, as a frozen array.
+# Every closed list of the wire this gem reads, as a frozen array, and the name the platform keeps for itself.
 
 module Pinecall
   module Wire
@@ -8,6 +8,9 @@ module Pinecall
       # The door the public came through: a phone call over SIP, the browser widget over WebRTC,
       # or WhatsApp text.
       CHANNEL = %w[phone web whatsapp].freeze
+      # The tool the platform puts in front of a model that may hang up. Its tool.call and its
+      # tool.result are both the platform's, so an app answers none.
+      END_CALL = "end_call"
       # Inbound: the public reached the agent. Outbound: the agent reached out (a dial).
       DIRECTION = %w[inbound outbound].freeze
       # How a call is had: spoken in a room, or written. A web call can be either.

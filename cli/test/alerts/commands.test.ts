@@ -89,10 +89,10 @@ describe("pinecall webhook", () => {
     expect(ran.err).toContain("the URL did not take it: timed out");
   });
 
-  it("a gateway refusal is exit 1 with the gateway's own sentence", async () => {
+  it("a gateway refusal is exit 2 with the gateway's own sentence", async () => {
     refuse("get", "/v1/webhook", 403, "this key is not the org's admin");
     const ran = await run(["webhook"]);
-    expect(ran.code).toBe(1);
+    expect(ran.code).toBe(2);
     expect(ran.err).toContain("this key is not the org's admin");
   });
 });

@@ -6,7 +6,6 @@ import socket
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-import httpx
 from livekit import api
 from livekit.protocol.agent_dispatch import RoomAgentDispatch
 from livekit.protocol.room import RoomConfiguration
@@ -29,6 +28,7 @@ from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.kit.handles import Handles
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.livekit import NO_LIVEKIT
 from pinecall_runtime.telephony.schemas import LegTrunk
 from pinecall_runtime.telephony.service import accounts, hand_over, networks, records
@@ -247,16 +247,14 @@ async def rebuild(session: AsyncSession, handles: Handles) -> Rebuilt:
     """Admit every routed phone number again on the SFU, with its fence and its env's rule."""
     readmitted_count, refused = 0, list[str]()
     for org in await channels.orgs_with_phones(session):
-        try:
+        # An org the SFU or its own rows refuse is refused alone: the others' numbers are admitted all the same.
+        with survived("admitting an org's numbers on the SFU", org) as admitting:
             readmitted_count += await readmit(session, handles, org)
-        except (api.TwirpError, httpx.HTTPError):
-            logger.warning("the SFU refused org %s's numbers: the others go on", org, exc_info=True)
+        if admitting.failed:
             refused.append(org)
-    try:
+    handing = False
+    with survived("admitting the sandbox's hand-over trunk"):
         handing = await _hand_overs_admitted(session, handles)
-    except (api.TwirpError, httpx.HTTPError):
-        logger.warning("the sandbox's SFU refused the hand-over trunk", exc_info=True)
-        handing = False
     logger.info(
         "SIP rebuilt from the tables: %d numbers stand, %d orgs refused, hand-overs admitted: %s",
         readmitted_count,
@@ -272,13 +270,13 @@ async def rebuild(session: AsyncSession, handles: Handles) -> Rebuilt:
 async def rebuilt_until_whole(handles: Handles, wait_s: float = FIRST_WAIT_S) -> Rebuilt:
     """The rebuild, again after a wait while an org is refused or a LiveKit cannot be reached."""
     while True:
-        try:
+        # Whatever a try raises (a database that lags its code, as well as an SFU that is down) is
+        # said and tried again: the task that ended on it would leave the env's numbers unadmitted.
+        with survived("rebuilding SIP from the tables") as rebuilding:
             async with handles.sessions() as session:
                 rebuilt = await rebuild(session, handles)
                 await session.commit()
-        except (api.TwirpError, httpx.HTTPError, OSError, TimeoutError):
-            rebuilt = None
-        if rebuilt is not None and not rebuilt.refused:
+        if not rebuilding.failed and not rebuilt.refused:
             return rebuilt
         logger.warning("SIP not rebuilt whole (an org refused, or a LiveKit unreachable): again in %.0f s", wait_s)
         await asyncio.sleep(wait_s)

@@ -21,7 +21,7 @@ module Pinecall
         "ModelUsage" => { on: :type, members: %w[LLMModelUsage TTSModelUsage STTModelUsage InterruptionModelUsage EOTModelUsage] }.freeze,
         "Turn" => { on: :role, members: %w[UserTurn AgentTurn] }.freeze,
         "Verb" => { on: :verb, members: %w[SayVerb WhisperVerb TakeoverVerb ReleaseVerb TransferVerb EndVerb] }.freeze,
-        "StateCause" => { on: :kind, members: %w[StateCauseTool StateCauseEvent] }.freeze
+        "StateCause" => { on: :kind, members: %w[StateCauseTool StateCauseEvent StateCauseHook] }.freeze
       }.freeze
 
       # A map is keyed by names the app chose; every value is the one shape given here.

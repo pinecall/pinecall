@@ -5,6 +5,7 @@ from pinecall.wire._names import JsonObject
 from pinecall.wire.events_call import CallAttached, CallClaimed, CallStarted
 from pinecall.wire.events_turn import StateChanged
 from pinecall.wire.frames import WireModel
+from pinecall.wire.parts import StateCauseHook
 
 STARTED: JsonObject = {
     "channel": "phone",
@@ -105,3 +106,39 @@ def test_the_book_opens_a_call_on_first_sight_and_forgets_it_once_it_ended() -> 
     call.status = "ended"
     book.forget(call)
     assert book.live == []
+
+
+def test_a_started_call_knows_its_direction_and_what_it_was_opened_with() -> None:
+    call, _ = a_call()
+    call.take(
+        "call.started", CallStarted.read({**STARTED, "metadata": {"order": "A-17"}}, "call.started")
+    )
+    assert (call.direction, call.metadata) == ("inbound", {"order": "A-17"})
+
+
+def test_a_started_call_opened_with_nothing_has_empty_metadata() -> None:
+    call, _ = a_call()
+    call.take("call.started", CallStarted.read(STARTED, "call.started"))
+    assert call.metadata == {}
+
+
+def test_a_call_knows_the_seq_of_the_entry_it_is_folding_in() -> None:
+    call, _ = a_call()
+    seen: list[int] = []
+    call.on_any(lambda type_, event, heard: seen.append(heard.seq))
+    call.take("call.started", CallStarted.read(STARTED, "call.started"), 7)
+    assert seen == [7]
+
+
+def test_the_state_it_sends_names_who_wrote_it_when_it_is_said() -> None:
+    call, sent = a_call()
+    call.set_state({"a": 1}, ["a"], StateCauseHook(kind="hook", hook="on_call"))
+    call.set_state({"a": 2})
+    assert sent == [
+        (
+            "state.set",
+            "CA_1",
+            {"state": {"a": 1}, "changed": ["a"], "cause": {"kind": "hook", "hook": "on_call"}},
+        ),
+        ("state.set", "CA_1", {"state": {"a": 2}}),
+    ]

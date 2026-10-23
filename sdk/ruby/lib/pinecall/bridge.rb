@@ -70,7 +70,7 @@ module Pinecall
       live = {}
       # Throwaway instance used only to read the class's declarations.
       probe = klass.new
-      options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
+      options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:, says_done: true)
       agent = client.agent(name, **options)
       agent.on("call.started") { |started, call| start(klass, live, call, client, last, started[:state]) }
       agent.on("call.attached") { |_data, call| attached(klass, live, call, client, last) }
@@ -81,11 +81,11 @@ module Pinecall
     # Tool specs with a `run` routed to the instance serving the calling call.
     def tools_for(probe, live)
       probe.tools.map do |spec|
-        spec.merge(run: lambda do |arguments, call|
+        spec.merge(run: lambda do |arguments, call, call_id|
           serving = live[call.id]
           raise ToolFailed, "#{spec[:name]}: this call is no longer being served" if serving.nil?
 
-          serving.agent.run_tool(spec[:name], arguments)
+          serving.agent.run_tool(spec[:name], arguments, call_id)
         end)
       end
     end
@@ -103,6 +103,7 @@ module Pinecall
       instance.serving(serving.world)
       live[call.id] = serving
       serving.later do
+        forward_log(serving, call)
         instance.restore(call.state)
         sync(serving, call)
         listen(serving, call)
@@ -117,7 +118,8 @@ module Pinecall
 
     def world_for(call, client)
       searching = ->(query, k) { client.search(call.id, query, k:) }
-      CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from, channel: call.channel,
+      CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from, to: call.to,
+                    channel: call.channel, direction: call.direction, caller: call.contact, metadata: call.metadata,
                     medium: call.medium, today: call.today, claimed: call.claimed, searching:) do |type, data|
         call.command(type, data)
       end
@@ -125,7 +127,8 @@ module Pinecall
 
     # Build the instance and run `on_call` before listening, so the first prompt is sent once
     # rather than once per field. The state the opener asked for (`call.started.state`) is applied
-    # after the hook, which would overwrite it, and before the first render.
+    # after the hook, which would overwrite it, and before the first render. The log is open from the
+    # hook on: a line `on_call` writes is the call's.
     def start(klass, live, call, client, last, opened_in)
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
@@ -134,30 +137,54 @@ module Pinecall
       serving = Live.new(instance, world)
       live[call.id] = serving
       serving.later do
-        instance.run_hook(:on_call, world)
+        forward_log(serving, call)
+        hooked(serving, call, :on_call, world)
         instance.start_in(opened_in) unless opened_in.nil?
-        call.set_state(instance.snapshot)
+        call.set_state(instance.snapshot, *opening(instance))
         sync(serving, call)
         listen(serving, call)
       end
     end
 
-    # Re-sync the prompt on every state change.
+    # What the opening `state.set` says: when `on_call` wrote, the fields written and the hook as the
+    # cause. Nothing written, nothing said: the whole state is the news.
+    def opening(instance)
+      return [] unless instance.changes.any? { |change| change.author == "hook:on_call" }
+
+      [instance.changes.map(&:field).uniq, { kind: "hook", hook: "on_call" }]
+    end
+
+    # Re-sync the prompt on every state change, each one sent with who wrote it.
     def listen(serving, call)
       instance = serving.agent
       serving.stops[:state] = instance.on_change do |change|
-        call.set_state(instance.snapshot, [change.field])
-        # `state.set` has no cause field on the wire, so log it separately.
-        cause = serving.world.cause
-        call.log("state.cause", { field: change.field.to_s, kind: "event" }.merge(cause)) unless cause.nil?
+        call.set_state(instance.snapshot, [change.field], cause_of(change, serving))
         sync(serving, call)
       end
-      serving.stops[:log] = instance.on_log { |entry| call.log(entry.name, as_object(entry.data)) }
       serving.stops[:entries] = call.on_any do |event|
         serving.world.take(event.type, event.data, Time.now.to_f)
-        received(serving, event.data) if event.type == "event.received"
+        received(serving, call, event) if event.type == "event.received"
         rerendered(serving, call, event)
       end
+    end
+
+    # Who made a write, as the wire's `StateCause` says it: the lifecycle hook, the outside fact the hook is
+    # handling, or the tool and the model's id for the call that ran it. A write the wire has no word for
+    # (a restore) says nothing.
+    def cause_of(change, serving)
+      author = change.author.to_s
+      case author
+      when "hook:on_call", "hook:on_memory" then { kind: "hook", hook: author.delete_prefix("hook:") }
+      when "hook:on_event" then (fact = serving.world.cause) && { kind: "event", **fact }
+      else
+        call_id = Agent::Author.call_id
+        { kind: "tool", tool: author, call_id: } if call_id && serving.agent.class.tool_named(author)
+      end
+    end
+
+    # What the class logs reaches the call's log until `on_end` has run.
+    def forward_log(serving, call)
+      serving.stops[:log] = serving.agent.on_log { |entry| call.log(entry.name, as_object(entry.data)) }
     end
 
     # The view answers the turn being taken, not the one before it; a claim lets the caller see the
@@ -169,7 +196,7 @@ module Pinecall
       when "memory.ops"
         serving.remembered = words_recalled(event.data)
         sync(serving, call)
-        serving.later { serving.agent.run_hook(:on_memory, event.data[:ops] || [], serving.world) }
+        serving.later { hooked(serving, call, :on_memory, event.data[:ops] || [], serving.world) }
       end
     end
 
@@ -182,19 +209,23 @@ module Pinecall
 
     # Drop events whose (name, source) the class did not declare: an `:app` event arriving from
     # a browser could be spoofed.
-    def received(serving, fact)
+    def received(serving, call, event)
+      fact = event.data
       name = fact[:name].to_s
       allowed = agent_class(serving).declared_events[name]
       unless allowed&.include?(fact[:source].to_s)
         return warn("pinecall: #{name} from #{fact[:source]} is not declared by this agent")
       end
 
-      meta = { source: fact[:source], identity: fact[:identity], seq: serving.world.numbered }.compact
+      meta = { source: fact[:source], identity: fact[:identity], seq: event.seq }.compact
       serving.later do
-        serving.world.cause = { event: name, event_seq: meta[:seq] }
-        serving.agent.run_hook(:on_event, name, fact[:data] || {}, meta)
-        serving.agent.notify_heard(name, fact[:data] || {}, meta)
-        serving.world.cause = nil
+        serving.world.cause = { name:, seq: event.seq }
+        begin
+          hooked(serving, call, :on_event, name, fact[:data] || {}, meta, event: name)
+          serving.agent.notify_heard(name, fact[:data] || {}, meta)
+        ensure
+          serving.world.cause = nil
+        end
       end
     end
 
@@ -205,8 +236,11 @@ module Pinecall
 
       serving.stops.values_at(:state, :entries).compact.each(&:call)
       serving.later do
-        serving.agent.run_hook(:on_end, serving.world)
+        hooked(serving, call, :on_end, serving.world)
         serving.stops[:log]&.call
+        # After every line the hook logged, whether it ran or raised: the gateway seals the call on this
+        # word, and a line sent after the seal is refused.
+        call.done
       end
       serving.finish
     end
@@ -215,27 +249,48 @@ module Pinecall
     # the provider's prompt cache. Unsent blocks count as empty.
     def sync(serving, call)
       line = { channel: call.channel || "web", from: call.from, claimed: serving.world.claimed }
-      rendered = Prompt.render(serving.agent, remembered: serving.remembered, line:)
+      begin
+        rendered = Prompt.render(serving.agent, remembered: serving.remembered, line:)
+        visible = serving.agent.visible_tools
+      rescue StandardError => e
+        return failed_to_render(call, e)
+      end
       rendered.blocks.each do |block|
         next if block.text == serving.sent.fetch(block.name, "")
 
         serving.sent[block.name] = block.text
         call.set_prompt(block.name, block.text)
       end
-      visible = serving.agent.visible_tools
       return if visible == serving.tools_shown
 
       serving.tools_shown = visible
       call.set_tools(visible)
     end
 
+    # A view that fails fails its call, never the process: the model keeps the view it had, and the log says why.
+    def failed_to_render(call, error)
+      call.log("render.failed", { error: error.class.to_s, message: error.message })
+      warn("pinecall: #{call.id} could not render its view and goes on with the one it had: #{error.message}")
+    end
+
+    # A hook that raises fails its call, never the process: the call goes on with what the hook wrote
+    # before it raised, and the log says which hook and why.
+    def hooked(serving, call, hook, *args, event: nil)
+      serving.agent.run_hook(hook, *args)
+    rescue StandardError => e
+      call.log("hook.failed", { hook: hook.to_s, event:, error: e.class.to_s, message: e.message }.compact)
+      warn("pinecall: #{call.id} #{hook} raised and the call goes on without it: #{e.message}")
+      nil
+    end
+
     def agent_class(serving) = serving.agent.class
 
-    # `call.log` data must be an object; wrap scalars under `value`.
+    # `call.log` data must be an object: a `Data` or a `Struct` is its fields, other values go under `value`.
     def as_object(data)
-      return {} if data.nil?
+      fields = Wire::Codec.plain(data)
+      return {} if fields.nil?
 
-      data.is_a?(Hash) ? data : { value: data }
+      fields.is_a?(Hash) ? fields : { value: fields }
     end
   end
 end

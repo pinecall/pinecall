@@ -38,7 +38,7 @@ a client may not set.
 | `agent` | ours | the agent's slug, or `room_config.agents[0].agent_name` as a stock client sends `agentName` |
 | `scope` | ours | `talk` (default): publish the microphone, hear the agent. `chat`: the same room with no microphone. Both write on the call's data channel, the caller's own words; `observe` and `supervise` never do. Any other is `400`: `observe` and `supervise` take the API key |
 | `contact` | ours | the org's opaque id for the person; becomes `participant_metadata` |
-| `metadata` | ours | JSON sealed into the call, reaching the worker in the signed dispatch |
+| `metadata` | ours | JSON sealed into the call, reaching the worker in the signed dispatch and the agent as `metadata` of `call.started`, which an SDK reads as `this.call.metadata`. A visitor's public log never carries it |
 | `ttl_s` | ours | 60 by default; past a day (86 400) it is cut to a day |
 | `tuning` | ours | a test room's own voice and models, over the agent's settings for this call alone and kept nowhere: `stt`, `llm`, `tts`, `tts_model`, `voice`, `language`, `temperature` (anything else is refused, `400`). The sandbox's, by a key that opens `pipeline`: `403` for production's or for a key without it. It rides the signed dispatch; the worker says it again when it reads the call's config and keys, where it is checked again |
 | `log` | ours | what the answer's `log_token` reads through: `public` (default) or `tenant` ([projections.md](projections.md)) |

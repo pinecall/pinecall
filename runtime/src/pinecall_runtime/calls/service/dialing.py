@@ -7,10 +7,9 @@ from datetime import date, datetime
 from livekit import api
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls.context import new_call_id
 from pinecall_runtime.calls.repository.heads import Claim
-from pinecall_runtime.calls.service import lists
+from pinecall_runtime.calls.service import lists, visitors
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.enums import Channel, Direction
 from pinecall_runtime.exceptions import NotFound, UpstreamError, ValidationError
@@ -70,8 +69,7 @@ async def place_call(session: AsyncSession, serving: Serving, placement: Placeme
         return await lists.ever_reached(session, scope.org, scope.env, destination)
 
     guards = await telephony.guard_dial(session, dial, reached)
-    running = serving.live.running(scope.org, scope.env)
-    await billing.admit_call(session, scope.org, scope.env, running=running, at=placement.at.timestamp())
+    await visitors.admit_call(session, serving, scope, placement.agent)
     await serving.logs.store.claim(call, placement.agent, scope.org, Claim(scope))
     log = serving.logs.writing(call, placement.agent)
     dialing = CallDialing.parse(

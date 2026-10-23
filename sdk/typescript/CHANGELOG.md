@@ -5,6 +5,40 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **A view that cannot be rendered fails its call, not the process.** `UnauthoredWrite` thrown from
+  `render()` escaped the bridge through `void start(...)` and ended the serve process, every call with it;
+  the call's log now gets a `render.failed` line, the model keeps the view it had and the process goes on.
+  (found by the 2026-10-23 eval, B B8)
+- **A hook that throws fails its call, not the process.** `onCall`, `onEvent`, `onMemory` and `onEnd` ran
+  as detached promises, so a throw ended the serve process; the call's log now gets a `hook.failed` line
+  naming the hook (and the event) and the error, stderr a line, and the call goes on with what the hook had
+  written. (found by the 2026-10-23 eval, B B8)
+- **Every state write carries its author on the wire.** A `state.set` now names its `cause`: the tool and
+  the model's call id, the event and its entry, or the hook (`onCall`, `onMemory`); only a tool's first write
+  and an event's had one, and the custom `state.cause` line is gone. `EventMeta.seq` is the log's seq of the
+  `event.received` entry (it was a per-call counter), `Tool.run` gets the model's call id as a third argument
+  and `CamelEvent` an optional `seq`. (found by the 2026-10-23 eval, B B4)
+- **A line logged in `onCall` or `onEnd` lands on the call's log.** The forwarder was subscribed after
+  `onCall` and dropped before `onEnd`. (found by the 2026-10-23 eval, B B3)
+- **The SDK sends `call.done` after the end hook, and registers `says_done`**, so the gateway's seal waits for
+  what the hook logs before it seals the log. (found by the 2026-10-23 eval, S2)
+- **`@tool` on a field is refused with the sentence the docs promise**, `@tool goes on a method; book is not
+  one`, as a `DeclarationRefused`, not a TypeError from inside the decorator. (found by the 2026-10-23 eval,
+  B B6)
+- **`runTool` says the types were erased** when the class was never handed its source, instead of `name must
+  be a object, not a string`. (found by the 2026-10-23 eval, E R0-1)
+- **`z` is exported from `@pinecall/agents`**: the zod `params` is read with, so a project needs no `zod` of
+  its own. (found by the 2026-10-23 eval, B D5)
+- **`this.call` has `to`, `direction`, `caller` and `metadata`**; `metadata` is the token's, sealed. (found
+  by the 2026-10-23 eval, K F6)
+- **`pinecall start` prints what the log keeps**: a value the agent declared private never reaches the
+  terminal. (found by the 2026-10-23 eval, A F3)
+- **An agent an admin killed is one line on stderr**, `<slug>  ✗ <slug> was killed by <name>`;
+  `Pinecall.onKilled` hands over the slug and the sentence. The client no longer answers `end_call`, which
+  the platform answers itself. (found by the 2026-10-23 eval, J F3, R2)
+
 ## [0.11.15] — the serve entry registers as its host
 
 - **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's

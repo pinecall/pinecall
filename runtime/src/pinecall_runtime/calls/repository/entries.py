@@ -8,6 +8,7 @@ from sqlalchemy import Row, select
 
 from pinecall_runtime.calls.models import CallLog, CallLogHead
 from pinecall_runtime.calls.schemas import DEFAULT_LIMIT
+from pinecall_runtime.enums import Opener
 from pinecall_runtime.kit.repository import Repository
 from pinecall_runtime.wire.base import Entry
 
@@ -17,11 +18,12 @@ COLUMNS = ("call", "seq", "ts", "agent", "type", "ephemeral", "data")
 # position is the store's row order across every log; the meter resumes from it.
 @dataclass(frozen=True, slots=True)
 class Positioned:
-    """An entry with its place in the whole store and the org its log belongs to."""
+    """An entry with its place in the whole store, the org its log belongs to and who opened that log."""
 
     position: int
     org: str | None
     entry: Entry
+    opened_by: Opener | None = None
 
 
 # Built, not validated: a row is what an Entry wrote, and its columns are typed, so validating it
@@ -60,24 +62,27 @@ class EntryRepository(Repository[CallLog]):
     async def across(self, types: Sequence[str], *, after: int = 0, limit: int = DEFAULT_LIMIT) -> list[Positioned]:
         """One page of the entries of these types in every log, by position, with their owners."""
         statement = (
-            select(CallLog.position, CallLogHead.org, *(getattr(CallLog, name) for name in COLUMNS))
+            select(
+                CallLog.position, CallLogHead.org, CallLogHead.opened_by, *(getattr(CallLog, name) for name in COLUMNS)
+            )
             .join(CallLogHead, CallLogHead.log == CallLog.log)
             .where(CallLog.type.in_(list(types)), CallLog.position > after)
             .order_by(CallLog.position)
             .limit(limit)
         )
         rows = (await self.session.execute(statement)).all()
-        return [Positioned(int(row.position), row.org, entry_of(row)) for row in rows]
+        return [Positioned(int(row.position), row.org, entry_of(row), row.opened_by) for row in rows]
 
-    async def tool_answered(self, log: str, call_id: str) -> dict[str, Any] | None:
-        """The data of the `tool.result` the log holds for this tool call id, or None."""
+    async def tool_answered(self, log: str, call_id: str) -> Entry | None:
+        """The `tool.result` entry the log holds for this tool call id, or None."""
         statement = (
-            select(CallLog.data)
+            select(*(getattr(CallLog, name) for name in COLUMNS))
             .where(CallLog.log == log, CallLog.type == "tool.result", CallLog.data["call_id"].astext == call_id)
             .order_by(CallLog.seq)
             .limit(1)
         )
-        return (await self.session.execute(statement)).scalar_one_or_none()
+        row = (await self.session.execute(statement)).one_or_none()
+        return None if row is None else entry_of(row)
 
     async def tool_called(self, log: str, call_id: str) -> Entry | None:
         """The `tool.call` entry the log holds for this tool call id, or None."""

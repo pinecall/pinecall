@@ -36,6 +36,12 @@ class ServeTest < Minitest::Test
     sleep(0.05)
   end
 
+  # Until the process has said `text` on stderr, or five seconds.
+  def until_said(text)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    sleep(0.02) until @err.string.include?(text) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+  end
+
   def test_the_first_line_is_the_registration_with_the_app_it_was_given
     running = started("--events")
     until_registered
@@ -95,6 +101,52 @@ class ServeTest < Minitest::Test
     refute_includes @err.string, "draining"
   end
 
+  def test_an_agent_an_admin_let_go_of_is_one_line_on_stderr_and_the_wire_stays_stdouts
+    running = started("--events")
+    until_registered
+    @gateway.send_entry(SLUG, "error", { code: "killed", message: "#{SLUG} was killed by Lucía", recoverable: false })
+    until_said("✗")
+    @signals.push(:signalled)
+    running.value
+
+    assert_includes @err.string, "#{SLUG}  ✗ #{SLUG} was killed by Lucía"
+    refute_includes @out.string, "✗"
+  end
+
+  def test_what_it_prints_of_its_entries_never_holds_a_value_the_agent_declared_private
+    Dir.mktmpdir do |folder|
+      file = File.join(folder, "agent.rb")
+      File.write(file, <<~RUBY)
+        # Toma recados.
+        class Recadera < Pinecall::Agent
+          state :patient, visibility: :pii
+
+          # Toma un recado.
+          tool pii: %i[name]
+          def take_message(name:, about:) = "Guardado para \#{name}."
+        end
+      RUBY
+      reading, @writing = IO.pipe
+      running = Thread.new do
+        Pinecall::Serve.main(["start", "--file", file, "--slug", "recadera", "--events"], out: @out, err: @err, env:,
+                                                                                        input: reading, signals: Thread::Queue.new)
+      end
+      until_registered
+      asked = { name: "Ana Lopez", about: "Ana Lopez wants a refund" }
+      @gateway.send_entry("recadera", "tool.call", { call_id: "tc_1", name: "take_message", arguments: asked }, call: "CA_1")
+      @gateway.send_entry("recadera", "state.changed", { state: { patient: { id: 7 }, stage: "ask" }, changed: %w[patient] }, call: "CA_1")
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      sleep(0.02) until @out.string.include?("state.changed") || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      @writing.close
+      running.value
+      printed = @out.string.lines.map { |line| JSON.parse(line, symbolize_names: true) }
+
+      assert_equal({ name: "***", about: "*** wants a refund" }, printed.find { |line| line[:type] == "tool.call" }[:data][:arguments])
+      assert_equal({ patient: "***", stage: "ask" }, printed.find { |line| line[:type] == "state.changed" }[:data][:state])
+      refute_includes @out.string, "Ana Lopez"
+    end
+  end
+
   def test_the_end_of_its_stdin_drains_it_too
     running = started
     until_registered
@@ -102,6 +154,16 @@ class ServeTest < Minitest::Test
 
     assert_equal 0, running.value
     refute_nil @gateway.next_frame("agent.drain")
+  end
+
+  def test_a_served_class_registers_saying_it_sends_call_done_after_its_end_hook
+    running = started
+    registered = @gateway.next_frame("agent.register")
+    until_registered
+    @signals.push(:signalled)
+    running.value
+
+    assert_equal true, registered[:data][:says_done]
   end
 
   def test_it_registers_as_the_host_a_runner_named

@@ -11,12 +11,11 @@ import type { Persona } from "../../api/cases.js";
 import * as api from "../../api/evals.js";
 import { Chat } from "../../calls/service/chat.js";
 import type { Context } from "../../context.js";
-import { UsageError } from "../../errors.js";
-import { AMBIENCES, allEntries, mediansOf, type Medians } from "./suite.js";
+import { PinecallError, UsageError } from "../../errors.js";
+import { AMBIENCES, allEntries, mediansOf, ONLY_ON_A_LINE, spoilsTheLine, type Medians } from "./suite.js";
 
 /** Default caller turns; long enough for a full booking flow, not just the opening. */
 export const TURNS = 15;
-export const ONLY_ON_A_LINE = "--background-noise, --ambience and --packet-loss are about audio: add --voice";
 const A_TURNS = "--turns is how many turns the caller gets, 1 to 40";
 const A_LOSS = "--packet-loss is a share of the caller's packets: a number from 0 to 1, such as 0.05";
 
@@ -73,15 +72,33 @@ export interface Reached {
   app?: (() => string | undefined) | undefined;
 }
 
-/** Exit code: 1 when a judge answered broken, else 0. */
-export function exitCodeOf(said: Simulated): number {
-  return said.score === null || said.score.passed !== false ? 0 : 1;
+/**
+ * What a judged simulation must have for a gate to open. A judge that answered broken is exit 1; a call
+ * nobody judged — no judge on, only `n/a` and classifications, the evals used up, no score in time — is
+ * exit 2, because "nobody looked at this" must never read as a pass. One not asked to be judged is no gate.
+ */
+export function requireHeld(said: Simulated): void {
+  if (said.unjudged) throw new UsageError("nobody judged this call: no call.score came within a minute");
+  if (said.score === null) return;
+  if (said.score.passed === false) throw new PinecallError("a judge answered broken");
+  if (said.score.passed !== true) throw new UsageError(`nobody judged this call: ${why(said.score)}`);
+}
+
+// What the score says about why no judge held or broke: the reason it was not judged, else that the rest only classified or did not apply.
+function why(score: CallScore): string {
+  return score.not_judged ?? "no judge held or broke, the rest classified the call or did not apply";
 }
 
 /** The persona as this run plays it: the run's model and voice over its own; another voice vendor drops its voice. */
 export function playedBy(persona: Persona, input: Pick<SimulateInput, "llm" | "tts" | "callerVoice">): Persona {
   const voice = input.callerVoice ?? (input.tts === undefined ? persona.voice : null);
   return { ...persona, llm: input.llm ?? persona.llm, tts: input.tts ?? persona.tts, voice };
+}
+
+/** Who plays the caller this run, as the gateway takes it when the call opens: only what the run names, nothing when it names none. */
+export function ranOn(input: Pick<SimulateInput, "llm" | "tts" | "callerVoice">): { llm?: string; tts?: string; voice?: string } | undefined {
+  const named = { ...(input.llm === undefined ? {} : { llm: input.llm }), ...(input.tts === undefined ? {} : { tts: input.tts }), ...(input.callerVoice === undefined ? {} : { voice: input.callerVoice }) };
+  return Object.keys(named).length === 0 ? undefined : named;
 }
 
 /** The persona in the gateway's wire shape; unset optional fields are left out. */
@@ -106,8 +123,7 @@ export function callerOf(persona: Persona): api.CallerPersona {
  */
 export async function simulate(ctx: Context, reached: Reached, written: Persona, input: SimulateInput, listeners: SimulationListeners = {}): Promise<Simulated> {
   const persona = playedBy(written, input);
-  const spoiled = input.backgroundNoise !== undefined || input.packetLoss !== undefined || input.ambience !== undefined;
-  if (!input.voice && spoiled) throw new UsageError(ONLY_ON_A_LINE);
+  if (!input.voice && spoilsTheLine(input)) throw new UsageError(ONLY_ON_A_LINE);
   const heard = new Heard(listeners);
   const placed = input.voice ? await outLoud(ctx, reached.slug, persona, input, heard, listeners) : await inWriting(ctx, reached, persona, input, heard);
   const entries = placed.call === "" ? [] : await allEntries(ctx, placed.call);
@@ -125,21 +141,25 @@ export async function simulate(ctx: Context, reached: Reached, written: Persona,
   };
 }
 
-// Written call over one socket; ending it hangs up, which triggers scoring.
+// Written call over one socket; ending it hangs up, which triggers scoring. A refusal of the caller's
+// next line (no key, no such vendor) hangs up too: an open socket would hold the process and the call.
 async function inWriting(ctx: Context, reached: Reached, persona: Persona, input: SimulateInput, heard: Heard): Promise<{ call: string; callerTurns: number | null; line: null }> {
-  const chat = await Chat.open(ctx, { agent: reached.slug, app: reached.app, persona: persona.name, state: Object.keys(persona.state).length === 0 ? undefined : persona.state }, { onEntry: (entry) => heard.absorb(entry) });
-  await heard.quiet();
-  for (let turn = 0; turn < input.turns; turn += 1) {
-    // Hung up elsewhere (console, app, agent): stop, as the spoken path does.
-    if (heard.over || chat.ended) break;
-    const next = await api.nextCallerLine(ctx.gateway(), { persona: callerOf(persona), heard: heard.said, turns_left: input.turns - turn });
-    if (next.say === "" || heard.over) break;
-    const before = heard.agentTurns;
-    chat.say(next.say);
-    await heard.answered(before);
-    if (next.hangup) break;
+  const chat = await Chat.open(ctx, { agent: reached.slug, app: reached.app, persona: persona.name, playedBy: ranOn(input), state: Object.keys(persona.state).length === 0 ? undefined : persona.state }, { onEntry: (entry) => heard.absorb(entry) });
+  try {
+    await heard.quiet();
+    for (let turn = 0; turn < input.turns; turn += 1) {
+      // Hung up elsewhere (console, app, agent): stop, as the spoken path does.
+      if (heard.over || chat.ended) break;
+      const next = await api.nextCallerLine(ctx.gateway(), { persona: callerOf(persona), heard: heard.said, turns_left: input.turns - turn });
+      if (next.say === "" || heard.over) break;
+      const before = heard.agentTurns;
+      chat.say(next.say);
+      await heard.answered(before);
+      if (next.hangup) break;
+    }
+  } finally {
+    await chat.end();
   }
-  await chat.end();
   return { call: chat.call ?? "", callerTurns: null, line: null };
 }
 

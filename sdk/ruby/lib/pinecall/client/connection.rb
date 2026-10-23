@@ -32,6 +32,9 @@ module Pinecall
 
       def open? = @open
 
+      # Never the key, nor the driver, which holds it in its headers.
+      def inspect = "#<#{self.class} #{@url} #{@open ? "open" : "closed"}>"
+
       # Connect and return once `on_open` has run; reconnects are handled internally afterwards.
       def start
         @closed = false
@@ -70,11 +73,12 @@ module Pinecall
         nil
       end
 
-      # Called by websocket-driver.
+      # Called by websocket-driver. Once this side closed the socket, what the driver still writes (the
+      # answer to the gateway's close frame) has nowhere to go, and that is not a failure.
       def write(bytes)
         @socket.write(bytes)
       rescue IOError, SystemCallError => e
-        @handlers.on_error.call(e)
+        @handlers.on_error.call(e) unless @closed
       end
 
       private

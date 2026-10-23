@@ -9,17 +9,26 @@ module Pinecall
   # State is reduced from received entries; each verb is one wire command. No LiveKit access by
   # design: a missing capability should become a new command of the wire.
   class CallWorld
-    attr_reader :id, :contact, :from, :channel, :medium, :room, :turns, :today, :claimed
+    attr_reader :id, :contact, :from, :to, :channel, :direction, :caller, :metadata, :medium, :room, :turns, :today,
+                :claimed
 
     # `send` puts one command on the wire for this call; `searching` asks the gateway to search for
     # it. Both are supplied by the bridge. `today` is the day the call opened, YYYY-MM-DD. `medium` is
     # spoken (`voice`) or written (`text`); a gateway that does not say gets it from the channel.
-    def initialize(id:, contact: nil, from: nil, channel: nil, medium: nil, today: Time.now.strftime("%Y-%m-%d"),
-                   claimed: nil, searching: nil, &send)
+    # `to` is the number called, or the agent a visitor reached; `direction` is `inbound` when the public
+    # reached the agent and `outbound` when it dialled; `caller` is who the platform knows is on the line
+    # (`id`, `name`, `phone`, `email`), nil when nobody is named; `metadata` is what the call was opened with,
+    # such as a token's, `{}` when none.
+    def initialize(id:, contact: nil, from: nil, to: nil, channel: nil, direction: nil, caller: nil, metadata: nil,
+                   medium: nil, today: Time.now.strftime("%Y-%m-%d"), claimed: nil, searching: nil, &send)
       @id = id
       @contact = contact
       @from = from
+      @to = to
       @channel = channel
+      @direction = direction
+      @caller = caller
+      @metadata = metadata || {}
       @medium = (medium || (channel.to_s == "whatsapp" ? "text" : "voice")).to_s
       @today = today
       @claimed = claimed
@@ -29,14 +38,10 @@ module Pinecall
       @turns = []
       @waiting = Waiting.new
       @cause = nil
-      @events = 0
     end
 
-    # The external event being handled, if any; logged as the cause of state changes.
+    # The external event being handled, if any (`name` and the entry's `seq`); the cause of the writes it makes.
     attr_accessor :cause
-
-    # Next per-call event sequence number (not the wire's seq).
-    def numbered = @events += 1
 
     # ── commands ─────────────────────────────────────────────────────────────
 
@@ -110,7 +115,8 @@ module Pinecall
 
     # Append an application entry to the call's log.
     def log(name, data = {})
-      @send.call("call.log", { name: name.to_s, data: data.is_a?(Hash) ? data : { value: data } })
+      fields = Wire::Codec.plain(data)
+      @send.call("call.log", { name: name.to_s, data: fields.is_a?(Hash) ? fields : { value: fields } })
     end
 
     # The caller asked never to be called again: their number joins the org's do-not-call list, and no

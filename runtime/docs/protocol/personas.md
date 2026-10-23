@@ -16,7 +16,7 @@ a call 40 caller turns (`turns`, `turns_left`); past them it is `422`. And a run
 `POST /v1/evals/caller` `{persona, heard, turns_left}` answers `{say, hangup}`: the persona's next
 line on the call so far, on the persona's `llm` or the providers row's `caller.llm`, on the org's own key or the
 one the platform lends it. The caller never sees its own rule. A vendor this deployment lacks is `400`, one
-nobody keyed `503`, a model that answered no line `502`. Each line is a model call, so an org says
+nobody keyed `503` (the sentence a persona written for it is refused with, so a run meets neither), a model that answered no line `502`. Each line is a model call, so an org says
 120 a minute at most (`429` past them), `heard` holds 80 turns, and a turn, the `goal` and the
 `style` 4000 characters each (`422` past them).
 
@@ -31,7 +31,7 @@ other shape) so it tails the log before the call starts, and it must name a call
 the head is claimed in the caller's scope before the room is offered, and an id that exists —
 anybody's — is `409`. A persona is the agent's: a name nobody wrote for that agent is `404`; one
 sent without a name is played as sent. Its `llm`, `tts` and `voice` are checked as a written
-persona's are: one the deployment lacks is `400` before the room is offered. A room nobody can hold is `503`. The answer is `{call, turns,
+persona's are: one the deployment lacks is `400`, and a model or a voice on a vendor nobody keyed `503`, both before the room is offered and before the call is claimed. A room nobody can hold is `503`. The answer is `{call, turns,
 line, caller_cost_usd, stopped_at_ceiling}`: what the caller's lines and voice cost by the platform's
 rates, and whether it hung up because the call had spent the providers row's
 `caller.ceiling_usd` ([operator-api.md](operator-api.md)); the line that crosses it is the last
@@ -55,7 +55,7 @@ the caller of the `ambience` it names: a `television` (a voice read in the calle
 (chatter over a room), an `office` (a hum), a `street` (traffic swelling and fading), each the
 same sound every run. What can be refused is refused before the answer: a persona neither the agent
 nor Pinecall has by that name, or nobody holding the agent in the key's world and scope, `404`; the
-org's limits as on a call, `simulations` among them, and the org's simulated calls already on the
+org's limits as on a call, `simulations` among them (`429`, with `credits.exhausted` on the agent's log, and the call is never opened nor counted), a caller whose model, or whose voice when spoken, is on a vendor nobody keyed (`503`), and the org's simulated calls already on the
 line in the world — three at most, on every gateway together, `429` with `Retry-After` for the
 fourth ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
@@ -97,11 +97,11 @@ PUT /v1/agents/recepcion/personas/apurado
 expected-outcome judge holds the call to them and the model playing the caller never reads them.
 `behavior` is how the caller acts on a spoken line: `interrupts`, `pause_s`, `interferer_db`,
 `packet_loss`. The name is lower-case words joined by hyphens; `was` renames, within the agent. A vendor this deployment
-lacks is refused when written, not in the middle of a run. `GET
+lacks is refused when written (`400`), and so is one nobody keyed for the org (`503`, with the sentence a run would meet: `xai has no key: the org brought none and the box holds none`), not in the middle of a run. `GET
 /v1/agents/{slug}/personas/{name}/runs` pages the calls the persona made to that agent in the
 key's environment, newest first, each with its turns, how it ended, its cost in
 US dollars and the judges' score, and who played the caller as it ran: `played_by` `{llm, tts,
-voice}` (`vendor/model` of its lines and of its voice, `tts` and `voice` null on a written call;
+voice}` (`vendor/model` of its lines, the persona's own or the run's, and of its voice, `tts` and `voice` null on a written call;
 the row null for a call simulated before the runtime kept it) and `caller_cost_usd`, what that
 caller cost. `GET /v1/simulations` pages every simulated call the same way, or the agents named's
 (`?agent=`, once or more), and `?call=` reads one.

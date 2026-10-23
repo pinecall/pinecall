@@ -31,7 +31,7 @@ HELD = text("lock table usage_totals in exclusive mode")
 RECOUNTED = text("""
 select usage_counted(coalesce(jsonb_agg(jsonb_build_object(
     'org', head.org, 'env', usage_world(entry.type, entry.data, head.env), 'ts', entry.ts,
-    'type', entry.type, 'data', entry.data)), '[]'), 1)
+    'type', entry.type, 'data', entry.data, 'opened_by', head.opened_by)), '[]'), 1)
 from call_log entry join call_log_head head on head.log = entry.log
 where entry.type in ('call.summary', 'call.score', 'evals.spent') and head.org is not null
 """)
@@ -56,7 +56,7 @@ class UsageTotalRepository(Repository[UsageTotal]):
         return float((await self.session.execute(statement)).scalar_one())
 
     # One transaction, the table locked: the fold is the triggers' own (migrations/sql/0106), so a
-    # rebuild counts exactly what a write would have.
+    # rebuild counts exactly what a write would have (migrations/versions/20261023_000013 is the newest).
     async def rebuild(self) -> int:
         """Forget every row and count them again from every metered entry; how many rows."""
         await self.session.execute(HELD)

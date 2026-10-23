@@ -13,6 +13,7 @@ What reaches the gateway: the commands an app sends over its socket, each with t
 | `call.callback` | call | `callback.requested` | Write down that the caller wants to be called back. |
 | `call.claim` | call | `call.claimed` | The caller said the code a page shows: bind this call to it, so the page follows the call from here. |
 | `call.dial` | agent | `call.dialing` | Place an outbound call as this agent. Refused on the app socket (`no_handler`): `POST /v1/agents/{slug}/dial` places it. |
+| `call.done` | call | nothing | Say the app's end hook ran and everything it wrote was sent: the call's seal waits for this, a few seconds at most, so a line logged in the hook lands. |
 | `call.dtmf` | call | nothing | Send touch tones down the line, for an IVR on the far end. |
 | `call.event` | call | `event.received` | Hand the agent a fact from the tenant's backend: a slot freed, an order shipped, a payment confirmed. |
 | `call.hangup` | call | `call.ended` | End the call from the app's side. |
@@ -67,6 +68,7 @@ Lands in the log as: `agent.registered`.
 | `host` | `string` | no | The machine the app runs on, as it names itself: what a person reading the org's live processes reads to tell a laptop from a server. |
 | `takes_unclaimed` | `boolean` | no | Whether this socket may be handed a call that named no app — every phone call, and every web call that did not ask for one. A console holds the agent to serve the call it opens itself and says false, so a real caller is never answered from somebody's terminal. Absent means yes. |
 | `answers_dev` | `boolean` | no | Whether this socket answers the console's dev verbs for the agent (POST /v1/agents/{slug}/dev/…): the companion `pinecall start` holds beside the process serving the class. `view.render` still goes to the socket serving the call, whose class draws the panel. Absent means no. |
+| `says_done` | `boolean` | no | Whether this socket sends `call.done` once the end hook of a call it holds ran. A seal waits, up to `END_HOOK_WAITED_S`, only for a socket that says so: one that does not (an SDK of before, a console) costs the call nothing, and a line it logs from its end hook may arrive too late to land. |
 
 ### `agent.reply`
 
@@ -135,6 +137,14 @@ Lands in the log as: `call.dialing`.
 | `from` | `string` | no | The number to show, E.164. Absent means the agent's first phone route. |
 | `caller` | `Contact` | no | Who is on the line, as far as the platform knows. |
 | `metadata` | `object` | no | Anything the app wants handed to the session at start, sealed by the platform, never seen by the far end. |
+
+### `call.done`
+
+The app's end hook ran and everything it wrote was sent: the call may be sealed. The gateway seals a call with the app that holds it after `call.ended`, and a log is closed to appends once sealed, so a line the hook logs lands only if it is written first: the seal waits for this command, up to `END_HOOK_WAITED_S` (3 s), when the app said `says_done` at registration. A call sealed already has nothing to wait: the command is dropped, with no error.
+
+Lands in the log as: nothing.
+
+No fields.
 
 ### `call.dtmf`
 
@@ -322,6 +332,7 @@ Lands in the log as: `state.changed`.
 |---|---|---|---|
 | `state` | `object` | yes | The whole state after the change. |
 | `changed` | `string[]` | no | The names of the fields that changed, when the app knows. Absent means: compare yourself. |
+| `cause` | `StateCause` | no | Who made this write: the tool whose method ran, the outside event whose handler ran, or the lifecycle hook. An SDK says it on every write; absent, the platform names the tool or event it saw running, once, for the first write after it. |
 
 ### `supervisor.verb`
 

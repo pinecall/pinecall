@@ -4,10 +4,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import Row, func, select, text
+from sqlalchemy import Row, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from pinecall_runtime.calls.models import CallFact, CallLogHead
+from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.repository import Repository
 
@@ -117,6 +118,25 @@ class FactsRepository(Repository[CallFact]):
     """What is known of every call without folding its log."""
 
     model = CallFact
+
+    # A summary is what gives a call its cost, so a simulated call with none has begun and not ended.
+    async def simulating(self, org: str, env: Env, since: float, simulated_from: str) -> int:
+        """How many simulated calls of the org in the env began since then and have no summary yet."""
+        statement = (
+            select(func.count())
+            .select_from(CallLogHead)
+            .join(CallFact, CallFact.call == CallLogHead.log)
+            .where(
+                CallLogHead.org == org,
+                CallLogHead.env == env,
+                CallLogHead.call.is_not(None),
+                CallLogHead.sealed.is_(False),
+                CallLogHead.started_at >= since,
+                CallFact.cost_usd.is_(None),
+                or_(CallFact.persona.is_not(None), CallFact.from_number == simulated_from),
+            )
+        )
+        return int((await self.session.execute(statement)).scalar_one())
 
     # In the order of the calls, as the heads are locked: two writers never wait in a circle.
     async def lock(self, calls: Sequence[str]) -> dict[str, CallFact]:

@@ -6,7 +6,7 @@ module Pinecall
     #
     # Commands are not awaited; their effects arrive later as log entries.
     class Call
-      attr_reader :id, :today, :claimed, :run, :medium
+      attr_reader :id, :today, :claimed, :run, :medium, :direction, :metadata
       attr_accessor :status, :channel, :from, :to, :contact, :state
 
       def initialize(id, agent, opened_at)
@@ -17,6 +17,8 @@ module Pinecall
         @channel = nil
         # Spoken or written, as `call.started` says; nil before it, and from a gateway that does not say.
         @medium = nil
+        @direction = nil
+        @metadata = {}
         @from = nil
         @to = nil
         @contact = nil
@@ -48,11 +50,13 @@ module Pinecall
       # Set the tools currently visible to the model (a subset of the declared ones).
       def set_tools(tools) = command("tools.set", { tools: })
 
-      # Send the full state; answered with `state.changed`.
-      def set_state(state, changed = nil)
+      # Send the full state; answered with `state.changed`. `cause` says who wrote it, in the wire's
+      # `StateCause`: a tool, an outside event or a lifecycle hook.
+      def set_state(state, changed = nil, cause = nil)
         @state = state
         wire = { state: }
         wire[:changed] = Array(changed).map(&:to_s) unless changed.nil?
+        wire[:cause] = cause unless cause.nil?
         command("state.set", wire)
       end
 
@@ -66,6 +70,9 @@ module Pinecall
 
       # Append an application entry to the call's log, as a `custom` entry.
       def log(name, data = {}) = command("call.log", { name: name.to_s, data: })
+
+      # Say the end hook ran and what it wrote was sent: the gateway seals the call on this word.
+      def done = command("call.done", {})
 
       # Send any call-scoped command of the wire.
       def command(type, data) = @agent.command(type, @id, data)
@@ -104,6 +111,8 @@ module Pinecall
       def started(line)
         the_line(line, "active")
         @medium = line[:medium]
+        @direction = line[:direction]
+        @metadata = line[:metadata] || {}
         # A run's call says its day, which a golden may have pinned; a person's runs on the clock's.
         @today = line[:today] if line[:today]
       end

@@ -2,7 +2,7 @@
 
 import asyncio
 
-from pinecall._author import current, writing_as
+from pinecall._author import calling, current, current_tool_call, event, hook, writing_as
 
 
 def test_outside_every_tool_and_hook_nobody_is_writing() -> None:
@@ -35,3 +35,16 @@ def test_a_thread_started_from_the_loop_writes_as_the_task_that_started_it() -> 
             return await asyncio.to_thread(current)
 
     assert asyncio.run(from_a_thread()) == "book"
+
+
+def test_the_tool_call_a_write_is_made_in_is_the_blocks_and_the_one_before_returns() -> None:
+    assert current_tool_call() is None
+    with calling("toolu_1"):
+        with calling("toolu_2"):
+            assert current_tool_call() == "toolu_2"
+        assert current_tool_call() == "toolu_1"
+    assert current_tool_call() is None
+
+
+def test_an_author_says_whether_it_is_a_hook_or_an_event_handler() -> None:
+    assert (hook("on_call"), event("cart.changed")) == ("hook:on_call", "event:cart.changed")

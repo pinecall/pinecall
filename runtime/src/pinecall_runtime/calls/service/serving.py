@@ -95,8 +95,9 @@ def serve_call(
 
     async def answered_before(call_id: str) -> ToolResult | None:
         async with sessions() as session_:
-            data = await EntryRepository(session_).tool_answered(context.call, call_id)
-        return None if data is None else ToolResult.model_validate(data)
+            answered = await EntryRepository(session_).tool_answered(context.call, call_id)
+        # What the model reads is what the app answered, not what the log keeps of it.
+        return None if answered is None else ToolResult.model_validate((await log.opened(answered)).data)
 
     async def called_before(call_id: str) -> Entry | None:
         async with sessions() as session_:
@@ -223,6 +224,20 @@ def check_kind(kind: str) -> None:
         raise ValidationError(f"no event is called {kind!r}: the log takes the protocol's own words")
     if kind in GATEWAY_WRITES:
         raise Forbidden(f"{kind!r} is written by the gateway itself, never sent to it")
+
+
+# The gateway itself reads these two back to end a call and to hand it on, so a worker's that does
+# not parse is refused where it is sent, naming the field: a call whose start the seal cannot read
+# could never be sealed (2026-10-23: a call.started with no `caller` was taken, and its seal
+# answered 500 for ever, the call holding its seat).
+LIFECYCLE = ("call.started", "call.ended")
+
+
+def check_entry(kind: str, data: JsonObject) -> None:
+    """Refuse an entry the log does not take: its type, or the shape of a lifecycle entry."""
+    check_kind(kind)
+    if kind in LIFECYCLE:
+        EVENTS[kind].parse(data, kind)
 
 
 # What /metrics reads: the append's time at the endpoint, and each vendor's failures as they

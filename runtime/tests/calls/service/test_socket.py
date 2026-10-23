@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import text
 
 from pinecall_runtime.calls.service.live import Live
+from pinecall_runtime.calls.service.peers import APP_CHANNEL
 from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.calls.service.socket import BUSY, AppSocket
 from pinecall_runtime.calls.service.threads import Threads
@@ -17,7 +18,9 @@ from pinecall_runtime.enums import Env, KeyScope
 from pinecall_runtime.kit.auth import Actor
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.postgres import create_engine, session_maker
-from tests.conftest import needs_the_database
+from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.signal import ForApp
+from tests.conftest import needs_the_database, until
 
 pytestmark = needs_the_database
 
@@ -74,3 +77,31 @@ async def test_a_frame_the_database_did_not_answer_is_refused_as_busy_and_the_so
     assert (data["command"], data["id"]) == ("agent.register", "r1")
     assert "no connection came free" in str(data["message"])
     assert closed == []
+
+
+# What another gateway tells a socket arrives on its inbox; a message that cannot be read, or applied,
+# ended the loop that heard it, and the socket was deaf for its whole life (it is said now).
+async def test_a_message_of_the_inbox_that_cannot_be_read_does_not_leave_the_socket_deaf() -> None:
+    sent: list[JsonObject] = []
+
+    async def send(frame: JsonObject) -> None:
+        sent.append(frame)
+
+    async def close(_why: str) -> None:
+        return None
+
+    live = Live()
+    serving = cast(Serving, SimpleNamespace(live=live, registry=_Registry()))
+    socket = AppSocket(serving, cast(Threads, None), AN_APP, send, close, None)
+    listening = asyncio.create_task(socket.listen())
+    try:
+        await asyncio.wait_for(socket.listening.wait(), 5)
+        live.signal.publish(APP_CHANNEL.format(app=socket.id), b"this is not a message for a socket")
+        told = Entry.unstored("recepcion", "error", {"code": "killed", "message": "x", "recoverable": False})
+        live.signal.publish(APP_CHANNEL.format(app=socket.id), ForApp(entry=told).model_dump_json().encode())
+        await until(lambda: bool(sent))
+        assert sent[0]["type"] == "error"
+        assert not listening.done()
+    finally:
+        listening.cancel()
+        await asyncio.gather(listening, return_exceptions=True)

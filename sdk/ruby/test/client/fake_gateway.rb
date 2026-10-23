@@ -16,6 +16,7 @@ class FakeGateway
     @frames = Thread::Queue.new
     @sockets = []
     @drivers = []
+    @writers = {}
     @seq = 0
     @answers_drains = true
     @thread = Thread.new { serve }
@@ -32,6 +33,17 @@ class FakeGateway
   # Send every connected app one entry, as the gateway writes it.
   def send_entry(agent, type, data, call: nil)
     @drivers.each { |driver| write(driver, agent, type, data, call:) }
+  end
+
+  # The org stopped every connected app: the `stopped` error and the close frame behind it, in one
+  # write, as a gateway that closes right after saying so.
+  def stop_apps(why)
+    @drivers.each do |driver|
+      @writers.fetch(driver).together do
+        write(driver, "", "error", { code: "stopped", message: why, recoverable: false })
+        driver.close(why, 1000)
+      end
+    end
   end
 
   # The next frame of this type an app sent, waiting for it.
@@ -56,11 +68,13 @@ class FakeGateway
   end
 
   def talk(socket)
-    driver = WebSocket::Driver.server(Writer.new(socket))
+    writer = Writer.new(socket)
+    driver = WebSocket::Driver.server(writer)
     driver.on(:connect) do
       @authorization = driver.env["HTTP_AUTHORIZATION"]
       @world = driver.env["HTTP_PINECALL_ENV"]
       driver.start
+      @writers[driver] = writer
       @drivers << driver
     end
     driver.on(:message) { |event| took(driver, event.data) }
@@ -96,6 +110,15 @@ class FakeGateway
 
   # websocket-driver needs an object with `write` and `url`.
   Writer = Struct.new(:socket) do
-    def write(bytes) = socket.write(bytes)
+    def write(bytes) = @held.nil? ? socket.write(bytes) : @held << bytes
+
+    # Every frame the block writes goes out as one write.
+    def together
+      @held = +""
+      yield
+      socket.write(@held)
+    ensure
+      @held = nil
+    end
   end
 end

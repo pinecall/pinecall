@@ -5,6 +5,7 @@ import { AgentConfigSchema } from "./agent-config.js";
 import {
   ContactSchema,
   RouteSchema,
+  StateCauseSchema,
   SupervisorSchema,
   ToolSpecSchema,
   TransferModeSchema,
@@ -33,6 +34,8 @@ export const AgentRegisterSchema = z.strictObject({
   takes_unclaimed: z.boolean().nullish(),
   /** This socket answers the console's dev verbs for the agent; `view.render` still goes to the one serving the call. */
   answers_dev: z.boolean().nullish(),
+  /** This socket sends `call.done` once the end hook of a call it holds ran: the gateway's seal waits for it. */
+  says_done: z.boolean().nullish(),
 });
 
 /**
@@ -72,6 +75,12 @@ export const CallCallbackSchema = z.strictObject({
   when: z.string().nullish(),
   note: z.string().nullish(),
 });
+
+/**
+ * The app's end hook ran and everything it wrote was sent: the call may be sealed. The gateway
+ * waits for this, a few seconds at most, before it seals a call whose app said it would send it.
+ */
+export const CallDoneSchema = z.strictObject({});
 
 /** The caller asked never to be called again: their number joins the org's do-not-call list. */
 export const CallOptOutSchema = z.strictObject({
@@ -223,6 +232,8 @@ export const SessionConfigureSchema = z.strictObject({
 export const StateSetSchema = z.strictObject({
   state: z.record(z.string(), z.unknown()),
   changed: z.array(z.string()).nullish(),
+  /** Who made the write: the tool, the event handler or the hook. Absent, the platform names what it saw running. */
+  cause: StateCauseSchema.nullish(),
 });
 
 /** One supervise verb, from the human the door named. */

@@ -118,7 +118,7 @@ only the process in the agent's directory can do: [dev-verbs.md](dev-verbs.md).
 
 | endpoint | the caller |
 |---|---|
-| `WS /v1/chat?agent=<slug>` | text: send `{"text": "…"}`, receive the call's entries; `{"hangup": true}` ends the call, then closes the socket with `the call ended: caller_hung_up`; `app=`, `contact=`, `caller=`, `persona=`, `state=` (a JSON object, 16 KB at most: the state the call opens in, carried on its `call.started`), and `call=` to take up a call whose gateway restarted |
+| `WS /v1/chat?agent=<slug>` | text: send `{"text": "…"}`, receive the call's entries; `{"hangup": true}` ends the call, then closes the socket with `the call ended: caller_hung_up`; `app=`, `contact=`, `caller=`, `persona=` (the call is a simulation, admitted before it opens as `POST /v1/simulations` is: a persona nobody wrote is `404`, past the org's `simulations` is `429` with `credits.exhausted` on the agent's log, a caller on a vendor nobody keyed is `503`, and a refused call is never opened or counted), `played_by=` (a JSON object `{llm?, tts?, voice?}`: who plays the persona this run, over its own, as `POST /v1/simulations` takes it; the model that plays is kept with the call, as its run's `played_by`), `state=` (a JSON object, 16 KB at most: the state the call opens in, carried on its `call.started`), and `call=` to take up a call whose gateway restarted |
 | `POST /v1/tokens` | web voice: [tokens.md](tokens.md) |
 | a phone number | a route to the agent: [numbers.md](numbers.md) |
 | `POST /v1/codes` | a phone call tied to a page: [codes.md](codes.md) |
@@ -132,7 +132,7 @@ agent's log; `GET /v1/callbacks?agent=&after=` lists them for your app to dial, 
 the call it names: the sandbox's key lists the sandbox's, production's lists production's.
 
 The worker's endpoints (`POST /v1/calls`, `/events`, `/entries`, `/sealed`, `/tools`,
-`/remember`, `/recording/key`, `/commands`, `/judging`) belong to whoever opened the call: the fleet's key
+`/remember`, `/recording/key`, `/commands`, `/judging`, `/done`) belong to whoever opened the call: the fleet's key
 for a call the fleet's worker opened, an org's `app` key for one its own worker opened, nobody
 for a written call, which the gateway runs itself. Another key is answered `404`; so is a
 `/reopened` (a call the gateway forgot, served again) outside the call's own scope. `/lookup` is
@@ -143,6 +143,14 @@ gateway writes on a log itself — `call.ringing`, `call.dialing`, `call.attache
 `call.claimed`, `call.summary`, `call.score`, `evals.spent`, `memory.ops`, `docs.sources`,
 `log.gap`, `log.caught_up` — is refused `403` at
 every append endpoint, the fleet's included: the summary and the score are the gateway's own words.
+`POST /v1/calls/{call}/done` is a worker's session saying the app held by the call ran its end hook (the
+app's `call.done`) and what it wrote was sent: the seal that waits for the app, up to `END_HOOK_WAITED_S`
+(3 s), and only for an app that said `says_done` when it registered, then writes `call.score`.
+The two entries the gateway reads back to end a call, `call.started` and `call.ended`, are read where
+they are sent, at `/events`, at `/entries` and on its WebSocket: one that does not fit its shape
+(a `call.started` with no `caller`, for one: `null` is an answer, absent is not) is refused `400`
+naming the field, and a batch is taken whole or refused whole. A call whose log holds one that
+predates that refusal is sealed all the same, as one that never wrote it.
 
 ## 3. Reading a log
 
@@ -194,7 +202,7 @@ refuses opening a sealed log again. An erasure deletes, so neither stands in its
 | endpoint | |
 |---|---|
 | `DELETE /v1/calls/{call}` | one ended call (`team`); `409` while it runs, `404` for a call the key does not read |
-| `DELETE /v1/contacts/{contact}` | a contact in the key's environment (`team`): every call they were on (by `call_facts.contact`), every fact kept of them, what each reader had read of their thread; `409` while they are on a call |
+| `DELETE /v1/contacts/{contact}` | a contact in the key's environment (`team`): every call they were on (by `call_facts.contact`: the contact the call opened with, `call.started.caller.id`, else the number or visitor id it came from), every fact kept of them, what each reader had read of their thread; `409` while they are on a call |
 | `GET /v1/org/erasures` | the trail, newest first (`team`) |
 
 ### Who read what
@@ -217,7 +225,7 @@ operator's reads off the platform (`pinecall-runtime sessions show|tail|recordin
 was read, never what it said. The row is one statement the read waits on; one that cannot be
 written is said in the gateway's journal and the read is answered all the same.
 `GET /v1/org/reads?subject=` (`team`) answers `{reads: [{subject, what, env, reader, at}]}`,
-newest first, of one subject when named.
+newest first, of the key's environment alone (a person's `pinecall-env`), of one subject when named.
 
 An org is erased whole by the operator: `DELETE /v1/ops/orgs/{named}`
 ([operator-api.md](operator-api.md)). The trail row outlives the org.

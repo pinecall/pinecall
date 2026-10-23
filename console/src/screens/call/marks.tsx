@@ -11,7 +11,7 @@ import type { SupervisorMark } from "../../lib/supervisor-mark";
 import { LogRow } from "./log-row";
 import { Readings } from "./readings";
 
-/** A state change and its cause (tool result or external fact). */
+/** A state change and its cause (a tool, an external fact or a hook). */
 export function StateRow({ changed, cause, seq }: { changed: string[]; cause: StateCause | null; seq: number }): ReactNode {
   return <LogRow seq={seq} kind="state" tone="state" said={`${changed.join(", ")} ← ${causeOf(cause)}`} />;
 }
@@ -79,5 +79,11 @@ function causeOf(cause: StateCause | null): string {
   if (cause === null) {
     return "the app";
   }
-  return cause.kind === "tool" ? cause.tool : `${cause.name} (seq ${String(cause.seq)})`;
+  if (cause.kind === "tool") {
+    return cause.tool;
+  }
+  if (cause.kind === "event") {
+    return `${cause.name} (seq ${String(cause.seq)})`;
+  }
+  return cause.hook === "on_call" ? "the start of the call" : "memory";
 }

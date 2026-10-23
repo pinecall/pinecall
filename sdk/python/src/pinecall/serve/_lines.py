@@ -3,9 +3,11 @@
 import json
 import queue
 import threading
+from collections.abc import Mapping
 from typing import TextIO
 
 from pinecall.client import Client, Drained
+from pinecall.serve._masking import Masking
 from pinecall.wire.frames import Entry
 
 
@@ -48,11 +50,19 @@ class Printer:
             self._out.flush()
 
 
-def said(client: Client, out: TextIO, err: TextIO, *, events: bool) -> Printer:
-    """Listen before connecting, so `agent.registered` is a pipe's first line; the printer used."""
+def said(
+    client: Client, out: TextIO, err: TextIO, masking: Mapping[str, Masking], *, events: bool
+) -> Printer:
+    """Listen before connecting, so `agent.registered` is a pipe's first line; the printer used.
+
+    What it prints is what the call's log keeps: a value the agent declared private never reaches
+    a terminal.
+    """
     printer = Printer(out)
 
     def heard(entry: Entry) -> None:
+        if (agent := masking.get(entry.agent)) is not None:
+            entry = agent.entry(entry)
         if events:
             printer.line(entry_line(entry))
         elif entry.type == "agent.registered":
@@ -62,8 +72,13 @@ def said(client: Client, out: TextIO, err: TextIO, *, events: bool) -> Printer:
         err.write(f"{type(error).__name__}: {error}\n")
         err.flush()
 
+    def killed(slug: str, why: str) -> None:
+        err.write(f"{slug}  ✗ {why}\n")
+        err.flush()
+
     client.on_entries(heard)
     client.on_errors(failed)
+    client.on_killed(killed)
     return printer
 
 

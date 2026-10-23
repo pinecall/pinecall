@@ -14,6 +14,12 @@ of that agent in that scope, or to the next process that registers it. A console
 `{app, started, state, seq, claimed}`, then every `tool.call` still waiting for an answer, and sends
 the call's whole prompt and tools again: the log keeps a prompt's hash, not its text.
 
+On a box of several gateways it does not matter which gateway opened the call, which one held the
+socket that left, or which one the next process registers on. The gateway that opened the call is
+the one that parks it, told by the gateway the socket was on, and every gateway hears a process take
+the agent: the one holding a parked call of it hands the call over, and the tools waiting on it
+reach the new socket.
+
 ## A process that leaves on purpose
 
 `agent.drain` on the socket: it is handed no new call, each call it served goes to another socket
@@ -92,6 +98,11 @@ leaves, and a call whose caller had already gone, is the reaper's.
 The reaper looks every minute. A call in a room with no **agent** left in it, quiet five minutes,
 is ended as `drained` and its room taken down. A written call no process serves is ended as
 `timeout` once quiet as long as its endpoint waits: five minutes for a chat, two hours for WhatsApp.
+A parked call is handed, at the look, to a process that took its agent since, if the gateways'
+word of it was lost; and it is ended as `app_detached` once two minutes have passed with none. A
+call another gateway sealed, or one that was erased, stops counting in `concurrent_calls` on the
+gateway that opened it at the reaper's next look. One call the reaper cannot seal is said in the
+gateway's journal and left: the calls behind it are sealed, and the next look comes.
 
 ## The page
 

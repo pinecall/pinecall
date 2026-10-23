@@ -3,14 +3,18 @@
 
 export * from "./agent/agent.js";
 export * from "./agent/knowledge.js";
-export * from "./agent/authors.js";
+// The tool call an author wrote in stays the bridge's: only who is writing is for a test to read or set.
+export { UnauthoredWrite, currentAuthor, withAuthor, withAuthorAsync } from "./agent/authors.js";
 export * from "./agent/state.js";
 export * from "./agent/tools.js";
+// The zod `params` is checked against: a tenant imports it from here, and gets the instance the SDK reads.
+export { z } from "zod";
 export * from "./agent/decorators.js";
 export * from "./agent/opening.js";
 // Only the type; stage readers are internal.
 export type { Stages } from "./agent/stages.js";
-export * from "./agent/docstrings.js";
+// `typesKnown` stays the bridge's: only run-tool.ts asks it.
+export { classDoc, describe, docsOf, docsVersion, methodDoc, methodParams, parseClassSource, type ClassDocs, type ParamDoc } from "./agent/docstrings.js";
 export * from "./agent/view.js";
 export * from "./agent/lifecycle.js";
 export * from "./views/jsx-runtime.js";

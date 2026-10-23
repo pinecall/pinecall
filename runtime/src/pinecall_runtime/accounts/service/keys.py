@@ -23,6 +23,7 @@ from pinecall_runtime.exceptions import (
 )
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Actor, Person, Scope
 from pinecall_runtime.kit.crypto import fingerprint, random_id, random_token
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.time import now
 from pinecall_runtime.postgres import box_task, box_wide
 from pinecall_runtime.redis import Signal
@@ -438,7 +439,10 @@ class KeyCache:
             self._kept.clear()
             try:
                 async for data in listener:
-                    self._forget(Forgotten.model_validate_json(data))
+                    # A revocation that cannot be read is said and the next is heard: the listener
+                    # that died with it would leave every revoked key trusted for as long as it is kept.
+                    with survived("reading a revocation of another gateway"):
+                        self._forget(Forgotten.model_validate_json(data))
             finally:
                 listener.close()
             with contextlib.suppress(TimeoutError):

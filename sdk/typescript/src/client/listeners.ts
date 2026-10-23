@@ -6,8 +6,8 @@ import { type EventType } from "../wire/registry.js";
 /** An event's data in camelCase. */
 export type Payload<K extends EventType> = Camel<EventData<K>>;
 
-/** A camelCase event, discriminated by `type`. */
-export type CamelEvent = { [K in EventType]: { type: K; data: Payload<K> } }[EventType];
+/** A camelCase event, discriminated by `type`; `seq` is its entry's place in the log, when it came from one. */
+export type CamelEvent = { [K in EventType]: { type: K; data: Payload<K>; seq?: number } }[EventType];
 
 /** Listener for one event type. */
 export type Listener<K extends EventType, Context> = (data: Payload<K>, context: Context) => unknown;
@@ -18,8 +18,8 @@ export type AnyListener<Context> = (event: CamelEvent, context: Context) => unkn
 type Erased<Context> = (data: never, context: Context) => unknown;
 
 /** Convert a decoded event's data keys to camelCase. */
-export function camelEvent(event: Event): CamelEvent {
-  return { type: event.type, data: toCamel(event.data) } as CamelEvent;
+export function camelEvent(event: Event, seq?: number): CamelEvent {
+  return { type: event.type, data: toCamel(event.data), ...(seq === undefined ? {} : { seq }) } as CamelEvent;
 }
 
 /**

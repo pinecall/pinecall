@@ -10,6 +10,7 @@ from uuid import uuid4
 from pydantic import BaseModel, TypeAdapter
 
 from pinecall_runtime.exceptions import ServiceUnavailable
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.postgres import box_task
 from pinecall_runtime.redis import Signal
 
@@ -91,16 +92,20 @@ class SharedState[T]:
         message = Said(sender=self.id, share=self._adapter.dump_python(mine, mode="json"))
         self.signal.publish(self.channel, message.model_dump_json().encode())
 
+    # What one beat or one message raises is said with the channel and the loop goes on: a share that
+    # stopped being told or heard would leave this gateway counting a box that no longer exists.
     async def _beat(self) -> None:
         while True:
-            self._say()
+            with survived("a share's beat", self.channel):
+                self._say()
             await asyncio.sleep(self.every_s)
-            now = time.monotonic()
-            silent = [gw for gw, heard in self.theirs.items() if now - heard.at > SILENT_AT_MOST_S]
-            for gateway in silent:
-                del self.theirs[gateway]
-            if silent:
-                self._on_change()
+            with survived("a share's forgetting of the silent", self.channel):
+                now = time.monotonic()
+                silent = [gw for gw, heard in self.theirs.items() if now - heard.at > SILENT_AT_MOST_S]
+                for gateway in silent:
+                    del self.theirs[gateway]
+                if silent:
+                    self._on_change()
 
     async def _listen(self) -> None:
         while True:
@@ -109,10 +114,12 @@ class SharedState[T]:
             except ServiceUnavailable:
                 await asyncio.sleep(RETRY_S)
                 continue
-            self._say()
+            with survived("a share's first word", self.channel):
+                self._say()
             try:
                 async for data in listener:
-                    self._hear(data)
+                    with survived("hearing a share", self.channel):
+                        self._hear(data)
             finally:
                 listener.close()
             with contextlib.suppress(TimeoutError):

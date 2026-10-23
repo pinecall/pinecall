@@ -27,6 +27,7 @@ from pinecall_runtime.jobs.service.stream import (
     traced,
 )
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire.base import BatchedEntry, Command, Entry
@@ -178,6 +179,15 @@ class GatewayClient:
         self.opened.pop(call, None)
         await self._stream_closed(call)
 
+    # A call sealed already has nothing waiting for it: the same answer a seal asked twice gets.
+    async def done(self, call: str) -> None:
+        """Say the app's end hook ran and what it wrote was sent; the gateway's seal waits for it."""
+        try:
+            await self._on_the_call(call, "POST", f"/v1/calls/{call}/done")
+        except GatewayUnavailable as refused:
+            if refused.answered != ALREADY_OVER:
+                raise
+
     async def lookup(
         self, call: str, tool: PlatformTool, arguments: Mapping[str, Json], speech: str | None
     ) -> JsonObject:
@@ -243,14 +253,16 @@ class GatewayClient:
         path = f"/v1/calls/{call}/commands"
         try:
             async for frame in self._streamed(path):
-                yield Command.model_validate(frame)
+                if (command := _command_of(frame, call)) is not None:
+                    yield command
         except GatewayUnavailable as refused:
             if not await self._reopened(call, refused):
                 raise
         else:
             return
         async for frame in self._streamed(path):
-            yield Command.model_validate(frame)
+            if (command := _command_of(frame, call)) is not None:
+                yield command
 
     # ── the fleet ──
 
@@ -366,6 +378,14 @@ def gateway_at(url: str, key: str | None) -> GatewayClient:
     """The gateway at this URL, asked with the fleet's key in the header, never the URL."""
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     return GatewayClient(httpx.AsyncClient(base_url=url, headers=headers, timeout=TIMEOUT_S))
+
+
+# A frame this worker cannot read (a gateway newer than it) is said and skipped: the stream goes on.
+def _command_of(frame: JsonObject, call: str) -> Command | None:
+    command: Command | None = None
+    with survived("reading a command of the app", call):
+        command = Command.model_validate(frame)
+    return command
 
 
 def _scope_params(scope: Scope | None) -> dict[str, str]:

@@ -242,7 +242,10 @@ plays a case in are calls of the sandbox like any other, under the org's retenti
 
 A person who knows says what a judge should have answered on a finished call:
 `POST /v1/evals/calibration {call, judge, held, note?}` keeps it (a second label of the same
-call and judge replaces the first), in the call's environment, by the key's person. `GET` answers each
+call and judge replaces the first), in the call's environment, by the key's person. The judge is one the agent's
+calls meet — Pinecall's, the org's own or the agent's own — and one that answers a verdict: a name none of them has is
+`404`, a judge that answers a score or a choice, which has no `held` to be wrong about, is `409`, and a `held` that is
+not a boolean (`"yes"` is not one) is `422`; a label refused is never kept. `GET` answers each
 judge against those labels, beside the verdict the seal counted for it on the same call:
 `{judges: [{judge, labelled, compared, agreed, rate, trusted}], labels_to_judge, agrees_at_least}`.
 A judge is judged once 10 labels have its verdict beside them, and `trusted` is false while it

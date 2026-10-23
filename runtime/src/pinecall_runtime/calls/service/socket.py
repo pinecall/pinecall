@@ -16,7 +16,7 @@ from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls.reducer import unanswered_tools
 from pinecall_runtime.calls.service.binding import attach_parked, hand_on
 from pinecall_runtime.calls.service.live import Live, Served, declare_for_the_call
-from pinecall_runtime.calls.service.peers import send_command
+from pinecall_runtime.calls.service.peers import Handoff, Taking, send_command, tell_handoff
 from pinecall_runtime.calls.service.serving import Serving, claim_code, known_here
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.enums import Channel, ConsentKind
@@ -28,6 +28,7 @@ from pinecall_runtime.exceptions import (
     ValidationError,
 )
 from pinecall_runtime.kit.auth import Actor
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.postgres import DatabaseError, busy, is_cancellation
 from pinecall_runtime.providers import service as providers
@@ -40,6 +41,7 @@ from pinecall_runtime.wire.commands import (
     AgentRegister,
     CallClaim,
     CallDial,
+    CallDone,
     CallOptOut,
     DevAnswer,
     Ping,
@@ -105,6 +107,9 @@ class AppSocket:
         self.connected_at = time.time()
         self._send = send
         self._close = close
+        # Set once the inbox was asked of the signal, heard on or not: what other gateways tell the socket
+        # before that is lost, so the endpoint reads the socket's first frame only after.
+        self.listening = asyncio.Event()
 
     @property
     def registry(self) -> agents_registry.AgentRegistry:
@@ -148,7 +153,7 @@ class AppSocket:
         for call in theirs:
             self.live.attach(call, None)
         await self.registry.kill(self.id, self.scope.env, slug)
-        await hand_on(self.live, self.registry, theirs)
+        await hand_on(self.live, self.registry, theirs, left=self.id)
 
     async def take(self, raw: Json) -> None:
         """One frame: its command applied, or refused in an error that names it."""
@@ -188,24 +193,23 @@ class AppSocket:
             try:
                 listener = await self.live.inbox(self.id)
             except ServiceUnavailable:
+                self.listening.set()
                 await asyncio.sleep(INBOX_RETRY_S)
                 continue
+            self.listening.set()
             try:
                 async for data in listener:
-                    await self._heard(ForApp.model_validate_json(data))
+                    await self._heard(data)
             finally:
                 listener.close()
             await asyncio.sleep(INBOX_RETRY_S)
 
-    # A message the database did not answer (a binding read in a transaction) is logged and the
-    # inbox heard on: a task that died with it would leave the socket deaf for its whole life.
-    async def _heard(self, message: ForApp) -> None:
-        try:
-            await self.hear(message)
-        except DatabaseError as failed:
-            if is_cancellation(failed):
-                raise
-            logger.warning("app %s: a message of its inbox was not applied; the database did not answer", self.id)
+    # A message that could not be applied (a binding read the database did not answer, a shape this
+    # version cannot read) is said with the socket and the inbox heard on: a task that died with it
+    # would leave the socket deaf for its whole life.
+    async def _heard(self, data: bytes) -> None:
+        with survived("an app socket's inbox", self.id):
+            await self.hear(ForApp.model_validate_json(data))
 
     async def hear(self, message: ForApp) -> None:
         """One message of the inbox, applied."""
@@ -225,7 +229,7 @@ class AppSocket:
         for call in bound:
             self.live.attach(call, None)
         await self.registry.release(self.id)
-        await hand_on(self.live, self.registry, bound)
+        await hand_on(self.live, self.registry, bound, left=self.id)
 
     async def refuse(self, slug: str, code: str, message: str, raw: Json) -> None:
         """An error naming the command refused and its id; on the agent's log when it holds one."""
@@ -276,12 +280,14 @@ class AppSocket:
             try:
                 await billing.admit_agent(session, scope.org, scope.env, holding=len(others))
             except QuotaExceeded as refused:
-                await alerts.credits_exhausted(session, self.serving, scope, slug, refused)
+                await alerts.credits_refused(self.serving, scope, slug, refused)
                 raise
         await self.send(await self.registry.register(self.id, scope, slug, wanted))
-        # A console takes no call it did not open; an app takes the calls a previous one left.
+        # A console takes no call it did not open; an app takes the calls a previous one left, on
+        # this gateway and on the others, which are told it took the agent.
         if wanted.takes_unclaimed:
             await attach_parked(self.live, scope, slug, self.id)
+            tell_handoff(self.live.signal, Handoff(taking=Taking(app=self.id, scope=scope, agent=slug)))
 
     # A class that searches with no base attached, gives a plugin options on a key the box lends,
     # or asks ears that cannot end the turn to, is refused when declared, not mid-call.
@@ -306,7 +312,7 @@ class AppSocket:
     async def _drain(self, slug: str) -> None:
         self.registry.drain(self.id, self.scope.env, slug)
         mine = [call for call in self.live.bound_to(self.id) if self.live.calls[call].agent == slug]
-        handed, parked = await hand_on(self.live, self.registry, mine)
+        handed, parked = await hand_on(self.live, self.registry, mine, left=self.id)
         await self.send(await self.registry.drained(self.id, self.scope.env, slug, handed=handed, parked=parked))
 
     # The worker may have asked another gateway: the answer is written on the call's log here,
@@ -364,6 +370,9 @@ class AppSocket:
             await served.running.apply(model)
             return
         if command.call is not None and await send_command(self.serving.handles.signal, command):
+            return
+        # The app's word after its end hook, for a call that was sealed already: nothing waits for it.
+        if isinstance(model, CallDone):
             return
         await self.refuse(
             command.agent, "no_session", NO_SESSION.format(kind=command.type, call=command.call), command.dump()

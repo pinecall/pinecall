@@ -60,6 +60,51 @@ def test_a_definition_no_call_could_run_is_refused_with_a_sentence(changes: dict
         defined.check(clinic(**changes), {"AGENDA_KEY"})
 
 
+def a_tool(**changes: object) -> dict[str, object]:
+    """A tool with a header's secret, the way a definition holds one, with these fields changed."""
+    return {"name": "a", "description": "x", "url": "https://a.example.com", **changes}
+
+
+@pytest.mark.parametrize(
+    ("changes", "where"),
+    [
+        ({"instructions": "Log in with {{secrets.AGENDA_KEY}}."}, "`instructions`"),
+        ({"greeting": {"say": "Key {{secrets.AGENDA_KEY}}"}}, "`greeting.say`"),
+        ({"tools": [a_tool(description="Needs {{ secrets.AGENDA_KEY }}")]}, "`tools.a.description`"),
+        ({"tools": [a_tool(announce="One moment, {{secrets.AGENDA_KEY}}")]}, "`tools.a.announce`"),
+        ({"tools": [a_tool(url="https://a.example.com/?k={{secrets.AGENDA_KEY}}")]}, "`tools.a.url`"),
+        (
+            {"tools": [a_tool(params=[{"name": "p", "description": "the {{secrets.AGENDA_KEY}}"}])]},
+            "`tools.a.params.p.description`",
+        ),
+        (
+            {"collect": {"fields": [{"name": "n", "description": "{{secrets.AGENDA_KEY}}"}]}},
+            "`collect.fields.n.description`",
+        ),
+        ({"collect": {"fields": [{"name": "n"}], "closing": "Say {{secrets.AGENDA_KEY}}."}}, "`collect.closing`"),
+        (
+            {"collect": {"fields": [{"name": "n"}], "send_to": "https://a.example.com/{{secrets.AGENDA_KEY}}"}},
+            "`collect.send_to`",
+        ),
+    ],
+)
+def test_a_secret_named_anywhere_but_a_headers_value_is_refused_with_one_sentence_saying_where(
+    changes: dict[str, object], where: str
+) -> None:
+    """The instructions, a description, a greeting, a URL: every string of the definition, one sentence."""
+    with pytest.raises(ValidationError) as refused:
+        defined.check(clinic(**changes), {"AGENDA_KEY"})
+    assert str(refused.value) == (
+        f"{where} names {{{{secrets.AGENDA_KEY}}}} outside a header: a secret travels in a header alone"
+    )
+
+
+def test_a_secret_in_a_headers_value_stays_where_it_belongs() -> None:
+    """The one place a secret may be named, on a tool and on data collection."""
+    headed = {"collect": {"fields": [{"name": "n"}], "headers": [{"name": "X-Key", "value": "{{secrets.AGENDA_KEY}}"}]}}
+    defined.check(clinic(**headed), {"AGENDA_KEY"})
+
+
 def test_a_secret_the_env_lacks_is_refused_naming_where_it_is_set() -> None:
     """A deploy to production checks production's secrets: a missing one is said before a call."""
     with pytest.raises(ValidationError, match=r"AGENDA_KEY.*Secrets"):

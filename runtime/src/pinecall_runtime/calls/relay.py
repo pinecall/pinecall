@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from pinecall_runtime.calls.models import log_name
 from pinecall_runtime.exceptions import ServiceUnavailable
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.postgres import box_task
 from pinecall_runtime.redis import Listener, Signal
 from pinecall_runtime.wire.base import Entry
@@ -136,7 +137,10 @@ class Relay:
             await self._polled(following)
             return
         async for data in listener:
-            await self._heard(following, data)
+            # One message that cannot be applied is said with its channel: an entry it carried that
+            # the store has is filled in when the next one arrives, and the readers are not left deaf.
+            with survived("following a log", following.name):
+                await self._heard(following, data)
         self._over(following)
 
     # The signal is down: a log's durable entries are read off the store each second (a feed
@@ -148,9 +152,10 @@ class Relay:
             if following.closed:
                 return
             if following.ordered:
-                for entry in await self._since(following.name.removeprefix(LOG_PREFIX), following.last, A_PAGE):
-                    if entry.seq > following.last:
-                        self._handed(following, entry)
+                with survived("reading a log off the store while the signal is down", following.name):
+                    for entry in await self._since(following.name.removeprefix(LOG_PREFIX), following.last, A_PAGE):
+                        if entry.seq > following.last:
+                            self._handed(following, entry)
             if self.signal.up:
                 self._over(following)
                 return
@@ -190,18 +195,19 @@ class Relay:
     async def _fill(self, following: Following) -> None:
         await asyncio.sleep(FILL_AFTER_S)
         try:
-            if following.closed or not following.held:
-                return
-            highest = max(following.held)
-            wanted = highest - following.last
-            name = following.name.removeprefix(LOG_PREFIX)
-            for entry in await self._since(name, following.last, wanted):
-                if following.last < entry.seq <= highest:
-                    following.held.setdefault(entry.seq, entry)
-            for seq in sorted(seq for seq in following.held if seq <= highest):
-                entry = following.held.pop(seq)
-                if seq > following.last:
-                    self._handed(following, entry)
+            with survived("filling a log's gap", following.name):
+                if following.closed or not following.held:
+                    return
+                highest = max(following.held)
+                wanted = highest - following.last
+                name = following.name.removeprefix(LOG_PREFIX)
+                for entry in await self._since(name, following.last, wanted):
+                    if following.last < entry.seq <= highest:
+                        following.held.setdefault(entry.seq, entry)
+                for seq in sorted(seq for seq in following.held if seq <= highest):
+                    entry = following.held.pop(seq)
+                    if seq > following.last:
+                        self._handed(following, entry)
         finally:
             following.filling = None
             if following.held and not following.closed:

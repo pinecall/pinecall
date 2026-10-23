@@ -2,6 +2,7 @@
 
 require_relative "serve/loading"
 require_relative "serve/held"
+require_relative "serve/masking"
 require_relative "serve/viewing"
 
 module Pinecall
@@ -40,18 +41,18 @@ module Pinecall
     def start(flags, out:, err:, env:, input:, signals:)
       client = client_from(env, prod: flags.prod)
       classes = flags.served.map { |served| [served, Loading.load_served(served)] }
-      said(client, out:, err:, events: flags.events)
       mounted = classes.map do |served, klass|
         held = Pinecall.mount(klass, client:, slug: served.slug, takes_unclaimed: !flags.console)
         held.agent.on_dev { |verb, data| Viewing.answer(klass, served.slug, verb, data) }
         held
       end
-      held = Held.new(client, mounted)
+      said(client, out:, err:, events: flags.events, maskings: mounted.to_h { |one| [one.slug, Masking.new(one.options)] })
+      held = Held.new(client, mounted, err:)
       asked = signals || trapped
       client.on_stopped { |why| err.puts(why) || asked.push(:stopped) }
       client.connect
       Thread.new { ended(input, asked) }
-      leave(held, asked, err)
+      leave(held, asked)
     end
 
     # Load the class, open it in the state the pairs name, and print its prompt. No gateway, no key.
@@ -123,16 +124,19 @@ module Pinecall
 
     # Listening starts before connect, so `agent.registered` is the first line of a pipe. A pipe's
     # $stdout is buffered: each line is flushed, or the CLI waiting on it sees it only at exit.
-    def said(client, out:, err:, events:)
+    def said(client, out:, err:, events:, maskings:)
       client.on_entries do |entry|
         if events
-          out.puts(JSON.generate({ type: entry.type, agent: entry.agent, call: entry.call, data: entry.data }))
+          # What it prints is what the call's log keeps: a value the agent declared private never reaches a terminal.
+          shown = maskings[entry.agent]&.entry(entry) || entry
+          out.puts(JSON.generate({ type: shown.type, agent: shown.agent, call: shown.call, data: shown.data }))
         elsif entry.type == "agent.registered"
           out.puts("#{entry.agent}  · answering as #{entry.data[:app]}")
         end
         out.flush
       end
       client.on_errors { |error| err.puts("#{error.class}: #{error.message}") }
+      client.on_killed { |slug, why| err.puts("#{slug}  ✗ #{why}") }
     end
 
     # A trap only pushes: the main thread does the leaving, as a trap may not take a lock.
@@ -153,7 +157,7 @@ module Pinecall
 
     # The first reason drains (unless the org already stopped it); only a second signal closes at
     # once. The end of stdin is not one: the CLI passes a signal on and closes the pipe together.
-    def leave(held, asked, err)
+    def leave(held, asked)
       if asked.pop == :stopped
         held.close
         return 0
@@ -164,8 +168,7 @@ module Pinecall
         nil until asked.pop == :signalled
         outcome.push(:again)
       end
-      drained = outcome.pop
-      drained == :again ? held.close : err.puts(drain_line(drained))
+      held.close if outcome.pop == :again
       0
     end
   end

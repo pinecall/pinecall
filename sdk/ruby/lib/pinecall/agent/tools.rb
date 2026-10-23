@@ -70,12 +70,13 @@ module Pinecall
         self.class.declared_tools.values.select { |declared| Tools.shows?(declared, state) }
       end
 
-      # Run a tool as the bridge does, with its writes attributed to it.
-      def run_tool(name, arguments = {})
+      # Run a tool as the bridge does, with its writes attributed to it; `call_id` is the model's id
+      # for the call, when there is one.
+      def run_tool(name, arguments = {}, call_id = nil)
         declared = self.class.tool_named(name)
         raise ToolFailed, "#{name}: this agent declares no such tool" if declared.nil?
 
-        Tools.run(self, declared, arguments)
+        Tools.run(self, declared, arguments, call_id)
       end
 
       class << self
@@ -93,10 +94,10 @@ module Pinecall
         end
 
         # Check arguments, run the method with its writes attributed, and trim to `preview`.
-        def run(agent, declared, arguments)
+        def run(agent, declared, arguments, call_id = nil)
           named = arguments.to_h { |key, value| [key.to_sym, value] }
           refuse_arguments_the_tool_never_asked_for(declared, named)
-          result = Author.with(declared.name.to_s) { agent.public_send(declared.name, **named) }
+          result = Author.with(declared.name.to_s, call_id) { agent.public_send(declared.name, **named) }
           preview(result, declared.options[:preview])
         end
 

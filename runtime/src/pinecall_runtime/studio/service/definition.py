@@ -2,14 +2,15 @@
 
 import json
 import re
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from typing import Any, cast
 from urllib.parse import urlsplit
 
+from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
 from pinecall_runtime.exceptions import ValidationError
-from pinecall_runtime.studio.schemas import CollectedField, Definition, HttpTool, ParamType
+from pinecall_runtime.studio.schemas import CollectedField, Definition, Header, HttpTool, ParamType
 from pinecall_runtime.studio.service import rules
 from pinecall_runtime.wire.parts import (
     AgentConfig,
@@ -21,8 +22,10 @@ from pinecall_runtime.wire.parts import (
 
 # The tool data collection adds: the model hands it what the caller said, field by field.
 COLLECT = "collect"
+# The hang-up tool the session gives a model that may end the call: its call and its result are the session's.
+END_CALL = "end_call"
 # The platform's own tools and argument, which a Studio tool may never be called.
-RESERVED = frozenset({COLLECT, "end_call", "current_date", "recall", "search", "say"})
+RESERVED = frozenset({COLLECT, END_CALL, "current_date", "recall", "search", "say"})
 # `{{secrets.NAME}}`, `{{call.from}}`, `{{metadata.order}}`: a dotted path, nothing else.
 A_PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_][\w.]*)\s*\}\}")
 # A URL's own `{id}`: a parameter of the tool's, filled from the model's arguments.
@@ -58,7 +61,8 @@ def dumped(definition: Definition) -> bytes:
 
 # Refused when it is saved, never discovered on a call: what the shapes alone cannot say.
 def check(definition: Definition, secrets: Collection[str]) -> None:
-    """Refuse a definition no call could run: names twice, a URL off TLS, a secret this env lacks."""
+    """Refuse a definition no call could run: names twice, a URL off TLS, a secret out of a header or this env lacks."""
+    _check_secrets_stay_in_headers(definition)
     names: set[str] = set()
     for tool in definition.tools:
         if tool.name in RESERVED:
@@ -77,9 +81,8 @@ def check(definition: Definition, secrets: Collection[str]) -> None:
         fields.add(field.name)
     if collect.send_to is not None:
         _check_url("data collection", collect.send_to)
-        _check_secrets("data collection's URL", collect.send_to, secrets, in_a_header=False)
     for header in collect.headers:
-        _check_secrets(f"data collection's header {header.name}", header.value, secrets, in_a_header=True)
+        _check_secrets_are_set(f"data collection's header {header.name}", header.value, secrets)
 
 
 def declaration(definition: Definition) -> AgentConfig:
@@ -200,7 +203,6 @@ def _wanted(field: CollectedField) -> str:
 def _check_tool(tool: HttpTool, secrets: Collection[str]) -> None:
     where = f"tool {tool.name}"
     _check_url(where, tool.url)
-    _check_secrets(f"{where}'s URL", tool.url, secrets, in_a_header=False)
     params: set[str] = set()
     for param in tool.params:
         if param.name in params:
@@ -210,7 +212,7 @@ def _check_tool(tool: HttpTool, secrets: Collection[str]) -> None:
         if named not in params:
             raise ValidationError(PATH_PARAM_UNDECLARED.format(tool=tool.name, param=named))
     for header in tool.headers:
-        _check_secrets(f"{where}'s header {header.name}", header.value, secrets, in_a_header=True)
+        _check_secrets_are_set(f"{where}'s header {header.name}", header.value, secrets)
 
 
 def _check_url(where: str, url: str) -> None:
@@ -219,12 +221,32 @@ def _check_url(where: str, url: str) -> None:
         raise ValidationError(NOT_HTTPS.format(where=where, url=url))
 
 
-def _check_secrets(where: str, text: str, secrets: Collection[str], *, in_a_header: bool) -> None:
+# A secret is a header's value and nowhere else: the walk reads every string the definition holds, so
+# a field added to it later is covered without anyone remembering to say so.
+def _check_secrets_stay_in_headers(definition: Definition) -> None:
+    for where, text in _strings(definition, ""):
+        for path in A_PLACEHOLDER.findall(text):
+            head, _, name = path.partition(".")
+            if head == SECRETS:
+                raise ValidationError(SECRET_OUTSIDE.format(where=f"`{where}`", name=name))
+
+
+# Every string of the model with the path to it, a header's value excepted.
+def _strings(item: object, path: str) -> Iterator[tuple[str, str]]:
+    if isinstance(item, str):
+        yield path, item
+    elif isinstance(item, BaseModel):
+        for field in type(item).model_fields:
+            if not (isinstance(item, Header) and field == "value"):
+                yield from _strings(getattr(item, field), f"{path}.{field}" if path else field)
+    elif isinstance(item, list):
+        for index, entry in enumerate(cast("list[object]", item)):
+            named = getattr(entry, "name", None)
+            yield from _strings(entry, f"{path}.{named if isinstance(named, str) else index}")
+
+
+def _check_secrets_are_set(where: str, text: str, secrets: Collection[str]) -> None:
     for path in A_PLACEHOLDER.findall(text):
         head, _, name = path.partition(".")
-        if head != SECRETS:
-            continue
-        if not in_a_header:
-            raise ValidationError(SECRET_OUTSIDE.format(where=where, name=name))
-        if name not in secrets:
+        if head == SECRETS and name not in secrets:
             raise ValidationError(NO_SUCH_SECRET.format(where=where, name=name))

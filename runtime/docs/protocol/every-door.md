@@ -285,7 +285,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/consents/{number}` | calls | What stands for the number, and every fact about it, newest first. |
 | `GET` | `/v1/org/dnc` | calls | The environment's do-not-call list, newest first, a page after the cursor. |
 | `POST` | `/v1/org/dnc` | talk | Numbers the org's own list or its Registry scrub says not to call, onto the list at once. |
-| `GET` | `/v1/org/reads` | team | Who read the org's calls, recordings, seats, exports and memory, newest first; of one subject when named. |
+| `GET` | `/v1/org/reads` | team | Who read the org's calls, recordings, seats, exports and memory in the key's environment, newest first; of one subject when named. |
 | `GET` | `/v1/org/erasures` | team | The org's erasures, newest first: what went, when, and who asked. |
 | `GET` | `/v1/org/policy` | team | The org's compliance settings: retention, calling hours, calls a day per number, and who set them. |
 | `PUT` | `/v1/org/policy` | team | The org's compliance settings replaced whole, from the next nightly run. |

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pinecall_runtime.agents.declaration import Voice
 from pinecall_runtime.agents.service import tuning
 from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
 from pinecall_runtime.judging.models import AgentPersona
@@ -172,6 +173,19 @@ def check_persona_models(configured: providers.Catalog, llm: str | None, tts: st
     listed = providers.listed_in_catalog(configured, vendor, None)
     if voice and listed and all(one.id != voice for one in listed):
         raise ValidationError(NO_SUCH_VOICE.format(vendor=vendor, voice=voice))
+
+
+# The run says it the same way when no key stands behind the vendor, so the writer hears it first.
+def check_persona_keys(
+    configured: providers.Catalog, keys: providers.Keyring, llm: str | None, tts: str | None
+) -> None:
+    """Refuse a model or a voice's vendor that nobody keyed for the org, or the box lends it no key for."""
+    in_use = configured.default_vendors
+    model = tuning.model_named(llm or None, "llm", in_use=in_use["llm"])
+    if model is not None:
+        providers.stage_on_its_key("llm", model, configured, keys)
+    if tts:
+        providers.stage_on_its_key("tts", Voice(provider=providers.vendor_doing(tts, "tts")), configured, keys)
 
 
 def persona_of(name: str, body: PersonaRequest) -> Persona:

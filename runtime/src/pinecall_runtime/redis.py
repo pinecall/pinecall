@@ -18,6 +18,7 @@ from redis.exceptions import RedisError
 
 from pinecall_runtime.config import Settings
 from pinecall_runtime.exceptions import ConfigurationError, ServiceUnavailable
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.postgres import box_task
 
 logger = logging.getLogger(__name__)
@@ -278,7 +279,9 @@ class RedisSignal:
                             pipe.publish(name, data)  # pyright: ignore[reportUnknownMemberType]
                         await pipe.execute()
                     pause = 0.0
-                except (RedisError, OSError):
+                except Exception:
+                    # Whatever it was, not only Redis being away: a sender that ended would drop
+                    # every message of the box for good, and nothing else would say so.
                     self.dropped += len(batch)
                     if not pause:
                         logger.warning("the signal cannot publish to Redis; dropping", exc_info=True)
@@ -290,11 +293,14 @@ class RedisSignal:
         while True:
             try:
                 await self._heard()
-            except (RedisError, OSError, TimeoutError):
+            except Exception:
+                # Redis lost, or anything else a message made this raise: either way the listeners
+                # resume from the store, and the loop that listens is not the thing that ends.
                 if not pause:
                     logger.warning("the signal lost Redis; listeners resume from the store", exc_info=True)
             pause = 0.0 if self._up else _longer(pause)
-            await self._lost()
+            with survived("the signal's letting go of its connection"):
+                await self._lost()
             await asyncio.sleep(pause)
 
     async def _heard(self) -> None:

@@ -12,6 +12,7 @@ from pinecall.client import Found
 from pinecall.wire._names import JsonObject
 from pinecall.wire.events import EVENTS
 from pinecall.wire.frames import WireModel
+from pinecall.wire.parts import Contact
 
 LINE = CallLine(id="CA_1", contact="+34600", from_="+34600", channel="phone", today="2026-10-07")
 
@@ -176,3 +177,26 @@ async def test_a_search_goes_through_the_gateway_for_this_call() -> None:
 def test_the_medium_is_the_one_the_channel_implies_when_the_line_does_not_say() -> None:
     assert CallWorld(CallLine(id="WA_1", channel="whatsapp")).medium == "text"
     assert CallWorld(LINE).line() == calls.Line("phone", "voice", None)
+
+
+def test_a_call_says_who_and_where_and_what_it_was_opened_with() -> None:
+    line = CallLine(
+        id="CA_2",
+        to="+34910",
+        direction="outbound",
+        caller=Contact(name="Ana", phone="+34600", email="ana@example.com"),
+        metadata={"order": "A-17"},
+    )
+    world = CallWorld(line)
+    assert (world.to, world.direction, world.metadata) == ("+34910", "outbound", {"order": "A-17"})
+    assert world.caller is not None
+    assert (world.caller.name, world.caller.phone, world.caller.email) == (
+        "Ana",
+        "+34600",
+        "ana@example.com",
+    )
+
+
+def test_a_call_nobody_named_has_no_caller_and_empty_metadata() -> None:
+    world = CallWorld(CallLine(id="CA_2"))
+    assert (world.caller, world.metadata, world.direction, world.to) == (None, {}, None, None)

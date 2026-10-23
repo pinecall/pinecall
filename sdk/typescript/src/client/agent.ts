@@ -2,7 +2,7 @@
 
 import { type AgentConfig } from "../wire/agent-config.js";
 import { type Camel, type CommandData, eventOf } from "../wire/codec.js";
-import { type DevVerb, type Route, type ToolSpec } from "../wire/defs.js";
+import { END_CALL, type DevVerb, type Route, type ToolSpec } from "../wire/defs.js";
 import { type Entry } from "../wire/envelope.js";
 import { type CommandType, type EventType } from "../wire/registry.js";
 import { Call, CallBook, type CallGateway } from "./calls.js";
@@ -11,7 +11,8 @@ import { Listeners, asError, camelEvent, type AnyListener, type CamelEvent, type
 
 /** A tool: the spec the model sees and the function that runs when it is called. */
 export interface Tool extends Camel<ToolSpec> {
-  run: (args: Record<string, unknown>, call: Call) => unknown;
+  /** `callId` is the model's id for this call, the one the state writes it makes name as their cause. */
+  run: (args: Record<string, unknown>, call: Call, callId: string) => unknown;
 }
 
 /** An agent's declaration plus its tools' code. */
@@ -27,6 +28,11 @@ export interface AgentOptions extends Omit<Camel<AgentConfig>, "tools"> {
    * its calls. Such a socket declares nothing: it never sends `agent.configure`.
    */
   answersDev?: boolean;
+  /**
+   * Whether this process sends `call.done` once a call's end hook ran, so the gateway's seal waits
+   * for the lines the hook logs. A mounted agent class does; a bare client has no hook to wait for.
+   */
+  saysDone?: boolean;
 }
 
 /** The client-side socket an agent sends frames through. */
@@ -68,6 +74,7 @@ export class Agent implements CallGateway {
   #config: Camel<AgentConfig>;
   #takesUnclaimed: boolean;
   #answersDev: boolean;
+  #saysDone: boolean;
   #app: string | undefined;
   #dev: DevHandler | undefined;
 
@@ -76,10 +83,11 @@ export class Agent implements CallGateway {
     options: AgentOptions,
     private readonly gateway: AgentGateway,
   ) {
-    const { tools = [], takesUnclaimed = true, answersDev = false, ...config } = options;
+    const { tools = [], takesUnclaimed = true, answersDev = false, saysDone = false, ...config } = options;
     this.#config = config;
     this.#takesUnclaimed = takesUnclaimed;
     this.#answersDev = answersDev;
+    this.#saysDone = saysDone;
     this.declare(tools);
     this.calls = new CallBook(this);
     this.#listeners = new Listeners<Call | null>((error) => gateway.onError(error));
@@ -140,6 +148,7 @@ export class Agent implements CallGateway {
       host: this.gateway.host,
       takesUnclaimed: this.#takesUnclaimed,
       ...(this.#answersDev ? { answersDev: true } : {}),
+      ...(this.#saysDone ? { saysDone: true } : {}),
     });
     // Each reconnect mints a new app id.
     this.#app = registered.app;
@@ -151,7 +160,7 @@ export class Agent implements CallGateway {
 
   /** Fold one entry into its call and dispatch it to listeners. */
   take(entry: Entry): void {
-    const event = camelEvent(eventOf(entry));
+    const event = camelEvent(eventOf(entry), entry.seq);
     const call = entry.call === null ? null : this.calls.of(entry.call, entry.ts);
     this.#settle(event);
     call?.take(event);
@@ -210,13 +219,14 @@ export class Agent implements CallGateway {
     const { callId, name, arguments: args } = event.data;
     const tool = this.#tools.get(name);
     if (tool === undefined) {
-      call.toolResult({ callId, name, error: `this app declares no tool called ${name}` });
+      // The platform answers its own tool, and an answer from here would race it.
+      if (name !== END_CALL) call.toolResult({ callId, name, error: `this app declares no tool called ${name}` });
       return;
     }
     const started = Date.now();
     const running = (async () => {
       try {
-        const output = await tool.run(args, call);
+        const output = await tool.run(args, call, callId);
         call.toolResult({ callId, name, output, durationS: (Date.now() - started) / 1000 });
       } catch (failed) {
         // A rejection is the tool's answer (sent as `error`), not an app failure; don't report it.

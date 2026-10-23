@@ -156,7 +156,9 @@ agent.patient = row
 ```
 
 The author of a write is the tool's own name, and it rides `Fiber[]` rather than a global — so two
-calls being served at the same moment never read each other's.
+calls being served at the same moment never read each other's. The log says it: each write is one
+`state.changed` entry whose `cause` names the tool and the model's id for its call, the outside fact
+that `on_event` was handling, or the hook (`on_call`, `on_memory`).
 
 `visibility:` is `:public`, `:tenant` (the default, and the wire's) or `:pii`.
 
@@ -183,7 +185,7 @@ tool; the signature is the schema it fills.
 | `confirm:` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |
-| `pii:` | parameters that carry personal data, masked in the log by declaration |
+| `pii:` | parameters that carry personal data: masked in the call's log by declaration, and by value wherever the agent writes them down, as in what `pinecall start` prints |
 | `timeout:` | how long the platform waits for this method, in seconds |
 | `params:` | the type of a parameter when a bare name is not enough |
 | `doc:` | the description, for a class with no source to read |
@@ -198,6 +200,11 @@ by position is a thing only a human gets right, so a positional argument is refu
 tool params: { day: String, how_many: Integer, slot: { type: "object" } }
 def free_slots(day:, how_many: 3, slot: nil)
 ```
+
+**What a class sends is JSON.** What a tool returns is what the model reads, and a state field and a
+logged line go to the call's log the same way. A hash, an array, text or a number goes as it is; a
+`Data` or a `Struct` — alone, or inside an array or a hash — goes as its fields, so a tool that returns
+`knowledge.search(…)` hands the model `{ path, heading, text }` for each hit.
 
 ## What is refused, at load
 
@@ -215,7 +222,12 @@ call, and never as a gateway's refusal of the socket:
 | `voice "carolina"` (no voice id) | `a voice the class declares names its vendor and the voice: voice "<vendor>", "<voice id>"` |
 
 A view is the one thing read later, at render: a field the class never declared raises there, by
-name, the same way an undefined instance variable does in a Rails view.
+name, the same way an undefined instance variable does in a Rails view. A view that raises fails its
+own call and nothing else: the call's log gets a `render.failed` entry with the exception's class and
+message, the model keeps the view it had, and every other call carries on. A hook that raises
+(`on_call`, `on_event`, `on_memory`, `on_end`) fails the same way: a `hook.failed` entry names the hook
+(and the event, for `on_event`), the call goes on with what the hook wrote before it raised, and an
+`on_end` that raises still closes the log and says `call.done`.
 
 ## The hooks
 
@@ -230,7 +242,10 @@ def on_event(name, data, meta)     # an outside fact this class declared with `a
 def on_memory(ops, call)           # memory read or written: each op's :op and :facts
 ```
 
-`on_call` runs before the first render, so the model never reads a state the call was not in.
+`on_call` runs before the first render, so the model never reads a state the call was not in. After
+`on_end` the bridge sends `call.done`, and the gateway waits for it, up to three seconds, before it seals
+the call: a log is closed to lines once sealed, so a line `on_end` logs later than that is refused, and
+the gateway's journal names it.
 
 An outside fact only reaches `on_event` if the class declared the pair:
 
@@ -263,10 +278,20 @@ log "outcome", { reference: booking[:reference] }
 knowledge.search("summer opening hours", k: 3)   # the bases attached to the agent, searched for this call
 ```
 
+What the call is, on the line that carries it:
+
+```ruby
+call.id  call.from  call.to  call.channel  call.medium  call.today
+call.direction    # "inbound" when the public reached the agent, "outbound" when the agent dialled
+call.caller       # who the platform knows is on the line: { id:, name:, phone:, email: }, nil when nobody is named
+call.metadata     # what the call was opened with, such as a token's metadata: {} when none
+```
+
 `transfer` and `attention` block the tool that called them until the log answers — `ok: false`
 and a sentence when nobody did, or when the call ended first. `knowledge.search` (or
 `call.search`) asks the gateway, which searches the bases attached to the agent and logs what it
-found; a class that searches says so when it registers, so a world with no base attached is refused
+found, and answers an array of `Pinecall::CallWorld::Found` — `path`, `heading` and `text` each;
+a class that searches says so when it registers, so a world with no base attached is refused
 then and not mid-call. A view can ask `call[:claimed]` for the page code this call claimed.
 
 There is no LiveKit here and no escape hatch to it: a need the room cannot express is a new

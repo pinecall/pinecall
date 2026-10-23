@@ -4,6 +4,11 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **The wire's `StateCause` knows a `hook` kind**, as the runtime writes it for `onCall` and `onMemory`, and
+  `call.started` carries `metadata`. (found by the 2026-10-23 eval, B B4, K F6)
+
 ## 0.11.15 — released with every other package (2026-10-23)
 
 - Nothing of `@pinecall/room` changed: published at 0.11.15 with every other package.

@@ -5,8 +5,9 @@ import { type ToolSpec } from "../wire/defs.js";
 import { type CommandType } from "../wire/registry.js";
 import type { Agent as SdkAgent, AgentOptions, Call as SdkCall, Pinecall, Tool } from "../client/index.js";
 
-import { Agent, onChange, onLog, recalled, seal, setCall, setLast } from "../agent/agent.js";
+import { Agent, changes, onChange, onLog, recalled, seal, setCall, setLast } from "../agent/agent.js";
 import { eventsOf } from "../agent/accepts.js";
+import { hookAuthor, withToolCall } from "../agent/authors.js";
 import { visibilityOf } from "../agent/visibility.js";
 import { CallWorld, type CallLine, type Searching } from "../call/call.js";
 import { describe } from "../agent/docstrings.js";
@@ -17,6 +18,7 @@ import { toolNamed } from "../agent/tools.js";
 import { viewOf } from "../agent/view.js";
 import { PROMPT_BLOCKS } from "../views/layout.js";
 import { promptOf } from "../views/render.js";
+import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
 import { wordsRecalled } from "./recall.js";
@@ -58,10 +60,17 @@ interface Sent {
   tools?: string;
 }
 
+// The custom entries a view that failed to render, and a hook that threw, leave on their call.
+const RENDER_FAILED = "render.failed";
+const HOOK_FAILED = "hook.failed";
+
 interface Live {
   agent: Agent;
   sent: Sent;
+  /** The listeners that end with the call, before `onEnd` runs. */
   stop: (() => void)[];
+  /** The log line forwarder, which outlives `onEnd` so a line logged there lands. */
+  unlog: () => void;
   serving: Serving;
 }
 
@@ -117,9 +126,9 @@ export function mount(
   const probe = new ctor();
   const tools: Tool[] = probe.tools().map((spec) => ({
     ...(spec as unknown as Camel<ToolSpec>),
-    run: (args, call) => call_(live, call, spec.name, args),
+    run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
-  const options = { ...optionsFor(ctor, tools, probe, file, source), takesUnclaimed };
+  const options = { ...optionsFor(ctor, tools, probe, file, source), takesUnclaimed, saysDone: true };
   const agent = pc.agent(name, options);
 
   agent.on("call.started", (started, call) => {
@@ -155,12 +164,13 @@ async function call_(
   call: SdkCall,
   name: string,
   args: Record<string, unknown>,
+  callId: string,
 ): Promise<unknown> {
   const serving = live.get(call.id);
   if (serving === undefined) throw new ToolFailed(`${name}: this call is no longer being served`);
   const declaration = toolNamed(serving.agent, name);
   if (declaration === undefined) throw new ToolFailed(`${name}: this agent declares no such tool`);
-  return runTool(serving.agent, declaration, args);
+  return withToolCall(callId, () => runTool(serving.agent, declaration, args));
 }
 
 // Subscribe to changes only after the first sync, so onCall's writes go out as one prompt. The
@@ -176,9 +186,11 @@ async function start(
   openedIn?: Snapshot,
 ): Promise<void> {
   const link = serve(ctor, live, call, send, searching, last);
-  await runHook(link.agent, "onCall", hookCall(call));
+  await hooked(call, "onCall", runHook(link.agent, "onCall", hookCall(call)));
+  const author = hookAuthor("onCall");
+  const wrote = changes(link.agent).some((change) => change.author === author);
   if (openedIn !== undefined) link.agent.startIn(openedIn);
-  call.setState(snapshot(link.agent));
+  call.setState(snapshot(link.agent), undefined, wrote ? causeOf(author, link.serving.call) : undefined);
   sync(link, call);
   follow(link, call);
 }
@@ -213,7 +225,9 @@ function serve(
   const world = new CallWorld(callLine(call), (type, data) => send(type, call.id, data), searching);
   setCall(agent, world);
   const serving: Serving = { agent, ctor, call: world, warned: new Set<string>(), queue: Promise.resolve() };
-  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], serving };
+  // Before the hooks run, so a line logged in onCall lands; stopped after onEnd.
+  const unlog = onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data)));
+  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving };
   live.set(call.id, link);
   return link;
 }
@@ -223,21 +237,17 @@ function follow(link: Live, call: SdkCall): void {
   const world = serving.call;
   link.stop.push(
     onChange(agent, (change) => {
-      call.setState(snapshot(agent), [change.field]);
-      // state.set has no cause field on the wire, so log it separately.
-      const cause = world.cause;
-      if (cause !== null) call.log("state.cause", { field: change.field, kind: "event", ...cause });
+      call.setState(snapshot(agent), [change.field], causeOf(change.author, world));
       sync(link, call);
     }),
-    onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data))),
     call.onAny((event) => {
       world.take(event.type, event.data as Record<string, unknown>, Date.now());
-      if (event.type === "event.received") void received(serving, event.data);
+      if (event.type === "event.received") void received(serving, call, event.data, event.seq ?? 0);
       // Recalled memory is not state, so re-render explicitly; then the hook reads what memory did.
       if (event.type === "memory.ops") {
         recalled(agent, wordsRecalled(event.data));
         sync(link, call);
-        void runHook(agent, "onMemory", event.data.ops, hookCall(call));
+        void hooked(call, "onMemory", runHook(agent, "onMemory", event.data.ops, hookCall(call)));
       }
       // Re-render on the user's turn so the view reflects the turn being answered, not the previous
       // one. The gateway holds the LLM request while lookups run (runtime's session/lookups.py).
@@ -248,16 +258,16 @@ function follow(link: Live, call: SdkCall): void {
   );
 }
 
-// Numbered per call: listeners receive events without the wire's seq.
-async function received(serving: Serving, data: unknown): Promise<void> {
+async function received(serving: Serving, call: SdkCall, data: unknown, seq: number): Promise<void> {
   const fact = data as { name: string; data: Record<string, unknown>; source: "app" | "participant"; identity?: string };
-  await inOrder(serving, {
+  const dispatched = inOrder(serving, {
     name: fact.name,
     data: fact.data,
     source: fact.source,
-    seq: serving.call.numbered(),
+    seq,
     ...(fact.identity === undefined ? {} : { identity: fact.identity }),
   });
+  await hooked(call, "onEvent", dispatched, fact.name);
 }
 
 async function end(live: Map<string, Live>, call: SdkCall): Promise<void> {
@@ -265,12 +275,39 @@ async function end(live: Map<string, Live>, call: SdkCall): Promise<void> {
   if (link === undefined) return;
   live.delete(call.id);
   for (const stop of link.stop) stop();
-  await runHook(link.agent, "onEnd", hookCall(call));
+  await hooked(call, "onEnd", runHook(link.agent, "onEnd", hookCall(call)));
+  link.unlog();
   setCall(link.agent, null);
+  // After every line the hook logged, whether it ran or threw: the gateway seals the call on this word,
+  // and a line sent after the seal is refused.
+  call.done();
+}
+
+// A hook that throws fails its call, never the process: the log names the hook and the error, and the
+// call goes on with what the hook had written. For `onEvent`, `event` is the name it was handling.
+async function hooked(call: SdkCall, hook: string, running: Promise<unknown>, event?: string): Promise<void> {
+  try {
+    await running;
+  } catch (failed) {
+    const error = failed instanceof Error ? failed : new Error(String(failed));
+    call.log(HOOK_FAILED, { hook, ...(event === undefined ? {} : { event }), error: error.name, message: error.message });
+    console.warn(`pinecall: ${call.id}: ${hook} threw and the call goes on: ${error.message}`);
+  }
+}
+
+// A view that fails fails its call, never the process: the model keeps the view it had, and the log says why.
+function sync(serving: Live, call: SdkCall): void {
+  try {
+    show(serving, call);
+  } catch (failed) {
+    const error = failed instanceof Error ? failed : new Error(String(failed));
+    call.log(RENDER_FAILED, { error: error.name, message: error.message });
+    console.warn(`pinecall: ${call.id} could not render its view and goes on with the one it had: ${error.message}`);
+  }
 }
 
 // Send only blocks whose text changed. Tools are compared as a whole: only `when` changes them mid-call.
-function sync(serving: Live, call: SdkCall): void {
+function show(serving: Live, call: SdkCall): void {
   const { blocks } = promptOf(serving.agent);
   for (const block of blocks) {
     if (block.text === (serving.sent.blocks.get(block.name) ?? "")) continue;
@@ -293,9 +330,13 @@ function hookCall(call: SdkCall): HookCall {
   return hook;
 }
 
-// Adds `today` and `claimed`, which hookCall lacks; without them `this.call.today` is undefined.
+// Adds what hookCall lacks: without it `this.call.today` or `this.call.to` is undefined.
 function callLine(call: SdkCall): CallLine {
-  return { ...hookCall(call), today: call.today, claimed: call.claimed };
+  const line: CallLine = { ...hookCall(call), today: call.today, claimed: call.claimed, metadata: call.metadata };
+  if (call.to !== null) line.to = call.to;
+  if (call.direction !== null) line.direction = call.direction;
+  if (call.contact !== null) line.caller = call.contact;
+  return line;
 }
 
 // call.log requires an object, so wrap other values under `value`.

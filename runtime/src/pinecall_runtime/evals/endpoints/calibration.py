@@ -27,6 +27,7 @@ async def label_call(body: judged.LabelRequest, actor: EvalsKey, serving: TheSer
         raise NotFound(NO_SUCH_CALL.format(call=body.call))
     keys.check_agent(actor, kept.agent)
     where = judging.Where(org=actor.org, env=kept.scope.env, agent=kept.agent)
+    await judging.check_labellable(session, where, body.judge)
     label = judging.Label(call=body.call, judge=body.judge, held=body.held, author=asked_by(actor), note=body.note)
     await judging.label_call(session, where, label)
 

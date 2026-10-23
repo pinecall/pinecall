@@ -81,5 +81,7 @@ def test_the_callers_turn_and_the_end_are_entries_like_any_other() -> None:
         call = pc.call_started()
         call.said("Hola, soy Ana.")
         call.ended()
-        assert [one.type for one in call.commands][-1] in ("prompt.set", "tools.set", "state.set")
+        sent = [one.type for one in call.commands]
+        assert sent[-1] == "call.done"
+        assert sent[-2] in ("prompt.set", "tools.set", "state.set")
         assert pc.errors == []

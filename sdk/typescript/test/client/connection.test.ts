@@ -145,6 +145,20 @@ describe("an agent killed", () => {
   });
 });
 
+describe("a client asked to hear of a kill", () => {
+  it("is told the slug and the gateway's sentence, once, and never of an agent it does not hold", async () => {
+    const pc = await connected();
+    pc.agent("front-desk", {});
+    const told: string[] = [];
+    pc.onKilled((slug, why) => told.push(`${slug}: ${why}`));
+    await pc.connect();
+
+    gateway.kill("someone-else", "someone-else was killed by Ana");
+    gateway.kill("front-desk", "front-desk was killed by Ana");
+    await vi.waitFor(() => expect(told).toEqual(["front-desk: front-desk was killed by Ana"]));
+  });
+});
+
 // A 1008 close carries the gateway's reason: surface it, and do not retry.
 describe("a socket the gateway refuses", () => {
   it("carries the gateway's own sentence, and is not retried", async () => {

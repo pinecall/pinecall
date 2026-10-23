@@ -8,21 +8,24 @@ module Pinecall
     class Held
       attr_reader :client, :mounted
 
-      def initialize(client, mounted)
+      def initialize(client, mounted, err: $stderr)
         @client = client
         @mounted = mounted
+        @err = err
         @stopped = Thread::Queue.new
         @lock = Mutex.new
         @drained = nil
       end
 
-      # Drain every agent, then close the socket; asked twice, the first answer. Returns the drain.
+      # Drain every agent, close the socket and say on stderr where the calls went; asked twice, the
+      # first answer. Returns the drain.
       def stop
         @lock.synchronize do
           return @drained unless @drained.nil?
 
           @drained = @client.drain
           close
+          @err.puts(Serve.drain_line(@drained))
           @drained
         end
       end

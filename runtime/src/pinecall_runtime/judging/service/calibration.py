@@ -4,14 +4,20 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.enums import Env
+from pinecall_runtime.enums import Env, JudgeAnswer
+from pinecall_runtime.exceptions import Conflict
 from pinecall_runtime.judging.repository import LabelRepository
 from pinecall_runtime.judging.schemas import Calibration, JudgeAgreement
+from pinecall_runtime.judging.service.judges import judge_named
 
 # A judge is judged once this many of its verdicts have a label beside them, and trusted while it
 # agrees with at least this share of them; under its line it is reported, never dropped silently.
 LABELS_TO_JUDGE = 10
 AGREES_AT_LEAST = 0.8
+NOT_A_VERDICT = (
+    "{judge} answers a {answer}, not held or broken: a label says whether a judge should have held, "
+    "so only a judge that answers a verdict takes one"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +38,14 @@ class Where:
     org: str
     env: Env
     agent: str
+
+
+# A label for a judge nobody wrote would stay in the listing for ever: no endpoint removes one.
+async def check_labellable(session: AsyncSession, where: Where, judge: str) -> None:
+    """Refuse a label for a judge the agent's calls never meet (404), or one that answers no verdict (409)."""
+    spec = await judge_named(session, where.org, where.agent, judge)
+    if spec.answer is not JudgeAnswer.verdict:
+        raise Conflict(NOT_A_VERDICT.format(judge=judge, answer=spec.answer.value))
 
 
 async def label_call(session: AsyncSession, where: Where, label: Label) -> None:

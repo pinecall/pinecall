@@ -23,8 +23,16 @@ in both environments.
 
 - **A call** is refused past `concurrent_calls`, `minutes`, `messages` or `llm_tokens`. The calls
   at once are the platform's: every gateway counts its own and says them each second, so two gateways
-  opening at the same moment may go past the limit by what they opened that second. One that
+  opening at the same moment may go past the limit by what they opened that second. A call stops
+  counting when its log is sealed, whoever ended it; one another gateway sealed, or that was erased,
+  is let go of by the gateway that opened it within the reaper's minute. A call that
   is let in is told how many seconds are left of the minutes, and ends there.
+- **One quota for each kind of call.** A written call, one the gateway opens and runs (a `pinecall chat`,
+  the console's playground, a written simulation, a golden played as text), spends no minutes
+  whatever its length: its turns are the `messages` it spends. A spoken call spends minutes and no messages. The fold reads who opened a call's log
+  (`call_log_head.opened_by`: the gateway opens written calls alone, the fleet's worker and an app
+  open the spoken ones; a call opened before heads said so counts both, as it did), and
+  `pinecall-runtime usage rebuild` counts the months already counted by the same rule.
 - **A budget** (`budget_usd`, whole dollars a calendar month) refuses a new call once what the
   org's calls in both environments cost this month, as the summaries priced them, reaches it
   (`the org has spent 10.5 of its 10 USD budget this month`). A call already running is never cut
@@ -42,8 +50,12 @@ in both environments.
   own key is never one. Past the limit a call still seals: the judges left are `skipped`, saying
   the month's evals are used up, and `credits.exhausted` lands once for that call.
 - **Simulations** (`simulations`) are the calls a simulated caller played this month: a persona's,
-  a spoken golden's. One past the limit is refused before it opens, and a run that reaches it
-  stops where it is. A simulated call never counts minutes, and neither does a call an eval run
+  a spoken golden's. One past the limit is refused before it opens, written or spoken, from the CLI
+  or the console (`429`, `credits.exhausted` on the agent's log with each refusal), as is one whose
+  caller's model, or voice when spoken, is on a vendor nobody keyed (`503`): a refused simulation
+  claims no call, opens none and counts nothing. One that opens weighs on the limit from the
+  moment its call begins, and is added to the month's usage when its call is summed up. A run that
+  reaches the limit stops where it is. A simulated call never counts minutes, and neither does a call an eval run
   opened. Besides the month's count, **an org has at most three simulated calls on the line at
   once in each environment**, on every gateway of the platform together: a simulation takes a
   seat of the fleet beside the real callers and a share of the gateway that plays its caller, and

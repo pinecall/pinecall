@@ -30,6 +30,7 @@ from pinecall_runtime.calls.service.tool_calls import ToolCalls
 from pinecall_runtime.enums import Env, Opener
 from pinecall_runtime.exceptions import PinecallError, ServiceUnavailable, ValidationError
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.shared_state import SharedState
 from pinecall_runtime.redis import Listener, LocalSignal, Signal
 from pinecall_runtime.session import service as session
@@ -70,6 +71,8 @@ class Served:
     running: session.Session | None = None
     # Held while the call is sealed, so its seal runs once however many times it is asked for.
     sealing: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # Set once the app bound to the call said its end hook ran (call.done): its seal waits for it.
+    hooked: asyncio.Event = field(default_factory=asyncio.Event)
     # False for a call another gateway opened, served here from what was kept when it opened:
     # it counts on its opener's gateway, and no socket here takes it as parked.
     opened_here: bool = True
@@ -269,13 +272,14 @@ class Live:
         """The calls this socket serves."""
         return [call for call, served in self.calls.items() if served.app == app]
 
+    # Parked by the gateway that opened the call: a copy of it here only follows its opener.
+    def parked_here(self) -> list[Served]:
+        """The calls this gateway opened that wait for a socket."""
+        return [served for served in self.calls.values() if served.app is None and served.opened_here]
+
     def parked(self, scope: Scope, agent: str) -> list[str]:
         """The calls of the agent in the scope that wait for a socket."""
-        return [
-            call
-            for call, served in self.calls.items()
-            if served.app is None and served.opened_here and served.agent == agent and served.scope == scope
-        ]
+        return [served.call for served in self.parked_here() if served.agent == agent and served.scope == scope]
 
     # The concurrent calls quota counts these, never head rows: a dead worker's row would count
     # for ever. Per env, as every quota is: the sandbox's calls never close production. Every
@@ -328,7 +332,8 @@ class Live:
             heard.set()
         try:
             async for data in listener:
-                await self._apply(call, Command.model_validate_json(data))
+                with survived("a command of the call", call):
+                    await self._apply(call, Command.model_validate_json(data))
         finally:
             listener.close()
 

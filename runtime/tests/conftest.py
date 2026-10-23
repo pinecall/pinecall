@@ -198,6 +198,28 @@ async def received(socket: ClientConnection, kind: str) -> JsonObject:
             return frame
 
 
+async def used_of(gateway: Gateway, tenant: Tenant, quota: str) -> float:
+    """What the tenant's org has used of one quota in the sandbox, as `pinecall limits` shows it."""
+    answer = await gateway.http.get("/v1/limits", headers=tenant.server)
+    return float(answer.json()[quota]["used"])
+
+
+async def a_finished_call(gateway: Gateway, tenant: Tenant, agent: str) -> str:
+    """One line chatted and the caller gone, the call waited for until its log is sealed."""
+    async with gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat:
+        call = str((await received(chat, "call.started"))["call"])
+        await chat.send(json.dumps({"text": "hola"}))
+        await received(chat, "turn.agent")
+    for _ in range(100):
+        page = (
+            await gateway.http.get(f"/v1/calls/{call}/events", params={"durable": True}, headers=tenant.server)
+        ).json()
+        if not page["live"]:
+            return call
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"call {call} was never sealed")
+
+
 # Tests read the clock, so it is one they can predict: 1.0, then half a second more each time.
 FIRST_TICK = 1.0
 A_TICK_S = 0.5
@@ -241,10 +263,12 @@ async def until(happened: Callable[[], bool], within_s: float = 5.0) -> None:
 
 
 @asynccontextmanager
-async def holding(gateway: Gateway, tenant: Tenant, agent: str) -> AsyncGenerator[ClientConnection]:
+async def holding(
+    gateway: Gateway, tenant: Tenant, agent: str, *, says_done: bool = False
+) -> AsyncGenerator[ClientConnection]:
     """An app socket holding the agent with the tenant's server key, as an SDK holds it."""
     async with gateway.socket("/v1/apps", tenant.server) as app:
-        register = AgentRegister(routes=[]).model_dump(mode="json")
+        register = AgentRegister(routes=[], says_done=says_done).model_dump(mode="json")
         await app.send(json.dumps({"type": "agent.register", "agent": agent, "call": None, "data": register}))
         await received(app, "agent.registered")
         yield app

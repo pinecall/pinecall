@@ -12,8 +12,8 @@ import { Cancelled, errorMessage, PinecallError } from "./errors.js";
 import { systemIO, type IO } from "./kit/io.js";
 import { createProgram } from "./program.js";
 
-// 0 did it · 1 refused or found something wrong · 2 the arguments or the settings · 130 stopped.
-const USAGE = 2;
+// 0 did it · 1 what was measured did not hold · 2 it could not run (the arguments, the settings, a refusal, the network) · 130 stopped.
+const CANNOT_RUN = 2;
 // How long a verb gets to stop on its own after a signal before the signal takes its course.
 const GRACE_MS = 1_500;
 
@@ -40,10 +40,10 @@ export async function main(
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
   try {
-    const program = await createProgram(ctx);
+    const program = await createProgram(ctx, argv);
     if (argv.length === 0) {
       program.outputHelp();
-      return USAGE;
+      return CANNOT_RUN;
     }
     await ctx.prepare();
     await program.parseAsync([...argv], { from: "user" });
@@ -61,21 +61,22 @@ function exitWith(failed: unknown, io: IO): number {
   if (failed instanceof CommanderError) {
     // Help and version were printed by commander; a usage error was printed with the help.
     if (failed.code === "commander.helpDisplayed" || failed.code === "commander.version" || failed.code === "commander.help") return 0;
-    return USAGE;
+    return CANNOT_RUN;
   }
   if (failed instanceof Cancelled) return failed.exit;
   // An input a verb's schema refuses is the arguments' fault: its messages, one sentence.
   if (failed instanceof ZodError) {
     io.info(`pinecall: ${failed.issues.map((issue) => issue.message).join("; ")}`);
-    return USAGE;
+    return CANNOT_RUN;
   }
   if (failed instanceof PinecallError) {
     io.info(`pinecall: ${failed.message}`);
     return failed.exit;
   }
   if (failed instanceof Error && failed.name === "AbortError") return new Cancelled().exit;
+  // Anything else — the network down, an answer that is no JSON — stopped the command from running.
   io.info(`pinecall: ${errorMessage(failed)}`);
-  return 1;
+  return CANNOT_RUN;
 }
 
 // Run when executed (dist/main.js as the published bin), not when imported.

@@ -13,9 +13,12 @@ from pinecall_runtime.calls.schemas import OpenCallRequest, SealCallRequest
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.jobs.service.client import GatewayClient
 from pinecall_runtime.session.writing import Writing
+from pinecall_runtime.studio.service.definition import rendered
+from pinecall_runtime.studio.service.holder import CHANNEL, values_of
 from pinecall_runtime.wire.base import Command
 from pinecall_runtime.wire.commands import AgentRegister
-from pinecall_runtime.wire.events import CallEnded, CallStarted
+from pinecall_runtime.wire.events import CallEnded, CallStarted, ToolCall
+from pinecall_runtime.wire.parts import ToolResult
 from tests.conftest import Gateway, Tenant, needs_the_services, received, until
 from tests.studio.test_definition import clinic
 from tests.studio.test_endpoints import faked_api
@@ -143,6 +146,46 @@ async def test_a_call_is_answered_from_the_definition_its_tools_run_and_its_resu
     await asyncio.gather(following, return_exceptions=True)
 
 
+async def test_the_hang_ups_tool_call_is_the_sessions_to_answer_and_the_agent_adds_no_second_result(
+    gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient, faked_api: list[httpx.Request]
+) -> None:
+    """The model ends the call: the session writes end_call's call and result, and Studio answers neither."""
+    await made(gateway, tenant, agent)
+    context = a_voice_call(tenant, agent)
+    socket = gateway.app.state.studio.sockets[(tenant.org, Env.sandbox)]
+    await fleet.open(OpenCallRequest(agent=agent, context=context, app=socket.socket.id))
+    writing = Writing(partial(fleet.append_many, context.call), context.call)
+    writing.open()
+    started = CallStarted.model_validate(
+        {
+            "channel": "web",
+            "direction": "inbound",
+            "from": "+59899123456",
+            "to": agent,
+            "caller": None,
+            "started_at": time.time(),
+        }
+    )
+    await writing.write("call.started", started)
+    await until(lambda: context.call in socket.runs)
+    await writing.write("tool.call", ToolCall(call_id="e1", name="end_call", arguments={}, speech_id=None))
+    # Entries are read in order: once collect is answered, Studio has seen end_call's call and let it be.
+    await fleet.tool(context.call, agent, {"call_id": "c1", "name": "collect", "arguments": {"name": "Ana"}}, 5)
+    await until(lambda: socket.queue.empty() and not socket.tasks)
+    await writing.write("tool.result", ToolResult(call_id="e1", name="end_call"))
+    await writing.flush(5)
+    page = await gateway.http.get(
+        f"/v1/calls/{context.call}/events", params={"types": "tool.result"}, headers=tenant.server
+    )
+    results = [entry["data"] for entry in page.json()["entries"] if entry["data"]["call_id"] == "e1"]
+    assert len(results) == 1 and results[0].get("error") is None
+    await writing.write(
+        "call.ended", CallEnded(reason="agent_hung_up", ended_by="agent", ended_at=time.time(), duration_s=3.0)
+    )
+    await writing.close(5)
+    await fleet.sealed(context.call, SealCallRequest(usage=[], outcome="done"))
+
+
 async def test_a_save_in_the_sandbox_is_heard_by_the_call_already_open(
     gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient, faked_api: list[httpx.Request]
 ) -> None:
@@ -210,3 +253,35 @@ async def test_a_save_is_held_at_once_and_a_stopped_agent_is_let_go(
     assert stopped.status_code == 204
     registry = gateway.app.state.registry
     await until(lambda: not registry.is_held(tenant.org, agent))
+
+
+# A message of the channel the saves are told on that could not even be decoded ended the listener, and no
+# Studio agent saved on any gateway was held by this one again.
+async def test_a_message_that_cannot_be_read_does_not_end_the_holders_listening_for_saves(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    signal = gateway.app.state.serving.live.signal
+    signal.publish(CHANNEL, b"\xff\xfe not a name")
+    signal.publish(CHANNEL, b"an-org|not-an-env")
+    await made(gateway, tenant, agent)
+
+
+def test_a_metadata_placeholder_reads_what_the_call_was_opened_with_and_not_the_state_it_opened_in() -> None:
+    """The token's `metadata` is `call.started.metadata`: what the exported class reads as `this.call.metadata`."""
+    started = CallStarted.model_validate(
+        {
+            "channel": "web",
+            "direction": "inbound",
+            "from": "web_1",
+            "to": "clinica-norte",
+            "caller": {"name": "Ana"},
+            "started_at": 1.0,
+            "metadata": {"order": "A-17"},
+            "state": {"order": "from a golden"},
+        }
+    )
+    values = values_of(started)
+    assert rendered("Order {{metadata.order}} for {{caller.name}} on {{call.channel}}.", values) == (
+        "Order A-17 for Ana on web."
+    )
+    assert values_of(started.model_copy(update={"metadata": None}))["metadata"] == {}

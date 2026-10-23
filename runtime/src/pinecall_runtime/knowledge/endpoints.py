@@ -335,7 +335,10 @@ async def memory_extraction(
     tools = tuple(tool.name for tool in config.tools)
     started = time.perf_counter()
     # One after the other: side by side would measure the vendor's concurrency.
-    results = [await extraction.extract_case(model, case, policy=policy, tools=tools, at=now()) for case in body.cases]
+    results = [
+        await extraction.extract_case(model, case, policy=policy, tools=tools, language=config.language, at=now())
+        for case in body.cases
+    ]
     return schemas.ExtractionRun(
         agent=slug,
         model=model.vendor if model.model is None else f"{model.vendor}/{model.model}",

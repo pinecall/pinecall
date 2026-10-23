@@ -39,6 +39,29 @@ class AgentTest < Minitest::Test
     assert_empty errors
   end
 
+  def test_a_tool_is_run_with_the_models_id_for_its_call
+    asked = Thread::Queue.new
+    look = lambda do |_arguments, _call, call_id|
+      asked << call_id
+      "ok"
+    end
+    @client.agents["clinica-norte"].declare([{ name: "look", description: "Looks.", run: look }])
+    @gateway.send_entry("clinica-norte", "tool.call", { call_id: "tc_9", name: "look", arguments: {} }, call: "CA_1")
+
+    assert_equal "tc_9", asked.pop(timeout: 5)
+    assert_equal "ok", @gateway.next_frame("tool.result")[:data][:output]
+  end
+
+  def test_the_hang_up_the_platform_answers_itself_gets_no_result_from_the_app_and_a_tool_nobody_has_does
+    @gateway.send_entry("clinica-norte", "tool.call", { call_id: "tc_1", name: "end_call", arguments: {} }, call: "CA_1")
+    @gateway.send_entry("clinica-norte", "tool.call", { call_id: "tc_2", name: "sing", arguments: {} }, call: "CA_1")
+
+    answered = @gateway.next_frame("tool.result")
+    assert_equal "tc_2", answered[:data][:call_id]
+    assert_includes answered[:data][:error], "this app declares no tool called sing"
+    assert_nil @gateway.next_frame("tool.result", within_s: 0.3)
+  end
+
   def test_a_consoles_ask_with_nobody_to_answer_it_is_a_501_that_says_so
     @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_1", verb: "view.render", data: {} })
 
@@ -107,6 +130,26 @@ class AgentTest < Minitest::Test
 
     assert_equal "stopped by Lucía", why.pop(timeout: 5)
     refute @client.connected?
+  end
+
+  def test_a_stop_closes_the_socket_without_an_error_for_the_close_frame_that_follows_it
+    errors = Thread::Queue.new
+    @client.on_errors { |error| errors << error }
+    why = Thread::Queue.new
+    @client.on_stopped { |said| why << said }
+    @gateway.stop_apps("stopped by Lucía")
+
+    assert_equal "stopped by Lucía", why.pop(timeout: 5)
+    assert_nil errors.pop(timeout: 0.5)
+  end
+
+  def test_an_agent_killed_is_said_with_its_slug_and_the_gateways_sentence
+    @client.agent("front-desk", tools: [])
+    killed = Thread::Queue.new
+    @client.on_killed { |slug, why| killed << [slug, why] }
+    @gateway.send_entry("front-desk", "error", { code: "killed", message: "front-desk was killed by Lucía", recoverable: false })
+
+    assert_equal ["front-desk", "front-desk was killed by Lucía"], killed.pop(timeout: 5)
   end
 
   # The agents a reconnect declares again are the client's own: a killed one is no longer among them.

@@ -9,9 +9,10 @@ Options:
 
 Every limit the deployment gave the org in this env — the sandbox's, or production's with
 --prod — as what is used of it. A limit with no number is no limit; 0 is a limit that refuses
-everything. Minutes, messages, LLM tokens, evals and simulations are this month's and start again
-on the first (UTC); the rest are what the org holds now. A bought number counts; a number
-imported from the org's own carrier account never does.
+everything. Minutes, messages, LLM tokens, evals, simulations and the budget (dollars spent, both
+envs together) are this month's and start again on the first (UTC); the rest are what the org holds
+now: calls at once, agents, seats, bought numbers, hosted apps, memory facts and knowledge chunks.
+A bought number counts; a number imported from the org's own carrier account never does.
 
 The last line is whose keys a call runs on: the vendors the org brought keys for
 (`pinecall providers add`), and the ones the runtime lends it. A vendor in neither refuses the

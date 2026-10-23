@@ -1,8 +1,9 @@
 /** `pinecall test | eval | runs | cases | personas` as typed: a suite run and its exit, a replay, the runs, the inbox, the callers. */
 
+import { http, HttpResponse } from "msw/http";
 import { describe, expect, it } from "vitest";
 
-import { answer, refuse, stream } from "../support/gateway.js";
+import { answer, GATEWAY, refuse, server, stream } from "../support/gateway.js";
 import { A_CASE, A_PERSONA, aRun } from "../support/fixtures.js";
 import { folder, project, write } from "../support/project.js";
 import { run, runJson } from "../support/run.js";
@@ -70,6 +71,111 @@ describe("pinecall test", () => {
   it("refuses noise on a written run, and packet loss that is no share", async () => {
     expect((await run(["test", "--packet-loss", "5"], { cwd: project(["front-desk"], GOLDENS) })).code).toBe(2);
   });
+
+  it("refuses the audio flags without --voice, as simulate does, and sends nothing: a written run would ignore them", async () => {
+    const sent = answer("post", "/v1/evals/run", aRun());
+    for (const flags of [["--packet-loss", "0.05"], ["--background-noise", "12"], ["--ambience", "cafe"]]) {
+      const ran = await run(["test", "--files", ...flags], { cwd: project(["front-desk"], GOLDENS) });
+      expect([ran.code, ran.err], flags.join(" ")).toEqual([2, "pinecall: --background-noise, --ambience and --packet-loss are about audio: add --voice\n"]);
+    }
+    expect(sent).toEqual([]);
+  });
+
+  it("--voice plays the matching golden out loud and asks for no case: the dataset is played written", async () => {
+    stream("/v1/events");
+    const sent = answer("post", "/v1/evals/run", aRun());
+    answer("get", "/v1/calls/:call/events", { entries: [], next: null });
+    const ran = await run(["test", "--voice", "--grep", "books"], { cwd: project(["front-desk"], GOLDENS) });
+    expect(ran.code).toBe(0);
+    expect(sent[0]!.body).toMatchObject({ voice: true, goldens: [{ name: "books-thursday" }] });
+    expect(sent[0]!.body).not.toHaveProperty("dataset");
+  });
+
+  it("--version n, spaced or with an equals, plays every call on that version, and prints no version of the CLI's", async () => {
+    stream("/v1/events");
+    const sent = answer("post", "/v1/evals/run", aRun());
+    answer("get", "/v1/calls/:call/events", { entries: [], next: null });
+    for (const argv of [["test", "--version", "2"], ["test", "--version=2"], ["test", "--files", "--grep", "books", "--version", "2"]]) {
+      const ran = await run(argv, { cwd: project(["front-desk"], GOLDENS) });
+      expect([ran.code, /^\d+\.\d+\.\d+\n$/.test(ran.out)], argv.join(" ")).toEqual([0, false]);
+    }
+    expect(sent.map((one) => (one.body as { version?: number }).version)).toEqual([2, 2, 2]);
+  });
+
+  it("--version 99 is the gateway's 404, a version nothing answers to: exit 2", async () => {
+    refuse("post", "/v1/evals/run", 404, "no version 99 of front-desk in the scope of the app that holds it");
+    const ran = await run(["test", "--version", "99"], { cwd: project(["front-desk"], GOLDENS) });
+    expect([ran.code, ran.err]).toEqual([2, "pinecall: the gateway answered 404: no version 99 of front-desk in the scope of the app that holds it\n"]);
+  });
+
+  it("a run already going on the agent cannot start: the sentence names it, exit 2", async () => {
+    stream("/v1/events");
+    refuse("post", "/v1/evals/run", 409, "run_7 is already running on front-desk");
+    answer("get", "/v1/evals/runs", { runs: [{ ...aRun(), id: "run_7", status: "running" }] });
+    const ran = await run(["test"], { cwd: project(["front-desk"], GOLDENS) });
+    expect([ran.code, ran.err]).toEqual([2, "pinecall: a run is already going on front-desk (run_7) — pinecall runs show run_7 to watch it\n"]);
+  });
+
+  it("a golden the gateway's schema refuses is one sentence naming it and the field, exit 2, not a validation list", async () => {
+    const detail = [{ loc: ["body", "goldens", 0, "turns"], msg: "List should have at most 40 items after validation, not 41" }];
+    server.use(http.post(`${GATEWAY}/v1/evals/run`, () => HttpResponse.json({ detail }, { status: 422 })));
+    const ran = await run(["test"], { cwd: project(["front-desk"], GOLDENS) });
+    expect([ran.code, ran.err]).toEqual([2, "pinecall: the gateway refused the run: golden books-thursday, turns: List should have at most 40 items after validation, not 41\n"]);
+  });
+});
+
+describe("a request the gateway's state contradicts", () => {
+  it("is exit 2 in the gateway's own sentence — eval, runs promote and cases apply cannot run, and measured nothing", async () => {
+    refuse("post", "/v1/evals/replay/:call", 409, "call_1 is still going: check it once it has ended");
+    refuse("get", "/v1/calls/:call/golden", 409, "call_1 is still going: promote it once it has ended");
+    refuse("post", "/v1/evals/groups/:id/apply", 409, "grp_1 proposes code, and only a setting is applied here");
+    for (const [argv, sentence] of [
+      [["eval", "call_1"], "call_1 is still going: check it once it has ended"],
+      [["runs", "promote", "call_1"], "call_1 is still going: promote it once it has ended"],
+      [["cases", "apply", "grp_1"], "grp_1 proposes code, and only a setting is applied here"],
+    ] as const) {
+      const ran = await run(argv);
+      expect([ran.code, ran.err], argv.join(" ")).toEqual([2, `pinecall: the gateway answered 409: ${sentence}\n`]);
+    }
+  });
+});
+
+describe("pinecall simulate --judge", () => {
+  // A spoken run, so that the log is the gateway's whole: nothing plays here, the score is what the log seals on.
+  function sealed(score: Record<string, unknown>): void {
+    answer("get", "/v1/agents/:slug/personas", { personas: [A_PERSONA] });
+    answer("post", "/v1/evals/voice", { call: "call_s1", turns: 2, line: "a clean line" });
+    const entries = [{ seq: 1, type: "call.score", data: { judges: [], judge_calls: 0, evals: 0, ...score } }];
+    server.use(http.get(`${GATEWAY}/v1/calls/:call/events`, ({ request }) => (request.headers.get("accept")?.includes("text/event-stream") === true ? new HttpResponse(null, { status: 204 }) : HttpResponse.json({ entries, next: null }))));
+  }
+  const held = { name: "grounded", verdict: "held", criteria: "", reason: "", evidence: { seqs: [] } };
+  const broken = { ...held, verdict: "broken", reason: "made up a price" };
+
+  it("exits 0 when every judge held and 1 when one answered broken", async () => {
+    sealed({ passed: true, judges: [held], judge_calls: 1, evals: 1 });
+    expect((await run(["simulate", "--persona", "apurado", "--voice", "--judge"])).code).toBe(0);
+    sealed({ passed: false, judges: [broken], judge_calls: 1, evals: 1 });
+    const ran = await run(["simulate", "--persona", "apurado", "--voice", "--judge"]);
+    expect([ran.code, ran.err]).toEqual([1, "pinecall: a judge answered broken\n"]);
+  });
+
+  it("exits 2 with the reason when nobody judged: no judge on, only n/a, the evals used up", async () => {
+    const nobody = [
+      [{ passed: null, not_judged: "no judge is on for this agent: `pinecall judges on <name>`" }, "no judge is on for this agent: `pinecall judges on <name>`"],
+      [{ passed: null, judges: [{ ...held, name: "consent", verdict: "na" }], judge_calls: 1 }, "no judge held or broke, the rest classified the call or did not apply"],
+      [{ passed: null, not_judged: "every judge run over this call failed and not one of them answered" }, "every judge run over this call failed and not one of them answered"],
+    ] as const;
+    for (const [score, why] of nobody) {
+      sealed(score);
+      const ran = await run(["simulate", "--persona", "apurado", "--voice", "--judge"]);
+      expect([ran.code, ran.err], why).toEqual([2, `pinecall: nobody judged this call: ${why}\n`]);
+    }
+  });
+
+  it("without --judge nobody was asked to judge, and the call is no gate", async () => {
+    sealed({ passed: null, not_judged: "no judge is on for this agent" });
+    expect((await run(["simulate", "--persona", "apurado", "--voice"])).code).toBe(0);
+  });
 });
 
 describe("pinecall eval", () => {
@@ -127,7 +233,7 @@ describe("pinecall cases", () => {
     expect((await run(["cases", "dismiss", "double-booked", "--note", "why"])).code).toBe(2);
   });
 
-  it("add keeps a golden file as an approved case and prints it; a name a call made is the gateway's sentence, exit 1", async () => {
+  it("add keeps a golden file as an approved case and prints it; a name a call made is the gateway's sentence, exit 2", async () => {
     const dir = folder();
     const file = write(dir, "no-price.json", JSON.stringify({ turns: [{ say: "How much is a crown?" }], expect: { not: ["euros"] } }));
     answer("put", "/v1/agents/:slug/cases/:name", { ...A_CASE, name: "no-price", status: "approved", source: "person", source_call: null, held_out: true });
@@ -136,7 +242,7 @@ describe("pinecall cases", () => {
     expect(ran.out).toBe("no-price · front-desk · person · approved · held out\n");
     refuse("put", "/v1/agents/:slug/cases/:name", 409, "no-price was made by call_9: a case a call made is not rewritten");
     const refused = await run(["cases", "add", file]);
-    expect(refused.code).toBe(1);
+    expect(refused.code).toBe(2);
     expect(refused.err).toContain("a case a call made is not rewritten");
   });
 

@@ -11,6 +11,7 @@ from pinecall_runtime.calls.service.serving import Serving
 from pinecall_runtime.enums import Channel
 from pinecall_runtime.exceptions import Conflict
 from pinecall_runtime.fleet import service as fleet
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.livekit import Servers
 from pinecall_runtime.wire.events import CallEnded
 from pinecall_runtime.wire.parts import EndReason
@@ -49,10 +50,11 @@ async def reap(serving: Serving, now: float) -> list[str]:
     for server, calls in _rooms_by_livekit(servers, quiet).items():
         existing |= await fleet.rooms_with_an_agent(server, calls)
     for orphan in quiet:
-        if orphan.call not in existing and await _finish(serving, orphan, "drained"):
+        if orphan.call not in existing and await _tried(serving, orphan, "drained"):
             # The room goes too, so whoever is still in it hears the call end.
-            for server in _livekits_of(servers, orphan):
-                await fleet.close_room(server, orphan.call)
+            with survived("the reaper's closing of the room", orphan.call):
+                for server in _livekits_of(servers, orphan):
+                    await fleet.close_room(server, orphan.call)
             logger.warning(
                 "sealed %s: no agent is in its room and it has said nothing for %.0f s",
                 orphan.call,
@@ -62,11 +64,13 @@ async def reap(serving: Serving, now: float) -> list[str]:
     for orphan in written:
         # A written call waits for its caller as long as its channel would.
         patience = A_THREAD_WAITS_S if orphan.channel == Channel.whatsapp else QUIET_S
-        # Its session may run on another gateway, which says so: it is that gateway's to end.
-        runs = serving.live.calls.get(orphan.call) is not None
+        # Its session may run on another gateway, which says so: it is that gateway's to end. One
+        # that closed here and left the call unsealed (its seal broke) is nobody's to end any more.
+        served = serving.live.calls.get(orphan.call)
+        runs = served is not None and (served.running is None or not served.running.closed)
         if runs or serving.live.owners.text_elsewhere(orphan.call) or now - orphan.last_at < patience:
             continue
-        if await _finish(serving, orphan, "timeout"):
+        if await _tried(serving, orphan, "timeout"):
             sealed_now.append(orphan.call)
     return sealed_now
 
@@ -79,22 +83,26 @@ def end_parked(serving: Serving, now: float) -> list[str]:
     for served in serving.live.parked_past(now, PARKED_WAITS_S):
         if served.running is None:
             continue
-        served.running.hang_up("app_detached", "platform", at_once=True)
-        serving.live.parked_since.pop(served.call, None)
-        logger.warning(
-            "ended %s: parked by a process that left, and no socket took it in %.0f s", served.call, PARKED_WAITS_S
-        )
-        ended.append(served.call)
+        with survived("the reaper's ending of a parked call", served.call):
+            served.running.hang_up("app_detached", "platform", at_once=True)
+            serving.live.parked_since.pop(served.call, None)
+            logger.warning(
+                "ended %s: parked by a process that left, and no socket took it in %.0f s", served.call, PARKED_WAITS_S
+            )
+            ended.append(served.call)
     return ended
 
 
 # A call sealed on another gateway ends its readers there; here it is only let go of, so it no
-# longer counts against its org's calls at once, and idle calls first seen here go with it.
+# longer counts against its org's calls at once, and idle calls first seen here go with it. A call
+# whose head is gone was erased, which only a sealed call is: it holds no seat either.
 async def let_go(serving: Serving, now: float) -> list[str]:
-    """Stop serving the calls sealed elsewhere, and the ones first seen here that went idle."""
+    """Stop serving the calls sealed or erased elsewhere, and the ones first seen here that went idle."""
     serving.live.let_idle_go(now)
+    served = list(serving.live.calls)
     async with serving.handles.sessions() as session:
-        gone = await HeadRepository(session).sealed_among(list(serving.live.calls))
+        heads = await HeadRepository(session).among(served)
+    gone = [call for call in served if call not in heads or heads[call].sealed]
     for call in gone:
         serving.logs.forget(call)
         serving.live.close_call(call)
@@ -123,6 +131,14 @@ def lasted(orphan: Unsealed) -> float:
     if orphan.started_at is None:
         return 0.0
     return max(orphan.last_at - orphan.started_at, 0.0)
+
+
+# A call the reaper cannot seal is said and left; the calls behind it are reaped all the same, and
+# so is every pass after this one: it must not be the one that stops the reaper.
+async def _tried(serving: Serving, orphan: Unsealed, reason: EndReason) -> bool:
+    with survived("the reaper's sealing", orphan.call):
+        return await _finish(serving, orphan, reason)
+    return False
 
 
 async def _finish(serving: Serving, orphan: Unsealed, reason: EndReason) -> bool:

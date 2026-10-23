@@ -131,13 +131,14 @@ module Pinecall
       attr_reader :errors
 
       # Start a call and return its `Fake` handle; `state:` is the state its opener asked for,
-      # `today:` the day a golden pinned (YYYY-MM-DD).
-      def call_started(id: nil, channel: "web", from: "+34600000000", to: "+34910000000", caller: nil, state: nil,
-                       today: nil)
+      # `today:` the day a golden pinned (YYYY-MM-DD), `metadata:` what a token opened it with.
+      def call_started(id: nil, channel: "web", direction: "inbound", from: "+34600000000", to: "+34910000000",
+                       caller: nil, state: nil, today: nil, metadata: nil)
         id ||= "CA_#{next_seq}"
-        started = { channel:, direction: "inbound", from:, to:, caller:, started_at: Time.now.to_f }
+        started = { channel:, direction:, from:, to:, caller:, started_at: Time.now.to_f }
         started = started.merge(state:) unless state.nil?
         started = started.merge(today:) unless today.nil?
+        started = started.merge(metadata:) unless metadata.nil?
         deliver("call.started", started, call: id)
         settle
         Fake.new(self, id)

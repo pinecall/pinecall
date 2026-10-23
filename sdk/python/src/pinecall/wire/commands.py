@@ -11,6 +11,7 @@ from pinecall.wire.parts import (
     AgentConfig,
     Contact,
     Route,
+    StateCause,
     Supervisor,
     ToolResult,
     ToolSpec,
@@ -28,6 +29,7 @@ PRODUCES: dict[str, tuple[str, ...]] = {
     "call.callback": ("callback.requested",),
     "call.claim": ("call.claimed",),
     "call.dial": ("call.dialing",),
+    "call.done": (),
     "call.dtmf": (),
     "call.opt_out": (),
     "call.event": ("event.received",),
@@ -125,6 +127,7 @@ class AgentRegister(WireModel):
     host: str | None = None
     takes_unclaimed: bool = True
     answers_dev: bool = False
+    says_done: bool = False
 
 
 class AgentReply(WireModel):
@@ -176,6 +179,10 @@ class CallOptOut(WireModel):
     """The caller asked never to be called again: their number joins the org's do-not-call list."""
 
     note: str | None = Field(default=None, max_length=500)
+
+
+class CallDone(WireModel):
+    """The app's end hook ran and everything it wrote was sent: the call may be sealed."""
 
 
 class CallDtmf(WireModel):
@@ -292,6 +299,7 @@ class StateSet(WireModel):
 
     state: JsonObject
     changed: list[str] | None = None
+    cause: StateCause | None = None
 
 
 class SupervisorVerb(WireModel):
@@ -317,6 +325,7 @@ COMMANDS: dict[str, type[WireModel]] = {
     "call.callback": CallCallback,
     "call.claim": CallClaim,
     "call.dial": CallDial,
+    "call.done": CallDone,
     "call.dtmf": CallDtmf,
     "call.opt_out": CallOptOut,
     "call.event": CallEvent,

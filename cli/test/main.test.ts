@@ -1,10 +1,11 @@
-/** The entry: every failure one sentence on stderr and one exit code — 0 did it, 1 refused or failed, 2 the arguments, 130 stopped. */
+/** The entry: every failure one sentence on stderr and one exit code — 0 did it, 1 what was measured did not hold, 2 it could not run, 130 stopped. */
 
 import { readFileSync } from "node:fs";
 
+import { http, HttpResponse } from "msw/http";
 import { describe, expect, it } from "vitest";
 
-import { answer, refuse } from "./support/gateway.js";
+import { answer, GATEWAY, refuse, server } from "./support/gateway.js";
 import { run } from "./support/run.js";
 
 const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
@@ -21,6 +22,14 @@ describe("the exit codes", () => {
     const version = await run(["--version"]);
     expect([version.code, version.out]).toEqual([0, `${VERSION}\n`]);
     expect((await run(["-v"])).out).toBe(`${VERSION}\n`);
+    expect((await run(["--prod", "--version"])).out).toBe(`${VERSION}\n`);
+  });
+
+  it("the version flag reaches no verb: after one, `--version` is its own", async () => {
+    const ran = await run(["limits", "--version"]);
+    expect(ran.code).toBe(2);
+    expect(ran.out).toBe("");
+    expect(ran.err).toContain("unknown option '--version'");
   });
 
   it("a verb nobody wrote, or a flag nobody declared, is 2", async () => {
@@ -37,11 +46,28 @@ describe("the exit codes", () => {
     expect(ran.err).toMatch(/^pinecall: --metric names one of/);
   });
 
-  it("the gateway's refusal is 1, in its own words", async () => {
-    refuse("get", "/v1/limits", 403, "this key may not read the org's limits");
+  it("every refusal of the gateway is 2, in its own words: the command could not run, and measured nothing", async () => {
+    for (const [status, detail] of [
+      [400, "no vendor named 'nosuchvendor' is installed here"],
+      [401, "the key is not one this gateway knows"],
+      [403, "this key may not read the org's limits"],
+      [404, "no such org"],
+      [409, "a run is going"],
+      [422, "window: Input should be a valid integer"],
+      [429, "the org has used 4 of its 4 concurrent calls in the sandbox"],
+      [503, "xai has no key: the org brought none and the box holds none"],
+    ] as const) {
+      refuse("get", "/v1/limits", status, detail);
+      const ran = await run(["limits"]);
+      expect([ran.code, ran.err], String(status)).toEqual([2, `pinecall: the gateway answered ${status}: ${detail}\n`]);
+    }
+  });
+
+  it("a network that is down is 2: the command could not run", async () => {
+    server.use(http.get(`${GATEWAY}/v1/limits`, () => HttpResponse.error()));
     const ran = await run(["limits"]);
-    expect(ran.code).toBe(1);
-    expect(ran.err).toBe("pinecall: the gateway answered 403: this key may not read the org's limits\n");
+    expect(ran.code).toBe(2);
+    expect(ran.err).toMatch(/^pinecall: .+\n$/);
   });
 
   it("--prod and --json go anywhere on the line", async () => {

@@ -18,6 +18,10 @@ describe("pinecall limits", () => {
     expect(ran.out).toMatch(/simulations\s+0, no limit\n/);
     expect(ran.out).toMatch(/LLM tokens\s+20500\.5 of 1000000/);
     expect(ran.out).toMatch(/bought numbers\s+0 of 0\n/);
+    expect(ran.out).toMatch(/budget\s+\$4\.25 of \$60 · starts again 1 \w{3}/);
+    expect(ran.out).toMatch(/hosted apps\s+1 of 3\n/);
+    expect(ran.out).toMatch(/memory facts\s+12 of 500\n/);
+    expect(ran.out).toMatch(/knowledge chunks\s+340 of 2000\n/);
     expect(ran.out).toContain("yours: anthropic · lent by the runtime: google, cartesia, deepgram");
     expect(ran.out).not.toContain("more:");
   });

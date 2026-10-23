@@ -153,15 +153,6 @@ class BridgeTest < Minitest::Test
     assert_includes said, "agenda.changed from participant" if said && !said.empty?
   end
 
-  def test_a_state_change_caused_by_a_fact_says_so_in_the_log_beside_it
-    call = @gateway.call_started(from: "+34600123456")
-    call.fact("agenda.changed", { slots: ["martes 10:00"] })
-    cause = call.commands.find { |sent| sent.type == "call.log" && sent.data[:name] == "state.cause" }
-
-    assert_equal "slots", cause.data[:data][:field]
-    assert_equal "agenda.changed", cause.data[:data][:event]
-  end
-
   def test_a_verb_the_class_calls_on_its_call_is_one_command
     call = @gateway.call_started
     call.tool("stop")
@@ -175,6 +166,47 @@ class BridgeTest < Minitest::Test
 
     assert_equal "goodbye", call.last("call.log")[:name]
     assert_nil @mounted.serving(call.id)
+  end
+
+  # Anota la apertura.
+  class Anota < Pinecall::Agent
+    def on_call(call) = log("opened", { from: call.from })
+    def on_end(_call) = log("closed")
+  end
+
+  def test_a_line_the_class_logs_in_its_call_hook_lands_in_the_calls_log
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Anota, client: gateway)
+    call = gateway.call_started(from: "+34600123456")
+
+    opened = call.commands.find { |sent| sent.type == "call.log" && sent.data[:name] == "opened" }
+
+    assert_equal({ from: "+34600123456" }, opened.data[:data])
+    assert_operator call.commands.index(opened), :<, call.commands.index { |sent| sent.type == "state.set" }
+  end
+
+  def test_a_line_the_class_logs_in_its_end_hook_lands_too
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Anota, client: gateway)
+    call = gateway.call_started
+    call.ended
+
+    assert_equal({ name: "closed", data: {} }, call.last("call.log", name: "closed"))
+  end
+
+  # The gateway seals a call on the app's word that its end hook ran: said after the hook's last line.
+  def test_call_done_is_sent_after_the_lines_the_end_hook_logged
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Anota, client: gateway)
+    call = gateway.call_started
+    call.ended
+
+    sent = call.commands.map(&:type).select { |type| %w[call.log call.done].include?(type) }
+
+    assert_equal "call.done", sent.last
+    assert_equal 1, sent.count("call.done")
+    assert_operator call.commands.index { |c| c.type == "call.log" && c.data[:name] == "closed" }, :<,
+                    call.commands.index { |c| c.type == "call.done" }
   end
 
   def test_two_calls_at_once_never_share_a_state

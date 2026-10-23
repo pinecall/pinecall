@@ -1,7 +1,7 @@
 // A live call as the app holds it: its known fields and the commands it can send.
 
 import { type Camel, type CommandData } from "../wire/codec.js";
-import { type Channel, type Contact, type Medium, type ToolResult, type ToolSpec } from "../wire/defs.js";
+import { type Channel, type Contact, type Direction, type Medium, type StateCause, type ToolResult, type ToolSpec } from "../wire/defs.js";
 import { type CommandType, type EventType } from "../wire/registry.js";
 import type { AnyListener, CamelEvent, Listener } from "./listeners.js";
 import { Listeners } from "./listeners.js";
@@ -27,6 +27,8 @@ export class Call {
   channel: Channel | null = null;
   /** Spoken or written, as `call.started` says; null before it, and from a gateway that does not say. */
   medium: Medium | null = null;
+  /** Whether the public reached the agent or the agent reached out, as `call.started` says; null before it. */
+  direction: Direction | null = null;
   from: string | null = null;
   to: string | null = null;
   contact: Camel<Contact> | null = null;
@@ -34,6 +36,8 @@ export class Call {
   run: string | null = null;
   /** The page code this call claimed, or null. */
   claimed: string | null = null;
+  /** What the call was opened with and sealed, such as a token's `metadata`; empty when none. */
+  metadata: Record<string, unknown> = {};
   /** The app state as last set here or reported by `state.changed`. */
   state: Record<string, unknown> = {};
   /**
@@ -90,10 +94,14 @@ export class Call {
     this.gateway.command("tools.set", this.id, { tools });
   }
 
-  /** Send the full app state. Lands as `state.changed`. */
-  setState(state: Record<string, unknown>, changed?: string[]): void {
+  /** Send the full app state, and who made the write. Lands as `state.changed`. */
+  setState(state: Record<string, unknown>, changed?: string[], cause?: Camel<StateCause>): void {
     this.state = { ...state };
-    this.gateway.command("state.set", this.id, changed === undefined ? { state } : { state, changed });
+    this.gateway.command("state.set", this.id, {
+      state,
+      ...(changed === undefined ? {} : { changed }),
+      ...(cause === undefined ? {} : { cause }),
+    });
   }
 
   /** Send a tool's result for the model's `call_id`. */
@@ -121,6 +129,14 @@ export class Call {
     this.gateway.command("call.log", this.id, { name, data });
   }
 
+  /**
+   * Say the app's end hook ran and everything it wrote was sent. The gateway seals the call once it
+   * hears this (or a few seconds pass): a line logged after the seal is refused.
+   */
+  done(): void {
+    this.gateway.command("call.done", this.id, {});
+  }
+
   // ── what the log teaches it ─────────────────────────────────────────────────
 
   /** Apply one event to the call's fields, then emit it to this call's listeners. */
@@ -142,6 +158,7 @@ export class Call {
       case "call.started":
         this.status = "active";
         this.#line(event.data);
+        this.direction = event.data.direction;
         this.medium = event.data.medium ?? null;
         // A run's call says its day, which a golden may have pinned; a person's runs on the clock's.
         if (event.data.today != null) this.today = event.data.today;
@@ -153,6 +170,7 @@ export class Call {
       case "call.attached":
         this.status = "active";
         this.#line(event.data.started);
+        this.direction = event.data.started.direction;
         this.medium = event.data.started.medium ?? null;
         this.state = { ...event.data.state };
         this.today = event.data.started.today ?? dayOf(event.data.started.startedAt);
@@ -176,12 +194,14 @@ export class Call {
     to: string;
     caller: Camel<Contact> | null;
     run?: string | null | undefined;
+    metadata?: Record<string, unknown> | null | undefined;
   }): void {
     this.channel = line.channel;
     this.from = line.from;
     this.to = line.to;
     this.contact = line.caller;
     this.run = line.run ?? null;
+    this.metadata = line.metadata ?? {};
   }
 }
 

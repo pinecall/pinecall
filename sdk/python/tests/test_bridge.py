@@ -49,7 +49,7 @@ class Clinica(Agent):
     @override
     def on_event(self, name: str, data: JsonObject, meta: EventMeta) -> None:
         """Note the slot released."""
-        self.note = f"{name}:{data['at']}:{meta.source}"
+        self.note = f"{name}:{data['at']}:{meta.source}:{meta.seq}"
 
     @override
     async def on_end(self, call: CallWorld) -> None:
@@ -121,7 +121,10 @@ async def test_a_call_opens_with_its_prompt_and_tools_first_and_then_one_state(
     assert [data["name"] for _, data in commands[0:3]] == ["identity", "tools", "view"]
     assert commands[2][1]["text"] == "Pide el nombre."
     assert "You are in a written chat on a website." in str(commands[0][1]["text"])
-    assert commands[4][1] == {"state": {"stage": "identify", "patient": None, "note": "abierta"}}
+    assert commands[4][1] == {
+        "state": {"stage": "identify", "patient": None, "note": "abierta"},
+        "cause": {"kind": "hook", "hook": "on_call"},
+    }
     assert mounted.instance_of("CA_1") is not None
 
 
@@ -130,7 +133,12 @@ async def test_a_call_opened_in_a_state_opens_there_over_what_on_call_wrote(
 ) -> None:
     await opened(gateway, {"note": "de un golden", "patient": "Ana"})
     states = [data for type_, data in sent(gateway) if type_ == "state.set"]
-    assert states == [{"state": {"stage": "identify", "patient": "Ana", "note": "de un golden"}}]
+    assert states == [
+        {
+            "state": {"stage": "identify", "patient": "Ana", "note": "de un golden"},
+            "cause": {"kind": "hook", "hook": "on_call"},
+        }
+    ]
 
 
 async def test_a_tool_call_sends_what_moved_and_the_view_before_its_result(
@@ -159,16 +167,14 @@ async def test_an_accepted_event_runs_on_event_and_its_writes_name_it_as_their_c
 ) -> None:
     await opened(gateway)
     fact = {"name": "slot.released", "data": {"at": "10:00"}, "source": "app"}
-    await gateway.emit("clinica", "CA_1", "event.received", fact)
-    await gateway.until(lambda: any(type_ == "call.log" for type_, _ in sent(gateway)))
+    seq = await gateway.emit("clinica", "CA_1", "event.received", fact)
+    await gateway.until(lambda: any(data.get("changed") == ["note"] for _, data in sent(gateway)))
     instance = mounted.instance_of("CA_1")
     assert instance is not None
-    assert getattr(instance, "note") == "slot.released:10:00:app"  # noqa: B009 - the field under test
-    cause = next(data for type_, data in sent(gateway) if type_ == "call.log")
-    assert cause == {
-        "name": "state.cause",
-        "data": {"field": "note", "kind": "event", "name": "slot.released", "seq": 1},
-    }
+    assert getattr(instance, "note") == f"slot.released:10:00:app:{seq}"  # noqa: B009 - the field under test
+    written = next(data for _, data in sent(gateway) if data.get("changed") == ["note"])
+    assert written["cause"] == {"kind": "event", "name": "slot.released", "seq": seq}
+    assert [data for type_, data in sent(gateway) if type_ == "call.log"] == []
 
 
 async def test_an_event_from_a_sender_the_class_does_not_accept_never_reaches_it(
@@ -225,3 +231,54 @@ async def test_a_call_that_ends_runs_on_end_whose_line_still_lands_and_is_let_go
         "data": {"stage": "identify"},
     }
     assert mounted.instance_of("CA_1") is None
+    # The gateway seals on the app's word that the hook ran: said after the hook's last line.
+    await gateway.until(lambda: any(type_ == "call.done" for type_, _ in sent(gateway)))
+    after = [type_ for type_, _ in sent(gateway) if type_ in ("call.log", "call.done")]
+    assert after[-2:] == ["call.log", "call.done"]
+
+
+class Talker(Agent):
+    """Deja una línea en cada gancho."""
+
+    @override
+    def on_call(self, call: CallWorld) -> None:
+        """Log before anything is followed."""
+        self.log("on_call.vio", {"medium": call.medium})
+
+    @override
+    def on_end(self, call: CallWorld) -> None:
+        """Log after the call ended."""
+        self.log("fin", {"ok": True})
+
+
+async def talking(gateway: FakeGateway, cls: type[Agent], slug: str) -> Client:
+    client = Client(gateway.url, KEY)
+    mount(cls, client, slug=slug)
+    await client.connect()
+    await gateway.emit(slug, "CA_1", "call.started", STARTED | {"to": slug})
+    return client
+
+
+async def test_a_line_on_call_logged_lands_though_the_hook_runs_before_anything_is_followed(
+    gateway: FakeGateway,
+) -> None:
+    client = await talking(gateway, Talker, "talker")
+    await gateway.until(lambda: any(type_ == "state.set" for type_, _ in sent(gateway)))
+    assert [data for type_, data in sent(gateway) if type_ == "call.log"] == [
+        {"name": "on_call.vio", "data": {"medium": "text"}}
+    ]
+    await client.close()
+
+
+async def test_a_line_on_end_logged_lands_though_the_listeners_are_gone_by_then(
+    gateway: FakeGateway,
+) -> None:
+    client = await talking(gateway, Talker, "talker")
+    await gateway.until(lambda: any(type_ == "state.set" for type_, _ in sent(gateway)))
+    await gateway.emit("talker", "CA_1", "call.ended", ENDED)
+    await gateway.until(lambda: len([t for t, _ in sent(gateway) if t == "call.log"]) == 2)
+    assert [data["name"] for type_, data in sent(gateway) if type_ == "call.log"] == [
+        "on_call.vio",
+        "fin",
+    ]
+    await client.close()

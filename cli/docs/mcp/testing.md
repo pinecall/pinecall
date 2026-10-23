@@ -7,7 +7,7 @@ tool's own schema, as the assistant sees it — and one real call, answered by P
 
 Run the agent's goldens through the agent wherever it is held, under every model named, written or said out loud; waits for the matrix.
 
-`test run` runs the goldens in `agents/<agent>/test/goldens/` through the agent — the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started — the gateway driving and scoring each conversation, a column per model in `models`. It answers the matrix once done — every golden held or broken, with the evidence, each call's latency, and a reproduction written under `.pinecall/evals/` for each that broke — or, past `wait_s`, the run's id: call `test wait` to keep waiting. One run per agent at a time. A spoken run (`voice`) can add noise and packet loss. `case` names cases of the org's dataset to play instead of the goldens — a pending one too, which reproduces the call that broke — and `dataset` plays every approved one; cases play in the sandbox only. `version` runs every call on that version of the agent's settings. The run plays on the key's corner: a person's own in the sandbox, where CI's server token plays on the team's.
+`test run` runs the goldens in `agents/<agent>/test/goldens/` through the agent — the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started — the gateway driving and scoring each conversation, a column per model in `models`. It answers the matrix once done — every golden held or broken, with the evidence, each call's latency, and a reproduction written under `.pinecall/evals/` for each that broke — or, past `wait_s`, the run's id: call `test wait` to keep waiting. One run per agent at a time. A spoken run (`voice`) plays the golden files alone — cases are real callers' words, played written — and can add noise and packet loss. `case` names cases of the org's dataset to play instead of the goldens — a pending one too, which reproduces the call that broke — and `dataset` plays every approved one; cases play in the sandbox only. `version` runs every call on that version of the agent's settings. The run plays on the key's corner: a person's own in the sandbox, where CI's server token plays on the team's.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Run the agent's goldens through the agent wherever it is held, under every model
 | `agent` | text |  | the agent's name; the project's only agent when left out |
 | `grep` | text |  | only goldens whose name holds this |
 | `models` | a list of texts |  | a column per model: vendor/model, a model, or a tier (haiku); the agent's own when left out |
-| `voice` | true or false |  | say the goldens out loud on a real line |
+| `voice` | true or false |  | say the goldens out loud on a real line (the files alone: cases are played written) |
 | `background_noise` | a number |  | spoken runs: dB under the caller of what plays behind them |
 | `ambience` | `television` · `cafe` · `office` · `street` |  | spoken runs: what plays behind the caller |
 | `packet_loss` | a number 0–1 |  | spoken runs: the share of the caller's packets lost, 0 to 1 |

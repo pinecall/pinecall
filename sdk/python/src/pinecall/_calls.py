@@ -5,11 +5,12 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from pinecall._listeners import AnyListener, Listener, Listeners
-from pinecall.wire._names import Channel, JsonObject, Medium
+from pinecall.wire._names import Channel, Direction, JsonObject, Medium
 from pinecall.wire.commands import (
     AgentReply,
     AgentSay,
     CallClaim,
+    CallDone,
     CallEvent,
     CallHangup,
     CallLog,
@@ -26,7 +27,7 @@ from pinecall.wire.events_call import (
 )
 from pinecall.wire.events_turn import StateChanged
 from pinecall.wire.frames import WireModel
-from pinecall.wire.parts import Contact, ToolResult, ToolSpec
+from pinecall.wire.parts import Contact, StateCause, ToolResult, ToolSpec
 
 CallStatus = Literal["ringing", "dialing", "active", "ended"]
 
@@ -57,9 +58,13 @@ class Call:
         self.channel: Channel | None = None
         self.medium: Medium | None = None
         """Spoken or written, as `call.started` says; None before it."""
+        self.direction: Direction | None = None
+        """Whether the public reached the agent or it reached out, as `call.started` says."""
         self.from_: str | None = None
         self.to: str | None = None
         self.contact: Contact | None = None
+        self.metadata: JsonObject = {}
+        """What the call was opened with and sealed, as a token's `metadata`; empty when none."""
         self.run: str | None = None
         """The eval run that opened the call, or None for a real caller."""
         self.claimed: str | None = None
@@ -68,6 +73,8 @@ class Call:
         """The app's state as last set here or said by `state.changed`."""
         self.today = day_of(opened_at)
         """The day the call opened; on `call.attached`, the day it first did."""
+        self.seq = 0
+        """The log's seq of the entry being folded in, for a listener to read."""
         self._listeners: Listeners[Call] = Listeners(on_error)
 
     def on(self, type_: str, listener: Listener["Call"]) -> Callable[[], None]:
@@ -98,10 +105,18 @@ class Call:
         """The tools the model may see now."""
         self._send("tools.set", self.id, ToolsSet(tools=tools))
 
-    def set_state(self, state: JsonObject, changed: list[str] | None = None) -> None:
-        """Send the whole state; it lands as `state.changed`."""
+    def set_state(
+        self,
+        state: JsonObject,
+        changed: list[str] | None = None,
+        cause: StateCause | None = None,
+    ) -> None:
+        """Send the whole state, and who made the write; it lands as `state.changed`."""
         self.state = dict(state)
-        data = StateSet(state=state) if changed is None else StateSet(state=state, changed=changed)
+        # A field left out stays absent on the wire: the platform names the tool it saw running.
+        said = {"changed": changed, "cause": cause}
+        given = {name: value for name, value in said.items() if value is not None}
+        data = StateSet.model_validate({"state": state} | given)
         self._send("state.set", self.id, data)
 
     def tool_result(self, result: ToolResult) -> None:
@@ -126,10 +141,15 @@ class Call:
         """Write a line of the app's own into the call's log; it lands as `custom`."""
         self._send("call.log", self.id, CallLog(name=name, data=data or {}))
 
+    def done(self) -> None:
+        """Say the app's end hook ran and what it wrote was sent; the gateway seals on this word."""
+        self._send("call.done", self.id, CallDone())
+
     # ── what the log teaches it ──
 
-    def take(self, type_: str, event: WireModel) -> None:
+    def take(self, type_: str, event: WireModel, seq: int = 0) -> None:
         """Learn what the event says of the call, then hand it to the call's listeners."""
+        self.seq = seq
         self._learn(event)
         if type_ == "call.ended":
             self.status = "ended"
@@ -145,12 +165,16 @@ class Call:
         elif isinstance(event, CallStarted):
             self.status = "active"
             self._line(event)
+            self.direction = event.direction
+            self.metadata = event.metadata or {}
             self.medium = event.medium
             if event.today is not None:
                 self.today = event.today
         elif isinstance(event, CallAttached):
             self.status = "active"
             self._line(event.started)
+            self.direction = event.started.direction
+            self.metadata = event.started.metadata or {}
             self.medium = event.started.medium
             self.state = dict(event.state)
             self.today = event.started.today or day_of(event.started.started_at)

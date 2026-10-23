@@ -1,7 +1,7 @@
 /** Dispatches `event.received` entries to the instance serving the call, or drops them. */
 
 import { emitEvent, type EventHeard } from "../agent/agent.js";
-import { withAuthorAsync } from "../agent/authors.js";
+import { eventAuthor, withAuthorAsync } from "../agent/authors.js";
 import { accepts, type EventMeta, type EventSource } from "../agent/accepts.js";
 import type { CallWorld } from "../call/call.js";
 
@@ -50,7 +50,7 @@ export async function dispatch(serving: Serving, received: Received): Promise<bo
   const hook = (serving.agent as { onEvent: (n: string, d: Record<string, unknown>, m: EventMeta) => unknown }).onEvent;
   serving.call.cause = { name, seq };
   try {
-    await withAuthorAsync(`event:${name}`, () => hook.call(serving.agent, name, data, meta));
+    await withAuthorAsync(eventAuthor(name), () => hook.call(serving.agent, name, data, meta));
   } finally {
     serving.call.cause = null;
   }

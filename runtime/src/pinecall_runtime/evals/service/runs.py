@@ -14,6 +14,7 @@ from pinecall_runtime.exceptions import Conflict, NotFound
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.crypto import random_id
+from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.kit.time import epoch
 from pinecall_runtime.wire.parts import ModelConfig
@@ -89,7 +90,10 @@ class Runner:
     async def _renewed(self, run: str, agent: str) -> None:
         while True:
             await asyncio.sleep(LEASED_S / 3)
-            await self._leased(run, agent)
+            # A renewal that failed is said and tried again a third of the lease on: the one that ended
+            # the loop would let another run take the agent under this one.
+            with survived("renewing the lease of an eval run", run):
+                await self._leased(run, agent)
 
 
 def new_run(agent: str) -> RunRow:
