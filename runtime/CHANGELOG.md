@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.12 — What the pages said and the code did not, and a hosted app restarted comes back (2026-10-23)
 
 - **A transfer on a written conversation fails as a transfer.** `call.transfer` on a chat or a
   written golden used to be refused as a command the call does not do, an error the SDKs never

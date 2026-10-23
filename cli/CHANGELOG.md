@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.12] — `carriers drop` says what it does, the templates name their tool
 
 - **`carriers drop` says what it does.** Its help read "its numbers stop ringing here"; the
   gateway keeps them routed until each is let go with `numbers drop`, as the page said.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.12 — released with every other package (2026-10-23)
+
+- Nothing of the Python SDK changed: published at 0.11.12 with every other package.
+
 ## 0.11.11 — released with every other package (2026-10-23)
 
 - Nothing of the Python SDK changed: published at 0.11.11 with every other package.
