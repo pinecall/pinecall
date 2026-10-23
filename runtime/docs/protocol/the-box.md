@@ -35,5 +35,5 @@ an empty string goes back to the default, the only way to clear a logo. `accent`
 ## Continue with Google — `GET /v1/ops/signin`, `PUT` · `DELETE /v1/ops/signin/google`
 
 Not in this version. `GET` names the provider unwired and the redirect URI a client would be
-registered with; `PUT` and `DELETE` answer `503 platform-wide sign-in is not in this version: sign in with
-a password or the org's provider`. The org's own provider is `PUT /v1/org/sso`.
+registered with; `PUT` and `DELETE` answer `503 box-wide sign-in is not in this version: each org signs in
+with its own identity provider`. The org's own provider is `PUT /v1/org/sso`.

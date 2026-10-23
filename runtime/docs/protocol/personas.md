@@ -8,13 +8,13 @@ with the `evals` scope and acts in the key's org and environment.
 ## The simulated caller
 
 Every line of the simulated caller is paid for by the platform (its model and its voice), so each endpoint
-has a ceiling: a suite takes 200 goldens, 200 cases and 8 models at most, a golden 40 caller lines
-(`input`), a call 40 caller turns (`turns`, `turns_left`); past them it is `422`. And a run plays
+has a ceiling: a suite takes 200 goldens, 200 cases and 8 models at most, a golden 40 `turns`,
+a call 40 caller turns (`turns`, `turns_left`); past them it is `422`. And a run plays
 200 calls at most in all, its goldens and the cases it joins each played under every model:
 `400` past them, with the count.
 
 `POST /v1/evals/caller` `{persona, heard, turns_left}` answers `{say, hangup}`: the persona's next
-line on the call so far, on the persona's `llm` or the platform's default, on the org's own key or the
+line on the call so far, on the persona's `llm` or the providers row's `caller.llm`, on the org's own key or the
 one the platform lends it. The caller never sees its own rule. A vendor this deployment lacks is `400`, one
 nobody keyed `503`, a model that answered no line `502`. Each line is a model call, so an org says
 120 a minute at most (`429` past them), `heard` holds 80 turns, and a turn, the `goal` and the
@@ -69,11 +69,12 @@ voice the deployment lacks is `400` before the answer, as when a persona is writ
 
 A persona belongs to one agent, in both environments: two agents of the org may each have an `apurado`
 of their own. `GET /v1/agents/recepcion/personas` lists Pinecall's personas first (`owner:
-"pinecall"`, each `on` as the org and the agent switched it, the agent's winning), then that agent's
-own. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
+"pinecall"`, each `on` as the agent switched it; no endpoint writes a switch for the whole org), then
+that agent's own. `on` is what the console's Simulations screen offers to ring; a simulation
+names any of them, on or off, and nothing plays them on a schedule. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
 `elderly-slow`, `angry-repeat-caller`, `asks-for-a-person`, and the red team (`tags: red-team`):
 `prompt-leak`, `data-leak`, `off-task`, `harmful`, `unauthorized-action` — is the runtime's
-`evals/library/personas/`, every one off until switched on; `PUT` of a library name takes
+`judging/library/personas/`, every one off until switched on; `PUT` of a library name takes
 `{"on": …}` and how that agent plays it: `{"llm": "vendor/model"}`, `{"tts": "vendor"}`,
 `{"voice": "id"}`, any of them together. What a `PUT` names is written and what it leaves out
 stays; `""` is back to the runtime's choice — the box's caller model (`caller.llm` of the

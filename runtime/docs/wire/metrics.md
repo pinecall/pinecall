@@ -1,6 +1,6 @@
 # The metrics
 
-Every field livekit-agents 1.8 measures, block by block, with its unit and who measures it. Times are seconds unless the unit says otherwise; timestamps are unix seconds; a field the measuring side could not fill is absent, never zero. The story of how they join is in `README.md`; the models are `pinecall/wire/metrics.py`.
+Every field livekit-agents 1.8 measures, block by block, with its unit and who measures it, but three the wire does not carry: `STTMetrics.input_audio_tokens` and `total_tokens` and `STTModelUsage.input_audio_tokens`, which a block is read without ([livekit-metrics.md](livekit-metrics.md)). Times are seconds unless the unit says otherwise; timestamps are unix seconds; a field the measuring side could not fill is absent, never zero. The story of how they join is in `README.md`; the models are `pinecall_runtime/wire/metrics.py`.
 
 | block | field | unit | required | measured by | meaning |
 |---|---|---|---|---|---|

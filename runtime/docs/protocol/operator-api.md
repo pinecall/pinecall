@@ -17,7 +17,7 @@ An org is named by its **id or its slug** wherever a path says `{named}`.
 
 ## What the platform runs, and what a new org is given
 
-Rows of `box_settings`, each read and written whole. The console's Box settings edits them — **Defaults** the providers row, **Keys** the platform's keys and the account it buys numbers on, **Admission** — and `pinecall-runtime box` types every one but the providers row ([the-runtime-cli.md](../the-runtime-cli.md#box)):
+Rows of `box_settings`, each read and written whole. The console's Box settings edits them — **Defaults** the providers row, **Keys** the platform's keys and the account it buys numbers on, **Admission** — and `pinecall-runtime box` types the keys, the numbers account and admission ([the-runtime-cli.md](../the-runtime-cli.md#box)); the providers row is `providers seed` once and the console after, and the fleets row has no verb:
 
 - `GET` · `PUT /v1/ops/providers`: the providers row: the default vendor and model of each stage,
   the models a vendor named alone runs, the voice per vendor and language (`"deepgram/es":
@@ -175,7 +175,7 @@ row together.
 
 ## Carriers and the fence
 
-The platform knows a catalog of carriers (the table in `telephony/carrier_catalog.py`: each one's published SIP
+The platform knows a catalog of carriers (the table in `telephony/service/catalog.py`: each one's published SIP
 signalling networks, the page they were read from and the day). `GET /v1/ops/carriers` is
 `{carriers, fence}`: each carrier `{kind, name, control, networks, source, read_on, admitted, fixed,
 numbers}` (`control` when the box drives its API, `fixed` for Twilio, the platform's own carrier,

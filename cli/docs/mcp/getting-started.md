@@ -90,8 +90,8 @@ The project the tools act on (`show`), another folder opened (`open`), a new pro
     }
   ],
   "key": "from your sign-in (/Users/you/.pinecall/session.json)",
-  "gateway": "https://cloud.pinecall.io",
   "org": "acme",
+  "gateway": "https://cloud.pinecall.io",
   "installed": true
 }
 ```
@@ -100,7 +100,8 @@ The project the tools act on (`show`), another folder opened (`open`), a new pro
 {
   "action": "new",
   "name": "front-desk",
-  "language": "python"
+  "language": "python",
+  "agent": "front-desk"
 }
 ```
 
@@ -114,8 +115,8 @@ The project the tools act on (`show`), another folder opened (`open`), a new pro
     }
   ],
   "key": "from your sign-in (/Users/you/.pinecall/session.json)",
-  "gateway": "https://cloud.pinecall.io",
   "org": "acme",
+  "gateway": "https://cloud.pinecall.io",
   "installed": false,
   "runs": {
     "gateway": "https://cloud.pinecall.io",
@@ -146,6 +147,20 @@ The runtime on this machine: `recommend` reads the machine and says the stack th
 | `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
+```json title="called with"
+{
+  "action": "status"
+}
+```
+
+```json title="answered"
+{
+  "running": false,
+  "handed": false,
+  "says": "no runtime on this machine yet: call runtime with action recommend, then up"
+}
+```
+
 ## `team`
 
 The org's people (`list`), or a one-use link that lets one of them choose a new password (`reset`).
@@ -157,3 +172,30 @@ The org's people (`list`), or a one-use link that lets one of them choose a new 
 | `action` | `list` · `reset` | required | list the org's people; reset makes a one-use link for one of them to choose their password |
 | `email` | text |  | reset: the person's address |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+```json title="called with"
+{
+  "action": "list"
+}
+```
+
+```json title="answered"
+{
+  "people": [
+    {
+      "email": "ana@example.com",
+      "name": "Ana",
+      "role": "admin",
+      "status": "active",
+      "runs_the_box": false
+    },
+    {
+      "email": "leo@example.com",
+      "name": "Leo",
+      "role": "developer",
+      "status": "invited",
+      "runs_the_box": false
+    }
+  ]
+}
+```

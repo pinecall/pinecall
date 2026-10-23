@@ -38,8 +38,8 @@
           }
         ],
         "key": "from your sign-in (/Users/you/.pinecall/session.json)",
-        "gateway": "https://cloud.pinecall.io",
         "org": "acme",
+        "gateway": "https://cloud.pinecall.io",
         "installed": true
       }
     },
@@ -47,7 +47,8 @@
       "args": {
         "action": "new",
         "name": "front-desk",
-        "language": "python"
+        "language": "python",
+        "agent": "front-desk"
       },
       "answer": {
         "root": "/Users/you/front-desk",
@@ -58,8 +59,8 @@
           }
         ],
         "key": "from your sign-in (/Users/you/.pinecall/session.json)",
-        "gateway": "https://cloud.pinecall.io",
         "org": "acme",
+        "gateway": "https://cloud.pinecall.io",
         "installed": false,
         "runs": {
           "gateway": "https://cloud.pinecall.io",
@@ -131,8 +132,8 @@
           "… 3 more"
         ],
         "ended": false,
-        "version": 1,
-        "world": "sandbox"
+        "env": "sandbox",
+        "version": 1
       }
     }
   ],
@@ -650,6 +651,7 @@
         ]
       },
       "answer": {
+        "name": "hurried",
         "personas": [
           {
             "name": "hurried",
@@ -694,10 +696,9 @@
       "answer": {
         "call": "call_b91aeee02c0a475facc2fcc15f760fac",
         "transcript": [
-          "hurried · leave a message for the manager about a broken order",
-          "› Thanks for calling. How can I help?  no metrics on this turn",
-          "‹ Hi, I need to leave a message for the manager about my broken order, A-1042.",
-          "… 19 more"
+          "agent: Thanks for calling. How can I help?",
+          "caller: Hi, I need to leave a message for the manager about my broken order, A-1042.",
+          "… 6 more"
         ],
         "score": {
           "panel": [
@@ -745,7 +746,10 @@
           "judge_calls": 2,
           "judge_cost_usd": 0
         },
-        "world": "sandbox"
+        "medians": {
+          "llm_node_ttft": 0.39
+        },
+        "env": "sandbox"
       }
     }
   ],
@@ -757,6 +761,7 @@
         "asks": "The agent offered to have someone call the caller back."
       },
       "answer": {
+        "done": "offers-a-callback written",
         "judges": [
           {
             "name": "consent",
@@ -1004,7 +1009,7 @@
           ".pinecall/evals/run_7db71c472e04/takes-the-message.json"
         ],
         "held": false,
-        "world": "sandbox"
+        "env": "sandbox"
       }
     }
   ],
@@ -1071,6 +1076,7 @@
         "action": "list"
       },
       "answer": {
+        "agent": "front-desk",
         "cases": [
           {
             "id": "case_5b1e2d7a90c4",
@@ -1124,10 +1130,11 @@
         "action": "push"
       },
       "answer": {
-        "files": 1,
         "base": "front-desk",
         "chunks": 1,
-        "took_ms": 13.33
+        "language": "english",
+        "took_ms": 13.33,
+        "files": 1
       }
     }
   ],
@@ -1199,27 +1206,14 @@
         ]
       },
       "answer": {
-        "world": "sandbox",
-        "yours": {
-          "holder": "m_4f1c2a9b0e7d",
-          "version": 28,
-          "author": "m_4f1c2a9b0e7d",
-          "note": null,
-          "set_at": 1791490594.44,
-          "config": {
-            "memory": {
-              "remember": [
-                "what they ordered",
-                "how they prefer to be called back"
-              ],
-              "forget": [
-                "card numbers"
-              ]
-            }
-          }
-        },
-        "team": null,
-        "production": null
+        "agent": "front-desk",
+        "remember": [
+          "what they ordered",
+          "how they prefer to be called back"
+        ],
+        "forget": [
+          "card numbers"
+        ]
       }
     }
   ],
@@ -1326,7 +1320,7 @@
         "metric": "e2e_median_s",
         "above": true,
         "threshold": 2,
-        "window_days": 7
+        "windowDays": 7
       },
       "answer": {
         "monitor": {
@@ -1340,7 +1334,8 @@
           "created_by": "m_ana",
           "fired_on": null,
           "fired_value": null
-        }
+        },
+        "says": "mon_3f9a1c2b4d5e · slow answers · e2e_median_s above 2 over 7 days · every agent"
       }
     },
     {
@@ -1406,6 +1401,7 @@
             "base_url": "http://gpu.internal:8000/v1"
           }
         },
+        "own_key": true,
         "says": "judging on · openai/qwen3-32b · base_url=\"http://gpu.internal:8000/v1\" · your own openai key: evals not billed"
       }
     }
@@ -1469,10 +1465,47 @@
         "body": {
           "method": "GET",
           "url": "https://httpbin.org/anything/pinecall",
-          "origin": "34.121.61.139"
+          "origin": "203.0.113.7"
         },
         "error": null,
         "duration_ms": 254
+      }
+    }
+  ],
+  "team": [
+    {
+      "args": {
+        "action": "list"
+      },
+      "answer": {
+        "people": [
+          {
+            "email": "ana@example.com",
+            "name": "Ana",
+            "role": "admin",
+            "status": "active",
+            "runs_the_box": false
+          },
+          {
+            "email": "leo@example.com",
+            "name": "Leo",
+            "role": "developer",
+            "status": "invited",
+            "runs_the_box": false
+          }
+        ]
+      }
+    }
+  ],
+  "runtime": [
+    {
+      "args": {
+        "action": "status"
+      },
+      "answer": {
+        "running": false,
+        "handed": false,
+        "says": "no runtime on this machine yet: call runtime with action recommend, then up"
       }
     }
   ]

@@ -19,8 +19,10 @@ writes an agent, nothing there issues a key.
 
 `gateway` serves both environments: in a pod on the address `PINECALL_GATEWAY_LISTEN` names, behind the
 cluster's load balancer; elsewhere on the loopback address `PINECALL_GATEWAY_URL` names, and a URL
-that is not loopback is refused in one sentence (on Linux, `setup` sets `PINECALL_GATEWAY_LISTEN` to
-every interface, so the LiveKit container's webhooks reach it; the machine's firewall is the fence). `worker start` is a worker of the fleet
+that is not loopback is refused in one sentence (on a Linux laptop, `setup` sets `PINECALL_GATEWAY_LISTEN` to
+every interface, so the LiveKit container's webhooks reach it, and the console and API answer on port
+8080 to the whole network: the machine's firewall is the fence; `setup --domain` takes it out again,
+and a server's gateway stays on loopback behind Caddy). `worker start` is a worker of the fleet
 `PINECALL_FLEET` names, until told to stop or cordoned; `worker overflow` the one that answers when
 the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
 opens running, one gVisor pod each: the runner is itself a pod of the hosting cluster
@@ -44,7 +46,9 @@ finds, serves the open models that fit the machine, asks who signs in to the con
 machine in. A runtime on a server is the same verb with the server's name.
 
 **On this machine.** Postgres, Redis and LiveKit in Docker on loopback, the gateway and a sandbox
-worker in the terminal you ran it in (Ctrl-C stops them; `setup` or `local up` starts them again):
+worker in the terminal you ran it in (Ctrl-C stops them; `setup` or `local up` starts them again).
+No production worker runs here: a production spoken call finds nobody to take it, and a written
+call runs in the gateway in either environment:
 
 ```console
 $ pinecall-runtime setup
@@ -78,7 +82,9 @@ Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again.
 Let's Encrypt it renews itself, starts LiveKit facing out (its media on :7881 tcp and :7882 udp, the
 machine's public address found by STUN, a key pair drawn for this machine), and runs the gateway and
 a worker for each environment in Docker, from this release of the package, so all of it comes back
-after a reboot. Open :80, :443, :7881/tcp and :7882/udp to the machine. The console's admin is the
+after a reboot. Each worker holds four calls (`PINECALL_MAX_JOBS=4`, the env file's), and a server
+runs no overflow: a fifth phone caller of an environment hears silence. Open :80, :443, :7881/tcp
+and :7882/udp to the machine. The console's admin is the
 runtime's operator; a server always asks for a password (`--password-stdin` with `--yes`).
 
 ```console
@@ -135,7 +141,8 @@ runtime ([telephony.md](telephony.md)).
 `~/.bashrc`, `~/.bash_profile`, `~/.profile`) not loaded into this terminal; a line that expands
 (`$(…)`, `$OTHER`) is not read, and no value is ever shown. A key found is the org `default`'s own
 and the runtime's, which lends it to every org made later until that org brings its own
-([limits.md](limits.md)). A default's key found nowhere is asked for once, without echo.
+([limits.md](limits.md)). A default's key found nowhere is asked for once, without echo. With
+`--models none` no key is loaded and no providers row is written: both are the operator's.
 
 **The models.** It reads the machine — its NVIDIA cards and their memory, Apple silicon, the RAM,
 whether an Ollama already answers — and serves the best measured model that fits beside the ears
@@ -161,7 +168,8 @@ server signs nobody in: each person runs `pinecall login https://<name>` on thei
 sets one); `--livekit-key`, `--livekit-secret-stdin`; `--from <wheel>` (a server's processes
 installed from that wheel rather than PyPI); `--models local|keys|none`, `--stt`, `--turn`, `--llm`,
 `--tts`, `--judge`, `--caller` (the defaults, a stage at a time: `local`, `local/<model>`, or a
-vendor); `--chat-only` (Postgres and Redis, the gateway and Ollama alone: written calls); 
+vendor); `--chat-only` (no LiveKit and no worker: written calls alone; the ears and the voice are
+set to `local`, so Ollama, Whisper and Kokoro still start); 
 `--services-only`; `--recommend` (the machine's reading and the stack that fits, as JSON, nothing set
 up); `--dir` (`~/.pinecall-runtime/local` unless named).
 
@@ -229,7 +237,7 @@ orgs password <org> <email>                          # asked twice at a terminal
 orgs move <agent> <org>
 orgs quota <org> --env production|sandbox [--minutes n] [--messages n] [--agents n] [--concurrent-calls n]
            [--memory-facts n] [--knowledge-chunks n] [--numbers n] [--seats n] [--llm-tokens n]
-           [--budget-usd n]
+           [--hosted-apps n] [--evals n] [--simulations n] [--budget-usd n]
 orgs lends <org> --env production|sandbox <vendor[/model],…|all|none>
 orgs dialling <org> [--dial-anywhere | --no-dial-anywhere] [--per-minute n] [--per-day n] [--max-duration-s n]
 orgs sso <org> [--off]

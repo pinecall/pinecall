@@ -13,14 +13,19 @@ imports LiveKit.
 ```bash
 npm i -g pinecall                # the CLI, Node 24+
 pinecall login                   # signs this machine in, once
-mkdir clinica && cd clinica
-bundle init && bundle add pinecall
+pinecall new clinica --agent clinica-norte --ruby   # and its pinecall.json: your org
+cd clinica
+bundle install                   # the project's Gemfile, with pinecall in it
 pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
-`pinecall login` signs this machine in, once: every verb runs on it, in the org of the sign-in. A
-project made with `pinecall new` also gets a `pinecall.json` naming its gateway and org — asked when
-you belong to several — and a folder made by hand can carry the same two lines,
+`pinecall new --ruby` writes the project — the clinic — with a `Gemfile` naming `pinecall` and a
+`Rakefile`, and `--agent` its first agent, `agents/clinica-norte/`: the class, its view, a ring-0
+test and one golden.
+
+`pinecall login` signs this machine in, once: every verb runs on it, in the org the project's
+`pinecall.json` names — `pinecall new` writes it, asking which org when you belong to several. A
+folder made by hand can carry the same two lines,
 `{"gateway": "https://cloud.pinecall.io", "org": "<slug>"}`. It holds no key, so it is committed with
 the project. Every verb works in the sandbox unless `--prod` is said.
 
@@ -29,7 +34,7 @@ the project. Every verb works in the sandbox unless `--prod` is said.
 The project's layout is the CLI's, the same as a TypeScript one: one folder per agent,
 `agents/<slug>/`, holding `agent.rb`, its views, its documents under `docs/` and its tests under
 `test/`. **The folder's name is the agent's slug.** Two
-files, then, `agents/clinica-norte/agent.rb` — the whole thing:
+files, then. Replace `agents/clinica-norte/agent.rb` with this — the whole thing:
 
 ```ruby
 require "pinecall"
@@ -124,28 +129,31 @@ again only when its own text changed.
 ## 3. Talk to it
 
 ```bash
-pinecall chat                    # the agent served from this terminal, and a written caller against it
 pinecall start                   # registered and answering: the process you deploy
+pinecall chat                    # in another terminal: a written caller against the agent start holds
 ```
 
-`chat` starts this gem's serve entry for the agent of this folder — `bundle exec ruby -r pinecall
--e 'exit Pinecall::Serve.main(ARGV)' -- start …`, a process that takes no call it did not open —
-opens a written call naming that process, and stops it when you leave. `start` is the same entry
-taking every call, with the console's screens answered beside it; under it, the console's Talk
-tab is a real voice call to the same process.
+`start` is the one verb that runs the agent: it starts this gem's serve entry for the agents of this
+folder — `bundle exec ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- start …` — which
+takes every call, and answers the console's screens beside it; under it, the console's Playground
+is a real voice call to the same process. `chat` starts nothing: it opens a written call at whoever
+holds the agent — your `start`, a colleague's, production's with `--prod` — and with nobody holding
+it the gateway refuses, and `chat` prints the refusal.
 
-Either way your tools run in that Ruby process, on a thread of that call's own: the gateway asks,
+Your tools run in that Ruby process, on a thread of that call's own: the gateway asks,
 your method answers, and no code of yours ever crosses the socket.
 
 ## 4. Knowledge: a page the agent knows by heart
 
-The voice, the model, the opening and everything else the agent runs on are not in the class: they
-are the world's, set with the Node CLI's `pinecall agent set` or the console's Settings, and a class
-that still declares one is refused at load with the verb (`docs/writing-an-agent.md`).
+The voice, the model, the opening and everything else the agent runs on are the agent's settings,
+set per world with the Node CLI's `pinecall agent set` or the console's Configure screen — unless
+the class declares one itself (`voice`, `llm`, `knowledge`, …), and then **the class wins**: the
+setting is not read, and the console shows it "set by the class"
+([writing-an-agent.md](writing-an-agent.md)).
 
 What the agent knows by heart — hours, prices, what needs an authorisation — is one of those: a page
-of Markdown in the agent's settings, written in the console, Settings ▸ Knowledge, or with the Node
-CLI's `pinecall agent knowledge edit`. The class sends nothing for it, so `pinecall prompt` prints the
+of Markdown in the agent's settings, written in the console's Configure screen, or with the Node
+CLI's `pinecall agent knowledge edit`. This class does not declare it, so `pinecall prompt` prints the
 second block empty; the gateway writes the page into it, whole, once per call, in the cached prefix:
 the model has it in every turn and you pay for it once. The provider caches the static blocks one by one, which is why rewriting the tool list
 leaves identity and knowledge read from cache.
@@ -156,9 +164,9 @@ folder of a hundred documents is not, and that is the next step.
 ## 5. The knowledge base: what it looks up per turn
 
 Put your Markdown under `agents/clinica-norte/docs/`, one file per subject, with headings, and push it.
-With no arguments the verb reads that folder and pushes it under the agent's slug. The class does not
-name the base: attaching it to the agent, with its `k` and `min_score`, is the world's —
-`pinecall docs attach clinica-norte --k 4`.
+With no arguments the verb reads that folder and pushes it under the agent's slug. Attaching the base
+to the agent, with its `k` and `min_score`, is a setting — `pinecall docs attach clinica-norte --k 4`
+— or the class's `docs base: "…", k: 4`.
 
 ```bash
 pinecall docs push
@@ -170,7 +178,7 @@ look.
 **What the push did.** Each file was cut at its headings, each chunk prefixed with its heading path
 (`prices.md › Prices › Check-up`), and embedded — **contextually**, one document at a time, so a
 chunk was embedded seeing its neighbours. The vectors went into Postgres, an HNSW index beside a
-BM25 index in Spanish.
+BM25 index in the base's language — counted from the files' words, or named with `--language`.
 
 **What happens on a turn.** The platform runs a `search` itself; the two indexes are asked in parallel
 and fused by reciprocal rank. On a spoken call it starts while the caller is still talking, four words
@@ -194,11 +202,12 @@ pinecall docs drop clinica-norte
 pinecall memory policy --remember "how they like to be addressed" "allergies" "their usual doctor" --forget "payments"
 ```
 
-The policy is the world's, set with the CLI or the console, not declared on the class. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
+The policy is a setting, set with the CLI or the console, or the class's `memory remember: […],
+forget: […]`, which wins over it. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
 `forget` is what is never written whatever the model heard.
 
 **Reading, on a turn.** A `recall` runs beside the `search`, on the same path and budget. It answers
-the contact's facts, ranked by relevance, recency and importance — no model call, so it costs nothing
+the contact's facts, ranked by relevance, then weighed by recency and confidence — no model call, so it costs nothing
 but a query: 353 ms and 228 ms on the two turns of the §7 call.
 
 **Writing, at hang-up.** One model call reads the call's turns and the facts already held, and
@@ -208,7 +217,7 @@ supersedes the old one, and nothing is deleted except by `forget`.
 **Who a caller is.** On the phone and on WhatsApp the number is the identity. On the web nobody is
 anybody until somebody says so — the token door seals a contact id the browser cannot forge — and an
 agent with a memory policy remembers nothing of an anonymous visitor, which is right. The
-console's Talk screen mints its token with no contact, so a call made from there is one of those.
+console's Playground mints its token with no contact, so a call made from there is one of those.
 
 Two calls that did name a contact, and you can see it: current facts first, then the one the second
 call superseded, kept with its dates and dimmed on a terminal. Forgetting is the one verb that removes
@@ -260,11 +269,11 @@ Everything above wrote lines. Read them:
 
 ```bash
 pinecall console                 # the sandbox's console, signed in as this folder's key
-pinecall sessions                # the calls this org has taken; `sessions <call>` reads one whole
+pinecall sessions                # the calls this agent has taken; `sessions <call>` reads one whole
 ```
 
-Live is the calls happening now — the transcript, the marks, the state and the metrics of one watched
-call; Sessions is every finished one read whole, entry by entry in `seq`.
+The console's Calls screen is the same calls — the ones happening now and every finished one, read
+whole, entry by entry in `seq`.
 
 The same log without a browser is `Pinecall::Client`, the other door this gem has — no class, no view,
 no CLI, just the socket and its key. What the base answered on one call:
@@ -316,13 +325,15 @@ end
 `Pinecall.render(agent.start_in(patient: { name: "Marta" }))[:view]` needs no gateway at all.
 
 **Rings 1, 2 and 3** — the goldens, a real line, and one call re-scored — are `pinecall test`,
-`pinecall simulate --voice` and `pinecall eval`: the goldens under `agents/clinica-norte/test/goldens/`, each
-call served by this gem's entry, scored by the gateway.
+`pinecall simulate --voice` and `pinecall eval`: the goldens under `agents/clinica-norte/test/goldens/`,
+played on the agent your `pinecall start` holds — `test` and `simulate` start nothing — and scored by
+the gateway.
 
-**Ring 4** happens without you: every finished call is judged at hang-up and the verdict is an entry
-in your own log, `call.score`, beside the `call.summary` that says what the call cost. `consent` is
-checked by code off the gate lines; `grounded` checks that what the agent stated appears in the
-evidence it was given — which is what the `search` result is for.
+**Ring 4** is the hang-up judges: LLM judges, every one off until switched on (`pinecall judges on
+<name>`), run over each finished call; the verdict is an entry in your own log, `call.score`, beside
+the `call.summary` that says what the call cost. `consent` asks whether every irreversible tool ran
+after the caller agreed; `grounded` whether what the agent stated appears in the evidence it was
+given — which is what the `search` result is for.
 
 ## Where to go next
 

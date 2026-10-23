@@ -33,13 +33,15 @@ fence: the colleague a caller is put through to never had to ring the org. `room
 the same way.
 
 `mode` is optional; unsaid, it is cold for a caller on a SIP leg and warm for one in a browser.
-Asked by name, it is refused rather than swapped. A written conversation has no line:
-`call.transferred` comes back with `ok: false` and says to ask for a person instead.
+Asked by name, it is refused rather than swapped. A written conversation has no line: the command
+is refused as an `error` entry (`refused`, "CallTransfer is not something this call does") on the
+agent's log, and no `call.transferred` is written; `call.attention` is the way to a person there.
 
 ## Asking for a person
 
 `call.attention {reason, wait_s}`: the reason is what a supervisor reads before taking the line;
-`wait_s` has no default, because how long a caller will hold is the app's to decide. While the ask
+`wait_s` has no default, because how long a caller will hold is the app's to decide, and is more
+than 0 and at most 900 seconds. While the ask
 is open the caller is on hold and `state.attention` is `open`. It ends as a supervisor's `takeover`
 (`ok: true`, with who), as `wait_s` passing (`ok: false`, the agent has the caller back), or with
 the call. A tool that asked for a person is still running while the caller waits, so its own

@@ -5,8 +5,8 @@ you, it runs inside the Node app you already have, or it runs as a process of it
 
 ## The server's token
 
-A server runs on a **server's token**, minted for production in the console (Settings ▸ Tokens) or
-with `pinecall keys`. It was made for one world and opens that one alone: put it in the server's
+A server runs on a **server's token**, minted for production in the console's API keys screen
+(under the org's Settings). It was made for one world and opens that one alone: put it in the server's
 secrets as `PINECALL_KEY`, never in the repository. A person's key works too while their
 production switch is on, but a server should not run on a person.
 

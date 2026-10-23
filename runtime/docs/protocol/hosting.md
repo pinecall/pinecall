@@ -17,7 +17,7 @@ server of its own, and `pinecall deploy` says so.
 
 From a terminal, the endpoints are two verbs of the `pinecall` CLI:
 `pinecall deploy` packs the folder (never `node_modules` or a `.env`), uploads it and follows it
-until it is live or failed, with `list`, `releases`, `rollback <n>` and `rm`; `pinecall secrets`
+until it is live or failed, with `list`, `releases`, `logs`, `rollback <n>`, `stop`, `start` and `rm`; `pinecall secrets`
 sets, lists and drops the org's secrets. Their page is `cli/docs/the-cli.md`.
 
 An app is of one of two kinds: `code`, the sources the runner starts, and `studio`, an agent built

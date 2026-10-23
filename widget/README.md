@@ -4,8 +4,8 @@ A web component that puts a Pinecall agent on any page: a button that opens a vo
 the browser, a chat, or the agent's phone number with the call's live transcript. One JavaScript
 file, no build step, no framework dependency.
 
-It is served by your gateway at `https://<gateway>/widget/pinecall-widget.js`, and by jsDelivr at
-`https://cdn.jsdelivr.net/gh/pinecall/widget@main/pinecall-widget.js`.
+It is served by your gateway at `https://<gateway>/widget/pinecall-widget.js`, and by jsDelivr from
+the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/widget/pinecall-widget.js`.
 
 ```html
 <script type="module" src="https://cloud.pinecall.io/widget/pinecall-widget.js"></script>
@@ -32,7 +32,7 @@ It is served by your gateway at `https://<gateway>/widget/pinecall-widget.js`, a
 | `lang` | optional | the language of the widget's own words — its menu, buttons and statuses: `en` (default) or `es`. The agent answers in whatever language the visitor speaks either way |
 | `position` | optional | `bottom-right` (default), `bottom-left`, `top-right`, `top-left`, or `inline`: the button right where the tag is, in the page's own flow |
 | `greeting` | optional | the agent's first bubble, shown before a call starts; plain text (markup is escaped) |
-| `theme` | optional | `auto` (default, follows `prefers-color-scheme`), `light` or `dark` |
+| `theme` | optional | `auto` (default, follows `prefers-color-scheme`, and the visitor may switch it from the panel's header, their choice kept in this browser), `light` or `dark` (forced, no switch) |
 | `autostart` | optional | the opening click starts a voice call directly; if the microphone is refused, the menu opens with the reason |
 | `history` | optional | `off` keeps no conversations in this browser. By default the visitor's last 20 chats and calls with this agent are kept in `localStorage` — the lines as they settled, at most 200 each — listed under **Your conversations** in the menu, any one readable again, and cleared by the visitor with **Clear** |
 
@@ -77,7 +77,7 @@ Return Pinecall's response unchanged: `201` with
 `{ "server_url", "participant_token", "call", "log_token", "resume_token" }` (`log_token` reads
 that call's log and opens no room; `resume_token` is what the widget keeps to carry the
 conversation on). Pass `resume` on as it came: only your key can spend it.
-`ttl_s` defaults to 60 (max 600). `metadata` is sealed into the call: the agent can read it and
+`ttl_s` defaults to 60; a longer one is cut to a day (86400). `metadata` is sealed into the call: the agent can read it and
 the browser cannot alter it. Errors come as `{ "detail": "…" }` (`404` unknown agent, `429` quota
 spent, `503` fleet full); pass them through and the widget shows `detail`. `room_name`,
 `participant_name` and `participant_metadata` are rejected with `400`.
@@ -188,10 +188,15 @@ pinecall-widget {
   --pc-font: Inter, sans-serif; /* default: the page's own */
   --pc-font-size: 15px;
   --pc-z: 2147483000;
+  --pc-panel-width: 480px;    /* the size a panel opens at — default 480px */
+  --pc-panel-height: 760px;   /* default 760px */
 }
 pinecall-widget::part(button) { border-radius: 8px; }   /* the button, outright */
 pinecall-widget::part(panel) { box-shadow: none; }      /* the panel, outright */
 ```
+
+The panel is the visitor's to size: they drag its corner, or maximize it from the header, and the
+size they leave is kept in this browser.
 
 ## The button
 
@@ -229,6 +234,16 @@ the panel with `toggle()`.
   <a slot="button" class="my-cta" href="#">Talk to us now</a>
 </pinecall-widget>
 ```
+
+## What the agent can show
+
+The agent can put things on the visitor's screen with `this.call.send("pinecall.ui", data)`, drawn
+in the conversation:
+
+- `{ type: "choices", text?, options: [{ label, value? }] }` draws buttons; the one tapped is the
+  visitor's next line (`value`, else `label`).
+- `{ type: "html", html }` draws a card. Only text, lists, tables, `https` links (opened in a new tab),
+  `https` images and code are kept; scripts and styles never run.
 
 ## Events
 

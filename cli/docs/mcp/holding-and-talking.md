@@ -129,8 +129,8 @@ Talk to the agent as a caller, wherever it is held: `say` a line (opening a call
     "… 3 more"
   ],
   "ended": false,
-  "version": 1,
-  "world": "sandbox"
+  "env": "sandbox",
+  "version": 1
 }
 ```
 

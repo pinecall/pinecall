@@ -41,15 +41,16 @@ whichever gateway holds its socket, its `tool.result` is written there, once per
 retry that lands on another gateway waits for that answer, out of what is left of the tool's
 deadline, counted from its `tool.call`.
 
-A retried entry is written once when it travels in a batch, `POST /v1/calls/{call}/entries
-{after, entries}`: a call's log has one writer, which sends its entries in order and says how many
+A retried entry is written once when it travels in a batch, `{after, entries}` down the call's socket
+`WS /v1/calls/{call}/entries` (or, to a gateway that has no such socket, `POST
+/v1/calls/{call}/entries` with the same body): a call's log has one writer, which sends its entries in order and says how many
 the log already took from it, and the log's head counts them. A batch that starts where the count
 stands is written, whole, under the next seqs; the same batch sent again because its answer was
 lost is answered with the seqs it was given and writes nothing; anything else is a `409` that says
 both counts. Each entry keeps the worker's `ts`, when it happened, clamped to the gateway's clock.
 The gateway's own entries take seqs and are not counted.
 
-The worker writes its call's entries through this endpoint and no other: what is queued goes as one
+The worker writes its call's entries as these batches and no other way: what is queued goes as one
 batch, and a batch retried goes again unchanged, after the same count, so a retry can no longer
 write an entry twice. A `409` refuses the whole batch and the call goes on with the next. The
 entries a worker writes outside its session take the same writer: a command the session refused

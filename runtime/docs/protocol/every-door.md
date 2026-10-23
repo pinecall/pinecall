@@ -75,7 +75,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/agents/{slug}/widget` | talk | How the agent's widget looks in the key's environment; the widget's own defaults when unset. |
 | `PUT` | `/v1/agents/{slug}/widget` | pipeline | Replace how the widget looks, whole; a null field is the widget's own default. |
 | `GET` | `/v1/apps` | calls | The app sockets of the org in the environment this key may see, oldest first. |
-| `WS` | `/v1/apps` | — | An app holds its agents here, answers their tools, and sends their calls' commands. |
+| `WS` | `/v1/apps` | app | An app holds its agents here, answers their tools, and sends their calls' commands. |
 | `POST` | `/v1/apps/{app}/stop` | app | Tell the app it was stopped, and close its socket. |
 | `POST` | `/v1/agents/{slug}/kill` | team and app (an admin) | Let go of the agent in every app that holds it in the env, whoever's; the apps keep their other agents, and nothing is erased. |
 | `GET` | `/v1/callbacks` | calls | The org's callbacks in the key's environment, oldest first, a page at a time. |
@@ -85,7 +85,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/calls/{call}/claim` | app · fleet | The caller keyed a page's code: tie the call to it. |
 | `GET` | `/v1/calls/{call}/commands` | app · fleet | The app's commands for the call, in order, until it is sealed. |
 | `POST` | `/v1/calls/{call}/entries` | app · fleet | Write a worker's batch of a call this gateway serves, once and in order, each entry at the worker's `ts` clamped to the gateway's clock; a retry of the last batch answers the same seqs. |
-| `WS` | `/v1/calls/{call}/entries` | — | A worker's batches of a call, on one socket for its life, each answered with its seqs as the batch endpoint answers them; a refusal is a frame `{refused, status}` and the socket stays. |
+| `WS` | `/v1/calls/{call}/entries` | app · fleet | A worker's batches of a call, on one socket for its life, each answered with its seqs as the batch endpoint answers them; a refusal is a frame `{refused, status}` and the socket stays. |
 | `GET` | `/v1/calls/{call}/golden` | evals | The golden a finished call makes from a seq on, its expect from its broken verdicts. |
 | `GET` | `/v1/calls/{call}/events` | calls · fleet | A call's entries above the cursor: a page, or a stream that ends with the call. |
 | `POST` | `/v1/calls/{call}/events` | app · fleet | Write one entry of a call this gateway serves. |
@@ -103,7 +103,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/calls/{call}/state` | calls · fleet | The call's folded state as this reader may see it, and the seq a stream resumes from. |
 | `POST` | `/v1/calls/{call}/supervise` | supervise | A seat that speaks in one live call; its token also sends the verbs. |
 | `POST` | `/v1/calls/{call}/tools` | app · fleet | Run a worker's tool call through the app that holds its agent, and answer its result. |
-| `POST` | `/v1/calls/{call}/verbs` | calls | One supervise verb on a live call; the call's log says what it did. |
+| `POST` | `/v1/calls/{call}/verbs` | supervise and calls · fleet, or a supervise seat's token | One supervise verb on a live call; the call's log says what it did. |
 | `DELETE` | `/v1/carrier` | numbers | Forget an account; its numbers stay routed until each is let go. |
 | `GET` | `/v1/carrier` | numbers | The org's account, named, never its secret; the only one unless one is asked for. |
 | `PUT` | `/v1/carrier` | numbers | Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number at Meta. |
@@ -111,9 +111,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/carrier/outbound` | numbers | Make an account dialable: Twilio's termination and a credential; a peer needs nothing. |
 | `GET` | `/v1/carriers` | numbers | Every account of the org, oldest first. |
 | `GET` | `/v1/carriers/catalog` | numbers | The carriers this deployment admits, each automatic (its API) or guided (SIP terms), and whether the platform sells numbers. |
-| `WS` | `/v1/chat` | — | One text call: {text} frames in, every entry of the call out. |
+| `WS` | `/v1/chat` | talk | One text call: {text} frames in, every entry of the call out. |
 | `POST` | `/v1/codes` | talk | Four digits for a caller to key, the number to call, and a token that asks after them. |
-| `GET` | `/v1/codes/{code}` | calls | How the code stands; with ?wait=1, held up to 25 s for a call to key it. |
+| `GET` | `/v1/codes/{code}` | — | How the code stands; with ?wait=1, held up to 25 s for a call to key it; with the code's own token alone, a key is `403`. |
 | `POST` | `/v1/contacts/memory/eval` | memory | A memory golden asked of the ranking a call reads, on facts it writes and forgets. |
 | `DELETE` | `/v1/contacts/{contact}` | team | Erase a contact in the environment: every call they were on and every fact kept of them. |
 | `DELETE` | `/v1/contacts/{contact}/memory` | memory | Every fact of the contact deleted, history included; zero is an answer, not a 404. |
@@ -171,7 +171,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/insights/drift` | calls | What moved between two days or versions of an agent, and the versions run or set. |
 | `POST` | `/v1/invitations/{token}` | — | Choose a password: the member is active, and here is their first key. |
 | `GET` | `/v1/keys` | — | The org's keys this key may see, oldest first, the revoked ones too; never a key. |
-| `POST` | `/v1/keys` | app | A server's token for the org in one environment, `pc_live_` or `pc_test_`. |
+| `POST` | `/v1/keys` | app (a person's key) | A server's token for the org in one environment, `pc_live_` or `pc_test_`. |
 | `POST` | `/v1/keys/{fingerprint}/revoke` | — | Stop one of the org's keys from the next request on: your own, one you made, or any. |
 | `GET` | `/v1/knowledge` | knowledge | Every base the key's corner reads, its size, its model and when it was pushed. |
 | `GET` | `/v1/knowledge/attached` | knowledge | Each base some agent attaches, and the agents whose settings in the corner attach it. |
@@ -183,10 +183,10 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/knowledge/{base}/files/{path:path}` | knowledge | One file of the base, text and all. |
 | `PUT` | `/v1/knowledge/{base}/files/{path:path}` | knowledge | Put one file into the base, beginning the base when there is none; only it is cut. |
 | `GET` | `/v1/limits` | — | Each quota of the key's environment as {limit, used}, the lends, and where to buy more. |
-| `DELETE` | `/v1/line/from` | app | Stop sending this person's phones to their scope, and say which were forgotten. |
-| `PUT` | `/v1/line/from` | app | Send rings from this phone to the key's person's own scope. |
-| `GET` | `/v1/line/numbers` | app | The production numbers a developer's phone can dial, and the phones that are theirs. |
-| `POST` | `/v1/livekit/webhook` | — | A room event LiveKit signed with the platform's key, `?world=` naming the LiveKit that sent it (production's unless it says `sandbox`): an agent lost mid-call has its caller told once and its call ended as `drained`. |
+| `DELETE` | `/v1/line/from` | app (a person's key, in the sandbox) | Stop sending this person's phones to their scope, and say which were forgotten. |
+| `PUT` | `/v1/line/from` | app (a person's key, in the sandbox) | Send rings from this phone to the key's person's own scope. |
+| `GET` | `/v1/line/numbers` | app (a person's key, in the sandbox) | The production numbers a developer's phone can dial, and the phones that are theirs. |
+| `POST` | `/v1/livekit/webhook` | — | A room event LiveKit signed with the platform's key, `?world=` naming the LiveKit that sent it (production's unless it says `sandbox`): an agent lost mid-call has its caller told once and its call ended as `drained`, a caller alone in a room is offered a worker, a room an agent joined or that ended is let go, and a hand-over's bridge goes with either of its legs. |
 | `POST` | `/v1/login` | — | A key for a person and a device, from a password, or from a one-use code. |
 | `POST` | `/v1/login/codes` | — | A one-use word that gives a browser a key like this one, for five minutes. |
 | `GET` | `/v1/login/google` | — | Platform-wide "Continue with Google", which this version does not have. |
@@ -287,7 +287,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/erasures` | team | The org's erasures, newest first: what went, when, and who asked. |
 | `GET` | `/v1/org/policy` | team | The org's compliance settings: retention, calling hours, calls a day per number, and who set them. |
 | `PUT` | `/v1/org/policy` | team | The org's compliance settings replaced whole, from the next nightly run. |
-| `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: calls and their logs, memories, settings, words, documents. |
+| `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: calls and their logs, memories, settings, canaries, words, documents, consents, cases, prompts, and the folded days of stages, judges and tools and the slow turns. |
 | `GET` | `/v1/org/judging` | calls | Whether hang-up judging is on, the model it runs on, and its ceiling per call. |
 | `PUT` | `/v1/org/judging` | usage | Hang-up judging on or off, and the model it runs on, from the next call. |
 | `DELETE` | `/v1/org/mail` | team | Forget the org's own mailbox: its letters go through the platform's again. |
@@ -322,7 +322,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/transcriptions` | talk · pipeline | The note's words, heard on the keys the org's calls run on. |
 | `POST` | `/v1/transcriptions/token` | talk · pipeline | A minute's token for one dictation on the org's keys, with the ears and language asked for. |
 | `WS` | `/v1/transcriptions/stream` | — | Raw 16 kHz PCM frames in, `{type: interim\|final, text}` out as it is heard; `end` closes the audio and `{type: done}` follows once the words are settled. |
-| `GET` | `/v1/voices` | pipeline | A vendor's own voices, as its plugin lists them; a vendor that lists none is a 404. |
+| `GET` | `/v1/voices` | pipeline | The voices the providers row lists for a vendor, else its plugin's; neither is a 404. |
 | `POST` | `/v1/voices/sample` | pipeline | The line said by that vendor's voice, over the path a call speaks on. |
 | `GET` | `/v1/whatsapp/webhook` | — | Meta subscribing: its challenge echoed back when it says this deployment's word. |
 | `POST` | `/v1/whatsapp/webhook` | — | Every message of a signed body onto its contact's conversation. |

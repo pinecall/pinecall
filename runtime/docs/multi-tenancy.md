@@ -29,12 +29,12 @@ effect on the next one.
 A server holds a key of its own, made in the console for the environment it runs in, and shown once:
 
 ```bash
-# console → Keys → New key → "clinica web", production
+# production's console → Settings → API keys → New API key "clinica web" → Create
 PINECALL_KEY=pc_live_…
 ```
 
 ```ts
-const pc = new Pinecall({ apiKey: process.env.PINECALL_KEY });
+const pc = new Pinecall({ url: "https://cloud.pinecall.io", apiKey: process.env.PINECALL_KEY });
 ```
 
 The prefix says the environment: `pc_live_` is production's, `pc_test_` the sandbox's. A server key
@@ -111,8 +111,8 @@ bodies and their refusals are [protocol/people.md](protocol/people.md).
 - **Email and password.** Five tries a minute per address and place; a wrong address and a wrong
   password are one sentence.
 - **A one-use code** a signed-in page mints for a browser, so a key never rides a URL.
-- **Pairing**: `pinecall login` prints a word, a signed-in browser approves it, the terminal
-  collects its key once.
+- **Pairing**: `pinecall login` prints a link carrying a one-time code (`/cli?c=cli_…`), a signed-in
+  browser approves it, the terminal collects its key once.
 - **The org's identity provider** (OpenID Connect, with PKCE): the org names its issuer, its
   client and the email domains it admits; it may seat people nobody invited with a role, and it
   may be the only way in.

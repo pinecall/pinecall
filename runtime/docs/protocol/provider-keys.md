@@ -65,6 +65,7 @@ means. Those are measured per vendor and per day (`GET /v1/insights`, `stages`),
 
 | | |
 |---|---|
+| `GET /v1/provider-keys` | `{"vendors": ["elevenlabs"]}`, names only |
 | `PUT /v1/provider-keys/{vendor}` | `{"key": "…"}`, or `{"credentials": {…}}` with the object the vendor's plugin takes (`speech_key` and `speech_region`): secrets alone, eight short scalars at most, each a field a constructor of the vendor takes, none an address, a file or a session (`base_url`, `endpoint`, `*_file`, `http_session`… are the operator's, in the providers row's tuning), `400` otherwise; every call of the org runs on it from the next one |
 | `DELETE /v1/provider-keys/{vendor}` | that vendor back on the platform's key; `404` when the org brought none |
 
@@ -73,7 +74,9 @@ does (a model's answer, a voice's line, the ears opened), as a call would run it
 turns away is `400` in the vendor's own words and nothing is kept; one the vendor does not answer
 is `502`, nothing kept either. The platform's own keys (`/v1/ops/provider-keys/{vendor}`) are
 tried the same way.
-| `GET /v1/provider-keys` | `{"vendors": ["elevenlabs"]}`, names only |
+
+`GET /v1/providers/advice` is what `pinecall login` reads once signed in: the platform's advice for
+each stage (what it serves, what it lends, the org's own key, or one to bring) and its `lends`.
 
 No endpoint a person reads answers with a key. The one endpoint that does is the worker's,
 `GET /v1/agents/{slug}/provider-keys`, which hands a call's three stages with the credentials each

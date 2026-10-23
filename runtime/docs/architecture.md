@@ -53,7 +53,7 @@ src/pinecall_runtime/
 ```
 
 A domain owns its tables (`models.py`: one SQLAlchemy class each; `calls/models/` is a package,
-having twelve); its `endpoints` call services and read schemas; a `service` holds the rules and the use
+having fourteen); its `endpoints` call services and read schemas; a `service` holds the rules and the use
 cases as functions; a `repository` holds every query on the domain's tables and returns models;
 `auth` names which scopes open which endpoints; `tasks` the loops the lifespan starts. Across
 domains, a module imports the `service` of a domain **below** it, as a module

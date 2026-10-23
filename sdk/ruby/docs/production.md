@@ -5,8 +5,8 @@ yet.
 
 ## The server's token
 
-A server runs on a **server's token**, minted for production in the console (Settings ▸ Keys) or
-with the Node CLI's `pinecall keys`. It was made for one world and opens that one alone: put it in
+A server runs on a **server's token**, minted for production in the console's API keys screen
+(under the org's Settings). It was made for one world and opens that one alone: put it in
 the server's secrets as `PINECALL_KEY`, never in the repository. A person's key works too while
 their production switch is on, but a server should not run on a person.
 
@@ -18,7 +18,7 @@ hands back what it holds; `stop` drains the calls to the next holder and closes:
 
 ```ruby
 require "pinecall"
-require_relative "agents/clinica_norte/agent"
+require_relative "agents/clinica-norte/agent"
 
 held = Pinecall.serve(ClinicaNorte, url: "https://cloud.pinecall.io", api_key: ENV.fetch("PINECALL_KEY"),
                                     slug: "clinica-norte")

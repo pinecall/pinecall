@@ -34,8 +34,8 @@ keeps what it has. A deployment with no row gives a new org no limits.
 ## 2. What an org may use — quotas and lends
 
 Per org and per environment, set whole at `PUT /v1/ops/orgs/{org}/quotas`: minutes, messages, agents
-held, calls at once, memory facts, knowledge chunks, bought numbers, seats, model tokens, and a
-monthly `budget_usd` shown beside what was spent, and a new call is refused once the month's spend reaches it. `lends` says which of the
+held, calls at once, memory facts, knowledge chunks, bought numbers, seats, model tokens, hosted
+apps, evals, simulations, and a monthly `budget_usd` shown beside what was spent, and a new call is refused once the month's spend reaches it. `lends` says which of the
 platform's own vendor keys the org runs on: every one (null), none (`[]`), or named vendors and
 `vendor/model` prefixes. An org that brought its own key for a vendor runs on it whatever `lends`
 says. What each quota counts and when it bites: [limits.md](limits.md).

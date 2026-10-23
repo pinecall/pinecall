@@ -176,16 +176,16 @@ org's `dials` ledger, taken or refused:
 | the number never called or wrote to this org **in this environment** | `403` | an operator's `dial_anywhere` |
 | the number is on the org's **do-not-call list** in this environment (`do_not_call`): its newest fact is an opt-out — the caller asked the agent (`call.opt_out`), a person put it there, or the org imported it. A consent sent with the dial never lifts it | `403` | a consent recorded at `POST /v1/org/consents` |
 | no **consent** on file for a `+1` number (`no_consent`), nor one sent with the dial as `consent: {kind: express\|written, source, text?, evidence?}`; any country when the org's policy says `consent_everywhere` | `403` | the consent, recorded or sent |
-| outside the called number's hours in **every** zone it could be in (`quiet_hours`): for a `+1` number 8:00 to 21:00 local (the Telemarketing Sales Rule), narrowed by the org's `calling_hours` and never widened, and a `+1` number with no zone (toll-free) always; elsewhere the org's `calling_hours`, when it set some | `403` | the hour |
-| more dials this minute than `per_minute` (6), refusals counted | `429` | a wait |
-| more dials today than `per_day` (200) | `429` | a wait |
+| outside the called number's hours in **every** zone it could be in (`quiet_hours`): for a `+1` number 8:00 to 21:00 local (the Telemarketing Sales Rule), narrowed by the org's `calling_hours` and never widened; elsewhere the org's `calling_hours`, when it set some. A number held to hours that has no zone (a `+1` toll-free one) is refused always | `403` | the hour |
+| `per_minute` (6) dials already asked for in the last minute (`too_fast`) | `429` | a wait |
+| `per_day` (200) dials already asked for in the last 24 hours (`too_many`) | `429` | a wait |
 | the number itself rung `per_number_day` times in 24 hours (`too_often`): 3 for a `+1` number unless the org sets its own, none elsewhere unless it does | `429` | a wait |
 
 The list, consent, the hours and the per-number count bind a call to somebody: the **sandbox** is
 held to none of them, and neither is a number the person who asked verified as **their own phone**
 (`PUT /v1/line/from`) — that is them testing. A consent sent with a dial is written down with the
 call's id before anything rings, so the next call to the number needs none. The zones come from libphonenumber (`phonenumbers`); the org sets its hours
-and count at `PUT /v1/org/policy` ([gateway-api.md](gateway-api.md) §7). The count and the row are one transaction under the org's lock: two dials at once cannot both take
+and count at `PUT /v1/org/policy` ([gateway-api.md](gateway-api.md) §7). `per_minute` and `per_day` count every row of the org's ledger, refused ones included, in both environments together; `per_number_day` counts the calls placed to that number alone. The count and the row are one transaction under the org's lock: two dials at once cannot both take
 the last slot. A placed call runs at most `max_duration_s` (600), which the media plane enforces.
 A far end that is busy, declines or never answers ends the call `busy` or `no_answer`; anything
 else, `dial_failed`.

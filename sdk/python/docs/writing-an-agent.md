@@ -26,7 +26,7 @@ remembers. It never changes during a call and no view renders it.
 | written | what it does |
 |---|---|
 | `channel_rules = False` | leaves out the `<channel>` part of the prompt: how to write for a voice, a website's chat, WhatsApp |
-| `slug = "front-desk"` | the name the agent registers as; left out, the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) |
+| `slug = "front-desk"` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) in your own process. A class served under another slug is refused |
 | `accepts = {"slot.released": ["app"]}` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call |
 
 ### The environment: the settings', or the class's
@@ -67,7 +67,7 @@ done. `@stt` also takes `end_of_turn=`, who says the caller's turn is over: `"st
 themselves (Deepgram Flux; refused for ears that cannot), `"livekit"` or `"smart-turn"` (Smart Turn
 v3), a model on the worker that runs on any key. Left out, the ears end the turn where they can and Smart Turn v3 does everywhere else.
 
-The three models and `knowledge` are decorators; the rest are class attributes, plain or annotated
+`@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `@knowledge` are decorators; the rest are class attributes, plain or annotated
 `ClassVar`. An attribute annotated any other way is the call's state, so one of these written that
 way is refused when the class is created, with how to declare it; and `knowledge` as an attribute
 would hide `self.knowledge.search`, so it is refused for `@knowledge(path=…, text=…)`.
@@ -185,7 +185,7 @@ pydantic model a nested object, `"3"` for an `int` is `3`. A parameter with no a
 |---|---|
 | `stage=` | visible while the state is in this stage, or one of these: `stage=("choose", "book")` |
 | `when=` | a question asked of the agent on every change: `when=lambda self: bool(self.slots)` |
-| `confirm=` | the read-back said before running. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
+| `confirm=` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce=` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `preview=` | how many rows of a list the *model* sees. The state keeps every row |
 | `pii=` | the parameters that carry personal data, masked in the log |

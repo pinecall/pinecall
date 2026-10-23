@@ -39,7 +39,7 @@ a client may not set.
 | `scope` | ours | `talk` (default): publish the microphone, hear the agent. `chat`: the same room with no microphone. Both write on the call's data channel, the caller's own words; `observe` and `supervise` never do. Any other is `400`: `observe` and `supervise` take the API key |
 | `contact` | ours | the org's opaque id for the person; becomes `participant_metadata` |
 | `metadata` | ours | JSON sealed into the call, reaching the worker in the signed dispatch |
-| `ttl_s` | ours | 60 by default, 600 at most |
+| `ttl_s` | ours | 60 by default; past a day (86 400) it is cut to a day |
 | `tuning` | ours | a test room's own voice and models, over the agent's settings for this call alone and kept nowhere: `stt`, `llm`, `tts`, `tts_model`, `voice`, `language`, `temperature` (anything else is refused, `400`). The sandbox's, by a key that opens `pipeline`: `403` for production's or for a key without it. It rides the signed dispatch; the worker says it again when it reads the call's config and keys, where it is checked again |
 | `log` | ours | what the answer's `log_token` reads through: `public` (default) or `tenant` ([projections.md](projections.md)) |
 | `participant_identity` | LiveKit's | who the browser joins as; `web_<12 hex>` when absent, and the call's `from` |
@@ -50,7 +50,7 @@ a client may not set.
 The answer is `201` with LiveKit's two fields and three more every SDK ignores:
 
 ```json
-{ "server_url": "wss://cloud.pinecall.io", "participant_token": "eyJ…", "call": "CA_5f1c…", "log_token": "eyJ…", "resume_token": "eyJ…" }
+{ "server_url": "wss://cloud.pinecall.io", "participant_token": "eyJ…", "call": "call_5f1c…", "log_token": "eyJ…", "resume_token": "eyJ…" }
 ```
 
 `server_url` is the LiveKit of the token's environment: the platform's name (`PINECALL_DOMAIN`) over `wss`,
@@ -110,8 +110,7 @@ than `agent` is `400`, and anything that is not a live resume token of this gate
 `400` a scope this endpoint does not mint, a field that is ours, a `pinecall.` attribute, no agent
 named, a `resume` for another agent · `401` no key of ours · `403` a key without `talk`, a `resume`
 that is no live resume token · `404` nobody holds that agent, a `resume` of a call of another org or
-world · `422` a
-`ttl_s` past 600 · `429` a quota, in its own sentence · `503` every worker of the fleet is full:
+world · `429` a quota, in its own sentence · `503` every worker of the fleet is full:
 `fleet.full` on the agent's log and a sentence naming `POST /v1/callbacks`.
 
 ## A stock client

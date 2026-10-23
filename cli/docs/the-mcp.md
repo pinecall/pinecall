@@ -4,8 +4,8 @@
 Claude Code, Claude Desktop, Codex, Cursor, Windsurf, Antigravity, Gemini CLI — launches it, and its
 tools take a person from an empty folder to an agent on Pinecall without a terminal.
 
-The server starts no process of its own: what needs a browser, an editor or a speaker hands the
-link, the text or the file back instead. Every tool acts in the **sandbox** unless it says `prod`
+The server starts no process of its own but `pinecall-runtime`, for the `runtime` tool: what needs
+a browser, an editor or a speaker hands the link, the text or the file back instead. Every tool acts in the **sandbox** unless it says `prod`
 (below). No tool takes a vendor key, a carrier secret or an app's secret, and no answer carries a
 Pinecall key: every answer and every refusal is scrubbed before it reaches the model. The server
 writes one line per call to its stderr — the tool, how long it took, whether it answered or
@@ -20,7 +20,9 @@ pinecall mcp install
 
 `install` writes one entry into every assistant installed on this machine — `npx -y pinecall@latest mcp`,
 the newest published CLI, whatever a project pins — replacing an older Pinecall entry, copying each file beside itself as `.bak` first, and leaving
-every other server, setting and comment in it as it was. Restart the assistant afterwards: it read
+every other server and setting in it as it was. Codex's TOML is edited as text, so its comments
+stay too; a JSON file is read and written back whole, two spaces to a level, and one that holds
+comments is refused as not valid JSON. Restart the assistant afterwards: it read
 its config when it started. No key is written anywhere: the server reads the open project's
 `.env`, and the `login` tool signs the machine in.
 
@@ -44,20 +46,24 @@ puts the folder of this machine's `node` on the `PATH` it gives the server.
 
 ## The project
 
-Every tool acts on one project folder — the one that holds `agents/`: the root the assistant
-declares, else the folder the server was started in, else the one `project open` named. Its key is
-the one `pinecall` itself reads: `PINECALL_KEY` from the environment, else from the project's `.env`.
+Every tool acts on one project folder — the one that holds `agents/`: the one `project open` (or
+`project new`) named, else the first root the assistant declares, else the folder the server was
+started in. Its key is the one `pinecall` itself reads: `PINECALL_KEY` from the environment, else
+from the project's `.env`, else this machine's sign-in (`~/.pinecall/session.json`) in the org the
+project's `pinecall.json` names.
 
 ## The tools
 
-Every tool acts in the sandbox. The tools that open the project's door take `prod: true` to act
-in production instead, on any server: the org's own switch, and the key's rights, decide there, as
+Every tool acts in the sandbox. Every tool takes `prod: true` to act in production instead — the
+ones that never ask a gateway (`runtime`, `prompt`, `docs_search`, `get_doc`) are the same either
+way — on any server: the org's own switch, and the key's rights, decide there, as
 they do for `pinecall … --prod`. The tools that talk to the agent (`chat`, `test`, `simulate`,
-`remember`) need nothing held: they reach the copy `start` holds when it holds it in the world
+`remember`) need nothing held: they reach the copy `start` holds when it holds it in the env
 asked, and otherwise whoever holds the agent there — a terminal, a colleague, production's own
 process — naming no app, so the gateway sends the call to the newest that takes it. A long one (`login`, `test`, `simulate`,
-`deploy`) answers within `wait_s` seconds (25 unless asked, at most 50) with what it has and says
-how to keep waiting, so no host gives up on it.
+`deploy`, `runtime` `up`) answers within `wait_s` seconds (25 unless asked, at most 50) with what
+it has and says how to keep waiting, so no host gives up on it; `supervise` `watch` waits as long
+for a live call's next lines.
 
 The assistant reads each tool's sentence and its manual in the tool list; the server's instructions
 carry the journey and the tools by stage, so nothing is said twice.
@@ -68,11 +74,11 @@ Every parameter, and a real call of each: [Getting started](mcp/getting-started.
 
 | tool | actions | what it does |
 |---|---|---|
-| `whoami` | — | which org, gateway and environment the project's key acts in, and whether production is allowed for the key and for this server |
+| `whoami` | — | which org, gateway and environment the project's key acts in, where the key was read from, and whether production is allowed for the key |
 | `login` | `start` · `status` | signs this machine in to a gateway, once: `start` answers a link the person opens in a browser; `status` waits until they approved it, and says the org the sign-in acts in. The key is kept in `~/.pinecall/session.json` and never answered; every tool runs on it, in the org the project's `pinecall.json` names |
-| `project` | `show` · `open` · `new` · `generate` | the folder the tools act on, its agents and their language, whether it has a key; another folder opened (with nothing held: `stop` first); a new project of one agent written from `pinecall new`'s templates, in TypeScript, Ruby or Python, its `pinecall.json` naming the gateway and the org it runs in (`org` when the person has several: asked of them, never guessed), and opened; `generate` adds a second agent (`kind: agent`) or a golden from the caller's lines and the tools that must be called (`kind: golden`), as `pinecall generate` does |
+| `project` | `show` · `open` · `new` · `generate` | the folder the tools act on, its agents and their language, whether it has a key; another folder opened (with nothing held: `stop` first); a new project written from `pinecall new`'s templates, in TypeScript, Ruby or Python, and its first agent when `agent` names one, its `pinecall.json` naming the gateway and the org it runs in (`org` when the person has several: asked of them, never guessed), and opened; `generate` adds a second agent (`kind: agent`) or a golden from the caller's lines and the tools that must be called (`kind: golden`), as `pinecall generate` does |
 | `runtime` | `status` · `recommend` · `up` · `down` | the runtime on this machine, for a person with no account: `recommend` reads the machine (its card or Mac memory, Docker, the Ollama here and its models, where each vendor's key is — never its value) and answers the stack that fits it, for the assistant to show and the person to change; `up` runs `pinecall-runtime setup --yes` on that stack or the stages given (`stt`, `turn`, `llm`, `tts`, `judge`, `caller`) — Docker, the schema, the console's admin (`email`) with no password made up, this machine signed in to it in `~/.pinecall/session.json`, the local models pulled once — and keeps it running; `status` says what it printed and whether it said ready; `down` stops it, keeping the database and the sign-in |
-| `team` | `list` · `reset` | the org's people, and a one-use link one of them opens to choose a new password; no password passes through the assistant, and setting one directly is `pinecall team password` in a terminal |
+| `team` | `list` · `reset` | the org's people, and a one-use link one of them opens to choose a new password — shown whole, never scrubbed (or mailed, when the gateway mails it); no password passes through the assistant, and setting one directly is `pinecall team password` in a terminal |
 
 ### Holding the agent, and talking to it
 
@@ -85,7 +91,7 @@ Every parameter, and a real call of each: [Holding the agent, and talking to it]
 | `status` | — | each agent held, how (`thread` or `attached`), its app, the version answering, the sentence a broken save was refused with, and `framework` while the agent runs on the one the server lent the project |
 | `chat` | `say` · `end` | a written call with the agent, held here or wherever it is held (`prod` for production's): each line answered whole — its turns, the tools it called with their arguments and results, the state it changed. `call` continues one, `contact` makes the caller someone, `state` opens it in a state |
 | `prompt` | — | the exact prompt a state produces, offline (TypeScript; Ruby's and Python's is `pinecall prompt`) |
-| `console_url` | — | a link that opens the sandbox's console signed in, once, within five minutes: the one value no answer hides |
+| `console_url` | — | a link that opens the console signed in — the sandbox's, or production's with `prod` — on the org's floor or on one `agent`, once, within five minutes: with `team reset`'s link, one of the two values no answer hides |
 
 ### The agent's settings
 
@@ -180,6 +186,11 @@ A refusal is one sentence that names what to do next: no project names `project`
 
 ## Not in the MCP
 
-What cannot be undone is never a tool: erasing data, forgetting a contact, dropping a base, a number
-or a carrier, removing a deployed app. Neither is anything that takes a secret. Those stay
-`pinecall` verbs a person types.
+Erasing data, forgetting a contact or a case, dropping a base, a number or a carrier, and removing
+a deployed app are never tools; neither is anything that takes a secret. Those stay `pinecall`
+verbs a person types.
+
+Taking out what the org configured is a tool: `personas rm` drops one of the agent's own personas,
+`judges rm` one of your own judges (the agent's, or the org's with `org`), `monitors rm` forgets a monitor, and `webhook clear` and `telemetry clear` stop the
+posting and the export. None asks again first, and the last two drop a secret only a person can set
+back, in a terminal.

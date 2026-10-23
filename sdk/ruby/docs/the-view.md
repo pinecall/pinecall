@@ -26,7 +26,7 @@ with the state in scope. The object renders itself. `views/<slug>.erb`, beside t
 is written in — the convention this package has instead of a setting.
 
 ```
-examples/ruby/clinica_norte/
+agents/clinica-norte/
   agent.rb
   views/clinica-norte.erb
 ```
@@ -89,11 +89,12 @@ Pinecall.render(agent, remembered: ["their usual doctor is Dr. Vidal"])[:view]
 ```
 
 The same is true of the knowledge base. The base attached to the agent, and how to search it, are
-the world's settings, not the class's; the platform runs the search itself, at the end of the
-caller's turn, through its `search` tool. The view says nothing about it.
+a setting or the class's `docs`; the platform runs the search itself, through its `search` tool — on
+a spoken call while the caller is still talking, on a written one at the end of the turn. The view
+says nothing about it.
 
 What the agent knows by heart, on the other hand, is a page the org wrote in the agent's settings,
-so it is its own words and goes where those go: the `knowledge` block, whole, in the cached prefix,
+or the class's `knowledge`, so it is its own words and goes where those go: the `knowledge` block, whole, in the cached prefix,
 written there by the gateway once per call. The view says nothing about it either.
 
 ## Reading the prompt

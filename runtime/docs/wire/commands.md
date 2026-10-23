@@ -12,7 +12,7 @@ What reaches the gateway: the commands an app sends over its socket, each with t
 | `call.attention` | call | `attention.requested`, `call.line`, `attention.answered` | Ask for a person without sending the caller anywhere: the call waits on hold until a supervisor takes the line, or until wait_s passes with nobody taking it. |
 | `call.callback` | call | `callback.requested` | Write down that the caller wants to be called back. |
 | `call.claim` | call | `call.claimed` | The caller said the code a page shows: bind this call to it, so the page follows the call from here. |
-| `call.dial` | agent | `call.dialing` | Place an outbound call as this agent. |
+| `call.dial` | agent | `call.dialing` | Place an outbound call as this agent. Refused on the app socket (`no_handler`): `POST /v1/agents/{slug}/dial` places it. |
 | `call.dtmf` | call | nothing | Send touch tones down the line, for an IVR on the far end. |
 | `call.event` | call | `event.received` | Hand the agent a fact from the tenant's backend: a slot freed, an order shipped, a payment confirmed. |
 | `call.hangup` | call | `call.ended` | End the call from the app's side. |
@@ -125,7 +125,7 @@ Lands in the log as: `call.claimed`.
 
 ### `call.dial`
 
-Place an outbound call as this agent. The new call's log opens with call.dialing; call.started follows when the far end answers.
+Place an outbound call as this agent. The app socket refuses it with `no_handler`: a call is placed at `POST /v1/agents/{slug}/dial`, with the `talk` scope and the org's outbound guards, and that call's log opens with call.dialing; call.started follows when the far end answers.
 
 Lands in the log as: `call.dialing`.
 
@@ -200,7 +200,7 @@ Lands in the log as: nothing.
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `note` | `string` | no | What the caller said, in their words, kept with the opt-out. |
+| `note` | `string` | no | What the caller said, in their words, kept with the opt-out; 500 characters at most. |
 
 ### `call.transfer`
 
@@ -211,7 +211,7 @@ Lands in the log as: `call.transferred`.
 | field | type | required | meaning |
 |---|---|---|---|
 | `to` | `string` | yes | The destination number in E.164 form, or a SIP URI. |
-| `mode` | `TransferMode` | no | Absent, the runtime picks: cold when the caller is on a SIP leg, warm when they are in a browser. A written conversation has no line and refuses both. |
+| `mode` | `TransferMode` | no | Absent, the runtime picks: cold when the caller is on a SIP leg, warm when they are in a browser. A written conversation has no line: `call.transferred` comes back `ok: false` with `mode` null, and the conversation goes on. |
 
 ### `call.unhold`
 

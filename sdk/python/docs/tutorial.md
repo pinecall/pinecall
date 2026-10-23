@@ -127,30 +127,31 @@ page that golden's opening state produces.
 ## 3. Talk to it
 
 ```bash
-pinecall chat                    # the agent served from this terminal, and a written caller against it
 pinecall start                   # registered and answering: the process you deploy
+pinecall chat                    # in another terminal: a written caller against the agent start holds
 ```
 
-`chat` starts this package's serve entry for the agent of this folder — `.venv/bin/python -m
-pinecall.serve start …`, a process that takes no call it did not open — opens a written call naming
-that process, and stops it when you leave. `start` is the same entry taking every call, with the
-console's screens answered beside it; under it, the console's Talk tab is a real voice call to the
-same process.
+`start` is the one verb that runs the agent: it starts this package's serve entry for the agents of
+this folder — `.venv/bin/python -m pinecall.serve start …` — which takes every call, and answers the
+console's screens beside it; under it, the console's Playground is a real voice call to the same
+process. `chat` starts nothing: it opens a written call at whoever holds the agent — your `start`, a
+colleague's, production's with `--prod` — and with nobody holding it the gateway refuses, and `chat`
+prints the refusal.
 
-Either way your tools run in that Python process. A `def` tool runs on a thread, so a blocking call
+Your tools run in that Python process. A `def` tool runs on a thread, so a blocking call
 to your CRM never holds the socket; an `async def` tool runs on the loop. The gateway asks, your
 method answers, and no code of yours ever crosses the socket.
 
 ## 4. Knowledge: a page the agent knows by heart
 
-The voice, the model, the opening and everything else the agent runs on are not in the class: they
-are the world's, set with `pinecall agent set` or the console's Settings, and a class that still
-declares one is refused when it is created, with the verb to use instead
-([writing-an-agent.md](writing-an-agent.md)).
+The voice, the model, the opening and everything else the agent runs on are the agent's settings,
+set per world with `pinecall agent set` or the console's Configure screen — unless the class
+declares one itself (`@voice`, `@llm`, `@knowledge`, …), and then **the class wins**: the setting is
+not read, and the console shows it "set by the class" ([writing-an-agent.md](writing-an-agent.md)).
 
 What the agent knows by heart — hours, prices, what needs an authorisation — is one of those: a page
-of Markdown in the agent's settings, written in the console, Settings ▸ Knowledge, or with
-`pinecall agent knowledge edit`. The class sends nothing for it, so `pinecall prompt` prints the
+of Markdown in the agent's settings, written in the console's Configure screen, or with
+`pinecall agent knowledge edit`. This class does not declare it, so `pinecall prompt` prints the
 second block empty; the gateway writes the page into it, whole, once per call, in the cached prefix:
 the model has it in every turn and you pay for it once.
 
@@ -161,8 +162,8 @@ folder of a hundred documents is not, and that is the next step.
 
 Put your Markdown under `agents/clinica-norte/docs/`, one file per subject, with headings, and push it.
 With no arguments the verb reads that folder and pushes it under the agent's slug. Attaching the
-base to the agent, with its `k` and `min_score`, is the world's: `pinecall docs attach clinica-norte
---k 4`.
+base to the agent, with its `k` and `min_score`, is a setting — `pinecall docs attach clinica-norte
+--k 4` — or the class's `docs: ClassVar`.
 
 ```bash
 pinecall docs push
@@ -173,7 +174,8 @@ look.
 
 **What the push did.** Each file was cut at its headings, each chunk prefixed with its heading path
 (`prices.md › Prices › Check-up`), and embedded one document at a time, so a chunk was embedded
-seeing its neighbours. The vectors went into Postgres, an HNSW index beside a BM25 index.
+seeing its neighbours. The vectors went into Postgres, an HNSW index beside a BM25 index in the
+base's language — counted from the files' words, or named with `--language`.
 
 **What happens on a turn.** The platform runs a `search` itself; the two indexes are asked in
 parallel and fused by reciprocal rank. On a spoken call it starts while the caller is still talking,
@@ -192,11 +194,11 @@ A push replaces the base whole, so push again after every edit. `pinecall docs l
 pinecall memory policy --remember "how they like to be addressed" "allergies" "their usual doctor" --forget "payments"
 ```
 
-The policy is the world's, not the class's. `remember` is the vocabulary, **in your own words**, of
+The policy is a setting, or the class's `memory: ClassVar`, which wins over it. `remember` is the vocabulary, **in your own words**, of
 what is worth keeping about a person; `forget` is what is never written whatever the model heard.
 
 **Reading, on a turn.** A `recall` runs beside the `search`, on the same path. It answers the
-contact's facts, ranked by relevance, recency and importance — no model call, so it costs nothing
+contact's facts, ranked by relevance, then weighed by recency and confidence — no model call, so it costs nothing
 but a query.
 
 **Writing, at hang-up.** One model call reads the call's turns and the facts already held, and
@@ -247,7 +249,7 @@ code.
 
 ```bash
 pinecall console                 # the sandbox's console, signed in as this folder's key
-pinecall sessions                # the calls this agent has taken; `sessions show <call>` reads one
+pinecall sessions                # the calls this agent has taken; `sessions <call>` reads one
 ```
 
 The same log without a browser is `pinecall.Client`, the other door this package has — no class, no
@@ -317,12 +319,14 @@ uv run pytest
 so `render(agent)["view"]` after `agent.start_in({...})` needs no gateway at all.
 
 **Rings 1, 2 and 3** — the goldens, a real line, and one call re-scored — are `pinecall test`,
-`pinecall simulate --voice` and `pinecall eval`: the goldens under `agents/clinica-norte/test/goldens/`, each
-call served by this package's entry, scored by the gateway.
+`pinecall simulate --voice` and `pinecall eval`: the goldens under `agents/clinica-norte/test/goldens/`,
+played on the agent your `pinecall start` holds — `test` and `simulate` start nothing — and scored by
+the gateway.
 
-**Ring 4** happens without you: every finished call is judged at hang-up and the verdict is an entry
-in your own log, `call.score`. `consent` is checked by code off the gate lines; `grounded` checks
-that what the agent stated appears in the evidence it was given.
+**Ring 4** is the hang-up judges: LLM judges, every one off until switched on (`pinecall judges on
+<name>`), run over each finished call; the verdict is an entry in your own log, `call.score`.
+`consent` asks whether every irreversible tool ran after the caller agreed; `grounded` whether what
+the agent stated appears in the evidence it was given.
 
 ## Where to go next
 

@@ -10,24 +10,28 @@ inside a tool result, never as an instruction, and it never carries the operator
 
 | tool | answers | from | runs when |
 |---|---|---|---|
-| `search` | up to `k` chunks of the bases the agent reads | the knowledge bases pushed to the org | the caller has said four words, on a turn that could be a question |
+| `search` | up to `k` chunks of the bases the agent reads | the knowledge bases pushed to the org | early, once a spoken caller has said four words; else when the turn ends; only on a turn that could be a question |
 | `recall` | up to six facts held about this contact | the contact's memory, taught by earlier calls | the same moment, when the agent keeps memory and the platform knows who is on the line |
 
 Both are tools of the platform, never of the app. With a base attached as `retrieved` (the
 default of `pinecall docs attach`) the platform runs `search` before each turn and splices the
-answer into the request as a tool result; with `mode: tool` the model calls it when it wants to.
-`recall` runs before each turn whenever the agent declares a memory policy. Either way the model
+answer into the request as a tool result; with `mode: tool` the platform runs nothing before the
+turn. In both modes the model holds `search` whenever a base is attached, and calls it when it wants
+to. `recall` runs before each turn whenever the agent declares a memory policy, and the model holds it
+as a tool the same way. Either way the model
 reads the same shape: `{"chunks": [{path, heading, text}]}` and
 `{"facts": [{text, source, since}]}`, with no score in either, because a score means something
 to the ranking and nothing to the model.
 
-A lookup starts on the first transcript worth a query, interim or final, so its answer is usually
+A lookup starts on the first transcript worth a query (four words or more, with a letter in them),
+interim or final, so its answer is usually
 in before the turn ends: ears that write interims start it while the caller still talks, and ears
 that write none (Whisper) start it on the final, while the end of the turn is still being weighed.
 What a turn waits for it is a budget: 250 ms on a spoken call, 3 s on a written one
-(`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A lookup that is late is
-cancelled and the turn goes on without it; a lookup that cannot run at all is a recoverable
-`error` entry, `search_skipped` or `recall_skipped`, saying why. A lookup started early is a
+(`PINECALL_VOICE_LOOKUP_BUDGET_MS`, `PINECALL_TEXT_LOOKUP_BUDGET_MS`). A turn no transcript started
+a lookup for (shorter than four words, or written) is looked up when it ends, within the same budget.
+A lookup that is late is cancelled and the turn goes on without it; a late lookup, and one that cannot
+run at all, is a recoverable `error` entry, `search_skipped` or `recall_skipped`, saying why. A lookup started early is a
 guess at the question from its first words; the turn's text is the question. When the text says
 more than the early run was given, it is looked up again and waited for within the budget, and
 the early answer stands in for a late one, so a spoken turn is never answered from "hi, I wanted
@@ -46,10 +50,6 @@ A chunk's score is its fused rank read relative to the best of that query, so th
 queries, which is why they are normalised. `min_score` therefore cuts the tail of an answer and
 can never say "nothing here answers this": a relative score orders, it does not judge. The
 judgment is made before the search, on the words, and it is deliberately the whole of it.
-
-What the log does carry is `evidence`: the best cosine of the search, read as `strong` at 0.45 and
-above, `none` below 0.30, `weak` between. It is data for the reader and for the grounded judge,
-measured on a golden of real questions, and it gates nothing.
 
 ## What a base is made of
 
@@ -80,7 +80,7 @@ chunk against the quota. Invisible on any site that renders the file, the questi
 the author beside the text they answer, or generated from it by a script and kept with the
 documents, never maintained apart from them. A file keeps the SHA-256 of the text it was cut from, so a push embeds only
 the files that changed and the rest are kept as they were; a push that changes nothing costs one
-statement and no embedding.
+transaction and no embedding.
 
 Every chunk is found by its vector and by its words: one query embedded once, one scan of the
 HNSW index and one top-`room` scan of each BM25 index asked, each a ranked list of its own, fused
@@ -133,9 +133,12 @@ not crowded out before it is read. `docs.sources` says which base each source ca
 
 A contact is the app's contact id when it named one, else the number the call came from; a web
 visitor nobody named has no memory. At hang-up, between `call.ended` and `call.summary`, the
-platform reads the call's turns, asks the agent's own model on the org's own keys what the call
-taught about the contact, keeps only what the agent's policy says it remembers and nothing it
-says it forgets, refuses a fact that names one of the agent's tools, and writes the rest embedded.
+platform reads the call's turns, asks the agent's own model, on the keys the org's calls run on (its own, or the box's where its
+plan lends them), what the call
+taught about the contact, and writes what it answers embedded. The policy's `remember` words are
+the categories the model is asked to keep; the code refuses only a fact filed under one of the
+`forget` words (matched as a word, case aside) and a fact that names one of the agent's tools. A
+fact under another category, or none, is written. A policy that remembers nothing asks no model.
 That model call is the whole cost of a hang-up and it has a budget, `PINECALL_REMEMBER_BUDGET_S`
 (8 s): past it, or broken, the log carries a recoverable `remember_failed` and the call seals all
 the same. An org at its `memory_facts` cap asks no model: the refusal goes on the agent's log as
@@ -160,7 +163,9 @@ the model wrote into its arguments.
 A lookup the model called carries the `speech_id` of the line it was called on. A lookup the
 platform ran before the turn carries none: it runs before the turn's item exists, so it is joined
 to its turn by order, the `docs.sources` and `memory.ops` entries written before a `turn.user`
-being that turn's. No entry is written when a lookup did not run: an empty `docs.sources` would read to the grounded
+being that turn's. A turn looked up twice, early on its first words and again on its whole text,
+carries an entry for each run that finished, and the request holds only one of their answers: the
+final one, or the early one standing in for it. No entry is written when a lookup did not run: an empty `docs.sources` would read to the grounded
 judge as a search that found nothing.
 
 ## The figures
@@ -183,11 +188,11 @@ The figures say retrieval was fast and cheap, not that it found the right passag
 twice. On every call, the hang-up panel's `grounded` judge checks what the agent stated against
 the chunks it was handed, so the rate of `held` over calls carrying `docs.sources` is the
 precision of retrieval on real traffic, at no extra cost. Offline, a golden per base
-(`POST /v1/knowledge/{base}/eval`: `[{asks, expects}]`, `expects` a heading path a person can
+(`POST /v1/knowledge/{base}/eval`: `{questions: [{asks, expects}], k}`, `expects` a heading path a person can
 write by reading their own documents, or a list of them any one of which answers) gives
 `recall@k` and `nDCG@10` by code alone (how to raise them, step by step, is
 [A knowledge base that answers](a-knowledge-base-that-answers.md)); a golden per
-agent's memory (`POST /v1/contacts/memory/eval`: `[{holds, asks, expects}]`) writes each
+agent's memory (`POST /v1/contacts/memory/eval`: `{questions: [{holds, asks, expects}], k}`) writes each
 question's facts to a scratch contact, asks, and deletes them, so what is measured is the ranking
 a call would get. A question is never softened so a change can pass. A memory fact answers when
 what came back contains what was expected, accents dropped, case folded, spaces squeezed: a golden

@@ -124,7 +124,7 @@ every address already.
 
 ## The carrier catalog: what the operator admits
 
-The platform knows a catalog of carriers (the table in `telephony/carrier_catalog.py`), each with the signalling
+The platform knows a catalog of carriers (the table in `telephony/service/catalog.py`), each with the signalling
 networks it publishes, the page they were read from and the day:
 
 | carrier | how an org connects | read from |
@@ -135,8 +135,9 @@ networks it publishes, the page they were read from and the day:
 | Plivo | guided | plivo.com/docs/sip-trunking/concepts/technical-specifications |
 
 Twilio is the platform's own carrier and is admitted always. The operator admits the others (Platform →
-Carriers); an admitted one opens the fence to its networks within a minute, and every org sees it
-when it adds a number. A carrier's list changes on its own page: the file is read again, with the
+Carriers), and every org sees an admitted one when it adds a number. Admitting it changes no
+firewall: its networks reach the cloud's rule when the operator exports the fence and applies it
+(above, "The fence, twice"), and until then its calls do not reach 5060. A carrier's list changes on its own page: the file is read again, with the
 day, when it does.
 
 ## Twilio, through the platform

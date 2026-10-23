@@ -95,7 +95,7 @@ Run the agent's goldens through the agent wherever it is held, under every model
     ".pinecall/evals/run_7db71c472e04/takes-the-message.json"
   ],
   "held": false,
-  "world": "sandbox"
+  "env": "sandbox"
 }
 ```
 
@@ -208,6 +208,7 @@ The org's dataset: real calls and simulations kept as cases, grouped by the judg
 
 ```json title="answered"
 {
+  "agent": "front-desk",
   "cases": [
     {
       "id": "case_5b1e2d7a90c4",
@@ -290,10 +291,9 @@ A model plays one of the agent's personas against the agent wherever it is held,
 {
   "call": "call_b91aeee02c0a475facc2fcc15f760fac",
   "transcript": [
-    "hurried · leave a message for the manager about a broken order",
-    "› Thanks for calling. How can I help?  no metrics on this turn",
-    "‹ Hi, I need to leave a message for the manager about my broken order, A-1042.",
-    "… 19 more"
+    "agent: Thanks for calling. How can I help?",
+    "caller: Hi, I need to leave a message for the manager about my broken order, A-1042.",
+    "… 6 more"
   ],
   "score": {
     "panel": [
@@ -341,7 +341,10 @@ A model plays one of the agent's personas against the agent wherever it is held,
     "judge_calls": 2,
     "judge_cost_usd": 0
   },
-  "world": "sandbox"
+  "medians": {
+    "llm_node_ttft": 0.39
+  },
+  "env": "sandbox"
 }
 ```
 
@@ -396,6 +399,7 @@ The agent's simulated callers: Pinecall's library switched on or off, its own wr
 
 ```json title="answered"
 {
+  "name": "hurried",
   "personas": [
     {
       "name": "hurried",
@@ -459,6 +463,7 @@ Every judge the agent's calls meet: Pinecall's, switched on or off; the org's ow
 
 ```json title="answered"
 {
+  "done": "offers-a-callback written",
   "judges": [
     {
       "name": "consent",
@@ -673,6 +678,7 @@ Whether the org's calls are judged at hang-up, and the model they are judged on:
       "base_url": "http://gpu.internal:8000/v1"
     }
   },
+  "own_key": true,
   "says": "judging on · openai/qwen3-32b · base_url=\"http://gpu.internal:8000/v1\" · your own openai key: evals not billed"
 }
 ```

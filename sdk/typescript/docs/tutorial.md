@@ -127,29 +127,31 @@ page that golden's opening state produces.
 ## 3. Talk to it
 
 ```bash
-pinecall chat                    # the agent served from this terminal, and a written caller against it
 pinecall start                   # registered and answering: the process you deploy
+pinecall chat                    # in another terminal: a written caller against the agent start holds
 ```
 
-`chat` starts your project's serve entry for the agent of this folder — a process that takes no
-call it did not open — opens a written call naming that process, and stops it when you leave.
-`start` is the same entry taking every call, with the console's screens answered beside it; under
-it, the console's Talk tab is a real voice call to the same process. `--inspect` opens that process
-to a debugger, so a breakpoint in a `@tool` is reachable.
+`start` is the one verb that runs the agent: it starts your project's serve entry for the agents of
+this folder, which takes every call, and answers the console's screens beside it; under it, the
+console's Playground is a real voice call to the same process. `--inspect` opens that process to a
+debugger, so a breakpoint in a `@tool` is reachable. `chat` starts nothing: it opens a written call
+at whoever holds the agent — your `start`, a colleague's, production's with `--prod` — and with
+nobody holding it the gateway refuses, and `chat` prints the refusal.
 
 Your tools run in that Node process: the gateway asks, your method answers, and no code of yours
 ever crosses the socket.
 
 ## 4. Knowledge: a page the agent knows by heart
 
-The voice, the model, the opening and everything else the agent runs on are not in the class: they
-are the world's, set with `pinecall agent set` or the console's Settings, and a class that still
-declares one is refused when it loads, with the verb to use instead
+The voice, the model, the opening and everything else the agent runs on are the agent's settings,
+set per world with `pinecall agent set` or the console's Configure screen — unless the class
+declares one itself (`@voice`, `@llm`, `static knowledge`, …), and then **the class wins**: the
+setting is not read, and the console shows it "set by the class"
 ([writing-an-agent.md](writing-an-agent.md)).
 
 What the agent knows by heart — hours, prices, what needs an authorisation — is one of those: a page
-of Markdown in the agent's settings, written in the console, Settings ▸ Knowledge, or with
-`pinecall agent knowledge edit`. The class sends nothing for it, so `pinecall prompt` prints the
+of Markdown in the agent's settings, written in the console's Configure screen, or with
+`pinecall agent knowledge edit`. This class does not declare it, so `pinecall prompt` prints the
 second block empty; the gateway writes the page into it, whole, once per call, in the cached prefix:
 the model has it in every turn and you pay for it once.
 
@@ -266,8 +268,10 @@ npm test
 a tool as a call does. [testing-an-agent.md](testing-an-agent.md) is every helper.
 
 **Rings 1, 2 and 3** — the goldens, a real line, and one call re-scored — are `pinecall test`,
-`pinecall simulate --voice` and `pinecall eval`. **Ring 4** happens without you: every finished call
-is judged at hang-up and the verdict is an entry in your own log, `call.score`.
+`pinecall simulate --voice` and `pinecall eval`; `test` and `simulate` start nothing, and play on the
+agent your `pinecall start` holds. **Ring 4** is the hang-up judges: LLM judges, every one off until
+switched on (`pinecall judges on <name>`), run over each finished call; the verdict is an entry in your own
+log, `call.score`.
 
 ## 10. Ship it
 

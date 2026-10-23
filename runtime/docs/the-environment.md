@@ -16,9 +16,11 @@ Our own knobs carry `PINECALL_`. The vendors' keys are not variables: see
 
 **A runtime is one gateway and one database, serving both environments.** Production and the sandbox
 are a property of each row and of each key (`pc_live_`, `pc_test_`), never two instances. What
-keeps a test call off a production machine is the media plane and the worker pool: each environment
-has its own LiveKit and its own fleet of workers, and the gateway dispatches a call to the fleet
-of its environment, on its environment's LiveKit. A variable marked *(the
+keeps a test call off a production machine is the media plane and the worker pool: in a cluster each
+environment has its own LiveKit and its own fleet of workers, and the gateway dispatches a call to
+the fleet of its environment, on its environment's LiveKit. On one machine (`pinecall-runtime setup`)
+one LiveKit serves both environments: a server runs a worker of each fleet beside each other, a
+laptop the sandbox's alone. A variable marked *(the
 pod's)* is set per worker Deployment by the chart (`infra/charts/pinecall`), never for the
 gateway.
 
@@ -38,10 +40,10 @@ gateway.
 | `PINECALL_DB_APP_ROLE` | read by `migrate up` alone: the role it grants every table's rows to after the migrations (`select`, `insert`, `update`, `delete`, the sequences), now and for every table made later, and never a table's shape. The gateway then connects as that role in its own `DATABASE_URL`. Unset (a laptop), the owner is the gateway's role too. A role that does not exist after two minutes is refused, never skipped |
 | `PINECALL_ROLE` | parsed (`all` · `gateway` · `worker`) and read by no process: a leftover of the single-machine install, which is gone |
 | `PINECALL_GATEWAY_URL` | the gateway: on a laptop its loopback address, what it binds; what a worker's job asks, in a pod the gateways' Service (`http://pinecall-gateway:8080`) |
-| `PINECALL_GATEWAY_LISTEN` · `PINECALL_TRUSTED_PROXIES` · `PINECALL_METRICS_FROM` *(a pod's)* | in a Kubernetes pod (`infra/charts`): where the gateway binds (`0.0.0.0:8080`; unset, the URL's loopback — `setup` and `local up` set it on Linux too, where Docker's `host.docker.internal` is the bridge and LiveKit's webhooks would never reach loopback), the addresses or networks whose `X-Forwarded-For` it believes (unset, `127.0.0.1`; a cluster's, the load balancer's ranges and its own address, which ends every `X-Forwarded-For` it writes), and the ones `/metrics` answers (unset, loopback; a cluster's, the pods' network), a forwarded request never |
+| `PINECALL_GATEWAY_LISTEN` · `PINECALL_TRUSTED_PROXIES` · `PINECALL_METRICS_FROM` *(a pod's)* | in a Kubernetes pod (`infra/charts`): where the gateway binds (`0.0.0.0:8080`; unset, the URL's loopback — `setup` and `local up` write it on a Linux laptop too, where Docker's `host.docker.internal` is the bridge and LiveKit's webhooks would never reach loopback, so that laptop's gateway answers the whole network on 8080; `setup --domain` takes it out, and a server's gateway stays on loopback behind Caddy), the addresses or networks whose `X-Forwarded-For` it believes (unset, `127.0.0.1`; a cluster's, the load balancer's ranges and its own address, which ends every `X-Forwarded-For` it writes), and the ones `/metrics` answers (unset, loopback; a cluster's, the pods' network), a forwarded request never |
 | `PINECALL_MAX_JOBS` *(the pod's)* · `PINECALL_APP` · `PINECALL_AGENT` | what a worker takes, and for whom: it reports `0.7 × calls ÷ slots` to LiveKit, whose full is 0.7, so LiveKit offers it calls until every one of these is taken. Unset, load is gated on CPU, refused at 0.7 |
 | `PINECALL_FLEET` *(the pod's)* | the fleet this worker unit joins: the name it registers under with LiveKit, `pinecall` unless set, spelled like a slug, never empty. Which fleet each environment's calls go to is the `fleets` row of `box_settings` (`{"production": "pinecall", "sandbox": "pinecall-sandbox"}` unless the operator changes it), so a cluster runs the workers of each environment as Deployments of their own (`fleets` in the chart's values) |
-| `PINECALL_IDLE_PROCESSES` *(the pod's)* | job processes the worker keeps warm. Unset, livekit's own: one per CPU. Set to 1 on the core node's workers, which share its cores with the platform's services; a scaled worker, alone on its node, leaves it unset |
+| `PINECALL_IDLE_PROCESSES` *(the pod's)* | job processes the worker keeps warm. Unset, livekit's own: one per CPU. Set to 1 on each environment's core workers, which share their media node's cores with that environment's LiveKit and SIP; a scaled worker, alone on its node, leaves it unset |
 | `PINECALL_WORKER_NAME` · `PINECALL_WORKER_HTTP_PORT` · `PINECALL_WORKER_HTTP_HOST` · `PINECALL_OVERFLOW_SAYS` | its name in the roster (unset: the hostname), its health port (8082) and the address it binds (unset, loopback; a pod's, `0.0.0.0` for its probes), and the overflow agent's one sentence |
 | `NOTIFY_SOCKET` *(systemd's)* | where a worker run as a systemd `Type=notify` unit says `READY=1`, once LiveKit registered it and the gateway answered its heartbeat. Nothing here sets it: in a pod the start is its startup probe on the health port, livekit's own |
 | `PINECALL_RECORDINGS` | where a kept recording lands. **Whether** audio is kept is the agent's own setting |
@@ -112,7 +114,7 @@ of it is read from code.
 
 A checkout and `uv sync` is the whole of it for writing the runtime: `make check` runs the rules and
 every suite that needs no database; `make test` starts a Postgres of its own in colima (`make db`:
-the image of `pinecall_runtime/cli/local/postgres/`, Postgres 17 with pgvector and pg_textsearch, on tmpfs,
+the image of `infra/local/postgres/`, Postgres 17 with pgvector and pg_textsearch, on tmpfs,
 durability off) and a Redis beside it (nothing kept), and gives every test a schema of its own and
 a prefix of its own on the Redis. `make suite` runs the same suites inside a cluster, against its
 Postgres under CloudNativePG.
@@ -120,8 +122,8 @@ Postgres under CloudNativePG.
 The runtime whole runs on a laptop too, with no cloud account: `make local` starts the platform's
 Postgres, Redis and LiveKit in docker (`pinecall-runtime local up`, ports 55433, 56380, 7880 — what
 `pinecall-runtime setup` runs too, with the console's admin, this machine signed in, and the models),
-migrates the schema and writes `.local/env` once (a vault key, an ops key and the sandbox fleet's
-key drawn there, 0600); `make local-gateway` and `make local-worker` run both from the checkout on
+migrates the schema and writes `.local/env` once (a vault key, an ops key, a token key and the
+sandbox fleet's key drawn there, 0600); `make local-gateway` and `make local-worker` run both from the checkout on
 those settings, and `make local-down` stops the compose. LiveKit's pair there is a laptop-only
 dev pair (the package's `cli/local/livekit.yaml`). A phone needs the SIP bridge (`--profile phone`, Linux
 only) and a carrier that reaches the laptop: `the-runtime-cli.md`, "local".
@@ -133,6 +135,8 @@ the registry, the address, the firewall, the names and the secrets (drawn there,
 Manager: the LiveKit pair, the Redis password, `PINECALL_VAULT_KEY`, `PINECALL_OPS_KEY`,
 `PINECALL_TOKEN_KEY`), and the
 chart runs the gateways, the workers, LiveKit, SIP and Redis, with Postgres under CloudNativePG.
-External Secrets hands each pod its secrets as environment, never a file in the image; the
-operator's verbs run from a laptop against the gateway, with the ops key. The whole walk, from
+External Secrets hands each pod its secrets as environment, never a file in the image. The
+operator's verbs that read the gateways' memory (`fleet`, `orgs move`, `kill`) run from a laptop
+against the gateway, with the ops key; the rest write the database and run in a gateway's pod,
+`kubectl exec deploy/pinecall-gateway -- pinecall-runtime …` ([the-runtime-cli.md](the-runtime-cli.md)). The whole walk, from
 nothing to the suites and a release: [../infra/README.md](../../infra/README.md).

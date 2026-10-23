@@ -103,12 +103,13 @@ a call does — its arguments checked and converted, its writes authored, its li
 
 The verbs are the one `pinecall` CLI's (npm), the same for a Python project as for a TypeScript or
 a Ruby one, in the same layout: `agents/<slug>/agent.py`, `agents/<slug>/test/goldens/`,
-`agents/<slug>/test/memory/`, `agents/<slug>/docs/`. For the ones that need the class, the CLI starts this
-package's serve entry, `python -m pinecall.serve`, with the project's own interpreter.
+`agents/<slug>/test/memory/`, `agents/<slug>/docs/`. Only `pinecall start` and `pinecall prompt` start
+this package's serve entry, `python -m pinecall.serve`, with the project's own interpreter; the
+others start nothing and reach whoever holds the agent.
 
 | ring | what it asks | how |
 |---|---|---|
-| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, each call served by this package's entry |
+| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, played on whoever holds the agent: your `pinecall start`, or production's with `--prod` |
 | 2 | does it hold on a real line? | `pinecall test --voice` · `pinecall simulate --voice` |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |

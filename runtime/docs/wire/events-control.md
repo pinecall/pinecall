@@ -108,7 +108,7 @@ The gateway refused a call, a written turn or a register because one of the org'
 
 ### `evals.spent`
 
-The harness asked a model outside a call's score: a judge tried on finished calls (`POST /v1/agents/{slug}/judges/try`), personas written for the agent (`…/personas/generate`), a case group diagnosed (`POST /v1/cases/{group}/propose`). Nothing is written on any call, and its evals count as a call's score's do. Written into the agent's own log, which is the org's.
+The harness asked a model outside a call's score: a judge tried on finished calls (`POST /v1/agents/{slug}/judges/try`), personas written for the agent (`…/personas/generate`), a case group diagnosed (`POST /v1/evals/groups/{id}/propose`). Nothing is written on any call, and its evals count as a call's score's do. Written into the agent's own log, which is the org's.
 
 | field | type | required | meaning |
 |---|---|---|---|

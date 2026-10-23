@@ -38,8 +38,9 @@ session a real caller gets, tuned where the app holds the agent, on the org's ke
   it before the first render, as `WS /v1/chat?state=` does; the run declares no state of its own;
 - the turns play in order, forty at most: a `say` turn is the caller's line, run as livekit's own
   test run (`AgentSession.run`); an `event` turn is the app's `call.event`, so an event the agent
-  never declared is refused by name (`400`) and the call ends. An `event` turn takes no `then`:
-  what the agent does with the fact is judged in the next line's turn;
+  never declared is refused by name: that golden breaks at the turn (a `t<n>.event` score with the
+  refusal as its reason), its call ends `error`, and the run plays the next golden. An `event` turn
+  takes no `then`: what the agent does with the fact is judged in the next line's turn;
 - `memory` answers `recall` for this call alone; `search` is the real index;
 - `today` is the day the model is told it is; absent, the real one;
 - after an event the run waits for the log to go quiet: the app reacting is the only signal.
@@ -111,7 +112,8 @@ first; `GET /v1/evals/runs/{id}` is one of them, and another org's is `404`.
 A run may also name the org's **cases** (below): `cases: ["jueves-tarde"]` plays those by name,
 whatever their status, so a case still waiting for a person can be reproduced, and `dataset: true`
 plays every case of the agent a person approved, that is not held out and not kept in the
-repository, which is what a nightly run asks for; a case held out is played only when a run names
+repository, which is what a tenant's nightly CI job asks for (the runtime schedules no run of
+its own); a case held out is played only when a run names
 it, which is what a release asks for. `version: 4` builds every call of the run on that version of
 the agent's settings in the scope of the app that holds it, instead of the one standing (a
 candidate, a canary's: see [settings-api.md](settings-api.md)); a version the scope never had is
@@ -124,7 +126,7 @@ app, whose tools act for real, and never out loud or on a phone.
 
 Real calls are the dataset, and the loop that keeps it is: a call a judge broke on is kept at
 hang-up as a **pending** case; a person reads it, reproduces it (`cases: [name]` on a run),
-fixes the agent, and approves it into the nightly or dismisses it. A case is a golden made of the
+fixes the agent, and approves it into what `dataset: true` plays or dismisses it. A case is a golden made of the
 call: its turns (each caller line a `say`, each fact the app injected an `event`, in the order the
 log has them), the state it opened in (the first `state.changed` before the caller spoke), the
 facts `recall` gave it (as the golden's `memory`), and the day it ran. No turn carries a `then`: a
@@ -205,7 +207,7 @@ PUT /v1/agents/recepcion/cases/no-dice-un-precio
 ```
 
 The path names the case: the golden's own `name` is written over with it. It is `approved` from
-the start, `source: "person"`, in the key's environment, and the nightly plays it as any other.
+the start, `source: "person"`, in the key's environment, and `dataset: true` plays it as any other.
 The same name again rewrites its golden and `held_out`, and keeps its id, author, status and age;
 a name a call or a simulation made is `409`, so a hand never rewrites what a judge broke on. A case
 written by hand broke on no judge, so `judge_was_wrong` on it is `400`. It names no call, so
@@ -223,9 +225,9 @@ newest first, and says how many wait: `{cases, pending, pending_at_most}`. `PATC
 
 | field | does |
 |---|---|
-| `status` | `approved` (the nightly plays it), `dismissed`, or `pending` again; the person and the time are kept |
+| `status` | `approved` (`dataset: true` plays it), `dismissed`, or `pending` again; the person and the time are kept |
 | `held_out` | played only when a run names it |
-| `kept_in_repo` | written into the repository as a golden: the nightly leaves it to the file |
+| `kept_in_repo` | written into the repository as a golden: `dataset: true` leaves it to the file |
 | `judge_was_wrong` + `note` | with `dismissed` only: the judge that broke should have held, kept as a calibration label of the call (below), in the call's own world, so the key must read the call; a judge the case did not break on is `400`, and so is a `note` without a judge |
 
 `DELETE` forgets one, and another org's, or one nobody kept, is `404`.
@@ -297,8 +299,9 @@ judges are the ones written when the endpoint runs, not when the call ended.
 
 ## At hang-up
 
-The seal judges every call when three things hold: the org judges its calls (`PUT /v1/org/judging`),
-the platform's providers row names a `judge` model, and that judge's `ceiling_usd` is above zero.
+The seal judges every call when the org judges its calls (`PUT /v1/org/judging`) and a judge model
+is at hand: the agent's or the org's own on the org's own key, or else one the platform pays for —
+the providers row names a `judge` model and its `ceiling_usd` is above zero.
 The panel is the library's judges switched on for the agent, then the org's own, then the
 agent's own, each asked once.
 
@@ -338,26 +341,27 @@ and the confirmations, an opt-out, the disclosure sentence, how it ended, what a
 expected).
 
 **The library** is Pinecall's, the same for every org, each judge's question in the runtime's
-`evals/library/judges/` under a version: `consent`, `grounded`, `promises`, `disclosed`,
+`judging/library/judges/` under a version: `consent`, `grounded`, `promises`, `disclosed`,
 `identified`, `honoured-stop`, `ended-well`, `expected-outcome`, `relevance`, `repetition` and
 `sentiment`, every one off until the org or the agent switches it on. Each row of the library
 says in `why` what the judge saves an org from, and `recommended` whether Pinecall says to switch
 it on first: every one but `relevance`, `repetition` and `sentiment`, which grade a call rather
 than guard it. Some settle as `na` by a fact before any model is asked:
-`consent` and `promises` when no irreversible tool ran, `identified` on a call that came in,
-`expected-outcome` when the simulated caller expected nothing; an `na` is never an eval.
+`consent` when no irreversible tool ran, `identified` on a call that came in,
+`expected-outcome` when the simulated caller expected nothing; `promises` and `honoured-stop`
+are `na` when their trigger's yes-or-no says no. An `na` is never an eval.
 
 ```
 $ pinecall judges add offers-next-slot --asks 'The agent offered the next free slot.'
 PUT /v1/agents/recepcion/judges/offers-next-slot
-{"question": "The agent offered the next free slot.", "when": "always", "reads": ["prompt"]}
+{"question": "The agent offered the next free slot.", "answer": "verdict", "when": "always"}
 
 {"judges": [{"name": "consent", "owner": "pinecall", "on": false, "question": "…", "answer": "verdict",
              "choices": [], "when": "always", "trigger": "", "reads": ["facts"],
              "summary": "…", "version": 1, "why": "…", "recommended": true}, …,
             {"name": "offers-next-slot", "owner": "recepcion", "on": true, "question": "…",
              "answer": "verdict", "choices": [], "when": "always", "trigger": "",
-             "reads": ["prompt"], "author": "m_ana", "set_at": 1790000000.1}]}
+             "reads": [], "author": "m_ana", "set_at": 1790000000.1}]}
 ```
 
 A list is the library first, then the org's own (`owner: "org"`), then, on an agent's, the

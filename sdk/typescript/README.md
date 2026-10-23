@@ -56,9 +56,9 @@ npm i -g pinecall
 pinecall login               # sign this machine in through the browser, once
 pinecall new acme --agent front-desk   # the project, and its first agent in agents/front-desk/
 cd acme && npm install
-pinecall chat                # talk to the agent in this terminal
-pinecall test                # run its golden against a real model
-pinecall start               # run the agent (this is the process you deploy)
+pinecall start               # run the agent (this is the process you deploy); leave it running
+pinecall chat                # in another terminal: talk to the agent `start` holds
+pinecall test                # run its golden against a real model, on the agent `start` holds
 ```
 
 The whole example, a clinic's receptionist with stages, a calendar and documents, from this
@@ -69,11 +69,14 @@ pnpm install
 npm i -g pinecall            # the CLI; the example takes the framework from this checkout
 cd ../../examples/typescript/clinica-norte
 pinecall login               # sign this machine in through the browser, once
-pinecall chat                # talk to the agent in this terminal
-pinecall start               # run the agent (this is the process you deploy)
+pinecall start               # run the agent (this is the process you deploy); leave it running
+pinecall chat                # in another terminal: talk to the agent `start` holds
 pinecall console             # open the sandbox console
 pinecall test                # run the goldens
 ```
+
+`start` is the one verb that runs the agent: `chat`, `test` and `simulate` start nothing, and reach
+whoever holds it — your `start`, a colleague's, or production's with `--prod`.
 
 Other useful verbs: `pinecall prompt --state <file>` prints the exact prompt a state produces
 (`--channel web --medium text` for the one a written chat gets);
@@ -86,7 +89,7 @@ and `PINECALL_URL` from the environment or the project's `.env`. Full reference:
 A project holds one or more agents: `agents/<name>/agent.tsx` and their tests in
 `agents/<name>/test/`. Voice, model, language, greeting, knowledge and the documents an agent searches
 are per-world settings (`pinecall agent set --language es`), unless the class declares them
-itself — `@voice`, `@llm`, `@stt`, `@judge` and `static` fields — and then the class wins. Running in production on your own server:
+itself — `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `static` fields — and then the class wins. Running in production on your own server:
 [Run it on your own server](https://docs.pinecall.io/guides/own-server/).
 
 ## Development
@@ -103,7 +106,7 @@ so tests and the example run from sources with no build step.
 
 | `src/` | |
 |---|---|
-| `agent/` | the `Agent` class, `@tool`, `@render`, `@state`, `@voice` · `@llm` · `@stt` · `@judge`, stages, hooks |
+| `agent/` | the `Agent` class, `@tool`, `@render`, `@state`, `@view`, `@voice` · `@llm` · `@realtime` · `@stt` · `@judge`, stages, hooks |
 | `views/` | JSX-to-text rendering and the prompt's named blocks |
 | `call/` | the live call as a value, reduced from log entries |
 | `client/` | `@pinecall/agents/client`: the WebSocket client and the wire, nothing else |
@@ -111,7 +114,9 @@ so tests and the example run from sources with no build step.
 | `serve/` | `@pinecall/agents/serve`: the entry the CLI starts an agent with, `start` and `prompt` |
 
 `test/the-imports.test.ts` enforces which directory may import which. The public exports are
-`@pinecall/agents`, `@pinecall/agents/client`, `@pinecall/agents/serve`, `@pinecall/agents/wire` and
+`@pinecall/agents`, `@pinecall/agents/panels`, `@pinecall/agents/client`,
+`@pinecall/agents/client/testing`, `@pinecall/agents/serve`, `@pinecall/agents/wire`, the JSX
+runtimes `@pinecall/agents/views/jsx-runtime` and `jsx-dev-runtime`, and
 `@pinecall/agents/tsconfig.tenant.json`, pinned by
 `test/index.test.ts` and `test/client/index.test.ts`.
 

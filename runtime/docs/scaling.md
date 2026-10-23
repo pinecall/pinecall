@@ -8,8 +8,9 @@ reaches the gateway and LiveKit, holding its environment's fleet key. The operat
 
 ## Growing it, step by step
 
-The runtime runs on a Kubernetes cluster (`infra/`): a core node for the platform's services and a few
-small workers, and a pool of worker nodes that grows with the calls. Each row is a value of the
+The runtime runs on a Kubernetes cluster (`infra/`): a core node for the platform's services, a media
+node per environment with its LiveKit, its SIP and a few small workers, and a pool of worker nodes
+per environment that grows with the calls. Each row is a value of the
 chart or of Terraform, never a machine made by hand. The numbers are what the runtime was measured
 holding on machines of the same types (the tables below); on the cluster they are proven on
 staging before production.
@@ -66,8 +67,9 @@ bridge closes it. So a worker speaks LiveKit's scale: one gated on CPU reports i
 machine, and one that counts its calls (`PINECALL_MAX_JOBS`) reports `0.7 × calls ÷ slots`, so
 LiveKit's full is its last slot. To the gateway the same worker reports `calls ÷ slots`, full at
 1.0, which is where the roster opens overflow. Neither of LiveKit's lines is overridden: they
-are its contract, the same on LiveKit Cloud, and `tests/fleet/test_heartbeat.py` reads the
-installed framework's to hold the worker to it.
+are its contract, the same on LiveKit Cloud. The worker's 0.7 is its own constant
+(`REFUSED_AT` in `fleet/service/roster.py`, read by `jobs/service/heartbeat.py`); no test reads the installed
+framework's line to hold the two equal, so a livekit release that moved it would go unnoticed.
 
 (Until 2026-10-03 a counting worker reported `calls ÷ slots` to LiveKit too, and both of
 LiveKit's readers called it full at 0.7 of its slots while the gateway counted the rest free: a
@@ -92,9 +94,10 @@ CPU reading crosses 0.7 for an instant, LiveKit marks the worker unavailable and
 room again; counting (`PINECALL_MAX_JOBS=20`), 14 of 15 calls got their agent (the fifteenth was
 the 0.7 line) at 42 % of the machine. **A call costs ~0.24 vCPU**, so a worker machine holds about
 `2.9 × vCPU` calls at the line: set `PINECALL_MAX_JOBS` to `vCPU × 4` and the 0.7 line falls there.
-That is a machine of workers alone. On a machine that also runs the platform's services everything
-shares the cores: the cluster's core node runs two workers of two seats in production and two of
-one in the sandbox (`workers.core` in the chart's values), from the platform measured whole:
+That is a machine of workers alone. On a machine that also runs other services everything
+shares the cores: each environment's media node runs its LiveKit and SIP beside two core workers,
+of two seats in production (an e2-standard-4) and of one in the sandbox (an e2-standard-2)
+(`workers.core` in the chart's values), sized from the platform measured whole:
 
 **A deployment, measured whole.** On 2026-10-01, on a deployment of production's machine type (4 vCPU:
 Postgres, LiveKit, SIP, the room's recorder of the time (egress), two gateways and one worker on
@@ -225,14 +228,14 @@ that had come back under its old name went unopened three times and reached the 
 ## A worker that is up but bad
 
 A worker's calls run in livekit's job processes, and each tells its worker's main process, over a
-datagram socket the worker binds (`fleet/measures.py`), what its batches say: a turn's first
+datagram socket the worker binds (`jobs/service/measures.py`), what its batches say: a turn's first
 audio (`e2e_latency`), an `error`, and how the call ended. The heartbeat carries the last minute of
 it: the calls that ended and those that ended in an error, the error entries, the turns measured
 and their first audio at the p95 (from five turns). Every `call.started` names the worker that ran
 it (`worker`).
 
 The roster stops counting a worker as accepting when its minute is past the line
-(`fleet/roster.py`): at least half the calls that ended in it ended in an error, over four calls
+(`fleet/service/roster.py`): at least half the calls that ended in it ended in an error, over four calls
 at least, or first audio's p95 is over five seconds, over twenty turns at least. It is left out
 only while another worker of its fleet accepts and is not past the line, so the line never empties
 a fleet: a deployment of one worker per environment keeps counting its one, and a fleet whose every worker is
@@ -256,7 +259,7 @@ holds, so LiveKit starts no job and keeps the dispatch on the room with the call
 person is alone in a room, LiveKit's webhook says so (`participant_joined`, or an agent's
 `participant_left` after a hand-over), and the gateway reads the room's newest dispatch: one to a
 fleet that nobody took is the call to place. The room is kept in `offers` until a worker opens its
-call, an agent joins the room or the room ends, whichever LiveKit says first (`dispatch/`): a caller who hangs up before any worker took the call leaves nothing to
+call, an agent joins the room or the room ends, whichever LiveKit says first (`fleet/service/offers.py`, `fleet/service/rooms.py`): a caller who hangs up before any worker took the call leaves nothing to
 offer, and a dispatch on a room that is gone would make the room again. An outbound call, a
 simulated caller and the sentence of a worker gone are offered the same way, by the endpoint that
 makes them. So **the
@@ -287,7 +290,7 @@ past a minute, which only a deployment with no gateway sweeping leaves.
 When every worker of a fleet is at the line, the token endpoint answers `503`, writes `fleet.full` on
 the agent's log, and names `POST /v1/callbacks`, so a page offers a call back before any room is
 made. A phone caller arriving at a full production fleet is answered by the **overflow**
-(`pinecall-overflow@production`), registered as `<fleet>/overflow` and offered a call by the
+(the Deployment `overflow-production`), registered as `<fleet>/overflow` and offered a call by the
 gateway alone, when no worker has a seat or a room ran out of offers: one sentence,
 `PINECALL_OVERFLOW_SAYS`, the caller's number onto the agent's log as `callback.requested`, and it
 hangs up. No ears, no model.
@@ -356,11 +359,11 @@ of `/v1/evals/voice` does) leaves before it; a phone caller stays on the line an
 
 ## The burst
 
-The core node's workers hold a quiet hour's calls; every call beyond them goes to a **scaled
+Each environment's core workers, on its media node, hold a quiet hour's calls; every call beyond them goes to a **scaled
 worker**, a pod of 32 seats alone on a node of the workers pool (e2-standard-8). How many of them
 a fleet runs is one number the gateway computes from the roster it already hears,
 `GET /v1/fleet/wanted?scaled=<prefix>&seats=<n>&most=<n>` → `{fleet, wanted, active, seats}`
-(`fleet/demand.py`), and KEDA keeps the Deployment at it, asking every 15 seconds with the environment's
+(`fleet/service/demand.py`), and KEDA keeps the Deployment at it, asking every 15 seconds with the environment's
 fleet key, which names the fleet (never the operator's: a read of one number needs no more); `422`
 without `scaled` and `seats`:
 
@@ -391,7 +394,7 @@ wire), production's environment, a turn every 10 s for two minutes, calls placed
 | 16, a release of a new image (`make deploy`) while they were up | 16 of 16, none drained | every caller turn | 1.23 / 1.31 s | — |
 | 8, Postgres's pod deleted 40 s in | 8 of 8, 0 errors | every caller turn | — | — |
 
-A scaled worker spent 0.25–0.31 cores a call. The core node's four seats of production held on
+A scaled worker spent 0.25–0.31 cores a call. Production's four core seats, on the core node at the time, held on
 their 4-vCPU node beside the platform's services: two calls, first audio 1.24 / 1.32 s; four, 4 of 4
 started and 46 of 46 turns answered at 1.26 / 1.39 s, the node at 57 %. The first step above, the
 first calls after a release, saw LiveKit's VAD run slower than real time on those workers and a
@@ -416,7 +419,9 @@ first empty node at 23:30 and marked the second at 23:38, the workers pool back 
   = 50 000 × 4 ÷ 60 ÷ 10 × 2  ≈  667 calls at once
 ```
 
-At 32 seats a scaled worker and 60 % busy, that is about 35 of them at the peak: `most: 35`.
+At 32 seats a scaled worker and 60 % busy, that is about 35 of them at the peak: for such a
+load, `workers.scaled.production.most: 35` in the chart's values and production's `workers_max` 35 in Terraform.
+The chart ships `most: 10` for production and `3` for the sandbox, and Terraform the same ceilings.
 
 The control plane, measured on 2026-10-01 with `pinecall-runtime load` from a machine of its own
 (the golden call as the script, 2.1 entries a second per call, every log read back and verified):

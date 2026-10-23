@@ -28,13 +28,13 @@ call and no view renders it.
 | written | what it does |
 |---|---|
 | `channelRules = false` | leaves out the `<channel>` part of the prompt: how to write for a voice, a website's chat, WhatsApp |
-| `static slug = "front-desk"` | the name the agent registers as; left out, the folder's name. A class served under another slug is refused |
+| `static slug = "front-desk"` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) under `mount`. A class served under another slug is refused |
 | `static events = { "slot.released": { from: ["app"] } }` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call |
 
 ### The environment: the settings', or the class's
 
 Everything the agent **runs on** is its settings': set per world, versioned, with who set it and
-why, and changed without a deploy — by `pinecall agent set`, the console's Settings tab, or the
+why, and changed without a deploy — by `pinecall agent set`, the console's Configure screen, or the
 verb the table names. The class may declare any of it instead, and **what the class declares wins**:
 the settings of that field are not read for the agent, the console shows it locked, "set by the
 class", and a set of it is refused naming the class. Take it out of the class to set it again.
@@ -197,7 +197,7 @@ override onEnd(call: Call) {          // a line logged here still lands
 }
 
 override onEvent(name: string, data: Record<string, unknown>, meta: EventMeta) {}   // an accepted outside fact
-override onMemory(ops: MemoryOp[], call: Call) {}                                   // memory read or written
+override onMemory(ops: MemoryOp[], call: Call) {}   // memory read or written: each op's `op` and `facts`
 ```
 
 `onCall` runs before the first prompt goes out, so the model never reads a state the call was not

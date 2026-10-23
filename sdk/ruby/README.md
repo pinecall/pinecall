@@ -68,14 +68,16 @@ bundle add pinecall
 npm i -g pinecall                     # the CLI: Node, whatever the agent is written in
 pinecall login                        # this machine signed in, once; pinecall.json names the org
 pinecall prompt --state agents/<name>/test/goldens/a.json   # the exact prompt a state produces. No gateway.
-pinecall chat                         # the agent served from this terminal, and a caller against it
-pinecall test                         # ring 1: the goldens, scored by the gateway
-pinecall start                        # registered and answering: the process you deploy
+pinecall start                        # registered and answering: the process you deploy; leave it running
+pinecall chat                         # in another terminal: a caller against the agent start holds
+pinecall test                         # ring 1: the goldens, played on the agent start holds, scored by the gateway
 ```
 
-The CLI never loads your class: for `prompt`, `chat`, `test` and `start` it runs this gem's serve
-entry, `bundle exec ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)'`, and talks to it through
-the gateway. The console, the knowledge bases, memory, keys and every other verb are the CLI's.
+The CLI never loads your class: for `prompt` and `start` it runs this gem's serve entry,
+`bundle exec ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)'`, and talks to it through the
+gateway. `start` is the one verb that runs the agent; `chat`, `test` and `simulate` start nothing,
+and reach whoever holds it. The console, the knowledge bases, memory and every other verb are the
+CLI's.
 How a server runs the agent, with the CLI or inside your own Ruby process, is
 [docs/production.md](docs/production.md).
 
@@ -114,10 +116,10 @@ gateway = Pinecall::Testing::Gateway.new
 Pinecall.mount(ClinicaNorte, client: gateway)
 
 call = gateway.call_started(from: "+34600123456")
-call.tool("free_slots", day: "Tuesday")
+call.tool("find_patient", name: "Marta Ruiz", phone: "600123456")
 
-assert_includes call.prompt, "Tuesday at ten"
-assert_equal %w[propose], call.tools
+refute_includes call.prompt, "ask for their name"
+assert_equal %w[free_slots], call.tools
 ```
 
 ## Where the rest is

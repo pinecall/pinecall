@@ -372,7 +372,7 @@ The numbers the org watches over a window — latency, the judges' held rate, es
   "metric": "e2e_median_s",
   "above": true,
   "threshold": 2,
-  "window_days": 7
+  "windowDays": 7
 }
 ```
 
@@ -389,7 +389,8 @@ The numbers the org watches over a window — latency, the judges' held rate, es
     "created_by": "m_ana",
     "fired_on": null,
     "fired_value": null
-  }
+  },
+  "says": "mon_3f9a1c2b4d5e · slow answers · e2e_median_s above 2 over 7 days · every agent"
 }
 ```
 

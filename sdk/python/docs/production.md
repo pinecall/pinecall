@@ -5,8 +5,8 @@ own servers yet.
 
 ## The server's token
 
-A server runs on a **server's token**, minted for production in the console (Settings ▸ Keys) or
-with `pinecall keys`. It was made for one world and opens that one alone: put it in the server's
+A server runs on a **server's token**, minted for production in the console's API keys screen
+(under the org's Settings). It was made for one world and opens that one alone: put it in the server's
 secrets as `PINECALL_KEY`, never in the repository. A person's key works too while their
 production switch is on, but a server should not run on a person.
 
@@ -55,8 +55,8 @@ Node on the server is that verb's price; (a) is the way without it.
 calls to another process holding the agent, or keeps them for the next one, and the tools running
 are let finish, up to 30 seconds; one line on stderr says where the calls went. Give the process
 45 seconds between the signal and the kill — systemd's `TimeoutStopSec=45`, pm2's
-`--kill-timeout 45000`. A second signal leaves at once, and so does the end of its stdin: the CLI
-that started it is gone.
+`--kill-timeout 45000`. A second signal leaves at once. The end of its stdin — the CLI that started
+it is gone — drains the same way a signal does, and after a signal it is not a second one.
 
 A refusal at start — the file cannot be served, the class is refused, the gateway will not take
 the slug or the key — is one sentence on stderr and exit status 2, so a supervisor that restarts

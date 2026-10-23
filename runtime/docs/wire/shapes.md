@@ -12,9 +12,9 @@ One line of a call's log, or of an agent's log when call is null. seq is written
 | `ts` | `number` | yes | When the entry was written, unix seconds with fractions. |
 | `call` | `string | null` | yes | The call this entry belongs to. Null for entries about the agent itself: registered, configured, pong, an error outside any call. |
 | `agent` | `string` | yes | The agent's slug, as it registered: clinica-norte. |
-| `type` | `string` | yes | Which event this is, dotted: call.started, turn.user, metrics.llm. The closed list is the events/ folder. |
+| `type` | `string` | yes | Which event this is, dotted: call.started, turn.user, metrics.llm. The closed list is [events.md](events.md). |
 | `ephemeral` | `boolean` | yes | True for entries a store may drop and a slow reader may miss without harm: interim transcripts, VAD health, replay markers. False for everything the truth is made of. |
-| `data` | `object` | yes | The event's payload, whose shape is the event's own schema under events/<type>.json. |
+| `data` | `object` | yes | The event's payload, whose shape is the event's own, on the page [events.md](events.md) names for its type. |
 
 ### `BatchedEntry`
 
@@ -33,11 +33,11 @@ One instruction from an app to the gateway over its WebSocket. The gateway answe
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `type` | `string` | yes | Which command this is, dotted: state.set, call.dial, ping. The closed list is the commands/ folder. |
+| `type` | `string` | yes | Which command this is, dotted: state.set, call.dial, ping. The closed list is [commands.md](commands.md). |
 | `agent` | `string` | yes | The agent this command speaks for. A socket may serve several agents. |
 | `call` | `string | null` | yes | The call the command is about, or null for commands about the agent: register, configure, dial, ping. |
 | `id` | `string` | no | The app's own id for the command, echoed back on an error so the app knows which one failed. |
-| `data` | `object` | yes | The command's payload, whose shape is the command's own schema under commands/<type>.json. |
+| `data` | `object` | yes | The command's payload, whose shape is the command's own, in [commands.md](commands.md). |
 
 ### `Channel`
 

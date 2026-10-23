@@ -110,7 +110,7 @@ one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/test/goldens/
 
 | ring | what it asks | how |
 |---|---|---|
-| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, each call served by your project's `@pinecall/agents/serve` |
+| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, played on whoever holds the agent: your `pinecall start`, or production's with `--prod`; `test` starts nothing |
 | 2 | does it hold on a real line? | `pinecall test --voice` · `pinecall simulate --voice` |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |

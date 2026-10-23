@@ -93,10 +93,10 @@ Six endpoints, and two of them are the same URL twice — `Accept` decides:
 |---|---|
 | `GET /v1/calls/{id}/events?after=<seq>` | the call's entries after the cursor as `{entries, live, next}` — `next` is the last seq the page READ, and `null` when the read came back empty; with `Accept: text/event-stream`, the same entries as SSE that stays open. `Last-Event-ID` is an alias of `after`, and a cursor at the end of a sealed log is `204` in both flavours |
 | `GET /v1/calls/{id}/state` | the whole log folded: `{state, last_seq, live}`, projected by what the caller is. `last_seq` is the cursor to open the stream at |
-| `GET /v1/agents/{slug}/calls?after=<seq>` | the agent's OWN log, in the same two flavours and the same `{entries, live, next}` page: `agent.registered`, `agent.configured`, `error`. Every entry of it has `call: null` — what happens inside a call is written into that call's log, so nothing on this stream names one. `live` is always true: an agent's log never ends |
-| `GET /v1/agents/{slug}/sessions?limit=<n>` | which calls that agent handled: `{calls: [...]}`, newest first, one row per call — `call`, `live`, `last_seq`, and the fields of the call's own reduced state that a list draws (`status`, `channel`, `from`, `caller`, `started_at`, `ended_at`, `outcome`, `cost`, …), through the same projection. It is the endpoint a list of calls is built from; the log above is not |
-| `GET /v1/agents` | which agents this key's fleet is holding right now: `{agents: [{slug, channels}]}`, in the order their sockets claimed them. An agent no socket holds answers no call, so it is not listed; its log is still readable by slug |
-| `POST /v1/calls/{id}/verbs` | one supervise verb onto a live call, with a `supervise` token or the org key. `202`; its effect is read off the log above |
+| `GET /v1/agents/{slug}/calls?after=<seq>` | the agent's OWN log, in the same two flavours and the same `{entries, live, next}` page: `agent.registered`, `agent.configured`, `error`, and every other event whose scope is `agent` in [events.md](events.md). Every entry of it has `call: null` — what happens inside a call is written into that call's log, so nothing on this stream names one. `live` is always true: an agent's log never ends |
+| `GET /v1/agents/{slug}/sessions?limit=<n>` | which calls that agent handled: `{calls: [...], total?, next?}`, newest first, a page at a time, one row per call — `call`, `live`, `last_seq`, and the fields of the call's own reduced state that a list draws (`status`, `channel`, `from`, `caller`, `started_at`, `ended_at`, `outcome`, `cost`, …), through the same projection. It is the endpoint a list of calls is built from; the log above is not |
+| `GET /v1/agents` | which agents this key's fleet is holding right now: `{agents: [{slug, channels, holder?}]}` (`holder` for a reader of every scope), in the order their sockets claimed them. An agent no socket holds answers no call, so it is not listed; its log is still readable by slug |
+| `POST /v1/calls/{id}/verbs` | one supervise verb onto a live call, with a `supervise` token or a key that opens `supervise` and `calls` (or `fleet`). `202`; its effect is read off the log above |
 
 A reader that only wants the app's state subscribes with `types=state.changed`: one entry per
 change instead of every transcript and every metric, on the same cursor, and `GET .../state`
@@ -114,14 +114,15 @@ order.
 
 | token | may |
 |---|---|
-| `talk` | connect to ONE agent, once, for 60 s (web widget), and read its own call. Minted at `POST /v1/tokens` — LiveKit's standard token endpoint, in front of our organisation check: `tokens.md`. Its metadata is sealed by the tenant's server; the browser cannot forge it |
+| `talk` | connect to ONE agent, once, for 60 s (web widget), and read its own call. Minted at `POST /v1/tokens` — LiveKit's standard token endpoint, in front of our organisation check: [tokens.md](../protocol/tokens.md). Its metadata is sealed by the tenant's server; the browser cannot forge it |
 | `chat` | `talk` with no microphone: the same room, and it SUBSCRIBES — LiveKit hands a text stream to subscribers only, so a token that could not would type into the room and never see the reply |
 | `observe` | hear the room, hidden and silent. It reads no log at all |
 | `supervise` | read the one call it was minted for, and send the verbs to `POST /v1/calls/{id}/verbs` |
 | `participate` | read its own call, through the public projection, and send `pinecall.event` |
+| `read` | read its own call's log for 4 hours and join no room: a page's `log_token`, through the projection it was minted with; the one `POST /v1/codes` answers asks after its code instead |
 
 What each token sees is a **projection**, applied at the sink and never by a client: `public` for
-`talk`, `chat` and `participate`, `tenant` for `observe` and `supervise`. The contract is `projections.md`.
+`talk`, `chat` and `participate`, `tenant` for `observe` and `supervise`. The contract is [projections.md](../protocol/projections.md).
 
 ## Verbs
 
@@ -151,12 +152,13 @@ One page per domain. A change of the wire changes its page in the same commit, o
 | page | holds |
 |---|---|
 | [events.md](events.md) | every event, one line each, with the page its data shape is on |
-| [events-call.md](events-call.md) | `call.*`, `user.*`, `agent.state`, `agent.transcript`, `turn.*`, `metrics.*`: the call and the conversation, field by field |
-| [events-app.md](events-app.md) | `tool.*`, `state.changed`, `prompt.changed`, `tools.changed`, `confirm.*`, `memory.ops`, `docs.sources`, `custom` |
-| [events-control.md](events-control.md) | `supervisor.*`, `log.gap`, `log.caught_up`, `error`, `pong`, `agent.registered`, `agent.configured` |
+| [events-call.md](events-call.md) | `call.*`, `user.*`, `agent.state`, `agent.transcript`, `turn.*`, `metrics.*`, `dtmf.received`, `vendor.switched`: the call and the conversation, field by field |
+| [events-app.md](events-app.md) | `tool.call`, `tool.result`, `state.changed`, `prompt.changed`, `tools.changed`, `confirm.*`, `memory.ops`, `docs.sources`, `custom` |
+| [events-control.md](events-control.md) | `supervisor.*`, `attention.*`, `log.gap`, `log.caught_up`, `error`, `pong`, `dev.request`, the agent's own log (`agent.registered`, `agent.configured`, `agent.detached`, `agent.draining`, `callback.requested`, `code.*`, `credits.exhausted`, `evals.spent`, `fleet.full`, `message.*`, `monitor.fired`, `spend.unusual`) and the feeds' (`run.changed`, `release.changed`, `tool.ran`, `tool.failed`, `judge.broke`, `worker.changed`) |
 | [events-room.md](events-room.md) | `room.*`, `participant.*`, `track.*`, `event.received`: the room's facts and the outside environment's |
 | [commands.md](commands.md) | every command with what it lands as, and the supervise verbs |
 | [metrics.md](metrics.md) | the metrics table: block · field · unit · required · measured by · meaning |
+| [livekit-metrics.md](livekit-metrics.md) | where livekit-agents produces each metric, and every class and field it declares |
 | [state.md](state.md) | what a log reduces to |
 | [shapes.md](shapes.md) | the envelope and the shared shapes |
 | [projections.md](../protocol/projections.md) | what `public` and `tenant` keep, and the DataChannel topics |

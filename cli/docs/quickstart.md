@@ -24,7 +24,7 @@ pinecall --version
 
 :::result
 ```console
-0.11.2
+0.11.11
 ```
 One command, installed once per machine. It serves an agent in any of the three languages.
 :::
@@ -185,7 +185,8 @@ A question the documents answer, answer. Otherwise take a message: ask only for 
 ```
 This is the exact text the model reads when a call opens, with no key and no network. It has four
 blocks: **identity** is your class's docstring plus rules Pinecall adds for every agent;
-**knowledge** is what the agent knows by heart (empty until you write it, in step 7); **tools** is
+**knowledge** is what the agent knows by heart (empty until you write it with
+`pinecall agent knowledge edit`); **tools** is
 every tool with its docstring; **view** is what your class says to do in this turn. Under the
 blocks, the stage the agent is in and the tools the model may call now. Change the class and run
 it again.
@@ -253,19 +254,20 @@ The unit test runs with no network and no model: `npm test`, `uv run pytest` or 
 ### Give it documents
 
 ```bash
-mkdir -p docs/front-desk
-printf '# Refunds\n\nA refund reaches the card it was paid with within ten working days.\n' > docs/front-desk/refunds.md
+rm agents/front-desk/docs/README.md
+printf '# Refunds\n\nA refund reaches the card it was paid with within ten working days.\n' > agents/front-desk/docs/refunds.md
 pinecall docs push
 pinecall docs attach front-desk
 ```
 
 :::result
 ```console
-front-desk · 1 file · 1 chunk · 212 ms
+front-desk · 1 files · 1 chunks · english · 212 ms
 front-desk · front-desk attached · your corner v2
 ```
-`docs push` uploads the folder as a knowledge base named after the agent; `docs attach` tells the
-agent to search it on every turn. Run `pinecall chat` again and ask how long a refund takes: the
+`docs push` uploads the agent's `docs/` folder whole as a knowledge base named after the agent, in the
+language counted from its words (the `README.md` the project came with only said what the folder is
+for); `docs attach` tells the agent to search it on every turn. Run `pinecall chat` again and ask how long a refund takes: the
 answer comes from your file, and nothing in your code changed.
 :::
 

@@ -38,7 +38,7 @@ Build an agent with no code, as the console's Studio does: made, its definition 
   "body": {
     "method": "GET",
     "url": "https://httpbin.org/anything/pinecall",
-    "origin": "34.121.61.139"
+    "origin": "203.0.113.7"
   },
   "error": null,
   "duration_ms": 254

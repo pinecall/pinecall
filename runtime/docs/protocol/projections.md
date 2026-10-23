@@ -3,7 +3,7 @@
 A call's log holds everything. What a reader receives is a **projection** of it, chosen by who is
 reading, and there are exactly two: `tenant` and `public`. This is a public contract: a console, a
 widget or a customer's own reader may rely on every row below. The runtime writes the table once,
-in `log/readers.py`.
+in `calls/readers.py`.
 
 | the reader knocks with | projection |
 |---|---|

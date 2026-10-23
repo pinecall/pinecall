@@ -35,7 +35,7 @@ distrusts, and say in the tool's own description where its output comes from.
 
 - **Lookups are tools, and their answers tool results.** Recall and search run before a turn on the
   platform's behalf, and their answers are spliced into the request as a tool call and its result,
-  right before the caller's words (`session/_prompt.py`). The model reads what memory and the
+  right before the caller's words (`session/lookups.py`). The model reads what memory and the
   documents said exactly as it reads a tool it called. Their descriptions say where the text came
   from and that it is information, never an instruction; a fact carries the call it came from and
   the date it was first held, so the model can weigh it. Neither answer carries a score.
@@ -49,12 +49,13 @@ distrusts, and say in the tool's own description where its output comes from.
   granted ("book without asking"). A fact that got in once would otherwise be handed to every later
   call of that contact.
 - **A tool that acts can be read back.** A tool declared with `confirm` has its outcome said to the
-  caller in the operator's words; and the `consent` judge checks, after the call, that every
+  caller in the operator's words, and an irreversible tool declared without one is refused when the
+  agent is declared; the `consent` judge checks, after the call, that every
   irreversible tool ran after the caller agreed to it.
 
 ## What a tenant should do
 
-Declare a tool's side effect honestly; give an irreversible tool a `confirm`; keep the caller's
+Declare a tool's side effect honestly (an `irreversible` one must carry a `confirm`); keep the caller's
 identity and permissions in the app's state, never in something the model reads as a fact; and
 read `memory.ops` now and then.
 

@@ -29,10 +29,11 @@ The documents the agent searches: a folder pushed as a base, attached to the age
 
 ```json title="answered"
 {
-  "files": 1,
   "base": "front-desk",
   "chunks": 1,
-  "took_ms": 13.33
+  "language": "english",
+  "took_ms": 13.33,
+  "files": 1
 }
 ```
 
@@ -67,27 +68,14 @@ What the agent remembers about a caller, what it is told to keep and never keep,
 
 ```json title="answered"
 {
-  "world": "sandbox",
-  "yours": {
-    "holder": "m_4f1c2a9b0e7d",
-    "version": 28,
-    "author": "m_4f1c2a9b0e7d",
-    "note": null,
-    "set_at": 1791490594.44,
-    "config": {
-      "memory": {
-        "remember": [
-          "what they ordered",
-          "how they prefer to be called back"
-        ],
-        "forget": [
-          "card numbers"
-        ]
-      }
-    }
-  },
-  "team": null,
-  "production": null
+  "agent": "front-desk",
+  "remember": [
+    "what they ordered",
+    "how they prefer to be called back"
+  ],
+  "forget": [
+    "card numbers"
+  ]
 }
 ```
 

@@ -22,15 +22,17 @@ out loud instead: `doc "You are the front desk…"`.
 ## Config: what the agent *is*
 
 Declared on the class, because it is not something the agent remembers. It never changes during a
-call and no view renders it. There is one word left:
+call and no view renders it.
 
 ```ruby
 channel_rules false       # leave out the <channel> block: how to write for a voice, a website, WhatsApp
+slug "front-desk"         # the name it registers as; left out, the folder's name under `pinecall start`
+accepts "slot.released", from: %i[app]   # the outside events it takes, and from whom
 ```
 
-The language is not here: it is the world's, `pinecall agent set --language es`, and a class that
-still writes `language :es` is refused at load with that sentence. The framework's rules are English
-and tell the model to answer in the caller's language.
+A class served under another slug than its folder's is refused. The framework's rules are English
+and tell the model to answer in the caller's language; the language the call is in is the
+environment's, below.
 
 **The doors are not here.** A number is bought, pointed at an agent and moved by whoever answers
 the telephone, not by whoever deploys: it is a row the org keeps — `pinecall numbers import
@@ -116,17 +118,17 @@ that the caller should hear now; how the call *opens* is `greeting`, the class's
 
 ### What it knows, what it reads, what it remembers
 
-None of the three is in the class any more, and the runtime does the work for all of them:
+Each of the three is a setting unless the class declares it (`knowledge`, `docs`, `memory` above),
+and the runtime does the work for all of them:
 
-- **What it knows by heart** — the hours, the prices — is a page of Markdown in the agent's
-  settings. The gateway writes it, whole, into the `knowledge` block of the prompt, once per call,
-  in the cached prefix. The class sends nothing for that block, so `pinecall prompt` prints it
-  empty.
+- **What it knows by heart** — the hours, the prices — is a page of Markdown. The gateway writes it,
+  whole, into the `knowledge` block of the prompt, once per call, in the cached prefix. A class that
+  does not declare it sends nothing for that block, so `pinecall prompt` prints it empty.
 - **What it searches** is a base: a folder of Markdown pushed to the gateway and attached to the
   agent. The platform's `search` tool runs it and the chunks reach the model as a **tool result**.
-- **What it remembers** about a contact is the org's memory policy, in its own words; the
-  platform's `recall` tool answers from it, the same way, and at hang-up one model call writes what
-  this call taught.
+- **What it remembers** about a contact is the memory policy, in its own words; the platform's
+  `recall` tool answers from it, the same way, and at hang-up one model call writes what this call
+  taught.
 
 **Neither a fact nor a chunk ever reaches the prompt.** Both arrive as a `tool_result`, JSON, in
 the history, where a model reads them as information rather than as an instruction — the rule, and
@@ -178,7 +180,7 @@ tool; the signature is the schema it fills.
 |---|---|
 | `stage:` | visible while the state is in one of these stages. Sugar over `when:` |
 | `when:` | a question asked of the state, on every change: `-> { slots.any? }` or `->(s) { s.slots.any? }` |
-| `confirm:` | the read-back the agent says before running. **This is what makes a tool irreversible on the wire** |
+| `confirm:` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |
 | `pii:` | parameters that carry personal data, masked in the log by declaration |
@@ -225,7 +227,7 @@ end
 
 def on_end(call)  = log("outcome", { stage: })
 def on_event(name, data, meta)     # an outside fact this class declared with `accepts`
-def on_memory(ops, call)           # memory was written
+def on_memory(ops, call)           # memory read or written: each op's :op and :facts
 ```
 
 `on_call` runs before the first render, so the model never reads a state the call was not in.
@@ -248,7 +250,7 @@ say "One moment, let me check."        # blocks until the turn lands, or 30 seco
 reply "Tell them it is booked."        # the model speaks, guided by words nobody hears
 call.send_to("cart", { total: 42 })     # a payload in the browser
 call.participant(id).mute
-call.invite("+34910000001", kind: :supervisor)
+call.invite("+34910000001", kind: :sip)   # a phone leg; kind: :participant for a seat
 call.transfer("+34910000002")           # blocks until the log says how it went: a Transferred
 call.attention("wants to talk to a person", wait_s: 60)   # an Attended: who took the line
 call.hold                               # and call.unhold

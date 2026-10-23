@@ -42,7 +42,7 @@ request acts in, its scopes, whose it is, and whether it may act in production:
 
 `email` is the one name a person carries into every org; a server's token has none. `operator`
 says the person runs the platform; `visiting` that they are inside an org they are no member of.
-Never the key nor its hash. With no key it is `401 this door takes an API key`.
+Never the key nor its hash. With no key it is `401 this endpoint takes an API key`.
 
 ## Signing in — `POST /v1/login`
 
@@ -249,5 +249,5 @@ can send.
 ## The platform — `GET /v1/ops/whoami`
 
 The operator's key, or a person the platform made an operator: `{operator: true, version, domain,
-name, org}`, `name` and `org` null for the platform's own key. The console opens its Platform screens when
+name, org}`, `name` and `org` null for the platform's own key. The console draws its Box screens when
 this answers `200`.

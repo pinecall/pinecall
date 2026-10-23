@@ -99,11 +99,12 @@ other door and means something stronger: a whole state, so a field it leaves out
 
 The verbs are the one `pinecall` CLI's (npm), the same for a Ruby project as for a TypeScript
 one, in the same layout: `agents/<slug>/agent.rb`, `agents/<slug>/test/goldens/`, `agents/<slug>/test/memory/`,
-`agents/<slug>/docs/`. For the ones that need the class, the CLI starts this gem's serve entry.
+`agents/<slug>/docs/`. Only `pinecall start` and `pinecall prompt` start this gem's serve entry; the
+others start nothing and reach whoever holds the agent.
 
 | ring | what it asks | how |
 |---|---|---|
-| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, each call served by this gem's entry |
+| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `agents/<slug>/test/goldens/`, played on whoever holds the agent: your `pinecall start`, or production's with `--prod` |
 | 2 | does it hold on a real line? | `pinecall test --voice` · `pinecall simulate --voice` |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
@@ -153,9 +154,6 @@ no model in the loop, so two runs over one base answer the same numbers.
 
 A golden is fixed and the index is the variable. **A question is never softened so a change can
 pass.** What you change instead is the documents, the chunking, `k`, `min_score`, or the embedder.
-
-`client.knowledge.eval(base, questions, k:)` is the same thing from Ruby, when a rake task suits
-you better than a shell line.
 
 ## Memory has a golden of its own, and it is the write side
 
@@ -217,12 +215,13 @@ shape: a category is your own word, a value is a literal, a supersession is an i
 back. Every judgment is code, so two runs of one case answer the same thing and a change is a
 change and not a mood.
 
-**Where each half runs.** The class is mounted in *this terminal's own process*, because the
+**Where it runs.** Nothing is started here: the gateway runs each case against the agent its holder
+declared — your `pinecall start`, a colleague's, production's with `--prod` — because the
 categories a golden may name and the tool names admission refuses a fact for are your class's OWN
 declaration — Clínica Norte's are `find_patient` and `book`, and a planted sentence naming one of
-them is what proves admission reads the declaration and not a list of words. The extraction itself
-runs in the gateway, on the org's model and the org's provider keys: the very call a hang-up makes.
-**One model call per case**, which is why this belongs in a nightly and not in every commit.
+them is what proves admission reads the declaration and not a list of words. The extraction runs on
+the org's model and the org's provider keys: the very call a hang-up makes. **One model call per
+case**, which is why this belongs in a nightly and not in every commit.
 
 A case that did not hold prints what broke, then what memory would have kept and what admission
 refused — the two together are the whole of why:
@@ -232,9 +231,6 @@ refused — the two together are the whole of why:
       writes  nothing was written under 'how they like to be addressed'; what was: ['allergies']
       kept      add · allergies · Allergic to penicillin.
 ```
-
-`client.memory.extraction(slug, cases)` is the same thing from Ruby, when a rake task suits you
-better than a shell line.
 
 A golden is fixed and the extraction is the variable. **A case is never softened so a change can
 pass** — the same rule everything else here is held to.
@@ -304,13 +300,12 @@ Every question memory did not answer whole is printed with what came back instea
 change is the words a fact is written in — the memory policy's `--remember` is that vocabulary — the embedder,
 or `k`.
 
-`client.memory.eval(questions, k:)` is the same thing from Ruby.
-
 ## Is there a score for retrieval on a call?
 
 No, and the reason is worth knowing rather than working around.
 
-`call.score` carries the panel's verdicts, and the one that touches retrieval is `grounded`: it
+`call.score` carries the verdicts of the hang-up judges switched on — LLM judges, every one off
+until `pinecall judges on <name>` — and the one that touches retrieval is `grounded`: it
 checks that every price, hour, date and name the agent stated appears in the evidence it was given —
 and since a lookup arrives as a tool result, that evidence **is** the chunks. So the rate of `held`
 over calls carrying a `docs.sources` entry is the precision of retrieval on real traffic, for free.
