@@ -223,13 +223,14 @@ $ make hosting ENV=<env> TAG=<commit>       # the runners, the namespace and its
 ```
 
 An app's pod runs `appImage`. Node's own image installs a TypeScript project; a Python project is
-installed with uv onto the CPython 3.13 of `images/app`, built once into the registry and named in
+installed with uv onto the CPython 3.13 of `images/app` (with the system's certificate roots, which
+CPython reads and Node's slim image lacks), built once into the registry under a new tag each change and named in
 `$OPS/values/hosting-<env>.yaml` — on Node's image a Python release fails its install and says so:
 
 ```console
 $ gcloud builds submit infra/images/app --config infra/images/cloudbuild.yaml \
     --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
-    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/app:node24-py3.13"
+    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/app:node24-py3.13-2"
 ```
 
 ## From a deployment (history)

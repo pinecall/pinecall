@@ -11,6 +11,9 @@ FROM ${UV} AS uv
 
 FROM ${NODE}
 COPY --from=uv /uv /usr/local/bin/uv
+# The system's roots: Node carries its own, CPython reads the system's, and Node's slim image has
+# none, so a Python app's TLS to the gateway failed to verify its certificate.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 # The interpreter lives under /opt/python, read by every user; an install finds it there and never
 # fetches another. The cache (the install's HOME) and the venv (/app) are two volumes: a copy, not
 # a link. The app's root is read-only, so Python writes no bytecode beside the sources.
