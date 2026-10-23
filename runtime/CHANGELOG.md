@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.13 — An app that goes down says so (2026-10-23)
 
 - **An app that goes down says so.** The first time the runner reports a host of a hosted app
   failed — it did not build, start or stay up — the org's webhook is posted `app.failed` with the
