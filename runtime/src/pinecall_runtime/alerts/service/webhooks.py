@@ -66,8 +66,8 @@ async def operator_webhook_of(session: AsyncSession, vault: Vault) -> Webhook | 
     if sealed is not None:
         value, ciphertext = sealed
         return Webhook(url=str(value["url"]), secret=vault.open(ciphertext))
-    value = await platform.get_setting(session, OPERATOR_ALERTS)
-    return None if value is None else Webhook(url=str(value["url"]))
+    unsigned = await platform.get_setting(session, OPERATOR_ALERTS)
+    return None if unsigned is None else Webhook(url=str(unsigned["url"]))
 
 
 async def put_operator_webhook(session: AsyncSession, vault: Vault, webhook: Webhook) -> None:
