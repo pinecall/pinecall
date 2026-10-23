@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pinecall_runtime.accounts.service import keys
-from pinecall_runtime.cli import local
+from pinecall_runtime.cli import box_keys, local
 from tests.conftest import needs_the_database
 
 LISTEN = "PINECALL_GATEWAY_LISTEN=0.0.0.0:8080"
@@ -88,7 +88,7 @@ async def test_a_box_key_the_database_does_not_know_is_drawn_again(
     env = tmp_path / "env"
     env.write_text("PINECALL_VAULT_KEY=x\nPINECALL_WORKER_KEY=pc_of_a_database_deleted\n")
     values = {"PINECALL_WORKER_KEY": "pc_of_a_database_deleted"}
-    await local.draw_box_keys(engine, values, env)
+    await box_keys.draw_box_keys(engine, values, env)
     lines = env.read_text().splitlines()
     assert lines[0] == "PINECALL_VAULT_KEY=x"
     assert values["PINECALL_WORKER_KEY"] != "pc_of_a_database_deleted"
@@ -100,5 +100,5 @@ async def test_a_box_key_the_database_does_not_know_is_drawn_again(
             assert await keys.verify_key(session, values[variable]) is not None
     # Known now: drawn once, and kept.
     before = dict(values)
-    await local.draw_box_keys(engine, values, env)
+    await box_keys.draw_box_keys(engine, values, env)
     assert values == before
