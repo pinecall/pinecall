@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A hosted app restarted comes back.** The runner's Role in `charts/hosting` lacked `update` on
+  secrets: a release started again (the cluster moved its node, the runner restarted) found its
+  environment secret already there, was refused the replace, and the app stayed down with no
+  release to blame. Found on a tenant's app on 2026-10-23, down 23 hours; a new release had hidden
+  it, because a new release makes a new secret.
+
 ## 0.11.11 — A person writes a case by hand (2026-10-23)
 
 - **A person writes a case by hand.** `PUT /v1/agents/{slug}/cases/{name} {golden, held_out}`

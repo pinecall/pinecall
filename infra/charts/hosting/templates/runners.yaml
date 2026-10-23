@@ -14,9 +14,11 @@ metadata:
   name: runner
   namespace: {{ .Values.appsNamespace }}
 rules:
+  # A release started again finds its secret already there and replaces it (PUT), so update too:
+  # without it a restart of a running app, the cluster's or the runner's, left the app down.
   - apiGroups: [""]
     resources: [pods, secrets]
-    verbs: [create, delete, get, list]
+    verbs: [create, delete, get, list, update]
   - apiGroups: [""]
     resources: [pods/log]
     verbs: [get]

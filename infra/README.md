@@ -211,7 +211,7 @@ database, its gateways or its calls. Off, the runtime serves everything but host
 |---|---|
 | each app | one pod in `pinecall-apps`, under GKE Sandbox's gVisor (`runtimeClassName: gvisor`): installed by its first container from its runner's sources, run by its second, read-only, as a user that is not root, with no service account token |
 | the fence | `charts/hosting`'s network policy: an app's pod reaches the internet and its runner's sources, nothing private (no pod, node or network address), and nothing reaches it |
-| each environment's runner | a pod of `pinecall-runner` (`pinecall-runtime runner start`), knocking the platform at its public name with its environment's runner key, read off Secret Manager by the one identity that may (`pinecall-<env>-runner`) |
+| each environment's runner | a pod of `pinecall-runner` (`pinecall-runtime runner start`), knocking the platform at its public name with its environment's runner key, read off Secret Manager by the one identity that may (`pinecall-<env>-runner`); in `pinecall-apps` it may create, read, replace and delete the apps' pods and secrets and read their logs, nothing else |
 
 The two runner keys are minted by the platform and put once, piped, never printed:
 
