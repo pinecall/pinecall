@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.15] — `pinecall deploy` runs a Python project
 
 - **`pinecall deploy` runs a Python project.** A project whose agents are `agent.py` is uploaded with
   its `pyproject.toml` and Pinecall installs it with uv on CPython 3.13 (`uv.lock` when it has one);

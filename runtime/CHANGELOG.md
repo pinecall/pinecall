@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.15 — Pinecall hosts Python projects, and a runtime of one's own runs what it is sent (2026-10-23)
 
 - **Hosted apps run on `infra/images/app` on cloud.pinecall.io**: Node 24, uv and CPython 3.13, with
   the system's certificate roots. CPython reads them and Node's slim image has none, so a hosted

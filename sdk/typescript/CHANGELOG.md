@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## [Unreleased]
+## [0.11.15] — the serve entry registers as its host
 
 - **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's
   hostname; `new Pinecall({ host })` says it for your own process. A hosted app's runner names each
