@@ -12,7 +12,7 @@ Commands:
   show [account]  one account, named, never its secret
   add             keep an account: its fields from the flags, its secrets from
                   stdin
-  drop [account]  an account let go; its numbers stay routed until each is dropped
+  drop [account]  an account let go; its numbers stay routed until dropped
   help [command]  display help for command
 
 An account is where the org's numbers live: a Twilio account, a SIP peer (its own PBX or a
@@ -103,7 +103,7 @@ Options:
 $ pinecall carriers drop --help
 Usage: pinecall carriers drop [options] [account]
 
-an account let go; its numbers stay routed until each is dropped
+an account let go; its numbers stay routed until dropped
 
 Options:
   -h, --help  display help for command

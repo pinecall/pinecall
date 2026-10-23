@@ -2,8 +2,8 @@
 
 import type { MemoryOp } from "@pinecall/agents";
 
-/** Lo que el CRM sabe de un contacto: clave y valor, tal y como el agente lo recordó. */
-export type Notes = Record<string, unknown>;
+/** Lo que el CRM sabe de un contacto: cada hecho recordado, por su id, con su texto y su categoría. */
+export type Notes = Record<string, { text: string; category: string | null }>;
 
 /**
  * El CRM real es una API del centro; aquí es un mapa en memoria con la misma superficie, para que
@@ -12,12 +12,16 @@ export type Notes = Record<string, unknown>;
 export class FakeCrm {
   private readonly byContact = new Map<string, Notes>();
 
-  /** Aplica las anotaciones de una llamada: recordar escribe, olvidar borra. */
+  /** Aplica lo que la memoria hizo en una llamada: recordar escribe, olvidar borra, leer no cambia nada. */
   apply(contact: string, ops: MemoryOp[]): void {
     const notes = this.byContact.get(contact) ?? {};
     for (const op of ops) {
-      if (op.op === "forget") delete notes[op.key];
-      else notes[op.key] = op.value;
+      if (op.op === "recall") continue;
+      for (const fact of op.facts) {
+        const id = fact.id ?? fact.text;
+        if (op.op === "forget") delete notes[id];
+        else notes[id] = { text: fact.text, category: fact.category ?? null };
+      }
     }
     this.byContact.set(contact, notes);
   }
