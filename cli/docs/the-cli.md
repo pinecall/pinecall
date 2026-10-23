@@ -1062,7 +1062,7 @@ promises-youll-call-me-tomorrow-29d7c7 · pending · clinica-norte
 ```
 
 A case a person wrote by hand, in the console's **Cases ▸ New case**, has no call: its second line reads
-`written by hand (sandbox) · written by ana@clinica-norte.com · 2026-10-23 09:14`, and `cases forget` names
+`written by ana@clinica-norte.com (by hand, sandbox) · 2026-10-23 09:14`, and `cases forget` names
 no call either.
 
 The inbox lists the agent's cases, the pending first, newest first: status, name, the judges that

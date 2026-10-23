@@ -65,11 +65,11 @@ export function oneCase(one: EvalCase): string[] {
   ];
   return [
     `${one.name} · ${one.status} · ${one.agent}`,
-    `  ${fromWhere(one)}${version}) · ${one.source === "person" ? "written" : "kept"} by ${one.author} · ${date(one.created_at)}`,
+    `  ${origin(one)}${version})${one.source === "person" ? "" : ` · kept by ${one.author}`} · ${date(one.created_at)}`,
     ...marks.map((line) => `  ${line}`),
     "",
     "  broke",
-    ...(one.broke.length === 0 ? [`    ${NOTHING} nothing: a person kept it from a call that held`] : one.broke.map((broken) => `    ${broken.judge}  ${broken.reason}`)),
+    ...(one.broke.length === 0 ? [`    ${NOTHING} nothing: ${one.source === "person" ? "a person wrote it, no call made it" : "a person kept it from a call that held"}`] : one.broke.map((broken) => `    ${broken.judge}  ${broken.reason}`)),
     "  the turns",
     ...golden.turns.flatMap((turn) => [`    ${turn.say === undefined ? `event ${turn.event?.name ?? ""} ${JSON.stringify(turn.event?.data ?? {})}` : `"${turn.say}"`}`, ...(turn.then ?? []).map((step) => `      then ${JSON.stringify(step)}`)]),
     `  state   ${JSON.stringify(golden.state ?? {})}`,
@@ -85,9 +85,9 @@ export function caseKept(one: EvalCase): string[] {
   return [`${one.name} kept · ${one.status} · ${one.agent} · from ${one.source_call}`, `  expect  ${JSON.stringify(one.golden.expect ?? {})}`];
 }
 
-// Where a case came from, the parenthesis left open for the version: a call, or a person's hand in an env.
-function fromWhere(one: EvalCase): string {
-  return one.source === "person" ? `written by hand (${one.source_env}` : `from ${one.source_call} (${one.source_env}`;
+// Where a case came from and who kept it, the parenthesis left open for the version: a call, or a person's hand.
+function origin(one: EvalCase): string {
+  return one.source === "person" ? `written by ${one.author} (by hand, ${one.source_env}` : `from ${one.source_call} (${one.source_env}`;
 }
 
 export function caseDecided(one: EvalCase, wrong?: string): string {
