@@ -9,3 +9,7 @@ regexes = ['''dGhlIHNhbXBsZSBub25jZQ==''']
 [[allowlists]]
 description = "The CLI suite's fake gateway key: hex counting 0 to f twice, opening nothing (cli/test/support/gateway.ts)"
 regexes = ['''pc_live_0123456789abcdef0123456789abcdef''']
+
+[[allowlists]]
+description = "The Ruby suite's fake key, 'key of find me if anybody prints it' in leetspeak: what no inspect may print (sdk/ruby/test/client/inspect_test.rb)"
+regexes = ['''pc_live_k3y0f1ndm3if4nyb0dyp1nt5it''']
