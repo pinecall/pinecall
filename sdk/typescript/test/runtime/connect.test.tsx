@@ -9,6 +9,7 @@ import { FakeGateway } from "../../src/client/testing/index.js";
 
 import ClinicaNorte from "../agent/clinica-norte.js";
 import { mount, optionsFor, slugOf, type Mounted } from "../../src/runtime/connect.js";
+import type { MemoryOp } from "../../src/agent/lifecycle.js";
 
 const KEY = "pk_test";
 const SLUG = "clinica-norte";
@@ -164,6 +165,27 @@ it("renders again when memory recalls something about the caller", async () => {
   const sent = commands("prompt.set").slice(before);
   expect(sent.map((data) => data["name"])).toEqual(["view"]);
   expect(String(sent[0]?.["text"])).toContain("Ofrece primero las horas de su médico habitual");
+});
+
+const remembered: { call: string; ops: string[] }[] = [];
+
+/** Records what `onMemory` is handed. */
+class Memoriosa extends ClinicaNorte {
+  override onMemory(ops: MemoryOp[], call: { id: string }): void {
+    remembered.push({ call: call.id, ops: ops.map((op) => `${op.op}:${op.facts.map((fact) => fact.text).join("|")}`) });
+  }
+}
+
+it("runs onMemory with what memory did, after the view says it", async () => {
+  await connected(Memoriosa);
+  started();
+  await settled();
+  gateway.emit(SLUG, CALL, "memory.ops", {
+    ops: [{ op: "recall", contact: KNOWN, query: "cita", facts: [{ id: "f1", text: "prefiere la mañana", score: 0.8 }], took_ms: 4 }],
+    speech_id: "s2",
+  });
+  await settled();
+  expect(remembered).toEqual([{ call: CALL, ops: ["recall:prefiere la mañana"] }]);
 });
 
 it("sends tools.set with the new visible set when a `when` flips", async () => {

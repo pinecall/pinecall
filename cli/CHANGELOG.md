@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`carriers drop` says what it does.** Its help read "its numbers stop ringing here"; the
+  gateway keeps them routed until each is let go with `numbers drop`, as the page said.
+- **The Python and Ruby templates name their tool.** Their view told the model to call
+  `takeMessage`, the TypeScript name; the tool in those two is `take_message`.
+
 ## [0.11.11] — a case written by hand reads as one
 
 - **A case written by hand reads as one.** The gateway now keeps cases a person wrote in the console

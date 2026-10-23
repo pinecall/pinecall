@@ -1,6 +1,7 @@
 /** Lifecycle hooks: call start, call end, memory writes and external events. */
 
-import { type Medium } from "../wire/defs.js";
+import { type Camel } from "../wire/codec.js";
+import { type Medium, type MemoryOp as WireMemoryOp } from "../wire/defs.js";
 
 import { withAuthorAsync } from "./authors.js";
 import type { EventMeta } from "./accepts.js";
@@ -15,12 +16,8 @@ export interface Call {
   medium?: Medium;
 }
 
-/** A memory write: remember or forget a key about the contact. */
-export interface MemoryOp {
-  op: "remember" | "forget";
-  key: string;
-  value?: unknown;
-}
+/** One operation against the contact's memory, as `memory.ops` carries it: a recall, a remember or a forget. */
+export type MemoryOp = Camel<WireMemoryOp>;
 
 /** Hooks an agent may override; all default to no-ops. */
 export interface Lifecycle {

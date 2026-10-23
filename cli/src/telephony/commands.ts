@@ -159,7 +159,7 @@ export function register(program: Command, ctx: Context): void {
     .action(async (flags) => addCarrier({ kind: "whatsapp", phoneNumberId: flags.phoneNumberId, label: flags.label }));
   carriers
     .command("drop")
-    .description("an account let go; its numbers stop ringing here")
+    .description("an account let go; its numbers stay routed until each is dropped")
     .argument("[account]")
     .action(async (account) => ctx.io.result(await service.dropCarrier(ctx, account), render.carrierDropped));
 

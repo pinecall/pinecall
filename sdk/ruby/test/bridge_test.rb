@@ -268,6 +268,24 @@ class BridgeTest < Minitest::Test
     assert_includes call.prompt, "Recuerda su alergia."
   end
 
+  class Memoriosa < Buscadora
+    def self.remembered = (@remembered ||= [])
+    def on_memory(ops, call) = Memoriosa.remembered << [call.id, ops.map { |op| op[:op] }]
+  end
+
+  def test_what_memory_did_reaches_on_memory_after_the_view
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Memoriosa, client: gateway)
+    call = gateway.call_started
+    recalled = { op: "recall", facts: [{ text: "alergia a la penicilina", category: "salud" }], took_ms: 3.0 }
+
+    gateway.deliver("memory.ops", { ops: [recalled] }, call: call.id)
+    gateway.settle
+
+    assert_includes call.prompt, "Recuerda su alergia."
+    assert_equal [[call.id, ["recall"]]], Memoriosa.remembered
+  end
+
   def test_a_claim_reaches_the_view_once_the_log_says_it_took
     gateway = Pinecall::Testing::Gateway.new
     Pinecall.mount(Buscadora, client: gateway)

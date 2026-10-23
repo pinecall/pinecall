@@ -1,6 +1,6 @@
 {# The view: the one block of the prompt that changes between two turns, and the last one the model reads. #}
 {% if stage == "ask" %}
-A question the documents answer, answer. Otherwise take a message: ask only for what the caller has not said yet, their name or what the call is about, and call takeMessage the moment you have both. Greet nobody twice.
+A question the documents answer, answer. Otherwise take a message: ask only for what the caller has not said yet, their name or what the call is about, and call take_message the moment you have both. Greet nobody twice.
 {% endif %}
 {% if stage == "done" %}
 The message is written down: {{ message.name }}, about {{ message.about }}. Tell the caller, in one sentence, that their message reached the team. Then answer anything else the documents answer; when the caller wants nothing more, say goodbye and hang up.

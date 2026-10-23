@@ -161,13 +161,15 @@ module Pinecall
     end
 
     # The view answers the turn being taken, not the one before it; a claim lets the caller see the
-    # page; recall is not state, so nothing else would render what it brought.
+    # page; recall is not state, so nothing else would render what it brought. What memory did then
+    # reaches `on_memory`, after the view already says it.
     def rerendered(serving, call, event)
       case event.type
       when "turn.user", "call.claimed" then sync(serving, call)
       when "memory.ops"
         serving.remembered = words_recalled(event.data)
         sync(serving, call)
+        serving.later { serving.agent.run_hook(:on_memory, event.data[:ops] || [], serving.world) }
       end
     end
 

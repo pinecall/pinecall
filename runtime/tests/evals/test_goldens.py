@@ -11,7 +11,6 @@ from pinecall_runtime.calls.fanout import Fanout
 from pinecall_runtime.calls.logs import Log
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.evals.service.playing import Played, drive, settled
-from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.judging.service.case import case_of
 from pinecall_runtime.judging.service.goldens import A_GOLDEN, golden_judges, golden_lookup
 from pinecall_runtime.judging.service.panel import Panel, asked_judges
@@ -192,14 +191,17 @@ async def test_a_golden_with_an_event_turn_injects_it_between_the_lines_around_i
 
 
 @needs_the_database
-async def test_a_golden_whose_event_the_agent_never_declared_is_refused_by_name_and_ended(
+async def test_a_golden_whose_event_the_agent_never_declared_breaks_at_that_turn_and_ends(
     store: Store, call: str
 ) -> None:
     golden = a_golden(turns=[{"event": {"name": "meteorite"}}])
-    with pytest.raises(ValidationError, match="meteorite"):
-        await played(store, call, golden, FREED, ["hola"])
+    result, kinds = await played(store, call, golden, FREED, ["hola"])
+    assert (result.held, result.broke_at) == (True, 1)
+    assert result.unplayed is not None and result.unplayed.metric == "t1.event"
+    assert "meteorite" in result.unplayed.reason
     ended = [entry for entry in await store.whole(call) if entry.type == "call.ended"]
     assert [entry.data["reason"] for entry in ended] == ["error"]
+    assert "turn.user" not in kinds
 
 
 @needs_the_database
@@ -260,7 +262,25 @@ async def test_a_turn_the_vendor_refused_breaks_the_golden_there_says_why_and_en
     golden = a_golden(turns=[{"say": "hola"}, {"say": "¿a qué hora?"}])
     result = await drive(session, golden, box.log.fanout.subscribe(), Turns().judged, is_held=lambda: True)
     assert (result.held, result.broke_at) == (True, 1)
-    assert result.vendor_failed is not None and "PROHIBITED_CONTENT" in result.vendor_failed
+    assert result.unplayed is not None and result.unplayed.metric == "t1.model"
+    assert "PROHIBITED_CONTENT" in result.unplayed.reason
+    entries = await store.whole(call)
+    assert [entry.data["text"] for entry in entries if entry.type == "turn.user"] == ["hola"]
+    ended = [entry for entry in entries if entry.type == "call.ended"]
+    assert [(entry.data["reason"], entry.data["ended_by"]) for entry in ended] == [("error", "platform")]
+
+
+@needs_the_database
+async def test_an_event_the_agent_never_declared_breaks_the_golden_there_says_why_and_ends_its_call(
+    store: Store, call: str
+) -> None:
+    box = Box(Log(store, call, AGENT))
+    session = a_session(box, FREED, ["Buenos días."], ["A las diez."], run="run_1")
+    golden = a_golden(turns=[{"say": "hola"}, {"event": {"name": "nobody_declared"}}, {"say": "¿a qué hora?"}])
+    result = await drive(session, golden, box.log.fanout.subscribe(), Turns().judged, is_held=lambda: True)
+    assert (result.held, result.broke_at) == (True, 2)
+    assert result.unplayed is not None and result.unplayed.metric == "t2.event"
+    assert "nobody_declared" in result.unplayed.reason
     entries = await store.whole(call)
     assert [entry.data["text"] for entry in entries if entry.type == "turn.user"] == ["hola"]
     ended = [entry for entry in entries if entry.type == "call.ended"]

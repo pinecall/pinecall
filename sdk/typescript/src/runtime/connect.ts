@@ -233,10 +233,11 @@ function follow(link: Live, call: SdkCall): void {
     call.onAny((event) => {
       world.take(event.type, event.data as Record<string, unknown>, Date.now());
       if (event.type === "event.received") void received(serving, event.data);
-      // Recalled memory is not state, so re-render explicitly.
+      // Recalled memory is not state, so re-render explicitly; then the hook reads what memory did.
       if (event.type === "memory.ops") {
         recalled(agent, wordsRecalled(event.data));
         sync(link, call);
+        void runHook(agent, "onMemory", event.data.ops, hookCall(call));
       }
       // Re-render on the user's turn so the view reflects the turn being answered, not the previous
       // one. The gateway holds the LLM request while lookups run (runtime's session/lookups.py).

@@ -361,11 +361,26 @@ async def test_call_hangup_ends_the_call_as_the_agent(box: Box, store: Store, ca
 
 
 @needs_the_database
-async def test_a_room_verb_on_a_call_with_no_room_is_refused_by_name(box: Box) -> None:
+async def test_the_agents_transfer_on_a_written_call_fails_as_a_transfer_and_the_call_goes_on(
+    box: Box, store: Store, call: str
+) -> None:
     session = a_session(box, NOBODY)
     await session.start()
-    with pytest.raises(Forbidden, match="CallTransfer is not something this call does"):
-        await session.apply(CallTransfer(to="+59829000000"))
+    await session.apply(CallTransfer(to="+59829000000"))
+    assert session.ended is None
+    await text.end_text(session, "caller_hung_up", "caller")
+    transferred = next(entry for entry in await store.whole(call) if entry.type == "call.transferred")
+    assert (transferred.data["to"], transferred.data["ok"]) == ("+59829000000", False)
+    assert transferred.data.get("mode") is None
+    assert transferred.data["error"] == "a written conversation has no line to transfer"
+
+
+@needs_the_database
+async def test_a_supervisors_transfer_on_a_call_with_no_room_is_refused_by_name(box: Box) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    with pytest.raises(Forbidden, match="TransferVerb is not something this call does"):
+        await session.supervise(supervised(TransferVerb(to="+59829000000")))
     await text.end_text(session, "caller_hung_up", "caller")
 
 

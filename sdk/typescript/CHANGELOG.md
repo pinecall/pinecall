@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`onMemory` runs.** Declared since the hooks were, never called: `memory.ops` now reaches it,
+  after the view re-rendered with what was recalled. `MemoryOp` is the wire's op (`op`, `contact`,
+  `query`, `facts`, `tookMs`), not the never-sent `{op, key, value}`.
+
 ## [0.11.11] — released with every other package
 
 - Nothing of `@pinecall/agents` changed: published at 0.11.11 with every other package.

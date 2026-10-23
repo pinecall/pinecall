@@ -10,8 +10,7 @@ from livekit.agents.voice import AgentSession
 from livekit.agents.voice.room_io import RoomOptions
 
 from pinecall_runtime.agents.declaration import block_hash
-from pinecall_runtime.calls.context import CallContext
-from pinecall_runtime.enums import Channel, Direction, Medium
+from pinecall_runtime.enums import Channel, Medium
 from pinecall_runtime.exceptions import Forbidden, ValidationError
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.session import echo, prompt, recording
@@ -21,6 +20,7 @@ from pinecall_runtime.session.hold import HoldMusic
 from pinecall_runtime.session.listener import Built, Listener, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
+from pinecall_runtime.session.started import started
 from pinecall_runtime.session.tools import Toolbox, opening
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S
 from pinecall_runtime.telephony import service as telephony
@@ -72,6 +72,7 @@ ALREADY_WAITING = "the caller is already waiting for a person"
 # The app's tool timeout must outlast the wait it asks for; the runtime does not extend it.
 NOBODY_TOOK_IT = "nobody took the line within {wait_s:g}s"
 NOT_HERE = "{command} is not something this call does"
+NO_LINE = "a written conversation has no line to transfer"
 
 
 class Session:
@@ -132,7 +133,7 @@ class Session:
         self.call.writing.open()
         medium = Medium.text if room is None else Medium.voice
         await self.call.writing.write(
-            "call.started", _started(self.call.context, self.started_at, worker, medium=medium)
+            "call.started", started(self.call.context, self.started_at, worker, medium=medium)
         )
         knowledge = prompt.knowledge_changed(self.blocks)
         if knowledge is not None:
@@ -361,8 +362,14 @@ class Session:
         self.waiting = None
         await self.call.writing.write("attention.answered", answer)
 
+    # The agent's transfer on a written conversation fails as any transfer does, call.transferred
+    # with ok false and no mode, so the app reads one outcome entry; a supervisor's is refused.
     async def _in_the_room(self, command: WireModel, *, by: Supervisor | None = None) -> None:
         if self.room is None:
+            if isinstance(command, CallTransfer) and by is None:
+                failed = wire.CallTransferred(to=command.to, mode=None, ok=False, error=NO_LINE)
+                await self.call.writing.write("call.transferred", failed)
+                return
             raise Forbidden(NOT_HERE.format(command=type(command).__name__))
         if isinstance(command, TransferVerb | CallTransfer):
             await self._transfer(self.room, CallTransfer(to=command.to, mode=command.mode), by=by)
@@ -470,31 +477,3 @@ def hear_again(live: AgentSession[None]) -> None:
     """Let the caller's audio reach the ears again after a pause."""
     live.input.set_audio_enabled(True)
     live.output.set_audio_enabled(True)
-
-
-# The caller is always the far end: on an outbound call that is the `to`. The app cannot read a
-# day a golden pinned off the clock, so the entry says it; the persona and what it expects are
-# frozen here for the facts and its judge.
-def _started(context: CallContext, at: float, worker: str | None, *, medium: Medium) -> wire.CallStarted:
-    endpoint = context.route.number or context.route.agent
-    from_, to = (endpoint, context.caller) if context.direction is Direction.outbound else (context.caller, endpoint)
-    started: JsonObject = {
-        "channel": context.channel.value,
-        "direction": context.direction.value,
-        "from": from_,
-        "to": to,
-        "run": context.run,
-        "persona": context.persona,
-        "expects": list(context.expects) or None,
-        "caller": None,
-        "started_at": at,
-        "env": context.env.value,
-        "medium": medium.value,
-    }
-    if worker is not None:
-        started["worker"] = worker
-    if context.state:
-        started["state"] = dict(context.state)
-    if context.pinned_day:
-        started["today"] = context.pinned_day.isoformat()
-    return wire.CallStarted.parse(started, "call.started")

@@ -72,6 +72,7 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "voice",
             "text",
             "room",
+            "started",
             "widget",
             "hold",
             "recording",

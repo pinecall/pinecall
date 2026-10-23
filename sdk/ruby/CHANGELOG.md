@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`on_memory` runs.** Declared, never called: `memory.ops` now reaches it with the wire's ops,
+  after the view re-rendered with what was recalled.
+
 ## [0.11.11] — released with every other package (2026-10-23)
 
 - Nothing of the gem changed: published at 0.11.11 with every other package.

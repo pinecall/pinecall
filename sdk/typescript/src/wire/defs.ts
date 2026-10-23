@@ -226,6 +226,8 @@ export const MemoryOpSchema = z.strictObject({
   took_ms: z.number(),
 });
 
+export type MemoryOp = z.infer<typeof MemoryOpSchema>;
+
 /** One chunk of the knowledge base that retrieval put in front of the model for this turn. */
 export const DocSourceSchema = z.strictObject({
   id: z.string(),

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A transfer on a written conversation fails as a transfer.** `call.transfer` on a chat or a
+  written golden used to be refused as a command the call does not do, an error the SDKs never
+  read, so `transfer()` waited its whole ceiling. It now lands `call.transferred` with `ok: false`,
+  `mode` null and why, as the wire page always said, and the conversation goes on.
+- **An event the agent never declared breaks its golden, not the run.** A run met it as the
+  gateway's own error and stopped, every golden after it unplayed. The golden now breaks at that
+  turn with a `t<n>.event` score naming the refusal, its call ends, and the next golden plays.
+- **The console's rail hides Apps, Secrets and Telemetry from a key they refuse.** The three were
+  gated by nothing, so a key without `app` or `providers` saw them and met a 403 on the click.
 - **A hosted app restarted comes back.** The runner's Role in `charts/hosting` lacked `update` on
   secrets: a release started again (the cluster moved its node, the runner restarted) found its
   environment secret already there, was refused the replace, and the app stayed down with no
