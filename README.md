@@ -229,7 +229,7 @@ Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monit
 | [`sdk/ruby/`](sdk/ruby) | the Ruby SDK | [`pinecall`](https://rubygems.org/gems/pinecall) · RubyGems |
 | [`packages/room/`](packages/room) | the caller's side of a call, for a page's own UI | [`@pinecall/room`](https://www.npmjs.com/package/@pinecall/room) · npm |
 | [`packages/core/`](packages/core) | what the console and Pinecall's supervisor app stand on | taken as source |
-| [`examples/`](examples) | Clínica Norte, the one example agent, in each language | what the nightly drives |
+| [`examples/`](examples) | Clínica Norte, the one example agent, in each language | read and copied, never published |
 | [`infra/`](infra) | the charts, the images and the Terraform a runtime is deployed with | `make deploy` from `runtime/` |
 
 Each folder's `README.md` says what it is and how to use it.

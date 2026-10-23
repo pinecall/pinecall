@@ -486,9 +486,6 @@ moves `src/wire/` and these two files by hand, in the same change.
 | 3 | what does one real call score? | `pinecall eval <call-id>`: one call re-evaluated by the runtime's code checks |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up with nobody watching; read here by `runs drift`, `runs promote` and the console's Evals screen |
 
-The nightly is the repository's (`.github/workflows/nightly.yml`): rings 1 and 4 on real money,
-against `https://cloud.pinecall.io`, driving this package's example and the Ruby SDK's.
-
 ## 16. Packaging: one distribution, no build between a change and a test
 
 - `package.json` `exports` point at **`src/`**; `publishConfig` swaps them for `dist/` at publish

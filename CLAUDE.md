@@ -17,7 +17,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 | `sdk/ruby/` | the Ruby SDK (gem `pinecall`) | `sdk/ruby/CLAUDE.md` |
 | `packages/room/` | the caller's side of a call, for a page's own UI (npm `@pinecall/room`) | `packages/room/CLAUDE.md` |
 | `packages/core/` | what the console and the supervisor app stand on (`@pinecall/core`, never published) | `console/CLAUDE.md` |
-| `examples/` | Clínica Norte, the one example agent, in each language (`typescript/`, `python/`, `ruby/`); what the nightly drives | each example's `README.md` |
+| `examples/` | Clínica Norte, the one example agent, in each language (`typescript/`, `python/`, `ruby/`) | each example's `README.md` |
 | `infra/` | the charts, the images and the Terraform a runtime is deployed with; the runtime's `Makefile` drives them | `infra/README.md` |
 
 ## What holds across the folders
@@ -34,6 +34,6 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
   has its Gemfile. A `pnpm -r` run from a folder reaches every package of the workspace: filter it
   (`--filter @pinecall/example-clinica-norte`).
 - **CI** is `.github/workflows/check.yml`: each package's own check, run when its folder or a root
-  it stands on changed. `nightly.yml` runs the goldens against `https://cloud.pinecall.io`.
+  it stands on changed.
 - **Documents not written for the people who use Pinecall** — plans, briefs, notes — never enter
   this repository: everything tracked here is published with it.
