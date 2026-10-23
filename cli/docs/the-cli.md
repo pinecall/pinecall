@@ -47,7 +47,7 @@ path end to end, with every output under it.
 | [`eval`](#eval) | one real call re-checked by code | yes |
 | [`sessions`](#sessions) | the calls this agent has run, one of them whole, and its log entry by entry | yes |
 | [`runs`](#runs) | the suites: list, show, diff, promote a call, watch the drift | yes |
-| [`cases`](#cases) | the org's dataset — real calls kept as cases: list, groups, show, propose, apply, persona, approve, dismiss, reopen, pull, keep, forget | yes |
+| [`cases`](#cases) | the org's dataset — real calls kept as cases: list, groups, show, propose, apply, persona, approve, dismiss, reopen, pull, keep, add, forget | yes |
 | [`agent`](#agent) | the agent's settings — yours, the team's, production's — set, clear, knowledge, history, diff, rollback, pull, push; list and stop the processes that hold it | yes |
 | [`kill`](#kill) | an admin's: every app holding the agent in the env lets go of it and keeps its others; nothing is erased | yes |
 | [`lexicon`](#lexicon) | an agent's words: how the voice says them and what the ears must know | yes |
@@ -58,7 +58,7 @@ path end to end, with every output under it.
 | [`personas`](#personas) | an agent's synthetic callers: Pinecall's switched on or off, its own written, generated, tried, pushed | yes |
 | [`judges`](#judges) | every judge a call meets — Pinecall's switched on or off, the org's own, the agent's own: list, show, add, on, off, rm, try, agreement | yes |
 | [`judging`](#judging) | whether the org's calls are judged, and the model the judges run on: Pinecall's, or one of yours | yes |
-| [`docs`](#docs) | the documents the agent searches: push, list, drop, eval, attach, detach, attached | yes |
+| [`docs`](#docs) | the documents the agent searches: push, pull, rm, list, drop, eval, attach, detach, attached | yes |
 | [`memory`](#memory) | what memory kept about a contact, forgetting it, and recall's golden | yes |
 | [`remember`](#remember) | the extraction goldens: what a hang-up makes of a call | yes |
 | [`supervise`](#supervise) | listen in on a live call and move on it | yes |
@@ -82,7 +82,7 @@ production ([below](#where-the-gateway-and-the-key-come-from)) — and a verb th
 anything, `prompt`, refuses it instead of accepting an environment it never visits.
 
 `--agent` reads two ways, and the verb says which. A verb that reads the agent's files — `start`,
-`test`, `simulate`, `personas`, `docs push`, `cases pull` — takes the name of a folder under
+`test`, `simulate`, `personas`, `docs push`, `docs pull`, `cases pull` — takes the name of a folder under
 `agents/`, and runs in the project. A verb that asks the gateway alone — `sessions`, `agent`,
 `lexicon`, `judges`, `cases`, `line`, `memory policy`, `docs attach` — takes the agent's slug and
 runs from any folder; beside an agent's class, both read as that agent.
@@ -616,7 +616,7 @@ You are the front desk of Clínica Norte. Formal, short sentences. …
 
 ```
 pinecall test [paths] [--agent <name>] [--file agent.tsx] [--model m]… [--grep x] [--watch] [--json]
-              [--case <name>]… [--dataset] [--version n]
+              [--files] [--case <name>]… [--dataset] [--version n]
 pinecall test --voice [--background-noise dB] [--ambience cafe] [--packet-loss 0.05]
 ```
 
@@ -636,12 +636,16 @@ which policy to set; the rest of the suite plays.
 
 ```console
 $ pinecall test --grep reserva
-clinica-norte · 2 goldens · haiku · run_7ed3ace9352d
-clinica-norte · 2 goldens · anthropic/claude-haiku-5-5
-  ✓ no-reserva-antes-del-si  e2e_latency 2605ms · llm_node_ttft 763ms
-  ✓ reserva-cuando-el-paciente-dice-que-si  e2e_latency 1948ms · llm_node_ttft 911ms
-  2/2 · 0 judge calls · $0.0250 · 8s
+clinica-norte · 2 goldens · the dataset · haiku · run_7ed3ace9352d
+clinica-norte · 3 goldens · anthropic/claude-haiku-5-5
+  ✓ no-reserva-antes-del-si  file  e2e_latency 2605ms · llm_node_ttft 763ms
+  ✓ reserva-cuando-el-paciente-dice-que-si  file  e2e_latency 1948ms · llm_node_ttft 911ms
+  ✓ no-da-precios-por-telefono  case  e2e_latency 2102ms · llm_node_ttft 804ms
+  3/3 · 0 judge calls · $0.0375 · 11s
 ```
+
+Each line says where its golden came from: `file` for one read from `agents/<name>/test/goldens/`,
+`case` for one the gateway played from the org's dataset ([below](#cases)).
 
 Each step of a turn's `then` is a metric of its own, named by its turn: `t2.tool:book`,
 `t2.no_tool:book`, `t2.reply`, `t2.intent`, `t2.end`, `t2.nothing_else` — a second one of the same
@@ -649,7 +653,7 @@ kind in that turn is `t2.reply#2`. **The first step that breaks cuts the golden*
 played and its `expect` is not scored, so a broken golden names that turn above its broken lines:
 
 ```console
-  ✗ ofrece-el-martes
+  ✗ ofrece-el-martes  file
         turn 2 broke
         t2.reply  broken   the reply offered no slot on Tuesday afternoon
         log                CA_9d1f…
@@ -664,16 +668,19 @@ from 0 to 1 (`0.05` is one in twenty), as `simulate` takes it. A spoken call has
 no test run to assert steps on: `--voice` refuses a golden with an `event` turn or a `then`, and
 judges the final `expect` alone.
 
-**The org's cases play beside the goldens.** A case is a real call kept as a golden by the
-gateway ([`cases`](#cases)). `--case <name>`, repeated, plays those cases by name, whatever their
-status — a `pending` one too, which is how the call that broke is reproduced before anybody
-approves it. `--dataset` plays every case of the agent a person approved that is not held out and
-not kept in the repository: what a nightly asks for. With `--case` or `--dataset` and **no
-paths**, only the cases are played — `agents/<name>/test/goldens/` is not read, and a project with no
-goldens yet is not refused; with paths, both. Cases are a real caller's words, so they play only
-in the sandbox (the gateway refuses `--prod`), and `--watch` beside them needs a path to watch:
-a run of cases alone reads no file that could change, and is refused with exit 2. In a project of
-several agents, `--dataset` plays each agent's in turn; `--case` names one agent's cases and needs
+**The files and the dataset play together.** A case is a golden the gateway keeps: a real call
+kept at hang-up, or one a person wrote by hand ([`cases`](#cases)). With nothing said, `test` plays
+the golden files of `agents/<name>/test/goldens/` **and** the approved dataset — every case of the
+agent a person approved that is not held out and not kept in the repository, what a nightly asks
+for — and marks each line of the matrix `file` or `case`. `--files` plays the files alone, as a run
+did before; `--dataset` plays the dataset alone, and `agents/<name>/test/goldens/` is not read, so a
+project with no goldens yet is not refused. `--case <name>`, repeated, plays those cases by name
+alone, whatever their status — a `pending` one too, which is how the call that broke is reproduced
+before anybody approves it; with paths or `--files` beside it, both. `--grep` narrows the files; the
+dataset plays whole. Cases are a real caller's words, so they play only in the sandbox (the gateway
+refuses `--prod`), and `--watch` beside a run of cases alone is refused with exit 2: it reads no file
+that could change. In a project of several agents, each agent's files and dataset play in turn — an
+agent with no goldens folder plays its dataset — and `--case` names one agent's cases and needs
 `--agent`.
 
 `--version n` builds every call of the run on that version of the agent's settings — as `agent
@@ -1016,6 +1023,7 @@ pinecall cases show <name|group> · approve <name|group> · reopen <name> · for
 pinecall cases dismiss <name|group> [--judge-was-wrong <judge> [--note '…']]
 pinecall cases pull <name> [--out agents/<agent>/test/goldens]
 pinecall cases keep <call-id> --name x [--held-out]
+pinecall cases add <file…> [--name x] [--held-out] [--agent <name>]
 ```
 
 **A case joins its group.** Every case kept at hang-up — a simulation's too, with the persona that
@@ -1073,9 +1081,9 @@ promises-youll-call-me-tomorrow-29d7c7 · pending · clinica-norte
   pinecall cases dismiss promises-youll-call-me-tomorrow-29d7c7   nothing to fix; --judge-was-wrong <judge> when the judge was
 ```
 
-A case a person wrote by hand, in the console's **Cases ▸ New case**, has no call: its second line reads
-`written by ana@clinica-norte.com (by hand, sandbox) · 2026-10-23 09:14`, and `cases forget` names
-no call either.
+A case a person wrote by hand — in the console's **Cases ▸ New case**, or with `cases add` — has no
+call: its second line reads `written by ana@clinica-norte.com (by hand, sandbox) · 2026-10-23 09:14`,
+and `cases forget` names no call either.
 
 The inbox lists the agent's cases, the pending first, newest first: status, name, the judges that
 broke, the world the call ran in, its age — and above them how many wait of the most that may
@@ -1093,6 +1101,20 @@ all — and only then marks the case as kept in the repository, so the nightly p
 not the case. **`keep <call-id> --name x`** keeps a finished call as an approved case, with the
 `expect` its broken verdicts give; `--held-out` plays it only when a run names it — a release's
 check rather than the nightly's. **`forget`** drops the case; the call it came from stays.
+
+**`add <file…>`** keeps a golden written by hand as an approved case — `source: person`, no call —
+under its own `name`, else `--name` (one file), else the file's basename without `.json`; a file may
+hold a list of goldens, each naming itself. The same name again rewrites the case; a name a call
+made is the gateway's 409, said as it is. It never takes a folder. A case names only **words** —
+what the caller says, what the agent must say or never say — because the gateway plays it with no
+code of yours at hand: a golden that names a `state` or a tool is a code golden and belongs beside
+the code, in `agents/<agent>/test/goldens/`, committed with it. `pinecall test` plays the case from
+the gateway from then on, marked `case` in its matrix.
+
+```console
+$ pinecall cases add cases/no-da-precios-por-telefono.json
+no-da-precios-por-telefono · clinica-norte · person · approved
+```
 
 A case is the org's, kept from either world, and played in the sandbox only. `--json` prints what
 the gateway answered — the list, or the case — with the fields it leaves at their defaults written
@@ -2057,7 +2079,9 @@ nothing, `--remove` takes it out. Every tool, and every assistant's file:
 ```
 pinecall docs list
 pinecall docs drop <base>
-pinecall docs push [dir] [--base <name>] [--language <code>] [--agent <name>] [--file agent.tsx]
+pinecall docs push [dir] [--base <name>] [--language <code>] [--replace] [--agent <name>] [--file agent.tsx]
+pinecall docs pull [dir] [--base <name>] [--agent <name>] [--file agent.tsx]
+pinecall docs rm <path> [--base <name>] [--agent <slug>]
 pinecall docs eval [docs.json] [--base <name>] [--k <n>] [--agent <name>] [--file agent.tsx]
 pinecall docs attach <base> [--k <n>] [--mode retrieved|tool] [--min-score <x>] [--agent <slug>] [--team]
 pinecall docs detach <base> [--agent <slug>] [--team]
@@ -2068,16 +2092,24 @@ pinecall docs attached
 `attach` names a base the env has (`pinecall docs list` lists them): one it has not is refused with
 exit 2, naming the `push` that would write it.
 
-**The documents a turn searches** — the RAG, and only that. `push` reads every `*.md` under the
-directory — the agent's own `agents/<name>/docs/` when none is named, which `new` and `generate agent`
-write with a README and the repository tracks like the rest of the agent's folder — and sends the folder **whole** to
-`PUT /v1/knowledge/<base>`: the base is replaced, never merged, so a push after documents were
-added in the console's Knowledge ▸ Docs takes them out. It starts a base; the console keeps it. At a project's root with nothing
-typed, `push` and `eval` act on every agent that has documents or a golden, and name the rest. The
-base is the agent's slug unless `--base` says otherwise. What the agent knows *by heart* is not a
-document and is never pushed: it is [`pinecall agent knowledge`](#agent-knowledge).
+**The documents a turn searches** — the RAG, and only that. **The folder is a checkout of the
+base.** `push` reads every `*.md` under the directory — the agent's own `agents/<name>/docs/` when
+none is named, which `new` and `generate agent` write with a README and the repository tracks like
+the rest of the agent's folder — and writes them into `PUT /v1/knowledge/<base>` **by path**: a file
+the folder has is written, cut and embedded again only where it changed; a file the base has and the
+folder has not is kept, so a document added in the console's Knowledge ▸ Docs survives the next push.
+`--replace` makes the base the folder, as a push did before: what the folder has not is dropped. The
+`README.md` at the folder's root is never sent — it describes the folder, not the business, and the
+agent template ships one — and the push's line says so when one stayed behind. `pull` brings the
+base back into the folder, one line per file: `written`, `unchanged`, or a file of the folder the
+base has not, `not in the base (kept)` and never deleted — so what a manager wrote in the console
+reaches the repository with the next commit. `rm <path>` takes one file out of the base, by the path
+a push sent it under; a path the base has not is the gateway's 404, said as it is. At a project's root
+with nothing typed, `push` and `eval` act on every agent that has documents or a golden, and name the
+rest. The base is the agent's slug unless `--base` says otherwise. What the agent knows *by heart*
+is not a document and is never pushed: it is [`pinecall agent knowledge`](#agent-knowledge).
 
-**The base you push is the environment's the command runs in.** A push from a laptop replaces the sandbox
+**The base you push is the environment's the command runs in.** A push from a laptop writes the sandbox
 base — what your own `pinecall start` answers from — and never the one the telephone answers from.
 Production's is the same push with `--prod`, made in the release step of a deploy like a migration,
 by the server's token or by a person whose switch is on ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md)). `list`
@@ -2085,8 +2117,17 @@ and `drop` read the same environment.
 
 ```console
 $ pinecall docs push
-clinica-norte · 7 files · 41 chunks · spanish · 812 ms      # base · sent · became · stemmed in · took
+clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · sent · left as they were · became · stemmed in · took
+$ pinecall docs pull
+agents/clinica-norte/docs/horarios.md  unchanged
+agents/clinica-norte/docs/seguros.md   written
+agents/clinica-norte/docs/borrador.md  not in the base (kept)
+$ pinecall docs rm precios-2024.md
+precios-2024.md gone from clinica-norte
 ```
+
+`· 1 kept` is the file of the base the push did not touch — the one the console added — and
+`· README.md skipped` closes the line when the folder's README stayed behind.
 
 **The questions a section answers travel with it.** An HTML comment is never a chunk — a note to the
 author stays the author's — but one is read: `<!-- asks … -->` under a heading, the questions that
@@ -2473,14 +2514,14 @@ code can call — over HTTP, in any language, with the same key.
 | `simulate --listen` | `POST /v1/calls/{call}/listen`, then the LiveKit room |
 | `simulate --voice` · `test --voice` | `POST /v1/evals/voice`; `simulate` then follows the call's events (SSE) |
 | `test` · `runs` | `POST /v1/evals/run`, `GET /v1/events` (the org's feed, `run.changed`) while `test` follows it, `GET /v1/evals/runs[/{id}]`; `runs promote` is `GET /v1/calls/{call}/golden?name=&from_seq=` |
-| `cases` | `GET /v1/evals/cases?agent=&status=` (a case is found by its name there), `PATCH`·`DELETE /v1/evals/cases/{id}`, `POST /v1/evals/cases`; the groups are `GET /v1/evals/groups?agent=`, `GET`·`PATCH /v1/evals/groups/{id}`, `POST …/{id}/propose` · `…/apply` · `…/persona` |
+| `cases` | `GET /v1/evals/cases?agent=&status=` (a case is found by its name there), `PATCH`·`DELETE /v1/evals/cases/{id}`, `POST /v1/evals/cases`; `add` is `PUT /v1/agents/{slug}/cases/{name}`, one per golden; the groups are `GET /v1/evals/groups?agent=`, `GET`·`PATCH /v1/evals/groups/{id}`, `POST …/{id}/propose` · `…/apply` · `…/persona` |
 | `runs drift` | `GET /v1/agents/{slug}/sessions` — a held-rate is counted off the verdicts the calls already carry, so it asks the sessions endpoint and no evals endpoint at all |
 | `eval` | `POST /v1/evals/replay/{call}` |
 | `agent` | `GET`·`PUT /v1/agents/{slug}/settings`, `GET …/settings/history`, `GET …/settings/diff`, `POST …/settings/rollback`; `list` and `stop` are `GET /v1/apps` and `POST /v1/apps/{app}/stop` |
 | `agent knowledge` · `lexicon` · `memory policy` · `docs attach` · `detach` | `GET`·`PUT /v1/agents/{slug}/settings` · `GET`·`PUT /v1/agents/{slug}/lexicon`, `GET …/history` |
 | `kill` | `POST /v1/agents/{slug}/kill` |
 | `pipeline` | `GET /v1/agents/{slug}/pipeline`; `melody` is `GET`·`PUT /v1/agents/{slug}/pipeline/hold-audio`, `PUT …/hold-audio/played` and `…/hold-audio/after` |
-| `docs` | `PUT`·`GET`·`DELETE /v1/knowledge[/{base}]`, `POST /v1/knowledge/{base}/eval`, `GET /v1/knowledge/attached` |
+| `docs` | `PUT`·`GET`·`DELETE /v1/knowledge[/{base}]` (`push` adds `?replace=true` with `--replace`), `GET`·`DELETE /v1/knowledge/{base}/files/{path}` (`pull` reads the list, then each file; `rm`), `POST /v1/knowledge/{base}/eval`, `GET /v1/knowledge/attached` |
 | `memory` | `GET`·`DELETE /v1/contacts/{contact}/memory`, `POST /v1/contacts/memory/eval` |
 | `remember` | `POST /v1/agents/{slug}/memory/extraction` |
 | `numbers` | `GET`·`POST /v1/numbers`, `DELETE /v1/numbers/{number}`, `GET /v1/numbers/available`, `POST /v1/numbers/buy` |

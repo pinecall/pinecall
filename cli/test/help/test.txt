@@ -18,17 +18,23 @@ Options:
   --background-noise <dB>  dB under the caller, on a spoken run
   --ambience <what>        television | cafe | office | street
   --packet-loss <share>    the share of the caller's packets lost, 0 to 1
+  --files                  the golden files alone, without the dataset
   --case <name>            a case of the org's dataset, by name, whatever its
                            status; again for another
-  --dataset                every case a person approved: the nightly
+  --dataset                every case a person approved, alone: the nightly
   --version <n>            every call on that version of the agent's settings
   -h, --help               display help for command
 
 Ring 1: every golden through the agent whoever holds it — your `pinecall start`, a colleague's,
 production's with --prod; nothing is started here — scored by the gateway's judges, printed as a
 matrix. Exits 1 when a golden did not hold, and writes every broken one to .pinecall/evals/<run>/
-with the requests the model answered. With --case or --dataset and no paths, only the cases are
-played; cases play in the sandbox only.
+with the requests the model answered.
+
+With nothing said, the golden FILES of agents/<name>/test/goldens/ and the approved DATASET both
+play — the cases a person approved on the gateway, not held out and not kept in the repository —
+and each line of the matrix says where its golden came from: file, or case. --files plays the
+files alone; --dataset the dataset alone; --case <name> the cases named alone, whatever their
+status, and with paths or --files beside them, both. Cases play in the sandbox only.
 
 Whose settings a run plays on is the key's: from a laptop, YOUR corner of the sandbox; in CI, a
 sandbox server token, the TEAM's. A settings fix only you have is green at your desk and red in CI
@@ -36,6 +42,7 @@ until `pinecall agent push --team` gives it to the team.
 
 Examples
   $ pinecall test --grep reserva
+  $ pinecall test --files
   $ pinecall test --voice --background-noise 15 --ambience cafe
   $ pinecall test --case promises-youll-call-me-tomorrow-29d7c7
 

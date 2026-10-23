@@ -53,6 +53,29 @@ describe("what a run sends", () => {
   });
 });
 
+describe("what plays", () => {
+  it("nothing typed plays the files and the dataset; --files, --dataset and --case each alone; paths join whatever cases were asked", () => {
+    expect(suite.whatPlays({})).toEqual({ files: true, dataset: true });
+    expect(suite.whatPlays({ files: true })).toEqual({ files: true, dataset: false });
+    expect(suite.whatPlays({ dataset: true })).toEqual({ files: false, dataset: true });
+    expect(suite.whatPlays({ cases: ["double-booked"] })).toEqual({ files: false, dataset: false });
+    expect(suite.whatPlays({ cases: ["double-booked"], paths: true })).toEqual({ files: true, dataset: false });
+    expect(suite.whatPlays({ dataset: true, paths: true })).toEqual({ files: true, dataset: true });
+    expect(suite.whatPlays({ files: true, dataset: true })).toEqual({ files: true, dataset: true });
+    expect(suite.whatPlays({ cases: ["x"], files: true })).toEqual({ files: true, dataset: false });
+  });
+
+  it("the dataset rides beside the goldens as `dataset: true`, and the report says which goldens were sent as files", async () => {
+    stream("/v1/events");
+    const sent = answer("post", "/v1/evals/run", aRun());
+    answer("get", "/v1/calls/:call/events", { entries: [], next: null });
+    const { ctx } = testContext();
+    const report = await suite.runSuite(ctx, "front-desk", [GOLDEN], suite.SuiteInput.parse({ dataset: true }), undefined);
+    expect(sent[0]!.body).toEqual({ agent: "front-desk", goldens: [GOLDEN], dataset: true });
+    expect(report.files).toEqual(["books-thursday"]);
+  });
+});
+
 describe("a run", () => {
   it("held when it is done and nothing failed", () => {
     expect(suite.held(aRun())).toBe(true);

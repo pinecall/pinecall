@@ -106,7 +106,8 @@ class EvalCase(Model):
     agent: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     golden: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    source_call: Mapped[str] = mapped_column(Text, nullable=False)
+    # The call the case was kept from; None for a case a person wrote, which no call made.
+    source_call: Mapped[str | None] = mapped_column(Text)
     source_env: Mapped[Env] = mapped_column(StringEnum(Env), nullable=False)
     held_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     author: Mapped[str] = mapped_column(Text, nullable=False)

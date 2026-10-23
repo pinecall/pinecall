@@ -349,7 +349,8 @@ export const EvalCaseSchema = z.strictObject({
   agent: z.string(),
   name: z.string(),
   golden: GoldenSchema,
-  source_call: z.string(),
+  /** The call the case was kept from; null for a case a person wrote by hand. */
+  source_call: z.string().nullable(),
   source_env: z.enum(["production", "sandbox"]),
   held_out: z.boolean(),
   author: z.string(),
@@ -361,7 +362,7 @@ export const EvalCaseSchema = z.strictObject({
   decided_by: z.string().nullable(),
   /** The group of cases its judge broke on; null for one a person kept. */
   group: z.string().nullish(),
-  /** A real call, a simulation a persona played, or a person who wrote it by hand (no call: `source_call` is ""). */
+  /** A real call, a simulation a persona played, or a person who wrote it by hand (no call: `source_call` is null). */
   source: z.enum(["call", "simulation", "person"]).nullish(),
   persona: z.string().nullish(),
 });

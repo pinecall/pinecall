@@ -31,19 +31,20 @@ export function register(program: Command, ctx: Context): void {
     .option("--background-noise <dB>", "dB under the caller, on a spoken run")
     .option("--ambience <what>", service.AMBIENCES.join(" | "))
     .option("--packet-loss <share>", "the share of the caller's packets lost, 0 to 1")
+    .option("--files", "the golden files alone, without the dataset")
     .option("--case <name>", "a case of the org's dataset, by name, whatever its status; again for another", repeated)
-    .option("--dataset", "every case a person approved: the nightly")
+    .option("--dataset", "every case a person approved, alone: the nightly")
     .option("--version <n>", "every call on that version of the agent's settings")
     .addHelpText("after", HELP.test)
     .action(async (paths, flags) => {
       const input = service.SuiteInput.parse({
+        ...service.whatPlays({ files: flags.files, dataset: flags.dataset, cases: flags.case, paths: paths.length > 0 }),
         voice: flags.voice === true,
         backgroundNoise: numberOf("--background-noise", flags.backgroundNoise),
         ambience: flags.ambience,
         packetLoss: numberOf("--packet-loss", flags.packetLoss),
         models: flags.model ?? [],
         cases: flags.case,
-        dataset: flags.dataset === true,
         version: numberOf("--version", flags.version),
       });
       await test(ctx, paths, { file: flags.file, agent: flags.agent, grep: flags.grep, watch: flags.watch === true }, input);

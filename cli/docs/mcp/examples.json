@@ -1009,6 +1009,10 @@
           ".pinecall/evals/run_7db71c472e04/takes-the-message.json"
         ],
         "held": false,
+        "files": [
+          "answers-refunds",
+          "takes-the-message"
+        ],
         "env": "sandbox"
       }
     }
@@ -1122,6 +1126,65 @@
         "pending": 1,
         "pending_at_most": 50
       }
+    },
+    {
+      "args": {
+        "action": "add",
+        "golden": {
+          "name": "no-price-on-the-phone",
+          "turns": [
+            {
+              "say": "How much is a crown?"
+            }
+          ],
+          "expect": {
+            "not": [
+              "€",
+              "euros"
+            ],
+            "says_any": [
+              "the dentist",
+              "at the visit"
+            ]
+          }
+        }
+      },
+      "answer": {
+        "id": "case_0d7e3b9a41f2",
+        "agent": "front-desk",
+        "name": "no-price-on-the-phone",
+        "golden": {
+          "name": "no-price-on-the-phone",
+          "state": {},
+          "turns": [
+            {
+              "say": "How much is a crown?"
+            }
+          ],
+          "memory": [],
+          "expect": {
+            "not": [
+              "€",
+              "euros"
+            ],
+            "says_any": [
+              "the dentist",
+              "at the visit"
+            ]
+          }
+        },
+        "source_call": null,
+        "source_env": "sandbox",
+        "held_out": false,
+        "author": "ana@clinica.test",
+        "created_at": 1791492103.4,
+        "status": "approved",
+        "broke": [],
+        "source_version": null,
+        "kept_in_repo": false,
+        "decided_by": "ana@clinica.test",
+        "source": "person"
+      }
     }
   ],
   "docs": [
@@ -1131,10 +1194,44 @@
       },
       "answer": {
         "base": "front-desk",
-        "chunks": 1,
+        "chunks": 9,
         "language": "english",
-        "took_ms": 13.33,
-        "files": 1
+        "took_ms": 213.4,
+        "kept": 1,
+        "files": 2,
+        "readme_skipped": true
+      }
+    },
+    {
+      "args": {
+        "action": "pull"
+      },
+      "answer": {
+        "base": "front-desk",
+        "dir": "/Users/you/front-desk/agents/front-desk/docs",
+        "kept": true,
+        "files": [
+          {
+            "path": "hours.md",
+            "file": "/Users/you/front-desk/agents/front-desk/docs/hours.md",
+            "status": "unchanged"
+          },
+          {
+            "path": "insurance.md",
+            "file": "/Users/you/front-desk/agents/front-desk/docs/insurance.md",
+            "status": "written"
+          },
+          {
+            "path": "old-prices.md",
+            "file": "/Users/you/front-desk/agents/front-desk/docs/old-prices.md",
+            "status": "kept"
+          }
+        ],
+        "said": [
+          "agents/front-desk/docs/hours.md       unchanged",
+          "agents/front-desk/docs/insurance.md   written",
+          "agents/front-desk/docs/old-prices.md  not in the base (kept)"
+        ]
       }
     }
   ],
@@ -1379,6 +1476,45 @@
       "answer": {
         "sent": true,
         "error": null
+      }
+    }
+  ],
+  "alerts": [
+    {
+      "args": {
+        "limit": 2
+      },
+      "answer": {
+        "alerts": [
+          {
+            "id": "alr_7f3c9e1b2a40",
+            "org": "acme",
+            "env": "sandbox",
+            "agent": "front-desk",
+            "kind": "monitor.fired",
+            "data": {
+              "monitor": "mon_8b1d2e3f4a5c",
+              "name": "slow answers",
+              "metric": "e2e_median_s",
+              "value": 2.4,
+              "threshold": 2
+            },
+            "mailed": true,
+            "at": "2026-10-22T18:02:11Z"
+          },
+          {
+            "id": "alr_1c0a5d8e9b37",
+            "org": "acme",
+            "env": "sandbox",
+            "agent": "front-desk",
+            "kind": "credits.exhausted",
+            "data": {
+              "quota": "minutes"
+            },
+            "mailed": false,
+            "at": "2026-10-22T11:40:09Z"
+          }
+        ]
       }
     }
   ],

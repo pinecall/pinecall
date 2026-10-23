@@ -7,7 +7,7 @@ import type {
   Forgotten,
   KnowledgeFile,
   KnowledgeList,
-  KnowledgePushed,
+  KnowledgePushed as PushedOnTheWire,
   KnowledgeScore,
   KnowledgeUses,
   MemoryScore,
@@ -24,7 +24,6 @@ export type {
   Forgotten,
   KnowledgeFile,
   KnowledgeList,
-  KnowledgePushed,
   KnowledgeScore,
   KnowledgeUses,
   MemoryScore,
@@ -33,13 +32,56 @@ export type {
   TuningRow,
 } from "@pinecall/agents/wire";
 
+/** `PUT /v1/knowledge/{base}`, the answer: the wire's, plus `kept`, the files of the base the push did not touch (an intersection, so the wire may make it required). */
+export type KnowledgePushed = PushedOnTheWire & { kept?: number };
+
+/** One file of a base as `GET /v1/knowledge/{base}` lists it: its path, its size, its chunks, when it was pushed; never its text. */
+export interface KnowledgeFileRow {
+  path: string;
+  chars: number;
+  chunks: number;
+  pushed_at: number;
+}
+
+/** `GET /v1/knowledge/{base}`: the base's files. `kept` is false for a base whose files were never stored, only its chunks. */
+export interface KnowledgeFiles {
+  base: string;
+  kept: boolean;
+  files: KnowledgeFileRow[];
+}
+
+/** `GET /v1/knowledge/{base}/files/{path}`: one file, text and all. */
+export interface KnowledgeFileRead {
+  path: string;
+  text: string;
+  chunks: number;
+  pushed_at: number;
+}
+
 export function listBases(gw: GatewayClient): Promise<KnowledgeList> {
   return gw.get<KnowledgeList>("/v1/knowledge");
 }
 
-/** The base is replaced whole, never merged; `language` left out is counted from the files' words. */
-export function pushBase(gw: GatewayClient, base: string, files: KnowledgeFile[], language: string | undefined): Promise<KnowledgePushed> {
-  return gw.put<KnowledgePushed>(`/v1/knowledge/${seg(base)}`, { files, ...(language === undefined ? {} : { language }) });
+/**
+ * The files written into the base by path and the rest kept; with `replace`, the base becomes the
+ * folder. `language` left out is counted from the files' words.
+ */
+export function pushBase(gw: GatewayClient, base: string, files: KnowledgeFile[], language: string | undefined, replace = false): Promise<KnowledgePushed> {
+  const body = { files, ...(language === undefined ? {} : { language }) };
+  return gw.request<KnowledgePushed>(`/v1/knowledge/${seg(base)}`, { method: "PUT", body, ...(replace ? { query: { replace: true } } : {}) });
+}
+
+export function listFiles(gw: GatewayClient, base: string): Promise<KnowledgeFiles> {
+  return gw.get<KnowledgeFiles>(`/v1/knowledge/${seg(base)}`);
+}
+
+export function getFile(gw: GatewayClient, base: string, path: string): Promise<KnowledgeFileRead> {
+  return gw.get<KnowledgeFileRead>(fileOf(base, path));
+}
+
+/** One file and its chunks out of the base; the base goes with its last file. */
+export async function deleteFile(gw: GatewayClient, base: string, path: string): Promise<void> {
+  await gw.delete(fileOf(base, path));
 }
 
 export async function deleteBase(gw: GatewayClient, base: string): Promise<void> {
@@ -71,4 +113,9 @@ export function scoreMemory(gw: GatewayClient, questions: unknown[], k: number |
 /** One extraction per case, run by the gateway against whoever holds the agent. */
 export function runExtraction(gw: GatewayClient, agent: string, cases: ExtractionGolden[]): Promise<ExtractionRun> {
   return gw.post<ExtractionRun>(`/v1/agents/${seg(agent)}/memory/extraction`, { cases });
+}
+
+// A file's path keeps its slashes: each segment is escaped on its own.
+function fileOf(base: string, path: string): string {
+  return `/v1/knowledge/${seg(base)}/files/${path.split("/").map(seg).join("/")}`;
 }

@@ -6,6 +6,22 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The docs folder is a checkout of the base.** `pinecall docs push` writes the folder's files into
+  the base by path and keeps the base's other files, so a document added in the console survives
+  it; the line says `· N kept`. `--replace` makes the base the folder, as a push did before. A
+  `README.md` at the folder's root is never sent. New `docs pull [dir]` brings the base back into
+  the folder, one line per file (`written`, `unchanged`, `not in the base (kept)`), and
+  `docs rm <path>` takes one file out of it.
+- **`pinecall cases add <file…>`: a golden written by hand kept as a case.** Each file's golden, or
+  each of a list, is kept approved under its name, `--name`, or the file's basename; `--held-out`
+  as `keep` has it. The same name rewrites the case; a name a call made is the gateway's 409. A
+  case names only words: a golden that names a state or a tool stays beside the code.
+- **`pinecall test` plays the files and the approved dataset together.** With nothing said, the
+  goldens under `test/goldens/` and every approved case not held out and not kept in the
+  repository both play, and each line of the matrix says `file` or `case`. `--files` plays the
+  files alone, as before; `--dataset` and `--case` are unchanged. The MCP's `test` tool does the same.
+- **The MCP: `docs` takes `pull`, `cases` takes `add` (the golden as JSON, never a file), and a new
+  `alerts` tool lists what the org was told.**
 - **`pinecall alerts`: what the org was told.** Every alert of the environment, newest first, kept
   90 days whether or not a webhook is set, and whether it was mailed; `--limit`, `--prod`.
 

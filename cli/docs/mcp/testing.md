@@ -19,6 +19,7 @@ Run the agent's goldens through the agent wherever it is held, under every model
 | `background_noise` | a number |  | spoken runs: dB under the caller of what plays behind them |
 | `ambience` | `television` · `cafe` · `office` · `street` |  | spoken runs: what plays behind the caller |
 | `packet_loss` | a number 0–1 |  | spoken runs: the share of the caller's packets lost, 0 to 1 |
+| `files` | true or false |  | the golden files alone, without the dataset; nothing said plays the files and every approved case both, as `pinecall test` does |
 | `case` | a list of texts |  | cases of the org's dataset to play, by name, whatever their status (`cases` lists them); with `case` or `dataset`, only the cases are played, not the goldens |
 | `dataset` | true or false |  | play every case a person approved, not held out and not kept in the repository: the nightly |
 | `version` | a whole number 1 or more |  | play every call on this version of the agent's settings instead of the one standing |
@@ -95,6 +96,10 @@ Run the agent's goldens through the agent wherever it is held, under every model
     ".pinecall/evals/run_7db71c472e04/takes-the-message.json"
   ],
   "held": false,
+  "files": [
+    "answers-refunds",
+    "takes-the-message"
+  ],
   "env": "sandbox"
 }
 ```
@@ -156,18 +161,19 @@ The suites the gateway kept: the newest, one run's matrix, what moved between tw
 
 ## `cases`
 
-The org's dataset: real calls and simulations kept as cases, grouped by the judge that broke them — a group diagnosed with a fix proposed, a setting applied, a persona made from it, decided whole — and each case read, approved, dismissed, pulled into the repository, a call kept.
+The org's dataset: real calls and simulations kept as cases, grouped by the judge that broke them — a group diagnosed with a fix proposed, a setting applied, a persona made from it, decided whole — and each case read, approved, dismissed, pulled into the repository, a call kept, a golden written by hand added.
 
-`cases` is the dataset real calls make, and the loop that fixes the agent. A call a judge broke on — a simulation's too — is kept at hang-up as a pending case and joins its agent's GROUP for that judge (`groups`, `group` with the grp_ id). `propose` asks the judge model for the cause the calls share and the smallest fix, as `proposal`: {cause, kind, where, change, confidence}. Act on it by kind: `setting` — tell the person the setting and the value, and on their yes call `apply` (a new settings version), then `test` with `case` to replay; `code` — `where` names the tool or prompt block and `change` what it must do: open that file in the project, make the change, run `test` with `case` until it holds, then `approve` the group and offer a pull request; `knowledge` — propose the text to add to the agent's knowledge base; `none` — the calls show no fault of the agent's: offer `dismiss` with `judge_was_wrong`. Never approve or apply without the person. `persona` keeps a caller like the group's for the nightly. A single case: `list`, `show`, `approve`, `dismiss`, `reopen`, `pull` (its golden into `agents/<agent>/test/goldens/`), `keep` (a finished call). Forgetting one cannot be undone, so it is never a tool: `pinecall cases forget` in a terminal.
+`cases` is the dataset real calls make, and the loop that fixes the agent. A call a judge broke on — a simulation's too — is kept at hang-up as a pending case and joins its agent's GROUP for that judge (`groups`, `group` with the grp_ id). `propose` asks the judge model for the cause the calls share and the smallest fix, as `proposal`: {cause, kind, where, change, confidence}. Act on it by kind: `setting` — tell the person the setting and the value, and on their yes call `apply` (a new settings version), then `test` with `case` to replay; `code` — `where` names the tool or prompt block and `change` what it must do: open that file in the project, make the change, run `test` with `case` until it holds, then `approve` the group and offer a pull request; `knowledge` — propose the text to add to the agent's knowledge base; `none` — the calls show no fault of the agent's: offer `dismiss` with `judge_was_wrong`. Never approve or apply without the person. `persona` keeps a caller like the group's for the nightly. A single case: `list`, `show`, `approve`, `dismiss`, `reopen`, `pull` (its golden into `agents/<agent>/test/goldens/`), `keep` (a finished call). `add` keeps a golden written by hand — given whole as `golden`, never read from the person's disk — as an approved case under its name (`source: person`); the same name again rewrites it, and a name a call made is the gateway's 409. A case names only words, what the caller says and what the agent must say or never say; a golden that names a state or a tool belongs beside the code, in `agents/<agent>/test/goldens/`. Forgetting one cannot be undone, so it is never a tool: `pinecall cases forget` in a terminal.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
-| `action` | `groups` · `group` · `propose` · `apply` · `persona` · `list` · `show` · `approve` · `dismiss` · `reopen` · `pull` · `keep` | required | groups lists the agent's case groups; group shows one whole; propose diagnoses one (cause + fix); apply writes its proposed setting; persona keeps a caller like its calls'; list the agent's cases, the pending first; show one whole; approve or dismiss a case or a whole group (`name` a grp_ id); reopen a case; pull its golden into the repository; keep a finished call as a case |
+| `action` | `groups` · `group` · `propose` · `apply` · `persona` · `list` · `show` · `approve` · `dismiss` · `reopen` · `pull` · `keep` · `add` | required | groups lists the agent's case groups; group shows one whole; propose diagnoses one (cause + fix); apply writes its proposed setting; persona keeps a caller like its calls'; list the agent's cases, the pending first; show one whole; approve or dismiss a case or a whole group (`name` a grp_ id); reopen a case; pull its golden into the repository; keep a finished call as a case; add a golden written by hand as an approved case |
 | `agent` | text |  | the agent's name; the project's only agent when left out |
-| `name` | text |  | the case's name within the agent, or a group's id (grp_…); `keep`: the name the new case is played by |
+| `name` | text |  | the case's name within the agent, or a group's id (grp_…); `keep` and `add`: the name the new case is played by (`add`: the golden's own when it has one) |
 | `status` | `pending` · `approved` · `dismissed` |  | `list`: only the cases in this status; every status when left out |
 | `call` | text |  | `keep`: the finished call to keep as an approved case |
-| `held_out` | true or false |  | `keep`: played only when a run names it, never by the nightly |
+| `golden` | an object |  | `add`: the golden itself as JSON — {name?, turns: [{say, then?}…], expect?, memory?, today?} — never a file's path |
+| `held_out` | true or false |  | `keep` and `add`: played only when a run names it, never by the nightly |
 | `judge_was_wrong` | text |  | `dismiss`: the judge that broke and should have held, kept as a calibration label; for a group, any value says its judge was wrong |
 | `note` | text |  | `dismiss`: why, kept on that label; only beside judge_was_wrong |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
@@ -253,6 +259,69 @@ The org's dataset: real calls and simulations kept as cases, grouped by the judg
   ],
   "pending": 1,
   "pending_at_most": 50
+}
+```
+
+```json title="called with"
+{
+  "action": "add",
+  "golden": {
+    "name": "no-price-on-the-phone",
+    "turns": [
+      {
+        "say": "How much is a crown?"
+      }
+    ],
+    "expect": {
+      "not": [
+        "€",
+        "euros"
+      ],
+      "says_any": [
+        "the dentist",
+        "at the visit"
+      ]
+    }
+  }
+}
+```
+
+```json title="answered"
+{
+  "id": "case_0d7e3b9a41f2",
+  "agent": "front-desk",
+  "name": "no-price-on-the-phone",
+  "golden": {
+    "name": "no-price-on-the-phone",
+    "state": {},
+    "turns": [
+      {
+        "say": "How much is a crown?"
+      }
+    ],
+    "memory": [],
+    "expect": {
+      "not": [
+        "€",
+        "euros"
+      ],
+      "says_any": [
+        "the dentist",
+        "at the visit"
+      ]
+    }
+  },
+  "source_call": null,
+  "source_env": "sandbox",
+  "held_out": false,
+  "author": "ana@clinica.test",
+  "created_at": 1791492103.4,
+  "status": "approved",
+  "broke": [],
+  "source_version": null,
+  "kept_in_repo": false,
+  "decided_by": "ana@clinica.test",
+  "source": "person"
 }
 ```
 

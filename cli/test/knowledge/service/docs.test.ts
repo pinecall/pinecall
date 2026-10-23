@@ -41,6 +41,32 @@ describe("push", () => {
     expect((await service.pushDocs(ctx, { dir, base: "faq" }))[0]).toMatchObject({ base: "faq", files: 1 });
   });
 
+  it("writes the files by path and keeps the base's others: no query, and the gateway's `kept` comes back", async () => {
+    const root = project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours" });
+    const sent = answer("put", "/v1/knowledge/:base", { ...PUSHED, kept: 2 });
+    const { ctx } = testContext({ cwd: root });
+    expect(await service.pushDocs(ctx, {})).toEqual([{ ...PUSHED, kept: 2, files: 1 }]);
+    expect(sent[0]!.query).toEqual({});
+  });
+
+  it("--replace makes the base the folder: the one query the gateway reads", async () => {
+    const root = project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours" });
+    const sent = answer("put", "/v1/knowledge/:base", PUSHED);
+    const { ctx } = testContext({ cwd: root });
+    await service.pushDocs(ctx, { replace: true });
+    expect(sent[0]!.query).toEqual({ replace: "true" });
+  });
+
+  it("leaves the folder's README behind, says so, and refuses a folder that holds nothing else", async () => {
+    const root = project(["front-desk"], { "agents/front-desk/docs/README.md": "# What goes here", "agents/front-desk/docs/hours.md": "# Hours", "agents/front-desk/docs/notes/README.md": "# Notes" });
+    const sent = answer("put", "/v1/knowledge/:base", PUSHED);
+    const { ctx } = testContext({ cwd: root });
+    expect(await service.pushDocs(ctx, {})).toEqual([{ ...PUSHED, files: 2, readme_skipped: true }]);
+    expect((sent[0]!.body as { files: { path: string }[] }).files.map((one) => one.path)).toEqual(["hours.md", "notes/README.md"]);
+    const alone = project(["front-desk"], { "agents/front-desk/docs/README.md": "# What goes here" });
+    await expect(service.pushDocs(testContext({ cwd: alone }).ctx, {})).rejects.toThrow(service.ONLY_README(`${alone}/agents/front-desk/docs`));
+  });
+
   it("refuses a folder that is not there, or holds no Markdown", async () => {
     const { ctx } = testContext();
     await expect(service.pushDocs(ctx, { dir: "/nowhere/at/all", base: "x" })).rejects.toThrow(service.NO_DIRECTORY("/nowhere/at/all"));

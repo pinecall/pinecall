@@ -1,5 +1,6 @@
 """The case group endpoints: what broke an agent, its diagnosis, the fix applied, a persona from it."""
 
+from collections.abc import Iterable, Iterator
 from dataclasses import replace
 from typing import Annotated
 
@@ -135,7 +136,8 @@ async def persona_from(
     if running is None:
         raise ServiceUnavailable(judge.unjudged)
     cases = await judging.list_cases(session, actor.org, found.agent, group=found.id)
-    entries = await serving.logs.store.whole(cases[0].source_call) if cases else []
+    calls = [call for _, call in _from_calls(cases)]
+    entries = await serving.logs.store.whole(calls[0]) if calls else []
     brief = judging.Brief(call=judging.conversation_of(judging.case_of(entries, None)), about=found.cause)
     model = providers.llm_of(running)
     try:
@@ -166,12 +168,17 @@ async def decide_group(
         raise ValidationError(WRONG_ONLY_WHEN_DISMISSED)
     author = asked_by(actor)
     if body.judge_was_wrong:
-        for kept in await judging.list_cases(session, actor.org, found.agent, group=found.id):
+        for kept, call in _from_calls(await judging.list_cases(session, actor.org, found.agent, group=found.id)):
             where = judging.Where(org=actor.org, env=kept.source_env, agent=kept.agent)
-            label = judging.Label(call=kept.source_call, judge=found.judge, held=True, author=author, note=body.note)
+            label = judging.Label(call=call, judge=found.judge, held=True, author=author, note=body.note)
             await judging.label_call(session, where, label)
     await judging.decide_group(session, actor.org, found.id, status=body.status, by=author)
     return await judging.get_group(session, actor.org, found.id)
+
+
+# A group holds what a judge broke on at hang-up, each kept from a call; a case a person wrote joins none.
+def _from_calls(cases: Iterable[judged.CaseRow]) -> Iterator[tuple[judged.CaseRow, str]]:
+    return ((kept, kept.source_call) for kept in cases if kept.source_call is not None)
 
 
 async def _judge_for(
@@ -193,11 +200,11 @@ async def _dossier_of(
     cases = (await judging.list_cases(session, scope.org, found.agent, group=found.id))[:CALLS_READ]
     failures: list[judging.Failure] = []
     newest: list[Entry] = []
-    for kept in cases:
-        entries = await serving.logs.store.whole(kept.source_call)
+    for kept, call in _from_calls(cases):
+        entries = await serving.logs.store.whole(call)
         newest = newest or entries
         reason = next((broke.reason for broke in kept.broke if broke.judge == found.judge), "")
-        failures.append(judging.Failure(kept.source_call, reason, _lines_of(entries, found.judge)))
+        failures.append(judging.Failure(call, reason, _lines_of(entries, found.judge)))
     registration = serving.registry.serving(scope, found.agent, None)
     tools = () if registration is None else registration.config.tools
     tuned = (await settings.current_settings(session, scope, found.agent)).tuning

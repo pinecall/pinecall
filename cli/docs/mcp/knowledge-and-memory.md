@@ -5,13 +5,13 @@ tool's own schema, as the assistant sees it — and one real call, answered by P
 
 ## `docs`
 
-The documents the agent searches: a folder pushed as a base, attached to the agent, held to its golden; the org's bases and who reads them.
+The documents the agent searches: a folder pushed into a base and pulled back from it, attached to the agent, held to its golden; the org's bases and who reads them.
 
-`docs push` sends the Markdown under `agents/<agent>/docs/` as a base (replacing it whole: push again after every edit); `attach` makes the agent search it before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. Dropping a base is never a tool: `pinecall docs drop` in a terminal.
+The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
-| `action` | `push` · `list` · `eval` · `attach` · `detach` · `attached` | required | push the agent's docs folder as a base; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base |
+| `action` | `push` · `pull` · `list` · `eval` · `attach` · `detach` · `attached` | required | push writes the agent's docs folder into its base, the base's other files kept; pull writes the base into the folder; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base |
 | `agent` | text |  | the agent's name; the project's only agent when left out |
 | `base` | text |  | the base's name; the agent's own when left out |
 | `language` | text |  | `push`: the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out |
@@ -30,10 +30,48 @@ The documents the agent searches: a folder pushed as a base, attached to the age
 ```json title="answered"
 {
   "base": "front-desk",
-  "chunks": 1,
+  "chunks": 9,
   "language": "english",
-  "took_ms": 13.33,
-  "files": 1
+  "took_ms": 213.4,
+  "kept": 1,
+  "files": 2,
+  "readme_skipped": true
+}
+```
+
+```json title="called with"
+{
+  "action": "pull"
+}
+```
+
+```json title="answered"
+{
+  "base": "front-desk",
+  "dir": "/Users/you/front-desk/agents/front-desk/docs",
+  "kept": true,
+  "files": [
+    {
+      "path": "hours.md",
+      "file": "/Users/you/front-desk/agents/front-desk/docs/hours.md",
+      "status": "unchanged"
+    },
+    {
+      "path": "insurance.md",
+      "file": "/Users/you/front-desk/agents/front-desk/docs/insurance.md",
+      "status": "written"
+    },
+    {
+      "path": "old-prices.md",
+      "file": "/Users/you/front-desk/agents/front-desk/docs/old-prices.md",
+      "status": "kept"
+    }
+  ],
+  "said": [
+    "agents/front-desk/docs/hours.md       unchanged",
+    "agents/front-desk/docs/insurance.md   written",
+    "agents/front-desk/docs/old-prices.md  not in the base (kept)"
+  ]
 }
 ```
 

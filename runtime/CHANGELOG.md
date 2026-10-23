@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **A push puts files by path; `?replace=true` makes the base the folder.** `PUT /v1/knowledge/{base}`
+  writes the files it names and keeps the base's others, so a file the console put survives
+  `docs push`; the answer says how many in `kept` (0 on a replace). `?replace=true` is the old
+  behaviour, the folder as the one truth. The quota is sized against the files the push replaces,
+  not the whole base.
+- **A case a person wrote names no call.** `eval_cases.source_call` is null for a case written by
+  hand (migration `000012`, which turns the `''` written until now into null); the case row's
+  `source_call` is `string | null` on the wire. A case kept from a call or a simulation names it as
+  before, and erasing a call still erases its cases.
+- **A crash-looping app no longer gets five fresh tries after a runner restart.** The exits that
+  still count ride the pod (the `pinecall.io/exits` annotation, written when the host is run again
+  and read back off the listing), not the runner's memory: a runner restarted by a deploy or a node
+  move counts on where the last one left off. A stray annotation reads as no exits.
+- **A Studio agent's tests are its cases, run from the page.** Under the definition, **Test** lists
+  the agent's cases, **New case** writes one by hand, and **Run** plays every approved case not
+  held out against the agent the gateway holds (`POST /v1/evals/run {agent, cases}`), saying under
+  each whether it held or broke and the judge's reasons. No terminal, nothing to start.
 - **Every alert is kept and mailed; the webhook is optional.** A monitor that fired, unusual spend,
   a quota run out, a hosted app that went down: each is a row of `alerts` (migration `000011`),
   kept 90 days (the nightly retention forgets older), read at `GET /v1/alerts` by the org and

@@ -53,8 +53,10 @@ judgment is made before the search, on the words, and it is deliberately the who
 
 ## What a base is made of
 
-A base is a folder of Markdown pushed whole (`PUT /v1/knowledge/{base}`) or a file at a time
-(`PUT /v1/knowledge/{base}/files/{path}`). Each file is cut at its headings, one to three hashes,
+A base is a folder of Markdown pushed (`PUT /v1/knowledge/{base}`) or a file at a time
+(`PUT /v1/knowledge/{base}/files/{path}`). A push is by path: the files it names are written and
+the base's others are kept, and the answer says how many in `kept`; `?replace=true` makes the base
+the folder, dropping every file the push does not name (`kept` is 0). Each file is cut at its headings, one to three hashes,
 each piece kept under 350 tokens and cut again at a paragraph or a sentence when a section runs
 long; a fenced code block is one paragraph whatever blank lines it holds, and is never cut, so a
 class is never split between two of its members. A piece carries its heading path in the text

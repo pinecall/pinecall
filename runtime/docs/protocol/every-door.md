@@ -178,7 +178,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/knowledge/attached` | knowledge | Each base some agent attaches, and the agents whose settings in the corner attach it. |
 | `DELETE` | `/v1/knowledge/{base}` | knowledge | Drop the holder's own copy of the base and its chunks. |
 | `GET` | `/v1/knowledge/{base}` | knowledge | The base's files, each with its size and chunks, never its text. |
-| `PUT` | `/v1/knowledge/{base}` | knowledge | Replace the base with the folder: cut, embedded where it changed, indexed. |
+| `PUT` | `/v1/knowledge/{base}` | knowledge | Put the folder's files into the base by path, keeping the files it does not name; `?replace=true` makes the base the folder. Cut, embedded where it changed, indexed. |
 | `POST` | `/v1/knowledge/{base}/eval` | knowledge | Ask the golden's questions of the base and score recall@k and nDCG@10, with no model. |
 | `DELETE` | `/v1/knowledge/{base}/files/{path:path}` | knowledge | Take one file and its chunks out of the base, and the base with its last file. |
 | `GET` | `/v1/knowledge/{base}/files/{path:path}` | knowledge | One file of the base, text and all. |

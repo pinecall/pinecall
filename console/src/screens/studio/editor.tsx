@@ -1,4 +1,4 @@
-/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded — and on the right the agent to try, with the way to deploy it under it. */
+/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, its cases under it — and on the right the agent to try, with the way to deploy it under it. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -16,6 +16,7 @@ import { changed } from "./draft";
 import { Head } from "./head";
 import { GreetingSection, Instructions } from "./instructions";
 import { Live, productionSaid } from "./live";
+import { TestSection } from "./test";
 import { Tip } from "./tip";
 import { Tools } from "./tools";
 import { TryIt } from "./try-it";
@@ -176,6 +177,10 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
               <TestValuesTab agent={name} values={tried} onApply={setTried} />
             </div>
           )}
+          {/* Under the definition whichever tab is open: the agent's tests are its cases, played against the agent the gateway holds. */}
+          <div className="sto-test">
+            <TestSection agent={name} />
+          </div>
         </Page>
       </div>
       <TryIt key={round} agent={name} release={read.release} values={tried} onReset={() => setRound((was) => was + 1)} />

@@ -28,12 +28,14 @@ export const KnowledgeScoreSchema = z.strictObject({
 export type KnowledgeScore = z.infer<typeof KnowledgeScoreSchema>;
 
 /**
- * PUT /v1/knowledge/{base}, the answer: which base, how many chunks it became, and how long that
- * took.
+ * PUT /v1/knowledge/{base}, the answer: which base, how many chunks it became, how many of its
+ * files the push left as they were, and how long that took.
  */
 export const KnowledgePushedSchema = z.strictObject({
   base: z.string(),
   chunks: z.int(),
+  /** The files of the base the push did not name and kept; 0 on `?replace=true`. */
+  kept: z.int(),
   /** The text-search configuration its words are stemmed with; `simple` (no stemming) when the files said no language clearly. */
   language: z.string(),
   took_ms: z.number(),

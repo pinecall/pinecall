@@ -13,7 +13,7 @@ from pinecall_runtime.wire.parts import KnowledgeFile
 # ── knowledge bases ──
 
 
-# The base is replaced whole, never merged.
+# Put by path: a file of the base the push does not name is kept, unless `?replace=true`.
 class KnowledgePush(WireModel):
     """PUT /v1/knowledge/{base}, the body: the tenant's folder as of now, and the language it is written in."""
 
@@ -23,10 +23,12 @@ class KnowledgePush(WireModel):
 
 
 class KnowledgePushed(WireModel):
-    """PUT /v1/knowledge/{base}, the answer: the base, its chunks, the language it speaks, how long it took."""
+    """PUT /v1/knowledge/{base}, the answer: the base, its chunks, the files kept, its language, how long it took."""
 
     base: str
     chunks: int
+    # How many files of the base the push did not name and left as they were; 0 on a replace.
+    kept: int
     # The text-search configuration its words are stemmed with: said by the push, or counted from
     # the files; `simple` (no stemming) when they said nothing clearly.
     language: str

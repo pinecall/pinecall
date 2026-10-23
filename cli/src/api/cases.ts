@@ -17,7 +17,8 @@ export interface EvalCase {
   agent: string;
   name: string;
   golden: GoldenShape;
-  source_call: string;
+  /** The call the case was kept from; null for a case a person wrote by hand. */
+  source_call: string | null;
   source_env: "sandbox" | "production";
   held_out: boolean;
   author: string;
@@ -162,6 +163,11 @@ export function listCases(gw: GatewayClient, agent: string, status?: CaseStatus)
 
 export function patchCase(gw: GatewayClient, id: string, decision: CaseDecision): Promise<SentCase> {
   return gw.patch<SentCase>(caseDoor(id), decision);
+}
+
+/** A golden written by hand kept as an approved case of the agent (`source: "person"`); the same name again rewrites it, a name a call made is a 409. */
+export function writeCase(gw: GatewayClient, agent: string, name: string, body: { golden: GoldenShape; held_out?: boolean }): Promise<SentCase> {
+  return gw.put<SentCase>(`/v1/agents/${seg(agent)}/cases/${seg(name)}`, body);
 }
 
 /** A finished call kept as an approved case; an expect left out is the one its broken verdicts give. */

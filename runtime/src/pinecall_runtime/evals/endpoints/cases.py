@@ -112,7 +112,8 @@ async def decide_case(
     keys.check_agent(actor, kept.agent)
     judging.check_decision(kept, body)
     author = asked_by(actor)
-    if body.judge_was_wrong is not None:
+    # A judge called wrong broke on the case, so a call made it: check_decision refused a person's case.
+    if body.judge_was_wrong is not None and kept.source_call is not None:
         await check_readable(session, serving, Reader(actor=actor), kept.source_call)
         where = judging.Where(org=actor.org, env=kept.source_env, agent=kept.agent)
         label = judging.Label(

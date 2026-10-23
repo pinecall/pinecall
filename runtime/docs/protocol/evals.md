@@ -201,7 +201,7 @@ PUT /v1/agents/recepcion/cases/no-dice-un-precio
  "held_out": false}
 
 {"id": "case_9b21…", "agent": "recepcion", "name": "no-dice-un-precio", "golden": {…},
- "source_call": "", "source_env": "sandbox", "held_out": false, "author": "m_ana",
+ "source_call": null, "source_env": "sandbox", "held_out": false, "author": "m_ana",
  "status": "approved", "broke": [], "source_version": null, "kept_in_repo": false,
  "source": "person"}
 ```
@@ -210,8 +210,9 @@ The path names the case: the golden's own `name` is written over with it. It is 
 the start, `source: "person"`, in the key's environment, and `dataset: true` plays it as any other.
 The same name again rewrites its golden and `held_out`, and keeps its id, author, status and age;
 a name a call or a simulation made is `409`, so a hand never rewrites what a judge broke on. A case
-written by hand broke on no judge, so `judge_was_wrong` on it is `400`. It names no call, so
-erasing a call or a contact never reaches it; erasing the org does.
+written by hand broke on no judge, so `judge_was_wrong` on it is `400`. It names no call —
+`source_call` is `string | null`, null only here — so erasing a call or a contact never reaches
+it; erasing the org does.
 
 **Read as a golden, kept nowhere.** `GET /v1/calls/{call}/golden?name=&from_seq=` answers the
 golden the call makes, with the same derived `expect`; `from_seq` opens it in the state the call

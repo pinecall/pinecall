@@ -45,7 +45,7 @@ Commands:
                                  diff, promote a call, watch the drift
   cases                          the org's dataset: real calls kept as cases —
                                  read, approve, dismiss, pull into the
-                                 repository
+                                 repository; a golden written by hand added
   personas                       an agent's synthetic callers: Pinecall's
                                  switched on or off, its own written, generated,
                                  tried
@@ -61,9 +61,10 @@ Commands:
                                  as the next call would be built
   voices                         a voice vendor's voices, and any one of them
                                  heard on this machine before it is chosen
-  docs                           the documents the agent searches: pushed as a
-                                 base, listed, dropped, held to a golden,
-                                 attached
+  docs                           the documents the agent searches: a folder
+                                 pushed into a base and pulled back, a file
+                                 removed, the bases listed, dropped, held to a
+                                 golden, attached
   memory                         what memory kept about a contact, forget it on
                                  request, and what a golden says of recall
   remember [options] [paths...]  the goldens memory.remember is held to: what a

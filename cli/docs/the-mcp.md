@@ -117,6 +117,7 @@ Every parameter, and a real call of each: [Calls, and what they run on](mcp/call
 | `telemetry` | `show` · `clear` | where the org's calls' traces go, its own OTLP collector, and the headers by name; setting one is the person's terminal |
 | `monitors` | `list` · `add` · `rm` | the numbers the org watches over a window — latency, the judges' held rate, escalations, tool failures, spend, calls — and the line each must not cross; fires once a day as `monitor.fired` |
 | `webhook` | `show` · `test` · `clear` | where the org's alerts are posted — a monitor fired, the spend unusual, a quota out — and whether the posts are signed; a signed test post; setting one is the person's terminal |
+| `alerts` | — | what the org was told in the environment, newest first: every alert kept 90 days whether or not a webhook is set — its kind, its agent, its data, whether it was mailed; `limit` how many |
 | `usage` | — | what the org used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on (its own, and the ones the runtime lends), whether its judges cost it evals, and where it buys more |
 
 ### The phone
@@ -146,7 +147,7 @@ Every parameter, and a real call of each: [Testing](mcp/testing.md).
 |---|---|---|
 | `test` | `run` · `wait` | the goldens through the agent, held here or wherever it is held, a column per model in `models`, written or spoken (`voice`, `background_noise`, `packet_loss` 0..1): the matrix, each call's latency, a reproduction for each golden that broke. `case` plays cases of the org's dataset by name instead, `dataset` every approved one, `version` a version of the agent's settings. One run per agent at a time |
 | `runs` | `list` · `show` · `diff` · `promote` · `drift` | the suites kept, what moved between two, the golden the gateway derives from a real call written as a candidate under the agent's `agents/<agent>/test/candidates/`, each judge's drift |
-| `cases` | `groups` · `group` · `propose` · `apply` · `persona` · `list` · `show` · `approve` · `dismiss` · `reopen` · `pull` · `keep` | the org's dataset and the loop that fixes the agent: real calls and simulations a judge broke on, grouped by that judge; a group diagnosed (`propose`: the cause and a fix — a setting `apply` writes, code the assistant makes, knowledge), a persona made from it, decided whole; one case read, approved, dismissed (`judge_was_wrong` labels the judge), reopened, pulled into `agents/<agent>/test/goldens/`, a finished call kept; forgetting one is `pinecall cases forget` |
+| `cases` | `groups` · `group` · `propose` · `apply` · `persona` · `list` · `show` · `approve` · `dismiss` · `reopen` · `pull` · `keep` · `add` | the org's dataset and the loop that fixes the agent: real calls and simulations a judge broke on, grouped by that judge; a group diagnosed (`propose`: the cause and a fix — a setting `apply` writes, code the assistant makes, knowledge), a persona made from it, decided whole; one case read, approved, dismissed (`judge_was_wrong` labels the judge), reopened, pulled into `agents/<agent>/test/goldens/`, a finished call kept, a golden written by hand `add`ed whole as `golden` (never a file) as an approved case; forgetting one is `pinecall cases forget` |
 | `simulate` | `run` · `wait` | a persona's call against the agent, held here or wherever it is held, the conversation and every judge's verdict; past `wait_s`, the transcript so far, and `wait` picks the rest up. One per agent at a time |
 | `personas` | `list` · `show` · `add` · `edit` · `rm` · `on` · `off` · `generate` | the callers a model plays: Pinecall's library (realism and a red team) switched on or off; the agent's own — a goal, a manner, facts, what it `expects` of the agent, how it acts on a spoken line (`interrupts`, `pause_s`); callers `generate`d from the agent's prompt, tools and knowledge |
 | `judges` | `list` · `add` · `on` · `off` · `rm` · `try` · `agreement` | every judge the agent's calls meet: Pinecall's switched on or off, your own written whole — a verdict, a score or a choice, on every call, simulations or a trigger — dropped, one tried on finished calls, writing nothing, and how often each agreed with the labels people gave; every agent's with `org` |
@@ -159,7 +160,7 @@ Every parameter, and a real call of each: [Knowledge and memory](mcp/knowledge-a
 
 | tool | actions | what it does |
 |---|---|---|
-| `docs` | `push` · `list` · `eval` · `attach` · `detach` · `attached` | a folder pushed as a base, attached to the agent, held to `goldens/docs.json`; `list` and `attached` are the org's and name no agent |
+| `docs` | `push` · `pull` · `list` · `eval` · `attach` · `detach` · `attached` | the folder as a checkout of the base: `push` writes its files into the base and keeps the base's others (the folder's `README.md` never sent), `pull` writes the base back into the folder, file by file; attached to the agent, held to `goldens/docs.json`; `list` and `attached` are the org's and name no agent |
 | `memory` | `show` · `policy` · `eval` | what the agent kept about a caller (naming no agent), what it keeps and never keeps (`policy` with neither list reads them), and `goldens/memory.json` |
 | `remember` | — | the extraction cases under `agents/<agent>/test/memory/`, run on the model and policy of the agent, held here or wherever it is held |
 
@@ -186,7 +187,7 @@ A refusal is one sentence that names what to do next: no project names `project`
 
 ## Not in the MCP
 
-Erasing data, forgetting a contact or a case, dropping a base, a number or a carrier, and removing
+Erasing data, forgetting a contact or a case, dropping a base or one file of it, a number or a carrier, and removing
 a deployed app are never tools; neither is anything that takes a secret. Those stay `pinecall`
 verbs a person types.
 

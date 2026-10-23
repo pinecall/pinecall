@@ -458,6 +458,58 @@ Where the org posts its alerts — a monitor fired, the spend unusual, a quota o
 }
 ```
 
+## `alerts`
+
+What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a hosted app down — whether or not a webhook is set, and whether each was mailed.
+
+`alerts` reads what this org was told in the env (`prod` for production's): each alert's kind (`monitor.fired`, `spend.unusual`, `credits.exhausted`, `app.failed`), its agent, its data — the monitor and the value that crossed, the app, the quota — when it was raised, and whether it was mailed to the org's admins. Kept 90 days whether or not a webhook is set. Read it when the person asks what went wrong lately, or whether a monitor fired; `monitors` says what is watched, `webhook` where alerts are posted.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `limit` | a whole number 1–200 |  | how many, newest first; 50 when left out, 200 at most |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+```json title="called with"
+{
+  "limit": 2
+}
+```
+
+```json title="answered"
+{
+  "alerts": [
+    {
+      "id": "alr_7f3c9e1b2a40",
+      "org": "acme",
+      "env": "sandbox",
+      "agent": "front-desk",
+      "kind": "monitor.fired",
+      "data": {
+        "monitor": "mon_8b1d2e3f4a5c",
+        "name": "slow answers",
+        "metric": "e2e_median_s",
+        "value": 2.4,
+        "threshold": 2
+      },
+      "mailed": true,
+      "at": "2026-10-22T18:02:11Z"
+    },
+    {
+      "id": "alr_1c0a5d8e9b37",
+      "org": "acme",
+      "env": "sandbox",
+      "agent": "front-desk",
+      "kind": "credits.exhausted",
+      "data": {
+        "quota": "minutes"
+      },
+      "mailed": false,
+      "at": "2026-10-22T11:40:09Z"
+    }
+  ]
+}
+```
+
 ## `usage`
 
 What the org has used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on, and whether its judges cost it evals.

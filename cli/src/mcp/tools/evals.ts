@@ -28,6 +28,7 @@ export const test = tool({
     background_noise: z.number().optional().describe("spoken runs: dB under the caller of what plays behind them"),
     ambience: z.enum(service.AMBIENCES).optional().describe("spoken runs: what plays behind the caller"),
     packet_loss: z.number().min(0).max(1).optional().describe("spoken runs: the share of the caller's packets lost, 0 to 1"),
+    files: z.boolean().optional().describe("the golden files alone, without the dataset; nothing said plays the files and every approved case both, as `pinecall test` does"),
     case: z.array(z.string().min(1)).optional().describe("cases of the org's dataset to play, by name, whatever their status (`cases` lists them); with `case` or `dataset`, only the cases are played, not the goldens"),
     dataset: z.boolean().optional().describe("play every case a person approved, not held out and not kept in the repository: the nightly"),
     version: z.number().int().min(1).optional().describe("play every call on this version of the agent's settings instead of the one standing"),
@@ -44,18 +45,18 @@ export const test = tool({
     }
     if (going !== undefined) throw new ToolRefused(`a run of ${reached.slug} is in flight: call test with action wait for it`);
     const input = service.SuiteInput.parse({
+      ...service.whatPlays({ files: args.files, dataset: args.dataset, cases: args.case, paths: false }),
       voice: args.voice === true,
       backgroundNoise: args.background_noise,
       ambience: args.ambience,
       packetLoss: args.packet_loss,
       models: args.models ?? [],
       cases: args.case,
-      dataset: args.dataset === true,
       version: args.version,
     });
     const home = ctx.agent("test", { agent: reached.slug });
-    // Cases asked: only the cases, as `pinecall test --case` with no paths.
-    const goldens = service.playsCases(input) ? [] : service.matching(await service.goldensIn([home.goldens]), args.grep);
+    // The files play unless only the cases were asked for, as `pinecall test` decides it.
+    const goldens = input.files ? service.matching(await service.goldensIn([home.goldens]), args.grep) : [];
     if (goldens.length === 0 && !service.playsCases(input)) throw new ToolRefused(`no golden${args.grep === undefined ? "" : ` matching ${args.grep}`} in ${home.goldens}`);
     let id: string | null = null;
     const pending = service.runSuite(ctx, reached.slug, goldens, input, reached.app, { onStarted: (started) => (id = started) }).then((report) => ({ ...report, env: ctx.env }));
@@ -106,22 +107,29 @@ export const evalTool = tool({
 
 export const cases = tool({
   name: "cases",
-  description: "The org's dataset: real calls and simulations kept as cases, grouped by the judge that broke them — a group diagnosed with a fix proposed, a setting applied, a persona made from it, decided whole — and each case read, approved, dismissed, pulled into the repository, a call kept.",
+  description: "The org's dataset: real calls and simulations kept as cases, grouped by the judge that broke them — a group diagnosed with a fix proposed, a setting applied, a persona made from it, decided whole — and each case read, approved, dismissed, pulled into the repository, a call kept, a golden written by hand added.",
   schema: {
-    action: z.enum(["groups", "group", "propose", "apply", "persona", "list", "show", "approve", "dismiss", "reopen", "pull", "keep"]).describe("groups lists the agent's case groups; group shows one whole; propose diagnoses one (cause + fix); apply writes its proposed setting; persona keeps a caller like its calls'; list the agent's cases, the pending first; show one whole; approve or dismiss a case or a whole group (`name` a grp_ id); reopen a case; pull its golden into the repository; keep a finished call as a case"),
+    action: z.enum(["groups", "group", "propose", "apply", "persona", "list", "show", "approve", "dismiss", "reopen", "pull", "keep", "add"]).describe("groups lists the agent's case groups; group shows one whole; propose diagnoses one (cause + fix); apply writes its proposed setting; persona keeps a caller like its calls'; list the agent's cases, the pending first; show one whole; approve or dismiss a case or a whole group (`name` a grp_ id); reopen a case; pull its golden into the repository; keep a finished call as a case; add a golden written by hand as an approved case"),
     agent: AGENT,
-    name: z.string().min(1).optional().describe("the case's name within the agent, or a group's id (grp_…); `keep`: the name the new case is played by"),
+    name: z.string().min(1).optional().describe("the case's name within the agent, or a group's id (grp_…); `keep` and `add`: the name the new case is played by (`add`: the golden's own when it has one)"),
     status: z.enum(service.STATUSES).optional().describe("`list`: only the cases in this status; every status when left out"),
     call: z.string().min(1).optional().describe("`keep`: the finished call to keep as an approved case"),
-    held_out: z.boolean().optional().describe("`keep`: played only when a run names it, never by the nightly"),
+    golden: z.record(z.string(), z.unknown()).optional().describe("`add`: the golden itself as JSON — {name?, turns: [{say, then?}…], expect?, memory?, today?} — never a file's path"),
+    held_out: z.boolean().optional().describe("`keep` and `add`: played only when a run names it, never by the nightly"),
     judge_was_wrong: z.string().min(1).optional().describe("`dismiss`: the judge that broke and should have held, kept as a calibration label; for a group, any value says its judge was wrong"),
     note: z.string().optional().describe("`dismiss`: why, kept on that label; only beside judge_was_wrong"),
   },
   manual:
-    "`cases` is the dataset real calls make, and the loop that fixes the agent. A call a judge broke on — a simulation's too — is kept at hang-up as a pending case and joins its agent's GROUP for that judge (`groups`, `group` with the grp_ id). `propose` asks the judge model for the cause the calls share and the smallest fix, as `proposal`: {cause, kind, where, change, confidence}. Act on it by kind: `setting` — tell the person the setting and the value, and on their yes call `apply` (a new settings version), then `test` with `case` to replay; `code` — `where` names the tool or prompt block and `change` what it must do: open that file in the project, make the change, run `test` with `case` until it holds, then `approve` the group and offer a pull request; `knowledge` — propose the text to add to the agent's knowledge base; `none` — the calls show no fault of the agent's: offer `dismiss` with `judge_was_wrong`. Never approve or apply without the person. `persona` keeps a caller like the group's for the nightly. A single case: `list`, `show`, `approve`, `dismiss`, `reopen`, `pull` (its golden into `agents/<agent>/test/goldens/`), `keep` (a finished call). Forgetting one cannot be undone, so it is never a tool: `pinecall cases forget` in a terminal.",
+    "`cases` is the dataset real calls make, and the loop that fixes the agent. A call a judge broke on — a simulation's too — is kept at hang-up as a pending case and joins its agent's GROUP for that judge (`groups`, `group` with the grp_ id). `propose` asks the judge model for the cause the calls share and the smallest fix, as `proposal`: {cause, kind, where, change, confidence}. Act on it by kind: `setting` — tell the person the setting and the value, and on their yes call `apply` (a new settings version), then `test` with `case` to replay; `code` — `where` names the tool or prompt block and `change` what it must do: open that file in the project, make the change, run `test` with `case` until it holds, then `approve` the group and offer a pull request; `knowledge` — propose the text to add to the agent's knowledge base; `none` — the calls show no fault of the agent's: offer `dismiss` with `judge_was_wrong`. Never approve or apply without the person. `persona` keeps a caller like the group's for the nightly. A single case: `list`, `show`, `approve`, `dismiss`, `reopen`, `pull` (its golden into `agents/<agent>/test/goldens/`), `keep` (a finished call). `add` keeps a golden written by hand — given whole as `golden`, never read from the person's disk — as an approved case under its name (`source: person`); the same name again rewrites it, and a name a call made is the gateway's 409. A case names only words, what the caller says and what the agent must say or never say; a golden that names a state or a tool belongs beside the code, in `agents/<agent>/test/goldens/`. Forgetting one cannot be undone, so it is never a tool: `pinecall cases forget` in a terminal.",
   handler: async (args, ctx) => {
     if (args.action === "keep") return await service.keepCall(ctx, service.KeepInput.parse({ call: needed(args.call, "call"), name: needed(args.name, "name"), heldOut: args.held_out === true }));
     const agent = ctx.slug("cases", { agent: args.agent });
+    if (args.action === "add") {
+      if (args.golden === undefined) throw new ToolRefused("add takes the golden itself, as JSON");
+      const written = args.golden as service.WrittenGolden;
+      const name = written.name ?? needed(args.name, "name");
+      return await service.keepGolden(ctx, agent, { ...written, name }, args.held_out === true);
+    }
     if (args.action === "groups") return { groups: await service.listGroups(ctx, agent) };
     if (args.action === "list") return await service.listCases(ctx, agent, args.status);
     const name = needed(args.name, "name");

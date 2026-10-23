@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.billing import service as billing
+from pinecall_runtime.exceptions import QuotaExceeded
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.knowledge.service import bases
 from pinecall_runtime.knowledge.service.cutter import cut
@@ -69,6 +71,44 @@ async def test_a_base_pushed_again_keeps_only_its_new_files(
     assert [item.path for item in files] == ["horario.md"]
     searched = await asked(sessions, embedder, scope, "cuánto cuesta una limpieza", "clinica")
     assert all(found.path != "precios.md" for found in searched.found)
+
+
+async def test_a_push_keeps_the_files_it_does_not_name_and_a_replace_drops_them(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """A file the console put beside the folder's survives a push, counted in `kept`; a replace drops it."""
+    folder = a_push("clinica", ("precios.md", PRICES), ("horario.md", HOURS))
+    async with sessions.begin() as session:
+        await bases.put_base(session, embedder, scope, folder)
+    async with sessions.begin() as session:
+        await bases.put_file(session, embedder, scope, a_push("clinica", ("supervising.md", SUPERVISING)))
+    async with sessions.begin() as session:
+        written = await bases.put_files(session, embedder, scope, folder)
+    async with sessions() as session:
+        files = await bases.list_files(session, scope, "clinica")
+    assert files is not None
+    assert (written.kept, [item.path for item in files]) == (1, ["horario.md", "precios.md", "supervising.md"])
+    async with sessions.begin() as session:
+        await bases.put_base(session, embedder, scope, folder)
+    async with sessions() as session:
+        files = await bases.list_files(session, scope, "clinica")
+    assert files is not None
+    assert [item.path for item in files] == ["horario.md", "precios.md"]
+
+
+async def test_a_push_is_sized_against_the_files_it_names_and_a_replace_against_the_base(
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope
+) -> None:
+    """At the quota, a file grown by a question is refused by path and admitted as a replace: only what goes counts."""
+    folder = a_push("clinica", ("precios.md", PRICES), ("horario.md", HOURS))
+    async with sessions.begin() as session:
+        await bases.put_base(session, embedder, scope, folder)
+        await billing.set_quotas(session, scope.org, scope.env, billing.Quotas(knowledge_chunks=folder.chunks))
+    grown = a_push("clinica", ("precios.md", ASKED))
+    async with sessions() as session:
+        with pytest.raises(QuotaExceeded, match="knowledge chunks"):
+            await bases.admit_push(session, scope, grown, paths=["precios.md"])
+        await bases.admit_push(session, scope, grown, paths=None)
 
 
 async def test_another_orgs_base_is_never_searched(

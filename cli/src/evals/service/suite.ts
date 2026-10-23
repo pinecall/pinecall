@@ -45,8 +45,9 @@ export const SpokenInput = z.object({
 });
 export type SpokenInput = z.infer<typeof SpokenInput>;
 
-/** What one suite plays: the goldens, the models (a column each), the cases beside them, the settings version, the line. */
+/** What one suite plays: the golden files or not, the models (a column each), the cases beside them, the settings version, the line. */
 export const SuiteInput = SpokenInput.extend({
+  files: z.boolean().default(true),
   models: z.array(z.string().min(1)).default([]),
   cases: z.array(z.string().min(1)).optional(),
   dataset: z.boolean().default(false),
@@ -54,12 +55,35 @@ export const SuiteInput = SpokenInput.extend({
 });
 export type SuiteInput = z.infer<typeof SuiteInput>;
 
-/** A finished run as data: the run, each call's latency medians, and the reproductions written for what broke. */
+/** What `test` was asked to play: the three flags, and whether paths were named. */
+export interface PlayAsked {
+  files?: boolean | undefined;
+  dataset?: boolean | undefined;
+  cases?: string[] | undefined;
+  paths?: boolean | undefined;
+}
+
+/**
+ * What plays, from what was typed. Nothing typed plays the files and the approved dataset both;
+ * `--files` the files alone, `--dataset` or `--case` the cases alone; paths named play beside
+ * whatever cases were asked for.
+ */
+export function whatPlays(asked: PlayAsked): { files: boolean; dataset: boolean } {
+  const cases = asked.cases !== undefined;
+  return {
+    files: asked.files === true || asked.paths === true || (!cases && asked.dataset !== true),
+    dataset: asked.dataset === true || (!cases && asked.files !== true),
+  };
+}
+
+/** A finished run as data: the run, each call's latency medians, the reproductions written for what broke, and which goldens were sent from disk. */
 export interface SuiteReport {
   run: api.EvalRun;
   latencies: Latencies;
   reproductions: string[];
   held: boolean;
+  /** The names sent as files; a golden of the matrix not among them is a case the gateway played. */
+  files: string[];
 }
 
 /** The ring 2 fields of a spoken run; a written one sends none of them, not even `voice: false`. */
@@ -131,7 +155,7 @@ export async function reportOf(ctx: Context, run: api.EvalRun, goldens: Golden[]
   for (const opened of run.calls) logs[opened.call] = await allEntries(ctx, opened.call);
   const latencies: Latencies = {};
   for (const [call, entries] of Object.entries(logs)) latencies[call] = mediansOf(entries);
-  return { run, latencies, reproductions: writeReproductions(run, goldens, logs, under), held: held(run) };
+  return { run, latencies, reproductions: writeReproductions(run, goldens, logs, under), held: held(run), files: goldens.map((one) => one.name) };
 }
 
 /** A whole call's log, page by page. */

@@ -79,14 +79,14 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `api/alerts.ts` | 90 | The alerts endpoints: monitors, the org's webhook, its telemetry collector. |
 | `api/billing.ts` | 32 | The billing endpoint: what the org may use in an env and what it used. |
 | `api/calls.ts` | 119 | The calls endpoints: an agent's calls, one call's state, its log paged or followed, the supervisor's verbs, a listen seat, the chat socket. |
-| `api/cases.ts` | 224 | The dataset endpoints: the org's cases, the groups they fall into, the golden a call makes, and an agent's personas. |
+| `api/cases.ts` | 230 | The dataset endpoints: the org's cases, the groups they fall into, the golden a call makes, and an agent's personas. |
 | `api/client.ts` | 115 | The gateway client: one URL, one key, one env header; every `/v1/` request of the CLI goes through it. |
 | `api/compliance.ts` | 60 | The compliance endpoints: erasures and their trail, who read what, the org's policy, consent, the do-not-call list, export. |
 | `api/docs-site.ts` | 12 | docs.pinecall.io's llms-full.txt: every page of Pinecall's own docs in one file, read as the MCP server reads them. |
 | `api/evals.ts` | 195 | The evals endpoints: a suite run and the runs kept, the simulated caller's next line, a spoken call, a call replayed by code. |
 | `api/hosting.ts` | 76 | The hosting endpoints: the org's hosted apps, their releases, an app's logs, and the feed's release changes. |
 | `api/judging.ts` | 55 | The judging endpoints: the judges of the org or of one agent, one tried on calls, and whether the org's calls are judged. |
-| `api/knowledge.ts` | 74 | The knowledge endpoints: the bases, a contact's memory, the recall and extraction goldens, and the settings an attachment lives in. |
+| `api/knowledge.ts` | 123 | The knowledge endpoints: the bases, a contact's memory, the recall and extraction goldens, and the settings an attachment lives in. |
 | `api/providers.ts` | 64 | The providers endpoints: the vendor catalog, and the org's own provider keys, written and named but never read. |
 | `api/studio.ts` | 143 | The Studio endpoints: the org's agents built in the console — listed, made, read, saved, deployed, a tool tried, the code zipped. |
 | `api/telephony.ts` | 192 | The telephony endpoints: the org's numbers and routes, its carrier accounts, an agent's line, the callbacks waiting. |
@@ -147,11 +147,12 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `knowledge/commands.ts` | 205 | `pinecall docs | memory | remember`: the documents the agent searches, what it remembers about a caller, what a call teaches it. |
-| `knowledge/render.ts` | 122 | Knowledge as a terminal reads it: a push, the bases, a score, an attachment, a contact's facts, the policy, an extraction run. |
+| `knowledge/commands.ts` | 232 | `pinecall docs \| memory \| remember`: the documents the agent searches, what it remembers about a caller, what a call teaches it. |
+| `knowledge/render.ts` | 145 | Knowledge as a terminal reads it: a push, a pull, a file removed, the bases, a score, an attachment, a contact's facts, the policy, an extraction run. |
 | `knowledge/service/cases.ts` | 66 | The goldens on the tenant's disk: a retrieval or recall golden's questions, and memory's extraction cases. |
-| `knowledge/service/docs.ts` | 210 | The documents an agent searches: a folder pushed as a base, the bases listed and dropped, a golden held against one, and who reads which. |
-| `knowledge/service/index.ts` | 28 | Knowledge: the documents an agent searches, a contact's memory, the recall and extraction goldens. |
+| `knowledge/service/checkout.ts` | 90 | The folder as a checkout of the base: the base brought back into the folder, and one file taken out of the base. |
+| `knowledge/service/docs.ts` | 222 | The documents an agent searches: a folder pushed as a base, the bases listed and dropped, a golden held against one, and who reads which. |
+| `knowledge/service/index.ts` | 31 | Knowledge: the documents an agent searches, a contact's memory, the recall and extraction goldens. |
 | `knowledge/service/memory.ts` | 81 | One contact's memory and the right to be forgotten, the agent's memory policy, and the recall golden. |
 | `knowledge/service/remember.ts` | 44 | `remember`: memory's extraction cases run through the gateway, one model call each, judged by code. |
 | `knowledge/service/settings.ts` | 3 | The corner of an agent's settings a knowledge write lands on: the agents domain's, below this one. |
@@ -189,21 +190,21 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `evals/commands/dataset.ts` | 272 | `pinecall runs | cases | personas`: the runs the gateway kept, the org's dataset, the agent's simulated callers. |
-| `evals/commands/index.ts` | 99 | `pinecall test | simulate | eval | runs | cases | personas`: the goldens, simulated callers, a call checked again, the runs, the dataset. |
-| `evals/commands/terminal.ts` | 150 | The evals verbs that hold a terminal: a suite drawn as it goes, watched for changes, and a simulation printed as it happens. |
-| `evals/help.ts` | 68 | The prose under each evals verb's `--help`: what the flags cannot say. |
-| `evals/render/index.ts` | 248 | Evals as a terminal reads them: the matrix, progress, runs, cases and groups, personas, a simulation, a replay. |
-| `evals/render/matrix.ts` | 106 | A run as a terminal reads it: one line per golden, details under each that broke, the divergences, the footer. |
-| `evals/render/progress.ts` | 115 | Live progress of a suite on a terminal: the header, a line per golden as it is judged, a bar, redrawn in place. |
-| `evals/service/dataset.ts` | 154 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — and the groups they fall into. |
+| `evals/commands/dataset.ts` | 280 | `pinecall runs \| cases \| personas`: the runs the gateway kept, the org's dataset, the agent's simulated callers. |
+| `evals/commands/index.ts` | 106 | `pinecall test \| simulate \| eval \| runs \| cases \| personas`: the goldens, simulated callers, a call checked again, the runs, the dataset. |
+| `evals/commands/terminal.ts` | 155 | The evals verbs that hold a terminal: a suite drawn as it goes, watched for changes, and a simulation printed as it happens. |
+| `evals/help.ts` | 83 | The prose under each evals verb's `--help`: what the flags cannot say. |
+| `evals/render/index.ts` | 258 | Evals as a terminal reads them: the matrix, progress, runs, cases and groups, personas, a simulation, a replay. |
+| `evals/render/matrix.ts` | 116 | A run as a terminal reads it: one line per golden with where it came from, details under each that broke, the divergences, the footer. |
+| `evals/render/progress.ts` | 117 | Live progress of a suite on a terminal: the header, a line per golden as it is judged, a bar, redrawn in place. |
+| `evals/service/dataset.ts` | 201 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. |
 | `evals/service/goldens.ts` | 103 | Golden files on the tenant's disk and the schema the runner accepts. |
-| `evals/service/index.ts` | 74 | Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. |
+| `evals/service/index.ts` | 80 | Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. |
 | `evals/service/personas.ts` | 233 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, and the file-kept ones pushed once. |
 | `evals/service/replay.ts` | 17 | Ring 3: one finished call rebuilt from its log and answered by the runtime's code checks; nothing re-run, no model asked. |
 | `evals/service/runs.ts` | 253 | The runs the gateway kept: listed, one shown, two diffed, a real call promoted to a candidate, each judge's drift. |
 | `evals/service/simulation.ts` | 230 | One simulated call: a model plays the persona against the agent wherever it is held, written or spoken, judged at hang-up. |
-| `evals/service/suite.ts` | 284 | A golden suite run through the agent wherever it is held, scored by the gateway; its report, latencies and reproductions. |
+| `evals/service/suite.ts` | 308 | A golden suite run through the agent wherever it is held, scored by the gateway; its report, latencies and reproductions. |
 
 ### `hosting/`
 
@@ -276,15 +277,15 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/tool.ts` | 60 | A tool of the MCP server: what a model reads about it, what it takes, and the service it calls. |
 | `mcp/tools/accounts.ts` | 80 | The `login`, `whoami` and `team` tools: the accounts domain, over its service. |
 | `mcp/tools/agents.ts` | 123 | The `agent`, `lexicon`, `pipeline`, `voices` and `voice_sample` tools: the agents domain, over its service. |
-| `mcp/tools/alerts.ts` | 63 | The `monitors`, `webhook` and `telemetry` tools: the alerts domain, over its service. |
+| `mcp/tools/alerts.ts` | 74 | The `monitors`, `webhook`, `alerts` and `telemetry` tools: the alerts domain, over its service. |
 | `mcp/tools/calls.ts` | 146 | The `calls`, `call`, `chat` and `supervise` tools: the calls domain, over its service. |
 | `mcp/tools/dev.ts` | 99 | The tools that hold the agent and look at it: `start`, `stop`, `status`, its `prompt`, and the `console_url`. |
-| `mcp/tools/evals.ts` | 267 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
+| `mcp/tools/evals.ts` | 282 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
 | `mcp/tools/fields.ts` | 22 | The fields many tools take, declared once so every schema says them in the same words. |
 | `mcp/tools/hosting.ts` | 55 | The `deploy` tool: the hosting domain, over its service. |
 | `mcp/tools/index.ts` | 41 | Every tool the MCP server offers, by the stage a person meets it at. |
 | `mcp/tools/judging.ts` | 93 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
-| `mcp/tools/knowledge.ts` | 71 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
+| `mcp/tools/knowledge.ts` | 76 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
 | `mcp/tools/providers.ts` | 13 | The `providers` tool: the providers domain, over its service. |
 | `mcp/tools/runtime.ts` | 155 | The `runtime` tool: the runtime on this machine — what fits it, `pinecall-runtime setup` run from here, what it printed, and stopped. |
 | `mcp/tools/scaffold.ts` | 78 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |

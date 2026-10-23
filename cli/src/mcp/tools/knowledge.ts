@@ -9,9 +9,9 @@ import { AGENT } from "./fields.js";
 
 export const docs = tool({
   name: "docs",
-  description: "The documents the agent searches: a folder pushed as a base, attached to the agent, held to its golden; the org's bases and who reads them.",
+  description: "The documents the agent searches: a folder pushed into a base and pulled back from it, attached to the agent, held to its golden; the org's bases and who reads them.",
   schema: {
-    action: z.enum(["push", "list", "eval", "attach", "detach", "attached"]).describe("push the agent's docs folder as a base; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base"),
+    action: z.enum(["push", "pull", "list", "eval", "attach", "detach", "attached"]).describe("push writes the agent's docs folder into its base, the base's other files kept; pull writes the base into the folder; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base"),
     agent: AGENT,
     base: z.string().optional().describe("the base's name; the agent's own when left out"),
     language: z.string().optional().describe("`push`: the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out"),
@@ -21,11 +21,15 @@ export const docs = tool({
     team: z.boolean().optional().describe("`attach` and `detach`: in the team's settings instead of your own"),
   },
   manual:
-    "`docs push` sends the Markdown under `agents/<agent>/docs/` as a base (replacing it whole: push again after every edit); `attach` makes the agent search it before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. Dropping a base is never a tool: `pinecall docs drop` in a terminal.",
+    "The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.",
   handler: async (args, ctx) => {
     if (args.action === "list") return await service.listBases(ctx);
     if (args.action === "attached") return { attached: render.attachments(await service.listAttached(ctx)) };
     if (args.action === "push") return (await service.pushDocs(ctx, { agent: args.agent, base: args.base, language: args.language }))[0];
+    if (args.action === "pull") {
+      const done = await service.pullDocs(ctx, { agent: args.agent, base: args.base });
+      return { ...done, said: render.pulled(done, ctx.cwd) };
+    }
     if (args.action === "eval") return (await service.evalDocs(ctx, { agent: args.agent, base: args.base, k: args.k }))[0];
     const base = args.base ?? ctx.agent(`docs ${args.action}`, { agent: args.agent }).name;
     if (args.action === "attach") {

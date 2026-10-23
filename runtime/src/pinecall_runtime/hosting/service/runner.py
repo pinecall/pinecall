@@ -67,8 +67,6 @@ class Runner:
     gateway: httpx.AsyncClient
     reports: list[RunnerReport] = field(default_factory=list[RunnerReport])
     logs: list[AppLogs] = field(default_factory=list[AppLogs])
-    # When each host's process exited and was run again, so one that keeps exiting is given up.
-    crashes: dict[str, list[float]] = field(default_factory=dict[str, list[float]])
     # One task per app with steps under way; an app with one is left alone this beat.
     working: dict[str, asyncio.Task[None]] = field(default_factory=dict[str, asyncio.Task[None]])
     # The releases a pod of this env may fetch, by their digest: read off the gateway, checked.
@@ -95,7 +93,7 @@ class Runner:
         # Finished first: a step that ends after the listing would be planned again on a stale one.
         self._finished()
         containers = await self.cluster.pods(wanted.env.value)
-        for label, steps in planned(wanted.apps, containers, self.crashes, now).items():
+        for label, steps in planned(wanted.apps, containers, now).items():
             if label not in self.working:
                 self.working[label] = asyncio.create_task(self._done(wanted.env, steps, now))
         await self._logs_asked_for(wanted.apps, containers)
@@ -131,7 +129,9 @@ class Runner:
                     output = await self.cluster.logs(container.name, LAST_LINES)
                     self._report(app, "failed", why.format(output=_tail(output)))
 
-    async def _started(self, env: Env, app: WantedApp, host: str, release: int) -> None:
+    async def _started(
+        self, env: Env, app: WantedApp, host: str, release: int, *, exits: tuple[float, ...] = ()
+    ) -> None:
         try:
             digest = await self._fetched(app, release)
             environment = await self._environment(app)
@@ -145,6 +145,7 @@ class Runner:
             release=release,
             sha256=digest,
             command=[*START, "--prod"] if env is Env.production else list(START),
+            exits=exits,
         )
         try:
             await self.cluster.start(launch, environment)
@@ -154,16 +155,17 @@ class Runner:
         logger.info("started %s release %d as %s", label_of(app), release, host)
 
     # Its last lines are kept as the app's logs before the pod goes, so the exit is read. Only an
-    # exit of the process's own counts towards giving up; the cluster's evictions never do.
+    # exit of the process's own counts towards giving up; the cluster's evictions never do. The
+    # exits still in the window ride the new pod, so a runner restarted finds them there.
     async def _revived(self, env: Env, app: WantedApp, container: Container, now: float, *, crashed: bool) -> None:
         output = await self.cluster.logs(container.name, SENT_LINES)
         self.logs.append(AppLogs(org=app.org, name=app.name, host=container.name, lines=output))
         how = "exited" if crashed else "was evicted by the cluster"
         logger.warning("%s: %s %s, run again:\n%s", label_of(app), container.name, how, _tail(output))
-        if crashed:
-            self.crashes[container.name] = [*crashes_within(self.crashes.get(container.name, []), now), now]
+        counted = crashes_within(container.exits, now)
+        exits = (*counted, now) if crashed else tuple(counted)
         await self.cluster.stop(container.name, grace_s=0)
-        await self._started(env, app, container.name, container.release)
+        await self._started(env, app, container.name, container.release, exits=exits)
 
     # The wanted release is checked against the digest the gateway kept when it was uploaded; an
     # older one, revived, is the one the gateway still holds under its number.

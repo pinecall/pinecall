@@ -31,7 +31,7 @@ export async function readHere(credentials: Credentials, agent: string): Promise
   return HereSchema.parse(await dev(credentials, agent, "knowledge.roster", { agent }));
 }
 
-/** Push the whole folder; the base is replaced, not merged. */
+/** Push the whole folder by path; the base's other files are kept (the folder is a checkout of the base). */
 export async function pushKnowledge(credentials: Credentials, agent: string, base: string): Promise<Pushed> {
   return PushedSchema.parse(await dev(credentials, agent, "knowledge.push", { agent, ...(base === "" ? {} : { base }) }));
 }

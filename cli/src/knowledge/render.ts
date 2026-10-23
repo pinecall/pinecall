@@ -1,7 +1,9 @@
-/** Knowledge as a terminal reads it: a push, the bases, a score, an attachment, a contact's facts, the policy, an extraction run. */
+/** Knowledge as a terminal reads it: a push, a pull, a file removed, the bases, a score, an attachment, a contact's facts, the policy, an extraction run. */
+
+import { relative } from "node:path";
 
 import { BROKEN, date, HELD } from "../kit/format.js";
-import type { BaseAttached, ContactFact, ContactRemembered, DocsPushed, DocsSkipped, ExtractionRun, Forgotten, KnowledgeList, KnowledgeScore, KnowledgeUses, MemoryScore, Policy } from "./service/index.js";
+import type { BaseAttached, ContactFact, ContactRemembered, DocRemoved, DocsPulled, DocsPushed, DocsSkipped, ExtractionRun, Forgotten, KnowledgeList, KnowledgeScore, KnowledgeUses, MemoryScore, Policy } from "./service/index.js";
 
 export const NO_BASES = "no base pushed yet: pinecall docs push sends agents/<name>/docs/ under the agent's slug";
 export const NOTHING_ATTACHED = "no agent reads a base here: `pinecall docs attach <base>` gives one its base";
@@ -13,13 +15,30 @@ const PLAIN = "\u001b[0m";
 /** A base whose files said no language clearly is stemmed in none: the line says how to say it. */
 const NO_LANGUAGE = "no language counted from the files, so no stemming: say it with --language <code>";
 
-/** One push per line: base, files, chunks, the language its words are stemmed in and time taken; an agent passed over says why. */
+/** A base the gateway keeps only the chunks of: nothing to pull until it is pushed again. */
+const NO_FILES_KEPT = (base: string): string => `${base} holds its chunks and none of its files (pushed before files were kept): push the folder again, and pull brings it back`;
+
+/** One push per line: base, files, the base's files left as they were, chunks, the language its words are stemmed in, time taken, the README that stayed behind; an agent passed over says why. */
 export function pushed(results: (DocsPushed | DocsSkipped)[]): string[] {
   return results.map((one) => {
     if ("skipped" in one) return `${one.agent} · ${one.skipped}`;
     const language = one.language === "simple" ? NO_LANGUAGE : one.language;
-    return `${one.base} · ${one.files} files · ${one.chunks} chunks · ${language} · ${Math.round(one.took_ms)} ms`;
+    const kept = (one.kept ?? 0) > 0 ? ` · ${one.kept} kept` : "";
+    const readme = one.readme_skipped === true ? " · README.md skipped" : "";
+    return `${one.base} · ${one.files} files${kept} · ${one.chunks} chunks · ${language} · ${Math.round(one.took_ms)} ms${readme}`;
   });
+}
+
+/** One line per file of the folder, its path from where the verb was typed: written, unchanged, or the folder's own and kept. */
+export function pulled(done: DocsPulled, cwd: string): string[] {
+  if (done.files.length === 0) return [done.kept ? `${done.base} holds no files` : NO_FILES_KEPT(done.base)];
+  const shown = done.files.map((one) => [relative(cwd, one.file), one.status] as const);
+  const width = Math.max(...shown.map(([path]) => path.length));
+  return shown.map(([path, status]) => `${path.padEnd(width)}  ${status === "kept" ? "not in the base (kept)" : status}`);
+}
+
+export function removed({ base, path }: DocRemoved): string {
+  return `${path} gone from ${base}`;
 }
 
 export function bases(found: KnowledgeList): string[] {

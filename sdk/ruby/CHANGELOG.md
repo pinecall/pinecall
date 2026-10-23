@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`KnowledgePushed.kept`**: the files of the base a push did not name and kept.
+
 ## [0.11.13] — the wire knows `app.failed` (2026-10-23)
 
 - **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by

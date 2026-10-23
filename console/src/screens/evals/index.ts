@@ -2,6 +2,6 @@
 
 export { Evals } from "./evals";
 export { useSuites, type Suite } from "./suites";
-export { readRun, runCases, type EvalRun } from "./door";
+export { readRun, runCases, type EvalRun, type Matrix } from "./door";
 export { finalChecks, readGolden, type Read } from "./golden-words";
 export { StateMark, Transcript } from "./transcript";

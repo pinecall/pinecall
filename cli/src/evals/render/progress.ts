@@ -24,6 +24,8 @@ export interface Watched {
   /** Model names for display: the declared model, or those named. */
   models: string[];
   declaredAs: string;
+  /** The goldens sent from disk, so each judged line can say `file` or `case`. */
+  files?: ReadonlySet<string> | undefined;
 }
 
 /** Header line: agent, golden count, the cases played, models and run id. */
@@ -43,7 +45,7 @@ export function progress(run: EvalRun, watched: Watched, startedAt: number): str
       heading = cell.model;
       lines.push(`  ${cell.model === "declared" ? watched.declaredAs : cell.model}`);
     }
-    lines.push(...cellOf(run, cell, watched.declaredAs));
+    lines.push(...cellOf(run, cell, watched.declaredAs, watched.files));
   }
   const judged = run.matrix?.runs.length ?? 0;
   for (const opened of run.calls.slice(judged)) lines.push(`  ${OPEN} ${opened.golden}  ${opened.call.slice(0, CALL_SHOWN)}…  ${READING}`);

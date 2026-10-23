@@ -81,6 +81,11 @@ export function oneCase(one: EvalCase): string[] {
   ];
 }
 
+/** One line per case written by hand: its name, whose, where it came from, where it stands, and whether only a run naming it plays it. */
+export function casesAdded(added: EvalCase[]): string[] {
+  return added.map((one) => `${one.name} · ${one.agent} · ${one.source ?? "person"} · ${one.status}${one.held_out ? " · held out" : ""}`);
+}
+
 export function caseKept(one: EvalCase): string[] {
   return [`${one.name} kept · ${one.status} · ${one.agent} · from ${one.source_call}`, `  expect  ${JSON.stringify(one.golden.expect ?? {})}`];
 }

@@ -278,7 +278,7 @@ async def test_a_person_writes_a_case_by_hand_writes_it_again_and_never_over_a_c
     assert (written.source, written.status, written.source_call, written.broke) == (
         CaseSource.person,
         CaseStatus.approved,
-        "",
+        None,
         [],
     )
     again = golden.model_copy(update={"expect": Expect.model_validate({"not": ["€", "euros"]})})

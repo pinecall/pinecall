@@ -68,8 +68,8 @@ export function registerRuns(program: Command, ctx: Context): void {
 }
 
 export function registerCases(program: Command, ctx: Context): void {
-  const cases = program.command("cases").description("the org's dataset: real calls kept as cases — read, approve, dismiss, pull into the repository").addHelpText("after", HELP.cases);
-  // The cases live on the gateway: --agent is a slug, from any folder. Only `pull` writes into the project.
+  const cases = program.command("cases").description("the org's dataset: real calls kept as cases — read, approve, dismiss, pull into the repository; a golden written by hand added").addHelpText("after", HELP.cases);
+  // The cases live on the gateway: --agent is a slug, from any folder. Only `pull` writes into the project; `add` reads from it.
   const agentOf = (flags: { agent?: string | undefined }): service.EvalCase["agent"] => ctx.slug("cases", { agent: flags.agent });
   cases
     .command("list", { isDefault: true })
@@ -139,6 +139,14 @@ export function registerCases(program: Command, ctx: Context): void {
       const home = ctx.agent("cases", { agent: flags.agent });
       ctx.io.result(await service.pullCase(ctx, home.name, name, flags.out ?? home.goldens), render.casePulled);
     });
+  cases
+    .command("add")
+    .description("a golden written by hand kept as an approved case, under its name")
+    .argument("<file...>", "JSON files, one golden or a list of them each; never a folder")
+    .option("--name <name>", "the case's name, for one file whose golden has none; its basename when left out")
+    .option("--held-out", "played only when a run names it")
+    .option("--agent <name>")
+    .action(async (files, flags) => ctx.io.result(await service.addCases(ctx, agentOf(flags), service.AddCasesInput.parse({ files, name: flags.name, heldOut: flags.heldOut === true })), render.casesAdded));
   cases
     .command("keep")
     .description("a finished call kept as an approved case, by name")

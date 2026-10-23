@@ -60,7 +60,8 @@ module Pinecall
           base: { kind: :str, required: true },
           chunks: { kind: :int, required: true },
           language: { kind: :str, required: true },
-          took_ms: { kind: :float, required: true }
+          took_ms: { kind: :float, required: true },
+          kept: { kind: :int, required: true }
         }.freeze,
         "KnowledgeList" => {
           bases: { kind: :list, items: { kind: :ref, ref: "KnowledgeBase" }, required: true }

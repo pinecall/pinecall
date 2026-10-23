@@ -2,7 +2,7 @@ $ pinecall cases --help
 Usage: pinecall cases [options] [command]
 
 the org's dataset: real calls kept as cases — read, approve, dismiss, pull into
-the repository
+the repository; a golden written by hand added
 
 Options:
   -h, --help                      display help for command
@@ -27,6 +27,8 @@ Commands:
   forget [options] <name>         a case gone; the call it came from stays
   pull [options] <name>           the case's golden as a file in the agent's
                                   goldens, to keep in the repository
+  add [options] <file...>         a golden written by hand kept as an approved
+                                  case, under its name
   keep [options] <call-id>        a finished call kept as an approved case, by
                                   name
   help [command]                  display help for command
@@ -39,6 +41,11 @@ A case kept at hang-up joins its agent's GROUP for the judge that broke it (grp_
 the judge model for the cause and the smallest fix; apply writes a proposed SETTING as a new
 version of your settings; persona keeps a caller like the group's; approve and dismiss decide a
 whole group. pull writes a case's golden into the repository; keep makes a finished call a case.
+
+add keeps a golden written by hand as an approved case, by its name — the file's, or --name — so the
+nightly plays it from the gateway and `pinecall test` with it. A case names only words: what the caller
+says and what the agent must say or never say. A golden that names a state or a tool is a CODE
+golden and belongs beside the code, in agents/<agent>/test/goldens/, committed with it.
 
 
 $ pinecall cases list --help
@@ -138,6 +145,21 @@ the case's golden as a file in the agent's goldens, to keep in the repository
 
 Options:
   --out <dir>     the agent's goldens folder when left out
+  --agent <name>
+  -h, --help      display help for command
+
+$ pinecall cases add --help
+Usage: pinecall cases add [options] <file...>
+
+a golden written by hand kept as an approved case, under its name
+
+Arguments:
+  file            JSON files, one golden or a list of them each; never a folder
+
+Options:
+  --name <name>   the case's name, for one file whose golden has none; its
+                  basename when left out
+  --held-out      played only when a run names it
   --agent <name>
   -h, --help      display help for command
 

@@ -1,4 +1,4 @@
-/** A run as a terminal reads it: one line per golden, details under each that broke, the divergences, the footer. */
+/** A run as a terminal reads it: one line per golden with where it came from, details under each that broke, the divergences, the footer. */
 
 import { BROKEN, HELD, reasonOf } from "../../judging/render.js";
 import { DECLARED, TURN_METRICS, type Cell, type EvalRun, type Latencies, type Matrix, type Medians, type Score, type SuiteReport } from "../service/index.js";
@@ -13,8 +13,12 @@ export function latencyLine(medians: Medians): string {
     .join(" · ");
 }
 
-/** The report of a run. `declaredAs` is shown in place of the runner's `declared` model. */
-export function matrix(run: EvalRun, latencies: Latencies, declaredAs: string): string[] {
+/**
+ * The report of a run. `declaredAs` is shown in place of the runner's `declared` model. `files`,
+ * the names sent from disk, marks each golden `file` or `case`: a golden the run has that this side
+ * never sent is a case the gateway played from the dataset. Unknown (`runs show`), no mark.
+ */
+export function matrix(run: EvalRun, latencies: Latencies, declaredAs: string, files?: ReadonlySet<string>): string[] {
   const found = run.matrix;
   if (found === null) return [`${run.agent}  ${run.status}${run.error === null ? "" : `: ${run.error}`}`];
   const models = found.models.map((model) => named(model, declaredAs));
@@ -23,7 +27,7 @@ export function matrix(run: EvalRun, latencies: Latencies, declaredAs: string): 
   const compared = found.models.length > 1;
   for (const model of found.models) {
     if (compared) lines.push(`  ${named(model, declaredAs)}`);
-    for (const cell of found.runs.filter((one) => one.model === model)) lines.push(...cellLines(cell, callOf(run, cell), latencies, compared));
+    for (const cell of found.runs.filter((one) => one.model === model)) lines.push(...cellLines(cell, callOf(run, cell), latencies, compared, originOf(cell, files)));
   }
   lines.push(...divergences(found, declaredAs), footer(run, found));
   // A failed run keeps its partial matrix; its error says the count is not complete.
@@ -31,9 +35,9 @@ export function matrix(run: EvalRun, latencies: Latencies, declaredAs: string): 
   return lines;
 }
 
-/** The report with the reproductions written, as `test` and `runs show` print it. */
+/** The report with the reproductions written, as `test` prints it: each golden marked `file` or `case`. */
 export function suite(report: SuiteReport, declaredAs: string): string[] {
-  const lines = matrix(report.run, report.latencies, declaredAs);
+  const lines = matrix(report.run, report.latencies, declaredAs, new Set(report.files));
   if (report.reproductions.length > 0) {
     const folder = report.reproductions[0]!.replace(/\/[^/]*$/, "");
     lines.push(`  ${report.reproductions.length} reproduction${report.reproductions.length === 1 ? "" : "s"} written to ${folder}/`);
@@ -42,22 +46,28 @@ export function suite(report: SuiteReport, declaredAs: string): string[] {
 }
 
 /** One cell's lines, the run narrowed to it: what progress draws as each golden is judged. */
-export function cellOf(run: EvalRun, cell: Cell, declaredAs: string): string[] {
+export function cellOf(run: EvalRun, cell: Cell, declaredAs: string, files?: ReadonlySet<string>): string[] {
   const found = run.matrix!;
   const failures = found.failures.filter((one) => one.golden === cell.golden && one.model === cell.model);
   const narrowed: EvalRun = { ...run, matrix: { ...found, models: [cell.model], goldens: [cell.golden], runs: [cell], failures } };
-  return matrix(narrowed, {}, declaredAs).slice(1, -1);
+  return matrix(narrowed, {}, declaredAs, files).slice(1, -1);
+}
+
+// Where the golden came from, after its name: `file` when this side sent it, `case` otherwise; nothing when nobody knows.
+function originOf(cell: Cell, files: ReadonlySet<string> | undefined): string {
+  if (files === undefined) return "";
+  return files.has(cell.golden) ? "  file" : "  case";
 }
 
 // A passing golden is one line; a failing one adds the turn that cut it, a line per broken metric and the call id.
-function cellLines(cell: Cell, call: string, latencies: Latencies, indented: boolean): string[] {
+function cellLines(cell: Cell, call: string, latencies: Latencies, indented: boolean, origin: string): string[] {
   const pad = indented ? "    " : "  ";
   const broken = cell.scores.filter((score) => !score.passed);
   const measured = latencyLine(latencies[call] ?? {});
-  if (broken.length === 0) return [`${pad}${HELD} ${cell.golden}${measured === "" ? "" : `  ${measured}`}`];
+  if (broken.length === 0) return [`${pad}${HELD} ${cell.golden}${origin}${measured === "" ? "" : `  ${measured}`}`];
   const width = Math.max(...broken.map((score) => score.metric.length), "log".length);
   return [
-    `${pad}${BROKEN} ${cell.golden}`,
+    `${pad}${BROKEN} ${cell.golden}${origin}`,
     ...turnThatBroke(broken).map((turn) => `${pad}      turn ${turn} broke`),
     ...broken.map((score) => `${pad}      ${score.metric.padEnd(width)}  broken   ${reasonOf(score)}`),
     `${pad}      ${"log".padEnd(width)}           ${call}`,

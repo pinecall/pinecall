@@ -1,6 +1,7 @@
-/** The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — and the groups they fall into. */
+/** The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. */
 
 import { mkdir, writeFile } from "node:fs/promises";
+import { basename, extname } from "node:path";
 import { join } from "node:path";
 
 import { z } from "zod";
@@ -8,6 +9,8 @@ import { z } from "zod";
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
+import { readJsonFile } from "../../kit/json-file.js";
+import { isDirectory } from "../../project/layout.js";
 
 export type { CaseGroup, CaseStatus, EvalCase, GeneratedPersonas, Proposal } from "../../api/cases.js";
 
@@ -45,6 +48,17 @@ export const KeepInput = z.object({
 });
 export type KeepInput = z.infer<typeof KeepInput>;
 
+/** What `cases add` takes: the files, one golden or a list each; a name for the one file that has none; whether only a run naming it plays it. */
+export const AddCasesInput = z.object({
+  files: z.array(z.string().min(1)).min(1, "add takes the golden files to keep as cases"),
+  name: z.string().trim().min(1).optional(),
+  heldOut: z.boolean().default(false),
+});
+export type AddCasesInput = z.infer<typeof AddCasesInput>;
+
+/** A golden as a person writes it: the gateway's shape, its name left out when the file's says it. */
+export type WrittenGolden = Omit<api.GoldenShape, "name"> & { name?: string };
+
 /** Whether a name a person typed is a group's id rather than a case's name. */
 export const isGroup = (named: string): boolean => named.startsWith("grp_");
 
@@ -75,6 +89,26 @@ export async function dismissCase(ctx: Context, agent: string, name: string, inp
     ...(input.judgeWasWrong === undefined ? {} : { judge_was_wrong: input.judgeWasWrong }),
     ...(input.note === undefined ? {} : { note: input.note }),
   });
+}
+
+/**
+ * Every golden in the files kept as an approved case of the agent, each under its own name, else
+ * `--name` (one file, one golden), else its file's basename. A folder is refused: a case is one
+ * file a person wrote, never a tree.
+ */
+export async function addCases(ctx: Context, agent: string, input: AddCasesInput): Promise<api.EvalCase[]> {
+  if (input.name !== undefined && input.files.length > 1) throw new UsageError("--name names one case: name one file, or let each golden name itself");
+  const added: api.EvalCase[] = [];
+  for (const file of input.files) {
+    if (isDirectory(file)) throw new UsageError(`${file} is a folder: add takes golden files, one or more, never a folder`);
+    for (const golden of goldensWritten(file, input.name)) added.push(await keepGolden(ctx, agent, golden, input.heldOut));
+  }
+  return added;
+}
+
+/** One golden kept as an approved case of the agent, by its name; the same name again rewrites it. */
+export async function keepGolden(ctx: Context, agent: string, golden: api.GoldenShape, heldOut: boolean): Promise<api.EvalCase> {
+  return whole(await api.writeCase(ctx.gateway(), agent, golden.name, { golden, ...(heldOut ? { held_out: true } : {}) }));
 }
 
 /** A finished call kept as an approved case of the agent that took it. */
@@ -133,6 +167,19 @@ export async function decideGroup(ctx: Context, id: string, approve: boolean, in
     status: approve ? "approved" : "dismissed",
     ...(input.judgeWasWrong === true ? { judge_was_wrong: true } : {}),
     ...(input.note === undefined ? {} : { note: input.note }),
+  });
+}
+
+// A file holds one golden or a list; a list's goldens name themselves, since one basename cannot name two.
+function goldensWritten(file: string, named: string | undefined): api.GoldenShape[] {
+  const read = readJsonFile<WrittenGolden | WrittenGolden[]>("add", file);
+  const written = Array.isArray(read) ? read : [read];
+  if (written.length === 0) throw new UsageError(`${file} holds no golden: a JSON golden, or a list of them`);
+  if (written.length > 1 && named !== undefined) throw new UsageError(`--name names one case, and ${file} holds ${written.length} goldens: let each name itself`);
+  return written.map((one) => {
+    const name = one.name ?? named ?? (written.length === 1 ? basename(file, extname(file)) : undefined);
+    if (name === undefined) throw new UsageError(`a golden in ${file} has no name, and a list's goldens name themselves: add "name" to each`);
+    return { ...one, name };
   });
 }
 

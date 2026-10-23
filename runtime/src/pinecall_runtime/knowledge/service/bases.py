@@ -43,6 +43,14 @@ class Push:
 
 
 @dataclass(frozen=True, slots=True)
+class Written:
+    """What a push left: the language the base speaks, and how many of its files the push did not touch."""
+
+    language: Language
+    kept: int
+
+
+@dataclass(frozen=True, slots=True)
 class SearchQuery:
     """What a search asks: the words, how many chunks at most, and each base with its floor."""
 
@@ -131,27 +139,35 @@ async def get_file(session: AsyncSession, scope: Scope, base: str, path: str) ->
     return found[0] if found else None
 
 
-# A push is sized whole before a row is written: what the org keeps in this env, less the copy
-# it replaces, plus what it was cut into.
-async def admit_push(session: AsyncSession, scope: Scope, push: Push, *, path: str | None) -> None:
-    """Refuse a push that would take the org past its chunks quota."""
+# A push is sized whole before a row is written: what the org keeps in this env, less what the
+# push takes out (the files it names, or the whole base when it replaces it), plus what it was cut into.
+async def admit_push(session: AsyncSession, scope: Scope, push: Push, *, paths: Sequence[str] | None) -> None:
+    """Refuse a push that would take the org past its chunks quota; `paths` are the files it replaces, None the base."""
     repository = KnowledgeRepository(session)
     kept = await repository.chunks_kept_by_org(scope.org, scope.env)
-    replaced = await repository.chunks_in(scope, push.base, path=path)
+    replaced = await repository.chunks_in(scope, push.base, paths=paths)
     await billing.admit_push(session, scope.org, scope.env, keeping=kept - replaced + push.chunks)
 
 
 async def put_base(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Language:
     """Replace the holder's base with the push, only the files whose text changed embedded; the language it speaks."""
-    return await _written(session, embedder, scope, push, keep=[item.path for item in push.files])
+    written = await _written(session, embedder, scope, push, keep=[item.path for item in push.files])
+    return written.language
 
 
-async def put_file(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Language:
-    """Put the push's files beside the base's others, beginning the base when there is none; the language it speaks."""
+# Files put beside others must sit in the space those were embedded in: under another model the
+# base is pushed whole, with replace, and every file is embedded again.
+async def put_files(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Written:
+    """Put the push's files into the base by path, keeping its others and beginning it when there is none."""
     own = await KnowledgeRepository(session).own(scope, push.base)
     if own is not None and own.model != embedder.model:
         raise WrongModel(push.base, own.model, embedder.model)
     return await _written(session, embedder, scope, push, keep=None)
+
+
+async def put_file(session: AsyncSession, embedder: Embedder, scope: Scope, push: Push) -> Language:
+    """Put the push's file beside the base's others, beginning the base when there is none; the language it speaks."""
+    return (await put_files(session, embedder, scope, push)).language
 
 
 async def drop_base(session: AsyncSession, scope: Scope, base: str) -> bool:
@@ -232,7 +248,7 @@ def score_docs(answered: Sequence[Answered], k: int) -> Score:
 # embedded again. The vendor answers before the statement runs, so no connection waits on it.
 async def _written(
     session: AsyncSession, embedder: Embedder, scope: Scope, push: Push, *, keep: list[str] | None
-) -> Language:
+) -> Written:
     repository = KnowledgeRepository(session)
     own = await repository.own(scope, push.base)
     had: Sequence[KnowledgeFile] = ()
@@ -276,7 +292,8 @@ async def _written(
             changed=files,
             chunks=chunks,
         )
-    return language
+    pushed = {item.path for item in push.files}
+    return Written(language=language, kept=0 if keep is not None else sum(file.path not in pushed for file in had))
 
 
 # One file put beside the others speaks the base's language; a folder pushed whole says its own. A

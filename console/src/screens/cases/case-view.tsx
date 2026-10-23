@@ -73,7 +73,7 @@ export function CaseView({ agent, kept, onDecided }: { agent: string; kept: Eval
         ) : (
           <>
             Kept {kept.author === "the hang-up panel" ? "at hang-up" : `by ${kept.author}`}, {dayAndTime(kept.created_at)}, from a{" "}
-            <a href={inTheWorld(kept.source_env, `/calls/${encodeURIComponent(kept.source_call)}`)}>{kept.source_env} call</a>
+            {kept.source_call === null ? `${kept.source_env} call` : <a href={inTheWorld(kept.source_env, `/calls/${encodeURIComponent(kept.source_call)}`)}>{kept.source_env} call</a>}
             {kept.source_version !== null && ` on settings v${kept.source_version}`}.
           </>
         )}

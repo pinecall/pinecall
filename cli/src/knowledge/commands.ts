@@ -10,12 +10,17 @@ import * as render from "./render.js";
 import * as service from "./service/index.js";
 
 const DOCS = `
-push reads every *.md under the directory (agents/<name>/docs/ of the project when none is named) and
-sends the folder whole to the gateway: the base is replaced, never merged. The base is the
-agent's slug unless --base says otherwise. list prints every base this org has pushed in the env
-asked; drop removes one. These are the documents a turn SEARCHES — the RAG. What the agent knows
-by heart is not a document: it is its settings' knowledge (\`pinecall agent knowledge\`), read
-whole on every call.
+The folder is a checkout of the base. push reads every *.md under the directory (agents/<name>/docs/
+of the project when none is named) and writes them into the base by path; a file the base has and
+the folder has not is kept, so a document added in the console survives a push. --replace makes
+the base the folder, as before: what the folder has not is dropped. A README.md at the folder's
+root is never sent — it describes the folder, not the business, and the agent template ships one.
+pull brings the base back into the folder, one line per file: written, unchanged, or the folder's
+own that the base has not (kept, never deleted). rm takes one file out of the base. The base is
+the agent's slug unless --base says otherwise. list prints every base this org has pushed in the
+env asked; drop removes one. These are the documents a turn SEARCHES — the RAG. What the agent
+knows by heart is not a document: it is its settings' knowledge (\`pinecall agent knowledge\`),
+read whole on every call.
 
 attach says an agent reads a base — in your own corner, or the team's with --team, or in
 production with --prod — with how a turn reads it: --k chunks, --mode (retrieved: the platform
@@ -31,7 +36,12 @@ soften a question so a change can pass.
 
 Examples
   $ pinecall docs push
-  clinica-norte · 7 files · 41 chunks · 812 ms      # base · sent · became · took
+  clinica-norte · 7 files · 1 kept · 41 chunks · spanish · 812 ms      # base · sent · left as they were · became · stemmed in · took
+  $ pinecall docs pull
+  agents/clinica-norte/docs/horarios.md  written
+  agents/clinica-norte/docs/precios.md   unchanged
+  $ pinecall docs rm precios.md
+  precios.md gone from clinica-norte
 
   $ pinecall docs attach clinica-norte --k 4
   clinica-norte · clinica-norte attached · your corner v4
@@ -79,17 +89,33 @@ Examples
 export function register(program: Command, ctx: Context): void {
   const docs = program
     .command("docs")
-    .description("the documents the agent searches: pushed as a base, listed, dropped, held to a golden, attached")
+    .description("the documents the agent searches: a folder pushed into a base and pulled back, a file removed, the bases listed, dropped, held to a golden, attached")
     .addHelpText("after", DOCS);
   docs
     .command("push")
-    .description("every *.md under a directory sent as a base, replaced whole")
+    .description("every *.md under a directory written into the base; the base's other files stay")
     .argument("[dir]", "the folder; agents/<name>/docs/ of the agent when left out")
     .option("--base <name>", "the base's name; the agent's slug when left out")
     .option("--language <code>", "the language the files are written in (en, es, pt, fr, de, it, nl); counted from their words when left out")
+    .option("--replace", "the base becomes the folder: a file the folder has not is dropped from the base")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .action(async (dir, flags) => ctx.io.result(await service.pushDocs(ctx, service.PushDocsInput.parse({ dir, ...flags })), render.pushed));
+  docs
+    .command("pull")
+    .description("the base written into the folder, file by file; a file of the folder the base has not is kept")
+    .argument("[dir]", "the folder; agents/<name>/docs/ of the agent when left out")
+    .option("--base <name>", "the base's name; the agent's slug when left out")
+    .option("--agent <name>")
+    .option("--file <agent.tsx>")
+    .action(async (dir, flags) => ctx.io.result(await service.pullDocs(ctx, service.PullDocsInput.parse({ dir, ...flags })), (one) => render.pulled(one, ctx.cwd)));
+  docs
+    .command("rm")
+    .description("one file taken out of the base")
+    .argument("<path>", "the file's path in the base, as push sent it: hours.md, policies/insurance.md")
+    .option("--base <name>", "the base's name; the agent's slug when left out")
+    .option("--agent <slug>")
+    .action(async (path, flags) => ctx.io.result(await service.removeDoc(ctx, service.RemoveDocInput.parse({ path, ...flags })), render.removed));
   docs
     .command("list")
     .description("every base this org pushed in the env")

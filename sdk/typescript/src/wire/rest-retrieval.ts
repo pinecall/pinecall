@@ -38,6 +38,8 @@ export const KnowledgePushedSchema = z.strictObject({
   /** The text-search configuration its words are stemmed with; `simple` (no stemming) when the files said no language clearly. */
   language: z.string(),
   took_ms: z.number(),
+  /** Files of the base the push did not name and kept; 0 when `?replace=true` made the base the folder. */
+  kept: z.int(),
 });
 
 export type KnowledgePushed = z.infer<typeof KnowledgePushedSchema>;

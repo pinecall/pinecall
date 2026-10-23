@@ -22,7 +22,7 @@ from pinecall_runtime.kit.time import now
 from pinecall_runtime.knowledge import schemas
 from pinecall_runtime.knowledge.auth import KnowledgeKey, MemoryKey
 from pinecall_runtime.knowledge.service import bases, extraction, memory
-from pinecall_runtime.knowledge.service.bases import Push, Question
+from pinecall_runtime.knowledge.service.bases import Push, Question, Written
 from pinecall_runtime.knowledge.service.cutter import cut
 from pinecall_runtime.knowledge.service.embedder import NO_EMBEDDER, Embedder, embedder_for
 from pinecall_runtime.knowledge.service.language import language_of
@@ -48,11 +48,18 @@ def _no_such_file(base: str, path: str) -> NotFound:
 # ── knowledge ──
 
 
+# By path: a file of the base the push does not name is kept, so a file the console put stays
+# through `docs push`; `replace` is the folder as the one truth, as a repository's push is.
 @router.put("/v1/knowledge/{base}")
 async def push_base(
-    base: str, body: schemas.KnowledgePush, actor: KnowledgeKey, request: Request, session: Session
+    base: str,
+    body: schemas.KnowledgePush,
+    actor: KnowledgeKey,
+    request: Request,
+    session: Session,
+    replace: Annotated[bool, Query()] = False,
 ) -> schemas.KnowledgePushed:
-    """Replace the base with the folder: cut, embedded where it changed, indexed."""
+    """Put the folder's files into the base, keeping the others; `?replace=true` makes the base the folder."""
     started = time.perf_counter()
     embedder = await _embedder(request, session)
     push = Push(
@@ -61,10 +68,17 @@ async def push_base(
         at=now(),
         language=language_of(body.language),
     )
-    await bases.admit_push(session, actor.scope, push, path=None)
-    language = await bases.put_base(session, embedder, actor.scope, push)
+    await bases.admit_push(session, actor.scope, push, paths=None if replace else [item.path for item in push.files])
+    if replace:
+        written = Written(language=await bases.put_base(session, embedder, actor.scope, push), kept=0)
+    else:
+        written = await bases.put_files(session, embedder, actor.scope, push)
     return schemas.KnowledgePushed(
-        base=base, chunks=push.chunks, language=language, took_ms=(time.perf_counter() - started) * 1000
+        base=base,
+        chunks=push.chunks,
+        kept=written.kept,
+        language=written.language,
+        took_ms=(time.perf_counter() - started) * 1000,
     )
 
 
@@ -135,7 +149,7 @@ async def put_file(
     started = time.perf_counter()
     embedder = await _embedder(request, session)
     push = Push(base=base, files=(cut(path, body.text),), at=now())
-    await bases.admit_push(session, actor.scope, push, path=path)
+    await bases.admit_push(session, actor.scope, push, paths=[path])
     language = await bases.put_file(session, embedder, actor.scope, push)
     return schemas.KnowledgeFilePushed(
         base=base, path=path, chunks=push.chunks, language=language, took_ms=(time.perf_counter() - started) * 1000

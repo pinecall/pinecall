@@ -153,11 +153,11 @@ class KnowledgeRepository(Repository[KnowledgeBase]):
         )
         return int((await self.session.execute(statement)).scalar_one())
 
-    async def chunks_in(self, scope: Scope, base: str, *, path: str | None = None) -> int:
-        """How many chunks the holder's own copy of the base holds, or one file of it."""
+    async def chunks_in(self, scope: Scope, base: str, *, paths: Sequence[str] | None = None) -> int:
+        """How many chunks the holder's own copy of the base holds, or these files of it."""
         statement = select(func.count()).select_from(KnowledgeChunk).where(*_owned_chunks(scope, base))
-        if path is not None:
-            statement = statement.where(KnowledgeChunk.path == path)
+        if paths is not None:
+            statement = statement.where(KnowledgeChunk.path.in_(list(paths)))
         return int((await self.session.execute(statement)).scalar_one())
 
     # One transaction: the base's row, the chunks of what changed or left, the files, the new

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { answer } from "../support/gateway.js";
+import { answer, refuse } from "../support/gateway.js";
 import { SETTINGS } from "../support/fixtures.js";
 import { project } from "../support/project.js";
 import { run } from "../support/run.js";
@@ -16,6 +16,39 @@ describe("pinecall docs", () => {
     const ran = await run(["docs", "push"], { cwd: project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours" }) });
     expect(ran.code).toBe(0);
     expect(ran.out).toBe("front-desk · 1 files · 12 chunks · english · 830 ms\n");
+  });
+
+  it("push says what the base kept and that the README stayed behind, and --replace is the one query", async () => {
+    const sent = answer("put", "/v1/knowledge/:base", { base: "front-desk", chunks: 12, kept: 1, language: "english", took_ms: 830.4 });
+    const cwd = project(["front-desk"], { "agents/front-desk/docs/README.md": "# What goes here", "agents/front-desk/docs/hours.md": "# Hours" });
+    expect((await run(["docs", "push"], { cwd })).out).toBe("front-desk · 1 files · 1 kept · 12 chunks · english · 830 ms · README.md skipped\n");
+    expect(sent[0]!.query).toEqual({});
+    await run(["docs", "push", "--replace"], { cwd });
+    expect(sent[1]!.query).toEqual({ replace: "true" });
+  });
+
+  it("pull prints one line per file, its path from here: written, unchanged, or the folder's own and kept", async () => {
+    answer("get", "/v1/knowledge/:base", { base: "front-desk", kept: true, files: [{ path: "hours.md", chars: 7, chunks: 1, pushed_at: 0 }, { path: "policies/insurance.md", chars: 11, chunks: 1, pushed_at: 0 }] });
+    answer("get", "/v1/knowledge/:base/files/*", ({ path }) => (path.endsWith("hours.md") ? { path: "hours.md", text: "# Hours", chunks: 1, pushed_at: 0 } : { path: "policies/insurance.md", text: "# Insurance", chunks: 1, pushed_at: 0 }));
+    const cwd = project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours", "agents/front-desk/docs/old.md": "# Old" });
+    const ran = await run(["docs", "pull"], { cwd });
+    expect(ran.code).toBe(0);
+    const width = "agents/front-desk/docs/policies/insurance.md".length;
+    expect(ran.out.split("\n")).toEqual([
+      `${"agents/front-desk/docs/hours.md".padEnd(width)}  unchanged`,
+      `${"agents/front-desk/docs/policies/insurance.md".padEnd(width)}  written`,
+      `${"agents/front-desk/docs/old.md".padEnd(width)}  not in the base (kept)`,
+      "",
+    ]);
+  });
+
+  it("rm says the file is gone, and a file the base has not is the gateway's sentence with exit 1", async () => {
+    answer("delete", "/v1/knowledge/:base/files/*");
+    expect((await run(["docs", "rm", "hours.md"])).out).toBe("hours.md gone from front-desk\n");
+    refuse("delete", "/v1/knowledge/:base/files/*", 404, "no file prices.md in the base front-desk");
+    const ran = await run(["docs", "rm", "prices.md"]);
+    expect(ran.code).toBe(1);
+    expect(ran.err).toContain("no file prices.md in the base front-desk");
   });
 
   it("eval exits 1 on a miss, and names the question and what came back", async () => {

@@ -27,7 +27,8 @@ function refuseUnlessHeld(ended: Ended[]): void {
 
 // Every agent of the project with goldens, or the one named; with paths, those goldens of one agent.
 export async function test(ctx: Context, paths: string[], choice: { file?: string | undefined; agent?: string | undefined; grep?: string | undefined; watch: boolean }, input: service.SuiteInput): Promise<void> {
-  const onlyCases = service.playsCases(input) && paths.length === 0;
+  // Cases alone: `--dataset` or `--case` with no paths and no `--files`.
+  const onlyCases = !input.files;
   if (onlyCases && choice.watch) throw new UsageError("--watch runs again when a golden file changes, and a run of cases alone reads none: name the goldens to watch beside --case or --dataset");
   const homes = ctx.agents({ file: choice.file, agent: choice.agent });
   if (homes.length > 1) {
@@ -36,18 +37,20 @@ export async function test(ctx: Context, paths: string[], choice: { file?: strin
     }
     const ended: Ended[] = [];
     for (const home of homes) {
-      if (!onlyCases && !isDirectory(home.goldens)) {
+      // An agent with no goldens folder still plays its approved cases when the dataset is on.
+      const read = !onlyCases && isDirectory(home.goldens) ? [home.goldens] : [];
+      if (read.length === 0 && !service.playsCases(input)) {
         ctx.io.print(`${home.name} · no goldens at ${home.goldens}`);
         continue;
       }
-      ended.push(await suiteAtTheTerminal(ctx, home.name, onlyCases ? [] : [home.goldens], choice.grep, input));
+      ended.push(await suiteAtTheTerminal(ctx, home.name, read, choice.grep, input));
     }
     refuseUnlessHeld(ended);
     return;
   }
   const home = homes[0]!;
   const read = paths.length > 0 ? paths.map((path) => service.goldenPath(path, home.goldens)) : onlyCases ? [] : [home.goldens];
-  if (paths.length === 0 && !onlyCases && !existsSync(home.goldens)) throw new UsageError(`no goldens at ${home.goldens}: write one, or name the file or directory to run`);
+  if (paths.length === 0 && !onlyCases && !existsSync(home.goldens)) throw new UsageError(`no goldens at ${home.goldens}: write one, or name the file or directory to run; --dataset plays the approved cases alone`);
   const one = await suiteAtTheTerminal(ctx, home.name, read, choice.grep, input);
   if (!choice.watch) {
     refuseUnlessHeld([one]);
@@ -73,15 +76,17 @@ export async function test(ctx: Context, paths: string[], choice: { file?: strin
 
 // The suite drawn as it goes on a terminal, its header alone otherwise; the report or its JSON at the end.
 async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], grep: string | undefined, input: service.SuiteInput): Promise<Ended> {
-  // No paths is no goldens: reading test/goldens is the caller's choice, made above.
+  // No paths is no goldens: reading test/goldens is the caller's choice, made above. Paths that
+  // matched nothing are refused even when cases play: the files were asked for.
   const goldens = paths.length === 0 ? [] : service.matching(await service.goldensIn(paths), grep);
-  if (goldens.length === 0 && !service.playsCases(input)) throw new UsageError(`no golden matched${grep === undefined ? "" : ` --grep ${grep}`}`);
+  if (goldens.length === 0 && (paths.length > 0 || !service.playsCases(input))) throw new UsageError(`no golden matched${grep === undefined ? "" : ` --grep ${grep}`}`);
   const watched: render.Watched = {
     agent,
     goldens: goldens.length,
     cases: input.dataset ? "dataset" : input.cases?.length,
     models: input.models.length > 0 ? input.models : [service.DECLARED_AS],
     declaredAs: service.DECLARED_AS,
+    files: new Set(goldens.map((one) => one.name)),
   };
   const startedAt = Date.now();
   const live = ctx.io.tty && !ctx.io.json;

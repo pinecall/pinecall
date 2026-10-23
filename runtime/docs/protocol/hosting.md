@@ -111,8 +111,8 @@ restarts in 10 minutes and is not run again`), and the app answers nothing until
 or secret makes a new host, or a person's `deploy start` forgives it. What the cluster does to the
 pod is never held against the process: a pod being deleted (a node drained, an upgrade, `kubectl
 delete`) is waited out and started again under the same name once it is gone, and a pod the
-cluster evicted (memory or disk pressure) is run again at once; neither counts as an exit. The count
-is the runner's own memory: a runner restarted starts counting afresh. A host that never went live
+cluster evicted (memory or disk pressure) is run again at once; neither counts as an exit. The exits
+ride the pod itself (an annotation, `pinecall.io/exits`), so a runner restarted counts on. A host that never went live
 and exits is failed at once: a release that does not start is not tried again.
 
 A host is one pod: its first container fetches the release's sources from the runner of its environment

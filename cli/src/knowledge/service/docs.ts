@@ -17,13 +17,18 @@ const DOCS_QUESTION = "{asks, expects}";
 
 export const NO_DIRECTORY = (directory: string): string => `no documents directory at ${directory}`;
 export const NO_MARKDOWN = (directory: string): string => `no *.md under ${directory}: nothing to push`;
+export const ONLY_README = (directory: string): string => `only README.md under ${directory}: a README describes the folder, not the business — nothing to push`;
+
+/** The one file at a folder's root a push never sends: it describes the folder, and the agent template ships one. */
+export const README = "README.md";
 export const NOT_ATTACHED = (agent: string, base: string): string => `${base} is not attached to ${agent}`;
 
-/** What `docs push` takes: a folder and a base, or the agent whose `agents/<name>/docs/` and slug they default to. */
+/** What `docs push` takes: a folder and a base, or the agent whose `agents/<name>/docs/` and slug they default to; `replace` makes the base the folder. */
 export const PushDocsInput = z.object({
   dir: z.string().min(1).optional(),
   base: z.string().min(1).optional(),
   language: z.string().min(1).optional(),
+  replace: z.boolean().optional(),
   agent: z.string().min(1).optional(),
   file: z.string().min(1).optional(),
 });
@@ -60,10 +65,11 @@ export const DetachBaseInput = z.object({
 });
 export type DetachBaseInput = z.infer<typeof DetachBaseInput>;
 
-/** One base pushed: what the gateway answered, plus how many files were sent and, in a project-wide push, whose. */
+/** One base pushed: what the gateway answered, how many files were sent, whether the folder's README stayed behind and, in a project-wide push, whose. */
 export interface DocsPushed extends api.KnowledgePushed {
   agent?: string;
   files: number;
+  readme_skipped?: true;
 }
 
 /** An agent a project-wide `push` or `eval` passed over, and why. */
@@ -81,23 +87,25 @@ export interface BaseAttached {
 }
 
 /**
- * Push a folder of Markdown as a base. With nothing named, at a project's root, every agent that
- * has a `agents/<name>/docs/` folder is pushed under its slug and the rest are named.
+ * Push a folder of Markdown into a base: its files written by path, the base's other files kept,
+ * or the base made the folder with `replace`. With nothing named, at a project's root, every agent
+ * that has a `agents/<name>/docs/` folder is pushed under its slug and the rest are named.
  */
 export async function pushDocs(ctx: Context, input: PushDocsInput): Promise<(DocsPushed | DocsSkipped)[]> {
+  const how = { language: input.language, replace: input.replace === true };
   const typed = input.dir !== undefined || input.base !== undefined;
   if (!typed) {
     const homes = ctx.agents({ file: input.file, agent: input.agent });
     if (homes.length > 1) {
       return Promise.all(
-        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, input.language, home.name) : { agent: home.name, skipped: `no documents at ${home.docs}` })),
+        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, how, home.name) : { agent: home.name, skipped: `no documents at ${home.docs}` })),
       );
     }
     const home = homes[0]!;
-    return [await pushOne(ctx, home.docs, home.name, input.language)];
+    return [await pushOne(ctx, home.docs, home.name, how)];
   }
   const home = input.dir !== undefined && input.base !== undefined ? undefined : ctx.agent("docs push", { file: input.file, agent: input.agent });
-  return [await pushOne(ctx, input.dir ?? home!.docs, input.base ?? home!.name, input.language)];
+  return [await pushOne(ctx, input.dir ?? home!.docs, input.base ?? home!.name, how)];
 }
 
 export async function listBases(ctx: Context): Promise<api.KnowledgeList> {
@@ -193,13 +201,16 @@ export function kReadWith(answer: api.TuningAnswer | null, base: string): number
   return (corner?.config.bases ?? []).find((one) => one.base === base)?.k ?? undefined;
 }
 
-async function pushOne(ctx: Context, dir: string, base: string, language: string | undefined, agent?: string): Promise<DocsPushed> {
+// The README at the folder's root stays behind: it describes the folder, not the business.
+async function pushOne(ctx: Context, dir: string, base: string, how: { language: string | undefined; replace: boolean }, agent?: string): Promise<DocsPushed> {
   const directory = resolve(dir);
   if (!isDirectory(directory)) throw new UsageError(NO_DIRECTORY(directory));
-  const files = markdownUnder(directory);
-  if (files.length === 0) throw new UsageError(NO_MARKDOWN(directory));
-  const pushed = await api.pushBase(ctx.gateway(), base, files, language);
-  return { ...(agent === undefined ? {} : { agent }), ...pushed, files: files.length };
+  const found = markdownUnder(directory);
+  if (found.length === 0) throw new UsageError(NO_MARKDOWN(directory));
+  const files = found.filter((one) => one.path !== README);
+  if (files.length === 0) throw new UsageError(ONLY_README(directory));
+  const pushed = await api.pushBase(ctx.gateway(), base, files, how.language, how.replace);
+  return { ...(agent === undefined ? {} : { agent }), ...pushed, files: files.length, ...(files.length === found.length ? {} : { readme_skipped: true as const }) };
 }
 
 // `home` is the agent whose attachment supplies k when none was typed; a golden and a base both

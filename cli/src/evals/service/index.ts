@@ -4,6 +4,8 @@ export type { CallScore, Cell, EvalRun, Matrix, Score } from "../../api/evals.js
 export { goldenPath, goldensIn, goldensInFolder, matching, type Expect, type Golden, type Turn } from "./goldens.js";
 export {
   A_NOTE_ALONE,
+  AddCasesInput,
+  addCases,
   applyFix,
   approveCase,
   decideGroup,
@@ -15,6 +17,7 @@ export {
   isGroup,
   KeepInput,
   keepCall,
+  keepGolden,
   listCases,
   listGroups,
   personaOfGroup,
@@ -28,6 +31,7 @@ export {
   type EvalCase,
   type Proposal,
   type Pulled,
+  type WrittenGolden,
 } from "./dataset.js";
 export {
   dropPersona,
@@ -69,6 +73,8 @@ export {
   type Medians,
   getRun,
   runSuite,
+  type PlayAsked,
   type SuiteListeners,
   type SuiteReport,
+  whatPlays,
 } from "./suite.js";

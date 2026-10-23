@@ -3,7 +3,7 @@
 import type { Tool } from "../tool.js";
 import { login, team, whoami } from "./accounts.js";
 import { agent, lexicon, pipeline, voiceSample, voices } from "./agents.js";
-import { monitors, telemetry, webhook } from "./alerts.js";
+import { alerts, monitors, telemetry, webhook } from "./alerts.js";
 import { call, calls, chat, supervise } from "./calls.js";
 import { consoleUrl, prompt, start, status, stop } from "./dev.js";
 import { cases, evalTool, personas, runs, simulate, test } from "./evals.js";
@@ -29,7 +29,7 @@ export const STAGES: readonly Stage[] = [
   { stage: "Getting started", page: "getting-started", tools: [whoami, login, project, runtime, team] },
   { stage: "Holding the agent, and talking to it", page: "holding-and-talking", tools: [start, stop, status, chat, prompt, consoleUrl] },
   { stage: "The agent's settings", page: "settings", tools: [agent, lexicon, voices, voiceSample] },
-  { stage: "Calls, and what they run on", page: "calls", tools: [calls, call, pipeline, providers, telemetry, monitors, webhook, usage] },
+  { stage: "Calls, and what they run on", page: "calls", tools: [calls, call, pipeline, providers, telemetry, monitors, webhook, alerts, usage] },
   { stage: "The phone", page: "phone", tools: [line, numbers, carriers, callbacks] },
   { stage: "Supervising a live call", page: "supervising", tools: [supervise] },
   { stage: "Testing", page: "testing", tools: [test, runs, cases, simulate, personas, judges, judging, evalTool] },

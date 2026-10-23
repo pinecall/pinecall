@@ -1,6 +1,6 @@
 """What a runner does this beat: decided from what the gateway wants and what the cluster has."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from pinecall_runtime.hosting.schemas import WantedApp
@@ -10,7 +10,9 @@ from pinecall_runtime.hosting.service.cluster import Container
 REGISTERS_WITHIN_S = 120.0
 # A host that served and whose process exits on its own is run again, this many times in this
 # long; past it the release is failed, and said so. A pod the cluster took (a node drained, an
-# eviction, a delete) is run again too, and never counted: it was not the process's doing.
+# eviction, a delete) is run again too, and never counted: it was not the process's doing. The exits
+# ride the pod itself (its `pinecall.io/exits` annotation, `Container.exits`), so a runner restarted
+# counts on where the last one left off.
 MOST_CRASHES = 5
 CRASH_WINDOW_S = 600.0
 
@@ -80,14 +82,12 @@ def crashes_within(times: Sequence[float], now: float) -> list[float]:
 
 # Numbers in, steps out: nothing here touches the cluster or the gateway. The steps of one app are
 # in the order they are to be done, and two apps' steps never depend on each other.
-def planned(
-    wanted: Sequence[WantedApp], containers: Sequence[Container], crashes: Mapping[str, Sequence[float]], now: float
-) -> dict[str, list[Step]]:
+def planned(wanted: Sequence[WantedApp], containers: Sequence[Container], now: float) -> dict[str, list[Step]]:
     """This beat's steps per app label; an app with nothing to do is not in it."""
     steps: dict[str, list[Step]] = {}
     for app in wanted:
         ours = [each for each in containers if each.app == label_of(app)]
-        steps[label_of(app)] = _of_one(app, ours, crashes, now)
+        steps[label_of(app)] = _of_one(app, ours, now)
     labels = {label_of(app) for app in wanted}
     for container in containers:
         if container.app not in labels:
@@ -97,9 +97,7 @@ def planned(
 
 # The host that last went live serves until the one wanted registers, whatever becomes of the
 # one wanted; every other container of the app, and a host that failed, is removed.
-def _of_one(
-    app: WantedApp, ours: Sequence[Container], crashes: Mapping[str, Sequence[float]], now: float
-) -> list[Step]:
+def _of_one(app: WantedApp, ours: Sequence[Container], now: float) -> list[Step]:
     by_name = {each.name: each for each in ours}
     wanted = by_name.get(app.host)
     keep = {app.host, app.live_host}
@@ -112,7 +110,7 @@ def _of_one(
         # On its way out: once gone it is started again under the same name, with nothing counted.
         pass
     elif wanted.has_exited:
-        steps.append(_exited(app, wanted, crashes, now))
+        steps.append(_exited(app, wanted, now))
     elif app.registered and app.live_host != app.host:
         steps.append(WentLive(app))
     elif not app.registered and _never_served_in_time(app, wanted, now):
@@ -121,7 +119,7 @@ def _of_one(
         keep = {app.host}
     before = by_name.get(app.live_host or "")
     if before is not None and before.name != app.host and before.has_exited and not before.deleting:
-        if before.name in keep and (before.evicted or _may_run_again(before, crashes, now)):
+        if before.name in keep and (before.evicted or _may_run_again(before, now)):
             steps.append(Revive(app, before, crashed=before.crashed))
         else:
             keep.discard(before.name)
@@ -131,18 +129,18 @@ def _of_one(
 
 # One that never served is a release that does not work: failed at once. One that served is run
 # again, until it has exited on its own too often to be worth another try; an eviction is not its own.
-def _exited(app: WantedApp, container: Container, crashes: Mapping[str, Sequence[float]], now: float) -> Step:
+def _exited(app: WantedApp, container: Container, now: float) -> Step:
     if container.name != app.live_host:
         return Failed(app, EXITED, container)
     if container.evicted:
         return Revive(app, container, crashed=False)
-    if not _may_run_again(container, crashes, now):
+    if not _may_run_again(container, now):
         return Failed(app, KEEPS_EXITING, container)
     return Revive(app, container)
 
 
-def _may_run_again(container: Container, crashes: Mapping[str, Sequence[float]], now: float) -> bool:
-    return len(crashes_within(crashes.get(container.name, ()), now)) < MOST_CRASHES
+def _may_run_again(container: Container, now: float) -> bool:
+    return len(crashes_within(container.exits, now)) < MOST_CRASHES
 
 
 # A host that served and is not registered this beat is between two sockets: left alone.

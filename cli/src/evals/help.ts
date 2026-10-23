@@ -5,8 +5,13 @@ export const HELP = {
 Ring 1: every golden through the agent whoever holds it — your \`pinecall start\`, a colleague's,
 production's with --prod; nothing is started here — scored by the gateway's judges, printed as a
 matrix. Exits 1 when a golden did not hold, and writes every broken one to .pinecall/evals/<run>/
-with the requests the model answered. With --case or --dataset and no paths, only the cases are
-played; cases play in the sandbox only.
+with the requests the model answered.
+
+With nothing said, the golden FILES of agents/<name>/test/goldens/ and the approved DATASET both
+play — the cases a person approved on the gateway, not held out and not kept in the repository —
+and each line of the matrix says where its golden came from: file, or case. --files plays the
+files alone; --dataset the dataset alone; --case <name> the cases named alone, whatever their
+status, and with paths or --files beside them, both. Cases play in the sandbox only.
 
 Whose settings a run plays on is the key's: from a laptop, YOUR corner of the sandbox; in CI, a
 sandbox server token, the TEAM's. A settings fix only you have is green at your desk and red in CI
@@ -14,6 +19,7 @@ until \`pinecall agent push --team\` gives it to the team.
 
 Examples
   $ pinecall test --grep reserva
+  $ pinecall test --files
   $ pinecall test --voice --background-noise 15 --ambience cafe
   $ pinecall test --case promises-youll-call-me-tomorrow-29d7c7
 `,
@@ -56,6 +62,11 @@ A case kept at hang-up joins its agent's GROUP for the judge that broke it (grp_
 the judge model for the cause and the smallest fix; apply writes a proposed SETTING as a new
 version of your settings; persona keeps a caller like the group's; approve and dismiss decide a
 whole group. pull writes a case's golden into the repository; keep makes a finished call a case.
+
+add keeps a golden written by hand as an approved case, by its name — the file's, or --name — so the
+nightly plays it from the gateway and \`pinecall test\` with it. A case names only words: what the caller
+says and what the agent must say or never say. A golden that names a state or a tool is a CODE
+golden and belongs beside the code, in agents/<agent>/test/goldens/, committed with it.
 `,
   personas: `
 A persona is a caller a model plays: a goal, a style, the facts they may state about themselves,

@@ -258,7 +258,8 @@ class CaseRow(Row):
     agent: str
     name: str
     golden: Golden
-    source_call: str
+    # The call the case was kept from; None for a case a person wrote, which no call made.
+    source_call: str | None
     source_env: Env
     held_out: bool
     author: str

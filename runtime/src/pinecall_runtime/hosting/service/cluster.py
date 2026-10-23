@@ -21,6 +21,9 @@ ENV_LABEL = "pinecall.io/world"
 # A label's value takes no `/`: the app is its stamp in the label, its name in an annotation.
 APP_LABEL = "pinecall.io/app"
 APP_ANNOTATION = "pinecall.io/app"
+# When the process this pod continues exited on its own, within the window: epoch seconds, comma-
+# separated. The pod carries its own count, so a runner restarted counts on where it left off.
+EXITS_ANNOTATION = "pinecall.io/exits"
 RELEASE_LABEL = "pinecall.io/release"
 # The spike's measure (72 MB an idle agent under gVisor) with room for a tool's burst.
 MEMORY = "256Mi"
@@ -102,6 +105,8 @@ class Container:
     deleting: bool = False
     # The cluster threw the pod off its node (memory or disk pressure) and left it there, Failed.
     evicted: bool = False
+    # When the process this pod continues exited on its own before it, read off its annotation.
+    exits: tuple[float, ...] = ()
 
     @property
     def has_exited(self) -> bool:
@@ -124,6 +129,8 @@ class Launch:
     release: int
     sha256: str
     command: Sequence[str]
+    # The exits of the process this host continues, written on its pod for the next runner to read.
+    exits: tuple[float, ...] = ()
 
 
 class _Read(BaseModel):
@@ -286,13 +293,16 @@ def environment_secret(host: str, environment: Mapping[str, str]) -> JsonObject:
 def pod(engine: Engine, launch: Launch) -> JsonObject:
     """One host: gVisor, no token, public resolvers, installed by its first container, then run."""
     source = f"{engine.sources_url.rstrip('/')}/sources/{launch.sha256}"
+    annotations = {APP_ANNOTATION: launch.app}
+    if launch.exits:
+        annotations[EXITS_ANNOTATION] = ",".join(str(at) for at in launch.exits)
     return {
         "apiVersion": "v1",
         "kind": "Pod",
         "metadata": {
             "name": launch.host,
             "labels": {APP_LABEL: app_stamp(launch.app), ENV_LABEL: launch.env, RELEASE_LABEL: str(launch.release)},
-            "annotations": {APP_ANNOTATION: launch.app},
+            "annotations": annotations,
         },
         "spec": {
             "runtimeClassName": engine.runtime_class,
@@ -383,6 +393,7 @@ def containers_in(items: list[Json]) -> list[Container]:
                 started_at=started,
                 deleting=item.metadata.deletion is not None,
                 evicted=item.status.reason == EVICTED,
+                exits=_exits_in(item.metadata.annotations.get(EXITS_ANNOTATION, "")),
             )
         )
     return found
@@ -391,6 +402,14 @@ def containers_in(items: list[Json]) -> list[Container]:
 def _secret_of(host: str) -> str:
     """The secret a host's environment is kept in."""
     return f"{host}-env"
+
+
+# A stray or edited annotation reads as no exits at all: the runner never dies on a pod's metadata.
+def _exits_in(annotation: str) -> tuple[float, ...]:
+    try:
+        return tuple(float(each) for each in annotation.split(",") if each.strip())
+    except ValueError:
+        return ()
 
 
 # What every container of an org's code runs under: no privilege, no root, nothing writable but
