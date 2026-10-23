@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **The operator hears every org's alerts.** `pinecall-runtime box alerts set <url> [--secret]`
+  names a URL every alert is posted to beside the org's own, the same body; `show` and `rm`. An
+  org that named no webhook still reaches the operator: a tenant's app down 23 hours on 2026-10-23
+  would have.
+- **The runner does not hold the cluster's hand against an app.** A pod being deleted (a node
+  drained, an upgrade, `kubectl delete`) is waited out and started again under the same name; a pod
+  the cluster evicted is run again at once; neither counts as one of the five exits in ten minutes
+  that make the runner give up. Before, five node moves in ten minutes failed a healthy app.
+- **A host given up on serves no more, and `deploy start` forgives it.** `live_release` is null once
+  the runner stopped the host that served, where `deploy list` kept saying it was live; and a stopped
+  app started again has its failure forgiven, where before only a new release or a secret brought it
+  back.
+- **A failure's first line says it whole.** `the process exited again after 5 restarts in 10 minutes
+  and is not run again`, then the process's last lines; it used to end in a colon and count one short.
+
 ## 0.11.13 — An app that goes down says so (2026-10-23)
 
 - **An app that goes down says so.** The first time the runner reports a host of a hosted app

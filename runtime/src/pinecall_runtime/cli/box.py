@@ -1,9 +1,10 @@
-"""`box`: the vendor keys it lends, the Twilio account it buys numbers on, and what a newborn org is given."""
+"""`box`: the vendor keys it lends, its Twilio account, what a newborn org is given, where its orgs' alerts reach it."""
 
 from typing import Annotated
 
 import typer
 
+from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.cli.command import OK, context_of, verb
 from pinecall_runtime.cli.limits import lends_of
@@ -14,13 +15,15 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.telephony import schemas as telephony_schemas
 from pinecall_runtime.telephony import service as telephony
 
-app = typer.Typer(help="its keys, its Twilio, what a new org gets", no_args_is_help=True)
+app = typer.Typer(help="its keys, its Twilio, what a new org gets, where its alerts reach it", no_args_is_help=True)
 keys_app = typer.Typer(help="the vendor keys the box holds; never shown", no_args_is_help=True)
 account_app = typer.Typer(help="the Twilio account the box buys numbers on for its orgs", no_args_is_help=True)
 admission_app = typer.Typer(help="what a newborn org is given, per env", no_args_is_help=True)
+alerts_app = typer.Typer(help="the operator's URL, where every org's alerts are posted too", no_args_is_help=True)
 app.add_typer(keys_app, name="keys")
 app.add_typer(account_app, name="numbers-account")
 app.add_typer(admission_app, name="admission")
+app.add_typer(alerts_app, name="alerts")
 
 # The account the box buys numbers on is sealed beside the keys and is no vendor of a call.
 NUMBERS_ACCOUNT = "twilio"
@@ -179,4 +182,50 @@ async def admission_set(
         )
         await billing.set_admission(session, changed)
     context.out.data(changed)
+    return OK
+
+
+# ── where the operator hears every org's alerts ──
+
+REACHES = "every org's alerts reach the operator at {url} · {signed}"
+A_SECRET = "the signing secret, from stdin"
+
+
+@alerts_app.command("show")
+@verb
+async def box_alerts_show(ctx: typer.Context) -> int:
+    """Where every org's alerts are posted for the operator, and whether the posts are signed."""
+    context = context_of(ctx)
+    async with context.sessions() as session:
+        found = await alerts.operator_webhook_of(session, context.vault)
+    if found is None:
+        raise NotFound(alerts.THE_OPERATOR_HEARS_NOTHING)
+    context.out.line(REACHES.format(url=found.url, signed="signed" if found.secret else "unsigned"))
+    return OK
+
+
+# The same post an org's own webhook gets, org and env in it; --secret reads the signing secret
+# from stdin, since argv is what `ps` shows.
+@alerts_app.command("set")
+@verb
+async def box_alerts_set(
+    ctx: typer.Context, url: str, secret: Annotated[bool, typer.Option("--secret", help=A_SECRET)] = False
+) -> int:
+    """Post every org's alerts to this URL too, from the next alert on."""
+    context = context_of(ctx)
+    webhook = alerts.Webhook(url=url, secret=read_secret_line() if secret else None)
+    async with context.sessions.begin() as session:
+        await alerts.put_operator_webhook(session, context.vault, webhook)
+    context.out.line(REACHES.format(url=webhook.url, signed="signed" if secret else "unsigned"))
+    return OK
+
+
+@alerts_app.command("rm")
+@verb
+async def box_alerts_rm(ctx: typer.Context) -> int:
+    """Stop posting the orgs' alerts to the operator; each org's own webhook goes on."""
+    context = context_of(ctx)
+    async with context.sessions.begin() as session:
+        await alerts.delete_operator_webhook(session)
+    context.out.line("the operator hears no alert: each org's own webhook goes on")
     return OK

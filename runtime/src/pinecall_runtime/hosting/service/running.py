@@ -34,7 +34,7 @@ async def stop_app(session: AsyncSession, app: App, *, by: str) -> None:
 
 
 async def start_app(session: AsyncSession, app: App) -> None:
-    """Run a stopped app again, its newest release."""
+    """Run a stopped app again, its newest release; a host the runner gave up on is forgiven and tried again."""
     if not await HostedAppRepository(session).start(app.org, app.env, app.name):
         raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
 

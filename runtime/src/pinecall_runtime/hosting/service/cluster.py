@@ -58,6 +58,8 @@ CLI_HOME = "/opt/pinecall"
 SERVICE_ACCOUNT = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 # What a pod whose process is over is in; a pod still installing or starting has not exited.
 ENDED = frozenset({"Succeeded", "Failed"})
+# The reason a pod the cluster threw off its node carries; it stays listed, Failed, until deleted.
+EVICTED = "Evicted"
 A_VARIABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # The release's sources, fetched from this env's runner by their digest, then its dependencies
@@ -96,11 +98,20 @@ class Container:
     release: int
     state: str
     started_at: float
+    # The cluster is taking the pod away (a node drained, `kubectl delete`): it exits by no fault of its own.
+    deleting: bool = False
+    # The cluster threw the pod off its node (memory or disk pressure) and left it there, Failed.
+    evicted: bool = False
 
     @property
     def has_exited(self) -> bool:
         """Whether its process ended; one still installing or starting has not."""
         return self.state in ENDED
+
+    @property
+    def crashed(self) -> bool:
+        """Whether its process ended on its own: not taken, not evicted."""
+        return self.has_exited and not self.deleting and not self.evicted
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +147,8 @@ class _ContainerStatus(_Read):
 
 class _Status(_Read):
     phase: str = "Pending"
+    # Why the pod is in its phase when the cluster put it there: "Evicted" is the one read.
+    reason: str | None = None
     containers: list[_ContainerStatus] = Field(default_factory=list[_ContainerStatus], alias="containerStatuses")
 
 
@@ -144,6 +157,8 @@ class _Metadata(_Read):
     labels: dict[str, str] = Field(default_factory=dict[str, str])
     annotations: dict[str, str] = Field(default_factory=dict[str, str])
     created: str = Field("", alias="creationTimestamp")
+    # Set the moment a delete or an eviction is asked; the pod is on its way out from then on.
+    deletion: str | None = Field(None, alias="deletionTimestamp")
 
 
 class _Pod(_Read):
@@ -366,6 +381,8 @@ def containers_in(items: list[Json]) -> list[Container]:
                 release=int(item.metadata.labels.get(RELEASE_LABEL, "0") or 0),
                 state=item.status.phase,
                 started_at=started,
+                deleting=item.metadata.deletion is not None,
+                evicted=item.status.reason == EVICTED,
             )
         )
     return found

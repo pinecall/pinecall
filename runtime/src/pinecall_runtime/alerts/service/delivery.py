@@ -1,4 +1,4 @@
-"""An alert of the org's: written on the agent's log, then posted to the org's webhook when it has one."""
+"""An alert of the org's: written on the agent's log, then posted to the org's webhook and the operator's."""
 
 import hashlib
 import hmac
@@ -9,7 +9,7 @@ from typing import Protocol
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.alerts.service.webhooks import Webhook, webhook_of
+from pinecall_runtime.alerts.service.webhooks import Webhook, operator_webhook_of, webhook_of
 from pinecall_runtime.exceptions import QuotaExceeded
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.handles import Handles
@@ -58,16 +58,18 @@ class Logs(Protocol):
 async def raise_alert(
     session: AsyncSession, handles: Handles, logs: Logs, scope: Scope, agent: str | None, alert: WireModel
 ) -> None:
-    """Write the alert on the agent's log, when it is one agent's; post it to the org's webhook when it set one."""
+    """Write the alert on the agent's log, when it is one agent's; post it to the org's webhook and the operator's."""
     kind, data = KIND_OF[type(alert)], alert.dump()
     if agent is not None:
         await logs.agent(agent).append(kind, data)
-    webhook = await webhook_of(session, handles.vault, scope.org)
-    if webhook is None:
-        return
-    error = await post_alert(handles.http, webhook, payload_of(scope, agent, kind, data))
-    if error is not None:
-        logger.warning("org %s: %s was not delivered to %s: %s", scope.org, kind, webhook.url, error)
+    payload = payload_of(scope, agent, kind, data)
+    heard_by = (await webhook_of(session, handles.vault, scope.org), await operator_webhook_of(session, handles.vault))
+    for webhook in heard_by:
+        if webhook is None:
+            continue
+        error = await post_alert(handles.http, webhook, payload)
+        if error is not None:
+            logger.warning("org %s: %s was not delivered to %s: %s", scope.org, kind, webhook.url, error)
 
 
 async def credits_exhausted(

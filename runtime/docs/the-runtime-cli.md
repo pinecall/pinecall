@@ -260,6 +260,7 @@ box numbers-account show · box numbers-account set --account-sid <AC…> [--use
 box admission show
 box admission set --env production|sandbox [--later] [--minutes n] [--messages n] [--evals n] [--simulations n] …
                   [--budget-usd n] [--lends <vendor[/model],…|all|none>]
+box alerts show · box alerts set <url> [--secret] · box alerts rm                    # --secret reads it from stdin
 ```
 
 What the box itself holds. `keys` are its own vendor keys, the ones an org without its own runs on
@@ -271,13 +272,18 @@ is the Twilio account the box buys numbers on for its orgs (`POST /v1/numbers/bu
 number here*): `set` reads the secret from stdin and tries the pair with Twilio before keeping it;
 without one the box sells no numbers. `admission` is what a newborn org is given — `set` writes one
 environment's limits and lends for a person's first org (`--later`: any later one), the rest of the row
-as it stands; `--lends` left out lends every key. The doors are [protocol/operator-api.md](protocol/operator-api.md).
+as it stands; `--lends` left out lends every key. `alerts` is where the operator hears every org's
+alerts: each one — a monitor fired, unusual spend, a quota run out, a hosted app that went down — is
+posted to this URL as well as to the org's own, the same JSON body (`org` and `env` name whose it is,
+`x-pinecall-event` the kind, signed with the secret when one is given); an org that named no URL of
+its own still reaches the operator. The doors are [protocol/operator-api.md](protocol/operator-api.md).
 
 ```
 $ printf '%s\n' "$CARTESIA_API_KEY" | pinecall-runtime box keys set cartesia
 $ pinecall-runtime box admission set --env sandbox --minutes 30 --evals 100 --simulations 10 --lends google,cartesia,deepgram
 $ pinecall-runtime box admission set --env production --minutes 0 --lends none
 $ printf '%s\n' "$TWILIO_SECRET" | pinecall-runtime box numbers-account set --account-sid AC… --user SK… --label Pinecall
+$ printf '%s\n' "$ALERTS_SECRET" | pinecall-runtime box alerts set https://hooks.example.com/pinecall-ops --secret
 ```
 
 ## `keys`

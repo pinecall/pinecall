@@ -8,15 +8,20 @@ from pinecall_runtime.hosting.service.cluster import Container
 
 # From the app's process starting to the gateway seeing its agents: past it, the release failed.
 REGISTERS_WITHIN_S = 120.0
-# A host that served and whose process exits is run again, this many times in this long; past
-# it the release is failed, and said so.
+# A host that served and whose process exits on its own is run again, this many times in this
+# long; past it the release is failed, and said so. A pod the cluster took (a node drained, an
+# eviction, a delete) is run again too, and never counted: it was not the process's doing.
 MOST_CRASHES = 5
 CRASH_WINDOW_S = 600.0
 
-EXITED = "the process exited before its agents registered:\n{output}"
-NEVER_REGISTERED = f"no agent registered from this release within {REGISTERS_WITHIN_S:.0f}s:\n{{output}}"
+# The first line says it whole; the process's last lines follow it, for `deploy list` and the alert.
+EXITED = "the process exited before its agents registered; its last lines:\n{output}"
+NEVER_REGISTERED = (
+    f"no agent registered from this release within {REGISTERS_WITHIN_S:.0f}s; its last lines:\n{{output}}"
+)
 KEEPS_EXITING = (
-    f"the process exited {MOST_CRASHES} times in {CRASH_WINDOW_S / 60:.0f} minutes and is not run again:\n{{output}}"
+    f"the process exited again after {MOST_CRASHES} restarts in {CRASH_WINDOW_S / 60:.0f} minutes and is not run "
+    "again; its last lines:\n{output}"
 )
 
 
@@ -33,6 +38,8 @@ class Revive:
 
     app: WantedApp
     container: Container
+    # False when the cluster evicted the pod: run again, and not held against the process.
+    crashed: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +108,9 @@ def _of_one(
         keep.discard(app.host)
     elif wanted is None:
         steps.append(Start(app))
+    elif wanted.deleting:
+        # On its way out: once gone it is started again under the same name, with nothing counted.
+        pass
     elif wanted.has_exited:
         steps.append(_exited(app, wanted, crashes, now))
     elif app.registered and app.live_host != app.host:
@@ -110,9 +120,9 @@ def _of_one(
     if app.registered and not app.failed:
         keep = {app.host}
     before = by_name.get(app.live_host or "")
-    if before is not None and before.name != app.host and before.has_exited:
-        if before.name in keep and _may_run_again(before, crashes, now):
-            steps.append(Revive(app, before))
+    if before is not None and before.name != app.host and before.has_exited and not before.deleting:
+        if before.name in keep and (before.evicted or _may_run_again(before, crashes, now)):
+            steps.append(Revive(app, before, crashed=before.crashed))
         else:
             keep.discard(before.name)
     keep -= {step.container.name for step in steps if isinstance(step, Failed)}
@@ -120,10 +130,12 @@ def _of_one(
 
 
 # One that never served is a release that does not work: failed at once. One that served is run
-# again, until it has exited too often to be worth another try.
+# again, until it has exited on its own too often to be worth another try; an eviction is not its own.
 def _exited(app: WantedApp, container: Container, crashes: Mapping[str, Sequence[float]], now: float) -> Step:
     if container.name != app.live_host:
         return Failed(app, EXITED, container)
+    if container.evicted:
+        return Revive(app, container, crashed=False)
     if not _may_run_again(container, crashes, now):
         return Failed(app, KEEPS_EXITING, container)
     return Revive(app, container)

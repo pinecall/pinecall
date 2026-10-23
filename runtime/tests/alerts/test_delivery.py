@@ -7,7 +7,12 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.alerts.service.delivery import raise_alert
-from pinecall_runtime.alerts.service.webhooks import Webhook, put_webhook
+from pinecall_runtime.alerts.service.webhooks import (
+    Webhook,
+    delete_operator_webhook,
+    put_operator_webhook,
+    put_webhook,
+)
 from pinecall_runtime.config import load_settings
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
@@ -68,3 +73,26 @@ async def test_an_apps_alert_is_posted_to_the_webhook_with_no_agent_and_written_
     assert posted.headers["x-pinecall-event"] == "app.failed"
     assert (body["type"], body["org"], body["env"], body["agent"]) == ("app.failed", tenant.org, "sandbox", None)
     assert body["data"] == {"app": "support", "host": "support-r4-e8033b63", "release": 4, "why": "secrets: 403"}
+
+
+@needs_the_database
+async def test_the_operator_hears_every_orgs_alert_too_even_one_that_named_no_webhook(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    operator, logs = Receiver(), WrittenLogs()
+    async with sessions.begin() as session:
+        await put_operator_webhook(session, VAULT, Webhook(url=operator.url, secret="ops-secret"))
+    failed = AppFailed(app="support", host="support-r4-e8033b63", release=4, why="exited again")
+    servers = per_world()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(operator.answer)) as http:
+        handles = Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions)
+        async with sessions() as session:
+            await raise_alert(session, handles, logs, Scope("org_with_no_webhook", Env.production), None, failed)
+    for server in servers.values():
+        await server.aclose()
+    (posted,) = operator.heard
+    body = json.loads(posted.content)
+    assert (body["type"], body["org"], body["env"]) == ("app.failed", "org_with_no_webhook", "production")
+    assert posted.headers["x-pinecall-signature"].startswith("sha256=")
+    async with sessions.begin() as session:
+        await delete_operator_webhook(session)

@@ -34,7 +34,7 @@ name are refused.
 | `GET /v1/hosted/{name}/releases` | `{releases: [...]}`, newest first |
 | `GET /v1/hosted/{name}/releases/{release}/source` | the tarball as it was uploaded |
 | `POST /v1/hosted/{name}/rollback {release}` | release n's sources kept again as the next release, noted `rollback to release n`; answers the new release |
-| `POST /v1/hosted/{name}/stop` · `…/start` | `204`. Stopped, the runner is no longer told to run it: its process drains, its releases and token stay; started, its newest release runs again |
+| `POST /v1/hosted/{name}/stop` · `…/start` | `204`. Stopped, the runner is no longer told to run it: its process drains, its releases and token stay; started, its newest release runs again, and a host the runner had given up on is forgiven and tried once more |
 | `GET /v1/hosted/{name}/logs` | `{name, host, lines, at}`: the last lines of the app's process as the runner last read them (64 KB at most). Asking is what makes the runner send them again, on its next beat — a first ask answers `lines: ""` and `at: null`, and a second a few seconds later has them. With `Accept: text/event-stream` it is a stream: the same body as an `app.logs` frame now and one more each time the runner's next beat brings the app's lines, for as long as it stays open — which is what keeps the runner sending, so nothing needs asking again |
 | `GET /v1/hosted/usage[?month=YYYY-MM]` | `{since, until, rows: [{org, env, name, day, seconds}]}`: the time each app served per UTC day of one month, this one by default |
 | `DELETE /v1/hosted/{name}` | `204`: the app and its releases go, and its token is revoked |
@@ -99,15 +99,21 @@ A report says a host went `live` or `failed` (with `why`, 2 000 characters at mo
 only while that host is still the one wanted. The first report of a host failing is the org's
 `app.failed` alert, posted to its webhook ([alerts](../../../docs/pages/guides/alerts.md)) with
 the host, the release and `why`; the beats after it repeat nothing. A host reported failed comes back `failed: true`, and
-the runner leaves it alone until a release or a secret makes the next host. `logs_wanted` is true
+the runner leaves it alone until a release or a secret makes the next host, or `…/start` forgives it. When the host that
+failed was the one serving, nothing serves: `live_release` is null until a host goes live again. `logs_wanted` is true
 for a minute after somebody asked for the app's logs: the runner reads its pod's last 300 lines —
 its install's, when it never got to run — and sends them with its next beat.
 
 **A host that went live and whose process exits is run again**, as the same host, with its last
-lines kept as the app's logs. Five exits in ten minutes and the runner gives up: the host is
-reported `failed` with its last lines (`the process exited 5 times in 10 minutes`), and the app
-answers nothing until the next release or secret makes a new host. A host that never went live and
-exits is failed at once: a release that does not start is not tried again.
+lines kept as the app's logs. Five exits of the process's own in ten minutes and the runner gives
+up at the sixth: the host is reported `failed` with its last lines (`the process exited again after 5
+restarts in 10 minutes and is not run again`), and the app answers nothing until the next release
+or secret makes a new host, or a person's `deploy start` forgives it. What the cluster does to the
+pod is never held against the process: a pod being deleted (a node drained, an upgrade, `kubectl
+delete`) is waited out and started again under the same name once it is gone, and a pod the
+cluster evicted (memory or disk pressure) is run again at once; neither counts as an exit. The count
+is the runner's own memory: a runner restarted starts counting afresh. A host that never went live
+and exits is failed at once: a release that does not start is not tried again.
 
 A host is one pod: its first container fetches the release's sources from the runner of its environment
 by their digest (the runner checked them against the uploaded one), installs the dependencies

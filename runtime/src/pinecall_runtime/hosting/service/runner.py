@@ -52,7 +52,7 @@ LONGEST_WHY = 2000
 START = (f"{CLI_HOME}/bin/pinecall", "start")
 NO_KEY = "PINECALL_RUNNER_KEY: a runner signs in to its gateway with its env's runner key"
 NOT_THE_RELEASE = "release {release}'s sources are not the ones uploaded: sha256 differs"
-START_FAILED = "the cluster could not start the release:\n{output}"
+START_FAILED = "the cluster could not start the release; it said:\n{output}"
 GATEWAY_REFUSED = "the gateway answered {status}: {text}"
 
 # A release is (org, name, release): what the gateway numbers and what a pod carries.
@@ -120,8 +120,8 @@ class Runner:
             match step:
                 case Start(app):
                     await self._started(env, app, app.host, app.release)
-                case Revive(app, container):
-                    await self._revived(env, app, container, now)
+                case Revive(app, container, crashed):
+                    await self._revived(env, app, container, now, crashed=crashed)
                 case Stop(container):
                     await self.cluster.stop(container.name)
                     logger.info("stopped %s", container.name)
@@ -153,12 +153,15 @@ class Runner:
             return
         logger.info("started %s release %d as %s", label_of(app), release, host)
 
-    # Its last lines are kept as the app's logs before the pod goes, so the exit is read.
-    async def _revived(self, env: Env, app: WantedApp, container: Container, now: float) -> None:
+    # Its last lines are kept as the app's logs before the pod goes, so the exit is read. Only an
+    # exit of the process's own counts towards giving up; the cluster's evictions never do.
+    async def _revived(self, env: Env, app: WantedApp, container: Container, now: float, *, crashed: bool) -> None:
         output = await self.cluster.logs(container.name, SENT_LINES)
         self.logs.append(AppLogs(org=app.org, name=app.name, host=container.name, lines=output))
-        logger.warning("%s: %s exited, run again:\n%s", label_of(app), container.name, _tail(output))
-        self.crashes[container.name] = [*crashes_within(self.crashes.get(container.name, []), now), now]
+        how = "exited" if crashed else "was evicted by the cluster"
+        logger.warning("%s: %s %s, run again:\n%s", label_of(app), container.name, how, _tail(output))
+        if crashed:
+            self.crashes[container.name] = [*crashes_within(self.crashes.get(container.name, []), now), now]
         await self.cluster.stop(container.name, grace_s=0)
         await self._started(env, app, container.name, container.release)
 

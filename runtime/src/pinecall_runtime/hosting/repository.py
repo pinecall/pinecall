@@ -153,12 +153,15 @@ class HostedAppRepository(Repository[HostedApp]):
         )
         await self.changed(statement)
 
-    async def failed(self, org: str, env: Env, name: str, *, host: str, why: str, runner: str) -> None:
-        """Record that the host did not build, start or stay up, and why."""
+    async def failed(self, org: str, env: Env, name: str, *, host: str, why: str, runner: str, unserving: bool) -> None:
+        """Record that the host did not build, start or stay up, and why; `unserving`, it was the one serving."""
+        values: dict[str, object] = {"failed_host": host, "failed_why": why, "reported_by": runner}
+        if unserving:
+            values |= {"live_host": None, "live_release": None}
         statement = (
             update(HostedApp)
             .where(HostedApp.org == org, HostedApp.env == env, HostedApp.name == name)
-            .values(failed_host=host, failed_why=why, reported_by=runner, reported_at=func.now())
+            .values(**values, reported_at=func.now())
         )
         await self.changed(statement)
 
@@ -171,12 +174,13 @@ class HostedAppRepository(Repository[HostedApp]):
         )
         return await self.changed(statement) > 0
 
+    # A person's start forgives a host the runner gave up on: the newest release is tried again.
     async def start(self, org: str, env: Env, name: str) -> bool:
         """Run a stopped app again; whether the box hosts it."""
         statement = (
             update(HostedApp)
             .where(HostedApp.org == org, HostedApp.env == env, HostedApp.name == name)
-            .values(stopped_at=None, stopped_by="")
+            .values(stopped_at=None, stopped_by="", failed_host=None, failed_why="")
         )
         return await self.changed(statement) > 0
 
