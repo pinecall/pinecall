@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Agent, describe, tool, z, type Child, type EventDeclarations, type EventMeta } from "@pinecall/agents";
+import { Agent, describe, tool, z, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
 
 import { CLICKED, MISSING, SEEN, UI, macroOf, type Action, type Macro } from "../wire/index.js";
 
@@ -69,53 +69,41 @@ export class Tutor extends Agent {
   }
 
   /** Move your pointer onto an element of the visitor's page, just before you talk about it. */
-  @tool<Tutor>({ params: REF, when: (state) => state.page !== "" })
   point(ref: string): string {
     return this.move("point", { ref });
   }
 
   /** Light up an element of the visitor's page and dim the rest, while you talk about it. */
-  @tool<Tutor>({ params: REF, when: (state) => state.page !== "" })
   highlight(ref: string): string {
     return this.move("highlight", { ref });
   }
 
   /** Turn the highlight off. */
-  @tool<Tutor>({ params: z.object({}), when: (state) => state.page !== "" })
   unhighlight(): string {
     return this.move("unhighlight", {});
   }
 
   /** Scroll the visitor's page to an element that is off their screen. */
-  @tool<Tutor>({ params: REF, when: (state) => state.page !== "" })
   scrollTo(ref: string): string {
     return this.move("scroll_to", { ref });
   }
 
   /** Show where to click: a ring at your pointer. You never click for them. */
-  @tool<Tutor>({ params: z.object({}), when: (state) => state.page !== "" })
   here(): string {
     return this.move("here", {});
   }
 
   /** Take your pointer back to your corner, when you are done showing. */
-  @tool<Tutor>({ params: z.object({}), when: (state) => state.page !== "" })
   home(): string {
     return this.move("home", {});
   }
 
   /** Open another page of the same site, a link's address as the page shows it; the call carries on there. */
-  @tool<Tutor>({ params: z.object({ url: z.string().describe("an address on the same site, as /pricing or a link's href") }), when: (state) => state.page !== "" })
   goTo(url: string): string {
     return this.move("go", { url });
   }
 
   /** Give one of your walks, by its name: each sentence said as written, your pointer moving on its words. */
-  @tool<Tutor>({
-    params: z.object({ name: z.string().describe("the walk's name, as your screen lists it") }),
-    when: (state) => state.page !== "" && state.walking === undefined,
-    timeout: 300,
-  })
   async runMacro(name: string): Promise<string> {
     const macro = (this.constructor as typeof Tutor).macros[name];
     const names = Object.keys((this.constructor as typeof Tutor).macros).join(", ") || "none";
@@ -139,6 +127,27 @@ export class Tutor extends Agent {
     this.call.send(UI, { type: "cursor", action, ...data });
     return `done: ${action}${data.ref ? ` ${data.ref}` : ""}${data.url ? ` ${data.url}` : ""}`;
   }
+}
+
+// `@tool` is a legacy decorator, and a tenant's toolchain compiles this package's source with
+// whatever decorators it knows (tsx leaves it out of the project's tsconfig). Applied by hand, the
+// decorator is the plain function it is, under any compiler.
+const TOOLS: Record<string, ToolOptions<Tutor>> = {
+  point: { params: REF, when: (state) => state.page !== "" },
+  highlight: { params: REF, when: (state) => state.page !== "" },
+  unhighlight: { params: z.object({}), when: (state) => state.page !== "" },
+  scrollTo: { params: REF, when: (state) => state.page !== "" },
+  here: { params: z.object({}), when: (state) => state.page !== "" },
+  home: { params: z.object({}), when: (state) => state.page !== "" },
+  goTo: { params: z.object({ url: z.string().describe("an address on the same site, as /pricing or a link's href") }), when: (state) => state.page !== "" },
+  runMacro: {
+    params: z.object({ name: z.string().describe("the walk's name, as your screen lists it") }),
+    when: (state) => state.page !== "" && state.walking === undefined,
+    timeout: 300,
+  },
+};
+for (const [name, options] of Object.entries(TOOLS)) {
+  Object.defineProperty(Tutor.prototype, name, tool<Tutor>(options)(Tutor.prototype, name, Object.getOwnPropertyDescriptor(Tutor.prototype, name)));
 }
 
 // A tool's description is its JSDoc, read from the class's source: tsx strips comments from what

@@ -1,7 +1,7 @@
 {
   // The build: src/ into dist/. The page's parts run in a browser and `agent/` in the agent's Node
   // process, so `lib` has the DOM and `types` has Node; the import table in test/the-imports keeps
-  // `node:` out of everything but `agent/`. `@tool` is a legacy decorator, as @pinecall/agents'.
+  // `node:` out of everything but `agent/`.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -19,8 +19,7 @@
     "sourceMap": true,
     "rootDir": "src",
     "outDir": "dist",
-    "types": ["node"],
-    "experimentalDecorators": true
+    "types": ["node"]
   },
   "include": ["src"]
 }

@@ -7,10 +7,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 // failure and not a silent pass.
 const DOM = ["test/face/**/*.test.ts", "test/page/**/*.test.ts", "test/pointer/**/*.test.ts", "test/tutor/**/*.test.ts"];
 
-// `Tutor`'s `@tool` is a legacy decorator, as @pinecall/agents' are; oxc is told so here, as the
-// framework's own example tells it.
 export default defineConfig({
-  oxc: { decorator: { legacy: true } },
   test: {
     projects: [
       {
