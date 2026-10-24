@@ -15,8 +15,8 @@ const MAY_IMPORT: Record<string, string[]> = {
   "wire": [],
   // The face: the DOM, Web Audio, and the room it moves with.
   "face": ["@pinecall/room"],
-  // The page as the agent reads it: the DOM alone.
-  "page": [],
+  // The page as the agent reads it: the DOM, and the wire's shape of the site's lines.
+  "page": ["./wire"],
   // The person with a pointer: the DOM alone.
   "pointer": [],
   // The tutor on a page: everything of the page's side, the room, and the wire.

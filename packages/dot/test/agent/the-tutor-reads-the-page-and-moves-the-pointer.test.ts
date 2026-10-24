@@ -37,11 +37,15 @@ interface Sent {
   data: Record<string, unknown>;
 }
 
-/** A Pip on a call whose moves and words are kept, the page below the fold; a say is taken as said at once. */
+/** A Pip on a call whose moves and words are kept, the page below the fold; each say is answered with its turn, as the runtime does. */
 async function aPipOnACall(text = BELOW, lines: unknown = []): Promise<{ pip: Pip; sent: Sent[] }> {
   const pip = new Pip();
   const sent: Sent[] = [];
-  setCall(pip, new CallWorld({ id: "CA_1", contact: "visitor", channel: "web" }, (verb, data) => sent.push({ verb, data }), null, 5));
+  const world: CallWorld = new CallWorld({ id: "CA_1", contact: "visitor", channel: "web" }, (verb, data) => {
+    sent.push({ verb, data });
+    if (verb === "agent.say" && "text" in data) setTimeout(() => world.take("turn.agent", { speech_id: `s${sent.length}`, text: data.text, interrupted: false, metrics: {} }, 0), 0);
+  });
+  setCall(pip, world);
   await runHook(pip, "onEvent", "page.seen", { text, why: "joined", lines }, META);
   return { pip, sent };
 }
