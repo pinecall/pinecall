@@ -85,10 +85,14 @@ class CallAgent(Agent):
     ) -> Thought:
         """The model run on the history, this turn's lookups, and the dynamic blocks."""
         sent = request(chat_ctx, self.blocks, self.lookups.items)
+        # A step livekit forces to answer in words (tool_choice "none") is offered no tool, as some
+        # of its plugins already do: a model offered one may call it anyway, livekit drops the
+        # call, and the turn ends with nothing said.
+        offered = [] if model_settings.tool_choice == "none" else tools
         if self.call.context.run is not None:
-            self.call.requests.append(as_asked(sent, tools))
+            self.call.requests.append(as_asked(sent, offered))
         deadline = self.call.config.llm_timeout_s or LLM_TIMEOUT_S
-        thought = Agent.default.llm_node(self, sent, tools, model_settings)
+        thought = Agent.default.llm_node(self, sent, offered, model_settings)
         waited = asyncio.timeout(deadline)
         async with contextlib.aclosing(thought):
             try:

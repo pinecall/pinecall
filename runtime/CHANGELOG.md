@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The answer after a chain of tools is said.** When the tool steps run out, livekit asks the model
+  for words with `tool_choice` "none" but still offers it the tools; a model that calls one anyway
+  had the call dropped, and the turn ended in silence (a tutor scrolling and then highlighting said
+  nothing). That step is now offered no tool.
 - **A widget's channel listens before the call's session starts.** It was opened after the session had
   started and the agent was already greeting, so what a page said in the call's first seconds reached
   no listener and was lost: a tutor's page never reached its agent.

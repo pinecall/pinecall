@@ -504,6 +504,26 @@ async def test_a_quiet_tool_called_in_silence_is_answered_so_the_move_is_said(
 
 
 @needs_the_database
+async def test_quiet_tools_chained_in_silence_end_on_a_step_offered_no_tool_that_says_the_move(
+    box: Box, store: Store, call: str
+) -> None:
+    session = a_session(
+        box,
+        POINTING,
+        [{"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}],
+        [{"name": "point", "arguments": {"ref": "e13"}, "call_id": "t2"}],
+        ["Here are the prices."],
+    )
+    await session.start()
+    await text.hear_text(session, "where are the prices?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    entries = await store.whole(call)
+    last = model_of(session).requests[-1]
+    assert [entry.data["text"] for entry in entries if entry.type == "turn.agent"] == ["Here are the prices."]
+    assert (last.tool_choice, last.tools) == ("none", [])
+
+
+@needs_the_database
 async def test_tools_chained_in_silence_are_announced_once_for_the_callers_turn(
     box: Box, store: Store, call: str
 ) -> None:
