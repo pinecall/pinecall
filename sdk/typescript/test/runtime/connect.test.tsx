@@ -206,7 +206,7 @@ it("answers a tool call whose args fail validation with an error, and runs the n
   await settled();
   const refused = commands("tool.result").at(-1);
   expect(refused?.["call_id"]).toBe("t-bad");
-  expect(String(refused?.["error"])).toContain("slot must be a object");
+  expect(String(refused?.["error"])).toContain("slot must be an object");
   expect(refused?.["output"]).toBeUndefined();
 
   calls("freeSlots", { day: "2026-03-02" }, "t-good");

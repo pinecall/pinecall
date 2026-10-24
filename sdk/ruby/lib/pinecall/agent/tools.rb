@@ -24,7 +24,7 @@ module Pinecall
         # @param params [Hash{Symbol=>Object}] parameter types, e.g. `{ day: String, how_many: Integer }`
         def tool(**options)
           unknown = options.keys - %i[when stage confirm announce preview pii timeout params doc]
-          raise DeclarationRefused, "@tool takes no #{unknown.join(", ")}" unless unknown.empty?
+          raise DeclarationRefused, "tool takes no #{unknown.join(", ")}" unless unknown.empty?
 
           @pending_tool = options
         end

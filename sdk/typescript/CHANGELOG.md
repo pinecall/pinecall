@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A tool's integer parameter takes a whole number.** `z.number().int()` is JSON Schema's `integer`,
+  which the argument check compared with `typeof` and never matched: every call was refused
+  `must be a integer, not a number`. A list of types takes any of them. (2026-10-24 tools eval, T F1)
 - **`@tool({ quiet: true })`**: a move on the caller's screen runs as the model calls it, while its
   words still play, and asks the model for no answer, so a sentence is not said twice.
 

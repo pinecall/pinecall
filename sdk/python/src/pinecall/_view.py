@@ -76,8 +76,10 @@ def rendered(
     if template is None:
         return ""
 
+    # Case aside, as in TypeScript and Ruby: "usual doctor" is in "Usual doctor is Dr. Vidal.".
     def remembers(text: str) -> bool:
-        return any(text in fact for fact in remembered)
+        wanted = text.casefold()
+        return any(wanted in fact.casefold() for fact in remembered)
 
     scope = {**state, "call": call, "resumed": resumed, "remembers": remembers}
     return tidy(template.render(scope))

@@ -220,6 +220,12 @@ call, and never as a gateway's refusal of the socket:
 | `stage:` on a class with no `stage` | `…declares none; add \`stage :identify, :book\`` |
 | `state :cart` twice | `declares cart twice` |
 | `voice "carolina"` (no voice id) | `a voice the class declares names its vendor and the voice: voice "<vendor>", "<voice id>"` |
+| `tool retries: 3` (an option `tool` does not take) | `tool takes no retries` |
+| two `panel` blocks | `… declares two panels (One and Two); a class draws one panel` |
+| `panel` with no block | `panel takes the block that draws it` |
+| `greeting 42`, `hangup 42`, `stage` with no names, a tool named `open?`, a tool taking `**anything` | a sentence naming what it takes |
+
+Through `pinecall start` or `pinecall prompt` the sentence is printed alone, and the verb exits 2.
 
 A view is the one thing read later, at render: a field the class never declared raises there, by
 name, the same way an undefined instance variable does in a Rails view. A view that raises fails its

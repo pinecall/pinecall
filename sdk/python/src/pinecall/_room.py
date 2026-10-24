@@ -106,6 +106,15 @@ class History:
         """The most recent turn."""
         return self.turns[-1] if self.turns else None
 
+    @property
+    def length(self) -> int:
+        """How many turns are finished, as `history.length` reads in every SDK."""
+        return len(self.turns)
+
+    def __len__(self) -> int:
+        """`len(call.history)`, the same count."""
+        return len(self.turns)
+
     def took(self, turn: Turn) -> None:
         """Keep a finished turn."""
         self.turns.append(turn)

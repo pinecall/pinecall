@@ -47,4 +47,39 @@ class BridgeViewsTest < Minitest::Test
     assert_nil @other.prompt
     assert_equal "hecho", @call.tool("responder")[:output]
   end
+
+  # Names a field it never declared once a note says so.
+  class Despistada < Pinecall::Agent
+    state :customer, visibility: :pii
+    view template: <<~ERB
+      <% if customer -%><%= a_field_the_class_never_declared %><% end -%>
+      <% if resumed -%>No saludes otra vez.<% end -%>
+    ERB
+
+    # Identifica al cliente.
+    tool
+    def identificar = self.customer = { name: "Ana Ruiz", phone: "600000001" }
+  end
+
+  # R F6: the warning carried Ruby's NameError message, the view's context inspected, the pii state in it.
+  def test_a_view_naming_what_nothing_answers_says_the_name_and_never_the_state
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Despistada, client: gateway)
+    call = gateway.call_started(from: "+34600000000")
+    _out, said = capture_io { call.tool("identificar") }
+    failed = call.commands.find { |sent| sent.type == "call.log" && sent.data[:name] == "render.failed" }
+
+    assert_match(/the view names a_field_the_class_never_declared, which is no field/, failed.data[:data][:message])
+    assert_includes said, "a_field_the_class_never_declared"
+    refute_includes said, "Ana Ruiz"
+  end
+
+  # R F6's sibling, P F3 in Python: `resumed` was never true on a live call, a handover included.
+  def test_a_call_handed_over_renders_its_view_resumed
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Despistada, client: gateway)
+    call = gateway.call_attached(state: {})
+
+    assert_equal "No saludes otra vez.", call.prompt
+  end
 end

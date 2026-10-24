@@ -45,6 +45,8 @@ class Live:
     sent: dict[str, str] = field(default_factory=dict[str, str])
     tools_shown: str | None = None
     remembered: list[str] = field(default_factory=list[str])
+    # A call handed over mid-conversation: the view's `resumed` is true for it from then on.
+    resumed: bool = False
     stops: dict[str, Callable[[], None]] = field(default_factory=dict[str, Callable[[], None]])
     warned: set[str] = field(default_factory=set[str])
     # A tool's thread and the loop may both sync: what was sent is read and written under it.
@@ -232,6 +234,7 @@ async def opening(served: Live, state: JsonObject | None) -> None:
 
 async def adopted(served: Live, state: JsonObject) -> None:
     """A call handed over mid-call: the state the gateway kept, no `on_call`, all of it sent."""
+    served.resumed = True
     served.agent.restore(state)
     synced(served)
     follow(served)
@@ -333,7 +336,9 @@ def synced(served: Live) -> None:
 def show(served: Live) -> None:
     """Send what changed of the prompt and the tools."""
     with served.lock:
-        rendered = render(served.agent, served.world.line(), remembered=served.remembered)
+        rendered = render(
+            served.agent, served.world.line(), resumed=served.resumed, remembered=served.remembered
+        )
         for block in rendered.blocks:
             # A block never sent is empty, as the runtime starts it: an empty one costs nothing.
             if block.text == served.sent.get(block.name, ""):

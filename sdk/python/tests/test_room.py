@@ -36,3 +36,4 @@ def test_the_history_is_the_finished_turns_and_its_last_one() -> None:
     history.took(Turn("agent", "Buenos días.", "s1", interrupted=False, at=2.0))
     assert history.last is not None
     assert history.last.text == "Buenos días."
+    assert (history.length, len(history)) == (2, 2)

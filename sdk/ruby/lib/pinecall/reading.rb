@@ -20,7 +20,8 @@ module Pinecall
 
     # Whether a remembered fact contains `text`. Views may branch on facts but never print them;
     # facts reach the model only as tool results.
-    def remembers?(text) = @remembered.any? { |fact| fact.to_s.include?(text.to_s) }
+    # Case aside, as in every SDK: "usual doctor" is in "Usual doctor is Dr. Vidal.".
+    def remembers?(text) = @remembered.any? { |fact| fact.to_s.downcase.include?(text.to_s.downcase) }
 
     def respond_to_missing?(name, include_private = false)
       @state.key?(name) || super

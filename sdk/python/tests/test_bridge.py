@@ -39,6 +39,7 @@ class Clinica(Agent):
     view_template = (
         "{% if patient %}Hablas con {{ patient }}.{% else %}Pide el nombre.{% endif %}"
         "{% if remembers('mañana') %} Ofrece la mañana.{% endif %}"
+        "{% if resumed %} No saludes otra vez.{% endif %}"
     )
 
     @override
@@ -218,6 +219,13 @@ async def test_a_call_handed_over_is_restored_without_on_call_and_sent_whole(
         "tools",
         "view",
     ]
+    # P F3: the view's `resumed` was never true on a live call, a handover included.
+    view = next(
+        data["text"]
+        for type_, data in sent(gateway)
+        if type_ == "prompt.set" and data["name"] == "view"
+    )
+    assert view == "Hablas con Ana. No saludes otra vez."
 
 
 async def test_a_call_that_ends_runs_on_end_whose_line_still_lands_and_is_let_go(

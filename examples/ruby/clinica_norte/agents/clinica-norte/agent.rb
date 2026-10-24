@@ -11,7 +11,8 @@ require_relative "agenda"
 class ClinicaNorte < Pinecall::Agent
   # Nada de configuración: la voz, el modelo, el idioma, el saludo, las palabras, lo que recuerda,
   # lo que se sabe de memoria y la base que busca por turno son del mundo (`pinecall agent set`,
-  # `pinecall docs attach`, Settings), y una clase que todavía los declara se rechaza al cargar.
+  # `pinecall docs attach`, Settings). Una clase puede declararlos, y lo que declara gana sobre esos
+  # ajustes hasta que lo saca; esta no declara ninguno.
 
   # La fase es un campo del estado como cualquier otro, y es lo único que mueve las herramientas.
   stage :identify, :choose, :book, :done

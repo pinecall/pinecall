@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **The view's `resumed` is true on a call handed over mid-conversation**; it never was on a live call.
+  (2026-10-24 tools eval, P F3)
+- **`remembers("…")` matches case aside**, as in TypeScript and Ruby: "usual doctor" is in
+  "Usual doctor is Dr. Vidal.". (P F7)
+- **`call.history.length`** (and `len(call.history)`), the count every SDK's page names. (P F4)
+
 ## 0.11.20 — released with the runtime's live readers (2026-10-24)
 
 - Nothing of the Python SDK changed: published at 0.11.20 with every other package.

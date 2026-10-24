@@ -14,7 +14,7 @@ export class ToolFailed extends Error {
 const ERASED = "its parameter types were erased when the file was compiled; hand the class its own source with describe(AgentClass, source)";
 
 interface Parameters {
-  properties?: Record<string, { type?: string }>;
+  properties?: Record<string, { type?: string | string[] }>;
   required?: string[];
 }
 
@@ -29,6 +29,17 @@ function typeOf(value: unknown): string {
   return typeof value;
 }
 
+// JSON Schema's `integer` is a number with no fraction, which `typeof` never says: `z.number().int()`
+// refused every call (T F1, 2026-10-24). A list of types takes any of them.
+function isA(value: unknown, wanted: string): boolean {
+  if (wanted === "integer") return typeof value === "number" && Number.isInteger(value);
+  return typeOf(value) === wanted;
+}
+
+function named(types: string[]): string {
+  return types.map((type) => `${/^[aeiou]/.test(type) ? "an" : "a"} ${type}`).join(" or ");
+}
+
 // Checks only required names and top-level JSON types; nested shapes are the app's to validate.
 function complaintsAbout(parameters: Parameters, args: Record<string, unknown>): string[] {
   const properties = parameters.properties ?? {};
@@ -38,10 +49,10 @@ function complaintsAbout(parameters: Parameters, args: Record<string, unknown>):
   }
   for (const [name, schema] of Object.entries(properties)) {
     const value = args[name];
-    const wanted = schema.type;
-    if (value === undefined || wanted === undefined) continue;
-    if (typeOf(value) !== wanted) {
-      complaints.push(`${name} must be a ${wanted}, not a ${typeOf(value)}`);
+    if (value === undefined || schema.type === undefined) continue;
+    const wanted = Array.isArray(schema.type) ? schema.type : [schema.type];
+    if (!wanted.some((type) => isA(value, type))) {
+      complaints.push(`${name} must be ${named(wanted)}, not ${wanted.includes("integer") && typeof value === "number" ? String(value) : named([typeOf(value)])}`);
     }
   }
   return complaints;

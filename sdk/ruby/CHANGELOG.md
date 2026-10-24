@@ -4,6 +4,18 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **`call.participant(id).mute` works**: it sent a `muted:` field `participant.mute` does not have, and
+  the gateway refused every one. The wire has no unmute. (2026-10-24 tools eval, R F5)
+- **A view that names what nothing answers says the name**, in the log and on the terminal, instead of
+  Ruby's NameError with the view's context inspected — the state's private values among it. (R F6)
+- **A class refused as it loads is one sentence through `pinecall start` and `prompt`**, exit 2, never a
+  backtrace; an option `tool` does not take is refused as `tool takes no …`. (R F19 · R F1)
+- **The view's `resumed` is true on a call handed over mid-conversation**, and `remembers?` matches case
+  aside, as in every SDK.
+- `docs/writing-an-agent.md`: every refusal at load, the ones past the table's seven included. (R F1)
+
 ## [0.11.20] — released with the runtime's live readers (2026-10-24)
 
 - Nothing of the gem changed: published at 0.11.20 with every other package.

@@ -32,7 +32,8 @@ module Pinecall
       when "prompt" then prompt(Loading.parse(rest), out:)
       else err.puts(USAGE) || 2
       end
-    rescue CannotServe, NotConnected, Refused => e
+    # A class refused as it loads is one sentence too, never a backtrace (R F19).
+    rescue CannotServe, NotConnected, Refused, DeclarationRefused => e
       err.puts(e.message)
       2
     end

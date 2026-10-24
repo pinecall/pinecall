@@ -22,8 +22,9 @@ module Pinecall
     # One served call: its instance, what was last sent, and a thread running its jobs in order.
     class Live
       attr_reader :agent, :world, :sent, :stops
-      # What memory recalled about this caller in this call: what `remembers?` answers from.
-      attr_accessor :tools_shown, :remembered
+      # What memory recalled about this caller in this call: what `remembers?` answers from; and whether
+      # the call was handed over mid-conversation, the view's `resumed`.
+      attr_accessor :tools_shown, :remembered, :resumed
 
       def initialize(agent, world)
         @agent = agent
@@ -31,6 +32,7 @@ module Pinecall
         @sent = {}
         @tools_shown = nil
         @remembered = []
+        @resumed = false
         @stops = {}
         @work = Thread::Queue.new
         @thread = Thread.new { work }
@@ -100,6 +102,7 @@ module Pinecall
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
       serving = Live.new(instance, world_for(call, client))
+      serving.resumed = true
       instance.serving(serving.world)
       live[call.id] = serving
       serving.later do
@@ -250,7 +253,7 @@ module Pinecall
     def sync(serving, call)
       line = { channel: call.channel || "web", from: call.from, claimed: serving.world.claimed }
       begin
-        rendered = Prompt.render(serving.agent, remembered: serving.remembered, line:)
+        rendered = Prompt.render(serving.agent, resumed: serving.resumed, remembered: serving.remembered, line:)
         visible = serving.agent.visible_tools
       rescue StandardError => e
         return failed_to_render(call, e)
@@ -269,8 +272,19 @@ module Pinecall
 
     # A view that fails fails its call, never the process: the model keeps the view it had, and the log says why.
     def failed_to_render(call, error)
-      call.log("render.failed", { error: error.class.to_s, message: error.message })
-      warn("pinecall: #{call.id} could not render its view and goes on with the one it had: #{error.message}")
+      said = failure_of(error)
+      call.log("render.failed", { error: error.class.to_s, message: said })
+      warn("pinecall: #{call.id} could not render its view and goes on with the one it had: #{said}")
+    end
+
+    # A NameError's message is Ruby's, with the view's whole context inspected, its state's private values
+    # among them (R F6): the name it missed is the sentence, which a person can act on.
+    def failure_of(error)
+      case error
+      when NoMethodError then "the view calls #{error.name}, which nothing it reads answers"
+      when NameError then "the view names #{error.name}, which is no field of the state, no call and no method of the class"
+      else error.message
+      end
     end
 
     # A hook that raises fails its call, never the process: the call goes on with what the hook wrote

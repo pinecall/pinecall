@@ -17,7 +17,8 @@ module Pinecall
         @send = send
       end
 
-      def mute(muted: true) = @send.call("participant.mute", { identity: @identity, muted: })
+      # For the rest of the call: the wire has no unmute (`participant.mute` carries the identity alone).
+      def mute = @send.call("participant.mute", { identity: @identity })
 
       def remove = @send.call("participant.remove", { identity: @identity })
     end

@@ -34,6 +34,12 @@ def test_what_is_remembered_decides_a_sentence_and_is_never_printed() -> None:
     assert view_of(template, {}) == ""
 
 
+def test_what_is_remembered_is_matched_case_aside_as_in_every_sdk() -> None:
+    """P F7: "usual doctor" was not in "Usual doctor is Dr. Vidal."."""
+    template = '{% if remembers("usual doctor") %}Offer their doctor first.{% endif %}'
+    assert view_of(template, {}, ("Usual doctor is Dr. Vidal.",)) == "Offer their doctor first."
+
+
 def test_a_template_is_read_by_a_person_and_the_ragged_edges_come_off_for_the_model() -> None:
     assert tidy("\n\n Hola.   \n\n\n\n  Adiós.  \n\n") == "Hola.\n\n  Adiós."
 

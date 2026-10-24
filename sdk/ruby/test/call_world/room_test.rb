@@ -23,6 +23,6 @@ class RoomTest < Minitest::Test
     seat.mute
     seat.remove
 
-    assert_equal [["participant.mute", { identity: "sip_1", muted: true }], ["participant.remove", { identity: "sip_1" }]], @sent
+    assert_equal [["participant.mute", { identity: "sip_1" }], ["participant.remove", { identity: "sip_1" }]], @sent
   end
 end

@@ -5,7 +5,7 @@ The prompt is a list of named **blocks** in two regions, in this order, always:
 | region | when it changes | the blocks |
 |---|---|---|
 | `static` — before the history, cached by the provider | never during a call | `identity` (the class's docstring · the framework's rules and protocols · how to write on the call's channel and medium) · `knowledge` (the page the agent knows by heart, written by the gateway from its settings) · `tools` (every tool's name and docstring) |
-| the history — the turns, the lookups, and the summaries a `collapse` left | the runtime writes it; the app never does | |
+| the history — the turns and the lookups, the runtime's; offline, the summaries a `collapse` left | the runtime writes it; the app never does | |
 | `dynamic` — after the history, replaced every turn | on every state change | `view` — what `render()` says, the last thing the model reads |
 
 There are four blocks, the same four for every agent. The cut between the two regions is where the
@@ -132,4 +132,6 @@ this.collapse("The patient is identified and has heard Tuesday's slots.");
 ```
 
 The state is untouched. What collapses is the record of how it got here, which is what a long call
-runs out of room for. The sentence lands in the history under a `<!-- collapsed: … -->`.
+runs out of room for. The sentence replaces the instance's change log, the history block
+`pinecall prompt` prints under a `<!-- collapsed: … -->`. On a live call the conversation the model
+reads is the runtime's, every turn kept: `collapse` writes no entry and does not shorten it.

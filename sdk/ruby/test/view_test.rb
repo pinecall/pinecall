@@ -24,6 +24,13 @@ class ViewTest < Minitest::Test
     refute_includes text, "doctora Vidal"
   end
 
+  def test_what_is_remembered_is_matched_case_aside_as_in_every_sdk
+    text = rendered(%(<% if remembers?("usual doctor") -%>\nOffer their doctor first.\n<% end -%>),
+                    {}, ["Usual doctor is Dr. Vidal."])
+
+    assert_equal "Offer their doctor first.", text
+  end
+
   def test_a_view_nobody_told_what_is_remembered_answers_no_rather_than_guessing
     assert_equal "", rendered(%(<% if remembers?("alergias") -%>\nPregúntale.\n<% end -%>))
   end
