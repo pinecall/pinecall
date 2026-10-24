@@ -23,6 +23,7 @@ export function along(from: Point, to: Point, u: number): Point {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const distance = Math.hypot(dx, dy);
+  if (u >= 1) return { ...to };
   const e = minJerk(u);
   if (distance < 1) return { x: from.x + dx * e, y: from.y + dy * e };
   const lift = Math.sin(Math.PI * e) * Math.min(60, distance * 0.12);

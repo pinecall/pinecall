@@ -14,7 +14,7 @@ describe("the tutor on a page", () => {
   it("puts its person on the page, out of what the agent reads, with its face as a button", () => {
     const one = tutor(aRoom(), { label: "Talk to Pip" });
 
-    const layer = document.querySelector("[data-pinecall-skip]");
+    const layer = document.body.querySelector("[data-pinecall-skip]");
     expect(layer).not.toBeNull();
     expect(layer?.querySelector('[role="button"]')?.getAttribute("aria-label")).toBe("Talk to Pip");
     expect(layer?.querySelector("svg")).not.toBeNull();
