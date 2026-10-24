@@ -90,7 +90,7 @@ beside the face. It moves the way a hand moves a mouse:
 - **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" is a
   ring at the tip.
 
-**It never clicks or types for the visitor.** It shows where, and they do it.
+**It never clicks, types or opens another page for the visitor.** It shows where, and they do it.
 
 `take(data)` returns `true` for a message that was the tutor's (a cursor move, a macro step) and
 `false` for anything else, which stays the page's to draw.
@@ -143,8 +143,8 @@ A class that extends `Tutor` gets these:
 - **`page` and `clicked` in its state.**
 - **A view that prints the screen.** A class with a `render()` of its own ends it with `this.seeing()`.
   The site's words are fenced there as data, never as instructions to the model.
-- **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home`, `goTo` (same site only)
-  and `runMacro`. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
+- **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home` and `runMacro`.
+  There is none to open a page: the tutor never leaves the page the visitor is on. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
   model calls them, while the words that name them play, and the model is not asked to answer them.
 - **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
   `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
@@ -189,7 +189,7 @@ speaks, the walk stops and the agent answers them.
 | way | what |
 |---|---|
 | page → agent | `call.event("page.seen", { text, why })` · `page.clicked { role, name }` · `page.missing { ref }` |
-| agent → page | `pinecall.ui` `{ type: "cursor", action, ref?, url? }`. The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here`, `home` and `go` |
+| agent → page | `pinecall.ui` `{ type: "cursor", action, ref? }`. The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here` and `home` |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
 | agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |
 

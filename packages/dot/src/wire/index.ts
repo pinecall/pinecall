@@ -14,16 +14,15 @@ export const CLICKED = "page.clicked";
 /** A ref the agent named is no longer on the page: `{ ref }`. A fresh `page.seen` follows. */
 export const MISSING = "page.missing";
 
-/** What the pointer can do. It never clicks or types for the visitor. */
-export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home", "go"] as const;
+/** What the pointer can do. It never clicks, types or leaves the page for the visitor. */
+export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home"] as const;
 export type Action = (typeof ACTIONS)[number];
 
-/** One move of the pointer, as the agent sends it: on `ref` (`e12`), or to `url` for `go`. */
+/** One move of the pointer, as the agent sends it, on `ref` (`e12`) for the moves that take one. */
 export interface Cursor {
   type: "cursor";
   action: Action;
   ref?: string | undefined;
-  url?: string | undefined;
 }
 
 /** One move of a macro, run as its word is said. `find` names the element as the snapshot does: `["button", "Book now"]`. */
@@ -33,7 +32,6 @@ export interface Beat {
   nth?: number | undefined;
   do: Action;
   find?: [role: string, name: string] | undefined;
-  url?: string | undefined;
 }
 
 /** One sentence of a macro and the moves hung on its words. */
@@ -73,7 +71,7 @@ function isBeat(value: unknown): value is Beat {
   const find = beat["find"];
   const found = find === undefined || (Array.isArray(find) && find.length === 2 && find.every((part) => typeof part === "string"));
   const nth = beat["nth"];
-  return typeof beat["word"] === "string" && isAction(beat["do"]) && found && optionalText(beat["url"]) && (nth === undefined || (typeof nth === "number" && nth >= 1));
+  return typeof beat["word"] === "string" && isAction(beat["do"]) && found && (nth === undefined || (typeof nth === "number" && nth >= 1));
 }
 
 /** A message on `pinecall.ui` the tutor carries out, or null for one that is not its own (a card, choices). */
@@ -81,8 +79,8 @@ export function tutoring(data: unknown): Cursor | Step | Look | null {
   if (typeof data !== "object" || data === null) return null;
   const message: Record<string, unknown> = { ...data };
   if (message["type"] === "look") return { type: "look" };
-  if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["ref"]) && optionalText(message["url"])) {
-    return { type: "cursor", action: message["action"], ref: message["ref"], url: message["url"] };
+  if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["ref"])) {
+    return { type: "cursor", action: message["action"], ref: message["ref"] };
   }
   const beats = message["beats"];
   if (
@@ -110,7 +108,7 @@ export function macroOf(name: string, value: unknown): Macro {
     const say = fields["say"];
     const beats = fields["beats"] ?? [];
     if (typeof say !== "string" || say.trim() === "") throw new Error(`macro ${name}: step ${at + 1} says nothing`);
-    if (!Array.isArray(beats) || !beats.every(isBeat)) throw new Error(`macro ${name}: step ${at + 1} has a beat that is not {word, do, find?, nth?, url?}`);
+    if (!Array.isArray(beats) || !beats.every(isBeat)) throw new Error(`macro ${name}: step ${at + 1} has a beat that is not {word, do, find?, nth?}`);
     for (const beat of beats) {
       if (!wordsOf(say).some((word) => word === normal(beat.word))) throw new Error(`macro ${name}: step ${at + 1} never says "${beat.word}"`);
     }

@@ -43,7 +43,7 @@ describe("a tutor", () => {
     const tools = toolsOf(new Pip());
     const names = tools.map((one) => one.name).sort();
 
-    expect(names).toEqual(["goTo", "here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
+    expect(names).toEqual(["here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
     for (const one of tools) expect(one.spec.description, one.name).toBeTruthy();
     // A pointer's move runs while its words play and asks for no answer; a walk is said, and is answered.
     for (const one of tools) expect(one.spec.quiet, one.name).toBe(one.name === "runMacro" ? undefined : true);

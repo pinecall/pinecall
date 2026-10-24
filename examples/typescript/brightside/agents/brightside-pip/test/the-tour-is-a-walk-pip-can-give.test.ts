@@ -20,7 +20,7 @@ describe("Pip", () => {
     expect(pip.seeing()).toContain("- tour: when the visitor asks to be shown around");
   });
 
-  it("can point, highlight, scroll, show where, go home, open a page of the site, and give a walk", () => {
-    expect(toolsOf(new Pip()).map((one) => one.name).sort()).toEqual(["goTo", "here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
+  it("can point, highlight, scroll, show where, go home and give a walk, and never leave the page", () => {
+    expect(toolsOf(new Pip()).map((one) => one.name).sort()).toEqual(["here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
   });
 });

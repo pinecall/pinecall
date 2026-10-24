@@ -12,10 +12,6 @@ import { face, tutor } from "https://cdn.jsdelivr.net/npm/@pinecall/dot@0.11/+es
 
 // How long the agent's last line stays in the bubble after the reply closed, in ms.
 const LINGER_MS = 2600;
-// A tutor that opens another page of the site leaves the call's resume token here, and the next
-// page picks it up if it loads within this many ms: the visitor is still in the same conversation.
-const CARRY = "pinecall-dot:carry";
-const CARRY_MS = 60_000;
 
 const STYLE = `
   .fab.dot { width: var(--_dot); height: var(--_dot); padding: 0; border: 0; border-radius: 50%; background: none;
@@ -95,7 +91,6 @@ export class Dot {
         dock: (widget.getAttribute("position") ?? "").endsWith("left") ? "left" : "right",
         label,
         onClick: () => this.click(),
-        onGo: (url) => this.go(url),
       });
       this.face = this.tutor;
     } else {
@@ -112,31 +107,6 @@ export class Dot {
       this.frame = requestAnimationFrame(paint);
     };
     this.frame = requestAnimationFrame(paint);
-    if (this.tutor) this.carried();
-  }
-
-  /** The tutor opens another page of the site: the call's resume token goes ahead of it. */
-  go(url) {
-    const { resume } = this.call.state;
-    try {
-      if (resume) sessionStorage.setItem(CARRY, JSON.stringify({ agent: this.widget.agent, resume, at: Date.now() }));
-    } catch {
-      // storage unavailable: the next page opens without the call
-    }
-    location.assign(url);
-  }
-
-  /** A page the tutor opened: the conversation it carried goes on here. */
-  carried() {
-    let carry = null;
-    try {
-      carry = JSON.parse(sessionStorage.getItem(CARRY) ?? "null");
-      sessionStorage.removeItem(CARRY);
-    } catch {
-      return;
-    }
-    if (!carry || carry.agent !== this.widget.agent || !carry.resume || Date.now() - carry.at > CARRY_MS) return;
-    void this.call.start("talk", carry.resume);
   }
 
   /** The dot was clicked: start a call, or during one, offer to hang up. */

@@ -17,7 +17,7 @@
   loaded with `@pinecall/room` from jsDelivr only for this look; the gateway serves `pinecall-dot.js`
   beside the widget.
 - **`look="dot" tutor`**: the dot walks the visitor through the page with a pointer of its own, for an
-  agent that extends `@pinecall/dot/agent`'s `Tutor`; a page it opens carries the call on.
+  agent that extends `@pinecall/dot/agent`'s `Tutor`. It never leaves the page the visitor is on.
 - **The widget's tag has `event(name, data)`**, which tells the agent what the visitor did on the page,
   for its `onEvent`; with `look="dot"`, what the agent shows is dispatched as `pinecall:ui`.
 

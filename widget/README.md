@@ -261,17 +261,13 @@ instead (below).
 
 `look="dot" tutor` makes the dot one more person on the page. The agent points at what it talks
 about with a pointer of its own, highlights it, scrolls to it and shows where to click, and it
-never clicks or types for the visitor. Its prompt reads the page as it is now, sent by the page each
+never clicks, types or opens another page for the visitor. Its prompt reads the page as it is now, sent by the page each
 time it changes. The agent extends `Tutor` from `@pinecall/dot/agent`, and its walks are macros in
 its folder ([@pinecall/dot](../packages/dot/README.md#the-tutor-in-the-agent)).
 
 ```html
 <pinecall-widget agent="front-desk" name="Pip" look="dot" tutor token-url="/pinecall/token"></pinecall-widget>
 ```
-
-When the agent opens another page of the site, the call carries on there: the dot keeps the
-conversation's resume token in `sessionStorage` for a minute, and the next page with the same agent
-picks it up.
 
 ## Telling the agent what the visitor does
 

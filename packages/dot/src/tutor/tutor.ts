@@ -22,8 +22,6 @@ export interface TutorOptions {
   label?: string | undefined;
   /** The face was clicked: the page starts the call, or ends it. */
   onClick?: (() => void) | undefined;
-  /** The agent asked to open another page of the site: the page carries the call over, then goes. Default: it goes. */
-  onGo?: ((url: string) => void) | undefined;
   /** How long its last words stay beside it after a reply, in ms. Default 2600. */
   linger?: number | undefined;
 }
@@ -96,15 +94,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const box = element.getBoundingClientRect();
     return box.bottom > 0 && box.top < view.innerHeight;
   };
-  const go = (url: string): void => {
-    const target = new URL(url, view.location.href);
-    // The site's own pages only: the agent's words never send the visitor elsewhere.
-    if (target.origin !== view.location.origin) return;
-    if (options.onGo) options.onGo(target.href);
-    else view.location.assign(target.href);
-  };
-
-  const run = async (action: Action, element: Element | null, url?: string): Promise<void> => {
+  const run = async (action: Action, element: Element | null): Promise<void> => {
     switch (action) {
       case "point": {
         if (element === null) return;
@@ -141,9 +131,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         person.kind("arrow");
         hover.clear();
         return;
-      case "go":
-        if (url !== undefined) go(url);
-        return;
     }
   };
   const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight";
@@ -162,10 +149,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     moves = moves.then(move).catch(() => undefined);
   };
   const beat = (one: Beat): Promise<void> => {
-    if (one.find === undefined) return run(one.do, null, one.url);
+    if (one.find === undefined) return run(one.do, null);
     look("step");
     const ref = page.find(...one.find);
-    return run(one.do, ref === null ? null : resolve(ref), one.url);
+    return run(one.do, ref === null ? null : resolve(ref));
   };
 
   const tick = (now: number): void => {
@@ -247,8 +234,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         look("asked");
         return true;
       }
-      const { action, ref, url } = message;
-      queue(() => run(action, needsElement(action) && ref !== undefined ? resolve(ref) : null, url));
+      const { action, ref } = message;
+      queue(() => run(action, needsElement(action) && ref !== undefined ? resolve(ref) : null));
       return true;
     },
     wake() {
