@@ -1,8 +1,10 @@
 /** The one door to livekit-client: loaded when a seat is taken, and the little of it the seat uses. */
 
-/** A remote track as the seat handles it: its kind, and the element that plays it. */
+/** A remote track as the seat handles it: its kind, what it carries, and the element that plays it. */
 export interface SeatTrack {
   readonly kind: string;
+  /** The agent's voice is its microphone; the hold melody beside it is another source. */
+  readonly source: string;
   attach(): HTMLMediaElement;
   detach(): HTMLMediaElement[];
 }
@@ -46,7 +48,7 @@ export interface LivekitModule {
     readonly ActiveSpeakersChanged: "activeSpeakersChanged";
     readonly DataReceived: "dataReceived";
   };
-  Track: { Kind: { readonly Audio: "audio" } };
+  Track: { Kind: { readonly Audio: "audio" }; Source: { readonly Microphone: "microphone" } };
 }
 
 // Loaded, not imported: a page that only follows a phone call never downloads a WebRTC stack, and

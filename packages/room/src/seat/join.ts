@@ -71,16 +71,18 @@ export async function joinSeat(options: SeatOptions): Promise<Seat> {
   };
 
   // Chat never plays the agent: a written conversation that starts talking out loud is a bug.
+  // Every audio track plays; the voice is the one published as a microphone. The agent's hold
+  // melody is a second audio track, and taken for the voice it left the face hearing silence.
   room.on(RoomEvent.TrackSubscribed, (track) => {
     if (mode !== "talk" || track.kind !== livekit.Track.Kind.Audio) return;
     const element = track.attach();
     sink.add(element);
-    on.voice(element);
+    if (track.source === livekit.Track.Source.Microphone) on.voice(element);
   });
   room.on(RoomEvent.TrackUnsubscribed, (track) => {
     const gone = track.detach();
     for (const element of gone) sink.remove(element);
-    if (gone.length > 0) on.voice(null);
+    if (gone.length > 0 && track.source === livekit.Track.Source.Microphone) on.voice(null);
   });
   room.on(RoomEvent.DataReceived, (payload, _from, _kind, topic) => {
     if (topic !== UI) return;

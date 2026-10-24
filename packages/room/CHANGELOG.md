@@ -10,7 +10,8 @@ maintainer's call.
   `pinecall.event`, for the agent's `onEvent`. It rejects outside a live room, as `send()` does.
 - **`onUi(data)`**: what the agent puts on the screen with `call.send("pinecall.ui", data)` reaches
   the page.
-- **`state.voice`** is the element the agent's voice plays in during a spoken call.
+- **`state.voice`** is the element the agent's voice plays in during a spoken call: its microphone track,
+  never the hold melody published beside it, which plays too.
 - **A log read with the call's own token folds whole.** The gateway answers that reader with the public
   projection, which leaves the envelope's `agent` and `call` out, and several fields of the call's entries;
   the wire refused every entry, so `log` stayed empty and the karaoke had no words. The fields the projection

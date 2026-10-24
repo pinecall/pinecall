@@ -14,10 +14,12 @@ interface RoomEvents {
 /** A remote audio or video track. Attaching one makes a real element, so it runs on happy-dom only. */
 export class FakeTrack implements SeatTrack {
   readonly kind: string;
+  readonly source: string;
   attached: HTMLMediaElement[] = [];
 
-  constructor(kind: "audio" | "video") {
+  constructor(kind: "audio" | "video", source = "microphone") {
     this.kind = kind;
+    this.source = source;
   }
 
   attach(): HTMLMediaElement {
@@ -87,7 +89,7 @@ export class FakeLivekit {
         ActiveSpeakersChanged: "activeSpeakersChanged",
         DataReceived: "dataReceived",
       },
-      Track: { Kind: { Audio: "audio" } },
+      Track: { Kind: { Audio: "audio" }, Source: { Microphone: "microphone" } },
     };
   }
 
