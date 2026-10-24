@@ -52,7 +52,7 @@ from pinecall_runtime.wire.commands import (
     WhisperVerb,
     said_as,
 )
-from pinecall_runtime.wire.parts import EndedBy, EndReason, StateCauseTool, Supervisor
+from pinecall_runtime.wire.parts import EndedBy, EndReason, Supervisor
 
 # livekit's max_tool_steps: the step after a tool round is forced to answer in words, so the agent
 # does not keep talking after it answered.
@@ -242,8 +242,6 @@ class Session:
         match command:
             case AgentSay():
                 self.live.say(command.text, allow_interruptions=given_or_unset(command.allow_interruptions))
-            case AgentReply() if isinstance(self.call.cause, StateCauseTool):
-                self.call.reply_asked = command
             case AgentReply():
                 self.live.generate_reply(
                     instructions=command.instructions, allow_interruptions=given_or_unset(command.allow_interruptions)

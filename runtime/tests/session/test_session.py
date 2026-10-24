@@ -579,41 +579,25 @@ async def test_a_tool_that_hung_up_in_silence_is_answered_once_so_the_goodbye_is
     assert len(model_of(session).requests) == 2
 
 
-# T F15: asked of livekit while the tool ran, the instruction was dropped and the model answered
-# the tool on its own; it is the tool's answer now, one request, and the app's words in it.
+# The SDKs await a reply asked inside a tool (`await this.reply(…)`): it is asked of the model at once,
+# its instruction in that request, so the tool goes on; held until the tool answered, the two waited
+# on each other until the tool's timeout (2026-10-24).
 @needs_the_database
-async def test_a_reply_the_app_asks_for_while_its_tool_runs_is_the_answer_to_that_tool(
+async def test_a_reply_the_app_asks_for_while_its_tool_runs_is_asked_at_once_with_its_instruction(
     box: Box, store: Store, call: str
 ) -> None:
     hold: list[Json] = [{"name": "hold_line", "arguments": {}, "call_id": "t1"}]
     asked = AgentReply(instructions="Say only the word PINEAPPLE.")
-    session = commanding_through(box, HOLDING, asked, [hold, ["PINEAPPLE"], ["Something else."]])
+    session = commanding_through(box, HOLDING, asked, [hold, ["PINEAPPLE"], ["After the tool."]])
     await session.start()
     await text.hear_text(session, "check it for me")
-    await until(lambda: len(model_of(session).requests) >= 2)
+    await until(lambda: len(model_of(session).requests) >= 3)
     await settled()
     await text.end_text(session, "caller_hung_up", "caller")
-    requests = model_of(session).requests
-    assert len(requests) == 2
-    assert "PINEAPPLE" in str([getattr(item, "text_content", "") for item in requests[1].items])
+    asked_with = [str(getattr(item, "text_content", "")) for item in model_of(session).requests[1].items]
+    assert "Say only the word PINEAPPLE." in asked_with
     said = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
-    assert said == ["PINEAPPLE"]
-
-
-@needs_the_database
-async def test_a_reply_asked_by_a_tool_that_failed_is_dropped_and_never_steers_the_next_one(
-    box: Box, store: Store, call: str
-) -> None:
-    box.answers["hold_line"] = ToolResult(call_id="t1", name="hold_line", error="the line broke")
-    hold: list[Json] = [{"name": "hold_line", "arguments": {}, "call_id": "t1"}]
-    asked = AgentReply(instructions="Say only the word PINEAPPLE.")
-    session = commanding_through(box, HOLDING, asked, [hold, ["Sorry, that failed."]])
-    await session.start()
-    await text.hear_text(session, "check it for me")
-    await text.end_text(session, "caller_hung_up", "caller")
-    assert session.call.reply_asked is None
-    said = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
-    assert said == ["Sorry, that failed."]
+    assert said[0] == "PINEAPPLE"
 
 
 # The interrupt's future waits for the speech running the tool: awaited, the line was marked held

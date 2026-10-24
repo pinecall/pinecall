@@ -15,7 +15,6 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.session.hearing import AgentWords, TurnPolicy, policy_for
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S, AppendMany, Writing
 from pinecall_runtime.wire.commands import (
-    AgentReply,
     CallCallback,
     CallLog,
     SessionConfigure,
@@ -117,8 +116,6 @@ class Call:
         self.requests: list[JsonObject] = []
         # When the caller last stopped speaking, until the agent's first turn after it is written.
         self.heard_stopped_at: float | None = None
-        # A reply the app asked for while one of its tools ran: asked once the tool answers.
-        self.reply_asked: AgentReply | None = None
         # When the caller last went quiet, as the session's state says it: what a realtime model's
         # turn is timed from, since its caller's turn carries no `stopped_speaking_at`.
         self.went_quiet_at: float | None = None

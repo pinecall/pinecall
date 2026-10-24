@@ -24,8 +24,6 @@
 - **A verb the call cannot take is said on the call's log**: a written call's `dtmf`, `room.send`,
   `room.invite`, a seat's mute or remove, a `claim` of a code nobody issued, an `opt_out` with no number.
   The refusal reached the agent's log alone, while a spoken call's worker already wrote it on the call's.
-- **A reply the app asks for while its tool runs is the answer to that tool**: asked of livekit
-  mid-tool, the instruction was dropped and the model answered on its own.
 - **A socket's first declaration is the class whole**: a setting a save took out of the class stayed
   fixed until `pinecall start` was restarted, and `agent set` refused it.
 - **A judge's options and builds are tried before they are kept**, as the `--llm` pair is; they were
