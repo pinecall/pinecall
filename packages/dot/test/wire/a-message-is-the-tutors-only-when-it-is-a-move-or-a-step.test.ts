@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 import { macroOf, tutoring } from "../../src/wire/index.js";
 
 describe("a message on pinecall.ui", () => {
-  it("is a cursor move with its action and ref", () => {
-    expect(tutoring({ type: "cursor", action: "point", ref: "e12" })).toEqual({ type: "cursor", action: "point", ref: "e12", url: undefined });
+  it("is a cursor move with its action and its target, a ref or a name", () => {
+    expect(tutoring({ type: "cursor", action: "point", target: "e12" })).toEqual({ type: "cursor", action: "point", target: "e12" });
+    expect(tutoring({ type: "cursor", action: "scroll_to", target: "Questions" })).toEqual({ type: "cursor", action: "scroll_to", target: "Questions" });
   });
 
   it("is a macro step with its sentence and beats", () => {
@@ -21,7 +22,7 @@ describe("a message on pinecall.ui", () => {
 
   it("is not the tutor's when it is a card, choices, a click, or anything malformed", () => {
     expect(tutoring({ type: "html", html: "<p>hi</p>" })).toBeNull();
-    expect(tutoring({ type: "cursor", action: "click", ref: "e1" })).toBeNull();
+    expect(tutoring({ type: "cursor", action: "click", target: "e1" })).toBeNull();
     expect(tutoring({ type: "macro.step", macro: "tour", step: 0, say: "Hi", beats: [{ word: "Hi" }] })).toBeNull();
     expect(tutoring("point e12")).toBeNull();
   });

@@ -188,8 +188,8 @@ speaks, the walk stops and the agent answers them.
 
 | way | what |
 |---|---|
-| page → agent | `call.event("page.seen", { text, why })` · `page.clicked { role, name }` · `page.missing { ref }` |
-| agent → page | `pinecall.ui` `{ type: "cursor", action, ref? }`. The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here` and `home` |
+| page → agent | `call.event("page.seen", { text, why })` · `page.clicked { role, name }` · `page.missing { target }` |
+| agent → page | `pinecall.ui` `{ type: "cursor", action, target? }`: a ref (`e22`) or a name as the screen shows it (`Questions`). The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here` and `home` |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
 | agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |
 

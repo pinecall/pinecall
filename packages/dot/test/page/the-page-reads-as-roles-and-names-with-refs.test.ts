@@ -72,6 +72,18 @@ describe("the page as the agent reads it", () => {
     expect(page.element(ref ?? "")?.textContent).toBe("Book my visit");
   });
 
+  it("finds what a person means by a name: the section before its heading, said exactly before said in part", () => {
+    const page = new Page(document);
+    page.seen();
+    const questions = page.named("questions") ?? "";
+    const book = page.named("Book") ?? "";
+
+    expect(page.element(questions)?.getAttribute("aria-labelledby")).toBe("faq-h");
+    expect(page.element(book)?.id).toBe("book");
+    expect(page.named("Book my")).toBe(page.find("button", "Book my visit"));
+    expect(page.named("nothing like it")).toBeNull();
+  });
+
   it("still knows a ref whose element went off the screen, and none once it left the page", () => {
     const page = new Page(document);
     page.seen();

@@ -12,7 +12,7 @@ import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
-import { CLICKED, MISSING, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
+import { A_REF, CLICKED, MISSING, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Player } from "./macro.js";
 
 export interface TutorOptions {
@@ -134,12 +134,13 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
   };
   const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight";
-  /** The element a ref names, looked at fresh; a ref that is gone is said, and a fresh look follows. */
-  const resolve = (ref: string): Element | null => {
+  /** The element a target names, a ref or a name, looked at fresh; one not on the page is said, and a fresh look follows. */
+  const resolve = (target: string): Element | null => {
     look("step");
-    const element = page.element(ref);
+    const ref = A_REF.test(target) ? target : page.named(target);
+    const element = ref === null ? null : page.element(ref);
     if (element === null) {
-      send(MISSING, { ref });
+      send(MISSING, { target });
       sent = "";
       look("missing");
     }
@@ -234,8 +235,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         look("asked");
         return true;
       }
-      const { action, ref } = message;
-      queue(() => run(action, needsElement(action) && ref !== undefined ? resolve(ref) : null));
+      const { action, target } = message;
+      queue(() => run(action, needsElement(action) && target !== undefined ? resolve(target) : null));
       return true;
     },
     wake() {

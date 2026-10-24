@@ -65,6 +65,25 @@ export class Page {
     return null;
   }
 
+  /**
+   * The ref of what a person would mean by `name`, in the last `seen()`: the name said exactly, else one
+   * that starts with it, else one that holds it, a section before a heading before a card, a button
+   * or a link when several share it.
+   */
+  named(name: string): string | null {
+    const wanted = name.trim().toLowerCase();
+    if (wanted === "") return null;
+    const candidates = [...this.#byRef].map(([ref, element]) => {
+      const role = roleOf(element) ?? "";
+      return { ref, role, name: nameOf(element, role).toLowerCase() };
+    });
+    for (const fits of [(one: string) => one === wanted, (one: string) => one.startsWith(wanted), (one: string) => one.includes(wanted)]) {
+      const found = candidates.filter((one) => fits(one.name)).sort((a, b) => rank(a.role) - rank(b.role))[0];
+      if (found !== undefined) return found.ref;
+    }
+    return null;
+  }
+
   #ref(element: Element): string {
     let ref = this.#refs.get(element);
     if (ref === undefined) {
@@ -104,6 +123,14 @@ export class Page {
       if (!SAID_WHOLE.has(role)) this.#walk(child, depth + 1, height, lines);
     }
   }
+}
+
+/** Which of several things that share a name a person means first: the section, then its heading. */
+const PREFERRED = ["region", "heading", "article", "button", "link", "form", "img", "group"];
+
+function rank(role: string): number {
+  const at = PREFERRED.indexOf(role);
+  return at === -1 ? PREFERRED.length : at;
 }
 
 /** Out of the snapshot: hidden, marked by the site, or a secret. */

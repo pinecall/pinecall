@@ -11,19 +11,22 @@ export const UI = "pinecall.ui";
 export const SEEN = "page.seen";
 /** The visitor clicked something: `{ role, name }`. */
 export const CLICKED = "page.clicked";
-/** A ref the agent named is no longer on the page: `{ ref }`. A fresh `page.seen` follows. */
+/** A target the agent named is not on the page: `{ target }`. A fresh `page.seen` follows. */
 export const MISSING = "page.missing";
 
 /** What the pointer can do. It never clicks, types or leaves the page for the visitor. */
 export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home"] as const;
 export type Action = (typeof ACTIONS)[number];
 
-/** One move of the pointer, as the agent sends it, on `ref` (`e12`) for the moves that take one. */
+/** One move of the pointer, as the agent sends it, on `target` for the moves that take one: a ref (`e12`), or a name as the screen shows it (`Questions`). */
 export interface Cursor {
   type: "cursor";
   action: Action;
-  ref?: string | undefined;
+  target?: string | undefined;
 }
+
+/** A target that is a ref of the snapshot rather than a name. */
+export const A_REF = /^e\d+$/;
 
 /** One move of a macro, run as its word is said. `find` names the element as the snapshot does: `["button", "Book now"]`. */
 export interface Beat {
@@ -79,8 +82,8 @@ export function tutoring(data: unknown): Cursor | Step | Look | null {
   if (typeof data !== "object" || data === null) return null;
   const message: Record<string, unknown> = { ...data };
   if (message["type"] === "look") return { type: "look" };
-  if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["ref"])) {
-    return { type: "cursor", action: message["action"], ref: message["ref"] };
+  if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["target"])) {
+    return { type: "cursor", action: message["action"], target: message["target"] };
   }
   const beats = message["beats"];
   if (
