@@ -228,8 +228,9 @@ Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monit
 | [`sdk/python/`](sdk/python) | the Python SDK | [`pinecall`](https://pypi.org/project/pinecall/) · PyPI |
 | [`sdk/ruby/`](sdk/ruby) | the Ruby SDK | [`pinecall`](https://rubygems.org/gems/pinecall) · RubyGems |
 | [`packages/room/`](packages/room) | the caller's side of a call, for a page's own UI | [`@pinecall/room`](https://www.npmjs.com/package/@pinecall/room) · npm |
+| [`packages/dot/`](packages/dot) | the talking dot, and the tutor that walks a page with a pointer of its own | [`@pinecall/dot`](https://www.npmjs.com/package/@pinecall/dot) · npm |
 | [`packages/core/`](packages/core) | what the console and Pinecall's supervisor app stand on | taken as source |
-| [`examples/`](examples) | Clínica Norte, the one example agent, in each language | read and copied, never published |
+| [`examples/`](examples) | Clínica Norte, the one example agent, in each language, and Brightside, the dot tutor's | read and copied, never published |
 | [`infra/`](infra) | the charts, the images and the Terraform a runtime is deployed with | `make deploy` from `runtime/` |
 
 Each folder's `README.md` says what it is and how to use it.
@@ -269,7 +270,7 @@ own `uv.lock`. `sdk/ruby/` has its Gemfile. Each package's own check is what CI 
 ## ▸ Releasing
 
 Every published package carries the same version. `scripts/version` prints it, or says which
-package disagrees; `scripts/version X.Y.Z` writes it into all six. A `v*` tag publishes them all
+package disagrees; `scripts/version X.Y.Z` writes it into all seven. A `v*` tag publishes them all
 (`.github/workflows/release.yml`), each registry by Trusted Publishing, and a GitHub Release whose
 notes are each package's `CHANGELOG.md` section for that version.
 

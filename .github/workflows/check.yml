@@ -71,6 +71,11 @@ jobs:
             room:
               - *node
               - packages/room/**
+            dot:
+              - *node
+              - packages/dot/**
+              - packages/room/**
+              - sdk/typescript/**
             python:
               - *workflow
               - sdk/python/**
@@ -88,6 +93,7 @@ jobs:
           AGENTS: ${{ steps.filter.outputs.agents }}
           CLI: ${{ steps.filter.outputs.cli }}
           ROOM: ${{ steps.filter.outputs.room }}
+          DOT: ${{ steps.filter.outputs.dot }}
         run: |
           rows=()
           row() {
@@ -100,6 +106,7 @@ jobs:
           row agents sdk/typescript "$AGENTS" scripts/check
           row cli cli "$CLI" scripts/check
           row room packages/room "$ROOM" scripts/check
+          row dot packages/dot "$DOT" scripts/check
           echo "matrix=[$(IFS=,; echo "${rows[*]}")]" >> "$GITHUB_OUTPUT"
 
   runtime-rules:

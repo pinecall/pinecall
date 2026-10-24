@@ -3,10 +3,9 @@
 import { configDefaults, defineConfig } from "vitest/config";
 
 // Two environments, split by directory. Everything that needs a document — an audio element for
-// the agent's voice, a React root, a face — lives under test/seat, test/react or test/face;
-// everything else runs in node, where a `document` reached by accident is a failure and not a
-// silent pass.
-const DOM = ["test/seat/**/*.test.ts", "test/react/**/*.test.ts", "test/face/**/*.test.ts"];
+// the agent's voice, a React root — lives under test/seat or test/react; everything else runs in
+// node, where a `document` reached by accident is a failure and not a silent pass.
+const DOM = ["test/seat/**/*.test.ts", "test/react/**/*.test.ts"];
 
 export default defineConfig({
   test: {

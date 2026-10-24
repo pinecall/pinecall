@@ -1,0 +1,20 @@
+{
+  "name": "@pinecall/example-brightside",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Brightside Dental: Pip, a dot tutor that walks the visitor through the clinic's site, and the site it walks",
+  "type": "module",
+  "scripts": {
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "site": "node site/serve.mjs"
+  },
+  "dependencies": {
+    "@pinecall/agents": "workspace:*",
+    "@pinecall/dot": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,10 +1,10 @@
-/** @pinecall/room/face: a face that speaks with the agent's voice, drawn into any element of the page. */
+/** The face: a dot that speaks with the agent's voice, drawn into any element of the page. */
 //
 // It reads the room it is given and nothing else: the phase and the agent's own state set its mood
 // (resting, listening, thinking), and while the agent's voice sounds, its mouth is read from that
 // voice frame by frame. Nothing is sent anywhere and nothing is asked of the server.
 
-import type { RoomStore } from "../index.js";
+import type { RoomStore } from "@pinecall/room";
 
 import { drawn, painted } from "./draw.js";
 import { Ear } from "./ear.js";

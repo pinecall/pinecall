@@ -4,16 +4,15 @@ The caller's side of a Pinecall call, in a browser. A visitor talks to your agen
 asks it to ring their phone; the page draws what is happening from the call's own log. No
 framework, no key in the page.
 
-## One store, four imports
+## One store, three imports
 
 Everything is one store: a value you read, a function you subscribe with, and a handful of verbs
-that change it. The package has four entry points, and each one is for a different place.
+that change it. The package has three entry points, and each one is for a different place.
 
 | import | where it runs | what it gives you |
 |---|---|---|
 | `@pinecall/room` | the page | `room()`, the store of one conversation, `rowsOf`, `knownBy`, `brief` to draw it, and the karaoke of what is being said |
 | `@pinecall/room/react` | the page, in React | `useRoom()`, `useStore()` and `useKaraoke()` |
-| `@pinecall/room/face` | the page | `face()`: a face that speaks with the agent's voice ([FACE.md](FACE.md)) |
 | `@pinecall/room/server` | your server | `mint()`, `dial()`, `expect()` and `GatewayRefused`: the only code that touches the key |
 
 A conversation has two parts, and they are not the same thing. **The participant** is the page's
@@ -276,7 +275,7 @@ handed is never changed afterwards, so it can be compared by reference and kept.
 | `connection` | the log's stream: `connecting` · `live` · `reconnecting` · `ended` (also before anything opened) |
 | `wantsSound` | `true` when the browser has not let the page play sound yet: show a button that calls `playSound()` |
 | `speaking` | `{agent, user, level}`: who is making a sound right now, and how loud the agent is, 0 to 1 |
-| `voice` | the `<audio>` element the agent's voice plays in during a spoken call, for a page that listens to it; `null` otherwise |
+| `voice` | the `<audio>` element the agent's voice plays in during a spoken call, for a page that listens to it (`@pinecall/dot`'s face does); `null` otherwise |
 | `code` | `{code, number, expiresAt}` once `byPhone()` has a code to show; `null` otherwise |
 
 The phase and everything around it — `error`, `connection`, `wantsSound`, `speaking` — are

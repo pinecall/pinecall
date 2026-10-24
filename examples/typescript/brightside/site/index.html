@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brightside Dental</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #fbfaf7; --ink: #1d2422; --muted: #5f6b67; --line: #e4e2dc; --card: #ffffff;
+  --brand: #0e6e8c; --brand-ink: #ffffff; --brand-soft: #e3f1f5; --sun: #f2b544;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #111615; --ink: #e8eeec; --muted: #9aa8a3; --line: #26302d; --card: #171e1c; --brand: #3fa7c7; --brand-ink: #071317; --brand-soft: #17292f; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #111615; --ink: #e8eeec; --muted: #9aa8a3; --line: #26302d; --card: #171e1c; --brand: #3fa7c7; --brand-ink: #071317; --brand-soft: #17292f; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { scroll-behavior: auto; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.site { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+.logo { font: 600 20px var(--display); color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.logo i { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--sun), #e08a1f); display: inline-block; }
+nav.main { display: flex; gap: 4px; margin-left: auto; }
+nav.main a { color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 8px; font-weight: 500; transition: color .15s, background .15s; }
+nav.main a:hover { color: var(--ink); background: var(--brand-soft); }
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 11px 20px; font: 600 15px var(--body); cursor: pointer; text-decoration: none; transition: transform .15s, box-shadow .15s, background .15s; }
+.btn.primary { background: var(--brand); color: var(--brand-ink); box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 30%, transparent); }
+.btn.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 40%, transparent); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.ghost:hover { border-color: var(--brand); color: var(--brand); }
+.hero { padding-block: 72px 56px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+.hero h1 { font: 600 clamp(36px, 5vw, 58px)/1.05 var(--display); margin: 0 0 16px; letter-spacing: -0.02em; text-wrap: balance; }
+.hero p { color: var(--muted); font-size: 18px; margin: 0 0 28px; max-width: 46ch; }
+.hero .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero figure { margin: 0; aspect-ratio: 4 / 3.2; border-radius: 28px; background: radial-gradient(120% 90% at 30% 20%, var(--brand-soft), transparent 60%), linear-gradient(160deg, color-mix(in srgb, var(--sun) 35%, var(--card)), var(--card)); border: 1px solid var(--line); display: grid; place-items: center; font: 500 15px var(--body); color: var(--muted); max-width: 100%; }
+.hero figure b { font: 600 64px var(--display); color: var(--brand); display: block; text-align: center; }
+section.block { padding-block: 56px; border-top: 1px solid var(--line); }
+section.block h2 { font: 600 34px/1.1 var(--display); margin: 0 0 8px; letter-spacing: -0.01em; }
+section.block .sub { color: var(--muted); margin: 0 0 28px; }
+.services { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.service { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; transition: transform .2s, box-shadow .2s, border-color .2s; cursor: pointer; }
+.service:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgb(0 0 0 / .08); border-color: var(--brand); }
+.service h3 { margin: 10px 0 4px; font-size: 18px; }
+.service p { margin: 0; color: var(--muted); font-size: 14px; }
+.service .em { font-size: 26px; }
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.plan { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; display: grid; gap: 10px; align-content: start; position: relative; }
+.plan.popular { border: 2px solid var(--brand); }
+.plan .tag { position: absolute; top: -12px; left: 24px; background: var(--brand); color: var(--brand-ink); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.plan h3 { margin: 0; font-size: 20px; }
+.plan .price { font: 600 40px var(--display); }
+.plan .price small { font: 500 15px var(--body); color: var(--muted); }
+.plan ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.book { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+form.visit { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; display: grid; gap: 14px; }
+form.visit label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
+form.visit input, form.visit select { font: 15px var(--body); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+form.visit input:hover, form.visit select:hover { border-color: var(--brand); }
+details { border-bottom: 1px solid var(--line); padding-block: 14px; }
+summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+summary::after { content: "+"; color: var(--brand); font-weight: 600; }
+details[open] summary::after { content: "–"; }
+summary:hover { color: var(--brand); }
+details p { color: var(--muted); margin: 8px 0 0; }
+footer.site { padding-block: 40px 140px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+@media (max-width: 820px) {
+  .hero, .book { grid-template-columns: minmax(0, 1fr); }
+  .services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plans { grid-template-columns: minmax(0, 1fr); }
+  nav.main a:not(.keep) { display: none; }
+}
+</style>
+<!-- __DEV__ -->
+<script type="module" src="__WIDGET__"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="logo" href="#top"><i></i>Brightside Dental</a>
+    <nav class="main" aria-label="Main">
+      <a href="#services">Services</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">Questions</a>
+    </nav>
+    <a class="btn primary" href="#book">Book now</a>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <div>
+      <h1>A brighter smile, without the wait</h1>
+      <p>Same-week appointments in Lakeview, evening hours, and a first visit that costs nothing. We tell you the price before we touch a thing.</p>
+      <div class="cta">
+        <a class="btn primary" href="#book">Book a free first visit</a>
+        <a class="btn ghost" href="#pricing">See plans</a>
+      </div>
+    </div>
+    <figure><div><b>4.9★</b>2,140 reviews on Google</div></figure>
+  </div>
+
+  <section class="block" id="services" aria-labelledby="services-h">
+    <div class="wrap">
+      <h2 id="services-h">Services</h2>
+      <p class="sub">Everything a family needs, under one roof.</p>
+      <div class="services">
+        <article class="service" aria-label="Cleaning"><span class="em" aria-hidden="true">🪥</span><h3>Cleaning</h3><p>Twice a year, 45 minutes, X-rays included.</p></article>
+        <article class="service" aria-label="Whitening"><span class="em" aria-hidden="true">✨</span><h3>Whitening</h3><p>Up to eight shades in one 60-minute visit.</p></article>
+        <article class="service" aria-label="Braces &amp; aligners"><span class="em" aria-hidden="true">🦷</span><h3>Braces &amp; aligners</h3><p>Clear aligners from age 12, metal braces too.</p></article>
+        <article class="service" aria-label="Implants"><span class="em" aria-hidden="true">🛠️</span><h3>Implants</h3><p>From the scan to the crown, in our own lab.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="pricing" aria-labelledby="pricing-h">
+    <div class="wrap">
+      <h2 id="pricing-h">Pricing</h2>
+      <p class="sub">A monthly plan instead of a surprise bill. Cancel any time.</p>
+      <div class="plans">
+        <article class="plan" aria-label="Essential plan"><h3>Essential</h3><div class="price">$19<small> / month</small></div><ul><li>Two cleanings a year</li><li>X-rays</li></ul><button class="btn ghost" type="button">Choose Essential</button></article>
+        <article class="plan popular" aria-label="Family Care plan"><span class="tag">Most families</span><h3>Family Care</h3><div class="price">$39<small> / month</small></div><ul><li>Up to four people</li><li>Cleanings, X-rays, fillings</li><li>15% off whitening</li></ul><button class="btn primary" type="button">Choose Family Care</button></article>
+        <article class="plan" aria-label="Complete plan"><h3>Complete</h3><div class="price">$59<small> / month</small></div><ul><li>Everything in Family Care</li><li>One whitening a year</li><li>Aligner consult</li></ul><button class="btn ghost" type="button">Choose Complete</button></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="book" aria-labelledby="book-h">
+    <div class="wrap book">
+      <div>
+        <h2 id="book-h">Book your first visit</h2>
+        <p class="sub">Free, 40 minutes, with a dentist, not a salesperson. Pick a day and we confirm by text.</p>
+      </div>
+      <form class="visit" onsubmit="event.preventDefault()">
+        <label for="f-name">Your name<input id="f-name" name="name" autocomplete="name" placeholder="Jordan Lee"></label>
+        <label for="f-phone">Phone<input id="f-phone" name="phone" type="tel" autocomplete="tel" placeholder="(312) 555-0142"></label>
+        <label for="f-day">Day<select id="f-day" name="day"><option>Tuesday, Oct 28</option><option>Wednesday, Oct 29</option><option>Thursday, Oct 30</option></select></label>
+        <button class="btn primary" type="submit">Book my visit</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="block" id="faq" aria-labelledby="faq-h">
+    <div class="wrap">
+      <h2 id="faq-h">Questions</h2>
+      <details><summary>Do you take my insurance?</summary><p>We bill Delta, Cigna, MetLife and Aetna directly. Without insurance, a plan covers the same.</p></details>
+      <details><summary>Is the first visit really free?</summary><p>Yes: the exam, the X-rays and a written plan with prices. You decide after.</p></details>
+      <details><summary>Can I come after work?</summary><p>Tuesday to Thursday we are open until 8 pm.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer class="site"><div class="wrap">Brightside Dental · 2210 N Clark St, Chicago · An example site for the Pinecall dot tutor.</div></footer>
+
+<pinecall-widget agent="pip" name="Pip" company="Brightside Dental" look="dot" tutor
+                 token-url="/pinecall/token" gateway="__GATEWAY__"></pinecall-widget>
+</body>
+</html>

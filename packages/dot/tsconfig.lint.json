@@ -1,0 +1,11 @@
+{
+  // The lint config: the build's compiler options over the tests as well, so a fake that stops
+  // matching the real thing is caught by `pnpm lint` and not by the next person to read it.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

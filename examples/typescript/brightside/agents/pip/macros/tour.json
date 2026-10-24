@@ -1,0 +1,143 @@
+{
+  "name": "tour",
+  "when": "the visitor asks to be shown around, or does not know where to start",
+  "steps": [
+    {
+      "say": "Hi! I'm Pip. Let me show you around Brightside Dental. It takes about a minute.",
+      "beats": [
+        {
+          "word": "Let",
+          "do": "point",
+          "find": [
+            "heading",
+            "A brighter smile"
+          ]
+        },
+        {
+          "word": "Brightside",
+          "do": "point",
+          "find": [
+            "link",
+            "Brightside Dental"
+          ]
+        }
+      ]
+    },
+    {
+      "say": "Up here are our services. Whitening is the one most people ask about.",
+      "beats": [
+        {
+          "word": "Up",
+          "do": "point",
+          "find": [
+            "link",
+            "Services"
+          ]
+        },
+        {
+          "word": "services.",
+          "do": "scroll_to",
+          "find": [
+            "region",
+            "Services"
+          ]
+        },
+        {
+          "word": "Whitening",
+          "do": "point",
+          "find": [
+            "article",
+            "Whitening"
+          ]
+        },
+        {
+          "word": "is",
+          "do": "highlight",
+          "find": [
+            "article",
+            "Whitening"
+          ]
+        }
+      ]
+    },
+    {
+      "say": "Pricing is simple. There are three plans, and most families pick Family Care.",
+      "beats": [
+        {
+          "word": "Pricing",
+          "do": "unhighlight"
+        },
+        {
+          "word": "Pricing",
+          "do": "scroll_to",
+          "find": [
+            "region",
+            "Pricing"
+          ]
+        },
+        {
+          "word": "most",
+          "do": "highlight",
+          "find": [
+            "article",
+            "Family Care"
+          ]
+        },
+        {
+          "word": "Family",
+          "do": "point",
+          "find": [
+            "button",
+            "Choose Family Care"
+          ]
+        }
+      ]
+    },
+    {
+      "say": "When you're ready, this button books your first visit. It's free.",
+      "beats": [
+        {
+          "word": "When",
+          "do": "unhighlight"
+        },
+        {
+          "word": "this",
+          "do": "point",
+          "find": [
+            "link",
+            "Book now"
+          ]
+        },
+        {
+          "word": "button",
+          "do": "here"
+        }
+      ]
+    },
+    {
+      "say": "And if you have questions, the answers are right here. I'll be in the corner if you need me.",
+      "beats": [
+        {
+          "word": "questions,",
+          "do": "scroll_to",
+          "find": [
+            "region",
+            "Questions"
+          ]
+        },
+        {
+          "word": "right",
+          "do": "point",
+          "find": [
+            "button",
+            "Do you take my insurance"
+          ]
+        },
+        {
+          "word": "corner",
+          "do": "home"
+        }
+      ]
+    }
+  ]
+}

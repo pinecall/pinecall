@@ -1,8 +1,7 @@
-// The four public surfaces, pinned by name: adding an export means editing a list here on purpose.
+// The three public surfaces, pinned by name: adding an export means editing a list here on purpose.
 
 import { describe, expect, it } from "vitest";
 
-import * as faces from "../src/face/index.js";
 import * as page from "../src/index.js";
 import * as react from "../src/react/index.js";
 import * as server from "../src/server/index.js";
@@ -16,10 +15,6 @@ describe("the public surfaces", () => {
 
   it("@pinecall/room/react is three hooks", () => {
     expect(Object.keys(react).sort()).toEqual(["useKaraoke", "useRoom", "useStore"]);
-  });
-
-  it("@pinecall/room/face is the face", () => {
-    expect(Object.keys(faces)).toEqual(["face"]);
   });
 
   it("@pinecall/room/server is the three calls a key makes, and the refusal", () => {

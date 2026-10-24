@@ -1,6 +1,6 @@
 /** How the face moves between frames: the mood a call is in, the mouth each quiet mood holds, the easing, the blink. Pure. */
 
-import type { RoomState } from "../index.js";
+import type { RoomState } from "@pinecall/room";
 
 import type { Mouth } from "./mouth.js";
 

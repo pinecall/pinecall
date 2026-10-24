@@ -36,6 +36,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 | `autostart` | optional | the opening click starts a voice call directly; if the microphone is refused, the menu opens with the reason |
 | `history` | optional | `off` keeps no conversations in this browser. By default the visitor's last 20 chats and calls with this agent are kept in `localStorage` — the lines as they settled, at most 200 each — listed under **Your conversations** in the menu, any one readable again, and cleared by the visitor with **Clear** |
 | `look` | optional | `dot`: the button is a face that speaks with the agent's voice, and a click is a voice call with no panel ([below](#the-talking-dot)) |
+| `tutor` | optional | with `look="dot"`: the dot walks the visitor through the page with a pointer of its own, for an agent that extends `Tutor` ([below](#the-dot-as-a-tutor)) |
 
 Attributes are read once when the element connects, except `token-url`, which is read for every
 token. Use one tag per agent; several can share a page. The console stores these settings per
@@ -249,12 +250,28 @@ reason. The call is kept under **Your conversations** like any other.
 <pinecall-widget agent="front-desk" name="Pip" look="dot" token-url="/pinecall/token"></pinecall-widget>
 ```
 
-The dot stands on [`@pinecall/room`](../packages/room/README.md) and its face
-([FACE.md](../packages/room/FACE.md)), loaded from jsDelivr only for this look. It reads the call's
+The dot stands on [`@pinecall/room`](../packages/room/README.md) and
+[`@pinecall/dot`](../packages/dot/README.md), both loaded from jsDelivr only for this look. It reads the call's
 log straight from `gateway` with the call's own token, so `log-url` is not used. Its size is
 `--pc-dot-size` (64px by default), its colour `--pc-accent`, and its bubble the part `bubble`. What
 the agent shows with `pinecall.ui` has no room on a dot: the tag dispatches it as `pinecall:ui`
 instead (below).
+
+## The dot as a tutor
+
+`look="dot" tutor` makes the dot one more person on the page. The agent points at what it talks
+about with a pointer of its own, highlights it, scrolls to it and shows where to click, and it
+never clicks or types for the visitor. Its prompt reads the page as it is now, sent by the page each
+time it changes. The agent extends `Tutor` from `@pinecall/dot/agent`, and its walks are macros in
+its folder ([@pinecall/dot](../packages/dot/README.md#the-tutor-in-the-agent)).
+
+```html
+<pinecall-widget agent="front-desk" name="Pip" look="dot" tutor token-url="/pinecall/token"></pinecall-widget>
+```
+
+When the agent opens another page of the site, the call carries on there: the dot keeps the
+conversation's resume token in `sessionStorage` for a minute, and the next page with the same agent
+picks it up.
 
 ## Telling the agent what the visitor does
 

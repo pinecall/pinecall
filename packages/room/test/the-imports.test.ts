@@ -20,8 +20,6 @@ const MAY_IMPORT: Record<string, string[]> = {
   "seat": ["livekit-client"],
   // The React entry: React, and the package's own surface.
   "react": ["react", "."],
-  // The face: the DOM and Web Audio, and the package's own surface — the room it is given.
-  "face": ["."],
   // The server entry: fetch. It is imported by a tenant's server, so nothing browser-side rides in.
   "server": [],
   // The top: the store, the room, the rows, the surface. The room names the server's `Minted`,

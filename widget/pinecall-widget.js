@@ -44,6 +44,8 @@
 //   look        optional · "dot": the button is a face that speaks with the agent's voice, and a
 //               click is a voice call with no panel (pinecall-dot.js, on @pinecall/room). The log is
 //               read from `gateway` with the call's own token; --pc-dot-size sizes it (64px)
+//   tutor       optional · with look="dot": the dot walks the page with a pointer of its own, for an
+//               agent that extends @pinecall/dot/agent's Tutor
 //
 // Styling: the font is inherited. These custom properties apply in both themes: --pc-accent,
 // --pc-accent-soft, --pc-ink, --pc-muted, --pc-line, --pc-radius, --pc-offset, --pc-font,

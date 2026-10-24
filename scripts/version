@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The one version every published package carries: printed and checked, or written to all six."""
+"""The one version every published package carries: printed and checked, or written to all seven."""
 
 import json
 import re
@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-NPM = {"sdk/typescript": "@pinecall/agents", "cli": "pinecall", "packages/room": "@pinecall/room"}
+NPM = {"sdk/typescript": "@pinecall/agents", "cli": "pinecall", "packages/room": "@pinecall/room", "packages/dot": "@pinecall/dot"}
 RUBY = ROOT / "sdk/ruby/lib/pinecall/version.rb"
 PYTHON = ROOT / "sdk/python/src/pinecall/_version.py"
 RUNTIME = ROOT / "runtime/pyproject.toml"
@@ -56,7 +56,7 @@ def unpublishable() -> list[str]:
 
 
 def write(version: str) -> None:
-    """The version, into all six manifests, each written the way it already reads."""
+    """The version, into all seven manifests, each written the way it already reads."""
     for folder in NPM:
         path = ROOT / folder / "package.json"
         text = path.read_text()

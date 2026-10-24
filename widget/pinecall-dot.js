@@ -1,15 +1,21 @@
 // The talking dot, <pinecall-widget look="dot">: the button is a face that speaks with the agent's
-// voice, and a click is a voice call with no panel. Loaded by the widget only for that look.
+// voice, and a click is a voice call with no panel. With `tutor`, the dot is one more person on the
+// page, with a pointer of its own. Loaded by the widget only for that look.
 //
-// It stands on @pinecall/room: the room joins the call and reads its log straight from the gateway
-// with the call's own token, and the face reads the room. The widget around it mints the tokens,
-// keeps the conversation in its history, and opens its menu when a call cannot start.
+// It stands on @pinecall/room, which joins the call and reads its log straight from the gateway
+// with the call's own token, and @pinecall/dot, whose face and tutor read the room. The widget
+// around it mints the tokens, keeps the conversation in its history, and opens its menu when a
+// call cannot start.
 
 import { litAt, room, sayingOf } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/+esm";
-import { face } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/face/+esm";
+import { face, tutor } from "https://cdn.jsdelivr.net/npm/@pinecall/dot@0.11/+esm";
 
 // How long the agent's last line stays in the bubble after the reply closed, in ms.
 const LINGER_MS = 2600;
+// A tutor that opens another page of the site leaves the call's resume token here, and the next
+// page picks it up if it loads within this many ms: the visitor is still in the same conversation.
+const CARRY = "pinecall-dot:carry";
+const CARRY_MS = 60_000;
 
 const STYLE = `
   .fab.dot { width: var(--_dot); height: var(--_dot); padding: 0; border: 0; border-radius: 50%; background: none;
@@ -74,10 +80,27 @@ export class Dot {
     this.call = room({
       tokens: (scope, resume) => widget.token(scope, resume ?? null),
       gateway: widget.gateway,
-      // What the agent shows has nowhere to be drawn on a dot: the page hears it and does what it likes.
-      onUi: (data) => widget.dispatchEvent(new CustomEvent("pinecall:ui", { detail: data })),
+      // The tutor's moves are its own; a card or choices has nowhere to be drawn on a dot, so the
+      // page hears it and does what it likes.
+      onUi: (data) => {
+        if (this.tutor?.take(data)) return;
+        widget.dispatchEvent(new CustomEvent("pinecall:ui", { detail: data }));
+      },
     });
-    this.face = face(host, this.call);
+    this.tutor = null;
+    if (widget.hasAttribute("tutor")) {
+      // The tutor's person is the button: it rests where the dot would, and carries what it says.
+      fab.hidden = true;
+      this.tutor = tutor(this.call, {
+        dock: (widget.getAttribute("position") ?? "").endsWith("left") ? "left" : "right",
+        label,
+        onClick: () => this.click(),
+        onGo: (url) => this.go(url),
+      });
+      this.face = this.tutor;
+    } else {
+      this.face = face(host, this.call);
+    }
     this.kept = null;
     this.turns = 0;
     this.shown = "";
@@ -89,6 +112,31 @@ export class Dot {
       this.frame = requestAnimationFrame(paint);
     };
     this.frame = requestAnimationFrame(paint);
+    if (this.tutor) this.carried();
+  }
+
+  /** The tutor opens another page of the site: the call's resume token goes ahead of it. */
+  go(url) {
+    const { resume } = this.call.state;
+    try {
+      if (resume) sessionStorage.setItem(CARRY, JSON.stringify({ agent: this.widget.agent, resume, at: Date.now() }));
+    } catch {
+      // storage unavailable: the next page opens without the call
+    }
+    location.assign(url);
+  }
+
+  /** A page the tutor opened: the conversation it carried goes on here. */
+  carried() {
+    let carry = null;
+    try {
+      carry = JSON.parse(sessionStorage.getItem(CARRY) ?? "null");
+      sessionStorage.removeItem(CARRY);
+    } catch {
+      return;
+    }
+    if (!carry || carry.agent !== this.widget.agent || !carry.resume || Date.now() - carry.at > CARRY_MS) return;
+    void this.call.start("talk", carry.resume);
   }
 
   /** The dot was clicked: start a call, or during one, offer to hang up. */
@@ -137,6 +185,13 @@ export class Dot {
   /** The bubble, once a frame: the reply lit word by word as the voice says it, then held a moment. */
   paint(at) {
     const state = this.call.state;
+    if (this.tutor && !state.wantsSound) {
+      if (this.shown !== "") {
+        this.shown = "";
+        this.bubble.hidden = true;
+      }
+      return;
+    }
     const saying = sayingOf(state.entries);
     if (saying !== null && this.speech?.id !== saying.speech) this.speech = { id: saying.speech, at };
     let shown = "";

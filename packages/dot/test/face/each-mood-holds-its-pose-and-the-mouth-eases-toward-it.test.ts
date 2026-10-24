@@ -3,10 +3,10 @@
 import { describe, expect, it } from "vitest";
 
 import { BLINK_S, eased, lidAt, moodOf, nextBlink } from "../../src/face/motion.js";
-import { aRoom } from "../a-room-at-hand.js";
+import { aRoom } from "../a-room.js";
 
 describe("the mood", () => {
-  const { state } = aRoom().store;
+  const { state } = aRoom();
 
   it("rests before a call, thinks while one opens, and rests once it is over", () => {
     expect(moodOf(state)).toBe("idle");

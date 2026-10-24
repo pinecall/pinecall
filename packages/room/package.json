@@ -24,11 +24,6 @@
       "import": "./src/react/index.ts",
       "default": "./src/react/index.ts"
     },
-    "./face": {
-      "types": "./src/face/index.ts",
-      "import": "./src/face/index.ts",
-      "default": "./src/face/index.ts"
-    },
     "./server": {
       "types": "./src/server/index.ts",
       "import": "./src/server/index.ts",
@@ -36,8 +31,7 @@
     }
   },
   "files": [
-    "dist",
-    "FACE.md"
+    "dist"
   ],
   "scripts": {
     "build": "scripts/build",
@@ -85,10 +79,6 @@
       "./react": {
         "types": "./dist/react/index.d.ts",
         "import": "./dist/react/index.js"
-      },
-      "./face": {
-        "types": "./dist/face/index.d.ts",
-        "import": "./dist/face/index.js"
       },
       "./server": {
         "types": "./dist/server/index.d.ts",

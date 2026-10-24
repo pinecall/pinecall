@@ -101,6 +101,22 @@ importers:
         specifier: ^5.0.0
         version: 5.0.3(@types/node@26.6.5)(happy-dom@20.14.6)(msw@3.0.3(@types/node@26.6.5)(typescript@7.0.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)))(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
 
+  examples/typescript/brightside:
+    dependencies:
+      '@pinecall/agents':
+        specifier: workspace:*
+        version: link:../../../sdk/typescript
+      '@pinecall/dot':
+        specifier: workspace:*
+        version: link:../../../packages/dot
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.6.5
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.3(@types/node@26.6.5)(happy-dom@20.14.6)(msw@3.0.3(@types/node@26.6.5)(typescript@7.0.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)))(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
+
   examples/typescript/clinica-norte:
     dependencies:
       '@pinecall/agents':
@@ -132,6 +148,31 @@ importers:
       '@types/react':
         specifier: ^19.2.18
         version: 19.3.0
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.3(@types/node@26.6.5)(happy-dom@20.14.6)(msw@3.0.3(@types/node@26.6.5)(typescript@7.0.2)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15)))(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
+
+  packages/dot:
+    dependencies:
+      '@pinecall/room':
+        specifier: workspace:^
+        version: link:../room
+    devDependencies:
+      '@pinecall/agents':
+        specifier: workspace:^
+        version: link:../../sdk/typescript
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.6.5
+      happy-dom:
+        specifier: ^20.14.5
+        version: 20.14.6
+      livekit-client:
+        specifier: ^2.22.3
+        version: 2.22.4(@types/dom-mediacapture-record@1.0.22)
       typescript:
         specifier: 7.0.2
         version: 7.0.2

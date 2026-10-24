@@ -1,5 +1,5 @@
 # A `v*` tag is the publication: `git push origin vX.Y.Z` publishes every package at X.Y.Z —
-# pinecall-runtime and pinecall on PyPI, @pinecall/agents, @pinecall/room and pinecall on npm, the
+# pinecall-runtime and pinecall on PyPI, @pinecall/agents, @pinecall/room, @pinecall/dot and pinecall on npm, the
 # pinecall gem — and a GitHub Release whose notes are each package's CHANGELOG.md section for X.Y.Z.
 name: release
 
@@ -44,7 +44,7 @@ jobs:
         env:
           DECLARED: ${{ steps.declared.outputs.version }}
         run: |
-          for package in runtime sdk/typescript sdk/python sdk/ruby cli packages/room; do
+          for package in runtime sdk/typescript sdk/python sdk/ruby cli packages/room packages/dot; do
             if ! grep -qE "^## \[?${DECLARED//./\\.}\]?( |$)" "$package/CHANGELOG.md"; then
               echo "$package/CHANGELOG.md has no section for $DECLARED" >&2
               exit 1
@@ -124,9 +124,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: build and pack agents, room and cli
+      - name: build and pack agents, room, dot and cli
         run: |
-          for folder in sdk/typescript packages/room cli; do
+          for folder in sdk/typescript packages/room packages/dot cli; do
             (cd "$folder" && scripts/build && pnpm pack --pack-destination "$GITHUB_WORKSPACE/npm/$(basename "$folder")")
           done
       - name: no tarball names a workspace or a path
@@ -198,12 +198,13 @@ jobs:
       # anonymous publish: a 404 on the PUT after saying it signed the provenance.
       - run: npm install -g npm@latest
       # The framework first: the CLI's tarball asks for it, and an install of the CLI before it is
-      # on the registry would not resolve.
+      # on the registry would not resolve. Dot last: it depends on room, and while npm has no trusted
+      # publisher for it yet, its refusal must keep nothing else from the registry.
       - name: publish each package, unless this version is already on npm
         env:
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
-          for package in typescript room cli; do
+          for package in typescript room cli dot; do
             tarball=$(ls npm/$package/*.tgz)
             name=$(tar -xOzf "$tarball" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')
             if npm view "$name@$VERSION" version >/dev/null 2>&1; then
@@ -262,7 +263,7 @@ jobs:
           # Each published package keeps its own CHANGELOG.md; the console and the widget ship inside
           # the runtime's wheel and its CHANGELOG says what of them changed.
           for entry in "pinecall-runtime:runtime" "@pinecall/agents:sdk/typescript" "pinecall (Python):sdk/python" \
-                       "pinecall (Ruby):sdk/ruby" "pinecall (CLI):cli" "@pinecall/room:packages/room"; do
+                       "pinecall (Ruby):sdk/ruby" "pinecall (CLI):cli" "@pinecall/room:packages/room" "@pinecall/dot:packages/dot"; do
             name="${entry%%:*}"; package="${entry#*:}"
             section=$(awk -v v="$VERSION" '
               index($0, "## " v " ") == 1 || index($0, "## [" v "]") == 1 || $0 == "## " v {on=1; print; next}

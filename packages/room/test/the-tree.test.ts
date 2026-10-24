@@ -14,7 +14,7 @@ const REPO = fileURLToPath(new URL("..", import.meta.url));
 const TREES = ["src", "test"];
 
 // The pages at the root are read the same way the code is, and hold to the same ceiling.
-const PAGES = ["README.md", "FACE.md", "CLAUDE.md", "CHANGELOG.md"];
+const PAGES = ["README.md", "CLAUDE.md", "CHANGELOG.md"];
 
 // 400 lines is the ceiling and 150 the norm. A file over it is not a style problem: it is two
 // ideas that were never separated, and it stops fitting in a reading.

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **The widget's `look="dot"`**: the button is a face that speaks with the agent's voice, and a click is
+  a voice call with no panel. The face, its mouth read from the voice frame by frame, is `@pinecall/dot`'s,
+  loaded with `@pinecall/room` from jsDelivr only for this look; the gateway serves `pinecall-dot.js`
+  beside the widget.
+- **`look="dot" tutor`**: the dot walks the visitor through the page with a pointer of its own, for an
+  agent that extends `@pinecall/dot/agent`'s `Tutor`; a page it opens carries the call on.
+- **The widget's tag has `event(name, data)`**, which tells the agent what the visitor did on the page,
+  for its `onEvent`; with `look="dot"`, what the agent shows is dispatched as `pinecall:ui`.
+
 ## 0.11.20 — a call's reader hears it live, a spoken simulation finds a seat or says why (2026-10-24)
 
 - **A reader of a call's log hears it live, whatever else the gateway is doing.** A reader's log is made with no

@@ -1,0 +1,10 @@
+{
+  // The framework's preset, as Clínica Norte's; JSON modules for the macros the class imports.
+  "extends": "@pinecall/agents/tsconfig.tenant.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["agents"]
+}

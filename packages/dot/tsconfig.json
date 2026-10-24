@@ -1,0 +1,26 @@
+{
+  // The build: src/ into dist/. The page's parts run in a browser and `agent/` in the agent's Node
+  // process, so `lib` has the DOM and `types` has Node; the import table in test/the-imports keeps
+  // `node:` out of everything but `agent/`. `@tool` is a legacy decorator, as @pinecall/agents'.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    "experimentalDecorators": true
+  },
+  "include": ["src"]
+}

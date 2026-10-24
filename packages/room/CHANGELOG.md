@@ -11,9 +11,6 @@ maintainer's call.
 - **`onUi(data)`**: what the agent puts on the screen with `call.send("pinecall.ui", data)` reaches
   the page.
 - **`state.voice`** is the element the agent's voice plays in during a spoken call.
-- **`@pinecall/room/face`**: `face(element, room)` draws a face that speaks with the agent's voice.
-  Its mouth is read from that voice frame by frame, and its mood follows the agent's state
-  ([FACE.md](FACE.md)).
 - The room's types moved to `src/surface.ts`. The surface is unchanged.
 
 ## 0.11.20 — released with the runtime's live readers (2026-10-24)
