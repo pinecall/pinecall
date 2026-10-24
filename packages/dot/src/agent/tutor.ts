@@ -125,7 +125,8 @@ export class Tutor extends Agent {
 
   private move(action: Action, data: { ref?: string; url?: string }): string {
     this.call.send(UI, { type: "cursor", action, ...data });
-    return `done: ${action}${data.ref ? ` ${data.ref}` : ""}${data.url ? ` ${data.url}` : ""}`;
+    // A bare "done" reads to a model as a turn to answer: it greets again, or says its last sentence twice.
+    return `Your pointer did it (${action}${data.ref ? ` ${data.ref}` : ""}${data.url ? ` ${data.url}` : ""}). Go on with what you were saying; do not repeat yourself or greet again.`;
   }
 }
 

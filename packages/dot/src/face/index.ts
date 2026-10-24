@@ -45,6 +45,9 @@ export function face(host: Element, call: RoomStore): Face {
     ear.hear(state.voice);
     const heard = ear.listen(dt);
     const loud = heard?.level ?? (state.speaking.agent ? state.speaking.level : 0);
+    // What the mouth reads, on the host, for a page that wants to know: the voice itself, or the room's coarse level.
+    const hearing = heard !== null ? "voice" : "level";
+    if (host instanceof HTMLElement && host.dataset["pcEar"] !== hearing) host.dataset["pcEar"] = hearing;
     const mood = state.phase === "live" && loud > SOUNDING ? "speaking" : moodOf(state);
     const target = mood === "speaking" ? spoken(loud, heard?.bands ?? NO_SHAPE) : POSES[mood];
     mouth = easedMouth(mouth, target, dt);

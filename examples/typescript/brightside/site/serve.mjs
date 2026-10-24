@@ -18,7 +18,7 @@ const PORT = Number(process.env.PORT ?? 5173);
 const GATEWAY = (process.env.PINECALL_URL ?? "https://cloud.pinecall.io").replace(/\/+$/, "");
 const KEY = process.env.PINECALL_KEY ?? keyInDotEnv();
 const LOCAL = process.env.DOT_FROM !== "npm";
-const AGENT = "pip";
+const AGENT = "brightside-pip";
 
 /** What is served from the checkout, by the path the page asks for. */
 const SERVED = {
@@ -45,9 +45,20 @@ function keyInDotEnv() {
   return line ? line.slice("PINECALL_KEY=".length).trim() : "";
 }
 
+// With ?debug, a label in the corner says what the face's mouth reads: the agent's voice itself, or
+// the room's coarse level (a mouth out of time with the voice).
+const DEBUG = `<script>
+if (new URLSearchParams(location.search).has("debug")) addEventListener("DOMContentLoaded", () => {
+  const label = Object.assign(document.createElement("div"), { style: "position:fixed;left:12px;top:12px;z-index:2147483647;font:12px ui-monospace,monospace;background:#111;color:#fff;padding:6px 10px;border-radius:8px" });
+  label.dataset.pinecallSkip = "";
+  document.body.append(label);
+  setInterval(() => { label.textContent = "mouth reads: " + (document.querySelector("[data-pc-ear]")?.dataset.pcEar ?? "no face yet"); }, 250);
+});
+</script>`;
+
 function page() {
   return readFileSync(join(here, "index.html"), "utf8")
-    .replace("<!-- __DEV__ -->", LOCAL ? `<script type="importmap">${JSON.stringify(IMPORTS)}</script>` : "")
+    .replace("<!-- __DEV__ -->", (LOCAL ? `<script type="importmap">${JSON.stringify(IMPORTS)}</script>` : "") + DEBUG)
     .replace("__WIDGET__", LOCAL ? "/widget/pinecall-widget.js" : `${GATEWAY}/widget/pinecall-widget.js`)
     .replace("__GATEWAY__", GATEWAY);
 }
