@@ -17,6 +17,10 @@ export interface SeatHears {
   speaking: (speaking: Speaking) => void;
   /** True when the browser has not been told it may make a sound. */
   wantsSound: (wanted: boolean) => void;
+  /** The element the agent's voice plays in, as it arrives; null once it has gone. */
+  voice: (element: HTMLMediaElement | null) => void;
+  /** What the agent put on the visitor's screen (`pinecall.ui`), decoded; never a line of the conversation. */
+  ui: (data: unknown) => void;
 }
 
 export interface SeatOptions {
@@ -31,6 +35,8 @@ export interface SeatOptions {
 /** A taken seat. Leaving is final; `on.disconnected` is not called for a seat that left. */
 export interface Seat {
   send(text: string): Promise<void>;
+  /** A fact about the page, for the agent's `onEvent`: `{name, data}` on `pinecall.event`. */
+  event(name: string, data: Record<string, unknown>): Promise<void>;
   /** Leave, the call going on without the page: a reload looks like this, and the call waits for it. */
   leave(): Promise<void>;
   /** Say the visitor hung up, then leave: the call ends at once instead of waiting for them. */
@@ -44,6 +50,12 @@ const CHAT = "lk.chat";
 
 /** The topic a hang-up is said on: a hang-up and a reload both disconnect the seat alike. */
 const HANGUP = "pinecall.hangup";
+
+/** The topic a fact about the page rides on; the runtime hands it to the agent's `onEvent`. */
+const EVENT = "pinecall.event";
+
+/** The topic the agent shows things on: `call.send("pinecall.ui", data)`. */
+const UI = "pinecall.ui";
 
 /** Join the room. Rejects with the room's own error when it cannot connect or hear the microphone. */
 export async function joinSeat(options: SeatOptions): Promise<Seat> {
@@ -60,10 +72,20 @@ export async function joinSeat(options: SeatOptions): Promise<Seat> {
 
   // Chat never plays the agent: a written conversation that starts talking out loud is a bug.
   room.on(RoomEvent.TrackSubscribed, (track) => {
-    if (mode === "talk" && track.kind === livekit.Track.Kind.Audio) sink.add(track.attach());
+    if (mode !== "talk" || track.kind !== livekit.Track.Kind.Audio) return;
+    const element = track.attach();
+    sink.add(element);
+    on.voice(element);
   });
   room.on(RoomEvent.TrackUnsubscribed, (track) => {
-    for (const element of track.detach()) sink.remove(element);
+    const gone = track.detach();
+    for (const element of gone) sink.remove(element);
+    if (gone.length > 0) on.voice(null);
+  });
+  room.on(RoomEvent.DataReceived, (payload, _from, _kind, topic) => {
+    if (topic !== UI) return;
+    const data = decoded(payload);
+    if (data !== undefined) on.ui(data);
   });
   room.on(RoomEvent.Disconnected, () => {
     if (left) return;
@@ -88,6 +110,10 @@ export async function joinSeat(options: SeatOptions): Promise<Seat> {
   return {
     async send(text) {
       await room.localParticipant.sendText(text, { topic: CHAT });
+    },
+    async event(name, data) {
+      const packed = new TextEncoder().encode(JSON.stringify({ name, data }));
+      await room.localParticipant.publishData(packed, { topic: EVENT, reliable: true });
     },
     leave,
     async hangUp() {
@@ -116,4 +142,13 @@ function speakingOf(speakers: SeatParticipant[], me: string): Speaking {
     user: speakers.some((speaker) => speaker.identity === me),
     level: remote?.audioLevel ?? 0,
   };
+}
+
+/** A payload as JSON, or undefined when it is not: an agent's bad bytes are not the page's error. */
+function decoded(payload: Uint8Array): unknown {
+  try {
+    return JSON.parse(new TextDecoder().decode(payload));
+  } catch {
+    return undefined;
+  }
 }

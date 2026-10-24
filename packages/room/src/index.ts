@@ -1,7 +1,7 @@
 /** @pinecall/room: the caller's side of a Pinecall call in a browser — one store, no framework. */
 
 export { room } from "./room.js";
-export type { Code, Minted, Mode, Phase, RoomOptions, RoomState, RoomStore } from "./room.js";
+export type { Code, Minted, Mode, Phase, RoomOptions, RoomState, RoomStore } from "./surface.js";
 export type { Store } from "./store.js";
 export type { Connection } from "./log/follow.js";
 export type { Speaking } from "./seat/join.js";

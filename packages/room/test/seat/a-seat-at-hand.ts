@@ -30,12 +30,16 @@ export interface Taken {
   disconnected: number;
   speaking: Speaking[];
   wantsSound: boolean[];
+  voices: (HTMLMediaElement | null)[];
+  shown: unknown[];
 }
 
 export async function take(mode: "talk" | "chat", livekit = new FakeLivekit()): Promise<Taken> {
   const sink = new RecordingSink();
   const speaking: Speaking[] = [];
   const wantsSound: boolean[] = [];
+  const voices: (HTMLMediaElement | null)[] = [];
+  const shown: unknown[] = [];
   let disconnected = 0;
   const seat = await joinSeat({
     livekit: livekit.module,
@@ -49,6 +53,8 @@ export async function take(mode: "talk" | "chat", livekit = new FakeLivekit()): 
       },
       speaking: (now) => speaking.push(now),
       wantsSound: (wanted) => wantsSound.push(wanted),
+      voice: (element) => voices.push(element),
+      ui: (data) => shown.push(data),
     },
   });
   return {
@@ -60,5 +66,7 @@ export async function take(mode: "talk" | "chat", livekit = new FakeLivekit()): 
     },
     speaking,
     wantsSound,
+    voices,
+    shown,
   };
 }

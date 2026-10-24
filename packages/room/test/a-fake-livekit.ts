@@ -8,6 +8,7 @@ interface RoomEvents {
   disconnected: () => void;
   audioPlaybackChanged: (playing: boolean) => void;
   activeSpeakersChanged: (speakers: SeatParticipant[]) => void;
+  dataReceived: (payload: Uint8Array, from?: SeatParticipant, kind?: unknown, topic?: string) => void;
 }
 
 /** A remote audio or video track. Attaching one makes a real element, so it runs on happy-dom only. */
@@ -84,6 +85,7 @@ export class FakeLivekit {
         Disconnected: "disconnected",
         AudioPlaybackStatusChanged: "audioPlaybackChanged",
         ActiveSpeakersChanged: "activeSpeakersChanged",
+        DataReceived: "dataReceived",
       },
       Track: { Kind: { Audio: "audio" } },
     };
@@ -115,6 +117,7 @@ export class FakeRoom implements SeatRoom {
     disconnected: [],
     audioPlaybackChanged: [],
     activeSpeakersChanged: [],
+    dataReceived: [],
   };
 
   constructor(world: FakeLivekit) {
@@ -166,6 +169,12 @@ export class FakeRoom implements SeatRoom {
 
   speakers(speakers: SeatParticipant[]): void {
     for (const listener of this.#heard.activeSpeakersChanged) listener(speakers);
+  }
+
+  /** Somebody in the room sent bytes on a topic: the agent, as it would with `call.send`. */
+  data(payload: string, topic: string): void {
+    const bytes = new TextEncoder().encode(payload);
+    for (const listener of this.#heard.dataReceived) listener(bytes, { identity: "agent_clinica", audioLevel: 0 }, 0, topic);
   }
 
   /** The browser changed its mind about sound. */

@@ -41,6 +41,9 @@
 //   history     optional · "off" keeps no conversations in this browser; by default the visitor's
 //               last 20 chats and calls are kept in localStorage, listed in the menu, and any one
 //               of them can be read again
+//   look        optional · "dot": the button is a face that speaks with the agent's voice, and a
+//               click is a voice call with no panel (pinecall-dot.js, on @pinecall/room). The log is
+//               read from `gateway` with the call's own token; --pc-dot-size sizes it (64px)
 //
 // Styling: the font is inherited. These custom properties apply in both themes: --pc-accent,
 // --pc-accent-soft, --pc-ink, --pc-muted, --pc-line, --pc-radius, --pc-offset, --pc-font,
@@ -58,7 +61,11 @@
 // visitor's next line (value, else label), and {type: "html", html} as a card. The HTML is kept to
 // text, lists, tables, links (https, new tab), images (https) and code; scripts and styles never run.
 //
-// Events on the tag: pinecall:open, pinecall:started {call, scope}, pinecall:ended {call}.
+// Events on the tag: pinecall:open, pinecall:started {call, scope}, pinecall:ended {call}, and with
+// look="dot" pinecall:ui {detail: what the agent sent on pinecall.ui}, which a dot cannot draw.
+//
+// The page tells the agent what the visitor does with `event(name, data)` on the tag: the agent's
+// onEvent(name, data) runs when its class accepts that name from a participant.
 //
 // Uses LiveKit's client SDK from a CDN; no build step.
 
@@ -68,6 +75,8 @@ const TRANSCRIPTION = "lk.transcription";
 const CHAT = "lk.chat";
 // Said before leaving on a hang-up: the call ends at once instead of waiting for the visitor.
 const HANGUP = "pinecall.hangup";
+// A fact about the page, for the agent's onEvent: {name, data}.
+const EVENT = "pinecall.event";
 // What the agent puts on the visitor's screen (call.send("pinecall.ui", …)): choices to tap, or HTML.
 const UI = "pinecall.ui";
 // The HTML an agent may draw, and the attributes it may keep; everything else is dropped, never run.
@@ -979,7 +988,22 @@ class PinecallWidget extends HTMLElement {
     this.shadowRoot.querySelector("header p").textContent = [this.company, this.tagline].filter(Boolean).join(" · ");
     this.$ = (selector) => this.shadowRoot.querySelector(selector);
     this.$(".fab .label").textContent = label;
-    const open = () => (this.autostart ? this.start() : this.toggle());
+    // look="dot": the face and its call, from the module beside this file; until it has loaded, a
+    // click waits for it, and a dot that cannot load leaves the plain button.
+    if (this.getAttribute("look") === "dot") {
+      this.dotting = import("./pinecall-dot.js").then(
+        ({ Dot }) => (this.dot = new Dot(this)),
+        (failed) => {
+          console.warn("pinecall-widget: the dot could not load, so the button is the plain one", failed);
+          return null;
+        },
+      );
+    }
+    const open = () => {
+      if (this.dot) return this.dot.click();
+      if (this.dotting) return this.dotting.then((dot) => (dot ? dot.click() : this.toggle()));
+      return this.autostart ? this.start() : this.toggle();
+    };
     this.$(".fab").addEventListener("click", open);
     // The page's own launcher, when it gives one: a child with slot="button" replaces the default
     // button, and whatever it is — a button, a link, a card — opens the panel. "button=none" draws none.
@@ -1170,6 +1194,7 @@ class PinecallWidget extends HTMLElement {
 
   // A widget taken off the page (a language swap puts a fresh one in its place) lets the page go.
   disconnectedCallback() {
+    this.dot?.close();
     if (this.heldAt === undefined) return;
     this.$(".panel").hidden = true;
     this.holdPage();
@@ -1671,6 +1696,19 @@ class PinecallWidget extends HTMLElement {
     this.status(scope === "talk" ? this.words.listening(this.name) : this.words.live, "live");
     this.dispatchEvent(new CustomEvent("pinecall:started", { detail: { call: minted.call, scope } }));
     return minted.call;
+  }
+
+  /**
+   * Tell the agent what the visitor did on the page: `{name, data}` on pinecall.event. The agent's
+   * onEvent runs when its class accepts the name from a participant; the runtime drops any other.
+   */
+  async event(name, data = {}) {
+    if (this.dot) return this.dot.event(name, data);
+    if (!this.room) throw new Error("not in a call");
+    await this.room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify({ name, data })), {
+      topic: EVENT,
+      reliable: true,
+    });
   }
 
   async send(text) {

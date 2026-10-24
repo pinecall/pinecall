@@ -4,7 +4,7 @@
 (LiveKit) and the call's log (read from the gateway with the call's log token, folded by the runtime's wire, kept in
 `src/wire/`), with a React entry and a server entry. Reply to the human in Spanish; code, comments, commit messages and
 this file in English. What it is and how a page uses it: [README.md](README.md), which is also its
-docs page.
+docs page, and [FACE.md](FACE.md) for the face.
 
 The wire is the runtime's, kept in `src/wire/` (the shapes this package uses and the reducer),
 held to the runtime's golden log by `test/wire/the-log-folds-as-the-runtime-folds-it.test.ts`
@@ -28,7 +28,8 @@ package with pnpm.
 ## Structure
 
 - `src/store.ts` the primitive: `{state, subscribe, close}`, a paint every 100 ms for the log
-- `src/room.ts` one conversation: the phases, the verbs, the seat and the log joined
+- `src/room.ts` one conversation: the phases, the verbs, the seat and the log joined ·
+  `src/surface.ts` its types: the phases, the state, the options, the verbs
 - `src/reading.ts` where a call is read: the relay, or the gateway with the call's token ·
   `src/code.ts` a code waited on until a call claims it
 - `src/log/` the SSE parser, the follow (fetch, resume, the score), the backoff both askers share, the fold
@@ -36,9 +37,10 @@ package with pnpm.
   `seat/join.ts` is the only file naming LiveKit's events; `seat/livekit.ts` the only one naming
   the package
 - `src/rows.ts` the log as one column of rows · `src/karaoke.ts` the reply being said, word by word
-- `src/react/` the hooks · `src/server/` mint, dial and expect
-- `test/` one file per sentence it proves; `test/seat` and `test/react` mirror their `src/`
-  directories and run on happy-dom. `the-tree`, `the-imports` and `index` are the repo's rules
+- `src/react/` the hooks · `src/server/` mint, dial and expect · `src/face/` the face that speaks
+  ([FACE.md](FACE.md)): the mouth and the motion pure, the ear and the drawing on the DOM
+- `test/` one file per sentence it proves; `test/seat`, `test/react` and `test/face` mirror their
+  `src/` directories and run on happy-dom. `the-tree`, `the-imports` and `index` are the repo's rules
 
 ## Rules the tests enforce
 

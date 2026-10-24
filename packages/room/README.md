@@ -4,15 +4,16 @@ The caller's side of a Pinecall call, in a browser. A visitor talks to your agen
 asks it to ring their phone; the page draws what is happening from the call's own log. No
 framework, no key in the page.
 
-## One store, three imports
+## One store, four imports
 
 Everything is one store: a value you read, a function you subscribe with, and a handful of verbs
-that change it. The package has three entry points, and each one is for a different place.
+that change it. The package has four entry points, and each one is for a different place.
 
 | import | where it runs | what it gives you |
 |---|---|---|
 | `@pinecall/room` | the page | `room()`, the store of one conversation, `rowsOf`, `knownBy`, `brief` to draw it, and the karaoke of what is being said |
 | `@pinecall/room/react` | the page, in React | `useRoom()`, `useStore()` and `useKaraoke()` |
+| `@pinecall/room/face` | the page | `face()`: a face that speaks with the agent's voice ([FACE.md](FACE.md)) |
 | `@pinecall/room/server` | your server | `mint()`, `dial()`, `expect()` and `GatewayRefused`: the only code that touches the key |
 
 A conversation has two parts, and they are not the same thing. **The participant** is the page's
@@ -160,8 +161,7 @@ state the agent declared public; `tenant` is everything — the tools, the laten
 ## Resume a conversation
 
 A conversation outlives the page. Every mint answers a `resume_token`, which `state.resume` holds
-once the call is open: keep it beside the conversation (`localStorage` is enough), and hand it back
-to resume it.
+once the call is open: keep it beside the conversation (`localStorage` is enough), and hand it back to resume it.
 
 ```ts
 // tokens(scope, resume) sends both on to your server: `body: JSON.stringify({ scope, resume })`.
@@ -276,6 +276,7 @@ handed is never changed afterwards, so it can be compared by reference and kept.
 | `connection` | the log's stream: `connecting` · `live` · `reconnecting` · `ended` (also before anything opened) |
 | `wantsSound` | `true` when the browser has not let the page play sound yet: show a button that calls `playSound()` |
 | `speaking` | `{agent, user, level}`: who is making a sound right now, and how loud the agent is, 0 to 1 |
+| `voice` | the `<audio>` element the agent's voice plays in during a spoken call, for a page that listens to it; `null` otherwise |
 | `code` | `{code, number, expiresAt}` once `byPhone()` has a code to show; `null` otherwise |
 
 The phase and everything around it — `error`, `connection`, `wantsSound`, `speaking` — are
@@ -313,8 +314,7 @@ JSON, cut at `max` characters. A field that is an object is opened one level —
 Both sides of a spoken call can be drawn as they happen, karaoke-style.
 
 **The visitor** — `state.log.live.user` is what the recogniser has heard so far of the turn in
-progress, rewritten as they speak ("Hi", "Hi ther", "Hi there. I would…"), and `null` once the
-turn closes.
+progress, rewritten as they speak ("Hi", "Hi ther", "Hi there. I would…"), and `null` once the turn closes.
 
 **The agent** — a voice call's log carries its reply one word at a time, each with the second it
 is spoken at. The words usually reach the page before the voice says them, so a page can draw the
@@ -345,6 +345,15 @@ function frame() {
 A written call's reply comes as model tokens with no timing: every token is lit as it arrives,
 which reads as the agent typing. Once the turn closes, the reply is a turn in `rowsOf` like any
 other, and `useKaraoke` returns `null`.
+
+## Telling the agent what the visitor does
+
+`call.event(name, data)` tells the agent what the visitor did on the page: the section they opened,
+the plan they chose (`call.event("plan.chosen", { plan: "pro" })`). The agent's `onEvent(name, data)`
+runs when its class accepts that name from a participant, and the runtime drops any other; a state
+field the hook writes is in the view at the next turn, and the hook may `reply()` at once. Anybody
+can send what a browser sends, so keep `data` to values the view reads, never words the model obeys.
+What the agent puts on the screen with `call.send("pinecall.ui", data)` reaches `onUi(data)`.
 
 ## Sound and the browser's permission
 
@@ -381,7 +390,7 @@ Nothing fails silently. Every refusal is a phase and a sentence, or a rejected p
 | `tokens` or `callMe` answered no `log_token`, and there is no `log` to relay it | `failed`, `error` says so |
 | the room closed from the other side | `ended`; the log is read on until the score |
 | an entry of the log this version cannot read | skipped; `onSkipped(why)` is called, and the rest of the call still draws |
-| `send()` outside a live room | the promise rejects with "not in a call"; an empty line is nothing |
+| `send()` or `event()` outside a live room | the promise rejects with "not in a call"; an empty line is nothing |
 
 On the server, `mint`, `dial` and `expect` throw `GatewayRefused` for a refusal: `status` is the gateway's,
 and `detail` its sentence when it sent one (`null` when the body was not the gateway's JSON). The

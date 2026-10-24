@@ -1,7 +1,7 @@
 /** Where a call is read — the tenant's relay when it gave one, the gateway with the call's own token otherwise — and where its hang-up is said. */
 
 import type { Minted } from "./server/index.js";
-import type { RoomOptions } from "./room.js";
+import type { RoomOptions } from "./surface.js";
 
 const GATEWAY = "https://cloud.pinecall.io";
 

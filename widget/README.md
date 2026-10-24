@@ -35,6 +35,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 | `theme` | optional | `auto` (default, follows `prefers-color-scheme`, and the visitor may switch it from the panel's header, their choice kept in this browser), `light` or `dark` (forced, no switch) |
 | `autostart` | optional | the opening click starts a voice call directly; if the microphone is refused, the menu opens with the reason |
 | `history` | optional | `off` keeps no conversations in this browser. By default the visitor's last 20 chats and calls with this agent are kept in `localStorage` — the lines as they settled, at most 200 each — listed under **Your conversations** in the menu, any one readable again, and cleared by the visitor with **Clear** |
+| `look` | optional | `dot`: the button is a face that speaks with the agent's voice, and a click is a voice call with no panel ([below](#the-talking-dot)) |
 
 Attributes are read once when the element connects, except `token-url`, which is read for every
 token. Use one tag per agent; several can share a page. The console stores these settings per
@@ -235,6 +236,41 @@ the panel with `toggle()`.
 </pinecall-widget>
 ```
 
+## The talking dot
+
+`look="dot"` turns the button into a small face (a dot with eyes and a mouth) that speaks with the
+agent's voice. A click starts a voice call at once, with no panel. While the agent speaks, a bubble
+above the dot lights each word as it is said, and the line stays a moment after the reply ends.
+The face rests, listens and thinks with the agent's state. A click during the call offers
+**Hang up**. A refused microphone, or a token your server refused, opens the usual menu with the
+reason. The call is kept under **Your conversations** like any other.
+
+```html
+<pinecall-widget agent="front-desk" name="Pip" look="dot" token-url="/pinecall/token"></pinecall-widget>
+```
+
+The dot stands on [`@pinecall/room`](../packages/room/README.md) and its face
+([FACE.md](../packages/room/FACE.md)), loaded from jsDelivr only for this look. It reads the call's
+log straight from `gateway` with the call's own token, so `log-url` is not used. Its size is
+`--pc-dot-size` (64px by default), its colour `--pc-accent`, and its bubble the part `bubble`. What
+the agent shows with `pinecall.ui` has no room on a dot: the tag dispatches it as `pinecall:ui`
+instead (below).
+
+## Telling the agent what the visitor does
+
+`event(name, data)` on the tag tells the agent what the visitor did on the page: the section they
+opened, the plan they chose. The agent's `onEvent(name, data)` runs when its class accepts that
+name from a participant, and the runtime drops any other. A state field the hook writes is in the
+agent's view at its next turn, so the prompt follows the page, and the hook can `reply()` at once.
+
+```js
+const widget = document.querySelector("pinecall-widget");
+pricing.addEventListener("click", () => widget.event("plan.chosen", { plan: "pro" }));
+```
+
+It rejects when no call or chat is open. Anybody can send what a browser sends: keep `data` to
+values the agent's view reads, never words the model is told to obey.
+
 ## What the agent can show
 
 The agent can put things on the visitor's screen with `this.call.send("pinecall.ui", data)`, drawn
@@ -249,7 +285,8 @@ in the conversation:
 
 The tag dispatches `pinecall:open` when the panel opens, `pinecall:started` (`detail: {call,
 scope}`) when a voice call or chat has joined, and `pinecall:ended` (`detail: {call}`) when it
-leaves, so a page can track conversions. **New call** / **New chat** ends the current
+leaves, so a page can track conversions. With `look="dot"`, `pinecall:ui` (`detail`: what the agent
+sent on `pinecall.ui`) is a card or choices the dot cannot draw. **New call** / **New chat** ends the current
 conversation (`pinecall:ended`) and starts another with a fresh token (`pinecall:started`). `toggle()` opens the panel, or closes it when open:
 `document.querySelector("pinecall-widget").toggle()`.
 
@@ -281,7 +318,8 @@ In TypeScript, declare the tag once: `declare global { namespace JSX { interface
 ## What is on the wire
 
 The browser connects to the token's `server_url` with LiveKit's client SDK (`livekit-client@2`,
-loaded from jsDelivr); a Content Security Policy must allow both. A token opens one room for one
+loaded from jsDelivr); a Content Security Policy must allow both. `look="dot"` also loads
+`@pinecall/room@0.11` from jsDelivr, and reads the log from `gateway`. A token opens one room for one
 agent and expires after `ttl_s` if unused.
 
 ## What is not there yet

@@ -20,7 +20,7 @@ export interface SeatLocal extends SeatParticipant {
   publishData(data: Uint8Array, options: { topic: string; reliable: boolean }): Promise<unknown>;
 }
 
-/** The room the page joins. Five events are listened to; nothing else of LiveKit's is named. */
+/** The room the page joins. Six events are listened to; nothing else of LiveKit's is named. */
 export interface SeatRoom {
   readonly localParticipant: SeatLocal;
   readonly canPlaybackAudio: boolean;
@@ -32,6 +32,7 @@ export interface SeatRoom {
   on(event: "disconnected", listener: () => void): this;
   on(event: "audioPlaybackChanged", listener: (playing: boolean) => void): this;
   on(event: "activeSpeakersChanged", listener: (speakers: SeatParticipant[]) => void): this;
+  on(event: "dataReceived", listener: (payload: Uint8Array, from?: SeatParticipant, kind?: unknown, topic?: string) => void): this;
 }
 
 /** What `import("livekit-client")` has to offer the seat. A test hands in a fake of this shape. */
@@ -43,6 +44,7 @@ export interface LivekitModule {
     readonly Disconnected: "disconnected";
     readonly AudioPlaybackStatusChanged: "audioPlaybackChanged";
     readonly ActiveSpeakersChanged: "activeSpeakersChanged";
+    readonly DataReceived: "dataReceived";
   };
   Track: { Kind: { readonly Audio: "audio" } };
 }

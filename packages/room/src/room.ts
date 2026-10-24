@@ -8,83 +8,21 @@
 // draws, from the same bytes. A phone call has no seat at all: the log is the whole of it — and
 // when the visitor calls the agent, a code they key on the phone names the call the page follows.
 
-import { type Entry } from "./wire/envelope.js";
 import { initialState } from "./wire/reduce.js";
-import { type State } from "./wire/state.js";
 
 import { claimOf } from "./code.js";
 import { LogFold } from "./log/fold.js";
-import { followLog, type Connection, type Ending } from "./log/follow.js";
+import { followLog, type Ending } from "./log/follow.js";
 import type { SseMessage } from "./log/sse.js";
 import { joinSeat, type Seat, type Speaking } from "./seat/join.js";
 import { gatewayOf, hangingUp, readingOf } from "./reading.js";
 import { loadLivekit, type LivekitModule } from "./seat/livekit.js";
 import { hiddenSink } from "./seat/sink.js";
 import type { Code, Minted } from "./server/index.js";
-import { cell, type Store } from "./store.js";
+import { cell } from "./store.js";
+import type { Mode, RoomOptions, RoomState, RoomStore } from "./surface.js";
 
-export type { Code, Minted };
-
-/** Where the conversation is. `ringing`: a phone call nobody answered yet; `expecting`: a code no call claimed yet. */
-export type Phase = "idle" | "opening" | "expecting" | "ringing" | "live" | "ended" | "failed";
-
-/** Spoken, written, or on the visitor's own phone. The same agent every way. */
-export type Mode = "talk" | "chat" | "phone";
-
-/** Everything the page draws from. Every field is the truth at the moment it was published. */
-export interface RoomState {
-  phase: Phase;
-  mode: Mode | null;
-  call: string;
-  /** The sentence to show when phase is "failed". */
-  error: string;
-  /** Where the call's recording plays from once it has ended, or "" when the log is relayed. */
-  recording: string;
-  /** The call as the protocol folds it: turns, tools, the agent's state, the cost once it is known. */
-  log: State;
-  entries: Entry[];
-  connection: Connection;
-  /** True when the browser has not been told it may make a sound: ask for a click. */
-  wantsSound: boolean;
-  speaking: Speaking;
-  /** The code to show beside the number to call, from `expecting` on; `expiresAt` in seconds since the epoch. */
-  code: { code: string; number: string; expiresAt: number } | null;
-  /** What to keep to resume this conversation later with `start(mode, resume)`; "" when the gateway gave none. */
-  resume: string;
-}
-
-export interface RoomOptions {
-  /** A ticket for a seat, from the tenant's own server. The page never holds a key. `resume` is the
-   * token a resumed conversation was kept with: the server sends it on as `resume` in its mint. */
-  tokens: (scope: "talk" | "chat", resume?: string) => Promise<Minted>;
-  /** The gateway the log is read from with the call's own token. Default `https://cloud.pinecall.io`. */
-  gateway?: string | undefined;
-  /** The URL the call's log is relayed at by the tenant's server, for a page that must not reach
-   * the gateway itself. Given, the log token is not used. */
-  log?: ((call: string, minted?: Minted) => string) | undefined;
-  /** Ask the tenant's server to have the agent call `to`: the call, and its log token. */
-  callMe?: ((to: string) => Promise<{ call: string; log_token?: string | undefined }>) | undefined;
-  /** Ask the tenant's server for a code the visitor keys when they call the agent's number. */
-  expect?: (() => Promise<Code>) | undefined;
-  /** How long the log is read after the seat closes, waiting for the score. Default 60 000 ms: a worker
-   * notices a caller has gone some twenty seconds after the fact, and the score comes after that. */
-  linger?: number | undefined;
-  fetch?: typeof fetch | undefined;
-  livekit?: (() => Promise<LivekitModule>) | undefined;
-  /** An entry of the log this copy of the wire could not read. The rest of the call still draws. */
-  onSkipped?: ((why: string) => void) | undefined;
-}
-
-export interface RoomStore extends Store<RoomState> {
-  /** A new conversation; with `resume`, the one kept under it: the same call while it still waits for
-   * the visitor, else a new call whose agent opens on what was said. */
-  start(mode: "talk" | "chat", resume?: string): Promise<void>;
-  send(text: string): Promise<void>;
-  callMe(to: string): Promise<void>;
-  byPhone(): Promise<void>;
-  leave(): Promise<void>;
-  playSound(): void;
-}
+export type { Code, Minted, Mode, Phase, RoomOptions, RoomState, RoomStore } from "./surface.js";
 
 const LINGER_MS = 60_000;
 // A seat asked to close is given this long. A network that has gone does not hold the page up.
@@ -146,14 +84,14 @@ export function room(options: RoomOptions): RoomStore {
   const fail = (c: Conversation, error: string): void => {
     if (!current(c)) return;
     void shut(c);
-    publish({ phase: "failed", error, connection: "ended", wantsSound: false, speaking: QUIET });
+    publish({ phase: "failed", error, connection: "ended", wantsSound: false, speaking: QUIET, voice: null });
   };
 
   // The call is over for the visitor. The seat goes now; the log is read a while longer, because
   // the agent's last words, the cost and the score are entries that arrive after the room closed.
   // A seat the visitor left by choice says it hung up, at the door and in the room; any other leaves the call to wait.
   const end = (c: Conversation, parting: (seat: Seat) => Promise<void> = (seat) => seat.leave()): Promise<void> => {
-    publish({ phase: "ended", wantsSound: false, speaking: QUIET });
+    publish({ phase: "ended", wantsSound: false, speaking: QUIET, voice: null });
     c.waiting?.abort();
     const seat = c.seat;
     c.seat = null;
@@ -250,6 +188,12 @@ export function room(options: RoomOptions): RoomStore {
           wantsSound: (wantsSound) => {
             if (current(c)) publish({ wantsSound });
           },
+          voice: (voice) => {
+            if (current(c)) publish({ voice });
+          },
+          ui: (data) => {
+            if (current(c)) options.onUi?.(data);
+          },
         },
       });
     } catch (refused) {
@@ -288,6 +232,12 @@ export function room(options: RoomOptions): RoomStore {
       // rather than from wherever the room happened to open.
       follow(c, reading.log);
       await seated(c, mode, minted);
+    },
+
+    async event(name, data = {}) {
+      const seat = now?.seat ?? null;
+      if (store.state.phase !== "live" || seat === null) throw new Error("not in a call");
+      await seat.event(name, data);
     },
 
     async callMe(to) {
@@ -389,6 +339,7 @@ function idle(): RoomState {
     connection: "ended",
     wantsSound: false,
     speaking: QUIET,
+    voice: null,
     code: null,
     resume: "",
   };

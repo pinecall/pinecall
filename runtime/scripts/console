@@ -21,5 +21,5 @@ pnpm --dir "$CONSOLE" exec vite build --logLevel error
 [ -f "$CONSOLE/dist/index.html" ] || { echo "vite built no page" >&2; exit 1; }
 rm -rf "$OUT" && mkdir -p "$OUT/widget"
 cp -R "$CONSOLE/dist" "$OUT/console"
-cp "$WIDGET/pinecall-widget.js" "$OUT/widget/pinecall-widget.js"
+cp "$WIDGET/pinecall-widget.js" "$WIDGET/pinecall-dot.js" "$OUT/widget/"
 echo "console and widget → $OUT ($(find "$OUT" -type f | wc -l | tr -d ' ') files)"

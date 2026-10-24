@@ -4,6 +4,18 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`event(name, data)` tells the agent what the visitor did on the page**: `{name, data}` on
+  `pinecall.event`, for the agent's `onEvent`. It rejects outside a live room, as `send()` does.
+- **`onUi(data)`**: what the agent puts on the screen with `call.send("pinecall.ui", data)` reaches
+  the page.
+- **`state.voice`** is the element the agent's voice plays in during a spoken call.
+- **`@pinecall/room/face`**: `face(element, room)` draws a face that speaks with the agent's voice.
+  Its mouth is read from that voice frame by frame, and its mood follows the agent's state
+  ([FACE.md](FACE.md)).
+- The room's types moved to `src/surface.ts`. The surface is unchanged.
+
 ## 0.11.20 — released with the runtime's live readers (2026-10-24)
 
 - Nothing of `@pinecall/room` changed: published at 0.11.20 with every other package.
