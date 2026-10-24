@@ -5,6 +5,10 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## [0.11.20] — released with the runtime's live readers
+
+- Nothing of `@pinecall/agents` changed: published at 0.11.20 with every other package.
+
 ## [0.11.19] — released with the CLI's reload on save
 
 - Nothing of `@pinecall/agents` changed: published at 0.11.19 with every other package.

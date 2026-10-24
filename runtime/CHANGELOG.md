@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.20 — a call's reader hears it live, a spoken simulation finds a seat or says why (2026-10-24)
 
 - **A reader of a call's log hears it live, whatever else the gateway is doing.** A reader's log is made with no
   reader yet, and any other request's prune dropped it while the follow waited for the signal: the reader was

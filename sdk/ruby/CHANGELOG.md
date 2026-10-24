@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.20] — released with the runtime's live readers (2026-10-24)
+
+- Nothing of the gem changed: published at 0.11.20 with every other package.
+
 ## [0.11.19] — released with the CLI's reload on save (2026-10-23)
 
 - Nothing of the gem changed: published at 0.11.19 with every other package.

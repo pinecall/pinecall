@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.11.20] — a search's sources in `sessions log`
 
 - **`sessions log` shows where a search's chunks came from**: base, path, heading and score, one after the
   other. The line was the raw JSON cut at 160 characters, inside the first excerpt, so no heading was ever
