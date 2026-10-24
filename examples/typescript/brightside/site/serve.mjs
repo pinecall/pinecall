@@ -45,17 +45,32 @@ function keyInDotEnv() {
   return line ? line.slice("PINECALL_KEY=".length).trim() : "";
 }
 
-// With ?debug, a label in the corner says what the face's mouth reads (the agent's voice itself, or the
-// room's coarse level, a mouth out of time with the voice), how loud, and how often the page was sent.
+// The page reports what the face's ear hears once a second, to this server's log: where the ear
+// stands (asleep, no voice, no track, listening), the level, how often the page was sent, and the
+// agent's audio element and track. With ?debug the same shows in a label in the corner.
 const DEBUG = `<script>
-if (new URLSearchParams(location.search).has("debug")) addEventListener("DOMContentLoaded", () => {
+addEventListener("DOMContentLoaded", () => {
+  const shown = new URLSearchParams(location.search).has("debug");
   const label = Object.assign(document.createElement("div"), { style: "position:fixed;left:12px;top:12px;z-index:2147483647;font:12px ui-monospace,monospace;background:#111;color:#fff;padding:6px 10px;border-radius:8px" });
   label.dataset.pinecallSkip = "";
-  document.body.append(label);
+  if (shown) document.body.append(label);
+  let levels = [];
   setInterval(() => {
     const face = document.querySelector("[data-pc-ear]");
-    label.textContent = face ? "mouth reads: " + face.dataset.pcEar + " · level " + face.dataset.pcLevel + " · page sent " + (face.dataset.pcSeen ?? 0) + "×" : "no face yet";
+    if (face) levels.push(Number(face.dataset.pcLevel));
+    if (shown) label.textContent = face ? "ear: " + face.dataset.pcEar + " · level " + face.dataset.pcLevel + " · page sent " + (face.dataset.pcSeen ?? 0) + "×" : "no face yet";
   }, 100);
+  setInterval(() => {
+    const face = document.querySelector("[data-pc-ear]");
+    if (!face) return;
+    const audio = [...document.querySelectorAll("audio")].map((one) => {
+      const track = one.srcObject instanceof MediaStream ? one.srcObject.getAudioTracks()[0] : undefined;
+      return { paused: one.paused, muted: one.muted, ready: one.readyState, track: track ? { state: track.readyState, muted: track.muted, enabled: track.enabled } : null };
+    });
+    const max = levels.length ? Math.max(...levels) : 0, mean = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 0;
+    levels = [];
+    fetch("/debug", { method: "POST", body: JSON.stringify({ ear: face.dataset.pcEar, level_max: +max.toFixed(2), level_mean: +mean.toFixed(2), seen: Number(face.dataset.pcSeen ?? 0), audio, ua: navigator.userAgent }) }).catch(() => {});
+  }, 1000);
 });
 </script>`;
 
@@ -114,7 +129,15 @@ if (LOCAL) {
 
 createServer((req, res) => {
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
-  if (req.method === "POST" && pathname === "/pinecall/token") {
+  if (req.method === "POST" && pathname === "/debug") {
+    let text = "";
+    req.on("data", (chunk) => (text += chunk));
+    req.on("end", () => {
+      console.log(`debug ${new Date().toISOString().slice(11, 19)} ${text}`);
+      res.writeHead(204);
+      res.end();
+    });
+  } else if (req.method === "POST" && pathname === "/pinecall/token") {
     token(req, res).catch((failed) => json(res, 502, { detail: `the gateway could not be reached: ${failed.message}` }));
   } else if (pathname === "/" || pathname === "/index.html") {
     res.writeHead(200, { "content-type": TYPES[".html"] });

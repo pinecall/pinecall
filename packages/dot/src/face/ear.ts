@@ -13,6 +13,9 @@ export interface Heard {
   bands: Bands;
 }
 
+/** Where the ear stands: not woken yet, no voice in the room yet, a voice with no audio track, or hearing it. */
+export type Hearing = "asleep" | "no voice" | "no track" | "listening";
+
 const FFT = 1024;
 
 export class Ear {
@@ -36,7 +39,9 @@ export class Ear {
     void this.#context.resume();
   }
 
-  /** Listen to this element's stream, or to nothing. The same element twice is nothing new. */
+  // The voice's track in a stream of the ear's own, as livekit-client's createAudioAnalyser takes it:
+  // the element's own stream, the one it plays, gave an analyser that heard nothing on a live call.
+  /** Listen to the voice this element plays, or to nothing. The same element twice is nothing new. */
   hear(element: HTMLMediaElement | null): void {
     const listening = this.#source !== null || element === null;
     if (element === this.#element && listening) return;
@@ -44,10 +49,17 @@ export class Ear {
     this.#source = null;
     this.#element = element;
     const stream = element?.srcObject;
-    if (this.#context === null || this.#analyser === null || !(stream instanceof MediaStream)) return;
-    if (stream.getAudioTracks().length === 0) return;
-    this.#source = this.#context.createMediaStreamSource(stream);
+    const track = stream instanceof MediaStream ? stream.getAudioTracks()[0] : undefined;
+    if (this.#context === null || this.#analyser === null || track === undefined) return;
+    this.#source = this.#context.createMediaStreamSource(new MediaStream([track]));
     this.#source.connect(this.#analyser);
+  }
+
+  /** Where the ear stands now. */
+  get hearing(): Hearing {
+    if (this.#context === null) return "asleep";
+    if (this.#element === null) return "no voice";
+    return this.#source === null ? "no track" : "listening";
   }
 
   /** This frame of the voice, `dt` seconds after the last; null while the ear hears nothing. */
