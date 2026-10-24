@@ -178,6 +178,8 @@ sentence the agent says as written, and each beat is a move run as its word is s
 - **`nth` picks which time a word is said**, from 1.
 - **`macros()` checks every file when the class loads**, and refuses a beat on a word its sentence
   never says.
+- **A model names a walk the way it heard it**: `runMacro("site tour")` runs `tour`, and an agent with one
+  walk runs it whatever it is called (`walkNamed`).
 
 How a macro runs. `runMacro("tour")` sends each step on `pinecall.ui`, then says it. The page binds
 the step to the reply that follows and counts its words as the voice says them, the same word

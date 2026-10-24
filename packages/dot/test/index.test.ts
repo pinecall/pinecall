@@ -10,7 +10,7 @@ describe("the public surfaces", () => {
     expect(Object.keys(page).sort()).toEqual(["Page", "face", "tutor"]);
   });
 
-  it("@pinecall/dot/agent is the Tutor class and the macros it is given", () => {
-    expect(Object.keys(agent).sort()).toEqual(["Tutor", "macros"]);
+  it("@pinecall/dot/agent is the Tutor class, the macros it is given, and the walk a name means", () => {
+    expect(Object.keys(agent).sort()).toEqual(["Tutor", "macros", "walkNamed"]);
   });
 });

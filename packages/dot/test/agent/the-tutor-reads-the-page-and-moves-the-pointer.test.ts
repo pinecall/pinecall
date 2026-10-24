@@ -3,7 +3,7 @@
 import { eventsOf, runHook, toolsOf } from "@pinecall/agents";
 import { describe, expect, it } from "vitest";
 
-import { Tutor, macros } from "../../src/agent/index.js";
+import { Tutor, macros, walkNamed } from "../../src/agent/index.js";
 
 class Pip extends Tutor {
   static override macros = macros({
@@ -37,6 +37,13 @@ describe("a tutor", () => {
 
   it("says plainly that the page is not seen yet, before the first look", () => {
     expect(new Pip().seeing()).toContain("The page has not been seen yet");
+  });
+
+  it("finds the walk a model means by the name it heard, or the only walk there is", () => {
+    expect(walkNamed(Pip.macros, "tour")?.name).toBe("tour");
+    expect(walkNamed(Pip.macros, "Site tour")?.name).toBe("tour");
+    expect(walkNamed(Pip.macros, "the walk")?.name).toBe("tour");
+    expect(walkNamed({}, "tour")).toBeUndefined();
   });
 
   it("has the pointer's tools, each described from its JSDoc", () => {

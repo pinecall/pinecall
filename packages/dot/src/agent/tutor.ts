@@ -11,12 +11,23 @@ import { fileURLToPath } from "node:url";
 
 import { Agent, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
 
-import { CLICKED, MISSING, SEEN, UI, macroOf, type Action, type Macro } from "../wire/index.js";
+import { CLICKED, MISSING, SEEN, UI, macroOf, wordsOf, type Action, type Macro } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
   what: z.string().describe('the thing on the visitor\'s screen: its name as the screen shows it, as "Questions" or "Choose Family Care", or its ref, as "e22"'),
 });
+
+/**
+ * The walk a model means by `asked`: the one so named, else the one whose name it says among its words
+ * ("site tour" for `tour`), else the only one there is. A model names a walk the way it heard it.
+ */
+export function walkNamed(walks: Record<string, Macro>, asked: string): Macro | undefined {
+  const all = Object.values(walks);
+  const words = wordsOf(asked);
+  const said = (macro: Macro): boolean => wordsOf(macro.name).every((word) => words.includes(word));
+  return walks[asked] ?? all.find((macro) => wordsOf(macro.name).join(" ") === words.join(" ")) ?? all.find(said) ?? (all.length === 1 ? all[0] : undefined);
+}
 
 /** Each macro file, checked: `macros({ tour })` with `import tour from "./macros/tour.json" with { type: "json" }`. */
 export function macros(files: Record<string, unknown>): Record<string, Macro> {
@@ -108,8 +119,9 @@ export class Tutor extends Agent {
 
   /** Give one of your walks, by its name: each sentence said as written, your pointer moving on its words. */
   async runMacro(name: string): Promise<string> {
-    const macro = (this.constructor as typeof Tutor).macros[name];
-    const names = Object.keys((this.constructor as typeof Tutor).macros).join(", ") || "none";
+    const walks = (this.constructor as typeof Tutor).macros;
+    const macro = walkNamed(walks, name);
+    const names = Object.keys(walks).join(", ") || "none";
     if (macro === undefined) return `There is no walk named "${name}". The ones there are: ${names}.`;
     this.walking = macro.name;
     try {
