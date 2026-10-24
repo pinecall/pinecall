@@ -28,8 +28,12 @@ describe("a diff", () => {
 });
 
 describe("a promoted call", () => {
+  const scored = (judges: [string, string][]): void =>
+    void answer("get", "/v1/calls/:call/events", { entries: [{ seq: 40, type: "call.score", data: { judges: judges.map(([name, verdict]) => ({ name, verdict })) } }], next: null });
+
   it("is the gateway's golden of the call, written as a candidate with notes on what its expect asks", async () => {
     const sent = answer("get", "/v1/calls/:call/golden", { name: "call-9-consent", turns: [{ say: "Book me" }], expect: { not_tools: ["book"], grounded: true } });
+    scored([["consent", "broken"], ["grounded", "broken"]]);
     const out = folder();
     const { ctx } = testContext();
     const promoted = await runs.promoteCall(ctx, runs.PromoteInput.parse({ call: "call_9", fromSeq: 12, out }));
@@ -41,8 +45,17 @@ describe("a promoted call", () => {
 
   it("of a call that held says to write what it must keep doing", async () => {
     answer("get", "/v1/calls/:call/golden", { name: "fine", turns: [] });
+    scored([["grounded", "held"]]);
     const { ctx } = testContext();
     expect((await runs.promoteCall(ctx, runs.PromoteInput.parse({ call: "call_1", out: folder() }))).notes).toEqual([runs.NOTHING_BROKE]);
+  });
+
+  // T F11: `expected-outcome` fits no golden, so the expect is empty, and the note read as if the call held.
+  it("of a call a judge broke that no golden field asks again names that judge", async () => {
+    answer("get", "/v1/calls/:call/golden", { name: "cancel", turns: [{ say: "Cancel it" }], expect: {} });
+    scored([["expected-outcome", "broken"], ["grounded", "held"]]);
+    const { ctx } = testContext();
+    expect((await runs.promoteCall(ctx, runs.PromoteInput.parse({ call: "call_2", out: folder() }))).notes).toEqual([runs.BROKE_UNASKED(["expected-outcome"])]);
   });
 });
 

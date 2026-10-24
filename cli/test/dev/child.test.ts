@@ -46,6 +46,23 @@ describe("the child", () => {
     await expect(child.registered("front-desk")).rejects.toThrow("the agent's process left (exit 3) before front-desk registered");
   });
 
+  // R F18 / T F7: a class the gateway refuses registers and is never configured; the process leaves with 2.
+  it("an agent registered and refused at its declaration is refused with the process's exit code", async () => {
+    const child = spawnServing(fake({ FAKE_LINES: JSON.stringify([REGISTERED, "bad_shape: tool echo: 'say' is the platform's argument"]), FAKE_EXITS: "2" }), { other: new PassThrough() });
+    expect(await child.registered("front-desk")).toBe("app_1");
+    const refused = child.configured("front-desk");
+    await expect(refused).rejects.toThrow("the agent's process left (exit 2): the gateway did not take front-desk as declared");
+    await expect(refused).rejects.toMatchObject({ exit: 2 });
+  });
+
+  it("an agent the gateway took as declared is configured", async () => {
+    const configured = { type: "agent.configured", agent: "front-desk", call: null, data: { changed: ["tools"] } };
+    const child = spawnServing(fake({ FAKE_LINES: JSON.stringify([REGISTERED, configured]) }), { other: new PassThrough() });
+    await child.registered("front-desk");
+    await expect(child.configured("front-desk")).resolves.toBeUndefined();
+    await child.stop();
+  });
+
   it("an agent that never registers is refused in time", async () => {
     const child = spawnServing(fake({}), { other: new PassThrough(), registersWithinMs: 50 });
     await expect(child.registered("front-desk")).rejects.toThrow("front-desk did not register within 0.05s");

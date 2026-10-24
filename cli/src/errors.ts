@@ -33,6 +33,21 @@ export class GatewayError extends PinecallError {
   }
 }
 
+/**
+ * The agent's own process left: `start` ends with its code, as a process manager expects — 2 when the
+ * gateway refused what the class declared, which is a refusal like any other.
+ */
+export class ProcessLeft extends PinecallError {
+  override readonly name = "ProcessLeft";
+
+  constructor(
+    message: string,
+    override readonly exit: number,
+  ) {
+    super(message);
+  }
+}
+
 /** Exit 130: the person stopped the verb (Ctrl-C), which is not a failure. */
 export class Cancelled extends PinecallError {
   override readonly name = "Cancelled";

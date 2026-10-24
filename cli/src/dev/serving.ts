@@ -19,6 +19,12 @@ export interface Serving {
   app(slug: string): string | undefined;
   /** Resolves with the app id on the agent's first registration; refused when none comes in time. */
   registered(slug: string): Promise<string>;
+  /**
+   * Resolves once the gateway took what the agent declared (`agent.configured`), which follows its
+   * registration: a class the gateway refuses (a tool argument named `say`, a search with no base)
+   * is registered and never configured.
+   */
+  configured(slug: string): Promise<void>;
   /** Every entry line from now on. The returned function stops listening. */
   onEvent(listener: (line: EventLine) => void): () => void;
 }
@@ -43,8 +49,10 @@ const REGISTERS_WITHIN_MS = 30_000;
  */
 export function servingFrom(lines: Readable, other: Writable, withinMs = REGISTERS_WITHIN_MS): Serving {
   const apps = new Map<string, string>();
+  const declared = new Set<string>();
   const listeners = new Set<(line: EventLine) => void>();
   const waiting = new Map<string, ((app: string) => void)[]>();
+  const configuring = new Map<string, (() => void)[]>();
   createInterface({ input: lines }).on("line", (text) => {
     const line = eventLineOf(text);
     if (line === undefined) return void other.write(`${text}\n`);
@@ -52,6 +60,11 @@ export function servingFrom(lines: Readable, other: Writable, withinMs = REGISTE
       apps.set(line.agent, line.data["app"]);
       for (const answer of waiting.get(line.agent) ?? []) answer(line.data["app"]);
       waiting.delete(line.agent);
+    }
+    if (line.type === "agent.configured") {
+      declared.add(line.agent);
+      for (const answer of configuring.get(line.agent) ?? []) answer();
+      configuring.delete(line.agent);
     }
     for (const listener of listeners) listener(line);
   });
@@ -64,6 +77,14 @@ export function servingFrom(lines: Readable, other: Writable, withinMs = REGISTE
         const late = setTimeout(() => refuse(new UsageError(`${slug} did not register within ${withinMs / 1000}s`)), withinMs);
         late.unref();
         waiting.set(slug, [...(waiting.get(slug) ?? []), (app) => (clearTimeout(late), answer(app))]);
+      });
+    },
+    configured: (slug) => {
+      if (declared.has(slug)) return Promise.resolve();
+      return new Promise((answer, refuse) => {
+        const late = setTimeout(() => refuse(new UsageError(`${slug} was not configured within ${withinMs / 1000}s`)), withinMs);
+        late.unref();
+        configuring.set(slug, [...(configuring.get(slug) ?? []), () => (clearTimeout(late), answer())]);
       });
     },
     onEvent: (listener) => {
@@ -108,6 +129,10 @@ export class Relay implements Serving {
 
   registered(slug: string): Promise<string> {
     return this.current.registered(slug);
+  }
+
+  configured(slug: string): Promise<void> {
+    return this.current.configured(slug);
   }
 
   onEvent(listener: (line: EventLine) => void): () => void {

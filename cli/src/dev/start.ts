@@ -14,7 +14,7 @@ import { line as describeLine } from "../telephony/render.js";
 import { runOnce, serveStart, spawnServing, type Child } from "./child.js";
 import { createCompanion, type Companion } from "./companion.js";
 import { consoleAddress, consoleUrl, TALK, whyNoConsole } from "./console.js";
-import { onSaves, Releases } from "./reload.js";
+import { onSaves, Releases, watchedFor } from "./reload.js";
 import * as render from "./render.js";
 import { listenTo, live, plain, type PlainAgent, type Running } from "./screens.js";
 import { Relay, type Serving } from "./serving.js";
@@ -66,9 +66,9 @@ export async function start(ctx: Context, input: StartInput): Promise<number> {
   const relay = new Relay(child);
   // Before the registrations are read, so agent.registered is the first line of a pipe.
   if (input.events) relay.onEvent((line) => ctx.io.stdout.write(`${JSON.stringify(line)}\n`));
-  for (const home of homes) await child.registered(home.name);
+  for (const home of homes) await answering(child, home.name);
   const releases = reloading(ctx, homes, child, spawned, relay);
-  const unwatch = onSaves(homes.map((home) => home.root), () => void releases.reload());
+  const unwatch = onSaves(watchedFor(homes), () => void releases.reload());
   const companion = createCompanion(ctx, homes, relay);
   try {
     await companion.pc.connect();
@@ -97,7 +97,7 @@ function reloading(ctx: Context, homes: AgentHome[], child: Child, spawned: () =
     async () => {
       const next = spawned();
       try {
-        for (const home of homes) await next.registered(home.name);
+        for (const home of homes) await answering(next, home.name);
       } catch (failed) {
         await next.stop();
         throw failed;
@@ -110,6 +110,13 @@ function reloading(ctx: Context, homes: AgentHome[], child: Child, spawned: () =
       else ctx.io.warn(render.notReloadedLine(version, broken));
     },
   );
+}
+
+// Answering is registered and configured: a class the gateway refuses at its declaration is no copy
+// that answers, and a reload to it leaves the one before answering (R F18, 2026-10-24).
+async function answering(child: Child, slug: string): Promise<void> {
+  await child.registered(slug);
+  await child.configured(slug);
 }
 
 // The process answering left on its own: `start` ends with its code, as a process manager expects. One

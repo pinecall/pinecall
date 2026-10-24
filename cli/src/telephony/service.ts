@@ -92,6 +92,7 @@ export async function importNumber(ctx: Context, input: ImportNumberInput): Prom
   const body: api.NumberImport = { number: input.number, agent: input.agent };
   if (input.account !== undefined) body.account = input.account;
   if (input.channel !== undefined) body.channel = input.channel;
+  if (input.move) body.move = true;
   return api.importNumber(ctx.gateway(), body, input.dryRun);
 }
 

@@ -3,7 +3,7 @@
 import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
-import { PinecallError, UsageError } from "../errors.js";
+import { ProcessLeft, UsageError } from "../errors.js";
 import { openInBrowser } from "../kit/browser.js";
 import { stateOfCase } from "../calls/service/chat.js";
 import { runOnce, serveStart } from "./child.js";
@@ -73,7 +73,7 @@ export function register(program: Command, ctx: Context): void {
         ...(flags.inspectBrk === undefined ? [] : [flags.inspectBrk === true ? "--inspect-brk" : `--inspect-brk=${flags.inspectBrk}`]),
       ];
       const code = await start(ctx, StartInput.parse({ file, agent: flags.agent, showPrompt: flags.showPrompt === true, events: flags.events === true, ui: flags.ui === true, inspect }));
-      if (code !== 0) throw new PinecallError(`the agent's process left with ${code}`);
+      if (code !== 0) throw new ProcessLeft(`the agent's process left with ${code}`, code);
     });
 
   program
@@ -111,6 +111,6 @@ export function register(program: Command, ctx: Context): void {
       const medium = flags.medium === undefined ? [] : ["--medium", flags.medium];
       const args = ["--file", home.file, "--slug", home.name, ...pairs, "--channel", flags.channel, ...medium, "--show-machine"];
       const code = await runOnce(serveStart(undefined, home.file, "prompt", args, { root: home.root }, ctx.processEnv), ctx.io.stdout, ctx.io.stderr);
-      if (code !== 0) throw new PinecallError(`the serve entry left with ${code}`);
+      if (code !== 0) throw new ProcessLeft(`the serve entry left with ${code}`, code);
     });
 }

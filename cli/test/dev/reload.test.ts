@@ -1,12 +1,13 @@
 /** A save reloads the agent: which files are saves, one reload per burst, the next copy answering before the one before drains, a broken save left unloaded. */
 
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { isASave, onSaves, Releases, type Reloaded } from "../../src/dev/reload.js";
+import { isASave, onSaves, Releases, watchedFor, type Reloaded } from "../../src/dev/reload.js";
+import { homeOf } from "../../src/project/layout.js";
 
 const tick = (): Promise<void> => new Promise((settled) => setImmediate(settled));
 
@@ -28,6 +29,17 @@ describe("what a save is", () => {
   it("the agent's own files are, and what its tools and package managers write is not", () => {
     for (const file of ["agent.tsx", "views/desk.tsx", "agent.rb", "agent.py", "prompts/greeting.md", "data/slots.json"]) expect(isASave(file), file).toBe(true);
     for (const file of ["node_modules/x/index.js", "dist/agent.js", ".pinecall/state.json", "test/goldens/a.json", "start.log", ".venv/lib/x.py", "__pycache__/a.pyc", ".env"]) expect(isASave(file), file).toBe(false);
+  });
+});
+
+// T F6, R F20, P F1: the project's root was watched, so a script or a pulled settings file reloaded the agent.
+describe("what is watched", () => {
+  it("each agent's own folder, and the project's lib/ once there is one, never the project's root", () => {
+    const root = mkdtempSync(join(tmpdir(), "watched-"));
+    const homes = ["sales", "desk"].map((name) => homeOf(join(root, "agents", name, "agent.ts")));
+    expect(watchedFor(homes)).toEqual([join(root, "agents", "sales"), join(root, "agents", "desk")]);
+    mkdirSync(join(root, "lib"));
+    expect(watchedFor(homes)).toEqual([join(root, "agents", "sales"), join(root, "agents", "desk"), join(root, "lib")]);
   });
 });
 

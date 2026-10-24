@@ -168,7 +168,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
       const agent = agentOf(flags);
       const found = await service.listPersonas(ctx, agent);
       const unsent = await service.personasNotPushed(ctx, flags, found);
-      ctx.io.result({ personas: found, not_pushed: unsent }, () => render.personas(agent, found, unsent));
+      ctx.io.result({ personas: found, not_pushed: unsent.names, not_personas: unsent.refused }, () => render.personas(agent, found, unsent.names, unsent.refused));
     });
   personas
     .command("show")

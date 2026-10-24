@@ -13,6 +13,9 @@ export const PROJECT_AGENTS = "agents";
 export const AGENT_DOCS = "docs";
 export const AGENT_TESTS = "test";
 
+/** The project's folder of code two or more agents share: `start` reloads on a save there too. */
+export const SHARED = "lib";
+
 /** File names of the retrieval and recall goldens inside the goldens folder. */
 export const DOCS_GOLDEN = "docs.json";
 export const MEMORY_GOLDEN = "memory.json";

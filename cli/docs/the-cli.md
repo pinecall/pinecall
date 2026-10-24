@@ -219,8 +219,8 @@ console's Configure ▸ Knowledge or with [`pinecall agent knowledge edit`](#age
 read whole into the prompt on every call. Nor are the documents a turn searches: they are a base,
 written in the console's Knowledge ▸ Docs, and a local `agents/<name>/docs/` is only what `docs push` sends
 when no directory is named. A class
-that still carries a voice, a model, an opening, a memory policy, a knowledge file or a base is
-refused at load, and the refusal names the verb that sets it now
+may still declare its voice, its model, its opening or its memory policy: what it declares wins over
+the settings until it is taken out
 ([writing-an-agent.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/writing-an-agent.md)).
 
 At the root, every verb that reads a class acts on **every agent**, each against its own folders,
@@ -384,6 +384,12 @@ refused without the flag; on a person's key it opens only while their production
 and the gateway's refusal is printed before anything registers. How a server runs it — under the process manager, or
 inside your own Node app — is [production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md).
 
+The connected line comes once every agent is registered and the gateway took what its class
+declares. A class the gateway refuses — a tool argument named `say`, a search with no base attached —
+prints the gateway's sentence and no connected line, and `start` ends with the agent's process's exit
+code: 2 for a refusal, as for any refusal of the gateway. Later, an agent's process that leaves on its
+own ends `start` with its code too, as a process manager expects.
+
 It binds no port and serves no page. One line per log entry on stdout, and under the connected
 line the link to talk to the agent in the console's chat — **and there are two consoles, one per environment**, both served by the one
 gateway: the sandbox's under `/sandbox`, production's at the root. In the sandbox the line reads
@@ -403,14 +409,18 @@ restarted learns it back at once instead of sending your test call to production
 goes away is one line — `gateway  … — reconnecting`, then `gateway  back` — and never a stack per
 redial.
 
-**A save reloads the class.** `start` watches each agent's folder — not `node_modules`, `dist`, `.venv`,
-`test/` (the goldens', which `pinecall test --watch` follows) or a log written beside the agent — and a
-burst of writes settled is one reload: the next process is started, every agent registers there, and
-only then the one before drains its calls to it, so a call in flight ends on the class it began on and
-the next one opens on the new one. One line says so, `reloaded · version 2 answering`. A save that does
-not load — the entry left before registering, or registered nothing in 30 s — replaces nothing: the
-version before keeps answering, the line says `the save does not load, version 1 keeps answering: …`
-with the load's own sentence, and the next save tries again. The same in every language and every mode;
+**A save reloads the class.** `start` watches each agent's folder, `agents/<name>/`, and the project's
+`lib/` the agents share — not `node_modules`, `dist`, `.venv`, `test/` (the goldens', which
+`pinecall test --watch` follows), `docs/`, or a log written beside the agent; a script, a note or a
+pulled settings file elsewhere in the project reloads nothing. A burst of writes settled is one reload:
+the next process is started, every agent registers there and the gateway takes what it declares
+(`agent.configured`), and only then the one before drains its calls to it, so a call in flight ends on
+the class it began on and the next one opens on the new one. One line says so,
+`reloaded · version 2 answering`. A save that does not load — the entry left before registering, the
+gateway refused what the class declares (a tool argument named `say`, a search with no base), or
+nothing registered in 30 s — replaces nothing: the version before keeps answering, the line says
+`the save does not load, version 1 keeps answering: …` with the load's own sentence, and the next save
+tries again. The same in every language and every mode;
 `pinecall agent list` shows the two processes for the moment the handover takes.
 
 **A signal drains before it leaves.** `SIGTERM` (a deploy) or `SIGINT` (Ctrl-C, or `q` in `--ui`)
@@ -439,7 +449,7 @@ line     rings in this terminal · also running: carla@clinica.test
 | flag | |
 |---|---|
 | `--prod` | production's agent, at the same gateway: a production server's token, or a person's key while their switch is on |
-| `--ui` | the full-screen terminal view. `p` pause · `c` clear · `e` events · `q` quit. The prompt a call is in is not on screen: the gateway keeps a hash of each block, not its text — `pinecall prompt` prints the page a state produces |
+| `--ui` | the full-screen terminal view. `p` pause · `c` clear · `e` events · `q` quit. The prompt a call is in is not on screen: `GET /v1/calls/{call}/prompt` reads each block's text, and `pinecall prompt` prints the page a state produces |
 | `--events` | the agent's process's own lines: one JSON object per wire entry, `{"type","agent","call","data"}` with `data` as the gateway wrote it (snake_case), `agent.registered` first, for a pipe |
 | `--show-prompt` | the prompt a fresh instance would produce, through the agent's serve entry, then exit. No key, no gateway |
 | `--inspect` · `--inspect-brk` | Node's own flag, given to the agent's process; a Ruby or Python agent runs no Node and is refused it |
@@ -566,6 +576,10 @@ came. With nothing after it, the agent of this directory; with a slug, that agen
 A written call runs in the gateway, so a gateway that restarts drops the socket — and keeps the
 call. `chat` says `the gateway went away — the call is kept, reconnecting…`, dials again naming
 the call, and the conversation goes on, history and state whole. It gives up after about a minute.
+
+Lines read from a pipe or a file are said one at a time, as a person types them: each once the
+agent answered the one before, its tools included (a minute at most per line). Lines typed at a
+terminal are said as they are typed.
 
 When the input ends — Ctrl-D, or the end of a pipe — `chat` hangs up once the agent has answered
 every line it was sent, one turn at a time (a minute at most). It hangs up through the gateway,
@@ -831,7 +845,9 @@ clears one back. `--expect '…'`, repeated, is what the caller expects of the a
 line each, written "The agent should …": the `expected-outcome` judge holds every call of theirs to
 them at hang-up, and the model playing them is never told. `--interrupts 0.4` makes a spoken caller
 talk over that share of the agent's answers, some way into them — so the agent's barge-in is tested
-for real — and `--pause 2` leaves two seconds of silence before each of their lines.
+for real; each answer is a draw of its own, never the notice or the greeting, so a call of three
+answers at `0.6` passes with none cut one time in sixteen, and `1` cuts every one. A cut answer is a
+`turn.agent` with `interrupted: true` — and `--pause 2` leaves two seconds of silence before each of their lines.
 `--backchannels 0.3` has them murmur an "mm-hmm", in their language, into that share of the
 answers a few seconds in, keeping their turn, so an agent that stops for a listener's noise is
 found out; `--speed 0.8` slows their voice to that much of the vendor's tempo (`1.3` hurries it),
@@ -1052,7 +1068,9 @@ recalled, the day it ran, and an `expect` from its **broken** verdicts — for a
 before it counts as a golden. Promote is for the call that **broke**: a verdict says what went
 wrong, never what was right, so the expect says what must not happen again — the tool a broken
 `consent` ran unasked in `not_tools`, `grounded: true`, the other judges that broke in `judges`,
-asked again by name — and the verb prints a note for each. A call that held gives an empty
+asked again by name — and the verb prints a note for each. A judge that broke the call and no golden
+field asks again — `expected-outcome`, which fits no golden — is named in a note of its own, for you to
+write what the call must do instead. A call that held gives an empty
 `expect`, and so does a call a golden run broke by a step (the step is the run's verdict, not a judge's;
 the golden it played is the `expect` to copy from): you write what it must keep doing. The same golden is what [`cases keep`](#cases)
 keeps on the gateway instead, for a case that belongs in the dataset rather than in the repository.
@@ -1144,7 +1162,7 @@ lists one. A case is addressed by its **name** within the agent — the project'
 `--judge-was-wrong <judge>` says the judge that broke should have held, which the gateway keeps as
 a calibration label of the call, `--note` beside it; a judge the case did not break on is the
 gateway's refusal, and `--note` without a judge is refused here, since it is kept on that label.
-`reopen` makes it pending again. **`pull`** writes the case's golden as `<name>.json` in
+`reopen` makes it pending again; its group keeps the status it was given, which says what was decided for the group, not for each case after it. **`pull`** writes the case's golden as `<name>.json` in
 `agents/<agent>/test/goldens/` (`--out` moves it) — the golden as the case holds it, `promoted_from` and
 all — and only then marks the case as kept in the repository, so the nightly plays the file and
 not the case. **`keep <call-id> --name x`** keeps a finished call as an approved case, with the
@@ -1361,7 +1379,10 @@ the longest silence a caller is left in before the turn is called finished, and
 are for a recogniser that decides the end of a turn *itself* — Deepgram Flux, which is the
 runtime's own ears: `--eot-threshold` is how sure it must be before it ends one, and
 `--eager-eot-threshold` the lower bar at which it says a turn MIGHT be over, which is what lets
-the model start on an answer that is thrown away if the caller carries on.
+the model start on an answer that is thrown away if the caller carries on. Each number is tried on
+the ears before it is kept, inside the vendor's own range: Flux takes `--endpointing-ms` as its
+end-of-turn timeout, and a value it refuses is refused there, in its words, naming the knobs tried
+(`turn endpointing_ms=400`).
 
 **What never takes the floor**, whatever the numbers. While the agent speaks, a turn that only
 agrees ("mm-hm", "sí"), or that is all one of the phrases Whisper-family ears write on a breath
@@ -1606,7 +1627,7 @@ nothing, and it stops at the answer. It plays looped under the agent's voice, on
 the web alike, from the next call; a written call plays none.
 
 `default` is the runtime's own melody, and what an agent nobody chose for plays. `off` is silence.
-`upload` sends a wav, an mp3, an ogg or an m4a, up to 20 MB and five minutes, which the
+`upload` sends a wav, an mp3, an ogg, a flac or an m4a, up to 20 MB and five minutes, which the
 gateway converts once; a file it cannot read is refused in a sentence. `after` sets the wait in
 seconds, from 0 to 30, and `after default` gives back the runtime's 2.5. Choosing what plays keeps
 the wait, and setting the wait keeps what plays. There is one choice per agent per environment,
@@ -1913,7 +1934,7 @@ until the first audio — the wait a caller hears after they stop talking — an
 a dash when the gateway sent none. `--save file.wav` keeps the WAV there and plays it from there.
 It runs on the org's own key for the vendor when it brought one, and on the platform's otherwise; both
 endpoints ask for `pipeline`, the scope that may change the voice. The gateway refuses in one sentence
-what the settings endpoint would refuse — a typo in the voice, a vendor this build has no row for, a
+what the settings endpoint would refuse — a voice its vendor does not have, a vendor this build has no row for, a
 model it does not vouch for, more than 400 characters (`422`) — and says `429` past thirty samples
 a minute on one key, `503` when nobody has a key for the vendor, `409` when the vendor refused
 that key, `502` when it did not answer. The voice it plays is set with `pinecall agent set --tts
@@ -2109,9 +2130,9 @@ asked — the sandbox, or production with `--prod`: the org (its slug, or its id
 carries none), the key's id, the environment, the label it was issued under, and whether the key may act
 in production — your switch, an admin's always, or a production server token; and under that
 which environments the key opens there: a person's key both, the sandbox without `--prod` and production
-with it while the switch is on; a server's token the one its prefix names. The exit code is the
-gateway's answer: 0 when it said who the key is, 1 when it refused, in its words — 2 when there is no key, or
-the gateway answers 404. The key itself is
+with it while the switch is on; a server's token the one its prefix names. The exit code is 0
+when the gateway said who the key is, and 2 when it refused, in its words, when there is no key, or when
+it answers 404 — as every refusal of the gateway is ([exit codes](#exit-codes)). The key itself is
 neither printed nor sent anywhere else.
 
 ```console
@@ -2247,7 +2268,7 @@ The class reaches the base from inside a tool, and nowhere else: `await
 this.knowledge.search("horarios", { k: 3 })` asks the gateway for the best chunks of the bases the
 environment attached, for these words ([writing-an-agent.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/writing-an-agent.md)). Which base is the
 environment's to say, so a class that searches and registers in an environment where nothing is attached is
-refused at registration: `clinica-norte searches its bases, and none is attached to it in sandbox:
+refused at registration, the agent's process printing the gateway's code before its words: `bad_shape: clinica-norte searches its bases, and none is attached to it in sandbox:
 pinecall docs attach <base> --agent clinica-norte`. A base attached and never pushed is refused
 the same way, naming `pinecall docs push`.
 
@@ -2589,6 +2610,9 @@ verification snippet per language.
 | `1` | the thing measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold, the run itself broke (its reason printed with the report) |
 | `2` | this command could not run, and measured nothing: no key, a flag that is not a flag, a name nothing answers to, an input refused, **any refusal of the gateway** — 400, 401, 403, 404, 409, 422, 429, 503, in its own words — the network down, a verb that moved (`pipeline set` is `agent set` now) |
 | `130` | stopped: Ctrl-C (or SIGTERM) on a verb, which is not a failure |
+
+`start` and `prompt` run the agent's own process: when it leaves on its own they end with its exit code,
+whatever it is — 2 when the gateway refused what the class declares.
 
 A call **nobody judged** is not a pass: `simulate --judge` exits 2 for it, with the reason, because
 "nobody looked at this" must never open a gate. A step in CI fails on either 1 or 2; 1 says the agent

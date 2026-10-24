@@ -224,7 +224,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .option("--team")
     .option("--note <note>")
-    .action(async (word, flags) => ctx.io.result(await service.sayWord(ctx, service.SayWordInput.parse({ word, ...flags })), render.lexicon));
+    .action(async (word, flags) => ctx.io.result(await service.sayWord(ctx, service.SayWordInput.parse({ word, ...flags })), (answer) => render.lexicon(answer, flags.team === true ? "team" : "yours")));
   lexicon
     .command("hear")
     .description("the words the ears must know")
@@ -232,14 +232,14 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .option("--team")
     .option("--note <note>")
-    .action(async (words, flags) => ctx.io.result(await service.hearWords(ctx, service.WordsInput.parse({ words, ...flags })), render.lexicon));
+    .action(async (words, flags) => ctx.io.result(await service.hearWords(ctx, service.WordsInput.parse({ words, ...flags })), (answer) => render.lexicon(answer, flags.team === true ? "team" : "yours")));
   lexicon
     .command("rm")
     .description("words taken out of both")
     .argument("<words...>")
     .option("--agent <slug>")
     .option("--team")
-    .action(async (words, flags) => ctx.io.result(await service.removeWords(ctx, service.WordsInput.parse({ words, ...flags })), render.lexicon));
+    .action(async (words, flags) => ctx.io.result(await service.removeWords(ctx, service.WordsInput.parse({ words, ...flags })), (answer) => render.lexicon(answer, flags.team === true ? "team" : "yours")));
   lexicon
     .command("history")
     .description("every version of a corner's lexicon, who set it and why")

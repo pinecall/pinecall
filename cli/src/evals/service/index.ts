@@ -42,6 +42,7 @@ export {
   isPinecalls,
   listPersonas,
   NOBODY,
+  NOT_A_PERSONA_FILE,
   personasNotPushed,
   pushPersonaFiles,
   switchPersona,

@@ -1,9 +1,10 @@
 /** A save reloads the agent: its folder watched, a burst of writes settled into one reload, the next copy answering before the one before drains. */
 
-import { type FSWatcher, watch } from "node:fs";
-import { extname, sep } from "node:path";
+import { existsSync, type FSWatcher, watch } from "node:fs";
+import { dirname, extname, join, sep } from "node:path";
 
 import { errorMessage } from "../errors.js";
+import { type AgentHome, SHARED } from "../project/layout.js";
 
 // A save is a burst of writes: one reload after it settles.
 export const SETTLES_MS = 300;
@@ -19,6 +20,15 @@ const WRITTEN_IN = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs"
 /** Whether a change to this file, relative to the folder watched, is a save of the agent. */
 export function isASave(file: string): boolean {
   return WRITTEN_IN.has(extname(file)) && !file.split(sep).some((part) => NEVER_WATCHED.has(part));
+}
+
+/**
+ * What a save of these agents is a save in: each agent's own folder, and the project's `lib/` they
+ * share. A script, a note or a pulled settings file elsewhere in the project reloads nothing.
+ */
+export function watchedFor(homes: readonly AgentHome[]): string[] {
+  const shared = [...new Set(homes.map((home) => join(home.root, SHARED)))].filter((folder) => existsSync(folder));
+  return [...homes.map((home) => dirname(home.file)), ...shared];
 }
 
 /** Call `saved` once each burst of saves under the folders settles; the function returned stops watching. */

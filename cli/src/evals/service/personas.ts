@@ -150,15 +150,21 @@ export async function generatePersonas(ctx: Context, agent: string, input: Gener
  * The personas written under the agent's `test/personas/` that the gateway does not list: for a
  * list that says what `personas push` would send. None outside a project, or for a bare slug.
  */
-export async function personasNotPushed(ctx: Context, choice: { agent?: string | undefined; file?: string | undefined }, listed: api.Persona[]): Promise<string[]> {
+export async function personasNotPushed(
+  ctx: Context,
+  choice: { agent?: string | undefined; file?: string | undefined },
+  listed: api.Persona[],
+): Promise<{ names: string[]; refused: string[] }> {
   let folder: string;
   try {
     folder = ctx.agent("personas", choice).personas;
   } catch {
-    return [];
+    return { names: [], refused: [] };
   }
   const names = new Set(listed.map((one) => one.name));
-  return (await personasInFiles(folder)).map((one) => one.name).filter((name) => !names.has(name));
+  // A list goes on past a file that is no persona, and names it: `push` is where it is refused (R F21).
+  const read = await personaFiles(folder);
+  return { names: read.kept.map((one) => one.name).filter((name) => !names.has(name)), refused: read.refused };
 }
 
 export async function pushPersonaFiles(ctx: Context, agent: string, folder: string): Promise<{ pushed: string[]; personas: api.Persona[] }> {
@@ -217,18 +223,24 @@ interface FilePersona {
 // A `.ts` file is TypeScript a project never builds, loaded through tsx's own import — a namespace of
 // its own per call, so an edited file is read again; a `.json` file is read as it is.
 async function personasInFiles(folder: string): Promise<FilePersona[]> {
+  const read = await personaFiles(folder);
+  if (read.refused.length > 0) throw new UsageError(NOT_A_PERSONA_FILE(read.refused[0]!));
+  return read.kept;
+}
+
+/** Every persona file of the folder read: the ones that are a persona, and the paths of those that are not. */
+async function personaFiles(folder: string): Promise<{ kept: FilePersona[]; refused: string[] }> {
   const names = await readdir(resolve(folder)).catch(() => []);
   const files = names.filter((name) => PERSONA_FILES.has(extname(name))).sort();
-  return await Promise.all(
-    files.map(async (name) => {
+  const read = await Promise.all(
+    files.map(async (name): Promise<FilePersona | string> => {
       const file = join(resolve(folder), name);
       const loaded = extname(name) === ".json" ? readJsonFile<unknown>("a persona file", file) : await personaModule(file);
-      if (typeof loaded !== "object" || loaded === null || typeof (loaded as FilePersona).goal !== "string" || typeof (loaded as FilePersona).style !== "string") {
-        throw new UsageError(NOT_A_PERSONA_FILE(file));
-      }
+      if (typeof loaded !== "object" || loaded === null || typeof (loaded as FilePersona).goal !== "string" || typeof (loaded as FilePersona).style !== "string") return file;
       return { ...(loaded as FilePersona), name: basename(file, extname(file)) };
     }),
   );
+  return { kept: read.filter((one): one is FilePersona => typeof one !== "string"), refused: read.filter((one): one is string => typeof one === "string") };
 }
 
 // A file in a folder with no `"type": "module"` is compiled as CommonJS, and its default export arrives

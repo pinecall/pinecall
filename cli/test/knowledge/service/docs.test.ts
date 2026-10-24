@@ -85,6 +85,16 @@ describe("eval", () => {
     expect(sent[0]!.body).toEqual({ questions: JSON.parse(GOLDEN), k: 4 });
   });
 
+  // R F22: a golden and a base both named asked at the gateway's default, 8, inside the agent's project.
+  it("a golden and a base both named still ask at the agent's k in its project", async () => {
+    const root = project(["front-desk"], { "agents/front-desk/test/goldens/docs.json": GOLDEN });
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: tuningRow("", 3, { bases: [{ base: "front-desk", k: 3 }] }) });
+    const sent = answer("post", "/v1/knowledge/:base/eval", SCORE);
+    const { ctx } = testContext({ cwd: root });
+    await service.evalDocs(ctx, { golden: `${root}/agents/front-desk/test/goldens/docs.json`, base: "front-desk" });
+    expect((sent[0]!.body as { k?: number }).k).toBe(3);
+  });
+
   it("a k typed wins, and no attachment leaves it to the gateway", async () => {
     const root = project(["front-desk"], { "agents/front-desk/test/goldens/docs.json": GOLDEN });
     answer("get", "/v1/agents/:slug/settings", SETTINGS);

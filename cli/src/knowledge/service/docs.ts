@@ -135,7 +135,9 @@ export async function evalDocs(ctx: Context, input: EvalDocsInput): Promise<(api
     const home = homes[0]!;
     return [await evalOne(ctx, home.docsGolden, home.name, input.k, home)];
   }
-  const home = input.golden !== undefined && input.base !== undefined ? undefined : ctx.agent("docs eval", { file: input.file, agent: input.agent });
+  // A golden and a base both named still read k off the agent this runs for, when there is one: in a
+  // project, or `--agent` typed (R F22: they asked with the gateway's default, 8).
+  const home = input.golden !== undefined && input.base !== undefined ? agentIfAny(ctx, input) : ctx.agent("docs eval", { file: input.file, agent: input.agent });
   return [await evalOne(ctx, input.golden ?? home!.docsGolden, input.base ?? home!.name, input.k, home)];
 }
 
@@ -213,8 +215,16 @@ async function pushOne(ctx: Context, dir: string, base: string, how: { language:
   return { ...(agent === undefined ? {} : { agent }), ...pushed, files: files.length, ...(files.length === found.length ? {} : { readme_skipped: true as const }) };
 }
 
-// `home` is the agent whose attachment supplies k when none was typed; a golden and a base both
-// named have no agent, and the gateway's default k answers.
+function agentIfAny(ctx: Context, input: EvalDocsInput): AgentHome | undefined {
+  try {
+    return ctx.agent("docs eval", { file: input.file, agent: input.agent });
+  } catch {
+    return undefined;
+  }
+}
+
+// `home` is the agent whose attachment supplies k when none was typed; with none (a golden and a base
+// named outside a project), the gateway's default k answers.
 async function evalOne(ctx: Context, golden: string, base: string, k: number | undefined, home: AgentHome | undefined): Promise<api.KnowledgeScore> {
   const questions = questionsOf(resolve(golden), DOCS_QUESTION);
   const attachment = k !== undefined || home === undefined ? null : await readSettings(ctx, home.name).catch(() => null);

@@ -192,7 +192,10 @@ export const simulate = tool({
       llm: args.llm,
       tts: args.tts,
       callerVoice: args.caller_voice,
-      ...(voice ? { backgroundNoise: args.background_noise, ambience: args.ambience, packetLoss: args.packet_loss } : {}),
+      // Passed whole: audio on a written run is refused there, as the CLI and `test` refuse it (T F14).
+      backgroundNoise: args.background_noise,
+      ambience: args.ambience,
+      packetLoss: args.packet_loss,
     });
     const transcript: string[] = [];
     let begun: (call: string) => void = () => undefined;

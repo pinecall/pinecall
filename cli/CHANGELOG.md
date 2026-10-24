@@ -4,6 +4,34 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- **`start` watches each agent's folder and the project's `lib/`, not the project's root**: a script, a note
+  or a pulled settings file anywhere in the project reloaded every agent and cut a `test` run in flight.
+  The MCP server's held agent watches the same. (2026-10-24 tools eval, T F6 · R F20 · P F1)
+- **A class the gateway refuses at its declaration is not answering**: `start` waits for `agent.configured`,
+  so a refused class prints no `connected` line nor a link to talk to it, and a reload to one keeps the
+  version before answering instead of ending `start` with every live call. (T F7 · R F3 · R F18)
+- **`start` and `prompt` end with the agent's process's exit code** — 2 for the gateway's refusal of a
+  class, as for any refusal — instead of 1. (R F3)
+- **The MCP server asks again which process holds an attached agent** before each tool: a terminal's
+  `pinecall start` reloads under a new app, and every tool after a save was refused with a bare 404. (P F2)
+- **`chat` fed from a pipe says one line at a time**, each once the agent answered the one before, as a
+  person types: every line reached the model at once, while a tool of the line before still ran. (T F4 · R F4)
+- **`numbers import --move` sends the move**, the dry run included: it never reached the gateway, which
+  answered "so say move" whatever was typed. (T F10)
+- **The MCP `simulate` refuses audio parameters without `voice`**, as the CLI and the MCP `test` do; it ran
+  a written simulation and counted it. (T F14)
+- **`personas` lists past a file that is no persona** and names it; one bad file made every listing verb
+  exit 2. `push` still refuses it. (R F21)
+- **`docs eval <golden> --base <base>` asks at the agent's k** in its project, as with nothing named; it
+  asked at the gateway's default, 8. (R F22)
+- **`lexicon add|hear|rm --team` shows the team's corner it wrote**, not "your corner". (T F8)
+- **`runs promote` names a judge that broke the call and no golden field asks again** (`expected-outcome`)
+  instead of "nothing broke". (T F11)
+- `the-cli.md`: `whoami`'s exit code is 2 for a refusal, as the table says; `start --ui`'s row says where a
+  prompt's text is read; a class may declare its voice and models (it is no longer "refused at load"). (T F9 · P F14 · R F2)
+
 ## [0.11.20] — a search's sources in `sessions log`
 
 - **`sessions log` shows where a search's chunks came from**: base, path, heading and score, one after the

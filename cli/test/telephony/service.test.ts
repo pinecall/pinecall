@@ -26,6 +26,14 @@ describe("numbers", () => {
     expect(sent[0]!.query).toEqual({ dry_run: "true" });
   });
 
+  // T F10: `--dry-run --move` still answered "so say move": the flag never reached the body.
+  it("says move when asked, the dry run included", async () => {
+    const sent = answer("post", "/v1/numbers", A_PLAN);
+    const { ctx } = testContext();
+    await service.importNumber(ctx, service.ImportNumberInput.parse({ number: "+34910000000", agent: "front-desk", move: true, dryRun: true }));
+    expect(sent[0]!.body).toEqual({ number: "+34910000000", agent: "front-desk", move: true });
+  });
+
   it("imports for real with no query at all", async () => {
     const sent = answer("post", "/v1/numbers", { ...A_PLAN, dry_run: false });
     const { ctx } = testContext();

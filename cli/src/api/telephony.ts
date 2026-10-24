@@ -60,6 +60,8 @@ export interface NumberImport {
   agent: string;
   account?: string;
   channel?: string;
+  /** Take the number off the Twilio trunk it is on now; without it, a number elsewhere is a 409. */
+  move?: boolean;
 }
 
 /** `POST /v1/numbers/buy`: a number bought on the deployment's own account, pointed at an agent. */

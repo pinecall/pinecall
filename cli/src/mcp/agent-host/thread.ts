@@ -117,6 +117,11 @@ export function threadServing(start: ServeStart, logs: Logs, registersWithinMs?:
         serving.registered(slug),
         exited.then((code) => Promise.reject(new PinecallError(`${slug} did not load (exit ${code}): ${logs.last(3).join(" · ") || "no line said why"}`))),
       ]),
+    configured: (slug) =>
+      Promise.race([
+        serving.configured(slug),
+        exited.then((code) => Promise.reject(new PinecallError(`the gateway did not take ${slug} as declared (exit ${code}): ${logs.last(3).join(" · ") || "no line said why"}`))),
+      ]),
     exited,
     stop,
   };

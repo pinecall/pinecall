@@ -5,7 +5,7 @@ import type { Context } from "../../context.js";
 import { createContext } from "../../context.js";
 import { serveOne } from "../../dev/child.js";
 import { createCompanion, isCompanion, MCP_COMPANION_SDK } from "../../dev/companion.js";
-import { onSaves, Releases, SETTLES_MS } from "../../dev/reload.js";
+import { onSaves, Releases, SETTLES_MS, watchedFor } from "../../dev/reload.js";
 import type { Serving } from "../../dev/serving.js";
 import { hostname } from "../../kit/hostname.js";
 import { StreamIO } from "../../kit/io.js";
@@ -91,11 +91,18 @@ export class Held {
     this.companion = this.beside(this.ctx, this.home, this.serving());
     await this.companion.connect();
     const releases = this.releases;
-    this.unwatch = onSaves([this.home.root], () => void releases.reload(), this.settlesMs);
+    this.unwatch = onSaves(watchedFor([this.home]), () => void releases.reload(), this.settlesMs);
   }
 
   /** Every tool that talks to the agent awaits a reload in flight first, then refuses with the load's sentence if the save broke it. */
   async ready(): Promise<string> {
+    // The process a terminal holds reloads on its own saves, under a new app each time: the app is
+    // asked again, or every tool after a save was refused "does not hold agent" (P F2, 2026-10-24).
+    if (this.attached !== undefined) {
+      const found = await appOnThisMachine(this.ctx, this.home.name);
+      if (found === undefined) throw new ToolRefused(`${this.home.name} is no longer held on this machine: call start`);
+      this.attached = found;
+    }
     await this.releases?.settled();
     if (this.broken !== undefined) throw new ToolRefused(`the newest save does not load, so nothing was asked of the version before: ${this.broken}`);
     const app = this.app();
@@ -124,7 +131,12 @@ export class Held {
 
   // The companion reads the app on every dial: the thread answering now, never the one it started with.
   private serving(): Serving {
-    return { app: () => this.app(), registered: async () => await this.ready(), onEvent: () => () => undefined };
+    return {
+      app: () => this.app(),
+      registered: async () => await this.ready(),
+      configured: async () => void (await this.ready()),
+      onEvent: () => () => undefined,
+    };
   }
 
   private async started(): Promise<Thread> {
@@ -133,6 +145,7 @@ export class Held {
     const thread = threadServing(serveOne(this.ctx.gateway(), this.home, { console: false, serve: lent?.entry }, this.ctx.processEnv), this.logs, undefined, lent);
     try {
       await thread.registered(this.home.name);
+      await thread.configured(this.home.name);
     } catch (failed) {
       await thread.stop();
       throw failed;

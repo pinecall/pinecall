@@ -3,7 +3,7 @@
 import { HELD, BROKEN, callScore } from "../../judging/render.js";
 import { date } from "../../kit/format.js";
 import { table } from "../../kit/table.js";
-import type { CaseGroup, CaseList, Drift, EvalCase, EvalRun, GeneratedPersonas, JudgeDrift, Moved, Persona, Promoted, Rate, Replayed, Simulated } from "../service/index.js";
+import { NOT_A_PERSONA_FILE, type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Simulated } from "../service/index.js";
 import { latencyLine } from "./matrix.js";
 
 export { BottomBlock, header, progress, type Watched } from "./progress.js";
@@ -142,11 +142,12 @@ export function nextForGroup(one: CaseGroup): string[] {
 }
 
 /** Pinecall's first, then the agent's own; and a line when it has none of its own. */
-export function personas(agent: string, found: Persona[], notPushed: string[] = []): string[] {
+export function personas(agent: string, found: Persona[], notPushed: string[] = [], notPersonas: string[] = []): string[] {
   const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : "yours");
   const rows = table(["name", "whose", "goal"], found.map((one) => [one.name, whose(one), one.owner === "pinecall" ? (one.summary ?? one.goal) : one.goal])).slice(1);
   const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
   if (notPushed.length > 0) lines.push(`${notPushed.length} written here and not pushed: ${notPushed.join(", ")} — \`pinecall personas push\` sends them`);
+  for (const file of notPersonas) lines.push(NOT_A_PERSONA_FILE(file));
   return lines;
 }
 

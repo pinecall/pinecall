@@ -23,6 +23,7 @@ const NAMED = 3;
 export const CONSENT_BANS_THE_TOOL = "consent broke, so the tool that ran unasked is in expect.not_tools: keep it only if this call must never call it at all — the order itself is the runtime's own policy over state and input";
 export const GROUNDED_IS_ASKED = "grounded broke, so expect.grounded asks that every price, hour, date and name the agent states is in the call's evidence";
 export const NOTHING_BROKE = "nothing broke: write what this call must keep doing";
+export const BROKE_UNASKED = (judges: string[]): string => `${judges.join(", ")} broke this call and no golden field asks it again: write what the call must do instead in expect`;
 
 /** What `runs promote` takes: the call, the candidate's name, where it is written (the agent's candidates), the seq to cut the call at. */
 export const PromoteInput = z.object({
@@ -157,7 +158,9 @@ export async function promoteCall(ctx: Context, input: PromoteInput): Promise<Pr
   await mkdir(input.out, { recursive: true });
   const path = join(input.out, `${candidate.name}.json`);
   await writeFile(path, `${JSON.stringify(candidate, null, 2)}\n`, "utf8");
-  return { path, candidate, notes: notesOn(candidate.expect ?? {}) };
+  const scored = (await calls.listCallEntries(ctx.gateway(), input.call, { types: ["call.score"] })).entries.find((entry) => entry.type === "call.score");
+  const broke = ((scored?.data as unknown as CallScore | undefined)?.judges ?? []).filter((judgment) => judgment.verdict === "broken").map((judgment) => judgment.name);
+  return { path, candidate, notes: notesOn(candidate.expect ?? {}, broke) };
 }
 
 /** Each judge's held-rate over the window against the baseline before it, counted from `call.score` verdicts. */
@@ -242,12 +245,17 @@ function brokenIn(judged: Judged[]): Broke[] {
   return broke;
 }
 
-// Review notes say what one field of the derived expect means; the file stays a valid golden.
-function notesOn(expect: Expect): string[] {
+// Review notes say what one field of the derived expect means; the file stays a valid golden. A judge
+// that broke the call and has no field here (`expected-outcome` fits no golden) is named, or the note
+// read as if the call held (T F11).
+function notesOn(expect: Expect, broke: string[]): string[] {
   const notes: string[] = [];
+  const named = new Set([...(expect.judges ?? []), ...(expect.not_tools !== undefined && expect.not_tools.length > 0 ? ["consent"] : []), ...(expect.grounded === true ? ["grounded"] : [])]);
+  const unasked = broke.filter((judge) => !named.has(judge));
   if (expect.not_tools !== undefined && expect.not_tools.length > 0) notes.push(CONSENT_BANS_THE_TOOL);
   if (expect.grounded === true) notes.push(GROUNDED_IS_ASKED);
   if (expect.judges !== undefined && expect.judges.length > 0) notes.push(`these judges broke and are asked again by name: ${expect.judges.join(", ")}`);
+  if (unasked.length > 0) notes.push(BROKE_UNASKED(unasked));
   if (notes.length === 0) notes.push(NOTHING_BROKE);
   return notes;
 }

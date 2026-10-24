@@ -4,7 +4,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import type { Writable } from "node:stream";
 
 import type { GatewayClient } from "../api/client.js";
-import { UsageError } from "../errors.js";
+import { ProcessLeft, UsageError } from "../errors.js";
 import type { AgentHome } from "../project/layout.js";
 import { languageOf, serveCommand, type ServeOptions, type ServeVerb } from "../project/language.js";
 import { servingFrom, type Serving } from "./serving.js";
@@ -74,10 +74,10 @@ export function spawnServing(start: ServeStart, options: SpawnOptions): Child {
   return {
     ...serving,
     registered: (slug) =>
-      Promise.race([
-        serving.registered(slug),
-        exited.then((code) => Promise.reject(new UsageError(`the agent's process left (exit ${code}) before ${slug} registered`))),
-      ]),
+      Promise.race([serving.registered(slug), exited.then((code) => Promise.reject(new ProcessLeft(`the agent's process left (exit ${code}) before ${slug} registered`, code || 1)))]),
+    // The gateway's refusal of the declaration is the process's own last line, printed above this one.
+    configured: (slug) =>
+      Promise.race([serving.configured(slug), exited.then((code) => Promise.reject(new ProcessLeft(`the agent's process left (exit ${code}): the gateway did not take ${slug} as declared`, code || 1)))]),
     exited,
     stop,
   };

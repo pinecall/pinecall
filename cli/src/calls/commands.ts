@@ -234,13 +234,18 @@ async function chatAtTheTerminal(ctx: Context, options: service.ChatOptions, eve
   });
   lines = createInterface({ input: process.stdin, output: ctx.io.stdout, prompt: `${render.CALLER} ` });
   prompt();
+  // A pipe's lines all arrive at once: each is said once the one before was answered, as a person
+  // types, or a line reached the model while a tool of the one before still ran (T F4, R F4).
+  let turns = Promise.resolve();
   lines.on("line", (line) => {
-    if (line.trim() !== "") chat.say(line.trim());
+    const said = line.trim();
+    if (said !== "" && ctx.io.interactive) chat.say(said);
+    else if (said !== "") turns = turns.then(() => chat.sayAndWait(said)).catch(() => undefined);
     prompt();
   });
   lines.on("close", () => {
     closed = true;
-    void chat.untilAnswered().then(() => chat.end());
+    void turns.then(() => chat.untilAnswered()).then(() => chat.end());
   });
   const why = await chat.done();
   lines.close();

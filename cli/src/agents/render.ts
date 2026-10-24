@@ -172,10 +172,11 @@ export function knowledgeWritten(done: CornerWritten, text: string): string {
   return `${done.agent} · knowledge ${text.trim() === "" ? "taken out" : `${text.length.toLocaleString("en-US")} chars`} · ${done.corner} v${done.version ?? "?"}`;
 }
 
-/** The effective lexicon, then each corner's version. */
-export function lexicon(answer: LexiconAnswer): string[] {
-  const read = answer.yours ?? answer.team;
-  const lines = [`lexicon · ${answer.world}${answer.yours === null ? "" : " · your corner"}`];
+/** The effective lexicon — or, after a write with `--team`, the team's corner it wrote — then each corner's version. */
+export function lexicon(answer: LexiconAnswer, wrote: "yours" | "team" = "yours"): string[] {
+  const team = wrote === "team" || answer.yours === null;
+  const read = team ? answer.team : answer.yours;
+  const lines = [`lexicon · ${answer.world}${wrote === "team" ? " · the team's corner" : answer.yours === null ? "" : " · your corner"}`];
   if (read === null) lines.push("  nothing set: the voice says every word as it is written");
   else {
     const spoken = read.lexicon.said.map((one) => `${one.word} → "${one.spoken}"`).join(" · ");

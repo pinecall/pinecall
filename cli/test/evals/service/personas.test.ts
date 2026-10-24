@@ -7,7 +7,7 @@ import * as personas from "../../../src/evals/service/personas.js";
 import { answer } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { A_PERSONA } from "../../support/fixtures.js";
-import { folder, write } from "../../support/project.js";
+import { folder, project, write } from "../../support/project.js";
 
 const LIBRARY = { ...A_PERSONA, name: "confused-elder", owner: "pinecall", on: false };
 
@@ -110,6 +110,17 @@ describe("personas in files", () => {
       { goal: "ask the hours", style: "plain", about: "", facts: {}, state: {} },
       { goal: "move an appointment", style: "hurried", about: "", facts: { phone: "305" }, state: { patient: "Ana" } },
     ]);
+  });
+
+  // R F21: one bad file made every listing verb exit 2; the list goes on and names it, `push` refuses it.
+  it("the list goes on past a file that is no persona, and names that file", async () => {
+    const root = project(["front-desk"], {
+      "agents/front-desk/test/personas/kept.json": JSON.stringify({ goal: "ask the hours", style: "plain" }),
+      "agents/front-desk/test/personas/bad-shape.json": JSON.stringify({ wat: 1 }),
+    });
+    const { ctx } = testContext({ cwd: root });
+    const unsent = await personas.personasNotPushed(ctx, {}, []);
+    expect(unsent).toEqual({ names: ["kept"], refused: [`${root}/agents/front-desk/test/personas/bad-shape.json`] });
   });
 
   it("a file that is no persona is refused naming the shape", async () => {
