@@ -92,6 +92,7 @@ class Session:
             live,
             lookups,
             announce=self._announce,
+            spoke=self._spoke,
             waiting=self._music,
             hung_up_by_the_model=self._hung_up_by_the_model,
         )
@@ -402,6 +403,9 @@ class Session:
 
     def _announce(self, line: str | None) -> None:
         self.agent.announce(line)
+
+    def _spoke(self) -> bool:
+        return self.agent.said_this_turn
 
     # end_call closes the session as livekit's own initiative, which reads as a drain.
     def _hung_up_by_the_model(self) -> None:

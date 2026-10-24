@@ -25,6 +25,8 @@ from pinecall_runtime.wire.parts import StateCauseTool, ToolResult
 type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str | llm.ToolResult]]
 # Says a line as a tool starts, unless the agent spoke since the caller did.
 type Announce = Callable[[str | None], None]
+# Whether the agent has said words since the caller last spoke.
+type Spoke = Callable[[], bool]
 # What plays while the caller waits: the hold melody after its grace, or nothing.
 type Waiting = Callable[[], AbstractAsyncContextManager[None]]
 
@@ -69,6 +71,7 @@ class Toolbox:
         lookups: Lookups,
         *,
         announce: Announce,
+        spoke: Spoke,
         waiting: Waiting,
         hung_up_by_the_model: Callable[[], None],
     ) -> None:
@@ -77,6 +80,7 @@ class Toolbox:
         self.live = live
         self.lookups = lookups
         self.announce = announce
+        self.spoke = spoke
         self.waiting = waiting
         self.hung_up_by_the_model = hung_up_by_the_model
 
@@ -108,7 +112,8 @@ class Toolbox:
     # from, or the model says it again in its own words.
     # A quiet tool is a move on the caller's screen: it runs as the model calls it, while the words
     # of that answer still play, and its result is kept with no answer asked for, or the model
-    # says its sentence a second time.
+    # says its sentence a second time. A model that called it in silence (Gemini answers with the
+    # call alone) is asked for its answer, or the move is made and nothing is said of it.
     async def _run_app_tool(self, use: ToolUse, context: RunContext[None]) -> str | llm.ToolResult:
         spec = self.call.config.tools_by_name[use.name]
         await admit_tool(self.call, use.name)
@@ -136,7 +141,7 @@ class Toolbox:
         # A supervisor took the line while the tool ran: the result stays, the reply does not.
         if self.call.a_person_has_the_line:
             raise StopResponse
-        return llm.ToolResult(text, reply_required=False) if spec.quiet else text
+        return llm.ToolResult(text, reply_required=not self.spoke()) if spec.quiet else text
 
     async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)

@@ -221,7 +221,7 @@ What the app declares about one tool: the contract the model sees and the rules 
 | `announce` | `string` | no | What the agent says as the tool starts — 'Let me check the agenda.' — when the agent has said nothing since the caller last spoke and the model wrote no line of its own for the tool; a turn that spoke and then called the tool is not announced twice, and tools the model chains in one answer — one round each — are announced once. Every tool the model sees carries an optional argument `say`, the line the model writes for the wait: when it writes one, that line is said instead, and the app never receives it, so no tool declares an argument named `say`. Absent, with no line from the model, means silence, or the hold melody, while the tool runs. |
 | `pii` | `string[]` | no | Argument names that carry personal data: the log keeps them as `***` and seals the value aside, for the app alone (docs/security/private-values.md). |
 | `timeout_s` | `number` | no | How long the platform waits for the app's result before reporting an error to the model, in seconds: 30 by default, above 0 and 300 at most. |
-| `quiet` | `boolean` | no | A move on the caller's screen, such as a pointer: it runs as the model calls it, while the words of that answer still play, it is offered no `say` line of its own, and the model is asked for no answer. |
+| `quiet` | `boolean` | no | A move on the caller's screen, such as a pointer: it runs as the model calls it, while the words of that answer still play, it is offered no `say` line of its own, and the model is asked for no answer, unless it called the tool without a word: then it says what it showed. |
 
 ### `ToolResult`
 
