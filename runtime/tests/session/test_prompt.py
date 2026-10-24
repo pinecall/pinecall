@@ -142,6 +142,28 @@ def test_the_dynamic_blocks_land_after_the_history_in_layout_order_one_message_e
     assert tail == ["Turnos libres", "Paso 2"]
 
 
+def test_a_tool_round_ends_the_request_and_the_dynamic_blocks_stay_after_the_callers_words() -> None:
+    history = _history()
+    history.items.append(llm.FunctionCall(call_id="t1", name="point", arguments='{"what": "Pricing"}'))
+    history.items.append(llm.FunctionCallOutput(call_id="t1", name="point", output="pointed", is_error=False))
+    params = request(history, _written(view="Turnos libres")).items
+    kinds = [(item.type, item.role if isinstance(item, llm.ChatMessage) else "") for item in params]
+    assert kinds == [
+        ("message", "assistant"),
+        ("message", "user"),
+        ("message", "system"),
+        ("function_call", ""),
+        ("function_call_output", ""),
+    ]
+
+
+def test_with_no_words_of_the_caller_the_dynamic_blocks_end_the_request() -> None:
+    history = llm.ChatContext.empty()
+    history.add_message(role="assistant", content="¿Algo más?")
+    params = request(history, _written(view="Turnos")).items
+    assert [item.text_content for item in params if isinstance(item, llm.ChatMessage)] == ["¿Algo más?", "Turnos"]
+
+
 def test_the_history_livekit_handed_in_is_left_exactly_as_it_was() -> None:
     history = _history()
     before = list(history.items)

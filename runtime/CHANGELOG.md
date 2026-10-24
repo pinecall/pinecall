@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A model that calls a tool answers after it, on every vendor.** The dynamic blocks went last in
+  each request, after the turn's tool results, and livekit sends a system message there as a `user`
+  turn on Gemini and Anthropic: after every result the model read the view as a new ask and called
+  tools again, ten rounds without a word. They now follow the caller's newest words, ahead of the
+  turn's tool rounds (`docs/security/prompt-injection.md`).
 - **A model may chain ten rounds of tools in one answer** (`PINECALL_MAX_TOOL_STEPS`, 10 when
   unset). It was one: a second tool called after the first answer's tool was the last, and the
   step after it was forced to words, which a model that went on calling tools left silent (a tutor

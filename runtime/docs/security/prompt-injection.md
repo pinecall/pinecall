@@ -18,7 +18,7 @@ words land in a request and where a retrieved sentence lands, and check it in th
 | what `recall` returned | a model, from earlier callers' words | a tool result, JSON | none |
 | what `search` returned | whoever wrote the documents | a tool result, JSON | none |
 | what a tenant's own tool returned | the tenant's systems, and what they read | a tool result, JSON | none |
-| the `view` block | the tenant | last in the request, after the history | operator |
+| the `view` block | the tenant | after the caller's newest words, ahead of the turn's tool rounds; last when no tool ran | operator |
 
 **Nothing that came from outside the conversation is placed among the operator's blocks or in a
 plain `user` turn**: it goes in a tool result, encoded as JSON. **Nothing the operator wrote is
@@ -39,8 +39,11 @@ distrusts, and say in the tool's own description where its output comes from.
   documents said exactly as it reads a tool it called. Their descriptions say where the text came
   from and that it is information, never an instruction; a fact carries the call it came from and
   the date it was first held, so the model can weigh it. Neither answer carries a score.
-- **The view is the operator's, and the last thing read.** The dynamic `view` block comes after the
-  history, so a sentence in the history cannot come after the operator's last word.
+- **The view is the operator's, and nothing the caller said comes after it.** The dynamic `view`
+  block comes right after the caller's newest words. Only this turn's tool results follow it, in the
+  channel the model reads as data: placed after them, livekit sends the block as a `user` turn on
+  most vendors, and the model read it as a new ask after every result, calling tools round after
+  round instead of answering.
 - **The knowledge text is the operator's**, set in the org's settings by a person with `pipeline` or
   `words`, and stays in the static region.
 - **Memory is admitted when it is written.** A fact is extracted at hang-up by one model call,

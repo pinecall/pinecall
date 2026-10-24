@@ -94,12 +94,13 @@ class Request(llm.ChatContext):
 
 
 # Always a new context: livekit reuses its own across a turn's tool steps, so additions would
-# pile up. The order is the one prompt-injection.md states: static blocks, history, the view.
+# pile up. The order is the one prompt-injection.md states: static blocks, history, the view after
+# the caller's words.
 def request(history: llm.ChatContext, blocks: Blocks, lookups: Sequence[llm.ChatItem] = ()) -> Request:
-    """One request: the history with this turn's lookups spliced in, then the dynamic blocks."""
+    """One request: the history with this turn's lookups spliced in, the dynamic blocks after the caller's words."""
     items = _ahead_of_the_caller(history.items, lookups)
-    items += [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
-    return Request(items, blocks.of("static"))
+    dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
+    return Request(_after_the_caller(items, dynamic), blocks.of("static"))
 
 
 # The log keeps the prompt's hashes alone; a run keeps what was sent, to reproduce a failure.
@@ -140,3 +141,14 @@ def _ahead_of_the_caller(items: Sequence[llm.ChatItem], lookups: Sequence[llm.Ch
     if not lookups or not (isinstance(last, llm.ChatMessage) and last.role == "user"):
         return [*items, *lookups]
     return [*items[:-1], *lookups, last]
+
+
+# The dynamic blocks follow the caller's newest words, ahead of this turn's tool rounds: livekit
+# sends a system message mid-history as a user turn (Gemini, Anthropic), and one after a tool's
+# result reads as a new ask, so the model called tools again instead of answering, round after
+# round. With no caller's message (a greeting, agent.reply) they go at the end.
+def _after_the_caller(items: Sequence[llm.ChatItem], dynamic: Sequence[llm.ChatItem]) -> list[llm.ChatItem]:
+    said = [at for at, item in enumerate(items) if isinstance(item, llm.ChatMessage) and item.role == "user"]
+    if not said:
+        return [*items, *dynamic]
+    return [*items[: said[-1] + 1], *dynamic, *items[said[-1] + 1 :]]
