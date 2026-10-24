@@ -17,6 +17,7 @@
   commit. (found by the 2026-10-23 eval, I F7)
 - **A case group a person decided case by case is decided once nothing in it waits**: approved when a case of
   it was, else dismissed. It stayed `pending`, first of `cases groups`, for ever. (found by the 2026-10-23 eval)
+- **`filelock` 4.2.4 and `setuptools` 84.2.1**, past the advisories published against 4.2.0 and 84.0.0.
 - **A reader whose follow was cut short lets its channel go.** The relay counts a reader the moment it is asked
   to follow; one cancelled while the signal confirmed left the channel followed for the process's life.
 

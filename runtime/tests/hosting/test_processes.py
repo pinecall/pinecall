@@ -3,7 +3,6 @@
 import asyncio
 import gzip
 import io
-import os
 import subprocess
 import tarfile
 import time
@@ -13,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from pinecall_runtime.hosting.service.hosts import Launch
-from pinecall_runtime.hosting.service.processes import PID, Processes
+from pinecall_runtime.hosting.service.processes import PID, Processes, _alive
 
 HOST = "front-r1-0a1b2c3d"
 # The platform's CLI as a fake: npm lays it down where --prefix says, and it prints what it was
@@ -119,8 +118,9 @@ async def test_what_a_runner_that_died_left_is_drained_and_removed_before_anythi
     hosts = Processes(tmp_path / "apps")
     assert await hosts.running("sandbox") == []
     assert not left.exists()
-    with pytest.raises(ProcessLookupError):
-        os.kill(pid, 0)
+    # Ended, which a zombie init has not reaped yet is too: it still answers a signal, and a loaded box
+    # reaps late.
+    assert not _alive(pid)
 
 
 async def test_the_hosts_this_runner_started_are_never_taken_for_what_another_left(
