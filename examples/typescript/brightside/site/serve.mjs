@@ -18,7 +18,7 @@ const PORT = Number(process.env.PORT ?? 5173);
 const GATEWAY = (process.env.PINECALL_URL ?? "https://cloud.pinecall.io").replace(/\/+$/, "");
 const KEY = process.env.PINECALL_KEY ?? keyInDotEnv();
 const LOCAL = process.env.DOT_FROM !== "npm";
-const AGENT = "brightside-pip";
+const AGENT = "pip";
 
 /** What is served from the checkout, by the path the page asks for. */
 const SERVED = {

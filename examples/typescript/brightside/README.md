@@ -2,9 +2,9 @@
 
 Pip is Brightside Dental's front desk as a dot tutor. It is a small face with a pointer of its own,
 on the clinic's site, that you talk to: it shows you around, points at what it talks about, and its
-prompt reads the page as you scroll. One class, `agents/brightside-pip/agent.ts`, extends `Tutor` from
+prompt reads the page as you scroll. One class, `agents/pip/agent.ts`, extends `Tutor` from
 [`@pinecall/dot/agent`](../../../packages/dot/README.md#the-tutor-in-the-agent). Its one walk,
-`agents/brightside-pip/macros/tour.json`, is the tour of the site in five sentences, each move hung on the word
+`agents/pip/macros/tour.json`, is the tour of the site in five sentences, each move hung on the word
 it belongs to.
 
 ## Talk to it
@@ -28,8 +28,8 @@ from this checkout, so build the two packages first (`scripts/build` in `package
 
 | file | what it is |
 |---|---|
-| `agents/brightside-pip/agent.ts` | the class: its docstring, and `static macros = macros({ tour })` |
-| `agents/brightside-pip/macros/tour.json` | the walk: what is said, and on which word the pointer moves |
-| `agents/brightside-pip/test/` | the class loads, the walk is checked, the tools are there |
+| `agents/pip/agent.ts` | the class: its docstring, and `static macros = macros({ tour })` |
+| `agents/pip/macros/tour.json` | the walk: what is said, and on which word the pointer moves |
+| `agents/pip/test/` | the class loads, the walk is checked, the tools are there |
 | `site/index.html` | the clinic's page, with `<pinecall-widget look="dot" tutor>` on it |
 | `site/serve.mjs` | the page and the token route, on this machine |
