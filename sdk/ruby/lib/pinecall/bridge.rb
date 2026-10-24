@@ -281,10 +281,17 @@ module Pinecall
     # among them (R F6): the name it missed is the sentence, which a person can act on.
     def failure_of(error)
       case error
-      when NoMethodError then "the view calls #{error.name}, which nothing it reads answers"
+      when NoMethodError then "the view calls #{error.name} on #{receiver_of(error)}, which does not answer it"
       when NameError then "the view names #{error.name}, which is no field of the state, no call and no method of the class"
       else error.message
       end
+    end
+
+    # The class of what the method was called on (nil, most often): the value itself may be private.
+    def receiver_of(error)
+      error.receiver.nil? ? "nil" : error.receiver.class.to_s
+    rescue ArgumentError
+      "something"
     end
 
     # A hook that raises fails its call, never the process: the call goes on with what the hook wrote

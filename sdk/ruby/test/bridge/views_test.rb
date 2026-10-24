@@ -74,6 +74,26 @@ class BridgeViewsTest < Minitest::Test
     refute_includes said, "Ana Ruiz"
   end
 
+  # Calls a method nothing answers, on a value that is private.
+  class Torpe < Pinecall::Agent
+    state :customer, visibility: :pii
+    view template: "<%= customer && customer.fetch(:name).nothing %>"
+
+    # Identifica al cliente.
+    tool
+    def identificar = self.customer = { name: "Ana Ruiz" }
+  end
+
+  def test_a_view_calling_a_method_nothing_answers_names_the_method_and_the_class_of_what_it_called_it_on
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Torpe, client: gateway)
+    call = gateway.call_started(from: "+34600000000")
+    _out, said = capture_io { call.tool("identificar") }
+
+    assert_includes said, "the view calls nothing on String, which does not answer it"
+    refute_includes said, "Ana Ruiz"
+  end
+
   # R F6's sibling, P F3 in Python: `resumed` was never true on a live call, a handover included.
   def test_a_call_handed_over_renders_its_view_resumed
     gateway = Pinecall::Testing::Gateway.new

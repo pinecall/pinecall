@@ -600,6 +600,22 @@ async def test_a_reply_the_app_asks_for_while_its_tool_runs_is_the_answer_to_tha
     assert said == ["PINEAPPLE"]
 
 
+@needs_the_database
+async def test_a_reply_asked_by_a_tool_that_failed_is_dropped_and_never_steers_the_next_one(
+    box: Box, store: Store, call: str
+) -> None:
+    box.answers["hold_line"] = ToolResult(call_id="t1", name="hold_line", error="the line broke")
+    hold: list[Json] = [{"name": "hold_line", "arguments": {}, "call_id": "t1"}]
+    asked = AgentReply(instructions="Say only the word PINEAPPLE.")
+    session = commanding_through(box, HOLDING, asked, [hold, ["Sorry, that failed."]])
+    await session.start()
+    await text.hear_text(session, "check it for me")
+    await text.end_text(session, "caller_hung_up", "caller")
+    assert session.call.reply_asked is None
+    said = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert said == ["Sorry, that failed."]
+
+
 # The interrupt's future waits for the speech running the tool: awaited, the line was marked held
 # five seconds after the tool asked, livekit's timeout (2026-10-24).
 @needs_the_database

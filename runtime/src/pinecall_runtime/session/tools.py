@@ -139,6 +139,9 @@ class Toolbox:
         finally:
             if self.call.cause == cause:
                 self.call.cause = None
+            # Taken whatever the tool came to: a tool that failed is answered by the model's own
+            # reading of its error, and its reply must not steer the next tool's answer.
+            steer, self.call.reply_asked = self.call.reply_asked, None
         text = result_text(result)
         if result.error is not None:
             raise ToolError(text)
@@ -152,9 +155,7 @@ class Toolbox:
         # The app asked for a reply while its tool ran: that reply, steered by its words, is the
         # answer to the tool. Asked of livekit mid-tool, it was dropped and the model answered on
         # its own (2026-10-24); it is asked here, after the result is in the history, in place of it.
-        steer = self.call.reply_asked
         if steer is not None:
-            self.call.reply_asked = None
             interruptible = NOT_GIVEN if steer.allow_interruptions is None else steer.allow_interruptions
             self.live.generate_reply(instructions=steer.instructions, allow_interruptions=interruptible)
             return llm.ToolResult(text, reply_required=False)
