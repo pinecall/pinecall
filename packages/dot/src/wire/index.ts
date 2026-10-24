@@ -7,7 +7,11 @@
 /** The topic the agent sends on, and the page's `onUi` hears. */
 export const UI = "pinecall.ui";
 
-/** The page as the visitor sees it now: `{ text, why }`, sent when it changed; after a move onto an element ended, `why` is `moved` and `at` the ref it moved to, when there was one. */
+/**
+ * The page as the visitor sees it now: `{ text, why, lines }`, sent when it changed; after a move onto an
+ * element ended, `why` is `moved` and `at` the ref it moved to, when there was one. `lines` are what the
+ * site wrote for the agent to say, beside the element each is about.
+ */
 export const SEEN = "page.seen";
 /** The `why` of the `page.seen` that answers a move onto an element. */
 export const MOVED = "moved";
@@ -15,16 +19,31 @@ export const MOVED = "moved";
 export const CLICKED = "page.clicked";
 /** A target the agent named is not on the page: `{ target }`. A fresh `page.seen` follows. */
 export const MISSING = "page.missing";
+/** The visitor asked to hear an element's line, with its ▶: `{ at }`, the element's ref. */
+export const EXPLAIN = "page.explain";
 
-/** What the pointer can do. It never clicks, types or leaves the page for the visitor. */
-export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home"] as const;
+/**
+ * What the pointer can do. `type` fills a field with what the visitor said: it never submits a form,
+ * clicks, or leaves the page for them, and never touches a password or a card.
+ */
+export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home", "type"] as const;
 export type Action = (typeof ACTIONS)[number];
+
+/** What the site wrote for the agent to say about one element, and the move it is said with. */
+export interface Line {
+  /** The element's ref. */
+  at: string;
+  say: string;
+  do: "point" | "highlight" | "scroll_to";
+}
 
 /** One move of the pointer, as the agent sends it, on `target` for the moves that take one: a ref (`e12`), or a name as the screen shows it (`Questions`). */
 export interface Cursor {
   type: "cursor";
   action: Action;
   target?: string | undefined;
+  /** What `type` writes in the field: its text, or the option of a list to choose. */
+  text?: string | undefined;
 }
 
 /** A target that is a ref of the snapshot rather than a name. */
@@ -76,7 +95,9 @@ function isBeat(value: unknown): value is Beat {
   const find = beat["find"];
   const found = find === undefined || (Array.isArray(find) && find.length === 2 && find.every((part) => typeof part === "string"));
   const nth = beat["nth"];
-  return typeof beat["word"] === "string" && isAction(beat["do"]) && found && (nth === undefined || (typeof nth === "number" && nth >= 1));
+  // A beat has no words to type: a macro shows, and the agent fills a field only with what the visitor said.
+  const move = beat["do"];
+  return typeof beat["word"] === "string" && isAction(move) && move !== "type" && found && (nth === undefined || (typeof nth === "number" && nth >= 1));
 }
 
 /** A message on `pinecall.ui` the tutor carries out, or null for one that is not its own (a card, choices). */
@@ -84,8 +105,10 @@ export function tutoring(data: unknown): Cursor | Step | Look | null {
   if (typeof data !== "object" || data === null) return null;
   const message: Record<string, unknown> = { ...data };
   if (message["type"] === "look") return { type: "look" };
-  if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["target"])) {
-    return { type: "cursor", action: message["action"], target: message["target"] };
+  const action = message["action"];
+  if (message["type"] === "cursor" && isAction(action) && optionalText(message["target"]) && optionalText(message["text"])) {
+    if (action === "type" && (message["target"] === undefined || message["text"] === undefined)) return null;
+    return { type: "cursor", action, target: message["target"], text: message["text"] };
   }
   const beats = message["beats"];
   if (
@@ -99,6 +122,20 @@ export function tutoring(data: unknown): Cursor | Step | Look | null {
     return { type: "macro.step", macro: message["macro"], step: message["step"], say: message["say"], beats };
   }
   return null;
+}
+
+/** The lines a `page.seen` carries, each checked; anything else in it is left out. */
+export function linesOf(value: unknown): Line[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item: unknown) => {
+    if (typeof item !== "object" || item === null) return [];
+    const line: Record<string, unknown> = { ...item };
+    const { at, say } = line;
+    const move = line["do"];
+    if (typeof at !== "string" || !A_REF.test(at) || typeof say !== "string" || say.trim() === "") return [];
+    if (move !== "point" && move !== "highlight" && move !== "scroll_to") return [];
+    return [{ at, say, do: move }];
+  });
 }
 
 /** A macro as its JSON file says it, checked; it throws naming what is wrong, at the class's load. */

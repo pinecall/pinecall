@@ -13,7 +13,8 @@ import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
-import { A_REF, CLICKED, MISSING, MOVED, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
+import { fill } from "../pointer/typing.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
 import { Player } from "./macro.js";
 
@@ -28,8 +29,8 @@ export interface TutorOptions {
   linger?: number | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up" and "Captions". */
-  words?: { hangUp?: string | undefined; captions?: string | undefined } | undefined;
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions" and "Explain this". */
+  words?: { hangUp?: string | undefined; captions?: string | undefined; explain?: string | undefined } | undefined;
 }
 
 export interface Tutor {
@@ -69,6 +70,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
               person.calling(true, captioned);
             },
           },
+    explain: { label: options.words?.explain ?? "Explain this", onClick: (element) => send(EXPLAIN, { at: page.refOf(element) }) },
   });
   const drawn = face(person.face, call);
   const player = new Player();
@@ -80,6 +82,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   let moves: Promise<void> = Promise.resolve();
   let sent = "";
   let following: string | null = null;
+  /** The element with a line under the visitor's mouse, its ▶ shown, while a call is on. */
+  let offered: Element | null = null;
+  let leaving: ReturnType<typeof setTimeout> | undefined;
   let speech: { id: string; at: number } | null = null;
   let last = { text: "", at: 0 };
   let frame = 0;
@@ -94,7 +99,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const seen = page.seen();
     if (!live() || seen.text === sent) return;
     sent = seen.text;
-    send(SEEN, { text: seen.text, why });
+    send(SEEN, { text: seen.text, why, lines: page.lines() });
     person.face.dataset["pcSeen"] = String(Number(person.face.dataset["pcSeen"] ?? "0") + 1);
   };
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -118,6 +123,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   };
   const run = async (action: Action, element: Element | null): Promise<void> => {
     switch (action) {
+      case "type":
+        // Typing takes the visitor's words: typeInto, from a cursor move; a macro's beat never types.
+        return;
       case "point": {
         if (element === null) return;
         person.tour(true);
@@ -155,7 +163,13 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         return;
     }
   };
-  const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight";
+  /** The pointer onto a field, then the visitor's words typed into it; why it could not, or null. */
+  const typeInto = async (element: Element | null, text: string): Promise<string | null> => {
+    if (element === null) return null;
+    await run("point", element);
+    return fill(element, text, still);
+  };
+  const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight" || action === "type";
   /** The ref a target names, a ref or a name, looked at fresh; one not on the page is said, and a fresh look follows. */
   const resolve = (target: string): string | null => {
     look("step");
@@ -169,13 +183,16 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     return ref;
   };
   const elementOf = (ref: string | null): Element | null => (ref === null ? null : page.element(ref));
-  /** A move onto an element, answered once it ends: the page as it is now, and the ref it moved to. */
-  const moveOnto = async (action: Action, target: string): Promise<void> => {
+  /** A move onto an element, answered once it ends: the page as it is now, the ref it moved to, and why a field was not filled. */
+  const moveOnto = async (action: Action, target: string, text: string): Promise<void> => {
     const ref = resolve(target);
-    await run(action, elementOf(ref));
+    const element = elementOf(ref);
+    let refused: string | null = null;
+    if (action === "type") refused = await typeInto(element, text);
+    else await run(action, element);
     const seen = page.seen();
     sent = seen.text;
-    send(SEEN, { text: seen.text, why: MOVED, ...(ref === null ? {} : { at: ref }) });
+    send(SEEN, { text: seen.text, why: MOVED, lines: page.lines(), ...(ref === null ? {} : { at: ref }), ...(refused === null ? {} : { refused }) });
   };
   const queue = (move: () => Promise<void>): void => {
     moves = moves.then(move).catch(() => undefined);
@@ -215,6 +232,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
     if (lit !== null && !lit.isConnected) lit = null;
     person.spot(lit);
+    person.offer(live() && offered?.isConnected === true ? offered : null);
     frame = requestAnimationFrame(tick);
   };
 
@@ -237,6 +255,19 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const onScroll = (): void => soon("scroll");
   const onResize = (): void => soon("resize");
   const onToggle = (): void => soon("toggle");
+  // What the visitor types reaches the agent as the page's next look, as their scroll does.
+  const onInput = (event: Event): void => {
+    if (event.target instanceof Element && event.target.closest("[data-pinecall-skip]") === null) soon("dom");
+  };
+  // Over the ▶ itself (the tutor's own layer) it stays; off an element with a line it goes a moment later.
+  const onOver = (event: PointerEvent): void => {
+    const target = event.target instanceof Element ? event.target : null;
+    clearTimeout(leaving);
+    if (target?.closest("[data-pinecall-skip]") != null) return;
+    const marked = target?.closest("[data-pinecall-say]") ?? null;
+    if (marked !== null) offered = marked;
+    else leaving = setTimeout(() => (offered = null), 400);
+  };
   const onClick = (event: MouseEvent): void => {
     const target = event.target instanceof Element ? event.target : null;
     if (target === null || target.closest("[data-pinecall-skip]") !== null) return;
@@ -254,6 +285,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   view.addEventListener("resize", onResize);
   document.addEventListener("toggle", onToggle, true);
   document.addEventListener("click", onClick, true);
+  document.addEventListener("input", onInput, true);
+  document.addEventListener("pointerover", onOver, true);
   changes.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["open", "hidden", "aria-expanded", "aria-selected", "class"] });
   frame = requestAnimationFrame(tick);
 
@@ -270,8 +303,11 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         look("asked");
         return true;
       }
-      const { action, target } = message;
-      queue(() => (needsElement(action) && target !== undefined ? moveOnto(action, target) : run(action, null)));
+      const { action, target, text } = message;
+      queue(async () => {
+        if (needsElement(action) && target !== undefined) await moveOnto(action, target, text ?? "");
+        else await run(action, null);
+      });
       return true;
     },
     wake() {
@@ -282,12 +318,15 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       closed = true;
       cancelAnimationFrame(frame);
       for (const timer of timers.values()) clearTimeout(timer);
+      clearTimeout(leaving);
       unsubscribe();
       changes.disconnect();
       view.removeEventListener("scroll", onScroll);
       view.removeEventListener("resize", onResize);
       document.removeEventListener("toggle", onToggle, true);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("input", onInput, true);
+      document.removeEventListener("pointerover", onOver, true);
       drawn.close();
       hover.close();
       person.close();

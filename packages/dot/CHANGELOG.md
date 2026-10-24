@@ -20,6 +20,13 @@ maintainer's call.
 - **A move onto a thing is answered with what the visitor sees there.** `point`, `highlight` and
   `scrollTo` wait for the page to say the move ended (`page.seen` with `why: "moved"` and `at`), and
   return the thing as it now shows, so a model that moved in silence has something to say.
+- **The site's own lines, said as written.** `data-pinecall-say` on an element (with
+  `data-pinecall-do` and `data-pinecall-order`) is a line the agent says about it: one at a time
+  with `explain`, or with the ▶ shown on it under the visitor's mouse, all of them as the walk
+  `page`. A line said is the turn's answer, never said again.
+- **The tutor fills a form with the visitor.** `fill(field, text)` types what they said into a
+  field, a list by its option; it never sends the form, and never touches a password or a card.
+  The snapshot now says what each field holds, and a list's options.
 - **The tutor writes both sides of the conversation, and hangs up.** The visitor's words show in
   the corner as they speak, beside the agent's; `captions` (`both`, `agent`, `caller`, `none`)
   chooses whose may show, and a **CC** button lets the visitor turn them off, kept in their browser.

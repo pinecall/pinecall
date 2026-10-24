@@ -2,12 +2,18 @@
 
 import { describe, expect, it } from "vitest";
 
-import { macroOf, tutoring } from "../../src/wire/index.js";
+import { linesOf, macroOf, tutoring } from "../../src/wire/index.js";
 
 describe("a message on pinecall.ui", () => {
   it("is a cursor move with its action and its target, a ref or a name", () => {
     expect(tutoring({ type: "cursor", action: "point", target: "e12" })).toEqual({ type: "cursor", action: "point", target: "e12" });
     expect(tutoring({ type: "cursor", action: "scroll_to", target: "Questions" })).toEqual({ type: "cursor", action: "scroll_to", target: "Questions" });
+  });
+
+  it("is a move typing the visitor's words into a field, which names the field and the words", () => {
+    expect(tutoring({ type: "cursor", action: "type", target: "Your name", text: "Jordan Lee" })).toEqual({ type: "cursor", action: "type", target: "Your name", text: "Jordan Lee" });
+    expect(tutoring({ type: "cursor", action: "type", target: "Your name" })).toBeNull();
+    expect(tutoring({ type: "cursor", action: "type", text: "Jordan Lee" })).toBeNull();
   });
 
   it("is a macro step with its sentence and beats", () => {
@@ -25,6 +31,22 @@ describe("a message on pinecall.ui", () => {
     expect(tutoring({ type: "cursor", action: "click", target: "e1" })).toBeNull();
     expect(tutoring({ type: "macro.step", macro: "tour", step: 0, say: "Hi", beats: [{ word: "Hi" }] })).toBeNull();
     expect(tutoring("point e12")).toBeNull();
+    expect(tutoring({ type: "macro.step", macro: "tour", step: 0, say: "Hi", beats: [{ word: "Hi", do: "type" }] })).toBeNull();
+  });
+});
+
+describe("the lines a page sends", () => {
+  it("are each a ref, its words and its move, and anything else is left out", () => {
+    const lines = linesOf([
+      { at: "e20", say: "Pricing is simple.", do: "highlight" },
+      { at: "Pricing", say: "Not a ref.", do: "point" },
+      { at: "e21", say: " ", do: "point" },
+      { at: "e22", say: "Fill me.", do: "type" },
+      "e23",
+    ]);
+
+    expect(lines).toEqual([{ at: "e20", say: "Pricing is simple.", do: "highlight" }]);
+    expect(linesOf(undefined)).toEqual([]);
   });
 });
 

@@ -619,6 +619,24 @@ async def test_a_reply_the_app_asks_for_while_its_tool_runs_is_asked_at_once_wit
     assert said[0] == "PINEAPPLE"
 
 
+# A tutor's walk and an element's line are said by the app inside a quiet tool: that is the turn's
+# answer, said once.
+@needs_the_database
+async def test_words_the_app_says_inside_a_quiet_tool_are_the_turns_answer_said_once(
+    box: Box, store: Store, call: str
+) -> None:
+    point: list[Json] = [{"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}]
+    said_by_the_app = AgentSay(text="Here are our plans.")
+    session = commanding_through(box, POINTING, said_by_the_app, [point, ["Here are our plans."]])
+    await session.start()
+    await text.hear_text(session, "where are the prices?")
+    await settled()
+    await text.end_text(session, "caller_hung_up", "caller")
+    said = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert said == ["Here are our plans."]
+    assert len(model_of(session).requests) == 1
+
+
 # The interrupt's future waits for the speech running the tool: awaited, the line was marked held
 # five seconds after the tool asked, livekit's timeout (2026-10-24).
 @needs_the_database

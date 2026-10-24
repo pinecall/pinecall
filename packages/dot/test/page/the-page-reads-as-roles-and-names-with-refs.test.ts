@@ -1,4 +1,4 @@
-// The page reads as the accessibility tree does: roles and names, refs on what can be pointed at, sections out of view as one line, no values and no secrets.
+// The page reads as the accessibility tree does: roles and names, refs on what can be pointed at, sections out of view as one line, what a field holds, the site's lines, and no secrets.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,13 +9,14 @@ const SITE = `
   <main>
     <h1>A brighter smile</h1>
     <article aria-label="Family Care plan"><span aria-hidden="true">🦷</span><h3>Family Care</h3><div class="price">$39<small> / month</small><!-- was $45 --></div></article>
-    <section aria-label="Book" id="book">
+    <section aria-label="Book" id="book" data-pinecall-say="Book here: it takes a minute." data-pinecall-order="2">
       <label for="name">Your name</label><input id="name" value="Jordan Lee">
+      <label for="day">Day</label><select id="day"><option>Tuesday</option><option selected>Wednesday</option></select>
       <input type="password" aria-label="Password" value="hunter2">
       <button>Book my visit</button>
     </section>
     <div data-pinecall-skip><button>Not the site's</button></div>
-    <section aria-labelledby="faq-h" data-below><h2 id="faq-h">Questions</h2><button>Do you take my insurance?</button></section>
+    <section aria-labelledby="faq-h" data-below data-pinecall-say="Questions people ask us." data-pinecall-do="scroll_to" data-pinecall-order="1"><h2 id="faq-h">Questions</h2><button>Do you take my insurance?</button></section>
   </main>`;
 
 beforeEach(() => {
@@ -42,13 +43,27 @@ describe("the page as the agent reads it", () => {
     expect(text).toContain('- button "Book my visit" [ref=');
   });
 
-  it("names a field by its label and never says its value; a password is not there at all", () => {
+  it("names a field by its label with what it holds, a list with its options; a password is not there at all", () => {
     const { text } = new Page(document).seen();
 
-    expect(text).toContain('- textbox "Your name" [ref=');
-    expect(text).not.toContain("Jordan Lee");
+    expect(text).toMatch(/- textbox "Your name" \[ref=e\d+\] \[value="Jordan Lee"\]/);
+    expect(text).toMatch(/- combobox "Day" \[ref=e\d+\] \[value="Wednesday"\] \(options "Tuesday", "Wednesday"\)/);
     expect(text).not.toContain("Password");
     expect(text).not.toContain("hunter2");
+  });
+
+  it("marks what the site wrote a line for, and reads the lines in the order it set, each with its move", () => {
+    const page = new Page(document);
+    const { text } = page.seen();
+    const lines = page.lines();
+
+    expect(text).toMatch(/- region "Book" \[ref=e\d+\] \[has a line\]/);
+    expect(text).toMatch(/- region "Questions" \[ref=e\d+\] \(below, .*\) \[has a line\]/);
+    expect(lines.map((line) => [line.say, line.do])).toEqual([
+      ["Questions people ask us.", "scroll_to"],
+      ["Book here: it takes a minute.", "point"],
+    ]);
+    expect(page.element(lines[1]?.at ?? "")?.id).toBe("book");
   });
 
   it("says the words of a box that is only layout, as a price, as a line of text", () => {

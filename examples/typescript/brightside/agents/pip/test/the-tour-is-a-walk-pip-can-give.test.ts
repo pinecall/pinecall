@@ -21,6 +21,6 @@ describe("Pip", () => {
   });
 
   it("can point, highlight, scroll, show where, go home and give a walk, and never leave the page", () => {
-    expect(toolsOf(new Pip()).map((one) => one.name).sort()).toEqual(["here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
+    expect(toolsOf(new Pip()).map((one) => one.name).sort()).toEqual(["explain", "fill", "here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
   });
 });

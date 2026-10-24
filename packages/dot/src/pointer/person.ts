@@ -44,6 +44,10 @@ const STYLE = `
 .pc-calling .pc-cc[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
 .pc-calling .pc-cc[hidden] { display: none; }
 .pc-calling .pc-hang { background: var(--pc-hang, #d6453d); color: #fff; font-size: 16px; }
+.pc-play { position: fixed; width: 26px; height: 26px; border-radius: 50%; pointer-events: auto; cursor: pointer; border: 0; padding: 0;
+  background: var(--pc-face, #1f6b55); color: #fff; font: 11px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 3px 10px rgb(0 0 0 / .25); }
+.pc-play[hidden] { display: none; }
+.pc-play:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
 .pc-layer.pc-left .pc-heard { right: auto; left: 22px; border-radius: 16px 16px 16px 4px; }
 .pc-layer.pc-left .pc-calling { right: auto; left: 92px; flex-direction: row-reverse; }
 .pc-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(10 18 16 / .34), 0 0 0 3px var(--pc-face-ring, #44a785); opacity: 0; transition: opacity .3s; }
@@ -72,6 +76,8 @@ export interface PersonOptions {
   hangUp: { label: string; onClick: () => void };
   /** The captions button, when the site lets the visitor choose: its name, and its click. */
   captions: { label: string; onClick: () => void } | null;
+  /** The ▶ beside an element the site wrote a line for: its name, and its click with that element. */
+  explain: { label: string; onClick: (element: Element) => void };
 }
 
 export class Person {
@@ -86,6 +92,8 @@ export class Person {
   readonly #heard: HTMLElement;
   readonly #calling: HTMLElement;
   readonly #cc: HTMLElement;
+  readonly #play: HTMLElement;
+  #offered: Element | null = null;
   readonly #spot: HTMLElement;
   readonly #ring: HTMLElement;
   readonly #dock: "right" | "left";
@@ -101,7 +109,7 @@ export class Person {
     this.#layer = document.createElement("div");
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
@@ -111,6 +119,12 @@ export class Person {
     this.#heard = this.#part(".pc-heard");
     this.#calling = this.#part(".pc-calling");
     this.#cc = this.#part(".pc-cc");
+    this.#play = this.#part(".pc-play");
+    this.#play.setAttribute("aria-label", options.explain.label);
+    this.#play.title = options.explain.label;
+    this.#play.addEventListener("click", () => {
+      if (this.#offered !== null) options.explain.onClick(this.#offered);
+    });
     this.#person.classList.toggle("pc-left", options.dock === "left");
     this.#layer.classList.toggle("pc-left", options.dock === "left");
     const hang = this.#part(".pc-hang");
@@ -196,6 +210,17 @@ export class Person {
   calling(on: boolean, captioned: boolean): void {
     this.#calling.hidden = !on;
     this.#cc.setAttribute("aria-pressed", String(captioned));
+  }
+
+  /** The ▶ at the top right of `element`, or none. Called every frame while shown, so it follows the element. */
+  offer(element: Element | null): void {
+    this.#offered = element;
+    this.#play.hidden = element === null;
+    if (element === null) return;
+    const box = element.getBoundingClientRect();
+    const width = this.#document.defaultView?.innerWidth ?? 0;
+    this.#play.style.left = `${Math.min(box.right - 34, width - 40).toFixed(0)}px`;
+    this.#play.style.top = `${Math.max(box.top + 8, 8).toFixed(0)}px`;
   }
 
   /** The spotlight on an element's box, or off. Called every frame while on, so it follows the element. */

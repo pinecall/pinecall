@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **What the app says is the agent's answer for the turn.** `agent.say` from inside a quiet tool (a
+  tutor's line, a walk) left the turn unanswered, so the model was asked again and could say the
+  same words twice; the app's words now count as said, and no round of the model repeats them.
 - **A model that calls a tool answers after it, on every vendor.** The dynamic blocks went last in
   each request, after the turn's tool results, and livekit sends a system message there as a `user`
   turn on Gemini and Anthropic: after every result the model read the view as a new ask and called

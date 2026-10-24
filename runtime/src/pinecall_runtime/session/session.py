@@ -241,6 +241,10 @@ class Session:
     async def _spoken(self, command: WireModel) -> bool:
         match command:
             case AgentSay():
+                # The app's words are the agent's for this turn: a quiet tool that said them asks the
+                # model for no other answer, and no round of the model says them again.
+                self.agent.said_this_turn = True
+                self.agent.said.say(command.text)
                 self.live.say(command.text, allow_interruptions=given_or_unset(command.allow_interruptions))
             case AgentReply():
                 self.live.generate_reply(

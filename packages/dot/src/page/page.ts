@@ -4,10 +4,12 @@
 // Words in a box that is only layout, as a price, are a line of text, as Playwright says them.
 // What is on the screen is there in full; a section out of view is one line, its name and whether
 // it is above or below, so the agent knows it is there and can scroll to it. A ref is stable for
-// the page's life. Fields are their labels; passwords, card numbers and anything the site marks
-// `data-pinecall-skip` or `aria-hidden` are left out.
+// the page's life. A field is its label and what it holds now, a list its options; passwords, card
+// numbers and anything the site marks `data-pinecall-skip` or `aria-hidden` are left out. What the
+// site wrote for the agent to say (`data-pinecall-say`) is marked, and read by `lines()`.
 
 import { SAID_WHOLE, clean, nameOf, roleOf } from "./roles.js";
+import type { Line } from "../wire/index.js";
 
 /** What `seen()` returns: the text the agent reads, and its size. */
 export interface Seen {
@@ -48,6 +50,30 @@ export class Page {
     this.#walk(this.#document.body, 0, height, lines);
     const text = lines.join("\n");
     return { text, bytes: new TextEncoder().encode(text).length, lines: lines.length };
+  }
+
+  /**
+   * What the site wrote for the agent to say, each beside the element it is about: `data-pinecall-say`,
+   * in `data-pinecall-order` and then in the page's order, with the move `data-pinecall-do` names
+   * (`point` unless it says `highlight` or `scroll_to`).
+   */
+  lines(): Line[] {
+    const marked = [...this.#document.body.querySelectorAll("[data-pinecall-say]")].filter((element) => !element.matches(IGNORED) && !left(element));
+    const order = (element: Element): number => Number.parseFloat(element.getAttribute("data-pinecall-order") ?? "") || Number.POSITIVE_INFINITY;
+    return marked
+      .map((element, at) => ({ element, at }))
+      .sort((a, b) => order(a.element) - order(b.element) || a.at - b.at)
+      .map(({ element }) => {
+        const asked = element.getAttribute("data-pinecall-do");
+        const move: Line["do"] = asked === "highlight" || asked === "scroll_to" ? asked : "point";
+        return { at: this.#ref(element), say: clean(element.getAttribute("data-pinecall-say"), 400), do: move };
+      })
+      .filter((line) => line.say !== "");
+  }
+
+  /** The ref the agent knows `element` by. */
+  refOf(element: Element): string {
+    return this.#ref(element);
   }
 
   /** The element a ref names, while it is on the page; null once it is gone. */
@@ -113,7 +139,8 @@ export class Page {
       if (role === "region" && !visible) {
         const held = holds(child);
         const inside = held.length > 0 ? `, holds ${held.map((one) => `"${one}"`).join(", ")}` : "";
-        lines.push(`${indent}- region "${name}" [ref=${this.#ref(child)}] (${box.top > 0 ? "below" : "above"}${inside})`);
+        const line = child.hasAttribute("data-pinecall-say") ? " [has a line]" : "";
+        lines.push(`${indent}- region "${name}" [ref=${this.#ref(child)}] (${box.top > 0 ? "below" : "above"}${inside})${line}`);
         continue;
       }
       const kept = role !== null && (name !== "" || LANDMARKS.has(role));
@@ -129,6 +156,8 @@ export class Page {
       if (role === "heading") parts.push(`[level=${child.tagName.slice(1)}]`);
       if (child instanceof HTMLDetailsElement) parts.push(child.open ? "[expanded]" : "[collapsed]");
       if (POINTABLE.has(role)) parts.push(`[ref=${this.#ref(child)}]`);
+      parts.push(...heldBy(child));
+      if (child.hasAttribute("data-pinecall-say")) parts.push("[has a line]");
       lines.push(indent + parts.join(" "));
       if (!SAID_WHOLE.has(role)) this.#walk(child, depth + 1, height, lines);
     }
@@ -162,6 +191,19 @@ function holds(region: Element): string[] {
 }
 
 /** Out of the snapshot: hidden, marked by the site, or a secret. */
+/** What a field holds now, as the visitor sees it: its value, the option chosen and the others, ticked or not. */
+function heldBy(field: Element): string[] {
+  const quoted = (text: string): string => `"${clean(text, 80).replaceAll('"', "'")}"`;
+  if (field instanceof HTMLSelectElement) {
+    const options = [...field.options].map((option) => quoted(option.text));
+    const chosen = field.selectedOptions[0]?.text ?? "";
+    return [chosen === "" ? "[empty]" : `[value=${quoted(chosen)}]`, `(options ${options.join(", ")})`];
+  }
+  if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return [field.checked ? "[checked]" : "[unchecked]"];
+  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) return [field.value === "" ? "[empty]" : `[value=${quoted(field.value)}]`];
+  return [];
+}
+
 /** The words of a box holding only words and inline marks, as `<div>$19<small> / month</small></div>`; none when it holds more. */
 function wordsIn(box: Element): string {
   const inner = [...box.children];

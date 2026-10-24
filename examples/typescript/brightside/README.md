@@ -5,7 +5,9 @@ on the clinic's site, that you talk to: it shows you around, points at what it t
 prompt reads the page as you scroll. One class, `agents/pip/agent.ts`, extends `Tutor` from
 [`@pinecall/dot/agent`](../../../packages/dot/README.md#the-tutor-in-the-agent). Its one walk,
 `agents/pip/macros/tour.json`, is the tour of the site in five sentences, each move hung on the word
-it belongs to.
+it belongs to. The page's sections carry lines of their own (`data-pinecall-say`): Pip says one when
+you ask what a part is or press the ▶ on it, and all of them as the walk `page`. It fills the
+first-visit form with you, field by field, and you press **Book my visit**.
 
 ## Talk to it
 

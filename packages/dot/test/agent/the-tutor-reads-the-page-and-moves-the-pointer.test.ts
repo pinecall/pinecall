@@ -23,21 +23,39 @@ const SHOWN = [
   '- region "Questions" [ref=e30] (below)',
 ].join("\n");
 
-/** A Pip on a call whose moves are kept, the page below the fold. */
-async function aPipOnACall(): Promise<{ pip: Pip; sent: unknown[] }> {
+const FORM = [
+  '- region "Pricing" [ref=e20] [has a line]',
+  '- form "Book your first visit" [ref=e40]',
+  '  - textbox "Your name" [ref=e41] [empty]',
+  '  - combobox "Day" [ref=e43] [value="Tuesday, Oct 28"] (options "Tuesday, Oct 28", "Wednesday, Oct 29")',
+].join("\n");
+const LINES = [{ at: "e20", say: "Pricing is simple: three plans.", do: "highlight" }];
+
+/** One command the agent sent: its verb and what it carried. */
+interface Sent {
+  verb: string;
+  data: Record<string, unknown>;
+}
+
+/** A Pip on a call whose moves and words are kept, the page below the fold; a say is taken as said at once. */
+async function aPipOnACall(text = BELOW, lines: unknown = []): Promise<{ pip: Pip; sent: Sent[] }> {
   const pip = new Pip();
-  const sent: unknown[] = [];
-  setCall(pip, new CallWorld({ id: "CA_1", contact: "visitor", channel: "web" }, (verb, data) => sent.push({ verb, data })));
-  await runHook(pip, "onEvent", "page.seen", { text: BELOW, why: "joined" }, META);
+  const sent: Sent[] = [];
+  setCall(pip, new CallWorld({ id: "CA_1", contact: "visitor", channel: "web" }, (verb, data) => sent.push({ verb, data }), null, 5));
+  await runHook(pip, "onEvent", "page.seen", { text, why: "joined", lines }, META);
   return { pip, sent };
 }
 
+const moves = (sent: Sent[]): unknown[] => sent.filter((one) => one.verb === "room.send").map((one) => one.data["data"]);
+const said = (sent: Sent[]): unknown[] => sent.filter((one) => one.verb === "agent.say").map((one) => one.data["text"]);
+
 describe("a tutor", () => {
-  it("accepts the page's three events from the visitor's browser, and from nobody else", () => {
+  it("accepts the page's four events from the visitor's browser, and from nobody else", () => {
     expect(eventsOf(Pip)).toEqual([
       { name: "page.seen", from: ["participant"] },
       { name: "page.clicked", from: ["participant"] },
       { name: "page.missing", from: ["participant"] },
+      { name: "page.explain", from: ["participant"] },
     ]);
   });
 
@@ -97,6 +115,44 @@ describe("a tutor", () => {
     }
   });
 
+  it("explains a thing the site wrote a line for: the pointer to it, the line said as written, and the model told it is said", async () => {
+    const { pip, sent } = await aPipOnACall(FORM, LINES);
+    const explaining = pip.explain("Pricing");
+    await runHook(pip, "onEvent", "page.seen", { text: FORM, why: "moved", at: "e20", lines: LINES }, META);
+    const result = await explaining;
+
+    expect(moves(sent)).toEqual([{ type: "cursor", action: "highlight", target: "e20" }]);
+    expect(said(sent)).toEqual(["Pricing is simple: three plans."]);
+    expect(result).toContain("Do not say it again");
+    await expect(pip.explain("Your name")).rejects.toThrow("has no line of the site's");
+  });
+
+  it("says the site's lines as a walk named page, and says one when the visitor presses its ▶", async () => {
+    const { pip, sent } = await aPipOnACall(FORM, LINES);
+    expect(pip.seeing()).toContain("- page: the site's own lines");
+    const walking = pip.runMacro("page");
+    await runHook(pip, "onEvent", "page.seen", { text: FORM, why: "moved", at: "e20", lines: LINES }, META);
+    expect(await walking).toContain("lines are said, as written");
+
+    await runHook(pip, "onEvent", "page.explain", { at: "e20" }, META);
+    await runHook(pip, "onEvent", "page.seen", { text: FORM, why: "moved", at: "e20", lines: LINES }, META);
+    await vi.waitFor(() => expect(said(sent)).toHaveLength(2));
+  });
+
+  it("fills a field with the visitor's words and says what it shows, and a field the page refused is the model's to hear", async () => {
+    const { pip, sent } = await aPipOnACall(FORM);
+    const filling = pip.fill("Your name", "Jordan Lee");
+    const filled = FORM.replace('"Your name" [ref=e41] [empty]', '"Your name" [ref=e41] [value="Jordan Lee"]');
+    await runHook(pip, "onEvent", "page.seen", { text: filled, why: "moved", at: "e41" }, META);
+
+    expect(moves(sent)).toEqual([{ type: "cursor", action: "type", target: "Your name", text: "Jordan Lee" }]);
+    expect(await filling).toContain('[value="Jordan Lee"]');
+
+    const refusing = pip.fill("Day", "Monday");
+    await runHook(pip, "onEvent", "page.seen", { text: filled, why: "moved", at: "e43", refused: 'no option says "Monday"' }, META);
+    await expect(refusing).rejects.toThrow('"Day" was not filled: no option says "Monday"');
+  });
+
   it("says plainly that the page is not seen yet, before the first look", () => {
     expect(new Pip().seeing()).toContain("The page has not been seen yet");
   });
@@ -112,7 +168,7 @@ describe("a tutor", () => {
     const tools = toolsOf(new Pip());
     const names = tools.map((one) => one.name).sort();
 
-    expect(names).toEqual(["here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
+    expect(names).toEqual(["explain", "fill", "here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
     for (const one of tools) expect(one.spec.description, one.name).toBeTruthy();
     // Every one is the pointer's: it runs while its words play and asks for no answer, a walk too.
     for (const one of tools) expect(one.spec.quiet, one.name).toBe(true);

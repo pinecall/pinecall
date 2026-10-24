@@ -262,7 +262,8 @@ instead (below).
 
 `look="dot" tutor` makes the dot one more person on the page. The agent points at what it talks
 about with a pointer of its own, highlights it, scrolls to it and shows where to click, and it
-never clicks, types or opens another page for the visitor. Its prompt reads the page as it is now, sent by the page each
+never clicks, sends a form or opens another page for the visitor; it fills a form's fields with what
+the visitor tells it, and they press its button. Its prompt reads the page as it is now, sent by the page each
 time it changes. The agent extends `Tutor` from `@pinecall/dot/agent`, and its walks are macros in
 its folder ([@pinecall/dot](../packages/dot/README.md#the-tutor-in-the-agent)).
 

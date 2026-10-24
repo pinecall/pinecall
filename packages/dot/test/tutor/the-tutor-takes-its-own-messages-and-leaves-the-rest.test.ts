@@ -38,6 +38,7 @@ describe("the tutor on a page", () => {
     expect(calling?.hidden).toBe(true);
     expect(calling?.querySelector(".pc-hang")?.getAttribute("aria-label")).toBe("Colgar");
     expect(calling?.querySelector<HTMLElement>(".pc-cc")?.hidden).toBe(false);
+    expect(document.querySelector<HTMLElement>(".pc-play")?.hidden).toBe(true);
     one.close();
 
     const quiet = tutor(aRoom(), { captions: "none" });

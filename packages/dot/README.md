@@ -90,7 +90,10 @@ beside the face. It moves the way a hand moves a mouse:
 - **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" is a
   ring at the tip.
 
-**It never clicks, types or opens another page for the visitor.** It shows where, and they do it.
+**It never clicks, sends a form or opens another page for the visitor.** It shows where, and they do
+it. A form's fields it fills with what the visitor told it, typed letter by letter with the `input`
+and `change` events the site's code listens for, a list by the option that says it; the visitor
+presses its button. It never touches a password, a card number, a file or a hidden field.
 
 **The conversation in writing, and the call's buttons.** The agent's words show beside the face,
 lit as its voice says them; the visitor's, what the agent heard, show in the corner as they speak
@@ -129,13 +132,17 @@ captions }` names them for a screen reader.
   says them.
 - **A ref is stable for the page's life**, and still names its element after a scroll took it off
   the screen.
-- **A field is its label, never its value.** Passwords, card numbers, and anything under
-  `[data-pinecall-skip]` or `aria-hidden` are left out.
+- **A field is its label and what it holds now**: `[value="Jordan Lee"]` or `[empty]`, a list's
+  choice and its `(options …)`, `[checked]` or `[unchecked]`, so the agent sees what the visitor
+  typed. Passwords, card numbers, and anything under `[data-pinecall-skip]` or `aria-hidden` are
+  left out.
+- **What the site wrote for the agent to say is marked `[has a line]`** ([below](#lines-on-the-page)).
 
 The tutor sends it as `page.seen` when the call goes live, when a scroll stops, on a resize, when
 the DOM changes (a question opened, a tab), on a click, and before each of the agent's moves. It
 is sent only when it changed, but for one answer: when a move onto a thing ends, the page is sent
-again with `why: "moved"` and the ref it moved to.
+again with `why: "moved"` and the ref it moved to, and why a field could not be filled (`refused`).
+What the visitor types in a field reaches the agent the same way, a moment after.
 
 ## The tutor, in the agent
 
@@ -155,7 +162,8 @@ A class that extends `Tutor` gets these:
 - **`page` and `clicked` in its state.**
 - **A view that prints the screen.** A class with a `render()` of its own ends it with `this.seeing()`.
   The site's words are fenced there as data, never as instructions to the model.
-- **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home` and `runMacro`.
+- **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home`, `fill`,
+  `explain` and `runMacro`.
   There is none to open a page: the tutor never leaves the page the visitor is on. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
   model calls them, while the words that name them play, and the model answers one only when it made
   it without a word; `runMacro` too, which starts on its own first words and ends on its own last ones.
@@ -163,6 +171,9 @@ A class that extends `Tutor` gets these:
   seconds at most), and its result is that thing as the visitor now sees it, fenced as data: a
   section that was one line below the fold comes back in full, its prices with it, for the model to
   talk about.
+- **`fill(field, text)` writes what the visitor said into a field**, after the agent asked for it,
+  one field at a time; its result is the field as it now shows, and a field the page refused (a
+  password, a list with no such option) is a tool error naming why. It never sends the form.
 - **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
   `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
   once it is there. A page that joins a call already under way (a reload) tells it at once.
@@ -203,12 +214,33 @@ the step to the reply that follows and counts its words as the voice says them, 
 timings room's karaoke lights words with. Each beat runs as its word starts. When the visitor
 speaks, the walk stops and the agent answers them.
 
+### Lines on the page
+
+A walk can also live in the site's own markup, beside what it is about, so the HTML and what is
+said never drift apart:
+
+```html
+<section id="pricing" data-pinecall-say="Pricing is simple: three plans, and most families pick Family Care." data-pinecall-do="highlight">
+<article data-pinecall-say="Family Care covers up to four people for thirty-nine dollars a month." data-pinecall-order="2">
+```
+
+- **`data-pinecall-say` is said as written**, with the move `data-pinecall-do` names (`point`
+  unless `highlight` or `scroll_to`), in `data-pinecall-order` and then in the page's order.
+- **One at a time**: `explain(what)` says the line of a thing marked `[has a line]`, the pointer on
+  it, when the visitor asks what it is; and during a call a ▶ shows at the top right of a marked
+  element under the visitor's mouse, which says it at once (`page.explain`).
+- **All of them**: the walk `page`, listed with the agent's macros, says every line in order.
+- **Said once.** The agent says a line through `say()`, so it is the turn's answer, in the history:
+  the model is not asked to answer it again, and the tool's result tells it the line is said.
+
+Only the site's markup is read: a line under `[data-pinecall-skip]` or `aria-hidden` is not.
+
 ## What the page and the agent say to each other
 
 | way | what |
 |---|---|
-| page → agent | `call.event("page.seen", { text, why, at? })`, `at` the ref a move ended on when `why` is `moved` · `page.clicked { role, name }` · `page.missing { target }` |
-| agent → page | `pinecall.ui` `{ type: "cursor", action, target? }`: a ref (`e22`) or a name as the screen shows it (`Questions`). The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here` and `home` |
+| page → agent | `call.event("page.seen", { text, why, lines, at?, refused? })`, `lines` the site's `[{ at, say, do }]`, `at` the ref a move ended on when `why` is `moved`, `refused` why a field was not filled · `page.clicked { role, name }` · `page.missing { target }` · `page.explain { at }`, the ▶ pressed |
+| agent → page | `pinecall.ui` `{ type: "cursor", action, target?, text? }`: a ref (`e22`) or a name as the screen shows it (`Questions`). The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here`, `home`, and `type`, which writes `text` into the field |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
 | agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |
 
