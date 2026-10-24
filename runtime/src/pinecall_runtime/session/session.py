@@ -54,9 +54,9 @@ from pinecall_runtime.wire.commands import (
 )
 from pinecall_runtime.wire.parts import EndedBy, EndReason, Supervisor
 
-# livekit's max_tool_steps: the step after a tool round is forced to answer in words, so the agent
-# does not keep talking after it answered.
-ONE_ANSWER_PER_TOOL = 1
+# livekit's max_tool_steps: how many rounds of tools the model may chain in one answer; past them
+# livekit asks for words and offers no tool. PINECALL_MAX_TOOL_STEPS sets it for a runtime.
+TOOL_STEPS = 10
 # livekit's close reason misreads what our code knows: a cold transfer reads as the caller
 # hanging up, end_call as a drain. The reason recorded wins; this is what is left.
 HOW_IT_ENDED: dict[CloseReason, tuple[EndReason, EndedBy]] = {

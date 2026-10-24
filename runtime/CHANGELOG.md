@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A model may chain ten rounds of tools in one answer** (`PINECALL_MAX_TOOL_STEPS`, 10 when
+  unset). It was one: a second tool called after the first answer's tool was the last, and the
+  step after it was forced to words, which a model that went on calling tools left silent (a tutor
+  scrolling, then highlighting, then saying nothing).
 - **The answer after a chain of tools is said.** When the tool steps run out, livekit asks the model
   for words with `tool_choice` "none" but still offers it the tools; a model that calls one anyway
   had the call dropped, and the turn ended in silence (a tutor scrolling and then highlighting said

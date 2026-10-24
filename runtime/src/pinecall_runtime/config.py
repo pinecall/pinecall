@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     text_lookup_budget_ms: int | None = Field(None, alias="PINECALL_TEXT_LOOKUP_BUDGET_MS")
     remember_budget_s: float | None = Field(None, alias="PINECALL_REMEMBER_BUDGET_S")
 
+    # ── the model's turn; None is the session's default ──
+    max_tool_steps: int | None = Field(None, alias="PINECALL_MAX_TOOL_STEPS", ge=1)
+
     # Vendor keys keep the vendor's own variable name (ANTHROPIC_API_KEY); the providers catalog
     # asks for them by name, so every variable read is kept.
     variables: dict[str, str] = Field(default_factory=dict, repr=False)

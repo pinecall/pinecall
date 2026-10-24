@@ -140,7 +140,9 @@ def _session(
         append_many=served.log.append_many, tool=served.tools.run, lookup=looking, seal=sealed, done=hooked
     )
     call = session.Call(served.context, served.config, platform)
-    running = session.text_session(call, model, serving.handles.settings.text_lookup_budget_ms)
+    running = session.text_session(
+        call, model, serving.handles.settings.text_lookup_budget_ms, serving.handles.settings.max_tool_steps
+    )
     serving.live.set_session(served.call, running)
     return running
 

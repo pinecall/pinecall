@@ -16,7 +16,7 @@ from pinecall_runtime.session.call import Call
 from pinecall_runtime.session.hearing import keyterms, policy_for
 from pinecall_runtime.session.listener import write_switches
 from pinecall_runtime.session.lookups import VOICE_LOOKUP_MS, Lookups
-from pinecall_runtime.session.session import ONE_ANSWER_PER_TOOL, Session
+from pinecall_runtime.session.session import TOOL_STEPS, Session
 
 # The local end-of-turn model: left unset, livekit may pick the hosted one and send the
 # caller's words to a cloud.
@@ -31,11 +31,15 @@ SMART_TURN: providers.TurnModel = "smart-turn-v3"
 MIN_SPEECH_S = 0.25
 
 
-def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None) -> Session:
+def voice_session(
+    call: Call, stages: providers.Pipeline, lookup_budget_ms: int | None = None, tool_steps: int | None = None
+) -> Session:
     """A voice call: the three stages built for it, the turn taken as a phone line needs; or the
     realtime model the agent names, alone."""
     if stages.realtime is not None:
-        return _realtime_session(call, providers.build_realtime(stages.realtime), stages, lookup_budget_ms)
+        return _realtime_session(
+            call, providers.build_realtime(stages.realtime), stages, lookup_budget_ms, tool_steps or TOOL_STEPS
+        )
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}))
     voice = providers.build_voice(stages.tts)
@@ -50,7 +54,7 @@ def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int 
         use_tts_aligned_transcript=True,
         tts_text_transforms=_text_transforms_of(call.config),
         stt_context_options=context_of(call.config, ears),
-        max_tool_steps=ONE_ANSWER_PER_TOOL,
+        max_tool_steps=tool_steps or TOOL_STEPS,
     )
     return Session(
         live, (thinking, ears, voice), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS)
@@ -62,10 +66,10 @@ def voice_session(call: Call, stages: providers.Pipeline, lookup_budget_ms: int 
 # greeting given as words and a read-back too, so the call has one voice: livekit says through a TTS
 # whenever the session has one. A model that cannot keeps the call's voice for them.
 def _realtime_session(
-    call: Call, realtime: llm.RealtimeModel, stages: providers.Pipeline, lookup_budget_ms: int | None
+    call: Call, realtime: llm.RealtimeModel, stages: providers.Pipeline, lookup_budget_ms: int | None, tool_steps: int
 ) -> Session:
     if realtime.capabilities.supports_say:
-        alone: AgentSession[None] = AgentSession(llm=realtime, max_tool_steps=ONE_ANSWER_PER_TOOL)
+        alone: AgentSession[None] = AgentSession(llm=realtime, max_tool_steps=tool_steps)
         return Session(alone, (), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS))
     voice = providers.build_voice(stages.tts)
     write_switches(call.writing, (voice,))
@@ -73,7 +77,7 @@ def _realtime_session(
         llm=realtime,
         tts=voice,
         tts_text_transforms=_text_transforms_of(call.config),
-        max_tool_steps=ONE_ANSWER_PER_TOOL,
+        max_tool_steps=tool_steps,
     )
     # The realtime model reports its measures through its session, not itself: only the voice is listened to.
     return Session(live, (voice,), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS))

@@ -12,7 +12,7 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session.call import SPEECH, Call
 from pinecall_runtime.session.listener import write_switches
 from pinecall_runtime.session.lookups import TEXT_LOOKUP_MS, Lookups
-from pinecall_runtime.session.session import ONE_ANSWER_PER_TOOL, Session
+from pinecall_runtime.session.session import TOOL_STEPS, Session
 from pinecall_runtime.session.tools import output_text
 from pinecall_runtime.wire import events as wire
 from pinecall_runtime.wire.base import Entry
@@ -33,14 +33,16 @@ class TakenUp:
 
 # A written call has no ears and no voice, so its text is neither paced nor billed as speech;
 # its turns are taken by hand, one message at a time.
-def text_session(call: Call, thinking: providers.Running, lookup_budget_ms: int | None = None) -> Session:
+def text_session(
+    call: Call, thinking: providers.Running, lookup_budget_ms: int | None = None, tool_steps: int | None = None
+) -> Session:
     """A written call: the same session with the model alone."""
     model = providers.build_thinking(thinking)
     write_switches(call.writing, (model,))
     live: AgentSession[None] = AgentSession(
         llm=model,
         turn_handling={"turn_detection": "manual", "preemptive_generation": {"enabled": False}},
-        max_tool_steps=ONE_ANSWER_PER_TOOL,
+        max_tool_steps=tool_steps or TOOL_STEPS,
     )
     return Session(live, (model,), Lookups(call, call.platform.lookup, lookup_budget_ms or TEXT_LOOKUP_MS))
 

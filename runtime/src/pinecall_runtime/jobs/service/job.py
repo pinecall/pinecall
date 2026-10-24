@@ -100,9 +100,9 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     platform = _platform_of(gateway, context.call, config, seal, measures_path(settings))
     call = session.Call(context, config, platform, audio, _carried_history(opened))
     running = (
-        session.text_session(call, pipeline.llm, settings.text_lookup_budget_ms)
+        session.text_session(call, pipeline.llm, settings.text_lookup_budget_ms, settings.max_tool_steps)
         if typed
-        else session.voice_session(call, pipeline, settings.voice_lookup_budget_ms)
+        else session.voice_session(call, pipeline, settings.voice_lookup_budget_ms, settings.max_tool_steps)
     )
 
     # Registered before anything else can fail: a call that dies in its setup still seals.

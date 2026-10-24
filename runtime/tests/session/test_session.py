@@ -46,7 +46,7 @@ from pinecall_runtime.session.hold import HoldMusic
 from pinecall_runtime.session.lookups import TEXT_LOOKUP_MS, VOICE_LOOKUP_MS
 from pinecall_runtime.session.prompt import A_RELEASE
 from pinecall_runtime.session.room import CallRoom
-from pinecall_runtime.session.session import Session
+from pinecall_runtime.session.session import TOOL_STEPS, Session
 from pinecall_runtime.session.text import text_session
 from pinecall_runtime.session.tools import SAY_GOODBYE_FIRST
 from pinecall_runtime.session.voice import voice_session
@@ -504,16 +504,35 @@ async def test_a_quiet_tool_called_in_silence_is_answered_so_the_move_is_said(
     assert len(model_of(session).requests) == 2
 
 
+CHAINED_IN_SILENCE: tuple[list[Json], ...] = (
+    [{"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}],
+    [{"name": "point", "arguments": {"ref": "e13"}, "call_id": "t2"}],
+    ["Here are the prices."],
+)
+
+
 @needs_the_database
-async def test_quiet_tools_chained_in_silence_end_on_a_step_offered_no_tool_that_says_the_move(
+async def test_quiet_tools_chained_in_silence_end_on_the_models_own_words(box: Box, store: Store, call: str) -> None:
+    session = a_session(box, POINTING, *CHAINED_IN_SILENCE)
+    await session.start()
+    await text.hear_text(session, "where are the prices?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    entries = await store.whole(call)
+    last = model_of(session).requests[-1]
+    assert [entry.data["text"] for entry in entries if entry.type == "turn.agent"] == ["Here are the prices."]
+    assert (last.tool_choice, last.tools) == ("auto", ["point"])
+
+
+# Past the steps the runtime allows, livekit asks for words: that request is offered no tool, so a
+# model that would call one anyway cannot, and says something.
+@needs_the_database
+async def test_tools_chained_past_the_steps_allowed_end_on_a_step_offered_no_tool(
     box: Box, store: Store, call: str
 ) -> None:
-    session = a_session(
-        box,
-        POINTING,
-        [{"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}],
-        [{"name": "point", "arguments": {"ref": "e13"}, "call_id": "t2"}],
-        ["Here are the prices."],
+    assert box.log.call is not None
+    script: JsonObject = {"replies": list(CHAINED_IN_SILENCE)}
+    session = text_session(
+        Call(context_of(box.log.call), POINTING, box.platform()), Running(ACME, "a-key", options=script), tool_steps=1
     )
     await session.start()
     await text.hear_text(session, "where are the prices?")
@@ -1173,6 +1192,18 @@ async def test_a_lookup_budget_the_operator_set_is_the_one_a_session_waits(box: 
     assert voice_session(call, stages, 600).lookups.budget_ms == 600
     assert text_session(call, Running(ACME, "k")).lookups.budget_ms == TEXT_LOOKUP_MS
     assert text_session(call, Running(ACME, "k"), 900).lookups.budget_ms == 900
+
+
+# PINECALL_MAX_TOOL_STEPS, when the operator sets it: how many rounds of tools one answer may chain.
+@needs_the_database
+async def test_the_tool_steps_a_session_allows_are_ten_or_the_ones_the_operator_set(box: Box) -> None:
+    assert box.log.call is not None
+    call = Call(context_of(box.log.call, Channel.phone), NOBODY, box.platform())
+    stages = Pipeline(llm=Running(ACME, "k"), stt=Running(ACME, "k"), tts=Running(ACME, "k"))
+    assert voice_session(call, stages).live.options.max_tool_steps == TOOL_STEPS == 10
+    assert voice_session(call, stages, tool_steps=3).live.options.max_tool_steps == 3
+    assert text_session(call, Running(ACME, "k")).live.options.max_tool_steps == 10
+    assert text_session(call, Running(ACME, "k"), tool_steps=4).live.options.max_tool_steps == 4
 
 
 @needs_the_database
