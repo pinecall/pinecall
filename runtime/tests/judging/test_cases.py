@@ -68,6 +68,15 @@ def test_a_golden_is_the_callers_lines_and_the_apps_facts_as_turns_and_its_first
     assert set(bare) == {"name", "turns", "today", "expect", "promoted_from"}, "nothing empty is written"
 
 
+def test_a_pii_field_masked_in_the_log_is_left_out_of_the_golden_it_opens_in() -> None:
+    """P F15 / R F13: the golden opened with the string `***` where the class had a patient."""
+    log = a_log(
+        ("state.changed", {"state": {"stage": "book", "patient": "***", "notes": None}, "changed": ["stage"]}),
+        caller("Quiero el jueves"),
+    )
+    assert golden_of(log, "jueves", Expect()).state == {"stage": "book", "notes": None}
+
+
 def test_what_the_call_recalled_rides_the_golden_so_a_replay_knows_what_the_call_knew() -> None:
     """Facts memory handed the call are the golden's memory, once."""
     recalled: JsonObject = {

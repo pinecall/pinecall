@@ -1,7 +1,18 @@
 """A reader's filter: what it named, the ending of its call whatever it named, and on the feed nothing else."""
 
-from pinecall_runtime.calls.fanout import Filter
+from pinecall_runtime.calls.fanout import Fanout, Filter
 from tests.calls.factories import entry
+
+
+async def test_a_reader_asked_again_after_its_log_ended_is_told_the_end_again_and_never_waits() -> None:
+    """A wait on the seal that asks past the end marker would hang on an empty queue for ever."""
+    fanout = Fanout()
+    reader = fanout.subscribe()
+    fanout.publish(entry(1, "call.score", {}))
+    fanout.close()
+    assert (await anext(reader, None)) is not None
+    assert await anext(reader, None) is None
+    assert await anext(reader, None) is None
 
 
 def test_a_calls_reader_is_told_the_call_ended_whatever_it_asked_for() -> None:

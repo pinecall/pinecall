@@ -40,7 +40,8 @@ type GateKind = Literal["tool.call", "confirm.request", "confirm.granted", "conf
 
 logger = logging.getLogger(__name__)
 
-PUNCTUATION = ".,;:¿?¡!()\"'"
+# The marks around a word, markdown's among them: a banned word right after `**` is the word.
+PUNCTUATION = ".,;:¿?¡!()\"'*_`~[]"
 METRICS = "metrics."
 # The caller's leg a spoken simulation publishes under, and the `from` a written one carries.
 A_SIMULATED_CALLER = "simulated_caller"
@@ -282,7 +283,25 @@ def _turns(filed: _Filed) -> tuple[Said, ...]:
                 said = replace(said, retrieved=(*before, *said.retrieved))
             claimed_up_to = entry.seq
         turns.append(said)
+    turns.extend(_unspoken(filed, {turn.speech_id for turn in turns if turn.role == AGENT}))
+    turns.sort(key=lambda turn: turn.seq)
     return tuple(turns)
+
+
+# A tool the model called without a word, on a call over before it answered (a tool that hung up),
+# has no agent turn to ride: its calls fell out of the case, and `expect.tools` read "ran no tool
+# at all" on a call whose log held the call (2026-10-24). It is a turn that said nothing.
+def _unspoken(filed: _Filed, spoken: set[str]) -> list[Said]:
+    turns: list[Said] = []
+    for speech, tools in filed.called.items():
+        if speech in spoken:
+            continue
+        ids = {tool.call_id for tool in tools}
+        seq = min((line.seq for line in filed.gate if line.kind == "tool.call" and line.call_id in ids), default=0)
+        turns.append(
+            Said(role=AGENT, text="", seq=seq, speech_id=speech, calls=tuple(_called(t, filed) for t in tools))
+        )
+    return turns
 
 
 def _turn(entry: Entry, data: UserTurnEnded | AgentTurnEnded, filed: _Filed) -> Said:

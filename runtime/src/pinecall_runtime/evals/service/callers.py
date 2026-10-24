@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Never
 
-from livekit.agents import llm, tts
+from livekit.agents import APIError, llm, tts
 from livekit.agents.llm import ChatContext, ChatRole
 
 from pinecall_runtime.evals.schemas import NextLineRequest, NextLineResponse, Spoken
@@ -32,6 +32,8 @@ NO_FACTS = "  (you were given none: do not make any up)"
 TURNS_LEFT = "You have {left} turn(s) left in this call."
 THE_LAST_TURN = "This is your last turn: finish what you are saying and hang up."
 NOTHING_SAID = "the model playing the caller answered without calling say_next_line: it said {said!r}"
+# The vendor's no to the caller's model, mid-call: the run ends with its words, not a 500.
+MODEL_REFUSED = "the model playing the caller was refused by its vendor: {words}"
 # Asked once more, its words in front of it, as a judge is: a small model now and then answers in words.
 ONLY_THE_LINE = "Answer by calling say_next_line, and nothing else."
 SAID_AT_MOST = 200
@@ -110,13 +112,20 @@ async def improvise_line(model: llm.LLM[Never], request: NextLineRequest) -> Imp
     chat = _call_so_far(request)
     tools: list[llm.Tool] = [llm.function_tool(_never_run, raw_schema=SAY_NEXT_LINE)]
     asked = judging.ASKED_WITHIN
-    response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=asked).collect()
+
+    async def asked_once() -> llm.CollectedResponse:
+        try:
+            return await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=asked).collect()
+        except APIError as refused:
+            raise UpstreamError(MODEL_REFUSED.format(words=providers.words_of(refused))) from refused
+
+    response = await asked_once()
     spent = [response.usage]
     said = response.text or ""
     if not response.tool_calls:
         chat.add_message(role="assistant", content=said or "…")
         chat.add_message(role="user", content=ONLY_THE_LINE)
-        response = await model.chat(chat_ctx=chat, tools=tools, tool_choice="required", conn_options=asked).collect()
+        response = await asked_once()
         spent.append(response.usage)
         said = response.text or said
     if not response.tool_calls:

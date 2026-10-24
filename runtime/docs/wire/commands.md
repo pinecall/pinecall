@@ -167,7 +167,10 @@ Lands in the log as: `event.received`.
 
 ### `call.hangup`
 
-End the call from the app's side. call.ended follows with reason agent_hung_up.
+End the call from the app's side. call.ended follows with reason agent_hung_up. Sent from a tool,
+the words the model said as it called that tool are the goodbye: the tool's result asks the model
+for no answer, and the call ends once those words have played. A model that called the tool
+without a word is asked once, so a goodbye is said.
 
 Lands in the log as: `call.ended`.
 

@@ -52,7 +52,7 @@ from pinecall_runtime.wire.commands import (
     WhisperVerb,
     said_as,
 )
-from pinecall_runtime.wire.parts import EndedBy, EndReason, Supervisor
+from pinecall_runtime.wire.parts import EndedBy, EndReason, StateCauseTool, Supervisor
 
 # livekit's max_tool_steps: the step after a tool round is forced to answer in words, so the agent
 # does not keep talking after it answered.
@@ -93,6 +93,7 @@ class Session:
             lookups,
             announce=self._announce,
             spoke=self._spoke,
+            ending=self._ending,
             waiting=self._music,
             hung_up_by_the_model=self._hung_up_by_the_model,
         )
@@ -241,6 +242,8 @@ class Session:
         match command:
             case AgentSay():
                 self.live.say(command.text, allow_interruptions=given_or_unset(command.allow_interruptions))
+            case AgentReply() if isinstance(self.call.cause, StateCauseTool):
+                self.call.reply_asked = command
             case AgentReply():
                 self.live.generate_reply(
                     instructions=command.instructions, allow_interruptions=given_or_unset(command.allow_interruptions)
@@ -407,6 +410,9 @@ class Session:
     def _spoke(self) -> bool:
         return self.agent.said_this_turn
 
+    def _ending(self) -> bool:
+        return self.ended is not None
+
     # end_call closes the session as livekit's own initiative, which reads as a drain.
     def _hung_up_by_the_model(self) -> None:
         self.ended = ("agent_hung_up", "agent")
@@ -474,8 +480,11 @@ def given_or_unset[T](value: T | None) -> NotGivenOr[T]:
 # interrupt() raises when nothing is playing or the session has stopped.
 async def silence(live: AgentSession[None]) -> None:
     """Stop the agent's speech now, and keep it from hearing or speaking until it is given back."""
+    # The future waits for the speech to end: a hold asked from a tool of that speech would wait
+    # out livekit's five seconds before the line was marked held (measured 2026-10-24), while the
+    # speech itself is cut as the call returns. The audio goes off here, now.
     with contextlib.suppress(RuntimeError):
-        await live.interrupt(force=True)
+        live.interrupt(force=True)
     live.output.set_audio_enabled(False)
     live.input.set_audio_enabled(False)
 

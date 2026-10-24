@@ -72,6 +72,8 @@ type ParticipantKind = Literal["caller", "agent", "supervisor", "listener", "sip
 type TrackKind = Literal["audio", "video", "screen"]
 type TrackSource = Literal["microphone", "camera", "screen_share", "screen_share_audio", "unknown"]
 type Visibility = Literal["public", "tenant", "pii"]
+# What a `pii` value reads as wherever the log holds it (`docs/protocol/projections.md`).
+MASKED = "***"
 type Projection = Literal["public", "tenant"]
 type CallStatus = Literal["idle", "ringing", "dialing", "active", "ended"]
 type SessionFlag = Literal["escalated", "low_score", "promise"]

@@ -4,7 +4,7 @@ What the platform and the app say to each other about tools, state, confirmation
 
 ### `confirm.declined`
 
-The caller did not say yes, or the request lapsed. The tool does not run; the model is told.
+The caller did not say yes, or the request lapsed. The tool does not run; the model is told. No runtime writes it now: a tool's `confirm` is a receipt, read back once the tool ran (`concepts/tools`). It is read in the logs of older runtimes.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -16,7 +16,7 @@ The caller did not say yes, or the request lapsed. The tool does not run; the mo
 
 ### `confirm.granted`
 
-The caller said yes. The platform minted a one-shot token bound to the audience and the tool now runs. The token itself never enters the log.
+The caller said yes. The platform minted a one-shot token bound to the audience and the tool now runs. The token itself never enters the log. No runtime writes it now: a tool's `confirm` is a receipt, read back once the tool ran (`concepts/tools`). It is read in the logs of older runtimes.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -28,7 +28,7 @@ The caller said yes. The platform minted a one-shot token bound to the audience 
 
 ### `confirm.request`
 
-A tool with confirm set is about to run and the platform is asking the caller. The agent reads the phrase; nothing runs until confirm.granted.
+A tool with confirm set is about to run and the platform is asking the caller. The agent reads the phrase; nothing runs until confirm.granted. No runtime writes it now: a tool's `confirm` is a receipt, read back once the tool ran (`concepts/tools`). It is read in the logs of older runtimes.
 
 | field | type | required | meaning |
 |---|---|---|---|

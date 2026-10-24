@@ -6,6 +6,44 @@
   for words with `tool_choice` "none" but still offers it the tools; a model that calls one anyway
   had the call dropped, and the turn ended in silence (a tutor scrolling and then highlighting said
   nothing). That step is now offered no tool.
+- **A tool that hangs up is the last word.** The words the model said as it called the tool are the
+  goodbye; its result asked the model for another answer, and the drain waited that monologue out
+  (27 and 43 s measured) before `call.ended`. The result now asks for no answer, unless the model
+  called the tool without a word: then it is asked once, so a goodbye is said (`docs/wire/commands.md`).
+- **A spoken golden run is no longer reported "never sealed within 25s" on a call sealed in under a
+  second.** The terminal entry ends a log's readers a moment before the seal commits where it was
+  written; the wait asked the ended reader again, and an ended `Subscription` waited on its empty
+  queue for ever. Ended stays ended, and the wait looks at the store again after one beat.
+- **A hold asked from a tool lands at once.** `silence` awaited the interrupt's future, which waits for
+  the speech running the tool: the line was marked held five seconds later, livekit's timeout.
+- **A tool the model called without a word, on a call over before it was answered, is a turn of the
+  case**: its calls fell out, and `expect.tools` read "ran no tool at all" off a log that held the tool.
+- **A persona whose model the vendor lacks is refused before the call opens**, as the page says: the
+  caller's model is tried once at admission when the persona names one, and a vendor's no mid-call
+  is the run's error in the vendor's words, not a 500.
+- **A verb the call cannot take is said on the call's log**: a written call's `dtmf`, `room.send`,
+  `room.invite`, a seat's mute or remove, a `claim` of a code nobody issued, an `opt_out` with no number.
+  The refusal reached the agent's log alone, while a spoken call's worker already wrote it on the call's.
+- **A reply the app asks for while its tool runs is the answer to that tool**: asked of livekit
+  mid-tool, the instruction was dropped and the model answered on its own.
+- **A socket's first declaration is the class whole**: a setting a save took out of the class stayed
+  fixed until `pinecall start` was restarted, and `agent set` refused it.
+- **A judge's options and builds are tried before they are kept**, as the `--llm` pair is; they were
+  kept untried, and a judge the vendor refuses fails every hang-up.
+- **An option written `1.0` reaches a float parameter as a float**: JSON has one number, and cartesia
+  refused `speed` 1 as no float.
+- **A refused turn setting names its knobs as typed** (`turn endpointing_ms=400`), not the dataclass's repr.
+- **A golden made from a call leaves out a `pii` field**, which the log holds as `***`: the replay
+  opened with that string where the class had a value, and a view reading it failed.
+- **A banned word right after markdown (`**sixty euros**`) is the word** for the `register` check.
+- **A `then` tool step on a turn that ran no tool says so**, not livekit's "Expected another event, but
+  none left.".
+- **Memory admission says why it refused a fact**, on the case's `refused` line: the policy forgets its
+  category, it holds a word of a tool's name (and which), or it names no fact the contact holds.
+- `docs/wire/events-app.md`: no runtime writes `confirm.*` now (a tool's `confirm` is a receipt);
+  `docs/wire/commands.md`: a tool that hangs up is the last word. A hold melody takes a flac too, and
+  its refusal says so.
+
 - **A widget's channel listens before the call's session starts.** It was opened after the session had
   started and the agent was already greeting, so what a page said in the call's first seconds reached
   no listener and was lost: a tutor's page never reached its agent.

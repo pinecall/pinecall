@@ -12,6 +12,7 @@ from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, Too
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.redis import LocalSignal
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, until, used_of
+from tests.fakes.acme import UNKNOWN
 
 ACME = Scope("org_acme", Env.sandbox)
 OTHER = Scope("org_other", Env.sandbox)
@@ -60,6 +61,19 @@ async def test_a_run_played_on_a_vendor_this_box_lacks_is_refused_before_it_star
     answer = await simulated(gateway, tenant, agent, {"tts": "nonvendor"})
     assert answer.status_code == 400
     assert "no vendor named 'nonvendor'" in answer.text
+
+
+@needs_the_services
+async def test_a_persona_whose_model_the_vendor_lacks_is_refused_before_a_call_opens_or_is_counted(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """P F11: the vendor's no came as a 500 once the call had opened, and the call counted as a simulation."""
+    async with holding(gateway, tenant, agent):
+        answer = await simulated(gateway, tenant, agent, {"llm": f"acme/{UNKNOWN}"})
+        assert answer.status_code == 400
+        assert "acme refused the caller's model: no such model" in answer.text
+        assert await used_of(gateway, tenant, "concurrent_calls") == 0
+    assert await used_of(gateway, tenant, "simulations") == 0
 
 
 async def test_a_run_that_names_nobody_new_is_played_as_the_persona_is(

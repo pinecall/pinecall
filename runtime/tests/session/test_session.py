@@ -36,7 +36,7 @@ from pinecall_runtime.agents.declaration import AgentConfig, Docs, Greeting, Han
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel
 from pinecall_runtime.exceptions import Forbidden, ServiceUnavailable, ValidationError
-from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.providers.schemas import TurnModel
 from pinecall_runtime.providers.service.keyring import Pipeline
 from pinecall_runtime.providers.service.plugins import Running
@@ -51,6 +51,7 @@ from pinecall_runtime.session.text import text_session
 from pinecall_runtime.session.tools import SAY_GOODBYE_FIRST
 from pinecall_runtime.session.voice import voice_session
 from pinecall_runtime.telephony.service.legs import CALLER_NUMBER, Legs, Trunk
+from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.commands import (
     AgentReply,
     AgentSay,
@@ -521,6 +522,99 @@ async def test_quiet_tools_chained_in_silence_end_on_a_step_offered_no_tool_that
     last = model_of(session).requests[-1]
     assert [entry.data["text"] for entry in entries if entry.type == "turn.agent"] == ["Here are the prices."]
     assert (last.tool_choice, last.tools) == ("none", [])
+
+
+FINISH = ToolSpec("finish", "End the call once the caller is served.", {"type": "object", "properties": {}})
+FINISHING = AgentConfig(slug="clinica-norte", tools=(FINISH,))
+HOLD = ToolSpec(
+    "hold_line", "Put the caller on hold while something is looked up.", {"type": "object", "properties": {}}
+)
+HOLDING = AgentConfig(slug="clinica-norte", tools=(HOLD,))
+
+
+def commanding_through(box: Box, config: AgentConfig, command: WireModel, replies: list[list[Json]]) -> Session:
+    """A written session whose one tool sends the app's command from inside its run, before it answers."""
+    assert box.log.call is not None
+
+    async def run(use: ToolUse, speech: str | None) -> ToolResult:
+        await session.apply(command)
+        return await box.tool(use, speech)
+
+    platform = Platform(append_many=box.log.append_many, tool=run, lookup=box.lookup, seal=box.seal)
+    scripted: JsonObject = {"replies": list(replies)}
+    call = Call(context_of(box.log.call), config, platform)
+    session = text_session(call, Running(ACME, "a-key", options=scripted))
+    return session
+
+
+async def said_until_the_end(session: Session, store: Store, call: str) -> list[str]:
+    """What the agent said, once the call the app hung up has closed."""
+    if session.closing is not None:
+        await session.closing
+    return [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+
+
+@needs_the_database
+async def test_a_tool_that_hung_up_is_not_answered_so_the_goodbye_said_with_it_is_the_last_word(
+    box: Box, store: Store, call: str
+) -> None:
+    goodbye: list[Json] = ["Goodbye, Tom.", {"name": "finish", "arguments": {}, "call_id": "t1"}]
+    monologue: list[Json] = ["Hello? The caller already hung up, so this call has ended."]
+    session = commanding_through(box, FINISHING, CallHangup(), [goodbye, monologue])
+    await session.start()
+    await text.hear_text(session, "that is all, thanks, bye")
+    assert await said_until_the_end(session, store, call) == ["Goodbye, Tom."]
+    assert len(model_of(session).requests) == 1
+
+
+@needs_the_database
+async def test_a_tool_that_hung_up_in_silence_is_answered_once_so_the_goodbye_is_said(
+    box: Box, store: Store, call: str
+) -> None:
+    finish: list[Json] = [{"name": "finish", "arguments": {}, "call_id": "t1"}]
+    session = commanding_through(box, FINISHING, CallHangup(), [finish, ["Goodbye."]])
+    await session.start()
+    await text.hear_text(session, "that is all, thanks, bye")
+    assert await said_until_the_end(session, store, call) == ["Goodbye."]
+    assert len(model_of(session).requests) == 2
+
+
+# T F15: asked of livekit while the tool ran, the instruction was dropped and the model answered
+# the tool on its own; it is the tool's answer now, one request, and the app's words in it.
+@needs_the_database
+async def test_a_reply_the_app_asks_for_while_its_tool_runs_is_the_answer_to_that_tool(
+    box: Box, store: Store, call: str
+) -> None:
+    hold: list[Json] = [{"name": "hold_line", "arguments": {}, "call_id": "t1"}]
+    asked = AgentReply(instructions="Say only the word PINEAPPLE.")
+    session = commanding_through(box, HOLDING, asked, [hold, ["PINEAPPLE"], ["Something else."]])
+    await session.start()
+    await text.hear_text(session, "check it for me")
+    await until(lambda: len(model_of(session).requests) >= 2)
+    await settled()
+    await text.end_text(session, "caller_hung_up", "caller")
+    requests = model_of(session).requests
+    assert len(requests) == 2
+    assert "PINEAPPLE" in str([getattr(item, "text_content", "") for item in requests[1].items])
+    said = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert said == ["PINEAPPLE"]
+
+
+# The interrupt's future waits for the speech running the tool: awaited, the line was marked held
+# five seconds after the tool asked, livekit's timeout (2026-10-24).
+@needs_the_database
+async def test_a_hold_asked_from_a_tool_is_written_held_before_the_tool_answers(
+    box: Box, store: Store, call: str
+) -> None:
+    hold: list[Json] = [{"name": "hold_line", "arguments": {}, "call_id": "t1"}]
+    session = commanding_through(box, HOLDING, CallHold(), [hold, ["One moment."]])
+    await session.start()
+    began = time.monotonic()
+    await text.hear_text(session, "can you check that for me?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    kinds_ = [entry.type for entry in await store.whole(call) if entry.type in ("call.line", "tool.result")]
+    assert kinds_ == ["call.line", "tool.result"]
+    assert time.monotonic() - began < 4.0
 
 
 @needs_the_database
@@ -1182,8 +1276,12 @@ async def test_a_takeover_cuts_the_sentence_and_leaves_the_agent_mute_and_deaf(
     await session.start()
     cut: list[bool] = []
 
-    async def interrupted(*, force: bool = False) -> None:
+    # livekit's interrupt hands back a future for the speech's end; the takeover does not wait on it.
+    def interrupted(*, force: bool = False) -> asyncio.Future[None]:
         cut.append(force)
+        done: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        done.set_result(None)
+        return done
 
     monkeypatch.setattr(session.live, "interrupt", interrupted)
     await session.apply(supervised(TakeoverVerb()))

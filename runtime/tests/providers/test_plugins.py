@@ -2,7 +2,9 @@
 
 from livekit.agents import APIConnectionError, APIStatusError
 
-from pinecall_runtime.providers.service.plugins import words_of
+from pinecall_runtime.providers.service.plugins import Running, words_of
+from pinecall_runtime.providers.service.stages import LLMWithRequest, llm_of
+from tests.fakes.acme import ACME, AcmeLLM
 
 AN_SDKS_MESSAGE = "Error code: 401 - {'message': 'Wrong API Key', 'type': 'invalid_request_error'}"
 
@@ -20,3 +22,11 @@ def test_a_message_under_error_is_found_there() -> None:
 def test_with_no_body_to_read_the_message_is_what_there_is() -> None:
     assert words_of(APIConnectionError("no answer")) == "no answer"
     assert words_of(APIStatusError("teapot", status_code=418, body="not json")) == "teapot"
+
+
+def test_an_option_written_as_a_whole_number_reaches_a_float_parameter_as_a_float() -> None:
+    """R F15: `--tts-option speed=1.0` reached cartesia as 1 (JSON has one number), refused as no float."""
+    built = llm_of(Running(ACME, "k", options={"temperature": 1}))
+    assert isinstance(built, LLMWithRequest) and isinstance(built.built, AcmeLLM)
+    temperature = built.built.given["temperature"]
+    assert (temperature, type(temperature)) == (1.0, float)

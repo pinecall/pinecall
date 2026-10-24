@@ -478,10 +478,18 @@ def _shaped(made: type, given: Mapping[str, object]) -> dict[str, object]:
 
 def _as_declared(declared: object, value: object) -> object:
     shape = _dataclass_in(declared)
-    if shape is None or not a_mapping(value):
+    if shape is None:
+        # JSON has one number: `speed=1.0` arrives as 1, and a parameter typed float alone takes 1.0.
+        return float(value) if type(value) is int and _takes_a_float(declared) else value
+    if not a_mapping(value):
         return value
     typed = typing.get_type_hints(shape)
     return shape(**{name: _as_declared(typed.get(name), given) for name, given in value.items()})
+
+
+def _takes_a_float(declared: object) -> bool:
+    options = typing.get_args(declared) or (declared,)
+    return float in options and int not in options
 
 
 def _dataclass_in(declared: object) -> type | None:

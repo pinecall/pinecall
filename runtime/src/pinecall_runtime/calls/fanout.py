@@ -84,8 +84,11 @@ class Subscription:
     def __aiter__(self) -> Self:
         return self
 
+    # Ended stays ended: a reader asking again after the marker would wait on an empty queue forever.
     async def __anext__(self) -> Entry:
-        """The next entry in log order; the end marker ends the iteration."""
+        """The next entry in log order; the end marker ends the iteration, now and on every later ask."""
+        if self._ended and self._queue.empty():
+            raise StopAsyncIteration
         entry = await self._queue.get()
         if entry is None:
             raise StopAsyncIteration

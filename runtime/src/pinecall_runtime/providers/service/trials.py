@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import dataclasses
 from collections.abc import Mapping
 from typing import Never
 
@@ -46,7 +47,7 @@ async def try_stage(
     """
     named = what or f"the {STAGE_NAMES[stage]} this sets"
     if tried:
-        named += " (" + ", ".join(f"{knob} {value}" for knob, value in tried.items()) + ")"
+        named += " (" + ", ".join(f"{knob} {_as_typed(value)}" for knob, value in tried.items()) + ")"
     try:
         # Outside a call there is no job to lend the plugins its HTTP session: it is opened here.
         async with asyncio.timeout(TRY_S), http_context.open():
@@ -91,6 +92,14 @@ async def try_key(vendor: Vendor, credentials: Credentials, catalog: Catalog) ->
         return
     if first is not None:
         raise first
+
+
+# A turn's knobs as they are typed (`endpointing_ms=400`), never the dataclass's repr with every unset one.
+def _as_typed(value: object) -> object:
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        given = {name: one for name, one in dataclasses.asdict(value).items() if one is not None}
+        return " ".join(f"{name}={one}" for name, one in given.items()) or "none"
+    return value
 
 
 def _unanswered(running: Running, named: str, why: str) -> str:

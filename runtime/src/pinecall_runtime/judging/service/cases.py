@@ -28,6 +28,7 @@ from pinecall_runtime.wire.events import (
     event_of,
 )
 from pinecall_runtime.wire.goldens import Expect, Golden, InjectedEvent, Turn
+from pinecall_runtime.wire.parts import MASKED
 from pinecall_runtime.wire.scores import CallScore, Judgment
 
 # The inbox is for reading: past this many cases waiting on one agent, a broken call is judged as
@@ -98,7 +99,9 @@ def golden_of(entries: Sequence[Entry], name: str, expect: Expect) -> Golden:
             case UserTurnEnded() as heard if heard.text.strip():
                 turns.append(Turn(say=heard.text))
             case StateChanged() as changed if not turns and not state:
-                state = dict(changed.state)
+                # A `pii` field reads `***` in the log: a golden opening in that state would hand the
+                # class the string, not the value it had (2026-10-24). Left out, as a hand-written golden leaves it.
+                state = {name: value for name, value in changed.state.items() if value != MASKED}
             case EventReceived() as arrived if arrived.source == "app":
                 turns.append(Turn(event=InjectedEvent(name=arrived.name, data=arrived.data)))
             case MemoryOps() as memory:

@@ -25,7 +25,7 @@ from pinecall_runtime.evals.schemas import NextLineRequest, PlayedBy
 from pinecall_runtime.evals.service import playing, spoken
 from pinecall_runtime.evals.service.callers import Spending, heard_in, improvise_line
 from pinecall_runtime.evals.service.players import caller_model, caller_stage, caller_voice, named, voice_vendor
-from pinecall_runtime.evals.service.turns import NextLine, is_call_over
+from pinecall_runtime.evals.service.turns import NextLine, heard_or_a_beat, is_call_over
 from pinecall_runtime.exceptions import Conflict, QuotaExceeded, ServiceUnavailable, TooManyRequests
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.judging import service as judging
@@ -50,6 +50,7 @@ NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a 
 # Longer than any run, so the caller's token never ends a call first.
 A_CALL_MAY_LAST_S = 15 * 60.0
 BROKE = "simulated call %s broke"
+THE_CALLERS_MODEL = "the caller's model"
 
 # The calls a simulated caller may be on at once, per org and env, on every gateway of the box.
 # A simulation takes a seat of the fleet beside the real callers and a share of the gateway that
@@ -238,7 +239,12 @@ async def admit_simulation(
     if voice:
         vendor, model = voice_vendor(configured, persona)
         providers.stage_on_its_key("tts", Voice(provider=vendor, model=model), configured, keys)
-    return named(caller_stage(configured, keys, persona))
+    stage = caller_stage(configured, keys, persona)
+    # A model the vendor lacks is refused before the call opens, as the page says: a persona that
+    # names one is tried once here; the catalog's own caller model is known to answer.
+    if persona.llm:
+        await providers.try_stage("llm", stage, what=THE_CALLERS_MODEL)
+    return named(stage)
 
 
 async def played_on(session_: AsyncSession, persona: judging.Persona, played: PlayedBy) -> judging.Persona:
@@ -305,7 +311,7 @@ async def _hung_up(serving: calls.Serving, call: str) -> None:
     try:
         async with asyncio.timeout(HANGS_UP_WITHIN_S):
             while (await log.snapshot()).status != "ended":
-                await anext(subscription, None)
+                await heard_or_a_beat(subscription)
     except TimeoutError:
         logger.info("%s: the worker wrote no call.ended within %.0f s; its room is closed", call, HANGS_UP_WITHIN_S)
     finally:

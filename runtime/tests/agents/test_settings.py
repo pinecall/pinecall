@@ -1,6 +1,7 @@
 """The settings doors: a diff reads this person's corner, or the team's when asked."""
 
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
+from tests.fakes import acme
 
 
 # J F6 (2026-10-23): `agent diff` compared the person's own corner alone, so a team whose settings
@@ -23,3 +24,38 @@ async def test_a_diff_reads_the_persons_corner_unless_the_teams_is_asked_for(
         assert teams.status_code == 200, teams.text
         assert teams.json()["changed"] == []
         assert teams.json()["ours"]["config"]["language"] == "es-ES"
+
+
+# R F16 (2026-10-24): `--judge-option foo=1` was kept with no trial while `--stt-option foo=1` was
+# refused; a judge the vendor refuses fails every hang-up, so it is tried as the `--llm` pair is.
+@needs_the_services
+async def test_a_judge_option_its_vendor_refuses_is_refused_before_it_is_kept(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    door = f"/v1/agents/{agent}/settings"
+    judge = f"{acme.ACME}/{acme.MODEL}"
+    # Options and builds run on the org's own key alone.
+    own = await gateway.http.put(f"/v1/provider-keys/{acme.ACME}", json={"key": "acme-good-key"}, headers=tenant.person)
+    assert own.status_code == 204, own.text
+    async with holding(gateway, tenant, agent):
+        refused = await gateway.http.put(
+            door, json={"config": {"judge": judge, "judge_options": {"nope": 1}}}, headers=tenant.person
+        )
+        assert refused.status_code == 400, refused.text
+        assert f"{acme.ACME} refused the judge this sets" in refused.json()["detail"]
+        kept = await gateway.http.put(door, json={"config": {"judge": judge}}, headers=tenant.person)
+        assert kept.status_code == 200, kept.text
+
+
+# R F14 (2026-10-24): the refusal carried `turn Turn(min_interruption_words=None, endpointing_ms=400, …)`.
+@needs_the_services
+async def test_a_turn_the_ears_refuse_is_named_by_the_knobs_typed(gateway: Gateway, tenant: Tenant, agent: str) -> None:
+    own = await gateway.http.put(f"/v1/provider-keys/{acme.ACME}", json={"key": "acme-good-key"}, headers=tenant.person)
+    assert own.status_code == 204, own.text
+    async with holding(gateway, tenant, agent):
+        refused = await gateway.http.put(
+            f"/v1/agents/{agent}/settings", json={"config": {"turn": {"endpointing_ms": 50}}}, headers=tenant.person
+        )
+    assert refused.status_code == 400, refused.text
+    assert "(turn endpointing_ms=50)" in refused.json()["detail"]
+    assert "Turn(" not in refused.json()["detail"]

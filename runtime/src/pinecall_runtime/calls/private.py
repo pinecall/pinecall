@@ -12,11 +12,12 @@ from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.text import Json, JsonObject, a_mapping
 from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.parts import MASKED
 
 logger = logging.getLogger(__name__)
 
 # The key stays, so a reader knows a value exists; the value goes whole, so its type does not leak.
-MASK = "***"
+MASK = MASKED
 
 # A value shorter than this is never learned as a secret: "7", "ok" or "Al" cannot be told from a
 # word, and masking it would mask every such digit or word the agent writes after it. The argument

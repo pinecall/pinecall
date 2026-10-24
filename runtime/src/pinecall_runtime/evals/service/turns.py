@@ -20,6 +20,16 @@ SPEAKING = "speaking"
 
 # Longer than the lag between a state and its entry, shorter than a caller's pause.
 A_BEAT_S = 0.75
+
+
+# The terminal entry ends a log's readers on every gateway a moment before the seal is committed
+# where it was written: a reader waiting for the store to say so looks again after one beat.
+async def heard_or_a_beat(subscription: calls.Subscription) -> None:
+    """Wait for the log's next entry; once its readers are ended, one beat, so the caller looks again."""
+    if await anext(subscription, None) is None:
+        await asyncio.sleep(A_BEAT_S)
+
+
 # The quiet a person leaves once the other has stopped. An answer holds only after it: a tool's
 # call, or the request that follows a tool's result, lands on the log a moment after the agent
 # went back to `listening`, and a caller that spoke in that moment talked over the answer.

@@ -94,6 +94,9 @@ async def test_a_refused_command_is_answered_to_the_app_and_the_next_one_still_a
     error = await settled(sent, kind="error")
     assert error.data["code"] == "refused" and error.data["message"] == NO_ROOM
     assert (error.data["command"], error.data["id"]) == ("room.send", "kala:room.send")
+    # P F5 / T F2 / R F9: the app heard it, and the call's own log said nothing.
+    said = [entry.data for entry in await store.whole(call) if entry.type == "error"]
+    assert [(one["command"], one["message"]) for one in said] == [("room.send", NO_ROOM)]
 
     state = Command(type="state.set", agent=AGENT, call=call, id=None, data={"state": {"cart": []}})
     assert await send_command(live.signal, state)

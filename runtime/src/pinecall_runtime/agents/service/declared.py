@@ -30,11 +30,13 @@ NO_VENDOR = (
 OUT_OF_ORDER = "the prompt is every static block, then every dynamic one: static {block} comes after a dynamic one"
 
 
-# Sent as null, a setting goes back to the org's; left out, it stays as it was declared before.
-def with_app_fields(current: AgentConfig, declaration: Declaration) -> AgentConfig:
+# Sent as null, a setting goes back to the org's; left out, it stays as it was declared before. A
+# socket's first declaration is the class whole: a setting it leaves out is the class's no longer,
+# though the process before it declared it (a save that took `language` out, 2026-10-24).
+def with_app_fields(current: AgentConfig, declaration: Declaration, *, first: bool = False) -> AgentConfig:
     """The agent's config with the fields the app sent in place, and the settings it fixes."""
     sent = declaration.model_fields_set
-    changed: dict[str, Any] = _settings_fixed(current, declaration)
+    changed: dict[str, Any] = _settings_fixed(current, declaration, first=first)
     if "prompt" in sent:
         changed["prompt"] = (
             _in_order(tuple(PromptBlock(block.name, block.region) for block in declaration.prompt))
@@ -83,13 +85,15 @@ def changed_by(declaration: Declaration) -> list[str]:
 
 
 # A setting the class declares is fixed: the org's settings no longer move it.
-def _settings_fixed(current: AgentConfig, declaration: Declaration) -> dict[str, object]:
+def _settings_fixed(current: AgentConfig, declaration: Declaration, *, first: bool) -> dict[str, object]:
     converted = _settings_of(declaration)
     changed: dict[str, Any] = {}
     fixed = set(current.fixed)
-    for name in declaration.model_fields_set & converted.keys():
+    sent = declaration.model_fields_set & converted.keys()
+    let_go = (fixed - sent) if first else set[str]()
+    for name in sorted(sent | let_go):
         field, value = converted[name]
-        if getattr(declaration, name) is None:
+        if name in let_go or getattr(declaration, name) is None:
             # The class lets go of it: the field holds no value of its own, and the org's settings fill it.
             fixed.discard(name)
             changed[field] = _undeclared(field)

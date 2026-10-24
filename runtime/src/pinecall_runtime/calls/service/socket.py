@@ -15,7 +15,7 @@ from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls.reducer import unanswered_tools
 from pinecall_runtime.calls.service.binding import attach_parked, hand_on
-from pinecall_runtime.calls.service.live import Live, Served, declare_for_the_call
+from pinecall_runtime.calls.service.live import Live, Served, declare_for_the_call, said_on_the_call
 from pinecall_runtime.calls.service.peers import Handoff, Taking, send_command, tell_handoff
 from pinecall_runtime.calls.service.serving import Serving, claim_code, known_here
 from pinecall_runtime.calls.service.threads import Threads
@@ -118,6 +118,8 @@ class AppSocket:
         # Set once the inbox was asked of the signal, heard on or not: what other gateways tell the socket
         # before that is lost, so the endpoint reads the socket's first frame only after.
         self.listening = asyncio.Event()
+        # The agents this socket declared once: its first declaration of one is the class whole.
+        self.configured: set[str] = set()
 
     @property
     def registry(self) -> agents_registry.AgentRegistry:
@@ -303,7 +305,7 @@ class AppSocket:
     # or asks ears that cannot end the turn to, is refused when declared, not mid-call.
     async def _configure(self, slug: str, wanted: AgentConfigure) -> None:
         found = self._holds(slug)
-        config = declared.with_app_fields(found.config, wanted.config)
+        config = declared.with_app_fields(found.config, wanted.config, first=slug not in self.configured)
         async with self.serving.handles.sessions.begin() as session:
             catalog = await providers.get_catalog(session)
             running, _ = await settings.tuned_for_call(session, config, self.scope, catalog)
@@ -314,6 +316,7 @@ class AppSocket:
         await self.send(
             await self.registry.configure(self.id, self.scope.env, slug, config, declared.changed_by(wanted.config))
         )
+        self.configured.add(slug)
         # Declared now: what waited on WhatsApp for this agent is answered on this declaration.
         if found.takes_unclaimed:
             self.threads.answer_waiting(self._holds(slug))
@@ -357,15 +360,19 @@ class AppSocket:
                 command.agent, "no_session", NO_SESSION.format(kind=command.type, call=command.call), command.dump()
             )
             return
-        async with self.serving.handles.sessions.begin() as session:
-            if isinstance(wanted, CallOptOut):
-                await _opt_out(session, served, command.agent, wanted)
-                return
-            claimed = await claim_code(session, self.serving.codes, served, wanted.code, via="agent")
+        try:
+            async with self.serving.handles.sessions.begin() as session:
+                if isinstance(wanted, CallOptOut):
+                    await _opt_out(session, served, command.agent, wanted)
+                    return
+                claimed = await claim_code(session, self.serving.codes, served, wanted.code, via="agent")
+        except PinecallError as refused:
+            await said_on_the_call(served, _refusal(command, REFUSED, str(refused)))
+            raise
         if not claimed:
-            await self.refuse(
-                command.agent, "no_code", NO_CODE.format(code=wanted.code, agent=command.agent), command.dump()
-            )
+            why = NO_CODE.format(code=wanted.code, agent=command.agent)
+            await said_on_the_call(served, _refusal(command, "no_code", why))
+            await self.refuse(command.agent, "no_code", why, command.dump())
 
     # The block's words are kept once under the hash the log will name, before the call hears it.
     async def _prompted(self, command: Command, wanted: PromptSet) -> None:
@@ -381,7 +388,11 @@ class AppSocket:
         served = None if command.call is None else self.live.calls.get(command.call)
         if served is not None and served.agent == command.agent and served.running is not None:
             declare_for_the_call(served, model)
-            await served.running.apply(model)
+            try:
+                await served.running.apply(model)
+            except PinecallError as refused:
+                await said_on_the_call(served, _refusal(command, REFUSED, str(refused)))
+                raise
             return
         if command.call is not None and await send_command(self.serving.handles.signal, command):
             return
@@ -454,6 +465,10 @@ def _named(raw: Json, field: str) -> str:
         return ""
     named = raw.get(field)
     return named if isinstance(named, str) else ""
+
+
+def _refusal(command: Command, code: str, why: str) -> ErrorEvent:
+    return ErrorEvent(code=code, message=why, command=command.type, id=command.id, recoverable=True)
 
 
 # The list is the org's, not the call's, and nothing lands in the log: an SDK that predates the

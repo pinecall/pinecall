@@ -53,6 +53,21 @@ def test_a_tool_call_carries_its_arguments_its_contract_and_what_the_model_read_
     assert booking.description == BOOK.description
 
 
+def test_a_tool_called_without_a_word_on_a_call_over_before_it_was_answered_is_a_turn_that_said_nothing() -> None:
+    """T F5: `expect.tools` read "ran no tool at all" off a log holding the tool that hung the call up."""
+    log = a_log(
+        caller("that is all, bye"),
+        tool("finish", {}, call_id="c1", speech="sp_2"),
+        result("finish", "hung up", call_id="c1"),
+    )
+    case = case_of(log, THE_CLINIC)
+    assert [(turn.role, turn.seq, turn.text) for turn in case.turns] == [
+        ("user", 1, "that is all, bye"),
+        ("assistant", 2, ""),
+    ]
+    assert [called.name for called in case.turns[1].calls] == ["finish"]
+
+
 def test_a_tool_the_app_never_answered_is_told_apart_from_an_empty_answer() -> None:
     log = a_log(caller("hola"), tool("find_slots", {}, call_id="c1"), agent("un momento"))
     [called] = case_of(log, THE_CLINIC).turns[1].calls

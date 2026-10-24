@@ -16,6 +16,8 @@ from pinecall_runtime.wire.goldens import EndStep, NothingElseStep, NoToolStep, 
 from pinecall_runtime.wire.parts import EndedBy
 
 TOOL = "The next tool call of the turn is {tool}{args}."
+# How livekit's run says the turn holds no more events for a step to read.
+NONE_LEFT = "Expected another event"
 NO_TOOL = "The turn calls no {tool}."
 REPLY = "The agent's next message of the turn{parts}."
 END = "The call ended in this turn, by the {by}."
@@ -82,7 +84,9 @@ def _tool(step: ToolStep, expect: RunAssert, began: float) -> Checked:
     try:
         called = expect.next_event(type="function_call").event().item
     except AssertionError as broke:
-        return _ruled(checked, failing(_first_line(broke)))
+        return _ruled(
+            checked, failing(_worded(broke, f"the turn ran no tool from here on, and the step expects {step.tool}"))
+        )
     given: JsonObject = json.loads(called.arguments or "{}")
     wanted = step.args or {}
     wrong = {key: given.get(key) for key, value in wanted.items() if given.get(key) != value}
@@ -116,7 +120,7 @@ async def _reply(
         while message.event().item.id in around:
             message = expect.next_event(type="message")
     except AssertionError as broke:
-        return [_ruled(checked, failing(_first_line(broke)))]
+        return [_ruled(checked, failing(_worded(broke, "the turn said nothing more, and the step expects a reply")))]
     item = message.event().item
     replied = _ruled(checked, _phrases(reply, item.text_content or "", item.created_at - began))
     if not replied.ruling.passed or reply.intent is None:
@@ -210,6 +214,13 @@ def _ruled(checked: Checked, ruling: JudgmentResult) -> Checked:
 # livekit's own message, without the run it appends under it.
 def _first_line(broke: AssertionError) -> str:
     return str(broke).splitlines()[0] if str(broke) else "the step did not hold"
+
+
+# livekit's "Expected another event, but none left." says nothing of the agent: the step says what
+# the turn lacked instead. Any other sentence of livekit's is about the event found, and is kept.
+def _worded(broke: AssertionError, none_left: str) -> str:
+    line = _first_line(broke)
+    return none_left if line.startswith(NONE_LEFT) else line
 
 
 def _quoted(phrases: Sequence[str]) -> str:

@@ -75,9 +75,12 @@ async def test_a_tool_called_with_another_value_breaks_and_names_what_it_was_giv
 
 
 @needs_the_database
-async def test_a_turn_that_called_no_tool_breaks_on_livekits_own_words(store: Store, call: str) -> None:
+async def test_a_turn_that_called_no_tool_breaks_saying_so_not_in_livekits_words(store: Store, call: str) -> None:
+    """R F12: the step said "Expected another event, but none left.", which tells a person nothing."""
     scores = await scored(store, call, [{"tool": "find_slots"}], ["No tengo agenda."])
-    assert not scores["t1.tool:find_slots"].passed
+    broke = scores["t1.tool:find_slots"]
+    assert not broke.passed
+    assert broke.reason == "the turn ran no tool from here on, and the step expects find_slots"
 
 
 @needs_the_database

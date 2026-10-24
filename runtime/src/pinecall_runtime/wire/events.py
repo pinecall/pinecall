@@ -326,6 +326,8 @@ class ConfirmGranted(WireModel):
     ttl_s: int
 
 
+# No runtime writes the three confirm entries now: a tool's `confirm` is a receipt read back once it ran.
+# They are read in the logs older runtimes wrote (the reducer, the consent check).
 class ConfirmRequest(WireModel):
     """A tool with confirm set is about to run and the platform is asking the caller."""
 

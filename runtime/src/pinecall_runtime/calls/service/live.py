@@ -364,6 +364,7 @@ class Live:
         code = BAD_SHAPE if isinstance(refused, ValidationError) else REFUSED
         why = ErrorEvent(code=code, message=str(refused), command=command.type, id=command.id, recoverable=True)
         logger.warning("call %s: %s refused: %s", served.call, command.type, refused)
+        await said_on_the_call(served, why)
         if served.app is not None:
             await self.tell(served.app, Entry.unstored(command.agent, "error", why.dump()))
 
@@ -418,3 +419,10 @@ def declare_for_the_call(served: Served, model: WireModel) -> None:
     privacy = served.log.privacy
     if isinstance(model, SessionConfigure) and model.config is not None and privacy is not None:
         served.log.privacy = replace(privacy, config=declared.with_app_fields(privacy.config, model.config))
+
+
+# A verb the call cannot take is said on the call's log too, as a worker says it on a spoken call
+# (`jobs.apply_command`): the app hears it on its socket, a person reads it on the call's log.
+async def said_on_the_call(served: Served, refused: ErrorEvent) -> None:
+    """Write the refusal of one of the app's commands on the call's log."""
+    await served.log.append("error", refused.dump())

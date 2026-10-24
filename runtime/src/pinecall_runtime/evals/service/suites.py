@@ -16,7 +16,7 @@ from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.evals.schemas import OpenedCall, RunRow, RunSuiteRequest, ScoreRow
-from pinecall_runtime.evals.service import players, playing, runs, simulations, spoken
+from pinecall_runtime.evals.service import players, playing, runs, simulations, spoken, turns
 from pinecall_runtime.exceptions import (
     Forbidden,
     NotFound,
@@ -400,7 +400,7 @@ async def _until_sealed(serving: calls.Serving, call: str) -> None:
     try:
         async with asyncio.timeout(A_SEAL_MAY_TAKE_S):
             while not await serving.logs.store.is_sealed(call):
-                await anext(subscription, None)
+                await turns.heard_or_a_beat(subscription)
     except TimeoutError as never:
         raise ServiceUnavailable(NEVER_SEALED.format(call=call, seconds=A_SEAL_MAY_TAKE_S)) from never
     finally:

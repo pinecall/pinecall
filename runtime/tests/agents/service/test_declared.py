@@ -67,6 +67,17 @@ def test_a_field_sent_empty_goes_back_to_the_settings_and_one_left_out_stays_fix
     assert with_app_fields(current, Declared(voice=None)).fixed == frozenset({"llm"})
 
 
+def test_a_new_process_first_declaration_lets_go_of_what_the_one_before_it_fixed() -> None:
+    """R F17: a save that took `language` out kept it fixed until `pinecall start` was restarted."""
+    before = with_app_fields(NOTHING, Declared(language="en", llm=ModelConfig(provider=ACME, model="acme-1")))
+    assert before.fixed == frozenset({"language", "llm"})
+    after = with_app_fields(before, Declared(llm=ModelConfig(provider=ACME, model="acme-1")), first=True)
+    assert (after.fixed, after.language) == (frozenset({"llm"}), None)
+    assert with_app_fields(before, Declared(llm=ModelConfig(provider=ACME, model="acme-1"))).fixed == frozenset(
+        {"language", "llm"}
+    )
+
+
 def test_a_field_sent_null_keeps_no_value_of_the_class_and_every_field_takes_null() -> None:
     """The value the class had fixed goes with it: the org's settings fill the field, not the class's last word."""
     declared = with_app_fields(NOTHING, Declared(language="fr-FR", record=False, uses_knowledge=True))

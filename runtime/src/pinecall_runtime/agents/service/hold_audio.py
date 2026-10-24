@@ -21,7 +21,7 @@ BIT_RATE = 64_000
 LONGEST_S = 300
 SHORTEST_S = 1
 
-NOT_AUDIO = "that file is no audio this box can read: send a wav, an mp3, an ogg or an m4a"
+NOT_AUDIO = "that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a"
 TOO_LONG = f"a hold melody loops, so {LONGEST_S // 60} minutes at most: this one runs longer"
 TOO_SHORT = f"a hold melody of less than {SHORTEST_S} second would stutter as it loops"
 

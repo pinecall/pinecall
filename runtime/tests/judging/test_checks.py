@@ -110,6 +110,13 @@ def test_the_register_scan_passes_a_call_that_said_none_of_the_words() -> None:
     assert "3 declared word(s)" in verdict.detail
 
 
+def test_a_banned_word_in_markdown_bold_or_code_is_the_word() -> None:
+    """T F16 / P F16: `**sixty euros**` hid `sixty` from the scan."""
+    log = a_log(agent("A check-up costs **sixty euros** and `thirty` minutes."))
+    verdict = register(rebuild(log), ("sixty", "thirty"))
+    assert verdict.detail == "the agent said 'sixty' in turn 1; 'thirty' in turn 1"
+
+
 def test_a_banned_word_is_a_whole_word_and_a_phrase_is_found_anywhere() -> None:
     log = a_log(agent("El tutor revisa tu cita."))
     verdict = register(rebuild(log), ("tu", "revisa tu"))

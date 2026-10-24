@@ -7,7 +7,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import date
 from typing import cast
 
-from livekit.agents import RunContext, StopResponse, ToolError, llm
+from livekit.agents import NOT_GIVEN, RunContext, StopResponse, ToolError, llm
 from livekit.agents.beta.tools import EndCallTool
 from livekit.agents.llm import FunctionCall, FunctionCallOutput
 from livekit.agents.voice import AgentSession
@@ -27,6 +27,8 @@ type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str | llm.ToolResult]
 type Announce = Callable[[str | None], None]
 # Whether the agent has said words since the caller last spoke.
 type Spoke = Callable[[], bool]
+# Whether the call is ending: a tool hung it up, or the model did.
+type Ending = Callable[[], bool]
 # What plays while the caller waits: the hold melody after its grace, or nothing.
 type Waiting = Callable[[], AbstractAsyncContextManager[None]]
 
@@ -72,6 +74,7 @@ class Toolbox:
         *,
         announce: Announce,
         spoke: Spoke,
+        ending: Ending,
         waiting: Waiting,
         hung_up_by_the_model: Callable[[], None],
     ) -> None:
@@ -81,6 +84,7 @@ class Toolbox:
         self.lookups = lookups
         self.announce = announce
         self.spoke = spoke
+        self.ending = ending
         self.waiting = waiting
         self.hung_up_by_the_model = hung_up_by_the_model
 
@@ -114,6 +118,8 @@ class Toolbox:
     # of that answer still play, and its result is kept with no answer asked for, or the model
     # says its sentence a second time. A model that called it in silence (Gemini answers with the
     # call alone) is asked for its answer, or the move is made and nothing is said of it.
+    # A tool that hung up is the same: the goodbye came with its call, and an answer asked for after
+    # it is a monologue the drain waits out (measured at 27 and 43 s) before the call can end.
     async def _run_app_tool(self, use: ToolUse, context: RunContext[None]) -> str | llm.ToolResult:
         spec = self.call.config.tools_by_name[use.name]
         await admit_tool(self.call, use.name)
@@ -141,7 +147,18 @@ class Toolbox:
         # A supervisor took the line while the tool ran: the result stays, the reply does not.
         if self.call.a_person_has_the_line:
             raise StopResponse
-        return llm.ToolResult(text, reply_required=not self.spoke()) if spec.quiet else text
+        if spec.quiet or self.ending():
+            return llm.ToolResult(text, reply_required=not self.spoke())
+        # The app asked for a reply while its tool ran: that reply, steered by its words, is the
+        # answer to the tool. Asked of livekit mid-tool, it was dropped and the model answered on
+        # its own (2026-10-24); it is asked here, after the result is in the history, in place of it.
+        steer = self.call.reply_asked
+        if steer is not None:
+            self.call.reply_asked = None
+            interruptible = NOT_GIVEN if steer.allow_interruptions is None else steer.allow_interruptions
+            self.live.generate_reply(instructions=steer.instructions, allow_interruptions=interruptible)
+            return llm.ToolResult(text, reply_required=False)
+        return text
 
     async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)

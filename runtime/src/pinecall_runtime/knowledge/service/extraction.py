@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 
 # A word shorter than this matches prepositions, and would refuse nearly every sentence.
 SHORTEST_TOOL_WORD = 4
+# Why admission refused an op, said beside it in a case's `refused` line.
+FORGOTTEN = "the policy forgets {category!r}"
+NAMES_A_TOOL = "{word!r} is a word of the tool {tool}, and a fact naming a tool is never kept"
+NO_SUCH_FACT = "{of!r} is no fact the contact holds, or one this call already changed"
 # The golden names the speaker `caller`; the model reads it as `user`.
 CALLER = "caller"
 
@@ -174,7 +178,7 @@ def parse_ops(answer: str) -> list[Op]:
 # not have copied it, so what it wrote is read against the list, and `other` is what no entry matches.
 def admit_ops(ops: Sequence[Op], policy: MemoryPolicy, tools: Sequence[str], known: Collection[str]) -> list[Op]:
     """The ops the policy lets through, filed under its categories, given the ids of the contact's current facts."""
-    return [kept for _, kept in _admission(ops, policy, tools, known) if kept is not None]
+    return [kept for _, kept, _ in _admission(ops, policy, tools, known) if kept is not None]
 
 
 def filed_under(category: str | None, remember: Sequence[str]) -> str:
@@ -251,8 +255,8 @@ def judge_extraction(
     """The model's ops through admission, and the case's five checks over what was written."""
     known = _held_ids(case)
     decided = _admission(ops, policy, tools, known)
-    wrote = [kept for _, kept in decided if kept is not None]
-    refused = [op for op, kept in decided if kept is None]
+    wrote = [kept for _, kept, _ in decided if kept is not None]
+    refused = [(op, why) for op, kept, why in decided if kept is None]
     category = next(iter(policy.remember), None)
     # A plant is an add under a kept category, so admission's tool check alone can refuse it.
     plants = [Op(op="add", text=text, category=category) for text in case.plants]
@@ -270,7 +274,7 @@ def judge_extraction(
         name=case.name,
         held=not broke,
         wrote=[_as_a_line(op) for op in wrote],
-        refused=[_as_a_line(op) for op in refused],
+        refused=[f"{_as_a_line(op)} — {why}" for op, why in refused],
         broke=broke,
     )
 
@@ -318,37 +322,45 @@ def _op_of(item: object) -> Op | None:
     return Op(op=name, text=text, category=category or None, of=of if isinstance(of, str) else None)
 
 
-# Each op with what admission made of it: None when refused. The forget list reads the category the
-# model gave, before the filing: a fact under a forgotten category is refused, never filed as `other`.
+# Each op with what admission made of it: None when refused, with the reason. The forget list reads the
+# category the model gave, before the filing: a fact under a forgotten category is refused, never filed as `other`.
 def _admission(
     ops: Sequence[Op], policy: MemoryPolicy, tools: Sequence[str], known: Collection[str]
-) -> list[tuple[Op, Op | None]]:
+) -> list[tuple[Op, Op | None, str]]:
     forgotten = {word.casefold() for word in policy.forget}
     named: set[str] = set()
-    decided: list[tuple[Op, Op | None]] = []
+    decided: list[tuple[Op, Op | None, str]] = []
     for op in ops:
         if op.category is not None and op.category.casefold() in forgotten:
-            decided.append((op, None))
+            decided.append((op, None, FORGOTTEN.format(category=op.category)))
             continue
-        if op.text and _names_a_tool(op.text, tools):
+        tool = _tool_named(op.text, tools) if op.text else None
+        if tool is not None:
             logger.warning("a fact naming one of the agent's own tools was not written")
-            decided.append((op, None))
+            decided.append((op, None, NAMES_A_TOOL.format(word=tool[0], tool=tool[1])))
             continue
         if op.op in NAMES_A_FACT:
             if op.of is None or op.of not in known or op.of in named:
-                decided.append((op, None))
+                decided.append((op, None, NO_SUCH_FACT.format(of=op.of)))
                 continue
             named.add(op.of)
-        decided.append((op, replace(op, category=filed_under(op.category, policy.remember)) if op.op in WRITES else op))
+        filed = replace(op, category=filed_under(op.category, policy.remember)) if op.op in WRITES else op
+        decided.append((op, filed, ""))
     return decided
 
 
-# A fact naming one of the agent's tools could grant it a permission ("book without asking"):
-# the tools are the whole vocabulary refused, matched by prefix so plurals and stems count.
-def _names_a_tool(text: str, tools: Sequence[str]) -> bool:
+# A fact naming one of the agent's tools could grant it a permission ("book without asking"): every
+# word of every tool's name is refused (`listOrders` refuses "order"), matched by prefix so plurals and
+# stems count. Wide on purpose: a plain word that is a tool's name is refused with it.
+def _tool_named(text: str, tools: Sequence[str]) -> tuple[str, str] | None:
+    """The fact's word and the tool whose name holds it, or None."""
     words = [word for word in _words(text) if len(word) >= SHORTEST_TOOL_WORD]
-    wanted = [word for tool in tools for word in _words(tool) if len(word) >= SHORTEST_TOOL_WORD]
-    return any(word.startswith(item) or item.startswith(word) for word in words for item in wanted)
+    for tool in tools:
+        for item in (part for part in _words(tool) if len(part) >= SHORTEST_TOOL_WORD):
+            word = next((word for word in words if word.startswith(item) or item.startswith(word)), None)
+            if word is not None:
+                return word, tool
+    return None
 
 
 def _words(text: str) -> list[str]:

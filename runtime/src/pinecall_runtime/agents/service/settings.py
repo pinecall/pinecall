@@ -90,6 +90,7 @@ STAGE_KNOBS: dict[Modality, tuple[str, ...]] = {
     "stt": ("stt", "stt_builds", "stt_options", "end_of_turn", "turn", "language"),
 }
 REALTIME_KNOBS = ("realtime", "realtime_options")
+JUDGE_KNOBS = ("judge", "judge_builds", "judge_options")
 
 
 class VersionMoved(Conflict):
@@ -358,9 +359,12 @@ async def write_tuning(
     catalog = await providers.get_catalog(session)
     config = await resolved_config(session, declared or AgentConfig(slug=agent), scope, wanted, catalog)
     stages = providers.build_pipeline(config, catalog, vault_keyring)
-    # The judge is not a stage of the call, but a judge nobody can key fails every hang-up.
+    # Not a stage of the call, but a judge nobody keyed, or whose options its vendor refuses, fails every hang-up.
     if config.judge is not None:
-        providers.stage_on_its_key("llm", config.judge, catalog, vault_keyring)
+        judge = providers.stage_on_its_key("llm", config.judge, catalog, vault_keyring)
+        moved = {knob: getattr(wanted, knob) for knob in JUDGE_KNOBS if _changes(wanted, newest, knob)}
+        if opens_the_pipeline and moved:
+            await providers.try_stage("llm", judge, what="the judge this sets", tried=moved)
     if opens_the_pipeline:
         providers.refuse_untaken_knobs(stages.stt, stages.tts, wanted)
         for stage, knobs in STAGE_KNOBS.items():

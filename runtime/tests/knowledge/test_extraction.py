@@ -454,7 +454,8 @@ def test_a_fact_the_model_filed_outside_the_list_breaks_the_category_it_was_for_
 def test_a_forgotten_fact_is_refused_and_a_card_number_kept_elsewhere_is_the_failure() -> None:
     """Under pagos it never reaches the report; under a kept category, its digits break never_says."""
     refused = judged(a_case(expect=ExtractionExpected(never=["pagos"])), an_add(f"Paga con la Visa {A_CARD}", "pagos"))
-    assert (refused.held, refused.wrote, refused.refused) == (True, [], [f"add · pagos · Paga con la Visa {A_CARD}"])
+    line = f"add · pagos · Paga con la Visa {A_CARD} — the policy forgets 'pagos'"
+    assert (refused.held, refused.wrote, refused.refused) == (True, [], [line])
     case = a_case(expect=ExtractionExpected(never=["pagos"], never_says=[A_CARD]))
     kept = judged(case, an_add(f"Le gusta pagar con la Visa {A_CARD}", "cómo prefiere que le llamen"))
     assert [item.check for item in kept.broke] == ["never_says"]
@@ -475,6 +476,16 @@ def test_a_contradicted_fact_must_be_superseded_and_nothing_else_replaced() -> N
     assert judged(case, Op(op="update", of="h1", text="Prefiere la mañana", category="alergias")).held
     needless = judged(a_case(holds=["Alérgica a la penicilina"]), Op(op="invalidate", of="h1"))
     assert "nothing contradicts it" in needless.broke[0].detail
+
+
+def test_a_fact_refused_for_a_tools_word_says_the_word_and_the_tool() -> None:
+    """T F12: `refused` carried the fact alone, and "usual order" read as refused for nothing."""
+    case = a_case()
+    said = judged(case, an_add("Su pedido habitual es un chai", "preferencias"), tools=("listOrders", "pedidoHabitual"))
+    assert said.refused == [
+        "add · preferencias · Su pedido habitual es un chai — 'pedido' is a word of the tool pedidoHabitual, "
+        "and a fact naming a tool is never kept"
+    ]
 
 
 def test_a_plant_holds_only_where_the_agents_own_tools_refuse_it() -> None:

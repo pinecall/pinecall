@@ -188,10 +188,14 @@ async def test_a_batch_whose_answer_was_lost_is_sent_again_and_lands_once(
     await losing.real.aclose()
 
 
+# Registered with LiveKit (`agent_name`) as a worker that reports in is: one that is not counts as
+# heard with no seat, and every spoken simulation on this test gateway was refused as the fleet full
+# for as long as it was heard (2026-10-24, three runs of four).
 async def test_a_heartbeat_says_the_fleet_is_open(fleet: GatewayClient) -> None:
     """A worker of the sandbox fleet that reports in is neither cordoned nor full."""
+    name = f"w-{secrets.token_hex(3)}"
     beat = HeartbeatRequest(
-        fleet="pinecall-sandbox", worker=f"w-{secrets.token_hex(3)}", active=0, max_jobs=4, load=0.1, draining=False
+        fleet="pinecall-sandbox", worker=name, agent_name=name, active=0, max_jobs=4, load=0.1, draining=False
     )
     answered = await fleet.heartbeat(beat)
     assert not answered.cordoned
