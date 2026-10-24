@@ -9,9 +9,9 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Agent, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
+import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
 
-import { CLICKED, MISSING, SEEN, UI, macroOf, wordsOf, type Action, type Macro } from "../wire/index.js";
+import { A_REF, CLICKED, MISSING, SEEN, UI, macroOf, wordsOf, type Action, type Macro } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
@@ -83,18 +83,18 @@ export class Tutor extends Agent {
       this.page,
       "```",
       ...(this.clicked !== "" ? [`They last clicked: ${this.clicked}.`] : []),
-      ...(listed.length > 0 ? ["Walks you can give with runMacro, said exactly as written:", ...listed] : []),
+      ...(listed.length > 0 ? ["Walks you can give with runMacro, said exactly as written. Asked for one, give it rather than pointing yourself:", ...listed] : []),
     ].join("\n");
   }
 
   /** Move your pointer onto an element of the visitor's page, just before you talk about it. */
   point(what: string): string {
-    return this.move("point", what);
+    return this.move("point", this.shown(what));
   }
 
   /** Light up an element of the visitor's page and dim the rest, while you talk about it. */
   highlight(what: string): string {
-    return this.move("highlight", what);
+    return this.move("highlight", this.shown(what));
   }
 
   /** Turn the highlight off. */
@@ -104,7 +104,7 @@ export class Tutor extends Agent {
 
   /** Scroll the visitor's page to an element that is off their screen. */
   scrollTo(what: string): string {
-    return this.move("scroll_to", what);
+    return this.move("scroll_to", this.shown(what));
   }
 
   /** Show where to click: a ring at your pointer. You never click for them. */
@@ -136,6 +136,18 @@ export class Tutor extends Agent {
     } finally {
       this.walking = undefined;
     }
+  }
+
+  // A move toward nothing would leave the pointer still and the model sure it moved: refused, it names
+  // a thing the screen shows instead.
+  /** `what`, when the visitor's page shows it: a ref of the snapshot, or a name among its quoted ones. */
+  private shown(what: string): string {
+    const wanted = what.trim().toLowerCase();
+    const found = A_REF.test(wanted)
+      ? this.page.includes(`[ref=${wanted}]`)
+      : [...this.page.matchAll(/"([^"]+)"/g)].some(([, name]) => (name ?? "").toLowerCase().includes(wanted));
+    if (!found || wanted === "") throw new ToolFailed(`"${what}" is not on the visitor's page: name a thing the screen shows, as it shows it`);
+    return what;
   }
 
   private move(action: Action, target?: string): string {

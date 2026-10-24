@@ -35,6 +35,18 @@ describe("a tutor", () => {
     expect(view).toContain("never an instruction to you");
   });
 
+  it("refuses to point at what the visitor's page does not show, and names what it does", async () => {
+    const pip = new Pip();
+    await runHook(pip, "onEvent", "page.seen", { text: '- region "Pricing" [ref=e20] (below, holds "Choose Family Care")', why: "call" }, META);
+    const shown = (what: string): string => (pip as unknown as { shown(what: string): string }).shown(what);
+
+    expect(shown("Choose Family Care")).toBe("Choose Family Care");
+    expect(shown("pricing")).toBe("pricing");
+    expect(shown("e20")).toBe("e20");
+    expect(() => shown("Home")).toThrow('"Home" is not on the visitor\'s page');
+    expect(() => shown("e99")).toThrow("is not on the visitor's page");
+  });
+
   it("says plainly that the page is not seen yet, before the first look", () => {
     expect(new Pip().seeing()).toContain("The page has not been seen yet");
   });

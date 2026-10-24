@@ -57,8 +57,8 @@ describe("the page as the agent reads it", () => {
   it("says a section out of view in one line, with where it is, and nothing inside it", () => {
     const { text } = new Page(document).seen();
 
-    expect(text).toMatch(/- region "Questions" \[ref=e\d+\] \(below\)/);
-    expect(text).not.toContain("insurance");
+    expect(text).toMatch(/- region "Questions" \[ref=e\d+\] \(below, holds "Questions", "Do you take my insurance\?"\)/);
+    expect(text.split("\n").filter((line) => line.includes("insurance"))).toHaveLength(1);
   });
 
   it("gives the same element the same ref every time, and finds it by role and name", () => {

@@ -110,7 +110,9 @@ export class Page {
       const visible = box.bottom > 0 && box.top < height && box.width > 0 && box.height > 0;
       const indent = "  ".repeat(depth);
       if (role === "region" && !visible) {
-        lines.push(`${indent}- region "${name}" [ref=${this.#ref(child)}] (${box.top > 0 ? "below" : "above"})`);
+        const held = holds(child);
+        const inside = held.length > 0 ? `, holds ${held.map((one) => `"${one}"`).join(", ")}` : "";
+        lines.push(`${indent}- region "${name}" [ref=${this.#ref(child)}] (${box.top > 0 ? "below" : "above"}${inside})`);
         continue;
       }
       const kept = role !== null && (name !== "" || LANDMARKS.has(role));
@@ -136,6 +138,24 @@ const PREFERRED = ["region", "heading", "article", "button", "link", "form", "im
 function rank(role: string): number {
   const at = PREFERRED.indexOf(role);
   return at === -1 ? PREFERRED.length : at;
+}
+
+/** How many of a section's things its one line names, when the section is out of view. */
+const HELD_AT_MOST = 8;
+const HELD = new Set(["heading", "article", "button", "link"]);
+
+/** The things a section out of view holds, by name, so the agent knows what it can scroll to. */
+function holds(region: Element): string[] {
+  const names: string[] = [];
+  for (const element of region.querySelectorAll("*")) {
+    if (names.length >= HELD_AT_MOST) break;
+    if (element.matches(IGNORED) || left(element)) continue;
+    const role = roleOf(element);
+    if (role === null || !HELD.has(role)) continue;
+    const name = nameOf(element, role).replaceAll('"', "'");
+    if (name !== "" && !names.includes(name)) names.push(name);
+  }
+  return names;
 }
 
 /** Out of the snapshot: hidden, marked by the site, or a secret. */
