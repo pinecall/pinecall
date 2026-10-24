@@ -110,12 +110,15 @@ beside the face. It moves the way a hand moves a mouse:
   - region "Pricing" [ref=e9]
     - heading "Pricing" [level=2] [ref=e10]
     - article "Family Care plan" [ref=e14]
+      - text "$39 / month"
       - button "Choose Family Care" [ref=e16]
   - region "Book your first visit" [ref=e18] (below)
 ```
 
 - **What is on the screen is there in full. A section out of view is one line**, its name and
   `above` or `below`.
+- **Words in a box that is only layout are a line of text**, as a price in a `<div>`, as Playwright
+  says them.
 - **A ref is stable for the page's life**, and still names its element after a scroll took it off
   the screen.
 - **A field is its label, never its value.** Passwords, card numbers, and anything under
@@ -123,7 +126,8 @@ beside the face. It moves the way a hand moves a mouse:
 
 The tutor sends it as `page.seen` when the call goes live, when a scroll stops, on a resize, when
 the DOM changes (a question opened, a tab), on a click, and before each of the agent's moves. It
-is sent only when it changed.
+is sent only when it changed, but for one answer: when a move onto a thing ends, the page is sent
+again with `why: "moved"` and the ref it moved to.
 
 ## The tutor, in the agent
 
@@ -145,8 +149,12 @@ A class that extends `Tutor` gets these:
   The site's words are fenced there as data, never as instructions to the model.
 - **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home` and `runMacro`.
   There is none to open a page: the tutor never leaves the page the visitor is on. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
-  model calls them, while the words that name them play, and the model is not asked to answer them;
-  `runMacro` too, which starts on its own first words and ends on its own last ones.
+  model calls them, while the words that name them play, and the model answers one only when it made
+  it without a word; `runMacro` too, which starts on its own first words and ends on its own last ones.
+- **A move onto a thing waits for the page to say it ended** (`point`, `highlight`, `scrollTo`, three
+  seconds at most), and its result is that thing as the visitor now sees it, fenced as data: a
+  section that was one line below the fold comes back in full, its prices with it, for the model to
+  talk about.
 - **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
   `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
   once it is there. A page that joins a call already under way (a reload) tells it at once.
@@ -191,7 +199,7 @@ speaks, the walk stops and the agent answers them.
 
 | way | what |
 |---|---|
-| page → agent | `call.event("page.seen", { text, why })` · `page.clicked { role, name }` · `page.missing { target }` |
+| page → agent | `call.event("page.seen", { text, why, at? })`, `at` the ref a move ended on when `why` is `moved` · `page.clicked { role, name }` · `page.missing { target }` |
 | agent → page | `pinecall.ui` `{ type: "cursor", action, target? }`: a ref (`e22`) or a name as the screen shows it (`Questions`). The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here` and `home` |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
 | agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |

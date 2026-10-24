@@ -1,12 +1,13 @@
 /** The page as the agent reads it: Playwright's aria snapshot, kept small, with a ref on what can be pointed at. */
 //
 // One line per thing a person would name, indented by what holds it: roles and names, not markup.
+// Words in a box that is only layout, as a price, are a line of text, as Playwright says them.
 // What is on the screen is there in full; a section out of view is one line, its name and whether
 // it is above or below, so the agent knows it is there and can scroll to it. A ref is stable for
 // the page's life. Fields are their labels; passwords, card numbers and anything the site marks
 // `data-pinecall-skip` or `aria-hidden` are left out.
 
-import { SAID_WHOLE, nameOf, roleOf } from "./roles.js";
+import { SAID_WHOLE, clean, nameOf, roleOf } from "./roles.js";
 
 /** What `seen()` returns: the text the agent reads, and its size. */
 export interface Seen {
@@ -117,7 +118,9 @@ export class Page {
       }
       const kept = role !== null && (name !== "" || LANDMARKS.has(role));
       if (!kept) {
-        this.#walk(child, depth, height, lines);
+        const words = role === null && visible ? wordsIn(child) : "";
+        if (words !== "") lines.push(`${indent}- text "${words.replaceAll('"', "'")}"`);
+        else this.#walk(child, depth, height, lines);
         continue;
       }
       if (!visible && !FRAME.has(role)) continue;
@@ -159,6 +162,13 @@ function holds(region: Element): string[] {
 }
 
 /** Out of the snapshot: hidden, marked by the site, or a secret. */
+/** The words of a box holding only words and inline marks, as `<div>$19<small> / month</small></div>`; none when it holds more. */
+function wordsIn(box: Element): string {
+  const inner = [...box.children];
+  if (inner.some((child) => roleOf(child) !== null || child.children.length > 0)) return "";
+  return clean([...box.childNodes].map((node) => (node instanceof Text || (node instanceof Element && !left(node)) ? node.textContent : "")).join(""), 120);
+}
+
 function left(element: Element): boolean {
   if (element.closest("[data-pinecall-skip], [aria-hidden='true']") !== null) return true;
   if (element instanceof HTMLInputElement && (element.type === "password" || element.autocomplete.startsWith("cc-"))) return true;

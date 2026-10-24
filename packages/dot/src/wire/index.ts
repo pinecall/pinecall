@@ -7,8 +7,10 @@
 /** The topic the agent sends on, and the page's `onUi` hears. */
 export const UI = "pinecall.ui";
 
-/** The page as the visitor sees it now: `{ text, why }`, sent when it changed. */
+/** The page as the visitor sees it now: `{ text, why }`, sent when it changed; after a move onto an element ended, `why` is `moved` and `at` the ref it moved to, when there was one. */
 export const SEEN = "page.seen";
+/** The `why` of the `page.seen` that answers a move onto an element. */
+export const MOVED = "moved";
 /** The visitor clicked something: `{ role, name }`. */
 export const CLICKED = "page.clicked";
 /** A target the agent named is not on the page: `{ target }`. A fresh `page.seen` follows. */

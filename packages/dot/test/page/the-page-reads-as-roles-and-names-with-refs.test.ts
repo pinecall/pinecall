@@ -8,6 +8,7 @@ const SITE = `
   <header><a href="/">Brightside Dental</a><nav aria-label="Main"><a href="#pricing">Pricing</a></nav></header>
   <main>
     <h1>A brighter smile</h1>
+    <article aria-label="Family Care plan"><span aria-hidden="true">🦷</span><h3>Family Care</h3><div class="price">$39<small> / month</small><!-- was $45 --></div></article>
     <section aria-label="Book" id="book">
       <label for="name">Your name</label><input id="name" value="Jordan Lee">
       <input type="password" aria-label="Password" value="hunter2">
@@ -48,6 +49,14 @@ describe("the page as the agent reads it", () => {
     expect(text).not.toContain("Jordan Lee");
     expect(text).not.toContain("Password");
     expect(text).not.toContain("hunter2");
+  });
+
+  it("says the words of a box that is only layout, as a price, as a line of text", () => {
+    const { text } = new Page(document).seen();
+
+    expect(text).toContain('  - text "$39 / month"');
+    expect(text).not.toContain("was $45");
+    expect(text).not.toContain("🦷");
   });
 
   it("leaves out what the site marks as not its own", () => {

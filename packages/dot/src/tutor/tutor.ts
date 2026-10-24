@@ -1,7 +1,7 @@
 /** The tutor on a page: the person with its pointer and face, what it sends of the page, and every move the agent asks for. */
 //
-// Up, as events on the call: the page as it is now (`page.seen`, when it changed), what the visitor
-// clicked, a ref that is gone. Down, from `pinecall.ui`: a cursor move, run at once, or a macro's
+// Up, as events on the call: the page as it is now (`page.seen`, when it changed, and when a move
+// onto an element ended, with the ref it moved to), what the visitor clicked, a ref that is gone. Down, from `pinecall.ui`: a cursor move, run at once, or a macro's
 // step, whose moves run on their words. Moves run one after another, so a scroll ends before the
 // point that follows it.
 
@@ -12,7 +12,7 @@ import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
-import { A_REF, CLICKED, MISSING, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
+import { A_REF, CLICKED, MISSING, MOVED, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Player } from "./macro.js";
 
 export interface TutorOptions {
@@ -134,17 +134,26 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
   };
   const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight";
-  /** The element a target names, a ref or a name, looked at fresh; one not on the page is said, and a fresh look follows. */
-  const resolve = (target: string): Element | null => {
+  /** The ref a target names, a ref or a name, looked at fresh; one not on the page is said, and a fresh look follows. */
+  const resolve = (target: string): string | null => {
     look("step");
     const ref = A_REF.test(target) ? target : page.named(target);
-    const element = ref === null ? null : page.element(ref);
-    if (element === null) {
+    if (ref === null || page.element(ref) === null) {
       send(MISSING, { target });
       sent = "";
       look("missing");
+      return null;
     }
-    return element;
+    return ref;
+  };
+  const elementOf = (ref: string | null): Element | null => (ref === null ? null : page.element(ref));
+  /** A move onto an element, answered once it ends: the page as it is now, and the ref it moved to. */
+  const moveOnto = async (action: Action, target: string): Promise<void> => {
+    const ref = resolve(target);
+    await run(action, elementOf(ref));
+    const seen = page.seen();
+    sent = seen.text;
+    send(SEEN, { text: seen.text, why: MOVED, ...(ref === null ? {} : { at: ref }) });
   };
   const queue = (move: () => Promise<void>): void => {
     moves = moves.then(move).catch(() => undefined);
@@ -153,7 +162,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (one.find === undefined) return run(one.do, null);
     look("step");
     const ref = page.find(...one.find);
-    return run(one.do, ref === null ? null : resolve(ref));
+    return run(one.do, ref === null ? null : elementOf(resolve(ref)));
   };
 
   const tick = (now: number): void => {
@@ -236,7 +245,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         return true;
       }
       const { action, target } = message;
-      queue(() => run(action, needsElement(action) && target !== undefined ? resolve(target) : null));
+      queue(() => (needsElement(action) && target !== undefined ? moveOnto(action, target) : run(action, null)));
       return true;
     },
     wake() {

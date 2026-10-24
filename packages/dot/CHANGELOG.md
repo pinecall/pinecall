@@ -17,3 +17,8 @@ maintainer's call.
 - **`@pinecall/dot/agent`**: `Tutor`, the class an agent extends. It gives the page in the view,
   the pointer's tools and `runMacro`. `macros()` checks the macro files of the agent's folder.
 - The pointer's tools are `quiet`, and the agent asks for the page as its call opens (`look`).
+- **A move onto a thing is answered with what the visitor sees there.** `point`, `highlight` and
+  `scrollTo` wait for the page to say the move ended (`page.seen` with `why: "moved"` and `at`), and
+  return the thing as it now shows, so a model that moved in silence has something to say.
+- **The snapshot says the words of a box that is only layout**, as a price in a `<div>`: they were
+  left out, and a model asked about a plan could not see its price.
