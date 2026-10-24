@@ -79,6 +79,8 @@ async def upload_release(
         await billing.admit_hosted_app(session, actor.org, actor.env, hosting=hosted)
         await service.open_app(session, handles.vault, app, created_by=author)
     kept = await service.keep_release(session, app, source, author=author, note=note.strip())
+    # Said once it is stored: a reader the news sends to the release reads it there.
+    await session.commit()
     serving.logs.announce(actor.scope, "release.changed", ReleaseChanged(app=app.name, release=kept.release))
     return schemas.ReleaseRow.of(kept)
 
@@ -126,8 +128,8 @@ async def roll_back_release(
     kept = await service.keep_release(
         session, app, source, author=_asked_by(actor), note=ROLLED_BACK.format(release=body.release)
     )
-    serving.logs.announce(actor.scope, "release.changed", ReleaseChanged(app=app.name, release=kept.release))
     await _studio_changed(session, handles, actor)
+    serving.logs.announce(actor.scope, "release.changed", ReleaseChanged(app=app.name, release=kept.release))
     return schemas.ReleaseRow.of(kept)
 
 
@@ -214,6 +216,7 @@ async def runner_heartbeat(
 ) -> schemas.RunnerHeartbeatResponse:
     """The runner's reports and logs kept, the time served counted, and what it is to run."""
     env = actor.env
+    changed: list[tuple[Scope, ReleaseChanged]] = []
     with box_wide():
         for report in body.reports:
             app = service.App(org=report.org, env=env, name=report.name)
@@ -224,8 +227,7 @@ async def runner_heartbeat(
                 # The first report of this host failing is the org's alert; the next beats repeat nothing.
                 failed = AppFailed(app=report.name, host=report.host, release=release, why=report.why)
                 await alerts.raise_alert(session, serving, Scope(report.org, env), None, failed)
-            changed = ReleaseChanged(app=report.name, release=release or 0)
-            serving.logs.announce(Scope(report.org, env), "release.changed", changed)
+            changed.append((Scope(report.org, env), ReleaseChanged(app=report.name, release=release or 0)))
         for logs in body.logs:
             app = service.App(org=logs.org, env=env, name=logs.name)
             await service.keep_logs(session, app, host=logs.host, lines=logs.lines)
@@ -238,6 +240,10 @@ async def runner_heartbeat(
         # A Studio agent serves wherever a gateway holds it: it is counted while it runs, as an app is.
         serving_now += await service.studio_serving(session, env)
         await service.count_serving(session, env, serving_now, datetime.now(UTC))
+    # A release live or failed is said once the beat is stored: the console reads the release when told.
+    await session.commit()
+    for scope, news in changed:
+        serving.logs.announce(scope, "release.changed", news)
     return schemas.RunnerHeartbeatResponse(
         env=env,
         apps=[

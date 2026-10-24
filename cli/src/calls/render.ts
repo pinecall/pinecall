@@ -247,9 +247,23 @@ function entryReading(entry: Entry): string {
       return typeof data["error"] === "string"
         ? `${String(data["name"])} refused: ${folded(data["error"])}`
         : `${String(data["name"])} → ${cut(folded(typeof data["summary"] === "string" ? data["summary"] : JSON.stringify(data["output"] ?? null)))}`;
+    case "docs.sources":
+      return sourcesLine(data);
     default:
       return cut(folded(JSON.stringify(data)));
   }
+}
+
+// Where each chunk came from, not what it says: the excerpts would cut the line before the first heading.
+function sourcesLine(data: Record<string, unknown>): string {
+  const sources = Array.isArray(data["sources"]) ? (data["sources"] as Record<string, unknown>[]) : [];
+  const found = sources.map((one) => {
+    const where = [one["base"], one["path"]].filter((part) => typeof part === "string").join("/");
+    const heading = typeof one["heading"] === "string" && one["heading"] !== "" ? ` › ${one["heading"]}` : "";
+    const score = typeof one["score"] === "number" ? ` ${one["score"].toFixed(2)}` : "";
+    return `${where}${heading}${score}`;
+  });
+  return cut(`"${folded(data["query"])}" → ${found.length === 0 ? "nothing" : found.join(" · ")}`);
 }
 
 function toolResultLine(data: { name?: string | undefined; output?: unknown; error?: unknown; summary?: string | null | undefined }): string {

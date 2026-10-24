@@ -24,6 +24,8 @@ OFFERED_AGAIN_AFTER_S = 12.0
 
 # Three offers, then the overflow's sentence: 36 s is the longest a caller waits on our account.
 OFFERS = 3
+# The longest from an offer to an agent in the room: every offer, and the overflow joining after them.
+AN_AGENT_JOINS_WITHIN_S = OFFERS * OFFERED_AGAIN_AFTER_S + 10.0
 
 # Two heartbeats and a margin: a worker unheard this long may be gone, and LiveKit would keep a
 # dead one for 15 minutes; it is not offered a call until it is heard again.
@@ -114,6 +116,17 @@ class Offering:
         else:
             logger.info("room %s: offered to %s: %s", offer.room, target.agent, target.why)
         return target.agent
+
+    # A worker's heartbeat says its seats; a gateway that heard no worker yet cannot say the fleet is full.
+    async def has_a_seat(self, fleet: str) -> bool:
+        """Whether a call offered now would find a worker with a seat; True while no worker was heard."""
+        now = time.time()
+        seats = self.roster.workers_of(fleet, now)
+        if not any_heard(seats, now):
+            return True
+        async with self.sessions.begin() as session:
+            flying = await OfferRepository(session).in_flight(now - OFFERED_AGAIN_AFTER_S)
+        return choose_worker(seats, flying, now) is not None
 
     async def forget(self, room: str) -> None:
         """The room is done with: its call opened, the overflow sent, or the room gone."""

@@ -1,8 +1,8 @@
-/** Calls as a terminal reads them: the policy's +1 floor said when the setting is wider than it, a narrowed page that goes on. */
+/** Calls as a terminal reads them: the policy's +1 floor, a narrowed page that goes on, a search's sources by where they came from. */
 
 import { describe, expect, it } from "vitest";
 
-import { log, policy } from "../../src/calls/render.js";
+import { entryLine, log, policy } from "../../src/calls/render.js";
 
 const row = (calling_hours: { from: number; until: number } | null, per_number_day: number | null) => ({
   policy: { retention_days: null, calling_hours, per_number_day, consent_everywhere: false, disclosure: null, recording_notice: true },
@@ -28,5 +28,20 @@ describe("a log page", () => {
     expect(more[0]).toBe("call_1 · nothing of these types in this page, after seq 0; the log goes on");
     expect(more.at(-1)).toBe("more: pinecall sessions log call_1 --after 41");
     expect(log({ call: "call_1", entries: [], next: null, live: false } as never, 40)).toEqual(["call_1 · nothing kept after seq 40"]);
+  });
+});
+
+describe("a search's sources", () => {
+  it("are named by base, path and heading with their score, not cut inside the first excerpt", () => {
+    const data = {
+      query: "do you open on saturdays",
+      took_ms: 31,
+      sources: [
+        { id: "c1", base: "library-d", path: "hours.md", heading: "Saturdays", score: 0.91, excerpt: "We open on Saturdays from 9:00 to 13:30. ".repeat(10) },
+        { id: "c2", base: "library-d", path: "prices.md", heading: null, score: 0.42, excerpt: "A check-up is 60 EUR." },
+      ],
+    };
+    const line = entryLine({ seq: 7, ts: 1_792_000_000, call: "call_1", agent: "a", type: "docs.sources", ephemeral: false, data } as never);
+    expect(line).toContain('"do you open on saturdays" → library-d/hours.md › Saturdays 0.91 · library-d/prices.md 0.42');
   });
 });

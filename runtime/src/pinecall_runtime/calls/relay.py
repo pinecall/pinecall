@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+from pinecall_runtime.calls.fanout import Subscription
 from pinecall_runtime.calls.models import log_name
 from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.kit.loops import survived
@@ -93,6 +94,17 @@ class Relay:
         else:
             following.readers += 1
         await following.ready.wait()
+
+    # A reader is subscribed before its follow, so no prune drops what it reads while the signal confirms;
+    # one whose follow fails (the request gone meanwhile) is closed, which lets the channel go again.
+    async def follow_for(self, name: str, reader: Subscription, *, ordered: bool = True) -> Subscription:
+        """The reader, once the channel is followed for it; closed if the follow fails."""
+        try:
+            await self.follow(name, ordered=ordered)
+        except BaseException:
+            reader.close()
+            raise
+        return reader
 
     def unfollow(self, name: str) -> None:
         """One reader left the log; the last one leaving lets the channel go."""

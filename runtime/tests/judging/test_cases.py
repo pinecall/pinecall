@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pinecall_runtime.enums import CaseSource, CaseStatus, Env
 from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
 from pinecall_runtime.judging.schemas import BrokeOn, CaseDecision, CaseRow
-from pinecall_runtime.judging.service import cases
+from pinecall_runtime.judging.service import cases, groups
 from pinecall_runtime.judging.service.cases import Born, Promoted, cut_at, expect_of, golden_of
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.wire.base import Entry
@@ -299,3 +299,25 @@ async def test_a_person_writes_a_case_by_hand_writes_it_again_and_never_over_a_c
     assert [one.name for one in nightly] == ["no-dice-un-precio"]
     with pytest.raises(ValidationError, match="a person kept it"):
         cases.check_decision(rewritten, CaseDecision(status=CaseStatus.dismissed, judge_was_wrong="grounded"))
+
+
+# E (2026-10-23): a group whose cases a person approved one by one stayed pending, first of `cases groups`.
+@needs_the_database
+async def test_a_group_decided_case_by_case_is_decided_once_nothing_in_it_waits(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    born = Born(tenant.org, Env.production, AGENT, None)
+    async with sessions.begin() as session:
+        for number in range(2):
+            await cases.keep_at_hangup(session, a_call(number), a_score(breaking("promises")), born)
+    async with sessions.begin() as session:
+        first, second = await cases.list_cases(session, tenant.org, AGENT, CaseStatus.pending)
+        await cases.decide_case(session, tenant.org, first.id, CaseDecision(status=CaseStatus.dismissed), by="m_ana")
+    async with sessions() as session:
+        [group] = await groups.list_groups(session, tenant.org, AGENT)
+    assert group.status == CaseStatus.pending, "one case still waits"
+    async with sessions.begin() as session:
+        await cases.decide_case(session, tenant.org, second.id, CaseDecision(status=CaseStatus.approved), by="m_ana")
+    async with sessions() as session:
+        [group] = await groups.list_groups(session, tenant.org, AGENT)
+    assert (group.status, group.cases) == (CaseStatus.approved, 2)

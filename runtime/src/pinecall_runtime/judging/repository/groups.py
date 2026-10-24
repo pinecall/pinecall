@@ -91,3 +91,15 @@ class GroupRepository(Repository[CaseGroup]):
         )
         await self.changed(cases)
         return True
+
+    # Decided case by case, a group is decided once nothing in it waits: approved when a person approved
+    # any case of it, else dismissed. Left pending, it was the first of `cases groups` for ever.
+    async def settle(self, org: str, group: str) -> None:
+        """Decide the pending group once none of its cases is still pending."""
+        statuses = select(EvalCase.status).where(EvalCase.group_id == group, EvalCase.org == org)
+        found = set((await self.session.execute(statuses)).scalars())
+        if not found or CaseStatus.pending in found:
+            return
+        decided = CaseStatus.approved if CaseStatus.approved in found else CaseStatus.dismissed
+        pending = (CaseGroup.id == group, CaseGroup.org == org, CaseGroup.status == CaseStatus.pending)
+        await self.session.execute(update(CaseGroup).where(*pending).values(status=decided))

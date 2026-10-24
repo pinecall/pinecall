@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.fleet.models import Offer
 from pinecall_runtime.fleet.repository import OfferRepository
+from pinecall_runtime.fleet.schemas import WorkerStatus
 from pinecall_runtime.fleet.service.offers import Offering
-from pinecall_runtime.fleet.service.roster import Roster
+from pinecall_runtime.fleet.service.roster import Roster, agent_name
 from pinecall_runtime.wire.dispatch import Dispatch
 from tests.conftest import needs_the_database
 
@@ -64,3 +65,34 @@ async def test_a_room_that_cannot_be_offered_again_is_said_and_the_rooms_behind_
     monkeypatch.setattr(Offering, "offer_again", offer_again)
     assert await Offering(sessions, servers={}, roster=Roster()).sweep() == ["call_good"]
     assert "offering a room again failed on call_bad" in caplog.text
+
+
+def a_worker(name: str, *, active: int, max_jobs: int = 2, seen_at: float | None = None) -> WorkerStatus:
+    """A worker of the sandbox's fleet as its last heartbeat left it."""
+    return WorkerStatus(
+        fleet="sandbox",
+        worker=name,
+        agent_name=agent_name("sandbox", name),
+        active=active,
+        max_jobs=max_jobs,
+        load=0.1,
+        draining=False,
+        cordoned=False,
+        seen_at=time.time() if seen_at is None else seen_at,
+    )
+
+
+# G S5 (2026-10-23): a spoken simulation placed with both of the sandbox's seats taken waited through the
+# offers, gave up before the overflow joined, and said "no agent joined in 40s: is the env's fleet up?".
+async def test_a_fleet_has_a_seat_while_a_worker_has_one_and_is_said_full_when_none_has(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    roster = Roster()
+    offering = Offering(sessions, servers={}, roster=roster)
+    assert await offering.has_a_seat("sandbox"), "a fleet nobody heard yet is not said to be full"
+    roster.seats[("sandbox", "w1")] = a_worker("w1", active=2)
+    assert not await offering.has_a_seat("sandbox")
+    roster.seats[("sandbox", "w2")] = a_worker("w2", active=1)
+    assert await offering.has_a_seat("sandbox")
+    roster.seats[("sandbox", "w2")] = a_worker("w2", active=2)
+    assert not await offering.has_a_seat("sandbox")

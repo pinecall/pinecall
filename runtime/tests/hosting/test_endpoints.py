@@ -1,12 +1,14 @@
-"""The hosting doors as the CLI reaches them: an app's logs asked for while the stream stays open."""
+"""The hosting doors as the CLI reaches them: logs asked for while a stream is open, a release said once stored."""
 
+import asyncio
 import io
 import tarfile
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from pinecall_runtime.hosting.models import HostedApp
+from pinecall_runtime.enums import Env
+from pinecall_runtime.hosting.models import HostedApp, HostedRelease
 from tests.conftest import Gateway, Tenant, needs_the_services
 
 
@@ -39,3 +41,25 @@ async def test_asking_for_logs_is_committed_while_the_stream_is_still_open(
                 select(HostedApp.logs_asked_at).where(HostedApp.org == tenant.org, HostedApp.name == "support")
             )
         assert asked is not None
+
+
+# I F7 (2026-10-23): a release's news went out before its row was committed, so the console, reading the
+# release the moment it was told, could read the state before it and hear nothing more.
+@needs_the_services
+async def test_a_release_is_said_on_the_feed_once_it_is_stored(
+    gateway: Gateway, tenant: Tenant, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    feed = await gateway.app.state.serving.logs.feed_reader(tenant.org, Env.sandbox)
+    try:
+        headers = {**tenant.server, "content-type": "application/gzip"}
+        sent = await gateway.http.post("/v1/hosted/support/releases", content=a_project(), headers=headers)
+        assert sent.status_code == 200, sent.text
+        said = await asyncio.wait_for(anext(feed), 5.0)
+        assert (said.type, said.data) == ("release.changed", {"app": "support", "release": sent.json()["release"]})
+        async with sessions() as session:
+            stored = await session.scalar(
+                select(HostedRelease.release).where(HostedRelease.org == tenant.org, HostedRelease.name == "support")
+            )
+        assert stored == sent.json()["release"]
+    finally:
+        feed.close()

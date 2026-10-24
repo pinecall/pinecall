@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import cast
+from typing import cast, override
 
 from pinecall_runtime.agents.declaration import Versions
 from pinecall_runtime.calls.fanout import Subscription
@@ -11,8 +11,9 @@ from pinecall_runtime.calls.repository.heads import Claim
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.redis import Listener, LocalSignal
 from pinecall_runtime.wire.base import Entry
-from tests.conftest import needs_the_database
+from tests.conftest import needs_the_database, until
 
 pytestmark = needs_the_database
 
@@ -74,3 +75,51 @@ async def test_a_reader_resumed_at_the_end_is_told_it_caught_up_by_the_agent_who
     caught_up = await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)
     assert (caught_up.type, caught_up.agent) == ("log.caught_up", agent)
     await cast(AsyncGenerator[Entry], reading).aclose()
+
+
+class SlowSignal(LocalSignal):
+    """A signal whose subscription is confirmed only when the test says, as Redis's is after a round trip."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.asked = asyncio.Event()
+        self.confirm = asyncio.Event()
+
+    @override
+    async def subscribe(self, channel: str) -> Listener:
+        self.asked.set()
+        await self.confirm.wait()
+        return await super().subscribe(channel)
+
+
+# G B4 (2026-10-23): `simulate --voice` printed nothing until the call was over. Its reader's log was made with
+# no reader yet, and another request's prune dropped it while the follow waited for the signal: the reader
+# was left on a copy the relay never delivers to, and heard nothing live, its call's end included.
+async def test_a_reader_still_waiting_for_its_follow_is_not_pruned_and_hears_what_is_written(
+    store: Store, call: str, agent: str
+) -> None:
+    signal = SlowSignal()
+    logs = Logs(store, signal)
+    await store.claim(call, agent, ORG, Claim(Scope(ORG, Env.sandbox), Versions(config=1)))
+    following = asyncio.create_task(logs.reading(call).follow())
+    await asyncio.wait_for(signal.asked.wait(), HEARD_WITHIN_S)
+    logs.reading(f"{call}_another")
+    signal.confirm.set()
+    reader = await asyncio.wait_for(following, HEARD_WITHIN_S)
+    written = await logs.writing(call, agent).append("custom", {"name": "x", "data": {}})
+    assert (await heard(reader)).seq == written.seq
+    reader.close()
+    await logs.close()
+
+
+async def test_a_follow_that_fails_lets_its_reader_go(store: Store, call: str) -> None:
+    signal = SlowSignal()
+    logs = Logs(store, signal)
+    log = logs.reading(call)
+    following = asyncio.create_task(log.follow())
+    await asyncio.wait_for(signal.asked.wait(), HEARD_WITHIN_S)
+    assert log.fanout.readers == 1
+    following.cancel()
+    await asyncio.gather(following, return_exceptions=True)
+    await until(lambda: log.fanout.readers == 0)
+    await logs.close()

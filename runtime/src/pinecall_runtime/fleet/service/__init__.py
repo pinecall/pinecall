@@ -16,7 +16,7 @@ from pinecall_runtime.fleet.service.envs import (
     fleets,
     set_fleets,
 )
-from pinecall_runtime.fleet.service.offers import WAITING_COUNTED_S, Offering
+from pinecall_runtime.fleet.service.offers import AN_AGENT_JOINS_WITHIN_S, WAITING_COUNTED_S, Offering
 from pinecall_runtime.fleet.service.rooms import (
     A_VISITOR_RETURNS_S,
     client_named_agent,
@@ -41,6 +41,7 @@ from pinecall_runtime.fleet.service.roster import (
 )
 
 __all__ = [
+    "AN_AGENT_JOINS_WITHIN_S",
     "A_VISITOR_RETURNS_S",
     "HEARTBEAT_S",
     "REFUSED_AT",

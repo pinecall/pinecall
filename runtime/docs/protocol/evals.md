@@ -103,7 +103,8 @@ caller's lines are spoken (under `interferer_db` of the `ambience` named — a t
 said; dB under the caller, 0 to 60 — and `packet_loss`, 0 to 1, when set), the room is deleted, and the call is judged once its worker sealed it. The worker builds the
 session from the declaration, so a spoken run refuses `models` and a golden that pins `today`; it
 has no test run to assert steps on, so it refuses a golden with an `event` turn or a `then`, and
-judges the final `expect` alone.
+judges the final `expect` alone. With every seat of the environment's fleet taken the run stops before its first
+spoken golden, `429` as a spoken simulation is ([personas.md](personas.md)).
 The golden's `state` rides the dispatch, and the worker writes it on the call's `call.started`.
 
 `GET /v1/evals/runs?agent=&since=&limit=` lists the runs of the key's org in its environment, newest

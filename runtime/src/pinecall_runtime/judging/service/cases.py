@@ -312,7 +312,10 @@ async def decide_case(session: AsyncSession, org: str, case: str, decision: Case
         changes["held_out"] = decision.held_out
     if decision.kept_in_repo is not None:
         changes["kept_in_repo"] = decision.kept_in_repo
-    return CaseRow.of(await CaseRepository(session).update(row, **changes))
+    decided = await CaseRepository(session).update(row, **changes)
+    if decision.status is not None and decided.group_id is not None:
+        await groups.settle_group(session, org, decided.group_id)
+    return CaseRow.of(decided)
 
 
 async def delete_case(session: AsyncSession, org: str, case: str) -> None:

@@ -41,6 +41,10 @@ from pinecall_runtime.wire.dispatch import Dispatch
 logger = logging.getLogger(__name__)
 
 NO_LINE = "the simulated call could not be held: {broke}"
+# Placed with every seat of the fleet taken, a spoken call waits through three offers and is answered by
+# the overflow's sentence: refused at once instead, which costs nothing and says why.
+NO_SEAT = "every seat of the {env}'s fleet holds a call now: ask again in a few seconds, when one ends"
+A_SEAT_FREES_S = 10
 # A call id names a room, a log and a recording: a simulated caller is put on a new one alone.
 NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a call id nobody opened"
 # Longer than any run, so the caller's token never ends a call first.
@@ -215,9 +219,12 @@ async def admit_simulation(
 ) -> str | None:
     """A simulated call admitted before anything opens, or refused; the model that plays its caller.
 
-    Past the org's simulations is refused with credits.exhausted on the agent's log. A caller whose
-    model, or whose voice when spoken, is on a vendor nobody keyed is refused as its run would be.
+    Past the org's simulations is refused with credits.exhausted on the agent's log. A spoken one with
+    every seat of the env's fleet taken is refused at once. A caller whose model, or whose voice when
+    spoken, is on a vendor nobody keyed is refused as its run would be.
     """
+    if voice and not await serving.offering.has_a_seat(await fleet.fleet_of_env(session_, scope.env)):
+        raise TooManyRequests(NO_SEAT.format(env=scope.env.value), retry_after_s=A_SEAT_FREES_S)
     try:
         playing = await calls.simulating(session_, scope.org, scope.env, at=epoch())
         await billing.admit_simulation(session_, scope.org, scope.env, at=epoch(), playing=playing)

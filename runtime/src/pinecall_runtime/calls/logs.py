@@ -197,14 +197,15 @@ class Log:
             self._snapshot = latest, reduce(await self._store.whole(self.name))
         return self._snapshot[1]
 
-    # Followed before the fanout is subscribed, so an entry another gateway commits after the
-    # backlog is read was published after the subscription was confirmed, and is heard.
+    # Subscribed first, so no prune drops a log whose reader waits on the signal (it would hear nothing,
+    # its call's end included); confirmed before the backlog is read, so another gateway's commits are heard.
     async def follow(self, only: Filter = EVERYTHING) -> Subscription:
         """A live reader that hears what any gateway writes to this log, from now on."""
-        if self._relay is None:
+        relay, channel = self._relay, CHANNEL.format(name=self.name)
+        if relay is None:
             return self.fanout.subscribe(only)
-        await self._relay.follow(CHANNEL.format(name=self.name))
-        return self.fanout.subscribe(only, after=self._unfollow)
+        reader = self.fanout.subscribe(only, after=lambda: relay.unfollow(channel))
+        return await relay.follow_for(channel, reader)
 
     async def stream(self, *, after: int = 0, only: Filter = EVERYTHING) -> AsyncIterator[Entry]:
         """The backlog above the cursor, log.caught_up, then what is written from then on."""
@@ -273,10 +274,6 @@ class Log:
             await self._store.keep_private(
                 self.name, [(seq, private.sealed_values(vault, values)) for seq, values in aside]
             )
-
-    def _unfollow(self) -> None:
-        if self._relay is not None:
-            self._relay.unfollow(CHANNEL.format(name=self.name))
 
     async def _publish(self, entry: Entry) -> None:
         if self._relay is None:
@@ -368,17 +365,17 @@ class Logs:
             feed = self._feeds[(org, env)] = Fanout()
         return feed
 
-    # Followed before it is subscribed, as a log's stream is: what any gateway writes from now on.
+    # Subscribed, then followed, as a log's stream is: what any gateway writes from now on.
     async def feed_reader(self, org: str, env: Env) -> Subscription:
         """A reader of the org's feed in that env, hearing every gateway."""
         channel = FEED_CHANNEL.format(org=org, env=env.value)
-        await self.relay.follow(channel, ordered=False)
-        return self.feed(org, env).subscribe(after=lambda: self.relay.unfollow(channel))
+        reader = self.feed(org, env).subscribe(after=lambda: self.relay.unfollow(channel))
+        return await self.relay.follow_for(channel, reader, ordered=False)
 
     async def box_reader(self) -> Subscription:
         """A reader of every org's feed, hearing every gateway."""
-        await self.relay.follow(BOX_CHANNEL, ordered=False)
-        return self.box.subscribe(after=lambda: self.relay.unfollow(BOX_CHANNEL))
+        reader = self.box.subscribe(after=lambda: self.relay.unfollow(BOX_CHANNEL))
+        return await self.relay.follow_for(BOX_CHANNEL, reader, ordered=False)
 
     # A change no log holds (a run, a release): its type and ids go to every gateway's readers of
     # the org's feed in that env and are kept nowhere, so a reader asks the endpoint for the rest.
@@ -394,8 +391,8 @@ class Logs:
     # it is stored. The reader reads the rows from its cursor; the entry is only the news.
     async def metered_reader(self) -> Subscription:
         """A reader that hears each metered entry written on any gateway from now on."""
-        await self.relay.follow(USAGE_CHANNEL, ordered=False)
-        return self.metered.subscribe(after=lambda: self.relay.unfollow(USAGE_CHANNEL))
+        reader = self.metered.subscribe(after=lambda: self.relay.unfollow(USAGE_CHANNEL))
+        return await self.relay.follow_for(USAGE_CHANNEL, reader, ordered=False)
 
     # Only a found owner is cached: a log nobody claimed yet may be claimed later.
     async def claimant_of(self, entry: Entry) -> Claimant | None:

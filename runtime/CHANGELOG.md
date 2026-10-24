@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- **A reader of a call's log hears it live, whatever else the gateway is doing.** A reader's log is made with no
+  reader yet, and any other request's prune dropped it while the follow waited for the signal: the reader was
+  left on a copy the relay never delivers to, and heard nothing, its call's end included, until it gave up.
+  `simulate --voice` printed every line at once when the call was over; the console's live call page was the
+  same. The reader is subscribed first. (found by the 2026-10-23 eval, G B4)
+- **A spoken simulation with every seat of the fleet taken is refused at once**, `429` with when to ask
+  again, before anything opens or counts; a spoken run of goldens is too. It waited through the fleet's
+  offers and gave up 40 s in, just before the overflow would have joined, saying `no agent joined … is the
+  env's fleet up?`. The caller now waits as long as the offers take. (found by the 2026-10-23 eval, G S5)
+- **A release's news is said once it is stored.** `release.changed` went out on the org's feed before its
+  row was committed, so a reader that read the release the moment it was told (the console) could read the
+  state before it and hear nothing more. Upload, rollback and the runner's live or failed are said after the
+  commit. (found by the 2026-10-23 eval, I F7)
+- **A case group a person decided case by case is decided once nothing in it waits**: approved when a case of
+  it was, else dismissed. It stayed `pending`, first of `cases groups`, for ever. (found by the 2026-10-23 eval)
+- **A reader whose follow was cut short lets its channel go.** The relay counts a reader the moment it is asked
+  to follow; one cancelled while the signal confirmed left the channel followed for the process's life.
+
 ## 0.11.19 — the simulated caller, one phone per person, voices by language (2026-10-23)
 
 - **A Studio definition naming a secret the environment lacks says which environment**: a deploy to

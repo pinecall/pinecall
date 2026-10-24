@@ -15,6 +15,7 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.evals.service import ambience as ambiences
 from pinecall_runtime.evals.service.tempo import Stretcher
 from pinecall_runtime.evals.service.turns import A_BEAT_S, Landed, NextLine, answered, speak_turns, speaking
+from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session
@@ -47,7 +48,8 @@ MURMURS: Mapping[str, tuple[str, ...]] = {
     "it": ("mh mh", "sì"),
 }
 # A cold worker has been measured at 15 s before it publishes its audio.
-THE_AGENT_MAY_TAKE_S = 40.0
+# Past the fleet's last offer and the overflow's joining: a caller that gave up before them heard nobody.
+THE_AGENT_MAY_TAKE_S = fleet.AN_AGENT_JOINS_WITHIN_S
 NOBODY_ANSWERED = "no agent joined room {call} in {seconds:.0f}s: is the env's fleet up?"
 # The background voice a noisy line carries.
 A_TELEVISION = (

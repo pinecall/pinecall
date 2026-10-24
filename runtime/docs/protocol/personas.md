@@ -31,7 +31,7 @@ other shape) so it tails the log before the call starts, and it must name a call
 the head is claimed in the caller's scope before the room is offered, and an id that exists —
 anybody's — is `409`. A persona is the agent's: a name nobody wrote for that agent is `404`; one
 sent without a name is played as sent. Its `llm`, `tts` and `voice` are checked as a written
-persona's are: one the deployment lacks is `400`, and a model or a voice on a vendor nobody keyed `503`, both before the room is offered and before the call is claimed. A room nobody can hold is `503`. The answer is `{call, turns,
+persona's are: one the deployment lacks is `400`, and a model or a voice on a vendor nobody keyed `503`, both before the room is offered and before the call is claimed. With every seat of the environment's fleet holding a call it is `429 every seat of the sandbox's fleet holds a call now: ask again in a few seconds, when one ends` (`Retry-After: 10`), before anything opens or counts; a fleet no worker has been heard from yet is not said to be full. A room nobody can hold is `503`: the caller waits as long as the fleet's three offers and the overflow joining take (46 s). The answer is `{call, turns,
 line, caller_cost_usd, stopped_at_ceiling}`: what the caller's lines and voice cost by the platform's
 rates, and whether it hung up because the call had spent the providers row's
 `caller.ceiling_usd` ([operator-api.md](operator-api.md)); the line that crosses it is the last

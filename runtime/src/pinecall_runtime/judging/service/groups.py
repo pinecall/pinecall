@@ -47,6 +47,11 @@ async def decide_group(session: AsyncSession, org: str, group: str, *, status: C
         raise NotFound(NO_SUCH_GROUP.format(id=group))
 
 
+async def settle_group(session: AsyncSession, org: str, group: str) -> None:
+    """Decide a group a person decided case by case, once none of its cases waits."""
+    await GroupRepository(session).settle(org, group)
+
+
 def group_row(found: GroupCounted) -> GroupRow:
     """A group as the endpoints send it."""
     group = found.group

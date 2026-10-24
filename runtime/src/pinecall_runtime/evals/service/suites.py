@@ -17,7 +17,14 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.evals.schemas import OpenedCall, RunRow, RunSuiteRequest, ScoreRow
 from pinecall_runtime.evals.service import players, playing, runs, simulations, spoken
-from pinecall_runtime.exceptions import Forbidden, NotFound, QuotaExceeded, ServiceUnavailable, ValidationError
+from pinecall_runtime.exceptions import (
+    Forbidden,
+    NotFound,
+    QuotaExceeded,
+    ServiceUnavailable,
+    TooManyRequests,
+    ValidationError,
+)
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.time import today_in
@@ -204,6 +211,9 @@ async def _judged_suite(serving: calls.Serving, suite: Suite, scope: Scope) -> s
         async with serving.handles.sessions.begin() as session_:
             await alerts.credits_exhausted(session_, serving, scope, suite.body.agent, refused)
         return str(refused)
+    except TooManyRequests as busy:
+        # The fleet had no seat for a spoken golden: the run stops saying so; no quota was reached.
+        return str(busy)
     except TimeoutError:
         return runs.TOOK_TOO_LONG.format(minutes=runs.A_RUN_MAY_TAKE_S // 60)
     finally:
@@ -345,7 +355,7 @@ async def _said_out_loud(
     scope = registration.scope
     async with serving.handles.sessions.begin() as session_:
         # Refused, the run stops where it is, as for any quota (_judged_suite).
-        await simulations.admit_simulation(session_, serving, scope, registration.slug)
+        await simulations.admit_simulation(session_, serving, scope, registration.slug, voice=True)
         voice = await players.caller_voice(session_, serving, scope, registration.slug, None)
         notice = await simulations.opens_with_a_notice(session_, scope, voice.language)
     lines = [turn.say for turn in golden.turns if turn.say is not None]

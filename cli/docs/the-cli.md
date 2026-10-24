@@ -1214,8 +1214,8 @@ call_5b1f0e9d2c7a4e8f9a1b3c5d7e9f1a2b
 `sessions log <call>` is the call's log as the runtime keeps it, an entry a line: its seq, its time
 in UTC, its type, and what it says — the turns, each tool call with its arguments and what it
 answered or why it was refused, the agent's states, and the rest (metrics, cost, the verdicts) as
-their data, cut at 160 characters (a search's `docs.sources` shows its query and little else: the
-chunks it found are in `--json`). A page reads 200 entries (`--limit`, 1 to 500), and while
+their data, cut at 160 characters; a search's `docs.sources` is its query and where each chunk came from
+(`"do you open on saturdays" → library-d/hours.md › Saturdays 0.91 · …`), the excerpts in `--json`. A page reads 200 entries (`--limit`, 1 to 500), and while
 there is more after it, it ends with the line that reads on (`--after <seq>`): the last seq the
 gateway read, so `--types turn.user,tool.call,tool.result`, which keeps only those, never ends the
 reading early — a page it narrowed to a few entries, or to none, still says where to go on (`<call> · nothing
@@ -2446,7 +2446,8 @@ production too.
 $ printf %s "$CRM_TOKEN" | pinecall secrets set CRM_TOKEN --prod
 CRM_TOKEN kept · the org's hosted apps here start again with it
 $ pinecall secrets --prod
-CRM_TOKEN   2026-09-30 13:22  m_ana
+NAME       SET               BY
+CRM_TOKEN  2026-09-30 13:22  m_ana
 ```
 
 What the org's hosted apps are started with, as environment variables: the org's, per environment, so
@@ -2539,6 +2540,9 @@ the observability series — the same the console's Observability screen draws �
 first time a call's seal finds it on the wrong side of the line: once a day, as `monitor.fired`
 on the agent's log, where the console's Monitors screen, `pinecall monitors` (the FIRED column) and
 `pinecall alerts` show it with the day and the value that crossed. `--above` fires over the line, `--below` under it.
+The series is the org's own calls: in production every call; in the sandbox the calls of the org's servers, hosted
+apps and CI, never a person's own sandbox calls (`chat` or `start` on a sign-in), which are that person's tests and
+alert nobody. To try a monitor in the sandbox, make the calls with a sandbox server token.
 
 | metric | what it is |
 |---|---|
