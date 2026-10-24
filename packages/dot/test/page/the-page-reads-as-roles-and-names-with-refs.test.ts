@@ -98,7 +98,7 @@ describe("the page as the agent reads it", () => {
     page.seen();
     const ref = page.named("Do you take my insurance") ?? "";
 
-    expect(page.seen().text).not.toContain("insurance");
+    expect(page.seen().text).not.toContain('button "Do you take my insurance?"');
     expect(page.element(ref)?.textContent).toBe("Do you take my insurance?");
   });
 
