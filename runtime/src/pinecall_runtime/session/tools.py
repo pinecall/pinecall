@@ -238,7 +238,9 @@ def _raw(spec: ToolSpec, run: Run) -> llm.Tool:
         line = arguments.pop(SAY, "")
         return await run(ToolUse(context.function_call.call_id, spec.name, arguments, say=str(line or "")), context)
 
-    schema = {"name": spec.name, "description": spec.description, "parameters": _with_a_line_to_say(spec.parameters)}
+    # A quiet tool is named by the words it runs under, so it is offered no line of its own to say.
+    parameters = dict(spec.parameters) if spec.quiet else _with_a_line_to_say(spec.parameters)
+    schema = {"name": spec.name, "description": spec.description, "parameters": parameters}
     return llm.function_tool(call, raw_schema=schema)
 
 

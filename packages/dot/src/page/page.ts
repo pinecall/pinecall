@@ -66,17 +66,22 @@ export class Page {
   }
 
   /**
-   * The ref of what a person would mean by `name`, in the last `seen()`: the name said exactly, else one
-   * that starts with it, else one that holds it, a section before a heading before a card, a button
-   * or a link when several share it.
+   * The ref of what a person would mean by `name`, anywhere on the page, on the screen or not (a section
+   * out of view is one line of the snapshot, and the things in it can still be named): the name said
+   * exactly, else one that starts with it, else one that holds it, a section before a heading before
+   * a card, a button or a link when several share it.
    */
   named(name: string): string | null {
     const wanted = name.trim().toLowerCase();
     if (wanted === "") return null;
-    const candidates = [...this.#byRef].map(([ref, element]) => {
-      const role = roleOf(element) ?? "";
-      return { ref, role, name: nameOf(element, role).toLowerCase() };
-    });
+    const candidates: { ref: string; role: string; name: string }[] = [];
+    for (const element of this.#document.body.querySelectorAll("*")) {
+      if (element.matches(IGNORED) || left(element)) continue;
+      const role = roleOf(element);
+      if (role === null || !POINTABLE.has(role)) continue;
+      const said = nameOf(element, role).toLowerCase();
+      if (said !== "") candidates.push({ ref: this.#ref(element), role, name: said });
+    }
     for (const fits of [(one: string) => one === wanted, (one: string) => one.startsWith(wanted), (one: string) => one.includes(wanted)]) {
       const found = candidates.filter((one) => fits(one.name)).sort((a, b) => rank(a.role) - rank(b.role))[0];
       if (found !== undefined) return found.ref;

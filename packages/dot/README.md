@@ -145,7 +145,8 @@ A class that extends `Tutor` gets these:
   The site's words are fenced there as data, never as instructions to the model.
 - **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home` and `runMacro`.
   There is none to open a page: the tutor never leaves the page the visitor is on. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
-  model calls them, while the words that name them play, and the model is not asked to answer them.
+  model calls them, while the words that name them play, and the model is not asked to answer them;
+  `runMacro` too, which starts on its own first words and ends on its own last ones.
 - **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
   `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
   once it is there. A page that joins a call already under way (a reload) tells it at once.

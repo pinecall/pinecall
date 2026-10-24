@@ -155,10 +155,12 @@ const TOOLS: Record<string, ToolOptions<Tutor>> = {
   scrollTo: { params: WHAT, when: (state) => state.page !== "", quiet: true },
   here: { params: z.object({}), when: (state) => state.page !== "", quiet: true },
   home: { params: z.object({}), when: (state) => state.page !== "", quiet: true },
+  // A walk is the pointer's too: it starts at once, says its own first words, and ends on its own last ones.
   runMacro: {
     params: z.object({ name: z.string().describe("the walk's name, as your screen lists it") }),
     when: (state) => state.page !== "" && state.walking === undefined,
     timeout: 300,
+    quiet: true,
   },
 };
 for (const [name, options] of Object.entries(TOOLS)) {

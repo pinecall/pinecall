@@ -131,6 +131,18 @@ def test_every_declared_tool_becomes_a_raw_schema_tool_under_its_own_name() -> N
     }
 
 
+def test_a_quiet_tool_is_offered_no_line_to_say() -> None:
+    async def run(use: ToolUse, _context: RunContext[None]) -> str:
+        return use.name
+
+    point = ToolSpec(
+        "point", "Point at a thing.", {"type": "object", "properties": {"what": {"type": "string"}}}, quiet=True
+    )
+    (tool,) = as_livekit_tools((point,), run)
+    assert isinstance(tool, llm.RawFunctionTool)
+    assert set(tool.info.raw_schema["parameters"]["properties"]) == {"what"}
+
+
 def test_the_line_to_say_is_asked_beside_the_tools_own_arguments_and_never_required() -> None:
     async def run(use: ToolUse, _context: RunContext[None]) -> str:
         return use.name

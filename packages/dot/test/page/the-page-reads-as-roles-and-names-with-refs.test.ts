@@ -84,6 +84,15 @@ describe("the page as the agent reads it", () => {
     expect(page.named("nothing like it")).toBeNull();
   });
 
+  it("finds a thing by its name inside a section out of view, which the snapshot shows as one line", () => {
+    const page = new Page(document);
+    page.seen();
+    const ref = page.named("Do you take my insurance") ?? "";
+
+    expect(page.seen().text).not.toContain("insurance");
+    expect(page.element(ref)?.textContent).toBe("Do you take my insurance?");
+  });
+
   it("still knows a ref whose element went off the screen, and none once it left the page", () => {
     const page = new Page(document);
     page.seen();

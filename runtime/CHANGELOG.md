@@ -9,8 +9,8 @@
   in the public projection, so a page lights each word as it sounds (`docs/protocol/projections.md`).
   `tests/wire/golden/call-log.public.json` pins what a participant reads of the golden log.
 - **A quiet tool** (`ToolSpec.quiet`, `@tool({ quiet: true })`): a move on the caller's screen runs as the
-  model calls it, while the words of that answer still play, and the model is asked for no answer of its
-  own. Every app tool waited for the words to end, then asked for a reply, and the model said its
+  model calls it, while the words of that answer still play; it is offered no `say` line, and the model is
+  asked for no answer of its own. Every app tool waited for the words to end, then asked for a reply, and the model said its
   sentence a second time.
 - **The widget's `look="dot"`**: the button is a face that speaks with the agent's voice, and a click is
   a voice call with no panel. The face, its mouth read from the voice frame by frame, is `@pinecall/dot`'s,
