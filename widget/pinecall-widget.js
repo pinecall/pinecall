@@ -993,10 +993,13 @@ class PinecallWidget extends HTMLElement {
     // look="dot": the face and its call, from the module beside this file; until it has loaded, a
     // click waits for it, and a dot that cannot load leaves the plain button.
     if (this.getAttribute("look") === "dot") {
+      // The plain button never shows while the dot loads: it is the dot, or, if that fails, the button.
+      this.$(".fab").style.visibility = "hidden";
       this.dotting = import("./pinecall-dot.js").then(
         ({ Dot }) => (this.dot = new Dot(this)),
         (failed) => {
           console.warn("pinecall-widget: the dot could not load, so the button is the plain one", failed);
+          this.$(".fab").style.visibility = "";
           return null;
         },
       );

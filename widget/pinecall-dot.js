@@ -86,7 +86,8 @@ export class Dot {
     this.tutor = null;
     if (widget.hasAttribute("tutor")) {
       // The tutor's person is the button: it rests where the dot would, and carries what it says.
-      fab.hidden = true;
+      // `.fab` sets its own display, which a `hidden` attribute does not override.
+      fab.style.display = "none";
       this.tutor = tutor(this.call, {
         dock: (widget.getAttribute("position") ?? "").endsWith("left") ? "left" : "right",
         label,
@@ -95,6 +96,7 @@ export class Dot {
       this.face = this.tutor;
     } else {
       this.face = face(host, this.call);
+      fab.style.visibility = "";
     }
     this.kept = null;
     this.turns = 0;
