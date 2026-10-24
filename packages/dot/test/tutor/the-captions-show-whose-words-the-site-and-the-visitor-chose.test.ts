@@ -56,7 +56,8 @@ describe("the visitor's words", () => {
     expect(hearing.at(logOf(null), 0)).toBeNull();
     expect(hearing.at(logOf("show me"), 100)).toBe("show me");
     expect(hearing.at(logOf(null, [said("Show me the pricing.", 1)]), 400)).toBe("Show me the pricing.");
-    expect(hearing.at(logOf(null, [said("Show me the pricing.", 1)]), 2900)).toBeNull();
+    expect(hearing.at(logOf(null, [said("Show me the pricing.", 1)]), 2900)).toBe("Show me the pricing.");
+    expect(hearing.at(logOf(null, [said("Show me the pricing.", 1)]), 3100)).toBeNull();
   });
 
   it("are none of the past on a page that joins a call already under way", () => {
