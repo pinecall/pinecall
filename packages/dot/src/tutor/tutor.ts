@@ -38,6 +38,8 @@ export interface Tutor {
 
 /** What makes the page worth looking at again, and how long to wait for it to settle, in ms. */
 const SETTLE = { scroll: 250, resize: 250, dom: 400, toggle: 150 } as const;
+/** When the page is told again after the agent joined, in ms. */
+const AGAIN_MS = 2000;
 
 /** Put the tutor on the page, moving with `call`. Nothing is sent until the call is live. */
 export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
@@ -75,6 +77,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (!live() || seen.text === sent) return;
     sent = seen.text;
     send(SEEN, { text: seen.text, why });
+    person.face.dataset["pcSeen"] = String(Number(person.face.dataset["pcSeen"] ?? "0") + 1);
   };
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const soon = (why: keyof typeof SETTLE): void => {
@@ -195,12 +198,20 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     frame = requestAnimationFrame(tick);
   };
 
-  // A new call starts with the page told whole; a call that ends sends the tutor home.
+  // A new call is told the page whole once the agent is in the room: LiveKit keeps no data for a
+  // participant who joins after it was sent, and the agent often joins after the page's seat. Once
+  // more a moment later, for an agent whose channel was still opening. A call that ends sends the
+  // tutor home.
   const unsubscribe = call.subscribe((state) => {
-    if (state.phase === "live" && state.call !== following) {
+    const agentHere = state.log.room?.participants.some((one) => one.kind === "agent") ?? false;
+    if (state.phase === "live" && agentHere && state.call !== following) {
       following = state.call;
       sent = "";
       look("call");
+      timers.set("again", setTimeout(() => {
+        sent = "";
+        look("call");
+      }, AGAIN_MS));
     }
     if (state.phase !== "live" && state.phase !== "opening" && (person.touring || player.armed)) {
       player.drop();

@@ -45,14 +45,17 @@ function keyInDotEnv() {
   return line ? line.slice("PINECALL_KEY=".length).trim() : "";
 }
 
-// With ?debug, a label in the corner says what the face's mouth reads: the agent's voice itself, or
-// the room's coarse level (a mouth out of time with the voice).
+// With ?debug, a label in the corner says what the face's mouth reads (the agent's voice itself, or the
+// room's coarse level, a mouth out of time with the voice), how loud, and how often the page was sent.
 const DEBUG = `<script>
 if (new URLSearchParams(location.search).has("debug")) addEventListener("DOMContentLoaded", () => {
   const label = Object.assign(document.createElement("div"), { style: "position:fixed;left:12px;top:12px;z-index:2147483647;font:12px ui-monospace,monospace;background:#111;color:#fff;padding:6px 10px;border-radius:8px" });
   label.dataset.pinecallSkip = "";
   document.body.append(label);
-  setInterval(() => { label.textContent = "mouth reads: " + (document.querySelector("[data-pc-ear]")?.dataset.pcEar ?? "no face yet"); }, 250);
+  setInterval(() => {
+    const face = document.querySelector("[data-pc-ear]");
+    label.textContent = face ? "mouth reads: " + face.dataset.pcEar + " · level " + face.dataset.pcLevel + " · page sent " + (face.dataset.pcSeen ?? 0) + "×" : "no face yet";
+  }, 100);
 });
 </script>`;
 
