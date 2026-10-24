@@ -45,6 +45,8 @@ describe("a tutor", () => {
 
     expect(names).toEqual(["goTo", "here", "highlight", "home", "point", "runMacro", "scrollTo", "unhighlight"]);
     for (const one of tools) expect(one.spec.description, one.name).toBeTruthy();
+    // A pointer's move runs while its words play and asks for no answer; a walk is said, and is answered.
+    for (const one of tools) expect(one.spec.quiet, one.name).toBe(one.name === "runMacro" ? undefined : true);
     expect(tools.find((one) => one.name === "point")?.spec.parameters).toMatchObject({ properties: { ref: { type: "string" } } });
   });
 });

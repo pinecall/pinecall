@@ -50,6 +50,11 @@ export interface Macro {
   steps: MacroStep[];
 }
 
+/** The agent asking for the page as it is now: sent when its call opens, answered with `page.seen`. */
+export interface Look {
+  type: "look";
+}
+
 /** A step about to be said, sent just before the agent says it. */
 export interface Step {
   type: "macro.step";
@@ -72,9 +77,10 @@ function isBeat(value: unknown): value is Beat {
 }
 
 /** A message on `pinecall.ui` the tutor carries out, or null for one that is not its own (a card, choices). */
-export function tutoring(data: unknown): Cursor | Step | null {
+export function tutoring(data: unknown): Cursor | Step | Look | null {
   if (typeof data !== "object" || data === null) return null;
   const message: Record<string, unknown> = { ...data };
+  if (message["type"] === "look") return { type: "look" };
   if (message["type"] === "cursor" && isAction(message["action"]) && optionalText(message["ref"]) && optionalText(message["url"])) {
     return { type: "cursor", action: message["action"], ref: message["ref"], url: message["url"] };
   }

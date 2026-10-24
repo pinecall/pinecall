@@ -22,7 +22,7 @@ from pinecall_runtime.wire.events import ErrorEvent, ToolCall
 from pinecall_runtime.wire.parts import StateCauseTool, ToolResult
 
 # Runs one tool the model called and returns what the model reads of it.
-type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str]]
+type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str | llm.ToolResult]]
 # Says a line as a tool starts, unless the agent spoke since the caller did.
 type Announce = Callable[[str | None], None]
 # What plays while the caller waits: the hold melody after its grace, or nothing.
@@ -106,11 +106,15 @@ class Toolbox:
     # line it wrote for the tool, else the tool's own announcement, plays while the tool runs. The
     # read-back is said inside the tool and awaited, so it is in the history the reply is built
     # from, or the model says it again in its own words.
-    async def _run_app_tool(self, use: ToolUse, context: RunContext[None]) -> str:
+    # A quiet tool is a move on the caller's screen: it runs as the model calls it, while the words
+    # of that answer still play, and its result is kept with no answer asked for, or the model
+    # says its sentence a second time.
+    async def _run_app_tool(self, use: ToolUse, context: RunContext[None]) -> str | llm.ToolResult:
         spec = self.call.config.tools_by_name[use.name]
         await admit_tool(self.call, use.name)
-        await context.wait_for_playout()
-        self.announce(use.say or spec.announce)
+        if not spec.quiet:
+            await context.wait_for_playout()
+            self.announce(use.say or spec.announce)
         # The gateway writes the tool's round trip: the turn that called it is in the log first.
         await self.call.writing.flush(WRITTEN_WITHIN_S)
         cause = StateCauseTool(kind="tool", tool=use.name, call_id=use.call_id)
@@ -132,7 +136,7 @@ class Toolbox:
         # A supervisor took the line while the tool ran: the result stays, the reply does not.
         if self.call.a_person_has_the_line:
             raise StopResponse
-        return text
+        return llm.ToolResult(text, reply_required=False) if spec.quiet else text
 
     async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)
@@ -229,7 +233,7 @@ def _reads_like_gemini(component: object) -> bool:
 # The app runs its tools and ToolSpec is JSON Schema already, so the raw schema is declared; the
 # callable is where the session gates and writes the call.
 def _raw(spec: ToolSpec, run: Run) -> llm.Tool:
-    async def call(raw_arguments: dict[str, object], context: RunContext[None]) -> str:
+    async def call(raw_arguments: dict[str, object], context: RunContext[None]) -> str | llm.ToolResult:
         arguments: JsonObject = {name: _json(value) for name, value in raw_arguments.items()}
         line = arguments.pop(SAY, "")
         return await run(ToolUse(context.function_call.call_id, spec.name, arguments, say=str(line or "")), context)

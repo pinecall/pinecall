@@ -11,6 +11,11 @@ maintainer's call.
 - **`onUi(data)`**: what the agent puts on the screen with `call.send("pinecall.ui", data)` reaches
   the page.
 - **`state.voice`** is the element the agent's voice plays in during a spoken call.
+- **A log read with the call's own token folds whole.** The gateway answers that reader with the public
+  projection, which leaves the envelope's `agent` and `call` out, and several fields of the call's entries;
+  the wire refused every entry, so `log` stayed empty and the karaoke had no words. The fields the projection
+  leaves out are optional, the state keeps what it knew, and `test/fixtures/golden-call-log.public.json`, the
+  runtime's own projection of its golden log, folds with nothing unreadable.
 - The room's types moved to `src/surface.ts`. The surface is unchanged.
 
 ## 0.11.20 — released with the runtime's live readers (2026-10-24)

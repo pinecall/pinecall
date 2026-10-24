@@ -5,6 +5,11 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`@tool({ quiet: true })`**: a move on the caller's screen runs as the model calls it, while its
+  words still play, and asks the model for no answer, so a sentence is not said twice.
+
 ## [0.11.20] — released with the runtime's live readers
 
 - Nothing of `@pinecall/agents` changed: published at 0.11.20 with every other package.

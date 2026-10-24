@@ -185,6 +185,7 @@ export const ToolSpecSchema = z.strictObject({
   announce: z.string().nullish(),
   pii: z.array(z.string()).nullish(),
   timeout_s: z.number().nullish(),
+  quiet: z.boolean().nullish(),
 });
 
 export type ToolSpec = z.infer<typeof ToolSpecSchema>;

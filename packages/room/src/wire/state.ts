@@ -46,7 +46,8 @@ export const UserTurnSchema = z.strictObject({
   text: z.string(),
   language: z.string().nullish(),
   transcript_confidence: z.number().nullish(),
-  metrics: UserTurnMetricsSchema,
+  // A participant's reading has none: the public projection leaves it out (docs/protocol/projections.md).
+  metrics: UserTurnMetricsSchema.optional(),
 });
 
 /** One finished reply of the agent, with what the session measured about it. */
@@ -108,9 +109,10 @@ export const PromptStateSchema = z.record(z.string(), PromptBlockStateSchema);
 
 /** One confirmation the platform asked for, and how it went. */
 export const ConfirmSchema = z.strictObject({
-  tool: z.string(),
-  call_id: z.string(),
-  audience: z.string(),
+  // A participant's reading has none: the public projection leaves it out (docs/protocol/projections.md).
+  tool: z.string().optional(),
+  call_id: z.string().optional(),
+  audience: z.string().optional(),
   phrase: z.string(),
   status: z.enum(["pending", "granted", "declined"]),
   said: z.string().nullish(),
@@ -167,7 +169,8 @@ export const ParticipantSchema = z.strictObject({
   name: z.string().nullish(),
   joined_at: z.number(),
   speaking: z.boolean(),
-  attributes: z.record(z.string(), z.unknown()),
+  // A participant's reading has none: the public projection leaves it out (docs/protocol/projections.md).
+  attributes: z.record(z.string(), z.unknown()).optional(),
 });
 export type Participant = z.infer<typeof ParticipantSchema>;
 

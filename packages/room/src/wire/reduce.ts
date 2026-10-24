@@ -85,10 +85,7 @@ export function apply(state: State, entry: Entry): State {
   } catch (why) {
     const said = unreadable(state, entry, why);
     said.seq = entry.seq;
-    said.agent = entry.agent;
-    if (entry.call !== null) {
-      said.call = entry.call;
-    }
+    whose(said, entry);
     return said;
   }
   let next = state;
@@ -98,11 +95,18 @@ export function apply(state: State, entry: Entry): State {
     applyEvent(state, entry, event);
   }
   next.seq = entry.seq;
-  next.agent = entry.agent;
-  if (entry.call !== null) {
-    next.call = entry.call;
-  }
+  whose(next, entry);
   return next;
+}
+
+// A participant's reading never says whose agent or call it is: the state keeps what it knew.
+function whose(state: State, entry: Entry): void {
+  if (entry.agent !== undefined) {
+    state.agent = entry.agent;
+  }
+  if (entry.call !== undefined && entry.call !== null) {
+    state.call = entry.call;
+  }
 }
 
 function applyEvent(state: State, entry: Entry, event: Event): void {
@@ -142,7 +146,7 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       return;
     case "call.line":
       state.held = event.data.held;
-      state.muted = event.data.muted;
+      if (event.data.muted !== undefined) state.muted = event.data.muted;
       return;
     case "call.summary":
       state.usage = [...event.data.usage];
@@ -307,14 +311,15 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
   }
 }
 
+// A participant's reading leaves out who called whom: what it does not say is not written over.
 function rememberTheLine(
   state: State,
-  line: { channel: State["channel"]; from: string; to: string; caller: State["caller"] },
+  line: { channel: State["channel"]; from?: string | undefined; to?: string | undefined; caller?: State["caller"] | undefined },
 ): void {
   state.channel = line.channel;
-  state.from = line.from;
-  state.to = line.to;
-  state.caller = line.caller;
+  if (line.from !== undefined) state.from = line.from;
+  if (line.to !== undefined) state.to = line.to;
+  if (line.caller !== undefined) state.caller = line.caller;
 }
 
 function onToolResult(state: State, result: Event & { type: "tool.result" } extends { data: infer D } ? D : never): void {
@@ -327,8 +332,11 @@ function onToolResult(state: State, result: Event & { type: "tool.result" } exte
   state.tools[index] = { ...run, ...outcome, status: outcome.error !== undefined ? "failed" : "done" };
 }
 
-function settleConfirm(state: State, callId: string, verdict: Partial<Confirm>): void {
-  const index = lastIndex(state.confirms, (confirm) => confirm.call_id === callId);
+// A participant's reading names no tool call: the confirm settled is the one the call waits on.
+function settleConfirm(state: State, callId: string | undefined, verdict: Partial<Confirm>): void {
+  const index = lastIndex(state.confirms, (confirm) =>
+    callId === undefined ? confirm.status === "pending" : confirm.call_id === callId,
+  );
   if (index === -1) {
     return;
   }

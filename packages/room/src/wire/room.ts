@@ -16,7 +16,8 @@ import {
 export const RoomOpenedSchema = z.strictObject({
   name: z.string(),
   sid: z.string(),
-  channel: ChannelSchema,
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  channel: ChannelSchema.optional(),
 });
 
 /**
@@ -28,14 +29,16 @@ export const ParticipantJoinedSchema = z.strictObject({
   identity: z.string(),
   kind: ParticipantKindSchema,
   name: z.string().nullish(),
-  attributes: z.record(z.string(), z.unknown()),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  attributes: z.record(z.string(), z.unknown()).optional(),
 });
 export type ParticipantJoined = z.infer<typeof ParticipantJoinedSchema>;
 
 /** Somebody left the room. When it is the caller, call.ended follows. */
 export const ParticipantLeftSchema = z.strictObject({
   identity: z.string(),
-  reason: z.string(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  reason: z.string().optional(),
 });
 
 /**

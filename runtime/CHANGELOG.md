@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **A widget's channel listens before the call's session starts.** It was opened after the session had
+  started and the agent was already greeting, so what a page said in the call's first seconds reached
+  no listener and was lost: a tutor's page never reached its agent.
+- **A participant reads the second each word of the reply is said at**: `agent.transcript` keeps `start`
+  in the public projection, so a page lights each word as it sounds (`docs/protocol/projections.md`).
+  `tests/wire/golden/call-log.public.json` pins what a participant reads of the golden log.
+- **A quiet tool** (`ToolSpec.quiet`, `@tool({ quiet: true })`): a move on the caller's screen runs as the
+  model calls it, while the words of that answer still play, and the model is asked for no answer of its
+  own. Every app tool waited for the words to end, then asked for a reply, and the model said its
+  sentence a second time.
 - **The widget's `look="dot"`**: the button is a face that speaks with the agent's voice, and a click is
   a voice call with no panel. The face, its mouth read from the voice frame by frame, is `@pinecall/dot`'s,
   loaded with `@pinecall/room` from jsDelivr only for this look; the gateway serves `pinecall-dot.js`

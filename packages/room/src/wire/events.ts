@@ -72,11 +72,12 @@ export const CodeIssuedSchema = z.strictObject({
 
 /** The caller did not say yes, or the request lapsed. The tool does not run; the model is told. */
 export const ConfirmDeclinedSchema = z.strictObject({
-  tool: z.string(),
-  call_id: z.string(),
-  audience: z.string(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  tool: z.string().optional(),
+  call_id: z.string().optional(),
+  audience: z.string().optional(),
   said: z.string().nullish(),
-  reason: z.enum(["no", "timeout", "changed", "cancelled"]),
+  reason: z.enum(["no", "timeout", "changed", "cancelled"]).optional(),
 });
 
 /**
@@ -84,11 +85,12 @@ export const ConfirmDeclinedSchema = z.strictObject({
  * runs. The token itself never enters the log.
  */
 export const ConfirmGrantedSchema = z.strictObject({
-  tool: z.string(),
-  call_id: z.string(),
-  audience: z.string(),
-  said: z.string(),
-  ttl_s: z.int(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  tool: z.string().optional(),
+  call_id: z.string().optional(),
+  audience: z.string().optional(),
+  said: z.string().optional(),
+  ttl_s: z.int().optional(),
 });
 
 /**
@@ -96,10 +98,11 @@ export const ConfirmGrantedSchema = z.strictObject({
  * the phrase; nothing runs until confirm.granted.
  */
 export const ConfirmRequestSchema = z.strictObject({
-  tool: z.string(),
-  call_id: z.string(),
-  arguments: z.record(z.string(), z.unknown()),
-  audience: z.string(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  tool: z.string().optional(),
+  call_id: z.string().optional(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+  audience: z.string().optional(),
   phrase: z.string(),
   ttl_s: z.int(),
 });
@@ -331,7 +334,8 @@ export const UserTurnEndedSchema = z.strictObject({
   text: z.string(),
   language: z.string().nullish(),
   transcript_confidence: z.number().nullish(),
-  metrics: UserTurnMetricsSchema,
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  metrics: UserTurnMetricsSchema.optional(),
 });
 
 /** The caller's state changed, in the session's own words. */

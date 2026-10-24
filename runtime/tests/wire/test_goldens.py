@@ -1,4 +1,4 @@
-"""The goldens: a call's log as the SDKs pin it, read entry by entry, and the state it folds to."""
+"""The goldens: a call's log as the SDKs pin it, the state it folds to, and what a participant reads of it."""
 
 import json
 from pathlib import Path
@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from pinecall_runtime.calls import service as calls
+from pinecall_runtime.calls.readers import project_entry
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.events import event_of
 
@@ -27,3 +28,11 @@ def test_the_golden_log_folds_to_its_state() -> None:
     expected = json.loads((GOLDEN / "call-log.state.json").read_text(encoding="utf-8"))
     # As it goes on the wire: by alias, the fields never set left out.
     assert calls.reduce(entries).dump() == expected
+
+
+def test_a_participant_reads_the_golden_log_as_the_public_golden() -> None:
+    """The public projection of the golden log is the one @pinecall/room folds (its test/fixtures copy)."""
+    entries = _ENTRIES.validate_json((GOLDEN / "call-log.json").read_bytes())
+    expected = json.loads((GOLDEN / "call-log.public.json").read_text(encoding="utf-8"))
+    projected = [entry for entry in (project_entry(entry, "public", None) for entry in entries) if entry is not None]
+    assert json.loads(json.dumps(projected)) == expected

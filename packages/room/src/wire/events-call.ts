@@ -77,13 +77,14 @@ export const AgentTranscriptSchema = z.strictObject({
 export const CallStartedSchema = z.strictObject({
   channel: ChannelSchema,
   direction: DirectionSchema,
-  from: z.string(),
-  to: z.string(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  from: z.string().optional(),
+  to: z.string().optional(),
   run: z.string().nullable().nullish(),
   persona: z.string().nullable().nullish(),
   accepts_when: z.string().nullable().nullish(),
   declines_when: z.string().nullable().nullish(),
-  caller: ContactSchema.nullable(),
+  caller: ContactSchema.nullable().optional(),
   started_at: z.number(),
   env: EnvSchema.nullish(),
 });
@@ -109,10 +110,11 @@ export const CallClaimedSchema = z.strictObject({
  */
 export const CallDialingSchema = z.strictObject({
   channel: ChannelSchema,
-  from: z.string(),
-  to: z.string(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  from: z.string().optional(),
+  to: z.string().optional(),
   run: z.string().nullable().nullish(),
-  caller: ContactSchema.nullable(),
+  caller: ContactSchema.nullable().optional(),
   external_id: z.string().nullish(),
   asked_by: z.string().nullish(),
 });
@@ -131,7 +133,8 @@ export const CallEndedSchema = z.strictObject({
  */
 export const CallLineSchema = z.strictObject({
   held: z.boolean(),
-  muted: z.boolean(),
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  muted: z.boolean().optional(),
 });
 
 /**
@@ -140,11 +143,12 @@ export const CallLineSchema = z.strictObject({
  */
 export const CallRingingSchema = z.strictObject({
   channel: ChannelSchema,
-  from: z.string(),
-  to: z.string(),
-  route: RouteSchema,
+  // Left out of the public projection, what a call's own token reads (docs/protocol/projections.md).
+  from: z.string().optional(),
+  to: z.string().optional(),
+  route: RouteSchema.optional(),
   run: z.string().nullable().nullish(),
-  caller: ContactSchema.nullable(),
+  caller: ContactSchema.nullable().optional(),
   external_id: z.string().nullish(),
 });
 

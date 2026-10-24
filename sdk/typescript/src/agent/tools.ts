@@ -33,6 +33,8 @@ export interface ToolOptions<T = unknown> {
   timeout?: number;
   /** Explicit parameter schema, overriding the one inferred from the signature. */
   params?: z.ZodObject;
+  /** A move on the caller's screen: it runs as the model calls it, while its words still play, and asks for no answer. */
+  quiet?: boolean;
 }
 
 // The registry spans all classes, so the class type of `when` is erased.
@@ -132,6 +134,7 @@ function specFor(ctor: Function, declared: Declared): ToolSpec {
   if (options.announce !== undefined) spec.announce = options.announce;
   if (options.pii !== undefined) spec.pii = [...options.pii];
   if (options.timeout !== undefined) spec.timeout_s = options.timeout;
+  if (options.quiet === true) spec.quiet = true;
   return spec;
 }
 

@@ -41,7 +41,7 @@ absent from the table is dropped whole, and a field absent from a row is dropped
 | `call.ended` | `reason` `ended_by` `ended_at` `duration_s` |
 | `user.state` · `agent.state` | `state` |
 | `user.transcript` | `text` `final` |
-| `agent.transcript` | `speech_id` `text` `final`: one delta, never the reply so far |
+| `agent.transcript` | `speech_id` `text` `final` `start`: one delta, never the reply so far, and the second the voice says it at, so a page lights each word as it sounds |
 | `turn.user` | `speech_id` `text` |
 | `turn.agent` | `speech_id` `text` `interrupted` `metrics`, of the metrics `e2e_latency` alone |
 | `room.opened` | `name` `sid` |

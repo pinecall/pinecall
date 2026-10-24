@@ -139,6 +139,9 @@ class ToolSpec(WireModel):
     announce: str | None = None
     pii: list[str] | None = None
     timeout_s: float | None = None
+    # A move on the caller's screen, such as a pointer: it runs as the model calls it, while the
+    # words of that answer still play, and asks the model for no answer of its own.
+    quiet: bool | None = None
 
 
 class ToolResult(WireModel):

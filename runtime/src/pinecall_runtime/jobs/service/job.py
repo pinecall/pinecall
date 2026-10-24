@@ -127,6 +127,15 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
         claim=partial(_claim, gateway, context.call),
     )
     hold = await hold_music_for(gateway, route.agent, scope, played, typed=typed)
+
+    # A call the session ended already (a transfer, the model's goodbye) is not ended again.
+    def caller_gone() -> None:
+        if running.ended is None:
+            running.hang_up("caller_hung_up", "caller")
+
+    # The widget's channel listens before the session starts: what the page says as the agent
+    # arrives (an event the agent's opening asks for) reaches a listener, not a room that drops it.
+    widget = widget_for(gateway, call, ctx.room, caller_gone) if route.channel is Channel.web else None
     await running.start(
         room=room,
         hold=hold,
@@ -137,14 +146,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     if hold is not None:
         await hold.start(ctx.room)
     room.watch()
-
-    # A call the session ended already (a transfer, the model's goodbye) is not ended again.
-    def caller_gone() -> None:
-        if running.ended is None:
-            running.hang_up("caller_hung_up", "caller")
-
     room.when_the_caller_is_gone(caller_gone)
-    widget = widget_for(gateway, call, ctx.room, caller_gone) if route.channel is Channel.web else None
     logger.info(ANSWERED_IN, time.monotonic() - began)
     following.append(asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone)))
     timer = asyncio.create_task(

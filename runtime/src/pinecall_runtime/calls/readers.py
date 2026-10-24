@@ -29,7 +29,7 @@ PUBLIC_ENTRY_FIELDS: Mapping[str, tuple[str, ...]] = {
     "user.state": ("state",),
     "agent.state": ("state",),
     "user.transcript": ("text", "final"),
-    "agent.transcript": ("speech_id", "text", "final"),
+    "agent.transcript": ("speech_id", "text", "final", "start"),
     "turn.user": ("speech_id", "text"),
     "turn.agent": ("speech_id", "text", "interrupted", "metrics"),
     "room.opened": ("name", "sid"),

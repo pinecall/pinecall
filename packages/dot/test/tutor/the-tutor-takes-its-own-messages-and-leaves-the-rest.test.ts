@@ -26,6 +26,7 @@ describe("the tutor on a page", () => {
 
     expect(one.take({ type: "cursor", action: "home" })).toBe(true);
     expect(one.take({ type: "macro.step", macro: "tour", step: 0, say: "Hi.", beats: [] })).toBe(true);
+    expect(one.take({ type: "look" })).toBe(true);
     expect(one.take({ type: "choices", options: [{ label: "Tuesday" }] })).toBe(false);
     one.close();
   });

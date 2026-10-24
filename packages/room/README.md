@@ -261,7 +261,8 @@ org. `recording` is then `""`, and the recording is yours to relay too.
 ## What `state` says
 
 Every field is the truth at the moment it was published. A new state is a new object; one you were
-handed is never changed afterwards, so it can be compared by reference and kept.
+handed is never changed afterwards, so it can be compared by reference and kept. Read with the call's
+own token, `log` is the public projection: no agent, no numbers, no attributes, no tool names.
 
 | field | what it is |
 |---|---|

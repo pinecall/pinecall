@@ -174,6 +174,7 @@ the model sends is checked against it before the method runs.
 | `when` | a question asked of the state on every change: `when: (s) => s.slots.length > 0` |
 | `confirm` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
+| `quiet` | a move on the caller's screen, such as a pointer (TypeScript only for now): it runs as the model calls it, while the words of that answer still play, and the model is asked for no answer of its own. Without it, every tool's result is a turn the model answers |
 | `preview` | how many items of a list the *model* sees. The state keeps every one |
 | `pii` | the parameters that carry personal data: the log masks their values wherever the agent wrote them down (`state.changed`, `tool.result` and a line you log too), and `pinecall start` prints the log's version |
 | `timeout` | how many seconds the platform waits for this method: 30 unless set, 300 at most |

@@ -38,8 +38,6 @@ export interface Tutor {
 
 /** What makes the page worth looking at again, and how long to wait for it to settle, in ms. */
 const SETTLE = { scroll: 250, resize: 250, dom: 400, toggle: 150 } as const;
-/** When the page is told again after the agent joined, in ms. */
-const AGAIN_MS = 2000;
 
 /** Put the tutor on the page, moving with `call`. Nothing is sent until the call is live. */
 export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
@@ -198,20 +196,14 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     frame = requestAnimationFrame(tick);
   };
 
-  // A new call is told the page whole once the agent is in the room: LiveKit keeps no data for a
-  // participant who joins after it was sent, and the agent often joins after the page's seat. Once
-  // more a moment later, for an agent whose channel was still opening. A call that ends sends the
-  // tutor home.
+  // A page that joins a call tells the agent what it sees, for an agent already in the room (a
+  // reload); an agent that arrives after it asks (`look`), since LiveKit keeps no data for whoever
+  // joins after it was sent. A call that ends sends the tutor home.
   const unsubscribe = call.subscribe((state) => {
-    const agentHere = state.log.room?.participants.some((one) => one.kind === "agent") ?? false;
-    if (state.phase === "live" && agentHere && state.call !== following) {
+    if (state.phase === "live" && state.call !== following) {
       following = state.call;
       sent = "";
-      look("call");
-      timers.set("again", setTimeout(() => {
-        sent = "";
-        look("call");
-      }, AGAIN_MS));
+      look("joined");
     }
     if (state.phase !== "live" && state.phase !== "opening" && (person.touring || player.armed)) {
       player.drop();
@@ -248,6 +240,11 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       if (message === null) return false;
       if (message.type === "macro.step") {
         player.arm(message, sayingOf(call.state.entries)?.speech ?? null);
+        return true;
+      }
+      if (message.type === "look") {
+        sent = "";
+        look("asked");
         return true;
       }
       const { action, ref, url } = message;

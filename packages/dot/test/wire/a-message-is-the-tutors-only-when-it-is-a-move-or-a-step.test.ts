@@ -1,4 +1,4 @@
-// What arrives on pinecall.ui is the tutor's only as a cursor move or a macro step; a macro file is checked when the class loads.
+// What arrives on pinecall.ui is the tutor's only as a cursor move, a macro step or the agent asking for the page; a macro file is checked when the class loads.
 
 import { describe, expect, it } from "vitest";
 
@@ -13,6 +13,10 @@ describe("a message on pinecall.ui", () => {
     const step = { type: "macro.step", macro: "tour", step: 0, say: "Pricing is simple.", beats: [{ word: "Pricing", do: "scroll_to", find: ["region", "Pricing"] }] };
 
     expect(tutoring(step)).toEqual(step);
+  });
+
+  it("is the agent asking for the page", () => {
+    expect(tutoring({ type: "look" })).toEqual({ type: "look" });
   });
 
   it("is not the tutor's when it is a card, choices, a click, or anything malformed", () => {

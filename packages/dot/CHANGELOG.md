@@ -16,3 +16,4 @@ maintainer's call.
 - **`Page`**: the page as Playwright's aria snapshot reads it, with stable refs, and no field values.
 - **`@pinecall/dot/agent`**: `Tutor`, the class an agent extends. It gives the page in the view,
   the pointer's tools and `runMacro`. `macros()` checks the macro files of the agent's folder.
+- The pointer's tools are `quiet`, and the agent asks for the page as its call opens (`look`).

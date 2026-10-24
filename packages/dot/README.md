@@ -144,9 +144,14 @@ A class that extends `Tutor` gets these:
 - **A view that prints the screen.** A class with a `render()` of its own ends it with `this.seeing()`.
   The site's words are fenced there as data, never as instructions to the model.
 - **The pointer's tools**: `point`, `highlight`, `unhighlight`, `scrollTo`, `here`, `home`, `goTo` (same site only)
-  and `runMacro`. They show once the page has been seen.
+  and `runMacro`. They show once the page has been seen. The pointer's moves are `quiet`: they run as the
+  model calls them, while the words that name them play, and the model is not asked to answer them.
+- **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
+  `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
+  once it is there. A page that joins a call already under way (a reload) tells it at once.
 
-A class that overrides `onEvent` calls `super.onEvent(name, data, meta)` first.
+A class that overrides `onCall` or `onEvent` calls `super.onCall(call)` or
+`super.onEvent(name, data, meta)` first.
 
 ### Macros
 
@@ -186,6 +191,7 @@ speaks, the walk stops and the agent answers them.
 | page → agent | `call.event("page.seen", { text, why })` · `page.clicked { role, name }` · `page.missing { ref }` |
 | agent → page | `pinecall.ui` `{ type: "cursor", action, ref?, url? }`. The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here`, `home` and `go` |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
+| agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |
 
 **Anybody can send what a browser sends.** The agent reads the page as the visitor's own words, and
 a site that shows other people's words (reviews, comments) puts them under `data-pinecall-skip`

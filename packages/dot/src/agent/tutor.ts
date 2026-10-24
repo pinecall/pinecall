@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Agent, describe, tool, z, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
+import { Agent, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
 
 import { CLICKED, MISSING, SEEN, UI, macroOf, type Action, type Macro } from "../wire/index.js";
 
@@ -37,6 +37,12 @@ export class Tutor extends Agent {
   clicked = "";
   /** The macro being said, while one is. */
   walking?: string | undefined;
+
+  /** The call opens: the page is asked what it shows. A class with an onCall of its own calls `super.onCall(call)`. */
+  override onCall(_call: Call): unknown {
+    this.call.send(UI, { type: "look" });
+    return undefined;
+  }
 
   override onEvent(name: string, data: Record<string, unknown>, _meta: EventMeta): unknown {
     if (name === SEEN && typeof data["text"] === "string") this.page = data["text"];
@@ -125,22 +131,22 @@ export class Tutor extends Agent {
 
   private move(action: Action, data: { ref?: string; url?: string }): string {
     this.call.send(UI, { type: "cursor", action, ...data });
-    // A bare "done" reads to a model as a turn to answer: it greets again, or says its last sentence twice.
-    return `Your pointer did it (${action}${data.ref ? ` ${data.ref}` : ""}${data.url ? ` ${data.url}` : ""}). Go on with what you were saying; do not repeat yourself or greet again.`;
+    return `${action}${data.ref ? ` ${data.ref}` : ""}${data.url ? ` ${data.url}` : ""}`;
   }
 }
 
 // `@tool` is a legacy decorator, and a tenant's toolchain compiles this package's source with
 // whatever decorators it knows (tsx leaves it out of the project's tsconfig). Applied by hand, the
-// decorator is the plain function it is, under any compiler.
+// decorator is the plain function it is, under any compiler. The pointer's moves are quiet: they
+// run while the words that name them play, and the model is not asked to answer them.
 const TOOLS: Record<string, ToolOptions<Tutor>> = {
-  point: { params: REF, when: (state) => state.page !== "" },
-  highlight: { params: REF, when: (state) => state.page !== "" },
-  unhighlight: { params: z.object({}), when: (state) => state.page !== "" },
-  scrollTo: { params: REF, when: (state) => state.page !== "" },
-  here: { params: z.object({}), when: (state) => state.page !== "" },
-  home: { params: z.object({}), when: (state) => state.page !== "" },
-  goTo: { params: z.object({ url: z.string().describe("an address on the same site, as /pricing or a link's href") }), when: (state) => state.page !== "" },
+  point: { params: REF, when: (state) => state.page !== "", quiet: true },
+  highlight: { params: REF, when: (state) => state.page !== "", quiet: true },
+  unhighlight: { params: z.object({}), when: (state) => state.page !== "", quiet: true },
+  scrollTo: { params: REF, when: (state) => state.page !== "", quiet: true },
+  here: { params: z.object({}), when: (state) => state.page !== "", quiet: true },
+  home: { params: z.object({}), when: (state) => state.page !== "", quiet: true },
+  goTo: { params: z.object({ url: z.string().describe("an address on the same site, as /pricing or a link's href") }), when: (state) => state.page !== "", quiet: true },
   runMacro: {
     params: z.object({ name: z.string().describe("the walk's name, as your screen lists it") }),
     when: (state) => state.page !== "" && state.walking === undefined,

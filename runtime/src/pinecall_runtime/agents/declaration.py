@@ -131,6 +131,8 @@ class ToolSpec:
     announce: str | None = None
     preview: int | None = None
     timeout_s: float = DEFAULT_TOOL_TIMEOUT_S
+    # Runs as the model calls it, its words still playing, and asks for no answer (wire/parts.py).
+    quiet: bool = False
 
     def __post_init__(self) -> None:
         if not A_FUNCTION_NAME.match(self.name):

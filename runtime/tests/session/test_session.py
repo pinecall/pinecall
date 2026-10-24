@@ -113,6 +113,13 @@ LOOK = ToolSpec(
     announce="Un momento, miro la agenda.",
 )
 LOOKING = AgentConfig(slug="clinica-norte", tools=(LOOK,))
+POINT = ToolSpec(
+    "point",
+    "Point at an element of the caller's page.",
+    {"type": "object", "properties": {"ref": {"type": "string"}}},
+    quiet=True,
+)
+POINTING = AgentConfig(slug="clinica-norte", tools=(POINT,))
 
 
 def supervised(
@@ -459,6 +466,23 @@ async def test_a_tool_is_announced_as_it_starts_when_the_model_called_it_in_sile
     await text.end_text(session, "caller_hung_up", "caller")
     agent = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
     assert agent == ["Un momento, miro la agenda.", "El lunes hay hueco a las nueve."]
+
+
+@needs_the_database
+async def test_a_quiet_tool_runs_and_the_model_is_asked_for_no_second_answer(box: Box, store: Store, call: str) -> None:
+    session = a_session(
+        box,
+        POINTING,
+        ["Here are the prices.", {"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}],
+        ["Here are the prices, again."],
+    )
+    await session.start()
+    await text.hear_text(session, "where are the prices?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    entries = await store.whole(call)
+    assert [entry.data["text"] for entry in entries if entry.type == "turn.agent"] == ["Here are the prices."]
+    assert [entry.data["name"] for entry in entries if entry.type == "tool.result"] == ["point"]
+    assert len(model_of(session).requests) == 1
 
 
 @needs_the_database

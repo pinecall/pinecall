@@ -54,6 +54,7 @@ def with_app_fields(current: AgentConfig, declaration: Declaration) -> AgentConf
                 confirm=tool.confirm,
                 announce=tool.announce,
                 timeout_s=DEFAULT_TOOL_TIMEOUT_S if tool.timeout_s is None else tool.timeout_s,
+                quiet=bool(tool.quiet),
             )
             for tool in declaration.tools or ()
         )

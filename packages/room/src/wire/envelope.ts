@@ -9,8 +9,10 @@ import { z } from "zod";
 export const EntrySchema = z.strictObject({
   seq: z.int(),
   ts: z.number(),
-  call: z.string().nullable(),
-  agent: z.string(),
+  // The public projection, what a call's own token reads, leaves both out: a participant learns
+  // nothing of the tenant's setup (docs/protocol/projections.md).
+  call: z.string().nullable().optional(),
+  agent: z.string().optional(),
   type: z.string(),
   ephemeral: z.boolean(),
   data: z.record(z.string(), z.unknown()),
