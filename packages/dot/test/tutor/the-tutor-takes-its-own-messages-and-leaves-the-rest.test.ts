@@ -31,6 +31,20 @@ describe("the tutor on a page", () => {
     one.close();
   });
 
+  it("has its hang-up and captions buttons in its corner, hidden until a call is on, and no captions button when the site shows none", () => {
+    const one = tutor(aRoom(), { words: { hangUp: "Colgar" } });
+    const calling = document.querySelector<HTMLElement>(".pc-calling");
+
+    expect(calling?.hidden).toBe(true);
+    expect(calling?.querySelector(".pc-hang")?.getAttribute("aria-label")).toBe("Colgar");
+    expect(calling?.querySelector<HTMLElement>(".pc-cc")?.hidden).toBe(false);
+    one.close();
+
+    const quiet = tutor(aRoom(), { captions: "none" });
+    expect(document.querySelector<HTMLElement>(".pc-cc")?.hidden).toBe(true);
+    quiet.close();
+  });
+
   it("calls the page back when its face is clicked", () => {
     let clicks = 0;
     const one = tutor(aRoom(), { onClick: () => (clicks += 1) });

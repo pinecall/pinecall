@@ -20,5 +20,9 @@ maintainer's call.
 - **A move onto a thing is answered with what the visitor sees there.** `point`, `highlight` and
   `scrollTo` wait for the page to say the move ended (`page.seen` with `why: "moved"` and `at`), and
   return the thing as it now shows, so a model that moved in silence has something to say.
+- **The tutor writes both sides of the conversation, and hangs up.** The visitor's words show in
+  the corner as they speak, beside the agent's; `captions` (`both`, `agent`, `caller`, `none`)
+  chooses whose may show, and a **CC** button lets the visitor turn them off, kept in their browser.
+  A **✕** beside it hangs up.
 - **The snapshot says the words of a box that is only layout**, as a price in a `<div>`: they were
   left out, and a model asked about a plan could not see its price.

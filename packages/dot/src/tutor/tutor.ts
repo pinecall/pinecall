@@ -1,9 +1,10 @@
 /** The tutor on a page: the person with its pointer and face, what it sends of the page, and every move the agent asks for. */
 //
 // Up, as events on the call: the page as it is now (`page.seen`, when it changed, and when a move
-// onto an element ended, with the ref it moved to), what the visitor clicked, a ref that is gone. Down, from `pinecall.ui`: a cursor move, run at once, or a macro's
-// step, whose moves run on their words. Moves run one after another, so a scroll ends before the
-// point that follows it.
+// onto an element ended, with the ref it moved to), what the visitor clicked, a ref that is gone.
+// Down, from `pinecall.ui`: a cursor move, run at once, or a macro's step, whose moves run on their
+// words. Moves run one after another, so a scroll ends before the point that follows it. In words,
+// one side at a time: the visitor's as they say them, else the agent's as its voice says them.
 
 import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
@@ -13,6 +14,7 @@ import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../poin
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
 import { A_REF, CLICKED, MISSING, MOVED, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
+import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
 import { Player } from "./macro.js";
 
 export interface TutorOptions {
@@ -22,8 +24,12 @@ export interface TutorOptions {
   label?: string | undefined;
   /** The face was clicked: the page starts the call, or ends it. */
   onClick?: (() => void) | undefined;
-  /** How long its last words stay beside it after a reply, in ms. Default 2600. */
+  /** How long its last words stay beside it after a reply, and the visitor's after theirs, in ms. Default 2600. */
   linger?: number | undefined;
+  /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
+  captions?: Captions | undefined;
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up" and "Captions". */
+  words?: { hangUp?: string | undefined; captions?: string | undefined } | undefined;
 }
 
 export interface Tutor {
@@ -44,14 +50,30 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const still = view.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const page = new Page(document);
   const hover = new Hover(document);
+  const captions = captionsOf(options.captions);
+  const storage = (): Storage => view.localStorage;
+  let captioned = visitorWantsCaptions(storage);
   const person = new Person(document, {
     dock: options.dock ?? "right",
     label: options.label ?? "Talk to the assistant",
     onClick: () => options.onClick?.(),
+    hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
+    captions:
+      captions === "none"
+        ? null
+        : {
+            label: options.words?.captions ?? "Captions",
+            onClick: () => {
+              captioned = !captioned;
+              keepVisitorChoice(storage, captioned);
+              person.calling(true, captioned);
+            },
+          },
   });
   const drawn = face(person.face, call);
   const player = new Player();
   const linger = options.linger ?? 2600;
+  const hearing = new Hearing(linger);
   let anchor: { element: Element; dx: number; dy: number } | null = null;
   let lit: Element | null = null;
   let flying = false;
@@ -170,16 +192,19 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const saying = sayingOf(call.state.entries);
     if (saying !== null && speech?.id !== saying.speech) speech = { id: saying.speech, at: now };
     let said = "";
+    let words: [lit: string, coming: string] | null = null;
     if (saying !== null && saying.words.length > 0 && speech !== null) {
       const split = litAt(saying, now - speech.at);
       said = split.lit;
       last = { text: split.lit + split.coming, at: now };
-      person.say(split.lit, split.coming);
-    } else if (last.text !== "" && now - last.at < linger) {
-      person.say(last.text);
-    } else {
-      person.say(null);
+      words = [split.lit, split.coming];
     }
+    const heard = hearing.at(call.state.log, now);
+    if (words === null && heard !== null) last = { text: "", at: 0 };
+    else if (words === null && last.text !== "" && now - last.at < linger) words = [last.text, ""];
+    const agent = shows(captions, captioned, "agent") ? words : null;
+    person.say(agent?.[0] ?? null, agent?.[1] ?? "");
+    person.heard(words === null && shows(captions, captioned, "caller") ? heard : null);
     for (const one of player.due(saying?.speech ?? null, said)) queue(() => beat(one));
     // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
     if (!flying && !person.touring) person.place(person.dock());
@@ -197,6 +222,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   // reload); an agent that arrives after it asks (`look`), since LiveKit keeps no data for whoever
   // joins after it was sent. A call that ends sends the tutor home.
   const unsubscribe = call.subscribe((state) => {
+    person.calling(state.phase === "opening" || state.phase === "live", captioned);
     if (state.phase === "live" && state.call !== following) {
       following = state.call;
       sent = "";

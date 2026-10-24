@@ -2,9 +2,11 @@
 //
 // One fixed layer over the page that takes no clicks but on the face. Resting, the face sits in a
 // corner like the widget's button; touring, it shrinks beside the tip of an arrow in its colour,
-// the way a multiplayer cursor carries a name tag. The spotlight and the "here" ring live there too.
-// Every colour is a custom property: --pc-face (the dot and the arrow), --pc-face-ring, --pc-bubble,
-// --pc-bubble-ink.
+// the way a multiplayer cursor carries a name tag. The spotlight and the "here" ring live there too,
+// and, in the corner it rests in, what the visitor is saying and the call's two buttons (captions,
+// hang up), which stay there while the face tours. Every colour is a custom property: --pc-face
+// (the dot and the arrow), --pc-face-ring, --pc-bubble, --pc-bubble-ink, --pc-heard, --pc-heard-ink,
+// --pc-hang.
 
 import type { Kind } from "./hover.js";
 import type { Point } from "./flight.js";
@@ -29,12 +31,27 @@ const STYLE = `
 .pc-person.pc-touring .pc-bubble { right: auto; bottom: auto; left: 62px; top: 14px; border-radius: 4px 16px 16px 16px; transform-origin: top left; }
 .pc-person.pc-touring.pc-flip .pc-bubble { left: auto; right: 6px; border-radius: 16px 4px 16px 16px; transform-origin: top right; }
 .pc-person.pc-left:not(.pc-touring) .pc-bubble { right: auto; left: -30px; border-radius: 16px 16px 16px 4px; transform-origin: bottom left; }
+.pc-heard { position: fixed; right: 22px; bottom: 96px; width: max-content; max-width: min(270px, 70vw); padding: 9px 13px;
+  background: var(--pc-heard, #e7f3ee); color: var(--pc-heard-ink, #17201c); border-radius: 16px 16px 4px 16px;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 28px rgb(0 0 0 / .12); transition: opacity .2s; }
+.pc-heard[hidden] { display: block !important; opacity: 0; }
+.pc-calling { position: fixed; right: 92px; bottom: 35px; display: flex; gap: 8px; pointer-events: auto; }
+.pc-calling[hidden] { display: none; }
+.pc-calling button { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 10px; border-radius: 999px; cursor: pointer;
+  font: 600 12px/34px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
+.pc-calling button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
+.pc-calling .pc-cc { background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
+.pc-calling .pc-cc[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
+.pc-calling .pc-cc[hidden] { display: none; }
+.pc-calling .pc-hang { background: var(--pc-hang, #d6453d); color: #fff; font-size: 16px; }
+.pc-layer.pc-left .pc-heard { right: auto; left: 22px; border-radius: 16px 16px 16px 4px; }
+.pc-layer.pc-left .pc-calling { right: auto; left: 92px; flex-direction: row-reverse; }
 .pc-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(10 18 16 / .34), 0 0 0 3px var(--pc-face-ring, #44a785); opacity: 0; transition: opacity .3s; }
 .pc-spot.pc-on { opacity: 1; }
 .pc-ring { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid var(--pc-face-ring, #44a785); opacity: 0; }
 .pc-ring.pc-go { animation: pc-ring 1.1s ease-out 2; }
 @keyframes pc-ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
+@media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-heard, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
 `;
 
 // The arrow is the screen recorder's (~/ss/screen-demo/build.mjs), in the face's colour; the hand and the I-beam are drawn to match.
@@ -51,6 +68,10 @@ export interface PersonOptions {
   label: string;
   /** A click (or Enter) on the face. */
   onClick: () => void;
+  /** The hang-up button: its name, and its click. */
+  hangUp: { label: string; onClick: () => void };
+  /** The captions button, when the site lets the visitor choose: its name, and its click. */
+  captions: { label: string; onClick: () => void } | null;
 }
 
 export class Person {
@@ -62,11 +83,15 @@ export class Person {
   readonly #person: HTMLElement;
   readonly #arrow: SVGElement;
   readonly #bubble: HTMLElement;
+  readonly #heard: HTMLElement;
+  readonly #calling: HTMLElement;
+  readonly #cc: HTMLElement;
   readonly #spot: HTMLElement;
   readonly #ring: HTMLElement;
   readonly #dock: "right" | "left";
   #at: Point;
   #shown = "";
+  #heardShown = "";
 
   constructor(document: Document, options: PersonOptions) {
     this.#document = document;
@@ -76,14 +101,28 @@ export class Person {
     this.#layer = document.createElement("div");
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
     this.#arrow = this.#part<SVGElement>(".pc-arrow");
     this.face = this.#part(".pc-face");
     this.#bubble = this.#part(".pc-bubble");
+    this.#heard = this.#part(".pc-heard");
+    this.#calling = this.#part(".pc-calling");
+    this.#cc = this.#part(".pc-cc");
     this.#person.classList.toggle("pc-left", options.dock === "left");
+    this.#layer.classList.toggle("pc-left", options.dock === "left");
+    const hang = this.#part(".pc-hang");
+    hang.setAttribute("aria-label", options.hangUp.label);
+    hang.title = options.hangUp.label;
+    hang.addEventListener("click", options.hangUp.onClick);
+    this.#cc.hidden = options.captions === null;
+    if (options.captions !== null) {
+      this.#cc.setAttribute("aria-label", options.captions.label);
+      this.#cc.title = options.captions.label;
+      this.#cc.addEventListener("click", options.captions.onClick);
+    }
     this.face.setAttribute("aria-label", options.label);
     this.face.title = options.label;
     this.face.addEventListener("click", options.onClick);
@@ -143,6 +182,20 @@ export class Person {
     later.className = "pc-coming";
     later.textContent = coming;
     this.#bubble.replaceChildren(this.#document.createTextNode(lit), later);
+  }
+
+  /** What the visitor is saying, in the corner; null hides it. */
+  heard(text: string | null): void {
+    if ((text ?? "") === this.#heardShown) return;
+    this.#heardShown = text ?? "";
+    this.#heard.hidden = text === null;
+    if (text !== null) this.#heard.textContent = text;
+  }
+
+  /** The call's buttons, shown while it is on; the captions button pressed while they show. */
+  calling(on: boolean, captioned: boolean): void {
+    this.#calling.hidden = !on;
+    this.#cc.setAttribute("aria-pressed", String(captioned));
   }
 
   /** The spotlight on an element's box, or off. Called every frame while on, so it follows the element. */

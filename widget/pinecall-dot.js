@@ -92,6 +92,8 @@ export class Dot {
         dock: (widget.getAttribute("position") ?? "").endsWith("left") ? "left" : "right",
         label,
         onClick: () => this.click(),
+        captions: widget.getAttribute("captions") ?? "both",
+        words: { hangUp: widget.words.hangUp, captions: widget.words.captions },
       });
       this.face = this.tutor;
     } else {
@@ -111,11 +113,11 @@ export class Dot {
     this.frame = requestAnimationFrame(paint);
   }
 
-  /** The dot was clicked: start a call, or during one, offer to hang up. */
+  /** The dot was clicked: start a call, or during one, offer to hang up (the tutor has its own button). */
   click() {
     const { phase } = this.call.state;
     if (phase === "opening" || phase === "live") {
-      this.hang.hidden = !this.hang.hidden;
+      if (!this.tutor) this.hang.hidden = !this.hang.hidden;
       return;
     }
     // Inside the click: a browser starts audio only here.
