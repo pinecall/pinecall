@@ -6,13 +6,15 @@ maintainer's call.
 
 ## Unreleased
 
+- **The site's own button plays a walk.** `data-pinecall-play="<macro>"` on a button the site draws (`hidden`)
+  shows it while that walk can play, and plays it on a click: for where a section's corner does not suit.
 - **The pointer stands under the words it points at**, not on them, and still hovers what it points at: a
   link keeps its hand.
 - **The face hears and thinks.** While the caller speaks it nods with its head cocked and its eyes wide;
   while the agent thinks it looks up from side to side, its mouth pursed and sliding, "hmm". Waiting is as it was.
 - **The captions start off.** The visitor turns them on with CC, in a call or a walk, and the choice is kept.
 - **A section plays its own walk, and a walk can be paused.** `data-pinecall-walk="<macro>"` on a section
-  puts a small ▶ in its corner that plays that walk with no call; while a walk plays the corner holds
+  puts a small ▶ in its top left corner that plays that walk with no call; while a walk plays the corner holds
   pause beside captions and stop (`words: { pause, play }`).
 - **The captions stay out of the code's way.** None show while a window of code is open. During a walk CC sits in the
   corner with a stop button, the same choice as in a call; CC is an icon now, and the buttons slide into

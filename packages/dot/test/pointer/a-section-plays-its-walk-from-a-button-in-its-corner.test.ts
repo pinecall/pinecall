@@ -1,4 +1,4 @@
-// A section that names a walk gets a small ▶ in its corner, for a walk the agent published, and a click plays it.
+// A section that names a walk gets a small ▶ in its corner, and the site's own button plays one too, for a walk the agent published.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -30,7 +30,7 @@ describe("a section's corner button", () => {
     expect(buttons).toHaveLength(1);
     expect(buttons[0]?.hidden).toBe(false);
     expect(buttons[0]?.getAttribute("aria-label")).toBe("Play: The Studio (0:30)");
-    expect(buttons[0]?.style.top).toBe("120px");
+    expect([buttons[0]?.style.left, buttons[0]?.style.top]).toEqual(["20px", "120px"]);
     buttons[0]?.click();
 
     expect(played).toEqual(["studio"]);
@@ -51,6 +51,24 @@ describe("a section's corner button", () => {
     section.remove();
     corners.place(true);
     expect(button()).toBeNull();
+    corners.close();
+  });
+
+  it("shows the site's own button for a published walk while it may play, and plays it on a click", () => {
+    document.body.innerHTML = `<button data-pinecall-play="overview" hidden><span>▶</span></button><button data-pinecall-play="gone" hidden>▶</button>`;
+    const played: string[] = [];
+    const corners = new Corners(document, (part) => document.body.append(part), { label: "Play", onPlay: (name) => played.push(name) });
+    corners.offer([{ name: "overview", title: "What Pinecall is", ms: 38_000 }]);
+    const [own, gone] = [...document.querySelectorAll<HTMLButtonElement>("[data-pinecall-play]")];
+
+    corners.place(true);
+    expect([own?.hidden, gone?.hidden]).toEqual([false, true]);
+    own?.querySelector("span")?.click();
+    expect(played).toEqual(["overview"]);
+    corners.place(false);
+    expect(own?.hidden).toBe(true);
+    own?.click();
+    expect(played).toEqual(["overview"]);
     corners.close();
   });
 });

@@ -1,14 +1,18 @@
-/** A small ▶ in the corner of each part of the page the site named a walk for: a click plays that walk, with no call. */
+/** The page's ways into a walk with no call: a small ▶ in the corner of a section that names one, or the site's own button. */
 //
-// The site marks a section with `data-pinecall-walk="<walk>"`; the button stands inside its top right
+// The site marks a section with `data-pinecall-walk="<walk>"`; the button stands inside its top left
 // corner while the corner is on the screen, for the walks the agent published. It lives on the
 // person's layer, out of what the agent reads, and follows its section every frame, as the page
-// scrolls or changes. Colours: --pc-face.
+// scrolls or changes. Where a corner does not suit, the site draws its own button and marks it
+// `data-pinecall-play="<walk>"`: it is shown (its `hidden` taken off) while that walk can play, and
+// a click on it plays it. Colours: --pc-face.
 
 import { clock } from "../wire/index.js";
 
 /** The attribute a section names its walk with. */
 export const WALK_ATTRIBUTE = "data-pinecall-walk";
+/** The attribute the site's own button names its walk with. */
+export const PLAY_ATTRIBUTE = "data-pinecall-play";
 
 /** How far in from the section's corner the button stands, and its size, in px. */
 const INSET = 20;
@@ -48,6 +52,14 @@ export class Corners {
   readonly #style: HTMLStyleElement;
   readonly #buttons = new Map<Element, HTMLButtonElement>();
   #walks: CornerWalk[] = [];
+  #on = false;
+  readonly #clicked = (event: Event): void => {
+    const button = event.target instanceof Element ? event.target.closest(`[${PLAY_ATTRIBUTE}]`) : null;
+    const name = button?.getAttribute(PLAY_ATTRIBUTE);
+    if (!this.#on || name === null || name === undefined || !this.#walks.some((walk) => walk.name === name)) return;
+    event.preventDefault();
+    this.#options.onPlay(name);
+  };
 
   constructor(document: Document, host: (element: Element) => void, options: CornersOptions) {
     this.#document = document;
@@ -56,6 +68,7 @@ export class Corners {
     this.#style = document.createElement("style");
     this.#style.textContent = STYLE;
     document.head.append(this.#style);
+    document.addEventListener("click", this.#clicked);
   }
 
   /** The walks the agent published: a section naming one gets its button. */
@@ -65,15 +78,22 @@ export class Corners {
     this.#buttons.clear();
   }
 
-  /** Each button onto its section's corner, shown while `on` and the corner is on the screen. Called every frame. */
+  /**
+   * Each button onto its section's corner, shown while `on` and the corner is on the screen; the
+   * site's own buttons shown while `on`, for a walk published. Called every frame.
+   */
   place(on: boolean): void {
+    this.#on = on;
+    for (const button of this.#document.querySelectorAll<HTMLElement>(`[${PLAY_ATTRIBUTE}]`)) {
+      const hidden = !on || !this.#walks.some((walk) => walk.name === button.getAttribute(PLAY_ATTRIBUTE));
+      if (button.hidden !== hidden) button.hidden = hidden;
+    }
     this.#follow();
     const view = this.#document.defaultView;
-    const width = view?.innerWidth ?? 0;
     const height = view?.innerHeight ?? 0;
     for (const [section, button] of this.#buttons) {
       const box = section.getBoundingClientRect();
-      const left = Math.min(box.right, width) - INSET - SIZE;
+      const left = Math.max(box.left, 0) + INSET;
       const top = box.top + INSET;
       const hidden = !on || top < 0 || top + SIZE > height || box.width === 0;
       if (button.hidden !== hidden) button.hidden = hidden;
@@ -84,6 +104,7 @@ export class Corners {
   }
 
   close(): void {
+    this.#document.removeEventListener("click", this.#clicked);
     for (const button of this.#buttons.values()) button.remove();
     this.#buttons.clear();
     this.#style.remove();
