@@ -65,10 +65,11 @@ whatever the voice vendor. Until `wake()` is called, or without Web Audio, the m
 | the room | the face |
 |---|---|
 | `idle`, `ended`, `failed` | rests: a smile, breathing, a blink every few seconds |
-| `opening` | thinks: eyes up and away, a small round mouth to one side |
-| `live`, the agent `listening` | listens: head tilted, eyes a little wider, the halo beating slowly |
+| `opening` | thinks: eyes up, looking from side to side, a small round mouth sliding with them |
+| `live`, the agent `listening` | waits: head tilted, eyes a little wider, bobbing slowly |
+| `live`, the caller speaking (`speaking.user`, or their words coming in) | hears: head cocked further, eyes wide on the caller, nodding |
 | `live`, the agent `thinking` | thinks |
-| `live`, the voice sounding | speaks: the mouth from the voice, the halo with its loudness |
+| `live`, the voice sounding | speaks: the mouth from the voice, the body with its loudness |
 
 With `prefers-reduced-motion`, breathing, tilting and glances stop, and the mouth still speaks.
 Colours are custom properties on any ancestor: `--pc-face` (the dot), `--pc-face-eye`,

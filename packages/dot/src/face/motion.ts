@@ -4,20 +4,24 @@ import type { RoomState } from "@pinecall/room";
 
 import type { Mouth } from "./mouth.js";
 
-/** What the face is doing. Speaking is the voice's; the other three are poses. */
-export type Mood = "idle" | "listening" | "thinking" | "speaking";
+/** What the face is doing. Speaking is the voice's; the others are poses: listening waits in a call, hearing is the caller speaking. */
+export type Mood = "idle" | "listening" | "hearing" | "thinking" | "speaking";
 
 /** The mouth each quiet mood holds. */
 export const POSES: Record<Exclude<Mood, "speaking">, Mouth> = {
   idle: { open: 0, width: 0.5, round: 0, teeth: 0, smile: 0.85, shift: 0 },
   listening: { open: 0.04, width: 0.55, round: 0, teeth: 0, smile: 0.55, shift: 0 },
+  hearing: { open: 0.1, width: 0.36, round: 0.45, teeth: 0, smile: 0.3, shift: 0 },
   thinking: { open: 0.14, width: 0.2, round: 0.75, teeth: 0, smile: 0, shift: 3.2 },
 };
 
 /** A frame louder than this is the agent speaking, whatever its state says: the log's word comes later than the sound. */
 export const SOUNDING = 0.06;
 
-/** The mood a call is in: opening thinks, a live call follows the agent's own state, anything else rests. */
+/**
+ * The mood a call is in: opening thinks, a live call follows the agent's own state and hears while
+ * the caller speaks, anything else rests.
+ */
 export function moodOf(state: RoomState): Mood {
   if (state.phase === "opening") return "thinking";
   if (state.phase !== "live") return "idle";
@@ -27,7 +31,7 @@ export function moodOf(state: RoomState): Mood {
     case "thinking":
       return "thinking";
     default:
-      return "listening";
+      return state.speaking.user || (state.log.live.user ?? "") !== "" ? "hearing" : "listening";
   }
 }
 

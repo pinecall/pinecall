@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **The face hears and thinks.** While the caller speaks it nods with its head cocked and its eyes wide;
+  while the agent thinks it looks up from side to side, its mouth pursed and sliding, "hmm". Waiting is as it was.
 - **The captions start off.** The visitor turns them on with CC, in a call or a walk, and the choice is kept.
 - **A section plays its own walk, and a walk can be paused.** `data-pinecall-walk="<macro>"` on a section
   puts a small ▶ in its corner that plays that walk with no call; while a walk plays the corner holds

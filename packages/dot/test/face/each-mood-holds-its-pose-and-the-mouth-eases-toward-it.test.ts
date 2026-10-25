@@ -22,6 +22,14 @@ describe("the mood", () => {
     expect(live("listening")).toBe("listening");
     expect(live(null)).toBe("listening");
   });
+
+  it("hears while the caller speaks, as the room hears them or their words come in, until the agent thinks", () => {
+    const live = { ...state, phase: "live" as const, log: { ...state.log, agent_state: "listening" as const } };
+
+    expect(moodOf({ ...live, speaking: { ...live.speaking, user: true } })).toBe("hearing");
+    expect(moodOf({ ...live, log: { ...live.log, live: { ...live.log.live, user: "Can I come" } } })).toBe("hearing");
+    expect(moodOf({ ...live, speaking: { ...live.speaking, user: true }, log: { ...live.log, agent_state: "thinking" } })).toBe("thinking");
+  });
 });
 
 describe("the easing", () => {

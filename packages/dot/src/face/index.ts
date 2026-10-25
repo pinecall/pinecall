@@ -1,10 +1,11 @@
 /** The face: a dot that speaks with the agent's voice, drawn into any element of the page. */
 //
 // It reads the room it is given and nothing else: the phase and the agent's own state set its mood
-// (resting, listening, thinking), and while the agent's voice sounds, its mouth is read from that
-// voice frame by frame. Its body is one of a few shapes, in the page's colour, and moves whole with
-// the mood, its outline never bent: it bobs and leans in while it listens, and squashes with the
-// voice. Nothing is sent anywhere and nothing is asked of the server.
+// (resting, listening, hearing the caller, thinking), and while the agent's voice sounds, its mouth
+// is read from that voice frame by frame. Its body is one of a few shapes, in the page's colour, and
+// moves whole with the mood, its outline never bent: it bobs and leans in while it listens, nods with
+// its head cocked and its eyes wide while the caller speaks, looks up from side to side with its
+// mouth pursed while it thinks, and squashes with the voice. Nothing is sent anywhere and nothing is asked of the server.
 
 import type { RoomStore } from "@pinecall/room";
 
@@ -34,7 +35,13 @@ export interface FaceOptions {
 }
 
 /** How high the body bobs in each mood, in the box's units, and how often, per second. */
-const BOB = { idle: { high: 0, often: 0 }, listening: { high: 1.5, often: 0.8 }, thinking: { high: 0.6, often: 0.4 }, speaking: { high: 0, often: 0 } } as const;
+const BOB = {
+  idle: { high: 0, often: 0 },
+  listening: { high: 1.5, often: 0.8 },
+  hearing: { high: 1.3, often: 1.7 },
+  thinking: { high: 0.6, often: 0.4 },
+  speaking: { high: 0, often: 0 },
+} as const;
 
 // Without an ear (never woken, or no Web Audio) the mouth opens with the room's own level, in no shape.
 const NO_SHAPE: Bands = { low: 1, mid: 1, high: 0, sib: 0 };
@@ -73,7 +80,11 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
       host.dataset["pcLevel"] = loud.toFixed(2);
     }
     const mood = (state.phase === "live" || own !== null) && loud > SOUNDING ? "speaking" : moodOf(state);
-    const target = mood === "speaking" ? spoken(loud, heard?.bands ?? NO_SHAPE) : POSES[mood];
+    const seconds = at / 1000;
+    // Thinking purses its mouth and slides it from side to side, "hmm".
+    const hmm = still ? 1 : Math.sin(seconds * Math.PI * 2 * 0.32);
+    const target =
+      mood === "speaking" ? spoken(loud, heard?.bands ?? NO_SHAPE) : mood === "thinking" ? { ...POSES.thinking, shift: 3.2 * hmm } : POSES[mood];
     mouth = easedMouth(mouth, target, dt);
     level = eased(level, mood === "speaking" ? loud : 0, dt, 0.03, 0.12);
 
@@ -89,11 +100,16 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
       }
     }
 
-    // Thinking looks up and away; otherwise a small glance now and then, smaller while speaking.
+    // Thinking looks up, from side to side; hearing looks at the caller, toward the page; otherwise a
+    // small glance now and then, smaller while speaking.
     glanceIn -= dt;
     if (mood === "thinking") {
-      glance.x = 2.6;
+      glance.x = 2.6 * hmm;
       glance.y = -3.2;
+      glanceIn = 0.4;
+    } else if (mood === "hearing") {
+      glance.x = -1.2;
+      glance.y = 0.6;
       glanceIn = 0.4;
     } else if (glanceIn <= 0) {
       glanceIn = 1.5 + Math.random() * 3;
@@ -104,18 +120,18 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
     gaze.x = eased(gaze.x, glance.x, dt, 0.12, 0.12);
     gaze.y = eased(gaze.y, glance.y, dt, 0.12, 0.12);
 
-    const seconds = at / 1000;
     const breath = still ? 0 : Math.sin(seconds * Math.PI * 2 * 0.22) * 0.018;
     rim = morphed(rim, rest, dt);
     bob = eased(bob, still ? 0 : BOB[mood].high, dt, 0.3, 0.4);
     const wave = Math.sin(seconds * Math.PI * 2 * (BOB[mood].often || 0.8));
     // A bob is a little hop: up a touch taller and narrower, down a touch wider, as a soft body does.
     const hop = bob * wave;
-    const lean = mood === "listening" ? -5 : mood === "thinking" ? 4 : 0;
+    // Hearing cocks its head, as a person does who is following; thinking sways slowly.
+    const lean = { idle: 0, listening: -5, hearing: -9, thinking: 4 + 2.5 * hmm, speaking: 0 }[mood];
     painted(drawing, {
       mouth,
       lid,
-      eyes: mood === "listening" ? 1.08 : 1,
+      eyes: mood === "hearing" ? 1.16 : mood === "listening" ? 1.08 : 1,
       gaze,
       tilt: still ? 0 : lean + Math.sin(seconds * 0.7) * 1.2,
       lift: hop,
