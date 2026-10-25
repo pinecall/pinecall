@@ -11,10 +11,11 @@ class Pip extends Tutor {
   });
 }
 
-/** A Pip with a walk for the security page beside the tour, which names no page. */
+/** A Pip with a walk for the security page and one for infrastructure, beside the tour, which names no page. */
 class Guard extends Pip {
   static override macros = macros({
     keys: { pages: ["/security"], steps: [{ say: "Your keys stay yours.", beats: [] }] },
+    cloud: { pages: ["/infrastructure"], steps: [{ say: "It runs on your cloud.", beats: [] }] },
     tour: { steps: [{ say: "Up here are our services.", beats: [] }] },
   });
 }
@@ -205,10 +206,12 @@ describe("a tutor", () => {
 
     await runHook(pip, "onEvent", "page.seen", { text: BELOW, why: "scroll", lines: [], path: "/infrastructure" }, META);
     expect(pip.seeing()).not.toContain("- keys");
+    expect(pip.seeing()).toContain("- cloud");
     expect(pip.seeing()).toContain("- tour");
     await expect(pip.runMacro("keys")).resolves.toContain("There is no walk named");
 
     await runHook(pip, "onEvent", "page.seen", { text: BELOW, why: "scroll", lines: [], path: "/security/" }, META);
     expect(pip.seeing()).toContain("- keys");
+    expect(pip.seeing()).not.toContain("- cloud");
   });
 });
