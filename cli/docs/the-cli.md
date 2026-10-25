@@ -1438,6 +1438,10 @@ refused** (`openai alone names no model: name it, --llm openai/<model>`): a mode
 with, where `--tts <vendor>` and `--stt <vendor>` have one. A word that names no model at all (an empty
 one, half a `vendor/model`) is refused with exit 2 and nothing is written. A set a vendor refuses names
 what was tried beside the vendor's words: `deepgram refused the ears this sets (endpointing_ms 400): …`.
+A `--voice` is also looked up where [`voices`](#voices) looks, because a vendor may speak any name it
+is given (Google's Gemini voices do): one that neither the platform's providers row nor the vendor's
+own list on the key (cloned voices among them) names is refused — `google refused the voice this sets
+(voice zzz): it has no voice called zzz: …` — and a vendor that lists none is left to its own answer.
 
 **Three corners.** In the sandbox your key has a corner of its own: what you `set` is yours, and a
 colleague's next call does not hear it — so two developers testing two voices never change each
@@ -1919,13 +1923,14 @@ With nothing after it: the vendor's voices in that language, one per line — th
 the one your corner's `tts` runs on, else the runtime's default (`providers` says which), so `no voice matches`
 with no `--tts` is that vendor listing none in the language; a vendor whose plugin lists its voices with no
 language at all (ElevenLabs) cannot be narrowed by `--language`, and says so — the id the agent's
-`voice` setting takes, then the name and, where the vendor says them, the gender and where the
-accent is from. The country is the column that matters for Spanish: `ES` is Spain and `MX` is
+`voice` setting takes, then the name and, where the vendor says them, the language, the gender and
+where the accent is from. A vendor the providers row lists by language shows a voice once per language
+it speaks there, its row saying which. The country is the column that matters for Spanish: `ES` is Spain and `MX` is
 Mexico, and a language code does not tell them apart; `--country` keeps one. The vendor is `--tts`,
 or **the platform's own voice** when none is named — `defaults.tts` of `GET /v1/providers`, what an
 agent that names no vendor speaks with. A vendor lists its voices when its livekit plugin does —
 ElevenLabs, Inworld, NVIDIA and Speechify — or when the platform's providers row lists them for it, as
-data (`listed`, by vendor and language: on `cloud.pinecall.io`, Cartesia's in Spanish and English);
+data (`listed`, by vendor and language: on `cloud.pinecall.io`, Cartesia's in Spanish and English, and Google's thirty Gemini voices in each of its eight languages);
 `voices_listed` in the same catalogue says which, and it is what the console's picker reads too. A
 vendor listed by neither takes its voice as the id the vendor gives it: `voices` says so, names the
 vendors that list theirs, and exits 1 without asking for a list. Any id plays, listed or not.

@@ -24,6 +24,7 @@ SAMPLE_WIDTH = 2  # 16-bit PCM, as every plugin emits it
 
 # Samples cost vendor time and write no usage row, so a key gets this many a minute.
 SAMPLES_A_MINUTE = 30
+NOT_LISTED = "it has no voice called {voice}: `pinecall voices list --tts {vendor}` lists the ones it has"
 # Plugins name a voice's id and name differently; the first a row carries is it.
 THE_ID = ("id", "voice_id", "voice")
 THE_NAME = ("name", "voice_name", "display_name")
@@ -91,6 +92,30 @@ async def listed_by_vendor(running: Running) -> list[ListedVoice]:
         finally:
             await speech.aclose()
     return [voice for row in _rows(answered) if (voice := _listed(row)) is not None]
+
+
+# A vendor that speaks a voice it does not have in its default one (Google's Gemini voices) answers
+# the trial, so the lists decide: one the providers row lists is kept; else the vendor's own list on
+# the stage's key, cloned voices among them; a vendor that lists none (or an empty list) has the
+# row's alone, and with none there either it is left to the trial.
+async def check_listed(running: Running, catalog: Catalog) -> None:
+    """Refuse a voice neither the providers row nor the vendor lists; ValidationError naming the list."""
+    if running.voice is None:
+        return
+    in_the_row = listed_in_catalog(catalog, running.vendor, None)
+    if _names(in_the_row, running.voice):
+        return
+    try:
+        listed = await listed_by_vendor(running)
+    except NotListed:
+        listed = []
+    known = listed or in_the_row
+    if known and not _names(known, running.voice):
+        raise ValidationError(NOT_LISTED.format(vendor=running.vendor, voice=running.voice))
+
+
+def _names(listed: Sequence[ListedVoice], voice: str) -> bool:
+    return any(voice in (each.id, each.name) for each in listed)
 
 
 def listed_in_catalog(catalog: Catalog, vendor: str, language: str | None) -> list[ListedVoice]:

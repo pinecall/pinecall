@@ -40,10 +40,12 @@ async def try_stage(
     *,
     what: str | None = None,
     tried: Mapping[str, object] | None = None,
+    catalog: Catalog | None = None,
 ) -> None:
     """The stage asked one small thing; the vendor's no is ValidationError, its silence UpstreamError.
 
-    `tried` names the knobs this set moved, so a refusal says what was tried beside the vendor's words.
+    `tried` names the knobs this set moved, so a refusal says what was tried beside the vendor's words;
+    with the catalog, a voice it moved is one the vendor lists too.
     """
     named = what or f"the {STAGE_NAMES[stage]} this sets"
     if tried:
@@ -53,6 +55,8 @@ async def try_stage(
         async with asyncio.timeout(TRY_S), http_context.open():
             if stage == "tts":
                 await voices.sample(running, LINE)
+                if catalog is not None and tried is not None and "voice" in tried:
+                    await voices.check_listed(running, catalog)
             elif stage == "llm":
                 await _answered(running)
             else:

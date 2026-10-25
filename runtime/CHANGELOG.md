@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A voice set that its vendor does not list is refused.** Google's Gemini voices speak any name they
+  are given, so `pinecall agent set --voice zzz-not-a-voice` was kept and every call spoke in a voice
+  nobody chose. A set that moves the voice now looks it up where `pinecall voices` looks: the
+  providers row's list, else the vendor's own on the key (cloned voices among them); a vendor that
+  lists none is left to its own answer, as before.
+
 ## 0.11.24 — released with the dot's marked walk (2026-10-25)
 
 ## 0.11.23 — released with the dot's smaller face (2026-10-25)

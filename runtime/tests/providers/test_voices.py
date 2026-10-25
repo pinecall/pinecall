@@ -3,8 +3,11 @@
 import pytest
 
 from pinecall_runtime.exceptions import ValidationError
-from pinecall_runtime.providers.service.voices import ListedVoice, check_narrowable
-from tests.conftest import Gateway, Tenant, needs_the_services
+from pinecall_runtime.providers.schemas import KeptVoice
+from pinecall_runtime.providers.service import voices
+from pinecall_runtime.providers.service.plugins import Running
+from pinecall_runtime.providers.service.voices import ListedVoice, check_listed, check_narrowable
+from tests.conftest import Gateway, Tenant, configured, needs_the_services
 from tests.fakes import acme
 
 
@@ -39,3 +42,27 @@ def test_a_language_cannot_narrow_a_listing_that_carries_none_and_is_refused_say
     check_narrowable("elevenlabs", bare, None)
     check_narrowable("elevenlabs", [], "en")
     check_narrowable("cartesia", [ListedVoice(id="v2", name="Iria", detail={"language": "es"})], "en")
+
+
+# Google's Gemini voices speak any name they are given, so `agent set --voice zzz` was kept (2026-10-25):
+# the lists decide, the row's first, then the vendor's own, cloned voices among them.
+async def test_a_voice_neither_the_row_nor_the_vendor_lists_is_refused_naming_the_list() -> None:
+    row = configured().model_copy(update={"listed": {f"{acme.ACME}/es": (KeptVoice(id="acme-row", name="Rosa"),)}})
+    own = {"voices": [{"id": "acme-cloned", "name": "Mine"}]}
+    for kept in ("acme-row", "Rosa", "acme-cloned", "Mine"):
+        await check_listed(Running(vendor=acme.ACME, credentials="k", voice=kept, options=own), row)
+    with pytest.raises(ValidationError, match="it has no voice called zzz: `pinecall voices list --tts acme`"):
+        await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz", options=own), row)
+
+
+async def test_a_vendor_that_lists_none_has_the_rows_voices_alone_and_with_none_there_is_left_to_its_trial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def lists_none(running: Running) -> list[ListedVoice]:
+        raise voices.NotListed(running.vendor)
+
+    monkeypatch.setattr(voices, "listed_by_vendor", lists_none)
+    row = configured().model_copy(update={"listed": {f"{acme.ACME}/es": (KeptVoice(id="acme-row", name="Rosa"),)}})
+    with pytest.raises(ValidationError, match="no voice called zzz"):
+        await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz"), row)
+    await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz"), configured())

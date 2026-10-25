@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`voices list` says each voice's language**: a vendor the providers row lists by language showed
+  every voice once per language with nothing telling the rows apart (Google's, eight times each).
+
 ## [0.11.24] — released with the dot's marked walk (2026-10-25)
 
 ## [0.11.23] — released with the dot's smaller face (2026-10-25)

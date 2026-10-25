@@ -147,7 +147,7 @@ describe("pinecall voices", () => {
     answer("get", "/v1/providers", { providers: [{ name: "cartesia", voices_listed: true }], defaults: { tts: "cartesia" } });
     answer("get", "/v1/voices", { tts: "cartesia", language: null, voices: [{ id: "ana-es", name: "Ana", language: "es", description: "", gender: "female", country: "ES", accent: "castilian" }] });
     const ran = await run(["voices"]);
-    expect(ran.out).toMatch(/^ID\s+NAME\s+GENDER\s+FROM\nana-es\s+Ana\s+female\s+ES castilian\n$/);
+    expect(ran.out).toMatch(/^ID\s+NAME\s+LANGUAGE\s+GENDER\s+FROM\nana-es\s+Ana\s+es\s+female\s+ES castilian\n$/);
   });
 
   it("--json is the list", async () => {

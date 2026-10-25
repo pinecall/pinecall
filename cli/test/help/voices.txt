@@ -14,8 +14,8 @@ Commands:
 
 The vendor is --tts, or Pinecall's own voice when none is named (`pinecall providers` says which).
 With nothing after it: the vendor's voices in that language, one per line — the id the agent's
-voice setting takes, the name, gender, and where the accent is from. --country keeps only the
-voices from there.
+voice setting takes, the name, the language, gender, and where the accent is from. --country
+keeps only the voices from there.
 
 play says the words in that voice, through the vendor's own plugin exactly as a call would, and
 plays them here — afplay, ffplay, play, aplay or pw-play, whichever this machine has. With no

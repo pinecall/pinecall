@@ -370,7 +370,7 @@ async def write_tuning(
         for stage, knobs in STAGE_KNOBS.items():
             moved = {knob: getattr(wanted, knob) for knob in knobs if _changes(wanted, newest, knob)}
             if moved:
-                await providers.try_stage(stage, getattr(stages, stage), wanted.turn, tried=moved)
+                await providers.try_stage(stage, getattr(stages, stage), wanted.turn, tried=moved, catalog=catalog)
         if stages.realtime is not None and any(_changes(wanted, newest, knob) for knob in REALTIME_KNOBS):
             await providers.try_realtime(stages.realtime)
     return await put_tuning(session, scope, agent, wanted, written)

@@ -244,8 +244,8 @@ export function killed({ agent, envs, apps }: KilledAgent): string {
 export function voices(found: ListedVoice[]): string[] {
   if (found.length === 0) return [NO_VOICES];
   return table(
-    ["id", "name", "gender", "from"],
-    found.map((voice) => [voice.id, voice.name, voice.gender, [voice.country, voice.accent].filter((word) => word !== "").join(" ")]),
+    ["id", "name", "language", "gender", "from"],
+    found.map((voice) => [voice.id, voice.name, voice.language, voice.gender, [voice.country, voice.accent].filter((word) => word !== "").join(" ")]),
   );
 }
 
