@@ -101,7 +101,7 @@ export class Dot {
         captions: widget.getAttribute("captions") ?? "both",
         shape: widget.getAttribute("shape") ?? undefined,
         color: widget.getAttribute("color") ?? undefined,
-        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks },
+        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop },
         // `walks` plays the agent's recorded walks with no call; `walks="sandbox"` reads the sandbox's.
         walks: widget.hasAttribute("walks") ? walksUrl(widget) : undefined,
         onWalk: (walked) => widget.dispatchEvent(new CustomEvent("pinecall:walk", { detail: walked })),

@@ -112,8 +112,9 @@ and for `linger` ms after (2600 by default), one side at a time. `captions` choo
 `both` (default), `agent`, `caller` or `none`. During a call two buttons sit beside the corner:
 **CC**, which turns the words off and on for this visitor (kept in their browser's `localStorage`,
 and absent with `captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays,
-CC stays there alone, the same choice. No words show while a window of code is open: they would cover
-it. `words: { hangUp, captions }` names them for a screen reader.
+two small buttons ride on the face instead: captions, the same choice, and stop. No words show while a
+window of code is open: they would cover it. `words: { hangUp, captions, stop }` names them for a
+screen reader.
 
 `take(data)` returns `true` for a message that was the tutor's (a cursor move, a macro step) and
 `false` for anything else, which stays the page's to draw.

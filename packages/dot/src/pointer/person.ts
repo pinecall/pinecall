@@ -4,7 +4,8 @@
 // corner like the widget's button; touring, it shrinks beside the tip of an arrow in its colour,
 // the way a multiplayer cursor carries a name tag. The spotlight and the "here" ring live there too,
 // and, in the corner it rests in, what the visitor is saying and the call's two buttons (captions,
-// hang up), which stay there while the face tours; a walk shows the captions button alone. Every colour is a custom property: --pc-face
+// hang up), which stay there while the face tours. During a walk two like them ride on the face's
+// shoulder instead, captions and stop: alone in an empty corner they belonged to nothing. Every colour is a custom property: --pc-face
 // (the dot and the arrow), --pc-face-ring, --pc-bubble, --pc-bubble-ink, --pc-heard, --pc-heard-ink,
 // --pc-hang.
 
@@ -52,10 +53,25 @@ const STYLE = `
 .pc-calling button { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 10px; border-radius: 999px; cursor: pointer;
   font: 600 12px/34px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
 .pc-calling button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
-.pc-calling .pc-cc { background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
-.pc-calling .pc-cc[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
-.pc-calling button[hidden] { display: none; }
+.pc-calling .pc-cc { display: grid; place-items: center; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
+.pc-cc svg, .pc-cc-chip svg, .pc-stop svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pc-cc .pc-off, .pc-cc-chip .pc-off { display: none; }
+.pc-cc[aria-pressed="false"], .pc-cc-chip[aria-pressed="false"] { opacity: .6; }
+.pc-cc[aria-pressed="false"] .pc-off, .pc-cc-chip[aria-pressed="false"] .pc-off { display: inline; }
+.pc-calling .pc-cc[hidden] { display: none; }
 .pc-calling .pc-hang { background: var(--pc-hang, #d6453d); color: #fff; font-size: 16px; }
+.pc-chips { position: absolute; display: flex; gap: 6px; pointer-events: auto;
+  left: calc(var(--pc-dot-size, 64px) / -2 - 60px); top: calc(var(--pc-dot-size, 64px) / 2 - 24px); }
+.pc-person.pc-left .pc-chips { left: calc(var(--pc-dot-size, 64px) / 2 + 6px); flex-direction: row-reverse; }
+.pc-person.pc-touring .pc-chips { left: 4px; top: 44px; flex-direction: row; }
+.pc-person.pc-touring.pc-west .pc-chips { left: -56px; flex-direction: row-reverse; }
+.pc-person.pc-touring.pc-up .pc-chips { top: -28px; }
+.pc-chips[hidden] { display: none; }
+.pc-chips button { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  cursor: pointer; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); box-shadow: 0 2px 8px rgb(0 0 0 / .25); }
+.pc-chips button[hidden] { display: none; }
+.pc-chips button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
+.pc-stop svg { fill: currentColor; stroke: none; }
 .pc-play { position: fixed; width: 26px; height: 26px; border-radius: 50%; pointer-events: auto; cursor: pointer; border: 0; padding: 0;
   background: var(--pc-face, #1f6b55); color: #fff; font: 11px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 3px 10px rgb(0 0 0 / .25); }
 .pc-play[hidden] { display: none; }
@@ -69,6 +85,11 @@ const STYLE = `
 @keyframes pc-ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-heard, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
 `;
+
+// Captions: lines of words in a frame, struck through while off. Stop: a square.
+const CAPTIONS = (size: number): string =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M7 10.5h4M13.5 10.5h3.5M7 14h6.5M16 14h1"/><path class="pc-off" d="M4 4l16 16"/></svg>`;
+const STOP = `<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>`;
 
 // The arrow is the screen recorder's (~/ss/screen-demo/build.mjs), in the face's colour; the hand and the I-beam are drawn to match.
 const ARROW = `<svg class="pc-arrow" viewBox="0 0 26 26" data-kind="arrow" aria-hidden="true">
@@ -125,6 +146,8 @@ export interface PersonOptions {
   onClick: () => void;
   /** The hang-up button: its name, and its click. */
   hangUp: { label: string; onClick: () => void };
+  /** The button that stops a walk: its name, and its click. */
+  stop: { label: string; onClick: () => void };
   /** The captions button, when the site lets the visitor choose: its name, and its click. */
   captions: { label: string; onClick: () => void } | null;
   /** The ▶ beside an element the site wrote a line for: its name, and its click with that element. */
@@ -143,9 +166,8 @@ export class Person {
   readonly #heard: HTMLElement;
   readonly #calling: HTMLElement;
   readonly #cc: HTMLElement;
-  readonly #hang: HTMLElement;
-  /** Whether the site lets the visitor turn the captions off. */
-  readonly #choosing: boolean;
+  readonly #chips: HTMLElement;
+  readonly #chip: HTMLElement;
   readonly #play: HTMLElement;
   #offered: Element | null = null;
   readonly #spot: HTMLElement;
@@ -164,7 +186,7 @@ export class Person {
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
     if (options.color !== undefined) this.#layer.style.setProperty("--pc-face", options.color);
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div><div class="pc-chips" hidden><button type="button" class="pc-cc-chip" aria-pressed="true">${CAPTIONS(14)}</button><button type="button" class="pc-stop">${STOP}</button></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">${CAPTIONS(17)}</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
@@ -174,6 +196,12 @@ export class Person {
     this.#heard = this.#part(".pc-heard");
     this.#calling = this.#part(".pc-calling");
     this.#cc = this.#part(".pc-cc");
+    this.#chips = this.#part(".pc-chips");
+    this.#chip = this.#part(".pc-cc-chip");
+    const stop = this.#part(".pc-stop");
+    stop.setAttribute("aria-label", options.stop.label);
+    stop.title = options.stop.label;
+    stop.addEventListener("click", options.stop.onClick);
     this.#play = this.#part(".pc-play");
     this.#play.setAttribute("aria-label", options.explain.label);
     this.#play.title = options.explain.label;
@@ -182,16 +210,18 @@ export class Person {
     });
     this.#person.classList.toggle("pc-left", options.dock === "left");
     this.#layer.classList.toggle("pc-left", options.dock === "left");
-    this.#hang = this.#part(".pc-hang");
-    this.#hang.setAttribute("aria-label", options.hangUp.label);
-    this.#hang.title = options.hangUp.label;
-    this.#hang.addEventListener("click", options.hangUp.onClick);
-    this.#choosing = options.captions !== null;
-    this.#cc.hidden = !this.#choosing;
+    const hang = this.#part(".pc-hang");
+    hang.setAttribute("aria-label", options.hangUp.label);
+    hang.title = options.hangUp.label;
+    hang.addEventListener("click", options.hangUp.onClick);
+    this.#cc.hidden = options.captions === null;
+    this.#chip.hidden = options.captions === null;
     if (options.captions !== null) {
-      this.#cc.setAttribute("aria-label", options.captions.label);
-      this.#cc.title = options.captions.label;
-      this.#cc.addEventListener("click", options.captions.onClick);
+      for (const button of [this.#cc, this.#chip]) {
+        button.setAttribute("aria-label", options.captions.label);
+        button.title = options.captions.label;
+        button.addEventListener("click", options.captions.onClick);
+      }
     }
     this.face.setAttribute("aria-label", options.label);
     this.face.title = options.label;
@@ -269,15 +299,17 @@ export class Person {
   }
 
   /**
-   * The corner's buttons: hang-up while a call is on, captions while a call is on or a walk plays,
-   * pressed while they show. Called every frame, so it writes only what changed.
+   * The call's buttons in the corner while it is on, and the walk's on the face's shoulder while one
+   * plays; captions pressed while they show. Called every frame, so it writes only what changed.
    */
   buttons(call: boolean, walk: boolean, captioned: boolean): void {
-    const hidden = !call && !(walk && this.#choosing);
-    if (this.#calling.hidden !== hidden) this.#calling.hidden = hidden;
-    if (this.#hang.hidden === call) this.#hang.hidden = !call;
+    if (this.#calling.hidden === call) this.#calling.hidden = !call;
+    const chips = walk && !call;
+    if (this.#chips.hidden === chips) this.#chips.hidden = !chips;
     const pressed = String(captioned);
-    if (this.#cc.getAttribute("aria-pressed") !== pressed) this.#cc.setAttribute("aria-pressed", pressed);
+    for (const button of [this.#cc, this.#chip]) {
+      if (button.getAttribute("aria-pressed") !== pressed) button.setAttribute("aria-pressed", pressed);
+    }
   }
 
   /** The ▶ at the top right of `element`, or none. Called every frame while shown, so it follows the element. */

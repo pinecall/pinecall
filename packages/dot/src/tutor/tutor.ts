@@ -37,8 +37,14 @@ export interface TutorOptions {
   color?: string | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this" and "Walks". */
-  words?: { hangUp?: string | undefined; captions?: string | undefined; explain?: string | undefined; walks?: string | undefined } | undefined;
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks" and "Stop". */
+  words?: {
+    hangUp?: string | undefined;
+    captions?: string | undefined;
+    explain?: string | undefined;
+    walks?: string | undefined;
+    stop?: string | undefined;
+  } | undefined;
   /** Where the agent published its recorded walks (`GET …/v1/agents/{slug}/public/walks`): a button beside the face plays them with no call. */
   walks?: string | undefined;
   /** A walk started, ended, or was stopped: the page's own analytics hear it. */
@@ -72,6 +78,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     color: options.color,
     onClick: () => (walks.playing ? walks.stop() : options.onClick?.()),
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
+    stop: { label: options.words?.stop ?? "Stop", onClick: () => walks.stop() },
     captions:
       captions === "none"
         ? null

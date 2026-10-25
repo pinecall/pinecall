@@ -281,7 +281,8 @@ the visitor's, what the agent heard, show in the corner as they speak and a mome
 at a time. `captions` says which may show.
 
 With `walks`, a small button beside the dot fans out the agent's walks; a pick plays one in the
-agent's voice, the pointer moving on its words, with no call and no microphone. The tag dispatches
+agent's voice, the pointer moving on its words, with no call and no microphone; two small buttons on
+the dot turn its captions off and on and stop it. The tag dispatches
 `pinecall:walk` (`detail`: `{ walk, step, of, done }`) as one starts and ends.
 
 ## Telling the agent what the visitor does

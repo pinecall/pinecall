@@ -1,7 +1,7 @@
 /** The walks a visitor may play with no call: a small button beside the resting face, its pills fanned in an arc round it. */
 //
 // The button sits on the face's shoulder, toward the page, in front of the face: behind it, a click
-// meant for it reached the face and began a call. A click fans the walks out round the
+// meant for it reached the face and began a call. A click fans the walks out beside the
 // face, each a pill with its title and length, read from the top: the first walk is the highest. Escape, a click elsewhere or
 // a pick closes them. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
@@ -44,18 +44,22 @@ export interface MenuOptions {
 /** How far apart two pills stand, in px: a pill's 30 and a gap of 10, so no two ever overlap. */
 export const STEP = 40;
 
+/** How far the nearest pill stands from the face's edge, and how much farther each lower one does, in px. */
+const GAP = 14;
+const SLANT = 10;
+
 /**
- * Where each of `count` pills sits round a face at `at` of `radius`, its middle: rising a step at a
- * time from beside the face, each on an arc round it, so the higher a pill the nearer the face.
+ * Where each of `count` pills sits beside a face at `at` of `radius`, the end nearest it: rising a
+ * step at a time from beside the face, each a slant nearer it than the one below, the highest a gap
+ * from its edge. On an arc wide enough for the highest, the lowest stood far out from the face.
  */
 export function fanned(count: number, at: Point, radius: number, dock: "right" | "left"): Point[] {
   const side = dock === "right" ? -1 : 1;
   const lowest = radius * 0.3;
-  const reach = lowest + (count - 1) * STEP + radius + 20;
-  return Array.from({ length: count }, (_, index) => {
-    const rise = lowest + index * STEP;
-    return { x: at.x + side * Math.sqrt(reach * reach - rise * rise), y: at.y - rise };
-  });
+  return Array.from({ length: count }, (_, index) => ({
+    x: at.x + side * (radius + GAP + (count - 1 - index) * SLANT),
+    y: at.y - lowest - index * STEP,
+  }));
 }
 
 export class Menu {
