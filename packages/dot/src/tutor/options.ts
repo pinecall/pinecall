@@ -20,7 +20,7 @@ export interface TutorOptions {
   color?: string | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks", "Stop", "Pause" and "Close". */
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks", "Stop", "Pause", "Close" and "More walks". */
   words?: {
     hangUp?: string | undefined;
     captions?: string | undefined;
@@ -29,6 +29,7 @@ export interface TutorOptions {
     stop?: string | undefined;
     pause?: string | undefined;
     close?: string | undefined;
+    more?: string | undefined;
   } | undefined;
   /** Where the agent published its recorded walks (`GET …/v1/agents/{slug}/public/walks`): a button beside the face plays them with no call. */
   walks?: string | undefined;

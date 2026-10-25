@@ -71,6 +71,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const walks = new Walks(document, person, drawn, {
     dock: options.dock ?? "right",
     label: options.words?.walks ?? "Walks",
+    more: options.words?.more ?? "More walks",
     url: options.walks,
     inCall,
     home: () => queue(() => run("home", null)),

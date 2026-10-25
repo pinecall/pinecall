@@ -6,7 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
-- **The walks' pills are smaller and closer together**, so a long list stays short.
+- **The walks' pills are smaller, and come four at a time**: a small ⌄ under them shows the next four, and back
+  to the first from the last (`words: { more }`).
 - **The card is larger, and the captions stay out of its way**, as they do for a window of code.
 - **A project's own tools are drawn on a card.** `tutor(call, { views })` (the widget's `views` property) says,
   by tool name, how to draw a result: the free times, a booking form, a piece of code. The card stands above

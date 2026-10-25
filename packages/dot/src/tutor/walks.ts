@@ -12,6 +12,8 @@ export interface WalksOptions {
   dock: "right" | "left";
   /** The button's name: "Walks". */
   label: string;
+  /** The name of the button that shows the next walks: "More walks". */
+  more: string;
   /** Where the agent published its walks; none offered without it. */
   url: string | undefined;
   /** Whether a call is opening or on: no walk plays over one. */
@@ -52,6 +54,7 @@ export class Walks {
     this.#menu = new Menu(document, (part) => person.add(part), {
       dock: options.dock,
       label: options.label,
+      more: options.more,
       face: () => ({ at: person.dock(), radius: person.radius }),
       onPick: (index) => this.#play(index),
     });

@@ -26,7 +26,14 @@ const STYLE = `
 .pc-pill.pc-shown { opacity: 1; transform: none; }
 .pc-pill .pc-tri { width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent var(--pc-face, #1f6b55); }
 .pc-pill .pc-long { opacity: .55; font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .pc-pill, .pc-walks { transition: none; } }
+.pc-more { position: fixed; z-index: 3; display: grid; place-items: center; width: ${PILL}px; height: ${PILL}px; padding: 0; border: 0;
+  border-radius: 50%; background: var(--pc-bubble, #fff); color: var(--pc-face, #1f6b55); cursor: pointer; pointer-events: auto;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .16); }
+.pc-more[hidden] { display: none; }
+.pc-more svg { transition: transform .2s; }
+.pc-more.pc-last svg { transform: rotate(180deg); }
+.pc-more:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pc-pill, .pc-walks, .pc-more svg { transition: none; } }
 `;
 
 /** One walk as its pill shows it. */
@@ -43,10 +50,15 @@ export interface MenuOptions {
   face: () => { at: Point; radius: number };
   /** A walk picked, by its place in the list. */
   onPick: (index: number) => void;
+  /** What the button that shows the next pills is called for a screen reader: "More walks". */
+  more: string;
 }
 
 /** How long a walk offered alone stays beside the face, in ms. */
 export const OFFERED_MS = 5000;
+
+/** How many pills show at once; the rest come a page at a time, from a small button under them. */
+export const PAGE = 4;
 
 /** How far apart two pills stand, in px: a pill's height and a gap of 6, so no two ever overlap. */
 export const STEP = PILL + 6;
@@ -75,13 +87,16 @@ export class Menu {
   readonly #style: HTMLStyleElement;
   readonly #button: HTMLButtonElement;
   readonly #host: (element: Element) => void;
+  readonly #more: HTMLButtonElement;
   #pills: HTMLButtonElement[] = [];
   #open = false;
+  /** Which page of pills shows, from 0. */
+  #page = 0;
   /** The walk offered alone, by its place in the list, and when it goes. */
   #alone: { index: number; timer: ReturnType<typeof setTimeout> } | null = null;
   readonly #outside = (event: Event): void => {
     const target = event.target instanceof Node ? event.target : null;
-    if (target !== null && (this.#button.contains(target) || this.#pills.some((pill) => pill.contains(target)))) return;
+    if (target !== null && [this.#button, this.#more, ...this.#pills].some((part) => part.contains(target))) return;
     this.toggle(false);
   };
   readonly #escape = (event: KeyboardEvent): void => {
@@ -106,6 +121,19 @@ export class Menu {
     this.#button.title = options.label;
     this.#button.addEventListener("click", () => this.toggle(!this.#open));
     host(this.#button);
+    this.#more = document.createElement("button");
+    this.#more.type = "button";
+    this.#more.className = "pc-more";
+    this.#more.hidden = true;
+    this.#more.innerHTML = `<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    this.#more.setAttribute("aria-label", options.more);
+    this.#more.title = options.more;
+    this.#more.addEventListener("click", () => {
+      this.#page = (this.#page + 1) % Math.ceil(this.#pills.length / PAGE);
+      this.#show();
+      this.#shown()[0]?.focus();
+    });
+    host(this.#more);
     this.#host = host;
     document.addEventListener("pointerdown", this.#outside, true);
     document.addEventListener("keydown", this.#escape);
@@ -159,14 +187,32 @@ export class Menu {
   toggle(open: boolean): void {
     this.#unsuggest();
     this.#open = open && !this.#button.hidden;
+    this.#page = 0;
     this.#button.setAttribute("aria-expanded", String(this.#open));
+    this.#show();
+    if (this.#open) this.#shown()[0]?.focus();
+  }
+
+  /** The pills of the page showing, while the pills are fanned out. */
+  #shown(): HTMLButtonElement[] {
+    return this.#open ? this.#pills.slice(this.#page * PAGE, (this.#page + 1) * PAGE) : [];
+  }
+
+  // The page's pills shown, one after another; the others folded; the button for more while there are more than a page.
+  #show(): void {
     this.#place();
-    this.#pills.forEach((pill, index) => {
-      pill.hidden = !this.#open;
-      if (!this.#open) return void pill.classList.remove("pc-shown");
+    const shown = this.#shown();
+    for (const pill of this.#pills) {
+      if (shown.includes(pill)) continue;
+      pill.hidden = true;
+      pill.classList.remove("pc-shown");
+    }
+    shown.forEach((pill, index) => {
+      pill.hidden = false;
       setTimeout(() => pill.classList.add("pc-shown"), 30 * index);
     });
-    if (this.#open) this.#pills[0]?.focus();
+    this.#more.hidden = !this.#open || this.#pills.length <= PAGE;
+    this.#more.classList.toggle("pc-last", (this.#page + 1) * PAGE >= this.#pills.length);
   }
 
   get open(): boolean {
@@ -179,7 +225,6 @@ export class Menu {
     const side = this.#options.dock === "right" ? -1 : 1;
     Object.assign(this.#button.style, { left: `${at.x + side * lean - 11}px`, top: `${at.y - lean - 11}px` });
     const view = this.#document.defaultView;
-    const count = this.#pills.length;
     const right = this.#options.dock === "right";
     const stand = (pill: HTMLButtonElement | undefined, point: Point): void => {
       if (pill === undefined) return;
@@ -190,7 +235,15 @@ export class Menu {
         transformOrigin: right ? "right center" : "left center",
       });
     };
-    fanned(count, at, radius, this.#options.dock).forEach((point, index) => stand(this.#pills[count - 1 - index], point));
+    // The page's pills from the top, the first the highest; under them, the button for more.
+    const shown = this.#shown();
+    const paged = this.#pills.length > PAGE;
+    const slots = fanned(shown.length + (paged ? 1 : 0), at, radius, this.#options.dock);
+    shown.forEach((pill, index) => stand(pill, slots[slots.length - 1 - index] ?? at));
+    const [under] = slots;
+    if (paged && under !== undefined) {
+      Object.assign(this.#more.style, { left: `${right ? under.x - PILL : under.x}px`, top: `${under.y - PILL / 2}px` });
+    }
     // A walk offered alone stands where the lowest pill would, beside the face.
     const [beside] = fanned(1, at, radius, this.#options.dock);
     if (this.#alone !== null && beside !== undefined) stand(this.#pills[this.#alone.index], beside);
@@ -216,6 +269,7 @@ export class Menu {
     this.#document.removeEventListener("keydown", this.#escape);
     this.#document.defaultView?.removeEventListener("resize", this.#resized);
     this.#button.remove();
+    this.#more.remove();
     for (const pill of this.#pills) pill.remove();
     this.#style.remove();
   }

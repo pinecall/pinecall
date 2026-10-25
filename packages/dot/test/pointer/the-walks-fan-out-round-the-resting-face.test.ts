@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Menu, OFFERED_MS, STEP, fanned } from "../../src/pointer/menu.js";
+import { Menu, OFFERED_MS, PAGE, STEP, fanned } from "../../src/pointer/menu.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -13,6 +13,7 @@ function aMenu(picked: number[]): Menu {
   return new Menu(document, (part) => document.body.append(part), {
     dock: "right",
     label: "Walks",
+    more: "More walks",
     face: () => ({ at: { x: 900, y: 700 }, radius: 36 }),
     onPick: (index) => picked.push(index),
   });
@@ -90,5 +91,26 @@ describe("the walks' menu", () => {
     expect(picked).toEqual([1]);
     menu.close();
     vi.useRealTimers();
+  });
+
+  it("shows a page of walks at a time, and the button under them turns to the next page, then back to the first", () => {
+    const menu = aMenu([]);
+    const titles = ["One", "Two", "Three", "Four", "Five", "Six"];
+    menu.offer(titles.map((title) => ({ title, ms: 10_000 })));
+    menu.available(true);
+    const shown = (): string[] => [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")].filter((pill) => !pill.hidden).map((pill) => (pill.textContent ?? "").replace(/0:10$/, ""));
+    const more = document.querySelector<HTMLButtonElement>(".pc-more");
+
+    document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
+    expect(shown()).toEqual(titles.slice(0, PAGE));
+    expect(more?.hidden).toBe(false);
+    more?.click();
+    expect(shown()).toEqual(titles.slice(PAGE));
+    expect(more?.classList.contains("pc-last")).toBe(true);
+    more?.click();
+    expect(shown()).toEqual(titles.slice(0, PAGE));
+    menu.toggle(false);
+    expect([shown(), more?.hidden]).toEqual([[], true]);
+    menu.close();
   });
 });
