@@ -39,10 +39,10 @@ are fine.
 
 **Its shape and colour.** `face(host, call, { shape, color })`: `shape` is `circle` (the default),
 `squircle` or `blob`, and `color` any CSS colour (else the page's `--pc-face`). `reshape(shape)`
-changes it later, the body easing from one into the other. The body moves with the mood: a slow
-wobble round its rim while it listens, a lighter one while it thinks, and one that follows the voice
-while it speaks; still under `prefers-reduced-motion`. Nothing is drawn outside the body, no halo
-and no shadow, so it sits on any background. `tutor()` takes the same `shape` and `color`, which
+changes it later, the body easing from one into the other. The body moves whole with the mood, its
+outline never bent: it bobs and leans in while it listens, more slowly while it thinks, and squashes
+with the voice while it speaks; still under `prefers-reduced-motion`. Nothing is drawn outside the
+body, no halo and no shadow, so it sits on any background. `tutor()` takes the same `shape` and `color`, which
 tints its pointer too.
 
 **How the mouth is read.** Everything happens in the browser, from the element the agent's voice

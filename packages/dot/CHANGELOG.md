@@ -22,7 +22,7 @@ maintainer's call.
   return the thing as it now shows, so a model that moved in silence has something to say.
 - **The face takes a shape and a colour, and moves as it listens.** `shape` (`circle`, `squircle`,
   `blob`) and `color` on `face()`, `tutor()` and the widget; `reshape()` eases from one shape into
-  another. Its rim wobbles while it listens and with the voice. The halo and the drop shadow that
+  another. The whole body bobs while it listens and squashes with the voice, its outline never bent. The halo and the drop shadow that
   reached past the dot are gone.
 - **The site's own lines, said as written.** `data-pinecall-say` on an element (with
   `data-pinecall-do` and `data-pinecall-order`) is a line the agent says about it: one at a time

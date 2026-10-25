@@ -1,9 +1,9 @@
-/** The face's body: one of a few shapes, as a radius at each of a ring of angles, moved by how much it wobbles. Pure. */
+/** The face's body: one of a few shapes, as a radius at each of a ring of angles. Pure. */
 //
 // A shape is its radius at every angle around the middle, so any two shapes ease into each other
-// point by point and a wobble is a few slow waves running round the rim: the body moves while the
-// agent listens, as a person leans in. Every point stays inside the face's 100-unit box, so nothing
-// of the body is drawn past the element the page gave it.
+// point by point. The outline never bends while the face moves: the whole body bobs, leans and
+// squashes instead. Every point stays inside the face's 100-unit box with room for that motion, so
+// nothing of the body is drawn past the element the page gave it.
 
 /** The shapes a face's body takes. */
 export const SHAPES = ["circle", "squircle", "blob"] as const;
@@ -11,8 +11,8 @@ export type Shape = (typeof SHAPES)[number];
 
 /** How many points go round the rim. */
 const POINTS = 48;
-/** The farthest a point may reach from the middle: the box's half, less what the head's breath and voice scale it by (7 %). */
-export const REACH = 46;
+/** The farthest a point may reach from the middle: the box's half, less what the head's bob and squash take (7 % and 1.5 units). */
+export const REACH = 44;
 
 /** `value` when it names a shape, else the circle. */
 export function shapeOf(value: unknown): Shape {
@@ -30,18 +30,9 @@ export function radii(shape: Shape): number[] {
       // A superellipse, flat on its four sides and round at its corners, which reach farther: 36 is 43.6 there.
       return angles.map((a) => 36 / (Math.abs(Math.cos(a)) ** 4.5 + Math.abs(Math.sin(a)) ** 4.5) ** (1 / 4.5));
     case "blob":
-      // A pebble leaning to one side, broader at the bottom, the way a hand would draw one.
-      return angles.map((a) => 39 * (1 + 0.07 * Math.sin(2 * a + 0.6) + 0.045 * Math.sin(3 * a + 1.9) + 0.03 * Math.sin(a - 0.4)));
+      // A soft egg leaning a little to one side: one gentle swell, nothing a viewer reads as a dent.
+      return angles.map((a) => 41 * (1 + 0.055 * Math.sin(2 * a + 0.6) + 0.015 * Math.sin(3 * a + 1.9)));
   }
-}
-
-/** The rim at `seconds`, `wobble` from 0 (still) to 1 (moving as it does while listening), kept inside the box. */
-export function wobbled(rest: readonly number[], wobble: number, seconds: number): number[] {
-  return rest.map((radius, at) => {
-    const a = angles[at] ?? 0;
-    const waves = 0.04 * Math.sin(3 * a + seconds * 1.7) + 0.028 * Math.sin(5 * a - seconds * 2.3) + 0.018 * Math.sin(2 * a + seconds * 1.1);
-    return Math.min(REACH, radius * (1 + wobble * waves));
-  });
 }
 
 /** Each point moved toward the shape it is becoming over `dt` seconds, about a third of a second to arrive. */

@@ -1,8 +1,8 @@
-// The body is one of a few shapes, eases from one into another, and wobbles with the mood without ever reaching past its box.
+// The body is one of a few shapes, eases from one into another, and leaves room in its box for the motion of the whole body.
 
 import { describe, expect, it } from "vitest";
 
-import { REACH, SHAPES, morphed, outlineOf, radii, shapeOf, wobbled } from "../../src/face/shape.js";
+import { REACH, SHAPES, morphed, outlineOf, radii, shapeOf } from "../../src/face/shape.js";
 
 describe("the body's shape", () => {
   it("is a circle unless it names one of the others", () => {
@@ -11,20 +11,12 @@ describe("the body's shape", () => {
     expect(shapeOf(undefined)).toBe("circle");
   });
 
-  it("stays inside its reach at rest and at its widest wobble, at any moment", () => {
+  it("stays inside its reach, round enough everywhere to read as one soft body", () => {
     for (const shape of SHAPES) {
-      for (const seconds of [0, 0.4, 1.3, 7.9]) {
-        const rim = wobbled(radii(shape), 1, seconds);
-        expect(Math.max(...rim), `${shape} at ${seconds}s`).toBeLessThanOrEqual(REACH);
-        expect(Math.min(...rim), `${shape} at ${seconds}s`).toBeGreaterThan(30);
-      }
+      const rim = radii(shape);
+      expect(Math.max(...rim), shape).toBeLessThanOrEqual(REACH);
+      expect(Math.min(...rim) / Math.max(...rim), shape).toBeGreaterThan(0.8);
     }
-  });
-
-  it("is still when it does not wobble, and moves when it does", () => {
-    const rest = radii("circle");
-    expect(wobbled(rest, 0, 3)).toEqual(rest);
-    expect(wobbled(rest, 1, 3)).not.toEqual(rest);
   });
 
   it("eases from one shape into another, each point part of the way per frame", () => {

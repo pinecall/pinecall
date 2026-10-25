@@ -16,6 +16,8 @@ export interface Pose {
   eyes: number;
   gaze: { x: number; y: number };
   tilt: number;
+  /** How far the whole body sits above its middle, in the box's units. */
+  lift: number;
   scale: { x: number; y: number };
   /** The body's outline, an SVG path inside the 100-unit box. */
   body: string;
@@ -110,6 +112,6 @@ export function painted(drawing: Drawing, pose: Pose): void {
   }
   drawing.head.setAttribute(
     "transform",
-    `translate(50 50) rotate(${pose.tilt.toFixed(2)}) scale(${pose.scale.x.toFixed(4)} ${pose.scale.y.toFixed(4)}) translate(-50 -50)`,
+    `translate(50 ${(50 - pose.lift).toFixed(2)}) rotate(${pose.tilt.toFixed(2)}) scale(${pose.scale.x.toFixed(4)} ${pose.scale.y.toFixed(4)}) translate(-50 -50)`,
   );
 }

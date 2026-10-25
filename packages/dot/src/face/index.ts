@@ -2,9 +2,9 @@
 //
 // It reads the room it is given and nothing else: the phase and the agent's own state set its mood
 // (resting, listening, thinking), and while the agent's voice sounds, its mouth is read from that
-// voice frame by frame. Its body is one of a few shapes, in the page's colour, and moves with the
-// mood: a slow wobble while it listens, a quicker one with the voice. Nothing is sent anywhere and
-// nothing is asked of the server.
+// voice frame by frame. Its body is one of a few shapes, in the page's colour, and moves whole with
+// the mood, its outline never bent: it bobs and leans in while it listens, and squashes with the
+// voice. Nothing is sent anywhere and nothing is asked of the server.
 
 import type { RoomStore } from "@pinecall/room";
 
@@ -12,7 +12,7 @@ import { drawn, painted } from "./draw.js";
 import { Ear } from "./ear.js";
 import { BLINK_S, POSES, SOUNDING, eased, easedMouth, lidAt, moodOf, nextBlink } from "./motion.js";
 import { spoken, type Bands, type Mouth } from "./mouth.js";
-import { morphed, outlineOf, radii, shapeOf, wobbled, type Shape } from "./shape.js";
+import { morphed, outlineOf, radii, shapeOf, type Shape } from "./shape.js";
 
 /** A face on the page. */
 export interface Face {
@@ -31,8 +31,8 @@ export interface FaceOptions {
   color?: string | undefined;
 }
 
-/** How much the body wobbles in each mood, before the voice adds its own. */
-const WOBBLE = { idle: 0.12, listening: 1, thinking: 0.45, speaking: 0.3 } as const;
+/** How high the body bobs in each mood, in the box's units, and how often, per second. */
+const BOB = { idle: { high: 0, often: 0 }, listening: { high: 1.5, often: 0.8 }, thinking: { high: 0.6, often: 0.4 }, speaking: { high: 0, often: 0 } } as const;
 
 // Without an ear (never woken, or no Web Audio) the mouth opens with the room's own level, in no shape.
 const NO_SHAPE: Bands = { low: 1, mid: 1, high: 0, sib: 0 };
@@ -43,7 +43,7 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
   if (options.color !== undefined && host instanceof HTMLElement) host.style.setProperty("--pc-face", options.color);
   let rest = radii(shapeOf(options.shape));
   let rim = rest;
-  let wobble = 0;
+  let bob = 0;
   const ear = new Ear();
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   let mouth: Mouth = { ...POSES.idle };
@@ -104,7 +104,10 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
     const seconds = at / 1000;
     const breath = still ? 0 : Math.sin(seconds * Math.PI * 2 * 0.22) * 0.018;
     rim = morphed(rim, rest, dt);
-    wobble = eased(wobble, still ? 0 : WOBBLE[mood] + (mood === "speaking" ? level * 0.8 : 0), dt, 0.25, 0.5);
+    bob = eased(bob, still ? 0 : BOB[mood].high, dt, 0.3, 0.4);
+    const wave = Math.sin(seconds * Math.PI * 2 * (BOB[mood].often || 0.8));
+    // A bob is a little hop: up a touch taller and narrower, down a touch wider, as a soft body does.
+    const hop = bob * wave;
     const lean = mood === "listening" ? -5 : mood === "thinking" ? 4 : 0;
     painted(drawing, {
       mouth,
@@ -112,8 +115,9 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
       eyes: mood === "listening" ? 1.08 : 1,
       gaze,
       tilt: still ? 0 : lean + Math.sin(seconds * 0.7) * 1.2,
-      scale: { x: 1 + breath + level * 0.025 - mouth.open * 0.012, y: 1 + breath + level * 0.02 + mouth.open * 0.03 },
-      body: outlineOf(wobbled(rim, wobble, seconds)),
+      lift: hop,
+      scale: { x: 1 + breath + level * 0.025 - mouth.open * 0.012 - hop * 0.008, y: 1 + breath + level * 0.02 + mouth.open * 0.03 + hop * 0.01 },
+      body: outlineOf(rim),
     });
     frame = requestAnimationFrame(tick);
   };
