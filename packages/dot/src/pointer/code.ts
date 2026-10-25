@@ -3,7 +3,9 @@
 // It stands on the person's layer, out of what the agent reads, at the page's left, centred in the
 // height, so the pointer and the page stay in sight. As it opens its lines come in one after another,
 // as if written; the lines lit are the ones the voice is on, the rest dim, and `show` answers the
-// first lit line, for the pointer to go to. Colours: --pc-face, and the window's own.
+// first lit line, for the pointer to go to. While it is open it has the focus: a border and a halo
+// in the face's colour, and the page dimmed behind it (the person stands above, undimmed). Colours:
+// --pc-face, and the window's own.
 
 import type { CodeView } from "../wire/index.js";
 import { coloured } from "./syntax.js";
@@ -14,13 +16,16 @@ const LINE_MS = 55;
 const STYLE = `
 .pc-code { position: fixed; z-index: 1; left: 32px; top: 50%; width: min(640px, calc(100vw - 64px)); max-height: min(80vh, 640px);
   display: flex; flex-direction: column; transform: translateY(-50%); border-radius: 16px; overflow: hidden; pointer-events: auto;
-  background: #11121b; color: #e4e4f0; box-shadow: 0 30px 80px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .07);
+  background: #11121b; color: #e4e4f0; border: 1px solid color-mix(in srgb, var(--pc-face, #b7a6ff) 65%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc-face, #b7a6ff) 18%, transparent), 0 30px 80px rgb(0 0 0 / .5), 0 0 0 100vmax rgb(6 7 12 / .45);
   transition: opacity .3s, transform .3s; font: 14px/1.7 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
 .pc-code[hidden] { display: flex !important; opacity: 0; transform: translateY(-47%) scale(.98); pointer-events: none; }
 .pc-code-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #181927; font-size: 12.5px; color: #9b9bb4;
   border-bottom: 1px solid rgb(255 255 255 / .05); }
 .pc-code-bar i { width: 11px; height: 11px; border-radius: 50%; background: #34354a; }
-.pc-code-bar span { margin-left: 8px; }
+.pc-code-bar span { margin-left: 8px; color: #d8d8ea; }
+.pc-code-bar span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%;
+  vertical-align: 1px; background: var(--pc-face, #b7a6ff); box-shadow: 0 0 8px var(--pc-face, #b7a6ff); }
 .pc-code-lines { margin: 0; padding: 14px 0; overflow: auto; }
 .pc-code-line { display: flex; padding: 0 20px 0 0; white-space: pre; transition: opacity .25s, background-color .25s, box-shadow .25s; }
 .pc-code-line b { flex: none; width: 3.4em; padding-right: 1.2em; text-align: right; font-weight: 400; color: #4f5068; user-select: none; }
