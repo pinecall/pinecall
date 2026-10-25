@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
 
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, wordsOf, type Action, type Line, type Macro, type RecordedWalk } from "../wire/index.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, wordsOf, type Action, type Line, type Macro, type RecordedWalk, type Shown } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
@@ -75,6 +75,11 @@ export function walkNamed(walks: Record<string, Macro>, asked: string): Macro | 
   return walks[asked] ?? all.find((macro) => wordsOf(macro.name).join(" ") === words.join(" ")) ?? all.find(said) ?? (all.length === 1 ? all[0] : undefined);
 }
 
+/** The code a step shows beside the page, as the wire carries it: nothing when it shows none. */
+function shownBy(step: Shown): Shown {
+  return { ...(step.code === undefined ? {} : { code: step.code }), ...(step.lines === undefined ? {} : { lines: step.lines }) };
+}
+
 /** What the page said the visitor played: `"tour", all 5 sentences` or `"tour", 2 of its 5 sentences`. */
 function walkedLine(data: Record<string, unknown>): string {
   const of = typeof data["of"] === "number" ? data["of"] : 0;
@@ -129,7 +134,7 @@ export class Tutor extends Agent {
       steps: walk.steps.map((step) => {
         const line = lines[next++];
         if (line === undefined) throw new Error(`${walk.name}: the gateway recorded fewer sentences than were asked`);
-        return { say: step.say, audio: line.url, durationMs: line.durationMs, words: line.words, beats: step.beats };
+        return { say: step.say, audio: line.url, durationMs: line.durationMs, words: line.words, beats: step.beats, ...shownBy(step) };
       }),
     }));
     await serve.publish(WALKS, { walks: recorded });
@@ -253,7 +258,7 @@ export class Tutor extends Agent {
     this.walking = macro.name;
     try {
       for (const [at, step] of macro.steps.entries()) {
-        this.call.send(UI, { type: "macro.step", macro: macro.name, step: at, say: step.say, beats: step.beats });
+        this.call.send(UI, { type: "macro.step", macro: macro.name, step: at, say: step.say, beats: step.beats, ...shownBy(step) });
         const spoken = await this.say(step.say);
         if (!spoken || this.call.history.last?.interrupted === true) {
           return `Stopped after ${at + 1} of ${macro.steps.length} sentences: the visitor spoke. Answer what they said.`;
@@ -262,6 +267,7 @@ export class Tutor extends Agent {
       return `The ${macro.name} walk is said, every sentence as written: do not say them again.`;
     } finally {
       this.walking = undefined;
+      this.call.send(UI, { type: "macro.done", macro: macro.name });
     }
   }
 

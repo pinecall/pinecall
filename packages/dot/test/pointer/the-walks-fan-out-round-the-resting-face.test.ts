@@ -50,6 +50,8 @@ describe("the walks' menu", () => {
     const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
     expect(pills.map((pill) => pill.textContent)).toEqual(["Site tour0:38", "Pricing0:20"]);
     expect(pills.every((pill) => !pill.hidden)).toBe(true);
+    const top = (pill: HTMLElement | undefined): number => Number.parseFloat(pill?.style.top ?? "0");
+    expect(top(pills[0])).toBeLessThan(top(pills[1]));
     pills[1]?.click();
 
     expect(picked).toEqual([1]);

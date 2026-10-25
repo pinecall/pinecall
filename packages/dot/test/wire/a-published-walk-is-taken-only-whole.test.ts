@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { clock, macroOf, walksOf } from "../../src/wire/index.js";
+import { clock, macroOf, shownOf, tutoring, walksOf } from "../../src/wire/index.js";
 
 const STEP = {
   say: "Up here are our services.",
@@ -34,6 +34,29 @@ describe("a macro file", () => {
 
     expect(macroOf("tour", { title: "Site tour", steps }).title).toBe("Site tour");
     expect(macroOf("tour", { steps }).title).toBeUndefined();
+  });
+});
+
+describe("the code a step shows", () => {
+  const CODE = { title: "agent.ts", text: "export class Desk {}" };
+
+  it("is a window with a title and its text, closed with null, and lines lit from 1, in order", () => {
+    expect(shownOf({ code: CODE, lines: [1, 3] })).toEqual({ code: CODE, lines: [1, 3] });
+    expect(shownOf({ code: null })).toEqual({ code: null });
+    expect(shownOf({})).toEqual({});
+    for (const wrong of [{ code: { title: "x" } }, { code: "x" }, { lines: [3, 1] }, { lines: [0, 2] }, { lines: [1.5, 2] }, { lines: [1] }]) {
+      expect(shownOf(wrong), JSON.stringify(wrong)).toBeNull();
+    }
+  });
+
+  it("rides a macro file's step, a published walk's and a step sent in a call, and a macro's end is said", () => {
+    const steps = [{ say: "This is the class.", beats: [], code: CODE, lines: [1, 1] }];
+
+    expect(macroOf("code", { steps }).steps[0]).toEqual({ say: "This is the class.", beats: [], code: CODE, lines: [1, 1] });
+    expect(() => macroOf("code", { steps: [{ say: "Hi.", beats: [], lines: [2, 1] }] })).toThrow("shows code that is not");
+    expect(walksOf({ walks: [{ name: "w", title: "W", steps: [{ ...STEP, code: CODE, lines: [1, 1] }] }] })[0]?.steps[0]?.code).toEqual(CODE);
+    expect(tutoring({ type: "macro.step", macro: "w", step: 0, say: "Hi.", beats: [], code: CODE })).toMatchObject({ code: CODE });
+    expect(tutoring({ type: "macro.done", macro: "w" })).toEqual({ type: "macro.done", macro: "w" });
   });
 });
 

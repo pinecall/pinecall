@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A walk explains code.** A step's `code` opens a window of it beside the page and `lines` lights the
+  lines its sentence is about; `null` or the walk's end closes it, in a call too (`macro.done`).
+  The walks' first pill is the highest.
 - **A call no tutor's page joined is the agent's alone**: no screen in its view (it said "the page has
   not been seen yet" on every phone call), no pointer, and no page asked for off the web.
 - **Walks the visitor plays with no call.** `Tutor` records each macro once in the agent's voice as

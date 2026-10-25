@@ -1,7 +1,7 @@
 /** The walks a visitor may play with no call: a small button beside the resting face, its pills fanned in an arc round it. */
 //
 // The button sits on the face's shoulder, toward the page; a click fans the walks out round the
-// face, each a pill with its title and length, nearest the face first. Escape, a click elsewhere or
+// face, each a pill with its title and length, read from the top: the first walk is the highest. Escape, a click elsewhere or
 // a pick closes them. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
 import { clock } from "../wire/index.js";
@@ -152,8 +152,9 @@ export class Menu {
     const side = this.#options.dock === "right" ? -1 : 1;
     Object.assign(this.#button.style, { left: `${at.x + side * lean - 11}px`, top: `${at.y - lean - 11}px` });
     const view = this.#document.defaultView;
-    fanned(this.#pills.length, at, radius, this.#options.dock).forEach((point, index) => {
-      const pill = this.#pills[index];
+    const count = this.#pills.length;
+    fanned(count, at, radius, this.#options.dock).forEach((point, index) => {
+      const pill = this.#pills[count - 1 - index];
       if (pill === undefined) return;
       const right = this.#options.dock === "right";
       Object.assign(pill.style, {

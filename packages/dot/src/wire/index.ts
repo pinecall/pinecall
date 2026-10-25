@@ -62,8 +62,20 @@ export interface Beat {
   find?: [role: string, name: string] | undefined;
 }
 
+/** A window of code a step opens beside the page: its title and its text. */
+export interface CodeView {
+  title: string;
+  text: string;
+}
+
+/** What a step shows beside its words: a window of code opened (`code`), closed (`null`), the lines of it lit (from 1). */
+export interface Shown {
+  code?: CodeView | null | undefined;
+  lines?: [from: number, to: number] | undefined;
+}
+
 /** One sentence of a macro and the moves hung on its words. */
-export interface MacroStep {
+export interface MacroStep extends Shown {
   say: string;
   beats: Beat[];
 }
@@ -86,7 +98,7 @@ export interface TimedWord {
 }
 
 /** One sentence of a recorded walk, as the page plays it: its audio, when each word is said, its beats. */
-export interface RecordedStep {
+export interface RecordedStep extends Shown {
   say: string;
   audio: string;
   durationMs: number;
@@ -110,12 +122,38 @@ export interface Look {
 }
 
 /** A step about to be said, sent just before the agent says it. */
-export interface Step {
+export interface Step extends Shown {
   type: "macro.step";
   macro: string;
   step: number;
   say: string;
   beats: Beat[];
+}
+
+/** A macro said to its end in a call: what it showed beside the page goes. */
+export interface Done {
+  type: "macro.done";
+  macro: string;
+}
+
+/** What a step shows, checked; null for one that is not: a window with no title or text, lines out of order. */
+export function shownOf(fields: Record<string, unknown>): Shown | null {
+  const { code, lines } = fields;
+  const shown: Shown = {};
+  if (code === null) shown.code = null;
+  else if (code !== undefined) {
+    if (typeof code !== "object") return null;
+    const window: Record<string, unknown> = { ...code };
+    if (typeof window["title"] !== "string" || typeof window["text"] !== "string" || window["text"] === "") return null;
+    shown.code = { title: window["title"], text: window["text"] };
+  }
+  if (lines !== undefined) {
+    if (!Array.isArray(lines) || lines.length !== 2) return null;
+    const [from, to] = lines as unknown[];
+    if (typeof from !== "number" || typeof to !== "number" || !Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) return null;
+    shown.lines = [from, to];
+  }
+  return shown;
 }
 
 const isAction = (value: unknown): value is Action => typeof value === "string" && ACTIONS.some((one) => one === value);
@@ -133,10 +171,11 @@ function isBeat(value: unknown): value is Beat {
 }
 
 /** A message on `pinecall.ui` the tutor carries out, or null for one that is not its own (a card, choices). */
-export function tutoring(data: unknown): Cursor | Step | Look | null {
+export function tutoring(data: unknown): Cursor | Step | Look | Done | null {
   if (typeof data !== "object" || data === null) return null;
   const message: Record<string, unknown> = { ...data };
   if (message["type"] === "look") return { type: "look" };
+  if (message["type"] === "macro.done" && typeof message["macro"] === "string") return { type: "macro.done", macro: message["macro"] };
   const action = message["action"];
   if (message["type"] === "cursor" && isAction(action) && optionalText(message["target"]) && optionalText(message["text"])) {
     if (action === "type" && (message["target"] === undefined || message["text"] === undefined)) return null;
@@ -151,7 +190,9 @@ export function tutoring(data: unknown): Cursor | Step | Look | null {
     Array.isArray(beats) &&
     beats.every(isBeat)
   ) {
-    return { type: "macro.step", macro: message["macro"], step: message["step"], say: message["say"], beats };
+    const shown = shownOf(message);
+    if (shown === null) return null;
+    return { type: "macro.step", macro: message["macro"], step: message["step"], say: message["say"], beats, ...shown };
   }
   return null;
 }
@@ -182,7 +223,8 @@ function stepOf(value: unknown): RecordedStep | null {
   const { say, audio, durationMs, words, beats } = step;
   if (typeof say !== "string" || typeof audio !== "string" || !/^https?:\/\//.test(audio) || typeof durationMs !== "number") return null;
   if (!Array.isArray(words) || !words.every(isWord) || !Array.isArray(beats) || !beats.every(isBeat)) return null;
-  return { say, audio, durationMs, words, beats };
+  const shown = shownOf(step);
+  return shown === null ? null : { say, audio, durationMs, words, beats, ...shown };
 }
 
 /** The walks a published document holds, each checked: a walk with any step that is not one is left out. */
@@ -218,7 +260,9 @@ export function macroOf(name: string, value: unknown): Macro {
     for (const beat of beats) {
       if (!wordsOf(say).some((word) => word === normal(beat.word))) throw new Error(`macro ${name}: step ${at + 1} never says "${beat.word}"`);
     }
-    return { say, beats };
+    const shown = shownOf(fields);
+    if (shown === null) throw new Error(`macro ${name}: step ${at + 1} shows code that is not {code: {title, text} or null, lines: [from, to]}`);
+    return { say, beats, ...shown };
   });
   const when = macro["when"];
   const title = macro["title"];

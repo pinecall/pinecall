@@ -4,7 +4,7 @@
 // started go on to its next source, where a new element would need another click. Each frame
 // reads where the audio is, so the words and the pointer follow the sound, whatever the network.
 
-import { walksOf, type Beat, type RecordedWalk, type Step } from "../wire/index.js";
+import { walksOf, type Beat, type RecordedStep, type RecordedWalk, type Step } from "../wire/index.js";
 import { Player } from "./macro.js";
 
 /** How far the visitor got: the walk, the sentence reached (from 1), how many it has, and whether it ended. */
@@ -42,14 +42,19 @@ export function lengthOf(walk: RecordedWalk): number {
 export class Walking {
   readonly audio: HTMLAudioElement;
   readonly #ended: (walked: Walked) => void;
+  readonly #shows: (step: RecordedStep | null) => void;
   readonly #player = new Player();
   #walk: RecordedWalk | null = null;
   #step = 0;
 
-  /** Play through `audio`; `ended` hears a walk that played to its end, or failed to play. */
-  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void) {
+  /**
+   * Play through `audio`; `ended` hears a walk that played to its end, or failed to play; `shows`
+   * hears each sentence as it starts, for what it shows beside the page, and null as the walk stops.
+   */
+  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void, shows: (step: RecordedStep | null) => void = () => undefined) {
     this.audio = audio;
     this.#ended = ended;
+    this.#shows = shows;
     // The ear reads the audio through Web Audio, which hears silence from a source fetched without CORS.
     audio.crossOrigin = "anonymous";
     audio.preload = "auto";
@@ -101,6 +106,7 @@ export class Walking {
     if (walk === null || step === undefined) return;
     const asStep: Step = { type: "macro.step", macro: walk.name, step: this.#step, say: step.say, beats: step.beats };
     this.#player.arm(asStep, null);
+    this.#shows(step);
     this.audio.src = step.audio;
     this.audio.play().catch(() => this.#finish(false));
   }
@@ -127,6 +133,7 @@ export class Walking {
   #reset(): void {
     this.#walk = null;
     this.#player.drop();
+    this.#shows(null);
     this.audio.pause();
   }
 

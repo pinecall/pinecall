@@ -1,0 +1,106 @@
+/** The walks beside the resting face, with no call: the button and its pills, the player, the code a step shows, and what the next call is told was played. */
+
+import type { Face } from "../face/index.js";
+import { CodeWindow } from "../pointer/code.js";
+import { Menu } from "../pointer/menu.js";
+import type { Person } from "../pointer/person.js";
+import type { RecordedWalk } from "../wire/index.js";
+import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
+
+export interface WalksOptions {
+  dock: "right" | "left";
+  /** The button's name: "Walks". */
+  label: string;
+  /** Where the agent published its walks; none offered without it. */
+  url: string | undefined;
+  /** Whether a call is opening or on: no walk plays over one. */
+  inCall: () => boolean;
+  /** Send the pointer back to its corner, after the moves already queued. */
+  home: () => void;
+  /** A walk started, ended or was stopped. */
+  onWalk?: ((walked: Walked) => void) | undefined;
+}
+
+export class Walks {
+  /** The window of code a step opens; a call's macro steps open it too. */
+  readonly code: CodeWindow;
+  readonly #walking: Walking;
+  readonly #menu: Menu;
+  readonly #drawn: Face;
+  readonly #person: Person;
+  readonly #options: WalksOptions;
+  #list: RecordedWalk[] = [];
+  #played: Walked | null = null;
+
+  constructor(document: Document, person: Person, drawn: Face, options: WalksOptions) {
+    this.#person = person;
+    this.#drawn = drawn;
+    this.#options = options;
+    this.code = new CodeWindow(document, (part) => person.add(part));
+    this.#walking = new Walking(document.createElement("audio"), (walked) => this.#ended(walked), (step) => this.code.show(step?.code ?? null, step?.lines));
+    this.#menu = new Menu(document, (part) => person.add(part), {
+      dock: options.dock,
+      label: options.label,
+      face: () => ({ at: person.dock(), radius: person.radius }),
+      onPick: (index) => this.#play(index),
+    });
+    void publishedWalks(options.url ?? "").then((found) => {
+      this.#list = found;
+      this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
+      this.#menu.available(!options.inCall());
+    });
+  }
+
+  /** Where the walk playing is now; null while none plays. */
+  frame(): WalkFrame | null {
+    return this.#walking.frame();
+  }
+
+  get playing(): boolean {
+    return this.#walking.playing !== null;
+  }
+
+  /** Stop the walk playing, if one is: the visitor clicked the face, or a call began. */
+  stop(): void {
+    const walked = this.#walking.stop();
+    if (walked !== null) this.#ended(walked);
+  }
+
+  /** Whether the button may show: not during a call, nor while a walk plays. */
+  available(on: boolean): void {
+    this.#menu.available(on && !this.playing);
+  }
+
+  /** The walk played since the last call, once: what the next call is told. */
+  taken(): Walked | null {
+    const played = this.#played;
+    this.#played = null;
+    return played;
+  }
+
+  close(): void {
+    this.#walking.stop();
+    this.#menu.close();
+    this.code.close();
+  }
+
+  #play(index: number): void {
+    const walk = this.#list[index];
+    if (walk === undefined || this.#options.inCall()) return;
+    this.#drawn.wake();
+    this.#drawn.listen(this.#walking.audio);
+    this.#menu.available(false);
+    this.#walking.start(walk);
+    this.#options.onWalk?.({ walk: walk.name, step: 1, of: walk.steps.length, done: false });
+  }
+
+  #ended(walked: Walked): void {
+    this.#played = walked;
+    this.#drawn.listen(null);
+    this.#person.progress(null);
+    this.code.hide();
+    this.#options.home();
+    this.#menu.available(!this.#options.inCall());
+    this.#options.onWalk?.(walked);
+  }
+}

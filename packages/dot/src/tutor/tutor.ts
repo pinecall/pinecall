@@ -16,11 +16,11 @@ import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../poin
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat, type RecordedWalk } from "../wire/index.js";
-import { Menu } from "../pointer/menu.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
 import { Player } from "./macro.js";
-import { Walking, lengthOf, publishedWalks, type Walked } from "./walking.js";
+import { Walks } from "./walks.js";
+import type { Walked } from "./walking.js";
 
 export interface TutorOptions {
   /** The corner it rests in. Default `right`. */
@@ -70,7 +70,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     dock: options.dock ?? "right",
     label: options.label ?? "Talk to the assistant",
     color: options.color,
-    onClick: () => (walking.playing === null ? options.onClick?.() : walked(walking.stop())),
+    onClick: () => (walks.playing ? walks.stop() : options.onClick?.()),
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
     captions:
       captions === "none"
@@ -87,37 +87,13 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   });
   const drawn = face(person.face, call, { shape: options.shape });
   const inCall = (): boolean => call.state.phase === "opening" || call.state.phase === "live";
-  // The walk the visitor played last, said to the agent once as the next call opens.
-  let played: Walked | null = null;
-  let walks: RecordedWalk[] = [];
-  const walked = (ended: Walked | null): void => {
-    if (ended === null) return;
-    played = ended;
-    drawn.listen(null);
-    person.progress(null);
-    queue(() => run("home", null));
-    menu.available(!inCall());
-    options.onWalk?.(ended);
-  };
-  const walking = new Walking(document.createElement("audio"), walked);
-  const menu = new Menu(document, (part) => person.add(part), {
+  const walks = new Walks(document, person, drawn, {
     dock: options.dock ?? "right",
     label: options.words?.walks ?? "Walks",
-    face: () => ({ at: person.dock(), radius: person.radius }),
-    onPick: (index) => {
-      const walk = walks[index];
-      if (walk === undefined || inCall()) return;
-      drawn.wake();
-      drawn.listen(walking.audio);
-      menu.available(false);
-      walking.start(walk);
-      options.onWalk?.({ walk: walk.name, step: 1, of: walk.steps.length, done: false });
-    },
-  });
-  void publishedWalks(options.walks ?? "").then((found) => {
-    walks = found;
-    menu.offer(walks.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
-    menu.available(!inCall());
+    url: options.walks,
+    inCall,
+    home: () => queue(() => run("home", null)),
+    onWalk: options.onWalk,
   });
   const player = new Player();
   const linger = options.linger ?? 2600;
@@ -252,7 +228,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
 
   const tick = (now: number): void => {
     if (closed) return;
-    const walk = walking.frame();
+    const walk = walks.frame();
     if (walk !== null) {
       person.say(shows(captions, captioned, "agent") ? walk.lit : null, walk.coming);
       person.heard(null);
@@ -299,14 +275,14 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const unsubscribe = call.subscribe((state) => {
     person.calling(state.phase === "opening" || state.phase === "live", captioned);
     // A call takes over from a walk; the walks come back when it ends.
-    if (inCall()) walked(walking.stop());
-    menu.available(!inCall() && walking.playing === null);
+    if (inCall()) walks.stop();
+    walks.available(!inCall());
     if (state.phase === "live" && state.call !== following) {
       following = state.call;
       sent = "";
       look("joined");
+      const played = walks.taken();
       if (played !== null) send(WALKED, { ...played });
-      played = null;
     }
     if (state.phase !== "live" && state.phase !== "opening" && (person.touring || player.armed)) {
       player.drop();
@@ -358,6 +334,11 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       if (message === null) return false;
       if (message.type === "macro.step") {
         player.arm(message, sayingOf(call.state.entries)?.speech ?? null);
+        walks.code.show(message.code, message.lines);
+        return true;
+      }
+      if (message.type === "macro.done") {
+        walks.code.hide();
         return true;
       }
       if (message.type === "look") {
@@ -380,8 +361,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       closed = true;
       cancelAnimationFrame(frame);
       for (const timer of timers.values()) clearTimeout(timer);
-      walking.stop();
-      menu.close();
+      walks.close();
       clearTimeout(leaving);
       unsubscribe();
       changes.disconnect();

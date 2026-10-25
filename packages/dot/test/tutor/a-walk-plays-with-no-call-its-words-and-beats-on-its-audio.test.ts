@@ -80,6 +80,17 @@ describe("a walk played", () => {
     expect(walking.stop()).toBeNull();
   });
 
+  it("says what each sentence shows as it starts, and that nothing shows once it stops", () => {
+    const audio = anAudio();
+    const shown: (string | null)[] = [];
+    const walking = new Walking(audio, () => undefined, (step) => shown.push(step?.say ?? null));
+    walking.start(WALK);
+    audio.dispatchEvent(new Event("ended"));
+    walking.stop();
+
+    expect(shown).toEqual(["Up here are our services.", "That is all.", null]);
+  });
+
   it("is as long as its sentences", () => {
     expect(lengthOf(WALK)).toBe(3000);
   });

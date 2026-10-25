@@ -217,6 +217,9 @@ sentence the agent says as written, and each beat is a move run as its word is s
 
 - **`find` names the element as the snapshot does**, by role and a part of its name, so a macro
   survives a change of the markup.
+- **A step can show code beside the page**: `"code": { "title": "agent.ts", "text": "…" }` opens a
+  window with it, `"lines": [4, 5]` lights the lines the sentence is about and dims the rest, and a
+  later step lights others in the same window; `"code": null` closes it, as does the walk's end.
 - **`nth` picks which time a word is said**, from 1.
 - **`macros()` checks every file when the class loads**, and refuses a beat on a word its sentence
   never says.
