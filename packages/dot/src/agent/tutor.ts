@@ -125,6 +125,7 @@ export class Tutor extends Agent {
       name: walk.name,
       title: walk.title ?? walk.name,
       ...(walk.when === undefined ? {} : { when: walk.when }),
+      ...(lines[0] === undefined ? {} : { voice: lines[0].voice }),
       steps: walk.steps.map((step) => {
         const line = lines[next++];
         if (line === undefined) throw new Error(`${walk.name}: the gateway recorded fewer sentences than were asked`);

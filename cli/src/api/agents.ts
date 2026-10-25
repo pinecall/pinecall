@@ -1,4 +1,4 @@
-/** The agents endpoints: an agent's settings and their versions, its lexicon, its pipeline, the apps holding it, and a vendor's voices. */
+/** The agents endpoints: an agent's settings and their versions, its lexicon, its pipeline, the apps holding it, a vendor's voices, its walks. */
 
 import {
   type AppList,
@@ -15,10 +15,11 @@ import {
   type VoiceSample,
   VoicesListedSchema,
 } from "@pinecall/agents/wire";
-import type { z } from "zod";
+import { z } from "zod";
 
 export type { AppProcess, AppStopped, KilledAgent, LexiconAnswer, LexiconBody, LexiconHistory, TuningAnswer, TuningBody, TuningDiff, TuningHistory, VoiceSample } from "@pinecall/agents/wire";
 
+import { GatewayError } from "../errors.js";
 import { seg, type GatewayClient } from "./client.js";
 
 /** `PUT /v1/agents/{slug}/settings`: the whole set, guarded by the version it was read at (null: no guard). */
@@ -193,4 +194,47 @@ export function durationOf(header: string, metric: "first-audio" | "total"): num
 /** `GET /v1/agents/{slug}/config`: what the holder of the agent declared — its tools among it. */
 export function getAgentConfig(gw: GatewayClient, agent: string): Promise<{ tools?: unknown[] }> {
   return gw.get<{ tools?: unknown[] }>(`/v1/agents/${seg(agent)}/config`);
+}
+
+/** A walk an agent published for its pages (a tutor's macro, recorded in its voice): what the CLI lists and plays of it. */
+export interface PublishedWalk {
+  name: string;
+  title: string;
+  voice: string | null;
+  steps: { say: string; audio: string; durationMs: number }[];
+}
+
+/** `GET /v1/agents/{slug}/public/walks?env=`: the walks the agent published in this env, read with no key; none while it published none. */
+export async function getWalks(gw: GatewayClient, agent: string): Promise<PublishedWalk[]> {
+  try {
+    return walksIn(await gw.get<unknown>(`/v1/agents/${seg(agent)}/public/walks`, { env: gw.env }));
+  } catch (failed) {
+    if (failed instanceof GatewayError && failed.status === 404) return [];
+    throw failed;
+  }
+}
+
+/** A recorded line's MP3, by the URL its walk names: the gateway's own, read with no key. */
+export async function getLineAudio(gw: GatewayClient, url: string): Promise<Uint8Array> {
+  return new Uint8Array(await (await gw.fetch(new URL(url).pathname)).arrayBuffer());
+}
+
+// The document is the app's, read as any page reads it: a walk that is not one is left out, and
+// fields the CLI does not show (the words' times, the beats) are left to the page.
+const PublishedWalkSchema = z.looseObject({
+  name: z.string(),
+  title: z.string().optional(),
+  voice: z.string().optional(),
+  steps: z.array(z.looseObject({ say: z.string(), audio: z.url(), durationMs: z.number() })).min(1),
+});
+
+function walksIn(published: unknown): PublishedWalk[] {
+  const listed = z.looseObject({ walks: z.array(z.unknown()) }).safeParse(published);
+  if (!listed.success) return [];
+  return listed.data.walks.flatMap((one) => {
+    const walk = PublishedWalkSchema.safeParse(one);
+    if (!walk.success) return [];
+    const { name, title, voice, steps } = walk.data;
+    return [{ name, title: title ?? name, voice: voice ?? null, steps: steps.map(({ say, audio, durationMs }) => ({ say, audio, durationMs })) }];
+  });
 }

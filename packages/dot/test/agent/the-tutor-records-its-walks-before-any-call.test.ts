@@ -51,6 +51,7 @@ describe("a tutor before any call", () => {
             name: "tour",
             title: "Site tour",
             when: "the visitor asks to be shown around",
+            voice: "cartesia sonic-3",
             steps: [
               { say: "Up here are our services.", audio: "https://gw/v1/lines/l0.mp3", durationMs: 1000, words: [{ text: "Up here are our services.", startMs: 0, endMs: 900 }], beats: [{ word: "services.", do: "point", find: ["link", "Services"] }] },
               { say: "That is all.", audio: "https://gw/v1/lines/l1.mp3", durationMs: 1000, words: [{ text: "That is all.", startMs: 0, endMs: 900 }], beats: [] },

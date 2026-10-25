@@ -1,17 +1,18 @@
-/** Agents as a terminal reads them: the settings table, versions, a diff, the lexicon, the pipeline, the apps, the voices. */
+/** Agents as a terminal reads them: the settings table, versions, a diff, the lexicon, the pipeline, the apps, the voices, the walks. */
 
 import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 
 import type { CornerWritten } from "./service/corners.js";
-import { date } from "../kit/format.js";
+import { date, duration } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type HoldMelody, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed } from "./service/index.js";
+import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type HoldMelody, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed, type WalkListed, type WalkPlayed } from "./service/index.js";
 
 // Max cell width; longer values are truncated so three columns fit.
 const A_CELL = 40;
 
 export const NO_APPS = "no app is connected here: `pinecall start` holds a project's agents";
 export const NO_VOICES = "no voice matches: try another --language or --country";
+export const NO_WALKS = (agent: string): string => `${agent} published no walks: a Tutor records its macros as \`pinecall start\` holds it`;
 export const UNCHANGED = "nothing changed: no version written";
 export const NOTHING_KNOWN = (agent: string, corner: string): string => `${agent} knows nothing by heart in ${corner}: \`pinecall agent knowledge edit\` writes it`;
 
@@ -269,4 +270,17 @@ function openingLine(report: PipelineReport): string {
   if (greeting === null) return "";
   if (greeting.say !== null && greeting.say !== "") return `"${greeting.say}"`;
   return `the model improvises: ${greeting.reply ?? ""}`;
+}
+
+/** Each walk the agent published: its name, its button, its sentences and length, the voice it was recorded in. */
+export function walks({ agent, walks }: { agent: string; walks: WalkListed[] }): string[] {
+  if (walks.length === 0) return [NO_WALKS(agent)];
+  return table(
+    ["walk", "title", "sentences", "length", "voice"],
+    walks.map((walk) => [walk.name, walk.title, String(walk.sentences), duration(walk.ms / 1000), walk.voice ?? "—"]),
+  );
+}
+
+export function walkPlayed(played: WalkPlayed): string {
+  return `${played.walk} · ${played.sentences} sentences · ${played.player}`;
 }

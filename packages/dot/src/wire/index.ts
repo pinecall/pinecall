@@ -99,6 +99,8 @@ export interface RecordedWalk {
   name: string;
   title: string;
   when?: string | undefined;
+  /** The voice it was recorded in, as the gateway names it: `cartesia sonic-3 f786b574…`. */
+  voice?: string | undefined;
   steps: RecordedStep[];
 }
 

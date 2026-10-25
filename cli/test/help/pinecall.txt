@@ -59,6 +59,8 @@ Commands:
                                  what the ears must know
   pipeline [options]             what the agent hears, decides and speaks with,
                                  as the next call would be built
+  walks                          the walks a tutor agent published, recorded in
+                                 its voice, which a visitor plays with no call
   voices                         a voice vendor's voices, and any one of them
                                  heard on this machine before it is chosen
   docs                           the documents the agent searches: a folder

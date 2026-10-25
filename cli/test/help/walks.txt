@@ -1,0 +1,42 @@
+$ pinecall walks --help
+Usage: pinecall walks [options] [command]
+
+the walks a tutor agent published, recorded in its voice, which a visitor plays
+with no call
+
+Options:
+  -h, --help             display help for command
+
+Commands:
+  list [options]         each walk: its sentences, its length, the voice it was
+                         recorded in
+  play [options] <walk>  one walk played here, a sentence at a time
+  help [command]         display help for command
+
+A tutor agent (one that extends Tutor from @pinecall/dot/agent) records each macro of its folder in
+its own voice as `pinecall start` or a deployed app holds it, and publishes them as walks: a visitor
+plays one from the page with no call. These read what it published in this env (--prod for
+production's): list says each walk's sentences, length and voice; play plays one here, a sentence at
+a time, on the first player this machine has.
+
+
+$ pinecall walks list --help
+Usage: pinecall walks list [options]
+
+each walk: its sentences, its length, the voice it was recorded in
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command
+
+$ pinecall walks play --help
+Usage: pinecall walks play [options] <walk>
+
+one walk played here, a sentence at a time
+
+Arguments:
+  walk            its name or its title
+
+Options:
+  --agent <slug>
+  -h, --help      display help for command

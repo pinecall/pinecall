@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall walks`**: a tutor agent's walks, recorded in its voice for a visitor to play with no
+  call, listed with their sentences, length and voice; `walks play <walk>` plays one here. `start`
+  prints each walk as the agent records it.
 - **`start` watches each agent's folder and the project's `lib/`, not the project's root**: a script, a note
   or a pulled settings file anywhere in the project reloaded every agent and cut a `test` run in flight.
   The MCP server's held agent watches the same. (2026-10-24 tools eval, T F6 · R F20 · P F1)

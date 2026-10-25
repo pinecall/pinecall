@@ -85,6 +85,14 @@ one knob worth showing — the opening, and the medians livekit measured over th
 calls. Setting them is \`pinecall agent set\`.
 `;
 
+const WALKS = `
+A tutor agent (one that extends Tutor from @pinecall/dot/agent) records each macro of its folder in
+its own voice as \`pinecall start\` or a deployed app holds it, and publishes them as walks: a visitor
+plays one from the page with no call. These read what it published in this env (--prod for
+production's): list says each walk's sentences, length and voice; play plays one here, a sentence at
+a time, on the first player this machine has.
+`;
+
 const VOICES = `
 The vendor is --tts, or Pinecall's own voice when none is named (\`pinecall providers\` says which).
 With nothing after it: the vendor's voices in that language, one per line — the id the agent's
@@ -280,6 +288,19 @@ export function register(program: Command, ctx: Context): void {
     .action(async (seconds, flags) => ctx.io.result(await service.waitBeforeMelody(ctx, flags.agent, service.AfterInput.parse(seconds)), render.melody));
   // The six knobs moved into the settings: the old verbs name where, instead of "too many arguments".
   for (const moved of ["set", "clear"]) pipeline.command(moved, { hidden: true }).allowUnknownOption().allowExcessArguments().action(() => { throw new UsageError(`pipeline ${moved} is \`pinecall agent ${moved}\` now: the stages are fields of the settings`); });
+
+  const walks = program.command("walks").description("the walks a tutor agent published, recorded in its voice, which a visitor plays with no call").addHelpText("after", WALKS);
+  walks
+    .command("list", { isDefault: true })
+    .description("each walk: its sentences, its length, the voice it was recorded in")
+    .option("--agent <slug>")
+    .action(async (flags) => ctx.io.result(await service.listWalks(ctx, flags.agent), render.walks));
+  walks
+    .command("play")
+    .description("one walk played here, a sentence at a time")
+    .argument("<walk>", "its name or its title")
+    .option("--agent <slug>")
+    .action(async (walk, flags) => ctx.io.result(await service.playWalk(ctx, flags.agent, walk, playFile, (sentence) => ctx.io.print(`› ${sentence}`)), render.walkPlayed));
 
   const voices = program.command("voices").description("a voice vendor's voices, and any one of them heard on this machine before it is chosen").addHelpText("after", VOICES);
   voices

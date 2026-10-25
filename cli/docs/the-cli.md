@@ -66,6 +66,7 @@ path end to end, with every output under it.
 | [`limits`](#limits) | what the org may use in this environment, what it used, and whose keys its calls run on | yes |
 | [`providers`](#providers) | every vendor this build runs, and the keys this org brought | yes |
 | [`voices`](#voices) | a vendor's voices in a language, and one of them played here before it is chosen | yes |
+| [`walks`](#walks) | a tutor agent's walks, recorded in its voice for a visitor to play with no call; one played here | yes |
 | [`callbacks`](#callbacks) | the numbers people left when every seat was taken | yes |
 | [`data`](#data) | the org's data: erasures and their trail, its policy, consent, the do-not-call list, export | yes |
 | [`deploy`](#deploy) | this project run by the platform itself: uploaded as a release, installed and started there; list, releases, rollback, logs, stop, start, rm | yes |
@@ -1940,6 +1941,35 @@ a minute on one key, `503` when nobody has a key for the vendor, `409` when the 
 that key, `502` when it did not answer. The voice it plays is set with `pinecall agent set --tts
 cartesia --tts-model sonic-3 --voice <id>`: a model tried with `--model` is kept only when
 `--tts-model` names it too.
+
+## `walks`
+
+```
+pinecall walks [--agent <slug>]
+pinecall walks play <walk> [--agent <slug>]
+```
+
+```console
+$ pinecall walks
+WALK  TITLE      SENTENCES  LENGTH  VOICE
+tour  Site tour  5          21s     cartesia f786b574-daa5-4673-aa0c-cbe3e8534c02
+$ pinecall walks play "site tour"
+› Hi! I'm Pip. Let me show you around Brightside Dental. It takes about twenty seconds.
+› Up here are our services. Whitening is the one most people ask about.
+…
+tour · 5 sentences · afplay
+```
+
+A tutor agent (a class that extends `Tutor` from `@pinecall/dot/agent`, an experiment) records each
+macro of its folder in its own voice as `start` or a deployed app holds it, and publishes them as its
+walks: a visitor plays one from the page with no call. `start` says so once the agent is registered,
+`walk tour · 5 sentences · 0:21 · …`, and records only what changed: a sentence recorded before, in
+the same voice, costs nothing. `walks` reads what the agent published in this env (`--prod` for
+production's), the same document the page reads with no key (`GET /v1/agents/{slug}/public/walks`):
+each walk's name, the title its button shows, its sentences, its length and the voice it was
+recorded in; an agent that published none says so. `play` plays one here, named by its name or its
+title, a sentence at a time on the first player this machine has, each sentence printed as its
+audio starts; `no walk pricing: there are tour` names the ones there are.
 
 ## `callbacks`
 
