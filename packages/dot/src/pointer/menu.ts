@@ -1,6 +1,7 @@
 /** The walks a visitor may play with no call: a small button beside the resting face, its pills fanned in an arc round it. */
 //
-// The button sits on the face's shoulder, toward the page; a click fans the walks out round the
+// The button sits on the face's shoulder, toward the page, in front of the face: behind it, a click
+// meant for it reached the face and began a call. A click fans the walks out round the
 // face, each a pill with its title and length, read from the top: the first walk is the highest. Escape, a click elsewhere or
 // a pick closes them. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
@@ -8,13 +9,13 @@ import { clock } from "../wire/index.js";
 import type { Point } from "./flight.js";
 
 const STYLE = `
-.pc-walks { position: fixed; width: 22px; height: 22px; padding: 0; border: 2px solid var(--pc-bubble, #fff); border-radius: 50%;
+.pc-walks { position: fixed; z-index: 3; width: 22px; height: 22px; padding: 0; border: 2px solid var(--pc-bubble, #fff); border-radius: 50%;
   background: var(--pc-face, #1f6b55); color: #fff; font: 700 10px/18px system-ui, sans-serif; text-align: center; cursor: pointer;
   pointer-events: auto; box-shadow: 0 2px 8px rgb(0 0 0 / .2); transition: transform .15s; }
 .pc-walks:hover, .pc-walks[aria-expanded="true"] { transform: scale(1.12); }
 .pc-walks:focus-visible, .pc-pill:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
 .pc-walks[hidden], .pc-pill[hidden] { display: none; }
-.pc-pill { position: fixed; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 9px; border: 0;
+.pc-pill { position: fixed; z-index: 3; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 9px; border: 0;
   border-radius: 999px; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); cursor: pointer; pointer-events: auto;
   font: 500 13px/30px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / .16);
   opacity: 0; transform: scale(.85); transition: opacity .18s, transform .18s; }

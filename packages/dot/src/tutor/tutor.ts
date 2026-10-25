@@ -80,7 +80,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
             onClick: () => {
               captioned = !captioned;
               keepVisitorChoice(storage, captioned);
-              person.calling(true, captioned);
             },
           },
     explain: { label: options.words?.explain ?? "Explain this", onClick: (element) => send(EXPLAIN, { at: page.refOf(element) }) },
@@ -236,11 +235,12 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (closed) return;
     const walk = walks.frame();
     if (walk !== null) {
-      person.say(shows(captions, captioned, "agent") ? walk.lit : null, walk.coming);
+      person.say(shows(captions, captioned, "agent", walks.code.open) ? walk.lit : null, walk.coming);
       person.heard(null);
       person.progress(walk.fraction);
       for (const one of walk.beats) queue(() => beat(one));
     } else spoken(now);
+    person.buttons(inCall(), walks.playing, captioned);
     // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
     if (!flying && !person.touring) person.place(person.dock());
     // An element gone, or hidden (a closed window of code), is let go of where the pointer stands.
@@ -271,9 +271,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const heard = hearing.at(call.state.log, now);
     if (words === null && heard !== null) last = { text: "", at: 0 };
     else if (words === null && last.text !== "" && now - last.at < linger) words = [last.text, ""];
-    const agent = shows(captions, captioned, "agent") ? words : null;
+    const agent = shows(captions, captioned, "agent", walks.code.open) ? words : null;
     person.say(agent?.[0] ?? null, agent?.[1] ?? "");
-    person.heard(words === null && shows(captions, captioned, "caller") ? heard : null);
+    person.heard(words === null && shows(captions, captioned, "caller", walks.code.open) ? heard : null);
     for (const one of player.due(saying?.speech ?? null, said)) queue(() => beat(one));
   };
 
@@ -281,7 +281,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   // reload); an agent that arrives after it asks (`look`), since LiveKit keeps no data for whoever
   // joins after it was sent. A call that ends sends the tutor home.
   const unsubscribe = call.subscribe((state) => {
-    person.calling(state.phase === "opening" || state.phase === "live", captioned);
     // A call takes over from a walk; the walks come back when it ends.
     if (inCall()) walks.stop();
     walks.available(!inCall());

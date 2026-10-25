@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **The captions stay out of the code's way.** None show while a window of code is open, and CC sits in the
+  corner during a walk too, the same choice as in a call. The walks' button stands in front of the face,
+  where a click on it no longer began a call, and on the face's resting size, where the face back from a
+  walk no longer covered it.
 - **The face stands where it hides nothing.** Beside the tip it takes the side that fits the screen
   (right or left, below or above), and on a window of code the side clear of the lines being explained.
   The side is chosen for where the flight lands, before it leaves: the face no longer covers a section

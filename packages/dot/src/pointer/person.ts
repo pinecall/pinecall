@@ -4,7 +4,7 @@
 // corner like the widget's button; touring, it shrinks beside the tip of an arrow in its colour,
 // the way a multiplayer cursor carries a name tag. The spotlight and the "here" ring live there too,
 // and, in the corner it rests in, what the visitor is saying and the call's two buttons (captions,
-// hang up), which stay there while the face tours. Every colour is a custom property: --pc-face
+// hang up), which stay there while the face tours; a walk shows the captions button alone. Every colour is a custom property: --pc-face
 // (the dot and the arrow), --pc-face-ring, --pc-bubble, --pc-bubble-ink, --pc-heard, --pc-heard-ink,
 // --pc-hang.
 
@@ -54,7 +54,7 @@ const STYLE = `
 .pc-calling button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
 .pc-calling .pc-cc { background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
 .pc-calling .pc-cc[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
-.pc-calling .pc-cc[hidden] { display: none; }
+.pc-calling button[hidden] { display: none; }
 .pc-calling .pc-hang { background: var(--pc-hang, #d6453d); color: #fff; font-size: 16px; }
 .pc-play { position: fixed; width: 26px; height: 26px; border-radius: 50%; pointer-events: auto; cursor: pointer; border: 0; padding: 0;
   background: var(--pc-face, #1f6b55); color: #fff; font: 11px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 3px 10px rgb(0 0 0 / .25); }
@@ -143,6 +143,9 @@ export class Person {
   readonly #heard: HTMLElement;
   readonly #calling: HTMLElement;
   readonly #cc: HTMLElement;
+  readonly #hang: HTMLElement;
+  /** Whether the site lets the visitor turn the captions off. */
+  readonly #choosing: boolean;
   readonly #play: HTMLElement;
   #offered: Element | null = null;
   readonly #spot: HTMLElement;
@@ -179,11 +182,12 @@ export class Person {
     });
     this.#person.classList.toggle("pc-left", options.dock === "left");
     this.#layer.classList.toggle("pc-left", options.dock === "left");
-    const hang = this.#part(".pc-hang");
-    hang.setAttribute("aria-label", options.hangUp.label);
-    hang.title = options.hangUp.label;
-    hang.addEventListener("click", options.hangUp.onClick);
-    this.#cc.hidden = options.captions === null;
+    this.#hang = this.#part(".pc-hang");
+    this.#hang.setAttribute("aria-label", options.hangUp.label);
+    this.#hang.title = options.hangUp.label;
+    this.#hang.addEventListener("click", options.hangUp.onClick);
+    this.#choosing = options.captions !== null;
+    this.#cc.hidden = !this.#choosing;
     if (options.captions !== null) {
       this.#cc.setAttribute("aria-label", options.captions.label);
       this.#cc.title = options.captions.label;
@@ -264,10 +268,16 @@ export class Person {
     if (text !== null) this.#heard.textContent = text;
   }
 
-  /** The call's buttons, shown while it is on; the captions button pressed while they show. */
-  calling(on: boolean, captioned: boolean): void {
-    this.#calling.hidden = !on;
-    this.#cc.setAttribute("aria-pressed", String(captioned));
+  /**
+   * The corner's buttons: hang-up while a call is on, captions while a call is on or a walk plays,
+   * pressed while they show. Called every frame, so it writes only what changed.
+   */
+  buttons(call: boolean, walk: boolean, captioned: boolean): void {
+    const hidden = !call && !(walk && this.#choosing);
+    if (this.#calling.hidden !== hidden) this.#calling.hidden = hidden;
+    if (this.#hang.hidden === call) this.#hang.hidden = !call;
+    const pressed = String(captioned);
+    if (this.#cc.getAttribute("aria-pressed") !== pressed) this.#cc.setAttribute("aria-pressed", pressed);
   }
 
   /** The ▶ at the top right of `element`, or none. Called every frame while shown, so it follows the element. */
@@ -311,9 +321,13 @@ export class Person {
     this.#layer.append(element);
   }
 
-  /** Half the resting face's width, in px. */
+  /**
+   * Half the resting face's width, in px, touring or not: read off a face still small from a walk, it
+   * set the walks' button where the face, grown back, covered it.
+   */
   get radius(): number {
-    return this.face.getBoundingClientRect().width / 2;
+    const size = Number.parseFloat(this.#document.defaultView?.getComputedStyle(this.face).getPropertyValue("--pc-dot-size") ?? "");
+    return (Number.isFinite(size) && size > 0 ? size : 64) / 2;
   }
 
   /** How far a walk has played, 0 to 1, as a ring round the face; null takes the ring away. */
