@@ -8,6 +8,7 @@ const SITE = `
   <header><a href="/">Brightside Dental</a><nav aria-label="Main"><a href="#pricing">Pricing</a></nav></header>
   <main>
     <h1>A brighter smile</h1>
+    <div role="tablist" aria-label="How it works"><button role="tab">Write the agent</button><button role="tab">Prove it</button></div>
     <article aria-label="Family Care plan"><span aria-hidden="true">🦷</span><h3>Family Care</h3><div class="price">$39<small> / month</small><!-- was $45 --></div></article>
     <section aria-label="Book" id="book" data-pinecall-say="Book here: it takes a minute." data-pinecall-order="2">
       <label for="name">Your name</label><input id="name" value="Jordan Lee">
@@ -72,6 +73,14 @@ describe("the page as the agent reads it", () => {
     expect(text).toContain('  - text "$39 / month"');
     expect(text).not.toContain("was $45");
     expect(text).not.toContain("🦷");
+  });
+
+  it("names a tab by its words and gives it a ref, so a walk can point at it", () => {
+    const page = new Page(document);
+    const { text } = page.seen();
+
+    expect(text).toMatch(/- tab "Write the agent" \[ref=e\d+\]/);
+    expect(page.element(page.find("tab", "prove it") ?? "")?.textContent).toBe("Prove it");
   });
 
   it("leaves out what the site marks as not its own", () => {

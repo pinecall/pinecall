@@ -19,7 +19,7 @@ export interface Seen {
 }
 
 /** The roles that get a ref: what the agent can point at, scroll to, or highlight. */
-const POINTABLE = new Set(["link", "button", "textbox", "combobox", "checkbox", "radio", "heading", "article", "region", "img", "form", "group"]);
+const POINTABLE = new Set(["link", "button", "tab", "textbox", "combobox", "checkbox", "radio", "heading", "article", "region", "img", "form", "group"]);
 /** Kept as a line even with no name, because they say where things are. */
 const LANDMARKS = new Set(["banner", "navigation", "main", "contentinfo", "form", "list", "group"]);
 /** Always walked, on screen or not: a sticky header, the page's frame. */

@@ -12,7 +12,7 @@ import { coloured } from "./syntax.js";
 const LINE_MS = 55;
 
 const STYLE = `
-.pc-code { position: fixed; left: 32px; top: 50%; width: min(640px, calc(100vw - 64px)); max-height: min(80vh, 640px);
+.pc-code { position: fixed; z-index: 1; left: 32px; top: 50%; width: min(640px, calc(100vw - 64px)); max-height: min(80vh, 640px);
   display: flex; flex-direction: column; transform: translateY(-50%); border-radius: 16px; overflow: hidden; pointer-events: auto;
   background: #11121b; color: #e4e4f0; box-shadow: 0 30px 80px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .07);
   transition: opacity .3s, transform .3s; font: 14px/1.7 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }

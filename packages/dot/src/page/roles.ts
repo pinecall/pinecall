@@ -40,7 +40,7 @@ export function clean(text: string | null | undefined, max = 80): string {
 }
 
 /** The roles whose name is their own words: nothing under them is said again. */
-export const SAID_WHOLE = new Set(["link", "button", "heading", "text", "textbox", "combobox", "listitem"]);
+export const SAID_WHOLE = new Set(["link", "button", "tab", "heading", "text", "textbox", "combobox", "listitem"]);
 
 /** What a person calls the element. A field is its label, never its value: a value never leaves the page. */
 export function nameOf(element: Element, role: string): string {

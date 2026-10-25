@@ -13,7 +13,7 @@ import type { Point } from "./flight.js";
 
 const STYLE = `
 .pc-layer { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; }
-.pc-person { position: fixed; left: 0; top: 0; will-change: transform; }
+.pc-person { position: fixed; left: 0; top: 0; z-index: 2; will-change: transform; }
 .pc-arrow { position: absolute; left: -3px; top: -2px; width: 26px; height: 26px; opacity: 0; transition: opacity .25s; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .35)); }
 .pc-person.pc-touring .pc-arrow { opacity: 1; }
 .pc-arrow path { display: none; }

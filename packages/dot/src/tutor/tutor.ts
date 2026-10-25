@@ -239,7 +239,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     } else spoken(now);
     // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
     if (!flying && !person.touring) person.place(person.dock());
-    if (!flying && anchor !== null && anchor.element.isConnected) {
+    // An element gone, or hidden (a closed window of code), is let go of where the pointer stands.
+    if (anchor !== null && (!anchor.element.isConnected || anchor.element.closest("[hidden]") !== null)) anchor = null;
+    if (!flying && anchor !== null) {
       const box = anchor.element.getBoundingClientRect();
       person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy });
       person.kind(hover.at(person.at.x, person.at.y));

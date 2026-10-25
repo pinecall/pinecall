@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A tab is read by its words and pointed at**, as a button is: a walk's beat on a tab found nothing.
+  The pointer stays above a window of code, and lets go of a line whose window closed.
 - **A walk explains code.** A step's `code` opens a window of it beside the page, coloured and written in a
   line at a time, and `lines` lights the lines its sentence is about while the pointer goes to them; a step
   that names no code keeps the window; `null` or the walk's end closes it, in a call too (`macro.done`).
