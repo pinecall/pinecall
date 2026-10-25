@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@pinecall/dot`. The format is
+**Experimental**: anything here may change or go in any release. All notable changes to `@pinecall/dot`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 

@@ -1,7 +1,8 @@
 # @pinecall/dot
 
-> **An experiment.** The dot and its tutor are an add-on of Pinecall, not part of its core: their
-> API may change in any release.
+> **Experimental.** The dot and its tutor are an add-on of Pinecall, not part of its core, and they
+> are still being found: any of their API, attributes and messages may change or go in any release, a
+> patch one included. This page is their only documentation, and it describes what is true today.
 
 The talking dot. A small face, a dot with eyes and a mouth, speaks with your agent's voice, moving
 its mouth with the sound frame by frame. As a tutor it becomes one more person on the page, with a

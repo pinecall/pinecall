@@ -16,7 +16,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 | `sdk/python/` | the Python SDK (PyPI `pinecall`, import `pinecall`) | `sdk/python/CLAUDE.md` |
 | `sdk/ruby/` | the Ruby SDK (gem `pinecall`) | `sdk/ruby/CLAUDE.md` |
 | `packages/room/` | the caller's side of a call, for a page's own UI (npm `@pinecall/room`) | `packages/room/CLAUDE.md` |
-| `packages/dot/` | the talking dot: its face, and the tutor that walks a page with a pointer, both sides (npm `@pinecall/dot`) | `packages/dot/CLAUDE.md` |
+| `packages/dot/` | **experimental**: the talking dot, its face, and the tutor that walks a page with a pointer, both sides (npm `@pinecall/dot`) | `packages/dot/CLAUDE.md` |
 | `packages/core/` | what the console and the supervisor app stand on (`@pinecall/core`, never published) | `console/CLAUDE.md` |
 | `examples/` | Clínica Norte, the one example agent, in each language (`typescript/`, `python/`, `ruby/`); and Brightside, the dot tutor's, in TypeScript | each example's `README.md` |
 | `infra/` | the charts, the images and the Terraform a runtime is deployed with; the runtime's `Makefile` drives them | `infra/README.md` |
