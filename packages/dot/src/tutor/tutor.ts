@@ -93,7 +93,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     url: options.walks,
     inCall,
     home: () => queue(() => run("home", null)),
+    point: (element) => queue(() => run("point", element)),
     onWalk: options.onWalk,
+    still,
   });
   const player = new Player();
   const linger = options.linger ?? 2600;
@@ -334,7 +336,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       if (message === null) return false;
       if (message.type === "macro.step") {
         player.arm(message, sayingOf(call.state.entries)?.speech ?? null);
-        walks.code.show(message.code, message.lines);
+        const lit = walks.code.show(message.code, message.lines);
+        if (lit !== null) queue(() => run("point", lit));
         return true;
       }
       if (message.type === "macro.done") {

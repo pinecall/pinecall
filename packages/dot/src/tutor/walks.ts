@@ -19,6 +19,10 @@ export interface WalksOptions {
   home: () => void;
   /** A walk started, ended or was stopped. */
   onWalk?: ((walked: Walked) => void) | undefined;
+  /** Send the pointer onto an element, after the moves already queued: the lines a step lights. */
+  point: (element: Element) => void;
+  /** Reduced motion: the code is written in at once. */
+  still: boolean;
 }
 
 export class Walks {
@@ -36,8 +40,13 @@ export class Walks {
     this.#person = person;
     this.#drawn = drawn;
     this.#options = options;
-    this.code = new CodeWindow(document, (part) => person.add(part));
-    this.#walking = new Walking(document.createElement("audio"), (walked) => this.#ended(walked), (step) => this.code.show(step?.code ?? null, step?.lines));
+    this.code = new CodeWindow(document, (part) => person.add(part), options.still);
+    this.#walking = new Walking(document.createElement("audio"), (walked) => this.#ended(walked), (step) => {
+      // A step that names no code keeps the window as it is; the walk's end closes it.
+      if (step === null) return this.code.hide();
+      const lit = this.code.show(step.code, step.lines);
+      if (lit !== null) options.point(lit);
+    });
     this.#menu = new Menu(document, (part) => person.add(part), {
       dock: options.dock,
       label: options.label,
