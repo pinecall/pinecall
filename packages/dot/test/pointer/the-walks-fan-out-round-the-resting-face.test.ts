@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Menu, fanned } from "../../src/pointer/menu.js";
+import { Menu, STEP, fanned } from "../../src/pointer/menu.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -25,6 +25,16 @@ describe("the walks' menu", () => {
     expect(points.every((point) => point.x < 900 && point.y < 700)).toBe(true);
     expect(points[0]!.y).toBeGreaterThan(points[2]!.y);
     expect(fanned(3, { x: 100, y: 700 }, 36, "left").every((point) => point.x > 100)).toBe(true);
+  });
+
+  it("never sets two pills closer than a step, however many there are, the higher ones nearer the face", () => {
+    for (const count of [2, 3, 6]) {
+      const points = fanned(count, { x: 900, y: 700 }, 36, "right");
+      points.slice(1).forEach((point, at) => {
+        expect(points[at]!.y - point.y).toBeGreaterThanOrEqual(STEP);
+        expect(point.x).toBeGreaterThanOrEqual(points[at]!.x);
+      });
+    }
   });
 
   it("shows its button only with walks to offer, and plays the one picked", () => {

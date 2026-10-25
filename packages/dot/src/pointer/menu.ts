@@ -40,14 +40,20 @@ export interface MenuOptions {
   onPick: (index: number) => void;
 }
 
-/** Where each of `count` pills sits round a face at `at` of `radius`: an arc from beside it to above it, toward the page. */
+/** How far apart two pills stand, in px: a pill's 30 and a gap of 10, so no two ever overlap. */
+export const STEP = 40;
+
+/**
+ * Where each of `count` pills sits round a face at `at` of `radius`, its middle: rising a step at a
+ * time from beside the face, each on an arc round it, so the higher a pill the nearer the face.
+ */
 export function fanned(count: number, at: Point, radius: number, dock: "right" | "left"): Point[] {
-  const reach = Math.max(radius + 46, count * 30);
   const side = dock === "right" ? -1 : 1;
+  const lowest = radius * 0.3;
+  const reach = lowest + (count - 1) * STEP + radius + 20;
   return Array.from({ length: count }, (_, index) => {
-    const turn = count === 1 ? 0.5 : index / (count - 1);
-    const angle = (200 + 65 * turn) * (Math.PI / 180);
-    return { x: at.x + side * Math.abs(Math.cos(angle)) * reach, y: at.y + Math.sin(angle) * reach };
+    const rise = lowest + index * STEP;
+    return { x: at.x + side * Math.sqrt(reach * reach - rise * rise), y: at.y - rise };
   });
 }
 
