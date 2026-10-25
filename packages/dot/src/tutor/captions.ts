@@ -22,7 +22,7 @@ export function captionsOf(value: string | null | undefined): Captions {
   return CAPTIONS.find((one) => one === value) ?? "both";
 }
 
-/** Whether `side`'s words show, under the site's choice and the visitor's; none while a window of code is open, as they would cover it. */
+/** Whether `side`'s words show, under the site's choice and the visitor's; none while a window of code or a card is open, as they would cover it. */
 export function shows(captions: Captions, visitorOn: boolean, side: "agent" | "caller", coding = false): boolean {
   return visitorOn && !coding && (captions === "both" || captions === side);
 }

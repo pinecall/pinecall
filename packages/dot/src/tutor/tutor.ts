@@ -218,7 +218,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (closed) return;
     const walk = walks.frame();
     if (walk !== null) {
-      person.say(shows(captions, captioned, "agent", walks.code.open) ? walk.lit : null, walk.coming);
+      person.say(shows(captions, captioned, "agent", walks.code.open || screen.shown) ? walk.lit : null, walk.coming);
       person.heard(null);
       person.progress(walk.fraction);
       for (const one of walk.beats) queue(() => beat(one));
@@ -255,9 +255,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const heard = hearing.at(call.state.log, now);
     if (words === null && heard !== null) last = { text: "", at: 0 };
     else if (words === null && last.text !== "" && now - last.at < linger) words = [last.text, ""];
-    const agent = shows(captions, captioned, "agent", walks.code.open) ? words : null;
+    const agent = shows(captions, captioned, "agent", walks.code.open || screen.shown) ? words : null;
     person.say(agent?.[0] ?? null, agent?.[1] ?? "");
-    person.heard(words === null && shows(captions, captioned, "caller", walks.code.open) ? heard : null);
+    person.heard(words === null && shows(captions, captioned, "caller", walks.code.open || screen.shown) ? heard : null);
     for (const one of player.due(saying?.speech ?? null, said)) queue(() => beat(one));
   };
 

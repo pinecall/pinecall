@@ -37,7 +37,7 @@ describe("whose words show", () => {
     expect(shows("both", false, "agent")).toBe(false);
   });
 
-  it("are none while a window of code is open, which they would cover", () => {
+  it("are none while a window of code or a card is open, which they would cover", () => {
     expect(shows("both", true, "agent", true)).toBe(false);
     expect(shows("both", true, "caller", true)).toBe(false);
     expect(shows("both", true, "agent", false)).toBe(true);

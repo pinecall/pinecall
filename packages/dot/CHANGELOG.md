@@ -6,6 +6,7 @@ maintainer's call.
 
 ## Unreleased
 
+- **The card is larger, and the captions stay out of its way**, as they do for a window of code.
 - **A project's own tools are drawn on a card.** `tutor(call, { views })` (the widget's `views` property) says,
   by tool name, how to draw a result: the free times, a booking form, a piece of code. The card stands above
   the face's corner when the tool finishes, and the visitor answers on it in writing (`tools.send`).

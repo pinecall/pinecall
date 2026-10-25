@@ -5,11 +5,11 @@
 // the call ends. Colours: --pc-card and --pc-card-ink, else the bubble's.
 
 const STYLE = `
-.pc-card { position: fixed; z-index: 1; right: 22px; bottom: 112px; box-sizing: border-box; width: min(380px, calc(100vw - 32px));
-  max-height: min(70vh, 560px); overflow: auto; padding: 16px; border-radius: 16px; pointer-events: auto;
+.pc-card { position: fixed; z-index: 1; right: 22px; bottom: 112px; box-sizing: border-box; width: min(600px, calc(100vw - 32px));
+  max-height: min(78vh, 720px); overflow: auto; padding: 20px 22px; border-radius: 16px; pointer-events: auto;
   background: var(--pc-card, var(--pc-bubble, #fff)); color: var(--pc-card-ink, var(--pc-bubble-ink, #17201c));
   border: 1px solid rgb(127 127 127 / .24); box-shadow: 0 18px 50px rgb(0 0 0 / .3);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; transform-origin: bottom right; transition: opacity .22s, transform .22s; }
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; transform-origin: bottom right; transition: opacity .22s, transform .22s; }
 .pc-card[hidden] { display: block !important; opacity: 0; transform: translateY(8px) scale(.98); pointer-events: none; }
 .pc-layer.pc-left .pc-card { right: auto; left: 22px; transform-origin: bottom left; }
 .pc-card-x { all: unset; position: absolute; top: 8px; right: 10px; width: 22px; height: 22px; line-height: 22px; text-align: center;

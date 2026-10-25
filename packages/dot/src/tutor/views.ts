@@ -72,6 +72,11 @@ export class Screen {
     this.#card.show((body) => render(body, result, tools));
   }
 
+  /** Whether the card is on the screen. */
+  get shown(): boolean {
+    return this.#card.shown;
+  }
+
   close(): void {
     this.#card.close();
   }
