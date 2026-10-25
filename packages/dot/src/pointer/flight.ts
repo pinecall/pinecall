@@ -69,21 +69,25 @@ export function animate(ms: number, step: (u: number) => void): Promise<void> {
   });
 }
 
-/** How much of the screen's height an element may take and still be centred; a taller one shows its start. */
-const TALL = 0.8;
-/** Where a tall element's start stands, as a share of the screen's height. */
-const START = 0.1;
+/** How far from the edges of the free part of the screen what is shown stands, in px. */
+const MARGIN = 16;
 
 /**
- * The scroll at which `box` (as the screen shows it at `scrollY`) sits at `where` of the part of a screen
+ * The scroll at which `box` (as the screen shows it at `scrollY`) is best seen in the part of a screen
  * `height` tall that the site's own header leaves free (`covered` px at its top), within a page
- * `pageHeight` tall: its middle there, or, for one taller than most of it (a section on a phone), its
- * start near the top of it, so what it begins with is what shows, and nothing hides it.
+ * `pageHeight` tall. One that fits is shown whole, its middle as near `where` of that part as it can be
+ * with nothing cut; one that does not (a long section, a phone) shows from its start, just under the
+ * header, so as much of it as fits is seen.
  */
 export function scrollGoal(box: { top: number; height: number }, scrollY: number, height: number, pageHeight: number, where: number, covered = 0): number {
   const free = height - covered;
-  const at = box.height > free * TALL ? box.top - covered - free * START : box.top + box.height / 2 - covered - free * where;
-  return Math.max(0, Math.min(pageHeight - height, scrollY + at));
+  // Where its top should stand on the screen.
+  let top = covered + MARGIN;
+  if (box.height <= free - 2 * MARGIN) {
+    const centred = covered + free * where - box.height / 2;
+    top = Math.min(Math.max(centred, covered + MARGIN), height - MARGIN - box.height);
+  }
+  return Math.max(0, Math.min(pageHeight - height, scrollY + box.top - top));
 }
 
 /** The most of the screen's top a site's bar may cover and still count as a header, as a share of the screen's height. */

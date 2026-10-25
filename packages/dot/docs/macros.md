@@ -66,7 +66,7 @@ A beat:
 | `point` | the pointer flies to the element, the face beside it, and rests under its first words. Scrolls first if it is off the screen |
 | `highlight` | dims the rest of the page and lights the element, following it as the page scrolls |
 | `unhighlight` | takes the light away |
-| `scroll_to` | scrolls the page, eased, until the element sits in the upper middle of the screen, below the site's own header (a fixed or sticky bar along the top, or the page's `scroll-padding-top`). A section taller than the screen shows from its start |
+| `scroll_to` | scrolls the page, eased, until the element sits in the upper middle of the screen, below the site's own header (a fixed or sticky bar along the top, or the page's `scroll-padding-top`). A thing that fits is shown whole; a section taller than the screen shows from its start, just under the header |
 | `here` | a ring at the pointer, twice |
 | `home` | the pointer goes back to its corner |
 
