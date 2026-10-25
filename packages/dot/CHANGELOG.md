@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.24 — the walks' menu marks the walk of the section the visitor is on (2026-10-25)
+
 ## 0.11.23 — the resting face a little smaller and nearer its corner (2026-10-25)
 
 - **The resting face is a little smaller and nearer its corner**: 58 px across (it was 64), its edge 14 px from the

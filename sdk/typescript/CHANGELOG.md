@@ -7,6 +7,8 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+## 0.11.24 — released with the dot's marked walk (2026-10-25)
+
 ## 0.11.23 — released with the dot's smaller face (2026-10-25)
 
 ## 0.11.22 — released with the dot's fix for phones (2026-10-25)
