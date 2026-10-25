@@ -116,13 +116,13 @@ async def test_the_row_may_read_the_turn_with_smart_turn_whose_weights_load_once
 
 
 @needs_the_database
-async def test_what_it_takes_to_cut_the_agent_off_is_the_agents_own_else_two_words(
+async def test_what_it_takes_to_cut_the_agent_off_is_the_agents_own_else_one_word(
     box: Box,
 ) -> None:
     declared = spoken_call(box, AgentConfig(slug="clinica-norte", turn=Turn(min_interruption_words=4)))
     inherited = spoken_call(box, NOBODY)
     assert declared.live.options.interruption.get("min_words") == 4
-    assert inherited.live.options.interruption.get("min_words") == MIN_WORDS == 2
+    assert inherited.live.options.interruption.get("min_words") == MIN_WORDS == 1
 
 
 @needs_the_database

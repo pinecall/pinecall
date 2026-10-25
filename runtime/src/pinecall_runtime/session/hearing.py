@@ -9,8 +9,10 @@ from dataclasses import dataclass
 from pinecall_runtime.agents.declaration import AgentConfig, Turn
 from pinecall_runtime.kit.text import JsonObject, a_mapping
 
-# livekit counts no words by default; one word is as often a cough or an echo.
-MIN_WORDS = 2
+# livekit counts no words by default, and a cough would cut the agent off: one word at least. Two
+# kept a caller's "Bye." said over the agent from ever being answered; an agent that wants more
+# says so (`--min-interruption-words`).
+MIN_WORDS = 1
 # Silence before an interruption is judged false: livekit's 2 s sound like a dropped call.
 FALSE_INTERRUPTION_TIMEOUT_S = 1.0
 

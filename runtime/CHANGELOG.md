@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **One word cuts the agent off unless the agent asks for more.** Two kept a caller's "Bye." said over
+  the agent from ever being answered; `--min-interruption-words` sets it per agent.
 - **No turn is dropped for its words being ones Whisper makes up.** A list of phrases ("bye", "thank
   you", "gracias"…) was dropped whole while the agent spoke, whatever the ears: on Deepgram a caller's
   "Bye." over the agent never reached the model. The list is gone.
