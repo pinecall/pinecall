@@ -6,8 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
-- **The captions stay out of the code's way.** None show while a window of code is open. During a walk captions and
-  stop ride on the face's shoulder, the captions the same choice as in a call; CC is an icon now. The
+- **The captions stay out of the code's way.** None show while a window of code is open. During a walk CC sits in the
+  corner with a stop button, the same choice as in a call; CC is an icon now, and the buttons slide into
+  the face's corner while it tours, aside as it comes home. The
   walks' pills stand beside the face, the highest a gap from it. The walks' button stands in front of the face,
   where a click on it no longer began a call, and on the face's resting size, where the face back from a
   walk no longer covered it.

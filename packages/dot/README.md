@@ -112,7 +112,8 @@ and for `linger` ms after (2600 by default), one side at a time. `captions` choo
 `both` (default), `agent`, `caller` or `none`. During a call two buttons sit beside the corner:
 **CC**, which turns the words off and on for this visitor (kept in their browser's `localStorage`,
 and absent with `captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays,
-two small buttons ride on the face instead: captions, the same choice, and stop. No words show while a
+CC sits there with **■**, which stops it. The buttons slide into the face's corner while it tours, and
+aside as it comes home. No words show while a
 window of code is open: they would cover it. `words: { hangUp, captions, stop }` names them for a
 screen reader.
 
