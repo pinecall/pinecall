@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A web caller's words said over the agent are no longer wiped by the echo canceller.** AEC3 learns
+  the echo path from the echo; a visitor whose audio carries none (headphones, a browser that
+  cancelled it, the simulated caller) taught it none, and its suppressor took their voice for echo
+  whenever the agent spoke: a "Bye." kept 1 % of its energy, a sentence 75 %, and the agent never
+  heard them (seen live on a spoken simulation and by a person on the widget, 2026-10-24). The
+  canceller still runs on every frame, and its output is used only while GCC-PHAT finds the agent's
+  waveform in the caller's audio, up to a second late; over 120 simulated calls it found none where
+  there was none, and a speaker's echo for 97 % of each call (`session/echo.py`).
 - **An agent's app records lines in its voice and publishes documents for pages.**
   `POST /v1/agents/{slug}/lines` records each text once with the voice the agent's next call would
   speak with, its lexicon applied, and answers its MP3 (`GET /v1/lines/{id}.mp3`, no key, immutable)

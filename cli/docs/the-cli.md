@@ -1391,7 +1391,12 @@ agrees ("mm-hm", "sí"), or that is all one of the phrases Whisper-family ears w
 a half after the agent stops, a turn whose words are mostly its own of the last seconds — its
 voice heard back from a visitor's speakers. On a web call (the playground, the widget) the
 runtime also cancels that echo in the audio, with WebRTC's canceller fed what the agent plays,
-before the ears hear it; a phone cancels its own.
+before the ears hear it — but only while the visitor's audio is heard to carry the agent's voice
+(its waveform found in theirs, up to a second late). A visitor on headphones, or whose browser
+cancelled the echo already, has none, and their audio reaches the ears untouched: the canceller,
+given no echo to learn, took what they said over the agent for echo and wiped a short "Bye.". The
+first second and a half of an echo goes through before it is found; the words filter above
+drops what of it is transcribed. A phone cancels its own.
 
 The first of those is the knob that decides whether an agent answers half a sentence. Deepgram's
 own measurement of its default, 0.7, is that as much as a fifth of the turns it ends were ended
