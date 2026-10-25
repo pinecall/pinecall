@@ -110,8 +110,8 @@ presses its button. It never touches a password, a card number, a file or a hidd
 lit as its voice says them; the visitor's, what the agent heard, show in the corner as they speak
 and for `linger` ms after (2600 by default), one side at a time. `captions` chooses whose may show:
 `both` (default), `agent`, `caller` or `none`. During a call two buttons sit beside the corner:
-**CC**, which turns the words off and on for this visitor (kept in their browser's `localStorage`,
-and absent with `captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays,
+**CC**, which turns the words on and off for this visitor: off until they turn them on (kept in
+their browser's `localStorage`, and absent with `captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays,
 CC sits there with **■**, which stops it. The buttons slide into the face's corner while it tours, and
 aside as it comes home. No words show while a
 window of code is open: they would cover it. `words: { hangUp, captions, stop }` names them for a

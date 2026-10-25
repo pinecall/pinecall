@@ -2,7 +2,8 @@
 //
 // The agent's words are lit as its voice says them (the bubble beside the face); the visitor's are
 // what the ears hear, interim and then final, held a moment after their turn ends. The site picks
-// which sides may show; the visitor's CC button turns them off and on, kept in their browser.
+// which sides may show; they start off, and the visitor's CC button turns them on and off, kept in
+// their browser.
 
 import type { RoomStore } from "@pinecall/room";
 
@@ -26,13 +27,13 @@ export function shows(captions: Captions, visitorOn: boolean, side: "agent" | "c
   return visitorOn && !coding && (captions === "both" || captions === side);
 }
 
-// Storage throws in a private window or with site data blocked: the captions are then simply on.
-/** Whether the visitor left the captions on: on unless they turned them off on this site. */
+// Storage throws in a private window or with site data blocked: the captions then start off.
+/** Whether the visitor turned the captions on: off unless they turned them on on this site. */
 export function visitorWantsCaptions(storage: () => Storage): boolean {
   try {
-    return storage().getItem(KEPT) !== "off";
+    return storage().getItem(KEPT) === "on";
   } catch {
-    return true;
+    return false;
   }
 }
 

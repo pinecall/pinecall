@@ -6,6 +6,7 @@ maintainer's call.
 
 ## Unreleased
 
+- **The captions start off.** The visitor turns them on with CC, in a call or a walk, and the choice is kept.
 - **A section plays its own walk, and a walk can be paused.** `data-pinecall-walk="<macro>"` on a section
   puts a small ▶ in its corner that plays that walk with no call; while a walk plays the corner holds
   pause beside captions and stop (`words: { pause, play }`).

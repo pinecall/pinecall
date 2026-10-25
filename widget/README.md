@@ -39,7 +39,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 | `tutor` | optional | with `look="dot"`: the dot walks the visitor through the page with a pointer of its own, for an agent that extends `Tutor` ([below](#the-dot-as-a-tutor)) |
 | `walks` | optional | with `tutor`: a button beside the dot plays the agent's recorded walks with no call (its macros, recorded as it starts); `walks="sandbox"` reads the sandbox's ([below](#the-dot-as-a-tutor)) |
 | `shape` · `color` | optional | with `look="dot"`: the face's shape, `circle` (default), `squircle` or `blob`, and its colour, any CSS colour (else the widget's accent) |
-| `captions` | optional | with `tutor`: whose words show in writing, `both` (default), `agent`, `caller` or `none`. Unless `none`, the visitor turns them off and on with the **CC** button, their choice kept in this browser |
+| `captions` | optional | with `tutor`: whose words show in writing, `both` (default), `agent`, `caller` or `none`. Unless `none`, they start off and the visitor turns them on and off with the **CC** button, their choice kept in this browser |
 
 Attributes are read once when the element connects, except `token-url`, which is read for every
 token. Use one tag per agent; several can share a page. The console stores these settings per
@@ -275,8 +275,8 @@ its folder ([@pinecall/dot](../packages/dot/README.md#the-tutor-in-the-agent)).
 <pinecall-widget agent="front-desk" name="Pip" look="dot" tutor token-url="/pinecall/token"></pinecall-widget>
 ```
 
-During a call, two buttons sit beside the dot's corner: **CC**, which turns the written words off
-and on, and **✕**, which hangs up. The agent's words show beside the dot as its voice says them;
+During a call, two buttons sit beside the dot's corner: **CC**, which turns the written words on
+and off (off until the visitor turns them on), and **✕**, which hangs up. The agent's words show beside the dot as its voice says them;
 the visitor's, what the agent heard, show in the corner as they speak and a moment after, one side
 at a time. `captions` says which may show.
 

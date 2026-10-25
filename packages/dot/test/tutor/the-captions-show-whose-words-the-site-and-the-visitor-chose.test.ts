@@ -43,15 +43,17 @@ describe("whose words show", () => {
     expect(shows("both", true, "agent", false)).toBe(true);
   });
 
-  it("keeps the visitor's choice for their next visit, and is on where the browser keeps nothing", () => {
+  it("start off, keep the visitor's choice for their next visit, and stay off where the browser keeps nothing", () => {
     const storage = aStorage();
+    expect(visitorWantsCaptions(() => storage)).toBe(false);
+    keepVisitorChoice(() => storage, true);
     expect(visitorWantsCaptions(() => storage)).toBe(true);
     keepVisitorChoice(() => storage, false);
     expect(visitorWantsCaptions(() => storage)).toBe(false);
     const blocked = (): Storage => {
       throw new Error("SecurityError");
     };
-    expect(visitorWantsCaptions(blocked)).toBe(true);
+    expect(visitorWantsCaptions(blocked)).toBe(false);
     expect(() => keepVisitorChoice(blocked, false)).not.toThrow();
   });
 });
