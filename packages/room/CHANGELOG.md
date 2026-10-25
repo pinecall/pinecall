@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.22 — released with the dot's fix for phones (2026-10-25)
+
 ## 0.11.21 — released with the tutor's walks (2026-10-25)
 
 - **`event(name, data)` tells the agent what the visitor did on the page**: `{name, data}` on

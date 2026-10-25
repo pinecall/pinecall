@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.22 — the face stays on a phone's screen as the page scrolls (2026-10-25)
+
 - **On a phone the face stays on the screen as the page scrolls.** It let go of what it pointed at only after the
   scroll, so it rode off the top with it; and a section taller than the screen is shown from its start, not
   from its middle.

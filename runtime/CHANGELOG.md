@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.22 — released with the dot's fix for phones (2026-10-25)
+
 ## 0.11.21 — an agent's recorded lines and public documents, and interruptions told apart by sound (2026-10-25)
 
 - **No turn is dropped for its words being ones Whisper makes up.** A list of phrases ("bye", "thank
