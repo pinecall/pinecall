@@ -86,6 +86,11 @@ offered the tour of the home. Name the pages in the file:
 - **A call** is the same: the page tells the agent its path, and the agent offers and runs only
   the walks for it. A walk that names no page is for all of them, so name the home's
   walks too (`"pages": ["/"]`) if they are only for the home.
+- **Each page has its own published document**, so a visitor downloads only the walks for the page
+  they are on: `walks` for the home (with the walks that name no page), `walks-security` for `/security`,
+  `walks-developers-sdk` for `/developers/sdk`. The page reads its own and, where the agent published none
+  for it, `walks`. A document is 64 KiB at most; a page with a great many walks can pass it, and is split
+  by naming the pages.
 - **A page that never said its path** (an older page) is offered every walk.
 - A path is exact: `/developers` is not `/developers/sdk`. List both.
 

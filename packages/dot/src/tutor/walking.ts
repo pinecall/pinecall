@@ -4,7 +4,7 @@
 // started go on to its next source, where a new element would need another click. Each frame
 // reads where the audio is, so the words and the pointer follow the sound, whatever the network.
 
-import { walksOf, type Beat, type RecordedStep, type RecordedWalk, type Step } from "../wire/index.js";
+import { walksDocument, walksOf, type Beat, type RecordedStep, type RecordedWalk, type Step } from "../wire/index.js";
 import { Player } from "./macro.js";
 
 /** How far the visitor got: the walk, the sentence reached (from 1), how many it has, and whether it ended. */
@@ -23,15 +23,30 @@ export interface WalkFrame {
   fraction: number;
 }
 
-/** The walks an agent published, read with no key; none where the page cannot read them. */
-export async function publishedWalks(url: string): Promise<RecordedWalk[]> {
-  if (url === "") return [];
+/** A document's walks, read with no key; null where it is not there or cannot be read. */
+async function readWalks(url: string): Promise<RecordedWalk[] | null> {
   try {
     const answer = await fetch(url);
-    return answer.ok ? walksOf(await answer.json()) : [];
+    return answer.ok ? walksOf(await answer.json()) : null;
   } catch {
-    return [];
+    return null;
   }
+}
+
+/**
+ * The walks an agent published for the page at `path`, read with no key; none where the page cannot read them.
+ * `url` is the agent's `walks` document, the home's: a page of its own has `walks-<page>` beside it, and is
+ * read from there, or from `url` when the agent published none for it (the walks that name no page).
+ */
+export async function publishedWalks(url: string, path = ""): Promise<RecordedWalk[]> {
+  if (url === "") return [];
+  const own = walksDocument(path);
+  const [base, query = ""] = url.split("?");
+  if (own !== "walks" && base !== undefined && base.endsWith("/walks")) {
+    const found = await readWalks(`${base.slice(0, -"walks".length)}${own}${query === "" ? "" : `?${query}`}`);
+    if (found !== null) return found;
+  }
+  return (await readWalks(url)) ?? [];
 }
 
 /** A walk's length, in ms. */

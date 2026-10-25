@@ -95,6 +95,16 @@ export interface Macro {
 /** A path as a page names it: no trailing slash but the root's. */
 const pathOf = (path: string): string => (path.length > 1 ? path.replace(/\/+$/, "") : path) || "/";
 
+/**
+ * The name of the document the walks of a page are published under: `walks` for the home, `walks-security`
+ * for `/security`. A document is read by every visitor of its page, so each page has its own: a page asks
+ * only for the walks that are for it. (A document's name is a lower case letter, then letters, digits and dashes, 40 at most.)
+ */
+export function walksDocument(path: string): string {
+  const slug = pathOf(path).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return slug === "" ? "walks" : `walks-${slug}`.slice(0, 40).replace(/-+$/, "");
+}
+
 /** Whether a walk for `pages` is for the page at `path`: any walk is, with no pages named; a path unknown is any page. */
 export function onPage(pages: readonly string[] | undefined, path: string): boolean {
   if (pages === undefined || pages.length === 0 || path === "") return true;

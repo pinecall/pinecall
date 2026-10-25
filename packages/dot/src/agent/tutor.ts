@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
 
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, onPage, wordsOf, type Action, type Line, type Macro, type RecordedWalk, type Shown } from "../wire/index.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, clock, linesOf, macroOf, onPage, walksDocument, wordsOf, type Action, type Line, type Macro, type RecordedWalk, type Shown } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
@@ -140,7 +140,13 @@ export class Tutor extends Agent {
         return { say: step.say, audio: line.url, durationMs: line.durationMs, words: line.words, beats: step.beats, ...shownBy(step) };
       }),
     }));
-    await serve.publish(WALKS, { walks: recorded });
+    // One document a page: each is read by every visitor of its page, and is small. The home's is `walks`, with the
+    // walks that name no page; a page that has walks of its own has `walks-<page>`, with those and the same walks.
+    const pages = new Set(["/", ...walks.flatMap((walk) => walk.pages ?? [])]);
+    for (const page of pages) {
+      const here = recorded.filter((walk) => onPage(walk.pages, page));
+      if (here.length > 0) await serve.publish(walksDocument(page), { walks: here });
+    }
     for (const walk of recorded) {
       const ms = walk.steps.reduce((total, step) => total + step.durationMs, 0);
       serve.say(`walk ${walk.name} · ${walk.steps.length} sentences · ${clock(ms)} · ${lines[0]?.voice ?? ""}`);

@@ -120,4 +120,22 @@ describe("the walks an agent published", () => {
     expect(await publishedWalks("")).toEqual([]);
     expect(fetching).toHaveBeenCalledTimes(2);
   });
+
+  it("reads a page's own document beside the home's, and the home's where the page has none", async () => {
+    const other = { ...WALK, name: "keys" };
+    const fetching = vi.spyOn(globalThis, "fetch");
+
+    fetching.mockResolvedValueOnce(new Response(JSON.stringify({ walks: [other] })));
+    expect(await publishedWalks("https://gw/v1/agents/pip/public/walks?env=sandbox", "/security")).toEqual([other]);
+    expect(fetching).toHaveBeenLastCalledWith("https://gw/v1/agents/pip/public/walks-security?env=sandbox");
+
+    fetching.mockResolvedValueOnce(new Response("none", { status: 404 })).mockResolvedValueOnce(new Response(JSON.stringify({ walks: [WALK] })));
+    expect(await publishedWalks("https://gw/v1/agents/pip/public/walks", "/faq")).toEqual([WALK]);
+    expect(fetching).toHaveBeenLastCalledWith("https://gw/v1/agents/pip/public/walks");
+
+    // The home reads the home's document alone.
+    fetching.mockResolvedValueOnce(new Response(JSON.stringify({ walks: [WALK] })));
+    await publishedWalks("https://gw/v1/agents/pip/public/walks", "/");
+    expect(fetching).toHaveBeenLastCalledWith("https://gw/v1/agents/pip/public/walks");
+  });
 });

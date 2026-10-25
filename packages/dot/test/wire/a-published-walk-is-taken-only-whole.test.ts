@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { clock, macroOf, onPage, shownOf, tutoring, walksOf } from "../../src/wire/index.js";
+import { clock, macroOf, onPage, shownOf, tutoring, walksDocument, walksOf } from "../../src/wire/index.js";
 
 const STEP = {
   say: "Up here are our services.",
@@ -89,5 +89,17 @@ describe("the pages a walk is for", () => {
     expect(onPage(["/security", "/compliance"], "/compliance")).toBe(true);
     // A page that never said its path is any page: nothing is hidden from it.
     expect(onPage(["/security"], "")).toBe(true);
+  });
+});
+
+describe("the document a page's walks are published under", () => {
+  it("is `walks` for the home, and `walks-<page>` for any other, a name a document may have", () => {
+    expect(walksDocument("/")).toBe("walks");
+    expect(walksDocument("")).toBe("walks");
+    expect(walksDocument("/security")).toBe("walks-security");
+    expect(walksDocument("/security/")).toBe("walks-security");
+    expect(walksDocument("/Developers/SDK")).toBe("walks-developers-sdk");
+    const long = walksDocument(`/${"a".repeat(80)}`);
+    expect(long).toMatch(/^[a-z][a-z0-9-]{0,39}$/);
   });
 });

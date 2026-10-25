@@ -63,6 +63,23 @@ describe("a tutor before any call", () => {
     expect(said).toEqual(["walk tour · 2 sentences · 0:02 · cartesia sonic-3"]);
   });
 
+  it("publishes a document for each page that has walks: the home's with the walks that name no page, the others' with their own", async () => {
+    class Site extends Tutor {
+      static override macros = macros({
+        tour: { steps: [{ say: "Welcome.", beats: [] }] },
+        home: { pages: ["/"], steps: [{ say: "This is the home.", beats: [] }] },
+        keys: { pages: ["/security"], steps: [{ say: "Your keys stay yours.", beats: [] }] },
+      });
+    }
+    const { serve, published } = aServe();
+    await Site.onServe(serve);
+
+    const walksIn = (name: string): string[] => ((published.find((one) => one["name"] === name)?.["walks"] ?? []) as { name: string }[]).map((walk) => walk.name);
+    expect(published.map((one) => one["name"])).toEqual(["walks", "walks-security"]);
+    expect(walksIn("walks")).toEqual(["tour", "home"]);
+    expect(walksIn("walks-security")).toEqual(["tour", "keys"]);
+  });
+
   it("publishes nothing when it was given no macros", async () => {
     const { serve, published, asked } = aServe();
     await Tutor.onServe(serve);

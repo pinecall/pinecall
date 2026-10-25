@@ -61,9 +61,10 @@ export class Walks {
       current: () => named(this.#sections.current() ?? ""),
     });
     this.#sections = new Sections(document, { onPlay: (name) => this.#play(named(name)) });
-    void publishedWalks(options.url ?? "").then((all) => {
+    const path = document.defaultView?.location.pathname ?? "";
+    void publishedWalks(options.url ?? "", path).then((all) => {
       // Only the walks for the page the visitor is on: one that names other pages stays out of the menu.
-      const found = all.filter((walk) => onPage(walk.pages, document.defaultView?.location.pathname ?? ""));
+      const found = all.filter((walk) => onPage(walk.pages, path));
       this.#list = found;
       this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
       this.#sections.offer(found.map((walk) => walk.name));
