@@ -1376,9 +1376,7 @@ options run on your own key alone, as every stage's do. `clear judge` goes back 
 
 **How a turn is decided is four numbers, and two of them are confidences.** `--endpointing-ms` is
 the longest silence a caller is left in before the turn is called finished, and
-`--min-interruption-words` how many words it takes to stop the agent mid-sentence: one unless the
-agent says more, so a caller's "Bye." over the agent is heard; two or three keep a short word from
-cutting it off. The other two
+`--min-interruption-words` how many words it takes to stop the agent mid-sentence. The other two
 are for a recogniser that decides the end of a turn *itself* — Deepgram Flux, which is the
 runtime's own ears: `--eot-threshold` is how sure it must be before it ends one, and
 `--eager-eot-threshold` the lower bar at which it says a turn MIGHT be over, which is what lets
