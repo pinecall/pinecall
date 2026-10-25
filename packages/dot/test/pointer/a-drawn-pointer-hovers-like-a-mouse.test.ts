@@ -3,10 +3,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { along, flightMs, minJerk } from "../../src/pointer/flight.js";
-import { mirrored } from "../../src/pointer/hover.js";
+import { Hover, mirrored } from "../../src/pointer/hover.js";
 
 afterEach(() => {
   document.head.innerHTML = "";
+  document.body.innerHTML = "";
 });
 
 describe("the mirrored hovers", () => {
@@ -36,5 +37,19 @@ describe("the flight", () => {
 
     expect(along(from, to, 1)).toEqual(to);
     expect(Math.abs(along(from, to, 0.5).y)).toBeGreaterThan(10);
+  });
+});
+
+describe("the hover on what is pointed at", () => {
+  it("hovers the element and its ancestors, asks for a hand on a link, and lets go of the last one", () => {
+    document.body.innerHTML = `<nav><a href="/pricing" style="cursor: pointer"><span>Pricing</span></a></nav><p>Plain</p>`;
+    const hover = new Hover(document);
+    const link = document.querySelector("a")!;
+
+    expect(hover.on(link)).toBe("hand");
+    expect([link.hasAttribute("data-pc-hover"), document.querySelector("nav")!.hasAttribute("data-pc-hover")]).toEqual([true, true]);
+    expect(hover.on(document.querySelector("p"))).toBe("arrow");
+    expect(link.hasAttribute("data-pc-hover")).toBe(false);
+    hover.close();
   });
 });

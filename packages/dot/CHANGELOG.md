@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **The pointer stands under the words it points at**, not on them, and still hovers what it points at: a
+  link keeps its hand.
 - **The face hears and thinks.** While the caller speaks it nods with its head cocked and its eyes wide;
   while the agent thinks it looks up from side to side, its mouth pursed and sliding, "hmm". Waiting is as it was.
 - **The captions start off.** The visitor turns them on with CC, in a call or a walk, and the choice is kept.

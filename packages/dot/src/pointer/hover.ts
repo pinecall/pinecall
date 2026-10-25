@@ -26,7 +26,14 @@ export class Hover {
 
   /** Hover what is at (x, y) in the viewport; the kind of pointer it asks for. */
   at(x: number, y: number): Kind {
-    const under = this.#document.elementFromPoint(x, y);
+    return this.on(this.#document.elementFromPoint(x, y));
+  }
+
+  /**
+   * Hover `under` and every ancestor, as a mouse resting on it does; the kind of pointer it asks for.
+   * The tip stands under the words it points at, so what it points at is hovered, not what lies beneath.
+   */
+  on(under: Element | null): Kind {
     const chain: Element[] = [];
     for (let node = under; node !== null && node !== this.#document.body; node = node.parentElement) chain.push(node);
     for (const node of this.#on) if (!chain.includes(node)) left(node);

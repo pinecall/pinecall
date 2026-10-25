@@ -30,7 +30,13 @@ export function along(from: Point, to: Point, u: number): Point {
   return { x: from.x + dx * e - (dy / distance) * lift, y: from.y + dy * e + (dx / distance) * lift };
 }
 
-/** Where a person aims on an element: the middle of its first words (at most 60 px in), else the middle of its box. */
+/** How far under the words the tip stands, in px. */
+const UNDER = 3;
+
+/**
+ * Where a person aims on an element: just under its first line of words, at their middle (at most
+ * 60 px in), so the pointer shows the words rather than covering them; else the middle of its box.
+ */
 export function aimOf(element: Element): Point {
   if (!element.matches("article, section, form, figure, img")) {
     const document = element.ownerDocument;
@@ -41,8 +47,8 @@ export function aimOf(element: Element): Point {
     if (text !== null) {
       const range = document.createRange();
       range.selectNodeContents(text);
-      const words = range.getBoundingClientRect();
-      if (words.width > 0) return { x: words.left + Math.min(words.width / 2, 60), y: words.top + words.height / 2 };
+      const words = range.getClientRects()[0] ?? range.getBoundingClientRect();
+      if (words.width > 0) return { x: words.left + Math.min(words.width / 2, 60), y: words.bottom + UNDER };
     }
   }
   const box = element.getBoundingClientRect();

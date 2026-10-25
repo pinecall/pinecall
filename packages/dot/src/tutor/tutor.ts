@@ -260,7 +260,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (!flying && anchor !== null) {
       const box = anchor.element.getBoundingClientRect();
       person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, clearOf(anchor.element));
-      person.kind(hover.at(person.at.x, person.at.y));
+      person.kind(hover.on(anchor.element));
     }
     if (lit !== null && !lit.isConnected) lit = null;
     person.spot(lit);
