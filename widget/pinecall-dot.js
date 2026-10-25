@@ -101,9 +101,13 @@ export class Dot {
         captions: widget.getAttribute("captions") ?? "both",
         shape: widget.getAttribute("shape") ?? undefined,
         color: widget.getAttribute("color") ?? undefined,
-        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop, pause: widget.words.pause },
+        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop, pause: widget.words.pause, close: widget.words.close },
         // `walks` plays the agent's recorded walks with no call; `walks="sandbox"` reads the sandbox's.
         walks: widget.hasAttribute("walks") ? walksUrl(widget) : undefined,
+        // `views` is the page's own: a `widget.views = { toolName: (host, result, tools) => … }` it sets, read each time a tool finishes.
+        get views() {
+          return widget.views;
+        },
         onWalk: (walked) => widget.dispatchEvent(new CustomEvent("pinecall:walk", { detail: walked })),
       });
       this.face = this.tutor;

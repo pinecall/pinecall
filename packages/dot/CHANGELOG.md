@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A project's own tools are drawn on a card.** `tutor(call, { views })` (the widget's `views` property) says,
+  by tool name, how to draw a result: the free times, a booking form, a piece of code. The card stands above
+  the face's corner when the tool finishes, and the visitor answers on it in writing (`tools.send`).
 - **A section offers its own walk, and the site's own button plays one.** As the page is scrolled to a
   section with `data-pinecall-walk="<macro>"`, that walk's pill shows alone beside the face for a few
   seconds. `data-pinecall-play="<macro>"` on a button the site draws (`hidden`) shows it while that walk can

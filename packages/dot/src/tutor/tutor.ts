@@ -10,47 +10,20 @@
 import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
-import type { Shape } from "../face/shape.js";
 import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
+import { Card } from "../pointer/card.js";
 import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
-import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
+import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions } from "./captions.js";
 import { Player } from "./macro.js";
+import type { TutorOptions } from "./options.js";
+import { Screen } from "./views.js";
 import { Walks } from "./walks.js";
-import type { Walked } from "./walking.js";
 
-export interface TutorOptions {
-  /** The corner it rests in. Default `right`. */
-  dock?: "right" | "left" | undefined;
-  /** What the face is called for a screen reader. Default "Talk to the assistant". */
-  label?: string | undefined;
-  /** The face was clicked: the page starts the call, or ends it. */
-  onClick?: (() => void) | undefined;
-  /** How long its last words stay beside it after a reply, and the visitor's after theirs, in ms. Default 2600. */
-  linger?: number | undefined;
-  /** The face's shape: `circle` (the default), `squircle` or `blob`. */
-  shape?: Shape | undefined;
-  /** The face's and the pointer's colour, any CSS colour; the page's `--pc-face` when left out. */
-  color?: string | undefined;
-  /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
-  captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks", "Stop" and "Pause". */
-  words?: {
-    hangUp?: string | undefined;
-    captions?: string | undefined;
-    explain?: string | undefined;
-    walks?: string | undefined;
-    stop?: string | undefined;
-    pause?: string | undefined;
-  } | undefined;
-  /** Where the agent published its recorded walks (`GET …/v1/agents/{slug}/public/walks`): a button beside the face plays them with no call. */
-  walks?: string | undefined;
-  /** A walk started, ended, or was stopped: the page's own analytics hear it. */
-  onWalk?: ((walked: Walked) => void) | undefined;
-}
+export type { TutorOptions } from "./options.js";
 
 export interface Tutor {
   /** A message the agent sent on `pinecall.ui`: true when it was the tutor's to carry out, false for a card or choices. */
@@ -105,6 +78,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     onWalk: options.onWalk,
     still,
   });
+  const screen = new Screen(call, new Card(document, (part) => person.add(part), options.words?.close ?? "Close"), () => options.views);
   const player = new Player();
   const linger = options.linger ?? 2600;
   const hearing = new Hearing(linger);
@@ -291,6 +265,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   // reload); an agent that arrives after it asks (`look`), since LiveKit keeps no data for whoever
   // joins after it was sent. A call that ends sends the tutor home.
   const unsubscribe = call.subscribe((state) => {
+    screen.update(state);
     // A call takes over from a walk; the walks come back when it ends.
     if (inCall()) walks.stop();
     walks.available(!inCall());
@@ -380,6 +355,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       cancelAnimationFrame(frame);
       for (const timer of timers.values()) clearTimeout(timer);
       walks.close();
+      screen.close();
       clearTimeout(leaving);
       unsubscribe();
       changes.disconnect();

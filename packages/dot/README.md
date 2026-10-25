@@ -256,6 +256,31 @@ a call or a walk. The site can also draw its own button, `hidden`, and mark it
 was played and how far (`page.walked`), so it goes on from there rather than give it again.
 `onWalk` hears each start and end, for the page's own analytics.
 
+### The views of a project's own tools
+
+A project's agent has tools of its own: the free times, a booking, a piece of code. Their results are
+already on the call's log, so the page says how to draw each, by the tool's name, and the tutor puts it
+on a card above the face's corner when the tool finishes:
+
+```ts
+tutor(call, {
+  views: {
+    freeSlots: (host, result, tools) => {
+      host.innerHTML = (result as { times: string[] }).times.map((time) => `<button>${time}</button>`).join("");
+      host.addEventListener("click", (event) => tools.send((event.target as HTMLElement).textContent ?? ""));
+    },
+  },
+});
+```
+
+A view draws into `host` and may answer a function that takes it down. `tools.send(text)` says
+something to the agent in writing, as the visitor: a time picked, a name and an email typed instead of
+spelled out; `tools.hide()` puts the card away; `tools.state()` reads the call, to mark what the agent
+chose. The card holds the last tool that finished with a view, until it is replaced, closed with its
+×, or the call ends; a page that joins a call under way shows none of what ran before. It is the
+visitor's way to say something, never a way round the agent: nothing on it books or sends for them.
+With the widget, set `widget.views = { … }` on the element. Colours: `--pc-card` and `--pc-card-ink`.
+
 ### Lines on the page
 
 A walk can also live in the site's own markup, beside what it is about, so the HTML and what is
