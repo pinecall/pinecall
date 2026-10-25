@@ -87,7 +87,7 @@ pip = tutor(call, { label: "Talk to Pip", onClick: () => { pip.wake(); void call
 ```
 
 `tutor()` puts the person on the page: resting, its face in the bottom-right corner (`dock: "left"`
-for the other); touring, a pointer in its colour with the face beside the tip and what it says
+for the other), 58 px across (`--pc-dot-size`) and 14 px from the edges; touring, a pointer in its colour with the face beside the tip and what it says
 beside the face. It moves the way a hand moves a mouse:
 
 - **It aims at an element the way a person does.** It lands on the middle of the element's first

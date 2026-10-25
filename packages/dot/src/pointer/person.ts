@@ -12,6 +12,10 @@
 import type { Kind } from "./hover.js";
 import type { Point } from "./flight.js";
 
+/** The resting face's size, in px, and how far its edge stands from the corner of the window. */
+const SIZE = 58;
+const EDGE = 14;
+
 const STYLE = `
 .pc-layer { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; }
 .pc-person { position: fixed; left: 0; top: 0; z-index: 2; will-change: transform; }
@@ -19,18 +23,18 @@ const STYLE = `
 .pc-person.pc-touring .pc-arrow { opacity: 1; }
 .pc-arrow path { display: none; }
 .pc-arrow[data-kind="arrow"] .pc-kind-arrow, .pc-arrow[data-kind="hand"] .pc-kind-hand, .pc-arrow[data-kind="ibeam"] .pc-kind-ibeam { display: inline; }
-.pc-face { position: absolute; width: var(--pc-dot-size, 64px); height: var(--pc-dot-size, 64px); left: calc(var(--pc-dot-size, 64px) / -2); top: calc(var(--pc-dot-size, 64px) / -2);
+.pc-face { position: absolute; width: var(--pc-dot-size, ${SIZE}px); height: var(--pc-dot-size, ${SIZE}px); left: calc(var(--pc-dot-size, ${SIZE}px) / -2); top: calc(var(--pc-dot-size, ${SIZE}px) / -2);
   transition: width .45s cubic-bezier(.2,.8,.2,1), height .45s cubic-bezier(.2,.8,.2,1), left .45s cubic-bezier(.2,.8,.2,1), top .45s cubic-bezier(.2,.8,.2,1);
   pointer-events: auto; cursor: pointer; border-radius: 50%; }
 .pc-face:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 3px; }
 .pc-person.pc-touring .pc-face { width: 40px; height: 40px; left: 14px; top: 16px; }
-.pc-progress { position: absolute; width: calc(var(--pc-dot-size, 64px) + 12px); height: calc(var(--pc-dot-size, 64px) + 12px);
-  left: calc(var(--pc-dot-size, 64px) / -2 - 6px); top: calc(var(--pc-dot-size, 64px) / -2 - 6px); transform: rotate(-90deg); pointer-events: none;
+.pc-progress { position: absolute; width: calc(var(--pc-dot-size, ${SIZE}px) + 12px); height: calc(var(--pc-dot-size, ${SIZE}px) + 12px);
+  left: calc(var(--pc-dot-size, ${SIZE}px) / -2 - 6px); top: calc(var(--pc-dot-size, ${SIZE}px) / -2 - 6px); transform: rotate(-90deg); pointer-events: none;
   transition: width .45s cubic-bezier(.2,.8,.2,1), height .45s cubic-bezier(.2,.8,.2,1), left .45s cubic-bezier(.2,.8,.2,1), top .45s cubic-bezier(.2,.8,.2,1); }
 .pc-progress[hidden] { display: none; }
 .pc-progress circle { fill: none; stroke: var(--pc-face, #1f6b55); stroke-width: 2.5; stroke-linecap: round; }
 .pc-person.pc-touring .pc-progress { width: 52px; height: 52px; left: 8px; top: 10px; }
-.pc-bubble { position: absolute; width: max-content; max-width: min(270px, 70vw); right: -30px; bottom: 44px; padding: 9px 13px;
+.pc-bubble { position: absolute; width: max-content; max-width: min(270px, 70vw); right: -30px; bottom: calc(var(--pc-dot-size, ${SIZE}px) / 2 + 12px); padding: 9px 13px;
   background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); border: 1px solid rgb(0 0 0 / .08); border-radius: 16px 16px 4px 16px;
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 28px rgb(0 0 0 / .14); transition: opacity .2s, transform .2s; transform-origin: bottom right; }
 .pc-bubble[hidden] { display: block !important; opacity: 0; transform: scale(.94); }
@@ -44,12 +48,12 @@ const STYLE = `
 .pc-person.pc-touring.pc-up .pc-bubble { top: auto; bottom: 14px; border-radius: 16px 16px 16px 4px; transform-origin: bottom left; }
 .pc-person.pc-touring.pc-west.pc-up .pc-bubble { border-radius: 16px 16px 4px 16px; transform-origin: bottom right; }
 .pc-person.pc-left:not(.pc-touring) .pc-bubble { right: auto; left: -30px; border-radius: 16px 16px 16px 4px; transform-origin: bottom left; }
-.pc-heard { position: fixed; right: 22px; bottom: 96px; width: max-content; max-width: min(270px, 70vw); padding: 9px 13px;
+.pc-heard { position: fixed; right: ${EDGE}px; bottom: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) + 12px); width: max-content; max-width: min(270px, 70vw); padding: 9px 13px;
   background: var(--pc-heard, #e7f3ee); color: var(--pc-heard-ink, #17201c); border-radius: 16px 16px 4px 16px;
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 28px rgb(0 0 0 / .12); transition: opacity .2s; }
 .pc-heard[hidden] { display: block !important; opacity: 0; }
-.pc-calling { position: fixed; right: 92px; bottom: 35px; display: flex; gap: 8px; pointer-events: auto; transition: right .35s cubic-bezier(.2,.8,.2,1), left .35s cubic-bezier(.2,.8,.2,1); }
-.pc-layer.pc-away .pc-calling { right: 22px; }
+.pc-calling { position: fixed; right: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) + 8px); bottom: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) / 2 - 17px); display: flex; gap: 8px; pointer-events: auto; transition: right .35s cubic-bezier(.2,.8,.2,1), left .35s cubic-bezier(.2,.8,.2,1); }
+.pc-layer.pc-away .pc-calling { right: ${EDGE}px; }
 .pc-calling[hidden] { display: none; }
 .pc-calling button { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 10px; border-radius: 999px; cursor: pointer;
   font: 600 12px/34px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
@@ -69,9 +73,9 @@ const STYLE = `
   background: var(--pc-face, #1f6b55); color: #fff; font: 11px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 3px 10px rgb(0 0 0 / .25); }
 .pc-play[hidden] { display: none; }
 .pc-play:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
-.pc-layer.pc-left .pc-heard { right: auto; left: 22px; border-radius: 16px 16px 16px 4px; }
-.pc-layer.pc-left .pc-calling { right: auto; left: 92px; flex-direction: row-reverse; }
-.pc-layer.pc-left.pc-away .pc-calling { left: 22px; }
+.pc-layer.pc-left .pc-heard { right: auto; left: ${EDGE}px; border-radius: 16px 16px 16px 4px; }
+.pc-layer.pc-left .pc-calling { right: auto; left: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) + 8px); flex-direction: row-reverse; }
+.pc-layer.pc-left.pc-away .pc-calling { left: ${EDGE}px; }
 .pc-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(10 18 16 / .34), 0 0 0 3px var(--pc-face-ring, #44a785); opacity: 0; transition: opacity .3s; }
 .pc-spot.pc-on { opacity: 1; }
 .pc-ring { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid var(--pc-face-ring, #44a785); opacity: 0; }
@@ -234,12 +238,13 @@ export class Person {
     this.place(this.#at);
   }
 
-  /** Where the face rests: its middle, 52 px in from the corner. */
+  /** Where the face rests: its middle, its edge a few px in from the corner. */
   dock(): Point {
     const view = this.#document.defaultView;
     const width = view?.innerWidth ?? 0;
     const height = view?.innerHeight ?? 0;
-    return { x: this.#dock === "right" ? width - 52 : 52, y: height - 52 };
+    const inset = EDGE + this.radius;
+    return { x: this.#dock === "right" ? width - inset : inset, y: height - inset };
   }
 
   /** The tip, now. */
@@ -363,7 +368,7 @@ export class Person {
    */
   get radius(): number {
     const size = Number.parseFloat(this.#document.defaultView?.getComputedStyle(this.face).getPropertyValue("--pc-dot-size") ?? "");
-    return (Number.isFinite(size) && size > 0 ? size : 64) / 2;
+    return (Number.isFinite(size) && size > 0 ? size : SIZE) / 2;
   }
 
   /** How far a walk has played, 0 to 1, as a ring round the face; null takes the ring away. */
