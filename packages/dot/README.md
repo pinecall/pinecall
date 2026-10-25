@@ -2,7 +2,7 @@
 
 > **Experimental.** The dot and its tutor are an add-on of Pinecall, not part of its core, and they
 > are still being found: any of their API, attributes and messages may change or go in any release, a
-> patch one included. This page is their only documentation, and it describes what is true today.
+> patch one included. These pages are their only documentation, and they describe what is true today.
 
 The talking dot. A small face, a dot with eyes and a mouth, speaks with your agent's voice, moving
 its mouth with the sound frame by frame. As a tutor it becomes one more person on the page, with a
@@ -11,6 +11,9 @@ about, and the agent's prompt reads the page as it is now.
 
 It stands on [`@pinecall/room`](../room/README.md), which joins the call. The pinecall widget
 draws it with `<pinecall-widget look="dot">`, and with `look="dot" tutor` the tutor too.
+
+**To build a tutor, start with [Write a tutor agent](docs/write-a-tutor.md)**, step by step, and
+[Macros](docs/macros.md), the format of a guided walk. This page is the reference.
 
 | import | where it runs | what it gives you |
 |---|---|---|

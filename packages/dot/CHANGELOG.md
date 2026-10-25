@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **Two guides for whoever builds a tutor**: `docs/write-a-tutor.md` (the agent, the page, walks, views for an
+  agent's own tools, shipping it) and `docs/macros.md` (the format of a macro, the moves, naming elements,
+  writing sentences that play well). They ship in the package.
 ## 0.11.24 — the walks' menu marks the walk of the section the visitor is on (2026-10-25)
 
 ## 0.11.23 — the resting face a little smaller and nearer its corner (2026-10-25)
