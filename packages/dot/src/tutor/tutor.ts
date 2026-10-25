@@ -11,7 +11,7 @@ import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
 import { Page } from "../page/page.js";
-import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
+import { aimOf, along, animate, coveredTop, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Card } from "../pointer/card.js";
 import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
@@ -129,8 +129,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   /** What the face must not cover while the pointer is on `element`: on a window of code, the lines lit. */
   const clearOf = (element: Element): DOMRect | null => (element.closest(".pc-code") === null ? null : walks.code.litBox());
   const onScreen = (element: Element): boolean => {
+    // Under the site's own header is not on the screen: the visitor cannot see it.
     const box = element.getBoundingClientRect();
-    return box.bottom > 0 && box.top < view.innerHeight;
+    return box.bottom > coveredTop(document) && box.top < view.innerHeight;
   };
   const run = async (action: Action, element: Element | null): Promise<void> => {
     switch (action) {

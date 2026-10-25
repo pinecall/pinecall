@@ -102,7 +102,9 @@ beside the face. It moves the way a hand moves a mouse:
   `[data-pc-hover]`, set on the element under the tip and its ancestors, and `pointerenter` and
   `mouseenter` are sent for the site's code. A style sheet from another origin cannot be read and
   keeps no hover.
-- **It scrolls the page eased**, until the element sits a little above the middle of the screen.
+- **It scrolls the page eased**, until the element sits a little above the middle of the screen, below the
+  site's own header: a fixed or sticky bar along the top (or the page's `scroll-padding-top`) is measured
+  and left out, so nothing it shows ends up under it.
 - **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" is a
   ring at the tip.
 

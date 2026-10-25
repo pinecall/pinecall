@@ -75,13 +75,43 @@ const TALL = 0.8;
 const START = 0.1;
 
 /**
- * The scroll at which `box` (as the screen shows it at `scrollY`) sits at `where` of a screen `height`
- * tall, within a page `pageHeight` tall: its middle there, or, for one taller than most of the screen
- * (a section on a phone), its start near the top, so what it begins with is what shows.
+ * The scroll at which `box` (as the screen shows it at `scrollY`) sits at `where` of the part of a screen
+ * `height` tall that the site's own header leaves free (`covered` px at its top), within a page
+ * `pageHeight` tall: its middle there, or, for one taller than most of it (a section on a phone), its
+ * start near the top of it, so what it begins with is what shows, and nothing hides it.
  */
-export function scrollGoal(box: { top: number; height: number }, scrollY: number, height: number, pageHeight: number, where: number): number {
-  const at = box.height > height * TALL ? box.top - height * START : box.top + box.height / 2 - height * where;
+export function scrollGoal(box: { top: number; height: number }, scrollY: number, height: number, pageHeight: number, where: number, covered = 0): number {
+  const free = height - covered;
+  const at = box.height > free * TALL ? box.top - covered - free * START : box.top + box.height / 2 - covered - free * where;
   return Math.max(0, Math.min(pageHeight - height, scrollY + at));
+}
+
+/** The most of the screen's top a site's bar may cover and still count as a header, as a share of the screen's height. */
+const A_HEADER = 0.4;
+
+/**
+ * How much of the screen's top the site itself covers, in px: its `scroll-padding-top` when it says, and
+ * the bottom of any fixed or sticky bar along the top edge (a header), whichever is lower. The tutor's own
+ * layer does not count.
+ */
+export function coveredTop(document: Document): number {
+  const view = document.defaultView;
+  if (view === null) return 0;
+  const padding = Number.parseFloat(view.getComputedStyle(document.documentElement).scrollPaddingTop);
+  let covered = Number.isFinite(padding) ? padding : 0;
+  const most = view.innerHeight * A_HEADER;
+  for (const x of [0.25, 0.5, 0.75].map((share) => view.innerWidth * share)) {
+    for (const hit of document.elementsFromPoint?.(x, 1) ?? []) {
+      for (let node: Element | null = hit; node !== null; node = node.parentElement) {
+        if (node.closest("[data-pinecall-skip]") !== null) break;
+        const position = view.getComputedStyle(node).position;
+        if (position !== "fixed" && position !== "sticky") continue;
+        const box = node.getBoundingClientRect();
+        if (box.top <= 1 && box.height < most) covered = Math.max(covered, box.bottom);
+      }
+    }
+  }
+  return Math.min(covered, most);
 }
 
 /** Scroll the page, eased, until the element sits at `where` of the screen's height. Nothing when it is there already. */
@@ -89,7 +119,7 @@ export async function scrollOnto(element: Element, where: number, still: boolean
   const view = element.ownerDocument.defaultView;
   if (view === null) return;
   const box = element.getBoundingClientRect();
-  const goal = scrollGoal(box, view.scrollY, view.innerHeight, element.ownerDocument.documentElement.scrollHeight, where);
+  const goal = scrollGoal(box, view.scrollY, view.innerHeight, element.ownerDocument.documentElement.scrollHeight, where, coveredTop(element.ownerDocument));
   const from = view.scrollY;
   const dy = goal - from;
   if (Math.abs(dy) < 8) return;

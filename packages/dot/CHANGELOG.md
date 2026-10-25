@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **What the tutor scrolls to sits below the site's own header**, not under it: the top a fixed or sticky bar covers
+  (or the page's `scroll-padding-top`) is measured and left out, and a thing under the header is not on the screen.
 - **A walk can be for some pages**: a macro's `pages` (`["/security"]`) is published with its walk, the menu lists only
   the walks for the page it is on, and a call is told the page's path (`page.seen`'s `path`) and offers and runs only
   the walks for it. A walk that names no page is for every page. Each page has a document of its own (`walks`,
