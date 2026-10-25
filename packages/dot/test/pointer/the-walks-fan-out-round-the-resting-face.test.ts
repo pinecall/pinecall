@@ -1,8 +1,8 @@
 // The walks fan out from a small button beside the resting face, in an arc toward the page, and a pick plays one.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Menu, STEP, fanned } from "../../src/pointer/menu.js";
+import { Menu, OFFERED_MS, STEP, fanned } from "../../src/pointer/menu.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -70,5 +70,25 @@ describe("the walks' menu", () => {
     menu.available(false);
     expect(document.querySelector<HTMLButtonElement>(".pc-walks")?.hidden).toBe(true);
     menu.close();
+  });
+
+  it("offers one walk alone beside the face for a few seconds, and folds it away when the pills fan out", () => {
+    vi.useFakeTimers();
+    const picked: number[] = [];
+    const menu = aMenu(picked);
+    menu.offer([{ title: "Site tour", ms: 38_000 }, { title: "Pricing", ms: 20_000 }]);
+    menu.available(true);
+    const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
+
+    menu.suggest(1);
+    vi.advanceTimersByTime(50);
+    expect(pills.map((pill) => !pill.hidden)).toEqual([false, true]);
+    vi.advanceTimersByTime(OFFERED_MS + 300);
+    expect(pills[1]?.hidden).toBe(true);
+    menu.suggest(1);
+    pills[1]?.click();
+    expect(picked).toEqual([1]);
+    menu.close();
+    vi.useRealTimers();
   });
 });

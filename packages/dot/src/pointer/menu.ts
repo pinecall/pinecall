@@ -3,7 +3,8 @@
 // The button sits on the face's shoulder, toward the page, in front of the face: behind it, a click
 // meant for it reached the face and began a call. A click fans the walks out beside the
 // face, each a pill with its title and length, read from the top: the first walk is the highest. Escape, a click elsewhere or
-// a pick closes them. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
+// a pick closes them. One walk can also be offered alone, beside the face, for a few seconds: the one
+// of the section scrolled to. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
 import { clock } from "../wire/index.js";
 import type { Point } from "./flight.js";
@@ -41,6 +42,9 @@ export interface MenuOptions {
   onPick: (index: number) => void;
 }
 
+/** How long a walk offered alone stays beside the face, in ms. */
+export const OFFERED_MS = 5000;
+
 /** How far apart two pills stand, in px: a pill's 30 and a gap of 10, so no two ever overlap. */
 export const STEP = 40;
 
@@ -70,6 +74,8 @@ export class Menu {
   readonly #host: (element: Element) => void;
   #pills: HTMLButtonElement[] = [];
   #open = false;
+  /** The walk offered alone, by its place in the list, and when it goes. */
+  #alone: { index: number; timer: ReturnType<typeof setTimeout> } | null = null;
   readonly #outside = (event: Event): void => {
     const target = event.target instanceof Node ? event.target : null;
     if (target !== null && (this.#button.contains(target) || this.#pills.some((pill) => pill.contains(target)))) return;
@@ -105,6 +111,7 @@ export class Menu {
 
   /** The walks to offer; none hides the button. */
   offer(items: MenuItem[]): void {
+    this.#unsuggest();
     for (const pill of this.#pills) pill.remove();
     this.#pills = items.map((item, index) => {
       const pill = this.#document.createElement("button");
@@ -134,8 +141,20 @@ export class Menu {
     if (on) this.#place();
   }
 
+  /** Offer one walk alone, beside the face, for `ms`, while the button shows and the pills are folded. */
+  suggest(index: number, ms = OFFERED_MS): void {
+    const pill = this.#pills[index];
+    if (pill === undefined || this.#open || this.#button.hidden) return;
+    this.#unsuggest();
+    this.#alone = { index, timer: setTimeout(() => this.#unsuggest(), ms) };
+    this.#place();
+    pill.hidden = false;
+    setTimeout(() => pill.classList.add("pc-shown"), 30);
+  }
+
   /** Fan the pills out, or fold them back. */
   toggle(open: boolean): void {
+    this.#unsuggest();
     this.#open = open && !this.#button.hidden;
     this.#button.setAttribute("aria-expanded", String(this.#open));
     this.#place();
@@ -158,20 +177,38 @@ export class Menu {
     Object.assign(this.#button.style, { left: `${at.x + side * lean - 11}px`, top: `${at.y - lean - 11}px` });
     const view = this.#document.defaultView;
     const count = this.#pills.length;
-    fanned(count, at, radius, this.#options.dock).forEach((point, index) => {
-      const pill = this.#pills[count - 1 - index];
+    const right = this.#options.dock === "right";
+    const stand = (pill: HTMLButtonElement | undefined, point: Point): void => {
       if (pill === undefined) return;
-      const right = this.#options.dock === "right";
       Object.assign(pill.style, {
         top: `${point.y - 15}px`,
         left: right ? "auto" : `${point.x}px`,
         right: right ? `${(view?.innerWidth ?? 0) - point.x}px` : "auto",
         transformOrigin: right ? "right center" : "left center",
       });
-    });
+    };
+    fanned(count, at, radius, this.#options.dock).forEach((point, index) => stand(this.#pills[count - 1 - index], point));
+    // A walk offered alone stands where the lowest pill would, beside the face.
+    const [beside] = fanned(1, at, radius, this.#options.dock);
+    if (this.#alone !== null && beside !== undefined) stand(this.#pills[this.#alone.index], beside);
+  }
+
+  #unsuggest(): void {
+    if (this.#alone === null) return;
+    clearTimeout(this.#alone.timer);
+    const { index } = this.#alone;
+    const pill = this.#pills[index];
+    this.#alone = null;
+    if (pill === undefined || this.#open) return;
+    pill.classList.remove("pc-shown");
+    // Hidden once it has faded, unless it was offered again or the pills fanned out meanwhile.
+    setTimeout(() => {
+      if (!this.#open && this.#alone?.index !== index) pill.hidden = true;
+    }, 200);
   }
 
   close(): void {
+    this.#unsuggest();
     this.#document.removeEventListener("pointerdown", this.#outside, true);
     this.#document.removeEventListener("keydown", this.#escape);
     this.#document.defaultView?.removeEventListener("resize", this.#resized);

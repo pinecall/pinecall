@@ -282,8 +282,8 @@ at a time. `captions` says which may show.
 
 With `walks`, a small button beside the dot fans out the agent's walks; a pick plays one in the
 agent's voice, the pointer moving on its words, with no call and no microphone; captions, pause and stop
-sit in the corner while it plays. A section with `data-pinecall-walk="<macro>"` gets a small ▶ in
-its corner that plays that walk; a button of the site's own with `data-pinecall-play="<macro>"` and
+sit in the corner while it plays. A section with `data-pinecall-walk="<macro>"` offers that walk's
+pill beside the dot for a few seconds as the page is scrolled to it; a button of the site's own with `data-pinecall-play="<macro>"` and
 `hidden` is shown while that walk can play, and plays it. The tag dispatches
 `pinecall:walk` (`detail`: `{ walk, step, of, done }`) as one starts and ends.
 

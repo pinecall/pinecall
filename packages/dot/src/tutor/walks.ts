@@ -2,7 +2,7 @@
 
 import type { Face } from "../face/index.js";
 import { CodeWindow } from "../pointer/code.js";
-import { Corners } from "../pointer/corners.js";
+import { Sections } from "../pointer/sections.js";
 import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { RecordedWalk } from "../wire/index.js";
@@ -12,8 +12,6 @@ export interface WalksOptions {
   dock: "right" | "left";
   /** The button's name: "Walks". */
   label: string;
-  /** What a section's corner button says before its walk's title: "Play". */
-  play: string;
   /** Where the agent published its walks; none offered without it. */
   url: string | undefined;
   /** Whether a call is opening or on: no walk plays over one. */
@@ -33,7 +31,7 @@ export class Walks {
   readonly code: CodeWindow;
   readonly #walking: Walking;
   readonly #menu: Menu;
-  readonly #corners: Corners;
+  readonly #sections: Sections;
   readonly #drawn: Face;
   readonly #person: Person;
   readonly #options: WalksOptions;
@@ -57,14 +55,15 @@ export class Walks {
       face: () => ({ at: person.dock(), radius: person.radius }),
       onPick: (index) => this.#play(index),
     });
-    this.#corners = new Corners(document, (part) => person.add(part), {
-      label: options.play,
-      onPlay: (name) => this.#play(this.#list.findIndex((walk) => walk.name === name)),
+    const named = (name: string): number => this.#list.findIndex((walk) => walk.name === name);
+    this.#sections = new Sections(document, {
+      onReach: (name) => this.#menu.suggest(named(name)),
+      onPlay: (name) => this.#play(named(name)),
     });
     void publishedWalks(options.url ?? "").then((found) => {
       this.#list = found;
       this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
-      this.#corners.offer(found.map((walk) => ({ name: walk.name, title: walk.title, ms: lengthOf(walk) })));
+      this.#sections.offer(found.map((walk) => walk.name));
       this.#menu.available(!options.inCall());
     });
   }
@@ -88,9 +87,9 @@ export class Walks {
     else this.#walking.pause();
   }
 
-  /** The sections' buttons onto their corners, shown while no call is on and no walk plays. Called every frame. */
+  /** The section scrolled to offers its walk, and the site's own buttons show, while no call is on and no walk plays. Called every frame. */
   place(): void {
-    this.#corners.place(!this.#options.inCall() && !this.playing);
+    this.#sections.place(!this.#options.inCall() && !this.playing);
   }
 
   /** Stop the walk playing, if one is: the visitor clicked the face, or a call began. */
@@ -114,7 +113,7 @@ export class Walks {
   close(): void {
     this.#walking.stop();
     this.#menu.close();
-    this.#corners.close();
+    this.#sections.close();
     this.code.close();
   }
 

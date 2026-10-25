@@ -249,10 +249,10 @@ widget's `walks` attribute) puts a small button beside the resting face. A click
 round it, each a pill with its title and length; a pick plays it: the voice, the mouth moving with
 it, the words lit as said, each beat on its word, a ring round the face for how far it is. While it
 plays, the corner holds captions, pause and stop; a click on the face stops it too. No microphone is
-asked for. A section can play its own walk: `data-pinecall-walk="<macro>"` on it puts a small ▶ in
-its top left corner, for a walk the agent published, hidden during a call or a walk. Where a corner
-does not suit, the site draws its own button, `hidden`, and marks it `data-pinecall-play="<macro>"`:
-the tutor shows it while that walk can play, and a click plays it. A call opened afterwards tells the agent which walk
+asked for. A section can offer its own walk: with `data-pinecall-walk="<macro>"` on it, as the page is
+scrolled to it that walk's pill shows alone beside the face for a few seconds, then goes; not during
+a call or a walk. The site can also draw its own button, `hidden`, and mark it
+`data-pinecall-play="<macro>"`: the tutor shows it while that walk can play, and a click plays it. A call opened afterwards tells the agent which walk
 was played and how far (`page.walked`), so it goes on from there rather than give it again.
 `onWalk` hears each start and end, for the page's own analytics.
 
