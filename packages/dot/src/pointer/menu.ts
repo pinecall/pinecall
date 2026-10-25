@@ -67,6 +67,8 @@ export class Menu {
   readonly #escape = (event: KeyboardEvent): void => {
     if (event.key === "Escape") this.toggle(false);
   };
+  // The face rests in a corner of the window, so a resize moves it, and the button and pills with it.
+  readonly #resized = (): void => this.#place();
 
   constructor(document: Document, host: (element: Element) => void, options: MenuOptions) {
     this.#document = document;
@@ -87,6 +89,7 @@ export class Menu {
     this.#host = host;
     document.addEventListener("pointerdown", this.#outside, true);
     document.addEventListener("keydown", this.#escape);
+    document.defaultView?.addEventListener("resize", this.#resized);
   }
 
   /** The walks to offer; none hides the button. */
@@ -159,6 +162,7 @@ export class Menu {
   close(): void {
     this.#document.removeEventListener("pointerdown", this.#outside, true);
     this.#document.removeEventListener("keydown", this.#escape);
+    this.#document.defaultView?.removeEventListener("resize", this.#resized);
     this.#button.remove();
     for (const pill of this.#pills) pill.remove();
     this.#style.remove();

@@ -49,7 +49,8 @@ export class Ear {
   hear(element: HTMLMediaElement | null): void {
     const listening = this.#source !== null || element === null;
     if (element === this.#element && listening) return;
-    this.#source?.disconnect();
+    // From the analyser alone: a recording's source also plays to the speakers, and keeps doing so.
+    if (this.#analyser !== null) this.#source?.disconnect(this.#analyser);
     this.#source = null;
     this.#element = element;
     if (this.#context === null || this.#analyser === null || element === null) return;
