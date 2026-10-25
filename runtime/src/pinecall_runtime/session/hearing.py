@@ -72,41 +72,7 @@ BACKCHANNELS: dict[str, frozenset[str]] = {
     "ca": frozenset({"sí", "vale", "d'acord", "clar", "entesos", "ok", "mm", "aha", "eh"}),
 }
 
-# What Whisper-family ears write on a breath, a cough or the agent's own voice played back: whole
-# turns of nothing else, heard while the agent speaks, are not the caller's. A turn that goes on
-# ("thank you, and the invoice?") is. Their training's subtitles end in these, hence the credits.
-HALLUCINATIONS: dict[str, frozenset[str]] = {
-    "en": frozenset(
-        {
-            "thank you",
-            "thank you very much",
-            "thanks",
-            "thanks for watching",
-            "thank you for watching",
-            "bye",
-            "bye bye",
-            "goodbye",
-            "you",
-            "i'm sorry",
-            "subtitles by the amara org community",
-        }
-    ),
-    "es": frozenset(
-        {
-            "gracias",
-            "muchas gracias",
-            "gracias por ver",
-            "chau",
-            "adiós",
-            "subtítulos realizados por la comunidad de amara org",
-            "subtítulos por la comunidad de amara org",
-        }
-    ),
-    "pt": frozenset({"obrigado", "obrigada", "tchau", "legendas pela comunidade amara org"}),
-    "ca": frozenset({"gràcies", "adéu", "moltes gràcies"}),
-}
-
-# Whisper's other invention: on a fraction of a second of noise it writes one phrase over and over
+# Whisper's invention: on a fraction of a second of noise it writes one phrase over and over
 # ("I'm going to make sure that" forty times, gpu.pinecall.io 2026-10-17). A phrase of three words
 # or more said three times running is not a caller, whoever is speaking.
 LOOPED_WORDS = 3
@@ -134,7 +100,6 @@ class TurnPolicy:
     """What the caller must say to take the floor, in the agent's language."""
 
     backchannels: frozenset[str]
-    hallucinations: frozenset[str] = frozenset()
     min_words: int = MIN_WORDS
     false_interruption_s: float = FALSE_INTERRUPTION_TIMEOUT_S
     # How long the caller speaks over the agent before it stops; None leaves livekit's own.
@@ -144,10 +109,6 @@ class TurnPolicy:
         """Whether every word said is somebody agreeing."""
         words = words_of(text)
         return bool(words) and all(word in self.backchannels for word in words)
-
-    def is_made_up(self, text: str) -> bool:
-        """Whether the whole turn is one of the phrases the ears write on no speech."""
-        return " ".join(words_of(text)) in self.hallucinations
 
 
 def loops(text: str) -> bool:
@@ -202,11 +163,9 @@ def policy_for(language: str | None, turn: Turn | None = None) -> TurnPolicy:
     """The policy of the agent's language (`es-ES` is `es`) and its turn knobs; else every list."""
     tag = (language or "").split("-", 1)[0].lower()
     words = BACKCHANNELS.get(tag) or frozenset[str]().union(*BACKCHANNELS.values())
-    made_up = HALLUCINATIONS.get(tag) or frozenset[str]().union(*HALLUCINATIONS.values())
     declared = turn or Turn()
     return TurnPolicy(
         backchannels=words,
-        hallucinations=made_up,
         min_words=MIN_WORDS if declared.min_interruption_words is None else declared.min_interruption_words,
         min_speech_s=None if declared.min_interruption_ms is None else declared.min_interruption_ms / 1000,
     )

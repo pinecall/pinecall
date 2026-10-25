@@ -1386,8 +1386,7 @@ end-of-turn timeout, and a value it refuses is refused there, in its words, nami
 (`turn endpointing_ms=400`).
 
 **What never takes the floor**, whatever the numbers. While the agent speaks, a turn that only
-agrees ("mm-hm", "sí"), or that is all one of the phrases Whisper-family ears write on a breath
-("Thank you.", "Thanks for watching"), is dropped before it can interrupt; so is, for a second and
+agrees ("mm-hm", "sí") is dropped before it can interrupt; so is, for a second and
 a half after the agent stops, a turn whose words are mostly its own of the last seconds — its
 voice heard back from a visitor's speakers. On a web call (the playground, the widget) the
 runtime also cancels that echo in the audio, with WebRTC's canceller fed what the agent plays,

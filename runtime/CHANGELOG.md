@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **No turn is dropped for its words being ones Whisper makes up.** A list of phrases ("bye", "thank
+  you", "gracias"…) was dropped whole while the agent spoke, whatever the ears: on Deepgram a caller's
+  "Bye." over the agent never reached the model. The list is gone.
 - **A web caller's words said over the agent are no longer wiped by the echo canceller.** AEC3 learns
   the echo path from the echo; a visitor whose audio carries none (headphones, a browser that
   cancelled it, the simulated caller) taught it none, and its suppressor took their voice for echo
