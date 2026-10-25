@@ -37,6 +37,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 | `history` | optional | `off` keeps no conversations in this browser. By default the visitor's last 20 chats and calls with this agent are kept in `localStorage` — the lines as they settled, at most 200 each — listed under **Your conversations** in the menu, any one readable again, and cleared by the visitor with **Clear** |
 | `look` | optional | `dot`: the button is a face that speaks with the agent's voice, and a click is a voice call with no panel ([below](#the-talking-dot)) |
 | `tutor` | optional | with `look="dot"`: the dot walks the visitor through the page with a pointer of its own, for an agent that extends `Tutor` ([below](#the-dot-as-a-tutor)) |
+| `shape` · `color` | optional | with `look="dot"`: the face's shape, `circle` (default), `squircle` or `blob`, and its colour, any CSS colour (else the widget's accent) |
 | `captions` | optional | with `tutor`: whose words show in writing, `both` (default), `agent`, `caller` or `none`. Unless `none`, the visitor turns them off and on with the **CC** button, their choice kept in this browser |
 
 Attributes are read once when the element connects, except `token-url`, which is read for every

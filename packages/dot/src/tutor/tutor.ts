@@ -9,6 +9,7 @@
 import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
+import type { Shape } from "../face/shape.js";
 import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Hover } from "../pointer/hover.js";
@@ -27,6 +28,10 @@ export interface TutorOptions {
   onClick?: (() => void) | undefined;
   /** How long its last words stay beside it after a reply, and the visitor's after theirs, in ms. Default 2600. */
   linger?: number | undefined;
+  /** The face's shape: `circle` (the default), `squircle` or `blob`. */
+  shape?: Shape | undefined;
+  /** The face's and the pointer's colour, any CSS colour; the page's `--pc-face` when left out. */
+  color?: string | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
   /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions" and "Explain this". */
@@ -57,6 +62,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const person = new Person(document, {
     dock: options.dock ?? "right",
     label: options.label ?? "Talk to the assistant",
+    color: options.color,
     onClick: () => options.onClick?.(),
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
     captions:
@@ -72,7 +78,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
           },
     explain: { label: options.words?.explain ?? "Explain this", onClick: (element) => send(EXPLAIN, { at: page.refOf(element) }) },
   });
-  const drawn = face(person.face, call);
+  const drawn = face(person.face, call, { shape: options.shape });
   const player = new Player();
   const linger = options.linger ?? 2600;
   const hearing = new Hearing(linger);

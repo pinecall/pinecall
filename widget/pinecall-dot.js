@@ -15,7 +15,7 @@ const LINGER_MS = 2600;
 
 const STYLE = `
   .fab.dot { width: var(--_dot); height: var(--_dot); padding: 0; border: 0; border-radius: 50%; background: none;
-             box-shadow: none; filter: drop-shadow(0 6px 14px var(--_shadow)); --pc-face: var(--_accent); }
+             box-shadow: none; --pc-face: var(--_accent); }
   .fab.dot .face { display: block; width: 100%; height: 100%; }
   :host { --_dot: var(--pc-dot-size, 64px); }
   :host([position="inline"]) { position: relative; }
@@ -93,11 +93,13 @@ export class Dot {
         label,
         onClick: () => this.click(),
         captions: widget.getAttribute("captions") ?? "both",
+        shape: widget.getAttribute("shape") ?? undefined,
+        color: widget.getAttribute("color") ?? undefined,
         words: { hangUp: widget.words.hangUp, captions: widget.words.captions },
       });
       this.face = this.tutor;
     } else {
-      this.face = face(host, this.call);
+      this.face = face(host, this.call, { shape: widget.getAttribute("shape") ?? undefined, color: widget.getAttribute("color") ?? undefined });
       fab.style.visibility = "";
     }
     this.kept = null;

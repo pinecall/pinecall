@@ -1,13 +1,14 @@
 /** The face as SVG: built once into its host, then moved to a pose each frame by setting attributes. */
 //
 // Every colour is a custom property with a default, so a page themes the face from its own CSS:
-// --pc-face (the dot), --pc-face-eye, --pc-face-mouth, --pc-face-teeth, --pc-face-tongue.
+// --pc-face (the body), --pc-face-eye, --pc-face-mouth, --pc-face-teeth, --pc-face-tongue. Nothing is
+// drawn outside the body: no halo, no shadow, the sheen clipped to it.
 
 import { outline, type Mouth } from "./mouth.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 
-/** Everything a frame sets: the mouth, the lids, where the eyes look, how the head sits, the halo. */
+/** Everything a frame sets: the body's outline, the mouth, the lids, where the eyes look, how the head sits. */
 export interface Pose {
   mouth: Mouth;
   /** 1 open, 0.1 shut. */
@@ -16,15 +17,16 @@ export interface Pose {
   gaze: { x: number; y: number };
   tilt: number;
   scale: { x: number; y: number };
-  /** 0 to 1: how far the halo reaches out, and how much it shows. */
-  halo: number;
+  /** The body's outline, an SVG path inside the 100-unit box. */
+  body: string;
 }
 
 /** The parts a pose moves. */
 export interface Drawing {
   svg: SVGSVGElement;
-  halo: SVGCircleElement;
   head: SVGGElement;
+  body: SVGPathElement;
+  rim: SVGPathElement;
   eyes: { eye: SVGEllipseElement; glint: SVGCircleElement; x: number }[];
   mouth: SVGPathElement;
   clip: SVGPathElement;
@@ -45,13 +47,13 @@ function made<K extends keyof SVGElementTagNameMap>(
 
 /** Draw the face into `host`, filling it. `id` keeps two faces on one page from sharing a clip. */
 export function drawn(host: Element, id: string): Drawing {
-  const svg = made("svg", { viewBox: "0 0 100 100", width: "100%", height: "100%", "aria-hidden": "true", overflow: "visible" });
-  const clipping = made("clipPath", { id: `${id}-mouth` }, made("defs", {}, svg));
-  const clip = made("path", {}, clipping);
-  const halo = made("circle", { cx: 50, cy: 50, r: 46, opacity: 0, style: "fill: var(--pc-face, #1f6b55)" }, svg);
+  const svg = made("svg", { viewBox: "0 0 100 100", width: "100%", height: "100%", "aria-hidden": "true" });
+  const defs = made("defs", {}, svg);
+  const clip = made("path", {}, made("clipPath", { id: `${id}-mouth` }, defs));
+  const rim = made("path", {}, made("clipPath", { id: `${id}-body` }, defs));
   const head = made("g", {}, svg);
-  made("circle", { cx: 50, cy: 50, r: 46, style: "fill: var(--pc-face, #1f6b55)" }, head);
-  made("circle", { cx: 38, cy: 32, r: 30, opacity: 0.12, style: "fill: #fff" }, head);
+  const body = made("path", { style: "fill: var(--pc-face, #1f6b55)" }, head);
+  made("circle", { cx: 38, cy: 32, r: 30, opacity: 0.12, "clip-path": `url(#${id}-body)`, style: "fill: #fff" }, head);
   const eyes = [37, 63].map((x) => ({
     eye: made("ellipse", { cx: x, cy: 43, rx: 4.3, ry: 5.4, style: "fill: var(--pc-face-eye, #0d1a15)" }, head),
     glint: made("circle", { cx: x + 1.4, cy: 41.2, r: 1.2, opacity: 0.85, style: "fill: #fff" }, head),
@@ -66,7 +68,7 @@ export function drawn(host: Element, id: string): Drawing {
   const tongue = made("ellipse", { opacity: 0, style: "fill: var(--pc-face-tongue, #e77b7b)" }, inside);
   const teeth = made("rect", { rx: 1.2, opacity: 0, style: "fill: var(--pc-face-teeth, #fbfaf5)" }, inside);
   host.append(svg);
-  return { svg, halo, head, eyes, mouth, clip, teeth, tongue };
+  return { svg, head, body, rim, eyes, mouth, clip, teeth, tongue };
 }
 
 function set(element: Element, attributes: Record<string, number | string>): void {
@@ -77,6 +79,8 @@ function set(element: Element, attributes: Record<string, number | string>): voi
 
 /** Move the drawing to `pose`. */
 export function painted(drawing: Drawing, pose: Pose): void {
+  drawing.body.setAttribute("d", pose.body);
+  drawing.rim.setAttribute("d", pose.body);
   const lips = outline(pose.mouth);
   drawing.mouth.setAttribute("d", lips.d);
   drawing.clip.setAttribute("d", lips.d);
@@ -108,5 +112,4 @@ export function painted(drawing: Drawing, pose: Pose): void {
     "transform",
     `translate(50 50) rotate(${pose.tilt.toFixed(2)}) scale(${pose.scale.x.toFixed(4)} ${pose.scale.y.toFixed(4)}) translate(-50 -50)`,
   );
-  set(drawing.halo, { r: 46 + pose.halo * 9, opacity: pose.halo * 0.28 });
 }

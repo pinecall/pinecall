@@ -20,7 +20,7 @@ const STYLE = `
 .pc-arrow[data-kind="arrow"] .pc-kind-arrow, .pc-arrow[data-kind="hand"] .pc-kind-hand, .pc-arrow[data-kind="ibeam"] .pc-kind-ibeam { display: inline; }
 .pc-face { position: absolute; width: var(--pc-dot-size, 64px); height: var(--pc-dot-size, 64px); left: calc(var(--pc-dot-size, 64px) / -2); top: calc(var(--pc-dot-size, 64px) / -2);
   transition: width .45s cubic-bezier(.2,.8,.2,1), height .45s cubic-bezier(.2,.8,.2,1), left .45s cubic-bezier(.2,.8,.2,1), top .45s cubic-bezier(.2,.8,.2,1);
-  filter: drop-shadow(0 6px 14px rgb(15 50 40 / .28)); pointer-events: auto; cursor: pointer; border-radius: 50%; }
+  pointer-events: auto; cursor: pointer; border-radius: 50%; }
 .pc-face:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 3px; }
 .pc-person.pc-touring .pc-face { width: 40px; height: 40px; left: 14px; top: 16px; }
 .pc-bubble { position: absolute; width: max-content; max-width: min(270px, 70vw); right: -30px; bottom: 44px; padding: 9px 13px;
@@ -70,6 +70,8 @@ export interface PersonOptions {
   dock: "right" | "left";
   /** What the face is called for a screen reader: "Talk to Pip". */
   label: string;
+  /** The face's and the arrow's colour, any CSS colour; the page's `--pc-face` when left out. */
+  color?: string | undefined;
   /** A click (or Enter) on the face. */
   onClick: () => void;
   /** The hang-up button: its name, and its click. */
@@ -109,6 +111,7 @@ export class Person {
     this.#layer = document.createElement("div");
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
+    if (options.color !== undefined) this.#layer.style.setProperty("--pc-face", options.color);
     this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
