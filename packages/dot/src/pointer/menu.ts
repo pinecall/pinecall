@@ -9,6 +9,9 @@
 import { clock } from "../wire/index.js";
 import type { Point } from "./flight.js";
 
+/** A pill's height, in px. */
+const PILL = 24;
+
 const STYLE = `
 .pc-walks { position: fixed; z-index: 3; width: 22px; height: 22px; padding: 0; border: 2px solid var(--pc-bubble, #fff); border-radius: 50%;
   background: var(--pc-face, #1f6b55); color: #fff; font: 700 10px/18px system-ui, sans-serif; text-align: center; cursor: pointer;
@@ -16,12 +19,12 @@ const STYLE = `
 .pc-walks:hover, .pc-walks[aria-expanded="true"] { transform: scale(1.12); }
 .pc-walks:focus-visible, .pc-pill:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
 .pc-walks[hidden], .pc-pill[hidden] { display: none; }
-.pc-pill { position: fixed; z-index: 3; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 9px; border: 0;
+.pc-pill { position: fixed; z-index: 3; display: flex; align-items: center; gap: 6px; height: ${PILL}px; padding: 0 10px 0 8px; border: 0;
   border-radius: 999px; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); cursor: pointer; pointer-events: auto;
-  font: 500 13px/30px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / .16);
+  font: 500 12px/${PILL}px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 4px 14px rgb(0 0 0 / .16);
   opacity: 0; transform: scale(.85); transition: opacity .18s, transform .18s; }
 .pc-pill.pc-shown { opacity: 1; transform: none; }
-.pc-pill .pc-tri { width: 0; height: 0; border-style: solid; border-width: 5px 0 5px 8px; border-color: transparent transparent transparent var(--pc-face, #1f6b55); }
+.pc-pill .pc-tri { width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent var(--pc-face, #1f6b55); }
 .pc-pill .pc-long { opacity: .55; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .pc-pill, .pc-walks { transition: none; } }
 `;
@@ -45,8 +48,8 @@ export interface MenuOptions {
 /** How long a walk offered alone stays beside the face, in ms. */
 export const OFFERED_MS = 5000;
 
-/** How far apart two pills stand, in px: a pill's 30 and a gap of 10, so no two ever overlap. */
-export const STEP = 40;
+/** How far apart two pills stand, in px: a pill's height and a gap of 6, so no two ever overlap. */
+export const STEP = PILL + 6;
 
 /** How far the nearest pill stands from the face's edge, and how much farther each lower one does, in px. */
 const GAP = 14;
@@ -181,7 +184,7 @@ export class Menu {
     const stand = (pill: HTMLButtonElement | undefined, point: Point): void => {
       if (pill === undefined) return;
       Object.assign(pill.style, {
-        top: `${point.y - 15}px`,
+        top: `${point.y - PILL / 2}px`,
         left: right ? "auto" : `${point.x}px`,
         right: right ? `${(view?.innerWidth ?? 0) - point.x}px` : "auto",
         transformOrigin: right ? "right center" : "left center",
