@@ -142,6 +142,10 @@ tutor(call, { walks: "https://cloud.pinecall.io/v1/agents/pip/public/walks" }); 
 `pinecall walks list` shows what an agent published and `pinecall walks play tour` plays it in your
 terminal. A sentence you did not edit costs nothing the next time; one you edit is recorded again.
 
+**Show some walks on some pages.** Name the pages in the macro (`"pages": ["/security"]`) and the
+menu, and the agent in a call, offer it only there; with no `pages` a walk is for every page
+([Macros](macros.md#walks-for-some-pages)).
+
 **Tie a walk to the page.** A section marked `data-pinecall-walk="tour"` makes the menu mark that
 walk while the visitor is on that section. A button of yours marked `data-pinecall-play="tour"` and
 `hidden` is shown while that walk can play, and a click plays it:

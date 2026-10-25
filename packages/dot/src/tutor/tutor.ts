@@ -106,7 +106,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const seen = page.seen();
     if (!live() || seen.text === sent) return;
     sent = seen.text;
-    send(SEEN, { text: seen.text, why, lines: page.lines() });
+    send(SEEN, { text: seen.text, why, lines: page.lines(), path: view.location.pathname });
     person.face.dataset["pcSeen"] = String(Number(person.face.dataset["pcSeen"] ?? "0") + 1);
   };
   const timers = new Map<string, ReturnType<typeof setTimeout>>();

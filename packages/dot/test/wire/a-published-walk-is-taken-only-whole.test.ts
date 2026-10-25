@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { clock, macroOf, shownOf, tutoring, walksOf } from "../../src/wire/index.js";
+import { clock, macroOf, onPage, shownOf, tutoring, walksOf } from "../../src/wire/index.js";
 
 const STEP = {
   say: "Up here are our services.",
@@ -64,5 +64,30 @@ describe("a length", () => {
   it("reads as a clock does", () => {
     expect(clock(38_400)).toBe("0:38");
     expect(clock(61_000)).toBe("1:01");
+  });
+});
+
+describe("the pages a walk is for", () => {
+  it("are paths a macro file names, and a walk keeps them", () => {
+    const steps = [{ say: "Hi.", beats: [] }];
+
+    expect(macroOf("keys", { pages: ["/security"], steps }).pages).toEqual(["/security"]);
+    expect(macroOf("tour", { steps }).pages).toBeUndefined();
+    expect(() => macroOf("keys", { pages: ["security"], steps })).toThrow("begin with a slash");
+    expect(() => macroOf("keys", { pages: "/security", steps })).toThrow("begin with a slash");
+    expect(walksOf({ walks: [{ name: "keys", title: "Keys", pages: ["/security"], steps: [STEP] }] })[0]?.pages).toEqual(["/security"]);
+    expect(walksOf({ walks: [{ name: "keys", title: "Keys", pages: [3], steps: [STEP] }] })[0]?.pages).toBeUndefined();
+  });
+
+  it("decide a walk is for the page at a path: any page when it names none, and a trailing slash is the same page", () => {
+    expect(onPage(undefined, "/security")).toBe(true);
+    expect(onPage([], "/security")).toBe(true);
+    expect(onPage(["/security"], "/security/")).toBe(true);
+    expect(onPage(["/security/"], "/security")).toBe(true);
+    expect(onPage(["/"], "/")).toBe(true);
+    expect(onPage(["/"], "/security")).toBe(false);
+    expect(onPage(["/security", "/compliance"], "/compliance")).toBe(true);
+    // A page that never said its path is any page: nothing is hidden from it.
+    expect(onPage(["/security"], "")).toBe(true);
   });
 });

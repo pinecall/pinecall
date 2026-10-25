@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A walk can be for some pages**: a macro's `pages` (`["/security"]`) is published with its walk, the menu lists only
+  the walks for the page it is on, and a call is told the page's path (`page.seen`'s `path`) and offers and runs only
+  the walks for it. A walk that names no page is for every page.
 - **Two guides for whoever builds a tutor**: `docs/write-a-tutor.md` (the agent, the page, walks, views for an
   agent's own tools, shipping it) and `docs/macros.md` (the format of a macro, the moves, naming elements,
   writing sentences that play well). They ship in the package.

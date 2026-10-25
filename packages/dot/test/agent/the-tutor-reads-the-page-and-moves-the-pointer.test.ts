@@ -11,6 +11,14 @@ class Pip extends Tutor {
   });
 }
 
+/** A Pip with a walk for the security page beside the tour, which names no page. */
+class Guard extends Pip {
+  static override macros = macros({
+    keys: { pages: ["/security"], steps: [{ say: "Your keys stay yours.", beats: [] }] },
+    tour: { steps: [{ say: "Up here are our services.", beats: [] }] },
+  });
+}
+
 const META = { source: "participant" as const, seq: 1 };
 
 const BELOW = '- link "Pricing" [ref=e2]\n- region "Pricing" [ref=e20] (below, holds "Choose Family Care")';
@@ -38,8 +46,8 @@ interface Sent {
 }
 
 /** A Pip on a call whose moves and words are kept, the page below the fold; each say is answered with its turn, as the runtime does. */
-async function aPipOnACall(text = BELOW, lines: unknown = []): Promise<{ pip: Pip; sent: Sent[] }> {
-  const pip = new Pip();
+async function aPipOnACall(text = BELOW, lines: unknown = [], Kind: new () => Pip = Pip): Promise<{ pip: Pip; sent: Sent[] }> {
+  const pip = new Kind();
   const sent: Sent[] = [];
   const world: CallWorld = new CallWorld({ id: "CA_1", contact: "visitor", channel: "web" }, (verb, data) => {
     sent.push({ verb, data });
@@ -187,5 +195,20 @@ describe("a tutor", () => {
     // Every one is the pointer's: it runs while its words play and asks for no answer, a walk too.
     for (const one of tools) expect(one.spec.quiet, one.name).toBe(true);
     expect(tools.find((one) => one.name === "point")?.spec.parameters).toMatchObject({ properties: { what: { type: "string" } } });
+  });
+
+  it("gives only the walks for the page the visitor is on: those naming it, and those naming none", async () => {
+    const { pip } = await aPipOnACall(BELOW, [], Guard);
+    // The page did not say where it is: every walk is for it.
+    expect(pip.seeing()).toContain("- keys");
+    expect(pip.seeing()).toContain("- tour");
+
+    await runHook(pip, "onEvent", "page.seen", { text: BELOW, why: "scroll", lines: [], path: "/infrastructure" }, META);
+    expect(pip.seeing()).not.toContain("- keys");
+    expect(pip.seeing()).toContain("- tour");
+    await expect(pip.runMacro("keys")).resolves.toContain("There is no walk named");
+
+    await runHook(pip, "onEvent", "page.seen", { text: BELOW, why: "scroll", lines: [], path: "/security/" }, META);
+    expect(pip.seeing()).toContain("- keys");
   });
 });

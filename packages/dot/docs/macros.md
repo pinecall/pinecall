@@ -38,6 +38,7 @@ agent](write-a-tutor.md) shows where it goes; this page is the format.
 | `name` | what the model names it in `runMacro`. The key it is given in `macros({ plans })` when left out |
 | `title` | the visitor's button: "Plans and prices". `name` when left out |
 | `when` | when to run it, in the words the model reads: "the visitor asks what it costs" |
+| `pages` | the paths of the pages it is for: `["/security"]`. Left out, it is for every page. See below |
 | `steps` | at least one |
 
 A step:
@@ -70,6 +71,23 @@ A beat:
 | `home` | the pointer goes back to its corner |
 
 A macro never types: a walk shows, and the agent writes into a field only what the visitor said.
+
+## Walks for some pages
+
+A site with several pages usually has a walk for each, and a visitor on `/security` should not be
+offered the tour of the home. Name the pages in the file:
+
+```json
+{ "name": "keys", "title": "Where your keys live", "pages": ["/security"], "steps": [ … ] }
+```
+
+- **The menu** lists only the walks for the page the visitor is on (a trailing slash does not
+  matter: `/security` and `/security/` are one page).
+- **A call** is the same: the page tells the agent its path, and the agent offers and runs only
+  the walks for it. A walk that names no page is for all of them, so name the home's
+  walks too (`"pages": ["/"]`) if they are only for the home.
+- **A page that never said its path** (an older page) is offered every walk.
+- A path is exact: `/developers` is not `/developers/sdk`. List both.
 
 ## Naming elements: `find`
 

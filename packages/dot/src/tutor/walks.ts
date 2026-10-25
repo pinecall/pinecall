@@ -5,7 +5,7 @@ import { CodeWindow } from "../pointer/code.js";
 import { Sections } from "../pointer/sections.js";
 import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
-import type { RecordedWalk } from "../wire/index.js";
+import { onPage, type RecordedWalk } from "../wire/index.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
 export interface WalksOptions {
@@ -61,7 +61,9 @@ export class Walks {
       current: () => named(this.#sections.current() ?? ""),
     });
     this.#sections = new Sections(document, { onPlay: (name) => this.#play(named(name)) });
-    void publishedWalks(options.url ?? "").then((found) => {
+    void publishedWalks(options.url ?? "").then((all) => {
+      // Only the walks for the page the visitor is on: one that names other pages stays out of the menu.
+      const found = all.filter((walk) => onPage(walk.pages, document.defaultView?.location.pathname ?? ""));
       this.#list = found;
       this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
       this.#sections.offer(found.map((walk) => walk.name));

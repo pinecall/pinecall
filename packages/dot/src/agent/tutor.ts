@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
 
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, wordsOf, type Action, type Line, type Macro, type RecordedWalk, type Shown } from "../wire/index.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, onPage, wordsOf, type Action, type Line, type Macro, type RecordedWalk, type Shown } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
@@ -114,6 +114,8 @@ export class Tutor extends Agent {
   lines: Line[] = [];
   /** The walk the visitor played with no call before this one, and how far: `"tour", all 5 sentences`. */
   walked = "";
+  /** The path of the visitor's page, as the page last said it; none, every walk is for it. */
+  path = "";
 
   /**
    * Before any call: each macro recorded in the agent's voice and published as `walks`, for the
@@ -130,6 +132,7 @@ export class Tutor extends Agent {
       name: walk.name,
       title: walk.title ?? walk.name,
       ...(walk.when === undefined ? {} : { when: walk.when }),
+      ...(walk.pages === undefined ? {} : { pages: walk.pages }),
       ...(lines[0] === undefined ? {} : { voice: lines[0].voice }),
       steps: walk.steps.map((step) => {
         const line = lines[next++];
@@ -154,6 +157,7 @@ export class Tutor extends Agent {
     if (name === SEEN && typeof data["text"] === "string") {
       this.page = data["text"];
       this.lines = linesOf(data["lines"]);
+      if (typeof data["path"] === "string") this.path = data["path"];
       const text = (key: string): string | undefined => (typeof data[key] === "string" ? data[key] : undefined);
       if (data["why"] === MOVED) unanswered.get(this)?.shift()?.({ at: text("at"), refused: text("refused") });
     }
@@ -174,8 +178,7 @@ export class Tutor extends Agent {
   seeing(): string {
     // A call no tutor's page joined (the phone, a page with no dot) is the agent's own: no screen, no pointer.
     if (this.page === "") return "";
-    const own = (this.constructor as typeof Tutor).macros;
-    const listed = Object.values(own).map((macro) => `- ${macro.name}${macro.when ? `: when ${macro.when}` : ""}`);
+    const listed = Object.values(this.macrosHere()).map((macro) => `- ${macro.name}${macro.when ? `: when ${macro.when}` : ""}`);
     if (this.lines.length > 0) listed.push(`- ${PAGE_WALK}: the site's own lines about its parts, one by one, when they want to be shown the page`);
     return [
       "## The visitor's screen",
@@ -248,10 +251,16 @@ export class Tutor extends Agent {
     return this.move("home");
   }
 
+  /** The walks for the page the visitor is on: those that name it, and those that name none. */
+  private macrosHere(): Record<string, Macro> {
+    const own = (this.constructor as typeof Tutor).macros;
+    return Object.fromEntries(Object.entries(own).filter(([, macro]) => onPage(macro.pages, this.path)));
+  }
+
   /** Give one of your walks, by its name: each sentence said as written, your pointer moving on its words. */
   async runMacro(name: string): Promise<string> {
     if (this.lines.length > 0 && (name === PAGE_WALK || wordsOf(name).includes(PAGE_WALK))) return this.walkThePage();
-    const walks = (this.constructor as typeof Tutor).macros;
+    const walks = this.macrosHere();
     const macro = walkNamed(walks, name);
     const names = Object.keys(walks).join(", ") || "none";
     if (macro === undefined) return `There is no walk named "${name}". The ones there are: ${names}.`;

@@ -87,7 +87,18 @@ export interface Macro {
   title?: string | undefined;
   /** When to run it, in the words the model reads: "the visitor asks to be shown around". */
   when?: string | undefined;
+  /** The paths of the pages it is for: `["/security"]`. Left out, it is for every page. */
+  pages?: string[] | undefined;
   steps: MacroStep[];
+}
+
+/** A path as a page names it: no trailing slash but the root's. */
+const pathOf = (path: string): string => (path.length > 1 ? path.replace(/\/+$/, "") : path) || "/";
+
+/** Whether a walk for `pages` is for the page at `path`: any walk is, with no pages named; a path unknown is any page. */
+export function onPage(pages: readonly string[] | undefined, path: string): boolean {
+  if (pages === undefined || pages.length === 0 || path === "") return true;
+  return pages.some((page) => pathOf(page) === pathOf(path));
 }
 
 /** A written word of a recorded sentence, and when it is said, in ms from the start of its audio. */
@@ -113,6 +124,8 @@ export interface RecordedWalk {
   when?: string | undefined;
   /** The voice it was recorded in, as the gateway names it: `cartesia sonic-3 f786b574…`. */
   voice?: string | undefined;
+  /** The paths of the pages it is for; none, every page. */
+  pages?: string[] | undefined;
   steps: RecordedStep[];
 }
 
@@ -236,11 +249,12 @@ export function walksOf(value: unknown): RecordedWalk[] {
   return listed.flatMap((item: unknown) => {
     if (typeof item !== "object" || item === null) return [];
     const walk: Record<string, unknown> = { ...item };
-    const { name, title, when, steps } = walk;
+    const { name, title, when, steps, pages } = walk;
     if (typeof name !== "string" || typeof title !== "string" || !Array.isArray(steps) || steps.length === 0) return [];
     const checked = steps.map(stepOf);
     if (checked.some((step) => step === null)) return [];
-    return [{ name, title, when: typeof when === "string" ? when : undefined, steps: checked.filter((step) => step !== null) }];
+    const paths = Array.isArray(pages) && pages.every((page) => typeof page === "string") ? (pages as string[]) : undefined;
+    return [{ name, title, when: typeof when === "string" ? when : undefined, pages: paths, steps: checked.filter((step) => step !== null) }];
   });
 }
 
@@ -266,10 +280,15 @@ export function macroOf(name: string, value: unknown): Macro {
   });
   const when = macro["when"];
   const title = macro["title"];
+  const pages = macro["pages"];
+  if (pages !== undefined && !(Array.isArray(pages) && pages.every((page) => typeof page === "string" && page.startsWith("/")))) {
+    throw new Error(`macro ${name}: pages are paths that begin with a slash, as ["/security"]`);
+  }
   return {
     name: typeof macro["name"] === "string" ? macro["name"] : name,
     title: typeof title === "string" ? title : undefined,
     when: typeof when === "string" ? when : undefined,
+    pages: pages === undefined ? undefined : (pages as string[]),
     steps: checked,
   };
 }
