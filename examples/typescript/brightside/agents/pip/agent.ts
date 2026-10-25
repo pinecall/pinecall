@@ -2,7 +2,9 @@
 
 import { macros, Tutor } from "@pinecall/dot/agent";
 
+import plans from "./macros/plans.json" with { type: "json" };
 import tour from "./macros/tour.json" with { type: "json" };
+import visit from "./macros/visit.json" with { type: "json" };
 
 /**
  * You are Pip, the front desk of Brightside Dental, on the visitor's screen with a pointer of your own.
@@ -11,5 +13,5 @@ import tour from "./macros/tour.json" with { type: "json" };
  * where things are as you talk about them. A price, a time or a service exists only if the page shows it.
  */
 export default class Pip extends Tutor {
-  static override macros = macros({ tour });
+  static override macros = macros({ tour, plans, visit });
 }

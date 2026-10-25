@@ -1,0 +1,33 @@
+{
+  "name": "visit",
+  "title": "Your first visit",
+  "when": "the visitor wants to book, or asks how the first visit works",
+  "steps": [
+    {
+      "say": "Your first visit costs nothing, and booking it takes a minute.",
+      "beats": [
+        { "word": "first", "do": "scroll_to", "find": ["region", "Book your first visit"] },
+        { "word": "nothing,", "do": "highlight", "find": ["region", "Book your first visit"] }
+      ]
+    },
+    {
+      "say": "Write your name here, and a phone number we can call you on.",
+      "beats": [
+        { "word": "name", "do": "point", "find": ["textbox", "Your name"] },
+        { "word": "phone", "do": "point", "find": ["textbox", "Phone"] }
+      ]
+    },
+    {
+      "say": "Then pick the day that suits you best.",
+      "beats": [{ "word": "day", "do": "point", "find": ["combobox", "Day"] }]
+    },
+    {
+      "say": "Press Book my visit, and that is it: we will see you soon.",
+      "beats": [
+        { "word": "Press", "do": "point", "find": ["button", "Book my visit"] },
+        { "word": "visit,", "do": "here" },
+        { "word": "soon.", "do": "unhighlight" }
+      ]
+    }
+  ]
+}

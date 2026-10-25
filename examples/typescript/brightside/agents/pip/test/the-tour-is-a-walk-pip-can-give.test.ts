@@ -1,4 +1,4 @@
-// Pip loads with its tour checked, offers it in its view once the page is seen, and has the pointer's tools.
+// Pip loads with its three walks checked, offers them in its view once the page is seen, and has the pointer's tools.
 
 import { runHook, toolsOf } from "@pinecall/agents";
 import { describe, expect, it } from "vitest";
@@ -11,6 +11,11 @@ describe("Pip", () => {
 
     expect(tour?.steps).toHaveLength(5);
     expect(tour?.steps.every((step) => step.beats.length > 0)).toBe(true);
+  });
+
+  it("carries the plans and the first visit too, each a walk with a title for its button", () => {
+    expect(Object.keys(Pip.macros)).toEqual(["tour", "plans", "visit"]);
+    expect(Object.values(Pip.macros).map((walk) => walk.title)).toEqual(["Site tour", "Plans and prices", "Your first visit"]);
   });
 
   it("offers the tour in its view once the visitor's page has been seen", async () => {

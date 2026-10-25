@@ -1,0 +1,43 @@
+{
+  "name": "plans",
+  "title": "Plans and prices",
+  "when": "the visitor asks what it costs, or which plan to choose",
+  "steps": [
+    {
+      "say": "Here are our three plans: one monthly price instead of a surprise bill.",
+      "beats": [
+        { "word": "Here", "do": "scroll_to", "find": ["region", "Pricing"] },
+        { "word": "three", "do": "highlight", "find": ["region", "Pricing"] }
+      ]
+    },
+    {
+      "say": "Essential is nineteen dollars a month, with two cleanings a year and X-rays.",
+      "beats": [
+        { "word": "Essential", "do": "highlight", "find": ["article", "Essential plan"] },
+        { "word": "nineteen", "do": "point", "find": ["article", "Essential plan"] }
+      ]
+    },
+    {
+      "say": "Family Care is the one most families pick: up to four people, for thirty-nine dollars a month.",
+      "beats": [
+        { "word": "Family", "do": "highlight", "find": ["article", "Family Care plan"] },
+        { "word": "pick", "do": "point", "find": ["article", "Family Care plan"] }
+      ]
+    },
+    {
+      "say": "Complete adds a whitening every year and an aligner consult, for fifty-nine dollars.",
+      "beats": [
+        { "word": "Complete", "do": "highlight", "find": ["article", "Complete plan"] },
+        { "word": "Complete", "do": "point", "find": ["article", "Complete plan"] }
+      ]
+    },
+    {
+      "say": "When you know which one fits you, press its button, and you are set.",
+      "beats": [
+        { "word": "press", "do": "point", "find": ["button", "Choose Family Care"] },
+        { "word": "button,", "do": "here" },
+        { "word": "set.", "do": "unhighlight" }
+      ]
+    }
+  ]
+}
