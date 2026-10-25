@@ -185,7 +185,10 @@ A class that extends `Tutor` gets these:
 - **`fill(field, text)` writes what the visitor said into a field**, after the agent asked for it,
   one field at a time; its result is the field as it now shows, and a field the page refused (a
   password, a list with no such option) is a tool error naming why. It never sends the form.
-- **The page asked for as the call opens**: `onCall` sends `{ type: "look" }`, and the page answers with
+- **The pointer only where a tutor's page is.** A call no tutor's page joined (the phone, a page with
+  no dot, a chat) is the agent's alone: its view says nothing of a screen and the pointer's tools stay
+  hidden. So an agent that answers the phone too can extend `Tutor` and lose nothing there.
+- **The page asked for as the call opens**, on the web: `onCall` sends `{ type: "look" }`, and the page answers with
   `page.seen`. LiveKit keeps no data for a participant who joins after it was sent, so the agent asks
   once it is there. A page that joins a call already under way (a reload) tells it at once.
 

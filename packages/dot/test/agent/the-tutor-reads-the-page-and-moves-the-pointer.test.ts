@@ -1,6 +1,6 @@
 // A Tutor accepts the page's events from the visitor's browser, keeps the newest page in its view, and its tools are described for the model.
 
-import { CallWorld, eventsOf, runHook, setCall, toolsOf } from "@pinecall/agents";
+import { CallWorld, eventsOf, runHook, setCall, toolsOf, visibleToolsOf } from "@pinecall/agents";
 import { describe, expect, it, vi } from "vitest";
 
 import { Tutor, macros, walkNamed } from "../../src/agent/index.js";
@@ -158,8 +158,17 @@ describe("a tutor", () => {
     await expect(refusing).rejects.toThrow('"Day" was not filled: no option says "Monday"');
   });
 
-  it("says plainly that the page is not seen yet, before the first look", () => {
-    expect(new Pip().seeing()).toContain("The page has not been seen yet");
+  it("is the agent's own on a call no tutor's page joined: no screen in its view, no pointer, no page asked of a phone", async () => {
+    expect(new Pip().seeing()).toBe("");
+    expect(visibleToolsOf(new Pip()).map((one) => one.name)).not.toContain("point");
+
+    for (const channel of ["phone", "web"]) {
+      const pip = new Pip();
+      const sent: Sent[] = [];
+      setCall(pip, new CallWorld({ id: "CA_2", contact: "visitor", channel }, (verb, data) => sent.push({ verb, data })));
+      await runHook(pip, "onCall", pip.call);
+      expect(moves(sent), channel).toEqual(channel === "web" ? [{ type: "look" }] : []);
+    }
   });
 
   it("finds the walk a model means by the name it heard, or the only walk there is", () => {

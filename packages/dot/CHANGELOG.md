@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A call no tutor's page joined is the agent's alone**: no screen in its view (it said "the page has
+  not been seen yet" on every phone call), no pointer, and no page asked for off the web.
 - **Walks the visitor plays with no call.** `Tutor` records each macro once in the agent's voice as
   the agent starts (`static onServe`) and publishes them as `walks`; `tutor({ walks })` puts a button
   beside the face whose pills play one, the mouth, the words and the pointer on its audio. A macro

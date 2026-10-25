@@ -141,7 +141,7 @@ export class Tutor extends Agent {
 
   /** The call opens: the page is asked what it shows. A class with an onCall of its own calls `super.onCall(call)`. */
   override onCall(_call: Call): unknown {
-    this.call.send(UI, { type: "look" });
+    if (this.call.channel === "web") this.call.send(UI, { type: "look" });
     return undefined;
   }
 
@@ -167,7 +167,8 @@ export class Tutor extends Agent {
 
   /** What the visitor sees now, and how to move on it, as the view says it. */
   seeing(): string {
-    if (this.page === "") return "## The visitor's screen\nThe page has not been seen yet: talk, and do not point at anything.";
+    // A call no tutor's page joined (the phone, a page with no dot) is the agent's own: no screen, no pointer.
+    if (this.page === "") return "";
     const own = (this.constructor as typeof Tutor).macros;
     const listed = Object.values(own).map((macro) => `- ${macro.name}${macro.when ? `: when ${macro.when}` : ""}`);
     if (this.lines.length > 0) listed.push(`- ${PAGE_WALK}: the site's own lines about its parts, one by one, when they want to be shown the page`);
