@@ -13,6 +13,7 @@ import type { EventDeclarations, EventMeta } from "./accepts.js";
 import { declaredStateOf, type Visibility } from "./visibility.js";
 import type { Call, MemoryOp } from "./lifecycle.js";
 import { collapse, restore, snapshot, type LastCall, type Snapshot } from "./state.js";
+import type { Serve } from "./served.js";
 
 type Declared = Camel<AgentConfig>;
 
@@ -140,6 +141,15 @@ export class Agent {
 
   /** External events this class accepts, and from whom. */
   static events?: EventDeclarations;
+
+  /**
+   * Runs once the agent is registered, before its first call: what the class publishes for the
+   * pages that show it, as lines recorded in its voice and documents any page reads with no key.
+   * Override it as `static override async onServe(serve) { … }`.
+   */
+  static onServe(_serve: Serve): unknown {
+    return undefined;
+  }
 
   /** Field visibility as a map, as an alternative to `@state`. */
   static visibility?: Record<string, Visibility>;

@@ -87,9 +87,12 @@ from pinecall_runtime.providers.service.trials import try_realtime, try_stage
 from pinecall_runtime.providers.service.voices import (
     SAMPLES_A_MINUTE,
     ListedVoice,
+    Spoken,
+    TimedWord,
     check_narrowable,
     listed_by_vendor,
     listed_in_catalog,
+    speak,
 )
 
 __all__ = [
@@ -115,7 +118,9 @@ __all__ = [
     "Running",
     "Served",
     "Speaking",
+    "Spoken",
     "Thinking",
+    "TimedWord",
     "TurnModel",
     "Vendor",
     "advise",
@@ -169,6 +174,7 @@ __all__ = [
     "running_on",
     "seed_catalog",
     "served_by",
+    "speak",
     "stage_on_its_key",
     "stt_of",
     "takes_a_key",

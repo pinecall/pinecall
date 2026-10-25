@@ -5,13 +5,16 @@ import { hostname } from "node:os";
 import { type Camel, type CommandData, eventOf } from "../wire/codec.js";
 import { type Entry } from "../wire/envelope.js";
 import { type CommandType, type EventType } from "../wire/registry.js";
+import { type RecordedLine } from "../wire/rest-lines.js";
 import { Agent, type AgentGateway, type AgentOptions } from "./agent.js";
+import { detailOf } from "./answered.js";
 import type { Call } from "./calls.js";
 import { Connection, type Backoff, type ConnectionOptions } from "./connection.js";
 import { lookupUrl } from "./endpoints.js";
 import { PinecallError, frame } from "./frames.js";
 import { Listeners, asError, type AnyListener, type CamelEvent, type Listener } from "./listeners.js";
 import { history, observe, type LogTarget, type Observation, type Page, type ReadOptions } from "./observe.js";
+import { publish, recordLines } from "./published.js";
 import { signed, type World } from "./signed.js";
 
 // Two levels up from both dist/client/ and src/client/.
@@ -257,6 +260,16 @@ export class Pinecall implements AgentGateway {
     return (JSON.parse(text) as { output: { chunks: Found[] } }).output.chunks;
   }
 
+  /** Record each text once in the agent's voice, in order; a line recorded before costs nothing. */
+  async recordLines(agent: string, texts: string[]): Promise<Camel<RecordedLine>[]> {
+    return recordLines(this.#reading({}), agent, texts);
+  }
+
+  /** Publish a JSON object under a name for any page to read with no key, over the one before it. */
+  async publish(agent: string, name: string, document: Record<string, unknown>): Promise<void> {
+    return publish(this.#reading({}), agent, name, document);
+  }
+
   // ── what the agents send through ────────────────────────────────────────────
 
   /** Send one command frame, validated against its schema. */
@@ -359,16 +372,6 @@ export class Pinecall implements AgentGateway {
 
   #reading(options: Partial<ReadOptions>): ReadOptions {
     return { url: this.url, apiKey: this.apiKey, ...(this.env === undefined ? {} : { env: this.env }), ...options };
-  }
-}
-
-/** The `detail` of an error body, or the raw body. */
-function detailOf(text: string): string {
-  try {
-    const parsed = JSON.parse(text) as { detail?: unknown };
-    return typeof parsed.detail === "string" ? parsed.detail : text;
-  } catch {
-    return text;
   }
 }
 

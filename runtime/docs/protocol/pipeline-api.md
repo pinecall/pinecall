@@ -76,3 +76,38 @@ setting the wait keeps what plays. `pinecall pipeline melody` is the same five, 
 
 The worker's own reads are `GET /v1/agents/{slug}/hold-audio` and `…/audio`, on the fleet's key,
 in the call's scope.
+
+## Recorded lines — `POST /v1/agents/{slug}/lines` · `GET /v1/lines/{id}.mp3`
+
+A line an app wants a page to play **with no call**: said once in the agent's own voice and kept,
+so playing it costs nothing. The voice is the one the agent's next call in the key's environment
+would speak with (its settings over its class, the providers row, the org's key or the box's lent
+one), and the lexicon is applied as a call applies it.
+
+```json
+POST /v1/agents/pip/lines   {"texts": ["Up here are our services."]}
+{"lines": [{"id": "9f2c…", "text": "Up here are our services.", "url": "https://…/v1/lines/9f2c….mp3",
+            "duration_ms": 1610, "voice": "cartesia sonic-3 f786b574-…", "timed": true,
+            "words": [{"text": "Up", "start_ms": 325, "end_ms": 495}, …]}]}
+```
+
+- **A line is kept by a hash** of the voice (vendor, model, its options, the voice, the language),
+  the lexicon's forms the text holds, the encoding and the text: asked again, it answers what is
+  kept and records nothing. A changed voice or lexicon is a new line.
+- **`words` are the written words**, each with when it is said, in ms from the start. A voice that
+  times its words (Cartesia, over its websocket) gives them (`timed: true`); a lexicon form that
+  spans words gives its words its time; a voice that times none has each word placed by its
+  length (`timed: false`).
+- **The audio is MP3, mono, 48 kbps**, which every browser plays. `GET /v1/lines/{id}.mp3` answers
+  it to any page with no key, `Cache-Control: immutable`: an id never names other audio.
+- At most 64 texts a request, 600 characters each. A recording writes no usage row, as a voice
+  sample writes none.
+
+## Published documents — `PUT` · `GET /v1/agents/{slug}/public/{name}`
+
+A JSON object an agent's app publishes for any page to read **with no key**: what a page needs
+before a call opens (the lines it may play, and what they are). `PUT` with an app's or the
+pipeline's key replaces it whole, at most 64 KB; the name is lower case letters, digits and
+dashes. `GET` needs no key: the agent's org is the one its log belongs to, and `?env=sandbox` reads
+the sandbox's (production's otherwise). It is cached a minute. Anything put there is public:
+publish only what the page would show anyway.

@@ -11,6 +11,7 @@ import { hookAuthor, withToolCall } from "../agent/authors.js";
 import { visibilityOf } from "../agent/visibility.js";
 import { CallWorld, type CallLine, type Searching } from "../call/call.js";
 import { describe } from "../agent/docstrings.js";
+import type { Serve } from "../agent/served.js";
 import { searchesKnowledge } from "../agent/searching.js";
 import { runHook, type Call as HookCall } from "../agent/lifecycle.js";
 import { restore, snapshot, type LastCall, type Snapshot } from "../agent/state.js";
@@ -37,6 +38,8 @@ export interface MountOptions {
   last?: LastCall;
   /** False for a console, which serves only calls it opened itself. */
   takesUnclaimed?: boolean;
+  /** Where a line the class says for its person goes (`Serve.say`); a terminal's error stream when served. */
+  report?: (line: string) => void;
 }
 
 /** A mounted agent: its registered SDK agent and the instances serving live calls. */
@@ -118,7 +121,7 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
  */
 export function mount(
   ctor: Ctor,
-  { pc, source, file, slug, last, takesUnclaimed = true }: MountOptions,
+  { pc, source, file, slug, last, takesUnclaimed = true, report }: MountOptions,
 ): Mounted {
   if (source !== undefined) describe(ctor, source, file);
   const name = slug ?? slugOf(ctor);
@@ -155,7 +158,25 @@ export function mount(
   agent.on("call.ended", (_payload, call) => {
     if (call !== null) void end(live, call);
   });
+  served(ctor, pc, name, report);
   return { slug: name, agent, options, instanceOf: (id) => live.get(id)?.agent };
+}
+
+// Once the agent is registered, after every connect: what the class publishes for pages is kept by
+// the gateway and asked again at no cost, so a reconnect runs it again rather than track what changed.
+function served(ctor: Ctor, pc: Pinecall, slug: string, report: ((line: string) => void) | undefined): void {
+  const serve: Serve = {
+    slug,
+    record: (texts) => pc.recordLines(slug, texts),
+    publish: (name, document) => pc.publish(slug, name, document),
+    say: (line) => report?.(line),
+  };
+  const onServe = (ctor as unknown as typeof Agent).onServe.bind(ctor);
+  pc.onConnected(() => {
+    Promise.resolve()
+      .then(() => onServe(serve))
+      .catch((failed: unknown) => pc.onError(failed instanceof Error ? failed : new Error(String(failed))));
+  });
 }
 
 // An unserved call means the line hung up: tell the model instead of throwing in the process.

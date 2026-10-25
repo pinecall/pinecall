@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **An agent's app records lines in its voice and publishes documents for pages.**
+  `POST /v1/agents/{slug}/lines` records each text once with the voice the agent's next call would
+  speak with, its lexicon applied, and answers its MP3 (`GET /v1/lines/{id}.mp3`, no key, immutable)
+  with when each written word is said; the same line asked again costs nothing. `PUT` and keyless
+  `GET /v1/agents/{slug}/public/{name}` publish a JSON object any page reads
+  (`docs/protocol/pipeline-api.md`). A recording writes no usage row, as a voice sample writes none.
 - **What the app says is the agent's answer for the turn.** `agent.say` from inside a quiet tool (a
   tutor's line, a walk) left the turn unanswered, so the model was asked again and could say the
   same words twice; the app's words now count as said, and no round of the model repeats them.

@@ -62,8 +62,11 @@ THE_APPS_WEBVIEWS = ("capacitor://localhost", "https://localhost")
 API_PREFIX = "/v1/"
 # A bearer, never a cookie: Allow-Credentials is never sent.
 ALLOWED_HEADERS = ("authorization", "content-type", ENV_HEADER, HOLDER_HEADER, "last-event-id")
-# A token of one call reads its own endpoints from any page: GET only, no credentials.
-A_PAGES_READS = re.compile(r"^/v1/(calls/[^/]+/(events|state|recording)|codes/[^/]+)$")
+# A token of one call reads its own endpoints from any page: GET only, no credentials. A recorded line
+# and a document an agent published are read by any page with no key at all.
+A_PAGES_READS = re.compile(
+    r"^/v1/(calls/[^/]+/(events|state|recording)|codes/[^/]+|lines/[^/]+|agents/[^/]+/public/[^/]+)$"
+)
 # And says its own hang-up: the one POST a page makes with a token, as its tab closes.
 A_PAGE_HANGS_UP = re.compile(r"^/v1/calls/[^/]+/hangup$")
 # The most any request carries, above every endpoint's own cap (a hold melody 20 MiB, a hosted

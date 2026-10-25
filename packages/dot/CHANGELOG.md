@@ -6,6 +6,11 @@ maintainer's call.
 
 ## Unreleased
 
+- **Walks the visitor plays with no call.** `Tutor` records each macro once in the agent's voice as
+  the agent starts (`static onServe`) and publishes them as `walks`; `tutor({ walks })` puts a button
+  beside the face whose pills play one, the mouth, the words and the pointer on its audio. A macro
+  takes a `title`. A call afterwards hears what was played (`page.walked`).
+- **Marked an experiment**: an add-on of Pinecall, whose API may change in any release.
 - **First release.** `face(element, room)`: a dot that speaks with the agent's voice. Its mouth is
   read from that voice frame by frame, and its mood follows the agent's state.
 - **`tutor(room, options)`**: one more person on the page, with a pointer of its own.

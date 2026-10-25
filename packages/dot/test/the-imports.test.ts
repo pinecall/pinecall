@@ -17,8 +17,8 @@ const MAY_IMPORT: Record<string, string[]> = {
   "face": ["@pinecall/room"],
   // The page as the agent reads it: the DOM, and the wire's shape of the site's lines.
   "page": ["./wire"],
-  // The person with a pointer: the DOM alone.
-  "pointer": [],
+  // The person with a pointer: the DOM, and the wire's one formatter of a length.
+  "pointer": ["./wire"],
   // The tutor on a page: everything of the page's side, the room, and the wire.
   "tutor": ["./face", "./page", "./pointer", "./wire", "@pinecall/room"],
   // The agent's side: the framework, Node, and the wire. Never the DOM's parts.

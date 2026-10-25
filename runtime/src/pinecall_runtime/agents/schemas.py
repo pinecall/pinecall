@@ -1,6 +1,6 @@
 """The bodies of the agents endpoints: settings and lexicon versions, canaries, pipeline, widget, apps, the line."""
 
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field
 
@@ -468,3 +468,39 @@ class AgentMoved(WireModel):
     logs: int
     numbers: list[str]
     stayed: list[str]
+
+
+# ── recorded lines ──
+
+
+class RecordLinesRequest(WireModel):
+    """POST /v1/agents/{slug}/lines: the texts to record in the agent's voice, at most 64 of 600 characters."""
+
+    texts: list[Annotated[str, Field(min_length=1, max_length=600)]] = Field(min_length=1, max_length=64)
+
+
+class RecordedWord(WireModel):
+    """A written word of a line, and when it is said, in ms from the start of the audio."""
+
+    text: str
+    start_ms: int
+    end_ms: int
+
+
+class RecordedLine(WireModel):
+    """A line recorded in the agent's voice: where its MP3 is, how long it runs, when each word is said."""
+
+    id: str
+    text: str
+    url: str
+    duration_ms: int
+    voice: str
+    # False where the voice times no words and each word was placed by its length.
+    timed: bool
+    words: list[RecordedWord]
+
+
+class RecordedLines(WireModel):
+    """The lines asked for, in their order, each recorded once."""
+
+    lines: list[RecordedLine]

@@ -1,16 +1,17 @@
-"""The voice picker: the voices a vendor lists, and a line spoken by one of them outside a call."""
+"""The voice picker: the voices a vendor lists, and a line spoken by one of them outside a call, timed word by word."""
 
 import dataclasses
 import inspect
 import io
 import time
 import wave
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from livekit.agents import APIConnectionError, APIError, APIStatusError, APITimeoutError
 from livekit.agents.tts import SynthesizedAudio
+from livekit.agents.types import USERDATA_TIMED_TRANSCRIPT, TimedString
 from livekit.agents.utils import http_context
 
 from pinecall_runtime.exceptions import NotFound, UpstreamError, ValidationError
@@ -54,6 +55,25 @@ class Sample:
     total_ms: int
 
 
+@dataclass(frozen=True, slots=True)
+class TimedWord:
+    """A word as the voice timed it, its seconds from the start of the audio."""
+
+    text: str
+    start_s: float
+    end_s: float
+
+
+@dataclass(frozen=True, slots=True)
+class Spoken:
+    """A line spoken as 16-bit PCM, and the words the voice timed; none from a voice that times none."""
+
+    pcm: bytes
+    rate: int
+    channels: int
+    words: tuple[TimedWord, ...]
+
+
 async def listed_by_vendor(running: Running) -> list[ListedVoice]:
     """The voices a vendor lists on the stage's key, where its plugin lists any; NotFound if not."""
     async with http_context.open():
@@ -94,6 +114,20 @@ THE_VENDORS_OWN = 500
 # not answer, or fails on its side, is the vendor's.
 async def sample(running: Running, line: str) -> Sample:
     """The line spoken by the stage's voice, built as a call builds it; its refusal in the vendor's words."""
+    return await _voiced(running, line, _heard)
+
+
+# Only a streaming voice times its words (Cartesia's over its websocket, not its HTTP endpoint),
+# each from the start of the whole audio, across the sentences of the line (measured 2026-10-25).
+async def speak(running: Running, line: str) -> Spoken:
+    """The line spoken by the stage's voice as a call speaks it, and each word's time where the voice gives them."""
+    return await _voiced(running, line, _spoken)
+
+
+type Taken[T] = Callable[[AsyncIterator[SynthesizedAudio]], Awaitable[T]]
+
+
+async def _voiced[T](running: Running, line: str, taken: Taken[T]) -> T:
     async with http_context.open():
         speech = tts_of(running)
         try:
@@ -101,9 +135,9 @@ async def sample(running: Running, line: str) -> Sample:
                 async with speech.stream() as stream:
                     stream.push_text(line)
                     stream.end_input()
-                    return await _heard(stream)
+                    return await taken(stream)
             async with speech.synthesize(line) as chunks:
-                return await _heard(chunks)
+                return await taken(chunks)
         except (APIConnectionError, APITimeoutError) as silent:
             raise _refused(running.vendor, "did not answer", silent) from silent
         except APIError as refused:
@@ -183,6 +217,30 @@ async def _heard(audio: AsyncIterator[SynthesizedAudio]) -> Sample:
     return Sample(
         wav=_wav(bytes(pcm), rate, channels), first_audio_ms=_ms(started, first or ended), total_ms=_ms(started, ended)
     )
+
+
+async def _spoken(audio: AsyncIterator[SynthesizedAudio]) -> Spoken:
+    pcm = bytearray()
+    rate, channels = 0, 0
+    words: list[TimedWord] = []
+    async for chunk in audio:
+        pcm += bytes(chunk.frame.data)
+        rate, channels = chunk.frame.sample_rate, chunk.frame.num_channels
+        timed: object = chunk.frame.userdata.get(USERDATA_TIMED_TRANSCRIPT)
+        for piece in timed if a_list(timed) else []:
+            word = _timed(piece)
+            if word is not None:
+                words.append(word)
+    return Spoken(pcm=bytes(pcm), rate=rate, channels=channels, words=tuple(words))
+
+
+def _timed(piece: object) -> TimedWord | None:
+    if not isinstance(piece, TimedString):
+        return None
+    start, end = piece.start_time, piece.end_time
+    if not isinstance(start, int | float) or not isinstance(end, int | float):
+        return None
+    return TimedWord(text=str(piece).strip(), start_s=float(start), end_s=float(end))
 
 
 def _wav(pcm: bytes, rate: int, channels: int) -> bytes:

@@ -18,6 +18,8 @@ CallsKey = Annotated[Actor, Depends(Authenticator(KeyScope.calls))]
 UsageKey = Annotated[Actor, Depends(Authenticator(KeyScope.usage))]
 TalkKey = Annotated[Actor, Depends(Authenticator(KeyScope.talk))]
 AppKey = Annotated[Actor, Depends(Authenticator(KeyScope.app))]
+# The agent's app records its lines and publishes its documents; a person with the pipeline does too.
+PublishingKey = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.pipeline))]
 # A worker asks with its fleet's key; a tenant's own worker with an app key.
 WorkerKey = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.fleet))]
 DeclarationKey = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.calls, KeyScope.fleet))]

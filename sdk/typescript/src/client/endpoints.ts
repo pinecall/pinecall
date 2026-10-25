@@ -20,6 +20,16 @@ export function feedUrl(base: string): string {
   return doorAt(base, "/v1/events", false);
 }
 
+/** `POST /v1/agents/{slug}/lines`: texts recorded once in the agent's voice. */
+export function linesUrl(base: string, agent: string): string {
+  return doorAt(base, `/v1/agents/${encodeURIComponent(agent)}/lines`, false);
+}
+
+/** `/v1/agents/{slug}/public/{name}`: a JSON document the agent publishes, which any page reads with no key. */
+export function publishedUrl(base: string, agent: string, name: string): string {
+  return doorAt(base, `/v1/agents/${encodeURIComponent(agent)}/public/${encodeURIComponent(name)}`, false);
+}
+
 /** `POST /v1/calls/{id}/lookup`: a knowledge-base search run by the gateway for this call. */
 export function lookupUrl(base: string, call: string): string {
   return doorAt(base, `/v1/calls/${encodeURIComponent(call)}/lookup`, false);

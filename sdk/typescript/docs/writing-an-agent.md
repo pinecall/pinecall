@@ -215,6 +215,27 @@ overwrites it. An outside fact reaches `onEvent` only if the class declared the 
 `static events`: an event declared `from: ["app"]` that arrives from a browser is somebody else's
 event with your name on it, and the hook never sees it.
 
+### Before the first call: `static onServe`
+
+A class can publish something for the pages that show it, once its agent is registered and before
+any call: lines recorded in its own voice, which a page plays with no call, and a JSON document any
+page reads with no key.
+
+```ts
+static override async onServe(serve: Serve) {
+  const lines = await serve.record(["Welcome to Brightside.", "Pricing is simple."]);
+  await serve.publish("welcome", { lines: lines.map(({ url, words }) => ({ url, words })) });
+  serve.say(`welcome recorded · ${lines.length} lines`);
+}
+```
+
+`record` answers each line's MP3 URL, its length and when each written word is said; a line the
+agent recorded before, in the same voice, costs nothing, so `onServe` runs again on every reconnect
+as it is. `publish` replaces the document under its name; a page reads it at
+`GET /v1/agents/{slug}/public/{name}` with no key (`?env=sandbox` for the sandbox's), so put there only
+what the page would show anyway. `say` writes one line in the terminal of whoever started the agent.
+A throw is reported, and the agent serves its calls all the same.
+
 ## The call
 
 Inside a tool, a hook or `render()`, `this.call` is the live call; outside one it throws.

@@ -39,7 +39,7 @@ export async function start(argv: string[], io: Io): Promise<number> {
   const served = paired(values.file ?? [], values.slug ?? []);
   const pc = clientFrom(io.env);
   const masking = new Map<string, Masking>();
-  for (const one of served) masking.set(one.slug, new Masking((await held(pc, one, values.console === true)).options));
+  for (const one of served) masking.set(one.slug, new Masking((await held(pc, one, values.console === true, io)).options));
   said(pc, io, values.events === true, masking);
   try {
     await pc.connect();
@@ -74,9 +74,10 @@ function clientFrom(env: Io["env"]): Pinecall {
 }
 
 // A console's own process takes only the calls that name it; the class draws the panel.
-async function held(pc: Pinecall, one: Served, console: boolean): Promise<Mounted> {
+async function held(pc: Pinecall, one: Served, console: boolean, io: Io): Promise<Mounted> {
   const loaded = await loadServed(one.file, one.slug);
-  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console });
+  const report = (line: string): void => void io.err.write(`${one.slug}  ${line}\n`);
+  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report });
   const viewing = viewingFrom(loaded.ctor, one.slug);
   mounted.agent.onDev(async (verb, data) => {
     if (verb !== "view.render") throw new DevRefused(404, ONLY_THE_VIEW);

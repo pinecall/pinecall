@@ -9,7 +9,7 @@ export { Pinecall } from "./client.js";
 export type { DrainOptions, Drained, Found, PinecallOptions } from "./client.js";
 export { Connection } from "./connection.js";
 export type { Backoff, ConnectionHandlers, ConnectionOptions } from "./connection.js";
-export { agentLogUrl, appsUrl, callLogUrl, feedUrl, lookupUrl } from "./endpoints.js";
+export { agentLogUrl, appsUrl, callLogUrl, feedUrl, linesUrl, lookupUrl, publishedUrl } from "./endpoints.js";
 export { DevRefused, PinecallError, Refused, frame, nextId } from "./frames.js";
 export { Listeners, camelEvent } from "./listeners.js";
 export type { AnyListener, CamelEvent, Listener, Payload } from "./listeners.js";

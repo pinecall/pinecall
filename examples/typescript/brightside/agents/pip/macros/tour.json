@@ -1,5 +1,6 @@
 {
   "name": "tour",
+  "title": "Site tour",
   "when": "the visitor asks to be shown around, or does not know where to start",
   "steps": [
     {

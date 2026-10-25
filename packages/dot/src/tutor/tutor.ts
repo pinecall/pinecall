@@ -5,6 +5,7 @@
 // Down, from `pinecall.ui`: a cursor move, run at once, or a macro's step, whose moves run on their
 // words. Moves run one after another, so a scroll ends before the point that follows it. In words,
 // one side at a time: the visitor's as they say them, else the agent's as its voice says them.
+// With no call, the walks the agent published play from a button beside the face (`walks`).
 
 import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
@@ -15,9 +16,11 @@ import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../poin
 import { Hover } from "../pointer/hover.js";
 import { Person } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, tutoring, type Action, type Beat } from "../wire/index.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat, type RecordedWalk } from "../wire/index.js";
+import { Menu } from "../pointer/menu.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
 import { Player } from "./macro.js";
+import { Walking, lengthOf, publishedWalks, type Walked } from "./walking.js";
 
 export interface TutorOptions {
   /** The corner it rests in. Default `right`. */
@@ -34,8 +37,12 @@ export interface TutorOptions {
   color?: string | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions" and "Explain this". */
-  words?: { hangUp?: string | undefined; captions?: string | undefined; explain?: string | undefined } | undefined;
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this" and "Walks". */
+  words?: { hangUp?: string | undefined; captions?: string | undefined; explain?: string | undefined; walks?: string | undefined } | undefined;
+  /** Where the agent published its recorded walks (`GET …/v1/agents/{slug}/public/walks`): a button beside the face plays them with no call. */
+  walks?: string | undefined;
+  /** A walk started, ended, or was stopped: the page's own analytics hear it. */
+  onWalk?: ((walked: Walked) => void) | undefined;
 }
 
 export interface Tutor {
@@ -63,7 +70,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     dock: options.dock ?? "right",
     label: options.label ?? "Talk to the assistant",
     color: options.color,
-    onClick: () => options.onClick?.(),
+    onClick: () => (walking.playing === null ? options.onClick?.() : walked(walking.stop())),
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
     captions:
       captions === "none"
@@ -79,6 +86,39 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     explain: { label: options.words?.explain ?? "Explain this", onClick: (element) => send(EXPLAIN, { at: page.refOf(element) }) },
   });
   const drawn = face(person.face, call, { shape: options.shape });
+  const inCall = (): boolean => call.state.phase === "opening" || call.state.phase === "live";
+  // The walk the visitor played last, said to the agent once as the next call opens.
+  let played: Walked | null = null;
+  let walks: RecordedWalk[] = [];
+  const walked = (ended: Walked | null): void => {
+    if (ended === null) return;
+    played = ended;
+    drawn.listen(null);
+    person.progress(null);
+    queue(() => run("home", null));
+    menu.available(!inCall());
+    options.onWalk?.(ended);
+  };
+  const walking = new Walking(document.createElement("audio"), walked);
+  const menu = new Menu(document, (part) => person.add(part), {
+    dock: options.dock ?? "right",
+    label: options.words?.walks ?? "Walks",
+    face: () => ({ at: person.dock(), radius: person.radius }),
+    onPick: (index) => {
+      const walk = walks[index];
+      if (walk === undefined || inCall()) return;
+      drawn.wake();
+      drawn.listen(walking.audio);
+      menu.available(false);
+      walking.start(walk);
+      options.onWalk?.({ walk: walk.name, step: 1, of: walk.steps.length, done: false });
+    },
+  });
+  void publishedWalks(options.walks ?? "").then((found) => {
+    walks = found;
+    menu.offer(walks.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
+    menu.available(!inCall());
+  });
   const player = new Player();
   const linger = options.linger ?? 2600;
   const hearing = new Hearing(linger);
@@ -212,6 +252,28 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
 
   const tick = (now: number): void => {
     if (closed) return;
+    const walk = walking.frame();
+    if (walk !== null) {
+      person.say(shows(captions, captioned, "agent") ? walk.lit : null, walk.coming);
+      person.heard(null);
+      person.progress(walk.fraction);
+      for (const one of walk.beats) queue(() => beat(one));
+    } else spoken(now);
+    // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
+    if (!flying && !person.touring) person.place(person.dock());
+    if (!flying && anchor !== null && anchor.element.isConnected) {
+      const box = anchor.element.getBoundingClientRect();
+      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy });
+      person.kind(hover.at(person.at.x, person.at.y));
+    }
+    if (lit !== null && !lit.isConnected) lit = null;
+    person.spot(lit);
+    person.offer(live() && offered?.isConnected === true ? offered : null);
+    frame = requestAnimationFrame(tick);
+  };
+
+  /** A call's words: the agent's as its voice says them, the visitor's as they say theirs, and the call's macro beats. */
+  const spoken = (now: number): void => {
     const saying = sayingOf(call.state.entries);
     if (saying !== null && speech?.id !== saying.speech) speech = { id: saying.speech, at: now };
     let said = "";
@@ -229,17 +291,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     person.say(agent?.[0] ?? null, agent?.[1] ?? "");
     person.heard(words === null && shows(captions, captioned, "caller") ? heard : null);
     for (const one of player.due(saying?.speech ?? null, said)) queue(() => beat(one));
-    // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
-    if (!flying && !person.touring) person.place(person.dock());
-    if (!flying && anchor !== null && anchor.element.isConnected) {
-      const box = anchor.element.getBoundingClientRect();
-      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy });
-      person.kind(hover.at(person.at.x, person.at.y));
-    }
-    if (lit !== null && !lit.isConnected) lit = null;
-    person.spot(lit);
-    person.offer(live() && offered?.isConnected === true ? offered : null);
-    frame = requestAnimationFrame(tick);
   };
 
   // A page that joins a call tells the agent what it sees, for an agent already in the room (a
@@ -247,10 +298,15 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   // joins after it was sent. A call that ends sends the tutor home.
   const unsubscribe = call.subscribe((state) => {
     person.calling(state.phase === "opening" || state.phase === "live", captioned);
+    // A call takes over from a walk; the walks come back when it ends.
+    if (inCall()) walked(walking.stop());
+    menu.available(!inCall() && walking.playing === null);
     if (state.phase === "live" && state.call !== following) {
       following = state.call;
       sent = "";
       look("joined");
+      if (played !== null) send(WALKED, { ...played });
+      played = null;
     }
     if (state.phase !== "live" && state.phase !== "opening" && (person.touring || player.armed)) {
       player.drop();
@@ -324,6 +380,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       closed = true;
       cancelAnimationFrame(frame);
       for (const timer of timers.values()) clearTimeout(timer);
+      walking.stop();
+      menu.close();
       clearTimeout(leaving);
       unsubscribe();
       changes.disconnect();

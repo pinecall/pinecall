@@ -2,6 +2,7 @@
 // test/index.test.ts pins this list. The bare socket client is exported separately as `@pinecall/agents/client`.
 
 export * from "./agent/agent.js";
+export type { Serve } from "./agent/served.js";
 export * from "./agent/knowledge.js";
 // The tool call an author wrote in stays the bridge's: only who is writing is for a test to read or set.
 export { UnauthoredWrite, currentAuthor, withAuthor, withAuthorAsync } from "./agent/authors.js";

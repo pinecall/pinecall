@@ -7,15 +7,16 @@
 // types the visitor's words into a field. `runMacro` says a macro step by step, the page running
 // each step's moves on their words; the walk `page` and `explain` say the lines the site wrote on
 // its elements (`data-pinecall-say`), as written. What the agent says that way is the turn's answer,
-// in the history, so the model never says it again.
+// in the history, so the model never says it again. Before any call, `onServe` records each macro in
+// the agent's voice and publishes them as `walks`, which a visitor plays from the page with no call.
 
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type ToolOptions } from "@pinecall/agents";
+import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
 
-import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, linesOf, macroOf, wordsOf, type Action, type Line, type Macro } from "../wire/index.js";
+import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, WALKS, clock, linesOf, macroOf, wordsOf, type Action, type Line, type Macro, type RecordedWalk } from "../wire/index.js";
 
 /** A ref as the page's snapshot writes it: `e12`. */
 const WHAT = z.object({
@@ -27,6 +28,9 @@ const MOVED_WITHIN_MS = 3000;
 
 /** The walk of the lines the site wrote on its elements. */
 const PAGE_WALK = "page";
+
+/** How many sentences the gateway records in one request. */
+const RECORDED_AT_ONCE = 64;
 
 /** A field and what the visitor said it holds. */
 const FILL = z.object({
@@ -71,6 +75,13 @@ export function walkNamed(walks: Record<string, Macro>, asked: string): Macro | 
   return walks[asked] ?? all.find((macro) => wordsOf(macro.name).join(" ") === words.join(" ")) ?? all.find(said) ?? (all.length === 1 ? all[0] : undefined);
 }
 
+/** What the page said the visitor played: `"tour", all 5 sentences` or `"tour", 2 of its 5 sentences`. */
+function walkedLine(data: Record<string, unknown>): string {
+  const of = typeof data["of"] === "number" ? data["of"] : 0;
+  const step = typeof data["step"] === "number" ? data["step"] : 0;
+  return data["done"] === true ? `"${String(data["walk"])}", all ${of} sentences` : `"${String(data["walk"])}", ${step} of its ${of} sentences`;
+}
+
 /** Each macro file, checked: `macros({ tour })` with `import tour from "./macros/tour.json" with { type: "json" }`. */
 export function macros(files: Record<string, unknown>): Record<string, Macro> {
   return Object.fromEntries(Object.entries(files).map(([name, file]) => [name, macroOf(name, file)]));
@@ -82,6 +93,7 @@ export class Tutor extends Agent {
     [CLICKED]: { from: ["participant"] },
     [MISSING]: { from: ["participant"] },
     [EXPLAIN]: { from: ["participant"] },
+    [WALKED]: { from: ["participant"] },
   };
 
   /** The guided walks this agent can give, by name. */
@@ -95,6 +107,36 @@ export class Tutor extends Agent {
   walking?: string | undefined;
   /** What the site wrote for the agent to say, beside the element each is about, as the page last sent it. */
   lines: Line[] = [];
+  /** The walk the visitor played with no call before this one, and how far: `"tour", all 5 sentences`. */
+  walked = "";
+
+  /**
+   * Before any call: each macro recorded in the agent's voice and published as `walks`, for the
+   * page to play with no call. A sentence recorded before costs nothing, so this runs as it is again.
+   */
+  static override async onServe(serve: Serve): Promise<void> {
+    const walks = Object.values(this.macros);
+    if (walks.length === 0) return;
+    const texts = walks.flatMap((walk) => walk.steps.map((step) => step.say));
+    const lines: Awaited<ReturnType<Serve["record"]>> = [];
+    for (let at = 0; at < texts.length; at += RECORDED_AT_ONCE) lines.push(...(await serve.record(texts.slice(at, at + RECORDED_AT_ONCE))));
+    let next = 0;
+    const recorded: RecordedWalk[] = walks.map((walk) => ({
+      name: walk.name,
+      title: walk.title ?? walk.name,
+      ...(walk.when === undefined ? {} : { when: walk.when }),
+      steps: walk.steps.map((step) => {
+        const line = lines[next++];
+        if (line === undefined) throw new Error(`${walk.name}: the gateway recorded fewer sentences than were asked`);
+        return { say: step.say, audio: line.url, durationMs: line.durationMs, words: line.words, beats: step.beats };
+      }),
+    }));
+    await serve.publish(WALKS, { walks: recorded });
+    for (const walk of recorded) {
+      const ms = walk.steps.reduce((total, step) => total + step.durationMs, 0);
+      serve.say(`walk ${walk.name} · ${walk.steps.length} sentences · ${clock(ms)} · ${lines[0]?.voice ?? ""}`);
+    }
+  }
 
   /** The call opens: the page is asked what it shows. A class with an onCall of its own calls `super.onCall(call)`. */
   override onCall(_call: Call): unknown {
@@ -110,6 +152,7 @@ export class Tutor extends Agent {
       if (data["why"] === MOVED) unanswered.get(this)?.shift()?.({ at: text("at"), refused: text("refused") });
     }
     if (name === CLICKED) this.clicked = `${String(data["role"] ?? "")} "${String(data["name"] ?? "")}"`;
+    if (name === WALKED && typeof data["walk"] === "string") this.walked = walkedLine(data);
     // The ▶ is the visitor asking: said at once, and not awaited, so the page's answers to its move still reach this agent.
     const asked = name === EXPLAIN ? this.lines.find((line) => line.at === data["at"]) : undefined;
     if (asked !== undefined) void this.sayLine(asked, asked.at).catch(() => undefined);
@@ -139,6 +182,9 @@ export class Tutor extends Agent {
       this.page,
       "```",
       ...(this.clicked !== "" ? [`They last clicked: ${this.clicked}.`] : []),
+      ...(this.walked !== ""
+        ? [`Before this call they played your walk ${this.walked} on their own: never give it again unless they ask; go on from where it ended.`]
+        : []),
       ...(listed.length > 0 ? ["Walks you can give with runMacro, said exactly as written. Asked for one, give it rather than pointing yourself:", ...listed] : []),
     ].join("\n");
   }

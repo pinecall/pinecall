@@ -41,6 +41,12 @@ const STYLE = `
   @media (prefers-reduced-motion: reduce) { .dot-typing i { animation: none; opacity: .7; } }
 `;
 
+/** Where the agent published its walks, in the environment the `walks` attribute names (production unless `sandbox`). */
+function walksUrl(widget) {
+  const env = widget.getAttribute("walks") === "sandbox" ? "?env=sandbox" : "";
+  return `${widget.gateway}/v1/agents/${encodeURIComponent(widget.agent)}/public/walks${env}`;
+}
+
 /** The dot of one widget: its face, its call, the bubble that says what the agent says, and its hang-up. */
 export class Dot {
   constructor(widget) {
@@ -95,7 +101,10 @@ export class Dot {
         captions: widget.getAttribute("captions") ?? "both",
         shape: widget.getAttribute("shape") ?? undefined,
         color: widget.getAttribute("color") ?? undefined,
-        words: { hangUp: widget.words.hangUp, captions: widget.words.captions },
+        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks },
+        // `walks` plays the agent's recorded walks with no call; `walks="sandbox"` reads the sandbox's.
+        walks: widget.hasAttribute("walks") ? walksUrl(widget) : undefined,
+        onWalk: (walked) => widget.dispatchEvent(new CustomEvent("pinecall:walk", { detail: walked })),
       });
       this.face = this.tutor;
     } else {

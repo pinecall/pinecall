@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A class publishes for its pages before any call: `static onServe(serve)`.** It runs once the
+  agent is registered: `serve.record(texts)` records lines in the agent's voice, answered with each
+  MP3's URL and when each word is said, and `serve.publish(name, document)` publishes JSON any page
+  reads with no key. The client gains `recordLines` and `publish`.
 - **A tool's integer parameter takes a whole number.** `z.number().int()` is JSON Schema's `integer`,
   which the argument check compared with `typeof` and never matched: every call was refused
   `must be a integer, not a number`. A list of types takes any of them. (2026-10-24 tools eval, T F1)

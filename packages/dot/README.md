@@ -1,5 +1,8 @@
 # @pinecall/dot
 
+> **An experiment.** The dot and its tutor are an add-on of Pinecall, not part of its core: their
+> API may change in any release.
+
 The talking dot. A small face, a dot with eyes and a mouth, speaks with your agent's voice, moving
 its mouth with the sound frame by frame. As a tutor it becomes one more person on the page, with a
 pointer of its own: it walks the visitor through the site, hovers and highlights what it talks
@@ -222,6 +225,23 @@ the step to the reply that follows and counts its words as the voice says them, 
 timings room's karaoke lights words with. Each beat runs as its word starts. When the visitor
 speaks, the walk stops and the agent answers them.
 
+### Walks the visitor plays with no call
+
+A macro is also a **walk the visitor plays on their own**, with no call and nothing spent. As the
+agent starts (`static onServe`, run by `pinecall start` and by a deployed app), `Tutor` records each
+sentence of each macro once in the agent's own voice, with when each word is said, and publishes
+them as the agent's `walks` document; the terminal says `walk tour · 5 sentences · 0:38 · cartesia
+sonic-3 …`. A sentence recorded before, in the same voice, costs nothing; a sentence edited, a voice
+or a lexicon changed is recorded again at the next start. A macro's `"title"` is its button.
+
+On the page, `tutor(call, { walks: "https://<gateway>/v1/agents/<slug>/public/walks" })` (the
+widget's `walks` attribute) puts a small button beside the resting face. A click fans the walks out
+round it, each a pill with its title and length; a pick plays it: the voice, the mouth moving with
+it, the words lit as said, each beat on its word, a ring round the face for how far it is. A click
+on the face stops it. No microphone is asked for. A call opened afterwards tells the agent which walk
+was played and how far (`page.walked`), so it goes on from there rather than give it again.
+`onWalk` hears each start and end, for the page's own analytics.
+
 ### Lines on the page
 
 A walk can also live in the site's own markup, beside what it is about, so the HTML and what is
@@ -247,6 +267,7 @@ Only the site's markup is read: a line under `[data-pinecall-skip]` or `aria-hid
 
 | way | what |
 |---|---|
+| page → agent | `page.walked { walk, step, of, done }`, as a call opens after a walk played with no call |
 | page → agent | `call.event("page.seen", { text, why, lines, at?, refused? })`, `lines` the site's `[{ at, say, do }]`, `at` the ref a move ended on when `why` is `moved`, `refused` why a field was not filled · `page.clicked { role, name }` · `page.missing { target }` · `page.explain { at }`, the ▶ pressed |
 | agent → page | `pinecall.ui` `{ type: "cursor", action, target?, text? }`: a ref (`e22`) or a name as the screen shows it (`Questions`). The actions are `point`, `highlight`, `unhighlight`, `scroll_to`, `here`, `home`, and `type`, which writes `text` into the field |
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |

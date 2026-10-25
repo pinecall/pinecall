@@ -54,12 +54,13 @@ const moves = (sent: Sent[]): unknown[] => sent.filter((one) => one.verb === "ro
 const said = (sent: Sent[]): unknown[] => sent.filter((one) => one.verb === "agent.say").map((one) => one.data["text"]);
 
 describe("a tutor", () => {
-  it("accepts the page's four events from the visitor's browser, and from nobody else", () => {
+  it("accepts the page's five events from the visitor's browser, and from nobody else", () => {
     expect(eventsOf(Pip)).toEqual([
       { name: "page.seen", from: ["participant"] },
       { name: "page.clicked", from: ["participant"] },
       { name: "page.missing", from: ["participant"] },
       { name: "page.explain", from: ["participant"] },
+      { name: "page.walked", from: ["participant"] },
     ]);
   });
 

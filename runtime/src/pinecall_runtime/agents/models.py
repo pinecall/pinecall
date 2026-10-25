@@ -1,4 +1,4 @@
-"""The agents tables: agent_canaries, agent_config, agent_widgets, hold_audio, lexicon, prompts."""
+"""The agents tables: agent_canaries, _config, _documents, _lines, _widgets; hold_audio, lexicon, prompts."""
 
 from datetime import datetime
 from typing import Any
@@ -58,6 +58,41 @@ class AgentConfig(Model):
     author: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
     set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+
+
+class AgentDocument(Model):
+    """A JSON document an agent's app publishes under a name, read by any page with no key."""
+
+    __tablename__ = "agent_documents"
+
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
+    agent: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+
+
+class AgentLine(Model):
+    """A line recorded once in the agent's voice: its MP3, its length, and when each written word is said."""
+
+    __tablename__ = "agent_lines"
+
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
+    agent: Mapped[str] = mapped_column(Text, primary_key=True)
+    # A hash of the voice, the lexicon and the text: the same line asked again is this row.
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    voice: Mapped[str] = mapped_column(Text, nullable=False)
+    audio: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    words: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    # Whether the voice timed the words or they were spread over the line by their length.
+    timed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+
+    __table_args__ = (Index("agent_lines_by_id", "id"),)
 
 
 class AgentWidget(Model):

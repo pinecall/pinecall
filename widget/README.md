@@ -37,6 +37,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 | `history` | optional | `off` keeps no conversations in this browser. By default the visitor's last 20 chats and calls with this agent are kept in `localStorage` — the lines as they settled, at most 200 each — listed under **Your conversations** in the menu, any one readable again, and cleared by the visitor with **Clear** |
 | `look` | optional | `dot`: the button is a face that speaks with the agent's voice, and a click is a voice call with no panel ([below](#the-talking-dot)) |
 | `tutor` | optional | with `look="dot"`: the dot walks the visitor through the page with a pointer of its own, for an agent that extends `Tutor` ([below](#the-dot-as-a-tutor)) |
+| `walks` | optional | with `tutor`: a button beside the dot plays the agent's recorded walks with no call (its macros, recorded as it starts); `walks="sandbox"` reads the sandbox's ([below](#the-dot-as-a-tutor)) |
 | `shape` · `color` | optional | with `look="dot"`: the face's shape, `circle` (default), `squircle` or `blob`, and its colour, any CSS colour (else the widget's accent) |
 | `captions` | optional | with `tutor`: whose words show in writing, `both` (default), `agent`, `caller` or `none`. Unless `none`, the visitor turns them off and on with the **CC** button, their choice kept in this browser |
 
@@ -261,6 +262,8 @@ instead (below).
 
 ## The dot as a tutor
 
+> The dot and its tutor are an experiment of Pinecall: their attributes may change in any release.
+
 `look="dot" tutor` makes the dot one more person on the page. The agent points at what it talks
 about with a pointer of its own, highlights it, scrolls to it and shows where to click, and it
 never clicks, sends a form or opens another page for the visitor; it fills a form's fields with what
@@ -276,6 +279,10 @@ During a call, two buttons sit beside the dot's corner: **CC**, which turns the 
 and on, and **✕**, which hangs up. The agent's words show beside the dot as its voice says them;
 the visitor's, what the agent heard, show in the corner as they speak and a moment after, one side
 at a time. `captions` says which may show.
+
+With `walks`, a small button beside the dot fans out the agent's walks; a pick plays one in the
+agent's voice, the pointer moving on its words, with no call and no microphone. The tag dispatches
+`pinecall:walk` (`detail`: `{ walk, step, of, done }`) as one starts and ends.
 
 ## Telling the agent what the visitor does
 

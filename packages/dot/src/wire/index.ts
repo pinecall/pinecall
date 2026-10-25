@@ -21,6 +21,10 @@ export const CLICKED = "page.clicked";
 export const MISSING = "page.missing";
 /** The visitor asked to hear an element's line, with its ▶: `{ at }`, the element's ref. */
 export const EXPLAIN = "page.explain";
+/** The visitor played one of the agent's walks with no call: `{ walk, step, of, done }`, sent as the next call opens. */
+export const WALKED = "page.walked";
+/** The name the agent publishes its recorded walks under, which the page reads with no key. */
+export const WALKS = "walks";
 
 /**
  * What the pointer can do. `type` fills a field with what the visitor said: it never submits a form,
@@ -67,9 +71,35 @@ export interface MacroStep {
 /** A guided walk an agent was given: `macros/<name>.json` in its folder. */
 export interface Macro {
   name: string;
+  /** What the visitor's button says: "Site tour". The name, when the file gives none. */
+  title?: string | undefined;
   /** When to run it, in the words the model reads: "the visitor asks to be shown around". */
   when?: string | undefined;
   steps: MacroStep[];
+}
+
+/** A written word of a recorded sentence, and when it is said, in ms from the start of its audio. */
+export interface TimedWord {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+/** One sentence of a recorded walk, as the page plays it: its audio, when each word is said, its beats. */
+export interface RecordedStep {
+  say: string;
+  audio: string;
+  durationMs: number;
+  words: TimedWord[];
+  beats: Beat[];
+}
+
+/** A walk recorded in the agent's voice, published for the page to play with no call. */
+export interface RecordedWalk {
+  name: string;
+  title: string;
+  when?: string | undefined;
+  steps: RecordedStep[];
 }
 
 /** The agent asking for the page as it is now: sent when its call opens, answered with `page.seen`. */
@@ -138,6 +168,38 @@ export function linesOf(value: unknown): Line[] {
   });
 }
 
+const isWord = (value: unknown): value is TimedWord => {
+  if (typeof value !== "object" || value === null) return false;
+  const word: Record<string, unknown> = { ...value };
+  return typeof word["text"] === "string" && typeof word["startMs"] === "number" && typeof word["endMs"] === "number";
+};
+
+function stepOf(value: unknown): RecordedStep | null {
+  if (typeof value !== "object" || value === null) return null;
+  const step: Record<string, unknown> = { ...value };
+  const { say, audio, durationMs, words, beats } = step;
+  if (typeof say !== "string" || typeof audio !== "string" || !/^https?:\/\//.test(audio) || typeof durationMs !== "number") return null;
+  if (!Array.isArray(words) || !words.every(isWord) || !Array.isArray(beats) || !beats.every(isBeat)) return null;
+  return { say, audio, durationMs, words, beats };
+}
+
+/** The walks a published document holds, each checked: a walk with any step that is not one is left out. */
+export function walksOf(value: unknown): RecordedWalk[] {
+  if (typeof value !== "object" || value === null) return [];
+  const document: Record<string, unknown> = { ...value };
+  const listed = document["walks"];
+  if (!Array.isArray(listed)) return [];
+  return listed.flatMap((item: unknown) => {
+    if (typeof item !== "object" || item === null) return [];
+    const walk: Record<string, unknown> = { ...item };
+    const { name, title, when, steps } = walk;
+    if (typeof name !== "string" || typeof title !== "string" || !Array.isArray(steps) || steps.length === 0) return [];
+    const checked = steps.map(stepOf);
+    if (checked.some((step) => step === null)) return [];
+    return [{ name, title, when: typeof when === "string" ? when : undefined, steps: checked.filter((step) => step !== null) }];
+  });
+}
+
 /** A macro as its JSON file says it, checked; it throws naming what is wrong, at the class's load. */
 export function macroOf(name: string, value: unknown): Macro {
   if (typeof value !== "object" || value === null) throw new Error(`macro ${name}: not a JSON object`);
@@ -157,7 +219,19 @@ export function macroOf(name: string, value: unknown): Macro {
     return { say, beats };
   });
   const when = macro["when"];
-  return { name: typeof macro["name"] === "string" ? macro["name"] : name, when: typeof when === "string" ? when : undefined, steps: checked };
+  const title = macro["title"];
+  return {
+    name: typeof macro["name"] === "string" ? macro["name"] : name,
+    title: typeof title === "string" ? title : undefined,
+    when: typeof when === "string" ? when : undefined,
+    steps: checked,
+  };
+}
+
+/** A length in ms as a clock says it: `0:38`. */
+export function clock(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 /** A word as two texts are compared: lower case, letters and digits alone. */

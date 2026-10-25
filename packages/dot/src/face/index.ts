@@ -20,6 +20,8 @@ export interface Face {
   wake(): void;
   /** Change the body's shape: it eases into the new one. */
   reshape(shape: Shape): void;
+  /** Speak with this element's audio instead of the call's voice, a recording the page plays; null gives the call back. */
+  listen(element: HTMLMediaElement | null): void;
   /** Take the face off the page and stop listening. */
   close(): void;
 }
@@ -44,6 +46,7 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
   let rest = radii(shapeOf(options.shape));
   let rim = rest;
   let bob = 0;
+  let own: HTMLMediaElement | null = null;
   const ear = new Ear();
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   let mouth: Mouth = { ...POSES.idle };
@@ -61,7 +64,7 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
     const dt = Math.min(0.05, Math.max(0, (at - last) / 1000));
     last = at;
     const state = call.state;
-    ear.hear(state.voice);
+    ear.hear(own ?? state.voice);
     const heard = ear.listen(dt);
     const loud = heard?.level ?? (state.speaking.agent ? state.speaking.level : 0);
     // What the mouth reads, on the host, for a page that wants to know: the voice itself, or the room's coarse level.
@@ -69,7 +72,7 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
       host.dataset["pcEar"] = ear.hearing;
       host.dataset["pcLevel"] = loud.toFixed(2);
     }
-    const mood = state.phase === "live" && loud > SOUNDING ? "speaking" : moodOf(state);
+    const mood = (state.phase === "live" || own !== null) && loud > SOUNDING ? "speaking" : moodOf(state);
     const target = mood === "speaking" ? spoken(loud, heard?.bands ?? NO_SHAPE) : POSES[mood];
     mouth = easedMouth(mouth, target, dt);
     level = eased(level, mood === "speaking" ? loud : 0, dt, 0.03, 0.12);
@@ -129,6 +132,9 @@ export function face(host: Element, call: RoomStore, options: FaceOptions = {}):
     },
     reshape(shape) {
       rest = radii(shape);
+    },
+    listen(element) {
+      own = element;
     },
     close() {
       if (closed) return;

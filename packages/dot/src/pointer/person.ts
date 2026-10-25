@@ -23,6 +23,12 @@ const STYLE = `
   pointer-events: auto; cursor: pointer; border-radius: 50%; }
 .pc-face:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 3px; }
 .pc-person.pc-touring .pc-face { width: 40px; height: 40px; left: 14px; top: 16px; }
+.pc-progress { position: absolute; width: calc(var(--pc-dot-size, 64px) + 12px); height: calc(var(--pc-dot-size, 64px) + 12px);
+  left: calc(var(--pc-dot-size, 64px) / -2 - 6px); top: calc(var(--pc-dot-size, 64px) / -2 - 6px); transform: rotate(-90deg); pointer-events: none;
+  transition: width .45s cubic-bezier(.2,.8,.2,1), height .45s cubic-bezier(.2,.8,.2,1), left .45s cubic-bezier(.2,.8,.2,1), top .45s cubic-bezier(.2,.8,.2,1); }
+.pc-progress[hidden] { display: none; }
+.pc-progress circle { fill: none; stroke: var(--pc-face, #1f6b55); stroke-width: 2.5; stroke-linecap: round; }
+.pc-person.pc-touring .pc-progress { width: 52px; height: 52px; left: 8px; top: 10px; }
 .pc-bubble { position: absolute; width: max-content; max-width: min(270px, 70vw); right: -30px; bottom: 44px; padding: 9px 13px;
   background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); border: 1px solid rgb(0 0 0 / .08); border-radius: 16px 16px 4px 16px;
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 28px rgb(0 0 0 / .14); transition: opacity .2s, transform .2s; transform-origin: bottom right; }
@@ -112,7 +118,7 @@ export class Person {
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
     if (options.color !== undefined) this.#layer.style.setProperty("--pc-face", options.color);
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">CC</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
@@ -249,6 +255,24 @@ export class Person {
     this.#ring.classList.remove("pc-go");
     void this.#ring.offsetWidth;
     this.#ring.classList.add("pc-go");
+  }
+
+  /** Put another part on the person's layer, out of what the agent reads: the walks' button and pills. */
+  add(element: Element): void {
+    this.#layer.append(element);
+  }
+
+  /** Half the resting face's width, in px. */
+  get radius(): number {
+    return this.face.getBoundingClientRect().width / 2;
+  }
+
+  /** How far a walk has played, 0 to 1, as a ring round the face; null takes the ring away. */
+  progress(fraction: number | null): void {
+    const ring = this.#part<SVGElement>(".pc-progress");
+    ring.toggleAttribute("hidden", fraction === null);
+    const done = Math.round(Math.min(1, Math.max(0, fraction ?? 0)) * 1000) / 10;
+    ring.querySelector("circle")?.setAttribute("stroke-dasharray", `${done} ${100 - done}`);
   }
 
   close(): void {

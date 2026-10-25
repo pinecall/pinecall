@@ -1,5 +1,7 @@
 # Brightside: a dot tutor
 
+> The dot tutor is an experiment of Pinecall: its API may change in any release.
+
 Pip is Brightside Dental's front desk as a dot tutor. It is a small face with a pointer of its own,
 on the clinic's site, that you talk to: it shows you around, points at what it talks about, and its
 prompt reads the page as you scroll. One class, `agents/pip/agent.ts`, extends `Tutor` from
@@ -7,7 +9,9 @@ prompt reads the page as you scroll. One class, `agents/pip/agent.ts`, extends `
 `agents/pip/macros/tour.json`, is the tour of the site in five sentences, each move hung on the word
 it belongs to. The page's sections carry lines of their own (`data-pinecall-say`): Pip says one when
 you ask what a part is or press the ▶ on it, and all of them as the walk `page`. It fills the
-first-visit form with you, field by field, and you press **Book my visit**.
+first-visit form with you, field by field, and you press **Book my visit**. The tour is also a walk
+you play with no call: `pinecall start` records it in Pip's voice, and the small button beside the dot
+plays it (`walks="sandbox"` on the tag).
 
 ## Talk to it
 

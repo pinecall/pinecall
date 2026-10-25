@@ -7,7 +7,16 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.agents.models import AgentCanary, AgentConfig, AgentWidget, HoldAudio, Lexicon, Prompt
+from pinecall_runtime.agents.models import (
+    AgentCanary,
+    AgentConfig,
+    AgentDocument,
+    AgentLine,
+    AgentWidget,
+    HoldAudio,
+    Lexicon,
+    Prompt,
+)
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Scope
 from pinecall_runtime.kit.repository import Repository
 from pinecall_runtime.kit.time import now
@@ -273,6 +282,49 @@ class HoldAudioRepository(Repository[HoldAudio]):
         if row is None:
             return await self.add(HoldAudio(org=org, env=env, agent=agent, **chosen))
         return await self.update(row, set_at=now(), **chosen)
+
+
+class AgentLineRepository(Repository[AgentLine]):
+    """The lines an agent's app has recorded in its voice, by the hash each is kept under."""
+
+    model = AgentLine
+
+    async def get_many(self, org: str, env: str, agent: str, ids: Sequence[str]) -> dict[str, AgentLine]:
+        """The ones of these already recorded, by id."""
+        rows = await self.all(
+            self.statement().where(
+                AgentLine.org == org, AgentLine.env == env, AgentLine.agent == agent, AgentLine.id.in_(ids)
+            )
+        )
+        return {row.id: row for row in rows}
+
+    async def get_audio(self, id_: str) -> AgentLine | None:
+        """A line by its id alone, whichever org recorded it: the id is the hash of what it holds."""
+        return await self.one_or_none(self.statement().where(AgentLine.id == id_).limit(1))
+
+
+class AgentDocumentRepository(Repository[AgentDocument]):
+    """The JSON documents an agent's app publishes for pages to read."""
+
+    model = AgentDocument
+
+    async def get(self, org: str, env: str, agent: str, name: str) -> AgentDocument | None:
+        """The document, or None while none was published under the name."""
+        return await self.one_or_none(
+            self.statement().where(
+                AgentDocument.org == org,
+                AgentDocument.env == env,
+                AgentDocument.agent == agent,
+                AgentDocument.name == name,
+            )
+        )
+
+    async def put(self, org: str, env: str, agent: str, name: str, body: dict[str, Any]) -> AgentDocument:
+        """Publish the document whole, over the one before it."""
+        row = await self.get(org, env, agent, name)
+        if row is None:
+            return await self.add(AgentDocument(org=org, env=env, agent=agent, name=name, body=body))
+        return await self.update(row, body=body, set_at=now())
 
 
 class PromptRepository(Repository[Prompt]):

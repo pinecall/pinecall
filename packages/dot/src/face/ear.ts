@@ -3,7 +3,9 @@
 // The analyser is never connected to the speakers: the element already plays the voice, and the
 // ear only measures it. So the mouth moves with the sound the visitor hears, frame by frame, and
 // is in time with it by construction. An AudioContext may only start inside a click, so the ear
-// is deaf until `wake()` is called from one.
+// is deaf until `wake()` is called from one. A recording (an element with a `src`, not a stream)
+// is routed through the ear to the speakers, as Web Audio requires of an element it reads; it must
+// be fetched with CORS (`crossOrigin = "anonymous"`), or the ear hears silence.
 
 import { BANDS, levelOf, peakAfter, type Bands } from "./mouth.js";
 
@@ -21,7 +23,9 @@ const FFT = 1024;
 export class Ear {
   #context: AudioContext | null = null;
   #analyser: AnalyserNode | null = null;
-  #source: MediaStreamAudioSourceNode | null = null;
+  #source: AudioNode | null = null;
+  /** An element's own source node: Web Audio makes one per element, once. */
+  #played = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
   #element: HTMLMediaElement | null = null;
   #time = new Float32Array(FFT);
   #spectrum = new Float32Array(FFT / 2);
@@ -48,11 +52,28 @@ export class Ear {
     this.#source?.disconnect();
     this.#source = null;
     this.#element = element;
-    const stream = element?.srcObject;
+    if (this.#context === null || this.#analyser === null || element === null) return;
+    const stream = element.srcObject;
+    if (stream === null && element.src !== "") {
+      this.#source = this.#recording(this.#context, element);
+      this.#source.connect(this.#analyser);
+      return;
+    }
     const track = stream instanceof MediaStream ? stream.getAudioTracks()[0] : undefined;
-    if (this.#context === null || this.#analyser === null || track === undefined) return;
+    if (track === undefined) return;
     this.#source = this.#context.createMediaStreamSource(new MediaStream([track]));
     this.#source.connect(this.#analyser);
+  }
+
+  /** A recording's source, made once, playing to the speakers whether or not the ear reads it now. */
+  #recording(context: AudioContext, element: HTMLMediaElement): MediaElementAudioSourceNode {
+    let made = this.#played.get(element);
+    if (made === undefined) {
+      made = context.createMediaElementSource(element);
+      made.connect(context.destination);
+      this.#played.set(element, made);
+    }
+    return made;
   }
 
   /** Where the ear stands now. */

@@ -24,9 +24,11 @@ const PUBLIC = [
   "feedUrl",
   "frame",
   "history",
+  "linesUrl",
   "lookupUrl",
   "nextId",
   "observe",
+  "publishedUrl",
   "signed",
   "sseFrames",
 ];
