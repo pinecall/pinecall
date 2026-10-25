@@ -1,6 +1,6 @@
 {
   "name": "@pinecall/agents",
-  "version": "0.11.22",
+  "version": "0.11.23",
   "description": "Write an agent as a class: its fields are the state, its @tool methods are the model's verbs, and its docstrings are the prompt. The pinecall CLI serves it",
   "license": "Apache-2.0",
   "author": "Pinecall <hello@pinecall.io>",

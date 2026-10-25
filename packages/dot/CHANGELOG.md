@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.23 — the resting face a little smaller and nearer its corner (2026-10-25)
+
 - **The resting face is a little smaller and nearer its corner**: 58 px across (it was 64), its edge 14 px from the
   window's (it was 20), and its words, buttons, menu and card keep their distance from it.
 ## 0.11.22 — the face stays on a phone's screen as the page scrolls (2026-10-25)

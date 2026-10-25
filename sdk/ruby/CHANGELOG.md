@@ -6,6 +6,8 @@ maintainer's call.
 
 ## [Unreleased]
 
+## [0.11.23] — released with the dot's smaller face (2026-10-25)
+
 ## [0.11.22] — released with the dot's fix for phones (2026-10-25)
 
 ## [0.11.21] — released with the tutor's walks (2026-10-25)
