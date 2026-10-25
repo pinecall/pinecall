@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.21 — released with the tutor's walks (2026-10-25)
+
 - **The view's `resumed` is true on a call handed over mid-conversation**; it never was on a live call.
   (2026-10-24 tools eval, P F3)
 - **`remembers("…")` matches case aside**, as in TypeScript and Ruby: "usual doctor" is in

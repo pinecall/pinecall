@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.21 — released with the tutor's walks (2026-10-25)
+
 - **`event(name, data)` tells the agent what the visitor did on the page**: `{name, data}` on
   `pinecall.event`, for the agent's `onEvent`. It rejects outside a live room, as `send()` does.
 - **`onUi(data)`**: what the agent puts on the screen with `call.send("pinecall.ui", data)` reaches

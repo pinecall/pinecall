@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.21 — the tutor's walks, its cards, and a face that hears and thinks (2026-10-25)
+
 - **The walks' pills are smaller, and come four at a time**: a small ⌄ under them shows the next four, and back
   to the first from the last (`words: { more }`).
 - **The card is larger, and the captions stay out of its way**, as they do for a window of code.

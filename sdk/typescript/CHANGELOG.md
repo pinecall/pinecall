@@ -7,6 +7,8 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+## 0.11.21 — an agent's onServe, for what it records as it starts (2026-10-25)
+
 - **A class publishes for its pages before any call: `static onServe(serve)`.** It runs once the
   agent is registered: `serve.record(texts)` records lines in the agent's voice, answered with each
   MP3's URL and when each word is said, and `serve.publish(name, document)` publishes JSON any page

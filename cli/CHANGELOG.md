@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.21] — `pinecall walks`, and start watches each agent's own folder (2026-10-25)
+
 - **`pinecall walks`**: a tutor agent's walks, recorded in its voice for a visitor to play with no
   call, listed with their sentences, length and voice; `walks play <walk>` plays one here. `start`
   prints each walk as the agent records it.

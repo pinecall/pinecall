@@ -6,6 +6,8 @@ maintainer's call.
 
 ## [Unreleased]
 
+## [0.11.21] — released with the tutor's walks (2026-10-25)
+
 - **`call.participant(id).mute` works**: it sent a `muted:` field `participant.mute` does not have, and
   the gateway refused every one. The wire has no unmute. (2026-10-24 tools eval, R F5)
 - **A view that names what nothing answers says the name**, in the log and on the terminal, instead of

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.21 — an agent's recorded lines and public documents, and interruptions told apart by sound (2026-10-25)
+
 - **No turn is dropped for its words being ones Whisper makes up.** A list of phrases ("bye", "thank
   you", "gracias"…) was dropped whole while the agent spoke, whatever the ears: on Deepgram a caller's
   "Bye." over the agent never reached the model. The list is gone.
