@@ -131,6 +131,9 @@ The sentence is read aloud by the agent's voice, and a walk is recorded once in 
   said earlier in the sentence unless you mean it, or give `nth`.
 - **Light, then point, then let go.** `highlight` on the first word, `point` a few words later,
   `unhighlight` before you move to a part of the page the light is not on.
+- **Move the light before the page moves.** A step that goes to another section lights it first, on
+  the same word as the scroll (`highlight`, then `scroll_to`, both on that word): the light then comes
+  in with the section. A light left on a section the page scrolls away from dims the whole screen.
 - **Write numbers and symbols as you would say them**: "nineteen dollars a month", not "$19/mo".
 - **Check it with your ears.** `pinecall walks play plans` plays the recorded walk in the terminal;
   a sentence cut short or a name said strangely is a lexicon entry (`pinecall lexicon`), after which
