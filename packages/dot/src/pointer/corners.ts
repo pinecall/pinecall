@@ -12,21 +12,20 @@ export const WALK_ATTRIBUTE = "data-pinecall-walk";
 
 /** How far in from the section's corner the button stands, and its size, in px. */
 const INSET = 20;
-const SIZE = 30;
+const SIZE = 24;
 
 const STYLE = `
 .pc-corner { all: unset; position: fixed; box-sizing: border-box; display: grid; place-items: center; width: ${SIZE}px; height: ${SIZE}px;
-  border-radius: 50%; cursor: pointer; pointer-events: auto; color: var(--pc-face, #1f6b55);
-  background: color-mix(in srgb, var(--pc-face, #1f6b55) 12%, transparent); border: 1px solid color-mix(in srgb, var(--pc-face, #1f6b55) 38%, transparent);
-  backdrop-filter: blur(6px); transition: background-color .18s, color .18s, transform .18s, opacity .25s; }
-.pc-corner:hover { background: var(--pc-face, #1f6b55); color: #fff; transform: scale(1.08); }
+  border-radius: 50%; cursor: pointer; pointer-events: auto; color: var(--pc-face, #1f6b55); opacity: .6;
+  transition: background-color .18s, opacity .18s; }
+.pc-corner:hover, .pc-corner:focus-visible { opacity: 1; background: color-mix(in srgb, var(--pc-face, #1f6b55) 16%, transparent); }
 .pc-corner:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
 .pc-corner[hidden] { display: none; }
 .pc-corner svg { display: block; margin-left: 2px; fill: currentColor; }
 @media (prefers-reduced-motion: reduce) { .pc-corner { transition: none; } }
 `;
 
-const PLAY = `<svg viewBox="0 0 10 12" width="9" height="11" aria-hidden="true"><path d="M1 1.2v9.6c0 .6.7 1 1.2.6l7-4.8c.4-.3.4-.9 0-1.2l-7-4.8C1.7.2 1 .6 1 1.2Z"/></svg>`;
+const PLAY = `<svg viewBox="0 0 10 12" width="8" height="10" aria-hidden="true"><path d="M1 1.2v9.6c0 .6.7 1 1.2.6l7-4.8c.4-.3.4-.9 0-1.2l-7-4.8C1.7.2 1 .6 1 1.2Z"/></svg>`;
 
 /** One walk a corner may play: its name, as the section names it, its title and its length. */
 export interface CornerWalk {
