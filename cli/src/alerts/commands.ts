@@ -147,7 +147,7 @@ export function register(program: Command, ctx: Context): void {
     });
   webhook
     .command("test")
-    .description("one signed test post, waited for")
+    .description("one test post, signed when the webhook has a secret, waited for")
     .action(async () => ctx.io.result(await service.testWebhook(ctx), render.webhookTested));
   webhook
     .command("clear")

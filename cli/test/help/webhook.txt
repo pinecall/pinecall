@@ -10,7 +10,8 @@ Options:
 Commands:
   show                 the URL, and whether posts are signed
   set [options] <url>  a URL of yours; the secret, if any, on stdin
-  test                 one signed test post, waited for
+  test                 one test post, signed when the webhook has a secret,
+                       waited for
   clear                stop the posting
   help [command]       display help for command
 
@@ -51,7 +52,7 @@ Options:
 $ pinecall webhook test --help
 Usage: pinecall webhook test [options]
 
-one signed test post, waited for
+one test post, signed when the webhook has a secret, waited for
 
 Options:
   -h, --help  display help for command

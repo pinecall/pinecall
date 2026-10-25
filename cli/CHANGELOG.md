@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`webhook test` no longer says the post was signed when it was not**: a webhook set without
+  `--secret` gets its test post unsigned, and the answer, the help and the MCP tool said "signed".
 - **`voices list` says each voice's language**: a vendor the providers row lists by language showed
   every voice once per language with nothing telling the rows apart (Google's, eight times each).
 

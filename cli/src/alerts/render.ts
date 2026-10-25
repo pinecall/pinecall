@@ -35,7 +35,7 @@ export function webhook(found: Webhook | null): string {
 }
 
 export function webhookTested(_tested: WebhookTest): string {
-  return "the URL took it: a signed webhook.test post answered 2xx";
+  return "the URL took it: a webhook.test post answered 2xx";
 }
 
 export function webhookCleared(): string {

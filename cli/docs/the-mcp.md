@@ -116,7 +116,7 @@ Every parameter, and a real call of each: [Calls, and what they run on](mcp/call
 | `providers` | — | every vendor the gateway can run and whose key a call would use; never a key |
 | `telemetry` | `show` · `clear` | where the org's calls' traces go, its own OTLP collector, and the headers by name; setting one is the person's terminal |
 | `monitors` | `list` · `add` · `rm` | the numbers the org watches over a window — latency, the judges' held rate, escalations, tool failures, spend, calls — and the line each must not cross; fires once a day as `monitor.fired` |
-| `webhook` | `show` · `test` · `clear` | where the org's alerts are posted — a monitor fired, the spend unusual, a quota out — and whether the posts are signed; a signed test post; setting one is the person's terminal |
+| `webhook` | `show` · `test` · `clear` | where the org's alerts are posted — a monitor fired, the spend unusual, a quota out — and whether the posts are signed; a test post, signed when it has a secret; setting one is the person's terminal |
 | `alerts` | — | what the org was told in the environment, newest first: every alert kept 90 days whether or not a webhook is set — its kind, its agent, its data, whether it was mailed; `limit` how many |
 | `usage` | — | what the org used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on (its own, and the ones the runtime lends), whether its judges cost it evals, and where it buys more |
 

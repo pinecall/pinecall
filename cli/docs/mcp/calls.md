@@ -422,7 +422,7 @@ The numbers the org watches over a window — latency, the judges' held rate, es
 
 ## `webhook`
 
-Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a signed test post, or cleared. Setting one is the person's, in a terminal: the secret is a credential.
+Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.
 
 `webhook` reads where this org's alerts are posted beyond the agent's log ({type, org, env, agent, at, data}, with x-pinecall-event and, when a secret is set, x-pinecall-signature as sha256=<HMAC-SHA256 of the body>), proves the URL with a test post, and can stop it. Pointing it somewhere is never a tool, since the secret is a credential: the person types `pinecall webhook set <url> --secret` in a terminal, where the secret is read off stdin.
 

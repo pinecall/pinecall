@@ -2622,7 +2622,7 @@ alert nobody. To try a monitor in the sandbox, make the calls with a sandbox ser
 $ printf %s "$WEBHOOK_SECRET" | pinecall webhook set https://hooks.example.com/pinecall --secret
 alerts go to https://hooks.example.com/pinecall · signed
 $ pinecall webhook test
-the URL took it: a signed webhook.test post answered 2xx
+the URL took it: a webhook.test post answered 2xx
 $ pinecall webhook
 alerts go to https://hooks.example.com/pinecall · signed
 ```

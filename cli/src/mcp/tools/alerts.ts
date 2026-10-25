@@ -33,7 +33,7 @@ export const monitors = tool({
 
 export const webhook = tool({
   name: "webhook",
-  description: "Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a signed test post, or cleared. Setting one is the person's, in a terminal: the secret is a credential.",
+  description: "Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.",
   schema: {
     action: z.enum(["show", "test", "clear"]).describe("show says the URL and whether posts are signed; test posts one webhook.test event and says whether the URL answered 2xx; clear stops the posting"),
   },
