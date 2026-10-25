@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+## 0.11.24 — walks for each page, the menu that marks your section, the header kept clear (2026-10-25)
+
 - **What the tutor scrolls to sits below the site's own header**, not under it: the top a fixed or sticky bar covers
   (or the page's `scroll-padding-top`) is measured and left out, and a thing under the header is not on the screen.
   A thing that fits the screen is shown whole, never cut to stand at its spot, and a longer one starts just under
@@ -17,7 +19,6 @@ maintainer's call.
 - **Two guides for whoever builds a tutor**: `docs/write-a-tutor.md` (the agent, the page, walks, views for an
   agent's own tools, shipping it) and `docs/macros.md` (the format of a macro, the moves, naming elements,
   writing sentences that play well). They ship in the package.
-## 0.11.24 — the walks' menu marks the walk of the section the visitor is on (2026-10-25)
 
 ## 0.11.23 — the resting face a little smaller and nearer its corner (2026-10-25)
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.24 — released with the dot's marked walk (2026-10-25)
+
 - **`box_wide()` reads across orgs inside a transaction that has already begun.** The org was set
   as the transaction began, so a block entered after its first statement still saw its own org
   alone: `numbers available` said "not routed here" of a number another org held (the import then
@@ -15,8 +17,6 @@
   nobody chose. A set that moves the voice now looks it up where `pinecall voices` looks: the
   providers row's list, else the vendor's own on the key (cloned voices among them); a vendor that
   lists none is left to its own answer, as before.
-
-## 0.11.24 — released with the dot's marked walk (2026-10-25)
 
 ## 0.11.23 — released with the dot's smaller face (2026-10-25)
 
