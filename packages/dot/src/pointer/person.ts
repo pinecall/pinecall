@@ -54,9 +54,12 @@ const STYLE = `
 .pc-calling button { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 10px; border-radius: 999px; cursor: pointer;
   font: 600 12px/34px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
 .pc-calling button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
-.pc-calling .pc-cc, .pc-calling .pc-stop { display: grid; place-items: center; padding: 0; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
+.pc-calling .pc-cc, .pc-calling .pc-pause, .pc-calling .pc-stop { display: grid; place-items: center; padding: 0; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
 .pc-calling svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .pc-calling .pc-stop svg { fill: currentColor; stroke: none; }
+.pc-pause .pc-go { display: none; fill: currentColor; stroke: none; }
+.pc-pause[aria-pressed="true"] .pc-go { display: inline; }
+.pc-pause[aria-pressed="true"] .pc-hold { display: none; }
 .pc-cc .pc-off { display: none; }
 .pc-cc[aria-pressed="false"] { opacity: .6; }
 .pc-cc[aria-pressed="false"] .pc-off { display: inline; }
@@ -77,9 +80,10 @@ const STYLE = `
 @media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-heard, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
 `;
 
-// Captions: lines of words in a frame, struck through while off. Stop: a square.
+// Captions: lines of words in a frame, struck through while off. Pause: two bars, a triangle while held. Stop: a square.
 const CAPTIONS = (size: number): string =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M7 10.5h4M13.5 10.5h3.5M7 14h6.5M16 14h1"/><path class="pc-off" d="M4 4l16 16"/></svg>`;
+const PAUSE = `<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path class="pc-hold" d="M8.5 6v12M15.5 6v12" stroke-width="3"/><path class="pc-go" d="M8 5.5v13l10-6.5Z"/></svg>`;
 const STOP = `<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>`;
 
 // The arrow is the screen recorder's (~/ss/screen-demo/build.mjs), in the face's colour; the hand and the I-beam are drawn to match.
@@ -139,6 +143,8 @@ export interface PersonOptions {
   hangUp: { label: string; onClick: () => void };
   /** The button that stops a walk: its name, and its click. */
   stop: { label: string; onClick: () => void };
+  /** The button that holds a walk and goes on with it: its name, and its click. */
+  pause: { label: string; onClick: () => void };
   /** The captions button, when the site lets the visitor choose: its name, and its click. */
   captions: { label: string; onClick: () => void } | null;
   /** The ▶ beside an element the site wrote a line for: its name, and its click with that element. */
@@ -158,6 +164,7 @@ export class Person {
   readonly #calling: HTMLElement;
   readonly #cc: HTMLElement;
   readonly #stop: HTMLElement;
+  readonly #pause: HTMLElement;
   readonly #hang: HTMLElement;
   readonly #play: HTMLElement;
   #offered: Element | null = null;
@@ -177,7 +184,7 @@ export class Person {
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
     if (options.color !== undefined) this.#layer.style.setProperty("--pc-face", options.color);
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">${CAPTIONS(17)}</button><button type="button" class="pc-stop" hidden>${STOP}</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">${CAPTIONS(17)}</button><button type="button" class="pc-pause" aria-pressed="false" hidden>${PAUSE}</button><button type="button" class="pc-stop" hidden>${STOP}</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
@@ -191,6 +198,10 @@ export class Person {
     this.#stop.setAttribute("aria-label", options.stop.label);
     this.#stop.title = options.stop.label;
     this.#stop.addEventListener("click", options.stop.onClick);
+    this.#pause = this.#part(".pc-pause");
+    this.#pause.setAttribute("aria-label", options.pause.label);
+    this.#pause.title = options.pause.label;
+    this.#pause.addEventListener("click", options.pause.onClick);
     this.#play = this.#part(".pc-play");
     this.#play.setAttribute("aria-label", options.explain.label);
     this.#play.title = options.explain.label;
@@ -286,18 +297,23 @@ export class Person {
   }
 
   /**
-   * The corner's buttons: captions and hang-up while a call is on, captions and stop while a walk
-   * plays, captions pressed while they show. Called every frame, so it writes only what changed.
+   * The corner's buttons: captions and hang-up while a call is on, captions, pause and stop while a
+   * walk plays; captions pressed while they show, pause while the walk is held. Called every frame, so
+   * it writes only what changed.
    */
-  buttons(call: boolean, walk: boolean, captioned: boolean): void {
+  buttons(call: boolean, walk: boolean, captioned: boolean, paused = false): void {
     const show = (element: HTMLElement, on: boolean): void => {
       if (element.hidden === on) element.hidden = !on;
     };
     show(this.#calling, call || walk);
     show(this.#hang, call);
     show(this.#stop, walk && !call);
-    const pressed = String(captioned);
-    if (this.#cc.getAttribute("aria-pressed") !== pressed) this.#cc.setAttribute("aria-pressed", pressed);
+    show(this.#pause, walk && !call);
+    const press = (element: HTMLElement, on: boolean): void => {
+      if (element.getAttribute("aria-pressed") !== String(on)) element.setAttribute("aria-pressed", String(on));
+    };
+    press(this.#cc, captioned);
+    press(this.#pause, paused);
   }
 
   /** The ▶ at the top right of `element`, or none. Called every frame while shown, so it follows the element. */

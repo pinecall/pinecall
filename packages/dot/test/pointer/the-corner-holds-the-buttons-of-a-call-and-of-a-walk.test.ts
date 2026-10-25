@@ -16,6 +16,7 @@ function aPerson(captions: boolean, stopped: string[] = []): Person {
     onClick: () => undefined,
     hangUp: { label: "Hang up", onClick: () => undefined },
     stop: { label: "Stop", onClick: () => stopped.push("stop") },
+    pause: { label: "Pause", onClick: () => stopped.push("pause") },
     captions: captions ? { label: "Captions", onClick: () => undefined } : null,
     explain: { label: "Explain this", onClick: () => undefined },
   });
@@ -24,18 +25,19 @@ function aPerson(captions: boolean, stopped: string[] = []): Person {
 const part = (selector: string): HTMLElement => document.querySelector<HTMLElement>(selector)!;
 
 describe("the buttons beside the face", () => {
-  it("are captions and hang-up in a call, captions and stop in a walk, and none at rest", () => {
+  it("are captions and hang-up in a call, captions, pause and stop in a walk, and none at rest", () => {
     const stopped: string[] = [];
     const person = aPerson(true, stopped);
-    const shown = (): boolean[] => [".pc-calling", ".pc-cc", ".pc-hang", ".pc-stop"].map((selector) => !part(selector).hidden);
+    const shown = (): boolean[] => [".pc-calling", ".pc-cc", ".pc-hang", ".pc-pause", ".pc-stop"].map((selector) => !part(selector).hidden);
 
     person.buttons(true, false, true);
-    expect(shown()).toEqual([true, true, true, false]);
-    person.buttons(false, true, false);
-    expect(shown()).toEqual([true, true, false, true]);
-    expect(part(".pc-cc").getAttribute("aria-pressed")).toBe("false");
+    expect(shown()).toEqual([true, true, true, false, false]);
+    person.buttons(false, true, false, true);
+    expect(shown()).toEqual([true, true, false, true, true]);
+    expect([part(".pc-cc").getAttribute("aria-pressed"), part(".pc-pause").getAttribute("aria-pressed")]).toEqual(["false", "true"]);
+    part(".pc-pause").click();
     part(".pc-stop").click();
-    expect(stopped).toEqual(["stop"]);
+    expect(stopped).toEqual(["pause", "stop"]);
     person.buttons(false, false, true);
     expect(shown()[0]).toBe(false);
     person.close();

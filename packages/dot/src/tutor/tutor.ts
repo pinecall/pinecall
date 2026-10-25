@@ -37,13 +37,15 @@ export interface TutorOptions {
   color?: string | undefined;
   /** Whose words show: `both` (the default), `agent`, `caller` or `none`. The visitor turns them off and on with CC, unless `none`. */
   captions?: Captions | undefined;
-  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks" and "Stop". */
+  /** The buttons' names, for a screen reader and a tooltip. Default "Hang up", "Captions", "Explain this", "Walks", "Stop", "Pause" and "Play". */
   words?: {
     hangUp?: string | undefined;
     captions?: string | undefined;
     explain?: string | undefined;
     walks?: string | undefined;
     stop?: string | undefined;
+    pause?: string | undefined;
+    play?: string | undefined;
   } | undefined;
   /** Where the agent published its recorded walks (`GET …/v1/agents/{slug}/public/walks`): a button beside the face plays them with no call. */
   walks?: string | undefined;
@@ -79,6 +81,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     onClick: () => (walks.playing ? walks.stop() : options.onClick?.()),
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
     stop: { label: options.words?.stop ?? "Stop", onClick: () => walks.stop() },
+    pause: { label: options.words?.pause ?? "Pause", onClick: () => walks.pause() },
     captions:
       captions === "none"
         ? null
@@ -96,6 +99,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const walks = new Walks(document, person, drawn, {
     dock: options.dock ?? "right",
     label: options.words?.walks ?? "Walks",
+    play: options.words?.play ?? "Play",
     url: options.walks,
     inCall,
     home: () => queue(() => run("home", null)),
@@ -247,7 +251,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       person.progress(walk.fraction);
       for (const one of walk.beats) queue(() => beat(one));
     } else spoken(now);
-    person.buttons(inCall(), walks.playing, captioned);
+    person.buttons(inCall(), walks.playing, captioned, walks.paused);
+    walks.place();
     // Resting it keeps to its corner; pointing it keeps to its element, which the visitor may scroll.
     if (!flying && !person.touring) person.place(person.dock());
     // An element gone, or hidden (a closed window of code), is let go of where the pointer stands.

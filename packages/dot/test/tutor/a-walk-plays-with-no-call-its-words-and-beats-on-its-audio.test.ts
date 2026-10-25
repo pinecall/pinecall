@@ -57,6 +57,20 @@ describe("a walk played", () => {
     expect(walking.frame()?.beats).toEqual([]);
   });
 
+  it("holds where it is on pause, and goes on from there", () => {
+    const audio = anAudio();
+    const walking = new Walking(audio, () => undefined);
+    walking.start(WALK);
+
+    walking.pause();
+    expect([walking.paused, vi.mocked(audio.pause).mock.calls.length]).toEqual([true, 1]);
+    walking.resume();
+    expect([walking.paused, vi.mocked(audio.play).mock.calls.length]).toEqual([false, 2]);
+    walking.pause();
+    walking.stop();
+    expect(walking.paused).toBe(false);
+  });
+
   it("goes on to the next sentence on the same element, and says it ended when the last one did", () => {
     const audio = anAudio();
     const ended: Walked[] = [];

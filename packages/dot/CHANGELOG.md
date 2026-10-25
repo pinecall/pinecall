@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A section plays its own walk, and a walk can be paused.** `data-pinecall-walk="<macro>"` on a section
+  puts a small ▶ in its corner that plays that walk with no call; while a walk plays the corner holds
+  pause beside captions and stop (`words: { pause, play }`).
 - **The captions stay out of the code's way.** None show while a window of code is open. During a walk CC sits in the
   corner with a stop button, the same choice as in a call; CC is an icon now, and the buttons slide into
   the face's corner while it tours, aside as it comes home. The

@@ -46,6 +46,7 @@ export class Walking {
   readonly #player = new Player();
   #walk: RecordedWalk | null = null;
   #step = 0;
+  #paused = false;
 
   /**
    * Play through `audio`; `ended` hears a walk that played to its end, or failed to play; `shows`
@@ -65,6 +66,25 @@ export class Walking {
   /** The walk playing, or null. */
   get playing(): RecordedWalk | null {
     return this.#walk;
+  }
+
+  /** Whether the walk playing is paused. */
+  get paused(): boolean {
+    return this.#paused;
+  }
+
+  /** Hold the walk where it is: the voice, and the words and beats that follow it. */
+  pause(): void {
+    if (this.#walk === null || this.#paused) return;
+    this.#paused = true;
+    this.audio.pause();
+  }
+
+  /** Go on from where it was held. Call it from the visitor's click, as `start`. */
+  resume(): void {
+    if (this.#walk === null || !this.#paused) return;
+    this.#paused = false;
+    this.audio.play().catch(() => this.#finish(false));
   }
 
   /** Play a walk from its first sentence. Call it from the visitor's click: a browser starts audio only inside one. */
@@ -132,6 +152,7 @@ export class Walking {
 
   #reset(): void {
     this.#walk = null;
+    this.#paused = false;
     this.#player.drop();
     this.#shows(null);
     this.audio.pause();

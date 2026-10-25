@@ -246,8 +246,10 @@ or a lexicon changed is recorded again at the next start. A macro's `"title"` is
 On the page, `tutor(call, { walks: "https://<gateway>/v1/agents/<slug>/public/walks" })` (the
 widget's `walks` attribute) puts a small button beside the resting face. A click fans the walks out
 round it, each a pill with its title and length; a pick plays it: the voice, the mouth moving with
-it, the words lit as said, each beat on its word, a ring round the face for how far it is. A click
-on the face stops it. No microphone is asked for. A call opened afterwards tells the agent which walk
+it, the words lit as said, each beat on its word, a ring round the face for how far it is. While it
+plays, the corner holds captions, pause and stop; a click on the face stops it too. No microphone is
+asked for. A section can play its own walk: `data-pinecall-walk="<macro>"` on it puts a small ▶ in
+its top right corner, for a walk the agent published, hidden during a call or a walk. A call opened afterwards tells the agent which walk
 was played and how far (`page.walked`), so it goes on from there rather than give it again.
 `onWalk` hears each start and end, for the page's own analytics.
 
