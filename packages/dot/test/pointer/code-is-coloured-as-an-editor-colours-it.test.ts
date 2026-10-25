@@ -16,7 +16,7 @@ describe("code coloured", () => {
   it("names keywords, types, decorators, strings, tags and this", () => {
     const [cls, field, tool, view] = coloured('export class Desk extends Agent {\n  stage = "identify";\n  @tool({ announce: "Checking." })\n  render() { return this.stage === "x" ? <p>Hi.</p> : null; }');
 
-    expect(kinds(cls!)).toEqual([["export", "keyword"], ["class", "keyword"], ["Desk", "type"], ["extends", "keyword"], ["Agent", "type"], ["{", "plain"]]);
+    expect(kinds(cls!)).toEqual([["export", "keyword"], ["class", "keyword"], ["Desk", "type"], ["extends", "keyword"], ["Agent", "type"], [" {", "plain"]]);
     expect(kinds(field!)).toContainEqual(['"identify"', "string"]);
     expect(kinds(tool!)).toContainEqual(["@tool", "decorator"]);
     expect(kinds(view!)).toEqual(expect.arrayContaining([["return", "keyword"], ["this", "self"], ["<p", "tag"], ["</p", "tag"], ["null", "keyword"]]));

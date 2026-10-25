@@ -47,7 +47,7 @@ describe("the corner's buttons", () => {
 
   it("take the face's radius from its resting size, touring or not", () => {
     const person = aPerson(true);
-    document.documentElement.style.setProperty("--pc-dot-size", "72px");
+    person.face.style.setProperty("--pc-dot-size", "72px");
 
     person.tour(true);
 
