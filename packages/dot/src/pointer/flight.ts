@@ -69,13 +69,27 @@ export function animate(ms: number, step: (u: number) => void): Promise<void> {
   });
 }
 
+/** How much of the screen's height an element may take and still be centred; a taller one shows its start. */
+const TALL = 0.8;
+/** Where a tall element's start stands, as a share of the screen's height. */
+const START = 0.1;
+
+/**
+ * The scroll at which `box` (as the screen shows it at `scrollY`) sits at `where` of a screen `height`
+ * tall, within a page `pageHeight` tall: its middle there, or, for one taller than most of the screen
+ * (a section on a phone), its start near the top, so what it begins with is what shows.
+ */
+export function scrollGoal(box: { top: number; height: number }, scrollY: number, height: number, pageHeight: number, where: number): number {
+  const at = box.height > height * TALL ? box.top - height * START : box.top + box.height / 2 - height * where;
+  return Math.max(0, Math.min(pageHeight - height, scrollY + at));
+}
+
 /** Scroll the page, eased, until the element sits at `where` of the screen's height. Nothing when it is there already. */
 export async function scrollOnto(element: Element, where: number, still: boolean): Promise<void> {
   const view = element.ownerDocument.defaultView;
   if (view === null) return;
   const box = element.getBoundingClientRect();
-  const most = element.ownerDocument.documentElement.scrollHeight - view.innerHeight;
-  const goal = Math.max(0, Math.min(most, view.scrollY + box.top + box.height / 2 - view.innerHeight * where));
+  const goal = scrollGoal(box, view.scrollY, view.innerHeight, element.ownerDocument.documentElement.scrollHeight, where);
   const from = view.scrollY;
   const dy = goal - from;
   if (Math.abs(dy) < 8) return;

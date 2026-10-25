@@ -140,9 +140,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       case "point": {
         if (element === null) return;
         person.tour(true);
+        // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
+        anchor = null;
         if (!onScreen(element)) await scrollOnto(element, 0.42, still);
         const aim = aimOf(element);
-        anchor = null;
         await fly(aim, sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();
         anchor = { element, dx: aim.x - box.left, dy: aim.y - box.top };

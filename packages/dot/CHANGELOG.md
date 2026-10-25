@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **On a phone the face stays on the screen as the page scrolls.** It let go of what it pointed at only after the
+  scroll, so it rode off the top with it; and a section taller than the screen is shown from its start, not
+  from its middle.
 ## 0.11.21 — the tutor's walks, its cards, and a face that hears and thinks (2026-10-25)
 
 - **The walks' pills are smaller, and come four at a time**: a small ⌄ under them shows the next four, and back
