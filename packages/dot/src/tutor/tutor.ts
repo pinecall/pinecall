@@ -14,7 +14,7 @@ import type { Shape } from "../face/shape.js";
 import { Page } from "../page/page.js";
 import { aimOf, along, animate, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Hover } from "../pointer/hover.js";
-import { Person } from "../pointer/person.js";
+import { Person, sideOf, type Side } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions, type Captions } from "./captions.js";
@@ -132,15 +132,19 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     timers.set(why, setTimeout(() => look(why), SETTLE[why]));
   };
 
-  const fly = async (to: Point): Promise<void> => {
+  // The side the face stands on is the destination's, chosen before the flight: chosen on the way, it
+  // covered the thing and then jumped clear of it on landing.
+  const fly = async (to: Point, side?: Side): Promise<void> => {
     const from = person.at;
     flying = true;
     await animate(still ? 0 : flightMs(Math.hypot(to.x - from.x, to.y - from.y), view.innerWidth), (u) => {
-      person.place(along(from, to, u));
+      person.place(along(from, to, u), null, side);
       if (person.touring) person.kind(hover.at(person.at.x, person.at.y));
     });
     flying = false;
   };
+  /** What the face must not cover while the pointer is on `element`: on a window of code, the lines lit. */
+  const clearOf = (element: Element): DOMRect | null => (element.closest(".pc-code") === null ? null : walks.code.litBox());
   const onScreen = (element: Element): boolean => {
     const box = element.getBoundingClientRect();
     return box.bottom > 0 && box.top < view.innerHeight;
@@ -156,7 +160,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         if (!onScreen(element)) await scrollOnto(element, 0.42, still);
         const aim = aimOf(element);
         anchor = null;
-        await fly(aim);
+        await fly(aim, sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();
         anchor = { element, dx: aim.x - box.left, dy: aim.y - box.top };
         return;
@@ -243,8 +247,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (anchor !== null && (!anchor.element.isConnected || anchor.element.closest("[hidden]") !== null)) anchor = null;
     if (!flying && anchor !== null) {
       const box = anchor.element.getBoundingClientRect();
-      // On a window of code, the face and its words stand clear of the lines being explained.
-      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, anchor.element.closest(".pc-code") === null ? null : walks.code.litBox());
+      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, clearOf(anchor.element));
       person.kind(hover.at(person.at.x, person.at.y));
     }
     if (lit !== null && !lit.isConnected) lit = null;

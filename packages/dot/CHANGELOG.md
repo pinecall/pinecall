@@ -8,6 +8,8 @@ maintainer's call.
 
 - **The face stands where it hides nothing.** Beside the tip it takes the side that fits the screen
   (right or left, below or above), and on a window of code the side clear of the lines being explained.
+  The side is chosen for where the flight lands, before it leaves: the face no longer covers a section
+  and then jumps above it.
 - **A tab is read by its words and pointed at**, as a button is: a walk's beat on a tab found nothing.
   The pointer stays above a window of code, and lets go of a line whose window closed.
 - **A walk explains code.** A step's `code` opens a window of it beside the page, coloured and written in a

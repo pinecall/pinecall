@@ -217,14 +217,14 @@ export class Person {
   }
 
   /**
-   * Put the tip at a point of the viewport, the face and its words on the side of it that fits the
-   * screen and covers nothing of `avoid`, the box being explained: right or left of the tip, below or above.
+   * Put the tip at a point of the viewport, the face and its words on `side`, or on the side of it that
+   * fits the screen and covers nothing of `avoid`, the box being explained: right or left, below or above.
    */
-  place(point: Point, avoid: DOMRect | null = null): void {
+  place(point: Point, avoid: DOMRect | null = null, side?: Side): void {
     this.#at = point;
     this.#person.style.transform = `translate(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px)`;
     const view = this.#document.defaultView;
-    const side = sideOf(point, avoid, view?.innerWidth ?? 0, view?.innerHeight ?? 0);
+    side ??= sideOf(point, avoid, view?.innerWidth ?? 0, view?.innerHeight ?? 0);
     this.#person.classList.toggle("pc-west", side.west);
     this.#person.classList.toggle("pc-up", side.up);
   }
