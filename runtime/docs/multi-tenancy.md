@@ -61,10 +61,12 @@ base a person pushed with their sign-in is not in the token's `GET /v1/knowledge
 
 Every query of a tenant's endpoint names its org, and a test walks every endpoint to prove it. Postgres
 holds the same line underneath (migration 0096, row-level security): from the moment a tenant's
-key is verified to the end of its request (`postgres/pool.py`, `scope_to`), each connection the
-gateway takes is told that org on checkout, and every table with an `org` column (and `orgs`
-itself) shows and takes that org's rows alone, a query that forgot its `WHERE` included. A row of
-another org is not there; a write of one is refused.
+key is verified to the end of its request (`postgres.py`, `scope_to`), each transaction the
+gateway begins is told that org, and every table with an `org` column (and `orgs` itself) shows
+and takes that org's rows alone, a query that forgot its `WHERE` included. A row of another org is
+not there; a write of one is refused. The setting lives as long as the transaction, so a statement
+that runs in a block acting for someone else — `box_wide()` entered, or left, after the
+transaction's first statement — names the org again before it runs.
 
 What reads across orgs on purpose says so in the code, `box_wide()`: a person's memberships and
 their one password, the org switch and the list of a person's orgs, whether another org holds a

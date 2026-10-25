@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from typing import Annotated
 
 from fastapi import Depends, Request
-from sqlalchemy import Connection, event, text
+from sqlalchemy import Connection, Engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import (
@@ -31,6 +31,8 @@ SCOPED_ORG: ContextVar[str | None] = ContextVar("scoped_org", default=None)
 
 # Transaction-local, so a pooled connection goes back as it came.
 SCOPE = text("select set_config('pinecall.org', :org, true)")
+# On the connection: the session's transaction it scoped, and the org it named there ('' the box).
+SCOPED_AS = "pinecall.scoped_as"
 
 # A statement past this is cancelled; what is long on purpose runs in `unbounded`.
 STATEMENT_TIMEOUT_MS = 30_000
@@ -105,6 +107,8 @@ def session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     maker = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
     if not event.contains(SyncSession, "after_begin", _scope_transaction):
         event.listen(SyncSession, "after_begin", _scope_transaction)
+    if not event.contains(Engine, "before_execute", _rescope_statement):
+        event.listen(Engine, "before_execute", _rescope_statement)
     return maker
 
 
@@ -112,7 +116,22 @@ def session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 # set for that transaction alone. A task of the box's names none and the statement is skipped.
 def _scope_transaction(_session: SyncSession, _transaction: SessionTransaction, connection: Connection) -> None:
     org = SCOPED_ORG.get()
+    connection.info[SCOPED_AS] = (connection.get_transaction(), org or "")
     if org is not None:
+        connection.execute(SCOPE, {"org": org})
+
+
+# The setting is the transaction's, set as it began: `box_wide` entered after a request's first
+# statement would still read its org alone, and a statement after the block would still read every
+# org. Before each statement of a session's transaction, the org it acts for now is named again
+# where it changed. A connection used outside a session's transaction is left as it is.
+def _rescope_statement(connection: Connection, statement: object, *_args: object) -> None:
+    scoped = connection.info.get(SCOPED_AS)
+    if statement is SCOPE or scoped is None or scoped[0] is not connection.get_transaction():
+        return
+    org = SCOPED_ORG.get() or ""
+    if scoped[1] != org:
+        connection.info[SCOPED_AS] = (scoped[0], org)
         connection.execute(SCOPE, {"org": org})
 
 

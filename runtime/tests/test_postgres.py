@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from pinecall_runtime.accounts.models import Org
 from pinecall_runtime.platform import service as platform
-from pinecall_runtime.postgres import SCOPED_ORG
+from pinecall_runtime.postgres import SCOPED_ORG, box_wide
 from pinecall_runtime.providers.models import ProviderKey
 from tests.conftest import Tenant, make_tenant, needs_the_database
 
@@ -91,5 +91,39 @@ async def test_a_tenant_cannot_write_a_row_of_another_org(
     with scoped_to(tenant.org), pytest.raises(DBAPIError, match="row-level security"):
         async with sessions.begin() as session:
             await session.execute(text(f"SET LOCAL ROLE {as_the_app}"))
+            session.add(ProviderKey(org=other.org, vendor="acme", ciphertext="sealed"))
+            await session.flush()
+
+
+async def seen_now(session: AsyncSession, *orgs: str) -> list[str]:
+    """Which of these orgs the session's open transaction finds at this statement."""
+    found = await session.execute(select(Org.id).where(Org.id.in_(orgs)).order_by(Org.id))
+    return list(found.scalars())
+
+
+# `numbers available` read its routes first, then the other orgs' inside `box_wide`: the setting was
+# the transaction's, so it found none and said "not routed here" of a number another org held (2026-10-25).
+async def test_box_wide_entered_mid_transaction_reads_every_org_and_the_org_alone_again_after(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant, as_the_app: str
+) -> None:
+    other = await make_tenant(sessions)
+    with scoped_to(tenant.org):
+        async with sessions.begin() as session:
+            await session.execute(text(f"SET LOCAL ROLE {as_the_app}"))
+            assert await seen_now(session, tenant.org, other.org) == [tenant.org]
+            with box_wide():
+                assert await seen_now(session, tenant.org, other.org) == sorted([tenant.org, other.org])
+            assert await seen_now(session, tenant.org, other.org) == [tenant.org]
+
+
+async def test_a_write_after_box_wide_in_the_same_transaction_is_held_to_the_org_again(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant, as_the_app: str
+) -> None:
+    other = await make_tenant(sessions)
+    with scoped_to(tenant.org), pytest.raises(DBAPIError, match="row-level security"):
+        async with sessions.begin() as session:
+            await session.execute(text(f"SET LOCAL ROLE {as_the_app}"))
+            with box_wide():
+                await seen_now(session, tenant.org, other.org)
             session.add(ProviderKey(org=other.org, vendor="acme", ciphertext="sealed"))
             await session.flush()

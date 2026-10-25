@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`box_wide()` reads across orgs inside a transaction that has already begun.** The org was set
+  as the transaction began, so a block entered after its first statement still saw its own org
+  alone: `numbers available` said "not routed here" of a number another org held (the import then
+  refused it), and the other box-wide reads of a repository mid-request were as blind. Every
+  statement of a session's transaction now names the org it acts for where that changed, and one
+  after the block is held to the org again. The suites ran as the tables' owner, which no policy
+  holds; `tests/test_postgres.py` pins it as the app's role.
+
 - **A voice set that its vendor does not list is refused.** Google's Gemini voices speak any name they
   are given, so `pinecall agent set --voice zzz-not-a-voice` was kept and every call spoke in a voice
   nobody chose. A set that moves the voice now looks it up where `pinecall voices` looks: the
