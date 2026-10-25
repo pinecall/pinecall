@@ -28,7 +28,7 @@ maintainer's call.
 - **The walks' menu marks the walk of the section the visitor is on**, and opens on its page: a section names it with
   `data-pinecall-walk="<macro>"`, and the one across the screen's middle is the visitor's. Nothing is offered as
   the page scrolls. `data-pinecall-play="<macro>"` on a button the site draws (`hidden`) shows it while that walk
-  can play, and plays it on a click.
+  can play, and plays it on a click. While the menu is open the mark follows the page as it scrolls.
 - **The pointer stands under the words it points at**, not on them, and still hovers what it points at: a
   link keeps its hand.
 - **The face hears and thinks.** While the caller speaks it nods with its head cocked and its eyes wide;

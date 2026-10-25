@@ -9,14 +9,14 @@ afterEach(() => {
   document.head.innerHTML = "";
 });
 
-function aMenu(picked: number[], current = -1): Menu {
+function aMenu(picked: number[], current: () => number = () => -1): Menu {
   return new Menu(document, (part) => document.body.append(part), {
     dock: "right",
     label: "Walks",
     more: "More walks",
     face: () => ({ at: { x: 900, y: 700 }, radius: 36 }),
     onPick: (index) => picked.push(index),
-    current: () => current,
+    current,
   });
 }
 
@@ -97,7 +97,7 @@ describe("the walks' menu", () => {
 
   it("marks the walk of the section the visitor is on, and opens on the page it stands on", () => {
     const titles = ["One", "Two", "Three", "Four", "Five", "Six"];
-    const menu = aMenu([], 5);
+    const menu = aMenu([], () => 5);
     menu.offer(titles.map((title) => ({ title, ms: 10_000 })));
     menu.available(true);
     const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
@@ -110,13 +110,41 @@ describe("the walks' menu", () => {
   });
 
   it("marks none when the visitor is on no section with a walk, and opens on the first page", () => {
-    const menu = aMenu([], -1);
+    const menu = aMenu([], () => -1);
     menu.offer([{ title: "One", ms: 10_000 }, { title: "Two", ms: 10_000 }]);
     menu.available(true);
 
     document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
 
     expect(document.querySelectorAll(".pc-here")).toHaveLength(0);
+    menu.close();
+  });
+
+  it("follows the page while it is open: the mark moves to the walk of the section scrolled into, and its page shows", () => {
+    let here = 0;
+    const menu = aMenu([], () => here);
+    const titles = ["One", "Two", "Three", "Four", "Five", "Six"];
+    menu.offer(titles.map((title) => ({ title, ms: 10_000 })));
+    menu.available(true);
+    const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
+    const marked = (): number => pills.findIndex((pill) => pill.classList.contains("pc-here"));
+    const shown = (): number[] => pills.flatMap((pill, at) => (pill.hidden ? [] : [at]));
+    document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
+    expect([marked(), shown()]).toEqual([0, [0, 1, 2, 3]]);
+
+    here = 2;
+    window.dispatchEvent(new Event("scroll"));
+    expect([marked(), shown()]).toEqual([2, [0, 1, 2, 3]]);
+    here = 5;
+    window.dispatchEvent(new Event("scroll"));
+    expect([marked(), shown()]).toEqual([5, [4, 5]]);
+    // The visitor pages back by hand within the same section: a scroll there does not pull them away.
+    document.querySelector<HTMLButtonElement>(".pc-more")?.click();
+    window.dispatchEvent(new Event("scroll"));
+    expect(shown()).toEqual([0, 1, 2, 3]);
+    here = -1;
+    window.dispatchEvent(new Event("scroll"));
+    expect([marked(), shown()]).toEqual([-1, [0, 1, 2, 3]]);
     menu.close();
   });
 });

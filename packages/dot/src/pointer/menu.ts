@@ -104,6 +104,18 @@ export class Menu {
   };
   // The face rests in a corner of the window, so a resize moves it, and the button and pills with it.
   readonly #resized = (): void => this.#place();
+  /** The walk marked now, by its place in the list; -1 for none. */
+  #here = -1;
+  // While the menu is open the mark follows the page: when the visitor scrolls into another section its walk is
+  // marked, and its page shown; a visitor paging within one section is left where they are.
+  readonly #scrolled = (): void => {
+    if (!this.#open) return;
+    const here = this.#options.current();
+    if (here === this.#here) return;
+    this.#mark(here);
+    if (here >= 0) this.#page = Math.floor(here / PAGE);
+    this.#show();
+  };
 
   constructor(document: Document, host: (element: Element) => void, options: MenuOptions) {
     this.#document = document;
@@ -138,6 +150,7 @@ export class Menu {
     document.addEventListener("pointerdown", this.#outside, true);
     document.addEventListener("keydown", this.#escape);
     document.defaultView?.addEventListener("resize", this.#resized);
+    document.defaultView?.addEventListener("scroll", this.#scrolled, { passive: true });
   }
 
   /** The walks to offer; none hides the button. */
@@ -177,10 +190,15 @@ export class Menu {
     // It opens on the page of the walk of the section the visitor is on, and marks it.
     const here = this.#open ? this.#options.current() : -1;
     this.#page = here < 0 ? 0 : Math.floor(here / PAGE);
-    this.#pills.forEach((pill, index) => pill.classList.toggle("pc-here", index === here));
+    this.#mark(here);
     this.#button.setAttribute("aria-expanded", String(this.#open));
     this.#show();
     if (this.#open) this.#shown()[0]?.focus();
+  }
+
+  #mark(here: number): void {
+    this.#here = here;
+    this.#pills.forEach((pill, index) => pill.classList.toggle("pc-here", index === here));
   }
 
   /** The pills of the page showing, while the pills are fanned out. */
@@ -240,6 +258,7 @@ export class Menu {
     this.#document.removeEventListener("pointerdown", this.#outside, true);
     this.#document.removeEventListener("keydown", this.#escape);
     this.#document.defaultView?.removeEventListener("resize", this.#resized);
+    this.#document.defaultView?.removeEventListener("scroll", this.#scrolled);
     this.#button.remove();
     this.#more.remove();
     for (const pill of this.#pills) pill.remove();
