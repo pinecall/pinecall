@@ -51,18 +51,16 @@ export class Walks {
       const lit = this.code.show(step.code, step.lines);
       if (lit !== null) options.point(lit);
     });
+    const named = (name: string): number => this.#list.findIndex((walk) => walk.name === name);
     this.#menu = new Menu(document, (part) => person.add(part), {
       dock: options.dock,
       label: options.label,
       more: options.more,
       face: () => ({ at: person.dock(), radius: person.radius }),
       onPick: (index) => this.#play(index),
+      current: () => named(this.#sections.current() ?? ""),
     });
-    const named = (name: string): number => this.#list.findIndex((walk) => walk.name === name);
-    this.#sections = new Sections(document, {
-      onReach: (name) => this.#menu.suggest(named(name)),
-      onPlay: (name) => this.#play(named(name)),
-    });
+    this.#sections = new Sections(document, { onPlay: (name) => this.#play(named(name)) });
     void publishedWalks(options.url ?? "").then((found) => {
       this.#list = found;
       this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));

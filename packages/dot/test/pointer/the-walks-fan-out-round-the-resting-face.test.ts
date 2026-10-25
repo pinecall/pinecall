@@ -1,21 +1,22 @@
 // The walks fan out from a small button beside the resting face, in an arc toward the page, and a pick plays one.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { Menu, OFFERED_MS, PAGE, STEP, fanned } from "../../src/pointer/menu.js";
+import { Menu, PAGE, STEP, fanned } from "../../src/pointer/menu.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
   document.head.innerHTML = "";
 });
 
-function aMenu(picked: number[]): Menu {
+function aMenu(picked: number[], current = -1): Menu {
   return new Menu(document, (part) => document.body.append(part), {
     dock: "right",
     label: "Walks",
     more: "More walks",
     face: () => ({ at: { x: 900, y: 700 }, radius: 36 }),
     onPick: (index) => picked.push(index),
+    current: () => current,
   });
 }
 
@@ -73,26 +74,6 @@ describe("the walks' menu", () => {
     menu.close();
   });
 
-  it("offers one walk alone beside the face for a few seconds, and folds it away when the pills fan out", () => {
-    vi.useFakeTimers();
-    const picked: number[] = [];
-    const menu = aMenu(picked);
-    menu.offer([{ title: "Site tour", ms: 38_000 }, { title: "Pricing", ms: 20_000 }]);
-    menu.available(true);
-    const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
-
-    menu.suggest(1);
-    vi.advanceTimersByTime(50);
-    expect(pills.map((pill) => !pill.hidden)).toEqual([false, true]);
-    vi.advanceTimersByTime(OFFERED_MS + 300);
-    expect(pills[1]?.hidden).toBe(true);
-    menu.suggest(1);
-    pills[1]?.click();
-    expect(picked).toEqual([1]);
-    menu.close();
-    vi.useRealTimers();
-  });
-
   it("shows a page of walks at a time, and the button under them turns to the next page, then back to the first", () => {
     const menu = aMenu([]);
     const titles = ["One", "Two", "Three", "Four", "Five", "Six"];
@@ -111,6 +92,31 @@ describe("the walks' menu", () => {
     expect(shown()).toEqual(titles.slice(0, PAGE));
     menu.toggle(false);
     expect([shown(), more?.hidden]).toEqual([[], true]);
+    menu.close();
+  });
+
+  it("marks the walk of the section the visitor is on, and opens on the page it stands on", () => {
+    const titles = ["One", "Two", "Three", "Four", "Five", "Six"];
+    const menu = aMenu([], 5);
+    menu.offer(titles.map((title) => ({ title, ms: 10_000 })));
+    menu.available(true);
+    const pills = [...document.querySelectorAll<HTMLButtonElement>(".pc-pill")];
+
+    document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
+
+    expect(pills.filter((pill) => !pill.hidden).map((pill) => pill.textContent?.replace(/0:10$/, ""))).toEqual(titles.slice(PAGE));
+    expect(pills.map((pill) => pill.classList.contains("pc-here"))).toEqual([false, false, false, false, false, true]);
+    menu.close();
+  });
+
+  it("marks none when the visitor is on no section with a walk, and opens on the first page", () => {
+    const menu = aMenu([], -1);
+    menu.offer([{ title: "One", ms: 10_000 }, { title: "Two", ms: 10_000 }]);
+    menu.available(true);
+
+    document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
+
+    expect(document.querySelectorAll(".pc-here")).toHaveLength(0);
     menu.close();
   });
 });

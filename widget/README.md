@@ -282,8 +282,8 @@ at a time. `captions` says which may show.
 
 With `walks`, a small button beside the dot fans out the agent's walks; a pick plays one in the
 agent's voice, the pointer moving on its words, with no call and no microphone; captions, pause and stop
-sit in the corner while it plays. A section with `data-pinecall-walk="<macro>"` offers that walk's
-pill beside the dot for a few seconds as the page is scrolled to it; a button of the site's own with `data-pinecall-play="<macro>"` and
+sit in the corner while it plays. A section with `data-pinecall-walk="<macro>"` names its walk: the
+menu marks the one of the section the visitor is on when it opens; a button of the site's own with `data-pinecall-play="<macro>"` and
 `hidden` is shown while that walk can play, and plays it. With `tutor`, the page's own `widget.views = { toolName: (host, result, tools) => … }` draws the
 results of the agent's tools on a card above the dot (the free times, a form, code); `tools.send(text)`
 says something to the agent as the visitor. The tag dispatches

@@ -3,8 +3,8 @@
 // The button sits on the face's shoulder, toward the page, in front of the face: behind it, a click
 // meant for it reached the face and began a call. A click fans the walks out beside the
 // face, each a pill with its title and length, read from the top: the first walk is the highest. Escape, a click elsewhere or
-// a pick closes them. One walk can also be offered alone, beside the face, for a few seconds: the one
-// of the section scrolled to. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
+// a pick closes them. The walk of the section the visitor is on is marked, and the page it stands on is the
+// one that opens. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
 import { clock } from "../wire/index.js";
 import type { Point } from "./flight.js";
@@ -24,6 +24,9 @@ const STYLE = `
   font: 500 12px/${PILL}px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 4px 14px rgb(0 0 0 / .16);
   opacity: 0; transform: scale(.85); transition: opacity .18s, transform .18s; }
 .pc-pill.pc-shown { opacity: 1; transform: none; }
+.pc-pill.pc-here { background: var(--pc-face, #1f6b55); color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc-face, #1f6b55) 30%, transparent), 0 4px 14px rgb(0 0 0 / .2); }
+.pc-pill.pc-here .pc-tri { border-left-color: #fff; }
+.pc-pill.pc-here .pc-long { opacity: .8; }
 .pc-pill .pc-tri { width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent var(--pc-face, #1f6b55); }
 .pc-pill .pc-long { opacity: .55; font-variant-numeric: tabular-nums; }
 .pc-more { position: fixed; z-index: 3; display: grid; place-items: center; width: ${PILL}px; height: ${PILL}px; padding: 0; border: 0;
@@ -50,12 +53,11 @@ export interface MenuOptions {
   face: () => { at: Point; radius: number };
   /** A walk picked, by its place in the list. */
   onPick: (index: number) => void;
+  /** The place in the list of the walk of the section the visitor is on, or -1 when none is. */
+  current: () => number;
   /** What the button that shows the next pills is called for a screen reader: "More walks". */
   more: string;
 }
-
-/** How long a walk offered alone stays beside the face, in ms. */
-export const OFFERED_MS = 5000;
 
 /** How many pills show at once; the rest come a page at a time, from a small button under them. */
 export const PAGE = 4;
@@ -92,8 +94,6 @@ export class Menu {
   #open = false;
   /** Which page of pills shows, from 0. */
   #page = 0;
-  /** The walk offered alone, by its place in the list, and when it goes. */
-  #alone: { index: number; timer: ReturnType<typeof setTimeout> } | null = null;
   readonly #outside = (event: Event): void => {
     const target = event.target instanceof Node ? event.target : null;
     if (target !== null && [this.#button, this.#more, ...this.#pills].some((part) => part.contains(target))) return;
@@ -142,7 +142,6 @@ export class Menu {
 
   /** The walks to offer; none hides the button. */
   offer(items: MenuItem[]): void {
-    this.#unsuggest();
     for (const pill of this.#pills) pill.remove();
     this.#pills = items.map((item, index) => {
       const pill = this.#document.createElement("button");
@@ -172,22 +171,13 @@ export class Menu {
     if (on) this.#place();
   }
 
-  /** Offer one walk alone, beside the face, for `ms`, while the button shows and the pills are folded. */
-  suggest(index: number, ms = OFFERED_MS): void {
-    const pill = this.#pills[index];
-    if (pill === undefined || this.#open || this.#button.hidden) return;
-    this.#unsuggest();
-    this.#alone = { index, timer: setTimeout(() => this.#unsuggest(), ms) };
-    this.#place();
-    pill.hidden = false;
-    setTimeout(() => pill.classList.add("pc-shown"), 30);
-  }
-
   /** Fan the pills out, or fold them back. */
   toggle(open: boolean): void {
-    this.#unsuggest();
     this.#open = open && !this.#button.hidden;
-    this.#page = 0;
+    // It opens on the page of the walk of the section the visitor is on, and marks it.
+    const here = this.#open ? this.#options.current() : -1;
+    this.#page = here < 0 ? 0 : Math.floor(here / PAGE);
+    this.#pills.forEach((pill, index) => pill.classList.toggle("pc-here", index === here));
     this.#button.setAttribute("aria-expanded", String(this.#open));
     this.#show();
     if (this.#open) this.#shown()[0]?.focus();
@@ -244,27 +234,9 @@ export class Menu {
     if (paged && under !== undefined) {
       Object.assign(this.#more.style, { left: `${right ? under.x - PILL : under.x}px`, top: `${under.y - PILL / 2}px` });
     }
-    // A walk offered alone stands where the lowest pill would, beside the face.
-    const [beside] = fanned(1, at, radius, this.#options.dock);
-    if (this.#alone !== null && beside !== undefined) stand(this.#pills[this.#alone.index], beside);
-  }
-
-  #unsuggest(): void {
-    if (this.#alone === null) return;
-    clearTimeout(this.#alone.timer);
-    const { index } = this.#alone;
-    const pill = this.#pills[index];
-    this.#alone = null;
-    if (pill === undefined || this.#open) return;
-    pill.classList.remove("pc-shown");
-    // Hidden once it has faded, unless it was offered again or the pills fanned out meanwhile.
-    setTimeout(() => {
-      if (!this.#open && this.#alone?.index !== index) pill.hidden = true;
-    }, 200);
   }
 
   close(): void {
-    this.#unsuggest();
     this.#document.removeEventListener("pointerdown", this.#outside, true);
     this.#document.removeEventListener("keydown", this.#escape);
     this.#document.defaultView?.removeEventListener("resize", this.#resized);
