@@ -35,7 +35,13 @@ const STYLE = `
 .pc-bubble[hidden] { display: block !important; opacity: 0; transform: scale(.94); }
 .pc-bubble .pc-coming { opacity: .38; }
 .pc-person.pc-touring .pc-bubble { right: auto; bottom: auto; left: 62px; top: 14px; border-radius: 4px 16px 16px 16px; transform-origin: top left; }
-.pc-person.pc-touring.pc-flip .pc-bubble { left: auto; right: 6px; border-radius: 16px 4px 16px 16px; transform-origin: top right; }
+.pc-person.pc-touring.pc-west .pc-face { left: -54px; }
+.pc-person.pc-touring.pc-west .pc-progress { left: -60px; }
+.pc-person.pc-touring.pc-west .pc-bubble { left: auto; right: 62px; border-radius: 16px 4px 16px 16px; transform-origin: top right; }
+.pc-person.pc-touring.pc-up .pc-face { top: -56px; }
+.pc-person.pc-touring.pc-up .pc-progress { top: -62px; }
+.pc-person.pc-touring.pc-up .pc-bubble { top: auto; bottom: 14px; border-radius: 16px 16px 16px 4px; transform-origin: bottom left; }
+.pc-person.pc-touring.pc-west.pc-up .pc-bubble { border-radius: 16px 16px 4px 16px; transform-origin: bottom right; }
 .pc-person.pc-left:not(.pc-touring) .pc-bubble { right: auto; left: -30px; border-radius: 16px 16px 16px 4px; transform-origin: bottom left; }
 .pc-heard { position: fixed; right: 22px; bottom: 96px; width: max-content; max-width: min(270px, 70vw); padding: 9px 13px;
   background: var(--pc-heard, #e7f3ee); color: var(--pc-heard-ink, #17201c); border-radius: 16px 16px 4px 16px;
@@ -70,6 +76,43 @@ const ARROW = `<svg class="pc-arrow" viewBox="0 0 26 26" data-kind="arrow" aria-
 <path class="pc-kind-hand" d="M8 3.5c0-1.1 1.8-1.1 1.8 0V11h.6V9.2c0-1.1 1.8-1.1 1.8 0V11h.6V9.8c0-1.1 1.8-1.1 1.8 0V11.4h.6v-.8c0-1.1 1.8-1.1 1.8 0V16c0 3.6-2.2 6.5-5.6 6.5-2.5 0-3.8-1.2-5-3.2l-2.6-4.4c-.6-1 .7-2 1.6-1.2L8 15.4Z" fill="var(--pc-face, #1f6b55)" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
 <path class="pc-kind-ibeam" d="M9 3h5M9 23h5M11.5 3v20" fill="none" stroke="var(--pc-face, #1f6b55)" stroke-width="2.4" stroke-linecap="round"/>
 </svg>`;
+
+/** Which side of the tip the face and its words sit on: to its left or right, above or below it. */
+export interface Side {
+  west: boolean;
+  up: boolean;
+}
+
+/** How far the face and its words reach from the tip, across and down, in px; above, they end this far over it. */
+const REACH = { across: 340, down: 96, over: 14 };
+/** How much of the box being explained the face may touch: the tip stands in its first line. */
+const TOUCH = 6;
+const SIDES: readonly Side[] = [
+  { west: false, up: false },
+  { west: true, up: false },
+  { west: false, up: true },
+  { west: true, up: true },
+];
+
+/** The first side whose reach fits the screen and covers nothing of `avoid`; else the first that fits; else below and right. */
+export function sideOf(tip: Point, avoid: DOMRect | null, width: number, height: number): Side {
+  const reach = (side: Side): { left: number; right: number; top: number; bottom: number } => ({
+    left: side.west ? tip.x - REACH.across : tip.x + 8,
+    right: side.west ? tip.x - 8 : tip.x + REACH.across,
+    top: side.up ? tip.y - REACH.down : tip.y + 8,
+    bottom: side.up ? tip.y - REACH.over : tip.y + REACH.down,
+  });
+  const fits = (side: Side): boolean => {
+    const box = reach(side);
+    return box.left >= 0 && box.right <= width && box.top >= 0 && box.bottom <= height;
+  };
+  const clear = (side: Side): boolean => {
+    const box = reach(side);
+    if (avoid === null) return true;
+    return box.right <= avoid.left + TOUCH || box.left >= avoid.right - TOUCH || box.bottom <= avoid.top + TOUCH || box.top >= avoid.bottom - TOUCH;
+  };
+  return SIDES.find((side) => fits(side) && clear(side)) ?? SIDES.find(fits) ?? { west: false, up: false };
+}
 
 export interface PersonOptions {
   /** The corner it rests in. */
@@ -173,13 +216,19 @@ export class Person {
     return this.#at;
   }
 
-  /** Put the tip at a point of the viewport. Near the right edge, what it says goes to the tip's left. */
-  place(point: Point): void {
+  /**
+   * Put the tip at a point of the viewport, the face and its words on the side of it that fits the
+   * screen and covers nothing of `avoid`, the box being explained: right or left of the tip, below or above.
+   */
+  place(point: Point, avoid: DOMRect | null = null): void {
     this.#at = point;
     this.#person.style.transform = `translate(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px)`;
-    const width = this.#document.defaultView?.innerWidth ?? 0;
-    this.#person.classList.toggle("pc-flip", point.x > width - 330);
+    const view = this.#document.defaultView;
+    const side = sideOf(point, avoid, view?.innerWidth ?? 0, view?.innerHeight ?? 0);
+    this.#person.classList.toggle("pc-west", side.west);
+    this.#person.classList.toggle("pc-up", side.up);
   }
+
 
   /** Out of the corner with the arrow showing, or back in it. */
   tour(on: boolean): void {

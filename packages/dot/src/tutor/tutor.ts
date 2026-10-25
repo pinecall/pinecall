@@ -243,7 +243,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (anchor !== null && (!anchor.element.isConnected || anchor.element.closest("[hidden]") !== null)) anchor = null;
     if (!flying && anchor !== null) {
       const box = anchor.element.getBoundingClientRect();
-      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy });
+      // On a window of code, the face and its words stand clear of the lines being explained.
+      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, anchor.element.closest(".pc-code") === null ? null : walks.code.litBox());
       person.kind(hover.at(person.at.x, person.at.y));
     }
     if (lit !== null && !lit.isConnected) lit = null;

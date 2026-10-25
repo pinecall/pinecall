@@ -94,6 +94,17 @@ export class CodeWindow {
     return code ?? (first instanceof HTMLElement ? first : null);
   }
 
+  /** The box the lit lines fill on the screen, for the person to stand clear of; null with none lit. */
+  litBox(): DOMRect | null {
+    const lit = [...this.#lines.querySelectorAll(".pc-on")].map((row) => row.getBoundingClientRect());
+    if (this.#shown === null || lit.length === 0) return null;
+    const top = Math.min(...lit.map((box) => box.top));
+    const bottom = Math.max(...lit.map((box) => box.bottom));
+    const left = Math.min(...lit.map((box) => box.left));
+    const right = Math.max(...lit.map((box) => box.right));
+    return new DOMRect(left, top, right - left, bottom - top);
+  }
+
   /** Whether a window is open. */
   get open(): boolean {
     return this.#shown !== null;
