@@ -42,6 +42,7 @@ const STYLE = `
 .pc-bubble .pc-coming { opacity: .38; }
 .pc-person.pc-touring .pc-bubble { right: auto; bottom: auto; left: 62px; top: 14px; border-radius: 4px 16px 16px 16px; transform-origin: top left; }
 .pc-person.pc-touring.pc-west .pc-face { left: -54px; }
+.pc-person.pc-touring.pc-west .pc-arrow { left: -23px; transform: scaleX(-1); }
 .pc-person.pc-touring.pc-west .pc-progress { left: -60px; }
 .pc-person.pc-touring.pc-west .pc-bubble { left: auto; right: 62px; border-radius: 16px 4px 16px 16px; transform-origin: top right; }
 .pc-person.pc-touring.pc-up .pc-face { top: -56px; }

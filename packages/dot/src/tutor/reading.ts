@@ -5,8 +5,10 @@
 // the site's door (`{ read }`), the next one asked for while one plays; a part longer than the voice takes
 // at once is read a few sentences at a time. A button marked `data-pinecall-press` in it is an example:
 // pressed when the reading reaches it (its value, when it has one, said first), and the reading waits for
-// what the button controls (`aria-controls`) to answer and not be busy. Under `data-pinecall-quiet` nothing
-// is read (code, a legend), though a button marked to press there is still pressed. A heading that
+// what the button controls (`aria-controls`) to answer and not be busy, then says its `data-pinecall-then`
+// (what the output shows) pointing at it. Under `data-pinecall-quiet` nothing is read (code, a legend),
+// though a button marked to press there is still pressed. An element with `data-pinecall-say` is said
+// as that line, written to be heard, instead of what it shows; the parts inside it are not read again. A heading that
 // shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
 // and the whole box lit: a title said alone, then its words, sounds like two things.
 
@@ -16,6 +18,10 @@ import type { Acting } from "./acting.js";
 export const READ_ATTRIBUTE = "data-pinecall-read";
 export const PRESS_ATTRIBUTE = "data-pinecall-press";
 export const QUIET_ATTRIBUTE = "data-pinecall-quiet";
+/** The line an element is said as, instead of what it shows: the same the agent says in a call. */
+export const SAY_ATTRIBUTE = "data-pinecall-say";
+/** What an example's output shows, said pointing at it once it answered. */
+export const THEN_ATTRIBUTE = "data-pinecall-then";
 /** The name a page read aloud plays under. */
 export const READ_WALK = "read";
 
@@ -102,28 +108,36 @@ export function readingOf(document: Document, title: string): Reading | null {
   const at: Element[] = [];
   /** The words of a card, read with its title. */
   const read = new Set<Element>();
+  const line = (text: string, element: Element): void => {
+    for (const piece of piecesOf(text.replace(/\s+/g, " ").trim())) {
+      steps.push({ say: piece, beats: [], live: true });
+      at.push(element);
+    }
+  };
   for (const root of roots) {
-    for (const element of root.querySelectorAll(`${PARTS}, [${PRESS_ATTRIBUTE}]`)) {
+    for (const element of root.querySelectorAll(`${PARTS}, [${PRESS_ATTRIBUTE}], [${SAY_ATTRIBUTE}]`)) {
       if (!seen(element)) continue;
       if (element.hasAttribute(PRESS_ATTRIBUTE)) {
-        const first = element.getAttribute(PRESS_ATTRIBUTE)?.trim() ?? "";
-        if (first !== "") {
-          steps.push({ say: first, beats: [], live: true });
-          at.push(element);
-        }
+        line(element.getAttribute(PRESS_ATTRIBUTE) ?? "", element);
         steps.push({ press: element.getAttribute("aria-label") ?? wordsOf(element) });
         at.push(element);
+        const controls = element.getAttribute("aria-controls");
+        line(element.getAttribute(THEN_ATTRIBUTE) ?? "", (controls === null ? null : document.getElementById(controls)) ?? element);
+        continue;
+      }
+      // Inside a part said as its own line, nothing is read again; quiet, nothing at all.
+      const told = element.parentElement?.closest(`[${SAY_ATTRIBUTE}]`) ?? null;
+      if ((told !== null && root.contains(told)) || element.closest(`[${QUIET_ATTRIBUTE}]`) !== null) continue;
+      if (element.hasAttribute(SAY_ATTRIBUTE)) {
+        line(element.getAttribute(SAY_ATTRIBUTE) ?? "", element);
         continue;
       }
       // A part inside another part of the same container is read with it.
       const holder = element.parentElement?.closest(PARTS) ?? null;
-      if ((holder !== null && root.contains(holder)) || element.closest(`[${QUIET_ATTRIBUTE}]`) !== null || read.has(element)) continue;
+      if ((holder !== null && root.contains(holder)) || read.has(element)) continue;
       const together = card(element, root);
       if (together !== null) read.add(together.words);
-      for (const piece of piecesOf(together?.text ?? wordsOf(element))) {
-        steps.push({ say: piece, beats: [], live: true });
-        at.push(together?.box ?? element);
-      }
+      line(together?.text ?? wordsOf(element), together?.box ?? element);
     }
   }
   return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at };

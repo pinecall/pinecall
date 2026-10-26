@@ -20,6 +20,9 @@ maintainer's call.
   written, in the agent's voice with no call: the part read lit and pointed at, the rest dimmed, an example marked
   `data-pinecall-press` pressed and its output (`aria-controls`) waited on. Each part is recorded by the site's door
   (`{ read }`), which a site allows with `voicing.read`. `tutor.read()` starts it.
+- **A page is read as written to be heard**: an element's `data-pinecall-say` is said instead of its text (nothing inside
+  it read again), an example's `data-pinecall-then` is said pointing at its output once it answered, and the pointer
+  stands at the left of the part read, the face in the margin, its arrow turned toward the text.
 - **A walk goes back and on a sentence**: the corner has back and next beside pause and stop, all in one small pill
   (26 px buttons instead of 34). Going on does a step that acts; going back passes it over.
 - **The page scrolls in its own box**: an app whose content scrolls in a pane, not the window, is scrolled there.

@@ -81,6 +81,28 @@ describe("a page read aloud", () => {
   });
 });
 
+describe("a page read aloud as it is written to be heard", () => {
+  it("says a part's own line instead of its text, nothing inside it again, and what an example's output shows", () => {
+    document.body.innerHTML = `
+      <main data-pinecall-read>
+        <section data-pinecall-say="Cuatro piezas, en una frase."><p>Una.</p><p>Dos.</p></section>
+        <p>Leído tal cual.</p>
+        <button aria-label="Run whoami" aria-controls="out" data-pinecall-press data-pinecall-then="Ahí dice tu org.">Run</button>
+        <div id="out" data-pinecall-quiet><p>lesson · sandbox</p></div>
+      </main>`;
+    const reading = readingOf(document, "Leer");
+
+    expect(reading?.walk.steps).toEqual([
+      { say: "Cuatro piezas, en una frase.", beats: [], live: true },
+      { say: "Leído tal cual.", beats: [], live: true },
+      { press: "Run whoami" },
+      { say: "Ahí dice tu org.", beats: [], live: true },
+    ]);
+    // The output's line is said pointing at the output.
+    expect(reading?.at.map((element) => element.id || element.tagName.toLowerCase())).toEqual(["section", "p", "button", "out"]);
+  });
+});
+
 describe("a page's text recorded on the site's server", () => {
   it("is refused unless the site lets its pages be read, and is a line of 480 characters at most", async () => {
     const lines = async () => new Response(JSON.stringify({ lines: [{ url: "https://gw/v1/lines/r.mp3", duration_ms: 700, words: [] }] }));

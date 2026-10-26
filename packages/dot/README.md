@@ -334,8 +334,12 @@ section), its headings, paragraphs, items and captions in the page's order, as w
 is lit and pointed at and the rest dimmed; a long one is read a few sentences at a time. A button
 marked `data-pinecall-press` in it is an example: when the reading reaches it, the pointer presses it
 (its value, when it has one, said first: `data-pinecall-press="Lo corro."`) and the reading waits for
-what it controls (`aria-controls`, its output) to answer and not be `aria-busy`. Nothing under
-`data-pinecall-quiet` is read (the code of a block, a legend). `tutor.read()` starts it from a button
+what it controls (`aria-controls`, its output) to answer and not be `aria-busy`, then says its
+`data-pinecall-then` ("Ahí dice tu org") pointing at the output. Nothing under `data-pinecall-quiet` is
+read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
+`data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or
+a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
+part read, the face in the margin, never on its words. `tutor.read()` starts it from a button
 of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
 next go a sentence at a time.
 

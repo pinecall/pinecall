@@ -12,7 +12,7 @@ import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
 import { Page } from "../page/page.js";
-import { aimOf, along, animate, coveredTop, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
+import { aimOf, along, animate, besideOf, coveredTop, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
 import { Card } from "../pointer/card.js";
 import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
@@ -101,7 +101,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       // The part read is lit (every frame spots `lit`) and pointed at; null puts the light out.
       light: (element) => queue(async () => {
         lit = element;
-        if (element !== null) await run("point", element);
+        if (element !== null) await run("point", element, true);
       }),
       queued: (work) => queued(work),
     }),
@@ -126,7 +126,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const player = new Player();
   const linger = options.linger ?? 2600;
   const hearing = new Hearing(linger);
-  let anchor: { element: Element; dx: number; dy: number } | null = null;
+  let anchor: { element: Element; dx: number; dy: number; side?: Side | undefined } | null = null;
   let lit: Element | null = null;
   let flying = false;
   let moves: Promise<void> = Promise.resolve();
@@ -173,7 +173,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     const box = element.getBoundingClientRect();
     return box.bottom > coveredTop(document) && box.top < view.innerHeight;
   };
-  const run = async (action: Action, element: Element | null): Promise<void> => {
+  /** A move; `beside`, a block being read pointed at from its left, the face in the margin, never on its words. */
+  const run = async (action: Action, element: Element | null, beside = false): Promise<void> => {
     switch (action) {
       case "type":
       case "press":
@@ -186,10 +187,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
         anchor = null;
         if (!onScreen(element)) await scrollOnto(element, 0.42, still);
-        const aim = aimOf(element);
-        await fly(aim, sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
+        const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
+        await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();
-        anchor = { element, dx: aim.x - box.left, dy: aim.y - box.top };
+        anchor = { element, dx: aim.x - box.left, dy: aim.y - box.top, side };
         return;
       }
       case "scroll_to":
@@ -288,7 +289,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     if (anchor !== null && (!anchor.element.isConnected || anchor.element.closest("[hidden]") !== null)) anchor = null;
     if (!flying && anchor !== null) {
       const box = anchor.element.getBoundingClientRect();
-      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, clearOf(anchor.element));
+      person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, clearOf(anchor.element), anchor.side);
       person.kind(hover.on(anchor.element));
     }
     if (lit !== null && !lit.isConnected) lit = null;

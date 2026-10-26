@@ -55,6 +55,19 @@ export function aimOf(element: Element): Point {
   return { x: box.left + box.width / 2, y: box.top + Math.min(box.height / 2, 60) };
 }
 
+/** How much room the face needs at a block's left to stand beside it, in px. */
+const BESIDE = 72;
+
+/**
+ * Where the pointer stands to show a block being read without covering it: its tip at the block's first
+ * line, the face to its left, in the margin (`west`); above the block where the left has no room.
+ */
+export function besideOf(element: Element): { aim: Point; side: { west: boolean; up: boolean } } {
+  const box = element.getBoundingClientRect();
+  if (box.left >= BESIDE) return { aim: { x: box.left - 2, y: box.top + Math.min(10, box.height / 2) }, side: { west: true, up: false } };
+  return { aim: { x: box.left + 16, y: box.top - 4 }, side: { west: false, up: true } };
+}
+
 /** Run `step(u)` from 0 to 1 over `ms`, once a frame; resolves at 1. */
 export function animate(ms: number, step: (u: number) => void): Promise<void> {
   const start = performance.now();
