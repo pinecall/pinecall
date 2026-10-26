@@ -11,6 +11,7 @@ from livekit.agents.voice.turn import InterruptionOptions, TurnDetectionMode, Tu
 from smart_turn_livekit import SmartTurnDetector  # pyright: ignore[reportMissingTypeStubs]
 
 from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.kit.said import saying
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session.call import Call
 from pinecall_runtime.session.hearing import keyterms, policy_for
@@ -112,11 +113,12 @@ def _end_of_turn(model: providers.TurnModel) -> TurnDetectionMode:
     return detector
 
 
-# The parameter replaces livekit's defaults, so they come first and the tenant's words after.
+# The parameter replaces livekit's defaults, so they come first and the tenant's words after: found
+# as whole words (kit.said), where livekit's own replace would find `CLI` inside "cliente".
 def _text_transforms_of(config: AgentConfig) -> NotGivenOr[Sequence[transforms.TextTransforms]]:
     if not config.says:
         return NOT_GIVEN
-    return [*DEFAULT_TTS_TEXT_TRANSFORMS, transforms.replace(dict(config.says))]
+    return [*DEFAULT_TTS_TEXT_TRANSFORMS, saying(dict(config.says))]
 
 
 # Interruptions are judged by the local VAD: livekit's adaptive detector streams the caller's

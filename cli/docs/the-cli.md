@@ -1566,7 +1566,9 @@ lexicon · sandbox · corner m_berna_default
   v3 · m_berna_default · 2026-10-09 12:18   said 1 · heard 1
 ```
 
-An agent's words: its `says` and `hears`, which the class never sets. The agent is the one of
+An agent's words: its `says` and `hears`, which the class never sets. A word is said its way where it
+stands as a word: `CLI` in "el CLI," but never inside "cliente"; a form of several words ("Dr. Lee") is
+found across them, and the case never matters. The agent is the one of
 this directory, or the one `--agent` names by its slug, as [`agent`](#agent) names it. Whole and
 versioned like the settings, per corner, with the same `--team` and the same refusal when the
 corner moved. A **supervisor's or a manager's key opens it** (`words`): the person who hears a word

@@ -21,10 +21,17 @@ def test_with_no_lexicon_each_written_word_is_said_as_written() -> None:
     ]
 
 
-def test_a_lexicon_form_is_said_inside_a_word_and_across_words_as_one_group() -> None:
-    says = {"Pinecall": "pine call", "Dr. Lee": "Doctor Lee"}
+def test_a_lexicon_form_is_said_as_a_whole_word_and_across_words_as_one_group() -> None:
+    says = {"Pinecall": "pine call", "Dr. Lee": "Doctor Lee", "CLI": "ci el ái"}
 
     assert groups_of("Pinecall's front desk", says)[0] == Group(("Pinecall's",), "pine call's")
+    assert groups_of("el CLI y un cliente", says) == [
+        Group(("el",), "el"),
+        Group(("CLI",), "ci el ái"),
+        Group(("y",), "y"),
+        Group(("un",), "un"),
+        Group(("cliente",), "cliente"),
+    ]
     assert groups_of("Ask Dr. Lee today", says) == [
         Group(("Ask",), "Ask"),
         Group(("Dr.", "Lee"), "Doctor Lee"),

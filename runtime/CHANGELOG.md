@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A lexicon's word is said its way as a whole word.** livekit's replace, and the recorded lines with
+  it, found a form inside other words: `CLI → ci el ái` turned "cliente" into "ci el ái-ente". A form
+  that begins or ends with a letter or a digit is now found only where a word begins or ends, in a
+  call's voice (`kit.said.saying`, the last words held until the next chunk so a form cut between two
+  is found whole) and in a recorded line alike; a form of several words is still found across them.
+
 ## 0.11.24 — released with the dot's marked walk (2026-10-25)
 
 - **`box_wide()` reads across orgs inside a transaction that has already begun.** The org was set

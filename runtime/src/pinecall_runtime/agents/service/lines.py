@@ -15,6 +15,7 @@ from pinecall_runtime.agents.repository import AgentLineRepository
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit.mp3 import mp3_of
+from pinecall_runtime.kit.said import holds, pattern_of
 from pinecall_runtime.providers import service as providers
 
 # Mono MP3 at 48 kbps plays in every browser, Safari's too: about 6 KB a second.
@@ -45,7 +46,7 @@ def voice_of(running: providers.Running) -> str:
 
 def line_id(running: providers.Running, says: Mapping[str, str], text: str) -> str:
     """The hash a line is kept under: the voice, the lexicon's forms the text holds, the encoding, the text."""
-    touched = {written: spoken for written, spoken in says.items() if written.lower() in text.lower()}
+    touched = {written: spoken for written, spoken in says.items() if holds(text, written)}
     kept = {
         "vendor": running.vendor,
         "model": running.model,
@@ -60,15 +61,15 @@ def line_id(running: providers.Running, says: Mapping[str, str], text: str) -> s
     return hashlib.sha256(json.dumps(kept, sort_keys=True, default=str).encode()).hexdigest()
 
 
-# Matched as livekit's own replace matches in a call: the longest form first, in any case, inside a
-# word too. A form that spans words makes them one group, whose words share its time.
+# Found as a call's voice finds them (kit.said): the longest form first, in any case, as a whole word.
+# A form that spans words makes them one group, whose words share its time.
 def groups_of(text: str, says: Mapping[str, str]) -> list[Group]:
     """The line's written words, grouped where a lexicon form touches them, each group as it is said."""
     tokens = list(re.finditer(r"\S+", text))
     spoken = {written.lower(): form for written, form in says.items() if written}
-    if not spoken:
+    pattern = pattern_of(says)
+    if pattern is None:
         return [Group(written=(token.group(),), spoken=token.group()) for token in tokens]
-    pattern = re.compile("|".join(re.escape(key) for key in sorted(spoken, key=len, reverse=True)), re.IGNORECASE)
     matches = list(pattern.finditer(text))
     groups: list[Group] = []
     at = 0
