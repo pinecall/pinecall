@@ -6,7 +6,9 @@
 // at once is read a few sentences at a time. A button marked `data-pinecall-press` in it is an example:
 // pressed when the reading reaches it (its value, when it has one, said first), and the reading waits for
 // what the button controls (`aria-controls`) to answer and not be busy. Under `data-pinecall-quiet` nothing
-// is read (code, a legend), though a button marked to press there is still pressed.
+// is read (code, a legend), though a button marked to press there is still pressed. A heading that
+// shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
+// and the whole box lit: a title said alone, then its words, sounds like two things.
 
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
@@ -77,11 +79,29 @@ function cut(sentence: string, longest: number): string[] {
   return piece === "" ? pieces : [...pieces, piece];
 }
 
+/** The parts of `box` a person reads, outermost, in order. */
+function partsIn(box: Element): Element[] {
+  return [...box.querySelectorAll(PARTS)].filter((part) => seen(part) && part.closest(`[${QUIET_ATTRIBUTE}]`) === null && !box.contains(part.parentElement?.closest(PARTS) ?? null));
+}
+
+/** A heading and the one text it shares its box with, as one: the box and "Title. Words"; null when it is not one. */
+function card(heading: Element, root: Element): { box: Element; text: string; words: Element } | null {
+  const box = heading.parentElement;
+  if (box === null || box === root || !root.contains(box) || !/^H[1-6]$/.test(heading.tagName)) return null;
+  const parts = partsIn(box);
+  const words = parts[1];
+  if (parts.length !== 2 || parts[0] !== heading || words === undefined) return null;
+  const title = wordsOf(heading);
+  return { box, words, text: `${title}${/[.!?:…]$/.test(title) ? "" : "."} ${wordsOf(words)}` };
+}
+
 /** The page as it reads now, under the title the menu shows it with; null when it marks nothing to read. */
 export function readingOf(document: Document, title: string): Reading | null {
   const roots = [...document.querySelectorAll(`[${READ_ATTRIBUTE}]`)].filter((root) => root.parentElement?.closest(`[${READ_ATTRIBUTE}]`) == null);
   const steps: WalkStep[] = [];
   const at: Element[] = [];
+  /** The words of a card, read with its title. */
+  const read = new Set<Element>();
   for (const root of roots) {
     for (const element of root.querySelectorAll(`${PARTS}, [${PRESS_ATTRIBUTE}]`)) {
       if (!seen(element)) continue;
@@ -97,10 +117,12 @@ export function readingOf(document: Document, title: string): Reading | null {
       }
       // A part inside another part of the same container is read with it.
       const holder = element.parentElement?.closest(PARTS) ?? null;
-      if ((holder !== null && root.contains(holder)) || element.closest(`[${QUIET_ATTRIBUTE}]`) !== null) continue;
-      for (const piece of piecesOf(wordsOf(element))) {
+      if ((holder !== null && root.contains(holder)) || element.closest(`[${QUIET_ATTRIBUTE}]`) !== null || read.has(element)) continue;
+      const together = card(element, root);
+      if (together !== null) read.add(together.words);
+      for (const piece of piecesOf(together?.text ?? wordsOf(element))) {
         steps.push({ say: piece, beats: [], live: true });
-        at.push(element);
+        at.push(together?.box ?? element);
       }
     }
   }

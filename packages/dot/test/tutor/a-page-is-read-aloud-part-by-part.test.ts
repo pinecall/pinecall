@@ -14,7 +14,8 @@ const PAGE = `
   <main data-pinecall-read>
     <h2>Cómo leer esto</h2>
     <p>Cada comando está en un bloque con <strong>Run</strong>.</p>
-    <ul><li><p>Una tarjeta, leída una vez.</p></li></ul>
+    <ul><li><p>Un ítem, leído una vez.</p></li></ul>
+    <div class="card"><h4>panaderia</h4><p>El proyecto del agente.</p></div>
     <div class="blk" data-pinecall-quiet>
       <p>pinecall whoami</p>
       <button aria-label="Run pinecall whoami" aria-controls="out-1" data-pinecall-press="Lo corro.">▶ Run</button>
@@ -24,7 +25,7 @@ const PAGE = `
   </main>`;
 
 describe("a page read aloud", () => {
-  it("is what it marks, in the page's order, each part once, an example pressed with its sentence first", () => {
+  it("is what it marks, in the page's order, each part once, a card with its title, an example pressed with its sentence first", () => {
     document.body.innerHTML = PAGE;
     const reading = readingOf(document, "Leer el capítulo");
 
@@ -32,12 +33,14 @@ describe("a page read aloud", () => {
     expect(reading?.walk.steps).toEqual([
       { say: "Cómo leer esto", beats: [], live: true },
       { say: "Cada comando está en un bloque con Run.", beats: [], live: true },
-      { say: "Una tarjeta, leída una vez.", beats: [], live: true },
+      { say: "Un ítem, leído una vez.", beats: [], live: true },
+      { say: "panaderia. El proyecto del agente.", beats: [], live: true },
       { say: "Lo corro.", beats: [], live: true },
       { press: "Run pinecall whoami" },
       { say: "Lo que imprimió es tu org.", beats: [], live: true },
     ]);
-    expect(reading?.at.map((element) => element.tagName.toLowerCase())).toEqual(["h2", "p", "li", "button", "button", "p"]);
+    // A card is read whole, title and words, and lit whole.
+    expect(reading?.at.map((element) => element.tagName.toLowerCase())).toEqual(["h2", "p", "li", "div", "button", "button", "p"]);
     document.body.innerHTML = "<main><p>Nothing marked.</p></main>";
     expect(readingOf(document, "x")).toBeNull();
   });
@@ -68,11 +71,11 @@ describe("a page read aloud", () => {
     await aloud.voice(1);
     expect(recorded).toHaveLength(3);
     // The press is no sentence: the one after it is asked for.
-    await aloud.voice(3);
+    await aloud.voice(4);
     expect(recorded.at(-1)).toBe("Lo que imprimió es tu org.");
 
     aloud.shows(1);
-    await aloud.act(4);
+    await aloud.act(5);
     aloud.shows(-1);
     expect(lit).toEqual(["p", "button", null]);
   });
