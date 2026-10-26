@@ -57,25 +57,24 @@ function keyInDotEnv() {
 }
 
 // The clinic's open times for the next two weeks, as its own system would answer them.
-const DAYS = { Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday" };
 const TIMES = [
-  ["Tue, Oct 28", "9:00", "Dr. Patel", "Cleaning"],
-  ["Tue, Oct 28", "18:30", "Dr. Okafor", "Aligners consult"],
-  ["Wed, Oct 29", "11:15", "Dr. Lin", "Implant consult"],
-  ["Wed, Oct 29", "19:00", "Dr. Patel", "Whitening"],
-  ["Thu, Oct 30", "8:30", "Dr. Okafor", "Cleaning"],
-  ["Thu, Oct 30", "17:45", "Dr. Patel", "Cleaning"],
-  ["Fri, Oct 31", "10:00", "Dr. Lin", "Implant consult"],
-  ["Tue, Nov 4", "19:30", "Dr. Okafor", "Braces check"],
-  ["Wed, Nov 5", "9:45", "Dr. Patel", "Whitening"],
-  ["Thu, Nov 6", "18:15", "Dr. Lin", "Cleaning"],
+  ["Tuesday, Oct 28", "9:00", "Dr. Patel", "Cleaning"],
+  ["Tuesday, Oct 28", "18:30", "Dr. Okafor", "Aligners consult"],
+  ["Wednesday, Oct 29", "11:15", "Dr. Lin", "Implant consult"],
+  ["Wednesday, Oct 29", "19:00", "Dr. Patel", "Whitening"],
+  ["Thursday, Oct 30", "8:30", "Dr. Okafor", "Cleaning"],
+  ["Thursday, Oct 30", "17:45", "Dr. Patel", "Cleaning"],
+  ["Friday, Oct 31", "10:00", "Dr. Lin", "Implant consult"],
+  ["Tuesday, Nov 4", "19:30", "Dr. Okafor", "Braces check"],
+  ["Wednesday, Nov 5", "9:45", "Dr. Patel", "Whitening"],
+  ["Thursday, Nov 6", "18:15", "Dr. Lin", "Cleaning"],
 ].map(([day, time, dentist, treatment]) => ({ day, time, dentist, treatment }));
 
 /** The times that match the most words asked (a day, a dentist, a treatment); every time for none. A search takes a moment. */
 async function times(res, q) {
   const words = q.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2).map((word) => word.replace(/s$/, ""));
   const scored = TIMES.map((time) => {
-    const said = `${time.day} ${DAYS[time.day.slice(0, 3)]} ${time.dentist} ${time.treatment}`.toLowerCase();
+    const said = `${time.day} ${time.dentist} ${time.treatment}`.toLowerCase();
     return { time, score: words.filter((word) => said.includes(word)).length };
   });
   const best = Math.max(0, ...scored.map((one) => one.score));
