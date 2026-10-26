@@ -52,6 +52,8 @@ export interface TutorOptions {
    * sentence with slots recorded (`{ say }`). Given, the walks' menu has a field: "Ask me to show you…".
    */
   ask?: ((request: DoorRequest) => Promise<unknown>) | undefined;
+  /** With `ask`, the field in the walks' menu; false leaves it out, for a door that only reads the page aloud. Default true. */
+  typing?: boolean | undefined;
   /**
    * The page read aloud in the agent's voice, with no call: what it marks `data-pinecall-read`, the part read lit and
    * pointed at, its examples (`data-pinecall-press`) pressed on the way. The title of its pill, first in the walks' menu:

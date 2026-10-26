@@ -92,7 +92,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     point: (element) => queue(() => run("point", element)),
     onWalk: options.onWalk,
     still,
-    ask: options.ask && { placeholder: options.words?.ask ?? "Ask me to show you…", onAsk: (text) => asked && void act(text, asked) },
+    ask: options.ask && options.typing !== false ? { placeholder: options.words?.ask ?? "Ask me to show you…", onAsk: (text) => asked && void act(text, asked) } : undefined,
     act: (step, values, message) => acting.act(step, values, message),
     voice: (walk, at, values) => acting.voice(view.location.pathname, walk, at, values),
     reading: options.reading === undefined || options.ask === undefined ? undefined : readingWith(options.reading, acting, document, {
