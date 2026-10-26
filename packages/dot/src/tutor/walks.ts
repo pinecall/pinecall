@@ -130,6 +130,11 @@ export class Walks {
     return this.#walking.paused;
   }
 
+  /** The walk's next sentence, or the one before: the visitor's buttons. */
+  skip(delta: 1 | -1): void {
+    this.#walking.skip(delta);
+  }
+
   /** Hold the walk playing, or go on with it: the visitor's pause button. */
   pause(): void {
     if (this.#walking.paused) this.#walking.resume();

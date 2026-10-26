@@ -64,6 +64,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     hangUp: { label: options.words?.hangUp ?? "Hang up", onClick: () => void call.leave() },
     stop: { label: options.words?.stop ?? "Stop", onClick: () => walks.stop() },
     pause: { label: options.words?.pause ?? "Pause", onClick: () => walks.pause() },
+    back: { label: options.words?.back ?? "Back", onClick: () => walks.skip(-1) },
+    next: { label: options.words?.next ?? "Next", onClick: () => walks.skip(1) },
     captions:
       captions === "none"
         ? null

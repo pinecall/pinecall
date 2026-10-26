@@ -109,6 +109,7 @@ export class Dot {
         color: widget.getAttribute("color") ?? undefined,
         words: {
           hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop, pause: widget.words.pause,
+          back: widget.words.back, next: widget.words.next,
           close: widget.words.close, more: widget.words.more, ask: widget.words.ask, askAgent: widget.words.askAgent, looking: widget.words.looking,
           notHere: widget.words.notHere, forAgent: widget.words.forAgent,
         },

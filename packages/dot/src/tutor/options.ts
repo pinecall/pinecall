@@ -29,6 +29,9 @@ export interface TutorOptions {
     walks?: string | undefined;
     stop?: string | undefined;
     pause?: string | undefined;
+    /** The buttons that take a walk a sentence back and on: "Back", "Next". */
+    back?: string | undefined;
+    next?: string | undefined;
     close?: string | undefined;
     more?: string | undefined;
     ask?: string | undefined;

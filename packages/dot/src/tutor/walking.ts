@@ -140,6 +140,28 @@ export class Walking {
     else if (this.#current !== null) this.audio.play().catch(() => this.#finish(false));
   }
 
+  /**
+   * The next sentence, or the one before (`delta` 1 or -1): going on, a step that acts is done on the way;
+   * going back, it is passed over, never done twice. Call it from the visitor's click.
+   */
+  skip(delta: 1 | -1): void {
+    const walk = this.#walk;
+    if (walk === null) return;
+    let at = this.#step + delta;
+    const acts = (index: number): boolean => {
+      const step = walk.steps[index];
+      return step !== undefined && isAct(step);
+    };
+    while (delta < 0 && at > 0 && acts(at)) at -= 1;
+    this.#step = Math.max(0, at);
+    this.#paused = false;
+    this.#held = null;
+    this.#current = null;
+    this.#player.drop();
+    this.audio.pause();
+    void this.#go();
+  }
+
   /** Let this element play later, from the visitor's click: a walk that starts after a wait. */
   unlock(): void {
     if (this.#walk !== null) return;

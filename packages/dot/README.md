@@ -336,7 +336,8 @@ marked `data-pinecall-press` in it is an example: when the reading reaches it, t
 (its value, when it has one, said first: `data-pinecall-press="Lo corro."`) and the reading waits for
 what it controls (`aria-controls`, its output) to answer and not be `aria-busy`. Nothing under
 `data-pinecall-quiet` is read (the code of a block, a legend). `tutor.read()` starts it from a button
-of the site's own.
+of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
+next go a sentence at a time.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one
 plays (`{ read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second

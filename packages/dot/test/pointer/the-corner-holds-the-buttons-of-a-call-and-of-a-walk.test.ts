@@ -1,4 +1,4 @@
-// The corner's buttons: captions with hang-up in a call and with stop in a walk, into the corner while the face tours; the walks' button sized off the resting face.
+// The corner's buttons: captions with hang-up in a call, and back, pause, next and stop in a walk, into the corner while the face tours; the walks' button sized off the resting face.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -17,6 +17,8 @@ function aPerson(captions: boolean, stopped: string[] = []): Person {
     hangUp: { label: "Hang up", onClick: () => undefined },
     stop: { label: "Stop", onClick: () => stopped.push("stop") },
     pause: { label: "Pause", onClick: () => stopped.push("pause") },
+    back: { label: "Back", onClick: () => stopped.push("back") },
+    next: { label: "Next", onClick: () => stopped.push("next") },
     captions: captions ? { label: "Captions", onClick: () => undefined } : null,
     explain: { label: "Explain this", onClick: () => undefined },
   });
@@ -25,19 +27,18 @@ function aPerson(captions: boolean, stopped: string[] = []): Person {
 const part = (selector: string): HTMLElement => document.querySelector<HTMLElement>(selector)!;
 
 describe("the buttons beside the face", () => {
-  it("are captions and hang-up in a call, captions, pause and stop in a walk, and none at rest", () => {
+  it("are captions and hang-up in a call, back, pause, next, stop and captions in a walk, and none at rest", () => {
     const stopped: string[] = [];
     const person = aPerson(true, stopped);
-    const shown = (): boolean[] => [".pc-calling", ".pc-cc", ".pc-hang", ".pc-pause", ".pc-stop"].map((selector) => !part(selector).hidden);
+    const shown = (): boolean[] => [".pc-calling", ".pc-cc", ".pc-hang", ".pc-back", ".pc-pause", ".pc-next", ".pc-stop"].map((selector) => !part(selector).hidden);
 
     person.buttons(true, false, true);
-    expect(shown()).toEqual([true, true, true, false, false]);
+    expect(shown()).toEqual([true, true, true, false, false, false, false]);
     person.buttons(false, true, false, true);
-    expect(shown()).toEqual([true, true, false, true, true]);
+    expect(shown()).toEqual([true, true, false, true, true, true, true]);
     expect([part(".pc-cc").getAttribute("aria-pressed"), part(".pc-pause").getAttribute("aria-pressed")]).toEqual(["false", "true"]);
-    part(".pc-pause").click();
-    part(".pc-stop").click();
-    expect(stopped).toEqual(["pause", "stop"]);
+    for (const button of [".pc-back", ".pc-pause", ".pc-next", ".pc-stop"]) part(button).click();
+    expect(stopped).toEqual(["back", "pause", "next", "stop"]);
     person.buttons(false, false, true);
     expect(shown()[0]).toBe(false);
     person.close();

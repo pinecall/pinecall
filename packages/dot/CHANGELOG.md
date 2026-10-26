@@ -20,6 +20,8 @@ maintainer's call.
   written, in the agent's voice with no call: the part read lit and pointed at, the rest dimmed, an example marked
   `data-pinecall-press` pressed and its output (`aria-controls`) waited on. Each part is recorded by the site's door
   (`{ read }`), which a site allows with `voicing.read`. `tutor.read()` starts it.
+- **A walk goes back and on a sentence**: the corner has back and next beside pause and stop, all in one small pill
+  (26 px buttons instead of 34). Going on does a step that acts; going back passes it over.
 - **The page scrolls in its own box**: an app whose content scrolls in a pane, not the window, is scrolled there.
 - **A table reads as rows**: the snapshot names each row by its cells (`row "Tue, Oct 28 · 9:00 · Dr. Patel"`),
   with a ref the pointer can light.

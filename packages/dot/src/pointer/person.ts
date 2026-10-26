@@ -10,6 +10,7 @@
 // --pc-hang.
 
 import type { Kind } from "./hover.js";
+import { ARROW, BACK, CAPTIONS, NEXT, PAUSE, STOP } from "./icons.js";
 import type { Point } from "./flight.js";
 
 /** The resting face's size, in px, and how far its edge stands from the corner of the window. */
@@ -52,13 +53,15 @@ const STYLE = `
   background: var(--pc-heard, #e7f3ee); color: var(--pc-heard-ink, #17201c); border-radius: 16px 16px 4px 16px;
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 28px rgb(0 0 0 / .12); transition: opacity .2s; }
 .pc-heard[hidden] { display: block !important; opacity: 0; }
-.pc-calling { position: fixed; right: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) + 8px); bottom: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) / 2 - 17px); display: flex; gap: 8px; pointer-events: auto; transition: right .35s cubic-bezier(.2,.8,.2,1), left .35s cubic-bezier(.2,.8,.2,1); }
+.pc-calling { position: fixed; right: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) + 8px); bottom: calc(${EDGE}px + var(--pc-dot-size, ${SIZE}px) / 2 - 16px); display: flex; gap: 2px; padding: 3px;
+  border-radius: 999px; background: var(--pc-bubble, #fff); box-shadow: 0 4px 14px rgb(0 0 0 / .18); pointer-events: auto; transition: right .35s cubic-bezier(.2,.8,.2,1), left .35s cubic-bezier(.2,.8,.2,1); }
 .pc-layer.pc-away .pc-calling { right: ${EDGE}px; }
 .pc-calling[hidden] { display: none; }
-.pc-calling button { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 10px; border-radius: 999px; cursor: pointer;
-  font: 600 12px/34px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
+.pc-calling button { all: unset; box-sizing: border-box; height: 26px; min-width: 26px; padding: 0 8px; border-radius: 999px; cursor: pointer;
+  font: 600 11px/26px system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; color: var(--pc-bubble-ink, #17201c); }
+.pc-calling button:hover { background: color-mix(in srgb, var(--pc-bubble-ink, #17201c) 9%, transparent); }
 .pc-calling button:focus-visible { outline: 2px solid var(--pc-face-ring, #44a785); outline-offset: 2px; }
-.pc-calling .pc-cc, .pc-calling .pc-pause, .pc-calling .pc-stop { display: grid; place-items: center; padding: 0; background: var(--pc-bubble, #fff); color: var(--pc-bubble-ink, #17201c); }
+.pc-calling .pc-cc, .pc-calling .pc-pause, .pc-calling .pc-stop, .pc-calling .pc-back, .pc-calling .pc-next { display: grid; place-items: center; padding: 0; }
 .pc-calling svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .pc-calling .pc-stop svg { fill: currentColor; stroke: none; }
 .pc-pause .pc-go { display: none; fill: currentColor; stroke: none; }
@@ -68,7 +71,7 @@ const STYLE = `
 .pc-cc[aria-pressed="false"] { opacity: .6; }
 .pc-cc[aria-pressed="false"] .pc-off { display: inline; }
 .pc-calling button[hidden] { display: none; }
-.pc-calling .pc-hang { background: var(--pc-hang, #d6453d); color: #fff; font-size: 16px; }
+.pc-calling .pc-hang, .pc-calling .pc-hang:hover { background: var(--pc-hang, #d6453d); color: #fff; font-size: 13px; }
 .pc-play { position: fixed; width: 26px; height: 26px; border-radius: 50%; pointer-events: auto; cursor: pointer; border: 0; padding: 0;
   background: var(--pc-face, #1f6b55); color: #fff; font: 11px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 3px 10px rgb(0 0 0 / .25); }
 .pc-play[hidden] { display: none; }
@@ -83,19 +86,6 @@ const STYLE = `
 @keyframes pc-ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-heard, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
 `;
-
-// Captions: lines of words in a frame, struck through while off. Pause: two bars, a triangle while held. Stop: a square.
-const CAPTIONS = (size: number): string =>
-  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M7 10.5h4M13.5 10.5h3.5M7 14h6.5M16 14h1"/><path class="pc-off" d="M4 4l16 16"/></svg>`;
-const PAUSE = `<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path class="pc-hold" d="M8.5 6v12M15.5 6v12" stroke-width="3"/><path class="pc-go" d="M8 5.5v13l10-6.5Z"/></svg>`;
-const STOP = `<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>`;
-
-// The arrow is the screen recorder's (~/ss/screen-demo/build.mjs), in the face's colour; the hand and the I-beam are drawn to match.
-const ARROW = `<svg class="pc-arrow" viewBox="0 0 26 26" data-kind="arrow" aria-hidden="true">
-<path class="pc-kind-arrow" d="M3 2 L3 21 L8 16.5 L11.4 24 L14.6 22.6 L11.3 15.3 L18 15.3 Z" fill="var(--pc-face, #1f6b55)" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
-<path class="pc-kind-hand" d="M8 3.5c0-1.1 1.8-1.1 1.8 0V11h.6V9.2c0-1.1 1.8-1.1 1.8 0V11h.6V9.8c0-1.1 1.8-1.1 1.8 0V11.4h.6v-.8c0-1.1 1.8-1.1 1.8 0V16c0 3.6-2.2 6.5-5.6 6.5-2.5 0-3.8-1.2-5-3.2l-2.6-4.4c-.6-1 .7-2 1.6-1.2L8 15.4Z" fill="var(--pc-face, #1f6b55)" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
-<path class="pc-kind-ibeam" d="M9 3h5M9 23h5M11.5 3v20" fill="none" stroke="var(--pc-face, #1f6b55)" stroke-width="2.4" stroke-linecap="round"/>
-</svg>`;
 
 /** Which side of the tip the face and its words sit on: to its left or right, above or below it. */
 export interface Side {
@@ -149,6 +139,9 @@ export interface PersonOptions {
   stop: { label: string; onClick: () => void };
   /** The button that holds a walk and goes on with it: its name, and its click. */
   pause: { label: string; onClick: () => void };
+  /** The buttons that take a walk a sentence back, and on to the next. */
+  back: { label: string; onClick: () => void };
+  next: { label: string; onClick: () => void };
   /** The captions button, when the site lets the visitor choose: its name, and its click. */
   captions: { label: string; onClick: () => void } | null;
   /** The ▶ beside an element the site wrote a line for: its name, and its click with that element. */
@@ -169,6 +162,8 @@ export class Person {
   readonly #cc: HTMLElement;
   readonly #stop: HTMLElement;
   readonly #pause: HTMLElement;
+  readonly #back: HTMLElement;
+  readonly #next: HTMLElement;
   readonly #hang: HTMLElement;
   readonly #play: HTMLElement;
   #offered: Element | null = null;
@@ -188,7 +183,7 @@ export class Person {
     this.#layer.className = "pc-layer";
     this.#layer.dataset["pinecallSkip"] = "";
     if (options.color !== undefined) this.#layer.style.setProperty("--pc-face", options.color);
-    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-cc" aria-pressed="true">${CAPTIONS(17)}</button><button type="button" class="pc-pause" aria-pressed="false" hidden>${PAUSE}</button><button type="button" class="pc-stop" hidden>${STOP}</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
+    this.#layer.innerHTML = `<div class="pc-spot"></div><div class="pc-ring"></div><div class="pc-person">${ARROW}<svg class="pc-progress" viewBox="0 0 100 100" hidden aria-hidden="true"><circle cx="50" cy="50" r="47" pathLength="100" stroke-dasharray="0 100"></circle></svg><div class="pc-face" role="button" tabindex="0"></div><div class="pc-bubble" role="status" hidden></div></div><div class="pc-heard" role="status" hidden></div><div class="pc-calling" hidden><button type="button" class="pc-back" hidden>${BACK}</button><button type="button" class="pc-pause" aria-pressed="false" hidden>${PAUSE}</button><button type="button" class="pc-next" hidden>${NEXT}</button><button type="button" class="pc-stop" hidden>${STOP}</button><button type="button" class="pc-cc" aria-pressed="true">${CAPTIONS(15)}</button><button type="button" class="pc-hang">✕</button></div><button type="button" class="pc-play" hidden>▶</button>`;
     this.#spot = this.#part(".pc-spot");
     this.#ring = this.#part(".pc-ring");
     this.#person = this.#part(".pc-person");
@@ -198,14 +193,10 @@ export class Person {
     this.#heard = this.#part(".pc-heard");
     this.#calling = this.#part(".pc-calling");
     this.#cc = this.#part(".pc-cc");
-    this.#stop = this.#part(".pc-stop");
-    this.#stop.setAttribute("aria-label", options.stop.label);
-    this.#stop.title = options.stop.label;
-    this.#stop.addEventListener("click", options.stop.onClick);
-    this.#pause = this.#part(".pc-pause");
-    this.#pause.setAttribute("aria-label", options.pause.label);
-    this.#pause.title = options.pause.label;
-    this.#pause.addEventListener("click", options.pause.onClick);
+    this.#stop = this.#button(".pc-stop", options.stop);
+    this.#pause = this.#button(".pc-pause", options.pause);
+    this.#back = this.#button(".pc-back", options.back);
+    this.#next = this.#button(".pc-next", options.next);
     this.#play = this.#part(".pc-play");
     this.#play.setAttribute("aria-label", options.explain.label);
     this.#play.title = options.explain.label;
@@ -302,8 +293,8 @@ export class Person {
   }
 
   /**
-   * The corner's buttons: captions and hang-up while a call is on, captions, pause and stop while a
-   * walk plays; captions pressed while they show, pause while the walk is held. Called every frame, so
+   * The corner's buttons: captions and hang-up while a call is on, back, pause, next, stop and captions
+   * while a walk plays; captions pressed while they show, pause while the walk is held. Called every frame, so
    * it writes only what changed.
    */
   buttons(call: boolean, walk: boolean, captioned: boolean, paused = false): void {
@@ -312,8 +303,7 @@ export class Person {
     };
     show(this.#calling, call || walk);
     show(this.#hang, call);
-    show(this.#stop, walk && !call);
-    show(this.#pause, walk && !call);
+    for (const one of [this.#back, this.#pause, this.#next, this.#stop]) show(one, walk && !call);
     const press = (element: HTMLElement, on: boolean): void => {
       if (element.getAttribute("aria-pressed") !== String(on)) element.setAttribute("aria-pressed", String(on));
     };
@@ -382,6 +372,15 @@ export class Person {
   close(): void {
     this.#layer.remove();
     this.#style.remove();
+  }
+
+  /** A button of the corner, named and wired. */
+  #button(selector: string, action: { label: string; onClick: () => void }): HTMLElement {
+    const button = this.#part(selector);
+    button.setAttribute("aria-label", action.label);
+    button.title = action.label;
+    button.addEventListener("click", action.onClick);
+    return button;
   }
 
   #part<T extends Element = HTMLElement>(selector: string): T {

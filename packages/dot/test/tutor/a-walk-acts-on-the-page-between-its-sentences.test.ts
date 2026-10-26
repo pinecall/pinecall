@@ -143,3 +143,32 @@ describe("the acts on the page", () => {
     expect(await elsewhere).toBe(false);
   });
 });
+
+describe("a walk skipped", () => {
+  it("goes on to the next sentence, doing an act on the way, and back to the one before, passing an act over", async () => {
+    const audio = anAudio();
+    const acted: string[] = [];
+    const walk: RecordedWalk = {
+      name: "w",
+      title: "W",
+      steps: [said("One.", "https://gw/v1/lines/1.mp3"), { press: "Search" }, said("Two.", "https://gw/v1/lines/2.mp3"), said("Three.", "https://gw/v1/lines/3.mp3")],
+    };
+    const walking = new Walking(audio, () => undefined, () => undefined, {
+      act: async (step) => {
+        acted.push(JSON.stringify(step));
+        return {};
+      },
+      voice: async () => null,
+    });
+    walking.start(walk);
+
+    walking.skip(1);
+    await vi.waitFor(() => expect(audio.src).toBe("https://gw/v1/lines/2.mp3"));
+    expect(acted).toEqual(['{"press":"Search"}']);
+    walking.skip(-1);
+    await vi.waitFor(() => expect(audio.src).toBe("https://gw/v1/lines/1.mp3"));
+    walking.skip(1);
+    await vi.waitFor(() => expect(audio.src).toBe("https://gw/v1/lines/2.mp3"));
+    expect(acted).toHaveLength(2);
+  });
+});
