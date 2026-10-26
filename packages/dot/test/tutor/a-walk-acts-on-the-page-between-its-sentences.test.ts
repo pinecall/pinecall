@@ -43,9 +43,11 @@ describe("a walk with acts", () => {
         done.push(`act ${JSON.stringify(step)} ${JSON.stringify(values)}`);
         return "read" in step ? { hit: "Tue · 9:00", "hit.Day": "Tue" } : {};
       },
+      // As the door records it: the sentence filled, the step's own beats.
       voice: async (walk, at, values) => {
         done.push(`voice ${at} ${values["hit.Day"] ?? "-"}`);
-        return said(`The soonest is ${values["hit.Day"] ?? ""}.`, "https://gw/v1/lines/live.mp3");
+        const step = walk.steps[at];
+        return { ...said(`The soonest is ${values["hit.Day"] ?? ""}.`, "https://gw/v1/lines/live.mp3"), beats: step !== undefined && "beats" in step ? step.beats : [] };
       },
     };
     const ended: string[] = [];

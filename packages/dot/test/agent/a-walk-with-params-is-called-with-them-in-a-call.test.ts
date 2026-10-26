@@ -42,7 +42,7 @@ describe("a walk with params in a call", () => {
     const pip = new Pip();
     pip.page = PAGE;
     expect(pip.seeing()).toContain("- find (params: treatment: what they want done, in the visitor's own words): when the visitor wants a time");
-    const runMacro = toolsOf(Pip).find((one) => one.name === "runMacro");
+    const runMacro = toolsOf(pip).find((one) => one.name === "runMacro");
     expect(JSON.stringify(runMacro)).toContain("params");
   });
 
