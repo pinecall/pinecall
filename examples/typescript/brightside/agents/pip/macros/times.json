@@ -3,7 +3,7 @@
   "title": "Find a time",
   "when": "the visitor wants an open time: for a treatment, with a dentist, or on a day",
   "params": {
-    "what": { "about": "the treatment, the dentist or the day they want a time for" }
+    "what": { "about": "what they want a time for, as they said it: the treatment, the dentist and the day together" }
   },
   "steps": [
     {

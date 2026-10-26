@@ -18,10 +18,12 @@ const SPAN_WORDS = 5;
 /** The roles a visitor asks to be shown first, when a page has more things than a Choice takes. */
 const FIRST = ["region", "heading", "article", "group", "tab", "button", "link", "img", "form", "textbox", "combobox", "checkbox", "radio"];
 
+// A question is often a walk's to answer ("do you have a time on Thursday?" is a walk that searches the
+// times): what a walk does or finds wins over a person's words.
 const INTENTS = {
-  walk: "they want to be shown around, told about a topic one of this page's walks covers, or something done that a walk does",
+  walk: "one of this page's walks does or finds what they ask, even asked as a question: a tour, a topic it covers, a search it runs, a form it fills",
   show: "they want to see where one thing is on this page",
-  talk: "they ask a question a person answers in words: advice, their own case, a price for them, help",
+  talk: "no walk of the page does it, and only a person can answer: advice on their own case, a problem, a complaint",
   none: "it is not about this site, or nothing on this page answers it",
 };
 
@@ -76,7 +78,11 @@ export function questionsOf(request: AskRequest, things: Named[], model = MODEL,
     ...(walks.length > 0 ? ["", "The page's guided walks:", ...walks.map((walk) => `- ${walk.title}${walk.when ? `: ${walk.when}` : ""}`)] : []),
   ].join("\n");
   const questions: Record<string, unknown> = {
-    intent: { type: "choice", instructions: "What does the visitor want the guide to do?", criteria: intents },
+    intent: {
+      type: "choice",
+      instructions: walks.length > 0 ? "What does the visitor want the guide to do? Read the page's walks first: one that does or finds it is the answer." : "What does the visitor want the guide to do?",
+      criteria: intents,
+    },
     target: {
       type: "choice",
       instructions: "Which one thing on the page is what they want to see, or best answers what they typed?",
