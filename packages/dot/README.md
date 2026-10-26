@@ -108,10 +108,12 @@ beside the face. It moves the way a hand moves a mouse:
 - **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" is a
   ring at the tip.
 
-**It never clicks, sends a form or opens another page for the visitor.** It shows where, and they do
-it. A form's fields it fills with what the visitor told it, typed letter by letter with the `input`
-and `change` events the site's code listens for, a list by the option that says it; the visitor
-presses its button. It never touches a password, a card number, a file or a hidden field.
+**It never sends a form or opens another page for the visitor.** It shows where, and they do it. A
+form's fields it fills with what the visitor told it, typed letter by letter with the `input` and
+`change` events the site's code listens for, a list by the option that says it; the visitor presses
+its button. It never touches a password, a card number, a file or a hidden field. The one button it
+presses is one a walk the site wrote names (`press`): outside any form, or in a search form
+(`<search>`, `role="search"`); never a link, never a form that books, buys or signs up.
 
 **The conversation in writing, and the call's buttons.** The agent's words show beside the face,
 lit as its voice says them; the visitor's, what the agent heard, show in the corner as they speak
@@ -235,6 +237,10 @@ sentence the agent says as written, and each beat is a move run as its word is s
   never says.
 - **A model names a walk the way it heard it**: `runMacro("site tour")` runs `tour`, and an agent with one
   walk runs it whatever it is called (`walkNamed`).
+- **A macro can be a function** ([docs/macros.md](docs/macros.md#a-macro-as-a-function)): `params` it is
+  called with fill the `{slots}` of its sentences, and steps that act fill a field, press a search, wait
+  for its answer and read the table it drew (`{hit.Time}`). In a call the model passes the params; typed
+  to the dot, they are picked out of what the visitor wrote. A sentence with slots is recorded live.
 
 How a macro runs. `runMacro("tour")` sends each step on `pinecall.ui`, then says it. The page binds
 the step to the reply that follows and counts its words as the voice says them, the same word
@@ -289,25 +295,34 @@ With the widget, set `widget.views = { … }` on the element. Colours: `--pc-car
 
 ### Typing to the dot: one thing done, never a conversation
 
-`tutor(call, { ask })` puts a field in the walks' menu ("Ask me to show you…"). What the visitor types
-goes to `ask(request)`, the site's own server, with the page's path, its named things by ref and the
-walks of the page; the answer is one thing to do, and the dot does it with no call and no voice: it
-plays a walk, or lights and points at a thing with its name beside the face. A question a person
-answers, or something not on the page, is never answered in the dot's words: the field says so, with a
-button that hands it to `onTalk(message)` (the site starts a call with it written in).
+`tutor(call, { ask })` puts a field in the walks' menu ("Ask me to show you…"). `ask(request)` is the
+site's door, on its own server. What the visitor types goes there with the page's path, its named
+things by ref and the walks of the page (`{ decide }`); the answer is one thing to do, and the dot does
+it with no call: it plays a walk, called with the params picked out of what was typed, or lights and
+points at a thing with its name beside the face. A question a person answers, or something not on the
+page, is never answered in the dot's words: the field says so, with a button that hands it to
+`onTalk(message)` (the site starts a call with it written in). The same door picks the row of a table a
+walk read (`{ row }`) and records a walk's sentence once its slots are filled (`{ say }`).
 
 ```ts
 // the page
 tutor(call, { ask: (request) => fetch("/api/ask", { method: "POST", body: JSON.stringify(request) }).then((r) => r.json()) });
 
 // the site's server
-import { decide } from "@pinecall/dot/server";
-const decision = await decide(request, { key: process.env.OPENROUTER_API_KEY });
+import { answer } from "@pinecall/dot/server";
+const answered = await answer(body, {
+  key: process.env.OPENROUTER_API_KEY,
+  voicing: { key: process.env.PINECALL_KEY, agent: "pip" }, // records sentences with slots in the agent's voice
+});
 ```
 
-`decide()` asks Jev, TypeSafe's System One model, through OpenRouter's Decisions API: one request, three
-questions answered at once (what kind of thing they want, which walk, which thing of the page), each a
-choice among the options it was given, with its probabilities. It cannot write a sentence or name a thing
+`answer()` asks Jev, TypeSafe's System One model, through OpenRouter's Decisions API: one request,
+questions answered at once (what kind of thing they want, which walk, which thing of the page, and each
+param of each walk), each a choice among the options it was given, with its probabilities. A param in
+the visitor's words is a choice among the parts of what they typed, one to five words in a row: what
+fills a field is what they wrote, never a word of the model's. A sentence with slots is read from the
+walks the agent published, never from the page, and recorded once per set of values; what a visitor
+brings to it is the values, a line of 80 characters each. It cannot write a sentence or name a thing
 that is not on the page, and under its threshold (0.5) it decides nothing rather than guess. The page's
 words and what the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy policy.
 

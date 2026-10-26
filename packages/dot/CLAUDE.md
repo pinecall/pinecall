@@ -40,7 +40,8 @@ scripts/check         # build → lint → test, in that order — what CI runs
 ## What a review comes back to
 
 A change lands with the README section that describes it, and a line in `CHANGELOG.md`, in the same
-commit. The pointer never clicks, sends a form or leaves the page for the visitor; it types into a
+commit. The pointer never sends a form or leaves the page for the visitor; it presses only a button a
+walk of the site's names, outside any form or in a search form; it types into a
 field only what the visitor said, and never a password, a card, a file or a hidden field. A field's
 value reaches the agent in the snapshot; a password's or a card's never does.
 The page's words reach the model fenced, as data.

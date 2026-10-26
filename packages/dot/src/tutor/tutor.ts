@@ -5,7 +5,8 @@
 // Down, from `pinecall.ui`: a cursor move, run at once, or a macro's step, whose moves run on their
 // words. Moves run one after another, so a scroll ends before the point that follows it. In words,
 // one side at a time: the visitor's as they say them, else the agent's as its voice says them.
-// With no call, the walks the agent published play from a button beside the face (`walks`).
+// With no call, the walks the agent published play from a button beside the face (`walks`); a walk's
+// acts (fill, press, wait, read) are done here, on the same queue as the moves (`acting.ts`).
 
 import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
@@ -17,8 +18,10 @@ import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
+import { Acting, WAIT_MS } from "./acting.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions } from "./captions.js";
 import { act, askWords, type Asked } from "./ask.js";
+import { listen } from "./listening.js";
 import { Player } from "./macro.js";
 import type { TutorOptions } from "./options.js";
 import { Screen } from "./views.js";
@@ -72,6 +75,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   });
   const drawn = face(person.face, call, { shape: options.shape });
   const inCall = (): boolean => call.state.phase === "opening" || call.state.phase === "live";
+  const acting = new Acting({
+    document, page, door: options.ask, queued: (work) => queued(work), point: (element) => run("point", element),
+    ring: () => person.ring(), type: (element, text) => typeInto(element, text),
+  });
   const walks = new Walks(document, person, drawn, {
     dock: options.dock ?? "right",
     label: options.words?.walks ?? "Walks",
@@ -83,12 +90,15 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     onWalk: options.onWalk,
     still,
     ask: options.ask && { placeholder: options.words?.ask ?? "Ask me to show you…", onAsk: (text) => asked && void act(text, asked) },
+    act: (step, values, message) => acting.act(step, values, message),
+    voice: (walk, at, values) => acting.voice(view.location.pathname, walk, at, values),
   });
   // What the visitor typed to the dot: a walk played, or a thing lit and pointed at with its name beside the face for a moment.
   let note: { text: string; until: number } | null = null;
   let showing = 0;
   const asked: Asked | null = options.ask === undefined ? null : {
-    ask: options.ask, page, path: () => view.location.pathname, walks: () => walks.listed(), play: (name) => walks.playNamed(name),
+    ask: options.ask, page, path: () => view.location.pathname, walks: () => walks.listed(), unlock: () => walks.unlock(),
+    play: (name, values, message) => walks.playNamed(name, values, message),
     show: (element, role, name) => {
       const mine = (showing += 1);
       if (["region", "article", "group", "form"].includes(role)) queue(() => run("highlight", element));
@@ -109,9 +119,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   let moves: Promise<void> = Promise.resolve();
   let sent = "";
   let following: string | null = null;
-  /** The element with a line under the visitor's mouse, its ▶ shown, while a call is on. */
-  let offered: Element | null = null;
-  let leaving: ReturnType<typeof setTimeout> | undefined;
   let speech: { id: string; at: number } | null = null;
   let last = { text: "", at: 0 };
   let frame = 0;
@@ -156,7 +163,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const run = async (action: Action, element: Element | null): Promise<void> => {
     switch (action) {
       case "type":
-        // Typing takes the visitor's words: typeInto, from a cursor move; a macro's beat never types.
+      case "press":
+      case "wait":
+        // Typing takes the visitor's words, pressing and waiting a step of their own (moveOnto, a walk's acts): a beat never does them.
         return;
       case "point": {
         if (element === null) return;
@@ -202,11 +211,11 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     await run("point", element);
     return fill(element, text, still);
   };
-  const needsElement = (action: Action): boolean => action === "point" || action === "scroll_to" || action === "highlight" || action === "type";
-  /** The ref a target names, a ref or a name, looked at fresh; one not on the page is said, and a fresh look follows. */
-  const resolve = (target: string): string | null => {
+  const needsElement = (action: Action): boolean => action !== "unhighlight" && action !== "here" && action !== "home";
+  /** The ref a target names, a ref or a name (of one of `roles`), looked at fresh; one not on the page is said, and a fresh look follows. */
+  const resolve = (target: string, roles?: readonly string[]): string | null => {
     look("step");
-    const ref = A_REF.test(target) ? target : page.named(target);
+    const ref = A_REF.test(target) ? target : page.named(target, roles);
     if (ref === null || page.element(ref) === null) {
       send(MISSING, { target });
       sent = "";
@@ -216,12 +225,14 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     return ref;
   };
   const elementOf = (ref: string | null): Element | null => (ref === null ? null : page.element(ref));
-  /** A move onto an element, answered once it ends: the page as it is now, the ref it moved to, and why a field was not filled. */
-  const moveOnto = async (action: Action, target: string, text: string): Promise<void> => {
-    const ref = resolve(target);
+  /** A move onto an element, answered once it ends: the page as it is now, the ref it moved to, and why a field was not filled or a button not pressed. */
+  const moveOnto = async (action: Action, target: string, text: string, ms = WAIT_MS): Promise<void> => {
+    const ref = resolve(target, action === "press" ? ["button"] : undefined);
     const element = elementOf(ref);
     let refused: string | null = null;
     if (action === "type") refused = await typeInto(element, text);
+    else if (action === "press") refused = element === null ? null : await acting.press(element);
+    else if (action === "wait") await acting.wait(() => elementOf(ref), ms);
     else await run(action, element);
     const seen = page.seen();
     sent = seen.text;
@@ -230,10 +241,17 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const queue = (move: () => Promise<void>): void => {
     moves = moves.then(move).catch(() => undefined);
   };
+  /** Work after the moves already queued, its result handed back. */
+  const queued = <T>(work: () => Promise<T>): Promise<T> => {
+    const done = moves.then(work);
+    moves = done.then(() => undefined, () => undefined);
+    return done;
+  };
   const beat = (one: Beat): Promise<void> => {
     if (one.find === undefined) return run(one.do, null);
     look("step");
-    const ref = page.find(...one.find);
+    // On the screen first; a row a walk read may be below it.
+    const ref = page.find(...one.find) ?? page.named(one.find[1], [one.find[0]]);
     return run(one.do, ref === null ? null : elementOf(resolve(ref)));
   };
 
@@ -262,7 +280,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
     if (lit !== null && !lit.isConnected) lit = null;
     person.spot(lit);
-    person.offer(live() && offered?.isConnected === true ? offered : null);
+    person.offer(live() ? listening.offered() : null);
     frame = requestAnimationFrame(tick);
   };
 
@@ -308,42 +326,13 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
   });
 
-  const onScroll = (): void => soon("scroll");
-  const onResize = (): void => soon("resize");
-  const onToggle = (): void => soon("toggle");
-  // What the visitor types reaches the agent as the page's next look, as their scroll does.
-  const onInput = (event: Event): void => {
-    if (event.target instanceof Element && event.target.closest("[data-pinecall-skip]") === null) soon("dom");
-  };
-  // Over the ▶ itself (the tutor's own layer) it stays; off an element with a line it goes a moment later.
-  const onOver = (event: PointerEvent): void => {
-    const target = event.target instanceof Element ? event.target : null;
-    clearTimeout(leaving);
-    if (target?.closest("[data-pinecall-skip]") != null) return;
-    const marked = target?.closest("[data-pinecall-say]") ?? null;
-    if (marked !== null) offered = marked;
-    else leaving = setTimeout(() => (offered = null), 400);
-  };
-  const onClick = (event: MouseEvent): void => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target === null || target.closest("[data-pinecall-skip]") !== null) return;
-    const clicked = target.closest("a, button, summary, input, select, textarea, [role=button], [role=link]");
-    if (clicked === null) return;
-    look("click");
-    send(CLICKED, { role: clicked.getAttribute("role") ?? clicked.tagName.toLowerCase(), name: (clicked.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80) });
-  };
-  const changes = new MutationObserver((records) => {
-    const ours = (node: Node): boolean => (node instanceof Element ? node : node.parentElement)?.closest("[data-pinecall-skip]") != null;
-    if (records.every((record) => ours(record.target))) return;
-    soon("dom");
+  const listening = listen(document, view, {
+    soon,
+    clicked: (clicked) => {
+      look("click");
+      send(CLICKED, { role: clicked.getAttribute("role") ?? clicked.tagName.toLowerCase(), name: (clicked.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80) });
+    },
   });
-  view.addEventListener("scroll", onScroll, { passive: true });
-  view.addEventListener("resize", onResize);
-  document.addEventListener("toggle", onToggle, true);
-  document.addEventListener("click", onClick, true);
-  document.addEventListener("input", onInput, true);
-  document.addEventListener("pointerover", onOver, true);
-  changes.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["open", "hidden", "aria-expanded", "aria-selected", "class"] });
   frame = requestAnimationFrame(tick);
 
   return {
@@ -365,9 +354,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         look("asked");
         return true;
       }
-      const { action, target, text } = message;
+      const { action, target, text, ms } = message;
       queue(async () => {
-        if (needsElement(action) && target !== undefined) await moveOnto(action, target, text ?? "");
+        if (needsElement(action) && target !== undefined) await moveOnto(action, target, text ?? "", ms);
         else await run(action, null);
       });
       return true;
@@ -381,16 +370,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       cancelAnimationFrame(frame);
       for (const timer of timers.values()) clearTimeout(timer);
       walks.close();
+      acting.close();
       screen.close();
-      clearTimeout(leaving);
       unsubscribe();
-      changes.disconnect();
-      view.removeEventListener("scroll", onScroll);
-      view.removeEventListener("resize", onResize);
-      document.removeEventListener("toggle", onToggle, true);
-      document.removeEventListener("click", onClick, true);
-      document.removeEventListener("input", onInput, true);
-      document.removeEventListener("pointerover", onOver, true);
+      listening.close();
       drawn.close();
       hover.close();
       person.close();

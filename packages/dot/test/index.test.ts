@@ -15,7 +15,7 @@ describe("the public surfaces", () => {
     expect(Object.keys(agent).sort()).toEqual(["Tutor", "macros", "walkNamed"]);
   });
 
-  it("@pinecall/dot/server is what a site's server decides the visitor's typing with, and the parts it is made of", () => {
-    expect(Object.keys(server).sort()).toEqual(["decide", "decisionFrom", "questionsOf", "thingsOf"]);
+  it("@pinecall/dot/server is the site's door, what it decides, picks and records with, and the parts it is made of", () => {
+    expect(Object.keys(server).sort()).toEqual(["answer", "decide", "decisionFrom", "pickRow", "questionsOf", "recordSay", "spansOf", "thingsOf"]);
   });
 });

@@ -47,6 +47,12 @@ function walksUrl(widget) {
   return `${widget.gateway}/v1/agents/${encodeURIComponent(widget.agent)}/public/walks${env}`;
 }
 
+/** What the page asks the site's door (`ask`), answered as the door answers: nothing when it failed. */
+async function askDoor(url, request) {
+  const answer = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request) });
+  return answer.ok ? answer.json() : null;
+}
+
 /** The dot of one widget: its face, its call, the bubble that says what the agent says, and its hang-up. */
 export class Dot {
   constructor(widget) {
@@ -101,9 +107,20 @@ export class Dot {
         captions: widget.getAttribute("captions") ?? "both",
         shape: widget.getAttribute("shape") ?? undefined,
         color: widget.getAttribute("color") ?? undefined,
-        words: { hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop, pause: widget.words.pause, close: widget.words.close, more: widget.words.more },
+        words: {
+          hangUp: widget.words.hangUp, captions: widget.words.captions, walks: widget.words.walks, stop: widget.words.stop, pause: widget.words.pause,
+          close: widget.words.close, more: widget.words.more, ask: widget.words.ask, askAgent: widget.words.askAgent, looking: widget.words.looking,
+          notHere: widget.words.notHere, forAgent: widget.words.forAgent,
+        },
         // `walks` plays the agent's recorded walks with no call; `walks="sandbox"` reads the sandbox's.
         walks: widget.hasAttribute("walks") ? walksUrl(widget) : undefined,
+        // `ask` is the site's door, on its own server: what the visitor types in the walks' menu is decided there, and a
+        // question for a person starts a call with it written in.
+        ask: widget.hasAttribute("ask") ? (request) => askDoor(widget.getAttribute("ask"), request) : undefined,
+        onTalk: (message) => {
+          this.face.wake();
+          void this.start().then(() => (this.call.state.phase === "live" ? this.call.send(message) : undefined)).catch(() => undefined);
+        },
         // `views` is the page's own: a `widget.views = { toolName: (host, result, tools) => … }` it sets, read each time a tool finishes.
         get views() {
           return widget.views;

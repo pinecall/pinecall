@@ -22,6 +22,9 @@ export function roleOf(element: Element): string | null {
   if (tag === "ul" || tag === "ol") return "list";
   if (tag === "li") return "listitem";
   if (tag === "details") return "group";
+  if (tag === "search") return "search";
+  if (tag === "table") return "table";
+  if (tag === "tr") return "row";
   if (tag === "p") return "text";
   return null;
 }
@@ -40,7 +43,7 @@ export function clean(text: string | null | undefined, max = 80): string {
 }
 
 /** The roles whose name is their own words: nothing under them is said again. */
-export const SAID_WHOLE = new Set(["link", "button", "tab", "heading", "text", "textbox", "combobox", "listitem"]);
+export const SAID_WHOLE = new Set(["link", "button", "tab", "heading", "text", "textbox", "combobox", "listitem", "row"]);
 
 /** What a person calls the element. A field is its label, never its value: a value never leaves the page. */
 export function nameOf(element: Element, role: string): string {
@@ -49,6 +52,9 @@ export function nameOf(element: Element, role: string): string {
   const by = element.getAttribute("aria-labelledby");
   if (by) return clean(by.split(/\s+/).map((id) => element.ownerDocument.getElementById(id)?.textContent ?? "").join(" "));
   if (role === "img") return clean(element.getAttribute("alt") ?? element.textContent);
+  if (role === "table") return clean(element.querySelector("caption")?.textContent);
+  // A row is its cells, as a person reads them across: "Tue, Oct 28 · 9:00 · Dr. Patel".
+  if (role === "row") return clean([...element.children].map((cell) => clean(cell.textContent)).filter((text) => text !== "").join(" · "), 160);
   if (role === "textbox" || role === "combobox") return fieldLabel(element);
   if (SAID_WHOLE.has(role)) return clean(element.textContent, role === "text" ? 120 : 80);
   return "";

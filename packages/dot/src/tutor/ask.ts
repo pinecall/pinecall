@@ -5,7 +5,8 @@
 // did not answer) is never answered in words of the tutor's: the field says so, with the agent one click away.
 
 import type { Page } from "../page/page.js";
-import { decisionOf, namedIn, type AskRequest, type Decision } from "../wire/ask.js";
+import { decisionOf, namedIn, type AskRequest, type Decision, type DoorRequest } from "../wire/ask.js";
+import type { Values } from "../wire/acts.js";
 
 /** What the tutor says around a decision; the site's own words in its language. */
 export interface AskWords {
@@ -31,11 +32,15 @@ export function askWords(words: { looking?: string | undefined; notHere?: string
 
 /** What doing it takes, from the tutor. */
 export interface Asked {
-  ask: (request: AskRequest) => Promise<unknown>;
+  /** The site's door. */
+  ask: (request: DoorRequest) => Promise<unknown>;
   page: Page;
   path: () => string;
   walks: () => AskRequest["walks"];
-  play: (walk: string) => void;
+  /** Play a walk called with the values picked out of what was typed. */
+  play: (walk: string, values: Values, message: string) => void;
+  /** Let a walk play once the door answers: called inside the visitor's submit. */
+  unlock: () => void;
   /** Light and point at a thing, its name beside the face. */
   show: (element: Element, role: string, name: string) => void;
   /** Words beside the face for a moment; null takes them away. */
@@ -49,11 +54,12 @@ export interface Asked {
 
 /** Ask, and do the one thing decided; answers the decision, or null when the server gave none. */
 export async function act(message: string, on: Asked): Promise<Decision | null> {
+  on.unlock();
   on.note(on.words.looking);
   const seen = on.page.seen();
   let decision: Decision | null;
   try {
-    decision = decisionOf(await on.ask({ message, path: on.path(), page: seen.text, walks: on.walks() }));
+    decision = decisionOf(await on.ask({ decide: { message, path: on.path(), page: seen.text, walks: on.walks() } }));
   } catch {
     decision = null;
   }
@@ -61,7 +67,7 @@ export async function act(message: string, on: Asked): Promise<Decision | null> 
   const talk = on.talk;
   const agent = talk === undefined ? undefined : { label: on.words.agent, onClick: () => talk(message) };
   if (decision?.do === "walk") {
-    on.play(decision.walk);
+    on.play(decision.walk, decision.params ?? {}, message);
     return decision;
   }
   if (decision?.do === "show") {

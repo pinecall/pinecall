@@ -70,7 +70,56 @@ A beat:
 | `here` | a ring at the pointer, twice |
 | `home` | the pointer goes back to its corner |
 
-A macro never types: a walk shows, and the agent writes into a field only what the visitor said.
+A beat never types or presses: a walk shows, a step of its own acts, and the agent writes into a field
+only what the visitor said.
+
+## A macro as a function
+
+A macro can take params, and act on the page between its sentences. It is then a function the visitor
+calls by asking: in a call the model passes the params to `runMacro`; typed to the dot, the site's door
+picks them out of what was typed.
+
+```json
+{
+  "name": "times",
+  "title": "Find a time",
+  "when": "the visitor wants an open time: for a treatment, with a dentist, or on a day",
+  "params": { "what": { "about": "the treatment, the dentist or the day they want a time for" } },
+  "steps": [
+    { "say": "Let me look for {what}.", "beats": [] },
+    { "fill": "Treatment or dentist", "with": "{what}" },
+    { "press": "Search times" },
+    { "wait": "Open times", "ms": 6000 },
+    { "read": "Open times", "as": "hit", "row": "best" },
+    { "if": "hit", "say": "The best fit is {hit.Day} at {hit.Time}.", "beats": [{ "word": "best", "do": "highlight", "find": ["row", "{hit}"] }] },
+    { "unless": "hit", "say": "I found no open times for {what}.", "beats": [] }
+  ]
+}
+```
+
+| | |
+|---|---|
+| `params` | `{ "<name>": { "about": "…" } }`: the visitor's own words, one to five of them in a row (a name, a phone, an email, what to search). With `"one_of": { "<option>": "…" }`, one of those options |
+| `{slot}` | in `say`, in what `fill` types and in what a beat's `find` names: a param, or a row read before it (`{hit}` the row, `{hit.Time}` its cell under the header "Time") |
+| `fill` | types `with`, filled, into the field the screen names so. Never a password, a card, a file or a hidden field |
+| `press` | presses the button the screen names so: one outside any form, or in a search form (`<search>`, `role="search"`). Never a link, never a form that books, buys or signs up. Its name is the site's: no slot |
+| `wait` | waits for the thing it names to change, stay still a moment and not be `aria-busy`: a search answered and drawn. `ms` at most (8000 when not said, 20000 the most) |
+| `read` | reads the table the screen names so (a `<table>`, or the section that holds one): each row by its header's words. `row` is `first` (the default) or `best`, the one that answers what the visitor typed |
+| `if`, `unless` | keep the step only when a slot has a value, or has none |
+
+A step with a slot nothing filled is left out, so a walk asked for without a param says the rest.
+
+**In a call** the sentences are said with their slots filled, and the acts sent to the page one at a
+time, each answered once it ended. A `read` ends the walk's own words: what the table shows is handed
+to the model, which answers the visitor in its own words and can light the row it talks about.
+
+**With no call** the page does the acts between the sentences. A sentence with slots cannot be recorded
+before the visitor says what fills them: `pinecall start` publishes it as a live step, and the page asks
+the site's door to record it when it is reached, with its values. The door reads the sentence from the
+walks the agent published, never from the page, and the gateway keeps each recording: the same
+sentence with the same values costs nothing the second time. A walk with params is not in the menu: it
+is asked for. A site's search that says it is busy while it asks (`aria-busy="true"` on its table) is
+waited on to the end.
 
 ## Walks for some pages
 
@@ -143,8 +192,9 @@ The sentence is read aloud by the agent's voice, and a walk is recorded once in 
 
 `macros({ … })` checks every file when the agent's class loads, and refuses one that is not a JSON
 object, has no steps, a step that says nothing, a beat that is not `{ word, do, find?, nth? }` or
-uses `type`, a word its sentence never says, or `code`/`lines` of the wrong shape. The message names
-the macro and the step:
+uses `type`, `press` or `wait`, a word its sentence never says, `code`/`lines` of the wrong shape, a
+param that is not `{ about, one_of? }`, an act that is not one of the four, or a slot that is no param
+and no row read before it. The message names the macro and the step:
 
 ```
 macro plans: step 2 never says "Familia"

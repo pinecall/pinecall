@@ -10,6 +10,14 @@ maintainer's call.
   has a field; what is typed goes to the site's server, which decides with `@pinecall/dot/server`'s `decide()`
   (Jev, through OpenRouter's Decisions API), and the dot plays a walk or lights and points at a thing, with no call.
   A question a person answers is offered to the agent (`onTalk`).
+- **A macro is a function.** `params` it is called with fill the `{slots}` of its sentences; steps act on the page:
+  `fill` a field with the visitor's words, `press` a button (outside any form, or in a search form), `wait` for what
+  it changed, `read` a table's row (`{hit.Time}`); `if` and `unless` keep a step for a value. In a call the model
+  passes the params to `runMacro`, and a table read is handed back to answer from; typed to the dot, the site's door
+  (`@pinecall/dot/server`'s `answer()`) picks them out of what was typed, picks the row, and records a sentence
+  with slots in the agent's voice when it is reached. A walk with params is asked for, not listed in the menu.
+- **A table reads as rows**: the snapshot names each row by its cells (`row "Tue, Oct 28 · 9:00 · Dr. Patel"`),
+  with a ref the pointer can light.
 ## 0.11.24 — walks for each page, the menu that marks your section, the header kept clear (2026-10-25)
 
 - **What the tutor scrolls to sits below the site's own header**, not under it: the top a fixed or sticky bar covers

@@ -7,7 +7,7 @@ import { Sections } from "../pointer/sections.js";
 import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { AskRequest } from "../wire/ask.js";
-import { onPage, type RecordedWalk } from "../wire/index.js";
+import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values } from "../wire/index.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
 export interface WalksOptions {
@@ -30,6 +30,10 @@ export interface WalksOptions {
   still: boolean;
   /** The field for what the visitor wants shown: its placeholder, and what was typed. None, no field. */
   ask?: { placeholder: string; onAsk: (text: string) => void } | undefined;
+  /** A walk's act done on the page, with what the visitor typed: the values it read. */
+  act?: ((step: ActStep, values: Values, message: string) => Promise<Values>) | undefined;
+  /** A walk's sentence with slots, recorded now. */
+  voice?: ((walk: RecordedWalk, at: number, values: Values) => Promise<RecordedStep | null>) | undefined;
 }
 
 export class Walks {
@@ -43,7 +47,11 @@ export class Walks {
   readonly #person: Person;
   readonly #options: WalksOptions;
   #list: RecordedWalk[] = [];
+  /** The walks the menu and the sections offer: those that take no params, which are asked for. */
+  #picked: RecordedWalk[] = [];
   #played: Walked | null = null;
+  /** What the visitor typed for the walk playing; none for one picked. */
+  #message = "";
 
   constructor(document: Document, person: Person, drawn: Face, options: WalksOptions) {
     this.#person = person;
@@ -55,8 +63,11 @@ export class Walks {
       if (step === null) return this.code.hide();
       const lit = this.code.show(step.code, step.lines);
       if (lit !== null) options.point(lit);
+    }, {
+      act: (step, values) => options.act?.(step, values, this.#message) ?? Promise.resolve({}),
+      voice: (walk, at, values) => options.voice?.(walk, at, values) ?? Promise.resolve(null),
     });
-    const named = (name: string): number => this.#list.findIndex((walk) => walk.name === name);
+    const named = (name: string): number => this.#picked.findIndex((walk) => walk.name === name);
     // What was typed folds the menu away; a line about it opens it again (`offer`).
     const ask = options.ask;
     this.#asking = ask === undefined ? undefined : new Asking(document, (part) => person.add(part), {
@@ -72,17 +83,18 @@ export class Walks {
       label: options.label,
       more: options.more,
       face: () => ({ at: person.dock(), radius: person.radius }),
-      onPick: (index) => this.#play(index),
+      onPick: (index) => this.#play(this.#picked[index]),
       current: () => named(this.#sections.current() ?? ""),
     });
-    this.#sections = new Sections(document, { onPlay: (name) => this.#play(named(name)) });
+    this.#sections = new Sections(document, { onPlay: (name) => this.#play(this.#picked[named(name)]) });
     const path = document.defaultView?.location.pathname ?? "";
     void publishedWalks(options.url ?? "", path).then((all) => {
       // Only the walks for the page the visitor is on: one that names other pages stays out of the menu.
       const found = all.filter((walk) => onPage(walk.pages, path));
       this.#list = found;
-      this.#menu.offer(found.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
-      this.#sections.offer(found.map((walk) => walk.name));
+      this.#picked = found.filter((walk) => walk.params === undefined);
+      this.#menu.offer(this.#picked.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
+      this.#sections.offer(this.#picked.map((walk) => walk.name));
       this.#menu.available(!options.inCall());
     });
   }
@@ -111,14 +123,24 @@ export class Walks {
     this.#sections.place(!this.#options.inCall() && !this.playing);
   }
 
-  /** The walks of this page, as the field asks about them. */
+  /** The walks of this page, as the field asks about them, with what each takes. */
   listed(): AskRequest["walks"] {
-    return this.#list.map((walk) => ({ name: walk.name, title: walk.title, ...(walk.when === undefined ? {} : { when: walk.when }) }));
+    return this.#list.map((walk) => ({
+      name: walk.name,
+      title: walk.title,
+      ...(walk.when === undefined ? {} : { when: walk.when }),
+      ...(walk.params === undefined ? {} : { params: walk.params }),
+    }));
   }
 
-  /** Play a walk of this page, by its name: from the visitor's typing, inside their submit. */
-  playNamed(name: string): void {
-    this.#play(this.#list.findIndex((walk) => walk.name === name));
+  /** Play a walk of this page, by its name, called with `values`: from what the visitor typed (`message`). */
+  playNamed(name: string, values: Values = {}, message = ""): void {
+    this.#play(this.#list.find((walk) => walk.name === name), values, message);
+  }
+
+  /** Let a walk play after a wait: from the visitor's submit, before the door answers. */
+  unlock(): void {
+    this.#walking.unlock();
   }
 
   /** Open the menu with a line under the field about what was asked, and a button to take it on. */
@@ -153,13 +175,13 @@ export class Walks {
     this.code.close();
   }
 
-  #play(index: number): void {
-    const walk = this.#list[index];
+  #play(walk: RecordedWalk | undefined, values: Values = {}, message = ""): void {
     if (walk === undefined || this.#options.inCall()) return;
+    this.#message = message;
     this.#drawn.wake();
     this.#drawn.listen(this.#walking.audio);
     this.#menu.available(false);
-    this.#walking.start(walk);
+    this.#walking.start(walk, values);
     this.#options.onWalk?.({ walk: walk.name, step: 1, of: walk.steps.length, done: false });
   }
 

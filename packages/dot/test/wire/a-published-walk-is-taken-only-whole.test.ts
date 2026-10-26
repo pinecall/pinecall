@@ -54,7 +54,7 @@ describe("the code a step shows", () => {
 
     expect(macroOf("code", { steps }).steps[0]).toEqual({ say: "This is the class.", beats: [], code: CODE, lines: [1, 1] });
     expect(() => macroOf("code", { steps: [{ say: "Hi.", beats: [], lines: [2, 1] }] })).toThrow("shows code that is not");
-    expect(walksOf({ walks: [{ name: "w", title: "W", steps: [{ ...STEP, code: CODE, lines: [1, 1] }] }] })[0]?.steps[0]?.code).toEqual(CODE);
+    expect(walksOf({ walks: [{ name: "w", title: "W", steps: [{ ...STEP, code: CODE, lines: [1, 1] }] }] })[0]?.steps[0]).toMatchObject({ code: CODE });
     expect(tutoring({ type: "macro.step", macro: "w", step: 0, say: "Hi.", beats: [], code: CODE })).toMatchObject({ code: CODE });
     expect(tutoring({ type: "macro.done", macro: "w" })).toEqual({ type: "macro.done", macro: "w" });
   });

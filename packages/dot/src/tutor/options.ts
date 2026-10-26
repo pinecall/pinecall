@@ -1,7 +1,7 @@
 /** What a page gives `tutor()`: where it rests, its colour and shape, whose words show, the walks it plays, and the views of its own tools. */
 
 import type { Shape } from "../face/shape.js";
-import type { AskRequest } from "../wire/ask.js";
+import type { DoorRequest } from "../wire/ask.js";
 import type { Captions } from "./captions.js";
 import type { Views } from "./views.js";
 import type { Walked } from "./walking.js";
@@ -47,10 +47,11 @@ export interface TutorOptions {
    */
   views?: Views | undefined;
   /**
-   * Where what the visitor types to the dot is decided: the site's own server, which answers a decision
-   * (`@pinecall/dot/server`'s `decide()`). Given, the walks' menu has a field: "Ask me to show you…".
+   * The site's door, on its own server, answered by `@pinecall/dot/server`'s `answer()`: what the visitor
+   * typed decided (`{ decide }`), the row of a table a walk read that answers them (`{ row }`), a walk's
+   * sentence with slots recorded (`{ say }`). Given, the walks' menu has a field: "Ask me to show you…".
    */
-  ask?: ((request: AskRequest) => Promise<unknown>) | undefined;
+  ask?: ((request: DoorRequest) => Promise<unknown>) | undefined;
   /** What they typed, for a question the page cannot show: the site takes it to the agent (a call, it written in). */
   onTalk?: ((message: string) => void) | undefined;
 }

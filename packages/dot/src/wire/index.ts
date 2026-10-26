@@ -4,6 +4,10 @@
 // the agent's `onEvent`); the agent's moves come down on `pinecall.ui`, beside its cards and
 // choices, told apart by `type`.
 
+import { actOf, guardsOf, isAct, paramsOf, slotsOf, type Act, type Guarded, type Param } from "./acts.js";
+
+export * from "./acts.js";
+
 /** The topic the agent sends on, and the page's `onUi` hears. */
 export const UI = "pinecall.ui";
 
@@ -27,10 +31,11 @@ export const WALKED = "page.walked";
 export const WALKS = "walks";
 
 /**
- * What the pointer can do. `type` fills a field with what the visitor said: it never submits a form,
- * clicks, or leaves the page for them, and never touches a password or a card.
+ * What the pointer can do. `type` fills a field with what the visitor said, and never touches a password
+ * or a card. `press` presses a button a walk names, one outside any form or in a search form: never a
+ * form that sends the visitor's details, and never a page left. `wait` waits for the page to change.
  */
-export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home", "type"] as const;
+export const ACTIONS = ["point", "highlight", "unhighlight", "scroll_to", "here", "home", "type", "press", "wait"] as const;
 export type Action = (typeof ACTIONS)[number];
 
 /** What the site wrote for the agent to say about one element, and the move it is said with. */
@@ -48,7 +53,12 @@ export interface Cursor {
   target?: string | undefined;
   /** What `type` writes in the field: its text, or the option of a list to choose. */
   text?: string | undefined;
+  /** How long `wait` waits at most, in ms. */
+  ms?: number | undefined;
 }
+
+/** The moves a macro's beat cannot make: what types, presses or waits is a step of its own. */
+const NOT_A_BEAT: readonly Action[] = ["type", "press", "wait"];
 
 /** A target that is a ref of the snapshot rather than a name. */
 export const A_REF = /^e\d+$/;
@@ -74,11 +84,14 @@ export interface Shown {
   lines?: [from: number, to: number] | undefined;
 }
 
-/** One sentence of a macro and the moves hung on its words. */
-export interface MacroStep extends Shown {
+/** One sentence of a macro and the moves hung on its words; its `{slots}` filled when it is said. */
+export interface MacroStep extends Shown, Guarded {
   say: string;
   beats: Beat[];
 }
+
+/** A step of a macro that acts on the page instead of saying a sentence. */
+export type ActStep = Act & Guarded;
 
 /** A guided walk an agent was given: `macros/<name>.json` in its folder. */
 export interface Macro {
@@ -89,7 +102,9 @@ export interface Macro {
   when?: string | undefined;
   /** The paths of the pages it is for: `["/security"]`. Left out, it is for every page. */
   pages?: string[] | undefined;
-  steps: MacroStep[];
+  /** What it is called with, by name. */
+  params?: Record<string, Param> | undefined;
+  steps: (MacroStep | ActStep)[];
 }
 
 /** A path as a page names it: no trailing slash but the root's. */
@@ -119,13 +134,22 @@ export interface TimedWord {
 }
 
 /** One sentence of a recorded walk, as the page plays it: its audio, when each word is said, its beats. */
-export interface RecordedStep extends Shown {
+export interface RecordedStep extends Shown, Guarded {
   say: string;
   audio: string;
   durationMs: number;
   words: TimedWord[];
   beats: Beat[];
 }
+
+/** A sentence with slots: recorded when it is reached, once its values are known (`live`). */
+export interface LiveStep extends Shown, Guarded {
+  say: string;
+  beats: Beat[];
+  live: true;
+}
+
+export type WalkStep = RecordedStep | LiveStep | ActStep;
 
 /** A walk recorded in the agent's voice, published for the page to play with no call. */
 export interface RecordedWalk {
@@ -136,7 +160,9 @@ export interface RecordedWalk {
   voice?: string | undefined;
   /** The paths of the pages it is for; none, every page. */
   pages?: string[] | undefined;
-  steps: RecordedStep[];
+  /** What it is called with: a walk with params is asked for, not picked from the menu. */
+  params?: Record<string, Param> | undefined;
+  steps: WalkStep[];
 }
 
 /** The agent asking for the page as it is now: sent when its call opens, answered with `page.seen`. */
@@ -190,7 +216,7 @@ function isBeat(value: unknown): value is Beat {
   const nth = beat["nth"];
   // A beat has no words to type: a macro shows, and the agent fills a field only with what the visitor said.
   const move = beat["do"];
-  return typeof beat["word"] === "string" && isAction(move) && move !== "type" && found && (nth === undefined || (typeof nth === "number" && nth >= 1));
+  return typeof beat["word"] === "string" && isAction(move) && !NOT_A_BEAT.includes(move) && found && (nth === undefined || (typeof nth === "number" && nth >= 1));
 }
 
 /** A message on `pinecall.ui` the tutor carries out, or null for one that is not its own (a card, choices). */
@@ -200,9 +226,12 @@ export function tutoring(data: unknown): Cursor | Step | Look | Done | null {
   if (message["type"] === "look") return { type: "look" };
   if (message["type"] === "macro.done" && typeof message["macro"] === "string") return { type: "macro.done", macro: message["macro"] };
   const action = message["action"];
+  const ms = message["ms"];
   if (message["type"] === "cursor" && isAction(action) && optionalText(message["target"]) && optionalText(message["text"])) {
     if (action === "type" && (message["target"] === undefined || message["text"] === undefined)) return null;
-    return { type: "cursor", action, target: message["target"], text: message["text"] };
+    if ((action === "press" || action === "wait") && message["target"] === undefined) return null;
+    if (ms !== undefined && (typeof ms !== "number" || ms <= 0)) return null;
+    return { type: "cursor", action, target: message["target"], text: message["text"], ...(ms === undefined ? {} : { ms }) };
   }
   const beats = message["beats"];
   if (
@@ -240,14 +269,22 @@ const isWord = (value: unknown): value is TimedWord => {
   return typeof word["text"] === "string" && typeof word["startMs"] === "number" && typeof word["endMs"] === "number";
 };
 
-function stepOf(value: unknown): RecordedStep | null {
+function stepOf(value: unknown): WalkStep | null {
   if (typeof value !== "object" || value === null) return null;
   const step: Record<string, unknown> = { ...value };
+  const guards = guardsOf(step);
+  if (guards === null) return null;
+  if (isAct(step)) {
+    const act = actOf(step);
+    return act === null ? null : { ...act, ...guards };
+  }
   const { say, audio, durationMs, words, beats } = step;
-  if (typeof say !== "string" || typeof audio !== "string" || !/^https?:\/\//.test(audio) || typeof durationMs !== "number") return null;
-  if (!Array.isArray(words) || !words.every(isWord) || !Array.isArray(beats) || !beats.every(isBeat)) return null;
   const shown = shownOf(step);
-  return shown === null ? null : { say, audio, durationMs, words, beats, ...shown };
+  if (typeof say !== "string" || !Array.isArray(beats) || !beats.every(isBeat) || shown === null) return null;
+  if (step["live"] === true) return { say, beats, live: true, ...shown, ...guards };
+  if (typeof audio !== "string" || !/^https?:\/\//.test(audio) || typeof durationMs !== "number") return null;
+  if (!Array.isArray(words) || !words.every(isWord)) return null;
+  return { say, audio, durationMs, words, beats, ...shown, ...guards };
 }
 
 /** The walks a published document holds, each checked: a walk with any step that is not one is left out. */
@@ -263,8 +300,10 @@ export function walksOf(value: unknown): RecordedWalk[] {
     if (typeof name !== "string" || typeof title !== "string" || !Array.isArray(steps) || steps.length === 0) return [];
     const checked = steps.map(stepOf);
     if (checked.some((step) => step === null)) return [];
+    const params = walk["params"] === undefined ? undefined : paramsOf(walk["params"]);
+    if (params === null) return [];
     const paths = Array.isArray(pages) && pages.every((page) => typeof page === "string") ? (pages as string[]) : undefined;
-    return [{ name, title, when: typeof when === "string" ? when : undefined, pages: paths, steps: checked.filter((step) => step !== null) }];
+    return [{ name, title, when: typeof when === "string" ? when : undefined, pages: paths, ...(params === undefined ? {} : { params }), steps: checked.filter((step) => step !== null) }];
   });
 }
 
@@ -274,19 +313,38 @@ export function macroOf(name: string, value: unknown): Macro {
   const macro: Record<string, unknown> = { ...value };
   const steps = macro["steps"];
   if (!Array.isArray(steps) || steps.length === 0) throw new Error(`macro ${name}: no steps`);
-  const checked = steps.map((step: unknown, at) => {
+  const params = macro["params"] === undefined ? {} : paramsOf(macro["params"]);
+  if (params === null) throw new Error(`macro ${name}: params are {"<name>": {"about": "...", "one_of"?: {"<option>": "..."}}}`);
+  // A slot is a param, or a row an earlier step read: `{name}`, `{hit.Time}`.
+  const known = new Set(Object.keys(params));
+  const slotted = (at: number, text: string): void => {
+    const unknown = slotsOf(text).find((slot) => !known.has(slot.split(".")[0] ?? ""));
+    if (unknown !== undefined) throw new Error(`macro ${name}: step ${at + 1} fills {${unknown}}, which is no param and no row read before it`);
+  };
+  const checked = steps.map((step: unknown, at): MacroStep | ActStep => {
     if (typeof step !== "object" || step === null) throw new Error(`macro ${name}: step ${at + 1} is not an object`);
     const fields: Record<string, unknown> = { ...step };
+    const guards = guardsOf(fields);
+    if (guards === null) throw new Error(`macro ${name}: step ${at + 1} has an if or unless that is not a slot's name`);
+    if (isAct(fields)) {
+      const act = actOf(fields);
+      if (act === null) throw new Error(`macro ${name}: step ${at + 1} is not {fill, with}, {press}, {wait, ms?} or {read, as, row?}`);
+      if ("fill" in act) slotted(at, act.with);
+      if ("read" in act) known.add(act.as);
+      return { ...act, ...guards };
+    }
     const say = fields["say"];
     const beats = fields["beats"] ?? [];
     if (typeof say !== "string" || say.trim() === "") throw new Error(`macro ${name}: step ${at + 1} says nothing`);
     if (!Array.isArray(beats) || !beats.every(isBeat)) throw new Error(`macro ${name}: step ${at + 1} has a beat that is not {word, do, find?, nth?}`);
     for (const beat of beats) {
       if (!wordsOf(say).some((word) => word === normal(beat.word))) throw new Error(`macro ${name}: step ${at + 1} never says "${beat.word}"`);
+      if (beat.find !== undefined) slotted(at, beat.find[1]);
     }
+    slotted(at, say);
     const shown = shownOf(fields);
     if (shown === null) throw new Error(`macro ${name}: step ${at + 1} shows code that is not {code: {title, text} or null, lines: [from, to]}`);
-    return { say, beats, ...shown };
+    return { say, beats, ...shown, ...guards };
   });
   const when = macro["when"];
   const title = macro["title"];
@@ -299,6 +357,7 @@ export function macroOf(name: string, value: unknown): Macro {
     title: typeof title === "string" ? title : undefined,
     when: typeof when === "string" ? when : undefined,
     pages: pages === undefined ? undefined : (pages as string[]),
+    ...(Object.keys(params).length === 0 ? {} : { params }),
     steps: checked,
   };
 }

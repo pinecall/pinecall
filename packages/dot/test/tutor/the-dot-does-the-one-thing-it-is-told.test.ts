@@ -22,7 +22,8 @@ function anAsked(answer: unknown | Error): { on: Asked; done: string[]; sent: un
     page: new Page(document),
     path: () => "/pricing",
     walks: () => [{ name: "plans", title: "Which plan is yours" }],
-    play: (walk) => void done.push(`play ${walk}`),
+    play: (walk, values) => void done.push(`play ${walk}${Object.keys(values).length > 0 ? ` ${JSON.stringify(values)}` : ""}`),
+    unlock: () => void done.push("unlock"),
     show: (element, role, name) => void done.push(`show ${role} ${name} ${element.tagName.toLowerCase()}`),
     note: (text) => void done.push(`note ${text ?? "-"}`),
     offer: (text, action) => {
@@ -41,9 +42,18 @@ describe("what the visitor typed", () => {
 
     await act("show me the plans", on);
 
-    expect(sent[0]).toMatchObject({ message: "show me the plans", path: "/pricing", walks: [{ name: "plans" }] });
-    expect((sent[0] as { page: string }).page).toContain('region "Compare the plans"');
-    expect(done).toEqual(["note Looking…", "note -", "play plans"]);
+    expect(sent[0]).toMatchObject({ decide: { message: "show me the plans", path: "/pricing", walks: [{ name: "plans" }] } });
+    expect((sent[0] as { decide: { page: string } }).decide.page).toContain('region "Compare the plans"');
+    // The audio is let play inside the submit: the walk starts after the door answers.
+    expect(done).toEqual(["unlock", "note Looking…", "note -", "play plans"]);
+  });
+
+  it("plays a walk with the values picked out of what was typed", async () => {
+    const { on, done } = anAsked({ do: "walk", walk: "plans", params: { name: "Jordan Lee" }, confidence: 0.9 });
+
+    await act("book it for Jordan Lee", on);
+
+    expect(done.at(-1)).toBe('play plans {"name":"Jordan Lee"}');
   });
 
   it("shows the thing decided, by the ref the page gave it, with its role and name", async () => {

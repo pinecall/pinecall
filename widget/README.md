@@ -266,8 +266,9 @@ instead (below).
 
 `look="dot" tutor` makes the dot one more person on the page. The agent points at what it talks
 about with a pointer of its own, highlights it, scrolls to it and shows where to click, and it
-never clicks, sends a form or opens another page for the visitor; it fills a form's fields with what
-the visitor tells it, and they press its button. Its prompt reads the page as it is now, sent by the page each
+never sends a form or opens another page for the visitor; it fills a form's fields with what
+the visitor tells it, and they press its button. The one button it presses is one a walk names: a
+search, or a button outside any form. Its prompt reads the page as it is now, sent by the page each
 time it changes. The agent extends `Tutor` from `@pinecall/dot/agent`, and its walks are macros in
 its folder ([@pinecall/dot](../packages/dot/README.md#the-tutor-in-the-agent)).
 
@@ -288,6 +289,13 @@ menu marks the one of the section the visitor is on when it opens; a button of t
 results of the agent's tools on a card above the dot (the free times, a form, code); `tools.send(text)`
 says something to the agent as the visitor. The tag dispatches
 `pinecall:walk` (`detail`: `{ walk, step, of, done }`) as one starts and ends.
+
+With `ask="/pinecall/ask"`, a path of the site's own server, the walks' menu has a field: "Ask me to
+show you…". What the visitor types there is answered by that path with `@pinecall/dot/server`'s
+`answer()` ([Typing to the dot](../packages/dot/README.md#typing-to-the-dot-one-thing-done-never-a-conversation)):
+a walk played with the params it takes picked out of what they wrote ("a cleaning on Thursday" searches
+the times, "book it for Jordan Lee" fills the form), a thing shown, or **Ask the agent**, which starts a
+call with it written in.
 
 ## Telling the agent what the visitor does
 

@@ -1,0 +1,33 @@
+{
+  "name": "book",
+  "title": "Book it for me",
+  "when": "the visitor gives their name, phone or email to book their first visit",
+  "params": {
+    "name": { "about": "the visitor's full name" },
+    "phone": { "about": "the visitor's phone number" },
+    "email": { "about": "the visitor's email address" }
+  },
+  "steps": [
+    {
+      "if": "name",
+      "say": "Thanks, {name}. I will fill this in for you.",
+      "beats": [{ "word": "fill", "do": "scroll_to", "find": ["region", "Book your first visit"] }]
+    },
+    {
+      "unless": "name",
+      "say": "I will fill this in for you.",
+      "beats": [{ "word": "fill", "do": "scroll_to", "find": ["region", "Book your first visit"] }]
+    },
+    { "fill": "Your name", "with": "{name}" },
+    { "fill": "Phone", "with": "{phone}" },
+    { "fill": "Email", "with": "{email}" },
+    {
+      "say": "Now pick the day that suits you, and press Book my visit.",
+      "beats": [
+        { "word": "day", "do": "point", "find": ["combobox", "Day"] },
+        { "word": "Book", "do": "point", "find": ["button", "Book my visit"] },
+        { "word": "visit.", "do": "here" }
+      ]
+    }
+  ]
+}

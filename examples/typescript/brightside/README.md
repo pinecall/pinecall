@@ -13,6 +13,15 @@ first-visit form with you, field by field, and you press **Book my visit**. The 
 you play with no call: `pinecall start` records it in Pip's voice, and the small button beside the dot
 plays it (`walks="sandbox"` on the tag).
 
+Two walks are functions, called with what the visitor asks. `times` takes what they want a time for,
+types it into the clinic's search, presses **Search times**, waits for the table the search draws
+(`/api/times`, a stand-in for the clinic's agenda), and says the row that fits best. `book` takes a
+name, a phone and an email and fills the first-visit form with them; the visitor picks the day and
+presses its button. In a call Pip passes the params itself. With no call, type in the walks' menu
+("Ask me to show you…"): "a cleaning on Thursday", "a time with Dr. Lin", "book it for Jordan Lee,
+(312) 555-0142". The page's door (`/pinecall/ask`, the widget's `ask`) picks the params out of what you
+wrote with Jev, and records the sentences that name them in Pip's voice.
+
 ## Talk to it
 
 ```bash
@@ -22,7 +31,7 @@ node site/serve.mjs               # the site, on http://localhost:5173
 ```
 
 Open the page, click the dot in the corner, and say "show me around", or ask where the prices
-are. `site/serve.mjs` serves the page and the one route a site with the widget needs,
+are. For the menu's field, `OPENROUTER_API_KEY` in `.env` (or the environment) is the door's key to Jev. `site/serve.mjs` serves the page and the one route a site with the widget needs,
 `POST /pinecall/token`, which mints the visitor's ticket with the key in `.env`. The key never
 reaches the page.
 
@@ -36,6 +45,7 @@ from this checkout, so build the two packages first (`scripts/build` in `package
 |---|---|
 | `agents/pip/agent.ts` | the class: its docstring, and `static macros = macros({ tour })` |
 | `agents/pip/macros/tour.json` | the walk: what is said, and on which word the pointer moves |
+| `agents/pip/macros/times.json`, `book.json` | walks with params: the search with its table, and the form |
 | `agents/pip/test/` | the class loads, the walk is checked, the tools are there |
 | `site/index.html` | the clinic's page, with `<pinecall-widget look="dot" tutor>` on it |
-| `site/serve.mjs` | the page and the token route, on this machine |
+| `site/serve.mjs` | the page, the token route, the dot's door and the clinic's search, on this machine |

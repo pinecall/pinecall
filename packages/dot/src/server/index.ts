@@ -1,120 +1,113 @@
-/** `@pinecall/dot/server`: what the visitor typed to the dot, decided on a server by a model that only chooses, never writes. */
+/** `@pinecall/dot/server`: the site's door the dot asks, answered on its server: what the visitor typed decided, a row picked, a sentence recorded. */
 //
-// One request to Jev, TypeSafe's System One model, through OpenRouter's Decisions API: three questions on
-// the same state, answered at once. What kind of thing they want (a walk, a thing shown, a person's answer,
-// nothing), which walk, and which thing of the page. Jev answers each with a choice among the options it
-// was given and their probabilities: it cannot write a sentence or name a thing that is not on the page,
-// so the dot does something on the page or offers the agent, and never talks. Under the threshold it does
-// nothing rather than guess. The key is the server's: this never runs in a browser.
+// What the visitor typed goes to Jev, TypeSafe's System One model, through OpenRouter's Decisions API, as
+// one request of questions answered at once (`questions.ts`): Jev answers each with a choice among the
+// options it was given and their probabilities. It cannot write a sentence or name a thing that is not on
+// the page, so the dot does something on the page or offers the agent, and never talks; a walk's params
+// are parts of what was typed, never a word of the model's. Under the threshold it does nothing rather
+// than guess. A walk that read a table asks which row answers the visitor best, the same way; a sentence
+// with slots is recorded in the agent's voice when it is reached (`saying.ts`). The keys are the server's:
+// this never runs in a browser.
 
-import { namedIn, type AskRequest, type Decision, type Named } from "../wire/ask.js";
+import type { AskRequest, Decision, RowAnswer, RowRequest, SaidAnswer, SayRequest } from "../wire/ask.js";
+import { MODEL, MOST, THRESHOLD, decisionFrom, paramsFrom, questionsOf, spansOf, thingsOf, type Answer } from "./questions.js";
+import { recordSay, type Voicing } from "./saying.js";
 
-export type { AskRequest, Decision } from "../wire/ask.js";
+export type { AskRequest, Decision, DoorRequest, RowRequest, SayRequest } from "../wire/ask.js";
+export type { Voicing } from "./saying.js";
+export { decisionFrom, questionsOf, spansOf, thingsOf, recordSay };
 
 export interface DecideOptions {
   /** An OpenRouter key. */
   key: string;
   /** Default `~typesafe/jev-latest`. */
   model?: string | undefined;
-  /** How sure the walk or the thing must be, 0 to 1, to be done. Default 0.5. */
+  /** How sure the walk, the thing or a param must be, 0 to 1, to be done. Default 0.5. */
   threshold?: number | undefined;
   /** Default OpenRouter's Decisions API. */
   endpoint?: string | undefined;
   fetch?: typeof fetch | undefined;
 }
 
+export interface AnswerOptions extends DecideOptions {
+  /** The agent whose voice records a walk's sentences with slots; none, a `say` is refused. */
+  voicing?: Voicing | undefined;
+}
+
 const ENDPOINT = "https://openrouter.ai/api/alpha/decisions";
-const MODEL = "~typesafe/jev-latest";
-const THRESHOLD = 0.5;
-/** The most options a Choice takes. */
-const MOST = 255;
-/** The roles a visitor asks to be shown first, when a page has more things than a Choice takes. */
-const FIRST = ["region", "heading", "article", "group", "tab", "button", "link", "img", "form", "textbox", "combobox", "checkbox", "radio"];
 
-const INTENTS = {
-  walk: "they want to be shown around, or told about a topic one of this page's walks covers",
-  show: "they want to see where one thing is on this page",
-  talk: "they ask a question a person answers in words: advice, their own case, a price for them, a booking, help",
-  none: "it is not about this site, or nothing on this page answers it",
-};
-
-/** The things of the page the choice is among: every one with a name, the sections and headings first when there are too many. */
-export function thingsOf(page: string): Named[] {
-  const named = namedIn(page);
-  if (named.length <= MOST) return named;
-  const rank = (role: string): number => (FIRST.includes(role) ? FIRST.indexOf(role) : FIRST.length);
-  const kept = new Set([...named].sort((a, b) => rank(a.role) - rank(b.role)).slice(0, MOST));
-  return named.filter((thing) => kept.has(thing));
+/** Ask Jev; its answers, by question. Throws when it cannot be reached or refuses. */
+async function asked(body: Record<string, unknown>, options: DecideOptions): Promise<Record<string, Answer>> {
+  const answer = await (options.fetch ?? fetch)(options.endpoint ?? ENDPOINT, {
+    method: "POST",
+    headers: { authorization: `Bearer ${options.key}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!answer.ok) throw new Error(`the decision model answered ${answer.status}`);
+  return ((await answer.json()) as { answers?: Record<string, Answer> }).answers ?? {};
 }
 
-/** The request Jev is asked: the state, and the questions on it. */
-export function questionsOf(request: AskRequest, things: Named[], model = MODEL): Record<string, unknown> {
-  const walks = request.walks;
-  const intents = walks.length > 0 ? INTENTS : { show: INTENTS.show, talk: INTENTS.talk, none: INTENTS.none };
-  const state = [
-    `A visitor is on the page ${request.path} of a website and typed to its guide: "${request.message}"`,
-    "",
-    "The things on the page (role and name):",
-    ...things.map((thing) => `- ${thing.role} "${thing.name}"`),
-    ...(walks.length > 0 ? ["", "The page's guided walks:", ...walks.map((walk) => `- ${walk.title}${walk.when ? `: ${walk.when}` : ""}`)] : []),
-  ].join("\n");
-  const questions: Record<string, unknown> = {
-    intent: { type: "choice", instructions: "What does the visitor want the guide to do?", criteria: intents },
-    target: {
-      type: "choice",
-      instructions: "Which one thing on the page is what they want to see, or best answers what they typed?",
-      criteria: Object.fromEntries(things.map((thing) => [thing.ref, `${thing.role} "${thing.name}"`])),
+/** Decide what the dot does for what the visitor typed, and the params of a walk decided. Throws when the model cannot be reached or refuses. */
+export async function decide(request: AskRequest, options: DecideOptions): Promise<Decision> {
+  const things = thingsOf(request.page);
+  const spans = spansOf(request.message);
+  const answers = await asked(questionsOf(request, things, options.model ?? MODEL, spans), options);
+  const decision = decisionFrom(answers, options.threshold ?? THRESHOLD);
+  // A thing the model chose is one of the page's: anything else is no decision.
+  if (decision.do === "show" && !things.some((thing) => thing.ref === decision.target)) return { do: "none", confidence: 0 };
+  if (decision.do !== "walk") return decision;
+  const walk = request.walks.find((one) => one.name === decision.walk);
+  if (walk === undefined) return { do: "none", confidence: 0 };
+  const params = paramsFrom(answers, walk, spans, options.threshold ?? THRESHOLD);
+  return Object.keys(params).length === 0 ? decision : { ...decision, params };
+}
+
+/** Which row of a table best answers what the visitor typed; null when none is sure enough. */
+export async function pickRow(request: RowRequest, options: DecideOptions): Promise<RowAnswer> {
+  const rows = request.rows.slice(0, MOST);
+  if (rows.length === 0) return { row: null };
+  const answers = await asked(
+    {
+      model: options.model ?? MODEL,
+      state: [`A visitor typed to a website's guide: "${request.message}"\n\nThe rows of the table the site shows them:\n${rows.map((row) => `- ${row}`).join("\n")}`],
+      questions: { row: { type: "choice", instructions: "Which row best answers what they typed?", criteria: Object.fromEntries(rows.map((row, at) => [`r${at}`, row])) } },
     },
-  };
-  if (walks.length > 0) {
-    questions["walk"] = {
-      type: "choice",
-      instructions: "Which of the page's guided walks is about what they typed?",
-      criteria: Object.fromEntries(walks.map((walk) => [walk.name, `${walk.title}${walk.when ? `: ${walk.when}` : ""}`])),
-    };
-  }
-  return { model, state: [state], questions };
-}
-
-interface Answer {
-  choice?: string;
-  confidence?: number;
-  probabilities?: Record<string, number>;
+    options,
+  );
+  const choice = answers["row"];
+  const at = Number(choice?.choice?.slice(1));
+  return Number.isInteger(at) && at < rows.length && (choice?.confidence ?? 0) >= (options.threshold ?? THRESHOLD) ? { row: at } : { row: null };
 }
 
 /**
- * The one thing to do, from Jev's answers. To act (a walk or a thing shown) wins when the two together are
- * more likely than not, and of the two the surer one; under `threshold` it does nothing rather than guess.
+ * The site's door, whole: what the page sent (`{ decide }`, `{ row }` or `{ say }`), answered. Throws on a
+ * request that is none of them, and on a model or a gateway that did not answer.
  */
-export function decisionFrom(answers: Record<string, Answer | undefined>, threshold = THRESHOLD): Decision {
-  const p = answers["intent"]?.probabilities ?? {};
-  const intent = answers["intent"]?.confidence ?? 0;
-  const walk = answers["walk"];
-  const target = answers["target"];
-  if ((p["walk"] ?? 0) + (p["show"] ?? 0) >= 0.5) {
-    const walking = (p["walk"] ?? 0) * (walk?.confidence ?? 0);
-    const showing = (p["show"] ?? 0) * (target?.confidence ?? 0);
-    if (walking >= showing && walk?.choice !== undefined && (walk.confidence ?? 0) >= threshold) return { do: "walk", walk: walk.choice, confidence: walk.confidence ?? 0 };
-    if (target?.choice !== undefined && (target.confidence ?? 0) >= threshold) return { do: "show", target: target.choice, confidence: target.confidence ?? 0 };
-    return { do: "none", confidence: intent };
+export async function answer(body: unknown, options: AnswerOptions): Promise<Decision | RowAnswer | SaidAnswer> {
+  const request = (typeof body === "object" && body !== null ? body : {}) as Partial<Record<"decide" | "row" | "say", unknown>>;
+  if (isAsk(request.decide)) return decide(request.decide, options);
+  if (isRow(request.row)) return pickRow(request.row, options);
+  if (isSay(request.say)) {
+    if (options.voicing === undefined) throw new Error("this door records no sentence: give answer() a voicing");
+    return recordSay(request.say, options.voicing, options.fetch ?? fetch);
   }
-  return (p["talk"] ?? 0) >= (p["none"] ?? 0) ? { do: "talk", confidence: intent } : { do: "none", confidence: intent };
+  throw new Error("the door takes { decide }, { row } or { say }");
 }
 
-/** Decide what the dot does for what the visitor typed. Throws when the model cannot be reached or refuses. */
-export async function decide(request: AskRequest, options: DecideOptions): Promise<Decision> {
-  const things = thingsOf(request.page);
-  const ask = options.fetch ?? fetch;
-  const answer = await ask(options.endpoint ?? ENDPOINT, {
-    method: "POST",
-    headers: { authorization: `Bearer ${options.key}`, "content-type": "application/json" },
-    body: JSON.stringify(questionsOf(request, things, options.model)),
-  });
-  if (!answer.ok) throw new Error(`the decision model answered ${answer.status}`);
-  const body = (await answer.json()) as { answers?: Record<string, Answer> };
-  const decision = decisionFrom(body.answers ?? {}, options.threshold);
-  // A thing the model chose is one of the page's: anything else is no decision.
-  if (decision.do === "show" && !things.some((thing) => thing.ref === decision.target)) return { do: "none", confidence: 0 };
-  if (decision.do === "walk" && !request.walks.some((walk) => walk.name === decision.walk)) return { do: "none", confidence: 0 };
-  return decision;
+const isString = (value: unknown): value is string => typeof value === "string";
+
+function isAsk(value: unknown): value is AskRequest {
+  const fields = (value ?? {}) as Record<string, unknown>;
+  return typeof value === "object" && isString(fields["message"]) && isString(fields["path"]) && isString(fields["page"]) && Array.isArray(fields["walks"]);
+}
+
+function isRow(value: unknown): value is RowRequest {
+  const fields = (value ?? {}) as Record<string, unknown>;
+  return typeof value === "object" && isString(fields["message"]) && Array.isArray(fields["rows"]) && fields["rows"].every(isString);
+}
+
+function isSay(value: unknown): value is SayRequest {
+  const fields = (value ?? {}) as Record<string, unknown>;
+  const values = fields["values"];
+  return typeof value === "object" && isString(fields["path"]) && isString(fields["walk"]) && Number.isInteger(fields["step"]) && typeof values === "object" && values !== null;
 }

@@ -19,9 +19,9 @@ export interface Seen {
 }
 
 /** The roles that get a ref: what the agent can point at, scroll to, or highlight. */
-const POINTABLE = new Set(["link", "button", "tab", "textbox", "combobox", "checkbox", "radio", "heading", "article", "region", "img", "form", "group"]);
+const POINTABLE = new Set(["link", "button", "tab", "textbox", "combobox", "checkbox", "radio", "heading", "article", "region", "img", "form", "group", "search", "table", "row"]);
 /** Kept as a line even with no name, because they say where things are. */
-const LANDMARKS = new Set(["banner", "navigation", "main", "contentinfo", "form", "list", "group"]);
+const LANDMARKS = new Set(["banner", "navigation", "main", "contentinfo", "form", "list", "group", "search", "table"]);
 /** Always walked, on screen or not: a sticky header, the page's frame. */
 const FRAME = new Set(["banner", "navigation", "main"]);
 const IGNORED = "script, style, template, audio, video, svg, noscript";
@@ -96,16 +96,16 @@ export class Page {
    * The ref of what a person would mean by `name`, anywhere on the page, on the screen or not (a section
    * out of view is one line of the snapshot, and the things in it can still be named): the name said
    * exactly, else one that starts with it, else one that holds it, a section before a heading before
-   * a card, a button or a link when several share it.
+   * a card, a button or a link when several share it. With `roles`, only a thing of one of them.
    */
-  named(name: string): string | null {
+  named(name: string, roles?: readonly string[]): string | null {
     const wanted = name.trim().toLowerCase();
     if (wanted === "") return null;
     const candidates: { ref: string; role: string; name: string }[] = [];
     for (const element of this.#document.body.querySelectorAll("*")) {
       if (element.matches(IGNORED) || left(element)) continue;
       const role = roleOf(element);
-      if (role === null || !POINTABLE.has(role)) continue;
+      if (role === null || !POINTABLE.has(role) || (roles !== undefined && !roles.includes(role))) continue;
       const said = nameOf(element, role).toLowerCase();
       if (said !== "") candidates.push({ ref: this.#ref(element), role, name: said });
     }

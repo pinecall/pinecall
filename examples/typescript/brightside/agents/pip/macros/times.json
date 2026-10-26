@@ -1,0 +1,39 @@
+{
+  "name": "times",
+  "title": "Find a time",
+  "when": "the visitor wants an open time: for a treatment, with a dentist, or on a day",
+  "params": {
+    "what": { "about": "the treatment, the dentist or the day they want a time for" }
+  },
+  "steps": [
+    {
+      "say": "Let me look for {what}.",
+      "beats": [{ "word": "look", "do": "scroll_to", "find": ["region", "Find a time"] }]
+    },
+    { "fill": "Treatment or dentist", "with": "{what}" },
+    { "press": "Search times" },
+    { "wait": "Open times", "ms": 6000 },
+    { "read": "Open times", "as": "hit", "row": "best" },
+    {
+      "if": "hit",
+      "say": "The best fit is {hit.Day} at {hit.Time}, with {hit.Dentist}.",
+      "beats": [
+        { "word": "best", "do": "highlight", "find": ["row", "{hit}"] },
+        { "word": "with", "do": "point", "find": ["row", "{hit}"] }
+      ]
+    },
+    {
+      "if": "hit",
+      "say": "To take it, book your first visit just below and pick that day.",
+      "beats": [
+        { "word": "book", "do": "scroll_to", "find": ["region", "Book your first visit"] },
+        { "word": "day.", "do": "point", "find": ["combobox", "Day"] }
+      ]
+    },
+    {
+      "unless": "hit",
+      "say": "I found no open times for {what}. Try another day, or ask me in a call.",
+      "beats": [{ "word": "open", "do": "point", "find": ["textbox", "Treatment or dentist"] }]
+    }
+  ]
+}

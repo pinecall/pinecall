@@ -216,15 +216,19 @@ tutor(call, {
 });
 ```
 
-and on your server, with an OpenRouter key:
+and on your server, with an OpenRouter key, and your Pinecall key for the sentences with slots:
 
 ```ts
-import { decide } from "@pinecall/dot/server";
-export const POST = async (request) => Response.json(await decide(await request.json(), { key: process.env.OPENROUTER_API_KEY }));
+import { answer } from "@pinecall/dot/server";
+const voicing = { key: process.env.PINECALL_KEY, agent: "pip" };
+export const POST = async (request) => Response.json(await answer(await request.json(), { key: process.env.OPENROUTER_API_KEY, voicing }));
 ```
 
-The walks' menu gets a field, "Ask me to show you…". The dot plays a walk or points at a thing; a
-question it cannot show goes to the agent through `onTalk`. Pace the door per visitor: it spends your key.
+The walks' menu gets a field, "Ask me to show you…". The dot plays a walk, with the params picked out
+of what was typed, or points at a thing; a question it cannot show goes to the agent through `onTalk`.
+A walk that takes params is a function the visitor calls by asking: "book it for Jordan Lee,
+jordan@lee.dev" fills the form, "a cleaning on Thursday" searches your times and reads the row that
+fits ([macros](macros.md#a-macro-as-a-function)). Pace the door per visitor: it spends your keys.
 
 ## 8. Try it, then ship it
 
@@ -236,7 +240,8 @@ question it cannot show goes to the agent through `onTalk`. Pace the door per vi
 
 ## What the tutor will not do
 
-It never clicks, submits a form or opens another page for the visitor. It writes into a field only
+It never submits a form or opens another page for the visitor: the one button it presses is one your
+macro names, outside any form or in a search form. It writes into a field only
 what the visitor told it, never into a password, a card, a file or a hidden field. The page's words
 reach the model fenced as data, never as instructions: put what other people wrote (reviews,
 comments) under `data-pinecall-skip` so the agent does not read it at all.

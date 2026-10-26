@@ -3,8 +3,11 @@
 // One audio element plays every sentence in turn: Safari lets an element the visitor's click
 // started go on to its next source, where a new element would need another click. Each frame
 // reads where the audio is, so the words and the pointer follow the sound, whatever the network.
+// A walk called with values fills its slots: a step that acts (fill, press, wait, read) is done by
+// the page between two sentences, and a sentence with slots is recorded when it is reached. A step
+// a slot of which nothing filled, or whose `if` or `unless` says so, is left out.
 
-import { walksDocument, walksOf, type Beat, type RecordedStep, type RecordedWalk, type Step } from "../wire/index.js";
+import { filled, isAct, taken, walksDocument, walksOf, type ActStep, type Beat, type RecordedStep, type RecordedWalk, type Step, type Values, type WalkStep } from "../wire/index.js";
 import { Player } from "./macro.js";
 
 /** How far the visitor got: the walk, the sentence reached (from 1), how many it has, and whether it ended. */
@@ -49,9 +52,32 @@ export async function publishedWalks(url: string, path = ""): Promise<RecordedWa
   return (await readWalks(url)) ?? [];
 }
 
-/** A walk's length, in ms. */
+/** A walk's length, in ms: its recorded sentences'. */
 export function lengthOf(walk: RecordedWalk): number {
-  return walk.steps.reduce((total, step) => total + step.durationMs, 0);
+  return walk.steps.reduce((total, step) => total + ("durationMs" in step ? step.durationMs : 0), 0);
+}
+
+/** What a walk's steps that are not recorded take: the acts done, the sentences with slots recorded. */
+export interface WalkHooks {
+  /** An act of the walk, done: the values it read. */
+  act: (step: ActStep, values: Values) => Promise<Values>;
+  /** A sentence with slots, recorded now: null when it cannot be. */
+  voice: (walk: RecordedWalk, at: number, values: Values) => Promise<RecordedStep | null>;
+}
+
+const NO_HOOKS: WalkHooks = { act: async () => ({}), voice: async () => null };
+
+// An audio element is the visitor's to start: one that played inside their click goes on playing
+// sources after it, so a walk that starts after a wait (a door asked, a search) plays this first.
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+/** A step's beats with the slots of what they find filled: `["row", "{hit}"]`. A beat whose slot nothing filled is left out. */
+function beatsFilled(beats: Beat[], values: Values): Beat[] {
+  return beats.flatMap((beat) => {
+    if (beat.find === undefined) return [beat];
+    const name = filled(beat.find[1], values);
+    return name === null ? [] : [{ ...beat, find: [beat.find[0], name] as [string, string] }];
+  });
 }
 
 export class Walking {
@@ -59,18 +85,27 @@ export class Walking {
   readonly #ended: (walked: Walked) => void;
   readonly #shows: (step: RecordedStep | null) => void;
   readonly #player = new Player();
+  readonly #hooks: WalkHooks;
   #walk: RecordedWalk | null = null;
   #step = 0;
   #paused = false;
+  #values: Values = {};
+  /** The sentence playing; null while a step acts or is recorded. */
+  #current: RecordedStep | null = null;
+  /** A sentence ready while the walk was paused, played on resume. */
+  #held: RecordedStep | null = null;
+  /** Which run of the walk is on: a stop or a new start ends the one before, mid-act. */
+  #run = 0;
 
   /**
    * Play through `audio`; `ended` hears a walk that played to its end, or failed to play; `shows`
    * hears each sentence as it starts, for what it shows beside the page, and null as the walk stops.
    */
-  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void, shows: (step: RecordedStep | null) => void = () => undefined) {
+  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void, shows: (step: RecordedStep | null) => void = () => undefined, hooks: WalkHooks = NO_HOOKS) {
     this.audio = audio;
     this.#ended = ended;
     this.#shows = shows;
+    this.#hooks = hooks;
     // The ear reads the audio through Web Audio, which hears silence from a source fetched without CORS.
     audio.crossOrigin = "anonymous";
     audio.preload = "auto";
@@ -99,25 +134,39 @@ export class Walking {
   resume(): void {
     if (this.#walk === null || !this.#paused) return;
     this.#paused = false;
-    this.audio.play().catch(() => this.#finish(false));
+    const held = this.#held;
+    this.#held = null;
+    if (held !== null) this.#play(held);
+    else if (this.#current !== null) this.audio.play().catch(() => this.#finish(false));
   }
 
-  /** Play a walk from its first sentence. Call it from the visitor's click: a browser starts audio only inside one. */
-  start(walk: RecordedWalk): void {
+  /** Let this element play later, from the visitor's click: a walk that starts after a wait. */
+  unlock(): void {
+    if (this.#walk !== null) return;
+    this.audio.src = SILENCE;
+    this.audio.play().catch(() => undefined);
+  }
+
+  /** Play a walk from its first sentence, its slots filled from `values`. Call it from the visitor's click, or after `unlock`. */
+  start(walk: RecordedWalk, values: Values = {}): void {
     this.#walk = walk;
     this.#step = 0;
-    this.#play();
+    this.#values = { ...values };
+    void this.#go();
   }
 
   /** Where the walk is now; null while none plays. */
   frame(): WalkFrame | null {
     const walk = this.#walk;
-    const step = walk?.steps[this.#step];
-    if (walk === null || step === undefined) return null;
+    if (walk === null) return null;
+    const step = this.#current;
+    const before = walk.steps.slice(0, this.#step).reduce((total, one) => total + ("durationMs" in one ? one.durationMs : 0), 0);
+    const fraction = Math.min(1, before / Math.max(1, lengthOf(walk)));
+    // Between two sentences, a step acting or being recorded: no words, the bar where it stands.
+    if (step === null) return { lit: "", coming: "", beats: [], fraction };
     const now = this.audio.currentTime * 1000;
     const lit = step.words.filter((word) => word.startMs <= now).map((word) => word.text).join(" ");
     const rest = step.words.filter((word) => word.startMs > now).map((word) => word.text).join(" ");
-    const before = walk.steps.slice(0, this.#step).reduce((total, one) => total + one.durationMs, 0);
     return {
       lit,
       coming: lit !== "" && rest !== "" ? ` ${rest}` : rest,
@@ -135,10 +184,44 @@ export class Walking {
     return walked;
   }
 
-  #play(): void {
+  /** From the step it stands on: acts done and sentences left out in turn, until a sentence plays or the walk ends. */
+  async #go(): Promise<void> {
     const walk = this.#walk;
-    const step = walk?.steps[this.#step];
-    if (walk === null || step === undefined) return;
+    const run = ++this.#run;
+    while (walk !== null && run === this.#run) {
+      const step: WalkStep | undefined = walk.steps[this.#step];
+      if (step === undefined) return this.#finish(true);
+      if (!taken(step, this.#values)) {
+        this.#step += 1;
+        continue;
+      }
+      this.#current = null;
+      this.#player.drop();
+      if (isAct(step)) {
+        const read = await this.#hooks.act(step, this.#values).catch(() => ({}));
+        if (run !== this.#run) return;
+        Object.assign(this.#values, read);
+        this.#step += 1;
+        continue;
+      }
+      const recorded = "live" in step ? await this.#hooks.voice(walk, this.#step, this.#values).catch(() => null) : step;
+      if (run !== this.#run) return;
+      if (recorded === null) {
+        this.#step += 1;
+        continue;
+      }
+      return this.#play({ ...recorded, beats: beatsFilled(recorded.beats, this.#values) });
+    }
+  }
+
+  #play(step: RecordedStep): void {
+    const walk = this.#walk;
+    if (walk === null) return;
+    if (this.#paused) {
+      this.#held = step;
+      return;
+    }
+    this.#current = step;
     const asStep: Step = { type: "macro.step", macro: walk.name, step: this.#step, say: step.say, beats: step.beats };
     this.#player.arm(asStep, null);
     this.#shows(step);
@@ -147,14 +230,9 @@ export class Walking {
   }
 
   #next(): void {
-    const walk = this.#walk;
-    if (walk === null) return;
-    if (this.#step + 1 < walk.steps.length) {
-      this.#step += 1;
-      this.#play();
-      return;
-    }
-    this.#finish(true);
+    if (this.#walk === null || this.#current === null) return;
+    this.#step += 1;
+    void this.#go();
   }
 
   #finish(done: boolean): void {
@@ -167,6 +245,10 @@ export class Walking {
 
   #reset(): void {
     this.#walk = null;
+    this.#run += 1;
+    this.#current = null;
+    this.#held = null;
+    this.#values = {};
     this.#paused = false;
     this.#player.drop();
     this.#shows(null);

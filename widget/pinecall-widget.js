@@ -46,6 +46,9 @@
 //               read from `gateway` with the call's own token; --pc-dot-size sizes it (64px)
 //   tutor       optional · with look="dot": the dot walks the page with a pointer of its own, for an
 //               agent that extends @pinecall/dot/agent's Tutor
+//   ask         optional · with tutor: the site's door (a path of its own server, answered by
+//               @pinecall/dot/server's answer()). The walks' menu gets a field: what the visitor types
+//               is a walk played with what they wrote, a thing shown, or the agent offered
 //
 // Styling: the font is inherited. These custom properties apply in both themes: --pc-accent,
 // --pc-accent-soft, --pc-ink, --pc-muted, --pc-line, --pc-radius, --pc-offset, --pc-font,
@@ -167,6 +170,11 @@ const WORDS = {
     stop: "Stop",
     pause: "Pause",
     more: "More walks",
+    ask: "Ask me to show you…",
+    askAgent: "Ask the agent",
+    looking: "Looking…",
+    notHere: "I can't find that on this page.",
+    forAgent: "That one is a question for the agent.",
     endChat: "End chat",
     endedDot: "Ended.",
     tapToHear: "Tap to hear the agent",
@@ -240,6 +248,11 @@ const WORDS = {
     stop: "Detener",
     pause: "Pausar",
     more: "Más recorridos",
+    ask: "Pídeme que te muestre…",
+    askAgent: "Pregúntale al agente",
+    looking: "Buscando…",
+    notHere: "No encuentro eso en esta página.",
+    forAgent: "Esa pregunta es para el agente.",
     endChat: "Terminar el chat",
     endedDot: "Terminada.",
     tapToHear: "Toca para oír al agente",

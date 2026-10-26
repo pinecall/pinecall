@@ -63,6 +63,17 @@ form.visit { background: var(--card); border: 1px solid var(--line); border-radi
 form.visit label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
 form.visit input, form.visit select { font: 15px var(--body); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
 form.visit input:hover, form.visit select:hover { border-color: var(--brand); }
+form.find { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; }
+form.find label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; flex: 1 1 260px; }
+form.find input { font: 15px var(--body); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.times-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+table.times { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.times caption { text-align: left; padding: 14px 16px 4px; font-weight: 600; }
+table.times th { text-align: left; color: var(--muted); font-weight: 500; font-size: 13px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+table.times td { padding: 10px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.times tr:last-child td { border-bottom: 0; }
+table.times[aria-busy="true"] { opacity: .5; }
+.times-note { color: var(--muted); padding: 4px 16px 14px; margin: 0; font-size: 14px; }
 details { border-bottom: 1px solid var(--line); padding-block: 14px; }
 summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
 summary::after { content: "+"; color: var(--brand); font-weight: 600; }
@@ -88,6 +99,7 @@ footer.site { padding-block: 40px 140px; color: var(--muted); font-size: 14px; b
     <nav class="main" aria-label="Main">
       <a href="#services">Services</a>
       <a href="#pricing">Pricing</a>
+      <a href="#times">Times</a>
       <a href="#faq">Questions</a>
     </nav>
     <a class="btn primary" href="#book">Book now</a>
@@ -132,6 +144,25 @@ footer.site { padding-block: 40px 140px; color: var(--muted); font-size: 14px; b
     </div>
   </section>
 
+  <section class="block" id="times" aria-labelledby="times-h">
+    <div class="wrap">
+      <h2 id="times-h">Find a time</h2>
+      <p class="sub">The open times of the next two weeks: search by treatment, dentist or day.</p>
+      <form class="find" role="search" aria-label="Search open times">
+        <label for="f-q">Treatment or dentist<input id="f-q" name="q" type="search" placeholder="Cleaning, Dr. Patel, Thursday…"></label>
+        <button class="btn primary" type="submit">Search times</button>
+      </form>
+      <div class="times-wrap">
+        <table class="times">
+          <caption>Open times</caption>
+          <thead><tr><th>Day</th><th>Time</th><th>Dentist</th><th>Treatment</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="times-note">Search to see the open times.</p>
+      </div>
+    </div>
+  </section>
+
   <section class="block" id="book" aria-labelledby="book-h" data-pinecall-say="Your first visit is free. Tell me your name, your phone and a day, and I can fill this in with you." data-pinecall-do="scroll_to">
     <div class="wrap book">
       <div>
@@ -141,6 +172,7 @@ footer.site { padding-block: 40px 140px; color: var(--muted); font-size: 14px; b
       <form class="visit" onsubmit="event.preventDefault()">
         <label for="f-name">Your name<input id="f-name" name="name" autocomplete="name" placeholder="Jordan Lee"></label>
         <label for="f-phone">Phone<input id="f-phone" name="phone" type="tel" autocomplete="tel" placeholder="(312) 555-0142"></label>
+        <label for="f-email">Email<input id="f-email" name="email" type="email" autocomplete="email" placeholder="jordan@example.com"></label>
         <label for="f-day">Day<select id="f-day" name="day"><option>Tuesday, Oct 28</option><option>Wednesday, Oct 29</option><option>Thursday, Oct 30</option></select></label>
         <button class="btn primary" type="submit">Book my visit</button>
       </form>
@@ -159,7 +191,27 @@ footer.site { padding-block: 40px 140px; color: var(--muted); font-size: 14px; b
 
 <footer class="site"><div class="wrap">Brightside Dental · 2210 N Clark St, Chicago · An example site for the Pinecall dot tutor.</div></footer>
 
-<pinecall-widget agent="pip" name="Pip" company="Brightside Dental" look="dot" tutor walks="sandbox" shape="squircle" color="var(--brand)"
+<pinecall-widget agent="pip" name="Pip" company="Brightside Dental" look="dot" tutor walks="sandbox" ask="/pinecall/ask" shape="squircle" color="var(--brand)"
                  token-url="/pinecall/token" gateway="__GATEWAY__"></pinecall-widget>
+<script>
+// The clinic's own search: it asks this site's /api/times and draws the answer in the table, busy while it asks.
+document.querySelector("form.find").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const q = String(new FormData(event.target).get("q") ?? "").trim();
+  const table = document.querySelector("table.times");
+  const note = document.querySelector(".times-note");
+  table.setAttribute("aria-busy", "true");
+  note.textContent = "Searching…";
+  const times = await fetch(`/api/times?q=${encodeURIComponent(q)}`).then((answer) => answer.json()).catch(() => []);
+  const rows = table.tBodies[0];
+  rows.replaceChildren();
+  for (const time of times) {
+    const row = rows.insertRow();
+    for (const cell of [time.day, time.time, time.dentist, time.treatment]) row.insertCell().textContent = cell;
+  }
+  note.textContent = times.length > 0 ? "" : q === "" ? "No open times in the next two weeks." : `No open times for "${q}".`;
+  table.setAttribute("aria-busy", "false");
+});
+</script>
 </body>
 </html>
