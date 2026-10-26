@@ -162,6 +162,8 @@ export class Walks {
     const found = reading === undefined ? null : readingOf(this.#document, reading.title);
     if (reading === undefined || found === null || this.#options.inCall()) return;
     this.stop();
+    // Its first sentence comes from the door after this click: the audio is let play inside it.
+    this.#walking.unlock();
     this.#aloud = new ReadAloud(found, reading);
     this.#play(found.walk);
   }
