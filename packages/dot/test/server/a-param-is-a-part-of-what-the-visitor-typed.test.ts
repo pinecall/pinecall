@@ -75,6 +75,6 @@ describe("a sentence recorded live", () => {
     await expect(recordSay({ path: "/", walk: "find", step: 3, values: {} }, VOICING, gateway([]))).rejects.toThrow("no sentence to record");
     await expect(recordSay({ path: "/", walk: "find", step: 0, values: { who: "x" } }, VOICING, gateway([]))).rejects.toThrow("needs hit.Day, who");
     await expect(answer({ say: { path: "/", walk: "find", step: 0, values: {} } }, { key: "k" })).rejects.toThrow("records no sentence");
-    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row } or { say }");
+    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row }, { say } or { read }");
   });
 });
