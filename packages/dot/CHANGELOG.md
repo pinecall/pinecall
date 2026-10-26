@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **Typing to the dot: one thing done, never a conversation.** With `tutor(call, { ask, onTalk })` the walks' menu
+  has a field; what is typed goes to the site's server, which decides with `@pinecall/dot/server`'s `decide()`
+  (Jev, through OpenRouter's Decisions API), and the dot plays a walk or lights and points at a thing, with no call.
+  A question a person answers is offered to the agent (`onTalk`).
 ## 0.11.24 — walks for each page, the menu that marks your section, the header kept clear (2026-10-25)
 
 - **What the tutor scrolls to sits below the site's own header**, not under it: the top a fixed or sticky bar covers

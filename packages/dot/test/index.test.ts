@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import * as agent from "../src/agent/index.js";
 import * as page from "../src/index.js";
+import * as server from "../src/server/index.js";
 
 describe("the public surfaces", () => {
   it("@pinecall/dot is the face, the page as the agent reads it, and the tutor", () => {
@@ -12,5 +13,9 @@ describe("the public surfaces", () => {
 
   it("@pinecall/dot/agent is the Tutor class, the macros it is given, and the walk a name means", () => {
     expect(Object.keys(agent).sort()).toEqual(["Tutor", "macros", "walkNamed"]);
+  });
+
+  it("@pinecall/dot/server is what a site's server decides the visitor's typing with, and the parts it is made of", () => {
+    expect(Object.keys(server).sort()).toEqual(["decide", "decisionFrom", "questionsOf", "thingsOf"]);
   });
 });

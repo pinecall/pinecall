@@ -1,10 +1,12 @@
 /** The walks beside the resting face, with no call: the button and its pills, the player, the code a step shows, and what the next call is told was played. */
 
 import type { Face } from "../face/index.js";
+import { Asking } from "../pointer/asking.js";
 import { CodeWindow } from "../pointer/code.js";
 import { Sections } from "../pointer/sections.js";
 import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
+import type { AskRequest } from "../wire/ask.js";
 import { onPage, type RecordedWalk } from "../wire/index.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
@@ -26,6 +28,8 @@ export interface WalksOptions {
   point: (element: Element) => void;
   /** Reduced motion: the code is written in at once. */
   still: boolean;
+  /** The field for what the visitor wants shown: its placeholder, and what was typed. None, no field. */
+  ask?: { placeholder: string; onAsk: (text: string) => void } | undefined;
 }
 
 export class Walks {
@@ -34,6 +38,7 @@ export class Walks {
   readonly #walking: Walking;
   readonly #menu: Menu;
   readonly #sections: Sections;
+  readonly #asking: Asking | undefined;
   readonly #drawn: Face;
   readonly #person: Person;
   readonly #options: WalksOptions;
@@ -52,7 +57,17 @@ export class Walks {
       if (lit !== null) options.point(lit);
     });
     const named = (name: string): number => this.#list.findIndex((walk) => walk.name === name);
+    // What was typed folds the menu away; a line about it opens it again (`offer`).
+    const ask = options.ask;
+    this.#asking = ask === undefined ? undefined : new Asking(document, (part) => person.add(part), {
+      placeholder: ask.placeholder,
+      onAsk: (text) => {
+        this.#menu.toggle(false);
+        ask.onAsk(text);
+      },
+    });
     this.#menu = new Menu(document, (part) => person.add(part), {
+      ask: this.#asking,
       dock: options.dock,
       label: options.label,
       more: options.more,
@@ -96,6 +111,22 @@ export class Walks {
     this.#sections.place(!this.#options.inCall() && !this.playing);
   }
 
+  /** The walks of this page, as the field asks about them. */
+  listed(): AskRequest["walks"] {
+    return this.#list.map((walk) => ({ name: walk.name, title: walk.title, ...(walk.when === undefined ? {} : { when: walk.when }) }));
+  }
+
+  /** Play a walk of this page, by its name: from the visitor's typing, inside their submit. */
+  playNamed(name: string): void {
+    this.#play(this.#list.findIndex((walk) => walk.name === name));
+  }
+
+  /** Open the menu with a line under the field about what was asked, and a button to take it on. */
+  offer(text: string, action?: { label: string; onClick: () => void }): void {
+    this.#menu.toggle(true);
+    this.#asking?.hint(text, action);
+  }
+
   /** Stop the walk playing, if one is: the visitor clicked the face, or a call began. */
   stop(): void {
     const walked = this.#walking.stop();
@@ -118,6 +149,7 @@ export class Walks {
     this.#walking.stop();
     this.#menu.close();
     this.#sections.close();
+    this.#asking?.close();
     this.code.close();
   }
 

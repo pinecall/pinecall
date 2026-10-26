@@ -18,6 +18,7 @@ import { Person, sideOf, type Side } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions } from "./captions.js";
+import { act, askWords, type Asked } from "./ask.js";
 import { Player } from "./macro.js";
 import type { TutorOptions } from "./options.js";
 import { Screen } from "./views.js";
@@ -32,6 +33,9 @@ export interface Tutor {
   wake(): void;
   close(): void;
 }
+
+/** How long what the visitor asked for stays shown, its name beside the face, in ms. */
+const NOTE_MS = 6000;
 
 /** What makes the page worth looking at again, and how long to wait for it to settle, in ms. */
 const SETTLE = { scroll: 250, resize: 250, dom: 400, toggle: 150 } as const;
@@ -78,7 +82,23 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     point: (element) => queue(() => run("point", element)),
     onWalk: options.onWalk,
     still,
+    ask: options.ask && { placeholder: options.words?.ask ?? "Ask me to show you…", onAsk: (text) => asked && void act(text, asked) },
   });
+  // What the visitor typed to the dot: a walk played, or a thing lit and pointed at with its name beside the face for a moment.
+  let note: { text: string; until: number } | null = null;
+  let showing = 0;
+  const asked: Asked | null = options.ask === undefined ? null : {
+    ask: options.ask, page, path: () => view.location.pathname, walks: () => walks.listed(), play: (name) => walks.playNamed(name),
+    show: (element, role, name) => {
+      const mine = (showing += 1);
+      if (["region", "article", "group", "form"].includes(role)) queue(() => run("highlight", element));
+      queue(() => run("point", element));
+      note = { text: name, until: performance.now() + NOTE_MS };
+      setTimeout(() => mine === showing && queue(() => run("home", null)), NOTE_MS);
+    },
+    note: (text) => void (note = text === null ? null : { text, until: performance.now() + NOTE_MS }),
+    offer: (text, action) => walks.offer(text, action), talk: options.onTalk, words: askWords(options.words),
+  };
   const screen = new Screen(call, new Card(document, (part) => person.add(part), options.words?.close ?? "Close"), () => options.views);
   const player = new Player();
   const linger = options.linger ?? 2600;
@@ -225,6 +245,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       person.heard(null);
       person.progress(walk.fraction);
       for (const one of walk.beats) queue(() => beat(one));
+    } else if (note !== null && now < note.until && !inCall()) {
+      person.say(note.text);
+      person.heard(null);
     } else spoken(now);
     person.buttons(inCall(), walks.playing, captioned, walks.paused);
     walks.place();

@@ -21,6 +21,8 @@ const MAY_IMPORT: Record<string, string[]> = {
   "pointer": ["./wire"],
   // The tutor on a page: everything of the page's side, the room, and the wire.
   "tutor": ["./face", "./page", "./pointer", "./wire", "@pinecall/room"],
+  // A site's server: what the visitor typed, decided. The wire, and fetch; never the DOM's parts nor the framework.
+  "server": ["./wire"],
   // The agent's side: the framework, Node, and the wire. Never the DOM's parts.
   "agent": ["@pinecall/agents", "node:fs", "node:path", "node:url", "./wire"],
   // The page's entry: what a page imports.

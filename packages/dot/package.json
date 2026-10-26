@@ -23,6 +23,11 @@
       "types": "./src/agent/index.ts",
       "import": "./src/agent/index.ts",
       "default": "./src/agent/index.ts"
+    },
+    "./server": {
+      "types": "./src/server/index.ts",
+      "import": "./src/server/index.ts",
+      "default": "./src/server/index.ts"
     }
   },
   "files": [
@@ -68,6 +73,10 @@
       "./agent": {
         "types": "./dist/agent/index.d.ts",
         "import": "./dist/agent/index.js"
+      },
+      "./server": {
+        "types": "./dist/server/index.d.ts",
+        "import": "./dist/server/index.js"
       }
     }
   }

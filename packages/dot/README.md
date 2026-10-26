@@ -287,6 +287,30 @@ chose. The card holds the last tool that finished with a view, until it is repla
 visitor's way to say something, never a way round the agent: nothing on it books or sends for them.
 With the widget, set `widget.views = { … }` on the element. Colours: `--pc-card` and `--pc-card-ink`.
 
+### Typing to the dot: one thing done, never a conversation
+
+`tutor(call, { ask })` puts a field in the walks' menu ("Ask me to show you…"). What the visitor types
+goes to `ask(request)`, the site's own server, with the page's path, its named things by ref and the
+walks of the page; the answer is one thing to do, and the dot does it with no call and no voice: it
+plays a walk, or lights and points at a thing with its name beside the face. A question a person
+answers, or something not on the page, is never answered in the dot's words: the field says so, with a
+button that hands it to `onTalk(message)` (the site starts a call with it written in).
+
+```ts
+// the page
+tutor(call, { ask: (request) => fetch("/api/ask", { method: "POST", body: JSON.stringify(request) }).then((r) => r.json()) });
+
+// the site's server
+import { decide } from "@pinecall/dot/server";
+const decision = await decide(request, { key: process.env.OPENROUTER_API_KEY });
+```
+
+`decide()` asks Jev, TypeSafe's System One model, through OpenRouter's Decisions API: one request, three
+questions answered at once (what kind of thing they want, which walk, which thing of the page), each a
+choice among the options it was given, with its probabilities. It cannot write a sentence or name a thing
+that is not on the page, and under its threshold (0.5) it decides nothing rather than guess. The page's
+words and what the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy policy.
+
 ### Lines on the page
 
 A walk can also live in the site's own markup, beside what it is about, so the HTML and what is

@@ -207,7 +207,26 @@ something to the agent in writing, as the visitor; `tools.hide()` puts the card 
   onUi: (data) => { if (pip?.take(data)) return; if (isFormFill(data)) fillMyForm(data); }
   ```
 
-## 7. Try it, then ship it
+## 7. Let the visitor type what to show
+
+```ts
+tutor(call, {
+  ask: (request) => fetch("/api/ask", { method: "POST", body: JSON.stringify(request) }).then((r) => r.json()),
+  onTalk: (message) => startACallAndSay(message),
+});
+```
+
+and on your server, with an OpenRouter key:
+
+```ts
+import { decide } from "@pinecall/dot/server";
+export const POST = async (request) => Response.json(await decide(await request.json(), { key: process.env.OPENROUTER_API_KEY }));
+```
+
+The walks' menu gets a field, "Ask me to show you…". The dot plays a walk or points at a thing; a
+question it cannot show goes to the agent through `onTalk`. Pace the door per visitor: it spends your key.
+
+## 8. Try it, then ship it
 
 1. `pinecall start` holds the agent in the sandbox and records its walks there.
 2. Serve your site, with the dot's walks pointing at the sandbox (`walks="sandbox"`), and talk to it.

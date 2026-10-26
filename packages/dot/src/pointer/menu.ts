@@ -7,6 +7,7 @@
 // one that opens. Every colour is the person's: --pc-face, --pc-bubble, --pc-bubble-ink.
 
 import { clock } from "../wire/index.js";
+import type { Asking } from "./asking.js";
 import type { Point } from "./flight.js";
 
 /** A pill's height, in px. */
@@ -57,6 +58,8 @@ export interface MenuOptions {
   current: () => number;
   /** What the button that shows the next pills is called for a screen reader: "More walks". */
   more: string;
+  /** The field for what the visitor wants shown, above the pills while the menu is open; the menu then opens with no walks too. */
+  ask?: Asking | undefined;
 }
 
 /** How many pills show at once; the rest come a page at a time, from a small button under them. */
@@ -96,7 +99,8 @@ export class Menu {
   #page = 0;
   readonly #outside = (event: Event): void => {
     const target = event.target instanceof Node ? event.target : null;
-    if (target !== null && [this.#button, this.#more, ...this.#pills].some((part) => part.contains(target))) return;
+    const parts: Element[] = [this.#button, this.#more, ...this.#pills, ...(this.#options.ask ? [this.#options.ask.element] : [])];
+    if (target !== null && parts.some((part) => part.contains(target))) return;
     this.toggle(false);
   };
   readonly #escape = (event: KeyboardEvent): void => {
@@ -174,12 +178,12 @@ export class Menu {
       this.#host(pill);
       return pill;
     });
-    this.#button.hidden = items.length === 0;
+    this.#button.hidden = items.length === 0 && this.#options.ask === undefined;
   }
 
   /** Whether the button may show now: not during a call, nor while a walk plays. */
   available(on: boolean): void {
-    this.#button.hidden = !on || this.#pills.length === 0;
+    this.#button.hidden = !on || (this.#pills.length === 0 && this.#options.ask === undefined);
     if (!on) this.toggle(false);
     if (on) this.#place();
   }
@@ -193,7 +197,9 @@ export class Menu {
     this.#mark(here);
     this.#button.setAttribute("aria-expanded", String(this.#open));
     this.#show();
-    if (this.#open) this.#shown()[0]?.focus();
+    if (!this.#open) return;
+    if (this.#options.ask) this.#options.ask.focus();
+    else this.#shown()[0]?.focus();
   }
 
   #mark(here: number): void {
@@ -220,6 +226,7 @@ export class Menu {
       setTimeout(() => pill.classList.add("pc-shown"), 30 * index);
     });
     this.#more.hidden = !this.#open || this.#pills.length <= PAGE;
+    this.#options.ask?.show(this.#open);
     this.#more.classList.toggle("pc-last", (this.#page + 1) * PAGE >= this.#pills.length);
   }
 
@@ -248,6 +255,13 @@ export class Menu {
     const paged = this.#pills.length > PAGE;
     const slots = fanned(shown.length + (paged ? 1 : 0), at, radius, this.#options.dock);
     shown.forEach((pill, index) => stand(pill, slots[slots.length - 1 - index] ?? at));
+    // The field stands above the highest pill, or beside the face when there is none.
+    const [beside] = fanned(1, at, radius, this.#options.dock);
+    const highest = slots[slots.length - 1] ?? beside;
+    if (this.#options.ask && highest !== undefined) {
+      const bottom = (view?.innerHeight ?? 0) - highest.y + (slots.length > 0 ? PILL / 2 + 8 : -PILL / 2);
+      this.#options.ask.place(bottom, right ? (view?.innerWidth ?? 0) - highest.x : highest.x, right);
+    }
     const [under] = slots;
     if (paged && under !== undefined) {
       Object.assign(this.#more.style, { left: `${right ? under.x - PILL : under.x}px`, top: `${under.y - PILL / 2}px` });
