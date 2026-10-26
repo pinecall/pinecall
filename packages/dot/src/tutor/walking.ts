@@ -59,8 +59,8 @@ export function lengthOf(walk: RecordedWalk): number {
 
 /** What a walk's steps that are not recorded take: the acts done, the sentences with slots recorded. */
 export interface WalkHooks {
-  /** An act of the walk, done: the values it read. */
-  act: (step: ActStep, values: Values) => Promise<Values>;
+  /** An act of the walk, done, the `at`th step: the values it read. */
+  act: (step: ActStep, values: Values, at: number) => Promise<Values>;
   /** A sentence with slots, recorded now: null when it cannot be. */
   voice: (walk: RecordedWalk, at: number, values: Values) => Promise<RecordedStep | null>;
 }
@@ -83,7 +83,7 @@ function beatsFilled(beats: Beat[], values: Values): Beat[] {
 export class Walking {
   readonly audio: HTMLAudioElement;
   readonly #ended: (walked: Walked) => void;
-  readonly #shows: (step: RecordedStep | null) => void;
+  readonly #shows: (step: RecordedStep | null, at: number) => void;
   readonly #player = new Player();
   readonly #hooks: WalkHooks;
   #walk: RecordedWalk | null = null;
@@ -99,9 +99,9 @@ export class Walking {
 
   /**
    * Play through `audio`; `ended` hears a walk that played to its end, or failed to play; `shows`
-   * hears each sentence as it starts, for what it shows beside the page, and null as the walk stops.
+   * hears each sentence as it starts (and which step it is), for what it shows beside the page, and null as the walk stops.
    */
-  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void, shows: (step: RecordedStep | null) => void = () => undefined, hooks: WalkHooks = NO_HOOKS) {
+  constructor(audio: HTMLAudioElement, ended: (walked: Walked) => void, shows: (step: RecordedStep | null, at: number) => void = () => undefined, hooks: WalkHooks = NO_HOOKS) {
     this.audio = audio;
     this.#ended = ended;
     this.#shows = shows;
@@ -198,7 +198,7 @@ export class Walking {
       this.#current = null;
       this.#player.drop();
       if (isAct(step)) {
-        const read = await this.#hooks.act(step, this.#values).catch(() => ({}));
+        const read = await this.#hooks.act(step, this.#values, this.#step).catch(() => ({}));
         if (run !== this.#run) return;
         Object.assign(this.#values, read);
         this.#step += 1;
@@ -224,7 +224,7 @@ export class Walking {
     this.#current = step;
     const asStep: Step = { type: "macro.step", macro: walk.name, step: this.#step, say: step.say, beats: step.beats };
     this.#player.arm(asStep, null);
-    this.#shows(step);
+    this.#shows(step, this.#step);
     this.audio.src = step.audio;
     this.audio.play().catch(() => this.#finish(false));
   }
@@ -251,7 +251,7 @@ export class Walking {
     this.#values = {};
     this.#paused = false;
     this.#player.drop();
-    this.#shows(null);
+    this.#shows(null, -1);
     this.audio.pause();
   }
 

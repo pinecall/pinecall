@@ -16,6 +16,11 @@ maintainer's call.
   passes the params to `runMacro`, and a table read is handed back to answer from; typed to the dot, the site's door
   (`@pinecall/dot/server`'s `answer()`) picks them out of what was typed, picks the row, and records a sentence
   with slots in the agent's voice when it is reached. A walk with params is asked for, not listed in the menu.
+- **A page read aloud.** `tutor(call, { reading })` reads what the page marks `data-pinecall-read`, part by part as
+  written, in the agent's voice with no call: the part read lit and pointed at, the rest dimmed, an example marked
+  `data-pinecall-press` pressed and its output (`aria-controls`) waited on. Each part is recorded by the site's door
+  (`{ read }`), which a site allows with `voicing.read`. `tutor.read()` starts it.
+- **The page scrolls in its own box**: an app whose content scrolls in a pane, not the window, is scrolled there.
 - **A table reads as rows**: the snapshot names each row by its cells (`row "Tue, Oct 28 · 9:00 · Dr. Patel"`),
   with a ref the pointer can light.
 ## 0.11.24 — walks for each page, the menu that marks your section, the header kept clear (2026-10-25)

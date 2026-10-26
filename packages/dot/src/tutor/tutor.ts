@@ -22,6 +22,7 @@ import { Acting, WAIT_MS } from "./acting.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions } from "./captions.js";
 import { act, askWords, type Asked } from "./ask.js";
 import { listen } from "./listening.js";
+import { readingWith } from "./reading.js";
 import { Player } from "./macro.js";
 import type { TutorOptions } from "./options.js";
 import { Screen } from "./views.js";
@@ -34,6 +35,8 @@ export interface Tutor {
   take(data: unknown): boolean;
   /** Let the face hear the voice: call it from the click that starts the call. */
   wake(): void;
+  /** Read the page aloud (`reading`), from the visitor's click: a button of the site's own. */
+  read(): void;
   close(): void;
 }
 
@@ -92,6 +95,14 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     ask: options.ask && { placeholder: options.words?.ask ?? "Ask me to show you…", onAsk: (text) => asked && void act(text, asked) },
     act: (step, values, message) => acting.act(step, values, message),
     voice: (walk, at, values) => acting.voice(view.location.pathname, walk, at, values),
+    reading: options.reading === undefined || options.ask === undefined ? undefined : readingWith(options.reading, acting, document, {
+      // The part read is lit (every frame spots `lit`) and pointed at; null puts the light out.
+      light: (element) => queue(async () => {
+        lit = element;
+        if (element !== null) await run("point", element);
+      }),
+      queued: (work) => queued(work),
+    }),
   });
   // What the visitor typed to the dot: a walk played, or a thing lit and pointed at with its name beside the face for a moment.
   let note: { text: string; until: number } | null = null;
@@ -363,6 +374,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     },
     wake() {
       drawn.wake();
+    },
+    read() {
+      walks.read();
     },
     close() {
       if (closed) return;

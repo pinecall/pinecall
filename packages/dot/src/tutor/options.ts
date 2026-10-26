@@ -52,6 +52,12 @@ export interface TutorOptions {
    * sentence with slots recorded (`{ say }`). Given, the walks' menu has a field: "Ask me to show you…".
    */
   ask?: ((request: DoorRequest) => Promise<unknown>) | undefined;
+  /**
+   * The page read aloud in the agent's voice, with no call: what it marks `data-pinecall-read`, the part read lit and
+   * pointed at, its examples (`data-pinecall-press`) pressed on the way. The title of its pill, first in the walks' menu:
+   * "Leer el capítulo". Each part is recorded by the site's door (`{ read }`), so it takes `ask`.
+   */
+  reading?: string | undefined;
   /** What they typed, for a question the page cannot show: the site takes it to the agent (a call, it written in). */
   onTalk?: ((message: string) => void) | undefined;
 }

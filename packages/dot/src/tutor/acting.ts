@@ -110,6 +110,14 @@ export class Acting {
     return { ...shown, say: said.say, audio: said.audio, durationMs: said.durationMs, words: said.words };
   }
 
+  /** A text of the page, recorded now by the site's door in the agent's voice; null when it cannot be. */
+  async read(text: string): Promise<RecordedStep | null> {
+    const door = this.#options.door;
+    if (door === undefined) return null;
+    const said = saidOf(await door({ read: { text } }).catch(() => null));
+    return said === null ? null : { say: said.say, audio: said.audio, durationMs: said.durationMs, words: said.words, beats: [] };
+  }
+
   close(): void {
     this.#stop();
   }

@@ -34,8 +34,13 @@ export interface SayRequest {
   values: Values;
 }
 
-/** What the page asks the site's door: one of the three. */
-export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest };
+/** A text of the page itself to record in the agent's voice: a part of a page read aloud. */
+export interface ReadRequest {
+  text: string;
+}
+
+/** What the page asks the site's door: one of the four. */
+export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest } | { read: ReadRequest };
 
 /** The site's door's answer to a `row`: the row's index, or null when none answers it. */
 export interface RowAnswer {

@@ -8,6 +8,7 @@ import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { AskRequest } from "../wire/ask.js";
 import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values } from "../wire/index.js";
+import { ReadAloud, readingOf, type ReadingOptions } from "./reading.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
 export interface WalksOptions {
@@ -34,6 +35,8 @@ export interface WalksOptions {
   act?: ((step: ActStep, values: Values, message: string) => Promise<Values>) | undefined;
   /** A walk's sentence with slots, recorded now. */
   voice?: ((walk: RecordedWalk, at: number, values: Values) => Promise<RecordedStep | null>) | undefined;
+  /** The page read aloud, first in the menu under `title`, where the site marks `data-pinecall-read`. None, it is not offered. */
+  reading?: ({ title: string } & ReadingOptions) | undefined;
 }
 
 export class Walks {
@@ -46,26 +49,36 @@ export class Walks {
   readonly #drawn: Face;
   readonly #person: Person;
   readonly #options: WalksOptions;
+  readonly #document: Document;
   #list: RecordedWalk[] = [];
   /** The walks the menu and the sections offer: those that take no params, which are asked for. */
   #picked: RecordedWalk[] = [];
   #played: Walked | null = null;
   /** What the visitor typed for the walk playing; none for one picked. */
   #message = "";
+  /** The page being read aloud, while it is. */
+  #aloud: ReadAloud | null = null;
+  /** Whether the menu offers reading the page, first. */
+  #readable = false;
 
   constructor(document: Document, person: Person, drawn: Face, options: WalksOptions) {
     this.#person = person;
+    this.#document = document;
     this.#drawn = drawn;
     this.#options = options;
     this.code = new CodeWindow(document, (part) => person.add(part), options.still);
-    this.#walking = new Walking(document.createElement("audio"), (walked) => this.#ended(walked), (step) => {
+    this.#walking = new Walking(document.createElement("audio"), (walked) => this.#ended(walked), (step, at) => {
+      if (this.#aloud !== null) return this.#aloud.shows(step === null ? -1 : at);
       // A step that names no code keeps the window as it is; the walk's end closes it.
       if (step === null) return this.code.hide();
       const lit = this.code.show(step.code, step.lines);
       if (lit !== null) options.point(lit);
     }, {
-      act: (step, values) => options.act?.(step, values, this.#message) ?? Promise.resolve({}),
-      voice: (walk, at, values) => options.voice?.(walk, at, values) ?? Promise.resolve(null),
+      act: async (step, values, at) => {
+        if (this.#aloud !== null) return this.#aloud.act(at).then(() => ({}));
+        return options.act?.(step, values, this.#message) ?? {};
+      },
+      voice: (walk, at, values) => (this.#aloud !== null ? this.#aloud.voice(at) : options.voice?.(walk, at, values) ?? Promise.resolve(null)),
     });
     const named = (name: string): number => this.#picked.findIndex((walk) => walk.name === name);
     // What was typed folds the menu away; a line about it opens it again (`offer`).
@@ -83,8 +96,11 @@ export class Walks {
       label: options.label,
       more: options.more,
       face: () => ({ at: person.dock(), radius: person.radius }),
-      onPick: (index) => this.#play(this.#picked[index]),
-      current: () => named(this.#sections.current() ?? ""),
+      onPick: (index) => (this.#readable && index === 0 ? this.read() : this.#play(this.#picked[index - this.#offset])),
+      current: () => {
+        const at = named(this.#sections.current() ?? "");
+        return at === -1 ? -1 : at + this.#offset;
+      },
     });
     this.#sections = new Sections(document, { onPlay: (name) => this.#play(this.#picked[named(name)]) });
     const path = document.defaultView?.location.pathname ?? "";
@@ -93,7 +109,9 @@ export class Walks {
       const found = all.filter((walk) => onPage(walk.pages, path));
       this.#list = found;
       this.#picked = found.filter((walk) => walk.params === undefined);
-      this.#menu.offer(this.#picked.map((walk) => ({ title: walk.title, ms: lengthOf(walk) })));
+      const reading = options.reading;
+      this.#readable = reading !== undefined && readingOf(document, reading.title) !== null;
+      this.#menu.offer([...(this.#readable && reading !== undefined ? [{ title: reading.title, ms: 0 }] : []), ...this.#picked.map((walk) => ({ title: walk.title, ms: lengthOf(walk) }))]);
       this.#sections.offer(this.#picked.map((walk) => walk.name));
       this.#menu.available(!options.inCall());
     });
@@ -136,6 +154,16 @@ export class Walks {
   /** Play a walk of this page, by its name, called with `values`: from what the visitor typed (`message`). */
   playNamed(name: string, values: Values = {}, message = ""): void {
     this.#play(this.#list.find((walk) => walk.name === name), values, message);
+  }
+
+  /** Read the page aloud, as it is now: what it marks `data-pinecall-read`. Call it from the visitor's click. */
+  read(): void {
+    const reading = this.#options.reading;
+    const found = reading === undefined ? null : readingOf(this.#document, reading.title);
+    if (reading === undefined || found === null || this.#options.inCall()) return;
+    this.stop();
+    this.#aloud = new ReadAloud(found, reading);
+    this.#play(found.walk);
   }
 
   /** Let a walk play after a wait: from the visitor's submit, before the door answers. */
@@ -185,7 +213,13 @@ export class Walks {
     this.#options.onWalk?.({ walk: walk.name, step: 1, of: walk.steps.length, done: false });
   }
 
+  /** How many pills stand before the walks': the page read aloud, when it is offered. */
+  get #offset(): number {
+    return this.#readable ? 1 : 0;
+  }
+
   #ended(walked: Walked): void {
+    this.#aloud = null;
     this.#played = walked;
     this.#drawn.listen(null);
     this.#person.progress(null);

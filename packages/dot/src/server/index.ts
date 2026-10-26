@@ -9,9 +9,9 @@
 // with slots is recorded in the agent's voice when it is reached (`saying.ts`). The keys are the server's:
 // this never runs in a browser.
 
-import type { AskRequest, Decision, RowAnswer, RowRequest, SaidAnswer, SayRequest } from "../wire/ask.js";
+import type { AskRequest, Decision, ReadRequest, RowAnswer, RowRequest, SaidAnswer, SayRequest } from "../wire/ask.js";
 import { MODEL, MOST, THRESHOLD, decisionFrom, paramsFrom, questionsOf, spansOf, thingsOf, type Answer } from "./questions.js";
-import { recordSay, type Voicing } from "./saying.js";
+import { recordRead, recordSay, type Voicing } from "./saying.js";
 
 export type { AskRequest, Decision, DoorRequest, RowRequest, SayRequest } from "../wire/ask.js";
 export type { Voicing } from "./saying.js";
@@ -84,14 +84,16 @@ export async function pickRow(request: RowRequest, options: DecideOptions): Prom
  * request that is none of them, and on a model or a gateway that did not answer.
  */
 export async function answer(body: unknown, options: AnswerOptions): Promise<Decision | RowAnswer | SaidAnswer> {
-  const request = (typeof body === "object" && body !== null ? body : {}) as Partial<Record<"decide" | "row" | "say", unknown>>;
+  const request = (typeof body === "object" && body !== null ? body : {}) as Partial<Record<"decide" | "row" | "say" | "read", unknown>>;
   if (isAsk(request.decide)) return decide(request.decide, options);
   if (isRow(request.row)) return pickRow(request.row, options);
-  if (isSay(request.say)) {
+  const voicing = (): Voicing => {
     if (options.voicing === undefined) throw new Error("this door records no sentence: give answer() a voicing");
-    return recordSay(request.say, options.voicing, options.fetch ?? fetch);
-  }
-  throw new Error("the door takes { decide }, { row } or { say }");
+    return options.voicing;
+  };
+  if (isSay(request.say)) return recordSay(request.say, voicing(), options.fetch ?? fetch);
+  if (isRead(request.read)) return recordRead(request.read.text, voicing(), options.fetch ?? fetch);
+  throw new Error("the door takes { decide }, { row }, { say } or { read }");
 }
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -104,6 +106,10 @@ function isAsk(value: unknown): value is AskRequest {
 function isRow(value: unknown): value is RowRequest {
   const fields = (value ?? {}) as Record<string, unknown>;
   return typeof value === "object" && isString(fields["message"]) && Array.isArray(fields["rows"]) && fields["rows"].every(isString);
+}
+
+function isRead(value: unknown): value is ReadRequest {
+  return typeof value === "object" && value !== null && isString((value as Record<string, unknown>)["text"]);
 }
 
 function isSay(value: unknown): value is SayRequest {

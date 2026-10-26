@@ -169,7 +169,8 @@ export class Menu {
       tri.className = "pc-tri";
       const long = this.#document.createElement("span");
       long.className = "pc-long";
-      long.textContent = clock(item.ms);
+      // A walk whose length is not known before it plays (a page read aloud) shows none.
+      long.textContent = item.ms > 0 ? clock(item.ms) : "";
       pill.append(tri, this.#document.createTextNode(item.title), long);
       pill.addEventListener("click", () => {
         this.toggle(false);

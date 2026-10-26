@@ -326,6 +326,36 @@ brings to it is the values, a line of 80 characters each. It cannot write a sent
 that is not on the page, and under its threshold (0.5) it decides nothing rather than guess. The page's
 words and what the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy policy.
 
+### A page read aloud
+
+`tutor(call, { ask, reading: "Leer el capítulo" })` puts a first pill in the walks' menu that reads the
+page aloud in the agent's voice, with no call: what the site marks `data-pinecall-read` (a `<main>`, a
+section), its headings, paragraphs, items and captions in the page's order, as written. The part read
+is lit and pointed at and the rest dimmed; a long one is read a few sentences at a time. A button
+marked `data-pinecall-press` in it is an example: when the reading reaches it, the pointer presses it
+(its value, when it has one, said first: `data-pinecall-press="Lo corro."`) and the reading waits for
+what it controls (`aria-controls`, its output) to answer and not be `aria-busy`. Nothing under
+`data-pinecall-quiet` is read (the code of a block, a legend). `tutor.read()` starts it from a button
+of the site's own.
+
+Each part is recorded by the site's door when the reading reaches it, the next asked for while one
+plays (`{ read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second
+time. A door lets its pages be read only when it says so (`answer(body, { voicing: { …, read: true } })`):
+a page may then have any text of 480 characters said in the agent's voice, so a site gives it to its own
+pages alone.
+
+```html
+<main data-pinecall-read>
+  <h2>Cómo leer esto</h2>
+  <p>Cada comando está en un bloque con ▶ Run.</p>
+  <div class="block" data-pinecall-quiet>
+    <pre>pinecall whoami</pre>
+    <button aria-label="Run pinecall whoami" aria-controls="out-1" data-pinecall-press="Lo corro.">▶ Run</button>
+    <output id="out-1"></output>
+  </div>
+</main>
+```
+
 ### Lines on the page
 
 A walk can also live in the site's own markup, beside what it is about, so the HTML and what is

@@ -123,10 +123,26 @@ export async function scrollOnto(element: Element, where: number, still: boolean
   const view = element.ownerDocument.defaultView;
   if (view === null) return;
   const box = element.getBoundingClientRect();
-  const goal = scrollGoal(box, view.scrollY, view.innerHeight, element.ownerDocument.documentElement.scrollHeight, where, coveredTop(element.ownerDocument));
-  const from = view.scrollY;
+  const scroller = scrollerOf(element);
+  // A page whose content scrolls in a box of its own (an app's main pane) is scrolled there: the box is the screen.
+  const frame = scroller === null ? { top: 0, height: view.innerHeight } : scroller.getBoundingClientRect();
+  const covered = Math.max(0, coveredTop(element.ownerDocument) - frame.top);
+  const from = scroller === null ? view.scrollY : scroller.scrollTop;
+  const total = scroller === null ? element.ownerDocument.documentElement.scrollHeight : scroller.scrollHeight;
+  const height = scroller === null ? view.innerHeight : scroller.clientHeight;
+  const goal = scrollGoal({ top: box.top - frame.top, height: box.height }, from, height, total, where, covered);
   const dy = goal - from;
   if (Math.abs(dy) < 8) return;
-  const ms = still ? 0 : Math.round(520 + 680 * Math.min(1, Math.abs(dy) / (view.innerHeight * 2)));
-  await animate(ms, (u) => view.scrollTo(0, from + dy * minJerk(u)));
+  const ms = still ? 0 : Math.round(520 + 680 * Math.min(1, Math.abs(dy) / (height * 2)));
+  await animate(ms, (u) => (scroller === null ? view.scrollTo(0, from + dy * minJerk(u)) : scroller.scrollTo(0, from + dy * minJerk(u))));
+}
+
+/** The box that scrolls `element` up and down: its nearest ancestor that does, or null when it is the page itself. */
+export function scrollerOf(element: Element): Element | null {
+  const view = element.ownerDocument.defaultView;
+  for (let node = element.parentElement; node !== null && node !== element.ownerDocument.body && node !== element.ownerDocument.documentElement; node = node.parentElement) {
+    const overflow = view?.getComputedStyle(node).overflowY ?? "";
+    if ((overflow === "auto" || overflow === "scroll") && node.scrollHeight > node.clientHeight) return node;
+  }
+  return null;
 }

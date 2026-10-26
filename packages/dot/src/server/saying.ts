@@ -18,7 +18,15 @@ export interface Voicing {
   gateway?: string | undefined;
   /** Which world the agent's walks and voice are read in: `sandbox` while it is held there. Default production. */
   env?: "sandbox" | "production" | undefined;
+  /**
+   * Whether a page may have its own text read aloud (`{ read }`, a page read with `reading`): any text of 480
+   * characters said in the agent's voice. For a site whose door answers its own pages alone. Default no.
+   */
+  read?: boolean | undefined;
 }
+
+/** The longest text a page may have read in one request. */
+const LONGEST_READ = 480;
 
 const GATEWAY = "https://cloud.pinecall.io";
 /** How long the walks a page reads are kept, in ms: as long as the gateway lets a page keep them. */
@@ -57,6 +65,19 @@ export async function recordSay(request: SayRequest, voicing: Voicing, ask: type
   }
   const text = filled(step.say, values);
   if (text === null) throw new Error(`the walk ${request.walk}'s step ${request.step} needs ${slotsOf(step.say).join(", ")}`);
+  return recorded(text, voicing, ask);
+}
+
+/** A text of the page itself recorded in the agent's voice: a part of a page read aloud. Throws unless the voicing lets a page read. */
+export async function recordRead(text: string, voicing: Voicing, ask: typeof fetch = fetch): Promise<SaidAnswer> {
+  if (voicing.read !== true) throw new Error("this door reads no page aloud: give its voicing read: true");
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line === "" || line.length > LONGEST_READ) throw new Error(`a text read is 1 to ${LONGEST_READ} characters`);
+  return recorded(line, voicing, ask);
+}
+
+/** One text recorded by the gateway in the agent's voice, kept: the same text again costs nothing. */
+async function recorded(text: string, voicing: Voicing, ask: typeof fetch): Promise<SaidAnswer> {
   const answer = await ask(`${(voicing.gateway ?? GATEWAY).replace(/\/+$/, "")}/v1/agents/${encodeURIComponent(voicing.agent)}/lines`, {
     method: "POST",
     headers: { authorization: `Bearer ${voicing.key}`, "content-type": "application/json", ...(voicing.env === undefined ? {} : { "pinecall-env": voicing.env }) },

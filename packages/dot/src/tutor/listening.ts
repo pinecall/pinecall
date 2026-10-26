@@ -52,7 +52,8 @@ export function listen(document: Document, view: Window, heard: Heard): Listenin
     if (records.every((record) => ours(record.target instanceof Element ? record.target : record.target.parentElement))) return;
     heard.soon("dom");
   });
-  view.addEventListener("scroll", onScroll, { passive: true });
+  // Captured on the document: a page whose content scrolls in a box of its own is heard scrolling too.
+  document.addEventListener("scroll", onScroll, { capture: true, passive: true });
   view.addEventListener("resize", onResize);
   document.addEventListener("toggle", onToggle, true);
   document.addEventListener("click", onClick, true);
@@ -65,7 +66,7 @@ export function listen(document: Document, view: Window, heard: Heard): Listenin
     close() {
       clearTimeout(leaving);
       changes.disconnect();
-      view.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll, true);
       view.removeEventListener("resize", onResize);
       document.removeEventListener("toggle", onToggle, true);
       document.removeEventListener("click", onClick, true);
