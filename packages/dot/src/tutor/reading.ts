@@ -3,7 +3,10 @@
 // The site marks a container `data-pinecall-read`: its headings, paragraphs, items and captions are read
 // in the page's order, as written. Each is recorded in the agent's voice when the reading reaches it, by
 // the site's door (`{ read }`), the next one asked for while one plays; a part longer than the voice takes
-// at once is read a few sentences at a time. A button marked `data-pinecall-press` in it is an example:
+// at once is read a few sentences at a time. A field marked `data-pinecall-type` is an example the page
+// types: its value is typed into it when the reading reaches it, and the button marked `data-pinecall-press`
+// after it sends it, in any form (the page's own example, not the visitor's). A button marked
+// `data-pinecall-press` in it is an example:
 // pressed when the reading reaches it (its value, when it has one, said first), and the reading waits for
 // what the button controls (`aria-controls`) to answer and not be busy, then says its `data-pinecall-then`
 // (what the output shows) pointing at it, and each note of its `data-pinecall-notes` list pointing at the
@@ -14,14 +17,18 @@
 // though a button marked to press there is still pressed. An element with `data-pinecall-say` is said
 // as that line, written to be heard, instead of what it shows; the parts inside it are not read again. A heading that
 // shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
-// and the whole box lit: a title said alone, then its words, sounds like two things.
+// and the whole box lit: a title said alone, then its words, sounds like two things. A frame of the site's own
+// (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`.
 
+import { pageOf } from "../pointer/frames.js";
 import type { ExplainRequest, Note } from "../wire/ask.js";
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
 
 export const READ_ATTRIBUTE = "data-pinecall-read";
 export const PRESS_ATTRIBUTE = "data-pinecall-press";
+/** On a field: the words typed into it when the reading reaches it, the page's own example (a chat's question); the `data-pinecall-press` after it sends it. */
+export const TYPE_ATTRIBUTE = "data-pinecall-type";
 export const QUIET_ATTRIBUTE = "data-pinecall-quiet";
 /** The line an element is said as, instead of what it shows: the same the agent says in a call. */
 export const SAY_ATTRIBUTE = "data-pinecall-say";
@@ -178,9 +185,13 @@ function card(heading: Element, root: Element): { box: Element; text: string; wo
   return { box, words, text: `${title}${/[.!?:…]$/.test(title) ? "" : "."} ${wordsOf(words)}` };
 }
 
+/** The containers of `document` that are read, outermost. */
+function rootsOf(document: Document): Element[] {
+  return [...document.querySelectorAll(`[${READ_ATTRIBUTE}]`)].filter((root) => root.parentElement?.closest(`[${READ_ATTRIBUTE}]`) == null);
+}
+
 /** The page as it reads now, under the title the menu shows it with; null when it marks nothing to read. */
 export function readingOf(document: Document, title: string): Reading | null {
-  const roots = [...document.querySelectorAll(`[${READ_ATTRIBUTE}]`)].filter((root) => root.parentElement?.closest(`[${READ_ATTRIBUTE}]`) == null);
   const steps: WalkStep[] = [];
   const at: Element[] = [];
   const outputs: (AboutOutput | undefined)[] = [];
@@ -193,15 +204,26 @@ export function readingOf(document: Document, title: string): Reading | null {
       outputs[at.length - 1] = about;
     }
   };
-  for (const root of roots) {
-    for (const element of root.querySelectorAll(`${PARTS}, [${PRESS_ATTRIBUTE}], [${SAY_ATTRIBUTE}]`)) {
+  const scan = (root: Element): void => {
+    for (const element of root.querySelectorAll(`${PARTS}, [${PRESS_ATTRIBUTE}], [${TYPE_ATTRIBUTE}], [${SAY_ATTRIBUTE}], iframe`)) {
       if (!seen(element)) continue;
+      // A frame of the site's own is read in its place, as a page is: what its page marks.
+      if (element.tagName === "IFRAME") {
+        const page = pageOf(element);
+        if (page !== null) rootsOf(page).forEach(scan);
+        continue;
+      }
+      if (element.hasAttribute(TYPE_ATTRIBUTE)) {
+        steps.push({ fill: element.getAttribute("aria-label") ?? element.getAttribute("placeholder") ?? "field", with: element.getAttribute(TYPE_ATTRIBUTE) ?? "" });
+        at.push(element);
+        continue;
+      }
       if (element.hasAttribute(PRESS_ATTRIBUTE)) {
         line(element.getAttribute(PRESS_ATTRIBUTE) ?? "", element);
         steps.push({ press: element.getAttribute("aria-label") ?? wordsOf(element) });
         at.push(element);
         const controls = element.getAttribute("aria-controls");
-        const output = (controls === null ? null : document.getElementById(controls)) ?? element;
+        const output = (controls === null ? null : element.ownerDocument.getElementById(controls)) ?? element;
         line(element.getAttribute(THEN_ATTRIBUTE) ?? "", output, { output, find: null });
         // Each note on the output, said pointing at the line it finds; one that finds none is left out as it is reached.
         const notes = element.getAttribute(NOTES_ATTRIBUTE);
@@ -225,7 +247,8 @@ export function readingOf(document: Document, title: string): Reading | null {
       if (together !== null) read.add(together.words);
       line(together?.text ?? wordsOf(element), together?.box ?? element);
     }
-  }
+  };
+  rootsOf(document).forEach(scan);
   return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs };
 }
 
@@ -237,6 +260,8 @@ export interface ReadingOptions {
   light: (element: Element | null) => void;
   /** An example pressed, and what it controls waited on until it answered. */
   press: (element: Element) => Promise<void>;
+  /** The page's own example typed into a field, the pointer on it. */
+  type?: ((element: Element, text: string) => Promise<void>) | undefined;
   /** An output explained by the site's door: notes on its lines; none when the door gives none. */
   explain?: ((request: ExplainRequest) => Promise<Note[]>) | undefined;
 }
@@ -264,11 +289,16 @@ export class ReadAloud {
     return recording;
   }
 
-  /** The `at`th step, an example: pressed, waited on, and its output explained by the door when the page notes nothing on it. */
+  /** The `at`th step, an example: typed into a field; or pressed, waited on, and its output explained by the door when the page notes nothing on it. */
   async act(at: number): Promise<void> {
     const element = this.reading.at[at];
-    if (element === undefined) return;
+    const step = this.reading.walk.steps[at];
+    if (element === undefined || step === undefined) return;
     this.#options.light(element);
+    if ("fill" in step) {
+      await this.#options.type?.(element, step.with);
+      return;
+    }
     await this.#options.press(element);
     const command = element.getAttribute(EXPLAIN_ATTRIBUTE);
     // Its own output, by what it controls: a press the page says nothing after has no step about it.
@@ -344,9 +374,11 @@ export function readingWith(
     record: (text) => acting.read(text),
     explain: (request) => acting.explain(request),
     light: moves.light,
+    type: (element, text) => moves.queued(async () => void (await acting.type(element, text))),
+    // The page's own example: its button pressed in any form.
     press: (element) =>
       moves.queued(async () => {
-        if ((await acting.press(element)) !== null) return;
+        if ((await acting.press(element, true)) !== null) return;
         const controls = element.getAttribute("aria-controls");
         const output = controls === null ? null : document.getElementById(controls);
         if (output !== null) await acting.wait(() => output, EXAMPLE_MS);

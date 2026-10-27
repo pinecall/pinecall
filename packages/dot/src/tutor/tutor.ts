@@ -14,6 +14,7 @@ import { face } from "../face/index.js";
 import { Page } from "../page/page.js";
 import { aimOf, along, animate, besideOf, coveredTop, flightMs, scrollOnto, shownWhole, type Point } from "../pointer/flight.js";
 import { Card } from "../pointer/card.js";
+import { boxOf } from "../pointer/frames.js";
 import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
@@ -155,8 +156,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     timers.set(why, setTimeout(() => look(why), SETTLE[why]));
   };
 
-  // The side the face stands on is the destination's, chosen before the flight: chosen on the way, it
-  // covered the thing and then jumped clear of it on landing.
+  // The face's side is the destination's, chosen before the flight: chosen on the way, it covered the thing, then jumped clear.
   const fly = async (to: Point, side?: Side): Promise<void> => {
     const from = person.at;
     flying = true;
@@ -169,8 +169,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   /** What the face must not cover while the pointer is on `element`: on a window of code, the lines lit. */
   const clearOf = (element: Element): DOMRect | null => (element.closest(".pc-code") === null ? null : walks.code.litBox());
   const onScreen = (element: Element): boolean => {
-    // Under the site's own header is not on the screen: the visitor cannot see it.
-    const box = element.getBoundingClientRect();
+    const box = boxOf(element); // under the site's own header is not on the screen: the visitor cannot see it
     return box.bottom > coveredTop(document) && box.top < view.innerHeight;
   };
   /** A move; `beside`, a block being read pointed at from its left, the face in the margin, never on its words. */
@@ -189,7 +188,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         if (beside && !shownWhole(element)) element.scrollIntoView({ block: "start" }); // a pane this did not find: the browser's own scroll
         const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
         await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
-        const box = element.getBoundingClientRect();
+        const box = boxOf(element);
         anchor = { element, dx: aim.x - box.left, dy: aim.y - box.top, side };
         return;
       }
@@ -288,7 +287,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     // An element gone, or hidden (a closed window of code), is let go of where the pointer stands.
     if (anchor !== null && (!anchor.element.isConnected || anchor.element.closest("[hidden]") !== null)) anchor = null;
     if (!flying && anchor !== null) {
-      const box = anchor.element.getBoundingClientRect();
+      const box = boxOf(anchor.element);
       person.place({ x: box.left + anchor.dx, y: box.top + anchor.dy }, clearOf(anchor.element), anchor.side);
       person.kind(hover.on(anchor.element));
     }

@@ -1,7 +1,10 @@
 /** How the pointer moves: where it aims on an element, the path it flies, and the page scrolled like a hand scrolls it. */
 //
 // The path is the screen recorder's: minimum jerk, timed by the distance, with a slight arc off the
-// straight line, the way a hand moves a mouse.
+// straight line, the way a hand moves a mouse. Every box is the top page's, an element in a frame of the
+// site's own too (`frames.ts`).
+
+import { boxOf, frameOf, onTop, originOf } from "./frames.js";
 
 export interface Point {
   x: number;
@@ -47,11 +50,11 @@ export function aimOf(element: Element): Point {
     if (text !== null) {
       const range = document.createRange();
       range.selectNodeContents(text);
-      const words = range.getClientRects()[0] ?? range.getBoundingClientRect();
+      const words = onTop(range.getClientRects()[0] ?? range.getBoundingClientRect(), document);
       if (words.width > 0) return { x: words.left + Math.min(words.width / 2, 60), y: words.bottom + UNDER };
     }
   }
-  const box = element.getBoundingClientRect();
+  const box = boxOf(element);
   return { x: box.left + box.width / 2, y: box.top + Math.min(box.height / 2, 60) };
 }
 
@@ -63,7 +66,7 @@ const BESIDE = 72;
  * line, the face to its left, in the margin (`west`); above the block where the left has no room.
  */
 export function besideOf(element: Element): { aim: Point; side: { west: boolean; up: boolean } } {
-  const box = element.getBoundingClientRect();
+  const box = boxOf(element);
   if (box.left >= BESIDE) return { aim: { x: box.left - 2, y: box.top + Math.min(10, box.height / 2) }, side: { west: true, up: false } };
   return { aim: { x: box.left + 16, y: box.top - 4 }, side: { west: false, up: true } };
 }
@@ -136,13 +139,15 @@ export async function scrollOnto(element: Element, where: number, still: boolean
   const view = element.ownerDocument.defaultView;
   if (view === null) return;
   // The innermost box first, then each one it stands in, then the page: a line of an output that scrolls is
-  // brought into the output, and the output into the page.
+  // brought into the output, and the output into the page. In a frame, its page, then the frame in the one around it.
   let scroller: Element | null = scrollerOf(element);
   for (;;) {
     await scrollWithin(element, scroller, where, still, view);
-    if (scroller === null) return;
+    if (scroller === null) break;
     scroller = scrollerOf(scroller);
   }
+  const frame = frameOf(element.ownerDocument);
+  if (frame !== null) await scrollOnto(frame, where, still);
 }
 
 /** `element` scrolled into view within one box: `scroller`, or the page when null. */
@@ -165,19 +170,27 @@ async function scrollWithin(element: Element, scroller: Element | null, where: n
  * scrolling box, under the site's header); one taller than that part, from its start, near the top.
  */
 export function shownWhole(element: Element): boolean {
-  const view = element.ownerDocument.defaultView;
-  if (view === null) return true;
-  // What can be seen: the screen, cut down by every box the element scrolls in.
-  let top = coveredTop(element.ownerDocument);
-  let bottom = view.innerHeight;
-  for (let scroller = scrollerOf(element); scroller !== null; scroller = scrollerOf(scroller)) {
-    const frame = scroller.getBoundingClientRect();
-    top = Math.max(top, frame.top);
-    bottom = Math.min(bottom, frame.bottom);
+  if (element.ownerDocument.defaultView === null) return true;
+  // What can be seen: the screen, cut down by every box the element scrolls in, and in a frame, by the frame's
+  // screen and every box the frame scrolls in, on the page around it.
+  let top = -Infinity;
+  let bottom = Infinity;
+  for (let node: Element | null = element; node !== null; node = frameOf(node.ownerDocument)) {
+    const page = node.ownerDocument;
+    const view = page.defaultView;
+    if (view === null) break;
+    const at = originOf(page).y;
+    top = Math.max(top, at + (frameOf(page) === null ? coveredTop(page) : 0));
+    bottom = Math.min(bottom, at + view.innerHeight);
+    for (let scroller = scrollerOf(node); scroller !== null; scroller = scrollerOf(scroller)) {
+      const frame = scroller.getBoundingClientRect();
+      top = Math.max(top, at + frame.top);
+      bottom = Math.min(bottom, at + frame.bottom);
+    }
   }
   top += MARGIN / 2;
   bottom -= MARGIN / 2;
-  const box = element.getBoundingClientRect();
+  const box = boxOf(element);
   if (box.height > bottom - top) return box.top >= top && box.top <= top + (bottom - top) * 0.3;
   return box.top >= top && box.bottom <= bottom;
 }

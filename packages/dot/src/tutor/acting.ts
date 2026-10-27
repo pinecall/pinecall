@@ -9,6 +9,7 @@
 
 import type { Page } from "../page/page.js";
 import { nameOf } from "../page/roles.js";
+import { framesIn, isElement } from "../pointer/frames.js";
 import { press } from "../pointer/pressing.js";
 import { notesOf, rowOf, saidOf, type DoorRequest, type ExplainRequest, type Note } from "../wire/ask.js";
 import { filled, slotsOf, valueOf, type ActStep, type LiveStep, type RecordedStep, type RecordedWalk, type ReadAct, type Values } from "../wire/index.js";
@@ -68,12 +69,17 @@ export class Acting {
     });
   }
 
-  /** Press a button, the pointer on it first and a ring as it presses; the page is watched from now. Why it could not, or null. */
-  async press(element: Element): Promise<string | null> {
+  /** Press a button, the pointer on it first and a ring as it presses; the page is watched from now. Why it could not, or null. `forms`, a page read aloud's example, pressed in any form. */
+  async press(element: Element, forms = false): Promise<string | null> {
     await this.#options.point(element);
     this.#options.ring();
     this.#watch();
-    return press(element);
+    return press(element, forms);
+  }
+
+  /** Words typed into a field, the pointer on it: a page read aloud's example. Why it could not, or null. */
+  type(element: Element, text: string): Promise<string | null> {
+    return this.#options.type(element, text);
   }
 
   /** Wait for `target` to change, settle and not be busy, `ms` at most: true when it did. */
@@ -163,13 +169,16 @@ export class Acting {
   #watch(): void {
     this.#changes = [];
     if (this.#observer !== null) return;
-    const ours = (node: Node): boolean => (node instanceof Element ? node : node.parentElement)?.closest("[data-pinecall-skip]") != null;
+    const ours = (node: Node): boolean => (isElement(node) ? node : node.parentElement)?.closest("[data-pinecall-skip]") != null;
     this.#observer = new MutationObserver((records) => {
       const at = performance.now();
       for (const record of records) if (!ours(record.target)) this.#changes.push({ node: record.target, at });
       this.#changes.splice(0, Math.max(0, this.#changes.length - KEPT));
     });
-    this.#observer.observe(this.#options.document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    // The page, and the pages of the site's own frames in it: a chat in a frame answers there.
+    for (const page of [this.#options.document, ...framesIn(this.#options.document)]) {
+      this.#observer.observe(page.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    }
   }
 
   #stop(): void {

@@ -45,12 +45,11 @@ The face fills its element with one SVG: 64 px is a launcher, 240 px a hero. Two
 are fine.
 
 **Its shape and colour.** `face(host, call, { shape, color })`: `shape` is `circle` (the default),
-`squircle` or `blob`, and `color` any CSS colour (else the page's `--pc-face`). `reshape(shape)`
-changes it later, the body easing from one into the other. The body moves whole with the mood, its
-outline never bent: it bobs and leans in while it listens, more slowly while it thinks, and squashes
-with the voice while it speaks; still under `prefers-reduced-motion`. Nothing is drawn outside the
-body, no halo and no shadow, so it sits on any background. `tutor()` takes the same `shape` and `color`, which
-tints its pointer too.
+`squircle` or `blob`, and `color` any CSS colour (else the page's `--pc-face`). `reshape(shape)` changes it
+later, the body easing from one into the other. The body moves whole with the mood, its outline never bent: it
+bobs and leans in while it listens, more slowly while it thinks, and squashes with the voice while it speaks;
+still under `prefers-reduced-motion`. Nothing is drawn outside the body, no halo and no shadow, so it sits on
+any background. `tutor()` takes the same `shape` and `color`, which tints its pointer too.
 
 **How the mouth is read.** Everything happens in the browser, from the element the agent's voice
 plays in (`state.voice`):
@@ -116,15 +115,14 @@ presses is one a walk the site wrote names (`press`): outside any form, or in a 
 (`<search>`, `role="search"`); never a link, never a form that books, buys or signs up.
 
 **The conversation in writing, and the call's buttons.** The agent's words show beside the face,
-lit as its voice says them; the visitor's, what the agent heard, show in the corner as they speak
-and for `linger` ms after (2600 by default), one side at a time. `captions` chooses whose may show:
-`both` (default), `agent`, `caller` or `none`. During a call two buttons sit beside the corner:
-**CC**, which turns the words on and off for this visitor: off until they turn them on (kept in
-their browser's `localStorage`, and absent with `captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays,
-CC sits there with **■**, which stops it. The buttons slide into the face's corner while it tours, and
-aside as it comes home. No words show while a
-window of code or a card is open: they would cover it. `words: { hangUp, captions, stop }` names them for a
-screen reader.
+lit as its voice says them; the visitor's, what the agent heard, show in the corner as they speak and for
+`linger` ms after (2600 by default), one side at a time. `captions` chooses whose may show: `both` (default),
+`agent`, `caller` or `none`. During a call two buttons sit beside the corner: **CC**, which turns the words on
+and off for this visitor: off until they turn them on (kept in their browser's `localStorage`, and absent with
+`captions: "none"`), and **✕**, which hangs up (`call.leave()`). While a walk plays, CC sits there with **■**,
+which stops it. The buttons slide into the face's corner while it tours, and aside as it comes home. No words
+show while a window of code or a card is open: they would cover it. `words: { hangUp, captions, stop }` names
+them for a screen reader.
 
 `take(data)` returns `true` for a message that was the tutor's (a cursor move, a macro step) and
 `false` for anything else, which stays the page's to draw.
@@ -337,20 +335,22 @@ waits for what it controls (`aria-controls`, its output) to answer and not be `a
 names a list whose items each find a line of it (`data-pinecall-find`, a text in any case or `/a regex/`) and
 say what it means; the line is lit and pointed at, the output marked `data-pinecall-reading` meanwhile so the
 site can widen a box that scrolls. A note whose line is not there is left out, so the same notes serve whatever
-the command printed. A button marked `data-pinecall-explain` with no notes has its output explained by the door
-(`{ explain }`: the agent's model through the gateway, with `voicing.explain`), the notes read the same way in
-the place of its `data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A
-page is rarely heard well as it is written: an element with `data-pinecall-say` is said as that line instead,
-nothing inside it read again, so a section, a table or a list of cards becomes a sentence or two written to be
-heard. The pointer stands at the left of the part read, the face in the margin, never on its words.
-`tutor.read()` starts it from a button of the site's own. While a walk or a reading plays, the corner holds
-back, pause, next and stop: back and next go a sentence at a time.
+the command printed. A field marked `data-pinecall-type` is typed with its value, the page's own example (a
+chat's question), and the `data-pinecall-press` after it sends it, in any form. A frame of the site's own (a
+chat in an iframe) is read in its place: what its page marks `data-pinecall-read`, the pointer, the light and
+the scroll reaching into it. A button marked `data-pinecall-explain` with no notes has its output explained by
+the door (`{ explain }`: the agent's model through the gateway, with `voicing.explain`), the notes read the same
+way in the place of its `data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not
+read. A page is rarely heard well as it is written: an element with `data-pinecall-say` is said as that line
+instead, nothing inside it read again, so a section, a table or a list of cards becomes a sentence or two
+written to be heard. The pointer stands at the left of the part read, the face in the margin, never on its
+words. `tutor.read()` starts it from a button of the site's own. While a walk or a reading plays, the corner
+holds back, pause, next and stop: back and next go a sentence at a time.
 
-Each part is recorded by the site's door when the reading reaches it, the next asked for while one
-plays (`{ read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second
-time. A door lets its pages be read only when it says so (`answer(body, { voicing: { …, read: true } })`):
-a page may then have any text of 480 characters said in the agent's voice, so a site gives it to its own
-pages alone.
+Each part is recorded by the site's door when the reading reaches it, the next asked for while one plays (`{
+read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second time. A door lets its
+pages be read only when it says so (`answer(body, { voicing: { …, read: true } })`): a page may then have any
+text of 480 characters said in the agent's voice, so a site gives it to its own pages alone.
 
 ```html
 <main data-pinecall-read>

@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **A page read aloud types its own example, and reaches into the site's frames**: a field marked `data-pinecall-type`
+  is typed with its value and the `data-pinecall-press` after it sends it, in any form (the page's own example, not the
+  visitor's); a frame of the site's own (a chat in an iframe) is read in its place, what its page marks
+  `data-pinecall-read`, the pointer, the light, the scroll and the wait reaching into it.
 - **Typing to the dot: one thing done, never a conversation.** With `tutor(call, { ask, onTalk })` the walks' menu
   has a field; what is typed goes to the site's server, which decides with `@pinecall/dot/server`'s `decide()`
   (Jev, through OpenRouter's Decisions API), and the dot plays a walk or lights and points at a thing, with no call.

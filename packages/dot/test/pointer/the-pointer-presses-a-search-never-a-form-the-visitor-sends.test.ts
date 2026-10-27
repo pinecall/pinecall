@@ -1,4 +1,4 @@
-// The pointer presses a button a walk names: one outside any form, or in a search form; never a form the visitor sends, a link, or a button that is disabled.
+// The pointer presses a button a walk names: one outside any form, or in a search form; never a form the visitor sends, a link, or a button that is disabled. A page read aloud, the site's own example, presses in any form.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -36,5 +36,19 @@ describe("a button pressed", () => {
     expect(notPressable(at("#link"))).toBe("it leaves the page");
     expect(notPressable(at("#off"))).toBe("it is disabled");
     expect(notPressable(at("#text"))).toBe("it is not a button");
+  });
+
+  it("is one in any form when it is the page's own example (a reading's), never the visitor's", () => {
+    document.body.innerHTML = `<form><input name="q"><button id="send" type="submit">Enviar</button></form>`;
+    let sent = 0;
+    document.querySelector("form")!.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sent += 1;
+    });
+
+    expect(notPressable(at("#send"))).toBe("it sends a form, which is the visitor's to send");
+    expect(notPressable(at("#send"), true)).toBeNull();
+    expect(press(at("#send"), true)).toBeNull();
+    expect(sent).toBe(1);
   });
 });

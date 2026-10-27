@@ -10,20 +10,21 @@ const LETTER_MS = 45;
 /** The inputs a person writes words in. */
 const WRITTEN = new Set(["text", "tel", "email", "search", "url", "number", "date", "time", "datetime-local", "month", "week"]);
 
-/** Why `element` is not a field to fill, or null when it is one. */
+/** Why `element` is not a field to fill, or null when it is one. Told by its tag: a frame's field is of the frame's window. */
 export function notFillable(element: Element): string | null {
-  if (element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) return element.disabled ? "it is disabled" : null;
-  if (!(element instanceof HTMLInputElement)) return "it is not a field";
-  if (element.type === "password" || element.autocomplete.startsWith("cc-")) return "a password or a card is the visitor's to type";
-  if (!WRITTEN.has(element.type)) return `a ${element.type} field is not written in`;
-  return element.disabled || element.readOnly ? "it is disabled" : null;
+  if (element.tagName === "SELECT" || element.tagName === "TEXTAREA") return (element as HTMLTextAreaElement).disabled ? "it is disabled" : null;
+  if (element.tagName !== "INPUT") return "it is not a field";
+  const input = element as HTMLInputElement;
+  if (input.type === "password" || input.autocomplete.startsWith("cc-")) return "a password or a card is the visitor's to type";
+  if (!WRITTEN.has(input.type)) return `a ${input.type} field is not written in`;
+  return input.disabled || input.readOnly ? "it is disabled" : null;
 }
 
 /** Fill `field` with `text`: typed letter by letter, or, for a list, the option that says it. Resolves with why it could not, or null. */
 export async function fill(field: Element, text: string, still: boolean): Promise<string | null> {
   const refused = notFillable(field);
   if (refused !== null) return refused;
-  if (field instanceof HTMLSelectElement) return choose(field, text);
+  if (field.tagName === "SELECT") return choose(field as HTMLSelectElement, text);
   const written = field as HTMLInputElement | HTMLTextAreaElement;
   written.focus({ preventScroll: true });
   if (still) {
@@ -50,9 +51,11 @@ function choose(list: HTMLSelectElement, text: string): string | null {
   return null;
 }
 
-// A framework keeps its own copy of the value and reads it back from the prototype's setter.
+// A framework keeps its own copy of the value and reads it back from the prototype's setter: the one of the
+// field's own window, found up its chain.
 function set(field: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-  Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value);
+  let prototype = Object.getPrototypeOf(field) as object | null;
+  while (prototype !== null && Object.getOwnPropertyDescriptor(prototype, "value") === undefined) prototype = Object.getPrototypeOf(prototype) as object | null;
+  if (prototype !== null) Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value);
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }

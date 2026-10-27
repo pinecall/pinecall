@@ -12,6 +12,7 @@
 import type { Kind } from "./hover.js";
 import { ARROW, BACK, CAPTIONS, NEXT, PAUSE, STOP } from "./icons.js";
 import type { Point } from "./flight.js";
+import { boxOf } from "./frames.js";
 
 /** The resting face's size, in px, and how far its edge stands from the corner of the window. */
 const SIZE = 58;
@@ -317,7 +318,7 @@ export class Person {
     this.#offered = element;
     this.#play.hidden = element === null;
     if (element === null) return;
-    const box = element.getBoundingClientRect();
+    const box = boxOf(element);
     const width = this.#document.defaultView?.innerWidth ?? 0;
     this.#play.style.left = `${Math.min(box.right - 34, width - 40).toFixed(0)}px`;
     this.#play.style.top = `${Math.max(box.top + 8, 8).toFixed(0)}px`;
@@ -327,7 +328,7 @@ export class Person {
   spot(element: Element | null): void {
     this.#spot.classList.toggle("pc-on", element !== null);
     if (element === null) return;
-    const box = element.getBoundingClientRect();
+    const box = boxOf(element);
     const pad = 8;
     const radius = Number.parseFloat(this.#document.defaultView?.getComputedStyle(element).borderRadius ?? "") || 10;
     Object.assign(this.#spot.style, {
