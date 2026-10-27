@@ -2,7 +2,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ReadAloud, readingOf, type Reading } from "../../src/tutor/reading.js";
+import { ReadAloud } from "../../src/tutor/aloud.js";
+import { readingOf, type Reading } from "../../src/tutor/reading.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -21,12 +22,14 @@ const PAGE = `
 const kinds = (reading: Reading): string[] => reading.walk.steps.map((step) => ("say" in step ? step.say : "fill" in step ? `fill:${step.with}` : "press"));
 
 describe("a chat the dot talks to", () => {
-  it("is a turn at a time: the line said and typed, sent, the answer read aloud, and the whole chat explained at the end", async () => {
+  it("is a turn at a time: the line typed as it is said, sent, the answer read aloud, and the whole chat explained at the end", async () => {
     document.body.innerHTML = PAGE;
     document.documentElement.lang = "es";
     const log = document.getElementById("log")!;
     const reading = readingOf(document, "Leer")!;
     expect(kinds(reading)).toEqual(["Hablale.", "Le escribo yo.", "press", "Y seguimos."]);
+    // Its opening line is said pointing at the chat, not at its button.
+    expect(reading.at[1]?.id).toBe("log");
 
     const asked: unknown[] = [];
     const typed: string[] = [];
@@ -50,41 +53,46 @@ describe("a chat the dot talks to", () => {
         return [{ find: "anotado", say: "Lo anotó." }];
       },
     });
+    /** The `at`th line said: recorded, shown (its typing started), as the walker does. */
+    const said = async (at: number): Promise<void> => {
+      await aloud.voice(at);
+      aloud.shows(at);
+    };
 
-    // The marker (step 2): the first line asked for, then said, typed and sent after it, and the turn after that marked.
+    // The marker (step 2): the first line asked for, said and typed meanwhile, sent, and the turn after that marked.
     await aloud.act(2);
     expect(asked).toEqual([{ goal: "Pedí dos medialunas y despedite.", heard: [], language: "es" }]);
-    expect(kinds(reading).slice(3, 8)).toEqual(["Hola, quiero dos medialunas.", "fill:Hola, quiero dos medialunas.", "press", "press", "Y seguimos."]);
+    expect(kinds(reading).slice(3, 7)).toEqual(["Hola, quiero dos medialunas.", "press", "press", "Y seguimos."]);
     expect(reading.at[3]?.id).toBe("t");
-    expect(reading.at[5]?.id).toBe("send");
-    await aloud.act(4);
-    await aloud.act(5);
+    expect(reading.at[4]?.id).toBe("send");
+    await said(3);
     expect(typed).toEqual(["Hola, quiero dos medialunas."]);
+    await aloud.act(4);
     expect(explained).toEqual([]);
 
-    // The marker again (6): the agent's answer read aloud, pointing at it, then the next turn marked.
-    await aloud.act(6);
-    expect(kinds(reading).slice(7, 9)).toEqual(["Dos medialunas, anotado. ¿Algo más?", "press"]);
-    expect(reading.at[7]?.getAttribute("data-pinecall-said")).toBe("agent");
+    // The marker again (5): the agent's answer read aloud, pointing at it, then the next turn marked.
+    await aloud.act(5);
+    expect(kinds(reading).slice(6, 8)).toEqual(["Dos medialunas, anotado. ¿Algo más?", "press"]);
+    expect(reading.at[6]?.getAttribute("data-pinecall-said")).toBe("agent");
 
-    // The next line (8), with the chat so far; the dot says goodbye with it.
-    await aloud.act(8);
+    // The next line (7), with the chat so far; the dot says goodbye with it.
+    await aloud.act(7);
     expect(asked[1]).toEqual({
       goal: "Pedí dos medialunas y despedite.",
       heard: [{ who: "caller", said: "Hola, quiero dos medialunas." }, { who: "agent", said: "Dos medialunas, anotado. ¿Algo más?" }],
       language: "es",
     });
-    expect(kinds(reading).slice(9, 13)).toEqual(["Gracias, chau.", "fill:Gracias, chau.", "press", "press"]);
-    await aloud.act(10);
-    await aloud.act(11);
-    await aloud.act(12); // the agent's last answer read aloud
-    expect(kinds(reading).slice(13, 15)).toEqual(["Hasta luego.", "press"]);
+    expect(kinds(reading).slice(8, 11)).toEqual(["Gracias, chau.", "press", "press"]);
+    await said(8);
+    await aloud.act(9);
+    await aloud.act(10); // the agent's last answer read aloud
+    expect(kinds(reading).slice(11, 13)).toEqual(["Hasta luego.", "press"]);
 
-    // Goodbye said (14): the talk is over and the whole chat explained, then the page goes on.
-    await aloud.act(14);
+    // Goodbye said (12): the talk is over and the whole chat explained, then the page goes on.
+    await aloud.act(12);
     expect(asked).toHaveLength(2);
     expect(explained).toEqual([{ output: "Hola, quiero dos medialunas.\nDos medialunas, anotado. ¿Algo más?\nGracias, chau.\nHasta luego.", command: "La conversación entera.", language: "es" }]);
-    expect(kinds(reading).slice(15)).toEqual(["Lo anotó.", "Y seguimos."]);
+    expect(kinds(reading).slice(13)).toEqual(["Lo anotó.", "Y seguimos."]);
   });
 
   it("ends when the chat does: a send button disabled is a call that was hung up", async () => {

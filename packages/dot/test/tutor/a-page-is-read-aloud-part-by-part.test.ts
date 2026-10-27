@@ -3,7 +3,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { recordRead } from "../../src/server/saying.js";
-import { ReadAloud, piecesOf, readingOf } from "../../src/tutor/reading.js";
+import { ReadAloud } from "../../src/tutor/aloud.js";
+import { piecesOf, readingOf } from "../../src/tutor/reading.js";
 
 afterEach(() => {
   document.body.innerHTML = "";

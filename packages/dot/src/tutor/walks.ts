@@ -8,7 +8,8 @@ import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { AskRequest } from "../wire/ask.js";
 import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values } from "../wire/index.js";
-import { ReadAloud, fromHere, readingOf, type ReadingOptions } from "./reading.js";
+import { ReadAloud, type ReadingOptions } from "./aloud.js";
+import { fromHere, readingOf } from "./reading.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
 export interface WalksOptions {

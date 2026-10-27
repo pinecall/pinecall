@@ -2,7 +2,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ReadAloud, lineIn, readingOf } from "../../src/tutor/reading.js";
+import { ReadAloud } from "../../src/tutor/aloud.js";
+import { lineIn, readingOf } from "../../src/tutor/reading.js";
 
 afterEach(() => {
   document.body.innerHTML = "";

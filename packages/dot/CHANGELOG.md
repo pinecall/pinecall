@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **The dot types as it speaks**: a line typed into a chat (its own, or the page's `data-pinecall-type`) is typed while
+  it is said, the letters paced to the recording, instead of said first and typed after; a chat's opening line is
+  said pointing at the chat, not at its send button. The reading under way (`ReadAloud`, `readingWith`) moved to `tutor/aloud.ts`.
 - **A chat's answer is read aloud as it came**: after the press that drew it out (a question typed, a call opened), each
   turn marked `data-pinecall-said="agent"` is said pointing at it, before the notes on the chat.
 - **A page read aloud starts from the part in view**: with the top scrolled away, the reading begins at the first part

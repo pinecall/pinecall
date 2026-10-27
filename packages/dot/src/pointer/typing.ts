@@ -7,6 +7,8 @@
 
 /** How long one letter takes, in ms. */
 const LETTER_MS = 45;
+/** The slowest a letter comes when the typing is paced to a recording, in ms: a long sentence over a few words typed. */
+const SLOWEST_MS = 180;
 /** The inputs a person writes words in. */
 const WRITTEN = new Set(["text", "tel", "email", "search", "url", "number", "date", "time", "datetime-local", "month", "week"]);
 
@@ -20,8 +22,8 @@ export function notFillable(element: Element): string | null {
   return input.disabled || input.readOnly ? "it is disabled" : null;
 }
 
-/** Fill `field` with `text`: typed letter by letter, or, for a list, the option that says it. Resolves with why it could not, or null. */
-export async function fill(field: Element, text: string, still: boolean): Promise<string | null> {
+/** Fill `field` with `text`: typed letter by letter (paced to `ms`, a recording said meanwhile), or, for a list, the option that says it. Resolves with why it could not, or null. */
+export async function fill(field: Element, text: string, still: boolean, ms?: number): Promise<string | null> {
   const refused = notFillable(field);
   if (refused !== null) return refused;
   if (field.tagName === "SELECT") return choose(field as HTMLSelectElement, text);
@@ -30,10 +32,11 @@ export async function fill(field: Element, text: string, still: boolean): Promis
   if (still) {
     set(written, text);
   } else {
+    const pace = ms === undefined ? LETTER_MS : Math.min(SLOWEST_MS, Math.max(LETTER_MS / 2, (ms * 0.9) / Math.max(1, text.length)));
     set(written, "");
     for (let at = 1; at <= text.length; at++) {
       set(written, text.slice(0, at));
-      await new Promise((done) => setTimeout(done, LETTER_MS));
+      await new Promise((done) => setTimeout(done, pace));
     }
   }
   written.dispatchEvent(new Event("change", { bubbles: true }));

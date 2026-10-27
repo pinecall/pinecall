@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { Page } from "../../src/page/page.js";
 import { Acting } from "../../src/tutor/acting.js";
-import { readingWith } from "../../src/tutor/reading.js";
+import { readingWith } from "../../src/tutor/aloud.js";
 
 afterEach(() => {
   document.body.innerHTML = "";

@@ -23,8 +23,8 @@ export interface ActingOptions {
   point: (element: Element) => Promise<void>;
   /** The ring at the pointer's tip. */
   ring: () => void;
-  /** The visitor's words typed into a field, the pointer on it; called inside the queue. Why it could not, or null. */
-  type: (element: Element, text: string) => Promise<string | null>;
+  /** The visitor's words typed into a field, the pointer on it; called inside the queue. Paced to `ms` when given. Why it could not, or null. */
+  type: (element: Element, text: string, ms?: number) => Promise<string | null>;
   /** The site's door; none, a sentence with slots is left out and the first row read. */
   door?: ((request: DoorRequest) => Promise<unknown>) | undefined;
 }
@@ -78,8 +78,8 @@ export class Acting {
   }
 
   /** Words typed into a field, the pointer on it: a page read aloud's example. Why it could not, or null. */
-  type(element: Element, text: string): Promise<string | null> {
-    return this.#options.type(element, text);
+  type(element: Element, text: string, ms?: number): Promise<string | null> {
+    return this.#options.type(element, text, ms);
   }
 
   /** Wait for `target` to change, settle and not be busy, `ms` at most: true when it did. */

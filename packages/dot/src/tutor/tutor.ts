@@ -23,7 +23,7 @@ import { Acting, WAIT_MS } from "./acting.js";
 import { Hearing, captionsOf, keepVisitorChoice, shows, visitorWantsCaptions } from "./captions.js";
 import { act, askWords, type Asked } from "./ask.js";
 import { listen } from "./listening.js";
-import { readingWith } from "./reading.js";
+import { readingWith } from "./aloud.js";
 import { Player } from "./macro.js";
 import type { TutorOptions } from "./options.js";
 import { Screen } from "./views.js";
@@ -83,7 +83,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   const inCall = (): boolean => call.state.phase === "opening" || call.state.phase === "live";
   const acting = new Acting({
     document, page, door: options.ask, queued: (work) => queued(work), point: (element) => run("point", element),
-    ring: () => person.ring(), type: (element, text) => typeInto(element, text),
+    ring: () => person.ring(), type: (element, text, ms) => typeInto(element, text, ms),
   });
   const walks = new Walks(document, person, drawn, {
     dock: options.dock ?? "right",
@@ -219,10 +219,10 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     }
   };
   /** The pointer onto a field, then the visitor's words typed into it; why it could not, or null. */
-  const typeInto = async (element: Element | null, text: string): Promise<string | null> => {
+  const typeInto = async (element: Element | null, text: string, ms?: number): Promise<string | null> => {
     if (element === null) return null;
     await run("point", element);
-    return fill(element, text, still);
+    return fill(element, text, still, ms);
   };
   const needsElement = (action: Action): boolean => action !== "unhighlight" && action !== "here" && action !== "home";
   /** The ref a target names, a ref or a name (of one of `roles`), looked at fresh; one not on the page is said, and a fresh look follows. */

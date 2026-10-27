@@ -334,8 +334,8 @@ the command printed. A field marked `data-pinecall-type` is typed with its value
 chat's question), and the `data-pinecall-press` after it sends it, in any form. A frame of the site's own (a
 chat in an iframe) is read in its place: what its page marks `data-pinecall-read`, the pointer, the light and
 the scroll reaching into it. A send button marked `data-pinecall-goal` is a chat the dot talks to: it asks the
-door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), says it, types and sends it, reads the
-agent's answer aloud (each turn marked `data-pinecall-said="agent"` or `"caller"`), and goes on until it has
+door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), says it as it types it, sends it, reads
+the agent's answer aloud (each turn marked `data-pinecall-said="agent"` or `"caller"`), and goes on until it has
 what it came for, the chat ends or forty turns pass; the whole chat is then explained. A page whose top was
 scrolled away is read from the first part still in view: coming back to the middle of a chapter goes on from
 there. A button marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain
