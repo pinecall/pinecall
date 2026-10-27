@@ -1,8 +1,8 @@
-// The pointer fills a field the way a person types, with the events a site's code listens for, takes a list's option by its words, and never touches a password, a card or a button.
+// The pointer fills a field the way a person types, with the events a site's code listens for, takes a list's option by its words, tells an element that is no field what is typed for the site to write, and never touches a password, a card or a button.
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { fill, notFillable } from "../../src/pointer/typing.js";
+import { TYPING_EVENT, fill, notFillable } from "../../src/pointer/typing.js";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -43,5 +43,21 @@ describe("filling a field", () => {
     const secret = aField('<input type="password">');
     expect(await fill(secret, "hunter2", true)).not.toBeNull();
     expect((secret as HTMLInputElement).value).toBe("");
+  });
+
+  it("tells an element that is no field what is typed, a letter at a time, when the site takes it", async () => {
+    document.body.innerHTML = `<div id="editor"></div><div id="plain"></div>`;
+    const editor = document.getElementById("editor")!;
+    const told: [string, boolean][] = [];
+    editor.addEventListener(TYPING_EVENT, (event) => {
+      event.preventDefault();
+      const { text, done } = (event as CustomEvent<{ text: string; done: boolean }>).detail;
+      told.push([text, done]);
+    });
+
+    expect(await fill(editor, "ab", false)).toBeNull();
+    expect(told).toEqual([["", false], ["a", false], ["ab", true]]);
+    // Nothing of the site's takes it: no place to type.
+    expect(await fill(document.getElementById("plain")!, "ab", false)).toBe("it is not a field");
   });
 });

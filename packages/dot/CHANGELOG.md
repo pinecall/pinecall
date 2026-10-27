@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **The site's own editor is typed into**: an element that is no field (a code editor) marked `data-pinecall-type` is
+  told what is typed, a letter at a time, by `pinecall-typing` events (`detail.text` so far, `detail.done` last) the
+  site takes with `preventDefault()` and writes where it belongs; one the site does not take is no place to type.
 - **A talk is not explained again at its end**: what the agent said and the tools it used are read as the talk goes;
   when it ends the page goes on, instead of the model's notes walking the chat's turns a second time.
 - **A press waited on holds no move**: after a reading presses an example, the wait for its output no longer holds
