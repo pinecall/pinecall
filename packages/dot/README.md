@@ -337,9 +337,9 @@ the scroll reaching into it. A send button marked `data-pinecall-goal` is a chat
 door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), opens the chat by focusing its field
 (its greeting waited on while `aria-busy`), says each line as it types it, sends it, and reads aloud what the
 agent said and the tools it used (turns marked `data-pinecall-said`; a tool's said by its `data-pinecall-say`)
-until it has what it came for, the chat ends or forty turns pass; then the whole chat is explained. A page whose
-top was scrolled away is read from the first part still in view. A button marked `data-pinecall-explain` with no
-notes has its output explained by the door (`{ explain }`: the agent's model through the gateway, with
+until it has what it came for, the chat ends or forty turns pass, and the page goes on. A page whose top was
+scrolled away is read from the first part still in view. A button marked `data-pinecall-explain` with no notes
+has its output explained by the door (`{ explain }`: the agent's model through the gateway, with
 `voicing.explain`), the notes read the same way in the place of its `data-pinecall-then`, said only when the
 model gives none. `data-pinecall-quiet` is not read. A page is rarely heard well as written: an element with
 `data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or a list

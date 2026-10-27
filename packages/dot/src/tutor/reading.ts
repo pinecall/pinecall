@@ -21,7 +21,7 @@
 // (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`. A send button
 // marked `data-pinecall-goal` is a chat the dot talks to: it asks the door for its line, says it as it types it
 // (the letters paced to the recording), sends it, reads the agent's answer aloud (`data-pinecall-said` on each turn), and goes on until it has what it came
-// for, then has the whole chat explained. Any chat's answer (`data-pinecall-said="agent"`) is read as it came
+// for, the chat read as it goes. Any chat's answer (`data-pinecall-said="agent"`) is read as it came
 // once the press that drew it out is done, before the notes on it. A page read with its top scrolled away is read from the first part
 // still in view (`fromHere`): a person who comes back to the middle of a chapter goes on from there.
 
@@ -36,7 +36,7 @@ export const READ_ATTRIBUTE = "data-pinecall-read";
 export const PRESS_ATTRIBUTE = "data-pinecall-press";
 /** On a field: the words typed into it when the reading reaches it, the page's own example (a chat's question); the `data-pinecall-press` after it sends it. */
 export const TYPE_ATTRIBUTE = "data-pinecall-type";
-/** On a chat's send button: the dot talks to what it sends to, turn by turn, until it gets this (or the chat ends), then has the talk explained. */
+/** On a chat's send button: the dot talks to what it sends to, turn by turn, until it gets this (or the chat ends). */
 export const GOAL_ATTRIBUTE = "data-pinecall-goal";
 /** On each turn of a chat talked to: whose it is, `agent`, `caller` or another (a tool the agent used); all but the caller's read aloud as they come, by their `data-pinecall-say` when they have one. */
 export const SAID_ATTRIBUTE = "data-pinecall-said";

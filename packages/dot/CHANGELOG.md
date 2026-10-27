@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A talk is not explained again at its end**: what the agent said and the tools it used are read as the talk goes;
+  when it ends the page goes on, instead of the model's notes walking the chat's turns a second time.
 - **A press waited on holds no move**: after a reading presses an example, the wait for its output no longer holds
   the pointer's queue; the light, the pointer and a visitor skipping ahead go on meanwhile.
 - **A chat talked to is opened, and all it says is read**: before its first line the dot focuses the chat's field
@@ -23,7 +25,7 @@ maintainer's call.
   chat the dot talks to; it asks the door for its line (`{ next }`: Pinecall's caller through the gateway's
   `/v1/evals/caller`, with `voicing.next`), says it in its own voice, types and sends it, reads the agent's answer
   aloud (each turn marked `data-pinecall-said`), and goes on until it said goodbye, the chat ended or forty turns
-  passed; the whole chat is then explained. The reading's text helpers moved to `tutor/text.ts`.
+  passed. The reading's text helpers moved to `tutor/text.ts`.
 - **A page read aloud types its own example, and reaches into the site's frames**: a field marked `data-pinecall-type`
   is typed with its value and the `data-pinecall-press` after it sends it, in any form (the page's own example, not the
   visitor's); a frame of the site's own (a chat in an iframe) is read in its place, what its page marks

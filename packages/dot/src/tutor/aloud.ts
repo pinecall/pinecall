@@ -44,7 +44,7 @@ export class ReadAloud {
   readonly #heard = new WeakSet<Element>();
   /** The chats the dot said goodbye on. */
   readonly #bye = new WeakSet<Element>();
-  /** The presses of a talk's turns: the talk is explained at its end, not turn by turn. */
+  /** The presses of a talk's turns: read as the talk goes, never explained after. */
   readonly #turns = new WeakSet<WalkStep>();
   /** How long each recorded step plays, once recorded: what a typing is paced to. */
   readonly #lengths = new Map<number, number>();
@@ -131,7 +131,8 @@ export class ReadAloud {
    * One turn of a talk, at the step that marks it: the chat opened first, if it was not; what the agent said since
    * (and the tools it used) read aloud, pointing at each; then the
    * dot's next line asked of the door, said, typed and sent, and the turn after it marked. The talk ends when the dot
-   * said goodbye, the chat ended, the door gives no line or the turns run out: the whole chat is then explained.
+   * said goodbye, the chat ended, the door gives no line or the turns run out; the page then goes on, the chat
+   * having been read as it went.
    */
   async #talk(at: number, button: Element, goal: string): Promise<void> {
     const output = outputOf(button);
@@ -156,7 +157,7 @@ export class ReadAloud {
     const mine = heard.filter((turn) => turn.who === "caller").length;
     const over = field === null || notPressable(button, true) !== null || this.#bye.has(output) || mine >= MOST_TURNS;
     const next = over || this.#options.next === undefined ? null : await this.#options.next({ goal, heard, language: languageOf(output) }).catch(() => null);
-    if (next === null || field === null) return this.#explain(at, output, button.getAttribute(EXPLAIN_ATTRIBUTE) ?? goal);
+    if (next === null || field === null) return;
     if (next.hangup) this.#bye.add(output);
     const press: WalkStep = { press: labelOf(button) };
     this.#turns.add(press);

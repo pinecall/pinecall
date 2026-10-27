@@ -1,4 +1,4 @@
-// A send button marked with a goal is a chat the dot talks to: it opens it and hears its greeting, asks the door for its line, says it, types and sends it, reads aloud all the agent said and the tools it used, and when it has said goodbye has the whole chat explained.
+// A send button marked with a goal is a chat the dot talks to: it opens it and hears its greeting, asks the door for its line, says it, types and sends it, reads aloud all the agent said and the tools it used, and when it has said goodbye goes on with the page, the chat not explained again.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -14,7 +14,7 @@ const PAGE = `
     <p>Hablale.</p>
     <div class="chat">
       <div id="log"></div>
-      <form><input id="t" placeholder="Escribí…"><button id="send" aria-controls="log" data-pinecall-press="Le escribo yo." data-pinecall-goal="Pedí dos medialunas y despedite." data-pinecall-explain="La conversación entera.">Enviar</button></form>
+      <form><input id="t" placeholder="Escribí…"><button id="send" aria-controls="log" data-pinecall-press="Le escribo yo." data-pinecall-goal="Pedí dos medialunas y despedite.">Enviar</button></form>
     </div>
     <p>Y seguimos.</p>
   </main>`;
@@ -22,7 +22,7 @@ const PAGE = `
 const kinds = (reading: Reading): string[] => reading.walk.steps.map((step) => ("say" in step ? step.say : "fill" in step ? `fill:${step.with}` : "press"));
 
 describe("a chat the dot talks to", () => {
-  it("is a turn at a time: the line typed as it is said, sent, the answer read aloud, and the whole chat explained at the end", async () => {
+  it("is a turn at a time: the line typed as it is said, sent, the answer read aloud, and the page going on at the end", async () => {
     document.body.innerHTML = PAGE;
     document.documentElement.lang = "es";
     const log = document.getElementById("log")!;
@@ -88,11 +88,11 @@ describe("a chat the dot talks to", () => {
     await aloud.act(10); // the agent's last answer read aloud
     expect(kinds(reading).slice(11, 13)).toEqual(["Hasta luego.", "press"]);
 
-    // Goodbye said (12): the talk is over and the whole chat explained, then the page goes on.
+    // Goodbye said (12): the talk is over and the page goes on; what was read is not walked again.
     await aloud.act(12);
     expect(asked).toHaveLength(2);
-    expect(explained).toEqual([{ output: "Hola, quiero dos medialunas.\nDos medialunas, anotado. ¿Algo más?\nGracias, chau.\nHasta luego.", command: "La conversación entera.", language: "es" }]);
-    expect(kinds(reading).slice(13)).toEqual(["Lo anotó.", "Y seguimos."]);
+    expect(explained).toEqual([]);
+    expect(kinds(reading).slice(13)).toEqual(["Y seguimos."]);
   });
 
   it("ends when the chat does: a send button disabled is a call that was hung up", async () => {
