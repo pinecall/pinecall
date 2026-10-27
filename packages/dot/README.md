@@ -327,25 +327,24 @@ the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy p
 
 ### A page read aloud
 
-`tutor(call, { ask, reading: "Leer el capítulo" })` puts a first pill in the walks' menu that reads the
-page aloud in the agent's voice, with no call: what the site marks `data-pinecall-read` (a `<main>`, a
-section), its headings, paragraphs, items and captions in the page's order, as written, the part read
-lit and pointed at and the rest dimmed; a long one is read a few sentences at a time. A button marked
-`data-pinecall-press` is an example: reached, the pointer presses it (its value said first:
-`data-pinecall-press="Lo corro."`), the reading waits for what it controls (`aria-controls`, its output)
-to answer and not be `aria-busy`, then says its `data-pinecall-then` pointing at the output and reads the
-output line by line with notes: `data-pinecall-notes` names a list whose items each find a line of it
-(`data-pinecall-find`, a text in any case or `/a regex/`) and say what it means; the line is lit and
-pointed at, the output marked `data-pinecall-reading` meanwhile so the site can widen a box that scrolls.
-A note whose line is not there is left out, so the same notes serve whatever the command printed. A button
-marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`: the agent's
-model through the gateway, with `voicing.explain`), the notes read the same way in the place of its
-`data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A page is rarely
-heard well as it is written: an element with `data-pinecall-say` is said as that line instead, nothing inside
-it read again, so a section, a table or a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
-part read, the face in the margin, never on its words. `tutor.read()` starts it from a button
-of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
-next go a sentence at a time.
+`tutor(call, { ask, reading: "Leer el capítulo" })` puts a first pill in the walks' menu that reads the page
+aloud in the agent's voice, with no call: what the site marks `data-pinecall-read` (a `<main>`, a section), its
+headings, paragraphs, items and captions in the page's order, as written, the part read lit and pointed at and
+the rest dimmed; a long one is read a few sentences at a time. A button marked `data-pinecall-press` is an
+example: reached, the pointer presses it (its value said first: `data-pinecall-press="Lo corro."`), the reading
+waits for what it controls (`aria-controls`, its output) to answer and not be `aria-busy`, then says its
+`data-pinecall-then` pointing at the output and reads the output line by line with notes: `data-pinecall-notes`
+names a list whose items each find a line of it (`data-pinecall-find`, a text in any case or `/a regex/`) and
+say what it means; the line is lit and pointed at, the output marked `data-pinecall-reading` meanwhile so the
+site can widen a box that scrolls. A note whose line is not there is left out, so the same notes serve whatever
+the command printed. A button marked `data-pinecall-explain` with no notes has its output explained by the door
+(`{ explain }`: the agent's model through the gateway, with `voicing.explain`), the notes read the same way in
+the place of its `data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A
+page is rarely heard well as it is written: an element with `data-pinecall-say` is said as that line instead,
+nothing inside it read again, so a section, a table or a list of cards becomes a sentence or two written to be
+heard. The pointer stands at the left of the part read, the face in the margin, never on its words.
+`tutor.read()` starts it from a button of the site's own. While a walk or a reading plays, the corner holds
+back, pause, next and stop: back and next go a sentence at a time.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one
 plays (`{ read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second
