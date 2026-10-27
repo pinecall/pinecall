@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **Whatever the pointer lands on is shown whole first**: a button at the foot of a box that scrolls, or under a bar
+  stuck inside it, counted as on the screen and was pressed out of view. A box's own `scroll-padding-top` is kept
+  clear, as the page's is.
 - **On a spoken call the dot reads nothing of the agent's**: its tools, like its words, are heard on the call and
   not said over it; only a turn marked `end` is still read.
 - **A page read aloud talks on a spoken call**: a goal button in no form is a call; the dot presses it, hears the

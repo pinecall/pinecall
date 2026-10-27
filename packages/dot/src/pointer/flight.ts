@@ -150,11 +150,17 @@ export async function scrollOnto(element: Element, where: number, still: boolean
   if (frame !== null) await scrollOnto(frame, where, still);
 }
 
+/** What a box that scrolls keeps clear at its top, in px: its own `scroll-padding-top` (a bar stuck inside it). */
+export function paddingOf(scroller: Element): number {
+  const padding = Number.parseFloat(scroller.ownerDocument.defaultView?.getComputedStyle(scroller).scrollPaddingTop ?? "");
+  return Number.isFinite(padding) ? Math.max(0, padding) : 0;
+}
+
 /** `element` scrolled into view within one box: `scroller`, or the page when null. */
 async function scrollWithin(element: Element, scroller: Element | null, where: number, still: boolean, view: Window): Promise<void> {
   const box = element.getBoundingClientRect();
   const frame = scroller === null ? { top: 0, height: view.innerHeight } : scroller.getBoundingClientRect();
-  const covered = Math.max(0, coveredTop(element.ownerDocument) - frame.top);
+  const covered = Math.max(0, coveredTop(element.ownerDocument) - frame.top, scroller === null ? 0 : paddingOf(scroller));
   const from = scroller === null ? view.scrollY : scroller.scrollTop;
   const total = scroller === null ? element.ownerDocument.documentElement.scrollHeight : scroller.scrollHeight;
   const height = scroller === null ? view.innerHeight : scroller.clientHeight;
@@ -181,7 +187,7 @@ export function seenOf(element: Element): { top: number; bottom: number } {
     bottom = Math.min(bottom, at + view.innerHeight);
     for (let scroller = scrollerOf(node); scroller !== null; scroller = scrollerOf(scroller)) {
       const frame = scroller.getBoundingClientRect();
-      top = Math.max(top, at + frame.top);
+      top = Math.max(top, at + frame.top + paddingOf(scroller));
       bottom = Math.min(bottom, at + frame.bottom);
     }
   }

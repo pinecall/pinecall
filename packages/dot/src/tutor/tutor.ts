@@ -12,7 +12,7 @@ import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
 import { Page } from "../page/page.js";
-import { aimOf, along, animate, besideOf, coveredTop, flightMs, scrollOnto, shownWhole, type Point } from "../pointer/flight.js";
+import { aimOf, along, animate, besideOf, flightMs, scrollOnto, shownWhole, type Point } from "../pointer/flight.js";
 import { Card } from "../pointer/card.js";
 import { boxOf } from "../pointer/frames.js";
 import { Hover } from "../pointer/hover.js";
@@ -159,10 +159,6 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
   };
   /** What the face must not cover while the pointer is on `element`: on a window of code, the lines lit. */
   const clearOf = (element: Element): DOMRect | null => (element.closest(".pc-code") === null ? null : walks.code.litBox());
-  const onScreen = (element: Element): boolean => {
-    const box = boxOf(element); // under the site's own header is not on the screen: the visitor cannot see it
-    return box.bottom > coveredTop(document) && box.top < view.innerHeight;
-  };
   /** A move; `beside`, a block being read pointed at from its left, the face in the margin, never on its words. */
   const run = async (action: Action, element: Element | null, beside = false): Promise<void> => {
     switch (action) {
@@ -175,7 +171,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         person.tour(true);
         // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
         anchor = null;
-        if (beside ? !shownWhole(element) : !onScreen(element)) await scrollOnto(element, 0.42, still);
+        // Shown whole where it scrolls (its box, the page, under the site's bars) or scrolled to: a button at the
+        // foot of a box, or under a sticky bar, is not on the screen the visitor sees.
+        if (!shownWhole(element)) await scrollOnto(element, 0.42, still);
         if (beside && !shownWhole(element)) element.scrollIntoView({ block: "start" }); // a pane this did not find: the browser's own scroll
         const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
         await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
