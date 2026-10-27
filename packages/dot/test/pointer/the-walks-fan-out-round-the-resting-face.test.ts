@@ -61,6 +61,19 @@ describe("the walks' menu", () => {
     menu.close();
   });
 
+  it("plays a lone walk from its button, with no menu to open first", () => {
+    const picked: number[] = [];
+    const menu = aMenu(picked);
+    menu.offer([{ title: "Leer el capítulo", ms: 0 }]);
+    menu.available(true);
+
+    document.querySelector<HTMLButtonElement>(".pc-walks")?.click();
+
+    expect(picked).toEqual([0]);
+    expect(menu.open).toBe(false);
+    menu.close();
+  });
+
   it("hides its button during a call, and folds its pills on Escape", () => {
     const menu = aMenu([]);
     menu.offer([{ title: "Site tour", ms: 38_000 }]);

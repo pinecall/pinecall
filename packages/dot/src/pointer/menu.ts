@@ -135,7 +135,11 @@ export class Menu {
     this.#button.setAttribute("aria-label", options.label);
     this.#button.setAttribute("aria-expanded", "false");
     this.#button.title = options.label;
-    this.#button.addEventListener("click", () => this.toggle(!this.#open));
+    // A single walk and nothing to type: the button plays it, with no menu to open first.
+    this.#button.addEventListener("click", () => {
+      if (this.#pills.length === 1 && this.#options.ask === undefined) this.#options.onPick(0);
+      else this.toggle(!this.#open);
+    });
     host(this.#button);
     this.#more = document.createElement("button");
     this.#more.type = "button";
