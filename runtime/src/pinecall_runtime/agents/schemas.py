@@ -504,3 +504,26 @@ class RecordedLines(WireModel):
     """The lines asked for, in their order, each recorded once."""
 
     lines: list[RecordedLine]
+
+
+class ExplainRequest(WireModel):
+    """POST /v1/agents/{slug}/explain: a text a page shows (a command's output), for the agent's model to explain."""
+
+    output: Annotated[str, Field(min_length=1, max_length=8000)]
+    command: Annotated[str, Field(max_length=300)] | None = None
+    # The language the notes are said in; the agent's when left out.
+    language: Annotated[str, Field(min_length=2, max_length=16)] | None = None
+    most: Annotated[int, Field(ge=1, le=6)] = 4
+
+
+class Note(WireModel):
+    """One line of the text, by a fragment copied from it, and what the model says of it."""
+
+    find: str
+    say: str
+
+
+class Explained(WireModel):
+    """The notes the agent's model gave, in the order they are read; none when it found nothing to say."""
+
+    notes: list[Note]

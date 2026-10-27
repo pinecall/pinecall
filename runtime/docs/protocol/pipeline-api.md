@@ -103,6 +103,22 @@ POST /v1/agents/pip/lines   {"texts": ["Up here are our services."]}
 - At most 64 texts a request, 600 characters each. A recording writes no usage row, as a voice
   sample writes none.
 
+## An output explained — `POST /v1/agents/{slug}/explain`
+
+A text a page shows (a command's output, 8000 characters at most) that an app wants read aloud **with
+a finger on its lines**: the agent's model, the one its next call in the key's environment would think
+with, on the same keys as a call, says up to `most` (1 to 6, 4 by default) notes on it, each a `find`,
+a fragment copied from one line of the text, and a `say`, one spoken sentence on that line in `language`
+(the agent's when left out). A note whose fragment is in no line, or a second one on the same line, is
+dropped before it is answered; a model that answers anything but notes answers none. `command` names
+what printed the text, for the model alone. Takes an app's or a pipeline key. Like a recording it writes
+no usage row: a page's door paces what it asks for.
+
+```json
+{ "output": "  org lesson · key k_1234 · sandbox\n  a person's key: the sandbox without --prod", "command": "pinecall whoami", "language": "es" }
+→ { "notes": [{ "find": "org lesson", "say": "Tu org es lesson, y estás en el sandbox." }] }
+```
+
 ## Published documents — `PUT` · `GET /v1/agents/{slug}/public/{name}`
 
 A JSON object an agent's app publishes for any page to read **with no key**: what a page needs

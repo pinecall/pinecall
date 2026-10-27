@@ -1,4 +1,4 @@
-"""What an agent's app publishes for pages: lines recorded in its voice, and documents, both read with no key."""
+"""What an agent's app publishes for pages: lines recorded in its voice, an output its model explains, and documents."""
 
 import json
 from typing import Annotated, Any, cast
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query, Request, Response
 from pinecall_runtime.agents import schemas
 from pinecall_runtime.agents.auth import KnownAgent, PublishingKey, registry_of
 from pinecall_runtime.agents.declaration import AgentConfig
-from pinecall_runtime.agents.service import documents, lines, settings
+from pinecall_runtime.agents.service import documents, explain, lines, settings
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import NotFound, ValidationError
 from pinecall_runtime.kit.handles import handles_of
@@ -58,6 +58,26 @@ async def record_lines(
             for row in rows
         ]
     )
+
+
+# Explained by the model the agent's next call in this env would think with, on the same keys as a
+# call. Like a recording, it writes no usage row: a page's door paces what it asks for.
+@router.post("/v1/agents/{slug}/explain")
+async def explain_output(
+    slug: KnownAgent, body: schemas.ExplainRequest, actor: PublishingKey, request: Request, session: Session
+) -> schemas.Explained:
+    """A text a page shows, explained by the agent's model as notes, each on one line of it."""
+    registration = registry_of(request).holder_of(actor.scope, slug)
+    declared = AgentConfig(slug=slug) if registration is None else registration.config
+    catalog = await providers.get_catalog(session)
+    config, _ = await settings.tuned_for_call(session, declared, actor.scope, catalog)
+    keys = await providers.keys_of(session, handles_of(request).vault, actor.scope)
+    thinking = providers.build_pipeline(config, catalog, keys).llm
+    language = body.language or providers.primary_language(config.language) or "en"
+    notes = await explain.explain(
+        thinking, output=body.output, command=body.command or "", language=language, most=body.most
+    )
+    return schemas.Explained(notes=[schemas.Note(find=note.find, say=note.say) for note in notes])
 
 
 @router.get("/v1/lines/{name}")

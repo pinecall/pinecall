@@ -47,6 +47,24 @@ async def test_too_many_texts_or_an_empty_one_are_refused_and_nothing_is_recorde
     assert empty.status_code in (400, 422)
 
 
+async def test_an_output_is_explained_by_the_agents_model_and_an_answer_that_is_not_notes_is_none(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    door = f"/v1/agents/{agent}/explain"
+    output = "  org lesson · key k_1234 · sandbox\n  a person's key: the sandbox without --prod"
+    async with holding(gateway, tenant, agent):
+        # The box's model answers the caller's last line, not notes: the door answers none, and no error.
+        explained = await gateway.http.post(
+            door, json={"output": output, "command": "pinecall whoami"}, headers=tenant.person
+        )
+        long = await gateway.http.post(door, json={"output": "x" * 8001}, headers=tenant.person)
+        many = await gateway.http.post(door, json={"output": output, "most": 7}, headers=tenant.person)
+    assert explained.status_code == 200, explained.text
+    assert explained.json() == {"notes": []}
+    assert long.status_code in (400, 422)
+    assert many.status_code in (400, 422)
+
+
 async def test_a_document_is_published_whole_and_read_with_no_key_in_its_env_alone(
     gateway: Gateway, tenant: Tenant, agent: str
 ) -> None:

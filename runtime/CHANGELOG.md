@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`POST /v1/agents/{slug}/explain`: a text a page shows, explained by the agent's model.** An app sends a
+  command's output (8000 characters at most) and gets up to `most` notes, each a fragment copied from one
+  line of it and one spoken sentence on that line in `language`: what a page reads aloud with a finger on
+  the line. The model is the one the agent's next call would think with, on the same keys; a fragment in
+  no line, or a second one on a line, is dropped, and an answer that is not notes is none. Like a recording
+  it writes no usage row.
+
 - **A lexicon's word is said its way as a whole word.** livekit's replace, and the recorded lines with
   it, found a form inside other words: `CLI → ci el ái` turned "cliente" into "ci el ái-ente". A form
   that begins or ends with a letter or a digit is now found only where a word begins or ends, in a

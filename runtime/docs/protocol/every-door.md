@@ -33,6 +33,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/agents/{slug}/lexicon` | pipeline · words | The agent's next lexicon in this scope or the team's. |
 | `GET` | `/v1/agents/{slug}/lexicon/history` | pipeline · words | One scope's versions of the agent's lexicon, newest first. |
 | `POST` | `/v1/agents/{slug}/lines` | app · pipeline | Each text recorded once in the agent's voice: its MP3's URL, its length, when each word is said; a line recorded before costs nothing. |
+| `POST` | `/v1/agents/{slug}/explain` | app · pipeline | A text a page shows (a command's output, 8000 characters at most), explained by the agent's model as up to `most` notes, each a fragment of one line and a spoken sentence on it, in `language`. |
 | `GET` | `/v1/agents/{slug}/public/{name}` | — | A JSON document the agent's app published, for any page, with no key; `?env=sandbox` reads the sandbox's. |
 | `PUT` | `/v1/agents/{slug}/public/{name}` | app · pipeline | Publish a JSON object of at most 64 KB under a name, over the one before it, for any page to read. |
 | `GET` | `/v1/lines/{name}` | — | A recorded line's MP3, by its id, for any page, with no key; it never changes. |
