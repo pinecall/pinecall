@@ -83,12 +83,12 @@ describe("a call the dot talks on", () => {
       ],
       language: "es",
     });
-    expect(kinds(reading).slice(4, 6)).toEqual(["Gracias, chau.", "press"]);
+    expect(kinds(reading).slice(5, 7)).toEqual(["Gracias, chau.", "press"]);
 
-    // Goodbye said (5): nothing more is asked, and the page goes on.
-    await aloud.act(5);
+    // Goodbye said (6): nothing more is asked, and the page goes on.
+    await aloud.act(6);
     expect(asked).toHaveLength(2);
-    expect(kinds(reading).slice(6)).toEqual(["Y seguimos."]);
+    expect(kinds(reading).slice(7)).toEqual(["Y seguimos."]);
   });
 
   it("ends when the call does: a turn marked end is read, and nothing more is asked", async () => {
