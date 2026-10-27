@@ -316,15 +316,14 @@ const answered = await answer(body, {
 });
 ```
 
-`answer()` asks Jev, TypeSafe's System One model, through OpenRouter's Decisions API: one request,
-questions answered at once (what kind of thing they want, which walk, which thing of the page, and each
-param of each walk), each a choice among the options it was given, with its probabilities. A param in
-the visitor's words is a choice among the parts of what they typed, one to five words in a row: what
-fills a field is what they wrote, never a word of the model's. A sentence with slots is read from the
-walks the agent published, never from the page, and recorded once per set of values; what a visitor
-brings to it is the values, a line of 80 characters each. It cannot write a sentence or name a thing
-that is not on the page, and under its threshold (0.5) it decides nothing rather than guess. The page's
-words and what the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy policy.
+`answer()` asks Jev, TypeSafe's System One model, through OpenRouter's Decisions API: one request, its
+questions answered at once (what they want, which walk, which thing of the page, each param of each walk),
+each a choice among the options given, with probabilities. A param in the visitor's words is one of the
+parts of what they typed (one to five words in a row): what fills a field is what they wrote, never a word
+of the model's. A sentence with slots is read from the walks the agent published, never from the page, and
+recorded once per set of values (a line of 80 characters each). Jev cannot write a sentence or name a thing
+not on the page, and under its threshold (0.5) decides nothing rather than guess. The page's words and what
+the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy policy.
 
 ### A page read aloud
 
