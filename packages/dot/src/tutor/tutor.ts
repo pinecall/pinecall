@@ -38,6 +38,8 @@ export interface Tutor {
   wake(): void;
   /** Read the page aloud (`reading`), from the visitor's click: a button of the site's own. */
   read(): void;
+  /** Stop the walk or the reading playing, if one is: the site's own reason to (the visitor took over). */
+  stop(): void;
   close(): void;
 }
 
@@ -379,6 +381,9 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     },
     read() {
       walks.read();
+    },
+    stop() {
+      walks.stop();
     },
     close() {
       if (closed) return;

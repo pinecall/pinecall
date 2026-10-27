@@ -329,23 +329,23 @@ waits for what it controls (`aria-controls`, its output) to answer and not be `a
 `data-pinecall-then` pointing at the output and reads the output line by line with notes: `data-pinecall-notes`
 names a list whose items each find a line of it (`data-pinecall-find`, a text in any case or `/a regex/`) and
 say what it means; the line is lit and pointed at, the output marked `data-pinecall-reading` meanwhile so the
-site can widen a box that scrolls. A note whose line is not there is left out, so the same notes serve whatever
-the command printed. A field marked `data-pinecall-type` is typed with its value, the page's own example (a
-chat's question), and the `data-pinecall-press` after it sends it, in any form; an element that is no field (an
-editor) marked so is told each letter by `pinecall-typing` events the site takes with `preventDefault()`. A
-frame of the site's own (a chat in an iframe) is read in its place, the pointer, the light and the scroll
-reaching into it. A send button marked `data-pinecall-goal` is a chat the dot talks to: it asks the door for its
-line (`{ next }`: Pinecall's caller, with `voicing.next`), opens the chat by focusing its field (its greeting
-waited on while busy), says each line as it types it, sends it, and reads aloud what the agent said and the
-tools it used (turns marked `data-pinecall-said`; a tool's said by its `data-pinecall-say`) until it has what it
-came for, the chat ends or forty turns pass, and the page goes on. A page whose top was scrolled away is read
-from the first part still in view. A button marked `data-pinecall-explain` with no notes has its output
-explained by the door (`{ explain }`: the agent's model through the gateway, with `voicing.explain`), the notes
-read the same way in the place of its `data-pinecall-then`, said only when the model gives none.
-`data-pinecall-quiet` is not read. An element with `data-pinecall-say` is said as that line instead, nothing
-inside it read again: a section, a table or a list of cards becomes a sentence or two written to be heard. The
-pointer stands at the left of the part read, never on its words; `tutor.read()` starts it from a button of the
-site's own. While a walk or a reading plays, the corner holds back, pause, next and stop, a sentence at a time.
+site can widen a box that scrolls. A note whose line is not there is left out. A field marked
+`data-pinecall-type` is typed with its value, the page's own example (a chat's question), and the
+`data-pinecall-press` after it sends it, in any form; an element that is no field (an editor) marked so is told
+each letter by `pinecall-typing` events the site takes with `preventDefault()`. A frame of the site's own (a
+chat in an iframe) is read in its place. A send button marked `data-pinecall-goal` is a chat the dot talks to:
+it asks the door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), opens the chat by focusing
+its field (its greeting waited on while busy), says each line as it types it, sends it, reads aloud what the
+agent said and the tools it used (turns marked `data-pinecall-said`; a tool's said by its `data-pinecall-say`)
+until it has what it came for, the chat ends (a turn marked `end`) or forty turns pass, and the page goes on.
+Such a button in no form is a spoken call: the dot presses it, hears the greeting (`data-pinecall-heard` on the
+output: the agent is heard, not read) and says its lines into the call, the output told each by a
+`pinecall-saying` event with its recording, for the site to play in; `tutor.stop()` ends a reading when the
+visitor takes over. A page whose top was scrolled away is read from the first part still in view. A button
+marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`, with
+`voicing.explain`), the notes read in the place of its `data-pinecall-then`. `data-pinecall-quiet` is not read.
+An element with `data-pinecall-say` is said as that line instead, nothing inside it read again. `tutor.read()`
+starts it from a button of the site's own; while it plays, the corner holds back, pause, next and stop.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one plays (`{
 read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second time. A door lets its

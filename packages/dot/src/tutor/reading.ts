@@ -38,8 +38,12 @@ export const PRESS_ATTRIBUTE = "data-pinecall-press";
 export const TYPE_ATTRIBUTE = "data-pinecall-type";
 /** On a chat's send button: the dot talks to what it sends to, turn by turn, until it gets this (or the chat ends). */
 export const GOAL_ATTRIBUTE = "data-pinecall-goal";
-/** On each turn of a chat talked to: whose it is, `agent`, `caller` or another (a tool the agent used); all but the caller's read aloud as they come, by their `data-pinecall-say` when they have one. */
+/** On each turn of a chat talked to: whose it is, `agent`, `caller` or another (a tool the agent used, `end`); all but the caller's read aloud as they come, by their `data-pinecall-say` when they have one. */
 export const SAID_ATTRIBUTE = "data-pinecall-said";
+/** On the output of a talk that is a spoken call: the agent is heard there, so its turns are not read aloud; the dot's own lines are said into it. */
+export const HEARD_ATTRIBUTE = "data-pinecall-heard";
+/** The event a spoken call's output is told the dot's line by, as the line starts: `detail.text`, `detail.audio` (its recording's URL) and `detail.durationMs`; the site plays it into the call. */
+export const SAYING_EVENT = "pinecall-saying";
 /** The line an element is said as, instead of what it shows: the same the agent says in a call. */
 export const SAY_ATTRIBUTE = "data-pinecall-say";
 /** What an example's output shows, said pointing at it once it answered. */
@@ -69,13 +73,14 @@ export interface Typed {
   text: string;
 }
 
-/** A page as it is read: its steps, the element each is about, which are about an output, the goal a step talks for, and what is typed as one is said. */
+/** A page as it is read: its steps, the element each is about, which are about an output, the goal a step talks for, what is typed as one is said, and the call one is said into. */
 export interface Reading {
   walk: RecordedWalk;
   at: Element[];
   outputs: (AboutOutput | undefined)[];
   goals: WeakMap<WalkStep, string>;
   typed: WeakMap<WalkStep, Typed>;
+  spoken: WeakMap<WalkStep, Element>;
 }
 
 /** The parts of `box` a person reads, outermost, in order. */
@@ -106,6 +111,7 @@ export function readingOf(document: Document, title: string): Reading | null {
   const outputs: (AboutOutput | undefined)[] = [];
   const goals = new WeakMap<WalkStep, string>();
   const typed = new WeakMap<WalkStep, Typed>();
+  const spoken = new WeakMap<WalkStep, Element>();
   /** A field marked to type, typed as the next press's line is said. */
   let pending: Typed | null = null;
   /** The words of a card, read with its title. */
@@ -184,7 +190,7 @@ export function readingOf(document: Document, title: string): Reading | null {
     }
   };
   rootsOf(document).forEach(scan);
-  return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs, goals, typed };
+  return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs, goals, typed, spoken };
 }
 
 /** How far above what is seen a part may start and still be where the reading begins, in px. */

@@ -6,6 +6,11 @@ maintainer's call.
 
 ## Unreleased
 
+- **A page read aloud talks on a spoken call**: a goal button in no form is a call; the dot presses it, hears the
+  greeting (`data-pinecall-heard` on the output: the agent is heard, not read), says each line in its own voice
+  into the call, the output told it by a `pinecall-saying` event with the recording for the site to play in, waits
+  for the answer, and goes on once it said goodbye or a turn marked `end` came. `Tutor.stop()` stops a reading from
+  the site: the visitor took the call over.
 - **The site's own editor is typed into**: an element that is no field (a code editor) marked `data-pinecall-type` is
   told what is typed, a letter at a time, by `pinecall-typing` events (`detail.text` so far, `detail.done` last) the
   site takes with `preventDefault()` and writes where it belongs; one the site does not take is no place to type.

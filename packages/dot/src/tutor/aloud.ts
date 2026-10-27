@@ -4,7 +4,7 @@ import { notPressable } from "../pointer/pressing.js";
 import { MOST_HEARD, type ExplainRequest, type Heard, type NextLine, type NextRequest, type Note } from "../wire/ask.js";
 import type { RecordedStep, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
-import { EXPLAIN_ATTRIBUTE, READING_ATTRIBUTE, SAID_ATTRIBUTE, SAY_ATTRIBUTE, labelOf, languageOf, outputOf, type AboutOutput, type Reading } from "./reading.js";
+import { EXPLAIN_ATTRIBUTE, HEARD_ATTRIBUTE, READING_ATTRIBUTE, SAID_ATTRIBUTE, SAY_ATTRIBUTE, SAYING_EVENT, labelOf, languageOf, outputOf, type AboutOutput, type Reading } from "./reading.js";
 import { lineIn, piecesOf, seen, textOf, wordsOf } from "./text.js";
 
 /** The most turns of its own a talk takes: the gateway's own ceiling on a caller's, whatever the goal. */
@@ -29,6 +29,8 @@ export interface ReadingOptions {
   next?: ((request: NextRequest) => Promise<NextLine | null>) | undefined;
   /** A chat talked to opened before its first line: its field focused, and its output waited on while it says it is busy (a greeting coming). */
   open?: ((field: Element, output: Element) => Promise<void>) | undefined;
+  /** A spoken call's output waited on while it says it is busy: the agent answering what the dot said into it. */
+  settle?: ((output: Element) => Promise<void>) | undefined;
 }
 
 /** One reading under way: each part recorded when it is reached, the next one asked for while one plays. */
@@ -46,10 +48,10 @@ export class ReadAloud {
   readonly #bye = new WeakSet<Element>();
   /** The presses of a talk's turns: read as the talk goes, never explained after. */
   readonly #turns = new WeakSet<WalkStep>();
-  /** How long each recorded step plays, once recorded: what a typing is paced to. */
-  readonly #lengths = new Map<number, number>();
-  /** The steps whose typing started. */
-  readonly #typing = new WeakSet<WalkStep>();
+  /** Each step's recording, once recorded: what a typing is paced to, and what a call is told. */
+  readonly #recorded = new Map<number, RecordedStep>();
+  /** The steps whose typing, or telling, started. */
+  readonly #begun = new WeakSet<WalkStep>();
 
   constructor(reading: Reading, options: ReadingOptions) {
     this.reading = reading;
@@ -61,7 +63,7 @@ export class ReadAloud {
     const about = this.reading.outputs[at];
     if (about !== undefined && about.find !== null && lineIn(about.output, about.find) === null) return Promise.resolve(null);
     const recording = this.#record(at).then((step) => {
-      if (step !== null) this.#lengths.set(at, step.durationMs);
+      if (step !== null) this.#recorded.set(at, step);
       return step;
     });
     const next = this.reading.walk.steps.findIndex((step, index) => index > at && "live" in step);
@@ -96,11 +98,11 @@ export class ReadAloud {
     if (!noted) await this.#explain(after, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
   }
 
-  /** The turns of a chat not read aloud yet, in order, the agent's and the tools it used: all but the caller's; each counted as read. */
+  /** The turns of a chat not read aloud yet, in order, the agent's and the tools it used: all but the caller's; each counted as read. On a spoken call the agent is heard, not read: its turns are counted and left out. */
   #unheard(output: Element): Element[] {
     const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}]:not([${SAID_ATTRIBUTE}="caller"])`)].filter((turn) => seen(turn) && !this.#heard.has(turn));
     for (const turn of turns) this.#heard.add(turn);
-    return turns;
+    return output.hasAttribute(HEARD_ATTRIBUTE) ? turns.filter((turn) => turn.getAttribute(SAID_ATTRIBUTE) !== "agent") : turns;
   }
 
   /** A text said pointing at `element`, a recording at a time. */
@@ -129,18 +131,24 @@ export class ReadAloud {
 
   /**
    * One turn of a talk, at the step that marks it: the chat opened first, if it was not; what the agent said since
-   * (and the tools it used) read aloud, pointing at each; then the
-   * dot's next line asked of the door, said, typed and sent, and the turn after it marked. The talk ends when the dot
-   * said goodbye, the chat ended, the door gives no line or the turns run out; the page then goes on, the chat
-   * having been read as it went.
+   * (and the tools it used) read aloud, pointing at each; then the dot's next line asked of the door, said, typed
+   * and sent, and the turn after it marked. A button in no form is a spoken call: the button opens it, the agent is
+   * heard and not read, and the dot's lines are said into the call (`SAYING_EVENT`) with nothing to send. The talk
+   * ends when the dot said goodbye, the chat ended (a turn marked `end`, a send button disabled), the door gives no
+   * line or the turns run out; the page then goes on, the chat having been read as it went.
    */
   async #talk(at: number, button: Element, goal: string): Promise<void> {
     const output = outputOf(button);
     const field = button.closest("form")?.querySelector("input:not([type=hidden]), textarea") ?? null;
-    // A chat that opens as its field is focused: its greeting, if it has one, is heard before the dot says anything.
-    if (field !== null && !this.#opened.has(output)) {
+    const spoken = field === null;
+    if (!this.#opened.has(output)) {
       this.#opened.add(output);
-      await this.#options.open?.(field, output);
+      // A call is opened by its button, its greeting waited on; a chat opens as its field is focused.
+      if (spoken) await this.#options.press(button);
+      else await this.#options.open?.(field, output);
+    } else if (spoken) {
+      // The agent answering what was said into the call: waited on while the output says it is busy.
+      await this.#options.settle?.(output);
     }
     const marker = (): Added => {
       const step: WalkStep = { press: labelOf(button) };
@@ -155,10 +163,18 @@ export class ReadAloud {
     const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}="agent"], [${SAID_ATTRIBUTE}="caller"]`)].filter(seen);
     const heard = turns.map((turn): Heard => ({ who: turn.getAttribute(SAID_ATTRIBUTE) === "agent" ? "agent" : "caller", said: wordsOf(turn) })).slice(-MOST_HEARD);
     const mine = heard.filter((turn) => turn.who === "caller").length;
-    const over = field === null || notPressable(button, true) !== null || this.#bye.has(output) || mine >= MOST_TURNS;
+    const ended = output.querySelector(`[${SAID_ATTRIBUTE}="end"]`) !== null;
+    const over = ended || this.#bye.has(output) || mine >= MOST_TURNS || (field !== null && notPressable(button, true) !== null);
     const next = over || this.#options.next === undefined ? null : await this.#options.next({ goal, heard, language: languageOf(output) }).catch(() => null);
-    if (next === null || field === null) return;
+    if (next === null) return;
     if (next.hangup) this.#bye.add(output);
+    if (field === null) {
+      // Said pointing at the call, and into it: each piece told to the output as it starts playing.
+      const said = this.#say(next.say, output);
+      for (const [step] of said) this.reading.spoken.set(step, output);
+      this.#insert(at, [...said, marker()]);
+      return;
+    }
     const press: WalkStep = { press: labelOf(button) };
     this.#turns.add(press);
     const said = this.#say(next.say, field);
@@ -176,7 +192,7 @@ export class ReadAloud {
       outputs.splice(at + 1 + offset, 0, about);
     }
     for (const index of [...this.#asked.keys()]) if (index > at) this.#asked.delete(index);
-    for (const index of [...this.#lengths.keys()]) if (index > at) this.#lengths.delete(index);
+    for (const index of [...this.#recorded.keys()]) if (index > at) this.#recorded.delete(index);
   }
 
   /** The `at`th step starts: its part lit and pointed at, an output's line by its note; -1, the reading is over. */
@@ -193,9 +209,17 @@ export class ReadAloud {
     // A sentence typed as it is said: the typing starts with it, paced to its recording.
     const step = at < 0 ? undefined : this.reading.walk.steps[at];
     const typing = step === undefined ? undefined : this.reading.typed.get(step);
-    if (step !== undefined && typing !== undefined && !this.#typing.has(step)) {
-      this.#typing.add(step);
-      void this.#options.type?.(typing.field, typing.text, this.#lengths.get(at));
+    if (step !== undefined && typing !== undefined && !this.#begun.has(step)) {
+      this.#begun.add(step);
+      void this.#options.type?.(typing.field, typing.text, this.#recorded.get(at)?.durationMs);
+    }
+    // A sentence said into a call: the call's page is told it as it starts, with its recording, to play it in.
+    const into = step === undefined ? undefined : this.reading.spoken.get(step);
+    const recorded = this.#recorded.get(at);
+    if (step !== undefined && into !== undefined && recorded !== undefined && !this.#begun.has(step)) {
+      this.#begun.add(step);
+      const detail = { text: recorded.say, audio: recorded.audio, durationMs: recorded.durationMs };
+      into.dispatchEvent(new CustomEvent(SAYING_EVENT, { bubbles: true, detail }));
     }
   }
 
@@ -213,6 +237,9 @@ export class ReadAloud {
 
 /** How long a reading waits for an example it pressed to answer, in ms. */
 const EXAMPLE_MS = 60_000;
+
+/** Whether `output`, or something in it, says it is busy. */
+const isBusy = (output: Element): boolean => output.closest("[aria-busy=true]") !== null || output.querySelector("[aria-busy=true]") !== null;
 
 /**
  * What a reading takes, from the tutor's acts and moves: each part recorded by the site's door, the part read
@@ -232,8 +259,11 @@ export function readingWith(
     // Focused, a chat may open and greet: waited on only while it says it is busy.
     open: async (field, output) => {
       await moves.queued(async () => (field as HTMLElement).focus({ preventScroll: true }));
-      const busy = output.closest("[aria-busy=true]") !== null || output.querySelector("[aria-busy=true]") !== null;
-      if (busy) await acting.wait(() => output, EXAMPLE_MS);
+      if (isBusy(output)) await acting.wait(() => output, EXAMPLE_MS);
+    },
+    // A spoken call's output, busy while the agent answers what was said into it: waited on only then.
+    settle: async (output) => {
+      if (isBusy(output)) await acting.wait(() => output, EXAMPLE_MS);
     },
     light: moves.light,
     type: (element, text, ms) => moves.queued(async () => void (await acting.type(element, text, ms))),
