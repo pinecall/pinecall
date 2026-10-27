@@ -28,6 +28,8 @@ export interface SeatOptions {
   server_url: string;
   participant_token: string;
   mode: "talk" | "chat";
+  /** The page's own audio as its voice, in the microphone's place: what the agent hears. None, the microphone. */
+  voice?: (() => MediaStreamTrack | Promise<MediaStreamTrack>) | undefined;
   sink: Sink;
   on: SeatHears;
 }
@@ -102,7 +104,12 @@ export async function joinSeat(options: SeatOptions): Promise<Seat> {
 
   try {
     await room.connect(options.server_url, options.participant_token);
-    if (mode === "talk") await room.localParticipant.setMicrophoneEnabled(true);
+    // The page's own voice, when it has one, is published as the microphone: the agent hears it as a person.
+    if (mode === "talk" && options.voice !== undefined) {
+      await room.localParticipant.publishTrack(await options.voice(), { source: livekit.Track.Source.Microphone });
+    } else if (mode === "talk") {
+      await room.localParticipant.setMicrophoneEnabled(true);
+    }
   } catch (refused) {
     // The refusal is the news. A room that also fails to close has nothing to add to it.
     await leave().catch(() => undefined);

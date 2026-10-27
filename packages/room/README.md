@@ -361,13 +361,14 @@ In `talk`, the microphone is turned on once the room is joined, and the agent's 
 a hidden audio element at the end of the page. `chat` joins the same room — the typed lines ride it
 on LiveKit's `lk.chat` topic — and never asks for the microphone and never plays a sound.
 
-A browser plays sound only after the visitor has done something on the page. When it has not let
-the page yet, `wantsSound` is `true`: show a button, and call `playSound()` from its click. It is
-asked for once, not on every event the browser fires about it, and after the click it is `false`
-until the browser changes its mind.
+A page may bring the visitor's voice itself: `voice` in `room()` hands back a `MediaStreamTrack` (a
+`MediaStreamAudioDestinationNode`'s, that the page plays into), published as the microphone in `talk`, which is
+then never asked for: a tutor speaking for the visitor, or a microphone mixed in only when they want to speak.
 
-The microphone is the browser's to give. When the visitor says no, or the device is missing, the
-call fails with a sentence meant for them (below), and the page can offer to write instead.
+A browser plays sound only after the visitor has done something on the page; until then `wantsSound` is
+`true`: show a button and call `playSound()` from its click, after which it is `false` until the browser changes its mind.
+
+The microphone is the browser's to give: refused or missing, the call fails in words for the visitor (below).
 
 ## When something is refused
 

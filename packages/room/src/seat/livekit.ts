@@ -15,9 +15,11 @@ export interface SeatParticipant {
   readonly audioLevel: number;
 }
 
-/** The page's own participant: its microphone, the typed lines it sends, and the word it hung up. */
+/** The page's own participant: its microphone (or a voice of the page's own, published as one), the typed lines it sends, and the word it hung up. */
 export interface SeatLocal extends SeatParticipant {
   setMicrophoneEnabled(enabled: boolean): Promise<unknown>;
+  /** The options are LiveKit's own; the seat names only the source. */
+  publishTrack(track: MediaStreamTrack, options?: { source?: unknown }): Promise<unknown>;
   sendText(text: string, options: { topic: string }): Promise<unknown>;
   publishData(data: Uint8Array, options: { topic: string; reliable: boolean }): Promise<unknown>;
 }

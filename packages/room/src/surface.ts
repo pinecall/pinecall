@@ -59,6 +59,10 @@ export interface RoomOptions {
   linger?: number | undefined;
   fetch?: typeof fetch | undefined;
   livekit?: (() => Promise<LivekitModule>) | undefined;
+  /** In `talk`, the page's own audio as the visitor's voice, in the microphone's place: the track of a
+   * `MediaStreamAudioDestinationNode`, say, that the page plays what it wants the agent to hear into. The
+   * microphone is never asked for; the page mixes it in itself when the visitor wants to speak. */
+  voice?: (() => MediaStreamTrack | Promise<MediaStreamTrack>) | undefined;
   /** An entry of the log this copy of the wire could not read. The rest of the call still draws. */
   onSkipped?: ((why: string) => void) | undefined;
   /** What the agent put on the visitor's screen with `call.send("pinecall.ui", data)`, as it sent it. */

@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A voice of the page's own**: `room({ voice })` publishes the track the page hands back as the microphone in a
+  spoken call, and never asks for the microphone; the page plays into it what the agent is to hear.
+
 ## 0.11.24 — released with the dot's marked walk (2026-10-25)
 
 ## 0.11.23 — released with the dot's smaller face (2026-10-25)

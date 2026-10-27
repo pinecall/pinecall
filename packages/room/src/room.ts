@@ -173,6 +173,7 @@ export function room(options: RoomOptions): RoomStore {
       seat = await joinSeat({
         livekit,
         mode,
+        voice: options.voice,
         server_url: minted.server_url,
         participant_token: minted.participant_token,
         sink: hiddenSink(),

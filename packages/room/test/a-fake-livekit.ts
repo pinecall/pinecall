@@ -40,6 +40,8 @@ export class FakeLocal implements SeatLocal {
   readonly identity = "web_visitor";
   audioLevel = 0;
   readonly microphone: boolean[] = [];
+  /** The tracks the page published as its own voice, with the source each was published as. */
+  readonly voices: { track: MediaStreamTrack; source: string }[] = [];
   readonly sent: { text: string; topic: string }[] = [];
   readonly published: { data: string; topic: string }[] = [];
   refuseMicrophone: Error | null = null;
@@ -47,6 +49,10 @@ export class FakeLocal implements SeatLocal {
   async setMicrophoneEnabled(enabled: boolean): Promise<void> {
     if (this.refuseMicrophone !== null) throw this.refuseMicrophone;
     this.microphone.push(enabled);
+  }
+
+  async publishTrack(track: MediaStreamTrack, options?: { source?: unknown }): Promise<void> {
+    this.voices.push({ track, source: String(options?.source ?? "") });
   }
 
   async sendText(text: string, options: { topic: string }): Promise<void> {
