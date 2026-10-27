@@ -7,7 +7,7 @@ import { Sections } from "../pointer/sections.js";
 import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { AskRequest } from "../wire/ask.js";
-import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values } from "../wire/index.js";
+import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values, type WalkStep } from "../wire/index.js";
 import { ReadAloud, type ReadingOptions } from "./aloud.js";
 import { fromHere, readingOf } from "./reading.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
@@ -111,7 +111,10 @@ export class Walks {
       this.#list = found;
       this.#picked = found.filter((walk) => walk.params === undefined);
       const reading = options.reading;
-      this.#readable = reading !== undefined && readingOf(document, reading.title) !== null;
+      const readable = reading === undefined ? null : readingOf(document, reading.title);
+      this.#readable = readable !== null;
+      // Every part recorded ahead, a few at a time: the door keeps each, so a reading started later starts at once.
+      if (readable !== null && reading !== undefined) void recordAhead(readable.walk.steps, reading.record);
       this.#menu.offer([...(this.#readable && reading !== undefined ? [{ title: reading.title, ms: 0 }] : []), ...this.#picked.map((walk) => ({ title: walk.title, ms: lengthOf(walk) }))]);
       this.#sections.offer(this.#picked.map((walk) => walk.name));
       this.#menu.available(!options.inCall());
@@ -238,4 +241,22 @@ export class Walks {
     this.#menu.available(!this.#options.inCall());
     this.#options.onWalk?.(walked);
   }
+}
+
+/** How many parts of a page are asked of the door at once while it is recorded ahead. */
+const AHEAD_AT_ONCE = 3;
+
+/** Every part a reading says, asked of the door before it is read, `AHEAD_AT_ONCE` at a time; a part it fails is left for the reading. */
+export async function recordAhead(steps: readonly WalkStep[], record: (text: string) => Promise<unknown>): Promise<number> {
+  const texts = [...new Set(steps.flatMap((step) => ("live" in step ? [step.say] : [])))];
+  let next = 0;
+  let done = 0;
+  const one = async (): Promise<void> => {
+    while (next < texts.length) {
+      const text = texts[next++]!;
+      if ((await record(text).catch(() => null)) !== null) done += 1;
+    }
+  };
+  await Promise.all(Array.from({ length: AHEAD_AT_ONCE }, one));
+  return done;
 }

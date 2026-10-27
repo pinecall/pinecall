@@ -323,7 +323,8 @@ the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy p
 `tutor(call, { ask, reading: "Leer el capítulo" })` puts a first pill in the walks' menu that reads the page
 aloud in the agent's voice, with no call: what the site marks `data-pinecall-read` (a `<main>`, a section), its
 headings, paragraphs, items and captions in the page's order, as written, the part read lit and pointed at and
-the rest dimmed; a long one is read a few sentences at a time. A button marked `data-pinecall-press` is an
+the rest dimmed; a long one is read a few sentences at a time. Every part is asked of the door as the tutor
+mounts, three at a time, so the reading starts with no wait. A button marked `data-pinecall-press` is an
 example: reached, the pointer presses it (its value said first: `data-pinecall-press="Lo corro."`), the reading
 waits for what it controls (`aria-controls`, its output) to answer and not be `aria-busy`, then says its
 `data-pinecall-then` pointing at the output and reads the output line by line with notes: `data-pinecall-notes`
@@ -339,9 +340,8 @@ its field (its greeting waited on while busy), says each line as it types it, se
 agent said and the tools it used (turns marked `data-pinecall-said`; a tool's said by its `data-pinecall-say`)
 until it has what it came for, the chat ends (a turn marked `end`) or forty turns pass, and the page goes on.
 Such a button in no form is a spoken call: the dot presses it, hears the greeting (`data-pinecall-heard` on the
-output: the agent and its tools are heard, not read; only the end is said) and says its lines into the call, the output told each by a
-`pinecall-saying` event with its recording, for the site to play in; `tutor.stop()` ends a reading when the
-visitor takes over. A page whose top was scrolled away is read from the first part still in view. A button
+output: the agent and its tools are heard, not read; only the end is said) and says its lines into the call,
+each told to the output by a `pinecall-saying` event with its recording; `tutor.stop()` ends a reading. A page whose top was scrolled away is read from the first part still in view. A button
 marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`, with
 `voicing.explain`), the notes read in the place of its `data-pinecall-then`. `data-pinecall-quiet` is not read.
 An element with `data-pinecall-say` is said as that line instead, nothing inside it read again. `tutor.read()`

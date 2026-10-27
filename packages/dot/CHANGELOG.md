@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A page read aloud is recorded ahead**: as the tutor mounts with `reading`, every part the page says is asked of
+  the door, three at a time, each text once; the door keeps them, so a reading started later has no wait.
 - **A part the door could not record is asked again**, three times over a few seconds, instead of read in silence;
   one that failed every time is asked again when the reading reaches it again. A machine that just booted answered
   its first parts with an error, and the whole reading went on mute.
