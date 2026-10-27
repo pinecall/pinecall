@@ -340,9 +340,9 @@ pointed at, the output marked `data-pinecall-reading` meanwhile so the site can 
 A note whose line is not there is left out, so the same notes serve whatever the command printed. A button
 marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`: the agent's
 model through the gateway, with `voicing.explain`), the notes read the same way in the place of its
-`data-pinecall-then`, which is said only when the model gives none. `data-pinecall-quiet` is not read. A page is rarely heard well as it is written: an element with
-`data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or
-a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
+`data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A page is rarely
+heard well as it is written: an element with `data-pinecall-say` is said as that line instead, nothing inside
+it read again, so a section, a table or a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
 part read, the face in the margin, never on its words. `tutor.read()` starts it from a button
 of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
 next go a sentence at a time.
