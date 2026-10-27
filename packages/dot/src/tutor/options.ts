@@ -1,4 +1,4 @@
-/** What a page gives `tutor()`: where it rests, its colour and shape, whose words show, the walks it plays, and the views of its own tools. */
+/** What a page gives `tutor()`: where it rests, its colour and shape, whose words show, the walks it plays, and the views of its own tools; and the tutor it hands back. */
 
 import type { Shape } from "../face/shape.js";
 import type { DoorRequest } from "../wire/ask.js";
@@ -65,4 +65,15 @@ export interface TutorOptions {
   reading?: string | undefined;
   /** What they typed, for a question the page cannot show: the site takes it to the agent (a call, it written in). */
   onTalk?: ((message: string) => void) | undefined;
+}
+export interface Tutor {
+  /** A message the agent sent on `pinecall.ui`: true when it was the tutor's to carry out, false for a card or choices. */
+  take(data: unknown): boolean;
+  /** Let the face hear the voice: call it from the click that starts the call. */
+  wake(): void;
+  /** Read the page aloud (`reading`), from the visitor's click: a button of the site's own. */
+  read(): void;
+  /** Stop the walk or the reading playing, if one is: the site's own reason to (the visitor took over). */
+  stop(): void;
+  close(): void;
 }

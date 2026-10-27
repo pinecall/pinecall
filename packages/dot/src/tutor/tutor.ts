@@ -25,23 +25,12 @@ import { act, askWords, type Asked } from "./ask.js";
 import { listen } from "./listening.js";
 import { readingWith } from "./aloud.js";
 import { Player } from "./macro.js";
-import type { TutorOptions } from "./options.js";
+import type { Tutor, TutorOptions } from "./options.js";
 import { Screen } from "./views.js";
 import { Walks } from "./walks.js";
 
-export type { TutorOptions } from "./options.js";
+export type { Tutor, TutorOptions } from "./options.js";
 
-export interface Tutor {
-  /** A message the agent sent on `pinecall.ui`: true when it was the tutor's to carry out, false for a card or choices. */
-  take(data: unknown): boolean;
-  /** Let the face hear the voice: call it from the click that starts the call. */
-  wake(): void;
-  /** Read the page aloud (`reading`), from the visitor's click: a button of the site's own. */
-  read(): void;
-  /** Stop the walk or the reading playing, if one is: the site's own reason to (the visitor took over). */
-  stop(): void;
-  close(): void;
-}
 
 /** How long what the visitor asked for stays shown, its name beside the face, in ms. */
 const NOTE_MS = 6000;

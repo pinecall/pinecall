@@ -24,6 +24,7 @@ const kinds = (reading: Reading): string[] => reading.walk.steps.map((step) => (
 describe("a call the dot talks on", () => {
   it("opens it with its button, hears the greeting, says its lines into it and waits for each answer", async () => {
     document.body.innerHTML = PAGE;
+    document.documentElement.lang = "es";
     const log = document.getElementById("log")!;
     const reading = readingOf(document, "Leer")!;
     expect(kinds(reading)).toEqual(["Llamala.", "La llamo.", "press", "Y seguimos."]);
