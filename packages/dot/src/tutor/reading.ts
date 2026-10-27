@@ -21,9 +21,11 @@
 // (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`. A send button
 // marked `data-pinecall-goal` is a chat the dot talks to: it asks the door for its line, says it, types and sends
 // it, reads the agent's answer aloud (`data-pinecall-said` on each turn), and goes on until it has what it came
-// for, then has the whole chat explained.
+// for, then has the whole chat explained. A page read with its top scrolled away is read from the first part
+// still in view (`fromHere`): a person who comes back to the middle of a chapter goes on from there.
 
-import { pageOf } from "../pointer/frames.js";
+import { boxOf, pageOf } from "../pointer/frames.js";
+import { seenOf } from "../pointer/flight.js";
 import { notPressable } from "../pointer/pressing.js";
 import { MOST_HEARD, type ExplainRequest, type Heard, type NextLine, type NextRequest, type Note } from "../wire/ask.js";
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
@@ -164,6 +166,16 @@ export function readingOf(document: Document, title: string): Reading | null {
   };
   rootsOf(document).forEach(scan);
   return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs, goals };
+}
+
+/** How far above what is seen a part may start and still be where the reading begins, in px. */
+const JUST_ABOVE = 8;
+
+/** The reading from where the page is scrolled to: from its first part not above what is seen; whole when that is its first. */
+export function fromHere(reading: Reading): Reading {
+  const first = reading.at.findIndex((element) => boxOf(element).bottom > seenOf(element).top + JUST_ABOVE);
+  if (first <= 0) return reading;
+  return { walk: { ...reading.walk, steps: reading.walk.steps.slice(first) }, at: reading.at.slice(first), outputs: reading.outputs.slice(first), goals: reading.goals };
 }
 
 /** The name a step calls an example by: its label, its placeholder, its words. */

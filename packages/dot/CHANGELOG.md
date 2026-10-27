@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A page read aloud starts from the part in view**: with the top scrolled away, the reading begins at the first part
+  not above the screen (`fromHere`), so coming back to the middle of a chapter goes on from there.
 - **A page read aloud talks to a chat until it has what it came for**: a send button marked `data-pinecall-goal` is a
   chat the dot talks to; it asks the door for its line (`{ next }`: Pinecall's caller through the gateway's
   `/v1/evals/caller`, with `voicing.next`), says it in its own voice, types and sends it, reads the agent's answer

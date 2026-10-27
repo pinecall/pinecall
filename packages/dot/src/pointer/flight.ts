@@ -166,13 +166,10 @@ async function scrollWithin(element: Element, scroller: Element | null, where: n
 }
 
 /**
- * Whether `element` is shown whole in the part of the screen it scrolls in that the site leaves free (its
- * scrolling box, under the site's header); one taller than that part, from its start, near the top.
+ * What can be seen where `element` stands, on the top page's screen: the screen under the site's header, cut down
+ * by every box the element scrolls in, and in a frame, by the frame's screen and every box the frame scrolls in.
  */
-export function shownWhole(element: Element): boolean {
-  if (element.ownerDocument.defaultView === null) return true;
-  // What can be seen: the screen, cut down by every box the element scrolls in, and in a frame, by the frame's
-  // screen and every box the frame scrolls in, on the page around it.
+export function seenOf(element: Element): { top: number; bottom: number } {
   let top = -Infinity;
   let bottom = Infinity;
   for (let node: Element | null = element; node !== null; node = frameOf(node.ownerDocument)) {
@@ -188,8 +185,18 @@ export function shownWhole(element: Element): boolean {
       bottom = Math.min(bottom, at + frame.bottom);
     }
   }
-  top += MARGIN / 2;
-  bottom -= MARGIN / 2;
+  return { top, bottom };
+}
+
+/**
+ * Whether `element` is shown whole in the part of the screen it scrolls in that the site leaves free (its
+ * scrolling box, under the site's header); one taller than that part, from its start, near the top.
+ */
+export function shownWhole(element: Element): boolean {
+  if (element.ownerDocument.defaultView === null) return true;
+  const seen = seenOf(element);
+  const top = seen.top + MARGIN / 2;
+  const bottom = seen.bottom - MARGIN / 2;
   const box = boxOf(element);
   if (box.height > bottom - top) return box.top >= top && box.top <= top + (bottom - top) * 0.3;
   return box.top >= top && box.bottom <= bottom;

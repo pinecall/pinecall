@@ -93,8 +93,7 @@ for the other), 58 px across (`--pc-dot-size`) and 14 px from the edges; touring
 beside the face. It moves the way a hand moves a mouse:
 
 - **It aims at an element the way a person does.** It lands on the middle of the element's first
-  words, not of its box, and flies there on a minimum-jerk path with a slight arc, timed by the
-  distance.
+words, not of its box, and flies there on a minimum-jerk path with a slight arc, timed by the distance.
 - **The pointer looks like the one the element asks for**: a hand on a link, an I-beam in a field.
 - **Hover looks real.** Every `:hover` rule of the site's own style sheets is mirrored onto
 `[data-pc-hover]`, set on the element under the tip and its ancestors, and `pointerenter` and `mouseenter` are
@@ -337,15 +336,16 @@ chat in an iframe) is read in its place: what its page marks `data-pinecall-read
 the scroll reaching into it. A send button marked `data-pinecall-goal` is a chat the dot talks to: it asks the
 door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), says it, types and sends it, reads the
 agent's answer aloud (each turn marked `data-pinecall-said="agent"` or `"caller"`), and goes on until it has
-what it came for, the chat ends or forty turns pass; the whole chat is then explained. A button marked
-`data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`: the agent's model
-through the gateway, with `voicing.explain`), the notes read the same way in the place of its
-`data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A page is rarely
-heard well as it is written: an element with `data-pinecall-say` is said as that line instead, nothing inside it
-read again, so a section, a table or a list of cards becomes a sentence or two written to be heard. The pointer
-stands at the left of the part read, the face in the margin, never on its words. `tutor.read()` starts it from a
-button of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
-next go a sentence at a time.
+what it came for, the chat ends or forty turns pass; the whole chat is then explained. A page whose top was
+scrolled away is read from the first part still in view: coming back to the middle of a chapter goes on from
+there. A button marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain
+}`: the agent's model through the gateway, with `voicing.explain`), the notes read the same way in the place of
+its `data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A page is
+rarely heard well as it is written: an element with `data-pinecall-say` is said as that line instead, nothing
+inside it read again, so a section, a table or a list of cards becomes a sentence or two written to be heard.
+The pointer stands at the left of the part read, the face in the margin, never on its words. `tutor.read()`
+starts it from a button of the site's own. While a walk or a reading plays, the corner holds back, pause, next
+and stop: back and next go a sentence at a time.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one plays (`{
 read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second time. A door lets its

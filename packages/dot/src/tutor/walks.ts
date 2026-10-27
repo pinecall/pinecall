@@ -8,7 +8,7 @@ import { Menu } from "../pointer/menu.js";
 import type { Person } from "../pointer/person.js";
 import type { AskRequest } from "../wire/ask.js";
 import { onPage, type ActStep, type RecordedStep, type RecordedWalk, type Values } from "../wire/index.js";
-import { ReadAloud, readingOf, type ReadingOptions } from "./reading.js";
+import { ReadAloud, fromHere, readingOf, type ReadingOptions } from "./reading.js";
 import { Walking, lengthOf, publishedWalks, type WalkFrame, type Walked } from "./walking.js";
 
 export interface WalksOptions {
@@ -169,8 +169,10 @@ export class Walks {
     this.stop();
     // Its first sentence comes from the door after this click: the audio is let play inside it.
     this.#walking.unlock();
-    this.#aloud = new ReadAloud(found, reading);
-    this.#play(found.walk);
+    // From where the page is scrolled to: what was read, or scrolled past, is not read again.
+    const here = fromHere(found);
+    this.#aloud = new ReadAloud(here, reading);
+    this.#play(here.walk);
   }
 
   /** Let a walk play after a wait: from the visitor's submit, before the door answers. */
