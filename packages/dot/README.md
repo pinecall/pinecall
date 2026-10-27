@@ -102,8 +102,7 @@ sent for the site's code. A style sheet from another origin cannot be read and k
   site's header (a fixed or sticky bar along the top, or the page's `scroll-padding-top`). A box that scrolls
   inside the page is scrolled too, its own `scroll-padding-top` kept clear; anything not shown whole where
   the visitor can see it is scrolled to before the pointer lands on it.
-- **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" is a
-  ring at the tip.
+- **A highlight dims the rest of the page** and follows the element as the page scrolls. "Here" rings the tip.
 
 **It never sends a form or opens another page for the visitor.** It shows where, and they do it. A
 form's fields it fills with what the visitor told it, typed letter by letter with the `input` and
