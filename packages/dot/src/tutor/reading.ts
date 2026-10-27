@@ -342,7 +342,6 @@ const EXAMPLE_MS = 60_000;
 export function readingWith(
   title: string,
   acting: Acting,
-  document: Document,
   moves: { light: (element: Element | null) => void; queued: <T>(work: () => Promise<T>) => Promise<T> },
 ): { title: string } & ReadingOptions {
   return {
@@ -356,8 +355,9 @@ export function readingWith(
     press: (element) =>
       moves.queued(async () => {
         if ((await acting.press(element, true)) !== null) return;
+        // What it controls is on its own page: a chat in a frame of the site's own answers there.
         const controls = element.getAttribute("aria-controls");
-        const output = controls === null ? null : document.getElementById(controls);
+        const output = controls === null ? null : element.ownerDocument.getElementById(controls);
         if (output !== null) await acting.wait(() => output, EXAMPLE_MS);
       }),
   };
