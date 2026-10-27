@@ -20,7 +20,7 @@
 // and the whole box lit: a title said alone, then its words, sounds like two things. A frame of the site's own
 // (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`.
 
-import { pageOf } from "../pointer/frames.js";
+import { isElement, pageOf } from "../pointer/frames.js";
 import type { ExplainRequest, Note } from "../wire/ask.js";
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
@@ -80,8 +80,9 @@ export function textOf(output: Element): string {
   const lines: string[] = [];
   const walk = (node: Node, line: string[]): void => {
     for (const child of node.childNodes) {
-      if (child instanceof Text) line.push(child.textContent ?? "");
-      else if (child instanceof Element && seen(child) && !child.matches("script, style, template")) {
+      // By node type, not `instanceof`: a frame's nodes are of the frame's window.
+      if (child.nodeType === 3) line.push(child.textContent ?? "");
+      else if (isElement(child) && seen(child) && !child.matches("script, style, template")) {
         // A span laid out as a block (a cell of a row) is a line of its own; one in a run of words is not.
         const display = child.ownerDocument.defaultView?.getComputedStyle(child).display ?? "";
         const inline = display === "" ? INLINE.has(child.tagName) : display.startsWith("inline");
