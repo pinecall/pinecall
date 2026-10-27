@@ -97,4 +97,32 @@ describe("an output with no notes of the page's", () => {
     expect(reading.outputs.map((about) => about?.find)).toEqual([undefined, null, "audited 49 packages", "0 vulnerabilities", undefined]);
     expect((await aloud.voice(2))?.say).toBe("Revisó cuarenta y nueve paquetes.");
   });
+
+  it("is its own, by what the button controls, when the page says nothing after it: never the next example's", async () => {
+    document.body.innerHTML = `
+      <main data-pinecall-read>
+        <div data-pinecall-quiet><button aria-label="Start pinecall start" aria-controls="log" data-pinecall-press data-pinecall-explain="pinecall start">Start</button>
+        <div id="log"><div>connected to cloud.pinecall.io</div><div>doors web, phone</div></div></div>
+        <button aria-label="Run pinecall agent list" aria-controls="next" data-pinecall-press data-pinecall-notes="notes">Run</button>
+        <div id="next" data-pinecall-quiet><div>la-espiga</div></div>
+        <ol id="notes" hidden><li data-pinecall-find="la-espiga">Esa es la-espiga.</li></ol>
+      </main>`;
+    const reading = readingOf(document, "Leer")!;
+    const asked: unknown[] = [];
+    const aloud = new ReadAloud(reading, {
+      record: async (text) => ({ say: text, audio: "https://gw/v1/lines/x.mp3", durationMs: 900, words: [], beats: [] }),
+      light: () => undefined,
+      press: async () => undefined,
+      explain: async (request) => {
+        asked.push(request);
+        return [{ find: "doors", say: "Ya atiende por la web y el teléfono." }];
+      },
+    });
+
+    await aloud.act(0);
+
+    expect(asked).toEqual([{ output: "connected to cloud.pinecall.io\ndoors web, phone", command: "pinecall start", language: undefined }]);
+    expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "press"))).toEqual(["press", "Ya atiende por la web y el teléfono.", "press", "Esa es la-espiga."]);
+    expect(reading.at[1]?.id).toBe("log");
+  });
 });

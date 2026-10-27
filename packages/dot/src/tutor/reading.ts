@@ -271,9 +271,11 @@ export class ReadAloud {
     this.#options.light(element);
     await this.#options.press(element);
     const command = element.getAttribute(EXPLAIN_ATTRIBUTE);
-    const output = this.reading.outputs.find((about, index) => index > at && about !== undefined)?.output;
+    // Its own output, by what it controls: a press the page says nothing after has no step about it.
+    const controls = element.getAttribute("aria-controls");
+    const output = (controls === null ? null : element.ownerDocument.getElementById(controls)) ?? element;
     const noted = this.reading.outputs.some((about) => about !== undefined && about.output === output && about.find !== null);
-    if (command === null || this.#options.explain === undefined || output === undefined || noted) return;
+    if (command === null || this.#options.explain === undefined || noted) return;
     const text = textOf(output);
     if (text === "") return;
     const notes = await this.#options.explain({ output: text, command: command || undefined, language: output.ownerDocument.documentElement.lang || undefined }).catch(() => []);
