@@ -41,8 +41,7 @@ talkButton.onclick = () => {
 // pip.close() takes it off the page.
 ```
 
-The face fills its element with one SVG: 64 px is a launcher, 240 px a hero. Two faces on one page
-are fine.
+The face fills its element with one SVG: 64 px is a launcher, 240 px a hero. Two faces on one page are fine.
 
 **Its shape and colour.** `face(host, call, { shape, color })`: `shape` is `circle` (the default),
 `squircle` or `blob`, and `color` any CSS colour (else the page's `--pc-face`). `reshape(shape)` changes it
@@ -98,9 +97,8 @@ beside the face. It moves the way a hand moves a mouse:
   distance.
 - **The pointer looks like the one the element asks for**: a hand on a link, an I-beam in a field.
 - **Hover looks real.** Every `:hover` rule of the site's own style sheets is mirrored onto
-  `[data-pc-hover]`, set on the element under the tip and its ancestors, and `pointerenter` and
-  `mouseenter` are sent for the site's code. A style sheet from another origin cannot be read and
-  keeps no hover.
+`[data-pc-hover]`, set on the element under the tip and its ancestors, and `pointerenter` and `mouseenter` are
+sent for the site's code. A style sheet from another origin cannot be read and keeps no hover.
 - **It scrolls the page eased**, until the element sits a little above the middle of the screen, below the
   site's own header: a fixed or sticky bar along the top (or the page's `scroll-padding-top`) is measured
   and left out, so nothing it shows ends up under it.
@@ -154,9 +152,8 @@ them for a screen reader.
 - **A ref is stable for the page's life**, and still names its element after a scroll took it off
   the screen.
 - **A field is its label and what it holds now**: `[value="Jordan Lee"]` or `[empty]`, a list's
-  choice and its `(options …)`, `[checked]` or `[unchecked]`, so the agent sees what the visitor
-  typed. Passwords, card numbers, and anything under `[data-pinecall-skip]` or `aria-hidden` are
-  left out.
+choice and its `(options …)`, `[checked]` or `[unchecked]`, so the agent sees what the visitor typed. Passwords,
+card numbers, and anything under `[data-pinecall-skip]` or `aria-hidden` are left out.
 - **What the site wrote for the agent to say is marked `[has a line]`** ([below](#lines-on-the-page)).
 
 The tutor sends it as `page.seen` when the call goes live, when a scroll stops, on a resize, when
@@ -189,9 +186,8 @@ A class that extends `Tutor` gets these:
   model calls them, while the words that name them play, and the model answers one only when it made
   it without a word; `runMacro` too, which starts on its own first words and ends on its own last ones.
 - **A move onto a thing waits for the page to say it ended** (`point`, `highlight`, `scrollTo`, three
-  seconds at most), and its result is that thing as the visitor now sees it, fenced as data: a
-  section that was one line below the fold comes back in full, its prices with it, for the model to
-  talk about.
+seconds at most), and its result is that thing as the visitor now sees it, fenced as data: a section that was
+one line below the fold comes back in full, its prices with it, for the model to talk about.
 - **`fill(field, text)` writes what the visitor said into a field**, after the agent asked for it,
   one field at a time; its result is the field as it now shows, and a field the page refused (a
   password, a list with no such option) is a tool error naming why. It never sends the form.
@@ -338,14 +334,18 @@ site can widen a box that scrolls. A note whose line is not there is left out, s
 the command printed. A field marked `data-pinecall-type` is typed with its value, the page's own example (a
 chat's question), and the `data-pinecall-press` after it sends it, in any form. A frame of the site's own (a
 chat in an iframe) is read in its place: what its page marks `data-pinecall-read`, the pointer, the light and
-the scroll reaching into it. A button marked `data-pinecall-explain` with no notes has its output explained by
-the door (`{ explain }`: the agent's model through the gateway, with `voicing.explain`), the notes read the same
-way in the place of its `data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not
-read. A page is rarely heard well as it is written: an element with `data-pinecall-say` is said as that line
-instead, nothing inside it read again, so a section, a table or a list of cards becomes a sentence or two
-written to be heard. The pointer stands at the left of the part read, the face in the margin, never on its
-words. `tutor.read()` starts it from a button of the site's own. While a walk or a reading plays, the corner
-holds back, pause, next and stop: back and next go a sentence at a time.
+the scroll reaching into it. A send button marked `data-pinecall-goal` is a chat the dot talks to: it asks the
+door for its line (`{ next }`: Pinecall's caller, with `voicing.next`), says it, types and sends it, reads the
+agent's answer aloud (each turn marked `data-pinecall-said="agent"` or `"caller"`), and goes on until it has
+what it came for, the chat ends or forty turns pass; the whole chat is then explained. A button marked
+`data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`: the agent's model
+through the gateway, with `voicing.explain`), the notes read the same way in the place of its
+`data-pinecall-then`, said only when the model gives none. `data-pinecall-quiet` is not read. A page is rarely
+heard well as it is written: an element with `data-pinecall-say` is said as that line instead, nothing inside it
+read again, so a section, a table or a list of cards becomes a sentence or two written to be heard. The pointer
+stands at the left of the part read, the face in the margin, never on its words. `tutor.read()` starts it from a
+button of the site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and
+next go a sentence at a time.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one plays (`{
 read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second time. A door lets its

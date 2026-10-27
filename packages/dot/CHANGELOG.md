@@ -6,6 +6,11 @@ maintainer's call.
 
 ## Unreleased
 
+- **A page read aloud talks to a chat until it has what it came for**: a send button marked `data-pinecall-goal` is a
+  chat the dot talks to; it asks the door for its line (`{ next }`: Pinecall's caller through the gateway's
+  `/v1/evals/caller`, with `voicing.next`), says it in its own voice, types and sends it, reads the agent's answer
+  aloud (each turn marked `data-pinecall-said`), and goes on until it said goodbye, the chat ended or forty turns
+  passed; the whole chat is then explained. The reading's text helpers moved to `tutor/text.ts`.
 - **A page read aloud types its own example, and reaches into the site's frames**: a field marked `data-pinecall-type`
   is typed with its value and the `data-pinecall-press` after it sends it, in any form (the page's own example, not the
   visitor's); a frame of the site's own (a chat in an iframe) is read in its place, what its page marks

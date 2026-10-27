@@ -11,7 +11,7 @@ import type { Page } from "../page/page.js";
 import { nameOf } from "../page/roles.js";
 import { framesIn, isElement } from "../pointer/frames.js";
 import { press } from "../pointer/pressing.js";
-import { notesOf, rowOf, saidOf, type DoorRequest, type ExplainRequest, type Note } from "../wire/ask.js";
+import { nextOf, notesOf, rowOf, saidOf, type DoorRequest, type ExplainRequest, type NextLine, type NextRequest, type Note } from "../wire/ask.js";
 import { filled, slotsOf, valueOf, type ActStep, type LiveStep, type RecordedStep, type RecordedWalk, type ReadAct, type Values } from "../wire/index.js";
 
 export interface ActingOptions {
@@ -121,6 +121,13 @@ export class Acting {
     const door = this.#options.door;
     if (door === undefined) return [];
     return notesOf(await door({ explain: request }).catch(() => null));
+  }
+
+  /** The dot's next line on a chat it talks to for a goal, by the site's door; null when it gives none. */
+  async next(request: NextRequest): Promise<NextLine | null> {
+    const door = this.#options.door;
+    if (door === undefined) return null;
+    return nextOf(await door({ next: request }).catch(() => null));
   }
 
   /** A text of the page, recorded now by the site's door in the agent's voice; null when it cannot be. */

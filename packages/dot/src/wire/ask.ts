@@ -46,6 +46,28 @@ export interface ExplainRequest {
   language?: string | undefined;
 }
 
+/** One turn of a chat the dot talks to, as it was heard: whose, and what was said. */
+export interface Heard {
+  who: "agent" | "caller";
+  said: string;
+}
+
+/** The dot's next line on a chat it talks to for a goal: the goal, what was said so far, the language. */
+export interface NextRequest {
+  goal: string;
+  heard: Heard[];
+  language?: string | undefined;
+}
+
+/** The dot's next line, and whether it says goodbye with it. */
+export interface NextLine {
+  say: string;
+  hangup: boolean;
+}
+
+/** The most turns a talk sends as heard: the gateway's own ceiling. */
+export const MOST_HEARD = 80;
+
 /** A note of an output: a fragment of one of its lines, and what is said of it. */
 export interface Note {
   find: string;
@@ -53,7 +75,7 @@ export interface Note {
 }
 
 /** What the page asks the site's door: one of the five. */
-export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest } | { read: ReadRequest } | { explain: ExplainRequest };
+export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest } | { read: ReadRequest } | { explain: ExplainRequest } | { next: NextRequest };
 
 /** The site's door's answer to a `row`: the row's index, or null when none answers it. */
 export interface RowAnswer {
@@ -126,6 +148,13 @@ export function decisionOf(value: unknown): Decision | null {
 export const MOST_NOTES = 6;
 
 /** An explanation's notes, checked, the first six; none for anything else. */
+/** The door's answer to `{ next }` read as the dot's next line; null when it gave none. */
+export function nextOf(value: unknown): NextLine | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { say, hangup } = value as Record<string, unknown>;
+  return typeof say === "string" && say.trim() !== "" ? { say: say.trim(), hangup: hangup === true } : null;
+}
+
 export function notesOf(value: unknown): Note[] {
   if (typeof value !== "object" || value === null) return [];
   const notes = (value as Record<string, unknown>)["notes"];

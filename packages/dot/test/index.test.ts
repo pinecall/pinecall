@@ -16,6 +16,6 @@ describe("the public surfaces", () => {
   });
 
   it("@pinecall/dot/server is the site's door, what it decides, picks and records with, and the parts it is made of", () => {
-    expect(Object.keys(server).sort()).toEqual(["answer", "decide", "decisionFrom", "explainOutput", "pickRow", "questionsOf", "recordSay", "spansOf", "thingsOf"]);
+    expect(Object.keys(server).sort()).toEqual(["answer", "decide", "decisionFrom", "explainOutput", "nextLine", "pickRow", "questionsOf", "recordSay", "spansOf", "thingsOf"]);
   });
 });

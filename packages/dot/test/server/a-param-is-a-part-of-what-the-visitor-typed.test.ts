@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { answer, decide, explainOutput, pickRow, questionsOf, recordSay, spansOf, thingsOf } from "../../src/server/index.js";
+import { answer, decide, explainOutput, nextLine, pickRow, questionsOf, recordSay, spansOf, thingsOf } from "../../src/server/index.js";
 
 const PAGE = '- form "Book your first visit" [ref=e40]\n  - textbox "Your name" [ref=e41] [empty]';
 const BOOK = { name: "book", title: "Book for me", params: { name: { about: "the visitor's name" }, plan: { about: "the plan", oneOf: { family: "Family Care" } } } };
@@ -68,6 +68,25 @@ describe("an output explained", () => {
   });
 });
 
+describe("the dot's next line on a chat it talks to", () => {
+  it("is Pinecall's caller's, through the gateway, with the goal, the chat so far and the turns left; refused unless the voicing lets a page talk", async () => {
+    const asked: { url: string; body: unknown }[] = [];
+    const gateway = async (url: string | URL | Request, init?: RequestInit) => {
+      asked.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return new Response(JSON.stringify({ say: "Hola, quiero dos medialunas.", hangup: false }));
+    };
+    const voicing = { key: "pc", agent: "guia", gateway: "https://gw", env: "sandbox" as const, next: true };
+    const heard = [{ who: "agent" as const, said: "¿Qué te sirvo?" }];
+
+    expect(await nextLine({ goal: " Pedí dos medialunas. ", heard, language: "es" }, voicing, gateway)).toEqual({ say: "Hola, quiero dos medialunas.", hangup: false });
+    expect(asked[0]).toEqual({
+      url: "https://gw/v1/evals/caller",
+      body: { persona: { goal: "Pedí dos medialunas.", style: 'a person writing in a chat, in the language "es": short turns, one or two lines, no narration' }, heard, turns_left: 40 },
+    });
+    await expect(nextLine({ goal: "x", heard: [] }, { key: "pc", agent: "guia" }, gateway)).rejects.toThrow("talks to no chat");
+  });
+});
+
 describe("a sentence recorded live", () => {
   const WALKS = { walks: [{ name: "find", title: "Find a time", steps: [{ say: "The soonest is {hit.Day} with {who}.", beats: [], live: true }] }] };
   const gateway = (asked: { url: string; body?: unknown }[]) => async (url: string | URL | Request, init?: RequestInit) => {
@@ -90,6 +109,6 @@ describe("a sentence recorded live", () => {
     await expect(recordSay({ path: "/", walk: "find", step: 3, values: {} }, VOICING, gateway([]))).rejects.toThrow("no sentence to record");
     await expect(recordSay({ path: "/", walk: "find", step: 0, values: { who: "x" } }, VOICING, gateway([]))).rejects.toThrow("needs hit.Day, who");
     await expect(answer({ say: { path: "/", walk: "find", step: 0, values: {} } }, { key: "k" })).rejects.toThrow("records no sentence");
-    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row }, { say }, { read } or { explain }");
+    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row }, { say }, { read }, { explain } or { next }");
   });
 });

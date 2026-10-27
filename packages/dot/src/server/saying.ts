@@ -7,7 +7,7 @@
 // and keeps it, so the same sentence with the same values costs nothing the second time.
 
 import { filled, slotsOf, valueOf, type Values } from "../wire/acts.js";
-import { notesOf, type ExplainRequest, type Note, type SaidAnswer, type SayRequest } from "../wire/ask.js";
+import { MOST_HEARD, nextOf, notesOf, type ExplainRequest, type NextLine, type NextRequest, type Note, type SaidAnswer, type SayRequest } from "../wire/ask.js";
 import { walksDocument, walksOf, type LiveStep, type RecordedWalk } from "../wire/index.js";
 
 /** The agent whose voice records it, and the key the site's server holds for it. */
@@ -25,7 +25,13 @@ export interface Voicing {
   read?: boolean | undefined;
   /** Whether a page may have an output explained by the agent's model (`{ explain }`): a model asked per output. Default no. */
   explain?: boolean | undefined;
+  /** Whether a page may have the dot talk to a chat for a goal (`{ next }`): Pinecall's caller asked per turn. Default no. */
+  next?: boolean | undefined;
 }
+
+/** The most turns of its own a talk takes: the gateway's own ceiling on a caller's. */
+const MOST_TURNS = 40;
+const STYLE = "a person writing in a chat{language}: short turns, one or two lines, no narration";
 
 /** The longest output a page may have explained. */
 const LONGEST_EXPLAINED = 8000;
@@ -93,6 +99,28 @@ export async function explainOutput(request: ExplainRequest, voicing: Voicing, a
   });
   if (!answer.ok) throw new Error(`the gateway explained nothing: ${answer.status}`);
   return { notes: notesOf(await answer.json()) };
+}
+
+/** The dot's next line on a chat it talks to for a goal: Pinecall's caller, through the gateway, playing it. Throws unless the voicing lets a page talk. */
+export async function nextLine(request: NextRequest, voicing: Voicing, ask: typeof fetch = fetch): Promise<NextLine> {
+  if (voicing.next !== true) throw new Error("this door talks to no chat: give its voicing next: true");
+  const goal = request.goal.trim();
+  if (goal === "" || goal.length > 4000) throw new Error("a goal talked for is 1 to 4000 characters");
+  const heard = request.heard.slice(-MOST_HEARD).map((turn) => ({ who: turn.who === "agent" ? "agent" : "caller", said: turn.said.slice(0, 4000) }));
+  const mine = heard.filter((turn) => turn.who === "caller").length;
+  const answer = await ask(`${(voicing.gateway ?? GATEWAY).replace(/\/+$/, "")}/v1/evals/caller`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${voicing.key}`, "content-type": "application/json", ...(voicing.env === undefined ? {} : { "pinecall-env": voicing.env }) },
+    body: JSON.stringify({
+      persona: { goal, style: STYLE.replace("{language}", request.language === undefined ? "" : `, in the language "${request.language}"`) },
+      heard,
+      turns_left: Math.max(1, MOST_TURNS - mine),
+    }),
+  });
+  if (!answer.ok) throw new Error(`the gateway said nothing: ${answer.status}`);
+  const line = nextOf(await answer.json());
+  if (line === null) throw new Error("the gateway gave no line");
+  return line;
 }
 
 /** One text recorded by the gateway in the agent's voice, kept: the same text again costs nothing. */

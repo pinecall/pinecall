@@ -18,18 +18,30 @@
 // as that line, written to be heard, instead of what it shows; the parts inside it are not read again. A heading that
 // shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
 // and the whole box lit: a title said alone, then its words, sounds like two things. A frame of the site's own
-// (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`.
+// (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`. A send button
+// marked `data-pinecall-goal` is a chat the dot talks to: it asks the door for its line, says it, types and sends
+// it, reads the agent's answer aloud (`data-pinecall-said` on each turn), and goes on until it has what it came
+// for, then has the whole chat explained.
 
-import { isElement, pageOf } from "../pointer/frames.js";
-import type { ExplainRequest, Note } from "../wire/ask.js";
+import { pageOf } from "../pointer/frames.js";
+import { notPressable } from "../pointer/pressing.js";
+import { MOST_HEARD, type ExplainRequest, type Heard, type NextLine, type NextRequest, type Note } from "../wire/ask.js";
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
+import { QUIET_ATTRIBUTE, lineIn, piecesOf, seen, textOf, wordsOf } from "./text.js";
+
+export { QUIET_ATTRIBUTE, lineIn, piecesOf, textOf, wordsOf } from "./text.js";
 
 export const READ_ATTRIBUTE = "data-pinecall-read";
 export const PRESS_ATTRIBUTE = "data-pinecall-press";
 /** On a field: the words typed into it when the reading reaches it, the page's own example (a chat's question); the `data-pinecall-press` after it sends it. */
 export const TYPE_ATTRIBUTE = "data-pinecall-type";
-export const QUIET_ATTRIBUTE = "data-pinecall-quiet";
+/** On a chat's send button: the dot talks to what it sends to, turn by turn, until it gets this (or the chat ends), then has the talk explained. */
+export const GOAL_ATTRIBUTE = "data-pinecall-goal";
+/** On each turn of a chat talked to: whose it is, `agent` or `caller`; the agent's are read aloud as they come. */
+export const SAID_ATTRIBUTE = "data-pinecall-said";
+/** The most turns of its own a talk takes: the gateway's own ceiling on a caller's, whatever the goal. */
+const MOST_TURNS = 40;
 /** The line an element is said as, instead of what it shows: the same the agent says in a call. */
 export const SAY_ATTRIBUTE = "data-pinecall-say";
 /** What an example's output shows, said pointing at it once it answered. */
@@ -46,8 +58,6 @@ export const READ_WALK = "read";
 
 /** The parts of a container a person reads out, each once: the outermost when one holds another. */
 const PARTS = "h1, h2, h3, h4, h5, h6, p, li, dt, dd, figcaption, blockquote, caption";
-/** The most characters one recording takes: a few sentences. */
-const LONGEST = 480;
 
 /** A step about an example's output: the output, and the text of the line it is about; null, the output whole. */
 export interface AboutOutput {
@@ -55,119 +65,15 @@ export interface AboutOutput {
   find: string | null;
 }
 
-/** A page as it is read: its steps, the element each step is about, and which are about an output. */
+/** A step added as a reading goes: the step, the element it is about, and the output it is about. */
+type Added = [WalkStep, Element, AboutOutput | undefined];
+
+/** A page as it is read: its steps, the element each step is about, which are about an output, and the goal a step talks for. */
 export interface Reading {
   walk: RecordedWalk;
   at: Element[];
   outputs: (AboutOutput | undefined)[];
-}
-
-const INLINE = new Set(["SPAN", "CODE", "B", "I", "EM", "STRONG", "A", "SMALL", "KBD", "U", "S", "MARK", "TIME", "SUB", "SUP", "ABBR"]);
-
-/** The nearest box of `element`, within `within`, that is a line of its own: not a run of words (a span, a code) inside one. */
-function blockOf(element: Element, within: Element): Element {
-  let node = element;
-  while (node !== within && node.parentElement !== null) {
-    const display = node.ownerDocument.defaultView?.getComputedStyle(node).display ?? "";
-    if (!INLINE.has(node.tagName) && !display.startsWith("inline") && display !== "contents") return node;
-    node = node.parentElement;
-  }
-  return node;
-}
-
-/** What an output shows, line by line: each box of its own on a line, the words inside it as written. Hidden parts left out. */
-export function textOf(output: Element): string {
-  const lines: string[] = [];
-  const walk = (node: Node, line: string[]): void => {
-    for (const child of node.childNodes) {
-      // By node type, not `instanceof`: a frame's nodes are of the frame's window.
-      if (child.nodeType === 3) line.push(child.textContent ?? "");
-      else if (isElement(child) && seen(child) && !child.matches("script, style, template")) {
-        // A span laid out as a block (a cell of a row) is a line of its own; one in a run of words is not.
-        const display = child.ownerDocument.defaultView?.getComputedStyle(child).display ?? "";
-        const inline = display === "" ? INLINE.has(child.tagName) : display.startsWith("inline");
-        if (inline) walk(child, line);
-        else {
-          const own: string[] = [];
-          walk(child, own);
-          lines.push(own.join("").replace(/\s+/g, " ").trim());
-        }
-      }
-    }
-  };
-  const top: string[] = [];
-  walk(output, top);
-  const first = top.join("").replace(/\s+/g, " ").trim();
-  return [first, ...lines].filter((line) => line !== "").join("\n");
-}
-
-/** A text as two are compared for a note: one space between words, in lower case. */
-const flat = (text: string): string => text.replace(/\s+/g, " ").trim().toLowerCase();
-
-/** The line of `output` that holds `find`, a text in any case and spacing or `/a regex/flags`: the innermost box that holds it; null when none does. */
-export function lineIn(output: Element, find: string): Element | null {
-  const expr = /^\/(.+)\/([a-z]*)$/.exec(find);
-  let matches: (text: string) => boolean;
-  try {
-    const regex = expr === null ? null : new RegExp(expr[1] ?? "", (expr[2] ?? "").replace("g", ""));
-    const wanted = flat(find);
-    matches = regex === null ? (text) => flat(text).includes(wanted) : (text) => regex.test(text);
-  } catch {
-    return null;
-  }
-  const holding = [...output.querySelectorAll("*")].filter((element) => matches(element.textContent ?? ""));
-  const innermost = holding.find((element) => !holding.some((other) => other !== element && element.contains(other)));
-  if (innermost === undefined) return matches(output.textContent ?? "") ? output : null;
-  return blockOf(innermost, output);
-}
-
-/** Whether a person sees `element`: not hidden, not left out for the tutor. */
-function seen(element: Element): boolean {
-  if (element.closest("[hidden], [aria-hidden='true'], [data-pinecall-skip]") !== null) return false;
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element);
-  return style === undefined || (style.display !== "none" && style.visibility !== "hidden");
-}
-
-/** The words a person reads out of `element`, on one line: its text, without what is quiet or hidden inside it. */
-export function wordsOf(element: Element): string {
-  const document = element.ownerDocument;
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  let text = "";
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    const parent = node.parentElement;
-    if (parent === null || parent.closest(`[${QUIET_ATTRIBUTE}]`) !== null || !seen(parent) || parent.matches("script, style, template")) continue;
-    text += node.textContent ?? "";
-  }
-  return text.replace(/\s+/g, " ").trim();
-}
-
-/** A text as it is recorded: whole when it fits, else a few sentences at a time, `longest` characters at most each. */
-export function piecesOf(text: string, longest = LONGEST): string[] {
-  if (text.length <= longest) return text === "" ? [] : [text];
-  const sentences = text.split(/(?<=[.!?…:;])\s+/);
-  const pieces: string[] = [];
-  let piece = "";
-  for (const sentence of sentences.flatMap((one) => (one.length <= longest ? [one] : cut(one, longest)))) {
-    if (piece !== "" && piece.length + 1 + sentence.length > longest) {
-      pieces.push(piece);
-      piece = sentence;
-    } else piece = piece === "" ? sentence : `${piece} ${sentence}`;
-  }
-  if (piece !== "") pieces.push(piece);
-  return pieces;
-}
-
-/** A sentence longer than a recording, cut between its words. */
-function cut(sentence: string, longest: number): string[] {
-  const pieces: string[] = [];
-  let piece = "";
-  for (const word of sentence.split(" ")) {
-    if (piece !== "" && piece.length + 1 + word.length > longest) {
-      pieces.push(piece);
-      piece = word;
-    } else piece = piece === "" ? word : `${piece} ${word}`;
-  }
-  return piece === "" ? pieces : [...pieces, piece];
+  goals: WeakMap<WalkStep, string>;
 }
 
 /** The parts of `box` a person reads, outermost, in order. */
@@ -196,6 +102,7 @@ export function readingOf(document: Document, title: string): Reading | null {
   const steps: WalkStep[] = [];
   const at: Element[] = [];
   const outputs: (AboutOutput | undefined)[] = [];
+  const goals = new WeakMap<WalkStep, string>();
   /** The words of a card, read with its title. */
   const read = new Set<Element>();
   const line = (text: string, element: Element, about?: AboutOutput): void => {
@@ -215,16 +122,22 @@ export function readingOf(document: Document, title: string): Reading | null {
         continue;
       }
       if (element.hasAttribute(TYPE_ATTRIBUTE)) {
-        steps.push({ fill: element.getAttribute("aria-label") ?? element.getAttribute("placeholder") ?? "field", with: element.getAttribute(TYPE_ATTRIBUTE) ?? "" });
+        steps.push({ fill: labelOf(element), with: element.getAttribute(TYPE_ATTRIBUTE) ?? "" });
         at.push(element);
         continue;
       }
       if (element.hasAttribute(PRESS_ATTRIBUTE)) {
         line(element.getAttribute(PRESS_ATTRIBUTE) ?? "", element);
-        steps.push({ press: element.getAttribute("aria-label") ?? wordsOf(element) });
+        const press: WalkStep = { press: labelOf(element) };
+        steps.push(press);
         at.push(element);
-        const controls = element.getAttribute("aria-controls");
-        const output = (controls === null ? null : element.ownerDocument.getElementById(controls)) ?? element;
+        // A button with a goal: the dot talks to what it sends to when it reaches it (`ReadAloud`); nothing is said of it before.
+        const goal = element.getAttribute(GOAL_ATTRIBUTE);
+        if (goal !== null && goal !== "") {
+          goals.set(press, goal);
+          continue;
+        }
+        const output = outputOf(element);
         line(element.getAttribute(THEN_ATTRIBUTE) ?? "", output, { output, find: null });
         // Each note on the output, said pointing at the line it finds; one that finds none is left out as it is reached.
         const notes = element.getAttribute(NOTES_ATTRIBUTE);
@@ -250,8 +163,20 @@ export function readingOf(document: Document, title: string): Reading | null {
     }
   };
   rootsOf(document).forEach(scan);
-  return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs };
+  return steps.length === 0 ? null : { walk: { name: READ_WALK, title, steps }, at, outputs, goals };
 }
+
+/** The name a step calls an example by: its label, its placeholder, its words. */
+const labelOf = (element: Element): string => element.getAttribute("aria-label") ?? element.getAttribute("placeholder") ?? wordsOf(element) ?? "field";
+
+/** An example's output: what it controls (`aria-controls`), else itself. */
+function outputOf(element: Element): Element {
+  const controls = element.getAttribute("aria-controls");
+  return (controls === null ? null : element.ownerDocument.getElementById(controls)) ?? element;
+}
+
+/** The language an output's page is in, for the door; none when the page does not say. */
+const languageOf = (element: Element): string | undefined => element.ownerDocument.documentElement.lang || undefined;
 
 /** What reading a page takes from the tutor. */
 export interface ReadingOptions {
@@ -265,6 +190,8 @@ export interface ReadingOptions {
   type?: ((element: Element, text: string) => Promise<void>) | undefined;
   /** An output explained by the site's door: notes on its lines; none when the door gives none. */
   explain?: ((request: ExplainRequest) => Promise<Note[]>) | undefined;
+  /** The dot's next line on a chat it talks to for a goal, by the site's door; null when it gives none. */
+  next?: ((request: NextRequest) => Promise<NextLine | null>) | undefined;
 }
 
 /** One reading under way: each part recorded when it is reached, the next one asked for while one plays. */
@@ -274,6 +201,12 @@ export class ReadAloud {
   readonly #asked = new Map<number, Promise<RecordedStep | null>>();
   /** The output whose notes are being read, marked for the site to widen it. */
   #open: Element | null = null;
+  /** The agent's answers read aloud already, on a chat talked to. */
+  readonly #heard = new WeakSet<Element>();
+  /** The chats the dot said goodbye on. */
+  readonly #bye = new WeakSet<Element>();
+  /** The presses of a talk's turns: the talk is explained at its end, not turn by turn. */
+  readonly #turns = new WeakSet<WalkStep>();
 
   constructor(reading: Reading, options: ReadingOptions) {
     this.reading = reading;
@@ -290,30 +223,34 @@ export class ReadAloud {
     return recording;
   }
 
-  /** The `at`th step, an example: typed into a field; or pressed, waited on, and its output explained by the door when the page notes nothing on it. */
+  /** The `at`th step, an example: typed into a field; a turn of a talk; or pressed, waited on, and its output explained by the door when the page notes nothing on it. */
   async act(at: number): Promise<void> {
     const element = this.reading.at[at];
     const step = this.reading.walk.steps[at];
     if (element === undefined || step === undefined) return;
+    const goal = this.reading.goals.get(step);
+    if (goal !== undefined) return this.#talk(at, element, goal);
     this.#options.light(element);
     if ("fill" in step) {
       await this.#options.type?.(element, step.with);
       return;
     }
     await this.#options.press(element);
-    const command = element.getAttribute(EXPLAIN_ATTRIBUTE);
+    if (this.#turns.has(step)) return;
     // Its own output, by what it controls: a press the page says nothing after has no step about it.
-    const controls = element.getAttribute("aria-controls");
-    const output = (controls === null ? null : element.ownerDocument.getElementById(controls)) ?? element;
+    const output = outputOf(element);
     const noted = this.reading.outputs.some((about) => about !== undefined && about.output === output && about.find !== null);
-    if (command === null || this.#options.explain === undefined || noted) return;
+    if (!noted) await this.#explain(at, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
+  }
+
+  /** The output explained by the door: its notes after step `at`, in the place of the page's line on it (kept when the model gave none). */
+  async #explain(at: number, output: Element, command: string | null): Promise<void> {
+    if (command === null || this.#options.explain === undefined) return;
     const text = textOf(output);
     if (text === "") return;
-    const notes = await this.#options.explain({ output: text, command: command || undefined, language: output.ownerDocument.documentElement.lang || undefined }).catch(() => []);
+    const notes = await this.#options.explain({ output: text, command: command || undefined, language: languageOf(output) }).catch(() => []);
     const { steps } = this.reading.walk;
     const { at: where, outputs } = this.reading;
-    // The model's notes take the place of the page's line on the output (`then`): both would say what it shows. The
-    // page's stays when the model gave none.
     if (notes.length > 0) {
       for (let index = outputs.length - 1; index > at; index -= 1) {
         if (outputs[index]?.output !== output || outputs[index]?.find !== null) continue;
@@ -322,12 +259,50 @@ export class ReadAloud {
         outputs.splice(index, 1);
       }
     }
-    for (const [offset, note] of notes.entries()) {
-      steps.splice(at + 1 + offset, 0, { say: note.say, beats: [], live: true });
-      where.splice(at + 1 + offset, 0, output);
-      outputs.splice(at + 1 + offset, 0, { output, find: note.find });
+    this.#insert(at, notes.map((note): Added => [{ say: note.say, beats: [], live: true }, output, { output, find: note.find }]));
+  }
+
+  /**
+   * One turn of a talk, at the step that marks it: the agent's last answer read aloud first, pointing at it; then the
+   * dot's next line asked of the door, said, typed and sent, and the turn after it marked. The talk ends when the dot
+   * said goodbye, the chat ended, the door gives no line or the turns run out: the whole chat is then explained.
+   */
+  async #talk(at: number, button: Element, goal: string): Promise<void> {
+    const output = outputOf(button);
+    const field = button.closest("form")?.querySelector("input:not([type=hidden]), textarea") ?? null;
+    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}]`)].filter(seen);
+    const marker = (): Added => {
+      const step: WalkStep = { press: labelOf(button) };
+      this.reading.goals.set(step, goal);
+      return [step, button, undefined];
+    };
+    const say = (text: string, element: Element): Added[] => piecesOf(text).map((piece) => [{ say: piece, beats: [], live: true }, element, undefined]);
+    const last = turns.at(-1);
+    if (last !== undefined && last.getAttribute(SAID_ATTRIBUTE) === "agent" && !this.#heard.has(last)) {
+      this.#heard.add(last);
+      this.#insert(at, [...say(wordsOf(last), last), marker()]);
+      return;
     }
-    // What was asked for ahead stands on the old numbering: asked again where the steps moved.
+    const heard = turns.map((turn): Heard => ({ who: turn.getAttribute(SAID_ATTRIBUTE) === "agent" ? "agent" : "caller", said: wordsOf(turn) })).slice(-MOST_HEARD);
+    const mine = heard.filter((turn) => turn.who === "caller").length;
+    const over = field === null || notPressable(button, true) !== null || this.#bye.has(output) || mine >= MOST_TURNS;
+    const next = over || this.#options.next === undefined ? null : await this.#options.next({ goal, heard, language: languageOf(output) }).catch(() => null);
+    if (next === null || field === null) return this.#explain(at, output, button.getAttribute(EXPLAIN_ATTRIBUTE) ?? goal);
+    if (next.hangup) this.#bye.add(output);
+    const press: WalkStep = { press: labelOf(button) };
+    this.#turns.add(press);
+    this.#insert(at, [...say(next.say, field), [{ fill: labelOf(field), with: next.say }, field, undefined], [press, button, undefined], marker()]);
+  }
+
+  /** Steps put after the `at`th; what was asked for ahead stands on the old numbering, so it is asked again. */
+  #insert(at: number, added: Added[]): void {
+    const { steps } = this.reading.walk;
+    const { at: where, outputs } = this.reading;
+    for (const [offset, [step, element, about]] of added.entries()) {
+      steps.splice(at + 1 + offset, 0, step);
+      where.splice(at + 1 + offset, 0, element);
+      outputs.splice(at + 1 + offset, 0, about);
+    }
     for (const index of [...this.#asked.keys()]) if (index > at) this.#asked.delete(index);
   }
 
@@ -374,6 +349,7 @@ export function readingWith(
     title,
     record: (text) => acting.read(text),
     explain: (request) => acting.explain(request),
+    next: (request) => acting.next(request),
     light: moves.light,
     type: (element, text) => moves.queued(async () => void (await acting.type(element, text))),
     // The page's own example: its button pressed in any form.
