@@ -344,9 +344,9 @@ explained by the door (`{ explain }`: the agent's model through the gateway, wit
 read the same way in the place of its `data-pinecall-then`, said only when the model gives none.
 `data-pinecall-quiet` is not read. An element with `data-pinecall-say` is said as that line instead, nothing
 inside it read again: a section, a table or a list of cards becomes a sentence or two written to be heard. The
-pointer stands at the left of the part read, the face in the margin, never on its words. `tutor.read()` starts
-it from a button of the site's own. While a walk or a reading plays, the corner holds back, pause, next and
-stop: back and next go a sentence at a time.
+pointer stands at the left of the part read, never on its words; `tutor.read()` starts it from a button of the
+site's own. While a walk or a reading plays, the corner holds back, pause, next and stop: back and next go a
+sentence at a time.
 
 Each part is recorded by the site's door when the reading reaches it, the next asked for while one plays (`{
 read: { text } }`), and the gateway keeps it: a page read twice costs nothing the second time. A door lets its
