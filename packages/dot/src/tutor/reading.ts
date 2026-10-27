@@ -10,7 +10,7 @@
 // line of the output the note finds (`data-pinecall-find`): the output lit line by line, as a person
 // reads a result with a finger on it. A button marked `data-pinecall-explain` with no notes of its own
 // has its output explained by the site's door (`{ explain }`, the agent's model) once it answered, the
-// notes it gives read the same way. Under `data-pinecall-quiet` nothing is read (code, a legend),
+// notes it gives read the same way, in the place of its `data-pinecall-then` (said when the model gives none). Under `data-pinecall-quiet` nothing is read (code, a legend),
 // though a button marked to press there is still pressed. An element with `data-pinecall-say` is said
 // as that line, written to be heard, instead of what it shows; the parts inside it are not read again. A heading that
 // shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
@@ -279,17 +279,25 @@ export class ReadAloud {
     const text = textOf(output);
     if (text === "") return;
     const notes = await this.#options.explain({ output: text, command: command || undefined, language: output.ownerDocument.documentElement.lang || undefined }).catch(() => []);
-    // The notes go after what the page says of the output, before the reading goes on.
-    let last = at;
-    this.reading.outputs.forEach((about, index) => void (about?.output === output && (last = Math.max(last, index))));
     const { steps } = this.reading.walk;
+    const { at: where, outputs } = this.reading;
+    // The model's notes take the place of the page's line on the output (`then`): both would say what it shows. The
+    // page's stays when the model gave none.
+    if (notes.length > 0) {
+      for (let index = outputs.length - 1; index > at; index -= 1) {
+        if (outputs[index]?.output !== output || outputs[index]?.find !== null) continue;
+        steps.splice(index, 1);
+        where.splice(index, 1);
+        outputs.splice(index, 1);
+      }
+    }
     for (const [offset, note] of notes.entries()) {
-      steps.splice(last + 1 + offset, 0, { say: note.say, beats: [], live: true });
-      this.reading.at.splice(last + 1 + offset, 0, output);
-      this.reading.outputs.splice(last + 1 + offset, 0, { output, find: note.find });
+      steps.splice(at + 1 + offset, 0, { say: note.say, beats: [], live: true });
+      where.splice(at + 1 + offset, 0, output);
+      outputs.splice(at + 1 + offset, 0, { output, find: note.find });
     }
     // What was asked for ahead stands on the old numbering: asked again where the steps moved.
-    for (const index of [...this.#asked.keys()]) if (index > last) this.#asked.delete(index);
+    for (const index of [...this.#asked.keys()]) if (index > at) this.#asked.delete(index);
   }
 
   /** The `at`th step starts: its part lit and pointed at, an output's line by its note; -1, the reading is over. */

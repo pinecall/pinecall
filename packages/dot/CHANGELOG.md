@@ -24,7 +24,8 @@ maintainer's call.
 - **An output no note covers is explained by the agent's model**: a button marked `data-pinecall-explain` has its
   output (what it controls, `aria-controls`, even when the page says nothing after the press) sent to the site's door
   (`{ explain }`, the gateway's `/v1/agents/{slug}/explain`, with `voicing.explain`) once it answered, and the notes
-  that come back are read as the page's would be.
+  that come back are read as the page's would be, in the place of its `data-pinecall-then` (said when the model gives
+  none: both would say what the output shows).
 - **An output is read line by line**: `data-pinecall-notes` on an example's button names notes that each find a line of
   its output (`data-pinecall-find`) and say what it means; the line is lit and pointed at, the output marked
   `data-pinecall-reading` meanwhile. The pointer scrolls through nested boxes: a line into its output, the output into the page.

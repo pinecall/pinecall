@@ -91,11 +91,31 @@ describe("an output with no notes of the page's", () => {
     await aloud.act(0);
 
     expect(asked).toEqual([{ output: "1,08 up to date, audited 49 packages\n1,09 found 0 vulnerabilities", command: "npm install", language: undefined }]);
+    // The model's notes say what the output shows: the page's "Listo." would say it twice.
     expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "press"))).toEqual([
-      "press", "Listo.", "Revisó cuarenta y nueve paquetes.", "Y no encontró vulnerabilidades.", "Y seguimos.",
+      "press", "Revisó cuarenta y nueve paquetes.", "Y no encontró vulnerabilidades.", "Y seguimos.",
     ]);
-    expect(reading.outputs.map((about) => about?.find)).toEqual([undefined, null, "audited 49 packages", "0 vulnerabilities", undefined]);
-    expect((await aloud.voice(2))?.say).toBe("Revisó cuarenta y nueve paquetes.");
+    expect(reading.outputs.map((about) => about?.find)).toEqual([undefined, "audited 49 packages", "0 vulnerabilities", undefined]);
+    expect((await aloud.voice(1))?.say).toBe("Revisó cuarenta y nueve paquetes.");
+  });
+
+  it("keeps the page's line on the output when the model gives no note", async () => {
+    document.body.innerHTML = `
+      <main data-pinecall-read>
+        <button aria-label="Run npm install" aria-controls="out" data-pinecall-press data-pinecall-explain="npm install" data-pinecall-then="Listo.">Run</button>
+        <div id="out" data-pinecall-quiet><div>found 0 vulnerabilities</div></div>
+      </main>`;
+    const reading = readingOf(document, "Leer")!;
+    const aloud = new ReadAloud(reading, {
+      record: async (text) => ({ say: text, audio: "https://gw/v1/lines/x.mp3", durationMs: 900, words: [], beats: [] }),
+      light: () => undefined,
+      press: async () => undefined,
+      explain: async () => [],
+    });
+
+    await aloud.act(0);
+
+    expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "press"))).toEqual(["press", "Listo."]);
   });
 
   it("is its own, by what the button controls, when the page says nothing after it: never the next example's", async () => {
