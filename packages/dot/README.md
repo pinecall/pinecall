@@ -329,17 +329,16 @@ the visitor typed go to OpenRouter and TypeSafe: a site says so in its privacy p
 
 `tutor(call, { ask, reading: "Leer el capítulo" })` puts a first pill in the walks' menu that reads the
 page aloud in the agent's voice, with no call: what the site marks `data-pinecall-read` (a `<main>`, a
-section), its headings, paragraphs, items and captions in the page's order, as written. The part read
-is lit and pointed at and the rest dimmed; a long one is read a few sentences at a time. A button
-marked `data-pinecall-press` in it is an example: when the reading reaches it, the pointer presses it
-(its value, when it has one, said first: `data-pinecall-press="Lo corro."`) and the reading waits for
-what it controls (`aria-controls`, its output) to answer and not be `aria-busy`, then says its
-`data-pinecall-then` ("Ahí dice tu org") pointing at the output. An output is read line by line with
-notes: `data-pinecall-notes` on the button names a list whose items each find a line of the output
-(`data-pinecall-find`, a text in any case or `/a regex/`) and say what it means; the tutor lights that
-line, points at it and reads the note, the output marked `data-pinecall-reading` meanwhile so the site
-can widen a box that scrolls. A note whose line the output does not show is left out, so the same notes
-serve whatever the command printed. Nothing under `data-pinecall-quiet` is read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
+section), its headings, paragraphs, items and captions in the page's order, as written, the part read
+lit and pointed at and the rest dimmed; a long one is read a few sentences at a time. A button marked
+`data-pinecall-press` is an example: reached, the pointer presses it (its value said first:
+`data-pinecall-press="Lo corro."`), the reading waits for what it controls (`aria-controls`, its output)
+to answer and not be `aria-busy`, then says its `data-pinecall-then` pointing at the output and reads the
+output line by line with notes: `data-pinecall-notes` names a list whose items each find a line of it
+(`data-pinecall-find`, a text in any case or `/a regex/`) and say what it means; the line is lit and
+pointed at, the output marked `data-pinecall-reading` meanwhile so the site can widen a box that scrolls.
+A note whose line is not there is left out, so the same notes serve whatever the command printed.
+Nothing under `data-pinecall-quiet` is read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
 `data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or
 a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
 part read, the face in the margin, never on its words. `tutor.read()` starts it from a button
@@ -370,24 +369,21 @@ pages alone.
 
 ### Lines on the page
 
-A walk can also live in the site's own markup, beside what it is about, so the HTML and what is
-said never drift apart:
+A walk can also live in the site's own markup, beside what it is about, so the two never drift apart:
 
 ```html
 <section id="pricing" data-pinecall-say="Pricing is simple: three plans, and most families pick Family Care." data-pinecall-do="highlight">
 <article data-pinecall-say="Family Care covers up to four people for thirty-nine dollars a month." data-pinecall-order="2">
 ```
 
-- **`data-pinecall-say` is said as written**, with the move `data-pinecall-do` names (`point`
-  unless `highlight` or `scroll_to`), in `data-pinecall-order` and then in the page's order.
-- **One at a time**: `explain(what)` says the line of a thing marked `[has a line]`, the pointer on
-  it, when the visitor asks what it is; and during a call a ▶ shows at the top right of a marked
-  element under the visitor's mouse, which says it at once (`page.explain`).
-- **All of them**: the walk `page`, listed with the agent's macros, says every line in order.
-- **Said once.** The agent says a line through `say()`, so it is the turn's answer, in the history:
-  the model is not asked to answer it again, and the tool's result tells it the line is said.
-
-Only the site's markup is read: a line under `[data-pinecall-skip]` or `aria-hidden` is not.
+- **`data-pinecall-say` is said as written**, with the move `data-pinecall-do` names (`point` unless
+  `highlight` or `scroll_to`), in `data-pinecall-order` and then in the page's order; a line under
+  `[data-pinecall-skip]` or `aria-hidden` is not read.
+- **One at a time, or all**: `explain(what)` says the line of a thing marked `[has a line]`, the pointer
+  on it; during a call a ▶ at the top right of a marked element under the mouse says it at once
+  (`page.explain`); the walk `page`, listed with the agent's macros, says every line in order.
+- **Said once.** The agent says a line through `say()`, so it is the turn's answer, in the history: the
+  model is not asked to answer it again, and the tool's result tells it the line is said.
 
 ## What the page and the agent say to each other
 
@@ -399,6 +395,5 @@ Only the site's markup is read: a line under `[data-pinecall-skip]` or `aria-hid
 | agent → page | `pinecall.ui` `{ type: "macro.step", macro, step, say, beats }` |
 | agent → page | `pinecall.ui` `{ type: "look" }`: what the page shows now, answered with `page.seen` |
 
-**Anybody can send what a browser sends.** The agent reads the page as the visitor's own words, and
-a site that shows other people's words (reviews, comments) puts them under `data-pinecall-skip`
-when the agent should not read them.
+**Anybody can send what a browser sends.** The agent reads the page as the visitor's own words: a site
+that shows other people's words (reviews, comments) puts them under `data-pinecall-skip`.

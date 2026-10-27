@@ -63,7 +63,7 @@ describe("an output read with notes", () => {
     expect((await aloud.voice(3))?.say).toBe("Ahí está tu org.");
     aloud.shows(-1);
 
-    expect(lit.map((text) => text?.slice(0, 22))).toEqual(["Corré whoami.", "0,42 org lesson · key ", "0,42 org lesson · key ", "0,42 a person's key: t", null]);
+    expect(lit.map((text) => text && text.slice(0, 22))).toEqual(["Corré whoami.", "0,42 org lesson · key ", "0,42 org lesson · key ", "0,42 a person's key: t", null]);
     expect(output.hasAttribute("data-pinecall-reading")).toBe(false);
   });
 });

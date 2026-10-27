@@ -52,13 +52,12 @@ export interface Reading {
 
 const INLINE = new Set(["SPAN", "CODE", "B", "I", "EM", "STRONG", "A", "SMALL", "KBD", "U", "S", "MARK", "TIME", "SUB", "SUP", "ABBR"]);
 
-/** The nearest box of `element`, within `within`, that is a line of its own and not a run of words inside one. */
+/** The nearest box of `element`, within `within`, that is a line of its own: not a run of words (a span, a code) inside one. */
 function blockOf(element: Element, within: Element): Element {
   let node = element;
   while (node !== within && node.parentElement !== null) {
     const display = node.ownerDocument.defaultView?.getComputedStyle(node).display ?? "";
-    const inline = display === "" ? INLINE.has(node.tagName) : display.startsWith("inline") || display === "contents";
-    if (!inline) return node;
+    if (!INLINE.has(node.tagName) && !display.startsWith("inline") && display !== "contents") return node;
     node = node.parentElement;
   }
   return node;
