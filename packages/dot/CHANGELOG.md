@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **On a spoken call the dot reads nothing of the agent's**: its tools, like its words, are heard on the call and
+  not said over it; only a turn marked `end` is still read.
 - **A page read aloud talks on a spoken call**: a goal button in no form is a call; the dot presses it, hears the
   greeting (`data-pinecall-heard` on the output: the agent is heard, not read), says each line in its own voice
   into the call, the output told it by a `pinecall-saying` event with the recording for the site to play in, waits

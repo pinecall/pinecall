@@ -1,4 +1,4 @@
-// A goal button in no form is a spoken call the dot talks on: it presses it and hears the greeting (the agent is heard, not read), says each line into the call for the site to play in, waits for the answer, and goes on with the page once it said goodbye or the call ended.
+// A goal button in no form is a spoken call the dot talks on: it presses it and hears the greeting (the agent and its tools are heard, not read), says each line into the call for the site to play in, waits for the answer, and goes on with the page once it said goodbye or the call ended.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -70,13 +70,10 @@ describe("a call the dot talks on", () => {
     aloud.shows(3);
     expect(told).toEqual([{ text: "Hola, quiero dos medialunas.", audio: "https://gw/v1/lines/28.mp3", durationMs: 900 }]);
 
-    // The marker again (4): the answer waited on; the tool it used is said, the agent's words are not.
+    // The marker again (4): the answer waited on; neither the agent's words nor the tool it used are read, both heard
+    // on the call, so the next line is asked for at once, with all that was said; the dot says goodbye with it.
     await aloud.act(4);
     expect(settled).toBe(1);
-    expect(kinds(reading).slice(5, 7)).toEqual(["Acá usó la herramienta anotar Pedido.", "press"]);
-
-    // The marker (6): the next line, with all that was said on the call; the dot says goodbye with it.
-    await aloud.act(6);
     expect(asked[1]).toEqual({
       goal: "Pedí dos medialunas y despedite.",
       heard: [
@@ -86,12 +83,12 @@ describe("a call the dot talks on", () => {
       ],
       language: "es",
     });
-    expect(kinds(reading).slice(7, 9)).toEqual(["Gracias, chau.", "press"]);
+    expect(kinds(reading).slice(4, 6)).toEqual(["Gracias, chau.", "press"]);
 
-    // Goodbye said (8): nothing more is asked, and the page goes on.
-    await aloud.act(8);
+    // Goodbye said (5): nothing more is asked, and the page goes on.
+    await aloud.act(5);
     expect(asked).toHaveLength(2);
-    expect(kinds(reading).slice(9)).toEqual(["Y seguimos."]);
+    expect(kinds(reading).slice(6)).toEqual(["Y seguimos."]);
   });
 
   it("ends when the call does: a turn marked end is read, and nothing more is asked", async () => {

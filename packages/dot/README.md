@@ -339,7 +339,7 @@ its field (its greeting waited on while busy), says each line as it types it, se
 agent said and the tools it used (turns marked `data-pinecall-said`; a tool's said by its `data-pinecall-say`)
 until it has what it came for, the chat ends (a turn marked `end`) or forty turns pass, and the page goes on.
 Such a button in no form is a spoken call: the dot presses it, hears the greeting (`data-pinecall-heard` on the
-output: the agent is heard, not read) and says its lines into the call, the output told each by a
+output: the agent and its tools are heard, not read; only the end is said) and says its lines into the call, the output told each by a
 `pinecall-saying` event with its recording, for the site to play in; `tutor.stop()` ends a reading when the
 visitor takes over. A page whose top was scrolled away is read from the first part still in view. A button
 marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`, with

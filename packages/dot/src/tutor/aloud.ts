@@ -98,11 +98,11 @@ export class ReadAloud {
     if (!noted) await this.#explain(after, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
   }
 
-  /** The turns of a chat not read aloud yet, in order, the agent's and the tools it used: all but the caller's; each counted as read. On a spoken call the agent is heard, not read: its turns are counted and left out. */
+  /** The turns of a chat not read aloud yet, in order, the agent's and the tools it used: all but the caller's; each counted as read. On a spoken call the agent is heard, not read: its turns and its tools are counted and left out, and only the call's end is said. */
   #unheard(output: Element): Element[] {
     const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}]:not([${SAID_ATTRIBUTE}="caller"])`)].filter((turn) => seen(turn) && !this.#heard.has(turn));
     for (const turn of turns) this.#heard.add(turn);
-    return output.hasAttribute(HEARD_ATTRIBUTE) ? turns.filter((turn) => turn.getAttribute(SAID_ATTRIBUTE) !== "agent") : turns;
+    return output.hasAttribute(HEARD_ATTRIBUTE) ? turns.filter((turn) => HEARD_ON_A_CALL.has(turn.getAttribute(SAID_ATTRIBUTE) ?? "") === false) : turns;
   }
 
   /** A text said pointing at `element`, a recording at a time. */
@@ -234,6 +234,9 @@ export class ReadAloud {
     return recording;
   }
 }
+
+/** What is heard on a spoken call and so not read: the agent's words, and the tools it used meanwhile. */
+const HEARD_ON_A_CALL = new Set(["agent", "tool"]);
 
 /** How long a reading waits for an example it pressed to answer, in ms. */
 const EXAMPLE_MS = 60_000;
