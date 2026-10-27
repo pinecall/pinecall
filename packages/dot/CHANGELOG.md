@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A press waited on holds no move**: after a reading presses an example, the wait for its output no longer holds
+  the pointer's queue; the light, the pointer and a visitor skipping ahead go on meanwhile.
 - **A chat talked to is opened, and all it says is read**: before its first line the dot focuses the chat's field
   and, while the chat says it is busy, waits for its greeting and reads it (`open` in `readingWith`); each turn it
   reads aloud everything the agent said since (not only its last answer) and the tools it used, a turn marked

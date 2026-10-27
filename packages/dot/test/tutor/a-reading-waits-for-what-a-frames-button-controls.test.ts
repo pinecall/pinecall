@@ -1,4 +1,4 @@
-// A reading that presses a button in a frame of the site's own waits for what the button controls on the frame's own page, not the top page's.
+// A reading that presses a button in a frame of the site's own waits for what the button controls on the frame's own page, not the top page's; the wait holds no move of the pointer's.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -24,5 +24,27 @@ describe("a reading's press in a frame", () => {
     await options.press(page.getElementById("send")!);
 
     expect(log.textContent).toBe("Hola.");
+  });
+
+  it("holds no move while it waits: a move queued after the press runs before the output answers", async () => {
+    document.body.innerHTML = `<main data-pinecall-read><div id="log"></div><form><button id="send" type="button" aria-controls="log">Enviar</button></form></main>`;
+    const log = document.getElementById("log")!;
+    document.getElementById("send")!.addEventListener("click", () => setTimeout(() => log.insertAdjacentHTML("beforeend", `<div>Hola.</div>`), 400));
+    // The pointer's queue: one move after another.
+    let last: Promise<unknown> = Promise.resolve();
+    const queued = <T,>(work: () => Promise<T>): Promise<T> => {
+      const next = last.then(work);
+      last = next.catch(() => undefined);
+      return next;
+    };
+    const acting = new Acting({ document, page: new Page(document), queued, point: async () => undefined, ring: () => undefined, type: async () => null });
+    const options = readingWith("Leer", acting, { light: () => undefined, queued });
+    const order: string[] = [];
+
+    const pressed = options.press(document.getElementById("send")!).then(() => order.push("answered"));
+    await queued(async () => void order.push("moved"));
+    await pressed;
+
+    expect(order).toEqual(["moved", "answered"]);
   });
 });

@@ -229,22 +229,21 @@ export function readingWith(
     explain: (request) => acting.explain(request),
     next: (request) => acting.next(request),
     // Focused, a chat may open and greet: waited on only while it says it is busy.
-    open: (field, output) =>
-      moves.queued(async () => {
-        (field as HTMLElement).focus({ preventScroll: true });
-        const busy = (): boolean => output.closest("[aria-busy=true]") !== null || output.querySelector("[aria-busy=true]") !== null;
-        if (busy()) await acting.wait(() => output, EXAMPLE_MS);
-      }),
+    open: async (field, output) => {
+      await moves.queued(async () => (field as HTMLElement).focus({ preventScroll: true }));
+      const busy = output.closest("[aria-busy=true]") !== null || output.querySelector("[aria-busy=true]") !== null;
+      if (busy) await acting.wait(() => output, EXAMPLE_MS);
+    },
     light: moves.light,
     type: (element, text, ms) => moves.queued(async () => void (await acting.type(element, text, ms))),
-    // The page's own example: its button pressed in any form.
-    press: (element) =>
-      moves.queued(async () => {
-        if ((await acting.press(element, true)) !== null) return;
-        // What it controls is on its own page: a chat in a frame of the site's own answers there.
-        const controls = element.getAttribute("aria-controls");
-        const output = controls === null ? null : element.ownerDocument.getElementById(controls);
-        if (output !== null) await acting.wait(() => output, EXAMPLE_MS);
-      }),
+    // The page's own example: its button pressed in any form. The wait after it holds no move: the pointer and
+    // the light go on (a visitor skipping ahead) while the output is waited on.
+    press: async (element) => {
+      if ((await moves.queued(() => acting.press(element, true))) !== null) return;
+      // What it controls is on its own page: a chat in a frame of the site's own answers there.
+      const controls = element.getAttribute("aria-controls");
+      const output = controls === null ? null : element.ownerDocument.getElementById(controls);
+      if (output !== null) await acting.wait(() => output, EXAMPLE_MS);
+    },
   };
 }
