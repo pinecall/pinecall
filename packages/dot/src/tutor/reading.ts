@@ -38,7 +38,7 @@ export const PRESS_ATTRIBUTE = "data-pinecall-press";
 export const TYPE_ATTRIBUTE = "data-pinecall-type";
 /** On a chat's send button: the dot talks to what it sends to, turn by turn, until it gets this (or the chat ends), then has the talk explained. */
 export const GOAL_ATTRIBUTE = "data-pinecall-goal";
-/** On each turn of a chat talked to: whose it is, `agent` or `caller`; the agent's are read aloud as they come. */
+/** On each turn of a chat talked to: whose it is, `agent`, `caller` or another (a tool the agent used); all but the caller's read aloud as they come, by their `data-pinecall-say` when they have one. */
 export const SAID_ATTRIBUTE = "data-pinecall-said";
 /** The line an element is said as, instead of what it shows: the same the agent says in a call. */
 export const SAY_ATTRIBUTE = "data-pinecall-say";
@@ -169,6 +169,8 @@ export function readingOf(document: Document, title: string): Reading | null {
       // Inside a part said as its own line, nothing is read again; quiet, nothing at all.
       const told = element.parentElement?.closest(`[${SAY_ATTRIBUTE}]`) ?? null;
       if ((told !== null && root.contains(told)) || element.closest(`[${QUIET_ATTRIBUTE}]`) !== null) continue;
+      // A chat's turns (a tool's line among them) are read as the dot talks to it, not as the page.
+      if (element.closest(`[${SAID_ATTRIBUTE}]`) !== null) continue;
       if (element.hasAttribute(SAY_ATTRIBUTE)) {
         line(element.getAttribute(SAY_ATTRIBUTE) ?? "", element);
         continue;

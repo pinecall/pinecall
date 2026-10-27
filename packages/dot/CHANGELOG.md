@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **A chat talked to is opened, and all it says is read**: before its first line the dot focuses the chat's field
+  and, while the chat says it is busy, waits for its greeting and reads it (`open` in `readingWith`); each turn it
+  reads aloud everything the agent said since (not only its last answer) and the tools it used, a turn marked
+  `data-pinecall-said` with another value said by its `data-pinecall-say`.
 - **The dot types as it speaks**: a line typed into a chat (its own, or the page's `data-pinecall-type`) is typed while
   it is said, the letters paced to the recording, instead of said first and typed after; a chat's opening line is
   said pointing at the chat, not at its send button. The reading under way (`ReadAloud`, `readingWith`) moved to `tutor/aloud.ts`.

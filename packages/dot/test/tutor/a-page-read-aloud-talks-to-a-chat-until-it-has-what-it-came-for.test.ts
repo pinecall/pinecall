@@ -1,4 +1,4 @@
-// A send button marked with a goal is a chat the dot talks to: it asks the door for its line, says it, types and sends it, reads the agent's answer aloud, and when it has said goodbye has the whole chat explained.
+// A send button marked with a goal is a chat the dot talks to: it opens it and hears its greeting, asks the door for its line, says it, types and sends it, reads aloud all the agent said and the tools it used, and when it has said goodbye has the whole chat explained.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -115,5 +115,51 @@ describe("a chat the dot talks to", () => {
 
     expect(asked).toEqual([]);
     expect(kinds(reading)).toEqual(["Hablale.", "Le escribo yo.", "press", "Y seguimos."]);
+  });
+  it("opens the chat and reads its greeting before its first line, then every answer of a turn and the tool used between them", async () => {
+    document.body.innerHTML = PAGE;
+    const log = document.getElementById("log")!;
+    const reading = readingOf(document, "Leer")!;
+    const opened: Element[] = [];
+    const asked: unknown[] = [];
+    const aloud = new ReadAloud(reading, {
+      record: async (text) => ({ say: text, audio: "https://gw/v1/lines/x.mp3", durationMs: 900, words: [], beats: [] }),
+      light: () => undefined,
+      type: async () => undefined,
+      // Opened, the chat greets.
+      open: async (field) => {
+        opened.push(field);
+        log.insertAdjacentHTML("beforeend", `<div data-pinecall-said="agent">La Espiga, ¿qué te sirvo?</div>`);
+      },
+      press: async () => {
+        log.insertAdjacentHTML(
+          "beforeend",
+          `<div data-pinecall-said="caller">¿Cuánto salen?</div><div data-pinecall-said="agent">Un segundo que reviso el menú.</div>` +
+            `<div data-pinecall-said="tool" data-pinecall-say="Acá usó la herramienta ver Menu.">⚙ verMenu()</div><div data-pinecall-said="agent">Treinta y cinco pesos.</div>`,
+        );
+      },
+      next: async (request) => {
+        asked.push(request);
+        return { say: "¿Cuánto salen?", hangup: false };
+      },
+      explain: async () => [],
+    });
+
+    // The marker (2): the chat opened at its field, its greeting read before anything is asked.
+    await aloud.act(2);
+    expect(opened.map((field) => field.id)).toEqual(["t"]);
+    expect(asked).toEqual([]);
+    expect(kinds(reading).slice(3, 5)).toEqual(["La Espiga, ¿qué te sirvo?", "press"]);
+
+    // The marker again (4): the first line, with the greeting heard; opened once.
+    await aloud.act(4);
+    expect(opened).toHaveLength(1);
+    expect(asked).toEqual([{ goal: "Pedí dos medialunas y despedite.", heard: [{ who: "agent", said: "La Espiga, ¿qué te sirvo?" }], language: "es" }]);
+    await aloud.act(6);
+
+    // The turn's answers, all of them, and the tool between them said by its line.
+    await aloud.act(7);
+    expect(kinds(reading).slice(8, 12)).toEqual(["Un segundo que reviso el menú.", "Acá usó la herramienta ver Menu.", "Treinta y cinco pesos.", "press"]);
+    expect(reading.at[9]?.getAttribute("data-pinecall-said")).toBe("tool");
   });
 });

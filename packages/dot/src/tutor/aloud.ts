@@ -4,7 +4,7 @@ import { notPressable } from "../pointer/pressing.js";
 import { MOST_HEARD, type ExplainRequest, type Heard, type NextLine, type NextRequest, type Note } from "../wire/ask.js";
 import type { RecordedStep, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
-import { EXPLAIN_ATTRIBUTE, READING_ATTRIBUTE, SAID_ATTRIBUTE, labelOf, languageOf, outputOf, type AboutOutput, type Reading } from "./reading.js";
+import { EXPLAIN_ATTRIBUTE, READING_ATTRIBUTE, SAID_ATTRIBUTE, SAY_ATTRIBUTE, labelOf, languageOf, outputOf, type AboutOutput, type Reading } from "./reading.js";
 import { lineIn, piecesOf, seen, textOf, wordsOf } from "./text.js";
 
 /** The most turns of its own a talk takes: the gateway's own ceiling on a caller's, whatever the goal. */
@@ -27,6 +27,8 @@ export interface ReadingOptions {
   explain?: ((request: ExplainRequest) => Promise<Note[]>) | undefined;
   /** The dot's next line on a chat it talks to for a goal, by the site's door; null when it gives none. */
   next?: ((request: NextRequest) => Promise<NextLine | null>) | undefined;
+  /** A chat talked to opened before its first line: its field focused, and its output waited on while it says it is busy (a greeting coming). */
+  open?: ((field: Element, output: Element) => Promise<void>) | undefined;
 }
 
 /** One reading under way: each part recorded when it is reached, the next one asked for while one plays. */
@@ -36,6 +38,8 @@ export class ReadAloud {
   readonly #asked = new Map<number, Promise<RecordedStep | null>>();
   /** The output whose notes are being read, marked for the site to widen it. */
   #open: Element | null = null;
+  /** The chats talked to that were opened already. */
+  readonly #opened = new WeakSet<Element>();
   /** The agent's answers read aloud already, on a chat talked to. */
   readonly #heard = new WeakSet<Element>();
   /** The chats the dot said goodbye on. */
@@ -84,7 +88,7 @@ export class ReadAloud {
     // What the agent answered in a chat is read as it came, pointing at it, before anything is said of it.
     let after = at;
     for (const turn of this.#unheard(output)) {
-      const said = this.#say(wordsOf(turn), turn);
+      const said = this.#say(turn.getAttribute(SAY_ATTRIBUTE) ?? wordsOf(turn), turn);
       this.#insert(after, said);
       after += said.length;
     }
@@ -92,9 +96,9 @@ export class ReadAloud {
     if (!noted) await this.#explain(after, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
   }
 
-  /** The agent's turns of a chat not read aloud yet, in order; each counted as read. */
+  /** The turns of a chat not read aloud yet, in order, the agent's and the tools it used: all but the caller's; each counted as read. */
   #unheard(output: Element): Element[] {
-    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}="agent"]`)].filter((turn) => seen(turn) && !this.#heard.has(turn));
+    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}]:not([${SAID_ATTRIBUTE}="caller"])`)].filter((turn) => seen(turn) && !this.#heard.has(turn));
     for (const turn of turns) this.#heard.add(turn);
     return turns;
   }
@@ -124,25 +128,30 @@ export class ReadAloud {
   }
 
   /**
-   * One turn of a talk, at the step that marks it: the agent's last answer read aloud first, pointing at it; then the
+   * One turn of a talk, at the step that marks it: the chat opened first, if it was not; what the agent said since
+   * (and the tools it used) read aloud, pointing at each; then the
    * dot's next line asked of the door, said, typed and sent, and the turn after it marked. The talk ends when the dot
    * said goodbye, the chat ended, the door gives no line or the turns run out: the whole chat is then explained.
    */
   async #talk(at: number, button: Element, goal: string): Promise<void> {
     const output = outputOf(button);
     const field = button.closest("form")?.querySelector("input:not([type=hidden]), textarea") ?? null;
-    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}]`)].filter(seen);
+    // A chat that opens as its field is focused: its greeting, if it has one, is heard before the dot says anything.
+    if (field !== null && !this.#opened.has(output)) {
+      this.#opened.add(output);
+      await this.#options.open?.(field, output);
+    }
     const marker = (): Added => {
       const step: WalkStep = { press: labelOf(button) };
       this.reading.goals.set(step, goal);
       return [step, button, undefined];
     };
-    const last = turns.at(-1);
-    if (last !== undefined && last.getAttribute(SAID_ATTRIBUTE) === "agent" && !this.#heard.has(last)) {
-      this.#heard.add(last);
-      this.#insert(at, [...this.#say(wordsOf(last), last), marker()]);
+    const unheard = this.#unheard(output);
+    if (unheard.length > 0) {
+      this.#insert(at, [...unheard.flatMap((turn) => this.#say(turn.getAttribute(SAY_ATTRIBUTE) ?? wordsOf(turn), turn)), marker()]);
       return;
     }
+    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}="agent"], [${SAID_ATTRIBUTE}="caller"]`)].filter(seen);
     const heard = turns.map((turn): Heard => ({ who: turn.getAttribute(SAID_ATTRIBUTE) === "agent" ? "agent" : "caller", said: wordsOf(turn) })).slice(-MOST_HEARD);
     const mine = heard.filter((turn) => turn.who === "caller").length;
     const over = field === null || notPressable(button, true) !== null || this.#bye.has(output) || mine >= MOST_TURNS;
@@ -219,6 +228,13 @@ export function readingWith(
     record: (text) => acting.read(text),
     explain: (request) => acting.explain(request),
     next: (request) => acting.next(request),
+    // Focused, a chat may open and greet: waited on only while it says it is busy.
+    open: (field, output) =>
+      moves.queued(async () => {
+        (field as HTMLElement).focus({ preventScroll: true });
+        const busy = (): boolean => output.closest("[aria-busy=true]") !== null || output.querySelector("[aria-busy=true]") !== null;
+        if (busy()) await acting.wait(() => output, EXAMPLE_MS);
+      }),
     light: moves.light,
     type: (element, text, ms) => moves.queued(async () => void (await acting.type(element, text, ms))),
     // The page's own example: its button pressed in any form.
