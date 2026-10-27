@@ -39,8 +39,21 @@ export interface ReadRequest {
   text: string;
 }
 
-/** What the page asks the site's door: one of the four. */
-export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest } | { read: ReadRequest };
+/** A command's output a page shows, for the agent's model to explain: notes, each on a line of it. */
+export interface ExplainRequest {
+  output: string;
+  command?: string | undefined;
+  language?: string | undefined;
+}
+
+/** A note of an output: a fragment of one of its lines, and what is said of it. */
+export interface Note {
+  find: string;
+  say: string;
+}
+
+/** What the page asks the site's door: one of the five. */
+export type DoorRequest = { decide: AskRequest } | { row: RowRequest } | { say: SayRequest } | { read: ReadRequest } | { explain: ExplainRequest };
 
 /** The site's door's answer to a `row`: the row's index, or null when none answers it. */
 export interface RowAnswer {
@@ -107,6 +120,24 @@ export function decisionOf(value: unknown): Decision | null {
     default:
       return null;
   }
+}
+
+/** The most notes an output is explained with. */
+export const MOST_NOTES = 6;
+
+/** An explanation's notes, checked, the first six; none for anything else. */
+export function notesOf(value: unknown): Note[] {
+  if (typeof value !== "object" || value === null) return [];
+  const notes = (value as Record<string, unknown>)["notes"];
+  if (!Array.isArray(notes)) return [];
+  return notes
+    .flatMap((note: unknown) => {
+      if (typeof note !== "object" || note === null) return [];
+      const fields: Record<string, unknown> = { ...note };
+      const { find, say } = fields;
+      return typeof find === "string" && find.trim() !== "" && typeof say === "string" && say.trim() !== "" ? [{ find, say }] : [];
+    })
+    .slice(0, MOST_NOTES);
 }
 
 /** A row answer, checked; null for anything else. */

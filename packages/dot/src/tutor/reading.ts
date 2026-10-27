@@ -8,12 +8,15 @@
 // what the button controls (`aria-controls`) to answer and not be busy, then says its `data-pinecall-then`
 // (what the output shows) pointing at it, and each note of its `data-pinecall-notes` list pointing at the
 // line of the output the note finds (`data-pinecall-find`): the output lit line by line, as a person
-// reads a result with a finger on it. Under `data-pinecall-quiet` nothing is read (code, a legend),
+// reads a result with a finger on it. A button marked `data-pinecall-explain` with no notes of its own
+// has its output explained by the site's door (`{ explain }`, the agent's model) once it answered, the
+// notes it gives read the same way. Under `data-pinecall-quiet` nothing is read (code, a legend),
 // though a button marked to press there is still pressed. An element with `data-pinecall-say` is said
 // as that line, written to be heard, instead of what it shows; the parts inside it are not read again. A heading that
 // shares its box with one text alone (a card: its title and its words) is read with it, "Title. Words",
 // and the whole box lit: a title said alone, then its words, sounds like two things.
 
+import type { ExplainRequest, Note } from "../wire/ask.js";
 import type { RecordedStep, RecordedWalk, WalkStep } from "../wire/index.js";
 import type { Acting } from "./acting.js";
 
@@ -27,6 +30,8 @@ export const THEN_ATTRIBUTE = "data-pinecall-then";
 /** On an example's button: the id of a list of notes on its output, each `data-pinecall-find` a text (or `/a regex/`) of a line of it. */
 export const NOTES_ATTRIBUTE = "data-pinecall-notes";
 export const FIND_ATTRIBUTE = "data-pinecall-find";
+/** On an example's button: its output, when no note of the page's covers it, explained by the site's door; its value names the command. */
+export const EXPLAIN_ATTRIBUTE = "data-pinecall-explain";
 /** On an output while its notes are read, for the site to widen it: a box that scrolls shows whole. */
 export const READING_ATTRIBUTE = "data-pinecall-reading";
 /** The name a page read aloud plays under. */
@@ -63,13 +68,17 @@ function blockOf(element: Element, within: Element): Element {
   return node;
 }
 
-/** The line of `output` that holds `find`, a text in any case or `/a regex/flags`: the innermost box that holds it; null when none does. */
+/** A text as two are compared for a note: one space between words, in lower case. */
+const flat = (text: string): string => text.replace(/\s+/g, " ").trim().toLowerCase();
+
+/** The line of `output` that holds `find`, a text in any case and spacing or `/a regex/flags`: the innermost box that holds it; null when none does. */
 export function lineIn(output: Element, find: string): Element | null {
   const expr = /^\/(.+)\/([a-z]*)$/.exec(find);
   let matches: (text: string) => boolean;
   try {
     const regex = expr === null ? null : new RegExp(expr[1] ?? "", (expr[2] ?? "").replace("g", ""));
-    matches = regex === null ? (text) => text.toLowerCase().includes(find.toLowerCase()) : (text) => regex.test(text);
+    const wanted = flat(find);
+    matches = regex === null ? (text) => flat(text).includes(wanted) : (text) => regex.test(text);
   } catch {
     return null;
   }
@@ -203,6 +212,8 @@ export interface ReadingOptions {
   light: (element: Element | null) => void;
   /** An example pressed, and what it controls waited on until it answered. */
   press: (element: Element) => Promise<void>;
+  /** An output explained by the site's door: notes on its lines; none when the door gives none. */
+  explain?: ((request: ExplainRequest) => Promise<Note[]>) | undefined;
 }
 
 /** One reading under way: each part recorded when it is reached, the next one asked for while one plays. */
@@ -228,12 +239,30 @@ export class ReadAloud {
     return recording;
   }
 
-  /** The `at`th step, an example: pressed, and waited on. */
+  /** The `at`th step, an example: pressed, waited on, and its output explained by the door when the page notes nothing on it. */
   async act(at: number): Promise<void> {
     const element = this.reading.at[at];
     if (element === undefined) return;
     this.#options.light(element);
     await this.#options.press(element);
+    const command = element.getAttribute(EXPLAIN_ATTRIBUTE);
+    const output = this.reading.outputs.find((about, index) => index > at && about !== undefined)?.output;
+    const noted = this.reading.outputs.some((about) => about !== undefined && about.output === output && about.find !== null);
+    if (command === null || this.#options.explain === undefined || output === undefined || noted) return;
+    const text = wordsOf(output);
+    if (text === "") return;
+    const notes = await this.#options.explain({ output: text, command: command || undefined, language: output.ownerDocument.documentElement.lang || undefined }).catch(() => []);
+    // The notes go after what the page says of the output, before the reading goes on.
+    let last = at;
+    this.reading.outputs.forEach((about, index) => void (about?.output === output && (last = Math.max(last, index))));
+    const { steps } = this.reading.walk;
+    for (const [offset, note] of notes.entries()) {
+      steps.splice(last + 1 + offset, 0, { say: note.say, beats: [], live: true });
+      this.reading.at.splice(last + 1 + offset, 0, output);
+      this.reading.outputs.splice(last + 1 + offset, 0, { output, find: note.find });
+    }
+    // What was asked for ahead stands on the old numbering: asked again where the steps moved.
+    for (const index of [...this.#asked.keys()]) if (index > last) this.#asked.delete(index);
   }
 
   /** The `at`th step starts: its part lit and pointed at, an output's line by its note; -1, the reading is over. */
@@ -278,6 +307,7 @@ export function readingWith(
   return {
     title,
     record: (text) => acting.read(text),
+    explain: (request) => acting.explain(request),
     light: moves.light,
     press: (element) =>
       moves.queued(async () => {

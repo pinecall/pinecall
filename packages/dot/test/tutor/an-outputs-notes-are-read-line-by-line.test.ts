@@ -67,3 +67,34 @@ describe("an output read with notes", () => {
     expect(output.hasAttribute("data-pinecall-reading")).toBe(false);
   });
 });
+
+describe("an output with no notes of the page's", () => {
+  it("is explained by the site's door once the example answered, its notes read as the page's would be", async () => {
+    document.body.innerHTML = `
+      <main data-pinecall-read>
+        <button aria-label="Run npm install" aria-controls="out" data-pinecall-press data-pinecall-explain="npm install" data-pinecall-then="Listo.">Run</button>
+        <div id="out" data-pinecall-quiet><div class="ln"><span>1,08</span><span>up to date, audited 49 packages</span></div><div class="ln"><span>1,09</span><span>found 0 vulnerabilities</span></div></div>
+        <p>Y seguimos.</p>
+      </main>`;
+    const reading = readingOf(document, "Leer")!;
+    const asked: unknown[] = [];
+    const aloud = new ReadAloud(reading, {
+      record: async (text) => ({ say: text, audio: "https://gw/v1/lines/x.mp3", durationMs: 900, words: [], beats: [] }),
+      light: () => undefined,
+      press: async () => undefined,
+      explain: async (request) => {
+        asked.push(request);
+        return [{ find: "audited 49 packages", say: "Revisó cuarenta y nueve paquetes." }, { find: "0 vulnerabilities", say: "Y no encontró vulnerabilidades." }];
+      },
+    });
+
+    await aloud.act(0);
+
+    expect(asked).toEqual([{ output: "up to date, audited 49 packages found 0 vulnerabilities", command: "npm install", language: undefined }]);
+    expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "press"))).toEqual([
+      "press", "Listo.", "Revisó cuarenta y nueve paquetes.", "Y no encontró vulnerabilidades.", "Y seguimos.",
+    ]);
+    expect(reading.outputs.map((about) => about?.find)).toEqual([undefined, null, "audited 49 packages", "0 vulnerabilities", undefined]);
+    expect((await aloud.voice(2))?.say).toBe("Revisó cuarenta y nueve paquetes.");
+  });
+});

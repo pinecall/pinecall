@@ -21,6 +21,9 @@ maintainer's call.
   `data-pinecall-press` pressed and its output (`aria-controls`) waited on. Each part is recorded by the site's door
   (`{ read }`), which a site allows with `voicing.read`. `tutor.read()` starts it.
 - **A lone walk plays from its button**: with one walk and no field to type in, the button beside the face plays it.
+- **An output no note covers is explained by the agent's model**: a button marked `data-pinecall-explain` has its
+  output sent to the site's door (`{ explain }`, the gateway's `/v1/agents/{slug}/explain`, with `voicing.explain`)
+  once it answered, and the notes that come back are read as the page's would be.
 - **An output is read line by line**: `data-pinecall-notes` on an example's button names notes that each find a line of
   its output (`data-pinecall-find`) and say what it means; the line is lit and pointed at, the output marked
   `data-pinecall-reading` meanwhile. The pointer scrolls through nested boxes: a line into its output, the output into the page.

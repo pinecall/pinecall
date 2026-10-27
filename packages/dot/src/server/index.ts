@@ -9,13 +9,13 @@
 // with slots is recorded in the agent's voice when it is reached (`saying.ts`). The keys are the server's:
 // this never runs in a browser.
 
-import type { AskRequest, Decision, ReadRequest, RowAnswer, RowRequest, SaidAnswer, SayRequest } from "../wire/ask.js";
+import type { AskRequest, Decision, ExplainRequest, Note, ReadRequest, RowAnswer, RowRequest, SaidAnswer, SayRequest } from "../wire/ask.js";
 import { MODEL, MOST, THRESHOLD, decisionFrom, paramsFrom, questionsOf, spansOf, thingsOf, type Answer } from "./questions.js";
-import { recordRead, recordSay, type Voicing } from "./saying.js";
+import { explainOutput, recordRead, recordSay, type Voicing } from "./saying.js";
 
 export type { AskRequest, Decision, DoorRequest, RowRequest, SayRequest } from "../wire/ask.js";
 export type { Voicing } from "./saying.js";
-export { decisionFrom, questionsOf, spansOf, thingsOf, recordSay };
+export { decisionFrom, questionsOf, spansOf, thingsOf, recordSay, explainOutput };
 
 export interface DecideOptions {
   /** An OpenRouter key. */
@@ -83,8 +83,8 @@ export async function pickRow(request: RowRequest, options: DecideOptions): Prom
  * The site's door, whole: what the page sent (`{ decide }`, `{ row }` or `{ say }`), answered. Throws on a
  * request that is none of them, and on a model or a gateway that did not answer.
  */
-export async function answer(body: unknown, options: AnswerOptions): Promise<Decision | RowAnswer | SaidAnswer> {
-  const request = (typeof body === "object" && body !== null ? body : {}) as Partial<Record<"decide" | "row" | "say" | "read", unknown>>;
+export async function answer(body: unknown, options: AnswerOptions): Promise<Decision | RowAnswer | SaidAnswer | { notes: Note[] }> {
+  const request = (typeof body === "object" && body !== null ? body : {}) as Partial<Record<"decide" | "row" | "say" | "read" | "explain", unknown>>;
   if (isAsk(request.decide)) return decide(request.decide, options);
   if (isRow(request.row)) return pickRow(request.row, options);
   const voicing = (): Voicing => {
@@ -93,7 +93,8 @@ export async function answer(body: unknown, options: AnswerOptions): Promise<Dec
   };
   if (isSay(request.say)) return recordSay(request.say, voicing(), options.fetch ?? fetch);
   if (isRead(request.read)) return recordRead(request.read.text, voicing(), options.fetch ?? fetch);
-  throw new Error("the door takes { decide }, { row }, { say } or { read }");
+  if (isExplain(request.explain)) return explainOutput(request.explain, voicing(), options.fetch ?? fetch);
+  throw new Error("the door takes { decide }, { row }, { say }, { read } or { explain }");
 }
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -106,6 +107,10 @@ function isAsk(value: unknown): value is AskRequest {
 function isRow(value: unknown): value is RowRequest {
   const fields = (value ?? {}) as Record<string, unknown>;
   return typeof value === "object" && isString(fields["message"]) && Array.isArray(fields["rows"]) && fields["rows"].every(isString);
+}
+
+function isExplain(value: unknown): value is ExplainRequest {
+  return typeof value === "object" && value !== null && isString((value as Record<string, unknown>)["output"]);
 }
 
 function isRead(value: unknown): value is ReadRequest {

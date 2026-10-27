@@ -187,6 +187,8 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
         anchor = null;
         if (beside ? !shownWhole(element) : !onScreen(element)) await scrollOnto(element, 0.42, still);
+        // A box the page scrolls in some other way (a pane this did not find): the browser's own scroll, at once.
+        if (beside && !shownWhole(element)) element.scrollIntoView({ block: "start" });
         const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
         await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();

@@ -337,8 +337,9 @@ to answer and not be `aria-busy`, then says its `data-pinecall-then` pointing at
 output line by line with notes: `data-pinecall-notes` names a list whose items each find a line of it
 (`data-pinecall-find`, a text in any case or `/a regex/`) and say what it means; the line is lit and
 pointed at, the output marked `data-pinecall-reading` meanwhile so the site can widen a box that scrolls.
-A note whose line is not there is left out, so the same notes serve whatever the command printed.
-Nothing under `data-pinecall-quiet` is read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
+A note whose line is not there is left out, so the same notes serve whatever the command printed. A button
+marked `data-pinecall-explain` with no notes has its output explained by the door (`{ explain }`: the agent's
+model through the gateway, with `voicing.explain`), the notes read the same way. `data-pinecall-quiet` is not read. A page is rarely heard well as it is written: an element with
 `data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or
 a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
 part read, the face in the margin, never on its words. `tutor.read()` starts it from a button

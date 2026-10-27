@@ -10,7 +10,7 @@
 import type { Page } from "../page/page.js";
 import { nameOf } from "../page/roles.js";
 import { press } from "../pointer/pressing.js";
-import { rowOf, saidOf, type DoorRequest } from "../wire/ask.js";
+import { notesOf, rowOf, saidOf, type DoorRequest, type ExplainRequest, type Note } from "../wire/ask.js";
 import { filled, slotsOf, valueOf, type ActStep, type LiveStep, type RecordedStep, type RecordedWalk, type ReadAct, type Values } from "../wire/index.js";
 
 export interface ActingOptions {
@@ -108,6 +108,13 @@ export class Acting {
     if (said === null) return null;
     const { live: _live, ...shown } = live;
     return { ...shown, say: said.say, audio: said.audio, durationMs: said.durationMs, words: said.words };
+  }
+
+  /** An output explained by the site's door, the agent's model: its notes; none when the door gives none. */
+  async explain(request: ExplainRequest): Promise<Note[]> {
+    const door = this.#options.door;
+    if (door === undefined) return [];
+    return notesOf(await door({ explain: request }).catch(() => null));
   }
 
   /** A text of the page, recorded now by the site's door in the agent's voice; null when it cannot be. */

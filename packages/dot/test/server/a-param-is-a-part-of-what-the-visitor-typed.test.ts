@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { answer, decide, pickRow, questionsOf, recordSay, spansOf, thingsOf } from "../../src/server/index.js";
+import { answer, decide, explainOutput, pickRow, questionsOf, recordSay, spansOf, thingsOf } from "../../src/server/index.js";
 
 const PAGE = '- form "Book your first visit" [ref=e40]\n  - textbox "Your name" [ref=e41] [empty]';
 const BOOK = { name: "book", title: "Book for me", params: { name: { about: "the visitor's name" }, plan: { about: "the plan", oneOf: { family: "Family Care" } } } };
@@ -53,6 +53,21 @@ describe("a row picked", () => {
   });
 });
 
+describe("an output explained", () => {
+  it("goes to the gateway's explain door with the voicing, when the site lets its pages explain, and its notes come back checked", async () => {
+    const asked: { url: string; body: unknown }[] = [];
+    const gateway = async (url: string | URL | Request, init?: RequestInit) => {
+      asked.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return new Response(JSON.stringify({ notes: [{ find: "org lesson", say: "Tu org." }, { find: "", say: "nothing" }, "junk"] }));
+    };
+    const voicing = { key: "pc", agent: "guia", gateway: "https://gw", env: "sandbox" as const, explain: true };
+
+    expect(await explainOutput({ output: " org lesson · sandbox ", command: "pinecall whoami", language: "es" }, voicing, gateway)).toEqual({ notes: [{ find: "org lesson", say: "Tu org." }] });
+    expect(asked[0]).toEqual({ url: "https://gw/v1/agents/guia/explain", body: { output: "org lesson · sandbox", command: "pinecall whoami", language: "es" } });
+    await expect(explainOutput({ output: "x" }, { key: "pc", agent: "guia" }, gateway)).rejects.toThrow("explains no output");
+  });
+});
+
 describe("a sentence recorded live", () => {
   const WALKS = { walks: [{ name: "find", title: "Find a time", steps: [{ say: "The soonest is {hit.Day} with {who}.", beats: [], live: true }] }] };
   const gateway = (asked: { url: string; body?: unknown }[]) => async (url: string | URL | Request, init?: RequestInit) => {
@@ -75,6 +90,6 @@ describe("a sentence recorded live", () => {
     await expect(recordSay({ path: "/", walk: "find", step: 3, values: {} }, VOICING, gateway([]))).rejects.toThrow("no sentence to record");
     await expect(recordSay({ path: "/", walk: "find", step: 0, values: { who: "x" } }, VOICING, gateway([]))).rejects.toThrow("needs hit.Day, who");
     await expect(answer({ say: { path: "/", walk: "find", step: 0, values: {} } }, { key: "k" })).rejects.toThrow("records no sentence");
-    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row }, { say } or { read }");
+    await expect(answer({ nothing: true }, { key: "k" })).rejects.toThrow("{ decide }, { row }, { say }, { read } or { explain }");
   });
 });

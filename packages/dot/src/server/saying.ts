@@ -7,7 +7,7 @@
 // and keeps it, so the same sentence with the same values costs nothing the second time.
 
 import { filled, slotsOf, valueOf, type Values } from "../wire/acts.js";
-import type { SaidAnswer, SayRequest } from "../wire/ask.js";
+import { notesOf, type ExplainRequest, type Note, type SaidAnswer, type SayRequest } from "../wire/ask.js";
 import { walksDocument, walksOf, type LiveStep, type RecordedWalk } from "../wire/index.js";
 
 /** The agent whose voice records it, and the key the site's server holds for it. */
@@ -23,7 +23,12 @@ export interface Voicing {
    * characters said in the agent's voice. For a site whose door answers its own pages alone. Default no.
    */
   read?: boolean | undefined;
+  /** Whether a page may have an output explained by the agent's model (`{ explain }`): a model asked per output. Default no. */
+  explain?: boolean | undefined;
 }
+
+/** The longest output a page may have explained. */
+const LONGEST_EXPLAINED = 8000;
 
 /** The longest text a page may have read in one request. */
 const LONGEST_READ = 480;
@@ -74,6 +79,20 @@ export async function recordRead(text: string, voicing: Voicing, ask: typeof fet
   const line = text.replace(/\s+/g, " ").trim();
   if (line === "" || line.length > LONGEST_READ) throw new Error(`a text read is 1 to ${LONGEST_READ} characters`);
   return recorded(line, voicing, ask);
+}
+
+/** An output explained by the agent's model, through the gateway: notes, each on one line of it. Throws unless the voicing lets a page explain. */
+export async function explainOutput(request: ExplainRequest, voicing: Voicing, ask: typeof fetch = fetch): Promise<{ notes: Note[] }> {
+  if (voicing.explain !== true) throw new Error("this door explains no output: give its voicing explain: true");
+  const output = request.output.trim();
+  if (output === "" || output.length > LONGEST_EXPLAINED) throw new Error(`an output explained is 1 to ${LONGEST_EXPLAINED} characters`);
+  const answer = await ask(`${(voicing.gateway ?? GATEWAY).replace(/\/+$/, "")}/v1/agents/${encodeURIComponent(voicing.agent)}/explain`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${voicing.key}`, "content-type": "application/json", ...(voicing.env === undefined ? {} : { "pinecall-env": voicing.env }) },
+    body: JSON.stringify({ output, ...(request.command === undefined ? {} : { command: request.command.slice(0, 300) }), ...(request.language === undefined ? {} : { language: request.language }) }),
+  });
+  if (!answer.ok) throw new Error(`the gateway explained nothing: ${answer.status}`);
+  return { notes: notesOf(await answer.json()) };
 }
 
 /** One text recorded by the gateway in the agent's voice, kept: the same text again costs nothing. */
