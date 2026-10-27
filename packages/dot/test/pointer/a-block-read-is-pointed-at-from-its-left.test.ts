@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { besideOf } from "../../src/pointer/flight.js";
+import { besideOf, shownWhole } from "../../src/pointer/flight.js";
 
 const at = (left: number, top: number, height = 80): Element => {
   const element = document.createElement("p");
@@ -17,5 +17,13 @@ describe("a block read", () => {
 
   it("is pointed at from above where its left has no room for the face", () => {
     expect(besideOf(at(20, 200))).toEqual({ aim: { x: 36, y: 196 }, side: { west: false, up: true } });
+  });
+});
+
+describe("a block read, on the screen", () => {
+  it("is shown whole, or it is scrolled to: one that only peeks in at the bottom is not seen", () => {
+    expect(shownWhole(at(300, 200, 80))).toBe(true);
+    expect(shownWhole(at(300, window.innerHeight - 30, 80))).toBe(false);
+    expect(shownWhole(at(300, -20, 80))).toBe(false);
   });
 });

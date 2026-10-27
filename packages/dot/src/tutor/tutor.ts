@@ -12,7 +12,7 @@ import { litAt, sayingOf, type RoomStore } from "@pinecall/room";
 
 import { face } from "../face/index.js";
 import { Page } from "../page/page.js";
-import { aimOf, along, animate, besideOf, coveredTop, flightMs, scrollOnto, type Point } from "../pointer/flight.js";
+import { aimOf, along, animate, besideOf, coveredTop, flightMs, scrollOnto, shownWhole, type Point } from "../pointer/flight.js";
 import { Card } from "../pointer/card.js";
 import { Hover } from "../pointer/hover.js";
 import { Person, sideOf, type Side } from "../pointer/person.js";
@@ -186,7 +186,7 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
         person.tour(true);
         // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
         anchor = null;
-        if (!onScreen(element)) await scrollOnto(element, 0.42, still);
+        if (beside ? !shownWhole(element) : !onScreen(element)) await scrollOnto(element, 0.42, still);
         const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
         await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();

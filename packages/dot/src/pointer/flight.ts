@@ -150,6 +150,22 @@ export async function scrollOnto(element: Element, where: number, still: boolean
   await animate(ms, (u) => (scroller === null ? view.scrollTo(0, from + dy * minJerk(u)) : scroller.scrollTo(0, from + dy * minJerk(u))));
 }
 
+/**
+ * Whether `element` is shown whole in the part of the screen it scrolls in that the site leaves free (its
+ * scrolling box, under the site's header); one taller than that part, from its start, near the top.
+ */
+export function shownWhole(element: Element): boolean {
+  const view = element.ownerDocument.defaultView;
+  if (view === null) return true;
+  const scroller = scrollerOf(element);
+  const frame = scroller === null ? { top: 0, bottom: view.innerHeight } : scroller.getBoundingClientRect();
+  const top = Math.max(frame.top, coveredTop(element.ownerDocument)) + MARGIN / 2;
+  const bottom = frame.bottom - MARGIN / 2;
+  const box = element.getBoundingClientRect();
+  if (box.height > bottom - top) return box.top >= top && box.top <= top + (bottom - top) * 0.3;
+  return box.top >= top && box.bottom <= bottom;
+}
+
 /** The box that scrolls `element` up and down: its nearest ancestor that does, or null when it is the page itself. */
 export function scrollerOf(element: Element): Element | null {
   const view = element.ownerDocument.defaultView;
