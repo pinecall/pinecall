@@ -228,7 +228,12 @@ export class ReadAloud {
     if (step === undefined || !("live" in step)) return Promise.resolve(null);
     let recording = this.#asked.get(at);
     if (recording === undefined) {
-      recording = this.#options.record(step.say).catch(() => null);
+      const asked = recordedAgain(() => this.#options.record(step.say));
+      // One that could not be recorded is not kept: reached again, it is asked again.
+      recording = asked.then((recorded) => {
+        if (recorded === null && this.#asked.get(at) === recording) this.#asked.delete(at);
+        return recorded;
+      });
       this.#asked.set(at, recording);
     }
     return recording;
@@ -237,6 +242,19 @@ export class ReadAloud {
 
 /** What is heard on a spoken call and so not read: the agent's words, and the tools it used meanwhile. */
 const HEARD_ON_A_CALL = new Set(["agent", "tool"]);
+
+/** How long a part that could not be recorded waits before it is asked again, each time, in ms: a door that just came up (a machine booting) answers within these. */
+export const RECORD_AGAIN_MS = [600, 1500, 3000];
+
+/** A part recorded, asked again after each wait while the door fails; null once every try failed. */
+async function recordedAgain(record: () => Promise<RecordedStep | null>): Promise<RecordedStep | null> {
+  for (let tried = 0; ; tried += 1) {
+    const recorded = await record().catch(() => null);
+    const wait = RECORD_AGAIN_MS[tried];
+    if (recorded !== null || wait === undefined) return recorded;
+    await new Promise((done) => setTimeout(done, wait));
+  }
+}
 
 /** How long a reading waits for an example it pressed to answer, in ms. */
 const EXAMPLE_MS = 60_000;

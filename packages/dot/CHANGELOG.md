@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **A part the door could not record is asked again**, three times over a few seconds, instead of read in silence;
+  one that failed every time is asked again when the reading reaches it again. A machine that just booted answered
+  its first parts with an error, and the whole reading went on mute.
 - **Whatever the pointer lands on is shown whole first**: a button at the foot of a box that scrolls, or under a bar
   stuck inside it, counted as on the screen and was pressed out of view. A box's own `scroll-padding-top` is kept
   clear, as the page's is.
