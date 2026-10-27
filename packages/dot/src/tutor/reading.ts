@@ -75,7 +75,9 @@ export function textOf(output: Element): string {
     for (const child of node.childNodes) {
       if (child instanceof Text) line.push(child.textContent ?? "");
       else if (child instanceof Element && seen(child) && !child.matches("script, style, template")) {
-        const inline = INLINE.has(child.tagName) || (child.ownerDocument.defaultView?.getComputedStyle(child).display ?? "").startsWith("inline");
+        // A span laid out as a block (a cell of a row) is a line of its own; one in a run of words is not.
+        const display = child.ownerDocument.defaultView?.getComputedStyle(child).display ?? "";
+        const inline = display === "" ? INLINE.has(child.tagName) : display.startsWith("inline");
         if (inline) walk(child, line);
         else {
           const own: string[] = [];

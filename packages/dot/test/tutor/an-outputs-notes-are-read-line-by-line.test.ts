@@ -73,7 +73,7 @@ describe("an output with no notes of the page's", () => {
     document.body.innerHTML = `
       <main data-pinecall-read>
         <button aria-label="Run npm install" aria-controls="out" data-pinecall-press data-pinecall-explain="npm install" data-pinecall-then="Listo.">Run</button>
-        <div id="out" data-pinecall-quiet><div class="ln"><span>1,08</span><span>up to date, audited 49 packages</span></div><div class="ln"><span>1,09</span><span>found 0 vulnerabilities</span></div></div>
+        <div id="out" data-pinecall-quiet><div class="ln"><span>1,08 </span><span>up to date, audited 49 packages</span></div><div class="ln"><span>1,09 </span><span>found 0 vulnerabilities</span></div></div>
         <p>Y seguimos.</p>
       </main>`;
     const reading = readingOf(document, "Leer")!;
