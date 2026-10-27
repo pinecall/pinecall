@@ -179,16 +179,14 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
       case "type":
       case "press":
       case "wait":
-        // Typing takes the visitor's words, pressing and waiting a step of their own (moveOnto, a walk's acts): a beat never does them.
-        return;
+        return; // the visitor's words typed, a press, a wait: a step of their own (moveOnto, a walk's acts), never a beat's
       case "point": {
         if (element === null) return;
         person.tour(true);
         // Let go of what it pointed at before the page scrolls: held, the face rode off the screen with it.
         anchor = null;
         if (beside ? !shownWhole(element) : !onScreen(element)) await scrollOnto(element, 0.42, still);
-        // A box the page scrolls in some other way (a pane this did not find): the browser's own scroll, at once.
-        if (beside && !shownWhole(element)) element.scrollIntoView({ block: "start" });
+        if (beside && !shownWhole(element)) element.scrollIntoView({ block: "start" }); // a pane this did not find: the browser's own scroll
         const { aim, side } = beside ? besideOf(element) : { aim: aimOf(element), side: undefined };
         await fly(aim, side ?? sideOf(aim, clearOf(element), view.innerWidth, view.innerHeight));
         const box = element.getBoundingClientRect();

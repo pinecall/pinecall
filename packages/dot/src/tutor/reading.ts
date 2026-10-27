@@ -68,6 +68,29 @@ function blockOf(element: Element, within: Element): Element {
   return node;
 }
 
+/** What an output shows, line by line: each box of its own on a line, the words inside it as written. Hidden parts left out. */
+export function textOf(output: Element): string {
+  const lines: string[] = [];
+  const walk = (node: Node, line: string[]): void => {
+    for (const child of node.childNodes) {
+      if (child instanceof Text) line.push(child.textContent ?? "");
+      else if (child instanceof Element && seen(child) && !child.matches("script, style, template")) {
+        const inline = INLINE.has(child.tagName) || (child.ownerDocument.defaultView?.getComputedStyle(child).display ?? "").startsWith("inline");
+        if (inline) walk(child, line);
+        else {
+          const own: string[] = [];
+          walk(child, own);
+          lines.push(own.join("").replace(/\s+/g, " ").trim());
+        }
+      }
+    }
+  };
+  const top: string[] = [];
+  walk(output, top);
+  const first = top.join("").replace(/\s+/g, " ").trim();
+  return [first, ...lines].filter((line) => line !== "").join("\n");
+}
+
 /** A text as two are compared for a note: one space between words, in lower case. */
 const flat = (text: string): string => text.replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -249,7 +272,7 @@ export class ReadAloud {
     const output = this.reading.outputs.find((about, index) => index > at && about !== undefined)?.output;
     const noted = this.reading.outputs.some((about) => about !== undefined && about.output === output && about.find !== null);
     if (command === null || this.#options.explain === undefined || output === undefined || noted) return;
-    const text = wordsOf(output);
+    const text = textOf(output);
     if (text === "") return;
     const notes = await this.#options.explain({ output: text, command: command || undefined, language: output.ownerDocument.documentElement.lang || undefined }).catch(() => []);
     // The notes go after what the page says of the output, before the reading goes on.

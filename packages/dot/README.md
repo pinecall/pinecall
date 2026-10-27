@@ -370,7 +370,7 @@ pages alone.
 
 ### Lines on the page
 
-A walk can also live in the site's own markup, beside what it is about, so the two never drift apart:
+A walk can also live in the site's own markup, beside what it is about:
 
 ```html
 <section id="pricing" data-pinecall-say="Pricing is simple: three plans, and most families pick Family Care." data-pinecall-do="highlight">
@@ -383,8 +383,7 @@ A walk can also live in the site's own markup, beside what it is about, so the t
 - **One at a time, or all**: `explain(what)` says the line of a thing marked `[has a line]`, the pointer
   on it; during a call a ▶ at the top right of a marked element under the mouse says it at once
   (`page.explain`); the walk `page`, listed with the agent's macros, says every line in order.
-- **Said once.** The agent says a line through `say()`, so it is the turn's answer, in the history: the
-  model is not asked to answer it again, and the tool's result tells it the line is said.
+- **Said once.** The agent says a line through `say()`: it is the turn's answer, in the history, never asked again.
 
 ## What the page and the agent say to each other
 

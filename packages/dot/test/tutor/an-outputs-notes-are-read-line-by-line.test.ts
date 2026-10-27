@@ -90,7 +90,7 @@ describe("an output with no notes of the page's", () => {
 
     await aloud.act(0);
 
-    expect(asked).toEqual([{ output: "up to date, audited 49 packages found 0 vulnerabilities", command: "npm install", language: undefined }]);
+    expect(asked).toEqual([{ output: "1,08 up to date, audited 49 packages\n1,09 found 0 vulnerabilities", command: "npm install", language: undefined }]);
     expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "press"))).toEqual([
       "press", "Listo.", "Revisó cuarenta y nueve paquetes.", "Y no encontró vulnerabilidades.", "Y seguimos.",
     ]);
