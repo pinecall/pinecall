@@ -21,6 +21,9 @@ maintainer's call.
   `data-pinecall-press` pressed and its output (`aria-controls`) waited on. Each part is recorded by the site's door
   (`{ read }`), which a site allows with `voicing.read`. `tutor.read()` starts it.
 - **A lone walk plays from its button**: with one walk and no field to type in, the button beside the face plays it.
+- **An output is read line by line**: `data-pinecall-notes` on an example's button names notes that each find a line of
+  its output (`data-pinecall-find`) and say what it means; the line is lit and pointed at, the output marked
+  `data-pinecall-reading` meanwhile. The pointer scrolls through nested boxes: a line into its output, the output into the page.
 - **A page is read as written to be heard**: an element's `data-pinecall-say` is said instead of its text (nothing inside
   it read again), an example's `data-pinecall-then` is said pointing at its output once it answered, and the pointer
   stands at the left of the part read, the face in the margin, its arrow turned toward the text.

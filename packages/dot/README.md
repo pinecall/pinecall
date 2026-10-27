@@ -335,8 +335,12 @@ is lit and pointed at and the rest dimmed; a long one is read a few sentences at
 marked `data-pinecall-press` in it is an example: when the reading reaches it, the pointer presses it
 (its value, when it has one, said first: `data-pinecall-press="Lo corro."`) and the reading waits for
 what it controls (`aria-controls`, its output) to answer and not be `aria-busy`, then says its
-`data-pinecall-then` ("Ahí dice tu org") pointing at the output. Nothing under `data-pinecall-quiet` is
-read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
+`data-pinecall-then` ("Ahí dice tu org") pointing at the output. An output is read line by line with
+notes: `data-pinecall-notes` on the button names a list whose items each find a line of the output
+(`data-pinecall-find`, a text in any case or `/a regex/`) and say what it means; the tutor lights that
+line, points at it and reads the note, the output marked `data-pinecall-reading` meanwhile so the site
+can widen a box that scrolls. A note whose line the output does not show is left out, so the same notes
+serve whatever the command printed. Nothing under `data-pinecall-quiet` is read (the code of a block, a legend). A page is rarely heard well as it is written: an element with
 `data-pinecall-say` is said as that line instead, nothing inside it read again, so a section, a table or
 a list of cards becomes a sentence or two written to be heard. The pointer stands at the left of the
 part read, the face in the margin, never on its words. `tutor.read()` starts it from a button
@@ -355,8 +359,12 @@ pages alone.
   <p>Cada comando está en un bloque con ▶ Run.</p>
   <div class="block" data-pinecall-quiet>
     <pre>pinecall whoami</pre>
-    <button aria-label="Run pinecall whoami" aria-controls="out-1" data-pinecall-press="Lo corro.">▶ Run</button>
+    <button aria-label="Run pinecall whoami" aria-controls="out-1" data-pinecall-press="Lo corro." data-pinecall-notes="notes-1">▶ Run</button>
     <output id="out-1"></output>
+    <ol id="notes-1" hidden data-pinecall-skip>
+      <li data-pinecall-find="org lesson">Ahí está tu org, lesson.</li>
+      <li data-pinecall-find="/person's key/">Y es una key de persona.</li>
+    </ol>
   </div>
 </main>
 ```
