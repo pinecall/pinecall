@@ -41,7 +41,7 @@ describe("a page read aloud", () => {
       type: async (_element, text) => void typed.push(text),
       press: async (element) => {
         pressed.push(element);
-        page.getElementById("log")!.insertAdjacentHTML("beforeend", `<div class="me">¿A qué hora abren?</div><div class="agent">Abrimos a las nueve.</div>`);
+        page.getElementById("log")!.insertAdjacentHTML("beforeend", `<div data-pinecall-said="caller">¿A qué hora abren?</div><div data-pinecall-said="agent">Abrimos a las nueve.</div>`);
       },
       explain: async (request) => {
         asked.push(request);
@@ -55,8 +55,10 @@ describe("a page read aloud", () => {
     await aloud.act(3);
     expect(pressed).toEqual([page.getElementById("send")]);
     expect(asked).toEqual([{ output: "¿A qué hora abren?\nAbrimos a las nueve.", command: "Le preguntaste: ¿A qué hora abren?", language: "es" }]);
+    // The answer is read as it came, pointing at it, then what the model says of it.
     expect(reading.walk.steps.map((step) => ("say" in step ? step.say : "fill" in step ? "fill" : "press"))).toEqual([
-      "Preguntale.", "fill", "Le pregunto.", "press", "Dice que abre a las nueve: lo inventó.", "No lo sabe.",
+      "Preguntale.", "fill", "Le pregunto.", "press", "Abrimos a las nueve.", "Dice que abre a las nueve: lo inventó.", "No lo sabe.",
     ]);
+    expect(reading.at[4]?.getAttribute("data-pinecall-said")).toBe("agent");
   });
 });

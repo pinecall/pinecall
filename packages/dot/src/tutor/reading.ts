@@ -21,7 +21,8 @@
 // (a chat, a widget) is read in its place, as a page: what its page marks `data-pinecall-read`. A send button
 // marked `data-pinecall-goal` is a chat the dot talks to: it asks the door for its line, says it, types and sends
 // it, reads the agent's answer aloud (`data-pinecall-said` on each turn), and goes on until it has what it came
-// for, then has the whole chat explained. A page read with its top scrolled away is read from the first part
+// for, then has the whole chat explained. Any chat's answer (`data-pinecall-said="agent"`) is read as it came
+// once the press that drew it out is done, before the notes on it. A page read with its top scrolled away is read from the first part
 // still in view (`fromHere`): a person who comes back to the middle of a chapter goes on from there.
 
 import { boxOf, pageOf } from "../pointer/frames.js";
@@ -251,8 +252,27 @@ export class ReadAloud {
     if (this.#turns.has(step)) return;
     // Its own output, by what it controls: a press the page says nothing after has no step about it.
     const output = outputOf(element);
+    // What the agent answered in a chat is read as it came, pointing at it, before anything is said of it.
+    let after = at;
+    for (const turn of this.#unheard(output)) {
+      const said = this.#say(wordsOf(turn), turn);
+      this.#insert(after, said);
+      after += said.length;
+    }
     const noted = this.reading.outputs.some((about) => about !== undefined && about.output === output && about.find !== null);
-    if (!noted) await this.#explain(at, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
+    if (!noted) await this.#explain(after, output, element.getAttribute(EXPLAIN_ATTRIBUTE));
+  }
+
+  /** The agent's turns of a chat not read aloud yet, in order; each counted as read. */
+  #unheard(output: Element): Element[] {
+    const turns = [...output.querySelectorAll(`[${SAID_ATTRIBUTE}="agent"]`)].filter((turn) => seen(turn) && !this.#heard.has(turn));
+    for (const turn of turns) this.#heard.add(turn);
+    return turns;
+  }
+
+  /** A text said pointing at `element`, a recording at a time. */
+  #say(text: string, element: Element): Added[] {
+    return piecesOf(text).map((piece) => [{ say: piece, beats: [], live: true }, element, undefined]);
   }
 
   /** The output explained by the door: its notes after step `at`, in the place of the page's line on it (kept when the model gave none). */
@@ -288,11 +308,10 @@ export class ReadAloud {
       this.reading.goals.set(step, goal);
       return [step, button, undefined];
     };
-    const say = (text: string, element: Element): Added[] => piecesOf(text).map((piece) => [{ say: piece, beats: [], live: true }, element, undefined]);
     const last = turns.at(-1);
     if (last !== undefined && last.getAttribute(SAID_ATTRIBUTE) === "agent" && !this.#heard.has(last)) {
       this.#heard.add(last);
-      this.#insert(at, [...say(wordsOf(last), last), marker()]);
+      this.#insert(at, [...this.#say(wordsOf(last), last), marker()]);
       return;
     }
     const heard = turns.map((turn): Heard => ({ who: turn.getAttribute(SAID_ATTRIBUTE) === "agent" ? "agent" : "caller", said: wordsOf(turn) })).slice(-MOST_HEARD);
@@ -303,7 +322,7 @@ export class ReadAloud {
     if (next.hangup) this.#bye.add(output);
     const press: WalkStep = { press: labelOf(button) };
     this.#turns.add(press);
-    this.#insert(at, [...say(next.say, field), [{ fill: labelOf(field), with: next.say }, field, undefined], [press, button, undefined], marker()]);
+    this.#insert(at, [...this.#say(next.say, field), [{ fill: labelOf(field), with: next.say }, field, undefined], [press, button, undefined], marker()]);
   }
 
   /** Steps put after the `at`th; what was asked for ahead stands on the old numbering, so it is asked again. */

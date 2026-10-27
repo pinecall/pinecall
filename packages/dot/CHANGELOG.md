@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **A chat's answer is read aloud as it came**: after the press that drew it out (a question typed, a call opened), each
+  turn marked `data-pinecall-said="agent"` is said pointing at it, before the notes on the chat.
 - **A page read aloud starts from the part in view**: with the top scrolled away, the reading begins at the first part
   not above the screen (`fromHere`), so coming back to the middle of a chapter goes on from there.
 - **A page read aloud talks to a chat until it has what it came for**: a send button marked `data-pinecall-goal` is a
