@@ -208,11 +208,11 @@ export class ReadAloud {
     }
     const element = at < 0 ? null : (this.reading.at[at] ?? null);
     const step = at < 0 ? undefined : this.reading.walk.steps[at];
-    // A line said into a call the agent is heard in lights nothing: the words go into the call, and there is
-    // nothing on the page to point at while they do.
+    // A talk's steps light nothing: a line said into a call goes into the call, and the button that opened it is
+    // gone once pressed (a hang-up stands where it was); there is nothing on the page to point at meanwhile.
     const into = step === undefined ? undefined : this.reading.spoken.get(step);
-    const heard = into !== undefined && into.hasAttribute(HEARD_ATTRIBUTE);
-    this.#options.light(heard ? null : about === undefined || about.find === null ? element : (lineIn(about.output, about.find) ?? element));
+    const talking = (into !== undefined && into.hasAttribute(HEARD_ATTRIBUTE)) || (step !== undefined && this.reading.goals.has(step));
+    this.#options.light(talking ? null : about === undefined || about.find === null ? element : (lineIn(about.output, about.find) ?? element));
     // A sentence typed as it is said: the typing starts with it, paced to its recording.
     const typing = step === undefined ? undefined : this.reading.typed.get(step);
     if (step !== undefined && typing !== undefined && !this.#begun.has(step)) {
