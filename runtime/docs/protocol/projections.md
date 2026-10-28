@@ -44,6 +44,7 @@ absent from the table is dropped whole, and a field absent from a row is dropped
 | `agent.transcript` | `speech_id` `text` `final` `start`: one delta, never the reply so far, and the second the voice says it at, so a page lights each word as it sounds |
 | `turn.user` | `speech_id` `text` |
 | `turn.agent` | `speech_id` `text` `interrupted` `metrics`, of the metrics `e2e_latency` alone |
+| `agent.waiting` | `speech_id` `interrupted` |
 | `room.opened` | `name` `sid` |
 | `participant.joined` | `identity` `kind` `name` |
 | `participant.left` | `identity` |

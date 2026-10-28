@@ -22,6 +22,15 @@ One delta of the reply the agent is giving, never the reply so far: in a voice c
 | `start` | `number` | no | When these words start, in seconds from the start of the reply's audio, as the voice aligned them. Absent when the voice returned no word timings. |
 | `end` | `number` | no | When these words end, in seconds from the start of the reply's audio, as the voice aligned them. Absent when the voice returned no word timings. |
 
+### `agent.waiting`
+
+The agent said all it had to say and waits for the caller: every sentence of the reply played, every tool it called run and the words after it said. The one moment a page that must not speak over the agent waits for. `agent.state` says `listening` between a sentence and a tool already done, which is not it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `speech_id` | `string` | yes | The reply that is over: the same id its turn.agent entries and its llm, tts and eou blocks carry. |
+| `interrupted` | `boolean` | yes | True when the caller cut it short. |
+
 ### `call.attached`
 
 A live call is now served by this socket, mid-conversation: the socket that held it drained, or died, or the gateway restarted. The socket rebuilds the call from this entry and sends its whole prompt and its tools again, because nothing it sent before reached this socket; every tool.call still waiting for an answer follows it, sent again with its own seq.

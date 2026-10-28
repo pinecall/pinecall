@@ -552,6 +552,15 @@ class AgentTurnEnded(WireModel):
     metrics: AgentTurnMetrics
 
 
+class AgentWaiting(WireModel):
+    """The agent said all it had to say and waits for the caller: every sentence of the reply played, every tool
+    it called run and the words after it said. The one moment a page that must not speak over the agent waits for:
+    `agent.state` says `listening` between a sentence and a tool already done, which is not it."""
+
+    speech_id: str
+    interrupted: bool
+
+
 class UserTurnEnded(WireModel):
     """The caller's turn is over."""
 
@@ -596,6 +605,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "agent.registered": AgentRegistered,
     "agent.state": AgentStateChanged,
     "agent.transcript": AgentTranscript,
+    "agent.waiting": AgentWaiting,
     "app.failed": AppFailed,
     "attention.answered": AttentionAnswered,
     "attention.requested": AttentionRequested,

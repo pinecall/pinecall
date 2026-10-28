@@ -11,6 +11,7 @@ from livekit.agents import (
     CloseReason,
     ConversationItemAddedEvent,
     SessionUsageUpdatedEvent,
+    SpeechCreatedEvent,
     UserInputTranscribedEvent,
     UserStateChangedEvent,
     llm,
@@ -22,7 +23,7 @@ from livekit.agents import (
 from livekit.agents import ErrorEvent as ComponentFailed
 from livekit.agents.metrics.base import AvatarMetrics
 from livekit.agents.types import TimedString
-from livekit.agents.voice import AgentSession
+from livekit.agents.voice import AgentSession, SpeechHandle
 from livekit.agents.voice.events import EventTypes
 from pydantic import BaseModel
 
@@ -50,6 +51,7 @@ LISTENED: tuple[EventTypes, ...] = (
     "user_input_transcribed",
     "user_state_changed",
     "agent_state_changed",
+    "speech_created",
     "conversation_item_added",
     "session_usage_updated",
     "error",
@@ -93,6 +95,9 @@ class Listener:
         # When the person last said something: what a written call in a room is kept alive by.
         self.last_heard = time.monotonic()
         self.ended_for_good = False
+        # Set by the session as it closes: the speeches its close cuts short are not the agent's turn over,
+        # and a line written then would land after call.ended and hold the seal.
+        self.closing = False
         self.components: tuple[Built, ...] = ()
 
     def listen(self, components: Iterable[Built]) -> None:
@@ -127,6 +132,8 @@ class Listener:
                 if self.hold is not None:
                     self.hold.floor(speaking=self.call.agent_speaking)
                 writing.write("agent.state", wire.AgentStateChanged(state=event.new_state))
+            case SpeechCreatedEvent():
+                self._speech(event)
             case ConversationItemAddedEvent():
                 self._turn(event.item)
             case SessionUsageUpdatedEvent():
@@ -147,6 +154,20 @@ class Listener:
         text = wire.UserTranscript(text=event.transcript, final=event.is_final, language=event.language)
         self.call.writing.write("user.transcript", text)
         self.lookups.heard_so_far(event.transcript)
+
+    # The agent's turn is over when its speech is done, and only then: a reply that calls a tool plays a
+    # sentence, runs the tool and says the rest on the same speech handle. livekit's state says
+    # "listening" between the sentence and a tool already done, and a page that went on at that word
+    # spoke over the agent (2026-10-27).
+    def _speech(self, event: SpeechCreatedEvent) -> None:
+        def over(speech: SpeechHandle) -> None:
+            if self.closing:
+                return
+            self.call.writing.write(
+                "agent.waiting", wire.AgentWaiting(speech_id=speech.id, interrupted=speech.interrupted)
+            )
+
+        event.speech_handle.add_done_callback(over)
 
     # Metrics are whole by the time an item is added, so the turns are written here.
     def _turn(self, item: object) -> None:

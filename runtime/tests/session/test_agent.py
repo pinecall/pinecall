@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 from livekit.agents import (
     AgentStateChangedEvent,
+    SpeechCreatedEvent,
     stt,
 )
-from livekit.agents.voice import Agent, ModelSettings
+from livekit.agents.voice import Agent, ModelSettings, SpeechHandle
 
 import pinecall_runtime.session.hold as hold_module
 import pinecall_runtime.session.text as text
@@ -27,6 +28,7 @@ from tests.session.conftest import (
 from tests.session.test_session import (
     NOBODY,
     no_audio,
+    settled,
     speech_event,
 )
 
@@ -138,3 +140,24 @@ async def test_a_model_that_answers_inside_the_grace_plays_nothing(box: Box, mon
     await text.end_text(session, "caller_hung_up", "caller")
     assert player.played == []
     assert (melody.running, melody.pending) == (0, None)
+
+
+@needs_the_database
+async def test_the_agents_turn_is_over_when_its_speech_is_done_and_not_when_its_state_says_listening(
+    box: Box, store: Store, call: str
+) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    handle = SpeechHandle.create()
+    session.live.emit(
+        "speech_created", SpeechCreatedEvent(user_initiated=False, source="generate_reply", speech_handle=handle)
+    )
+    # livekit says "listening" between a sentence and a tool already done: the reply goes on after it.
+    session.live.emit("agent_state_changed", AgentStateChangedEvent(old_state="speaking", new_state="listening"))
+    await settled()
+    assert "agent.waiting" not in await kinds(store, call)
+    handle._mark_done()  # pyright: ignore[reportPrivateUsage]  # livekit marks it so when the reply, tools and all, is done
+    await settled()
+    await text.end_text(session, "caller_hung_up", "caller")
+    waiting = [entry.data for entry in await store.whole(call) if entry.type == "agent.waiting"]
+    assert waiting == [{"speech_id": handle.id, "interrupted": False}]

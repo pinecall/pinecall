@@ -182,6 +182,7 @@ class Session:
         if self.closed:
             return
         self.closed = True
+        self.listener.closing = True
         await self.live.aclose()
         if self.recorder is not None:
             await self.recorder.close(self.hold)
