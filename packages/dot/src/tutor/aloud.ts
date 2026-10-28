@@ -139,7 +139,9 @@ export class ReadAloud {
    */
   async #talk(at: number, button: Element, goal: string): Promise<void> {
     const output = outputOf(button);
-    const field = button.closest("form")?.querySelector("input:not([type=hidden]), textarea") ?? null;
+    // A call is spoken when its output says the agent is heard there, whatever form its button sits in (a console's
+    // composer holds the call button beside the box one types into); a chat is typed into its form's field.
+    const field = output.hasAttribute(HEARD_ATTRIBUTE) ? null : (button.closest("form")?.querySelector("input:not([type=hidden]), textarea") ?? null);
     const spoken = field === null;
     if (!this.#opened.has(output)) {
       this.#opened.add(output);
