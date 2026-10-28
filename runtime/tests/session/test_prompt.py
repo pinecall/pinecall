@@ -157,6 +157,24 @@ def test_a_tool_round_ends_the_request_and_the_dynamic_blocks_stay_after_the_cal
     ]
 
 
+def test_a_line_the_agent_is_still_saying_ends_the_request_as_its_own_words_after_the_tool_round() -> None:
+    history = _history()
+    history.items.append(llm.FunctionCall(call_id="t1", name="book", arguments='{"slot": "a"}'))
+    history.items.append(llm.FunctionCallOutput(call_id="t1", name="book", output="booked", is_error=False))
+    params = request(history, _written(view="Turnos libres"), saying=["Let me book that for you."]).items
+    last = params[-1]
+    assert isinstance(last, llm.ChatMessage) and last.role == "assistant"
+    assert last.text_content == "Let me book that for you."
+    assert params[-2].type == "function_call_output"
+
+
+def test_with_nothing_being_said_the_request_ends_as_before() -> None:
+    history = _history()
+    assert [item.type for item in request(history, _written(), saying=[]).items] == [
+        item.type for item in request(history, _written()).items
+    ]
+
+
 def test_with_no_words_of_the_caller_the_dynamic_blocks_end_the_request() -> None:
     history = llm.ChatContext.empty()
     history.add_message(role="assistant", content="¿Algo más?")

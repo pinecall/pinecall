@@ -96,11 +96,17 @@ class Request(llm.ChatContext):
 # Always a new context: livekit reuses its own across a turn's tool steps, so additions would
 # pile up. The order is the one prompt-injection.md states: static blocks, history, the view after
 # the caller's words.
-def request(history: llm.ChatContext, blocks: Blocks, lookups: Sequence[llm.ChatItem] = ()) -> Request:
-    """One request: the history with this turn's lookups spliced in, the dynamic blocks after the caller's words."""
+def request(
+    history: llm.ChatContext, blocks: Blocks, lookups: Sequence[llm.ChatItem] = (), saying: Sequence[str] = ()
+) -> Request:
+    """One request: the history with the lookups spliced in, the dynamic blocks after the caller, what is said last."""
     items = _ahead_of_the_caller(history.items, lookups)
     dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
-    return Request(_after_the_caller(items, dynamic), blocks.of("static"))
+    # A line the agent is still saying (a tool's announcement, playing while the tool ran) reaches the history only
+    # once it has played; the reply is asked for before that. Sent as said, the model goes on from it instead of
+    # saying it again.
+    said = [llm.ChatMessage(role="assistant", content=[line]) for line in saying]
+    return Request([*_after_the_caller(items, dynamic), *said], blocks.of("static"))
 
 
 # The log keeps the prompt's hashes alone; a run keeps what was sent, to reproduce a failure.

@@ -9,7 +9,7 @@ from typing import override
 from livekit import rtc
 from livekit.agents import llm, stt
 from livekit.agents.types import NOT_GIVEN, TimedString
-from livekit.agents.voice import Agent, AgentSession, ModelSettings
+from livekit.agents.voice import Agent, AgentSession, ModelSettings, SpeechHandle
 
 from pinecall_runtime.session.hearing import loops
 from pinecall_runtime.session.listener import transcript_of
@@ -57,6 +57,10 @@ class CallAgent(Agent):
         self.said_this_turn = False
         # The sentences said since then, so no round of a tool chain says one of them again.
         self.said = SaidThisTurn()
+        # A tool's announcement with its line, from when it is said until it has played: livekit writes it into
+        # the history only then, and the reply asked for meanwhile is built with it (`llm_node`), or the model
+        # says it again.
+        self.saying: list[tuple[SpeechHandle, str]] = []
 
     # Runs before the request and livekit times it, so the lookups here are the ones already
     # running (started on an interim) or quick ones. No speech handle exists yet.
@@ -65,6 +69,7 @@ class CallAgent(Agent):
         """Collect this turn's lookups and write the ones that did not run."""
         self.said_this_turn = False
         self.said.clear()
+        self.saying.clear()
         for skipped in await self.lookups.turn_ended(new_message.text_content or ""):
             self.call.writing.write("error", skipped)
 
@@ -72,7 +77,7 @@ class CallAgent(Agent):
     def announce(self, line: str | None) -> None:
         """Say this line as a tool starts, unless the agent has spoken since the caller did."""
         if line and not self.said_this_turn:
-            self.live.say(line)
+            self.saying.append((self.live.say(line), line))
             self.said_this_turn = True
             self.said.say(line)
 
@@ -84,7 +89,9 @@ class CallAgent(Agent):
         self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
     ) -> Thought:
         """The model run on the history, this turn's lookups, and the dynamic blocks."""
-        sent = request(chat_ctx, self.blocks, self.lookups.items)
+        # What is still playing is not in the history yet: it is sent as said, once; played, livekit keeps it.
+        self.saying = [(speech, line) for speech, line in self.saying if not speech.chat_items]
+        sent = request(chat_ctx, self.blocks, self.lookups.items, [line for _, line in self.saying])
         # A step livekit forces to answer in words (tool_choice "none") is offered no tool, as some
         # of its plugins already do: a model offered one may call it anyway, livekit drops the
         # call, and the turn ends with nothing said.

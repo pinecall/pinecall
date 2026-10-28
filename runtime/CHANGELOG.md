@@ -2,11 +2,21 @@
 
 ## Unreleased
 
+- **A tool's announced line is not said twice.** The line a model wrote for a tool ("Let me book that for you.")
+  plays while the tool runs and reaches the history only once it has played; the reply after the tool was asked for
+  before that, so the model, never told it had said the line, often opened with it again, and the caller heard it
+  twice. The request now carries what the agent is still saying, last, as its own words.
+
 - **A search run before the turn no longer breaks Gemini 3.** An agent reading a base in `retrieved` mode on a
   Gemini 3 model ended its call in an error as soon as it called a tool of its own: the search the platform puts
   in the turn is a function call Gemini did not write, and it carried no thought signature (`400 INVALID_ARGUMENT`).
   Each such call now carries the signature Google documents for a call injected by the caller of the API; no other
   model is touched.
+
+- **`agent.waiting`: the agent's turn is over.** Written when the agent's speech is done: every sentence of the
+  reply played, every tool it called run and the words after it said; `speech_id` names the reply, `interrupted`
+  whether the caller cut it short. A page that must not speak over the agent waits for it: `agent.state` says
+  `listening` between a sentence and a tool already done, which is not the turn's end. In the public projection.
 
 - **`POST /v1/agents/{slug}/explain`: a text a page shows, explained by the agent's model.** An app sends a
   command's output (8000 characters at most) and gets up to `most` notes, each a fragment copied from one

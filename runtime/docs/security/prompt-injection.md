@@ -44,6 +44,10 @@ distrusts, and say in the tool's own description where its output comes from.
   channel the model reads as data: placed after them, livekit sends the block as a `user` turn on
   most vendors, and the model read it as a new ask after every result, calling tools round after
   round instead of answering.
+- **What the agent is saying is sent as said.** A tool's announcement plays while the tool runs, and
+  livekit writes it into the history only once it has played; the reply after the tool is asked for
+  before that. The request carries it last, as the agent's own words, so the model goes on from the
+  line instead of saying it a second time (`session/agent.py`, `saying`).
 - **The knowledge text is the operator's**, set in the org's settings by a person with `pipeline` or
   `words`, and stays in the static region.
 - **Memory is admitted when it is written.** A fact is extracted at hang-up by one model call,
