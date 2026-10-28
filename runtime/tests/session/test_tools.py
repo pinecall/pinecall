@@ -5,6 +5,7 @@ import json
 import locale
 from collections.abc import Callable
 from datetime import date
+from typing import cast
 
 import pytest
 from livekit.agents import RunContext, llm
@@ -23,7 +24,16 @@ from pinecall_runtime.providers.service.stages import LLMWithRequest, llm_of
 from pinecall_runtime.session.call import Call, ToolUse
 from pinecall_runtime.session.lookups import RECALL, SEARCH, Lookups, platform_tools
 from pinecall_runtime.session.prompt import Blocks, request
-from pinecall_runtime.session.tools import SAY_PARAMETER, as_livekit_tools, date_pair, opening, read_back, result_text
+from pinecall_runtime.session.tools import (
+    INJECTED_SIGNATURE,
+    SAY_PARAMETER,
+    as_livekit_tools,
+    date_pair,
+    opening,
+    read_back,
+    result_text,
+    signing,
+)
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.parts import PlatformTool, ToolResult
 from tests.conftest import needs_the_database
@@ -569,6 +579,38 @@ def test_a_gemini_history_opens_behind_a_user_turn_and_gemini_takes_it() -> None
     turns = json.loads(json.dumps(to_gemini(history)[0]))
     assert [turn["role"] for turn in turns][:3] == ["user", "model", "user"]
     assert "function_call" in turns[1]["parts"][0]
+
+
+# Gemini 3 refuses a turn holding a function call it did not write and no thought signature: the
+# search the platform ran before the turn is one, and the model's own tool call after it was answered
+# "Function call is missing a thought_signature" (400), the call ended in an error.
+@needs_the_database
+async def test_a_lookup_put_in_a_gemini_turn_carries_the_signature_gemini_skips_and_no_other_model_is_touched(
+    box: Box,
+) -> None:
+    pytest.importorskip("livekit.plugins.google")
+    gemini = llm_of(Running("google", "k", model="gemini-3.5-flash-lite"))
+    box.found["search"] = {"chunks": [{"text": "las tortas se encargan con dos días"}]}
+    lookups = _lookups(box, AgentConfig(slug="a", bases=(Docs(base="encargos"),)))
+    lookups.sign = signing((gemini,))
+    assert await lookups.turn_ended("quiero encargar una torta") == []
+    history = llm.ChatContext.empty()
+    history.add_message(role="user", content="quiero encargar una torta")
+    sent = request(history, Blocks(), lookups.items)
+    signatures = cast(dict[str, bytes], vars(vars(gemini)["built"])["_thought_signatures"])
+    to_gemini: Callable[..., tuple[object, object]] = vars(gemini_format)["to_chat_ctx"]
+    turns = to_gemini(sent, thought_signatures=signatures)[0]
+    called = [
+        part
+        for turn in cast(list[JsonObject], turns)
+        for part in cast(list[JsonObject], turn["parts"])
+        if "function_call" in part
+    ]
+    assert called and all(part.get("thought_signature") == INJECTED_SIGNATURE for part in called)
+
+    claude = llm_of(Running("anthropic", "k", model="claude-haiku-5-5"))
+    signing((claude,))(["lu_1_search"])
+    assert not hasattr(vars(claude).get("built", claude), "_thought_signatures")
 
 
 def test_every_other_model_opens_on_the_clock_alone() -> None:

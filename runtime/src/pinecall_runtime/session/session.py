@@ -21,7 +21,7 @@ from pinecall_runtime.session.listener import Built, Listener, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
 from pinecall_runtime.session.started import started
-from pinecall_runtime.session.tools import Toolbox, opening
+from pinecall_runtime.session.tools import Toolbox, opening, signing
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire import events as wire
@@ -86,6 +86,7 @@ class Session:
         self.live = live
         self.built = built
         self.lookups = lookups
+        lookups.sign = signing(built)
         self.blocks = prompt.Blocks(self.call.config.prompt, self.call.config.knowledge or "")
         toolbox = Toolbox(
             self.call,

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A search run before the turn no longer breaks Gemini 3.** An agent reading a base in `retrieved` mode on a
+  Gemini 3 model ended its call in an error as soon as it called a tool of its own: the search the platform puts
+  in the turn is a function call Gemini did not write, and it carried no thought signature (`400 INVALID_ARGUMENT`).
+  Each such call now carries the signature Google documents for a call injected by the caller of the API; no other
+  model is touched.
+
 - **`POST /v1/agents/{slug}/explain`: a text a page shows, explained by the agent's model.** An app sends a
   command's output (8000 characters at most) and gets up to `most` notes, each a fragment copied from one
   line of it and one spoken sentence on that line in `language`: what a page reads aloud with a finger on

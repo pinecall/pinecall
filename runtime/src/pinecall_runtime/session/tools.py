@@ -2,7 +2,7 @@
 
 import json
 import re
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from datetime import date
 from typing import cast
@@ -237,10 +237,41 @@ async def _nothing_after(_: llm.Toolset.ToolCompletedEvent) -> None:
 
 # The model may sit inside the operator's request wrapper, or among a stage's fallbacks.
 def _reads_like_gemini(component: object) -> bool:
+    return any(True for _ in _geminis(component))
+
+
+def _geminis(component: object) -> Iterator[object]:
     inner = getattr(component, "built", component)
     if isinstance(inner, llm.FallbackAdapter):
-        return any(_reads_like_gemini(fallback) for fallback in getattr(inner, "_llm_instances", ()))
-    return type(inner).__module__.startswith("livekit.plugins.google")
+        for fallback in getattr(inner, "_llm_instances", ()):
+            yield from _geminis(fallback)
+    elif type(inner).__module__.startswith("livekit.plugins.google"):
+        yield inner
+
+
+# Gemini 3 refuses a request whose current turn holds a function call it did not write, with no
+# thought signature: a lookup the platform ran before the turn is such a call. Google's documented
+# signature for a call injected by the caller of the API skips the check; the google plugin sends
+# what its own table holds for each call id, so the lookup's ids are written there.
+INJECTED_SIGNATURE = b"skip_thought_signature_validator"
+
+
+def signing(built: Sequence[object]) -> Callable[[Sequence[str]], None]:
+    """What signs the function calls the platform puts in a request, for each Gemini model among `built`."""
+    # The plugin's own table of signatures by call id (dict[str, bytes]), read where it keeps it.
+    tables = [
+        cast(dict[str, bytes], table)
+        for component in built
+        for gemini in _geminis(component)
+        if isinstance(table := getattr(gemini, "_thought_signatures", None), dict)
+    ]
+
+    def sign(call_ids: Sequence[str]) -> None:
+        for table in tables:
+            for call_id in call_ids:
+                table.setdefault(call_id, INJECTED_SIGNATURE)
+
+    return sign
 
 
 # The app runs its tools and ToolSpec is JSON Schema already, so the raw schema is declared; the

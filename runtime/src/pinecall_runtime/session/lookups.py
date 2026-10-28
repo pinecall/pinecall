@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from livekit.agents import llm
@@ -91,6 +91,8 @@ class Lookups:
         self.items: tuple[llm.ChatItem, ...] = ()
         self.runs = 0
         self.running: _Running | None = None
+        # What signs the calls of this turn's pairs for a model that checks them (tools.signing).
+        self.sign: Callable[[Sequence[str]], None] = lambda _: None
 
     @property
     def run_before_each_turn(self) -> tuple[PlatformTool, ...]:
@@ -195,6 +197,7 @@ class Lookups:
             elif any(answer.values()):
                 items += self._pair(tool, self._arguments(tool, query), answer)
         self.items = tuple(items)
+        self.sign([item.call_id for item in items if isinstance(item, FunctionCall)])
         return skipped
 
     # The contact is the one the platform knows, never one the model wrote; left out when
