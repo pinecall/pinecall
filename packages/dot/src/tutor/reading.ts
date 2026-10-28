@@ -142,8 +142,9 @@ export function readingOf(document: Document, title: string): Reading | null {
       }
       if (element.hasAttribute(PRESS_ATTRIBUTE)) {
         const goal = element.getAttribute(GOAL_ATTRIBUTE);
-        // Its line is said pointing at the field typed in meanwhile; a chat's, at the chat itself; else at the button.
-        const shown = pending?.field ?? (goal ? (frameOf(element.ownerDocument) ?? outputOf(element)) : element);
+        // Its line is said pointing at the field typed in meanwhile; a chat's, at the chat itself; a call's (an output
+        // the agent is heard in), at the button that opens it; else at the button.
+        const shown = pending?.field ?? (goal && !outputOf(element).hasAttribute(HEARD_ATTRIBUTE) ? (frameOf(element.ownerDocument) ?? outputOf(element)) : element);
         const said = line(element.getAttribute(PRESS_ATTRIBUTE) ?? "", shown);
         if (pending !== null) {
           // Typed as the line is said; with no line to say, typed on its own.
