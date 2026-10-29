@@ -1,15 +1,16 @@
-/** Inspector: live metrics, turns, tools and state of one call, read from its log. */
+/** Inspector: one call taken apart as it happens, its turns, tools and state, read from its log. */
 
-import { type State, type Turn } from "@pinecall/core/wire/state";
+import { type Turn } from "@pinecall/core/wire/state";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { usd } from "../../lib/format";
-import { medians, seconds } from "@pinecall/core/metrics";
+import { seconds } from "@pinecall/core/metrics";
 import type { Connection } from "@pinecall/core/stream";
 import { useOrg } from "../../lib/org";
 import { Pill, SectionLabel, Tabs } from "../../ui";
 import { useWatchedCall } from "../call/use-watched-call";
+import { Trace } from "./trace";
 import "./inspector.css";
 
 /** Side pane for Talk and Chat: this tab's call, or the agent's last call before one starts. */
@@ -61,23 +62,8 @@ function Reading({ call, yours }: { call: string; yours: boolean }): ReactNode {
   const [tab, setTab] = useState<Tab>("call");
   const watched = useWatchedCall(call);
   const { state } = watched;
-  const seen = new Set<number>();
-  // Dedupe by seq: a log re-read from the start repeats entries.
-  const measured = medians(watched.entries.filter((entry) => (seen.has(entry.seq) ? false : (seen.add(entry.seq), true))));
-  const median = (name: string): string => {
-    const found = measured.find((one) => one.name === name);
-    return found === undefined ? "—" : seconds(found.seconds);
-  };
-  const tokens = tokensOf(state);
-  // Latencies are medians, labelled as on the call's latency card.
-  const figures: [string, string][] = [
-    ["Turns", String(state.turns.length)],
-    ["Cost", usd(state.cost?.usd)],
-    ["First token", median("llm_node_ttft")],
-    ["End to end", median("e2e_latency")],
-    ["Tokens in", grouped(tokens.in)],
-    ["Tokens out", grouped(tokens.out)],
-  ];
+  // The trace runs on the page's clock only while the log is streaming and the call is on.
+  const live = watched.connection === "live" && state.ended_at === null;
   const fields = Object.keys(state.app_state).sort();
 
   const tabs = [
@@ -97,14 +83,8 @@ function Reading({ call, yours }: { call: string; yours: boolean }): ReactNode {
       {tab === "call" && (
         <>
           <SectionLabel>{yours ? "This session" : "Last session"}</SectionLabel>
-          <div className="inspector-figures">
-            {figures.map(([label, value]) => (
-              <div key={label} className="inspector-tile">
-                <div className="inspector-figure-label">{label}</div>
-                <div className="inspector-figure">{value}</div>
-              </div>
-            ))}
-          </div>
+          <Trace entries={watched.entries} clock={live ? "live" : "still"} />
+          <div className="inspector-cost">{state.cost ? `cost · ${usd(state.cost.usd)}` : live ? "cost · settling…" : null}</div>
           {!yours && (
             <Link to={`/calls/${call}`} className="inspector-call" title={call}>
               <span className="inspector-call-id ui-fixed ui-clip">{call}</span>
@@ -173,22 +153,6 @@ function metaOf(turn: Turn): string {
   if (typeof turn.metrics.transcription_delay === "number") parts.push(`stt ${seconds(turn.metrics.transcription_delay)}`);
   parts.push(turn.speech_id);
   return parts.join(" · ");
-}
-
-// Input tokens include cached ones (still context); output tokens separately.
-function tokensOf(state: State): { in: number; out: number } {
-  let read = 0;
-  let wrote = 0;
-  for (const row of state.usage) {
-    if (row.type !== "llm_usage") continue;
-    read += (row.input_tokens ?? 0) + (row.input_cached_tokens ?? 0);
-    wrote += row.output_tokens ?? 0;
-  }
-  return { in: read, out: wrote };
-}
-
-function grouped(count: number): string {
-  return count.toLocaleString("en-US").replace(/,/g, " ");
 }
 
 function argumentsOf(values: Record<string, unknown>): string {

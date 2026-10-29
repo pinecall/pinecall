@@ -55,7 +55,7 @@ export function Talk(): ReactNode {
   );
 }
 
-/** The conversation and its box, over the room it is handed: the Playground's, and Studio's preview beside its form. */
+/** The conversation and its box, over the room it is handed: the Playground's, and Studio's preview beside its form. The stage carries the agent's state as the log says it (`data-agent-state`), for whatever drives the call from outside. */
 export function Stage({ agent, live, tune }: { agent: string; live: Talking; tune?: ReactNode }): ReactNode {
   const [followed, setFollowed] = useState<Followed | null>(null);
   // What the log said of an earlier call is not this one's.
@@ -64,7 +64,7 @@ export function Stage({ agent, live, tune }: { agent: string; live: Talking; tun
   // Nothing said yet and no call: the heading and the box sit in the middle, as a chat opens.
   const fresh = live.lines.length === 0 && live.phase !== "live" && !over;
   return (
-    <section className={fresh ? "talk-stage talk-stage-fresh" : "talk-stage"} aria-label={`Chat with ${agent}`}>
+    <section className={fresh ? "talk-stage talk-stage-fresh" : "talk-stage"} aria-label={`Chat with ${agent}`} data-agent-state={log?.state.agent_state ?? undefined}>
       {live.phase !== "idle" && <Bar live={live} log={log} />}
       <Refused>{live.error}</Refused>
       {fresh ? (

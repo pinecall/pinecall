@@ -1,0 +1,133 @@
+/* The live trace at the head of the Inspector. Its lanes have one colour each, the same in every part:
+   hearing blue, thinking the accent, a tool amber, speaking green. */
+.tr {
+  --tr-hears: light-dark(#2f6fe0, #8fb8ff);
+  --tr-thinks: var(--accent);
+  --tr-tools: var(--amber);
+  --tr-speaks: var(--green);
+  --tr-other: var(--ink-7);
+  --tr-ink: var(--ink);
+  --tr-soft: var(--ink-3);
+  --tr-dim: var(--ink-5);
+  --tr-line: var(--line);
+  --tr-bad: var(--red);
+  --tr-track: var(--ground-4);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 4px 15px 22px;
+  font-size: 11px;
+  color: var(--tr-soft);
+}
+.tr-quiet {
+  margin: 0;
+  padding: 4px 15px 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-4);
+}
+.tr .is-hears { --c: var(--tr-hears); }
+.tr .is-thinks { --c: var(--tr-thinks); }
+.tr .is-tools { --c: var(--tr-tools); }
+.tr .is-speaks { --c: var(--tr-speaks); }
+.tr .is-other { --c: var(--tr-other); }
+.tr .is-you { --c: var(--tr-ink); }
+.tr-eyebrow { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--tr-dim); }
+.tr-dim { color: var(--tr-dim); }
+.tr b { color: var(--tr-ink); font-weight: 500; }
+
+/* now: the number the caller feels */
+.tr-now { display: flex; flex-direction: column; gap: 10px; }
+.tr-now-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tr-state { display: inline-flex; align-items: center; gap: 6px; color: var(--c); font-size: 10.5px; white-space: nowrap; }
+.tr-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 0 var(--c); animation: tr-ping 1.2s ease-out infinite; }
+@keyframes tr-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 60%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+.tr-big { font-size: 40px; line-height: 1; letter-spacing: -.03em; color: var(--tr-ink); font-variant-numeric: tabular-nums; }
+.tr-big small { font-size: 15px; margin-left: 3px; color: var(--tr-dim); letter-spacing: 0; }
+.tr-big.is-counting { color: var(--tr-thinks); text-shadow: 0 0 24px color-mix(in srgb, var(--tr-thinks) 45%, transparent); }
+.tr-pcts { color: var(--tr-dim); font-variant-numeric: tabular-nums; }
+
+.tr-break { display: flex; flex-direction: column; gap: 9px; transition: opacity .25s; }
+.tr-break-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; }
+.tr-break-bar span { display: block; min-width: 3px; background: var(--c); }
+.tr-break-keys { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.tr-break-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.tr-break-keys i { width: 7px; height: 7px; border-radius: 2px; background: var(--c); }
+/* while the next reply is waited for, the last one's parts stay, quieter, so nothing moves */
+.tr-break.is-last { opacity: .45; }
+.tr-break-was { color: var(--tr-dim); font-style: italic; }
+
+/* the pipeline: three models, the one at work lit */
+.tr-pipe { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tr-pipe li {
+  position: relative; min-width: 0; padding: 9px 10px; border-radius: 9px;
+  background: var(--tr-track); border: 1px solid transparent; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .2s, background-color .2s;
+}
+.tr-pipe li + li::before { content: ""; position: absolute; left: -8px; top: 50%; width: 8px; height: 1px; background: var(--tr-line); }
+.tr-pipe-name { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--c); }
+.tr-pipe-model { font-size: 10.5px; color: var(--tr-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-pipe li.is-on { border-color: color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--c) 22%, transparent); overflow: hidden; }
+/* the one at work: a light sweeps across it */
+.tr-pipe li.is-on::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--c) 22%, transparent) 50%, transparent 70%);
+  transform: translateX(-100%); animation: tr-sweep 1.6s ease-in-out infinite;
+}
+@keyframes tr-sweep { to { transform: translateX(100%); } }
+.tr-pipe li.is-on .tr-pipe-model { color: var(--tr-ink); }
+
+/* the waterfall: one reply, every bar on its lane */
+.tr-fall { display: flex; flex-direction: column; gap: 12px; }
+.tr-fall-head { display: flex; flex-direction: column; gap: 5px; }
+.tr-said { color: var(--tr-soft); font-family: var(--face, inherit); font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-grid { position: relative; display: flex; flex-direction: column; gap: 7px; }
+.tr-lane { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 8px; }
+.tr-lane-name { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--c); }
+.tr-track { position: relative; height: 18px; border-radius: 5px; background: var(--tr-track); }
+.tr-bar {
+  position: absolute; top: 2px; bottom: 2px; min-width: 2px; border-radius: 3px; overflow: hidden;
+  background: color-mix(in srgb, var(--c) 42%, transparent);
+}
+.tr-bar.is-open { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 42%, transparent), var(--c)); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 50%, transparent); }
+.tr-bar.is-failed { --c: var(--tr-bad); }
+.tr-first { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c); }
+.tr-bar-label {
+  position: relative; display: block; padding: 0 5px; font-size: 9.5px; line-height: 14px;
+  color: var(--tr-ink); white-space: nowrap;
+}
+.tr-axis .tr-track { height: 16px; background: none; }
+.tr-tick { position: absolute; top: 2px; transform: translateX(-50%); font-size: 9px; color: var(--tr-dim); }
+.tr-tick:first-child { transform: none; }
+.tr-over { position: absolute; left: 54px; right: 0; top: -2px; bottom: 18px; pointer-events: none; }
+.tr-mark { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed color-mix(in srgb, var(--tr-speaks) 75%, transparent); }
+.tr-mark em {
+  position: absolute; bottom: -17px; left: 3px; font-style: normal; font-size: 9px; white-space: nowrap;
+  color: var(--tr-speaks); background: var(--ground-side); padding: 0 2px;
+}
+.tr-cursor { position: absolute; top: 0; bottom: -2px; width: 1px; background: var(--tr-ink); opacity: .6; box-shadow: 0 0 6px var(--tr-ink); }
+
+/* every reply: one column each, stacked by part */
+.tr-replies { display: flex; flex-direction: column; gap: 10px; }
+.tr-cols { display: flex; align-items: flex-end; gap: 6px; height: 64px; }
+.tr-col {
+  flex: 1 1 0; max-width: 28px; height: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 3px; font: inherit; color: inherit;
+}
+.tr-col-stack { display: flex; flex-direction: column; border-radius: 3px; overflow: hidden; opacity: .55; transition: opacity .15s; }
+.tr-col-stack span { display: block; background: var(--c); min-height: 1px; }
+.tr-col-ms { font-size: 8.5px; color: var(--tr-dim); text-align: center; font-variant-numeric: tabular-nums; }
+.tr-col:hover .tr-col-stack, .tr-col.is-picked .tr-col-stack { opacity: 1; }
+.tr-col.is-picked .tr-col-ms { color: var(--tr-ink); }
+
+/* what the models did */
+.tr-counts { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 14px 16px; }
+.tr-counts dt { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tr-dim); }
+.tr-counts dd { margin: 4px 0 0; color: var(--tr-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tr-counts small { margin-left: 6px; font-size: 10px; color: var(--tr-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-state i { animation: none; }
+  .tr-pipe li { transition: none; }
+  .tr-pipe li.is-on::after { animation: none; display: none; }
+}
