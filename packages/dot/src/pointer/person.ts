@@ -84,7 +84,7 @@ const STYLE = `
 .pc-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(10 18 16 / .34), 0 0 0 3px var(--pc-face-ring, #44a785); opacity: 0; transition: opacity .3s; }
 .pc-spot.pc-on { opacity: 1; }
 .pc-ring { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid var(--pc-face-ring, #44a785); opacity: 0; }
-.pc-ring.pc-go { animation: pc-ring 1.1s ease-out 2; }
+.pc-ring.pc-go { animation: pc-ring 1.1s ease-out 1; }
 @keyframes pc-ring { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pc-face, .pc-bubble, .pc-heard, .pc-spot { transition: none; } .pc-ring.pc-go { animation: none; opacity: .9; } }
 `;
@@ -106,18 +106,26 @@ const SIDES: readonly Side[] = [
   { west: true, up: true },
 ];
 
-/** The first side whose reach fits the screen and covers nothing of `avoid`; else the first that fits; else below and right. */
-export function sideOf(tip: Point, avoid: DOMRect | null, width: number, height: number): Side {
-  const reach = (side: Side): { left: number; right: number; top: number; bottom: number } => ({
+/** The box the face and its words take on `side` of the tip. */
+function reachOf(tip: Point, side: Side): { left: number; right: number; top: number; bottom: number } {
+  return {
     left: side.west ? tip.x - REACH.across : tip.x + 8,
     right: side.west ? tip.x - 8 : tip.x + REACH.across,
     top: side.up ? tip.y - REACH.down : tip.y + 8,
     bottom: side.up ? tip.y - REACH.over : tip.y + REACH.down,
-  });
-  const fits = (side: Side): boolean => {
-    const box = reach(side);
-    return box.left >= 0 && box.right <= width && box.top >= 0 && box.bottom <= height;
   };
+}
+
+/** Whether the face and its words on `side` of the tip stay on a screen `width` by `height`. */
+export function fitsOn(tip: Point, side: Side, width: number, height: number): boolean {
+  const box = reachOf(tip, side);
+  return box.left >= 0 && box.right <= width && box.top >= 0 && box.bottom <= height;
+}
+
+/** The first side whose reach fits the screen and covers nothing of `avoid`; else the first that fits; else below and right. */
+export function sideOf(tip: Point, avoid: DOMRect | null, width: number, height: number): Side {
+  const reach = (side: Side) => reachOf(tip, side);
+  const fits = (side: Side): boolean => fitsOn(tip, side, width, height);
   const clear = (side: Side): boolean => {
     const box = reach(side);
     if (avoid === null) return true;
