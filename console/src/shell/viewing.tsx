@@ -39,8 +39,9 @@ function keptFor(pathname: string, agent: string): string {
 
 /**
  * The trigger says who is in view; the list under it offers every agent of the org and "All
- * agents". Production's agents are the ones deployed; the sandbox lists each copy by whose it is,
- * and a teammate's opens only on a `team` key — the gateway would refuse anyone else.
+ * agents". Production's agents are the ones deployed; the sandbox lists each copy by whose it is:
+ * the shared one (deployed there, nobody's) and your own open for anyone, a teammate's only on a
+ * `team` key — the gateway would refuse anyone else.
  */
 export function Viewing({ agent }: { agent: string }): ReactNode {
   const whose = useWhoami();
@@ -73,8 +74,11 @@ export function Viewing({ agent }: { agent: string }): ReactNode {
   const production = world === "production";
   const seesTheTeam = !production && whose?.scopes.includes("team") === true;
   const holderOf = (one: HeldAgent): string | null => one.holder?.holder ?? null;
-  const openable = (one: HeldAgent): boolean => (production ? holderOf(one) === null : holderOf(one) !== null && (holderOf(one) === me || seesTheTeam));
-  const inView = (one: HeldAgent): boolean => one.slug === agent && (production ? holderOf(one) === null : holderOf(one) === (corner ?? me));
+  const openable = (one: HeldAgent): boolean => (production ? holderOf(one) === null : holderOf(one) === null || holderOf(one) === me || seesTheTeam);
+  const mine = (slug: string): boolean => held.some((one) => one.slug === slug && holderOf(one) === me);
+  // In the sandbox, looking at nobody's corner is looking at your own copy — or at the shared one, when you hold none.
+  const inView = (one: HeldAgent): boolean =>
+    one.slug === agent && (production ? holderOf(one) === null : holderOf(one) === (corner ?? me) || (holderOf(one) === null && corner === null && !mine(one.slug)));
   const whoseLine = (one: HeldAgent): string => {
     const holder = holderOf(one);
     if (holder === null) return production ? "deployed" : "shared";
