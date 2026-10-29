@@ -50,7 +50,7 @@ export function Talk(): ReactNode {
           </>
         }
       />
-      <Inspector agent={agent} call={live.call} />
+      <Inspector call={live.call} />
     </div>
   );
 }

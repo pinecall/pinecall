@@ -55,32 +55,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Which call these are, and the way to it: its id, and the page that has all of it. */
-.inspector-call {
-  margin: 0 15px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11.5px;
-  text-decoration: none;
-}
-
-.inspector-call-id {
-  flex: 1;
-  min-width: 0;
-  color: var(--ink-5);
-}
-
-.inspector-call-open {
-  flex: none;
-  font-weight: 550;
-  color: var(--accent);
-}
-
-.inspector-call:hover .inspector-call-open {
-  text-decoration: underline;
-}
-
 .inspector-turns,
 .inspector-tools {
   padding: 0 15px 14px;

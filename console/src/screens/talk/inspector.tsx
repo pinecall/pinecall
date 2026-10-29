@@ -2,31 +2,26 @@
 
 import { type Turn } from "@pinecall/core/wire/state";
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router";
 
 import { usd } from "../../lib/format";
 import { seconds } from "@pinecall/core/metrics";
 import type { Connection } from "@pinecall/core/stream";
-import { useOrg } from "../../lib/org";
 import { Pill, SectionLabel, Tabs } from "../../ui";
 import { useWatchedCall } from "../call/use-watched-call";
 import { Trace } from "./trace";
 import "./inspector.css";
 
-/** Side pane for Talk and Chat: this tab's call, or the agent's last call before one starts. */
-export function Inspector({ agent, call }: { agent: string; call: string | null }): ReactNode {
-  const { lines } = useOrg();
-  const last = lines.find((line) => line.agent === agent)?.call ?? null;
-  const shown = call ?? last;
+/** Side pane for Talk and Chat: this tab's call, read as it happens; empty until one starts, never an earlier call's. */
+export function Inspector({ call }: { call: string | null }): ReactNode {
   return (
     <aside className="inspector" aria-label="Inspector">
-      {shown === null ? (
+      {call === null ? (
         <>
           <InspectorHead connection={null} />
-          <p className="inspector-quiet">Nothing to read yet: the first call this agent takes is read here as it happens.</p>
+          <p className="inspector-quiet">Start a call or a chat: it is taken apart here as it happens.</p>
         </>
       ) : (
-        <Reading key={shown} call={shown} yours={call !== null} />
+        <Reading key={call} call={call} />
       )}
     </aside>
   );
@@ -58,7 +53,7 @@ function standing(connection: Connection | null): ReactNode {
 
 type Tab = "call" | "turns" | "tools" | "state";
 
-function Reading({ call, yours }: { call: string; yours: boolean }): ReactNode {
+function Reading({ call }: { call: string }): ReactNode {
   const [tab, setTab] = useState<Tab>("call");
   const watched = useWatchedCall(call);
   const { state } = watched;
@@ -82,15 +77,9 @@ function Reading({ call, yours }: { call: string; yours: boolean }): ReactNode {
 
       {tab === "call" && (
         <>
-          <SectionLabel>{yours ? "This session" : "Last session"}</SectionLabel>
+          <SectionLabel>This session</SectionLabel>
           <Trace entries={watched.entries} clock={live ? "live" : "still"} />
           <div className="inspector-cost">{state.cost ? `cost · ${usd(state.cost.usd)}` : live ? "cost · settling…" : null}</div>
-          {!yours && (
-            <Link to={`/calls/${call}`} className="inspector-call" title={call}>
-              <span className="inspector-call-id ui-fixed ui-clip">{call}</span>
-              <span className="inspector-call-open">Open call →</span>
-            </Link>
-          )}
         </>
       )}
 

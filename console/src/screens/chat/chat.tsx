@@ -27,7 +27,7 @@ export function Chat(): ReactNode {
       <div className="chat-column">
         {call === undefined ? <Opening agent={agent} /> : <Conversation agent={agent} call={call} />}
       </div>
-      <Inspector agent={agent} call={call ?? null} />
+      <Inspector call={call ?? null} />
     </div>
   );
 }
