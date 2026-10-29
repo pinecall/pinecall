@@ -93,8 +93,9 @@ export function Viewing({ agent }: { agent: string }): ReactNode {
   const liveOf = (slug: string): number => live.filter((line) => line.agent === slug).length;
 
   // An org of one agent the person may open has nothing for "All agents" to add: that agent is
-  // the view, and an org-wide screen of the ones an agent has opens as its.
-  const openableNow = held.filter(openable);
+  // the view, and an org-wide screen of the ones an agent has opens as its. The sandbox's shared
+  // copy does not count: the org's own view stays, and the copy is picked from the list.
+  const openableNow = held.filter((one) => openable(one) && (production || holderOf(one) !== null));
   const onlyOne = new Set(openableNow.map((one) => one.slug)).size === 1;
   const theOne = onlyOne ? (openableNow.find((one) => holderOf(one) === (production ? null : me)) ?? openableNow[0]) : undefined;
   useEffect(() => {
