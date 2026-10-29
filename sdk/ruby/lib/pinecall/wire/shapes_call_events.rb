@@ -136,6 +136,10 @@ module Pinecall
           interrupted: { kind: :bool, required: true },
           metrics: { kind: :ref, ref: "AgentTurnMetrics", required: true }
         }.freeze,
+        "AgentWaiting" => {
+          speech_id: { kind: :str, required: true },
+          interrupted: { kind: :bool, required: true }
+        }.freeze,
       }.freeze
     end
   end

@@ -113,6 +113,13 @@ class AgentTurnEnded(WireModel):
     metrics: AgentTurnMetrics
 
 
+class AgentWaiting(WireModel):
+    """The agent said all it had to say: every sentence of the reply played, every tool run."""
+
+    speech_id: str
+    interrupted: bool
+
+
 class UserTurnEnded(WireModel):
     """The caller's turn is over and this is what they said."""
 

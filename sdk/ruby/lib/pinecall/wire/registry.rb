@@ -15,6 +15,7 @@ module Pinecall
         "agent.registered" => "AgentRegistered",
         "agent.state" => "AgentStateChanged",
         "agent.transcript" => "AgentTranscript",
+        "agent.waiting" => "AgentWaiting",
         "app.failed" => "AppFailed",
         "attention.answered" => "AttentionAnswered",
         "attention.requested" => "AttentionRequested",
@@ -127,7 +128,7 @@ module Pinecall
       }.freeze
 
       # Every event this protocol declares, in the schema's own order.
-      EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript app.failed attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error evals.spent event.received fleet.full judge.broke log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed release.changed room.opened room.sent run.changed spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.failed tool.ran tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched worker.changed].freeze
+      EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript agent.waiting app.failed attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error evals.spent event.received fleet.full judge.broke log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed release.changed room.opened room.sent run.changed spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.failed tool.ran tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched worker.changed].freeze
 
       # Every command an app may send.
       COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.done call.dtmf call.event call.hangup call.hold call.log call.mute call.opt_out call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze

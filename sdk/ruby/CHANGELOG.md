@@ -6,6 +6,10 @@ maintainer's call.
 
 ## [Unreleased]
 
+- **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the
+  reply played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting`
+  on every turn; this one parses it and leaves it to `call.on`.
+
 ## [0.11.24] — released with the dot's marked walk (2026-10-25)
 
 ## [0.11.23] — released with the dot's smaller face (2026-10-25)

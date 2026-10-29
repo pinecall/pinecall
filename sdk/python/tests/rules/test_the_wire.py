@@ -119,6 +119,7 @@ IGNORED: dict[str, str] = {
     "log.gap": THE_LOGS,
     "agent.detached": "another socket letting go of the agent; this one is unaffected",
     "agent.transcript": "a partial line; the finished turn is turn.agent",
+    "agent.waiting": "the moment a page may speak; an app reads it with call.on",
     "user.transcript": "a partial line; the finished turn is turn.user",
     "custom": "a line the app itself wrote",
     "dtmf.received": "the runtime's; a tone reaches the model, not the app",

@@ -239,3 +239,14 @@ export const AgentTurnEndedSchema = z.strictObject({
   interrupted: z.boolean(),
   metrics: AgentTurnMetricsSchema,
 });
+
+/**
+ * The agent said all it had to say and waits for the caller: every sentence of the reply played,
+ * every tool it called run and the words after it said. The one moment a page that must not speak
+ * over the agent waits for: `agent.state` says `listening` between a sentence and a tool already
+ * done, which is not it.
+ */
+export const AgentWaitingSchema = z.strictObject({
+  speech_id: z.string(),
+  interrupted: z.boolean(),
+});

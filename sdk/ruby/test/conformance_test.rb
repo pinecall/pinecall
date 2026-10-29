@@ -83,6 +83,7 @@ class ConformanceTest < Minitest::Test
     "agent.detached" => "the gateway's record that a socket let the agent go",
     "agent.state" => THE_GATEWAYS,
     "agent.transcript" => "a partial line, for a live screen",
+    "agent.waiting" => "the moment a page may speak; an app reads it with call.on",
     "user.transcript" => "a partial line, for a live screen",
     "user.state" => THE_GATEWAYS,
     "attention.requested" => THE_GATEWAYS,

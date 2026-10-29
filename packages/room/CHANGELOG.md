@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **`agent.waiting` is read.** The runtime writes it, in the public projection, when the agent's turn is over:
+  every sentence of the reply played, every tool it called run. The wire parses it; a page that must not speak
+  over the agent reads it from the log.
+
 - **A voice of the page's own**: `room({ voice })` publishes the track the page hands back as the microphone in a
   spoken call, and never asks for the microphone; the page plays into it what the agent is to hear.
 
