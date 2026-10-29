@@ -1,0 +1,111 @@
+/* A tool's answer drawn as what it means, inside its card: chips, rows, a receipt, code. */
+
+.talk-view-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.talk-view-chip,
+.talk-view-row {
+  animation: talk-rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.talk-view-chip {
+  padding: 4px 11px;
+  border: 1px solid var(--accent-line);
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 12.5px;
+}
+
+.talk-view-more {
+  align-self: center;
+  font-size: 12px;
+  color: var(--ink-5);
+  list-style: none;
+}
+
+.talk-view-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.talk-view-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ground);
+  font-size: 13px;
+}
+
+.talk-view-head {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.talk-view-rest {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-4);
+}
+
+.talk-view-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--ground);
+  font-size: 13px;
+}
+
+.talk-view-field {
+  display: flex;
+  gap: 12px;
+}
+
+.talk-view-field dt {
+  flex: none;
+  width: 110px;
+  color: var(--ink-5);
+}
+
+.talk-view-field dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.talk-view-code {
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ground);
+  font-family: var(--face-fixed);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk-view-chip,
+  .talk-view-row {
+    animation: none;
+  }
+}

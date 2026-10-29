@@ -1,0 +1,261 @@
+/* The call, in numbers: the card at the foot of a conversation that is over, from the log's own closing entries. */
+
+.tsum {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 8px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--line-control);
+  border-radius: 16px;
+  background: var(--ground-3);
+  box-shadow: var(--shadow-card);
+  animation: tsum-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes tsum-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+.tsum-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tsum-title,
+.tsum-label {
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.tsum-open {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent-ink);
+}
+
+/* the four numbers, each a tile */
+.tsum-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.tsum-tile {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.tsum-tile dt {
+  font-size: 11px;
+  color: var(--ink-5);
+}
+
+.tsum-tile dd {
+  min-height: 24px;
+  margin: 4px 0 0;
+  overflow: hidden;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsum-tile small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--red);
+}
+
+/* what has not come yet: its shape, a light passing over it */
+.tsum-wait {
+  display: inline-block;
+  width: 64%;
+  height: 14px;
+  vertical-align: middle;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--ground-4) 0%, var(--ground-5) 50%, var(--ground-4) 100%) 0 0 / 200% 100%;
+  animation: tsum-shimmer 1.4s ease-in-out infinite;
+}
+
+.tsum-wait-wide {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border-radius: 10px;
+}
+
+@keyframes tsum-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* how fast: the typical reply large, every reply a column against it */
+.tsum-speed {
+  display: grid;
+  grid-template-columns: minmax(130px, auto) minmax(0, 1fr);
+  align-items: end;
+  gap: 8px 22px;
+}
+
+.tsum-typical {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tsum-typical b {
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsum-typical b small {
+  margin-left: 4px;
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ink-5);
+}
+
+.tsum-how {
+  font-size: 11.5px;
+  color: var(--ink-5);
+}
+
+.tsum-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 72px;
+  padding-top: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tsum-bar {
+  flex: 1 1 0;
+  max-width: 28px;
+  min-height: 3px;
+  border-radius: 4px 4px 1px 1px;
+  background: var(--accent);
+  opacity: 0.75;
+  transform-origin: bottom;
+  animation: tsum-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.tsum-bar:hover {
+  opacity: 1;
+}
+
+.tsum-bar-worst {
+  background: var(--amber);
+}
+
+@keyframes tsum-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.tsum-p50 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  border-top: 1px dashed var(--line-hover);
+  pointer-events: none;
+}
+
+.tsum-pcts {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-5);
+}
+
+.tsum-pcts b {
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+/* the judges: one line each, its answer, its name, its reason */
+.tsum-judges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tsum-none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-4);
+}
+
+.tsum-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.tsum-verdict-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.tsum-verdict-head b {
+  font-weight: 550;
+}
+
+.tsum-why {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+@media (max-width: 640px) {
+  .tsum-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tsum-speed {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsum,
+  .tsum-wait,
+  .tsum-bar {
+    animation: none;
+  }
+}

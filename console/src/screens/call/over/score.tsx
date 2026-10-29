@@ -14,7 +14,8 @@ import { answerOf } from "../../../lib/judgment";
 import { useScopes } from "../../../lib/whoami";
 import { Button, Card, CardHead, Pill, type Tone } from "../../../ui";
 
-const VERDICT_TONE: Record<string, Tone> = { held: "green", broken: "red", classified: "indigo", na: "muted", deferred: "amber", skipped: "muted" };
+/** The tone each verdict is drawn in, wherever a judge's answer is a pill. */
+export const VERDICT_TONE: Record<string, Tone> = { held: "green", broken: "red", classified: "indigo", na: "muted", deferred: "amber", skipped: "muted" };
 
 /** The `call.score` verdict from the log, or null if the call is not scored. */
 export function scoreIn(entries: Entry[]): CallScore | null {

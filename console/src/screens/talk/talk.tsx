@@ -1,16 +1,20 @@
 /** Chat: a human reaches the agent from this tab — by voice over the microphone, or in writing — and reads the call as it happens. */
 
 import { type Entry } from "@pinecall/core/wire/envelope";
+import { TERMINAL_EVENT } from "@pinecall/core/wire/registry";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { elapsed } from "@pinecall/core/calls";
 import { useCall } from "@pinecall/core/use-call";
 import { asking, said, type TestValues } from "../../lib/test-values";
 import { Icon, Refused, usePane } from "../../ui";
+import { scoreIn } from "../call/over";
 import { TestValuesPanel } from "../settings";
 import { Inspector } from "./inspector";
 import { Composer, Conversation } from "./lines";
+import { Orb } from "./orb";
+import { CallSummary, type Followed } from "./summary";
 import { useRoom, type Talking } from "./use-room";
 import "./talk.css";
 
@@ -18,8 +22,9 @@ import "./talk.css";
  * The screen is a chat window from the first moment, as a messenger's is: the conversation, and the
  * box at the foot of it. Writing into the box with nothing open starts a written chat and sends the
  * line; the phone beside it calls. On a call the same box types into it — a number, an address —
- * and the phone hangs up. A thin bar says how the call stands; a call that ends stays on the page,
- * its own page one click away, and the box starts the next one.
+ * and the phone hangs up. A thin bar says how the call stands, its orb who is making a sound; a call
+ * that ends stays on the page with its numbers at the foot and its own page one click away, and the
+ * box starts the next one.
  */
 export function Talk(): ReactNode {
   const agent = useParams()["agent"] ?? "";
@@ -52,11 +57,15 @@ export function Talk(): ReactNode {
 
 /** The conversation and its box, over the room it is handed: the Playground's, and Studio's preview beside its form. */
 export function Stage({ agent, live, tune }: { agent: string; live: Talking; tune?: ReactNode }): ReactNode {
+  const [followed, setFollowed] = useState<Followed | null>(null);
+  // What the log said of an earlier call is not this one's.
+  const log = followed !== null && followed.call === live.call ? followed : null;
+  const over = live.phase === "ended" && live.call !== null;
   // Nothing said yet and no call: the heading and the box sit in the middle, as a chat opens.
-  const fresh = live.lines.length === 0 && live.phase !== "live";
+  const fresh = live.lines.length === 0 && live.phase !== "live" && !over;
   return (
     <section className={fresh ? "talk-stage talk-stage-fresh" : "talk-stage"} aria-label={`Chat with ${agent}`}>
-      {live.phase !== "idle" && <Bar live={live} />}
+      {live.phase !== "idle" && <Bar live={live} log={log} />}
       <Refused>{live.error}</Refused>
       {fresh ? (
         <div className="talk-hello">
@@ -65,18 +74,18 @@ export function Stage({ agent, live, tune }: { agent: string; live: Talking; tun
         </div>
       ) : (
         <>
-          <Conversation lines={live.lines} />
+          <Conversation lines={live.lines} after={over && live.call !== null ? <CallSummary call={live.call} log={log} /> : undefined} />
           <Dock agent={agent} live={live} />
         </>
       )}
-      {live.call !== null && <Marks call={live.call} heard={live.heard} />}
+      {live.call !== null && <Follow key={live.call} call={live.call} heard={live.heard} onLog={setFollowed} />}
       {tune}
     </section>
   );
 }
 
-/** The bar over the conversation: how the call stands, by voice or in writing, and the call's page once it is over. */
-function Bar({ live }: { live: Talking }): ReactNode {
+/** The bar over the conversation: how the call stands, by voice or in writing, and while it is on, the orb. */
+function Bar({ live, log }: { live: Talking; log: Followed | null }): ReactNode {
   const now = useNow(live.phase === "live");
   return (
     <header className="talk-bar">
@@ -89,11 +98,7 @@ function Bar({ live }: { live: Talking }): ReactNode {
         {standing(live)}
         {live.phase === "live" && <span className="talk-clock">{elapsed(live.since, now)}</span>}
       </span>
-      {live.phase === "ended" && live.call !== null && (
-        <Link to={`/calls/${live.call}`} className="talk-open">
-          Open the conversation ↗
-        </Link>
-      )}
+      {live.phase === "live" && <Orb live={live} agentState={log?.state.agent_state ?? null} />}
     </header>
   );
 }
@@ -130,10 +135,19 @@ function Dock({ agent, live }: { agent: string; live: Talking }): ReactNode {
   );
 }
 
-// The log's marks reach the conversation through this: it opens the call's stream and renders
-// nothing. The Inspector opens its own, so the two never share a reader.
-function Marks({ call, heard }: { call: string; heard: (entry: Entry) => void }): ReactNode {
-  useCall(call, { onEntry: heard });
+// The log reaches the stage through this: it opens the call's stream, hands each entry to the room
+// for its marks and turns, and lifts what the log has folded to — the agent's state for the orb, the
+// numbers and the verdicts for the card at the foot — rendering nothing. The Inspector opens its
+// own, so the two never share a reader.
+function Follow({ call, heard, onLog }: { call: string; heard: (entry: Entry) => void; onLog: (log: Followed) => void }): ReactNode {
+  const [sealed, setSealed] = useState<Entry | null>(null);
+  const { state } = useCall(call, {
+    onEntry(entry) {
+      heard(entry);
+      if (entry.type === TERMINAL_EVENT) setSealed(entry);
+    },
+  });
+  useEffect(() => onLog({ call, state, score: sealed === null ? null : scoreIn([sealed]) }), [call, state, sealed, onLog]);
   return null;
 }
 

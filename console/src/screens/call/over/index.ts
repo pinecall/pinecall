@@ -6,7 +6,7 @@ export { Actions } from "./actions";
 export { Details } from "./details";
 export { CostCard, Facts, Outcome } from "./facts";
 export { Player, recordingIn } from "./recording";
-export { ScoreCard, scoreIn } from "./score";
+export { ScoreCard, scoreIn, VERDICT_TONE } from "./score";
 export { LatencyCard, SAID as LATENCY_NAMES } from "./strip";
 export { TimeCard } from "./time-card";
 export { timeSpentIn } from "./time-spent";

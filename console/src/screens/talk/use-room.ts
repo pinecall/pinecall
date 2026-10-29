@@ -1,7 +1,7 @@
 /** The Talk screen's room: a visit token from the gateway — a voice call or a written chat — and what is said as it is said. */
 
 import { type Entry } from "@pinecall/core/wire/envelope";
-import { ParticipantKind, Room, RoomEvent, Track, type RemoteTrack, type TextStreamReader } from "livekit-client";
+import { ParticipantKind, RemoteAudioTrack, Room, RoomEvent, Track, type Participant, type RemoteParticipant, type RemoteTrack, type TextStreamReader } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -9,10 +9,12 @@ import { post } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { ours } from "../../lib/ours";
 import { asking, type TestValues } from "../../lib/test-values";
+import { earOn, type Ear } from "./ear";
 import {
   A_BEAT_MS,
   CHAT_TOPIC,
   joined,
+  landed,
   markOf,
   SEGMENT_ID,
   TRANSCRIPTION_FINAL,
@@ -32,6 +34,14 @@ type Phase = "idle" | "connecting" | "live" | "ended" | "failed";
  */
 export type Mode = "talk" | "chat";
 
+/** Who is making a sound on a voice call right now, as the room's own speaker detection says. */
+export interface Speaking {
+  agent: boolean;
+  user: boolean;
+}
+
+const QUIET: Speaking = { agent: false, user: false };
+
 /** The room as the screen reads it, and the two things it may do to it. */
 export interface Talking {
   phase: Phase;
@@ -43,6 +53,9 @@ export interface Talking {
   since: number | null;
   /** Whether the microphone is off, on a voice call. */
   muted: boolean;
+  speaking: Speaking;
+  /** How loud the agent's voice is this instant, 0 to 1: read once an animation frame, never kept in state. */
+  level: () => number;
   /** Join the room; `first`, a line written before there was a room, goes the moment the agent is in it. */
   open: (mode: Mode, first?: string) => Promise<void>;
   close: () => Promise<void>;
@@ -78,8 +91,13 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
   const [call, setCall] = useState<string | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState<Speaking>(QUIET);
   const room = useRef<Room | null>(null);
+  // The agent's voice, as an ear on its track: what the orb's level is read from.
+  const voice = useRef<Ear | null>(null);
   const seen = useRef(new Set<string>());
+  // The caller's stretches the log has closed a turn over: a late word of one is not drawn again.
+  const closed = useRef(new Set<string>());
   const lastSpoken = useRef<Speaker | null>(null);
   const waiting = useRef<Line[]>([]);
   // The tool cards already placed on screen, by id: where a result goes to fill its call's card in.
@@ -109,6 +127,7 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
   // of the agent's is placed before them, because they are what that sentence announced.
   const said = useCallback(
     (line: Said): void => {
+      if (closed.current.has(line.id)) return;
       if (!seen.current.has(line.id)) {
         seen.current.add(line.id);
         if (line.speaker === "user") place();
@@ -156,10 +175,15 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
       if (entry.type === "turn.user") {
         const said = String((entry.data as Record<string, unknown>)["text"] ?? "").trim();
         setLines((known) => {
+          // A written line is settled by its own words; else the turn is what the ear heard, closed.
           const at = known.findIndex((line) => line.kind === "said" && line.pending === true && line.text.trim() === said);
-          if (at === -1) return known;
+          if (at === -1) {
+            const turn = landed(known, said);
+            for (const id of turn.replaced) closed.current.add(id);
+            return turn.lines;
+          }
           const next = known.slice();
-          next[at] = { ...(known[at] as Said), pending: false };
+          next[at] = { ...(known[at] as Said), pending: false, landed: true };
           return next;
         });
         return;
@@ -197,7 +221,11 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
     setSince(null);
     setError(null);
     setLines([]);
+    setSpeaking(QUIET);
+    voice.current?.stop();
+    voice.current = null;
     seen.current.clear();
+    closed.current.clear();
     onScreen.current.clear();
     lastSpoken.current = null;
     waiting.current = [];
@@ -225,9 +253,34 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
         void spoken(joined, reader, from.identity, said);
       });
       // A chat hears the room only for its text: no voice is attached, whatever arrives.
-      if (joining === "talk") joined.on(RoomEvent.TrackSubscribed, playAloud);
-      joined.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => track.detach().forEach((element) => element.remove()));
-      joined.on(RoomEvent.Disconnected, () => setPhase("ended"));
+      if (joining === "talk") {
+        joined.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication, participant: RemoteParticipant) => {
+          playAloud(track);
+          if (track instanceof RemoteAudioTrack && participant.kind === ParticipantKind.AGENT) {
+            voice.current?.stop();
+            voice.current = earOn(track, participant);
+          }
+        });
+        joined.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
+          const me = joined.localParticipant.identity;
+          const now = { agent: speakers.some((one) => one.identity !== me), user: speakers.some((one) => one.identity === me) };
+          setSpeaking((was) => (was.agent === now.agent && was.user === now.user ? was : now));
+        });
+      }
+      joined.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+        track.detach().forEach((element) => element.remove());
+        const ear = voice.current;
+        if (ear !== null && ear.track === track.sid) {
+          ear.stop();
+          voice.current = null;
+        }
+      });
+      joined.on(RoomEvent.Disconnected, () => {
+        voice.current?.stop();
+        voice.current = null;
+        setSpeaking(QUIET);
+        setPhase("ended");
+      });
       joined.on(RoomEvent.ParticipantConnected, (participant) => {
         if (participant.kind === ParticipantKind.AGENT) agentIn();
       });
@@ -284,11 +337,14 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
   // Leaving the screen hangs up: a room nobody is looking at is a call nobody is on.
   useEffect(() => {
     return () => {
+      voice.current?.stop();
       void room.current?.disconnect();
     };
   }, []);
 
-  return { phase, mode, call, lines, error, since, muted, open, close, toggleMic, write, hold, heard };
+  const level = useCallback((): number => voice.current?.level() ?? 0, []);
+
+  return { phase, mode, call, lines, error, since, muted, speaking, level, open, close, toggleMic, write, hold, heard };
 }
 
 // One segment from its first delta to the trailer that settles it. A segment's line is the text

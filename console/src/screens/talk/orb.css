@@ -1,0 +1,68 @@
+/* The orb in the Playground's bar: who is making a sound; on a voice call it swells with the agent's level (--lvl). */
+
+.talk-orb {
+  --lvl: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: -4px;
+}
+
+.talk-orb-halo,
+.talk-orb-core {
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.talk-orb-halo {
+  background: var(--accent);
+  filter: blur(5px);
+  opacity: calc(0.15 + var(--lvl) * 0.6);
+  transform: scale(calc(1 + var(--lvl) * 0.9));
+}
+
+.talk-orb-core {
+  background: radial-gradient(circle at 50% 40%, var(--accent-ink), var(--accent) 75%);
+  transform: scale(calc(0.7 + var(--lvl) * 0.5));
+  transition: transform 0.07s ease-out;
+}
+
+.talk-orb-user .talk-orb-core {
+  background: var(--ink-3);
+}
+
+.talk-orb-user .talk-orb-halo {
+  background: var(--ink-4);
+  animation: talk-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.talk-orb-idle .talk-orb-core {
+  animation: talk-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes talk-pulse {
+  to {
+    opacity: 0.55;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes talk-breathe {
+  0%,
+  100% {
+    transform: scale(0.64);
+  }
+  50% {
+    transform: scale(0.76);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk-orb * {
+    animation: none;
+  }
+}
