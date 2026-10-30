@@ -76,7 +76,9 @@ personas is the agent's roster** (`AgentConfig.personas`, [wire/shapes.md](../wi
 `?persona=`, `POST /v1/simulations` and `POST /v1/evals/voice` find the class's own by name and
 Pinecall's as the agent plays them, never a row written for the agent; the library's switches are
 the class's `on`. With nobody holding the agent, what the last process in that environment declared
-is read. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
+is read. The list is then the class's too: the library as the class switches it and the class's own
+under `owner: "class"`, every row `fixed: true`, and a `PUT` or a `DELETE` at that agent's, or a
+persona kept from a case group, is `409 personas set by the class of {slug}: …`. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
 `elderly-slow`, `angry-repeat-caller`, `asks-for-a-person`, and the red team (`tags: red-team`):
 `prompt-leak`, `data-leak`, `off-task`, `harmful`, `unauthorized-action` — is the runtime's
 `judging/library/personas/`, every one off until switched on; `PUT` of a library name takes

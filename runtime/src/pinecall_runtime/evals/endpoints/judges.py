@@ -8,7 +8,13 @@ from pinecall_runtime.agents.service import settings
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals.auth import EvalsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in, is_over, readable
+from pinecall_runtime.evals.endpoints.reading import (
+    asked_by,
+    declared_judges_of,
+    is_over,
+    readable,
+    refuse_if_the_class_owns,
+)
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.judging import schemas
 from pinecall_runtime.judging import service as judging
@@ -46,24 +52,31 @@ async def delete_org_judge(name: str, actor: EvalsKey, session: Session) -> sche
     return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, THE_ORGS_OWN))
 
 
+# An agent whose class declares its judges lists the class's, each `fixed` (`owner: "class"` for its own),
+# and writes none of them here: a PUT or a DELETE is 409 naming the class.
 @router.get("/v1/agents/{slug}/judges")
-async def list_judges(slug: KnownAgent, actor: EvalsKey, session: Session) -> schemas.JudgeList:
-    """Every judge the agent's calls may meet: Pinecall's, the org's own, the agent's own."""
-    return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug))
+async def list_judges(slug: KnownAgent, actor: EvalsKey, serving: TheServing, session: Session) -> schemas.JudgeList:
+    """Every judge the agent's calls may meet: Pinecall's, the org's own, the agent's own or its class's."""
+    declared = await declared_judges_of(session, serving, actor.scope, slug)
+    return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug, declared))
 
 
 @router.put("/v1/agents/{slug}/judges/{name}")
 async def put_judge(
-    slug: KnownAgent, name: str, body: schemas.JudgeRequest, actor: EvalsKey, session: Session
+    slug: KnownAgent, name: str, body: schemas.JudgeRequest, actor: EvalsKey, serving: TheServing, session: Session
 ) -> schemas.JudgeList:
-    """One of Pinecall's switched for this agent, or one of its own written whole."""
+    """One of Pinecall's switched for this agent, or one of its own written whole; 409 while its class declares them."""
+    refuse_if_the_class_owns(await declared_judges_of(session, serving, actor.scope, slug), "judges", slug)
     await judging.write_judge(session, actor.org, slug, name, body, by=asked_by(actor))
     return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug))
 
 
 @router.delete("/v1/agents/{slug}/judges/{name}")
-async def delete_judge(slug: KnownAgent, name: str, actor: EvalsKey, session: Session) -> schemas.JudgeList:
-    """Forget one of the agent's own judges; 404 for a name nobody wrote, 409 for Pinecall's."""
+async def delete_judge(
+    slug: KnownAgent, name: str, actor: EvalsKey, serving: TheServing, session: Session
+) -> schemas.JudgeList:
+    """Forget one of the agent's own judges; 404 for a name nobody wrote, 409 for Pinecall's or the class's."""
+    refuse_if_the_class_owns(await declared_judges_of(session, serving, actor.scope, slug), "judges", slug)
     await judging.delete_judge(session, actor.org, slug, name)
     return schemas.JudgeList(judges=await judging.list_judges(session, actor.org, slug))
 
@@ -79,8 +92,7 @@ async def try_judge(
     if body.question.strip():
         spec = judging.spec_of(body.name, body)
     else:
-        declared = await declared_in(session, serving, actor.scope, slug)
-        judges = None if declared is None else declared.judges
+        judges = await declared_judges_of(session, serving, actor.scope, slug)
         spec = await judging.judge_named(session, actor.org, slug, body.name, judges)
     named = body.calls or await _newest(session, actor.scope, slug, body.last)
     tried = [await _tried(session, serving, actor, call, spec) for call in named]

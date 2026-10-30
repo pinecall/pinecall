@@ -18,6 +18,7 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.wire.parts import CallerBehavior, PersonaDeclaration, PersonasDeclared
 
 PINECALL = "pinecall"
+THE_CLASS = "class"
 NOBODY = "no persona called {name} for {agent}"
 TAKEN = "{agent} has a persona called {name} already"
 ONLY_ON = (
@@ -228,16 +229,24 @@ def persona_of(name: str, body: PersonaRequest | PersonaDeclaration) -> Persona:
 
 
 # An agent's list carries Pinecall's first, each as the org and the agent switch and play it.
-async def list_personas(session: AsyncSession, org: str, agent: str) -> list[PersonaRow]:
-    """Pinecall's personas as switched for the agent, then the agent's own, by name."""
-    switches = await persona_switches_for(session, org, agent)
+async def list_personas(
+    session: AsyncSession, org: str, agent: str, declared: PersonasDeclared | None = None
+) -> list[PersonaRow]:
+    """Pinecall's personas as switched for the agent, then the agent's own (its class's when declared), by name."""
+    own: tuple[Persona, ...] = ()
+    if declared is None:
+        switches = await persona_switches_for(session, org, agent)
+    else:
+        switches, own = declared_personas(declared)
     played = await played_for(session, org, agent)
     rows: list[PersonaRow] = []
     for written in catalog.library_personas().values():
         chosen = played.get(written.persona.name, Played())
-        rows.append(_library_row(agent, catalog.played_on(written, chosen.llm, chosen.tts, chosen.voice), switches))
-    rows += [persona_row(stored) for stored in await personas_of(session, org, agent)]
-    return rows
+        as_played = catalog.played_on(written, chosen.llm, chosen.tts, chosen.voice)
+        rows.append(_library_row(agent, as_played, switches, fixed=declared is not None))
+    if declared is None:
+        return rows + [persona_row(stored) for stored in await personas_of(session, org, agent)]
+    return rows + [_row(persona, agent=agent, owner=THE_CLASS, on=True, fixed=True) for persona in own]
 
 
 def persona_row(stored: StoredPersona) -> PersonaRow:
@@ -266,12 +275,15 @@ def proposed_row(persona: Persona) -> ProposedPersona:
     )
 
 
-def _library_row(agent: str, written: catalog.WrittenPersona, switches: dict[str, bool]) -> PersonaRow:
+def _library_row(
+    agent: str, written: catalog.WrittenPersona, switches: dict[str, bool], *, fixed: bool = False
+) -> PersonaRow:
     return _row(
         written.persona,
         agent=agent,
         owner=PINECALL,
         on=switches.get(written.persona.name, written.on_by_default),
+        fixed=fixed,
         summary=written.summary,
         version=written.version,
     )
@@ -283,6 +295,7 @@ def _row(
     agent: str,
     owner: str,
     on: bool,
+    fixed: bool = False,
     summary: str | None = None,
     version: int | None = None,
     author: str | None = None,
@@ -293,6 +306,7 @@ def _row(
         name=persona.name,
         owner=owner,
         on=on,
+        fixed=fixed,
         about=persona.about,
         goal=persona.goal,
         style=persona.style,

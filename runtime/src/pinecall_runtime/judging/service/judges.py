@@ -17,6 +17,7 @@ from pinecall_runtime.wire.parts import JudgeDeclaration, JudgesDeclared
 
 PINECALL = "pinecall"
 THE_ORG = "org"
+THE_CLASS = "class"
 NOBODY = "{whose} has no judge called {name}"
 TAKEN = "{name} is {whose} judge already: one name asks one question of a call"
 ONLY_ON = (
@@ -145,14 +146,19 @@ async def switch_judges(
 
 # An agent's list carries the org's own too, since its calls meet them; the org's ('') is the
 # org's alone.
-async def list_judges(session: AsyncSession, org: str, agent: str) -> list[JudgeRow]:
-    """Every judge the agent's calls may meet: Pinecall's as switched, the org's own, the agent's."""
-    switches = await switches_for(session, org, agent)
-    rows = [_library_row(judge, switches) for judge in catalog.library_judges().values()]
-    rows += [
-        _own_row(stored) for stored in (_stored(row) for row in await JudgeRepository(session).for_call(org, agent))
-    ]
-    return rows
+async def list_judges(
+    session: AsyncSession, org: str, agent: str, declared: JudgesDeclared | None = None
+) -> list[JudgeRow]:
+    """Every judge the agent's calls may meet: Pinecall's as switched, the org's own, the agent's (its class's)."""
+    if declared is None:
+        switches = await switches_for(session, org, agent)
+        rows = [_library_row(judge, switches) for judge in catalog.library_judges().values()]
+        stored = (_stored(row) for row in await JudgeRepository(session).for_call(org, agent))
+        return rows + [_own_row(one) for one in stored]
+    switches, own = declared_judges(declared)
+    rows = [_library_row(judge, switches, fixed=True) for judge in catalog.library_judges().values()]
+    rows += [_own_row(stored) for stored in await judges_at(session, org, THE_ORGS_OWN)]
+    return rows + [_row(spec, owner=THE_CLASS, on=True, fixed=True) for spec in own]
 
 
 def spec_of(name: str, body: JudgeRequest | JudgeDeclaration) -> JudgeSpec:
@@ -190,11 +196,12 @@ def _stored(row: AgentJudge) -> StoredJudge:
     return StoredJudge(spec=_spec_of_row(row), agent=row.agent, author=row.author, set_at=row.set_at)
 
 
-def _library_row(judge: catalog.Written, switches: dict[str, bool]) -> JudgeRow:
+def _library_row(judge: catalog.Written, switches: dict[str, bool], *, fixed: bool = False) -> JudgeRow:
     return _row(
         judge.spec,
         owner=PINECALL,
         on=switches.get(judge.spec.name, judge.on_by_default),
+        fixed=fixed,
         summary=judge.summary,
         version=judge.version,
         why=judge.why,
@@ -213,6 +220,7 @@ def _row(
     *,
     owner: str,
     on: bool,
+    fixed: bool = False,
     summary: str | None = None,
     version: int | None = None,
     why: str | None = None,
@@ -224,6 +232,7 @@ def _row(
         name=spec.name,
         owner=owner,
         on=on,
+        fixed=fixed,
         question=spec.question,
         answer=spec.answer,
         choices=list(spec.choices),

@@ -15,7 +15,12 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.enums import CaseStatus
 from pinecall_runtime.evals.auth import EvalsKey, WordsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in
+from pinecall_runtime.evals.endpoints.reading import (
+    asked_by,
+    declared_judges_of,
+    declared_personas_of,
+    refuse_if_the_class_owns,
+)
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable, ValidationError
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
@@ -130,9 +135,11 @@ async def apply(
 async def persona_from(
     group: Annotated[str, Path(alias="id")], actor: EvalsKey, serving: TheServing, session: Session
 ) -> judged.GeneratedPersonas:
-    """A persona written from the group's newest call, saved as the agent's own."""
+    """A persona written from the group's newest call, saved as the agent's own; 409 while its class declares them."""
     found = await judging.get_group(session, actor.org, group)
     keys.check_agent(actor, found.agent)
+    personas = await declared_personas_of(session, serving, actor.scope, found.agent)
+    refuse_if_the_class_owns(personas, "personas", found.agent)
     judge, configured = await _judge_for(session, serving, actor.scope, found.agent)
     running = judge.running
     if running is None:
@@ -198,8 +205,7 @@ async def _judge_for(
 async def _dossier_of(
     session: Session, serving: calls.Serving, scope: Scope, found: judged.GroupRow
 ) -> judging.Dossier:
-    declared = await declared_in(session, serving, scope, found.agent)
-    judges = None if declared is None else declared.judges
+    judges = await declared_judges_of(session, serving, scope, found.agent)
     spec = await judging.judge_named(session, scope.org, found.agent, found.judge, judges)
     cases = (await judging.list_cases(session, scope.org, found.agent, group=found.id))[:CALLS_READ]
     failures: list[judging.Failure] = []

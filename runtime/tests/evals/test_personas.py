@@ -1,8 +1,10 @@
 """The persona endpoints: a caller is written only for a model and a voice that can run."""
 
+import json
+
 import httpx
 
-from tests.conftest import Gateway, Tenant, holding, needs_the_services
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
 
 NOBODY_KEYED = "openai has no key: the org brought none and the box holds none"
 
@@ -50,3 +52,30 @@ async def test_one_of_pinecalls_is_refused_for_a_model_nobody_keyed_when_it_is_t
         answer = await written(gateway, tenant, agent, "in-a-hurry", {"llm": "openai/gpt-5.4-mini"})
     assert answer.status_code == 503
     assert NOBODY_KEYED in answer.text
+
+
+# ── an agent whose class declares its personas ──
+
+
+@needs_the_services
+async def test_a_class_that_declares_its_personas_is_the_agents_roster_and_no_door_writes_it(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The roster is the class's, each row fixed, its own owned by `class`; a PUT or a DELETE is 409."""
+    async with holding(gateway, tenant, agent) as app:
+        rush = {"name": "in-a-rush", "goal": "book today", "style": "short"}
+        declared = {"config": {"personas": {"on": ["in-a-hurry"], "own": [rush]}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        await received(app, "agent.configured")
+        rows = (await gateway.http.get(f"/v1/agents/{agent}/personas", headers=tenant.server)).json()["personas"]
+        by_name = {row["name"]: row for row in rows}
+        assert (by_name["in-a-hurry"]["on"], by_name["in-a-hurry"]["fixed"]) == (True, True)
+        assert (by_name["interrupts"]["on"], by_name["interrupts"]["fixed"]) == (False, True)
+        assert (by_name["in-a-rush"]["owner"], by_name["in-a-rush"]["fixed"]) == ("class", True)
+        refused = await written(gateway, tenant, agent, "another", {"goal": "g", "style": "s"})
+        assert (refused.status_code, refused.json()["detail"].split(":")[0]) == (
+            409,
+            f"personas set by the class of {agent}",
+        )
+        refused = await gateway.http.delete(f"/v1/agents/{agent}/personas/in-a-rush", headers=tenant.server)
+        assert refused.status_code == 409

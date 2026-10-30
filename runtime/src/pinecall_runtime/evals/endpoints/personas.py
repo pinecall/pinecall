@@ -11,7 +11,12 @@ from pinecall_runtime.calls.auth import Reader, TheServing, reading
 from pinecall_runtime.enums import KeyScope
 from pinecall_runtime.evals import schemas
 from pinecall_runtime.evals.auth import EvalsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in, readable
+from pinecall_runtime.evals.endpoints.reading import (
+    asked_by,
+    declared_personas_of,
+    readable,
+    refuse_if_the_class_owns,
+)
 from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
@@ -47,11 +52,13 @@ async def list_simulations(
     return await _runs(session, reader, wanted, query.limit)
 
 
-# One list for both envs: a persona is test data, never heard by a customer.
+# One list for both envs: a persona is test data, never heard by a customer. An agent whose class
+# declares its personas lists the class's, each `fixed` (`owner: "class"` for its own).
 @router.get("/v1/agents/{slug}/personas")
-async def list_personas(slug: KnownAgent, actor: EvalsKey, session: Session) -> judged.PersonaList:
-    """Pinecall's personas as switched for the agent, then the agent's own, by name."""
-    return judged.PersonaList(personas=await judging.list_personas(session, actor.org, slug))
+async def list_personas(slug: KnownAgent, actor: EvalsKey, serving: TheServing, session: Session) -> judged.PersonaList:
+    """Pinecall's personas as switched for the agent, then the agent's own or its class's, by name."""
+    declared = await declared_personas_of(session, serving, actor.scope, slug)
+    return judged.PersonaList(personas=await judging.list_personas(session, actor.org, slug, declared))
 
 
 # Written on the model the agent's calls are judged on: one eval a persona written, none on the
@@ -88,12 +95,19 @@ async def generate_personas(
 
 
 # A model or a vendor this box lacks, or that nobody keyed, is refused when written, not on the call that
-# plays it.
+# plays it; while the agent's class declares its personas, nothing is written here (409 naming the class).
 @router.put("/v1/agents/{slug}/personas/{name}")
 async def put_persona(
-    slug: KnownAgent, name: str, body: judged.PersonaRequest, actor: EvalsKey, handles: TheHandles, session: Session
+    slug: KnownAgent,
+    name: str,
+    body: judged.PersonaRequest,
+    actor: EvalsKey,
+    serving: TheServing,
+    handles: TheHandles,
+    session: Session,
 ) -> judged.PersonaList:
     """Write one of the agent's callers whole, or rename one from `was`; or switch Pinecall's."""
+    refuse_if_the_class_owns(await declared_personas_of(session, serving, actor.scope, slug), "personas", slug)
     configured = await providers.get_catalog(session)
     judging.check_persona_models(configured, body.llm, body.tts, body.voice)
     keyring = await providers.keys_of(session, handles.vault, actor.scope)
@@ -109,8 +123,11 @@ async def put_persona(
 
 
 @router.delete("/v1/agents/{slug}/personas/{name}")
-async def delete_persona(slug: KnownAgent, name: str, actor: EvalsKey, session: Session) -> judged.PersonaList:
-    """Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's."""
+async def delete_persona(
+    slug: KnownAgent, name: str, actor: EvalsKey, serving: TheServing, session: Session
+) -> judged.PersonaList:
+    """Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's or the class's."""
+    refuse_if_the_class_owns(await declared_personas_of(session, serving, actor.scope, slug), "personas", slug)
     await judging.delete_persona(session, actor.org, slug, name)
     return judged.PersonaList(personas=await judging.list_personas(session, actor.org, slug))
 
@@ -129,8 +146,7 @@ async def list_persona_runs(
     scope = reader.scope
     if reader.actor is None or scope is None:
         raise Forbidden(A_KEY_LISTS)
-    declared = await declared_in(session, serving, scope, slug)
-    personas = None if declared is None else declared.personas
+    personas = await declared_personas_of(session, serving, scope, slug)
     if await judging.persona_named(session, scope.org, slug, name, personas) is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=name, agent=slug))
     wanted = calls.PersonaRunFilters(agent=slug, persona=name, before=query.before)

@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.agents.service import declarations
+from pinecall_runtime.agents.service.settings import SetByTheClass
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import Reader, check_readable
 from pinecall_runtime.enums import Env
@@ -12,6 +13,7 @@ from pinecall_runtime.exceptions import Conflict, NotFound
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.parts import JudgesDeclared, PersonasDeclared
 
 NO_SUCH_CALL = "no call {call} in this key's org and env"
 STILL_GOING = "call {call} is still going: a case is made of a call that ended"
@@ -28,6 +30,29 @@ async def declared_in(session: Session, serving: calls.Serving, scope: Scope, sl
     """The agent's declaration in the scope, held now or kept from the last process."""
     held = serving.registry.serving(scope, slug, None)
     return await declarations.declared_now_or_last(session, scope, slug, None if held is None else held.config)
+
+
+async def declared_judges_of(
+    session: Session, serving: calls.Serving, scope: Scope, slug: str
+) -> JudgesDeclared | None:
+    """The judges the agent's class declares in the scope, or None when the org writes them."""
+    declared = await declared_in(session, serving, scope, slug)
+    return None if declared is None else declared.judges
+
+
+async def declared_personas_of(
+    session: Session, serving: calls.Serving, scope: Scope, slug: str
+) -> PersonasDeclared | None:
+    """The personas the agent's class declares in the scope, or None when the org writes them."""
+    declared = await declared_in(session, serving, scope, slug)
+    return None if declared is None else declared.personas
+
+
+# A door that writes what the class declares answers as the settings doors do: 409, naming the class.
+def refuse_if_the_class_owns(declared: object | None, field: str, slug: str) -> None:
+    """Refuse a write of the agent's judges or personas while its class declares them."""
+    if declared is not None:
+        raise SetByTheClass((field,), slug)
 
 
 async def readable(

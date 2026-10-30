@@ -375,8 +375,12 @@ PUT /v1/agents/recepcion/judges/offers-next-slot
 ```
 
 A list is the library first, then the org's own (`owner: "org"`), then, on an agent's, the
-agent's own (`owner`: its slug); one list serves both environments. An agent whose class declares
-its judges meets the class's, not these rows (*At hang-up*, above). `PUT` of a library name takes
+agent's own (`owner`: its slug); one list serves both environments. **An agent whose class declares
+its judges** lists the class's instead of its rows (*At hang-up*, above): the library as the class
+switches it and the class's own under `owner: "class"`, every one of them `fixed: true`, after the
+org's own, which stay the org's to write. A `PUT` or a `DELETE` at that agent's is then
+`409 judges set by the class of {slug}: …`, the sentence the settings doors give for a field the
+class fixes; the org's doors are unchanged. `PUT` of a library name takes
 `{"on": true}` or `{"on": false}` and nothing else (a question is `409`): at `/v1/org/judges` it is
 the org's default for every agent, at an agent's it is that agent's, and the agent's wins. `PUT`
 of any other name writes one of the org's own or the agent's own whole (`on` is `409`: it runs

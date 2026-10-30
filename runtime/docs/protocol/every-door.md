@@ -40,9 +40,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/judges` | evals | Pinecall's judges as the org switched them, then the org's own, asked of every agent's calls. |
 | `DELETE` | `/v1/org/judges/{name}` | evals | Forget one of the org's own judges; a name nobody wrote is a 404, one of Pinecall's a 409. |
 | `PUT` | `/v1/org/judges/{name}` | evals | One of Pinecall's judges switched on or off for every agent, or one of the org's own written whole. |
-| `GET` | `/v1/agents/{slug}/judges` | evals | Every judge the agent's calls may meet: Pinecall's as switched for it, the org's own, its own. |
-| `DELETE` | `/v1/agents/{slug}/judges/{name}` | evals | Forget one of the agent's own judges; a name nobody wrote is a 404, one of Pinecall's a 409. |
-| `PUT` | `/v1/agents/{slug}/judges/{name}` | evals | One of Pinecall's judges switched on or off for this agent, or one of its own written whole. |
+| `GET` | `/v1/agents/{slug}/judges` | evals | Every judge the agent's calls may meet: Pinecall's as switched for it, the org's own, its own or its class's (`fixed`). |
+| `DELETE` | `/v1/agents/{slug}/judges/{name}` | evals | Forget one of the agent's own judges; a name nobody wrote is a 404, one of Pinecall's a 409, and so is any while the class declares its judges. |
+| `PUT` | `/v1/agents/{slug}/judges/{name}` | evals | One of Pinecall's judges switched on or off for this agent, or one of its own written whole; 409 while the class declares its judges. |
 | `POST` | `/v1/agents/{slug}/judges/try` | evals | One judge, written or only in the body, asked of the agent's finished calls; nothing is written. |
 | `DELETE` | `/v1/agents/{slug}/line` | app | Let the line go, to the newest other scope that could take it. |
 | `GET` | `/v1/agents/{slug}/line` | calls | Who holds the agent's line, and who else could take it. |
@@ -50,9 +50,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/agents/{slug}/memory` | memory | The current facts the agent's calls taught, across contacts, newest first, a page. |
 | `POST` | `/v1/agents/{slug}/memory/extraction` | memory | One hang-up per case on the agent's own model and keys, each answer judged by code. |
 | `GET` | `/v1/agents/{slug}/outbound-trunk` | app · fleet | The leg's trunk inline, after the shape and the pace; a dial's own first leg passes. |
-| `GET` | `/v1/agents/{slug}/personas` | evals | Pinecall's personas as switched for the agent, then the agent's own, by name. |
-| `DELETE` | `/v1/agents/{slug}/personas/{name}` | evals | Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's. |
-| `PUT` | `/v1/agents/{slug}/personas/{name}` | evals | Write one of the agent's callers whole, or rename one from `was`; or switch one of Pinecall's. |
+| `GET` | `/v1/agents/{slug}/personas` | evals | Pinecall's personas as switched for the agent, then the agent's own or its class's (`fixed`), by name. |
+| `DELETE` | `/v1/agents/{slug}/personas/{name}` | evals | Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's or while the class declares its personas. |
+| `PUT` | `/v1/agents/{slug}/personas/{name}` | evals | Write one of the agent's callers whole, or rename one from `was`; or switch one of Pinecall's; 409 while the class declares its personas. |
 | `POST` | `/v1/agents/{slug}/personas/generate` | evals | Callers written for the agent from its prompt, tools, knowledge, a call or a template; saved nowhere. |
 | `GET` | `/v1/agents/{slug}/personas/{name}/runs` | evals | The calls the persona made to the agent in the key's environment and scope, newest first. |
 | `GET` | `/v1/personas` | evals | Every agent's callers, by agent and then by name; each row says whose. |

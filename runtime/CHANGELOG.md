@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The lists say what the class owns, and no door writes it.** `GET /v1/agents/{slug}/judges` and `…/personas`
+  of an agent whose class declares them list the class's: the library as the class switches it and the class's
+  own under `owner: "class"`, every row `fixed: true`. A `PUT` or a `DELETE` at that agent's, and a persona kept
+  from a case group, are `409 judges set by the class of {slug}: …` (`personas …`), the sentence the settings
+  doors give; the org's judges, and an agent whose class declares neither, are as they were.
+
 - **The panel and the roster read the class first.** An agent whose class declares `judges` meets the class's
   switches and its own judges at hang-up, on a `try`, a replay, a case's diagnosis and a label, with the org's
   own judges on top, and its rows are not read; one whose class declares `personas` is called by the class's

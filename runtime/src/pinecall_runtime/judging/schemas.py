@@ -43,9 +43,11 @@ class JudgeRow(Row):
     """One judge as the list shows it: whose it is, whether it runs, and what it asks."""
 
     name: str
-    # "pinecall" for the library's, "org" for the org's own, else the agent's slug.
+    # "pinecall" for the library's, "org" for the org's own, "class" for the agent's class's, else the agent's slug.
     owner: str
     on: bool
+    # True on a row the class declares, its switch of a library judge or its own: no door writes it.
+    fixed: bool = False
     question: str
     answer: JudgeAnswer
     choices: list[str]
@@ -140,9 +142,11 @@ class PersonaRow(Row):
 
     agent: str
     name: str
-    # "pinecall" for the library's, else the agent's slug.
+    # "pinecall" for the library's, "class" for one the agent's class declares, else the agent's slug.
     owner: str
     on: bool
+    # True on a row the class declares, its switch of a library persona or its own: no door writes it.
+    fixed: bool = False
     about: str
     goal: str
     style: str
