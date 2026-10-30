@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **What a class fixes outlives its socket.** A declaration lived in the registry's memory while a socket
+  held the agent, so a settings screen opened with nobody holding it, or a gateway that restarted, read
+  nothing as the class's and let a setting the class declares be written. Each scope now keeps the last
+  declaration its app made of an agent (`agent_declarations`): `GET /v1/agents/{slug}/settings` and the
+  lexicon's `fixed`, a `PUT` of either and a case group's `apply` read what is declared now, else what was
+  declared last; a developer's sandbox declaration is their own scope's, a colleague reads the org's own.
+
 - **A tool's announced line is not said twice.** The line a model wrote for a tool ("Let me book that for you.")
   plays while the tool runs and reaches the history only once it has played; the reply after the tool was asked for
   before that, so the model, never told it had said the line, often opened with it again, and the caller heard it

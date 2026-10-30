@@ -9,7 +9,7 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import keys
-from pinecall_runtime.agents.service import declared, settings
+from pinecall_runtime.agents.service import declarations, declared, settings
 from pinecall_runtime.agents.service import registry as agents_registry
 from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.billing import service as billing
@@ -305,14 +305,17 @@ class AppSocket:
     # or asks ears that cannot end the turn to, is refused when declared, not mid-call.
     async def _configure(self, slug: str, wanted: AgentConfigure) -> None:
         found = self._holds(slug)
-        config = declared.with_app_fields(found.config, wanted.config, first=slug not in self.configured)
+        first = slug not in self.configured
+        config = declared.with_app_fields(found.config, wanted.config, first=first)
         async with self.serving.handles.sessions.begin() as session:
             catalog = await providers.get_catalog(session)
             running, _ = await settings.tuned_for_call(session, config, self.scope, catalog)
             if config.uses_knowledge and not running.bases:
                 raise ValidationError(SEARCHES_WITH_NOTHING.format(slug=slug, env=self.scope.env))
             keyring = await providers.keys_of(session, self.serving.handles.vault, self.scope)
-        providers.refuse_what_cannot_run(running, catalog, keyring)
+            providers.refuse_what_cannot_run(running, catalog, keyring)
+            # Kept past this socket: what the class fixes is read from here once nobody holds the agent.
+            await declarations.keep_declaration(session, self.scope, slug, wanted.config, sdk=found.sdk, first=first)
         await self.send(
             await self.registry.configure(self.id, self.scope.env, slug, config, declared.changed_by(wanted.config))
         )

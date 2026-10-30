@@ -1324,7 +1324,8 @@ class's declaration wins over these settings, so change it there, or take it out
 it here`. `--tts` and `--tts-model` are the class's `voice`; `--temperature`, `--llm-builds` and
 `--llm-option` its `llm`; `--realtime-option` its `realtime` (`@realtime`); `--stt-builds`, `--stt-option` and `--end-of-turn` its `stt`; `--judge-builds` and
 `--judge-option` its `judge` (`@judge`). Which fields are fixed is
-what the process holding the agent in that environment declared: with none holding it, none is.
+what the process holding the agent in that environment declares, else what the last one declared there:
+the gateway keeps it, so the table reads the same after `pinecall start` stopped.
 
 **How a call opens and ends is words, or the model's own.** `--greeting '…'` is said as written;
 `--greeting improvise` has the model open on its prompt, and `--greeting improvise:'…'` with an

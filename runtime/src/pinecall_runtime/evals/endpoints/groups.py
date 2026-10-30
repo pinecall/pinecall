@@ -9,7 +9,7 @@ from fastapi import APIRouter, Path
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents import schemas as agents
 from pinecall_runtime.agents.auth import KnownFilter
-from pinecall_runtime.agents.service import settings
+from pinecall_runtime.agents.service import declarations, settings
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
@@ -107,6 +107,9 @@ async def apply(
     written = settings.Written(
         author=asked_by(actor), note=f"case {found.id}", if_version=None if newest is None else newest.version
     )
+    declared = await declarations.declared_now_or_last(
+        session, scope, found.agent, serving.registry.declared(found.agent)
+    )
     await settings.write_tuning(
         session,
         scope,
@@ -114,10 +117,9 @@ async def apply(
         wanted,
         written,
         actor=actor,
-        declared=serving.registry.declared(found.agent),
+        declared=declared,
         vault_keyring=await providers.keys_of(session, handles.vault, scope),
     )
-    declared = serving.registry.declared(found.agent)
     return await settings.settings_response(
         session, scope, found.agent, fixed=() if declared is None else declared.fixed
     )

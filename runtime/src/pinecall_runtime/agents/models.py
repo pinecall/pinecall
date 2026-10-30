@@ -1,4 +1,4 @@
-"""The agents tables: agent_canaries, _config, _documents, _lines, _widgets; hold_audio, lexicon, prompts."""
+"""The agents tables: canaries, config, declarations, documents, lines, widgets, hold_audio, lexicon, prompts."""
 
 from datetime import datetime
 from typing import Any
@@ -58,6 +58,21 @@ class AgentConfig(Model):
     author: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
     set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+
+
+class AgentDeclaration(Model):
+    """The last declaration an app made of the agent in a scope: what its class fixes, kept past the socket."""
+
+    __tablename__ = "agent_declarations"
+
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
+    holder: Mapped[str] = mapped_column(Text, primary_key=True)
+    agent: Mapped[str] = mapped_column(Text, primary_key=True)
+    # The wire's AgentConfig as the app sent it, every configure of one socket merged into the first.
+    declared: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    sdk: Mapped[str | None] = mapped_column(Text)
+    declared_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
 
 
 class AgentDocument(Model):

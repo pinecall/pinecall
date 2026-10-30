@@ -7,8 +7,8 @@ from fastapi import APIRouter, Query, Request
 
 from pinecall_runtime.agents import schemas
 from pinecall_runtime.agents.auth import CallsKey, KnownAgent, PipelineKey, WordsKey
-from pinecall_runtime.agents.declaration import Lexicon, Tuning, Version
-from pinecall_runtime.agents.service import canaries, settings
+from pinecall_runtime.agents.declaration import AgentConfig, Lexicon, Tuning, Version
+from pinecall_runtime.agents.service import canaries, declarations, settings
 from pinecall_runtime.agents.service.canaries import Canary
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.agents.service.settings import Written
@@ -53,7 +53,7 @@ async def put_settings(
         wanted,
         written,
         actor=actor,
-        declared=_registry(request).declared(slug),
+        declared=await _declared(request, session, actor.scope, slug),
         vault_keyring=keys,
     )
     return await _side_by_side(request, session, actor.scope, slug)
@@ -188,7 +188,7 @@ async def put_lexicon(
         for name, is_new in (("says", wanted.said != before.said), ("hears", wanted.heard != before.heard))
         if is_new
     ]
-    settings.refuse_what_the_class_sets(_registry(request).declared(slug), slug, changed)
+    settings.refuse_what_the_class_sets(await _declared(request, session, actor.scope, slug), slug, changed)
     # Nothing changes, nothing is written: a version says what moved.
     if changed or newest is None:
         await settings.put_lexicon(
@@ -222,13 +222,18 @@ def _vault(request: Request) -> Vault:
     return vault
 
 
-def _fixed(request: Request, slug: str) -> frozenset[str]:
-    declared = _registry(request).declared(slug)
+# What a process holding the agent declares, else what the scope's last one did: `fixed` outlives the socket.
+async def _declared(request: Request, session: Session, scope: Scope, slug: str) -> AgentConfig | None:
+    return await declarations.declared_now_or_last(session, scope, slug, _registry(request).declared(slug))
+
+
+async def _fixed(request: Request, session: Session, scope: Scope, slug: str) -> frozenset[str]:
+    declared = await _declared(request, session, scope, slug)
     return frozenset() if declared is None else declared.fixed
 
 
 async def _side_by_side(request: Request, session: Session, scope: Scope, slug: str) -> schemas.SettingsResponse:
-    return await settings.settings_response(session, scope, slug, fixed=_fixed(request, slug))
+    return await settings.settings_response(session, scope, slug, fixed=await _fixed(request, session, scope, slug))
 
 
 async def _lexicon_side_by_side(request: Request, session: Session, scope: Scope, slug: str) -> schemas.LexiconResponse:
@@ -238,7 +243,7 @@ async def _lexicon_side_by_side(request: Request, session: Session, scope: Scope
         yours=None if kept.yours is None else _lexicon_row(kept.yours),
         team=None if kept.team is None else _lexicon_row(kept.team),
         production=None if kept.production is None else _lexicon_row(kept.production),
-        fixed=sorted(_fixed(request, slug) & {"says", "hears"}),
+        fixed=sorted(await _fixed(request, session, scope, slug) & {"says", "hears"}),
     )
 
 

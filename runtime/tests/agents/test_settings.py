@@ -1,6 +1,8 @@
-"""The settings doors: a diff reads this person's corner, or the team's when asked."""
+"""The settings doors: a diff reads this person's corner or the team's; what the class fixed outlives the socket."""
 
-from tests.conftest import Gateway, Tenant, holding, needs_the_services
+import json
+
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
 from tests.fakes import acme
 
 
@@ -59,3 +61,22 @@ async def test_a_turn_the_ears_refuse_is_named_by_the_knobs_typed(gateway: Gatew
     assert refused.status_code == 400, refused.text
     assert "(turn endpointing_ms=50)" in refused.json()["detail"]
     assert "Turn(" not in refused.json()["detail"]
+
+
+# What the class fixed outlives the socket: a settings screen opened with nobody holding the agent,
+# and a gateway that restarted, still say what the class declared.
+@needs_the_services
+async def test_what_the_class_fixed_is_still_fixed_once_nobody_holds_the_agent(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    door = f"/v1/agents/{agent}/settings"
+    async with holding(gateway, tenant, agent) as app:
+        declared = {"config": {"language": "es-ES", "record": False}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        await received(app, "agent.configured")
+    held_by_nobody = await gateway.http.get(door, headers=tenant.person)
+    assert held_by_nobody.status_code == 200, held_by_nobody.text
+    assert held_by_nobody.json()["fixed"] == ["language", "record"]
+    refused = await gateway.http.put(door, json={"config": {"language": "fr-FR"}}, headers=tenant.person)
+    assert refused.status_code == 409, refused.text
+    assert f"language set by the class of {agent}" in refused.json()["detail"]

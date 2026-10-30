@@ -1,4 +1,4 @@
-"""Every query on the agents tables: settings and lexicon versions, canaries, widgets, hold audio, prompts."""
+"""Every query on the agents tables: settings, lexicon, declarations, canaries, widgets, hold audio, lines, prompts."""
 
 from collections.abc import Sequence
 from datetime import datetime
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pinecall_runtime.agents.models import (
     AgentCanary,
     AgentConfig,
+    AgentDeclaration,
     AgentDocument,
     AgentLine,
     AgentWidget,
@@ -21,7 +22,7 @@ from pinecall_runtime.kit.auth import THE_ORGS_OWN, Scope
 from pinecall_runtime.kit.repository import Repository
 from pinecall_runtime.kit.time import now
 
-type VersionedModel = type[AgentConfig] | type[Lexicon]
+type VersionedModel = type[AgentConfig] | type[Lexicon] | type[AgentDeclaration]
 
 
 class AgentConfigRepository(Repository[AgentConfig]):
@@ -327,6 +328,32 @@ class AgentDocumentRepository(Repository[AgentDocument]):
         return await self.update(row, body=body, set_at=now())
 
 
+class DeclarationRepository(Repository[AgentDeclaration]):
+    """The last declaration each scope's app made of an agent."""
+
+    model = AgentDeclaration
+
+    async def get(self, scope: Scope, agent: str) -> AgentDeclaration | None:
+        """The scope's own declaration, else the org's own in the env; None when neither declared the agent."""
+        return await self.one_or_none(
+            self.statement()
+            .where(*_scoped_or_orgs(AgentDeclaration, scope, agent))
+            .order_by(AgentDeclaration.holder.desc())
+            .limit(1)
+        )
+
+    async def put(self, scope: Scope, agent: str, declared: dict[str, Any], sdk: str | None) -> AgentDeclaration:
+        """Keep the declaration as the scope's, over the one before it."""
+        row = await self.one_or_none(self.statement().where(*_scoped(AgentDeclaration, scope, agent)))
+        if row is None:
+            return await self.add(
+                AgentDeclaration(
+                    org=scope.org, env=scope.env, holder=scope.holder, agent=agent, declared=declared, sdk=sdk
+                )
+            )
+        return await self.update(row, declared=declared, sdk=sdk, declared_at=now())
+
+
 class PromptRepository(Repository[Prompt]):
     """The blocks of prompt an org's calls were told, by hash."""
 
@@ -350,6 +377,7 @@ class Agents:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.configs = AgentConfigRepository(session)
+        self.declarations = DeclarationRepository(session)
         self.lexicons = LexiconRepository(session)
         self.canaries = CanaryRepository(session)
         self.widgets = WidgetRepository(session)

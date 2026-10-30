@@ -53,8 +53,12 @@ scope's newest version writes none and answers the one standing: a version says 
 
 `fixed` names the settings the class holding the agent declares itself, by the declaration's names
 (`language`, `voice`, `llm`, `realtime`, `stt`, `judge`, `greeting`, `hangup`, `turn`, `knowledge`, `docs`, `memory`,
-`record`): these run as the class says whatever the rows below hold. Empty when no app holds the
-agent here, or its class declares none. Each scope's **own** newest, or null when that scope set nothing; never the fallthrough, because
+`record`): these run as the class says whatever the rows below hold. What a process holding the agent
+declares now, else what the scope's last one declared: the gateway keeps each scope's last declaration
+(`agent_declarations`, the wire's `AgentConfig` as the app sent it, a socket's first declaration whole and
+its later ones merged in), so a settings screen opened with nobody holding the agent, and a gateway that
+restarted, still say what the class fixed. A developer's sandbox declaration is their own scope's; a
+colleague reads the org's own. Empty when no app ever declared the agent here, or its class declares none. Each scope's **own** newest, or null when that scope set nothing; never the fallthrough, because
 `if_version` is about the scope being written. `config` carries only the knobs the row set: `voice`,
 `tts`, `tts_model`, `stt`, `llm` (the three model knobs take `vendor/model`, a vendor alone to keep
 its own default model for the ears and the voice; for `llm` and `judge` a vendor alone is refused, a model is named — or a model alone, kept as `vendor/model` on the vendor the corner ran before, else the class's or the default), `temperature` (the
