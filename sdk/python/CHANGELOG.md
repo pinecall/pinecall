@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A class owns its judges and its personas.** `judges = judges(on=["consent", …])` names which of
+  Pinecall's judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`, one
+  each, in the library's format; `personas = personas(on=[…])` the same for the callers
+  `pinecall simulate` plays, its own `agents/<slug>/test/personas/<name>.json`. Both reach the gateway
+  on `agent.configure` (`judges`, `personas` on `AgentConfig`), the console shows them locked, and a
+  bad file or a folder the class never declared is refused when the agent registers, by sentence.
+
 - **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the
   reply played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting`
   on every turn; this one parses it and leaves it to `call.on`.

@@ -27,6 +27,8 @@ ENVIRONMENT: tuple[str, ...] = (
     "docs",
     "memory",
     "record",
+    "judges",
+    "personas",
 )
 
 # The ones a decorator declares: the models, the voice, and `knowledge`, which as an attribute
@@ -38,6 +40,8 @@ DECORATED: Mapping[str, str] = {
     "stt": '@stt("<vendor>/<model>")',
     "judge": '@judge("<vendor>/<model>")',
     "knowledge": '@knowledge(path="…", text="…")',
+    "judges": "judges(on=[…]) as a class attribute, `judges = judges(on=[…])`",
+    "personas": "personas(on=[…]) as a class attribute, `personas = personas(on=[…])`",
 }
 
 # Where `@knowledge` keeps what it declares, beside the class's other attributes.

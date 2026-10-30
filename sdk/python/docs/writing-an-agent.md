@@ -109,6 +109,21 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `record` | whether the call is recorded | `record = False` | `pinecall agent set --record on\|off` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `@knowledge(path="knowledge.md", text=…)` | `pinecall agent knowledge edit` |
 | `docs` | the base the agent searches per turn | `docs: ClassVar = {"base": "clinica-norte", "k": 4}` | `pinecall docs push`, then `pinecall docs attach <base>` |
+| `judges` | which of Pinecall's judges its calls meet, and its own | `judges = judges(on=["consent", …])`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | `personas = personas(on=["in-a-hurry", …])`, its own as `test/personas/<name>.json` | `pinecall personas on\|off\|add` |
+
+**The judges and the callers are the class's the same way.** `judges(on=[…])` names which of
+Pinecall's judges the agent's calls meet, every other off, and the agent's own judges are the files
+under `agents/<slug>/judges/`, one each, in the library's own format: front matter (`answer`,
+`choices`, `when`, `trigger`, `reads`) and the question below it, the file's name the judge's.
+`personas(on=[…])` is the same for the callers `pinecall simulate` plays, the agent's own under
+`agents/<slug>/test/personas/`, one JSON file each, what `PUT …/personas/{name}` takes. The folders
+are read beside the class's own file when the agent registers. Declared, the class is the agent's
+list: the console shows both locked, "set by the class", and `pinecall judges add` or
+`personas add` is refused naming the class; a class that declares neither leaves both to the console
+and the CLI, as before. A folder with files beside a class that declares nothing is refused when
+the agent registers, saying what to write. The org's own judges (`pinecall judges add --org`) meet
+every agent's calls either way.
 
 **Neither a fact the agent remembers nor a chunk of a base ever reaches the prompt.** Both arrive
 as a tool result, in the history, where a model reads them as information rather than as an
@@ -318,3 +333,6 @@ call, and never as a refusal from a gateway:
 | `language: str = "es"` (annotated as state) | `` `language` is the class's, not a call's state: declare it as a class attribute, `language = …` or `language: ClassVar = …` `` |
 | `knowledge = {…}` | `` `knowledge` is the class's, not a call's state: declare it as @knowledge(path="…", text="…") `` |
 | both `@llm(…)` and an `llm` attribute | `ClinicaNorte declares both @llm(…) and a llm attribute; keep one` |
+| a judge file with no question, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers.md: a judge asks a question of a call: write one below the front matter`, … |
+| a persona file with no `goal` or `style`, or a key the wire does not know | `in-a-rush.json: a persona wants something: write its goal, in the first person` |
+| `judges/` or `test/personas/` with files, and a class that declares neither | `agents/x/judges holds 2 judge(s) and the class declares none: judges = judges(on=["consent", …]) declares them, and which of Pinecall's run` |

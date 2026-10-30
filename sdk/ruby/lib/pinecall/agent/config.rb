@@ -13,10 +13,11 @@ module Pinecall
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
-      ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record].freeze
+      ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
+                       personas].freeze
 
-      # The ones written as the wire's own fields, keyword by keyword: `greeting say: "…"`.
-      AS_KEYWORDS = %i[turn knowledge docs memory].freeze
+      # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
+      AS_KEYWORDS = %i[turn knowledge docs memory judges personas].freeze
 
       NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
@@ -144,7 +145,8 @@ module Pinecall
         end
 
         # `turn endpointing_ms: 300`, `docs base: "…", k: 4`, `memory remember: […], forget: […]`,
-        # `knowledge path: "…", text: "…"`.
+        # `knowledge path: "…", text: "…"`, `judges on: [...]` and `personas on: [...]` (which of
+        # Pinecall's; the class's own are the files under `judges/` and `test/personas/`).
         AS_KEYWORDS.each do |field|
           define_method(field) do |**given|
             return environment[field] if given.empty?
@@ -190,10 +192,13 @@ module Pinecall
           @slug = name
         end
 
-        # The AgentConfig sent to the gateway: the contract, and the environment the class declares.
+        # The AgentConfig sent to the gateway: the contract, and the environment the class declares,
+        # the judges and the personas read from the folders beside the class's file.
         def wire_config(tools: nil)
+          here = source_file
           {
             **environment,
+            **Harness.declared(self, folder: here && File.dirname(here)),
             prompt: Prompt::FRAMEWORK,
             tools:,
             state_fields: state_field_specs,

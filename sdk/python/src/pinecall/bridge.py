@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from pydantic import TypeAdapter
 
-from pinecall import _accepts, _author, _config, _running, _searching, _state, _tools
+from pinecall import _accepts, _author, _config, _harness, _running, _searching, _state, _tools
 from pinecall._agent_socket import AgentSocket, Tool
 from pinecall._calls import Call
 from pinecall._cause import cause_of
@@ -144,6 +144,8 @@ def config_of(cls: type[Agent]) -> AgentConfig:
     """What the class declares: its layout, what it searches, shows and accepts, what it runs on."""
     declared: dict[str, object] = {
         **_config.environment_of(cls),
+        # The folders beside the class's file fill in what `judges` and `personas` declare.
+        **_harness.harness_of(cls, _harness.folder_of(cls)),
         "prompt": [spec.written() for spec in LAYOUT],
     }
     if _searching.searches(cls):

@@ -6,6 +6,7 @@ require_relative "agent/state"
 require_relative "agent/spec"
 require_relative "agent/tools"
 require_relative "agent/config"
+require_relative "agent/harness"
 require_relative "agent/knowledge"
 require_relative "agent/searching"
 

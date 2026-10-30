@@ -102,7 +102,7 @@ a call does — its arguments checked and converted, its writes authored, its li
 ## The rings above
 
 The verbs are the one `pinecall` CLI's (npm), the same for a Python project as for a TypeScript or
-a Ruby one, in the same layout: `agents/<slug>/agent.py`, `agents/<slug>/test/goldens/`,
+a Ruby one, in the same layout: `agents/<slug>/agent.py`, `agents/<slug>/test/goldens/`, `agents/<slug>/test/personas/`, `agents/<slug>/judges/`,
 `agents/<slug>/test/memory/`, `agents/<slug>/docs/`. Only `pinecall start` and `pinecall prompt` start
 this package's serve entry, `python -m pinecall.serve`, with the project's own interpreter; the
 others start nothing and reach whoever holds the agent.

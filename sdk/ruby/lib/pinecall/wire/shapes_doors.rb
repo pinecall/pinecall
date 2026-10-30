@@ -37,7 +37,9 @@ module Pinecall
           uses_knowledge: { kind: :bool, default: false },
           state_fields: { kind: :list, items: { kind: :ref, ref: "StateFieldSpec" } },
           view: { kind: :ref, ref: "ViewSpec" },
-          events: { kind: :list, items: { kind: :ref, ref: "EventSpec" } }
+          events: { kind: :list, items: { kind: :ref, ref: "EventSpec" } },
+          judges: { kind: :ref, ref: "JudgesDeclared" },
+          personas: { kind: :ref, ref: "PersonasDeclared" }
         }.freeze,
         "KnowledgePush" => {
           files: { kind: :list, items: { kind: :ref, ref: "KnowledgeFile" }, required: true }

@@ -6,6 +6,46 @@ module Pinecall
   module Wire
     module Shapes
       CONFIG = {
+        "JudgeDeclaration" => {
+          name: { kind: :str, required: true },
+          question: { kind: :str, required: true },
+          answer: { kind: :enum, values: %w[verdict choice score], default: "verdict" },
+          choices: { kind: :list, items: { kind: :str } },
+          when: { kind: :enum, values: %w[always simulations trigger], default: "always" },
+          trigger: { kind: :str },
+          reads: { kind: :list, items: { kind: :enum, values: %w[prompt evidence facts] } }
+        }.freeze,
+        "JudgesDeclared" => {
+          on: { kind: :list, items: { kind: :str } },
+          own: { kind: :list, items: { kind: :ref, ref: "JudgeDeclaration" } }
+        }.freeze,
+        "CallerBehavior" => {
+          interrupts: { kind: :float },
+          pause_s: { kind: :float },
+          interferer_db: { kind: :float, null: true },
+          packet_loss: { kind: :float },
+          backchannels: { kind: :float },
+          speed: { kind: :float },
+          ambience: { kind: :enum, values: %w[television cafe office street] }
+        }.freeze,
+        "PersonaDeclaration" => {
+          name: { kind: :str, required: true },
+          goal: { kind: :str, required: true },
+          style: { kind: :str, required: true },
+          about: { kind: :str },
+          facts: { kind: :map, items: { kind: :str } },
+          state: { kind: :json },
+          expects: { kind: :list, items: { kind: :str } },
+          tags: { kind: :list, items: { kind: :str } },
+          behavior: { kind: :ref, ref: "CallerBehavior" },
+          llm: { kind: :str, null: true },
+          tts: { kind: :str, null: true },
+          voice: { kind: :str, null: true }
+        }.freeze,
+        "PersonasDeclared" => {
+          on: { kind: :list, items: { kind: :str } },
+          own: { kind: :list, items: { kind: :ref, ref: "PersonaDeclaration" } }
+        }.freeze,
         "PromptBlockSpec" => {
           name: { kind: :str, required: true, pattern: "^[a-z][a-z0-9_]*$" },
           region: { kind: :ref, ref: "PromptRegion", required: true }

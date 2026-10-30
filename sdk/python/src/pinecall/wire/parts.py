@@ -6,6 +6,7 @@ from pydantic import AliasChoices, Field
 
 from pinecall.wire._names import Channel, EventSource, Json, JsonObject
 from pinecall.wire.frames import WireModel
+from pinecall.wire.judging import JudgesDeclared, PersonasDeclared
 
 # What a console may ask of the process standing in the agent's directory, relayed by the gateway.
 DevVerb: TypeAlias = Literal[
@@ -369,3 +370,6 @@ class AgentConfig(WireModel):
     state_fields: list[StateFieldSpec] | None = None
     view: ViewSpec | None = None
     events: list[EventSpec] | None = None
+    # Declared, the class owns the agent's judges and its personas: no door writes either.
+    judges: JudgesDeclared | None = None
+    personas: PersonasDeclared | None = None

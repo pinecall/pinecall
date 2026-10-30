@@ -99,6 +99,8 @@ module Pinecall
     def self.turn: (**untyped) -> untyped
     def self.knowledge: (**untyped) -> untyped
     def self.docs: (**untyped) -> untyped
+    def self.judges: (**untyped) -> untyped
+    def self.personas: (**untyped) -> untyped
     def self.memory: (**untyped) -> untyped
     def self.environment: () -> Hash[Symbol, untyped]
 

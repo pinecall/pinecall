@@ -45,6 +45,7 @@ lib/pinecall/
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
   agent/config.rb            the four a class may still declare, and the world's twelve, refused at load by name
+  agent/harness.rb           `judges on:` and `personas on:` filled in from the folders beside the class's file: `judges/*.md`, `test/personas/*.json`
   view.rb                    the ERB template and what it is rendered in
   rules.rb                   the framework's own words: the rules, the protocols, and the channel's
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
@@ -125,7 +126,7 @@ diffed, and no view renders it. The class is the contract; what it runs on is th
 |---|---|
 | `channel_rules false` | the `identity` block without its `<channel>` part: how to write for a voice, a website's chat, or WhatsApp |
 | `phone`, `whatsapp`, `web` | nothing: accepted, so an old class still loads, and read by nobody. A door is a row the org keeps (`pinecall numbers import`) |
-| `voice`, `llm`, `stt`, `judge`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm`, `stt` and `judge` reach the vendor's plugin, on the org's own key alone; `greeting` takes words or `:improvise` / `improvise("…")` (`Config::Improvised`), `hangup` words or `true`, and `stt` an `end_of_turn:` |
+| `voice`, `llm`, `stt`, `judge`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs`, `judges`, `personas` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm`, `stt` and `judge` reach the vendor's plugin, on the org's own key alone; `greeting` takes words or `:improvise` / `improvise("…")` (`Config::Improvised`), `hangup` words or `true`, and `stt` an `end_of_turn:` |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
