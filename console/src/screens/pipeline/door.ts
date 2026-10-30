@@ -70,6 +70,8 @@ function door(agent: string): string {
 // Separate doors, not a settings field, so a whole-settings PUT cannot clear it.
 /** Audio played while a tool runs or the model is slow: the default melody, none, or an uploaded file, after `after_s` seconds of quiet. */
 export const HoldAudioSchema = z.object({
+  /** True when the agent's class declares its melody: the card is read-only. */
+  fixed: z.boolean().optional(),
   played: z.enum(["default", "off", "custom"]),
   name: z.string().nullable(),
   seconds: z.number().nullable(),

@@ -13,16 +13,16 @@ import httpx
 from pinecall._agent_socket import ANSWER_WITHIN_S, AgentSocket, Role, Tool
 from pinecall._calls import Call
 from pinecall._connection import Backoff, Connection, Handlers
-from pinecall._endpoints import knowledge_url, lookup_url, signed
+from pinecall._endpoints import hold_audio_url, knowledge_url, lookup_url, signed
 from pinecall._listeners import AnyListener, Listener, Listeners
 from pinecall._version import __version__
 from pinecall.errors import NotConnected, PinecallError, Refused, WireError
 from pinecall.observe import Observation, Page, Reader, history, observe
 from pinecall.wire._names import Env, JsonObject
 from pinecall.wire.commands import COMMANDS
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.events import ErrorEvent, event_of
 from pinecall.wire.frames import Command, Entry, WireModel
-from pinecall.wire.parts import AgentConfig
 
 # The `error` code a person's stop sends (`POST /v1/apps/{app}/stop`): the client never dials
 # again after it, or the stop would undo itself.
@@ -229,6 +229,32 @@ class Client:
             raise Refused(str(answered.status_code), detail_of(answered))
         chunks = typing.cast("list[dict[str, str | None]]", answered.json()["output"]["chunks"])
         return [Found(str(one["path"]), one.get("heading"), str(one["text"])) for one in chunks]
+
+    # ── the hold melody ──
+
+    async def hold_audio(self, agent: str) -> JsonObject:
+        """What the agent plays while a tool runs: `{played, source_sha256, after_s, fixed, …}`."""
+        async with httpx.AsyncClient() as http:
+            answered = await http.get(
+                hold_audio_url(self.url, agent), headers=signed(*self._signing)
+            )
+        if answered.is_error:
+            raise Refused(str(answered.status_code), detail_of(answered))
+        return typing.cast("JsonObject", answered.json())
+
+    async def upload_hold_audio(self, agent: str, data: bytes, name: str) -> JsonObject:
+        """The file the class declares as its melody, shipped by this process as the body."""
+        headers = {**signed(*self._signing), "content-type": "application/octet-stream"}
+        async with httpx.AsyncClient() as http:
+            answered = await http.put(
+                hold_audio_url(self.url, agent),
+                params={"name": name},
+                content=data,
+                headers=headers,
+            )
+        if answered.is_error:
+            raise Refused(str(answered.status_code), detail_of(answered))
+        return typing.cast("JsonObject", answered.json())
 
     # ── a base pushed ──
 

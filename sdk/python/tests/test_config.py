@@ -27,6 +27,28 @@ class Fijada(Agent):
     record = False
 
 
+class Dibujada(Agent):
+    """Recepción que dibuja su widget."""
+
+    widget: ClassVar = {
+        "title": "Pip",
+        "tagline": "Brightside Dental",
+        "accent": "#0f766e",
+        "theme": "auto",
+    }
+
+
+def test_how_the_widget_looks_is_sent_as_the_class_declares_it() -> None:
+    sent = config_of(Dibujada).model_dump(exclude_none=True)
+    assert sent["widget"] == {
+        "title": "Pip",
+        "tagline": "Brightside Dental",
+        "accent": "#0f766e",
+        "theme": "auto",
+        "autostart": False,
+    }
+
+
 class Acotada(Agent):
     """Recepción que fija cuánto dura una llamada y cuánto espera al modelo."""
 

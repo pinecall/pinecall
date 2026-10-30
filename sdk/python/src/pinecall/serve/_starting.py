@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from typing import TextIO
 
 from pinecall._docs import push_declared_docs
+from pinecall._melody import upload_declared_hold
 from pinecall.bridge import Mounted, mount
 from pinecall.client import Client
 from pinecall.serve._held import Held
@@ -69,6 +70,7 @@ async def start(
         # The documents a class declares as its base, once per process, before any call.
         for slug, cls in classes:
             await push_declared_docs(client, cls, _said_as(err, slug))
+            await upload_declared_hold(client, cls, slug, _said_as(err, slug))
         return await leave(Held(client, mounted), asked, err)
     finally:
         printer.close()

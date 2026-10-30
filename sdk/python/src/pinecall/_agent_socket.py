@@ -20,6 +20,7 @@ from pinecall.wire.commands import (
     DevRefusal,
     Ping,
 )
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.events import (
     EVENTS,
     AgentConfigured,
@@ -31,7 +32,7 @@ from pinecall.wire.events import (
 )
 from pinecall.wire.events_turn import ToolCall
 from pinecall.wire.frames import Entry, WireModel
-from pinecall.wire.parts import END_CALL, AgentConfig, DevVerb, ToolResult, ToolSpec
+from pinecall.wire.parts import END_CALL, DevVerb, ToolResult, ToolSpec
 
 if TYPE_CHECKING:
     from pinecall.client import Client

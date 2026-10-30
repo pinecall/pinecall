@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **`static hold` and `static widget`.** The hold melody — a file beside the class, uploaded once the agent
+  registers unless the gateway holds it already, the wait before it, or `"off"` — and how the widget presents the
+  agent, declared on the class and fixed over the console. `Pinecall.holdAudio` and `.uploadHoldAudio` are the doors.
+
 - **A class that declares `docs` pushes its folder.** Once the agent registers, every Markdown file under
   `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per
   process: `pinecall start` and a deploy need no `pinecall docs push`. `Pinecall.pushKnowledge` is the door.

@@ -77,6 +77,16 @@ setting the wait keeps what plays. `pinecall pipeline melody` is the same five, 
 The worker's own reads are `GET /v1/agents/{slug}/hold-audio` and `…/audio`, on the fleet's key,
 in the call's scope.
 
+**The class's own.** An agent whose class declares its melody (`AgentConfig.hold`,
+[wire/shapes.md](../wire/shapes.md)) answers `fixed: true`, the class's `after_s` and its `off`
+over the row's, and these doors write nothing for it: `PUT …/played`, `PUT …/after` and an upload
+are `409 hold set by the class of {slug}: …`. The file the class ships comes in by
+`PUT /v1/agents/{slug}/hold-audio?name=`, on the app's own key, beside the worker's reads: it takes
+the one file whose sha256 the class declared (`clip`), `409` for any other and for an agent whose
+class declares no melody. The class's own process sends it when the agent registers; the answer
+says `source_sha256`, the hash of the bytes as uploaded, and a second start that reads its hash
+there uploads nothing.
+
 ## Recorded lines — `POST /v1/agents/{slug}/lines` · `GET /v1/lines/{id}.mp3`
 
 A line an app wants a page to play **with no call**: said once in the agent's own voice and kept,

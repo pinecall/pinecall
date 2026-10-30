@@ -29,6 +29,7 @@ ENVIRONMENT: tuple[str, ...] = (
     "record",
     "judges",
     "personas",
+    "widget",
 )
 
 # The ones a decorator declares: the models, the voice, and `knowledge`, which as an attribute
@@ -48,7 +49,7 @@ DECORATED: Mapping[str, str] = {
 KNOWLEDGE = "_pinecall_knowledge"
 
 # Minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts seconds.
-CLOCKS = ("max_duration", "llm_timeout")
+CLOCKS = ("max_duration", "llm_timeout", "hold")
 NOT_A_DURATION = (
     'max_duration is the longest a voice call runs: 1 to 60 minutes, or "off" for no limit'
 )

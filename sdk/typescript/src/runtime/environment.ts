@@ -23,6 +23,7 @@ export const ENVIRONMENT = [
   "record",
   "judges",
   "personas",
+  "widget",
 ] as const;
 
 type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number] | "maxDurationS" | "llmTimeoutS">;

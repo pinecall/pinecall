@@ -19,6 +19,14 @@ module Pinecall
         ask(request, api_key:, env:)
       end
 
+      # The body is the file, as the hold melody's door takes it.
+      def put_bytes(url, bytes, api_key:, env: nil)
+        request = Net::HTTP::Put.new(URI.parse(url))
+        request["content-type"] = "application/octet-stream"
+        request.body = bytes
+        ask(request, api_key:, env:)
+      end
+
       def post(url, body, api_key:, env: nil)
         request = Net::HTTP::Post.new(URI.parse(url))
         request["content-type"] = "application/json"

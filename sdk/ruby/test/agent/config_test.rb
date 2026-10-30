@@ -25,6 +25,18 @@ class ConfigTest < Minitest::Test
     record false
   end
 
+  # Recepción que dibuja su widget.
+  class Dibujada < Pinecall::Agent
+    widget title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto"
+  end
+
+  def test_how_the_widget_looks_is_sent_as_the_class_declares_it
+    sent = Dibujada.wire_config(tools: [])
+
+    assert_equal({ title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto" }, sent[:widget])
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
   # Recepción que fija cuánto dura una llamada y cuánto espera al modelo.
   class Acotada < Pinecall::Agent
     max_duration 20

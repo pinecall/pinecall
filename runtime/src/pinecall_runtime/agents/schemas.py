@@ -15,6 +15,7 @@ from pinecall_runtime.wire.parts import (
     EndOfTurn,
     GreetingConfig,
     HangupConfig,
+    HoldConfig,
     MemoryConfig,
     ModelConfig,
     Pronunciation,
@@ -338,18 +339,36 @@ class HoldAudio(WireModel):
 
     played: HoldPlayed
     sha256: str | None = None
+    # The hash of the clip as it was uploaded, before conversion: what a class that ships it says.
+    source_sha256: str | None = None
     seconds: float | None = None
     name: str | None = None
-    # The wait that plays: the org's, else the runtime's.
+    # The wait that plays: the class's, else the org's, else the runtime's.
     after_s: float = HOLD_AFTER_S
+    # True when the agent's class declares its melody: the doors write nothing but the class's own file.
+    fixed: bool = False
 
     @classmethod
-    def of(cls, row: HoldAudioRow | None) -> Self:
-        """What the agent plays, from its row; the runtime's melody after its own wait when it has none."""
-        if row is None:
-            return cls(played=HoldPlayed.default)
-        after_s = HOLD_AFTER_S if row.after_s is None else row.after_s
-        return cls(played=row.played, sha256=row.sha256, seconds=row.seconds, name=row.name, after_s=after_s)
+    def of(cls, row: HoldAudioRow | None, declared: HoldConfig | None = None) -> Self:
+        """What the agent plays, from its row and its class; the runtime's melody after its wait when neither says."""
+        read = cls(played=HoldPlayed.default)
+        if row is not None:
+            after_s = HOLD_AFTER_S if row.after_s is None else row.after_s
+            read = cls(
+                played=row.played,
+                sha256=row.sha256,
+                source_sha256=row.source_sha256,
+                seconds=row.seconds,
+                name=row.name,
+                after_s=after_s,
+            )
+        if declared is None:
+            return read
+        # The class's wait and its silence win; its clip is the row's once its process uploaded it.
+        unsilenced = HoldPlayed.default if read.played is HoldPlayed.off else read.played
+        played = HoldPlayed.off if declared.off else unsilenced
+        after_s = read.after_s if declared.after_s is None else declared.after_s
+        return read.model_copy(update={"played": played, "after_s": after_s, "fixed": True})
 
 
 class PlayedRequest(WireModel):
@@ -452,6 +471,8 @@ class WidgetSettings(WireModel):
     accent: str | None = None
     autostart: bool = False
     theme: WidgetTheme | None = None
+    # True when the agent's class declares the look: a PUT is refused naming the class.
+    fixed: bool = False
 
 
 class MoveAgentRequest(Schema):

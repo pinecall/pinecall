@@ -14,6 +14,8 @@ const SettingsSchema = z.object({
   autostart: z.boolean(),
   // Absent on older gateways; null means auto.
   theme: z.enum(["auto", "light", "dark"]).nullish(),
+  /** True when the agent's class declares the look: the form is read-only. */
+  fixed: z.boolean().optional(),
 });
 export type WidgetSettings = z.infer<typeof SettingsSchema>;
 

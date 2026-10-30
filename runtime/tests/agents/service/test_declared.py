@@ -10,6 +10,7 @@ from pinecall_runtime.wire.parts import AgentConfig as Declared
 from pinecall_runtime.wire.parts import (
     DocsConfig,
     GreetingConfig,
+    HoldConfig,
     JudgeDeclaration,
     JudgesDeclared,
     MemoryConfig,
@@ -20,6 +21,7 @@ from pinecall_runtime.wire.parts import (
     Pronunciation,
     TurnConfig,
     VoiceConfig,
+    WidgetLook,
 )
 from tests.fakes import talker
 from tests.fakes.acme import ACME
@@ -185,6 +187,18 @@ def test_the_longest_call_and_the_models_timeout_the_class_declares_are_fixed_an
         with_app_fields(NOTHING, Declared(max_duration_s=30))
     with pytest.raises(ValidationError, match="llm_timeout_s is a positive number of seconds"):
         with_app_fields(NOTHING, Declared(llm_timeout_s=0))
+
+
+def test_the_melody_and_the_widget_the_class_declares_are_fixed_and_held_to_the_doors_rules() -> None:
+    """Declared, both are fixed; a wait out of its band and a look a widget would refuse are refused by sentence."""
+    config = with_app_fields(NOTHING, Declared(hold=HoldConfig(after_s=1.5, off=True), widget=WidgetLook(title="Pip")))
+    assert config.hold is not None and config.hold.after_s == 1.5 and config.hold.off
+    assert config.widget is not None and config.widget.title == "Pip"
+    assert config.fixed == frozenset({"hold", "widget"})
+    with pytest.raises(ValidationError, match="after_s 31: the melody starts after 0 to 30 seconds"):
+        with_app_fields(NOTHING, Declared(hold=HoldConfig(after_s=31)))
+    with pytest.raises(ValidationError, match="a widget's title is 80 characters at most"):
+        with_app_fields(NOTHING, Declared(widget=WidgetLook(title="x" * 81)))
 
 
 def test_the_judges_and_the_personas_the_class_declares_are_fixed_and_let_go_when_sent_null() -> None:

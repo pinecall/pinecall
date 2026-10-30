@@ -550,6 +550,30 @@ The personas the class owns, declared as `personas` on `AgentConfig`: which of P
 | `on` | `string[]` | no | The names of Pinecall's personas the agent's runs play; every other is off. A name that is none of the library's is refused. |
 | `own` | `PersonaDeclaration[]` | no | The agent's own callers, one each; two of one name are refused. |
 
+### `HoldConfig`
+
+The hold melody as the class declares it, on `AgentConfig.hold`: the file it ships, named by the sha256 of its bytes, the wait before the melody, or silence. Declared, the class owns the melody: the pipeline's hold doors write nothing for the agent (`409 hold set by the class of …`). The file itself comes in by `PUT /v1/agents/{slug}/hold-audio`, on the app's own key, which takes that one file by the hash the class declared and nothing else; the class's process sends it when it registers, and a second start with the same file uploads nothing.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `clip` | `string` | no | The sha256 of the file the class plays, as shipped; absent, the runtime's own melody (or silence, with `off`). |
+| `name` | `string` | no | The file's name, as the console shows it. |
+| `after_s` | `number` | no | Seconds of the agent's quiet before the melody starts, 0 to 30; absent, the runtime's own wait. |
+| `off` | `boolean` | no | True plays nothing while a tool runs. |
+
+### `WidgetLook`
+
+How the widget presents the agent, as the class declares it, on `AgentConfig.widget`: what `PUT /v1/agents/{slug}/widget` takes. Declared, the class owns the look: the widget reads it, and the door writes nothing for the agent (`409 widget set by the class of …`).
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `title` | `string` | no | The agent's name on the widget, 80 characters at most. |
+| `tagline` | `string` | no | The line under the name, 160 at most. |
+| `greeting` | `string` | no | What the widget says before the call starts, 500 at most. |
+| `accent` | `string` | no | The accent colour, as CSS writes one. |
+| `autostart` | `boolean` | no | Whether the call starts as the page opens. |
+| `theme` | `WidgetTheme` | no | Light, dark, or the page's own. |
+
 ### `AgentConfig`
 
 What an app declares about its agent: the prompt's layout, the language, the tools, whether it searches its bases itself, and who may see and send what. Every field is optional so a configure can change one thing. The environment — language, voice, models, greeting, hangup, turn, says, hears, knowledge, docs, memory, record, the longest call and the model's timeout, and the agent's judges and personas — is the agent's settings' unless the class declares it: **what the class declares wins** over the settings for that agent, which may not set it while the class does (`409`, and the settings doors list it under `fixed`). Sent as null, a field is the settings' again; left out of a configure, it stays as the class last declared it. An `agent.configure` is checked before it is taken, so what cannot run is refused when it is declared and never on a call: every model and voice it names is tried on the org's keys (a vendor nobody keyed is refused in the sentence a call would have closed with), and so are its own plugin options or a realtime model on a key the platform lends, ears asked to end the turn that cannot, a search with no base attached, a turn threshold outside its band, a static block after a dynamic one, and a judge or a persona of the class's that a `PUT` of it would refuse.
@@ -580,5 +604,7 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `view` | `ViewSpec` | no | The panel this agent draws beside a conversation, or absent when it draws none. |
 | `events` | `EventSpec[]` | no | The outside events this agent accepts and from whom. Anything else is refused before it touches the log. |
 | `judges` | `JudgesDeclared` | no | The judges the class owns: which of Pinecall's its calls meet, and its own, read from `judges/`. Declared, it wins over the console's and `pinecall judges`, which refuse it naming the class. Absent, the org writes the agent's judges as rows. |
+| `hold` | `HoldConfig` | no | The hold melody the class owns: its file by hash, the wait, or silence. Declared, the pipeline's hold doors refuse a write naming the class. |
+| `widget` | `WidgetLook` | no | How the widget presents the agent, owned by the class. Declared, `PUT …/widget` refuses naming the class. |
 | `personas` | `PersonasDeclared` | no | The personas the class owns: which of Pinecall's its runs play, and its own, read from `test/personas/`. Declared, it wins over the console's and `pinecall personas`. Absent, the org writes them as rows. |
 

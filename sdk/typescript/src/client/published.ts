@@ -3,9 +3,10 @@
 import { type KnowledgeFile } from "../wire/agent-config.js";
 import { toCamel, type Camel } from "../wire/codec.js";
 import { RecordedLinesSchema, type RecordedLine } from "../wire/rest-lines.js";
+import { HoldAudioSchema, type HoldAudio } from "../wire/rest-hold.js";
 import { KnowledgePushedSchema, type KnowledgePushed } from "../wire/rest-retrieval.js";
 import { detailOf } from "./answered.js";
-import { knowledgeUrl, linesUrl, publishedUrl } from "./endpoints.js";
+import { holdAudioUrl, knowledgeUrl, linesUrl, publishedUrl } from "./endpoints.js";
 import { PinecallError } from "./frames.js";
 import { signed, type World } from "./signed.js";
 
@@ -38,6 +39,26 @@ export async function pushKnowledge(door: Door, base: string, files: KnowledgeFi
   const text = await answered.text();
   if (!answered.ok) throw new PinecallError(`push ${base}: the gateway answered ${answered.status}: ${detailOf(text)}`);
   return toCamel(KnowledgePushedSchema.parse(JSON.parse(text)));
+}
+
+/** What the agent plays while a tool runs, and the hash of the file that landed. */
+export async function holdAudio(door: Door, agent: string): Promise<Camel<HoldAudio>> {
+  const answered = await fetch(holdAudioUrl(door.url, agent), { headers: signed(door.apiKey, door.env) });
+  const text = await answered.text();
+  if (!answered.ok) throw new PinecallError(`hold audio: the gateway answered ${answered.status}: ${detailOf(text)}`);
+  return toCamel(HoldAudioSchema.parse(JSON.parse(text)));
+}
+
+/** The file the class declares as its melody, shipped by the process that holds the agent; the body is the file. */
+export async function uploadHoldAudio(door: Door, agent: string, file: Uint8Array, name: string): Promise<Camel<HoldAudio>> {
+  const answered = await fetch(`${holdAudioUrl(door.url, agent)}?name=${encodeURIComponent(name)}`, {
+    method: "PUT",
+    headers: { ...signed(door.apiKey, door.env), "content-type": "application/octet-stream" },
+    body: file,
+  });
+  const text = await answered.text();
+  if (!answered.ok) throw new PinecallError(`upload ${name}: the gateway answered ${answered.status}: ${detailOf(text)}`);
+  return toCamel(HoldAudioSchema.parse(JSON.parse(text)));
 }
 
 /** Publish a JSON object under a name, over the one before it, for any page to read with no key. */

@@ -30,6 +30,11 @@ export function publishedUrl(base: string, agent: string, name: string): string 
   return doorAt(base, `/v1/agents/${encodeURIComponent(agent)}/public/${encodeURIComponent(name)}`, false);
 }
 
+/** `GET` · `PUT /v1/agents/{slug}/hold-audio`: the agent's hold melody as its own process reads it, and the file its class ships. */
+export function holdAudioUrl(base: string, agent: string): string {
+  return doorAt(base, `/v1/agents/${encodeURIComponent(agent)}/hold-audio`, false);
+}
+
 /** `PUT /v1/knowledge/{base}`: a folder of Markdown written into a base, the base's other files kept. */
 export function knowledgeUrl(base: string, name: string): string {
   return doorAt(base, `/v1/knowledge/${encodeURIComponent(name)}`, false);

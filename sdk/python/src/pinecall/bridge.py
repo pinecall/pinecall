@@ -10,7 +10,17 @@ from dataclasses import dataclass, field
 
 from pydantic import TypeAdapter
 
-from pinecall import _accepts, _author, _config, _harness, _running, _searching, _state, _tools
+from pinecall import (
+    _accepts,
+    _author,
+    _config,
+    _harness,
+    _melody,
+    _running,
+    _searching,
+    _state,
+    _tools,
+)
 from pinecall._agent_socket import AgentSocket, Tool
 from pinecall._calls import Call
 from pinecall._cause import cause_of
@@ -22,10 +32,11 @@ from pinecall.call import CallLine, CallWorld
 from pinecall.client import Client, Found
 from pinecall.errors import ToolFailed
 from pinecall.wire._names import JsonObject
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.events_call import CallAttached, CallStarted
 from pinecall.wire.events_turn import EventReceived, MemoryOps
 from pinecall.wire.frames import WireModel
-from pinecall.wire.parts import AgentConfig, ToolSpec
+from pinecall.wire.parts import ToolSpec
 
 logger = logging.getLogger("pinecall")
 
@@ -146,6 +157,8 @@ def config_of(cls: type[Agent]) -> AgentConfig:
         **_config.environment_of(cls),
         # The folders beside the class's file fill in what `judges` and `personas` declare.
         **_harness.harness_of(cls, _harness.folder_of(cls)),
+        # The melody the class ships, named by its hash.
+        **_melody.hold_config_of(cls),
         "prompt": [spec.written() for spec in LAYOUT],
     }
     if _searching.searches(cls):

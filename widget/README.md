@@ -44,7 +44,8 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 Attributes are read once when the element connects, except `token-url`, which is read for every
 token. Use one tag per agent; several can share a page. The console stores these settings per
 agent (`GET`/`PUT /v1/agents/{slug}/widget`) to generate a snippet; the widget itself only reads
-its attributes.
+its attributes. A class that declares `widget` (`static widget = { title, tagline, … }`) owns those settings:
+the console shows them locked and the snippet carries what the class says.
 
 Without `log-url`, transcripts come from LiveKit text streams only, "Call us" shows just the
 number, and there is no tools toggle.

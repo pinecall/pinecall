@@ -11,8 +11,9 @@ from pinecall._connection import Backoff
 from pinecall.client import Client, Drained
 from pinecall.wire._names import JsonObject
 from pinecall.wire.commands import Ping
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.frames import Entry
-from pinecall.wire.parts import AgentConfig, ToolSpec
+from pinecall.wire.parts import ToolSpec
 from tests.fakes.gateway import KEY, FakeGateway
 
 QUICK = Backoff(first_s=0.01, cap_s=0.05)

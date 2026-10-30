@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`hold` and `widget`** as class attributes: the hold melody — a file beside the class, shipped once the agent
+  registers unless the gateway holds it already, the wait before it, or `"off"` — and how the widget presents the
+  agent, fixed over the console. `Client.hold_audio` and `.upload_hold_audio` are the doors.
+
 - **A class that declares `docs` pushes its folder.** Once the agent registers, every Markdown file under
   `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per
   process: `pinecall start` and a deploy need no `pinecall docs push`. `Client.push_knowledge` is the door.

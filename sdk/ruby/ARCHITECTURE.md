@@ -46,6 +46,7 @@ lib/pinecall/
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
   agent/config.rb            the four a class may still declare, and the world's twelve, refused at load by name
   agent/harness.rb           `judges on:` and `personas on:` filled in from the folders beside the class's file: `judges/*.md`, `test/personas/*.json`
+  agent/melody.rb            the hold melody a class declares: the file beside it, named on the wire by its sha256
   view.rb                    the ERB template and what it is rendered in
   rules.rb                   the framework's own words: the rules, the protocols, and the channel's
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
@@ -59,6 +60,7 @@ lib/pinecall/
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
   serve/loading.rb           its flags, the class in a file, a state field by field
   serve/declared_docs.rb     the `docs/` folder beside a class that declares its base, pushed once the agent registers
+  serve/declared_hold.rb     the melody a class ships, uploaded once the agent registers unless the gateway holds that file
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
   serve/masking.rb           what `--events` prints of an agent's entries: the values it declared `pii`, masked
   serve/viewing.rb           `view.render`, the one console verb an agent's own process answers

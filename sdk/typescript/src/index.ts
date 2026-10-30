@@ -12,6 +12,7 @@ export * from "./agent/tools.js";
 export { z } from "zod";
 export * from "./agent/decorators.js";
 export * from "./agent/opening.js";
+export type { HoldDeclaration } from "./agent/melody.js";
 // Only the type; stage readers are internal.
 export type { Stages } from "./agent/stages.js";
 // `typesKnown` stays the bridge's: only run-tool.ts asks it.

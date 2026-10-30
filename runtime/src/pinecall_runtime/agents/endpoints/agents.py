@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import hashlib
 import json
 import time
 from typing import Annotated, Any, cast
@@ -19,15 +20,15 @@ from pinecall_runtime.agents.auth import (
     sees_every_scope,
 )
 from pinecall_runtime.agents.declaration import AgentConfig, Greeting, Modality
-from pinecall_runtime.agents.service import hold_audio, settings, widgets
+from pinecall_runtime.agents.service import declarations, hold_audio, settings, widgets
 from pinecall_runtime.agents.service.registry import AgentRegistry, Registration, named_holder
-from pinecall_runtime.agents.service.settings import Picked
+from pinecall_runtime.agents.service.settings import Picked, SetByTheClass
 from pinecall_runtime.agents.service.widgets import Clip, Look
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import Channel, KeyScope
-from pinecall_runtime.exceptions import NotFound, PinecallError, ValidationError
+from pinecall_runtime.exceptions import Conflict, NotFound, PinecallError, ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import handles_of
@@ -35,9 +36,14 @@ from pinecall_runtime.kit.http import capped_body
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.providers.schemas import Catalog
-from pinecall_runtime.wire.parts import GreetingConfig
+from pinecall_runtime.wire.parts import GreetingConfig, HoldConfig
 
 router = APIRouter()
+
+NOT_THE_CLASSS_FILE = (
+    "{slug} takes no melody here: this door takes the file its class declares as `hold`, by the hash it declared, "
+    "from the process that holds the agent; a file of the org's goes through PUT …/pipeline/hold-audio"
+)
 
 # Every agent answers on the widget; no route row is needed for it.
 ON_THE_WEB: frozenset[Channel] = frozenset({Channel.web})
@@ -125,9 +131,34 @@ async def agent_credentials(
 
 
 @router.get("/v1/agents/{slug}/hold-audio")
-async def worker_hold_audio(slug: KnownAgent, actor: WorkerKey, session: Session) -> schemas.HoldAudio:
+async def worker_hold_audio(
+    slug: KnownAgent, actor: WorkerKey, request: Request, session: Session
+) -> schemas.HoldAudio:
     """What a caller of the agent hears while a tool runs."""
-    return schemas.HoldAudio.of(await widgets.get_hold_audio(session, actor.org, actor.env, slug))
+    row = await widgets.get_hold_audio(session, actor.org, actor.env, slug)
+    return schemas.HoldAudio.of(row, await _declared_hold(request, session, actor.scope, slug))
+
+
+# The class's own melody comes in by this door, on the app's key: only the file the class declared,
+# by its hash, and nothing for an agent whose class declares none (the pipeline's door is the org's).
+@router.put("/v1/agents/{slug}/hold-audio")
+async def ship_hold_audio(
+    slug: KnownAgent,
+    request: Request,
+    actor: WorkerKey,
+    session: Session,
+    name: Annotated[str | None, Query(max_length=200)] = None,
+) -> schemas.HoldAudio:
+    """The file the agent's class declares as its melody, uploaded by the process that holds it."""
+    data = await capped_body(request, LONGEST_UPLOAD, "a hold melody as uploaded")
+    declared = await _declared_hold(request, session, actor.scope, slug)
+    source = hashlib.sha256(data).hexdigest()
+    if declared is None or declared.clip != source:
+        raise Conflict(NOT_THE_CLASSS_FILE.format(slug=slug))
+    melody = await asyncio.to_thread(hold_audio.convert_upload, data)
+    clip = Clip(audio=melody.audio, seconds=melody.seconds, name=(name or "").strip() or "melody", source_sha256=source)
+    row = await widgets.keep_hold_clip(session, actor.org, actor.env, slug, clip)
+    return schemas.HoldAudio.of(row, declared)
 
 
 @router.get("/v1/agents/{slug}/hold-audio/audio")
@@ -205,13 +236,15 @@ async def pipeline_report(
 
 # The melody and the widget are the agent's in an env, whoever holds it.
 @router.get("/v1/agents/{slug}/pipeline/hold-audio")
-async def hold_audio_of(slug: KnownAgent, actor: PipelineKey, session: Session) -> schemas.HoldAudio:
+async def hold_audio_of(slug: KnownAgent, actor: PipelineKey, request: Request, session: Session) -> schemas.HoldAudio:
     """What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip."""
-    return schemas.HoldAudio.of(await widgets.get_hold_audio(session, actor.org, actor.env, slug))
+    row = await widgets.get_hold_audio(session, actor.org, actor.env, slug)
+    return schemas.HoldAudio.of(row, await _declared_hold(request, session, actor.scope, slug))
 
 
 # The body is the file, no multipart; the name rides the query. Converted here, once, so no
-# worker decodes a tenant's upload in the middle of a call.
+# worker decodes a tenant's upload in the middle of a call. An agent whose class declares its
+# melody takes no file here: the class ships its own, through `PUT /v1/agents/{slug}/hold-audio`.
 @router.put("/v1/agents/{slug}/pipeline/hold-audio")
 async def upload_hold_audio(
     slug: KnownAgent,
@@ -220,10 +253,12 @@ async def upload_hold_audio(
     session: Session,
     name: Annotated[str | None, Query(max_length=200)] = None,
 ) -> schemas.HoldAudio:
-    """A file of the org's as the agent's melody, from the next call on."""
+    """A file of the org's as the agent's melody, from the next call on; 409 while its class declares the melody."""
+    await _refuse_if_the_class_holds(request, session, actor.scope, slug)
     data = await capped_body(request, LONGEST_UPLOAD, "a hold melody as uploaded")
     melody = await asyncio.to_thread(hold_audio.convert_upload, data)
-    clip = Clip(audio=melody.audio, seconds=melody.seconds, name=(name or "").strip() or "melody")
+    source = hashlib.sha256(data).hexdigest()
+    clip = Clip(audio=melody.audio, seconds=melody.seconds, name=(name or "").strip() or "melody", source_sha256=source)
     return schemas.HoldAudio.of(await widgets.keep_hold_clip(session, actor.org, actor.env, slug, clip))
 
 
@@ -238,9 +273,10 @@ async def hold_audio_clip(slug: KnownAgent, actor: PipelineKey, session: Session
 
 @router.put("/v1/agents/{slug}/pipeline/hold-audio/played")
 async def choose_hold_audio(
-    slug: KnownAgent, body: schemas.PlayedRequest, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.PlayedRequest, actor: PipelineKey, request: Request, session: Session
 ) -> schemas.HoldAudio:
     """The runtime's melody back, or silence; an uploaded clip is forgotten either way, the wait kept."""
+    await _refuse_if_the_class_holds(request, session, actor.scope, slug)
     if body.played == "default":
         return schemas.HoldAudio.of(await widgets.forget_hold(session, actor.org, actor.env, slug))
     return schemas.HoldAudio.of(await widgets.silence_hold(session, actor.org, actor.env, slug))
@@ -248,9 +284,10 @@ async def choose_hold_audio(
 
 @router.put("/v1/agents/{slug}/pipeline/hold-audio/after")
 async def wait_before_hold(
-    slug: KnownAgent, body: schemas.AfterRequest, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.AfterRequest, actor: PipelineKey, request: Request, session: Session
 ) -> schemas.HoldAudio:
     """Seconds of the agent's quiet before the melody starts, from the next call on; null is the runtime's."""
+    await _refuse_if_the_class_holds(request, session, actor.scope, slug)
     return schemas.HoldAudio.of(await widgets.wait_before_hold(session, actor.org, actor.env, slug, body.after_s))
 
 
@@ -259,17 +296,22 @@ async def wait_before_hold(
 
 # `talk`: whoever may mint the widget's token may read how it looks.
 @router.get("/v1/agents/{slug}/widget")
-async def get_widget(slug: KnownAgent, actor: TalkKey, session: Session) -> schemas.WidgetSettings:
-    """How the agent's widget looks in the key's env; the widget's own defaults when unset."""
-    return _widget_row(await widgets.get_look(session, actor.org, actor.env, slug))
+async def get_widget(slug: KnownAgent, actor: TalkKey, request: Request, session: Session) -> schemas.WidgetSettings:
+    """How the agent's widget looks in the key's env: its class's when declared, else the row's or the defaults."""
+    declared = await _declared(request, session, actor.scope, slug)
+    look = await widgets.get_look(session, actor.org, actor.env, slug, None if declared is None else declared.widget)
+    return _widget_row(look, fixed=declared is not None and declared.widget is not None)
 
 
-# `pipeline`: the same key that sets the agent's greeting and voice.
+# `pipeline`: the same key that sets the agent's greeting and voice; refused while the class declares the look.
 @router.put("/v1/agents/{slug}/widget")
 async def put_widget(
-    slug: KnownAgent, body: schemas.WidgetSettings, actor: PipelineKey, session: Session
+    slug: KnownAgent, body: schemas.WidgetSettings, actor: PipelineKey, request: Request, session: Session
 ) -> schemas.WidgetSettings:
     """Replace how the widget looks, whole; a null field is the widget's own default."""
+    declared = await _declared(request, session, actor.scope, slug)
+    if declared is not None and declared.widget is not None:
+        raise SetByTheClass(("widget",), slug)
     look = Look(
         title=body.title,
         tagline=body.tagline,
@@ -321,13 +363,29 @@ def _running_stage(running: providers.Running) -> schemas.RunningStage:
     )
 
 
-def _widget_row(look: Look) -> schemas.WidgetSettings:
+# What a process holding the agent declares, else what the scope's last one did.
+async def _declared(request: Request, session: Session, scope: Scope, slug: str) -> AgentConfig | None:
+    return await declarations.declared_now_or_last(session, scope, slug, _registry(request).declared(slug))
+
+
+async def _declared_hold(request: Request, session: Session, scope: Scope, slug: str) -> HoldConfig | None:
+    declared = await _declared(request, session, scope, slug)
+    return None if declared is None else declared.hold
+
+
+async def _refuse_if_the_class_holds(request: Request, session: Session, scope: Scope, slug: str) -> None:
+    if await _declared_hold(request, session, scope, slug) is not None:
+        raise SetByTheClass(("hold",), slug)
+
+
+def _widget_row(look: Look, *, fixed: bool = False) -> schemas.WidgetSettings:
     return schemas.WidgetSettings(
         title=look.title,
         tagline=look.tagline,
         greeting=look.greeting,
         accent=look.accent,
         autostart=look.autostart,
+        fixed=fixed,
         theme=look.theme,
     )
 

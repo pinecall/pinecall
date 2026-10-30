@@ -11,8 +11,9 @@ from pinecall._calls import Call
 from pinecall._connection import Backoff
 from pinecall.client import Client
 from pinecall.wire._names import JsonObject
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.frames import WireModel
-from pinecall.wire.parts import AgentConfig, DevVerb, ToolSpec
+from pinecall.wire.parts import DevVerb, ToolSpec
 from tests.fakes.gateway import KEY, FakeGateway
 
 

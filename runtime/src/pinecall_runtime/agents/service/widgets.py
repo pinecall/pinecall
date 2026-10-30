@@ -14,7 +14,7 @@ from pinecall_runtime.agents.service import hold_audio
 from pinecall_runtime.enums import Env, HoldPlayed
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.time import now
-from pinecall_runtime.wire.parts import WidgetTheme
+from pinecall_runtime.wire.parts import HoldConfig, WidgetLook, WidgetTheme
 
 LONGEST = {"title": 80, "tagline": 160, "greeting": 500, "accent": 40}
 AFTER_OUT_OF_RANGE = (
@@ -46,15 +46,50 @@ class Look:
 
 @dataclass(frozen=True, slots=True)
 class Clip:
-    """An uploaded melody, already converted: its bytes, how long it lasts, the file's name."""
+    """An uploaded melody, already converted: its bytes, how long it lasts, the file's name, the upload's hash."""
 
     audio: bytes
     seconds: float
     name: str
+    source_sha256: str
 
 
-async def get_look(session: AsyncSession, org: str, env: Env, agent: str) -> Look:
-    """How the agent's widget looks in the env; the widget's defaults when nobody said."""
+def look_of(declared: WidgetLook) -> Look:
+    """The look as a class declares it, held to the widget's own rules."""
+    return Look(
+        title=declared.title,
+        tagline=declared.tagline,
+        greeting=declared.greeting,
+        accent=declared.accent,
+        autostart=declared.autostart,
+        theme=declared.theme,
+    )
+
+
+def check_look(declared: WidgetLook | None) -> WidgetLook | None:
+    """A declared look refused by sentence when a widget would refuse it; None stays None."""
+    if declared is not None:
+        look_of(declared)
+    return declared
+
+
+def check_hold(declared: HoldConfig | None) -> HoldConfig | None:
+    """A declared melody refused when its wait is out of the band a PUT holds it to; None stays None."""
+    if declared is not None and declared.after_s is not None:
+        check_wait(declared.after_s)
+    return declared
+
+
+def check_wait(after_s: float) -> None:
+    """Refuse a wait outside the band the melody starts in."""
+    if not SOONEST_AFTER_S <= after_s <= LATEST_AFTER_S:
+        raise ValidationError(AFTER_OUT_OF_RANGE.format(after=after_s, soonest=SOONEST_AFTER_S, latest=LATEST_AFTER_S))
+
+
+async def get_look(session: AsyncSession, org: str, env: Env, agent: str, declared: WidgetLook | None = None) -> Look:
+    """How the agent's widget looks in the env: its class's when declared, else the row's, else the defaults."""
+    if declared is not None:
+        return look_of(declared)
     row = await WidgetRepository(session).get(org, env, agent)
     if row is None:
         return Look()
@@ -106,6 +141,7 @@ async def keep_hold_clip(session: AsyncSession, org: str, env: Env, agent: str, 
         played=HoldPlayed.custom,
         audio=clip.audio,
         sha256=hashlib.sha256(clip.audio).hexdigest(),
+        source_sha256=clip.source_sha256,
         seconds=clip.seconds,
         name=clip.name,
     )
@@ -115,21 +151,21 @@ async def keep_hold_clip(session: AsyncSession, org: str, env: Env, agent: str, 
 async def silence_hold(session: AsyncSession, org: str, env: Env, agent: str) -> HoldAudio:
     """Play nothing while the agent's tools run; any clip is forgotten."""
     return await HoldAudioRepository(session).put(
-        org, env, agent, played=HoldPlayed.off, audio=None, sha256=None, seconds=None, name=None
+        org, env, agent, played=HoldPlayed.off, audio=None, sha256=None, source_sha256=None, seconds=None, name=None
     )
 
 
 async def forget_hold(session: AsyncSession, org: str, env: Env, agent: str) -> HoldAudio:
     """Play the runtime's own melody again; any clip is forgotten."""
     return await HoldAudioRepository(session).put(
-        org, env, agent, played=HoldPlayed.default, audio=None, sha256=None, seconds=None, name=None
+        org, env, agent, played=HoldPlayed.default, audio=None, sha256=None, source_sha256=None, seconds=None, name=None
     )
 
 
 async def wait_before_hold(session: AsyncSession, org: str, env: Env, agent: str, after_s: float | None) -> HoldAudio:
     """How long the agent is quiet before its melody starts; None is the runtime's own wait."""
-    if after_s is not None and not SOONEST_AFTER_S <= after_s <= LATEST_AFTER_S:
-        raise ValidationError(AFTER_OUT_OF_RANGE.format(after=after_s, soonest=SOONEST_AFTER_S, latest=LATEST_AFTER_S))
+    if after_s is not None:
+        check_wait(after_s)
     repository = HoldAudioRepository(session)
     row = await repository.get(org, env, agent)
     if row is None:

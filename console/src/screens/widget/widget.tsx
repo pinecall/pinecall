@@ -44,7 +44,9 @@ export function Widget(): ReactNode {
   const [saved, setSaved] = useState(false);
   const knows = { greeting: kept !== null, autostart: kept !== null, theme: kept?.theme !== undefined };
   const scopes = useScopes();
-  const canSave = kept !== null && (scopes === null || scopes.includes("pipeline"));
+  // The class owns the look: the form shows it, and nobody writes it here.
+  const fixed = kept?.fixed === true;
+  const canSave = kept !== null && !fixed && (scopes === null || scopes.includes("pipeline"));
   const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -206,6 +208,7 @@ export function Widget(): ReactNode {
               </Button>
             )}
           </div>
+          {fixed && <p className="ui-muted">Set by the class of {agent}: the look is in the code (static widget), and a change is a commit. The snippet below is what it declares.</p>}
           <div className="widget-fields">
             <Field label="Name">
               <Input value={name} onChange={(event) => setName(event.target.value)} />

@@ -2,6 +2,7 @@
 
 require_relative "serve/loading"
 require_relative "serve/declared_docs"
+require_relative "serve/declared_hold"
 require_relative "serve/held"
 require_relative "serve/masking"
 require_relative "serve/viewing"
@@ -54,7 +55,10 @@ module Pinecall
       client.on_stopped { |why| err.puts(why) || asked.push(:stopped) }
       client.connect
       # The documents a class declares as its base, once per process, before any call.
-      classes.each { |served, klass| DeclaredDocs.push(client, klass, served.file, err:) }
+      classes.each do |served, klass|
+        DeclaredDocs.push(client, klass, served.file, err:)
+        DeclaredHold.upload(client, klass, served.file, err:)
+      end
       Thread.new { ended(input, asked) }
       leave(held, asked)
     end

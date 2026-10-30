@@ -138,6 +138,8 @@ class HoldAudio(Model):
     played: Mapped[HoldPlayed] = mapped_column(StringEnum(HoldPlayed), nullable=False)
     audio: Mapped[bytes | None] = mapped_column(LargeBinary)
     sha256: Mapped[str | None] = mapped_column(Text)
+    # The hash of the file as it was uploaded, before conversion: what a class says it ships.
+    source_sha256: Mapped[str | None] = mapped_column(Text)
     seconds: Mapped[float | None] = mapped_column(REAL)
     name: Mapped[str | None] = mapped_column(Text)
     # Seconds of the agent's quiet before the melody starts; null is the runtime's own.

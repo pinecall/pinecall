@@ -4,8 +4,9 @@ import pytest
 
 from pinecall.serve._masking import Masking
 from pinecall.wire._names import JsonObject
+from pinecall.wire.config import AgentConfig, StateFieldSpec
 from pinecall.wire.frames import Entry
-from pinecall.wire.parts import AgentConfig, StateFieldSpec, ToolSpec
+from pinecall.wire.parts import ToolSpec
 
 DECLARED = AgentConfig(
     tools=[

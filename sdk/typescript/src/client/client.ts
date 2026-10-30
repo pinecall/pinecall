@@ -6,6 +6,7 @@ import { type Camel, type CommandData, eventOf } from "../wire/codec.js";
 import { type Entry } from "../wire/envelope.js";
 import { type CommandType, type EventType } from "../wire/registry.js";
 import { type KnowledgeFile } from "../wire/agent-config.js";
+import { type HoldAudio } from "../wire/rest-hold.js";
 import { type RecordedLine } from "../wire/rest-lines.js";
 import { type KnowledgePushed } from "../wire/rest-retrieval.js";
 import { Agent, type AgentGateway, type AgentOptions } from "./agent.js";
@@ -16,7 +17,7 @@ import { lookupUrl } from "./endpoints.js";
 import { PinecallError, frame } from "./frames.js";
 import { Listeners, asError, type AnyListener, type CamelEvent, type Listener } from "./listeners.js";
 import { history, observe, type LogTarget, type Observation, type Page, type ReadOptions } from "./observe.js";
-import { publish, pushKnowledge, recordLines } from "./published.js";
+import { holdAudio, publish, pushKnowledge, recordLines, uploadHoldAudio } from "./published.js";
 import { signed, type World } from "./signed.js";
 
 // Two levels up from both dist/client/ and src/client/.
@@ -272,10 +273,12 @@ export class Pinecall implements AgentGateway {
     return publish(this.#reading({}), agent, name, document);
   }
 
-  /** Write Markdown files into a base by their paths, the base's other files kept: what `pinecall docs push` sends. */
-  async pushKnowledge(base: string, files: KnowledgeFile[]): Promise<Camel<KnowledgePushed>> {
-    return pushKnowledge(this.#reading({}), base, files);
-  }
+  /** What the agent plays while a tool runs, and the hash of the file that landed. */
+  holdAudio = (agent: string): Promise<Camel<HoldAudio>> => holdAudio(this.#reading({}), agent);
+  /** The file the class declares as its melody, shipped by this process. */
+  uploadHoldAudio = (agent: string, file: Uint8Array, name: string): Promise<Camel<HoldAudio>> => uploadHoldAudio(this.#reading({}), agent, file, name);
+  /** Markdown files into a base by their paths, the base's other files kept: what `pinecall docs push` sends. */
+  pushKnowledge = (base: string, files: KnowledgeFile[]): Promise<Camel<KnowledgePushed>> => pushKnowledge(this.#reading({}), base, files);
 
   // ── what the agents send through ────────────────────────────────────────────
 

@@ -12,6 +12,7 @@ export * from "./metrics.js";
 export * from "./reduce.js";
 export * from "./registry.js";
 export * from "./rest-data.js";
+export * from "./rest-hold.js";
 export * from "./rest-hosting.js";
 export * from "./rest-judges.js";
 export * from "./rest-lines.js";

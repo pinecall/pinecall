@@ -68,13 +68,7 @@ from pinecall.wire.metrics import (
     TTSMetrics,
     VADMetrics,
 )
-from pinecall.wire.parts import (
-    Contact,
-    DevVerb,
-    Projection,
-    Route,
-    ToolResult,
-)
+from pinecall.wire.parts import Contact, DevVerb, Projection, Route, ToolResult
 from pinecall.wire.room import (
     ParticipantJoined,
     ParticipantLeft,

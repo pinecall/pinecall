@@ -41,7 +41,9 @@ module Pinecall
           view: { kind: :ref, ref: "ViewSpec" },
           events: { kind: :list, items: { kind: :ref, ref: "EventSpec" } },
           judges: { kind: :ref, ref: "JudgesDeclared" },
-          personas: { kind: :ref, ref: "PersonasDeclared" }
+          personas: { kind: :ref, ref: "PersonasDeclared" },
+          hold: { kind: :ref, ref: "HoldConfig" },
+          widget: { kind: :ref, ref: "WidgetLook" }
         }.freeze,
         "KnowledgePush" => {
           files: { kind: :list, items: { kind: :ref, ref: "KnowledgeFile" }, required: true }

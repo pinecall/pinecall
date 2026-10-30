@@ -111,6 +111,8 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `llm_timeout` | how long a turn waits for the model's first word, in seconds | `llm_timeout = 8` | `pinecall agent set --llm-timeout 8` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `@knowledge(path="knowledge.md", text=…)` | `pinecall agent knowledge edit` |
 | `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs: ClassVar = {"base": "clinica-norte", "k": 4}` | `pinecall docs push`, then `pinecall docs attach <base>` |
+| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold = {"file": "hold.mp3", "after_s": 1.5}` · `"off"` | `pinecall pipeline melody upload\|after\|off` |
+| `widget` | how the widget presents the agent | `widget: ClassVar = {"title": …, "tagline": …, "accent": …, "theme": "auto"}` | the agent's **Widget** screen |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges = judges(on=["consent", …])`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |
 | `personas` | which of Pinecall's callers its simulations play, and its own | `personas = personas(on=["in-a-hurry", …])`, its own as `test/personas/<name>.json` | `pinecall personas on\|off\|add` |
 

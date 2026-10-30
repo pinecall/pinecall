@@ -8,6 +8,7 @@ import type { AgentConfig } from "../wire/agent-config.js";
 import type { Camel } from "../wire/codec.js";
 import type { CallWorld } from "../call/call.js";
 import type { Knowledge } from "./knowledge.js";
+import type { HoldDeclaration } from "./melody.js";
 import type { Ending, Opening } from "./opening.js";
 import type { EventDeclarations, EventMeta } from "./accepts.js";
 import { declaredStateOf, type Visibility } from "./visibility.js";
@@ -191,6 +192,10 @@ export class Agent {
   static judges?: Declared["judges"];
   /** The personas the class owns: `personas({ on: ["in-a-hurry", …] })`, plus the files under `test/personas/`. */
   static personas?: Declared["personas"];
+  /** The hold melody: a file beside the class and the wait before it (`{ file: "hold.mp3", afterS: 1.5 }`), or `"off"`. */
+  static hold?: HoldDeclaration | "off";
+  /** How the widget presents the agent: `{ title, tagline, greeting, accent, autostart, theme }`. */
+  static widget?: Declared["widget"];
 
   /** The class docstring, as the model reads it. */
   doc(): string | undefined {

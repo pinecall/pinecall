@@ -32,6 +32,11 @@ def agent_log_url(base: str, agent: str) -> str:
     return door_at(base, f"/v1/agents/{quote(agent, safe='')}/calls")
 
 
+def hold_audio_url(base: str, agent: str) -> str:
+    """`GET` · `PUT /v1/agents/{slug}/hold-audio`: the melody, read and shipped by the agent."""
+    return door_at(base, f"/v1/agents/{quote(agent, safe='')}/hold-audio")
+
+
 def knowledge_url(base: str, name: str) -> str:
     """`PUT /v1/knowledge/{base}`: Markdown written into a base, the base's other files kept."""
     return door_at(base, f"/v1/knowledge/{quote(name, safe='')}")

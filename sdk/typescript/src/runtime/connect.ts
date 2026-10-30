@@ -23,6 +23,7 @@ import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
 import { harnessOf } from "../agent/harness.js";
 import { pushDeclaredDocs } from "./declared-docs.js";
+import { holdConfigOf, uploadDeclaredHold } from "./declared-hold.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
@@ -105,6 +106,8 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
   // Phone numbers are org rows managed with `pinecall numbers`, so a `phone` field is never sent.
   // The folders beside the class fill in what `static judges` and `static personas` declare.
   const options: AgentOptions = { tools, ...environmentOf(ctor), ...harnessOf(ctor, file) };
+  const hold = holdConfigOf(ctor as unknown as typeof Agent, file);
+  if (hold !== undefined) options.hold = hold;
   if (searchesKnowledge(source ?? ctor.toString(), file)) options.usesKnowledge = true;
   // Always sent whole, so the runtime and console name blocks the same way.
   options.prompt = [...PROMPT_BLOCKS];
@@ -179,7 +182,7 @@ function served(ctor: Ctor, pc: Pinecall, slug: string, report: ((line: string) 
   const onServe = declared.onServe.bind(ctor);
   let pushed = false;
   pc.onConnected(() => {
-    const docs = pushed ? Promise.resolve() : pushDeclaredDocs(pc, declared, file, report);
+    const docs = pushed ? Promise.resolve() : pushDeclaredDocs(pc, declared, file, report).then(() => uploadDeclaredHold(pc, declared, file, slug, report));
     pushed = true;
     docs
       .then(() => onServe(serve))

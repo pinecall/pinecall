@@ -14,10 +14,10 @@ module Pinecall
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
       ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
-                       personas].freeze
+                       personas widget].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
-      AS_KEYWORDS = %i[turn knowledge docs memory judges personas].freeze
+      AS_KEYWORDS = %i[turn knowledge docs memory judges personas widget].freeze
 
       NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
@@ -149,6 +149,14 @@ module Pinecall
           end
         end
 
+        # The hold melody: `hold file: "hold.mp3", after_s: 1.5`, `hold after_s: 1`, `hold off: true` or `hold :off`.
+        # Read back with no argument: what was declared, as written.
+        def hold(declared = NOTHING, **given)
+          return @hold if declared.equal?(NOTHING) && given.empty?
+
+          @hold = declared.equal?(NOTHING) ? given : declared
+        end
+
         # The longest a voice call runs: `max_duration 20` (minutes), or `max_duration :off`; the wire counts seconds.
         def max_duration(minutes = NOTHING)
           return environment[:max_duration_s] if minutes.equal?(NOTHING)
@@ -226,6 +234,7 @@ module Pinecall
           {
             **environment,
             **Harness.declared(self, folder: here && File.dirname(here)),
+            hold: Melody.config_of(@hold, here),
             prompt: Prompt::FRAMEWORK,
             tools:,
             state_fields: state_field_specs,

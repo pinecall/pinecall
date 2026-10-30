@@ -13,11 +13,13 @@ from pinecall_runtime.wire.parts import (
     DocsMode,
     EndOfTurn,
     EventSource,
+    HoldConfig,
     JudgesDeclared,
     PersonasDeclared,
     PromptRegion,
     SideEffect,
     Visibility,
+    WidgetLook,
 )
 
 A_FUNCTION_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
@@ -338,6 +340,9 @@ class AgentConfig:
     # The judges and the personas the class owns, as the wire carried them; None: the org writes them.
     judges: JudgesDeclared | None = None
     personas: PersonasDeclared | None = None
+    # The hold melody and the widget's look the class owns, as the wire carried them; None: the org sets them.
+    hold: HoldConfig | None = None
+    widget: WidgetLook | None = None
     # The settings the class itself declares, by their wire names: each wins over the org's.
     fixed: frozenset[str] = frozenset()
 

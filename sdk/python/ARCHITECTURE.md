@@ -37,6 +37,7 @@ src/pinecall/
   _config.py                 the world's twelve settings, refused at creation with the verb that sets each; the slug
   _harness.py                `judges(on=…)`, `personas(on=…)`, and the folders beside the class's file read into each `own`
   _docs.py                   the `docs/` folder beside a class that declares its base, pushed once the agent registers
+  _melody.py                 the hold melody a class declares: the file beside it, by hash on the wire, shipped once registered
   _tools.py                  `@tool`, the tools a class declares, what this state shows, running one
   _spec.py                   one tool as the gateway receives it: the arguments' model, its schema, what is refused
   _doc.py                    a docstring as the model reads it: one line, and what `Args:` says of each parameter
@@ -75,6 +76,7 @@ docs/                        the pages a person writing an agent reads: README �
     _names.py                the runtime's domain words the wire is written in: Json, Env, Channel, Medium…
     frames.py                `WireModel`, `Entry`, `Command`: closed models, read and written by wire key
     parts.py                 the shapes shared by events and commands: ToolSpec, ToolResult, Cost, the literals
+    config.py                what a class declares of its environment: `AgentConfig` and every setting's shape, the hold and the look
     judging.py               the judges and the personas a class declares, what `AgentConfig.judges` and `.personas` carry
     commands.py              every command, `COMMANDS` and `command_of`
     events.py                the agent's and the control's events, `EVENTS` and `event_of`

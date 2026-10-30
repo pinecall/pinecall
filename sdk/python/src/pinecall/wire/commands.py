@@ -6,9 +6,9 @@ from pydantic import Field
 
 from pinecall.errors import WireError
 from pinecall.wire._names import JsonObject
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.frames import Command, WireModel
 from pinecall.wire.parts import (
-    AgentConfig,
     Contact,
     Route,
     StateCause,

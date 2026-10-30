@@ -47,6 +47,7 @@ a directory earns its place there by having a line in that table (§13).
 | `knowledge.ts` | `Knowledge`: what a class reaches its bases through — `this.knowledge.search(query, {k})`, one verb the gateway answers for the call in hand |
 | `searching.ts` | whether a class searches at all: its source read with oxc for a `this.knowledge` member expression — never a regex, because the words inside a string or a comment are not a search. What it answers travels as `uses_knowledge` in the declaration |
 | `decorators.ts` | `@tool({…})`, which registers a method and wraps it so every write inside it carries its name; `@render(Prompt)`, which gives the class a prompt written beside it (`Prompt<T> = (agent: T) => Child`); and `@voice`, `@llm`, `@stt`, `@judge`, which set the class's static `voice`, `llm`, `stt`, `judge` in the wire's shape, with the plugin's `builds` and `options` (`Plugin`) |
+| `melody.ts` | `HoldDeclaration`: the hold melody as a class writes it — a file beside the class, the seconds of quiet before it, or silence — which `runtime/declared-hold.ts` turns into the wire's `hold` and ships |
 | `opening.ts` | how a call opens and when it may end, as a class writes them: `improvise` (the model opens, on its prompt or an instruction), `Opening` (words, `{ text, interruptible }`, or improvised), `Ending` (words, or `true`); `runtime/environment.ts` turns them into the wire's greeting and hangup |
 | `authors.ts` | who is writing the state right now: the `AsyncLocalStorage` the author rides, `withAuthor`, `withAuthorAsync`, `currentAuthor`, and `UnauthoredWrite` |
 | `tools.ts` | the tool registry: `ToolOptions`, `ToolDeclaration`, the wire `ToolSpec` built and cached per class, `visibleToolsOf`, `DeclarationRefused` |
@@ -85,7 +86,7 @@ a directory earns its place there by having a line in that table (§13).
 | file | what it is |
 |---|---|
 | `client.ts` | `Pinecall`: one socket, the agents on it, `observe`/`history` over any log the key can read, and `search(call, query, k)` — one search of the bases the agent reads, run by the gateway for a call this client serves (`POST /v1/calls/{call}/lookup`), answered as `Found[]`. `env: "production"` names production for a person's key; a server's token needs none |
-| `published.ts` | what an agent publishes for pages and pushes as its base: `recordLines` (`POST /v1/agents/{slug}/lines`, answered as the wire's `RecordedLine`s, camel-cased), `publish` (`PUT /v1/agents/{slug}/public/{name}`) and `pushKnowledge` (`PUT /v1/knowledge/{base}`, what `pinecall docs push` sends); `Pinecall.recordLines`, `.publish` and `.pushKnowledge` call them |
+| `published.ts` | what an agent publishes for pages, pushes as its base, and plays while a tool runs (`holdAudio`, `uploadHoldAudio`: `GET` · `PUT /v1/agents/{slug}/hold-audio`, the class's own file shipped by its hash): `recordLines` (`POST /v1/agents/{slug}/lines`, answered as the wire's `RecordedLine`s, camel-cased), `publish` (`PUT /v1/agents/{slug}/public/{name}`) and `pushKnowledge` (`PUT /v1/knowledge/{base}`, what `pinecall docs push` sends); `Pinecall.recordLines`, `.publish` and `.pushKnowledge` call them |
 | `answered.ts` | `detailOf`: the sentence of a refusal, out of the gateway's error body |
 | `signed.ts` | what every request and socket carries: the key as a Bearer, and `pinecall-env` when a world was named; the `World` type |
 | `connection.ts` | the WS to the gateway: the key at the door, backoff on the way back, a ping while it is up |
@@ -95,7 +96,7 @@ a directory earns its place there by having a line in that table (§13).
 | `listeners.ts` | who is listening for what, per agent and per call; `camelEvent` |
 | `observe.ts` | reading a log, or the org's feed: the same URL as a JSON page and as SSE, folded by the wire's reducer |
 | `sse.ts` | a server-sent stream over fetch: its frames from a cursor on, reconnecting with `Last-Event-ID` after a backoff, saying each time a connection opens — what `observe` and the CLI's waits stand on |
-| `endpoints.ts` | one base URL, eight doors — the apps socket, a call's log, an agent's log, the org's feed, a call's lookup, an agent's lines, a document it publishes, a base pushed — the only place a path is written |
+| `endpoints.ts` | one base URL, nine doors — the apps socket, a call's log, an agent's log, the org's feed, a call's lookup, an agent's lines, a document it publishes, a base pushed, its hold melody — the only place a path is written |
 | `testing/` | a gateway that is not there (`FakeGateway`, which also answers a search with what `finds()` was told and keeps what was `searched`), a log nobody stored, and the loopback address they use |
 
 ### `src/runtime/` — the bridge
@@ -103,6 +104,7 @@ a directory earns its place there by having a line in that table (§13).
 | file | what it is |
 |---|---|
 | `connect.ts` | `mount()`: the class registered once, one live instance per call, the sync that sends only what changed, and `static onServe` run after every connect with its `Serve`. `optionsFor` is the declaration read off a probe instance — the routes, the tools, whether it searches, the state fields, the events — and the first thing it does is refuse a field of the world's. Also `slugOf` |
+| `declared-hold.ts` | the hold melody a class declares (`static hold`): the file beside the class named by its sha256 in the declaration (`holdConfigOf`), and uploaded once the agent registers unless the gateway's `source_sha256` says it holds that file (`uploadDeclaredHold`) |
 | `declared-docs.ts` | the folder a class declares as its base (`static docs`): `agents/<slug>/docs/` read as the base keeps its paths, and pushed once per process when the agent registers, before `onServe`; nothing for a class that declares none, or an empty folder |
 | `recall.ts` | a `memory.ops` entry → the words this call has been told about the caller, which is what `remembers()` answers from |
 | `environment.ts` | `ENVIRONMENT`: the settings a class may declare — `language`, `voice`, `llm`, `stt`, `judge`, `greeting`, `hangup`, `turn`, `says`, `hears`, `knowledge`, `docs`, `memory`, `record` — read off the class (`environmentOf`, its statics and what `@voice`/`@llm`/`@stt`/`@judge` set) into the declaration, where each wins over the agent's settings; and `refuseTheEnvironment`, which stops a class that declares one on the instance, where it would be a call's state |

@@ -209,6 +209,28 @@ export const PersonasDeclaredSchema = z.strictObject({
 
 export type PersonasDeclared = z.infer<typeof PersonasDeclaredSchema>;
 
+/** The hold melody as the class declares it: the file it ships by its sha256, the wait before it, or silence. */
+export const HoldConfigSchema = z.strictObject({
+  clip: z.string().nullish(),
+  name: z.string().nullish(),
+  after_s: z.number().nullish(),
+  off: z.boolean().optional(),
+});
+
+export type HoldConfig = z.infer<typeof HoldConfigSchema>;
+
+/** How the widget presents the agent, as the class declares it; a null field is the widget's own default. */
+export const WidgetLookSchema = z.strictObject({
+  title: z.string().nullish(),
+  tagline: z.string().nullish(),
+  greeting: z.string().nullish(),
+  accent: z.string().nullish(),
+  autostart: z.boolean().optional(),
+  theme: z.enum(["auto", "light", "dark"]).nullish(),
+});
+
+export type WidgetLook = z.infer<typeof WidgetLookSchema>;
+
 export const AgentConfigSchema = z.strictObject({
   prompt: z.array(PromptBlockSpecSchema).nullish(),
   language: z.string().nullish(),
@@ -239,6 +261,9 @@ export const AgentConfigSchema = z.strictObject({
   /** Declared, the class owns the agent's judges and its personas: no door writes either. */
   judges: JudgesDeclaredSchema.nullish(),
   personas: PersonasDeclaredSchema.nullish(),
+  /** Declared, the class owns the hold melody and the widget's look: the pipeline and widget doors refuse a write. */
+  hold: HoldConfigSchema.nullish(),
+  widget: WidgetLookSchema.nullish(),
 });
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

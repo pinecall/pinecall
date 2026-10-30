@@ -406,6 +406,29 @@ class PersonasDeclared(WireModel):
     own: list[PersonaDeclaration] = Field(default_factory=list[PersonaDeclaration])
 
 
+class HoldConfig(WireModel):
+    """The hold melody as the class declares it: the file it ships (by hash), the wait before it, or silence."""
+
+    # The sha256 of the file the class plays, as shipped: the class's process uploads it, and nobody else may.
+    clip: str | None = None
+    name: str | None = None
+    # Seconds of the agent's quiet before the melody starts; null is the runtime's own wait.
+    after_s: float | None = None
+    # True plays nothing while a tool runs.
+    off: bool = False
+
+
+class WidgetLook(WireModel):
+    """How the widget presents the agent, as the class declares it; a null field is the widget's own default."""
+
+    title: str | None = None
+    tagline: str | None = None
+    greeting: str | None = None
+    accent: str | None = None
+    autostart: bool = False
+    theme: WidgetTheme | None = None
+
+
 class AgentConfig(WireModel):
     """What an app declares about its agent; every field optional so a configure changes one thing."""
 
@@ -438,3 +461,6 @@ class AgentConfig(WireModel):
     # Declared, the class owns the agent's judges and its personas: nothing of either is written in the console.
     judges: JudgesDeclared | None = None
     personas: PersonasDeclared | None = None
+    # Declared, the class owns the hold melody and the widget's look: the pipeline and widget doors refuse a write.
+    hold: HoldConfig | None = None
+    widget: WidgetLook | None = None

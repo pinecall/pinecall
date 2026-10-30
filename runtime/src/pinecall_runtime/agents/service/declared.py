@@ -18,6 +18,7 @@ from pinecall_runtime.agents.declaration import (
     Voice,
 )
 from pinecall_runtime.agents.service.tuning import model_from_wire, realtime_from_wire
+from pinecall_runtime.agents.service.widgets import check_hold, check_look
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.wire.parts import AgentConfig as Declaration
@@ -138,6 +139,8 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
         "llm_timeout_s": ("llm_timeout_s", declaration.llm_timeout_s),
         "judges": ("judges", declaration.judges),
         "personas": ("personas", declaration.personas),
+        "hold": ("hold", check_hold(declaration.hold)),
+        "widget": ("widget", check_look(declaration.widget)),
     }
 
 

@@ -11,7 +11,8 @@ from typing import Literal, TypeVar, overload
 
 from pinecall import _author
 from pinecall.errors import DeclarationRefused, NotAStage, UnauthoredWrite
-from pinecall.wire.parts import StateFieldSpec, Visibility
+from pinecall.wire.config import StateFieldSpec
+from pinecall.wire.parts import Visibility
 
 _T = TypeVar("_T")
 

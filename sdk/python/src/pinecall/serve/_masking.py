@@ -5,8 +5,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from pinecall.wire._names import Json, JsonObject
+from pinecall.wire.config import AgentConfig
 from pinecall.wire.frames import Entry
-from pinecall.wire.parts import AgentConfig
 
 MASK = "***"
 

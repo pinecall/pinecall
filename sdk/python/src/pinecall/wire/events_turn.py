@@ -8,13 +8,7 @@ from pinecall.wire.metrics import (
     AgentTurnMetrics,
     UserTurnMetrics,
 )
-from pinecall.wire.parts import (
-    AgentState,
-    DocSource,
-    MemoryOp,
-    StateCause,
-    UserState,
-)
+from pinecall.wire.parts import AgentState, DocSource, MemoryOp, StateCause, UserState
 
 
 class EventReceived(WireModel):

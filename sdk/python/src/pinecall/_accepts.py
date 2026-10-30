@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 
 from pinecall.errors import DeclarationRefused
 from pinecall.wire._names import EventSource
-from pinecall.wire.parts import EventSpec
+from pinecall.wire.config import EventSpec
 
 SOURCES: tuple[EventSource, ...] = typing.get_args(EventSource)
 

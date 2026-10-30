@@ -141,6 +141,19 @@ it("reads hangup as when, in words, or true for whenever the model judges", () =
   expect(environmentOf(Cuelga).hangup).toEqual({ when: "" });
 });
 
+/** Recepción que dibuja su widget. */
+class Dibujada extends ClinicaNorte {
+  static override widget = { title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto" as const };
+}
+
+it("sends how the widget looks, as the class declares it", async () => {
+  mount(Dibujada, { pc, source: SOURCE, file: FILE, slug: "dibujada" });
+  await pc.connect();
+  for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
+  const config = gateway.commandsOf("agent.configure")[0]?.data["config"] as Record<string, unknown>;
+  expect(config["widget"]).toEqual({ title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto" });
+});
+
 /** Recepción que fija cuánto dura una llamada y cuánto espera al modelo. */
 class Acotada extends ClinicaNorte {
   static override maxDuration = 20;

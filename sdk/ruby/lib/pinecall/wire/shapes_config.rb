@@ -46,6 +46,20 @@ module Pinecall
           on: { kind: :list, items: { kind: :str } },
           own: { kind: :list, items: { kind: :ref, ref: "PersonaDeclaration" } }
         }.freeze,
+        "HoldConfig" => {
+          clip: { kind: :str, null: true },
+          name: { kind: :str, null: true },
+          after_s: { kind: :float, null: true },
+          off: { kind: :bool, default: false }
+        }.freeze,
+        "WidgetLook" => {
+          title: { kind: :str, null: true },
+          tagline: { kind: :str, null: true },
+          greeting: { kind: :str, null: true },
+          accent: { kind: :str, null: true },
+          autostart: { kind: :bool, default: false },
+          theme: { kind: :enum, values: %w[auto light dark], null: true }
+        }.freeze,
         "PromptBlockSpec" => {
           name: { kind: :str, required: true, pattern: "^[a-z][a-z0-9_]*$" },
           region: { kind: :ref, ref: "PromptRegion", required: true }

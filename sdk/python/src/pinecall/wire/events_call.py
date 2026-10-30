@@ -9,15 +9,7 @@ from pinecall.wire.frames import WireModel
 from pinecall.wire.metrics import (
     ModelUsage,
 )
-from pinecall.wire.parts import (
-    Contact,
-    Cost,
-    EndedBy,
-    EndReason,
-    Route,
-    Supervisor,
-    TransferMode,
-)
+from pinecall.wire.parts import Contact, Cost, EndedBy, EndReason, Route, Supervisor, TransferMode
 
 
 class AttentionAnswered(WireModel):

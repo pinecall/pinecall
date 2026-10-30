@@ -79,15 +79,17 @@ export function HoldMelody({ agent }: { agent: string }): ReactNode {
               Listen
             </Button>
           )}
-          <Button size="sm" onClick={() => picker.current?.click()} disabled={busy !== null}>
-            {busy ?? "Upload a file…"}
-          </Button>
-          {held !== null && held.played !== "default" && (
+          {held?.fixed !== true && (
+            <Button size="sm" onClick={() => picker.current?.click()} disabled={busy !== null}>
+              {busy ?? "Upload a file…"}
+            </Button>
+          )}
+          {held !== null && held.fixed !== true && held.played !== "default" && (
             <Button size="sm" onClick={() => void act("Saving…", () => chooseHoldAudio(credentials, agent, "default"))} disabled={busy !== null}>
               Use the default
             </Button>
           )}
-          {held !== null && held.played !== "off" && (
+          {held !== null && held.fixed !== true && held.played !== "off" && (
             <Button size="sm" onClick={() => void act("Saving…", () => chooseHoldAudio(credentials, agent, "off"))} disabled={busy !== null}>
               Turn off
             </Button>
@@ -101,6 +103,7 @@ export function HoldMelody({ agent }: { agent: string }): ReactNode {
           />
         </div>
         {src !== null && <audio className="pipe-hold-player" controls autoPlay src={src} />}
+        {held?.fixed === true && <span className="pipe-save-note">Set by the class of {agent}: its file, its wait and its silence are in the code, and a change is a commit.</span>}
         {error !== null ? (
           <span className="pipe-save-error">{error}</span>
         ) : (

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The hold melody and the widget's look are declarable.** `AgentConfig.hold` (`{clip, name, after_s, off}`, the
+  file by its sha256) and `AgentConfig.widget` (what `PUT …/widget` takes): declared, each is `fixed`, the
+  class's wait, silence and look win, the doors refuse a write naming the class, and the one upload the hold door
+  takes for the agent is the class's own file, by the hash it declared; `source_sha256` on the answer says what
+  landed (`hold_audio.source_sha256`, migration 000016).
+
 - **The longest call and the model's timeout are declarable.** `AgentConfig.max_duration_s` and `llm_timeout_s`:
   declared, each wins over the settings' and is `fixed` (`409` on a set), the two knobs no class could declare.
 
