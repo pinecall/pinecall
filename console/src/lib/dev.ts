@@ -22,6 +22,7 @@ const FAMILY_OF: Record<DevVerb, "chat" | "knowledge" | "memory" | "evals" | "vi
   "goldens.run": "evals",
   "promote.roster": "evals",
   "promote.write": "evals",
+  "personas.write": "evals",
   "drift.read": "evals",
   "reproductions.roster": "evals",
   "reproductions.read": "evals",

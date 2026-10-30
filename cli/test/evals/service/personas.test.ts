@@ -1,5 +1,7 @@
 /** An agent's callers against the gateway: one written whole or merged, Pinecall's switched and never dropped, callers generated and kept. */
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { UsageError } from "../../../src/errors.js";
@@ -7,7 +9,7 @@ import * as personas from "../../../src/evals/service/personas.js";
 import { answer } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { A_PERSONA } from "../../support/fixtures.js";
-import { folder, project, write } from "../../support/project.js";
+import { folder } from "../../support/project.js";
 
 const LIBRARY = { ...A_PERSONA, name: "confused-elder", owner: "pinecall", on: false };
 
@@ -97,37 +99,42 @@ describe("facts", () => {
   });
 });
 
-describe("personas in files", () => {
-  it("a .ts file default-exporting one and a .json file holding one are both pushed, named by the file", async () => {
-    const root = folder();
-    write(root, "test/personas/from-ts.ts", "export default { goal: 'move an appointment', style: 'hurried', facts: { phone: 305 }, state: { patient: 'Ana' } };\n");
-    write(root, "test/personas/from-json.json", JSON.stringify({ goal: "ask the hours", style: "plain" }));
-    const sent = answer("put", "/v1/agents/front-desk/personas/:name", (request) => [{ ...A_PERSONA, name: request.path.split("/").at(-1) }]);
+describe("a class that owns the roster", () => {
+  const CLASSS = { ...A_PERSONA, name: "in-a-rush", owner: "class", fixed: true };
+
+  it("refuses add, edit, rm, on and off here, naming the folder and the switch", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [{ ...LIBRARY, fixed: true }, CLASSS] });
     const { ctx } = testContext();
-    const pushed = await personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`);
-    expect(pushed.pushed).toEqual(["from-json", "from-ts"]);
-    expect(sent.map((one) => one.body)).toEqual([
-      { goal: "ask the hours", style: "plain", about: "", facts: {}, state: {} },
-      { goal: "move an appointment", style: "hurried", about: "", facts: { phone: "305" }, state: { patient: "Ana" } },
-    ]);
+    const refused = personas.SET_BY_THE_CLASS("front-desk");
+    await expect(personas.writePersona(ctx, "front-desk", "another", "add", { goal: "g", style: "s" })).rejects.toThrow(refused);
+    await expect(personas.dropPersona(ctx, "front-desk", "in-a-rush")).rejects.toThrow(refused);
+    await expect(personas.switchPersona(ctx, "front-desk", "confused-elder", true)).rejects.toThrow(refused);
   });
 
-  // R F21: one bad file made every listing verb exit 2; the list goes on and names it, `push` refuses it.
-  it("the list goes on past a file that is no persona, and names that file", async () => {
-    const root = project(["front-desk"], {
-      "agents/front-desk/test/personas/kept.json": JSON.stringify({ goal: "ask the hours", style: "plain" }),
-      "agents/front-desk/test/personas/bad-shape.json": JSON.stringify({ wat: 1 }),
-    });
-    const { ctx } = testContext({ cwd: root });
-    const unsent = await personas.personasNotPushed(ctx, {}, []);
-    expect(unsent).toEqual({ names: ["kept"], refused: [`${root}/agents/front-desk/test/personas/bad-shape.json`] });
-  });
-
-  it("a file that is no persona is refused naming the shape", async () => {
+  it("keeps what generate --save wrote as files the class reads, not as rows", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [CLASSS] });
+    const proposed = { name: "price-shopper", about: "", goal: "get a price", style: "blunt", facts: {}, expects: ["The agent should give the price."], tags: [], behavior: A_PERSONA.behavior };
+    answer("post", "/v1/agents/:slug/personas/generate", { personas: [proposed], evals: 1, cost_usd: 0.002 });
+    const kept = answer("put", "/v1/agents/:slug/personas/:name", { personas: [] });
     const root = folder();
-    write(root, "test/personas/empty.json", "{}");
     const { ctx } = testContext();
-    await expect(personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`)).rejects.toThrow(UsageError);
-    await expect(personas.pushPersonaFiles(ctx, "front-desk", `${root}/test/personas`)).rejects.toThrow("a .ts file default-exports { goal, style, facts?, state? }, a .json file is that object");
+    const saved = await personas.generatePersonas(ctx, "front-desk", personas.GenerateInput.parse({ n: 1, save: true }), `${root}/test/personas`);
+    expect(saved.files).toEqual([`${root}/test/personas/price-shopper.json`]);
+    expect(kept).toEqual([]);
+    expect(JSON.parse(readFileSync(`${root}/test/personas/price-shopper.json`, "utf8"))).toEqual({ about: "", goal: "get a price", style: "blunt", facts: {}, expects: ["The agent should give the price."], tags: [], behavior: A_PERSONA.behavior });
+  });
+});
+
+describe("pull", () => {
+  it("writes the agent's own rows as files, named by the caller, and neither Pinecall's nor the class's", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [LIBRARY, A_PERSONA, { ...A_PERSONA, name: "in-a-rush", owner: "class", fixed: true }] });
+    const root = folder();
+    const { ctx } = testContext();
+    const pulled = await personas.pullPersonas(ctx, "front-desk", `${root}/test/personas`);
+    expect(pulled.files).toEqual([`${root}/test/personas/apurado.json`]);
+    const written = JSON.parse(readFileSync(`${root}/test/personas/apurado.json`, "utf8")) as Record<string, unknown>;
+    expect(written).toMatchObject({ goal: A_PERSONA.goal, style: A_PERSONA.style, facts: { name: "Luis" } });
+    expect(written).not.toHaveProperty("name");
+    expect(written).not.toHaveProperty("owner");
   });
 });

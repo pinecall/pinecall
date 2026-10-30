@@ -4,7 +4,7 @@ import { DevRefused, type DevHandler } from "@pinecall/agents/client";
 
 import { chatHandlers } from "./chat.js";
 import { knowledgeHandlers, memoryHandlers } from "./knowledge.js";
-import { driftHandlers, promoteHandlers, reproductionHandlers } from "./runs.js";
+import { driftHandlers, personaHandlers, promoteHandlers, reproductionHandlers } from "./runs.js";
 import { refusalOf, type Here, type Screen, type Verbs } from "./screen.js";
 import { goldenHandlers, simulateHandlers } from "./suite.js";
 
@@ -21,6 +21,7 @@ export function screensFor(here: Here): Screen[] {
     knowledgeHandlers(here),
     memoryHandlers(here),
     promoteHandlers(here),
+    personaHandlers(here),
     driftHandlers(here),
     reproductionHandlers(),
   ];

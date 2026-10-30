@@ -25,6 +25,7 @@ type DevVerb = Literal[
     "memory.extraction",
     "promote.roster",
     "promote.write",
+    "personas.write",
     "drift.read",
     "reproductions.roster",
     "reproductions.read",

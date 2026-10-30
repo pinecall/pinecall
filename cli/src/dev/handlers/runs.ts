@@ -1,4 +1,4 @@
-/** The console's Runs screens: a real call promoted to a candidate beside the goldens, the judges' drift, the reproductions a suite wrote. */
+/** The console's Runs and Personas screens: a call promoted to a candidate, a generated persona kept as a file, the judges' drift, the reproductions a suite wrote. */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -15,6 +15,8 @@ const A_RUN = /^[A-Za-z0-9_-]{1,64}$/;
 const A_GOLDEN = /^[^/\\]{1,120}$/;
 
 const Promote = z.object({ call: z.string().min(1), name: z.string().min(1).optional(), from_seq: z.number().int().min(0).default(0) });
+// What `PUT …/personas/{name}` takes, with the name: the file is that object, the name its own.
+const PersonaWrite = z.object({ name: z.string().min(1), goal: z.string().min(1), style: z.string().min(1) }).passthrough();
 const Drift = z.object({
   agent: z.string().min(1),
   window: z.number().min(60).max(A_MONTH * 12).default(A_WEEK),
@@ -34,6 +36,20 @@ export function promoteHandlers(here: Here): Screen {
         const written = await evals.promoteCall(here.ctx, evals.PromoteInput.parse({ call: wanted.call, name: wanted.name, out: here.home.candidates, fromSeq: wanted.from_seq }));
         here.ctx.io.print(`${written.path}  promoted from ${wanted.call}`);
         return written;
+      },
+    },
+  };
+}
+
+/** A persona the console generated and kept, for a class that owns its roster: written under the agent's own `test/personas/`, which the class reads. */
+export function personaHandlers(here: Here): Screen {
+  return {
+    verbs: {
+      "personas.write": async (asked) => {
+        const { name, ...rest } = PersonaWrite.parse(asked);
+        const path = await evals.writePersonaFile(here.home.personas, { name, ...(rest as evals.PersonaFile) });
+        here.ctx.io.print(`${path}  written from the console`);
+        return { path: relative(here.home.root, path), name };
       },
     },
   };

@@ -3,7 +3,7 @@
 import { HELD, BROKEN, callScore } from "../../judging/render.js";
 import { date } from "../../kit/format.js";
 import { table } from "../../kit/table.js";
-import { NOT_A_PERSONA_FILE, type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Simulated } from "../service/index.js";
+import { type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Saved, type Simulated } from "../service/index.js";
 import { latencyLine } from "./matrix.js";
 
 export { BottomBlock, header, progress, type Watched } from "./progress.js";
@@ -141,13 +141,12 @@ export function nextForGroup(one: CaseGroup): string[] {
   return fix;
 }
 
-/** Pinecall's first, then the agent's own; and a line when it has none of its own. */
-export function personas(agent: string, found: Persona[], notPushed: string[] = [], notPersonas: string[] = []): string[] {
-  const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : "yours");
+/** Pinecall's first, then the agent's own (the class's, when it owns the roster); and a line when it has none of its own. */
+export function personas(agent: string, found: Persona[]): string[] {
+  const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : one.owner === "class" ? "class" : "yours");
   const rows = table(["name", "whose", "goal"], found.map((one) => [one.name, whose(one), one.owner === "pinecall" ? (one.summary ?? one.goal) : one.goal])).slice(1);
   const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
-  if (notPushed.length > 0) lines.push(`${notPushed.length} written here and not pushed: ${notPushed.join(", ")} — \`pinecall personas push\` sends them`);
-  for (const file of notPersonas) lines.push(NOT_A_PERSONA_FILE(file));
+  if (found.some((one) => one.fixed === true)) lines.push(`set by the class of ${agent}: agents/${agent}/test/personas/ holds its own, personas({ on }) its switches`);
   return lines;
 }
 
@@ -189,18 +188,17 @@ export function personaSwitched(done: { name: string; on: boolean }, agent: stri
   return `${done.name} ${done.on ? "on" : "off"} for ${agent}`;
 }
 
-export function generated(written: GeneratedPersonas & { saved: boolean }): string[] {
+export function generated(written: GeneratedPersonas & Saved): string[] {
   const bill = written.evals === 0 ? "on your own judge key: not billed" : `${written.evals} eval(s) · $${written.cost_usd.toFixed(4)}`;
-  return [
-    ...written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line) => `  expects: ${line}`)]),
-    `${written.personas.length} caller(s) written · ${bill}${written.saved ? " · saved" : " · `--save` keeps them"}`,
-  ];
+  const kept = written.files.length > 0 ? ` · saved as ${written.files.join(", ")}` : written.saved ? " · saved" : " · `--save` keeps them";
+  return [...written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line) => `  expects: ${line}`)]), `${written.personas.length} caller(s) written · ${bill}${kept}`];
 }
 
-export function pushedFiles(done: { pushed: string[] }, folder: string): string[] {
-  return [...done.pushed.map((name) => `  ${name}`), `${done.pushed.length} persona(s) pushed from ${folder}`];
+/** The rows written as files, one line each. */
+export function pulled(what: string, done: { files: string[] }): string[] {
+  if (done.files.length === 0) return [`nothing to pull: the agent has no ${what} of its own as rows`];
+  return [...done.files, `${done.files.length} ${what} written · the rows stay until \`pinecall ${what} rm\``];
 }
-
 /** The end of a simulation: its call, the turns, the latencies, and every judge when judged. */
 export function simulated(said: Simulated): string[] {
   const turns = said.callerTurns === null ? `${said.agentTurns} agent turn(s)` : `${said.callerTurns} caller turn(s) · ${said.agentTurns} agent turn(s) · ${said.line}`;

@@ -32,7 +32,7 @@ export const EnvSchema = z.enum(["production", "sandbox"]);
  * the drift of the last two windows, and the reproductions a broken run left on that disk.
  * Everything else a console needs is a door of the gateway.
  */
-export const DevVerbSchema = z.enum(["chat.roster", "chat.start", "chat.say", "chat.end", "view.render", "simulate.start", "goldens.roster", "goldens.run", "knowledge.roster", "knowledge.push", "knowledge.eval", "memory.roster", "memory.eval", "memory.extraction", "promote.roster", "promote.write", "drift.read", "reproductions.roster", "reproductions.read"]);
+export const DevVerbSchema = z.enum(["chat.roster", "chat.start", "chat.say", "chat.end", "view.render", "simulate.start", "goldens.roster", "goldens.run", "knowledge.roster", "knowledge.push", "knowledge.eval", "memory.roster", "memory.eval", "memory.extraction", "promote.roster", "promote.write", "personas.write", "drift.read", "reproductions.roster", "reproductions.read"]);
 
 export type DevVerb = z.infer<typeof DevVerbSchema>;
 

@@ -457,7 +457,8 @@ line     rings in this terminal · also running: carla@clinica.test
 
 **It answers the console for this directory.** What a screen needs of the agent's directory — a
 written call to the agent here, a simulation, the goldens and a suite, the
-documents pushed and their golden asked, the memory goldens, a call promoted to a candidate,
+documents pushed and their golden asked, the memory goldens, a call promoted to a candidate, a
+generated persona kept as a file for a class that owns its roster,
 the drift, a reproduction a broken run left — the console asks the gateway, and the gateway asks
 THIS process over its companion socket (`dev.request` → `dev.answer`; the runtime's
 `docs/protocol/dev-verbs.md`), which reaches the agent's process by its app id when a call is
@@ -806,15 +807,24 @@ pinecall personas edit <name> [--goal '…'] [--style '…'] [--about '…'] [--
                 … add and edit also take [--llm x] [--tts x] [--voice x] [--tag x]… [--interrupts 0-1] [--pause s]
                   [--backchannels 0-1] [--speed 0.5-2] [--ambience television|cafe|office|street] [--background-noise dB]
 pinecall personas generate [N] [--about '…'] [--from-call <call>] [--template <name>] [--save]
-pinecall personas rm <name> · pinecall personas push [--from agents/<agent>/test/personas]
+pinecall personas rm <name> · pinecall personas pull [--out agents/<agent>/test/personas]
                 … any of them with --json, --prod in production, and --agent <name> or
                 --file agent.tsx when the project holds more than one agent
 ```
 
 **The callers are the AGENT's, kept by the gateway** — one list per agent, the same in both environments:
 the patient who cancels is the clinic's, and another agent of the org has callers of its own, even
-under the same name. So the console shows the same ones this verb does, a caller written here
-needs no deploy, and a project holds none of them in its repository.
+under the same name. So the console shows the same ones this verb does, and a caller written here
+needs no deploy. **Or the class's**: a class that declares `personas` (`personas({ on: [...] })`
+in TypeScript, `personas = personas(on=[...])` in Python, `personas on: [...]` in Ruby) owns the
+roster — which of Pinecall's its runs play is the class's `on`, its own callers are the files
+under `agents/<agent>/test/personas/`, one JSON file each (what `add` sends, the file's name the
+caller's), read when `pinecall start` or the deploy registers it. The list then says
+`set by the class of <agent>` and marks each row `class` or `pinecall on|off`; `add`, `edit`, `rm`,
+`on` and `off` are refused here with **exit 2**, naming the folder and the switch, and the console
+shows the roster locked. `pull` is the way across: it writes the agent's own rows as files under
+that folder, once, so the class can declare them; the rows stay until `rm` drops them, which
+is done before the class declares `personas`, or in the console.
 
 **Pinecall's library comes first**, each one `off` until `pinecall personas on <name>` switches it
 on for the agent (the nightly plays what is on): realism — `in-a-hurry`, `wrong-number`,
@@ -873,16 +883,16 @@ flag with exit 2.
 up to 10) — from its prompt, its tools and its knowledge; `--about` steers them, `--from-call` makes
 them like a real call's caller, `--template` writes one of the library's again for this agent, `N` times
 with `N` (say `1` for one). Each comes with what it expects. They are printed and saved nowhere; `--save` keeps every one as the
-agent's own. Each caller written is one eval, none when your judges run on your own key.
+agent's own — as rows, or, when the class owns the roster, as files under
+`agents/<agent>/test/personas/`, which the next `pinecall start` reads; the line names each file.
+Each caller written is one eval, none when your judges run on your own key. The console's
+"generate" keeps one the same way, through the `pinecall start` in the agent's directory.
 
-**`push` is the migration, run once per project**: the personas a project still keeps as files —
-`agents/<agent>/test/personas/*.ts`, each `export default { goal, style, facts?, state? }`, or `*.json`
-holding that object, the file's name the caller's — are sent to the gateway, evaluated as they load, so a file that
-computed its state from `lib/` lands as the value it produced; a file that is none of that is refused
-naming the shape, and the plain `personas` list says which files are not pushed yet. The files are yours to delete
-afterwards; the verb never touches them. A caller the gateway refuses stops the push where it
-stands: what landed and what is still only a file are both named, and it exits **1** — nothing is
-undone, and pushing again once it is fixed finishes the migration.
+**`pull`** writes the agent's own callers the gateway keeps as files, one `<name>.json` each under
+`agents/<agent>/test/personas/` (`--out` elsewhere), what `add` sends with the name left out:
+the step before a class declares `personas`. Pinecall's and the class's own are not written, and the
+rows stay. (The `push` of earlier versions, which sent files to the gateway once, is gone: a file
+is the class's now.)
 
 ## `judges`
 
@@ -894,6 +904,7 @@ pinecall judges show <name> [--org | --agent <name>] [--json]
 pinecall judges agreement [--org | --agent <name>] [--json]
 pinecall judges on|off <name> [--org | --agent <name>] [--json]
 pinecall judges rm <name> [--org | --agent <name>] [--json]
+pinecall judges pull [--agent <name>] [--out agents/<agent>/judges] [--json]
 pinecall judges try <name> (--last <n> | --calls <id,id…>) [--asks '…' and add's flags] [--agent <name>] [--json]
 ```
 
@@ -907,7 +918,16 @@ prints what each saves you from, and marks `recommended` the eight to switch on 
 `relevance`, `repetition` and `sentiment`, which grade a call rather than guard it; **the org's own**
 (`--org`), asked of every agent's calls; and **an agent's own**, about its job alone. The gateway
 keeps all of it for both environments: the console's Judges shows the same, and a change needs no
-deploy. `show <name>` prints one judge whole — whose, its switch, how and when it answers, what it
+deploy. **Or the class owns the agent's list**: a class that declares `judges` (`judges({ on: [...] })`
+in TypeScript, `judges = judges(on=[...])` in Python, `judges on: [...]` in Ruby) says which of
+Pinecall's its calls meet (`on`; every other off) and owns the agent's own judges as the files
+under `agents/<agent>/judges/`, one `<name>.md` each in the library's own format — front matter
+(`answer`, `choices`, `when`, `trigger`, `reads`) and the question below — read when
+`pinecall start` or the deploy registers it. The list then says `set by the class of <agent>`,
+marks the class's own `class`, and `add`, `on`, `off` and `rm` for that agent are refused here with
+**exit 2**, naming the folder and the switch; the org's list (`--org`) is always the org's, and its
+judges meet the agent's calls on top. `pull` writes the agent's own rows as those files, once,
+so the class can declare them; the rows stay until `rm`. `show <name>` prints one judge whole — whose, its switch, how and when it answers, what it
 reads, its question; a name the list has not is refused with exit 2.
 
 ```console

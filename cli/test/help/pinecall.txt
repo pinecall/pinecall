@@ -48,7 +48,7 @@ Commands:
                                  repository; a golden written by hand added
   personas                       an agent's synthetic callers: Pinecall's
                                  switched on or off, its own written, generated,
-                                 tried
+                                 tried, or the class's
   agent                          what the org set over the class — yours, the
                                  team's, production's — setting it, and the
                                  processes that hold it

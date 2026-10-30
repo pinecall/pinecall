@@ -2,14 +2,14 @@ $ pinecall personas --help
 Usage: pinecall personas [options] [command]
 
 an agent's synthetic callers: Pinecall's switched on or off, its own written,
-generated, tried
+generated, tried, or the class's
 
 Options:
   -h, --help              display help for command
 
 Commands:
   list [options]          the agent's callers: Pinecall's, on or off, and its
-                          own
+                          own (the class's, when it owns them)
   show [options] <name>   one caller whole: goal, style, facts, what they
                           expect, how they act
   add [options] <name>    write one: --goal and --style are needed
@@ -22,7 +22,8 @@ Commands:
                           judge
   generate [options] [n]  callers written by the judge model from the agent;
                           printed, and kept with --save
-  push [options]          the personas still in files, sent to the gateway once
+  pull [options]          the agent's own callers the gateway keeps, written as
+                          files for a class about to declare them
   help [command]          display help for command
 
 A persona is a caller a model plays: a goal, a style, the facts they may state about themselves,
@@ -40,7 +41,8 @@ Examples
 $ pinecall personas list --help
 Usage: pinecall personas list [options]
 
-the agent's callers: Pinecall's, on or off, and its own
+the agent's callers: Pinecall's, on or off, and its own (the class's, when it
+owns them)
 
 Options:
   --agent <name>
@@ -164,16 +166,18 @@ Options:
   --about <theme>
   --from-call <call>  callers like this call's caller
   --template <name>   callers like one of Pinecall's
-  --save              keep every one as the agent's own
+  --save              keep every one: as the agent's own, or as files under
+                      test/personas/ when the class owns them
   -h, --help          display help for command
 
-$ pinecall personas push --help
-Usage: pinecall personas push [options]
+$ pinecall personas pull --help
+Usage: pinecall personas pull [options]
 
-the personas still in files, sent to the gateway once
+the agent's own callers the gateway keeps, written as files for a class about to
+declare them
 
 Options:
   --agent <name>
   --file <agent.tsx>
-  --from <folder>     agents/<agent>/test/personas when left out
+  --out <folder>      agents/<agent>/test/personas when left out
   -h, --help          display help for command

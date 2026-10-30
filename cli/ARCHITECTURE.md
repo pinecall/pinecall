@@ -200,7 +200,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `evals/service/dataset.ts` | 201 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. |
 | `evals/service/goldens.ts` | 103 | Golden files on the tenant's disk and the schema the runner accepts. |
 | `evals/service/index.ts` | 82 | Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. |
-| `evals/service/personas.ts` | 253 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, and the file-kept ones pushed once. |
+| `evals/service/personas.ts` | 240 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled to files. |
 | `evals/service/replay.ts` | 17 | Ring 3: one finished call rebuilt from its log and answered by the runtime's code checks; nothing re-run, no model asked. |
 | `evals/service/runs.ts` | 261 | The runs the gateway kept: listed, one shown, two diffed, a real call promoted to a candidate, each judge's drift. |
 | `evals/service/simulation.ts` | 261 | One simulated call: a model plays the persona against the agent wherever it is held, written or spoken, judged at hang-up. |
@@ -249,7 +249,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `dev/handlers/chat.ts` | 61 | The console's Chat screen: written calls against the agent this process serves, so a tool's breakpoint works from the terminal. |
 | `dev/handlers/index.ts` | 41 | The console's dev verbs this process answers, one row per screen, over the agent's directory on disk. |
 | `dev/handlers/knowledge.ts` | 77 | The console's Docs and Memory screens: this directory's documents pushed and scored, its memory goldens run. |
-| `dev/handlers/runs.ts` | 75 | The console's Runs screens: a real call promoted to a candidate beside the goldens, the judges' drift, the reproductions a suite wrote. |
+| `dev/handlers/runs.ts` | 92 | The console's Runs and Personas screens: a call promoted to a candidate, a generated persona kept as a file, the judges' drift, the reproductions a suite wrote. |
 | `dev/handlers/screen.ts` | 40 | What every console screen's handlers stand on, and how a failure of theirs is told to the console. |
 | `dev/handlers/suite.ts` | 117 | The console's Tests and Simulations screens: goldens and personas played through the agent this process serves. |
 | `dev/reload.ts` | 123 | A save reloads the agent: its folder watched, a burst of writes settled into one reload, the next copy answering before the one before drains. |

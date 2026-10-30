@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`personas.write`, a dev verb.** The console asks the `pinecall start` in the agent's directory to keep
+  a generated persona as a file under `test/personas/`, for a class that owns its roster; in the `evals` family.
+
 - **The lists say what the class owns, and no door writes it.** `GET /v1/agents/{slug}/judges` and `…/personas`
   of an agent whose class declares them list the class's: the library as the class switches it and the class's
   own under `owner: "class"`, every row `fixed: true`. A `PUT` or a `DELETE` at that agent's, and a persona kept

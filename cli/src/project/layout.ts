@@ -29,7 +29,8 @@ export const MEMORY_GOLDEN = "memory.json";
  *     agents/<name>/test/agent.test.ts    ring 0
  *     agents/<name>/test/goldens/         ring 1, plus the `docs.json` and `memory.json` goldens
  *     agents/<name>/test/memory/          extraction cases, one written call each
- *     agents/<name>/test/personas/        the simulated callers kept in files
+ *     agents/<name>/test/personas/        the agent's own simulated callers, one JSON file each, when the class declares them
+ *     agents/<name>/judges/               the agent's own judges, one Markdown file each, when the class declares them
  *     agents/<name>/test/candidates/      real calls `runs promote` wrote, before a person keeps them
  *     lib/                                code shared by two or more agents
  */
@@ -42,6 +43,7 @@ export interface AgentHome {
   root: string;
   goldens: string;
   personas: string;
+  judges: string;
   candidates: string;
   docs: string;
   docsGolden: string;
@@ -62,6 +64,7 @@ export function homeOf(file: string): AgentHome {
     root,
     goldens: join(tests, "goldens"),
     personas: join(tests, "personas"),
+    judges: join(folder, "judges"),
     candidates: join(tests, "candidates"),
     docs: join(folder, AGENT_DOCS),
     docsGolden: join(tests, "goldens", DOCS_GOLDEN),

@@ -21,6 +21,8 @@ Commands:
                          (--org) or the agent
   rm [options] <name>    one of your own dropped; Pinecall's are never dropped,
                          only switched off
+  pull [options]         the agent's own judges the gateway keeps, written as
+                         files for a class about to declare them
   try [options] <name>   ask one judge of finished calls and write nothing
   help [command]         display help for command
 
@@ -127,6 +129,17 @@ one of your own dropped; Pinecall's are never dropped, only switched off
 Options:
   --org
   --agent <name>
+  -h, --help      display help for command
+
+$ pinecall judges pull --help
+Usage: pinecall judges pull [options]
+
+the agent's own judges the gateway keeps, written as files for a class about to
+declare them
+
+Options:
+  --agent <name>
+  --out <folder>  agents/<agent>/judges when left out
   -h, --help      display help for command
 
 $ pinecall judges try --help

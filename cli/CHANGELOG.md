@@ -6,6 +6,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A class that owns its judges and its personas is read as such.** `judges` and `personas` say
+  `set by the class of <agent>` and mark the class's own `class`; `add`, `edit`, `rm`, `on` and `off`
+  for that agent are refused with exit 2, naming the folder (`agents/<agent>/judges/`,
+  `agents/<agent>/test/personas/`) and the switch in the class; `--org` is still the org's.
+  `judges pull` and `personas pull` write the agent's own rows as those files, once, for a class
+  about to declare them. `personas generate --save` writes files when the class owns the roster,
+  rows otherwise, and the console's "generate" keeps one through `pinecall start` (the dev verb
+  `personas.write`). `personas push`, the one-time migration of files into rows, is gone.
+
 - **`webhook test` no longer says the post was signed when it was not**: a webhook set without
   `--secret` gets its test post unsigned, and the answer, the help and the MCP tool said "signed".
 - **`voices list` says each voice's language**: a vendor the providers row lists by language showed

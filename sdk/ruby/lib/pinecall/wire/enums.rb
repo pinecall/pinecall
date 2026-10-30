@@ -28,7 +28,7 @@ module Pinecall
       # asked, its memory goldens, the panel it draws beside a conversation (view), a call
       # promoted to a candidate file, the drift of the last two windows, and the reproductions a
       # broken run left on that disk. Everything else a console needs is a door of the gateway.
-      DEV_VERB = %w[chat.roster chat.start chat.say chat.end view.render simulate.start goldens.roster goldens.run knowledge.roster knowledge.push knowledge.eval memory.roster memory.eval memory.extraction promote.roster promote.write drift.read reproductions.roster reproductions.read].freeze
+      DEV_VERB = %w[chat.roster chat.start chat.say chat.end view.render simulate.start goldens.roster goldens.run knowledge.roster knowledge.push knowledge.eval memory.roster memory.eval memory.extraction promote.roster promote.write personas.write drift.read reproductions.roster reproductions.read].freeze
       # Why the call is over. Who hung up, what failed before anybody could, drained: the platform
       # took the worker down (a deploy, a stop) with the call still on it, or app_detached: the
       # app holding the agent closed its socket mid-call, so nothing was rendering the prompt or

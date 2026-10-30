@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A judge row says `fixed`** when the agent's class declares its judges (`owner: "class"` for its own), and
+  `personas.write` is a dev verb the CLI's companion answers.
+
 - **A class owns its judges and its personas.** `static judges = judges({ on: ["consent", …] })` names
   which of Pinecall's judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`,
   one each, in the library's format; `static personas = personas({ on: [...] })` the same for the

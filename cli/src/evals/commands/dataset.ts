@@ -157,18 +157,17 @@ export function registerCases(program: Command, ctx: Context): void {
 }
 
 export function registerPersonas(program: Command, ctx: Context): void {
-  const personas = program.command("personas").description("an agent's synthetic callers: Pinecall's switched on or off, its own written, generated, tried").addHelpText("after", HELP.personas);
+  const personas = program.command("personas").description("an agent's synthetic callers: Pinecall's switched on or off, its own written, generated, tried, or the class's").addHelpText("after", HELP.personas);
   const agentOf = (flags: { agent?: string | undefined; file?: string | undefined }): string => ctx.agent("personas", { agent: flags.agent, file: flags.file }).name;
   personas
     .command("list", { isDefault: true })
-    .description("the agent's callers: Pinecall's, on or off, and its own")
+    .description("the agent's callers: Pinecall's, on or off, and its own (the class's, when it owns them)")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .action(async (flags) => {
       const agent = agentOf(flags);
       const found = await service.listPersonas(ctx, agent);
-      const unsent = await service.personasNotPushed(ctx, flags, found);
-      ctx.io.result({ personas: found, not_pushed: unsent.names, not_personas: unsent.refused }, () => render.personas(agent, found, unsent.names, unsent.refused));
+      ctx.io.result({ personas: found }, () => render.personas(agent, found));
     });
   personas
     .command("show")
@@ -261,20 +260,21 @@ export function registerPersonas(program: Command, ctx: Context): void {
     .option("--about <theme>")
     .option("--from-call <call>", "callers like this call's caller")
     .option("--template <name>", "callers like one of Pinecall's")
-    .option("--save", "keep every one as the agent's own")
+    .option("--save", "keep every one: as the agent's own, or as files under test/personas/ when the class owns them")
     .action(async (n, flags) => {
       const input = service.GenerateInput.parse({ n: numberOf("generate", n), about: flags.about, fromCall: flags.fromCall, template: flags.template, save: flags.save === true });
-      ctx.io.result(await service.generatePersonas(ctx, agentOf(flags), input), render.generated);
+      const home = ctx.agent("personas", { agent: flags.agent, file: flags.file });
+      ctx.io.result(await service.generatePersonas(ctx, home.name, input, home.personas), render.generated);
     });
   personas
-    .command("push")
-    .description("the personas still in files, sent to the gateway once")
+    .command("pull")
+    .description("the agent's own callers the gateway keeps, written as files for a class about to declare them")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
-    .option("--from <folder>", "agents/<agent>/test/personas when left out")
+    .option("--out <folder>", "agents/<agent>/test/personas when left out")
     .action(async (flags) => {
       const home = ctx.agent("personas", { agent: flags.agent, file: flags.file });
-      const folder = flags.from ?? home.personas;
-      ctx.io.result(await service.pushPersonaFiles(ctx, home.name, folder), (done) => render.pushedFiles(done, folder));
+      const folder = flags.out ?? home.personas;
+      ctx.io.result(await service.pullPersonas(ctx, home.name, folder), (done) => render.pulled("personas", done));
     });
 }

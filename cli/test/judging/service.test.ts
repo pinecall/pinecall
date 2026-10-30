@@ -1,12 +1,14 @@
 /** Judging against the gateway: whose list, a judge written whole from its flags, a try, and the org's judging with whose key it runs on. */
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { UsageError } from "../../src/errors.js";
 import * as service from "../../src/judging/service.js";
 import { answer } from "../support/gateway.js";
 import { testContext } from "../support/context.js";
-import { A_JUDGE, JUDGING } from "../support/fixtures.js";
+import { A_JUDGE, A_LIBRARY_JUDGE, JUDGING } from "../support/fixtures.js";
 import { folder } from "../support/project.js";
 
 describe("whose list", () => {
@@ -51,6 +53,7 @@ describe("a judge of one's own", () => {
   });
 
   it("is put under the agent's list, and the list after is answered with what was done", async () => {
+    answer("get", "/v1/agents/:slug/judges", { judges: [] });
     const sent = answer("put", "/v1/agents/:slug/judges/:name", { judges: [A_JUDGE] });
     const { ctx } = testContext();
     const changed = await service.addJudge(ctx, "front-desk", "offers-next-slot", { asks: A_JUDGE.question });
@@ -135,5 +138,30 @@ describe("the org's judging", () => {
     const { ctx } = testContext();
     await expect(service.setJudging(ctx, service.SetJudgingInput.parse({ platform: true, model: "haiku" }))).rejects.toBeInstanceOf(UsageError);
     await expect(service.setJudging(ctx, service.SetJudgingInput.parse({ options: { a: 1 } }))).rejects.toBeInstanceOf(UsageError);
+  });
+});
+
+describe("a class that owns the agent's judges", () => {
+  it("refuses add, on, off and rm for that agent, naming the folder, and leaves the org's list the org's", async () => {
+    answer("get", "/v1/agents/:slug/judges", { judges: [{ ...A_LIBRARY_JUDGE, fixed: true }, { ...A_JUDGE, owner: "class", fixed: true }] });
+    const { ctx } = testContext();
+    const refused = service.SET_BY_THE_CLASS("front-desk");
+    await expect(service.addJudge(ctx, "front-desk", "polite", { asks: "Polite?" })).rejects.toThrow(refused);
+    await expect(service.switchJudge(ctx, "front-desk", "consent", false)).rejects.toThrow(refused);
+    await expect(service.removeJudge(ctx, "front-desk", "offers-next-slot")).rejects.toThrow(refused);
+    const sent = answer("put", "/v1/org/judges/:name", { judges: [] });
+    await service.addJudge(ctx, null, "polite", { asks: "Polite?" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("pull writes the agent's own rows as files in the library's format, and neither Pinecall's nor the org's", async () => {
+    const choice = { ...A_JUDGE, name: "call-reason", answer: "choice" as const, choices: ["book", "cancel"], when: "trigger" as const, trigger: "Did they ask for a slot?", reads: ["facts" as const] };
+    answer("get", "/v1/agents/:slug/judges", { judges: [A_LIBRARY_JUDGE, { ...A_JUDGE, owner: "org" }, A_JUDGE, choice] });
+    const root = folder();
+    const { ctx } = testContext();
+    const pulled = await service.pullJudges(ctx, "front-desk", `${root}/judges`);
+    expect(pulled.files).toEqual([`${root}/judges/offers-next-slot.md`, `${root}/judges/call-reason.md`]);
+    expect(readFileSync(`${root}/judges/offers-next-slot.md`, "utf8")).toBe(`---\nanswer: verdict\nwhen: always\n---\n${A_JUDGE.question}\n`);
+    expect(readFileSync(`${root}/judges/call-reason.md`, "utf8")).toBe(`---\nanswer: choice\nchoices: book, cancel\nwhen: trigger\ntrigger: Did they ask for a slot?\nreads: facts\n---\n${A_JUDGE.question}\n`);
   });
 });

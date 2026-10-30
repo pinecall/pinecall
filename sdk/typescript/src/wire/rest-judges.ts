@@ -25,11 +25,13 @@ export const JudgeRequestSchema = z.strictObject({
 
 export type JudgeRequest = z.infer<typeof JudgeRequestSchema>;
 
-/** One judge as the list shows it: whose it is (`pinecall`, `org` or the agent's slug), whether it runs, what it asks. */
+/** One judge as the list shows it: whose it is (`pinecall`, `org`, `class` or the agent's slug), whether it runs, what it asks. */
 export const JudgeRowSchema = z.strictObject({
   name: z.string(),
   owner: z.string(),
   on: z.boolean(),
+  /** True on a row the agent's class declares, its switch of a library judge or its own: no door writes it. */
+  fixed: z.boolean().optional(),
   question: z.string(),
   answer: JudgeAnswerSchema,
   choices: z.array(z.string()),

@@ -107,9 +107,11 @@ export interface Behavior {
 /** A persona as the agent's list carries it: Pinecall's or the agent's own. */
 export interface Persona {
   name: string;
-  /** "pinecall" for the library's, else the agent's slug. */
+  /** "pinecall" for the library's, "class" for the agent's class's, else the agent's slug. */
   owner: string;
   on: boolean;
+  /** True on a row the agent's class declares, its switch of a library persona or its own: no door writes it. */
+  fixed?: boolean;
   about: string;
   goal: string;
   style: string;

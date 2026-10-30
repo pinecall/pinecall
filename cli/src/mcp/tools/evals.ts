@@ -235,14 +235,15 @@ export const personas = tool({
     n: z.number().int().min(1).max(10).optional().describe("`generate`: how many callers, 3 unless said"),
     from_call: z.string().optional().describe("`generate`: callers like this finished call's caller"),
     template: z.string().optional().describe("`generate`: callers like one of Pinecall's, by name"),
-    save: z.boolean().optional().describe("`generate`: keep every caller written as the agent's own"),
+    save: z.boolean().optional().describe("`generate`: keep every caller written, as the agent's own or, when the class owns its roster, as files under agents/<agent>/test/personas/"),
   },
   manual:
-    "`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person and `save` the ones they keep. `simulate` runs one.",
+    "`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person and `save` the ones they keep. A class that declares `personas` owns the roster: the list says `fixed`, its own are the files under `agents/<agent>/test/personas/`, `save` writes files there, and `add`, `edit`, `rm`, `on` and `off` are refused naming the class. `simulate` runs one.",
   handler: async (args, ctx) => {
-    const agent = ctx.agent("personas", { agent: args.agent }).name;
+    const home = ctx.agent("personas", { agent: args.agent });
+    const agent = home.name;
     if (args.action === "list") return { personas: await service.listPersonas(ctx, agent) };
-    if (args.action === "generate") return await service.generatePersonas(ctx, agent, service.GenerateInput.parse({ n: args.n, about: args.about, fromCall: args.from_call, template: args.template, save: args.save === true }));
+    if (args.action === "generate") return await service.generatePersonas(ctx, agent, service.GenerateInput.parse({ n: args.n, about: args.about, fromCall: args.from_call, template: args.template, save: args.save === true }), home.personas);
     const name = needed(args.name, "name");
     if (args.action === "show") return await service.getPersona(ctx, agent, name);
     if (args.action === "on" || args.action === "off") return await service.switchPersona(ctx, agent, name, args.action === "on");

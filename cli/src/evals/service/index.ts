@@ -42,14 +42,17 @@ export {
   isPinecalls,
   listPersonas,
   NOBODY,
-  NOT_A_PERSONA_FILE,
-  personasNotPushed,
-  pushPersonaFiles,
+  ownedByTheClass,
+  pullPersonas,
+  SET_BY_THE_CLASS,
   switchPersona,
   WritePersonaInput,
   writePersona,
+  writePersonaFile,
   type GeneratedPersonas,
   type Persona,
+  type PersonaFile,
+  type Saved,
 } from "./personas.js";
 export { readPolicy, replayCall, type Replayed, type Verdict } from "./replay.js";
 export { diffRuns, DRIFT_CALLS, drifted, DriftInput, driftOf, listRuns, movedBetween, PromoteInput, promoteCall, RUNS_MOST, RunsLimit, secondsOf, showRun, THRESHOLD, type Drift, type JudgeDrift, type Moved, type Promoted, type Rate } from "./runs.js";

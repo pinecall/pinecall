@@ -59,6 +59,7 @@ describe("pinecall judges", () => {
   });
 
   it("add writes it and says how many the list holds", async () => {
+    answer("get", "/v1/agents/:slug/judges", { judges: [] });
     const sent = answer("put", "/v1/agents/:slug/judges/:name", { judges: [A_JUDGE] });
     const ran = await run(["judges", "add", "offers-next-slot", "--asks", A_JUDGE.question, "--answer", "score"]);
     expect(sent[0]!.body).toEqual({ question: A_JUDGE.question, answer: "score", when: "always" });
@@ -66,6 +67,7 @@ describe("pinecall judges", () => {
   });
 
   it("rm of one of Pinecall's: the gateway's 409 in its words, which name the verb that switches it off", async () => {
+    answer("get", "/v1/agents/:slug/judges", { judges: [] });
     refuse("delete", "/v1/agents/:slug/judges/:name", 409, "consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off");
     const ran = await run(["judges", "rm", "consent"]);
     expect(ran.code).toBe(2);

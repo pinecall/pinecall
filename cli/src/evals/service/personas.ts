@@ -1,15 +1,13 @@
-/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, and the file-kept ones pushed once. */
+/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled to files. */
 
-import { readdir } from "node:fs/promises";
-import { basename, extname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { z } from "zod";
 
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
-import { PinecallError, UsageError, errorMessage } from "../../errors.js";
-import { readJsonFile } from "../../kit/json-file.js";
+import { UsageError } from "../../errors.js";
 import * as providers from "../../providers/service.js";
 import { AMBIENCES } from "./suite.js";
 
@@ -24,6 +22,8 @@ const A_SPEED = "--speed is a multiple of the caller's usual pace, 0.5 to 2";
 
 export const NOBODY = (name: string, agent: string): string => `no persona called ${name} for ${agent}: \`pinecall personas add ${name} --goal '…' --style '…'\`, or the console's Personas`;
 export const PINECALLS = (name: string): string => `${name} is one of Pinecall's personas: \`pinecall personas on|off ${name}\` switches it; write your own under another name`;
+export const SET_BY_THE_CLASS = (agent: string): string =>
+  `personas set by the class of ${agent}: its callers are the files under agents/${agent}/test/personas/, and which of Pinecall's it plays is personas({ on }) in the class; nothing is written here`;
 
 /** What `add` and `edit` take; on `edit` only the fields named change. */
 export const WritePersonaInput = z.object({
@@ -59,9 +59,19 @@ export type GenerateInput = z.infer<typeof GenerateInput>;
 /** Whether a persona of the list is the library's. */
 export const isPinecalls = (persona: api.Persona): boolean => persona.owner === "pinecall";
 
+/** Whether the agent's class owns its roster: every row of the list is then fixed, and no door writes one. */
+export const ownedByTheClass = (listed: api.Persona[]): boolean => listed.some((one) => one.fixed === true);
+
 /** The agent's callers: Pinecall's first, then its own. */
 export async function listPersonas(ctx: Context, agent: string): Promise<api.Persona[]> {
   return api.listPersonas(ctx.gateway(), agent);
+}
+
+/** The agent's list, refused with where to write when its class owns it. */
+async function writable(ctx: Context, agent: string): Promise<api.Persona[]> {
+  const listed = await listPersonas(ctx, agent);
+  if (ownedByTheClass(listed)) throw new UsageError(SET_BY_THE_CLASS(agent));
+  return listed;
 }
 
 /** One persona by name; an unknown name is refused naming it. */
@@ -73,7 +83,7 @@ export async function getPersona(ctx: Context, agent: string, name: string): Pro
 
 /** Write one of the agent's own, whole: on `add` new, on `edit` merged over what it is; the agent's list after. */
 export async function writePersona(ctx: Context, agent: string, name: string, verb: "add" | "edit", input: WritePersonaInput): Promise<{ name: string; personas: api.Persona[] }> {
-  const before = (await listPersonas(ctx, agent)).find((one) => one.name === name);
+  const before = (await writable(ctx, agent)).find((one) => one.name === name);
   if (before !== undefined && isPinecalls(before)) throw new UsageError(PINECALLS(name));
   if (verb === "edit" && before === undefined) throw new UsageError(NOBODY(name, agent));
   if (verb === "add" && before !== undefined) throw new UsageError(`${agent} has a persona called ${name} already: \`pinecall personas edit ${name}\``);
@@ -112,20 +122,31 @@ export async function writePersona(ctx: Context, agent: string, name: string, ve
 
 /** One of the agent's own dropped; one of Pinecall's is switched off instead. */
 export async function dropPersona(ctx: Context, agent: string, name: string): Promise<{ name: string; personas: api.Persona[] }> {
-  const found = await getPersona(ctx, agent, name);
+  const found = (await writable(ctx, agent)).find((one) => one.name === name);
+  if (found === undefined) throw new UsageError(NOBODY(name, agent));
   if (isPinecalls(found)) throw new UsageError(`${name} is one of Pinecall's personas and is never dropped: \`pinecall personas off ${name}\``);
   return { name, personas: await api.deletePersona(ctx.gateway(), agent, name) };
 }
 
 /** One of Pinecall's switched for the agent: the nightly plays what is on. */
 export async function switchPersona(ctx: Context, agent: string, name: string, on: boolean): Promise<{ name: string; on: boolean; personas: api.Persona[] }> {
-  const found = (await listPersonas(ctx, agent)).find((one) => one.name === name);
+  const found = (await writable(ctx, agent)).find((one) => one.name === name);
   if (found === undefined || !isPinecalls(found)) throw new UsageError(`${name} is not one of Pinecall's personas: \`pinecall personas\` lists them; your own play while written`);
   return { name, on, personas: await api.putPersona(ctx.gateway(), agent, name, { on }) };
 }
 
-/** Callers written by the judge model from the agent; kept as its own with `save`. */
-export async function generatePersonas(ctx: Context, agent: string, input: GenerateInput): Promise<api.GeneratedPersonas & { saved: boolean }> {
+/** What `generate --save` did with the callers: rows written, or files under the folder the class reads. */
+export interface Saved {
+  saved: boolean;
+  /** The files written, when the class owns the roster; empty when rows were written or nothing was kept. */
+  files: string[];
+}
+
+/**
+ * Callers written by the judge model from the agent; kept with `save`: as the agent's rows, or, when the
+ * class owns its roster, as files under `folder` (`agents/<agent>/test/personas/`), which the class reads.
+ */
+export async function generatePersonas(ctx: Context, agent: string, input: GenerateInput, folder?: string): Promise<api.GeneratedPersonas & Saved> {
   const gw = ctx.gateway();
   const written = await api.generatePersonas(gw, agent, {
     n: input.n,
@@ -133,68 +154,44 @@ export async function generatePersonas(ctx: Context, agent: string, input: Gener
     ...(input.fromCall === undefined ? {} : { from_call: input.fromCall }),
     ...(input.template === undefined ? {} : { template: input.template }),
   });
-  if (input.save) {
-    for (const persona of written.personas) {
-      const { name, ...rest } = persona;
-      await api.putPersona(gw, agent, name, rest);
-    }
+  if (!input.save) return { ...written, saved: false, files: [] };
+  if (folder !== undefined && ownedByTheClass(await listPersonas(ctx, agent))) {
+    const files: string[] = [];
+    for (const persona of written.personas) files.push(await writePersonaFile(folder, persona));
+    return { ...written, saved: true, files };
   }
-  return { ...written, saved: input.save };
+  for (const persona of written.personas) {
+    const { name, ...rest } = persona;
+    await api.putPersona(gw, agent, name, rest);
+  }
+  return { ...written, saved: true, files: [] };
+}
+
+/** A persona as its file holds it: what `PUT …/personas/{name}` takes, the name being the file's. */
+export type PersonaFile = Omit<api.PersonaWrite, "was" | "on">;
+
+/** One caller written as `<folder>/<name>.json`, what the class reads; the same name again is replaced. */
+export async function writePersonaFile(folder: string, persona: { name: string } & PersonaFile): Promise<string> {
+  const { name, ...rest } = persona;
+  if (!A_NAME.test(name)) throw new UsageError(`${name} is no name for a caller: lower-case letters and digits joined by hyphens — apurado, price-shopper`);
+  await mkdir(folder, { recursive: true });
+  const path = join(folder, `${name}.json`);
+  await writeFile(path, `${JSON.stringify(rest, null, 2)}\n`, "utf8");
+  return path;
 }
 
 /**
- * The personas still in files (`agents/<agent>/test/personas/*.ts`, each default-exporting one) sent to the
- * gateway once, as that agent's: the migration. A refusal names what landed and what is left.
+ * The agent's own callers the gateway keeps, written once as files under `folder` for a class that is
+ * about to declare them; the rows stay, and `pinecall personas rm` drops them once the class owns the roster.
  */
-/**
- * The personas written under the agent's `test/personas/` that the gateway does not list: for a
- * list that says what `personas push` would send. None outside a project, or for a bare slug.
- */
-export async function personasNotPushed(
-  ctx: Context,
-  choice: { agent?: string | undefined; file?: string | undefined },
-  listed: api.Persona[],
-): Promise<{ names: string[]; refused: string[] }> {
-  let folder: string;
-  try {
-    folder = ctx.agent("personas", choice).personas;
-  } catch {
-    return { names: [], refused: [] };
+export async function pullPersonas(ctx: Context, agent: string, folder: string): Promise<{ files: string[] }> {
+  const own = (await listPersonas(ctx, agent)).filter((one) => !isPinecalls(one) && one.owner !== "class");
+  const files: string[] = [];
+  for (const one of own) {
+    const { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior } = one;
+    files.push(await writePersonaFile(folder, { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior }));
   }
-  const names = new Set(listed.map((one) => one.name));
-  // A list goes on past a file that is no persona, and names it: `push` is where it is refused (R F21).
-  const read = await personaFiles(folder);
-  return { names: read.kept.map((one) => one.name).filter((name) => !names.has(name)), refused: read.refused };
-}
-
-export async function pushPersonaFiles(ctx: Context, agent: string, folder: string): Promise<{ pushed: string[]; personas: api.Persona[] }> {
-  const inFiles = await personasInFiles(folder);
-  if (inFiles.length === 0) throw new UsageError(`no personas in ${folder}`);
-  const pushed: string[] = [];
-  let personas: api.Persona[] = [];
-  for (const persona of inFiles) {
-    try {
-      personas = await api.putPersona(ctx.gateway(), agent, persona.name, {
-        goal: persona.goal,
-        style: persona.style,
-        about: "",
-        facts: Object.fromEntries(Object.entries(persona.facts ?? {}).map(([what, said]) => [what, String(said)])),
-        state: persona.state ?? {},
-      });
-    } catch (refused) {
-      const left = inFiles.map((one) => one.name).slice(pushed.length);
-      throw new PinecallError(
-        [
-          `${left[0]} was refused: ${errorMessage(refused)}`,
-          `  pushed: ${pushed.length === 0 ? "nothing" : pushed.join(", ")}`,
-          `  still only files: ${left.join(", ")}`,
-          "  nothing was undone and no file was touched: push again once it is fixed",
-        ].join("\n"),
-      );
-    }
-    pushed.push(persona.name);
-  }
-  return { pushed, personas };
+  return { files };
 }
 
 /** Repeated `--fact 'what=said'` flags as a map. */
@@ -206,48 +203,4 @@ export function factsOf(said: string[]): Record<string, string> {
     facts[one.slice(0, at).trim()] = one.slice(at + 1).trim();
   }
   return facts;
-}
-
-const PERSONA_FILES = new Set([".ts", ".json"]);
-export const NOT_A_PERSONA_FILE = (file: string): string => `${file} is no persona: a .ts file default-exports { goal, style, facts?, state? }, a .json file is that object`;
-
-/** A persona file as it was written before the gateway kept them. */
-interface FilePersona {
-  name: string;
-  goal: string;
-  style: string;
-  facts?: Record<string, unknown>;
-  state?: Record<string, unknown>;
-}
-
-// A `.ts` file is TypeScript a project never builds, loaded through tsx's own import — a namespace of
-// its own per call, so an edited file is read again; a `.json` file is read as it is.
-async function personasInFiles(folder: string): Promise<FilePersona[]> {
-  const read = await personaFiles(folder);
-  if (read.refused.length > 0) throw new UsageError(NOT_A_PERSONA_FILE(read.refused[0]!));
-  return read.kept;
-}
-
-/** Every persona file of the folder read: the ones that are a persona, and the paths of those that are not. */
-async function personaFiles(folder: string): Promise<{ kept: FilePersona[]; refused: string[] }> {
-  const names = await readdir(resolve(folder)).catch(() => []);
-  const files = names.filter((name) => PERSONA_FILES.has(extname(name))).sort();
-  const read = await Promise.all(
-    files.map(async (name): Promise<FilePersona | string> => {
-      const file = join(resolve(folder), name);
-      const loaded = extname(name) === ".json" ? readJsonFile<unknown>("a persona file", file) : await personaModule(file);
-      if (typeof loaded !== "object" || loaded === null || typeof (loaded as FilePersona).goal !== "string" || typeof (loaded as FilePersona).style !== "string") return file;
-      return { ...(loaded as FilePersona), name: basename(file, extname(file)) };
-    }),
-  );
-  return { kept: read.filter((one): one is FilePersona => typeof one !== "string"), refused: read.filter((one): one is string => typeof one === "string") };
-}
-
-// A file in a folder with no `"type": "module"` is compiled as CommonJS, and its default export arrives
-// one level down (`module.exports.default`).
-async function personaModule(file: string): Promise<unknown> {
-  const { tsImport } = await import("tsx/esm/api");
-  const loaded = (await tsImport(pathToFileURL(file).href, import.meta.url)) as { default?: unknown; "module.exports"?: { default?: unknown } };
-  const commonjs = loaded["module.exports"];
-  return commonjs === undefined ? loaded.default : (commonjs.default ?? commonjs);
 }

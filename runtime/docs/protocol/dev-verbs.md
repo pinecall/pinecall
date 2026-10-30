@@ -23,7 +23,7 @@ answer is the verb's own shape, which belongs to the CLI that answers it; the wi
 | `knowledge` | `knowledge` | `knowledge.roster` · `knowledge.push` · `knowledge.eval` |
 | `memory` | `memory` | `memory.roster` · `memory.eval` · `memory.extraction` |
 | `view` | `calls` | `view.render` |
-| `evals` | `evals` | `simulate.start` · `goldens.roster` · `goldens.run` · `promote.roster` · `promote.write` · `drift.read` · `reproductions.roster` · `reproductions.read` |
+| `evals` | `evals` | `simulate.start` · `goldens.roster` · `goldens.run` · `promote.roster` · `promote.write` · `personas.write` · `drift.read` · `reproductions.roster` · `reproductions.read` |
 
 A verb asked under the wrong family is `404`; an app that says nothing for two minutes is `504`.
 

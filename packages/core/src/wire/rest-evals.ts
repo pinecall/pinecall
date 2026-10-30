@@ -38,10 +38,12 @@ export const PersonaSchema = z.strictObject({
   /** The agent the caller was written for: every row says whose, so the org's roster reads the same. */
   agent: z.string(),
   name: z.string(),
-  /** "pinecall" for the library's, else the agent's slug. */
+  /** "pinecall" for the library's, "class" for the agent's class's, else the agent's slug. */
   owner: z.string(),
   /** Whether the agent's runs play it; the agent's own always do. */
   on: z.boolean(),
+  /** True on a row the agent's class declares, its switch of a library persona or its own: no door writes it. */
+  fixed: z.boolean().optional(),
   about: z.string(),
   goal: z.string(),
   style: z.string(),
@@ -249,6 +251,8 @@ export const JudgeRowSchema = z.strictObject({
   name: z.string(),
   owner: z.string(),
   on: z.boolean(),
+  /** True on a row the agent's class declares, its switch of a library judge or its own: no door writes it. */
+  fixed: z.boolean().optional(),
   question: z.string(),
   answer: JudgeAnswerSchema,
   choices: z.array(z.string()),

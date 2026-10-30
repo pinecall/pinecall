@@ -1,5 +1,8 @@
 /** Judging: every judge a call meets, one tried on calls, and whether the org's calls are judged and on what. */
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import { z } from "zod";
 
 import { cornerRead, readSettings } from "../agents/service/corners.js";
@@ -23,6 +26,8 @@ export const NO_QUESTION = "a judge needs --asks: the one sentence the judge mod
 export const ONE_OR_THE_OTHER = "--org and --agent name two lists: the org's judges, or one agent's own";
 export const TRY_IS_AN_AGENTS = "try asks one agent's calls: --agent names it, never --org";
 export const WHICH_CALLS = "try needs the calls: --last <n> (1 to 50) or --calls <id,id…>, one of them";
+export const SET_BY_THE_CLASS = (agent: string): string =>
+  `judges set by the class of ${agent}: its judges are the files under agents/${agent}/judges/, and which of Pinecall's its calls meet is judges({ on }) in the class; nothing is written here`;
 const NOT_AN_ANSWER = (said: string): string => `--answer ${said}: verdict (held or broken), score (1 to 5), or choice:a,b,c (two choices at least)`;
 const NOT_WHEN = (said: string): string => `--when ${said}: always, simulations, or trigger:'…' (a yes-or-no asked first; a no is N/A)`;
 const NOT_READ = (said: string): string => `--reads ${said}: any of ${READS.join(", ")}, comma-separated`;
@@ -112,6 +117,41 @@ export async function listJudges(ctx: Context, owner: api.JudgeOwner): Promise<a
   return api.listJudges(ctx.gateway(), owner);
 }
 
+/** Whether the agent's class owns its judges: every row of its list is then fixed, and no door writes one. */
+export const ownedByTheClass = (list: api.JudgeList): boolean => list.judges.some((row) => row.fixed === true);
+
+// The org's list is always the org's to write; an agent's is refused with where to write when its class owns it.
+async function writable(ctx: Context, owner: api.JudgeOwner): Promise<void> {
+  if (owner === null) return;
+  if (ownedByTheClass(await listJudges(ctx, owner))) throw new UsageError(SET_BY_THE_CLASS(owner));
+}
+
+/**
+ * The agent's own judges the gateway keeps, written once as `<name>.md` files in the library's format under
+ * `folder`, for a class about to declare them; the rows stay until `pinecall judges rm`.
+ */
+export async function pullJudges(ctx: Context, agent: string, folder: string): Promise<{ files: string[] }> {
+  const own = (await listJudges(ctx, agent)).judges.filter((row) => row.owner === agent);
+  await mkdir(folder, { recursive: true });
+  const files: string[] = [];
+  for (const row of own) {
+    const path = join(folder, `${row.name}.md`);
+    await writeFile(path, judgeFileOf(row), "utf8");
+    files.push(path);
+  }
+  return { files };
+}
+
+/** A judge as its file holds it: front matter in the library's format, the question below. */
+export function judgeFileOf(row: Pick<api.JudgeRow, "answer" | "choices" | "when" | "trigger" | "reads" | "question">): string {
+  const lines = [`answer: ${row.answer}`];
+  if (row.choices.length > 0) lines.push(`choices: ${row.choices.join(", ")}`);
+  lines.push(`when: ${row.when}`);
+  if (row.trigger !== "") lines.push(`trigger: ${row.trigger}`);
+  if (row.reads.length > 0) lines.push(`reads: ${row.reads.join(", ")}`);
+  return `---\n${lines.join("\n")}\n---\n${row.question.trim()}\n`;
+}
+
 /** Each judge's agreement with the labels people gave: one agent's calls, or every agent's (the org). */
 export async function agreement(ctx: Context, owner: api.JudgeOwner): Promise<api.Calibration> {
   return api.getCalibration(ctx.gateway(), owner);
@@ -119,17 +159,20 @@ export async function agreement(ctx: Context, owner: api.JudgeOwner): Promise<ap
 
 export async function addJudge(ctx: Context, owner: api.JudgeOwner, name: string, flags: JudgeFlags): Promise<JudgeListChanged> {
   checkJudgeName(name);
+  await writable(ctx, owner);
   return { done: `${name} written`, ...(await api.putJudge(ctx.gateway(), owner, name, judgeRequestOf(flags))) };
 }
 
 /** One of Pinecall's judges switched for the org or the agent. */
 export async function switchJudge(ctx: Context, owner: api.JudgeOwner, name: string, on: boolean): Promise<JudgeListChanged> {
   checkJudgeName(name);
+  await writable(ctx, owner);
   return { done: `${name} ${on ? "on" : "off"}`, ...(await api.putJudge(ctx.gateway(), owner, name, { on })) };
 }
 
 export async function removeJudge(ctx: Context, owner: api.JudgeOwner, name: string): Promise<JudgeListChanged> {
   checkJudgeName(name);
+  await writable(ctx, owner);
   return { done: `${name} dropped`, ...(await api.deleteJudge(ctx.gateway(), owner, name)) };
 }
 
