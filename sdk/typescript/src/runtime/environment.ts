@@ -21,6 +21,8 @@ export const ENVIRONMENT = [
   "docs",
   "memory",
   "record",
+  "judges",
+  "personas",
 ] as const;
 
 type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number]>;

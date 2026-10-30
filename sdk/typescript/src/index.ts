@@ -31,6 +31,7 @@ export { ToolFailed, runTool } from "./runtime/run-tool.js";
 export * from "./runtime/connect.js";
 export * from "./agent/visibility.js";
 export * from "./agent/accepts.js";
+export { judges, personas } from "./agent/harness.js";
 export * from "./call/room.js";
 export * from "./call/history.js";
 export * from "./call/call.js";

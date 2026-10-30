@@ -8,6 +8,7 @@ import {
   ToolSpecSchema,
   VisibilitySchema,
 } from "./defs.js";
+import { JudgeAnswerSchema, JudgeReadSchema, JudgeWhenSchema } from "./rest-judges.js";
 
 /** Which voice speaks for the agent: the name it was asked for, or the id the provider knows it by. */
 export const VoiceConfigSchema = z.strictObject({
@@ -145,6 +146,69 @@ export const MemoryConfigSchema = z.strictObject({
  * knowledge, docs, memory, record — is the agent's settings' unless the class declares it: what
  * the class declares wins over the settings.
  */
+/** One judge of the agent's own, as its class declares it: `judges/<name>.md` read. */
+export const JudgeDeclarationSchema = z.strictObject({
+  name: z.string(),
+  question: z.string(),
+  answer: JudgeAnswerSchema.optional(),
+  choices: z.array(z.string()).optional(),
+  when: JudgeWhenSchema.optional(),
+  trigger: z.string().optional(),
+  reads: z.array(JudgeReadSchema).optional(),
+});
+
+export type JudgeDeclaration = z.infer<typeof JudgeDeclarationSchema>;
+
+/** The judges the class owns: which of Pinecall's its calls meet (`on`), and its own. */
+export const JudgesDeclaredSchema = z.strictObject({
+  on: z.array(z.string()).optional(),
+  own: z.array(JudgeDeclarationSchema).optional(),
+});
+
+export type JudgesDeclared = z.infer<typeof JudgesDeclaredSchema>;
+
+/** What plays behind a simulated caller once `interferer_db` names a level. */
+export const AmbienceSchema = z.enum(["television", "cafe", "office", "street"]);
+
+/** How a simulated caller acts on a spoken line, beside what it says; each share is 0 to 1. */
+export const CallerBehaviorSchema = z.strictObject({
+  interrupts: z.number().optional(),
+  pause_s: z.number().optional(),
+  interferer_db: z.number().nullish(),
+  packet_loss: z.number().optional(),
+  backchannels: z.number().optional(),
+  speed: z.number().optional(),
+  ambience: AmbienceSchema.optional(),
+});
+
+export type CallerBehavior = z.infer<typeof CallerBehaviorSchema>;
+
+/** One caller of the agent's own, as its class declares it: `test/personas/<name>.json` read. */
+export const PersonaDeclarationSchema = z.strictObject({
+  name: z.string(),
+  goal: z.string(),
+  style: z.string(),
+  about: z.string().optional(),
+  facts: z.record(z.string(), z.string()).optional(),
+  state: z.record(z.string(), z.unknown()).optional(),
+  expects: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  behavior: CallerBehaviorSchema.optional(),
+  llm: z.string().nullish(),
+  tts: z.string().nullish(),
+  voice: z.string().nullish(),
+});
+
+export type PersonaDeclaration = z.infer<typeof PersonaDeclarationSchema>;
+
+/** The personas the class owns: which of Pinecall's its runs play (`on`), and its own. */
+export const PersonasDeclaredSchema = z.strictObject({
+  on: z.array(z.string()).optional(),
+  own: z.array(PersonaDeclarationSchema).optional(),
+});
+
+export type PersonasDeclared = z.infer<typeof PersonasDeclaredSchema>;
+
 export const AgentConfigSchema = z.strictObject({
   prompt: z.array(PromptBlockSpecSchema).nullish(),
   language: z.string().nullish(),
@@ -169,6 +233,9 @@ export const AgentConfigSchema = z.strictObject({
   state_fields: z.array(StateFieldSpecSchema).nullish(),
   view: ViewSpecSchema.nullish(),
   events: z.array(EventSpecSchema).nullish(),
+  /** Declared, the class owns the agent's judges and its personas: no door writes either. */
+  judges: JudgesDeclaredSchema.nullish(),
+  personas: PersonasDeclaredSchema.nullish(),
 });
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

@@ -21,6 +21,7 @@ import { PROMPT_BLOCKS } from "../views/layout.js";
 import { promptOf } from "../views/render.js";
 import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
+import { harnessOf } from "../agent/harness.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
@@ -101,7 +102,8 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
   const probe = instance as unknown as Record<string, unknown>;
   refuseTheEnvironment(probe);
   // Phone numbers are org rows managed with `pinecall numbers`, so a `phone` field is never sent.
-  const options: AgentOptions = { tools, ...environmentOf(ctor) };
+  // The folders beside the class fill in what `static judges` and `static personas` declare.
+  const options: AgentOptions = { tools, ...environmentOf(ctor), ...harnessOf(ctor, file) };
   if (searchesKnowledge(source ?? ctor.toString(), file)) options.usesKnowledge = true;
   // Always sent whole, so the runtime and console name blocks the same way.
   options.prompt = [...PROMPT_BLOCKS];

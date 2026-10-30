@@ -55,6 +55,7 @@ a directory earns its place there by having a line in that table (§13).
 | `stages.ts` | `Stages<"a"|"b">`, `StageOf<T>`, and `lowerStage` — `stage:` is sugar over `when(state)` |
 | `visibility.ts` | `@state` in its three spellings — bare, `{ pii: true }`, `{ visibility }` — which fields are the state (`declaredStateOf`) and who may see them (`visibilityOf`, plus `static visibility = {…}`) |
 | `accepts.ts` | `static events = {…}`: which outside facts this class takes, and from whom |
+| `harness.ts` | `judges({ on })` and `personas({ on })`, what `static judges` and `static personas` hold; `harnessOf(ctor, file)` reads the folders beside the class (`judges/*.md` in the library's format, `test/personas/*.json` as a PUT takes one) into each `own`, refusing a bad file by sentence and a folder the class never declared |
 | `view.ts` | `@view(Draw)` / `@view(Draw, "Cliente")`: the panel the class draws beside a conversation, and `viewOf`. `Who` is the conversation it is drawn about — `{ agent, contact, call }` |
 | `lifecycle.ts` | the hooks as a type (`onCall`, `onEnd`, `onMemory`, `onEvent`) and `runHook`, which authors their writes |
 
@@ -179,7 +180,7 @@ Beside `src/`:
 |---|---|---|
 | `Blocks` / `Block` | `views/layout.ts` | `blocks` in send order, each `name`, `region` (`static` · `dynamic`), `text`; `history` |
 | `PROMPT_BLOCKS` | `views/layout.ts` | the four, in the one order they are sent: `identity` · `knowledge` · `tools` static, then `view` dynamic |
-| `ENVIRONMENT` | `runtime/environment.ts` | the settings a class may declare, each winning over the agent's settings |
+| `ENVIRONMENT` | `runtime/environment.ts` | the settings a class may declare, each winning over the agent's settings; `judges` and `personas` among them |
 | `Child` | `views/jsx-runtime.ts` | what a `render()` hands back: an element, a string, a number, nothing, or an array of those |
 | `Prompt<T>` | `agent/decorators.ts` | `(agent: T) => Child` — a prompt written beside the class, which `@render` hands the instance |
 

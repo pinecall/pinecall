@@ -9,6 +9,7 @@ import { FakeGateway } from "../../src/client/testing/index.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { judge, llm, realtime, stt, voice } from "../../src/agent/decorators.js";
 import { improvise } from "../../src/agent/opening.js";
+import { judges, personas } from "../../src/agent/harness.js";
 import ClinicaNorte from "../agent/clinica-norte.js";
 import { ENVIRONMENT, declaredOnTheInstance, environmentOf } from "../../src/runtime/environment.js";
 import { mount, optionsFor } from "../../src/runtime/connect.js";
@@ -138,4 +139,19 @@ it("reads hangup as when, in words, or true for whenever the model judges", () =
     static override hangup = true as const;
   }
   expect(environmentOf(Cuelga).hangup).toEqual({ when: "" });
+});
+
+/** Recepción que es dueña de sus jueces y sus personas: los interruptores en la clase, los archivos al lado. */
+class Juzgada extends ClinicaNorte {
+  static override judges = judges({ on: ["consent"] });
+  static override personas = personas({ on: ["in-a-hurry", "interrupts"] });
+}
+
+it("sends the judges and the personas the class owns, with no folder beside it an empty own", async () => {
+  mount(Juzgada, { pc, source: SOURCE, file: FILE, slug: "juzgada" });
+  await pc.connect();
+  for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
+  const config = gateway.commandsOf("agent.configure")[0]?.data["config"] as Record<string, unknown>;
+  expect(config["judges"]).toEqual({ on: ["consent"], own: [] });
+  expect(config["personas"]).toEqual({ on: ["in-a-hurry", "interrupts"], own: [] });
 });

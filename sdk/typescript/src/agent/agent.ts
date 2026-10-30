@@ -183,6 +183,10 @@ export class Agent {
   static memory?: Declared["memory"];
   /** Whether the calls keep their audio. */
   static record?: Declared["record"];
+  /** The judges the class owns: `judges({ on: ["consent", …] })`, plus the files under `judges/`. */
+  static judges?: Declared["judges"];
+  /** The personas the class owns: `personas({ on: ["in-a-hurry", …] })`, plus the files under `test/personas/`. */
+  static personas?: Declared["personas"];
 
   /** The class docstring, as the model reads it. */
   doc(): string | undefined {
