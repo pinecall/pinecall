@@ -21,6 +21,10 @@ module Pinecall
 
       NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
+      NOT_A_DURATION = "max_duration is the longest a voice call runs: 1 to 60 minutes, or :off for no limit"
+      NOT_A_TIMEOUT = "llm_timeout is how long a turn waits for the model's first word, in seconds, above 0"
+      LONGEST_MINUTES = 60
+
       NO_OPENING = "a greeting is the words, as a string, or :improvise for the model's own: improvise(\"…\") gives it an instruction"
       NO_ENDING = "hangup is when the model may end the call, in your words, or true whenever it judges the call done"
 
@@ -47,6 +51,14 @@ module Pinecall
         raise DeclarationRefused, NO_ENDING unless ending.is_a?(String) && !ending.strip.empty?
 
         { when: ending }
+      end
+
+      # The longest call as the wire counts it: minutes into seconds, :off into 0.
+      def self.seconds_of(minutes)
+        return 0 if minutes == :off || minutes == "off"
+        raise DeclarationRefused, NOT_A_DURATION unless minutes.is_a?(Integer) && minutes.between?(1, LONGEST_MINUTES)
+
+        minutes * 60
       end
 
       # `vendor/model`, or a vendor alone; the model id keeps every slash after the vendor's.
@@ -135,6 +147,21 @@ module Pinecall
 
             environment[field] = value
           end
+        end
+
+        # The longest a voice call runs: `max_duration 20` (minutes), or `max_duration :off`; the wire counts seconds.
+        def max_duration(minutes = NOTHING)
+          return environment[:max_duration_s] if minutes.equal?(NOTHING)
+
+          environment[:max_duration_s] = Config.seconds_of(minutes)
+        end
+
+        # How long a turn waits for the model's first word: `llm_timeout 8` (seconds).
+        def llm_timeout(seconds = NOTHING)
+          return environment[:llm_timeout_s] if seconds.equal?(NOTHING)
+          raise DeclarationRefused, NOT_A_TIMEOUT unless seconds.is_a?(Numeric) && seconds.positive?
+
+          environment[:llm_timeout_s] = seconds.to_f
         end
 
         # The words the ears must know: `hears "Vidal", "Sanitas"`.

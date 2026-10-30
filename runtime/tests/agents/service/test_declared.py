@@ -174,6 +174,19 @@ def test_the_judge_the_class_declares_is_a_model_and_is_fixed(listener: str) -> 
         with_app_fields(NOTHING, Declared(judge=ModelConfig(provider=listener, model="x")))
 
 
+def test_the_longest_call_and_the_models_timeout_the_class_declares_are_fixed_and_held_to_their_bands() -> None:
+    """Declared, both win over the settings; a limit outside 60 to 3600 (or 0) and a timeout of 0 are refused."""
+    config = with_app_fields(NOTHING, Declared(max_duration_s=1200, llm_timeout_s=8.0))
+    assert (config.max_duration_s, config.llm_timeout_s) == (1200, 8.0)
+    assert config.fixed == frozenset({"max_duration_s", "llm_timeout_s"})
+    let_go = with_app_fields(config, Declared(max_duration_s=None, llm_timeout_s=None))
+    assert (let_go.max_duration_s, let_go.llm_timeout_s, let_go.fixed) == (600, None, frozenset())
+    with pytest.raises(ValidationError, match="max_duration_s 30: 0 for no limit, or 60 to 3600 seconds"):
+        with_app_fields(NOTHING, Declared(max_duration_s=30))
+    with pytest.raises(ValidationError, match="llm_timeout_s is a positive number of seconds"):
+        with_app_fields(NOTHING, Declared(llm_timeout_s=0))
+
+
 def test_the_judges_and_the_personas_the_class_declares_are_fixed_and_let_go_when_sent_null() -> None:
     """Declared, the class owns both lists; sent null, the org writes them again."""
     judges = JudgesDeclared(on=["consent"], own=[JudgeDeclaration(name="offers-next-slot", question="Offered?")])

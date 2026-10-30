@@ -228,6 +228,9 @@ export const AgentConfigSchema = z.strictObject({
   memory: MemoryConfigSchema.nullish(),
   hangup: HangupConfigSchema.nullish(),
   record: z.boolean().nullish(),
+  /** The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word. */
+  max_duration_s: z.int().nullish(),
+  llm_timeout_s: z.number().nullish(),
   tools: z.array(ToolSpecSchema).nullish(),
   uses_knowledge: z.boolean().nullish(),
   state_fields: z.array(StateFieldSpecSchema).nullish(),

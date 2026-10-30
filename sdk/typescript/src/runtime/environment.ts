@@ -25,7 +25,12 @@ export const ENVIRONMENT = [
   "personas",
 ] as const;
 
-type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number]>;
+type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number] | "maxDurationS" | "llmTimeoutS">;
+
+// Said in minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts both in seconds.
+const CLOCKS = ["maxDuration", "llmTimeout"] as const;
+const NOT_A_DURATION = "maxDuration is the longest a voice call runs: 1 to 60 minutes, or \"off\" for no limit";
+const NOT_A_TIMEOUT = "llmTimeout is how long a turn waits for the model's first word, in seconds, above 0";
 
 const NOT_AN_OPENING = "a greeting is the words, as a string, or improvise for the model's own: improvise(\"…\") gives it an instruction";
 const NOT_AN_ENDING = "hangup is when the model may end the call, in your words, or true whenever it judges the call done";
@@ -53,7 +58,21 @@ export function environmentOf(ctor: Function): Environment {
   }
   if (environment["greeting"] !== undefined) environment["greeting"] = greetingOf(environment["greeting"] as Opening);
   if (environment["hangup"] !== undefined) environment["hangup"] = hangupOf(environment["hangup"] as Ending);
+  if (declared["maxDuration"] !== undefined) environment["maxDurationS"] = secondsOf(declared["maxDuration"]);
+  if (declared["llmTimeout"] !== undefined) environment["llmTimeoutS"] = timeoutOf(declared["llmTimeout"]);
   return environment as Environment;
+}
+
+/** The longest call as the wire counts it: minutes into seconds, `"off"` into 0. */
+function secondsOf(given: unknown): number {
+  if (given === "off") return 0;
+  if (typeof given !== "number" || !Number.isInteger(given) || given < 1 || given > 60) throw new DeclarationRefused(NOT_A_DURATION);
+  return given * 60;
+}
+
+function timeoutOf(given: unknown): number {
+  if (typeof given !== "number" || !(given > 0)) throw new DeclarationRefused(NOT_A_TIMEOUT);
+  return given;
 }
 
 /** An opening as the wire says it: words to `say`, or a `reply` the model opens on, empty for its prompt alone. */
@@ -79,7 +98,7 @@ function interruptible(given: boolean | undefined): { allowInterruptions?: boole
 
 /** Throw on the first environment field the instance declares, where it would be the call's state. */
 export function refuseTheEnvironment(probe: object): void {
-  for (const field of ENVIRONMENT) {
+  for (const field of [...ENVIRONMENT, ...CLOCKS]) {
     if (Object.hasOwn(probe, field)) throw new DeclarationRefused(declaredOnTheInstance(field));
   }
 }

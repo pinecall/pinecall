@@ -92,6 +92,8 @@ module Pinecall
     def self.language: (?String) -> untyped
     def self.says: (?Array[Hash[Symbol, String]]) -> untyped
     def self.record: (?bool) -> untyped
+    def self.max_duration: (?(Integer | Symbol)) -> untyped
+    def self.llm_timeout: (?Numeric) -> untyped
     def self.hears: (*String | Array[String]) -> untyped
     def self.greeting: (?(String | Symbol | untyped), ?interruptible: bool?) -> untyped
     def self.improvise: (?String, ?interruptible: bool?) -> untyped

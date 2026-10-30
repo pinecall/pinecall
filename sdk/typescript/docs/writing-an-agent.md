@@ -96,6 +96,8 @@ declared there is refused when the class loads.
 | `hears` | the words the ears must know: names, brands, the doctor's surname | `static hears = ["…"]` | `pinecall lexicon hear <word> …` |
 | `memory` | what to remember about a caller across calls, and what never to | `static memory = { remember: […], forget: […] }` | `pinecall memory policy --remember '…' --forget '…'` |
 | `record` | whether the call is recorded | `static record = false` | `pinecall agent set --record on\|off` |
+| `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` | `pinecall agent set --max-duration 20` |
+| `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` | `pinecall agent set --llm-timeout 8` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` | `pinecall agent knowledge edit` |
 | `docs` | the base the agent searches per turn | `static docs = { base: "…", k: 4 }` | `pinecall docs push`, then `pinecall docs attach <base>` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …] })`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |

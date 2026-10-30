@@ -33,6 +33,8 @@ module Pinecall
           memory: { kind: :ref, ref: "MemoryConfig" },
           hangup: { kind: :ref, ref: "HangupConfig" },
           record: { kind: :bool, default: true },
+          max_duration_s: { kind: :int },
+          llm_timeout_s: { kind: :float },
           tools: { kind: :list, items: { kind: :ref, ref: "ToolSpec" } },
           uses_knowledge: { kind: :bool, default: false },
           state_fields: { kind: :list, items: { kind: :ref, ref: "StateFieldSpec" } },

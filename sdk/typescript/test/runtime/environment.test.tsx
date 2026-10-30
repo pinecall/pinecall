@@ -141,6 +141,24 @@ it("reads hangup as when, in words, or true for whenever the model judges", () =
   expect(environmentOf(Cuelga).hangup).toEqual({ when: "" });
 });
 
+/** Recepción que fija cuánto dura una llamada y cuánto espera al modelo. */
+class Acotada extends ClinicaNorte {
+  static override maxDuration = 20;
+  static override llmTimeout = 8;
+}
+
+it("sends the longest call in seconds and the model's timeout, and refuses a duration outside its band", async () => {
+  expect(environmentOf(Acotada)).toEqual({ maxDurationS: 1200, llmTimeoutS: 8 });
+  expect(environmentOf(class extends ClinicaNorte { static override maxDuration = "off" as const; })).toEqual({ maxDurationS: 0 });
+  expect(() => environmentOf(class extends ClinicaNorte { static override maxDuration = 90; })).toThrow("1 to 60 minutes");
+  expect(() => environmentOf(class extends ClinicaNorte { static override llmTimeout = 0; })).toThrow("above 0");
+  mount(Acotada, { pc, source: SOURCE, file: FILE, slug: "acotada" });
+  await pc.connect();
+  for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
+  const config = gateway.commandsOf("agent.configure")[0]?.data["config"] as Record<string, unknown>;
+  expect([config["max_duration_s"], config["llm_timeout_s"]]).toEqual([1200, 8]);
+});
+
 /** Recepción que es dueña de sus jueces y sus personas: los interruptores en la clase, los archivos al lado. */
 class Juzgada extends ClinicaNorte {
   static override judges = judges({ on: ["consent"] });

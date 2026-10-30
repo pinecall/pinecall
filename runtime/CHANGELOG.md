@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **The longest call and the model's timeout are declarable.** `AgentConfig.max_duration_s` and `llm_timeout_s`:
+  declared, each wins over the settings' and is `fixed` (`409` on a set), the two knobs no class could declare.
+
 - **`personas.write`, a dev verb.** The console asks the `pinecall start` in the agent's directory to keep
   a generated persona as a file under `test/personas/`, for a class that owns its roster; in the `evals` family.
 

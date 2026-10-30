@@ -108,6 +108,8 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `hears` | the words the ears must know: names, brands, the doctor's surname | `hears "Vidal", "Sanitas"` | `pinecall lexicon hear <word> …` |
 | `memory` | what to remember about a caller across calls, and what never to | `memory remember: […], forget: […]` | `pinecall memory policy --remember '…' --forget '…'` |
 | `record` | whether the call is recorded | `record false` | `pinecall agent set --record on\|off` |
+| `max_duration` | the longest a voice call runs, in minutes, or `:off` | `max_duration 20` | `pinecall agent set --max-duration 20` |
+| `llm_timeout` | how long a turn waits for the model's first word, in seconds | `llm_timeout 8` | `pinecall agent set --llm-timeout 8` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge path: "knowledge.md", text: File.read(…)` | `pinecall agent knowledge edit` |
 | `docs` | the base the agent searches per turn, and how many chunks a turn reads | `docs base: "clinica-norte", k: 4` | `pinecall docs push`, then `pinecall docs attach <base>` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges on: %w[consent grounded]`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |

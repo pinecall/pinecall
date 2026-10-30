@@ -25,6 +25,24 @@ class ConfigTest < Minitest::Test
     record false
   end
 
+  # Recepción que fija cuánto dura una llamada y cuánto espera al modelo.
+  class Acotada < Pinecall::Agent
+    max_duration 20
+    llm_timeout 8
+  end
+
+  def test_the_longest_call_and_the_models_timeout_are_sent_in_seconds_and_held_to_their_bands
+    sent = Acotada.wire_config(tools: [])
+
+    assert_equal [1200, 8.0], [sent[:max_duration_s], sent[:llm_timeout_s]]
+    assert_equal 0, Class.new(Pinecall::Agent) { max_duration :off }.max_duration
+    error = assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { max_duration 90 } }
+    assert_includes error.message, "1 to 60 minutes"
+    error = assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { llm_timeout 0 } }
+    assert_includes error.message, "above 0"
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
   # Kala, que escribe con un modelo y habla con otro que oye y habla solo.
   class Hablada < Pinecall::Agent
     llm "openai/gpt-6-luna"

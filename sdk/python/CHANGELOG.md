@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`max_duration` and `llm_timeout`** as class attributes: the longest a voice call runs (minutes, or `"off"`)
+  and how long a turn waits for the model's first word (seconds), fixed over the settings.
+
 - **A class owns its judges and its personas.** `judges = judges(on=["consent", …])` names which of
   Pinecall's judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`, one
   each, in the library's format; `personas = personas(on=[…])` the same for the callers

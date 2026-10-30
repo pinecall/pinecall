@@ -53,6 +53,17 @@ def test_the_classs_realtime_wins_over_the_settings(vendor: str) -> None:
     assert _tuned(Tuning(realtime=f"{vendor}/voice-3"), declared).realtime == Model(vendor, "voice-1")
 
 
+def test_the_classs_longest_call_and_timeout_win_over_the_settings_and_the_settings_fill_what_it_leaves() -> None:
+    held = frozenset({"max_duration_s", "llm_timeout_s"})
+    tuned = _tuned(
+        Tuning(max_duration_s=300, llm_timeout_s=4.0),
+        AgentConfig(slug="kala", max_duration_s=1200, llm_timeout_s=8.0, fixed=held),
+    )
+    assert (tuned.max_duration_s, tuned.llm_timeout_s) == (1200, 8.0)
+    loose = _tuned(Tuning(max_duration_s=300, llm_timeout_s=4.0), AgentConfig(slug="kala"))
+    assert (loose.max_duration_s, loose.llm_timeout_s) == (300, 4.0)
+
+
 def test_a_vendor_alone_names_no_model_to_think_with() -> None:
     """`--llm acme` is refused naming the form: a model is named, the ears and a voice have a default."""
     with pytest.raises(ValidationError, match=r"acme alone names no model: name it, `--llm acme/<model>`"):

@@ -183,6 +183,10 @@ export class Agent {
   static memory?: Declared["memory"];
   /** Whether the calls keep their audio. */
   static record?: Declared["record"];
+  /** The longest a voice call runs, in minutes (1 to 60), or `"off"` for no limit. */
+  static maxDuration?: number | "off";
+  /** How long a turn waits for the model's first word, in seconds. */
+  static llmTimeout?: number;
   /** The judges the class owns: `judges({ on: ["consent", …] })`, plus the files under `judges/`. */
   static judges?: Declared["judges"];
   /** The personas the class owns: `personas({ on: ["in-a-hurry", …] })`, plus the files under `test/personas/`. */

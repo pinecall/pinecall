@@ -6,6 +6,9 @@ maintainer's call.
 
 ## [Unreleased]
 
+- **`max_duration` and `llm_timeout`** macros: the longest a voice call runs (minutes, or `:off`) and how long a
+  turn waits for the model's first word (seconds), fixed over the settings.
+
 - **A class owns its judges and its personas.** `judges on: %w[consent …]` names which of Pinecall's
   judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`, one each, in the
   library's format; `personas on: [...]` the same for the callers `pinecall simulate` plays, its own

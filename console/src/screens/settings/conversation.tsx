@@ -170,19 +170,23 @@ export function ConversationSection({
           <section className="set-section">
             <Head title="The call" blurb="How long a voice call may run, and whether its audio is kept." />
             <div className="set-row">
-              <div className="set-field">
-                <Label>Longest voice call</Label>
-                <Select value={typed.max_duration_s} aria-label="Longest voice call" onValueChange={(value) => change("max_duration_s", value)}>
-                  <SelectItem value="">Default · 10 minutes</SelectItem>
-                  {listed(LIMITS, typed.max_duration_s).filter((seconds) => seconds !== "0").map((seconds) => (
-                    <SelectItem key={seconds} value={seconds}>
-                      {Number(seconds) / 60} minutes
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="0">No limit</SelectItem>
-                </Select>
-                <p className="set-help">A minute before, it&apos;s told to wrap up. Written chats are never cut.</p>
-              </div>
+              {fixed.has("max_duration_s") ? (
+                <FixedByTheClass label="Longest voice call" value={typed.max_duration_s === "0" ? "no limit" : typed.max_duration_s === "" ? null : `${Number(typed.max_duration_s) / 60} minutes`} />
+              ) : (
+                <div className="set-field">
+                  <Label>Longest voice call</Label>
+                  <Select value={typed.max_duration_s} aria-label="Longest voice call" onValueChange={(value) => change("max_duration_s", value)}>
+                    <SelectItem value="">Default · 10 minutes</SelectItem>
+                    {listed(LIMITS, typed.max_duration_s).filter((seconds) => seconds !== "0").map((seconds) => (
+                      <SelectItem key={seconds} value={seconds}>
+                        {Number(seconds) / 60} minutes
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="0">No limit</SelectItem>
+                  </Select>
+                  <p className="set-help">A minute before, it&apos;s told to wrap up. Written chats are never cut.</p>
+                </div>
+              )}
               {fixed.has("record") ? (
                 <FixedByTheClass label="Recording" />
               ) : (

@@ -47,6 +47,16 @@ DECORATED: Mapping[str, str] = {
 # Where `@knowledge` keeps what it declares, beside the class's other attributes.
 KNOWLEDGE = "_pinecall_knowledge"
 
+# Minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts seconds.
+CLOCKS = ("max_duration", "llm_timeout")
+NOT_A_DURATION = (
+    'max_duration is the longest a voice call runs: 1 to 60 minutes, or "off" for no limit'
+)
+NOT_A_TIMEOUT = (
+    "llm_timeout is how long a turn waits for the model's first word, in seconds, above 0"
+)
+LONGEST_MINUTES = 60
+
 _Class = TypeVar("_Class", bound=type)
 
 
@@ -60,7 +70,7 @@ def refuse_the_environment(cls: type) -> None:
     """Refuse an environment field annotated as state, or written where a decorator declares it."""
     annotated = {name for name, said in own_annotations(cls).items() if not is_class_var(said)}
     written = set(vars(cls))
-    for field in ENVIRONMENT:
+    for field in (*ENVIRONMENT, *CLOCKS):
         if field in annotated or (field == "knowledge" and field in written):
             raise DeclarationRefused(declared_on_the_instance(field))
 
@@ -76,7 +86,24 @@ def environment_of(cls: type) -> dict[str, object]:
         declared["greeting"] = greeting_of(declared["greeting"])
     if "hangup" in declared:
         declared["hangup"] = hangup_of(declared["hangup"])
+    longest: object = getattr(cls, "max_duration", None)
+    if longest is not None:
+        declared["max_duration_s"] = _seconds_of(longest)
+    timeout: object = getattr(cls, "llm_timeout", None)
+    if timeout is not None:
+        if isinstance(timeout, bool) or not isinstance(timeout, int | float) or timeout <= 0:
+            raise DeclarationRefused(NOT_A_TIMEOUT)
+        declared["llm_timeout_s"] = float(timeout)
     return declared
+
+
+# The longest call as the wire counts it: minutes into seconds, "off" into 0.
+def _seconds_of(given: object) -> int:
+    if given == "off":
+        return 0
+    if isinstance(given, bool) or not isinstance(given, int) or not 1 <= given <= LONGEST_MINUTES:
+        raise DeclarationRefused(NOT_A_DURATION)
+    return given * 60
 
 
 def voice(

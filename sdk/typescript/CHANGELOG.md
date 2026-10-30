@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **`static maxDuration` and `static llmTimeout`**: the longest a voice call runs (minutes, or `"off"`) and how
+  long a turn waits for the model's first word (seconds), declared on the class and fixed over the settings.
+
 - **A judge row says `fixed`** when the agent's class declares its judges (`owner: "class"` for its own), and
   `personas.write` is a dev verb the CLI's companion answers.
 

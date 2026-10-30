@@ -27,6 +27,30 @@ class Fijada(Agent):
     record = False
 
 
+class Acotada(Agent):
+    """Recepción que fija cuánto dura una llamada y cuánto espera al modelo."""
+
+    max_duration = 20
+    llm_timeout = 8
+
+
+def test_the_longest_call_and_the_models_timeout_are_sent_in_seconds_and_held_to_their_bands() -> (
+    None
+):
+    sent = config_of(Acotada).model_dump(exclude_none=True)
+    assert (sent["max_duration_s"], sent["llm_timeout_s"]) == (1200, 8.0)
+    assert (
+        environment_of(type("Off", (Agent,), {"max_duration": "off", "__doc__": "x"}))[
+            "max_duration_s"
+        ]
+        == 0
+    )
+    with pytest.raises(DeclarationRefused, match="1 to 60 minutes"):
+        environment_of(type("Long", (Agent,), {"max_duration": 90, "__doc__": "x"}))
+    with pytest.raises(DeclarationRefused, match="above 0"):
+        environment_of(type("Never", (Agent,), {"llm_timeout": 0, "__doc__": "x"}))
+
+
 def test_what_the_class_declares_of_its_environment_is_sent_in_the_wires_shape() -> None:
     sent = config_of(Fijada).model_dump(exclude_none=True)
 

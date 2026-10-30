@@ -38,6 +38,7 @@ DEFAULT_TOOL_TIMEOUT_S = 30.0
 TURN_BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
 # The argument the platform adds to every tool: the line the model says as the tool runs.
 SAY = "say"
+NOT_A_TIMEOUT = "llm_timeout_s is a positive number of seconds"
 
 # Unset knobs are None, never "": an empty string reaches the vendor as a value (an empty voice once
 # made every call silent).
@@ -257,7 +258,7 @@ class Tuning:
         if self.max_duration_s is not None:
             check_call_limit(self.max_duration_s)
         if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
-            raise ValidationError("llm_timeout_s is a positive number of seconds")
+            raise ValidationError(NOT_A_TIMEOUT)
         if self.temperature is not None and self.temperature < 0:
             raise ValidationError("temperature is a number from 0, in the model vendor's range")
 
@@ -350,6 +351,8 @@ class AgentConfig:
             raise ValidationError(f"agent {self.slug}: prompt block names repeat: {sorted(repeated)}")
         check_pronunciations(self.says, f"agent {self.slug}")
         check_call_limit(self.max_duration_s)
+        if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
+            raise ValidationError(NOT_A_TIMEOUT)
         for event, sources in self.events.items():
             if not event or not sources:
                 raise ValidationError(f"agent {self.slug}: event {event!r} names who may send it: app, participant")

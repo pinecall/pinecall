@@ -427,6 +427,9 @@ class AgentConfig(WireModel):
     hangup: HangupConfig | None = None
     # Sent as null, a setting is the org's settings' again; `uses_knowledge` null is false.
     record: bool | None = True
+    # The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word.
+    max_duration_s: int | None = None
+    llm_timeout_s: float | None = None
     tools: list[ToolSpec] | None = None
     uses_knowledge: bool | None = False
     state_fields: list[StateFieldSpec] | None = None
