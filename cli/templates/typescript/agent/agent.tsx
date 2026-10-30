@@ -1,6 +1,9 @@
 // {{Title}}: the class is the agent — its state, its tools, and render(), its prompt.
 
-import { Agent, tool, type Stages } from "@pinecall/agents";
+import { Agent, judges, personas, tool, type Stages } from "@pinecall/agents";
+
+// The eight judges Pinecall recommends, on for every call; the agent's own are the files under judges/.
+const RECOMMENDED = ["consent", "grounded", "promises", "disclosed", "identified", "honoured-stop", "ended-well", "expected-outcome"];
 
 // What a model in a hurry writes where the caller said nothing: never a message.
 const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|provided|said)|tbd|-)?$/i;
@@ -11,6 +14,10 @@ const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|prov
  * and what it is about. You never promise when they will hear back.
  */
 export default class {{Class}} extends Agent {
+  static judges = judges({ on: RECOMMENDED });
+  // Pinecall's callers this agent is tested with, and its own under test/personas/.
+  static personas = personas({ on: ["in-a-hurry", "wrong-number"] });
+
   stage: Stages<"ask" | "done"> = "ask";
   message?: { name: string; about: string } | undefined;
 

@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall new` and `generate agent` scaffold the harness.** The class declares the eight judges Pinecall
+  recommends and two of its callers (`judges({ on })`, `personas({ on })`, in each language's spelling), a
+  `judges/README.md` says how to write a judge file, and `test/personas/hurried.json` is the first caller: the
+  first `pinecall start` shows both in the console, locked, as the class's.
+
 - **A class that owns its judges and its personas is read as such.** `judges` and `personas` say
   `set by the class of <agent>` and mark the class's own `class`; `add`, `edit`, `rm`, `on` and `off`
   for that agent are refused with exit 2, naming the folder (`agents/<agent>/judges/`,

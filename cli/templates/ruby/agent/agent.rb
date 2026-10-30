@@ -11,6 +11,11 @@ class {{Class}} < Pinecall::Agent
   # What a model in a hurry writes where the caller said nothing: never a message.
   NOTHING_SAID = %r{\A(n/?a|none|unknown|unspecified|not (specified|given|provided|said)|tbd|-)?\z}i
 
+  # The eight judges Pinecall recommends, on for every call; the agent's own are the files under judges/.
+  judges on: %w[consent grounded promises disclosed identified honoured-stop ended-well expected-outcome]
+  # Pinecall's callers this agent is tested with, and its own under test/personas/.
+  personas on: %w[in-a-hurry wrong-number]
+
   stage :ask, :done
 
   state :message

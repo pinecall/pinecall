@@ -3,7 +3,10 @@
 import re
 from typing import Literal
 
-from pinecall import Agent, tool
+from pinecall import Agent, judges, personas, tool
+
+# The eight judges Pinecall recommends, on for every call; the agent's own are the files under judges/.
+RECOMMENDED = ["consent", "grounded", "promises", "disclosed", "identified", "honoured-stop", "ended-well", "expected-outcome"]
 
 # What a model in a hurry writes where the caller said nothing: never a message.
 NOTHING_SAID = re.compile(r"^(n/?a|none|unknown|unspecified|not (specified|given|provided|said)|tbd|-)?$", re.IGNORECASE)
@@ -14,6 +17,10 @@ class {{Class}}(Agent):
     You answer what the business's documents say. For anything else you take a message: who is calling
     and what it is about. You never promise when they will hear back.
     """
+
+    judges = judges(on=RECOMMENDED)
+    # Pinecall's callers this agent is tested with, and its own under test/personas/.
+    personas = personas(on=["in-a-hurry", "wrong-number"])
 
     stage: Literal["ask", "done"] = "ask"
     message: dict[str, str] | None = None

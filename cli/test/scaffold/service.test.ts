@@ -25,9 +25,11 @@ describe("a new project", () => {
   it("with --agent holds its first agent, whose folder holds its class, its test and its golden", () => {
     const root = join(folder(), "clinica-dental");
     expect(service.createProject(root, "clinica-dental", "typescript", "sofia").agent).toBe("sofia");
-    for (const file of ["agents/sofia/agent.tsx", "agents/sofia/test/agent.test.ts", "agents/sofia/test/goldens/takes-the-message.json"]) {
+    for (const file of ["agents/sofia/agent.tsx", "agents/sofia/test/agent.test.ts", "agents/sofia/test/goldens/takes-the-message.json", "agents/sofia/judges/README.md", "agents/sofia/test/personas/hurried.json"]) {
       expect(existsSync(join(root, file)), file).toBe(true);
     }
+    expect(readFileSync(join(root, "agents/sofia/agent.tsx"), "utf8")).toContain("static judges = judges({ on: RECOMMENDED })");
+    expect(readFileSync(join(root, "agents/sofia/judges/README.md"), "utf8")).toContain("in agent.tsx");
     expect(readFileSync(join(root, "agents/sofia/agent.tsx"), "utf8")).not.toMatch(/\{\{\w+\}\}/);
     expect(readFileSync(join(root, "agents/sofia/test/agent.test.ts"), "utf8")).toContain('import Sofia from "../agent.js";');
   });
@@ -35,11 +37,13 @@ describe("a new project", () => {
   it("is written in Ruby and in Python from their own templates, each test beside its class", () => {
     const ruby = join(folder(), "clinica");
     service.createProject(ruby, "clinica", "ruby", "sales");
-    for (const file of ["agents/sales/agent.rb", "agents/sales/views/sales.erb", "agents/sales/test/agent_test.rb", "Rakefile"]) expect(existsSync(join(ruby, file)), file).toBe(true);
+    for (const file of ["agents/sales/agent.rb", "agents/sales/views/sales.erb", "agents/sales/test/agent_test.rb", "agents/sales/judges/README.md", "agents/sales/test/personas/hurried.json", "Rakefile"]) expect(existsSync(join(ruby, file)), file).toBe(true);
+    expect(readFileSync(join(ruby, "agents/sales/agent.rb"), "utf8")).toContain("judges on: %w[consent");
     expect(readFileSync(join(ruby, "Rakefile"), "utf8")).toContain('FileList["agents/*/test/**/*_test.rb"]');
     const python = join(folder(), "clinica");
     service.createProject(python, "clinica", "python", "sales");
-    for (const file of ["agents/sales/agent.py", "agents/sales/test/test_agent.py"]) expect(existsSync(join(python, file)), file).toBe(true);
+    for (const file of ["agents/sales/agent.py", "agents/sales/test/test_agent.py", "agents/sales/judges/README.md", "agents/sales/test/personas/hurried.json"]) expect(existsSync(join(python, file)), file).toBe(true);
+    expect(readFileSync(join(python, "agents/sales/agent.py"), "utf8")).toContain("judges = judges(on=RECOMMENDED)");
     expect(readFileSync(join(python, "pyproject.toml"), "utf8")).toContain('name = "clinica"');
   });
 
