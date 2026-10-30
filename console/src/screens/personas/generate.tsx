@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { Button, Field, Pill, Refused, Select, SelectItem, TextArea } from "../../ui";
-import { generatePersonas, isPinecalls, writePersona, type Persona, type ProposedPersona } from "./door";
+import { generatePersonas, isPinecalls, keepPersonaFile, writePersona, type Persona, type ProposedPersona } from "./door";
 import { Face } from "./face";
 
 /**
@@ -13,13 +13,17 @@ import { Face } from "./face";
  * after; the gateway writes as many as it writes unless asked (three). What comes back is drawn as the callers of the grid are, each with what it
  * wants, how it talks and what it holds the agent to, and is saved only when kept.
  */
-export function Generate({ agent, personas, onKept, onCancel }: { agent: string; personas: Persona[]; onKept: (personas: Persona[]) => void; onCancel: () => void }): ReactNode {
+/** Where a kept caller goes: the agent's rows, or a file under `test/personas/` the class reads, written by the `pinecall start` in its directory. */
+export type KeptAs = "rows" | "files";
+
+export function Generate({ agent, personas, keptAs, onKept, onCancel }: { agent: string; personas: Persona[]; keptAs: KeptAs; onKept: (personas: Persona[]) => void; onCancel: () => void }): ReactNode {
   const credentials = useCredentials();
   const [about, setAbout] = useState("");
   const [template, setTemplate] = useState("");
   const [written, setWritten] = useState<ProposedPersona[]>([]);
   const [bill, setBill] = useState<string | null>(null);
   const [kept, setKept] = useState<string[]>([]);
+  const [files, setFiles] = useState<Record<string, string>>({});
   const [writing, setWriting] = useState(false);
   const [keeping, setKeeping] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
@@ -47,7 +51,12 @@ export function Generate({ agent, personas, onKept, onCancel }: { agent: string;
     try {
       for (const one of these) {
         const { name, ...rest } = one;
-        onKept(await writePersona(credentials, agent, name, rest));
+        if (keptAs === "files") {
+          const written = await keepPersonaFile(credentials, agent, one);
+          setFiles((before) => ({ ...before, [name]: written.path }));
+        } else {
+          onKept(await writePersona(credentials, agent, name, rest));
+        }
         setKept((before) => [...before, name]);
       }
     } catch (failed) {
@@ -66,6 +75,7 @@ export function Generate({ agent, personas, onKept, onCancel }: { agent: string;
           <h1 className="psn-doc-name">Generate callers</h1>
           <p className="psn-doc-about">
             A model reads {agent} — its prompt, its tools, what it knows — and writes callers to put it to the test, each with what it expects the agent to do. You choose which to keep; nothing is saved before.
+            {keptAs === "files" && <> The class owns the roster: a kept caller is a file under <span className="ui-fixed">agents/{agent}/test/personas/</span>, written by the <span className="ui-fixed">pinecall start</span> in its directory, for you to commit.</>}
           </p>
         </div>
         <div className="psn-doc-actions">
@@ -117,7 +127,7 @@ export function Generate({ agent, personas, onKept, onCancel }: { agent: string;
           </div>
           <div className="ui-tiles">
             {written.map((one) => (
-              <Written key={one.name} caller={one} kept={kept.includes(one.name)} busy={keeping} onKeep={() => void keep([one])} />
+              <Written key={one.name} caller={one} kept={kept.includes(one.name)} file={files[one.name]} busy={keeping} onKeep={() => void keep([one])} />
             ))}
           </div>
         </section>
@@ -126,14 +136,14 @@ export function Generate({ agent, personas, onKept, onCancel }: { agent: string;
   );
 }
 
-function Written({ caller, kept, busy, onKeep }: { caller: ProposedPersona; kept: boolean; busy: boolean; onKeep: () => void }): ReactNode {
+function Written({ caller, kept, file, busy, onKeep }: { caller: ProposedPersona; kept: boolean; file: string | undefined; busy: boolean; onKeep: () => void }): ReactNode {
   return (
     <article className={kept ? "ui-tile psn-gen-kept" : "ui-tile"}>
       <div className="ui-tile-top">
         <Face name={caller.name} size={56} />
         {kept ? (
           <Pill tone="green" small>
-            kept
+            {file === undefined ? "kept" : `kept · ${file}`}
           </Pill>
         ) : (
           <Button size="sm" disabled={busy} onClick={onKeep}>

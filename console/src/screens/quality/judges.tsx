@@ -46,11 +46,13 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
   const standing: Standing = { rates, drift, threshold: drifted?.threshold ?? null, agreement: useAgreement(whose) };
   const judges = (listed.judges ?? []).filter((judge) => shown(judge, show));
   const owner = agent === "" ? "org" : agent;
+  // The class owns the agent's list: its files and its switches, read when it registers; nothing of it is written here.
+  const fixed = agent !== "" && (listed.judges ?? []).some((judge) => judge.fixed === true);
   // The org's own first, what somebody here wrote, then the agent's own; Pinecall's library after
   // them in two: the ones that guard a call, to switch on first, then the ones that grade it.
   const groups: { title: string; rows: JudgeRow[] }[] = [
     { title: agent === "" ? "The org's own · asked of every agent" : "The org's own · written with every agent in view", rows: judges.filter((judge) => judge.owner === "org") },
-    ...(agent === "" ? [] : [{ title: `${agent}'s own`, rows: judges.filter((judge) => judge.owner === agent) }]),
+    ...(agent === "" ? [] : [{ title: fixed ? `${agent}'s own · the files under agents/${agent}/judges/` : `${agent}'s own`, rows: judges.filter((judge) => judge.owner === agent || judge.owner === "class") }]),
     {
       title: agent === "" ? "Recommended · guard every call, switched for every agent" : `Recommended · guard every call, switched for ${agent}`,
       rows: judges.filter((judge) => judge.owner === PINECALL && judge.recommended),
@@ -76,11 +78,18 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
       <div className="qly-bar">
         <Chips options={SHOWS} value={show} onChange={setShow} />
         <span className="qly-bar-meta">{drift === null ? `held over the newest ${read} judged calls` : `held over the newest ${read} judged calls · drift: the last ${NOW_DAYS} days against the last ${BEFORE_DAYS}`}</span>
-        <Button size="sm" onClick={() => setEditing("new")} disabled={editing !== null}>
-          {agent === "" ? "New judge for every agent" : `New judge for ${agent}`}
-        </Button>
+        {!fixed && (
+          <Button size="sm" onClick={() => setEditing("new")} disabled={editing !== null}>
+            {agent === "" ? "New judge for every agent" : `New judge for ${agent}`}
+          </Button>
+        )}
       </div>
       <p className="qly-bill">{ON_THE_BILL}</p>
+      {fixed && (
+        <p className="qly-bill">
+          Set by the class of {agent}: its own judges are the files under agents/{agent}/judges/, and which of Pinecall&apos;s its calls meet is judges({"{ on }"}) in the class. The org&apos;s own judges meet its calls on top, and are written with every agent in view.
+        </p>
+      )}
       {editing !== null && <JudgeForm whose={whose} agent={agent} editing={editing === "new" ? null : editing} onSaved={saved} onClose={() => setEditing(null)} />}
       <Refused>{listed.error ?? refused}</Refused>
       {groups.map((group) => {

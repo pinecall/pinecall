@@ -115,7 +115,7 @@ function Row({ agent, persona, standings, onSwitch }: { agent: string; persona: 
       </span>
       <span>
         <Pill tone={red ? "red" : library ? "gray" : "violet"} small>
-          {red ? "Red team" : library ? "Realism" : "Custom"}
+          {red ? "Red team" : library ? "Realism" : persona.owner === "class" ? "The class's" : "Custom"}
         </Pill>
       </span>
       <span className="psn-quiet">{actsOf(persona)}</span>
@@ -128,7 +128,8 @@ function Row({ agent, persona, standings, onSwitch }: { agent: string; persona: 
       </span>
       {/* A switch inside a row that opens the persona: the click is the switch's alone. */}
       <span className="psn-switch" onClick={(event) => event.stopPropagation()}>
-        {library && agent !== "" && <Switch on={persona.on} label={`${persona.name} for ${persona.agent}`} onChange={(on) => onSwitch(persona, on)} />}
+        {library && agent !== "" && persona.fixed !== true && <Switch on={persona.on} label={`${persona.name} for ${persona.agent}`} onChange={(on) => onSwitch(persona, on)} />}
+        {library && persona.fixed === true && <span className="psn-quiet">{persona.on ? "on" : "off"} · the class's</span>}
       </span>
     </TableRow>
   );

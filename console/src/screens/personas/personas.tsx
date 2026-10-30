@@ -6,7 +6,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useCredentials } from "@pinecall/core/credentials";
 import { ownedAt, rowAt, useHarnessAgents } from "../../lib/harness";
 import { usePane } from "../../ui";
-import { isPinecalls, readPersonas, switchPersona, type Persona } from "./door";
+import { isPinecalls, ownedByTheClass, readPersonas, switchPersona, type Persona } from "./door";
 import { Generate } from "./generate";
 import { PersonaEditor } from "./persona-editor";
 import { PersonaView } from "./persona-view";
@@ -35,6 +35,8 @@ export function Personas(): ReactNode {
   // The runs pane stands beside a caller being read, as the floor's does beside the call it watches.
   const runs = usePane({ name: "personas.runs", initial: 340, min: 280, max: 560, side: "right" });
   const { personas: kept, asking, setPersonas, reread } = usePersonas(agent);
+  // The class owns the roster: its files and its switches, read when it registers; nothing is written here.
+  const fixed = agent !== "" && ownedByTheClass(kept ?? []);
   // With every agent in view, the org's agents' callers: the ones Viewing offers, and no other slug.
   const theOrgs = useHarnessAgents(agent);
   // Pinecall's library is switched per agent, so the org's list carries none: with every agent in
@@ -79,13 +81,13 @@ export function Personas(): ReactNode {
         {reading !== null && runs.handle}
         <main className="psn-main">
           {generating && agent !== "" ? (
-            <Generate agent={agent} personas={personas ?? []} onKept={(read) => setPersonas(read)} onCancel={() => go(null)} />
+            <Generate agent={agent} personas={personas ?? []} keptAs={fixed ? "files" : "rows"} onKept={(read) => setPersonas(read)} onCancel={() => go(null)} />
           ) : adding ? (
             <PersonaEditor key="new" owners={owners} was={undefined} onSaved={saved} onCancel={() => go(chosen ?? null)} />
           ) : personas === null ? (
             <p className="psn-empty">{asking ?? "Asking the gateway…"}</p>
           ) : chosen === undefined ? (
-            <Overview agent={agent} personas={personas ?? []} standings={standings} onNew={() => go(null, "new")} onGenerate={() => go(null, "generate")} onSwitch={switched} />
+            <Overview agent={agent} personas={personas ?? []} standings={standings} fixed={fixed} onNew={() => go(null, "new")} onGenerate={() => go(null, "generate")} onSwitch={switched} />
           ) : editing ? (
             <PersonaEditor key={`${chosen.agent}/${chosen.name}`} owners={[chosen.agent]} was={chosen} onSaved={saved} onCancel={() => go(chosen)} />
           ) : (
@@ -93,6 +95,7 @@ export function Personas(): ReactNode {
               key={`${chosen.agent}/${chosen.name}`}
               inView={agent}
               persona={chosen}
+              fixed={fixed}
               onEdit={() => go(chosen, "edit")}
               onDropped={(read) => {
                 if (agent === "") reread();

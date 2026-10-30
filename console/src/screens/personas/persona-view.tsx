@@ -22,6 +22,7 @@ const BACKGROUND_SAID: Record<string, string> = { television: "a television", ca
 export function PersonaView({
   inView,
   persona,
+  fixed,
   onEdit,
   onDropped,
   onSwitched,
@@ -29,6 +30,8 @@ export function PersonaView({
   /** The agent in view, or "" for every agent: where "Use in a simulation" opens Simulations. */
   inView: string;
   persona: Persona;
+  /** The class owns the roster: the caller is read here and written in the repository. */
+  fixed: boolean;
   onEdit: () => void;
   onDropped: (personas: Persona[]) => void;
   /** One of Pinecall's switched: the agent's list after it, the caller staying open. */
@@ -102,7 +105,7 @@ export function PersonaView({
           <ButtonLink kind="primary" size="sm" to={`${rowAt(inView, "simulations")}?agent=${encodeURIComponent(persona.agent)}&persona=${encodeURIComponent(persona.name)}`}>
             Use in a simulation
           </ButtonLink>
-          {isPinecalls(persona) ? (
+          {fixed ? null : isPinecalls(persona) ? (
             <Button size="sm" disabled={dropping} onClick={() => void flip()}>
               {persona.on ? "Switch off" : "Switch on"}
             </Button>
@@ -118,6 +121,12 @@ export function PersonaView({
           )}
         </div>
       </header>
+      {fixed && (
+        <p className="psn-doc-note">
+          Set by the class of {persona.agent}: {isPinecalls(persona) ? `${persona.on ? "on" : "off"} in its personas({ on })` : `the file agents/${persona.agent}/test/personas/${persona.name}.json`}. The class&apos;s declaration wins: change it in the code, or take
+          `personas` out of the class to write callers here.
+        </p>
+      )}
 
       <Section title="What they want" hint="The goal the model pursues on every turn, until it has it or sees it will not.">
         <p className="psn-doc-text">{persona.goal}</p>
@@ -186,7 +195,7 @@ export function PersonaView({
             }}
           >
             <PlayedBy played={played} onChange={setPlayed} />
-            <Button size="sm" type="submit" disabled={dropping || !moved}>
+            <Button size="sm" type="submit" disabled={dropping || !moved || fixed}>
               Save how they are played
             </Button>
           </form>

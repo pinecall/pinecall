@@ -45,7 +45,9 @@ export function JudgeLine({
   onDrop: () => void;
 }): ReactNode {
   const library = row.owner === PINECALL;
-  const ours = row.owner === mine;
+  // A row the class declares is read here, never written: its file, or its switch in the class.
+  const ours = row.owner === mine && row.fixed !== true;
+  const theClasss = row.owner === "class";
   // A library judge says first what it saves you from; any other, the question it asks.
   const said = library ? (row.why ?? row.summary ?? row.question) : row.question;
   const reads = readsOf(row);
@@ -58,7 +60,7 @@ export function JudgeLine({
             {row.name}
             {!library && (
               <Pill tone="violet" small>
-                {row.owner === "org" ? "the org's" : "yours"}
+                {row.owner === "org" ? "the org's" : theClasss ? "the class's" : "yours"}
               </Pill>
             )}
           </span>
@@ -85,7 +87,8 @@ export function JudgeLine({
             Drop
           </TextAction>
         )}
-        {library && <Switch on={row.on} label={`${row.name} on`} onChange={onSwitch} />}
+        {library && row.fixed !== true && <Switch on={row.on} label={`${row.name} on`} onChange={onSwitch} />}
+        {library && row.fixed === true && <span className="qly-jrow-faint">{row.on ? "on" : "off"} · the class&apos;s</span>}
       </span>
     </TableRow>
   );

@@ -18,6 +18,7 @@ export function Overview({
   agent,
   personas,
   standings,
+  fixed,
   onNew,
   onGenerate,
   onSwitch,
@@ -25,6 +26,8 @@ export function Overview({
   agent: string;
   personas: Persona[];
   standings: Standings;
+  /** The class owns the roster: nothing is written here, and a generated caller is kept as a file. */
+  fixed: boolean;
   onNew: () => void;
   onGenerate: () => void;
   onSwitch: (persona: Persona, on: boolean) => void;
@@ -44,14 +47,23 @@ export function Overview({
         title="Personas"
         lede={
           <>
-            The callers a model plays against {whose}, improvising every line — in Simulations, or in <span className="ui-fixed">pinecall simulate</span>. Switch on Pinecall's, or write your own.
+            The callers a model plays against {whose}, improvising every line — in Simulations, or in <span className="ui-fixed">pinecall simulate</span>.{" "}
+            {fixed ? (
+              <>
+                Set by the class of {agent}: its own are the files under <span className="ui-fixed">agents/{agent}/test/personas/</span>, which of Pinecall's it plays is <span className="ui-fixed">personas({"{ on }"})</span> in the class, and a change is a commit.
+              </>
+            ) : (
+              "Switch on Pinecall's, or write your own."
+            )}
           </>
         }
         actions={
           <>
-            <Button size="base" kind="primary" onClick={onNew}>
-              New persona
-            </Button>
+            {!fixed && (
+              <Button size="base" kind="primary" onClick={onNew}>
+                New persona
+              </Button>
+            )}
             {agent !== "" && (
               <Button size="base" onClick={onGenerate}>
                 Generate…
