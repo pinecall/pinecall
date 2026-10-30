@@ -134,6 +134,8 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
             None if memory is None else MemoryPolicy(remember=tuple(memory.remember), forget=tuple(memory.forget)),
         ),
         "record": ("record", declaration.record),
+        "judges": ("judges", declaration.judges),
+        "personas": ("personas", declaration.personas),
     }
 
 

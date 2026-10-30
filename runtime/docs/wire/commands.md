@@ -39,7 +39,7 @@ What reaches the gateway: the commands an app sends over its socket, each with t
 
 ### `agent.configure`
 
-Declare or change what the agent is: voice, models, language, greeting, the full tool list. Only the fields sent change.
+Declare or change what the agent is: voice, models, language, greeting, the full tool list, its judges and its personas. Only the fields sent change.
 
 Lands in the log as: `agent.configured`.
 

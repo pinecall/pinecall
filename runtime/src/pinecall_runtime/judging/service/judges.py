@@ -13,6 +13,7 @@ from pinecall_runtime.judging.schemas import JudgeRequest, JudgeRow
 from pinecall_runtime.judging.service import catalog
 from pinecall_runtime.judging.service.specs import JudgeSpec
 from pinecall_runtime.kit.auth import THE_ORGS_OWN
+from pinecall_runtime.wire.parts import JudgeDeclaration
 
 PINECALL = "pinecall"
 THE_ORG = "org"
@@ -129,8 +130,8 @@ async def list_judges(session: AsyncSession, org: str, agent: str) -> list[Judge
     return rows
 
 
-def spec_of(name: str, body: JudgeRequest) -> JudgeSpec:
-    """A judge as a request writes it."""
+def spec_of(name: str, body: JudgeRequest | JudgeDeclaration) -> JudgeSpec:
+    """A judge as a request writes it, or as a class declares it."""
     reads = set(body.reads)
     return JudgeSpec(
         name=name,

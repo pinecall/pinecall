@@ -11,10 +11,11 @@ from pinecall_runtime.agents.service import tuning
 from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
 from pinecall_runtime.judging.models import AgentPersona
 from pinecall_runtime.judging.repository import PersonaRepository, PersonaSwitchRepository
-from pinecall_runtime.judging.schemas import CallerBehavior, PersonaRequest, PersonaRow, ProposedPersona
+from pinecall_runtime.judging.schemas import PersonaRequest, PersonaRow, ProposedPersona
 from pinecall_runtime.judging.service import catalog
 from pinecall_runtime.judging.service.specs import Behavior, Persona, check_persona_name
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.wire.parts import CallerBehavior, PersonaDeclaration
 
 PINECALL = "pinecall"
 NOBODY = "no persona called {name} for {agent}"
@@ -188,8 +189,8 @@ def check_persona_keys(
         providers.stage_on_its_key("tts", Voice(provider=providers.vendor_doing(tts, "tts")), configured, keys)
 
 
-def persona_of(name: str, body: PersonaRequest) -> Persona:
-    """A persona as a request writes it; a name that is not one is refused."""
+def persona_of(name: str, body: PersonaRequest | PersonaDeclaration) -> Persona:
+    """A persona as a request writes it, or as a class declares it; a name that is not one is refused."""
     check_persona_name(name)
     return Persona(
         name=name,

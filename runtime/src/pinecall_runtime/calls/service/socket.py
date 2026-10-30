@@ -28,6 +28,7 @@ from pinecall_runtime.exceptions import (
     ServiceUnavailable,
     ValidationError,
 )
+from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.text import Json, JsonObject
@@ -302,7 +303,8 @@ class AppSocket:
             tell_handoff(self.live.signal, Handoff(taking=Taking(app=self.id, scope=scope, agent=slug)))
 
     # A class that searches with no base attached, gives a plugin options on a key the box lends,
-    # or asks ears that cannot end the turn to, is refused when declared, not mid-call.
+    # or asks ears that cannot end the turn to, is refused when declared, not mid-call; so are a judge or a
+    # persona the class declares that a PUT would refuse.
     async def _configure(self, slug: str, wanted: AgentConfigure) -> None:
         found = self._holds(slug)
         first = slug not in self.configured
@@ -314,6 +316,7 @@ class AppSocket:
                 raise ValidationError(SEARCHES_WITH_NOTHING.format(slug=slug, env=self.scope.env))
             keyring = await providers.keys_of(session, self.serving.handles.vault, self.scope)
             providers.refuse_what_cannot_run(running, catalog, keyring)
+            await judging.check_declared(session, catalog, keyring, self.scope.org, slug, config)
             # Kept past this socket: what the class fixes is read from here once nobody holds the agent.
             await declarations.keep_declaration(session, self.scope, slug, wanted.config, sdk=found.sdk, first=first)
         await self.send(

@@ -461,9 +461,98 @@ What memory keeps about a contact across calls, and what it must never keep. Bot
 | `remember` | `string[]` | no | The kinds of fact worth keeping, as the tenant names them: 'alergias', 'preference', 'pets'. They become the categories remember extracts and recall reads back. |
 | `forget` | `string[]` | no | The kinds of fact that are never written, whatever the call said: 'card_numbers', 'diagnosis'. Dropped before they touch the store. |
 
+### `JudgeAnswer`
+
+How a judge answers: `verdict`, held or broken; `choice`, one of its `choices`; `score`, a number.
+
+One of: `verdict`, `choice`, `score`.
+
+### `JudgeRunsWhen`
+
+When a judge runs: on every call, only on a call a simulated caller played, or on a call its `trigger` question says yes to (a no is N/A).
+
+One of: `always`, `simulations`, `trigger`.
+
+### `JudgeRead`
+
+What a judge reads beyond the call and its tool calls, each a block added to its question: the agent's prompt, the evidence the call carried (knowledge, documents searched, facts recalled), the facts about the call.
+
+One of: `prompt`, `evidence`, `facts`.
+
+### `Ambience`
+
+What plays behind a simulated caller once `interferer_db` names a level: a television, a café's chatter, an office's hum, a street's traffic.
+
+One of: `television`, `cafe`, `office`, `street`.
+
+### `JudgeDeclaration`
+
+One judge of the agent's own, as its class declares it: the file `judges/<name>.md` read. What `PUT /v1/agents/{slug}/judges/{name}` takes, with the name inside. Held to the same rules when declared: a question, two choices at least for a `choice`, a trigger's question for `trigger`, a name that is lower-case words joined by hyphens and none of Pinecall's.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `name` | `string` | yes | The judge's name, the one `call.score` gives its answer under: offers-next-slot. |
+| `question` | `string` | yes | The question asked of the call. |
+| `answer` | `JudgeAnswer` | no | How it answers. Absent, a verdict. |
+| `choices` | `string[]` | no | The answers a `choice` judge picks from: two at least, and only for `choice`. |
+| `when` | `JudgeRunsWhen` | no | When it runs. Absent, on every call. |
+| `trigger` | `string` | no | For `trigger`: the yes-or-no asked first; a no settles the judge as N/A. |
+| `reads` | `JudgeRead[]` | no | What it reads beyond the call. |
+
+### `JudgesDeclared`
+
+The judges the class owns, declared as `judges` on `AgentConfig`: which of Pinecall's its calls meet, and its own. Declared, the class is the agent's list: a library judge not named in `on` is off for the agent, and nothing of the agent's judges is written in the console or with `pinecall judges` (`409 judges set by the class of …`). The org's own judges (`PUT /v1/org/judges/{name}`) still apply on top, and one of them under a name the class declares refuses the configure. An empty declaration is the whole library off and nothing of its own.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `on` | `string[]` | no | The names of Pinecall's judges the agent's calls meet; every other is off. A name that is none of the library's is refused. |
+| `own` | `JudgeDeclaration[]` | no | The agent's own judges, one each; two of one name are refused. |
+
+### `CallerBehavior`
+
+How a simulated caller acts on a spoken line, beside what it says. Every field is bounded, as `PUT …/personas/{name}` bounds it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `interrupts` | `number` | no | The share of the agent's answers the caller talks over once the agent has started, 0 to 1. |
+| `pause_s` | `number` | no | Seconds of silence before each line, 0 to 10. |
+| `interferer_db` | `number` | no | The ambience under the caller's voice, this many dB below it. Absent, a quiet room. |
+| `packet_loss` | `number` | no | The share of the caller's packets the line loses, 0 to 0.5. |
+| `backchannels` | `number` | no | The share of the agent's answers the caller murmurs an "mm-hmm" into without taking its turn, 0 to 1. |
+| `speed` | `number` | no | How fast the caller speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice. |
+| `ambience` | `Ambience` | no | What plays behind the caller once `interferer_db` names a level. Absent, a television. |
+
+### `PersonaDeclaration`
+
+One caller of the agent's own, as its class declares it: the file `test/personas/<name>.json` read. What `PUT /v1/agents/{slug}/personas/{name}` takes, with the name inside, and held to the same rules when declared: a goal and a style, twenty expectations at most and none blank, a name that is lower-case words joined by hyphens and none of Pinecall's; its model, its voice's vendor and its voice are tried on the org's keys when declared, never on the run that plays it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `name` | `string` | yes | The persona's name, the one `--persona` takes: price-shopper. |
+| `goal` | `string` | yes | What the caller wants, in the first person. |
+| `style` | `string` | yes | How the caller talks. |
+| `about` | `string` | no | One line on who the caller is, for the list. |
+| `facts` | `object` | no | What the caller knows and may be asked: their name, their policy number. A map of strings. |
+| `state` | `object` | no | The app's state the call opens in, as `call.started.state` carries it. |
+| `expects` | `string[]` | no | One verifiable demand a line ("The agent should…"): the expected-outcome judge reads them, and the model playing the caller never does. Twenty at most. |
+| `tags` | `string[]` | no | Words the list filters by. |
+| `behavior` | `CallerBehavior` | no | How the caller acts on a spoken line. Absent, a quiet caller who never interrupts. |
+| `llm` | `string` | no | The model that writes the caller's lines, as `vendor/model`. Absent, the runtime's. |
+| `tts` | `string` | no | The vendor of the caller's voice. Absent, the runtime's. |
+| `voice` | `string` | no | The voice, as the vendor names it. Absent, the runtime's. |
+
+### `PersonasDeclared`
+
+The personas the class owns, declared as `personas` on `AgentConfig`: which of Pinecall's its runs play, and its own. Declared, the class is the agent's roster, as `JudgesDeclared` is its panel: a library persona not named in `on` is off, and nothing of the agent's personas is written in the console or with `pinecall personas` (`409 personas set by the class of …`); a persona the console generates is kept as a file through the companion, or kept nowhere.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `on` | `string[]` | no | The names of Pinecall's personas the agent's runs play; every other is off. A name that is none of the library's is refused. |
+| `own` | `PersonaDeclaration[]` | no | The agent's own callers, one each; two of one name are refused. |
+
 ### `AgentConfig`
 
-What an app declares about its agent: the prompt's layout, the language, the tools, whether it searches its bases itself, and who may see and send what. Every field is optional so a configure can change one thing. The environment — language, voice, models, greeting, hangup, turn, says, hears, knowledge, docs, memory, record — is the agent's settings' unless the class declares it: **what the class declares wins** over the settings for that agent, which may not set it while the class does (`409`, and the settings doors list it under `fixed`). Sent as null, a field is the settings' again; left out of a configure, it stays as the class last declared it. An `agent.configure` is checked before it is taken, so what cannot run is refused when it is declared and never on a call: every model and voice it names is tried on the org's keys (a vendor nobody keyed is refused in the sentence a call would have closed with), and so are its own plugin options or a realtime model on a key the platform lends, ears asked to end the turn that cannot, a search with no base attached, a turn threshold outside its band, and a static block after a dynamic one.
+What an app declares about its agent: the prompt's layout, the language, the tools, whether it searches its bases itself, and who may see and send what. Every field is optional so a configure can change one thing. The environment — language, voice, models, greeting, hangup, turn, says, hears, knowledge, docs, memory, record — is the agent's settings' unless the class declares it: **what the class declares wins** over the settings for that agent, which may not set it while the class does (`409`, and the settings doors list it under `fixed`). Sent as null, a field is the settings' again; left out of a configure, it stays as the class last declared it. An `agent.configure` is checked before it is taken, so what cannot run is refused when it is declared and never on a call: every model and voice it names is tried on the org's keys (a vendor nobody keyed is refused in the sentence a call would have closed with), and so are its own plugin options or a realtime model on a key the platform lends, ears asked to end the turn that cannot, a search with no base attached, a turn threshold outside its band, a static block after a dynamic one, and a judge or a persona of the class's that a `PUT` of it would refuse.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -488,4 +577,6 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `state_fields` | `StateFieldSpec[]` | no | Who may see each field of the app's state. A field not listed is tenant: seen by the tenant's readers, never by the public. |
 | `view` | `ViewSpec` | no | The panel this agent draws beside a conversation, or absent when it draws none. |
 | `events` | `EventSpec[]` | no | The outside events this agent accepts and from whom. Anything else is refused before it touches the log. |
+| `judges` | `JudgesDeclared` | no | The judges the class owns: which of Pinecall's its calls meet, and its own, read from `judges/`. Declared, it wins over the console's and `pinecall judges`, which refuse it naming the class. Absent, the org writes the agent's judges as rows. |
+| `personas` | `PersonasDeclared` | no | The personas the class owns: which of Pinecall's its runs play, and its own, read from `test/personas/`. Declared, it wins over the console's and `pinecall personas`. Absent, the org writes them as rows. |
 

@@ -165,3 +165,20 @@ async def test_a_declared_model_on_a_vendor_nobody_keyed_is_refused_at_configure
         await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": unkeyed}))
         refused = await received(app, "error")
     assert "openai has no key: the org brought none and the box holds none" in refused["data"]["message"]
+
+
+# What a PUT of a persona refuses is refused when the class declares the caller: the sentence names
+# the vendor, and the socket stays.
+@pytest.mark.skipif("DATABASE_URL" not in os.environ, reason="the test database")
+async def test_a_persona_the_class_declares_on_a_vendor_nobody_keyed_is_refused_at_configure(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    unkeyed = {"name": "on-openai", "goal": "book today", "style": "short", "llm": "openai/gpt-5.4-mini"}
+    async with holding(gateway, tenant, agent) as app:
+        declared = {"config": {"personas": {"own": [unkeyed]}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        refused = await received(app, "error")
+        assert "openai has no key: the org brought none and the box holds none" in refused["data"]["message"]
+        declared = {"config": {"judges": {"on": ["consent"], "own": [{"name": "offers", "question": "Offered?"}]}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        assert (await received(app, "agent.configured"))["data"]["changed"] == ["judges"]

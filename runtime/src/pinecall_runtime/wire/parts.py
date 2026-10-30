@@ -4,8 +4,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AliasChoices, Field
 
-from pinecall_runtime.enums import Channel
-from pinecall_runtime.kit.text import Json
+from pinecall_runtime.enums import Channel, JudgeAnswer, JudgeRunsWhen
+from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
 
 type DevVerb = Literal[
@@ -82,6 +82,10 @@ type WidgetTheme = Literal["auto", "light", "dark"]
 type EventSource = Literal["app", "participant"]
 type SideEffect = Literal["read", "write", "irreversible"]
 type EndOfTurn = Literal["stt", "livekit", "smart-turn"]
+# What plays behind a simulated caller once `interferer_db` names a level.
+type Ambience = Literal["television", "cafe", "office", "street"]
+# The call and its tool calls are always read; each of these adds a block to a judge's question.
+type JudgeRead = Literal["prompt", "evidence", "facts"]
 type CostUnit = Literal[
     "input_tokens",
     "cached_input_tokens",
@@ -338,6 +342,69 @@ class MemoryConfig(WireModel):
     forget: list[str] = Field(default_factory=list[str])
 
 
+class JudgeDeclaration(WireModel):
+    """One judge of the agent's own, as its class declares it: `judges/<name>.md` read."""
+
+    name: str
+    question: str
+    answer: JudgeAnswer = JudgeAnswer.verdict
+    # The answers a `choice` judge picks from: two at least, and only for `choice`.
+    choices: list[str] = Field(default_factory=list[str])
+    when: JudgeRunsWhen = JudgeRunsWhen.always
+    trigger: str = ""
+    reads: list[JudgeRead] = Field(default_factory=list[JudgeRead])
+
+
+class JudgesDeclared(WireModel):
+    """The judges the class owns: which of Pinecall's its calls meet, and its own."""
+
+    on: list[str] = Field(default_factory=list[str])
+    own: list[JudgeDeclaration] = Field(default_factory=list[JudgeDeclaration])
+
+
+class CallerBehavior(WireModel):
+    """How a simulated caller acts on a spoken line, beside what it says."""
+
+    # The share of the agent's answers the caller talks over once the agent has started, 0 to 1.
+    interrupts: float = Field(default=0.0, ge=0.0, le=1.0)
+    # Seconds of silence before each line.
+    pause_s: float = Field(default=0.0, ge=0.0, le=10.0)
+    # The ambience under the caller's voice, this many dB below it; null: a quiet room.
+    interferer_db: float | None = None
+    packet_loss: float = Field(default=0.0, ge=0.0, le=0.5)
+    # The share of the agent's answers the caller murmurs an "mm-hmm" into without taking its turn.
+    backchannels: float = Field(default=0.0, ge=0.0, le=1.0)
+    # How fast the caller speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice.
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    ambience: Ambience = "television"
+
+
+class PersonaDeclaration(WireModel):
+    """One caller of the agent's own, as its class declares it: `test/personas/<name>.json` read."""
+
+    name: str
+    goal: str
+    style: str
+    about: str = ""
+    facts: dict[str, str] = Field(default_factory=dict[str, str])
+    state: JsonObject = Field(default_factory=dict[str, Json])
+    # One verifiable demand a line ("The agent should…"); the expected-outcome judge reads them.
+    expects: list[str] = Field(default_factory=list[str])
+    tags: list[str] = Field(default_factory=list[str])
+    behavior: CallerBehavior = Field(default_factory=CallerBehavior)
+    # The vendors the caller is played on; null is the runtime's.
+    llm: str | None = None
+    tts: str | None = None
+    voice: str | None = None
+
+
+class PersonasDeclared(WireModel):
+    """The personas the class owns: which of Pinecall's its runs play, and its own."""
+
+    on: list[str] = Field(default_factory=list[str])
+    own: list[PersonaDeclaration] = Field(default_factory=list[PersonaDeclaration])
+
+
 class AgentConfig(WireModel):
     """What an app declares about its agent; every field optional so a configure changes one thing."""
 
@@ -364,3 +431,6 @@ class AgentConfig(WireModel):
     state_fields: list[StateFieldSpec] | None = None
     view: ViewSpec | None = None
     events: list[EventSpec] | None = None
+    # Declared, the class owns the agent's judges and its personas: nothing of either is written in the console.
+    judges: JudgesDeclared | None = None
+    personas: PersonasDeclared | None = None

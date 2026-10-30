@@ -10,8 +10,12 @@ from pinecall_runtime.wire.parts import AgentConfig as Declared
 from pinecall_runtime.wire.parts import (
     DocsConfig,
     GreetingConfig,
+    JudgeDeclaration,
+    JudgesDeclared,
     MemoryConfig,
     ModelConfig,
+    PersonaDeclaration,
+    PersonasDeclared,
     PromptBlockSpec,
     Pronunciation,
     TurnConfig,
@@ -168,3 +172,14 @@ def test_the_judge_the_class_declares_is_a_model_and_is_fixed(listener: str) -> 
     assert config.fixed == frozenset({"judge"})
     with pytest.raises(ValidationError, match=f"{listener} has no llm"):
         with_app_fields(NOTHING, Declared(judge=ModelConfig(provider=listener, model="x")))
+
+
+def test_the_judges_and_the_personas_the_class_declares_are_fixed_and_let_go_when_sent_null() -> None:
+    """Declared, the class owns both lists; sent null, the org writes them again."""
+    judges = JudgesDeclared(on=["consent"], own=[JudgeDeclaration(name="offers-next-slot", question="Offered?")])
+    personas = PersonasDeclared(own=[PersonaDeclaration(name="in-a-rush", goal="book today", style="short")])
+    config = with_app_fields(NOTHING, Declared(judges=judges, personas=personas))
+    assert (config.judges, config.personas) == (judges, personas)
+    assert config.fixed == frozenset({"judges", "personas"})
+    let_go = with_app_fields(config, Declared(judges=None))
+    assert (let_go.judges, let_go.personas, let_go.fixed) == (None, personas, frozenset({"personas"}))

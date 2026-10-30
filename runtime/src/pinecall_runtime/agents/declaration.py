@@ -13,6 +13,8 @@ from pinecall_runtime.wire.parts import (
     DocsMode,
     EndOfTurn,
     EventSource,
+    JudgesDeclared,
+    PersonasDeclared,
     PromptRegion,
     SideEffect,
     Visibility,
@@ -332,6 +334,9 @@ class AgentConfig:
     state_fields: Mapping[str, Visibility] = field(default_factory=dict[str, Visibility])
     view: str | None = None
     events: Mapping[str, frozenset[EventSource]] = field(default_factory=dict[str, frozenset[EventSource]])
+    # The judges and the personas the class owns, as the wire carried them; None: the org writes them.
+    judges: JudgesDeclared | None = None
+    personas: PersonasDeclared | None = None
     # The settings the class itself declares, by their wire names: each wins over the org's.
     fixed: frozenset[str] = frozenset()
 

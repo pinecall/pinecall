@@ -10,14 +10,8 @@ from pinecall_runtime.kit.schemas import Row, Schema
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.goldens import Expect, Golden
+from pinecall_runtime.wire.parts import CallerBehavior, JudgeRead
 from pinecall_runtime.wire.scores import Judgment
-
-# What plays behind the caller once `interferer_db` names a level: a television, a café's chatter,
-# an office's hum, a street's traffic.
-type Ambience = Literal["television", "cafe", "office", "street"]
-
-# The call and its tool calls are always read; each of these adds a block to the question.
-type JudgeRead = Literal["prompt", "evidence", "facts"]
 
 # How an answer scores: a pass is 1, unsure is 0.5, a fail is 0, as livekit's own scoring has it.
 PASSED = 1.0
@@ -102,23 +96,6 @@ class JudgeTried(Row):
 
 
 # ── the simulated caller, and an agent's personas ──
-
-
-class CallerBehavior(Schema):
-    """How a simulated caller acts on a spoken line, beside what it says."""
-
-    # The share of the agent's answers the caller talks over once the agent has started, 0 to 1.
-    interrupts: float = Field(default=0.0, ge=0.0, le=1.0)
-    # Seconds of silence before each line.
-    pause_s: float = Field(default=0.0, ge=0.0, le=10.0)
-    # The ambience under the caller's voice, this many dB below it; null: a quiet room.
-    interferer_db: float | None = None
-    packet_loss: float = Field(default=0.0, ge=0.0, le=0.5)
-    # The share of the agent's answers the caller murmurs an "mm-hmm" into without taking its turn.
-    backchannels: float = Field(default=0.0, ge=0.0, le=1.0)
-    # How fast the caller speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice.
-    speed: float = Field(default=1.0, ge=0.5, le=2.0)
-    ambience: Ambience = "television"
 
 
 class CallerPersona(Schema):

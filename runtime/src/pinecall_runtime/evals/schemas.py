@@ -4,12 +4,12 @@ from typing import Literal
 
 from pydantic import Field
 
-from pinecall_runtime.judging.schemas import Ambience, CallerPersona, JudgeScore
+from pinecall_runtime.judging.schemas import CallerPersona, JudgeScore
 from pinecall_runtime.kit.schemas import Row, Schema
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.goldens import Golden
-from pinecall_runtime.wire.parts import EndReason, ModelConfig, ScoreVerdict
+from pinecall_runtime.wire.parts import Ambience, EndReason, ModelConfig, ScoreVerdict
 
 # A listing's page is never longer than this, whatever the reader asks; a screen when unsaid.
 LONGEST_LIST = 200

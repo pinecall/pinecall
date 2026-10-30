@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A class declares its judges and its personas.** `AgentConfig` carries `judges` (`{on, own}`: which of
+  Pinecall's judges the agent's calls meet, and its own) and `personas` (the same, for the callers its
+  simulations play), the shapes `JudgeDeclaration`, `PersonaDeclaration`, `JudgesDeclared`, `PersonasDeclared`
+  and `CallerBehavior` on the wire (`docs/wire/shapes.md`). An `agent.configure` that declares them is held to
+  what a `PUT` of a judge or a persona is held to, and refused there, never on a call: a name that is none of
+  the library's, one of Pinecall's written as the agent's own, two of one name, a judge with no question, a
+  persona with no goal, a persona on a vendor this box lacks or nobody keyed, an org judge under the name. Both
+  are `fixed` once declared; what reads them as the panel and the roster, and the `409` on the doors, follow.
+
 - **What a class fixes outlives its socket.** A declaration lived in the registry's memory while a socket
   held the agent, so a settings screen opened with nobody holding it, or a gateway that restarted, read
   nothing as the class's and let a setting the class declares be written. Each scope now keeps the last

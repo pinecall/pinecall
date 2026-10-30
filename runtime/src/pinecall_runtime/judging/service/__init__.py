@@ -3,7 +3,6 @@
 from pinecall_runtime.enums import JudgeRunsWhen
 from pinecall_runtime.judging.schemas import (
     BrokeOn,
-    CallerBehavior,
     CallerPersona,
     CaseDecision,
     CaseList,
@@ -61,6 +60,7 @@ from pinecall_runtime.judging.service.catalog import (
     panel_of,
     played_on,
 )
+from pinecall_runtime.judging.service.declared import check_declared, declared_judges, declared_personas
 from pinecall_runtime.judging.service.generating import Brief, write_personas
 from pinecall_runtime.judging.service.goldens import golden_judges, golden_lookup
 from pinecall_runtime.judging.service.groups import (
@@ -123,6 +123,7 @@ from pinecall_runtime.judging.service.personas import (
 from pinecall_runtime.judging.service.proposing import Dossier, Failure, diagnose
 from pinecall_runtime.judging.service.specs import Behavior, JudgeSpec, Persona
 from pinecall_runtime.judging.service.turn_checks import TurnRun, turn_scores
+from pinecall_runtime.wire.parts import CallerBehavior
 
 __all__ = [
     "AGREES_AT_LEAST",
@@ -176,6 +177,7 @@ __all__ = [
     "calibration_of",
     "case_of",
     "check_decision",
+    "check_declared",
     "check_labellable",
     "check_persona_keys",
     "check_persona_models",
@@ -183,6 +185,8 @@ __all__ = [
     "cut_at",
     "decide_case",
     "decide_group",
+    "declared_judges",
+    "declared_personas",
     "delete_case",
     "delete_judge",
     "delete_persona",
