@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Page } from "../../src/page/page.js";
+import { wordsOf } from "../../src/page/roles.js";
 
 const SITE = `
   <header><a href="/">Brightside Dental</a><nav aria-label="Main"><a href="#pricing">Pricing</a></nav></header>
@@ -136,5 +137,14 @@ describe("the page as the agent reads it", () => {
     expect(page.element(ref)?.textContent).toBe("Book my visit");
     document.querySelector("#book")?.remove();
     expect(page.element(ref)).toBeNull();
+  });
+
+  it("names a thing by its words with a space between its parts, as a person reads them across", () => {
+    document.body.innerHTML = `<a href="/a/la-espiga"><span>L</span><b>la-espiga</b><span>not held right now</span><em>18</em></a>`;
+    const link = document.querySelector("a");
+    if (link === null) throw new Error("no link");
+
+    expect(wordsOf(link)).toBe("L la-espiga not held right now 18");
+    expect(new Page(document).named("la-espiga not held", ["link"])).toBe("e1");
   });
 });

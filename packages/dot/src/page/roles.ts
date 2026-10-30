@@ -56,8 +56,16 @@ export function nameOf(element: Element, role: string): string {
   // A row is its cells, as a person reads them across: "Tue, Oct 28 · 9:00 · Dr. Patel".
   if (role === "row") return clean([...element.children].map((cell) => clean(cell.textContent)).filter((text) => text !== "").join(" · "), 160);
   if (role === "textbox" || role === "combobox") return fieldLabel(element);
-  if (SAID_WHOLE.has(role)) return clean(element.textContent, role === "text" ? 120 : 80);
+  if (SAID_WHOLE.has(role)) return clean(wordsOf(element), role === "text" ? 120 : 80);
   return "";
+}
+
+/** An element's words, a space between its parts: `<b>la-espiga</b><span>not held</span>` reads "la-espiga not held", never "la-espiganot held". */
+export function wordsOf(element: Element): string {
+  const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) parts.push(node.textContent ?? "");
+  return parts.join(" ");
 }
 
 // The label's own words, without the field inside it: a <label> that wraps its input holds the value too.

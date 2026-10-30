@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { sideOf } from "../../src/pointer/person.js";
+import { fitsOn, sideOf } from "../../src/pointer/person.js";
 
 const SCREEN = { width: 1440, height: 900 };
 
@@ -26,5 +26,11 @@ describe("the side the face stands on", () => {
     const everything = new DOMRect(0, 0, SCREEN.width, SCREEN.height);
 
     expect(sideOf({ x: 400, y: 300 }, everything, SCREEN.width, SCREEN.height)).toEqual({ west: false, up: false });
+  });
+
+  it("says whether a side keeps the words on the screen: out of the right corner, the right side does not", () => {
+    expect(fitsOn({ x: 1380, y: 840 }, { west: false, up: false }, SCREEN.width, SCREEN.height)).toBe(false);
+    expect(fitsOn({ x: 1380, y: 840 }, { west: true, up: true }, SCREEN.width, SCREEN.height)).toBe(true);
+    expect(fitsOn({ x: 400, y: 300 }, { west: false, up: false }, SCREEN.width, SCREEN.height)).toBe(true);
   });
 });

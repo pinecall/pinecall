@@ -6,6 +6,10 @@ maintainer's call.
 
 ## Unreleased
 
+- **A name is the element's words with a space between its parts** (`wordsOf`): a row of a table whose cells touch
+  reads "la-espiga not held right now", so a walk finds it by those words; before, they ran together.
+- **The face's words stay on the screen during a flight**: out of its corner, the face and the bubble take the side
+  that fits where the tip is until the destination's side does, instead of leaving the screen on the way.
 - **A page read aloud is recorded ahead**: as the tutor mounts with `reading`, every part the page says is asked of
   the door, three at a time, each text once; the door keeps them, so a reading started later has no wait.
 - **A part the door could not record is asked again**, three times over a few seconds, instead of read in silence;

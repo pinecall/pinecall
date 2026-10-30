@@ -16,7 +16,7 @@ import { aimOf, along, animate, besideOf, flightMs, scrollOnto, shownWhole, type
 import { Card } from "../pointer/card.js";
 import { boxOf } from "../pointer/frames.js";
 import { Hover } from "../pointer/hover.js";
-import { Person, sideOf, type Side } from "../pointer/person.js";
+import { fitsOn, sideOf, type Side, Person } from "../pointer/person.js";
 import { fill } from "../pointer/typing.js";
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, WALKED, tutoring, type Action, type Beat } from "../wire/index.js";
 import { Acting, WAIT_MS } from "./acting.js";
@@ -147,12 +147,15 @@ export function tutor(call: RoomStore, options: TutorOptions = {}): Tutor {
     timers.set(why, setTimeout(() => look(why), SETTLE[why]));
   };
 
-  // The face's side is the destination's, chosen before the flight: chosen on the way, it covered the thing, then jumped clear.
+  // The face's side is the destination's, chosen before the flight: chosen on the way, it covered the thing, then jumped
+  // clear. Where that side would put the words off the screen (a flight out of the corner), the side that fits there holds
+  // until the destination's does: the words never leave the screen.
   const fly = async (to: Point, side?: Side): Promise<void> => {
     const from = person.at;
     flying = true;
     await animate(still ? 0 : flightMs(Math.hypot(to.x - from.x, to.y - from.y), view.innerWidth), (u) => {
-      person.place(along(from, to, u), null, side);
+      const here = along(from, to, u);
+      person.place(here, null, side !== undefined && !fitsOn(here, side, view.innerWidth, view.innerHeight) ? sideOf(here, null, view.innerWidth, view.innerHeight) : side);
       if (person.touring) person.kind(hover.at(person.at.x, person.at.y));
     });
     flying = false;

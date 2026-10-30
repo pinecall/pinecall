@@ -94,6 +94,8 @@ beside the face. It moves the way a hand moves a mouse:
 
 - **It aims at an element the way a person does.** It lands on the middle of the element's first
 words, not of its box, and flies there on a minimum-jerk path with a slight arc, timed by the distance.
+  Its words stay on the screen on the way: out of its corner, the face and the bubble take the side that fits
+  until the destination's side does.
 - **The pointer looks like the one the element asks for**: a hand on a link, an I-beam in a field.
 - **Hover looks real.** Every `:hover` rule of the site's own style sheets is mirrored onto
 `[data-pc-hover]`, set on the element under the tip and its ancestors, and `pointerenter` and `mouseenter` are
@@ -148,6 +150,8 @@ them for a screen reader.
   `above` or `below`.
 - **Words in a box that is only layout are a line of text**, as a price in a `<div>`, as Playwright
   says them.
+- **A name is the element's words with a space between its parts**, as a person reads them across:
+  `link "L la-espiga not held right now"`, never the parts run together.
 - **A ref is stable for the page's life**, and still names its element after a scroll took it off
   the screen.
 - **A field is its label and what it holds now**: `[value="Jordan Lee"]` or `[empty]`, a list's
