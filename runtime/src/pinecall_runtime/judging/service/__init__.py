@@ -60,7 +60,7 @@ from pinecall_runtime.judging.service.catalog import (
     panel_of,
     played_on,
 )
-from pinecall_runtime.judging.service.declared import check_declared, declared_judges, declared_personas
+from pinecall_runtime.judging.service.declared import check_declared
 from pinecall_runtime.judging.service.generating import Brief, write_personas
 from pinecall_runtime.judging.service.goldens import golden_judges, golden_lookup
 from pinecall_runtime.judging.service.groups import (
@@ -73,9 +73,11 @@ from pinecall_runtime.judging.service.groups import (
 )
 from pinecall_runtime.judging.service.judges import (
     StoredJudge,
+    declared_judges,
     delete_judge,
     judge_named,
     judges_at,
+    judges_for,
     list_judges,
     own_judges_for,
     put_judge,
@@ -105,6 +107,7 @@ from pinecall_runtime.judging.service.personas import (
     StoredPersona,
     check_persona_keys,
     check_persona_models,
+    declared_personas,
     delete_persona,
     every_persona,
     get_persona,
@@ -207,6 +210,7 @@ __all__ = [
     "judge_named",
     "judge_spend",
     "judges_at",
+    "judges_for",
     "keep_at_hangup",
     "label_call",
     "library_judges",

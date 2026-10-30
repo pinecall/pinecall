@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The panel and the roster read the class first.** An agent whose class declares `judges` meets the class's
+  switches and its own judges at hang-up, on a `try`, a replay, a case's diagnosis and a label, with the org's
+  own judges on top, and its rows are not read; one whose class declares `personas` is called by the class's
+  own callers and Pinecall's by name (`?persona=`, `POST /v1/simulations`, `POST /v1/evals/voice`, a persona's
+  runs), never by a row. With nobody holding the agent, the scope's last declaration is read.
+
 - **A class declares its judges and its personas.** `AgentConfig` carries `judges` (`{on, own}`: which of
   Pinecall's judges the agent's calls meet, and its own) and `personas` (the same, for the callers its
   simulations play), the shapes `JudgeDeclaration`, `PersonaDeclaration`, `JudgesDeclared`, `PersonasDeclared`

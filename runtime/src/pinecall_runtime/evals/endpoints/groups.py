@@ -15,7 +15,7 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.enums import CaseStatus
 from pinecall_runtime.evals.auth import EvalsKey, WordsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by
+from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable, ValidationError
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
@@ -198,7 +198,9 @@ async def _judge_for(
 async def _dossier_of(
     session: Session, serving: calls.Serving, scope: Scope, found: judged.GroupRow
 ) -> judging.Dossier:
-    spec = await judging.judge_named(session, scope.org, found.agent, found.judge)
+    declared = await declared_in(session, serving, scope, found.agent)
+    judges = None if declared is None else declared.judges
+    spec = await judging.judge_named(session, scope.org, found.agent, found.judge, judges)
     cases = (await judging.list_cases(session, scope.org, found.agent, group=found.id))[:CALLS_READ]
     failures: list[judging.Failure] = []
     newest: list[Entry] = []

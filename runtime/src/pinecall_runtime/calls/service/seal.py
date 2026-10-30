@@ -194,12 +194,13 @@ async def judge_call(
 async def panel_for(
     session: AsyncSession, org: str, entries: Sequence[Entry], declared: AgentConfig | None
 ) -> judging.Panel:
-    """What a call is judged by: the switches, the org's own judges, what the judges are told."""
+    """What a call is judged by: the switches and the own judges (the class's when declared), and what they are told."""
     call = next((entry.call for entry in entries if entry.call is not None), "")
     agent = entries[0].agent if entries else ""
+    switches, own = await judging.judges_for(session, org, agent, None if declared is None else declared.judges)
     return judging.Panel(
-        switches=await judging.switches_for(session, org, agent),
-        own=await judging.own_judges_for(session, org, agent),
+        switches=switches,
+        own=own,
         around=await surroundings_of(session, org, call, declared),
         prompt=await prompt_of(session, org, entries),
     )

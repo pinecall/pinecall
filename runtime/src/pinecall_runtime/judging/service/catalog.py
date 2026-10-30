@@ -11,6 +11,12 @@ from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.judging.service.case import Case
 from pinecall_runtime.judging.service.specs import Behavior, JudgeSpec, Persona
 
+NONE_OF_PINECALLS = "{name} is none of Pinecall's {kind}: `pinecall {kind} list` names them"
+ONE_OF_PINECALLS = (
+    "{name} is one of Pinecall's {kind}: switch it on in the class's `{kind}`, or write your own under another name"
+)
+TWICE = "the class declares two {kind} called {name}"
+
 JUDGES = Path(__file__).parent.parent / "library" / "judges"
 PERSONAS = Path(__file__).parent.parent / "library" / "personas"
 
@@ -132,6 +138,24 @@ def facts_of(case: Case, around: Surroundings) -> str:
         lines += ["- the simulated caller expected:"]
         lines += [f"  - {line}" for line in case.expects]
     return "\n".join(lines)
+
+
+# A class says "none but Pinecall's" with an empty list: a switch it leaves out is off.
+def declared_switches(on: Sequence[str], library: Mapping[str, object], kind: str) -> dict[str, bool]:
+    """The library's switches as a class declares them: the names on, every other off; a stranger refused."""
+    for name in on:
+        if name not in library:
+            raise ValidationError(NONE_OF_PINECALLS.format(name=name, kind=kind))
+    return {name: name in on for name in library}
+
+
+def check_own_names(names: Sequence[str], library: Mapping[str, object], kind: str) -> None:
+    """Refuse a name of the class's own that is the library's, or declared twice."""
+    for name in names:
+        if name in library:
+            raise ValidationError(ONE_OF_PINECALLS.format(name=name, kind=kind))
+        if names.count(name) > 1:
+            raise ValidationError(TWICE.format(name=name, kind=kind))
 
 
 def played_on(written: WrittenPersona, llm: str | None, tts: str | None, voice: str | None) -> WrittenPersona:

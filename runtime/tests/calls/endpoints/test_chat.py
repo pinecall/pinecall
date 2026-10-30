@@ -101,6 +101,23 @@ async def test_a_chat_that_names_a_persona_nobody_wrote_is_refused_and_one_that_
         assert (code, "name it with ?persona=" in reason) == (4400, True)
 
 
+# The class's own caller rings the agent by name, as a row's does; a name the class does not own is nobody's.
+@needs_the_services
+async def test_a_persona_the_class_declares_is_played_by_name_and_its_expectations_ride_the_call(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    own = {"name": "in-a-rush", "goal": "book today", "style": "short", "expects": ["The agent should offer today."]}
+    async with holding(gateway, tenant, agent) as app:
+        declared = {"config": {"personas": {"on": ["in-a-hurry"], "own": [own]}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        await received(app, "agent.configured")
+        async with gateway.socket(f"/v1/chat?agent={agent}&persona=in-a-rush", tenant.server) as chat:
+            started = await received(chat, "call.started")
+            assert started["data"]["persona"] == "in-a-rush"
+        code, reason = await refusal_of(gateway, tenant, f"/v1/chat?agent={agent}&persona=from-a-row")
+        assert (code, "no persona called from-a-row" in reason) == (4404, True)
+
+
 @needs_the_services
 async def test_the_model_that_plays_a_chats_persona_is_kept_with_the_call_for_its_run(
     gateway: Gateway, tenant: Tenant, agent: str

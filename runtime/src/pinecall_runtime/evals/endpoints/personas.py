@@ -11,7 +11,7 @@ from pinecall_runtime.calls.auth import Reader, TheServing, reading
 from pinecall_runtime.enums import KeyScope
 from pinecall_runtime.evals import schemas
 from pinecall_runtime.evals.auth import EvalsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by, readable
+from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in, readable
 from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
@@ -121,6 +121,7 @@ async def list_persona_runs(
     slug: KnownAgent,
     name: str,
     reader: EvalsReader,
+    serving: TheServing,
     session: Session,
     query: Annotated[schemas.PersonaRunQuery, Query()],
 ) -> schemas.PersonaRunList:
@@ -128,7 +129,9 @@ async def list_persona_runs(
     scope = reader.scope
     if reader.actor is None or scope is None:
         raise Forbidden(A_KEY_LISTS)
-    if await judging.persona_named(session, scope.org, slug, name) is None:
+    declared = await declared_in(session, serving, scope, slug)
+    personas = None if declared is None else declared.personas
+    if await judging.persona_named(session, scope.org, slug, name, personas) is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=name, agent=slug))
     wanted = calls.PersonaRunFilters(agent=slug, persona=name, before=query.before)
     return await _runs(session, reader, wanted, query.limit)

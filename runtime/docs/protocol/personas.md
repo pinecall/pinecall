@@ -71,7 +71,12 @@ A persona belongs to one agent, in both environments: two agents of the org may 
 of their own. `GET /v1/agents/recepcion/personas` lists Pinecall's personas first (`owner:
 "pinecall"`, each `on` as the agent switched it; no endpoint writes a switch for the whole org), then
 that agent's own. `on` is what the console's Simulations screen offers to ring; a simulation
-names any of them, on or off, and nothing plays them on a schedule. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
+names any of them, on or off, and nothing plays them on a schedule. **A class that declares its
+personas is the agent's roster** (`AgentConfig.personas`, [wire/shapes.md](../wire/shapes.md)):
+`?persona=`, `POST /v1/simulations` and `POST /v1/evals/voice` find the class's own by name and
+Pinecall's as the agent plays them, never a row written for the agent; the library's switches are
+the class's `on`. With nobody holding the agent, what the last process in that environment declared
+is read. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
 `elderly-slow`, `angry-repeat-caller`, `asks-for-a-person`, and the red team (`tags: red-team`):
 `prompt-leak`, `data-leak`, `off-task`, `harmful`, `unauthorized-action` — is the runtime's
 `judging/library/personas/`, every one off until switched on; `PUT` of a library name takes

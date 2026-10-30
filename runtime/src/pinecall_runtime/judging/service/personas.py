@@ -15,7 +15,7 @@ from pinecall_runtime.judging.schemas import PersonaRequest, PersonaRow, Propose
 from pinecall_runtime.judging.service import catalog
 from pinecall_runtime.judging.service.specs import Behavior, Persona, check_persona_name
 from pinecall_runtime.providers import service as providers
-from pinecall_runtime.wire.parts import CallerBehavior, PersonaDeclaration
+from pinecall_runtime.wire.parts import CallerBehavior, PersonaDeclaration, PersonasDeclared
 
 PINECALL = "pinecall"
 NOBODY = "no persona called {name} for {agent}"
@@ -69,11 +69,21 @@ async def get_persona(session: AsyncSession, org: str, agent: str, name: str) ->
     return None if row is None else _stored(row)
 
 
-async def persona_named(session: AsyncSession, org: str, agent: str, name: str) -> Persona | None:
-    """The agent's own persona by that name, else Pinecall's as the org plays it; None for neither."""
-    own = await get_persona(session, org, agent, name)
-    if own is not None:
-        return own.persona
+# The class, when it declares its personas, is the agent's roster: its own are read and the agent's
+# rows are not; Pinecall's are played by name either way, as the org plays them.
+async def persona_named(
+    session: AsyncSession, org: str, agent: str, name: str, declared: PersonasDeclared | None = None
+) -> Persona | None:
+    """The agent's own persona by that name (its class's when declared), else Pinecall's as played; None for neither."""
+    if declared is not None:
+        _, own_callers = declared_personas(declared)
+        found = next((persona for persona in own_callers if persona.name == name), None)
+        if found is not None:
+            return found
+    else:
+        own = await get_persona(session, org, agent, name)
+        if own is not None:
+            return own.persona
     written = catalog.library_personas().get(name)
     if written is None:
         return None
@@ -187,6 +197,15 @@ def check_persona_keys(
         providers.stage_on_its_key("llm", model, configured, keys)
     if tts:
         providers.stage_on_its_key("tts", Voice(provider=providers.vendor_doing(tts, "tts")), configured, keys)
+
+
+def declared_personas(declared: PersonasDeclared) -> tuple[dict[str, bool], tuple[Persona, ...]]:
+    """The library's switches and the agent's own callers as the class declares them; refused by sentence."""
+    library = catalog.library_personas()
+    switches = catalog.declared_switches(declared.on, library, "personas")
+    own = tuple(persona_of(persona.name, persona) for persona in declared.own)
+    catalog.check_own_names([persona.name for persona in own], library, "personas")
+    return switches, own
 
 
 def persona_of(name: str, body: PersonaRequest | PersonaDeclaration) -> Persona:

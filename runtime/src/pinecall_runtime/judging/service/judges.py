@@ -13,7 +13,7 @@ from pinecall_runtime.judging.schemas import JudgeRequest, JudgeRow
 from pinecall_runtime.judging.service import catalog
 from pinecall_runtime.judging.service.specs import JudgeSpec
 from pinecall_runtime.kit.auth import THE_ORGS_OWN
-from pinecall_runtime.wire.parts import JudgeDeclaration
+from pinecall_runtime.wire.parts import JudgeDeclaration, JudgesDeclared
 
 PINECALL = "pinecall"
 THE_ORG = "org"
@@ -47,15 +47,40 @@ async def own_judges_for(session: AsyncSession, org: str, agent: str) -> list[Ju
     return [_spec_of_row(row) for row in await JudgeRepository(session).for_call(org, agent)]
 
 
-async def judge_named(session: AsyncSession, org: str, agent: str, name: str) -> JudgeSpec:
-    """One of Pinecall's judges by its name, else the org's or the agent's own; else a 404."""
+async def judge_named(
+    session: AsyncSession, org: str, agent: str, name: str, declared: JudgesDeclared | None = None
+) -> JudgeSpec:
+    """One of Pinecall's judges by its name, else the org's own or the agent's (its class's when declared); else 404."""
     found = catalog.library_judges().get(name)
     if found is not None:
         return found.spec
-    own = {spec.name: spec for spec in await own_judges_for(session, org, agent)}
+    _, judges = await judges_for(session, org, agent, declared)
+    own = {spec.name: spec for spec in judges}
     if name not in own:
         raise NotFound(NOBODY.format(whose=agent, name=name))
     return own[name]
+
+
+def declared_judges(declared: JudgesDeclared) -> tuple[dict[str, bool], tuple[JudgeSpec, ...]]:
+    """The library's switches and the agent's own judges as the class declares them; refused by sentence."""
+    library = catalog.library_judges()
+    switches = catalog.declared_switches(declared.on, library, "judges")
+    own = tuple(spec_of(judge.name, judge) for judge in declared.own)
+    catalog.check_own_names([spec.name for spec in own], library, "judges")
+    return switches, own
+
+
+# The class, when it declares its judges, is the agent's list: its switches and its own, and the
+# agent's rows are not read; the org's own judges meet its calls either way.
+async def judges_for(
+    session: AsyncSession, org: str, agent: str, declared: JudgesDeclared | None
+) -> tuple[dict[str, bool], tuple[JudgeSpec, ...]]:
+    """The switches and the own judges a call of the agent meets: the class's when declared, else the rows'."""
+    if declared is None:
+        return await switches_for(session, org, agent), tuple(await own_judges_for(session, org, agent))
+    switches, own = declared_judges(declared)
+    the_orgs = tuple(stored.spec for stored in await judges_at(session, org, THE_ORGS_OWN))
+    return switches, (*the_orgs, *own)
 
 
 # One of Pinecall's is switched, one of the org's own is written whole; never the other way.

@@ -4,11 +4,12 @@ from collections.abc import Sequence
 
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.agents.service import declarations
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import Reader, check_readable
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import Conflict, NotFound
-from pinecall_runtime.kit.auth import Actor
+from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.wire.base import Entry
 
@@ -19,6 +20,14 @@ STILL_GOING = "call {call} is still going: a case is made of a call that ended"
 def asked_by(actor: Actor) -> str:
     """The person behind the key, or the key itself for a server's."""
     return actor.person.id if actor.person is not None else actor.key_id
+
+
+# The process holding the agent in the scope, else what the scope's last one declared: a judge or a
+# persona the class declares is read with nobody holding the agent.
+async def declared_in(session: Session, serving: calls.Serving, scope: Scope, slug: str) -> AgentConfig | None:
+    """The agent's declaration in the scope, held now or kept from the last process."""
+    held = serving.registry.serving(scope, slug, None)
+    return await declarations.declared_now_or_last(session, scope, slug, None if held is None else held.config)
 
 
 async def readable(

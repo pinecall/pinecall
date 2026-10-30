@@ -8,7 +8,7 @@ from pinecall_runtime.agents.service import settings
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals.auth import EvalsKey
-from pinecall_runtime.evals.endpoints.reading import asked_by, is_over, readable
+from pinecall_runtime.evals.endpoints.reading import asked_by, declared_in, is_over, readable
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.judging import schemas
 from pinecall_runtime.judging import service as judging
@@ -76,11 +76,12 @@ async def try_judge(
     """Ask one judge, written or only in the body, of finished calls of the agent."""
     if body.last is not None and body.calls:
         raise ValidationError(ONE_OR_THE_OTHER)
-    spec = (
-        judging.spec_of(body.name, body)
-        if body.question.strip()
-        else await judging.judge_named(session, actor.org, slug, body.name)
-    )
+    if body.question.strip():
+        spec = judging.spec_of(body.name, body)
+    else:
+        declared = await declared_in(session, serving, actor.scope, slug)
+        judges = None if declared is None else declared.judges
+        spec = await judging.judge_named(session, actor.org, slug, body.name, judges)
     named = body.calls or await _newest(session, actor.scope, slug, body.last)
     tried = [await _tried(session, serving, actor, call, spec) for call in named]
     scores = [score for _, score in tried]

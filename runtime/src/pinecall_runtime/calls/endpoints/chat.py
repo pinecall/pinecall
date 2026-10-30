@@ -127,7 +127,10 @@ async def _chat_context(
 ) -> CallContext:
     scope = registration.scope
     named = websocket.query_params.get("persona") or None
-    persona = None if named is None else await judging.persona_named(session_, scope.org, registration.slug, named)
+    personas = registration.config.personas
+    persona = (
+        None if named is None else await judging.persona_named(session_, scope.org, registration.slug, named, personas)
+    )
     contact = websocket.query_params.get("contact")
     return CallContext(
         call=new_call_id(),
@@ -158,7 +161,7 @@ async def _admitted_as_a_simulation(
             raise ValidationError(PLAYED_BY_NEEDS_A_PERSONA)
         return None
     scope = registration.scope
-    persona = await judging.persona_named(session_, scope.org, registration.slug, named)
+    persona = await judging.persona_named(session_, scope.org, registration.slug, named, registration.config.personas)
     if persona is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=named, agent=registration.slug))
     if played is not None:

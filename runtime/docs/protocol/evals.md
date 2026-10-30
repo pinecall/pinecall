@@ -265,7 +265,7 @@ turn of a golden held, its final `expect` is held to them and to checks settled 
 | `says_any` | `expect.says_any` | code, case-blind: any one of the phrases is enough, for an expectation with several right answers (`de 9 a 14`, `de nueve a dos`); the reason names the one said, or every one when none was |
 | `register` | `expect.register` | code: no word of the other register (`tú`, `usted`) |
 | `grounded` | `expect.grounded` | the library's judge, asked of the golden's call |
-| any judge, by name | `expect.judges` | the library's, the org's own or the agent's own judge asked of the golden's call, whether or not the org switched it on; a name nobody wrote breaks the golden |
+| any judge, by name | `expect.judges` | the library's, the org's own or the agent's own judge (its class's, when the class declares its judges) asked of the golden's call, whether or not it is switched on; a name nobody wrote breaks the golden |
 
 ## A finished call
 
@@ -308,7 +308,12 @@ The seal judges every call when the org judges its calls (`PUT /v1/org/judging`)
 is at hand: the agent's or the org's own on the org's own key, or else one the platform pays for —
 the providers row names a `judge` model and its `ceiling_usd` is above zero.
 The panel is the library's judges switched on for the agent, then the org's own, then the
-agent's own, each asked once.
+agent's own, each asked once. **A class that declares its judges is the agent's list**
+(`AgentConfig.judges`, [wire/shapes.md](../wire/shapes.md)): the library's switches are the
+class's `on`, the agent's own are its `own`, read as the call opened declaring them, and the
+agent's rows are not read; the org's own judges meet its calls on top either way. `try`, a
+replay, a case group's diagnosis and a label read the same list: what the process holding the
+agent declares, or what the last one in that environment did.
 
 **The judge model** is the agent's `judge` (its class's, else its settings'), else the org's
 (`PUT /v1/org/judging {on, model}`, the model tried on the org's keys in both environments before it is kept; the agent's, in the environment its settings are for), else
@@ -370,7 +375,8 @@ PUT /v1/agents/recepcion/judges/offers-next-slot
 ```
 
 A list is the library first, then the org's own (`owner: "org"`), then, on an agent's, the
-agent's own (`owner`: its slug); one list serves both environments. `PUT` of a library name takes
+agent's own (`owner`: its slug); one list serves both environments. An agent whose class declares
+its judges meets the class's, not these rows (*At hang-up*, above). `PUT` of a library name takes
 `{"on": true}` or `{"on": false}` and nothing else (a question is `409`): at `/v1/org/judges` it is
 the org's default for every agent, at an agent's it is that agent's, and the agent's wins. `PUT`
 of any other name writes one of the org's own or the agent's own whole (`on` is `409`: it runs

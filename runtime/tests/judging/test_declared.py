@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.enums import JudgeAnswer
-from pinecall_runtime.exceptions import Conflict, ServiceUnavailable, ValidationError
-from pinecall_runtime.judging.schemas import JudgeRequest
+from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable, ValidationError
+from pinecall_runtime.judging.schemas import JudgeRequest, PersonaRequest
 from pinecall_runtime.judging.service import catalog
 from pinecall_runtime.judging.service.declared import (
     check_declared,
@@ -14,7 +14,8 @@ from pinecall_runtime.judging.service.declared import (
     declared_judges,
     declared_personas,
 )
-from pinecall_runtime.judging.service.judges import put_judge, spec_of
+from pinecall_runtime.judging.service.judges import judge_named, judges_for, put_judge, spec_of
+from pinecall_runtime.judging.service.personas import persona_named, persona_of, put_persona
 from pinecall_runtime.kit.auth import THE_ORGS_OWN
 from pinecall_runtime.providers.service import Keyring
 from pinecall_runtime.wire.parts import (
@@ -110,3 +111,45 @@ async def test_a_judge_the_org_wrote_under_the_name_is_refused_as_the_orgs(
         free = OFFERS.model_copy(update={"name": "offers-a-slot"})
         other = AgentConfig(slug=AGENT, judges=JudgesDeclared(own=[free]), personas=PersonasDeclared(own=[IN_A_RUSH]))
         await check_declared(session, configured(), Keyring(), tenant.org, AGENT, other)
+
+
+# ── read as the class's: the panel and the roster ──
+
+
+@needs_the_database
+async def test_the_panel_is_the_class_s_switches_and_own_with_the_orgs_own_and_never_the_agents_rows(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """Declared, the class is the agent's list; the org's own judges meet its calls on top; the rows are not read."""
+    async with sessions.begin() as session:
+        the_orgs = spec_of("polite", JudgeRequest(question="Polite?"))
+        await put_judge(session, tenant.org, THE_ORGS_OWN, the_orgs, by="m_ana")
+        a_row = spec_of("from-a-row", JudgeRequest(question="Written in the console?"))
+        await put_judge(session, tenant.org, AGENT, a_row, by="m_ana")
+        switches, own = await judges_for(session, tenant.org, AGENT, JudgesDeclared(on=["grounded"], own=[OFFERS]))
+        assert [spec.name for spec in own] == ["polite", "offers-next-slot"]
+        assert switches["grounded"] and not switches["consent"]
+        assert await judge_named(session, tenant.org, AGENT, "offers-next-slot", JudgesDeclared(own=[OFFERS])) == own[1]
+        with pytest.raises(NotFound, match=f"{AGENT} has no judge called from-a-row"):
+            await judge_named(session, tenant.org, AGENT, "from-a-row", JudgesDeclared(own=[OFFERS]))
+        # Nothing declared: the rows, as before.
+        _, rows = await judges_for(session, tenant.org, AGENT, None)
+        assert [spec.name for spec in rows] == ["polite", "from-a-row"]
+
+
+@needs_the_database
+async def test_a_persona_is_the_class_s_own_by_name_else_pinecalls_and_never_the_agents_row(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """Declared, the roster is the class's: its own by name, Pinecall's by name as the org plays them, no row."""
+    async with sessions.begin() as session:
+        a_row = persona_of("from-a-row", PersonaRequest(goal="g", style="s"))
+        await put_persona(session, tenant.org, AGENT, a_row, by="m_ana", was=None)
+        declared = PersonasDeclared(own=[IN_A_RUSH])
+        found = await persona_named(session, tenant.org, AGENT, "in-a-rush", declared)
+        assert found is not None and found.goal == "book today"
+        library = await persona_named(session, tenant.org, AGENT, "in-a-hurry", declared)
+        assert library is not None and library.name == "in-a-hurry"
+        assert await persona_named(session, tenant.org, AGENT, "from-a-row", declared) is None
+        row = await persona_named(session, tenant.org, AGENT, "from-a-row", None)
+        assert row is not None and row.name == "from-a-row"

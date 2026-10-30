@@ -9,12 +9,14 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey, TheSimulations
+from pinecall_runtime.evals.endpoints.reading import declared_in
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session_
+from pinecall_runtime.wire.parts import PersonasDeclared
 
 router = APIRouter()
 
@@ -36,7 +38,8 @@ async def simulate(
     """Put one of the agent's personas on it, written or spoken; the call's id at once."""
     keys.check_agent(actor, body.agent)
     scope = actor.scope
-    persona = await judging.persona_named(session, actor.org, body.agent, body.persona)
+    roster = await _personas_of(session, serving, scope, body.agent)
+    persona = await judging.persona_named(session, actor.org, body.agent, body.persona, roster)
     if persona is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=body.persona, agent=body.agent))
     if body.played_by is not None:
@@ -89,7 +92,8 @@ async def place_voice_call(
     keys.check_agent(actor, body.agent)
     scope = actor.scope
     persona = body.persona
-    if persona.name and await judging.persona_named(session, actor.org, body.agent, persona.name) is None:
+    roster = await _personas_of(session, serving, scope, body.agent)
+    if persona.name and await judging.persona_named(session, actor.org, body.agent, persona.name, roster) is None:
         raise NotFound(judging.NO_SUCH_PERSONA.format(name=persona.name, agent=body.agent))
     judging.check_persona_models(await providers.get_catalog(session), persona.llm, persona.tts, persona.voice)
     # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
@@ -119,3 +123,9 @@ async def _spoken(serving: calls.Serving, scope: Scope, placed: service.Placed) 
 
 async def _written(serving: calls.Serving, running: session_.Session, placed: service.Placed) -> None:
     await service.written_turns(serving, running, placed)
+
+
+# The roster a simulation picks from: the class's when it declares its personas, held now or last.
+async def _personas_of(session: Session, serving: calls.Serving, scope: Scope, agent: str) -> PersonasDeclared | None:
+    declared = await declared_in(session, serving, scope, agent)
+    return None if declared is None else declared.personas
