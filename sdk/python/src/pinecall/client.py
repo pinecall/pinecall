@@ -13,12 +13,12 @@ import httpx
 from pinecall._agent_socket import ANSWER_WITHIN_S, AgentSocket, Role, Tool
 from pinecall._calls import Call
 from pinecall._connection import Backoff, Connection, Handlers
-from pinecall._endpoints import lookup_url, signed
+from pinecall._endpoints import knowledge_url, lookup_url, signed
 from pinecall._listeners import AnyListener, Listener, Listeners
 from pinecall._version import __version__
 from pinecall.errors import NotConnected, PinecallError, Refused, WireError
 from pinecall.observe import Observation, Page, Reader, history, observe
-from pinecall.wire._names import Env
+from pinecall.wire._names import Env, JsonObject
 from pinecall.wire.commands import COMMANDS
 from pinecall.wire.events import ErrorEvent, event_of
 from pinecall.wire.frames import Command, Entry, WireModel
@@ -229,6 +229,24 @@ class Client:
             raise Refused(str(answered.status_code), detail_of(answered))
         chunks = typing.cast("list[dict[str, str | None]]", answered.json()["output"]["chunks"])
         return [Found(str(one["path"]), one.get("heading"), str(one["text"])) for one in chunks]
+
+    # ── a base pushed ──
+
+    async def push_knowledge(self, base: str, files: Sequence[JsonObject]) -> JsonObject:
+        """Write Markdown files into a base by their paths, the base's other files kept.
+
+        What `pinecall docs push` sends: each file `{"path": …, "text": …}`. Answers the gateway's
+        `{base, chunks, kept, language, took_ms}`.
+        """
+        async with httpx.AsyncClient() as http:
+            answered = await http.put(
+                knowledge_url(self.url, base),
+                json={"files": list(files)},
+                headers=signed(*self._signing),
+            )
+        if answered.is_error:
+            raise Refused(str(answered.status_code), detail_of(answered))
+        return typing.cast("JsonObject", answered.json())
 
     # ── what the agents send through ──
 

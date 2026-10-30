@@ -58,6 +58,7 @@ lib/pinecall/
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
   serve/loading.rb           its flags, the class in a file, a state field by field
+  serve/declared_docs.rb     the `docs/` folder beside a class that declares its base, pushed once the agent registers
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
   serve/masking.rb           what `--events` prints of an agent's entries: the values it declared `pii`, masked
   serve/viewing.rb           `view.render`, the one console verb an agent's own process answers

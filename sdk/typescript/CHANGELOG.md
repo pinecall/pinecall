@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A class that declares `docs` pushes its folder.** Once the agent registers, every Markdown file under
+  `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per
+  process: `pinecall start` and a deploy need no `pinecall docs push`. `Pinecall.pushKnowledge` is the door.
+
 - **`static maxDuration` and `static llmTimeout`**: the longest a voice call runs (minutes, or `"off"`) and how
   long a turn waits for the model's first word (seconds), declared on the class and fixed over the settings.
 

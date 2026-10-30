@@ -36,6 +36,7 @@ src/pinecall/
   _state.py                  the fields a class declares, `state(...)`, the stage, every write and who made it
   _config.py                 the world's twelve settings, refused at creation with the verb that sets each; the slug
   _harness.py                `judges(on=…)`, `personas(on=…)`, and the folders beside the class's file read into each `own`
+  _docs.py                   the `docs/` folder beside a class that declares its base, pushed once the agent registers
   _tools.py                  `@tool`, the tools a class declares, what this state shows, running one
   _spec.py                   one tool as the gateway receives it: the arguments' model, its schema, what is refused
   _doc.py                    a docstring as the model reads it: one line, and what `Args:` says of each parameter

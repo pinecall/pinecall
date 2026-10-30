@@ -99,7 +99,7 @@ declared there is refused when the class loads.
 | `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` | `pinecall agent set --max-duration 20` |
 | `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` | `pinecall agent set --llm-timeout 8` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` | `pinecall agent knowledge edit` |
-| `docs` | the base the agent searches per turn | `static docs = { base: "…", k: 4 }` | `pinecall docs push`, then `pinecall docs attach <base>` |
+| `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` | `pinecall docs push`, then `pinecall docs attach <base>` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …] })`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |
 | `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …] })`, its own as `test/personas/<name>.json` | `pinecall personas on\|off\|add` |
 

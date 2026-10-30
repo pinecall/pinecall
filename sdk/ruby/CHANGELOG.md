@@ -6,6 +6,10 @@ maintainer's call.
 
 ## [Unreleased]
 
+- **A class that declares `docs` pushes its folder.** Once the agent registers, every Markdown file under
+  `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per
+  process: `pinecall start` and a deploy need no `pinecall docs push`.
+
 - **`max_duration` and `llm_timeout`** macros: the longest a voice call runs (minutes, or `:off`) and how long a
   turn waits for the model's first word (seconds), fixed over the settings.
 

@@ -22,6 +22,7 @@ import { promptOf } from "../views/render.js";
 import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
 import { harnessOf } from "../agent/harness.js";
+import { pushDeclaredDocs } from "./declared-docs.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
@@ -160,22 +161,27 @@ export function mount(
   agent.on("call.ended", (_payload, call) => {
     if (call !== null) void end(live, call);
   });
-  served(ctor, pc, name, report);
+  served(ctor, pc, name, report, file);
   return { slug: name, agent, options, instanceOf: (id) => live.get(id)?.agent };
 }
 
 // Once the agent is registered, after every connect: what the class publishes for pages is kept by
 // the gateway and asked again at no cost, so a reconnect runs it again rather than track what changed.
-function served(ctor: Ctor, pc: Pinecall, slug: string, report: ((line: string) => void) | undefined): void {
+// The documents a class declares as its base are pushed once per process, before its onServe.
+function served(ctor: Ctor, pc: Pinecall, slug: string, report: ((line: string) => void) | undefined, file: string | undefined): void {
   const serve: Serve = {
     slug,
     record: (texts) => pc.recordLines(slug, texts),
     publish: (name, document) => pc.publish(slug, name, document),
     say: (line) => report?.(line),
   };
-  const onServe = (ctor as unknown as typeof Agent).onServe.bind(ctor);
+  const declared = ctor as unknown as typeof Agent;
+  const onServe = declared.onServe.bind(ctor);
+  let pushed = false;
   pc.onConnected(() => {
-    Promise.resolve()
+    const docs = pushed ? Promise.resolve() : pushDeclaredDocs(pc, declared, file, report);
+    pushed = true;
+    docs
       .then(() => onServe(serve))
       .catch((failed: unknown) => pc.onError(failed instanceof Error ? failed : new Error(String(failed))));
   });

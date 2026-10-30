@@ -5,7 +5,9 @@ import { hostname } from "node:os";
 import { type Camel, type CommandData, eventOf } from "../wire/codec.js";
 import { type Entry } from "../wire/envelope.js";
 import { type CommandType, type EventType } from "../wire/registry.js";
+import { type KnowledgeFile } from "../wire/agent-config.js";
 import { type RecordedLine } from "../wire/rest-lines.js";
+import { type KnowledgePushed } from "../wire/rest-retrieval.js";
 import { Agent, type AgentGateway, type AgentOptions } from "./agent.js";
 import { detailOf } from "./answered.js";
 import type { Call } from "./calls.js";
@@ -14,7 +16,7 @@ import { lookupUrl } from "./endpoints.js";
 import { PinecallError, frame } from "./frames.js";
 import { Listeners, asError, type AnyListener, type CamelEvent, type Listener } from "./listeners.js";
 import { history, observe, type LogTarget, type Observation, type Page, type ReadOptions } from "./observe.js";
-import { publish, recordLines } from "./published.js";
+import { publish, pushKnowledge, recordLines } from "./published.js";
 import { signed, type World } from "./signed.js";
 
 // Two levels up from both dist/client/ and src/client/.
@@ -268,6 +270,11 @@ export class Pinecall implements AgentGateway {
   /** Publish a JSON object under a name for any page to read with no key, over the one before it. */
   async publish(agent: string, name: string, document: Record<string, unknown>): Promise<void> {
     return publish(this.#reading({}), agent, name, document);
+  }
+
+  /** Write Markdown files into a base by their paths, the base's other files kept: what `pinecall docs push` sends. */
+  async pushKnowledge(base: string, files: KnowledgeFile[]): Promise<Camel<KnowledgePushed>> {
+    return pushKnowledge(this.#reading({}), base, files);
   }
 
   // ── what the agents send through ────────────────────────────────────────────

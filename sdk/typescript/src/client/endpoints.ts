@@ -30,6 +30,11 @@ export function publishedUrl(base: string, agent: string, name: string): string 
   return doorAt(base, `/v1/agents/${encodeURIComponent(agent)}/public/${encodeURIComponent(name)}`, false);
 }
 
+/** `PUT /v1/knowledge/{base}`: a folder of Markdown written into a base, the base's other files kept. */
+export function knowledgeUrl(base: string, name: string): string {
+  return doorAt(base, `/v1/knowledge/${encodeURIComponent(name)}`, false);
+}
+
 /** `POST /v1/calls/{id}/lookup`: a knowledge-base search run by the gateway for this call. */
 export function lookupUrl(base: string, call: string): string {
   return doorAt(base, `/v1/calls/${encodeURIComponent(call)}/lookup`, false);

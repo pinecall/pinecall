@@ -1,9 +1,10 @@
 """`serve start`: hold the agents named until asked to leave, then drain and close."""
 
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TextIO
 
+from pinecall._docs import push_declared_docs
 from pinecall.bridge import Mounted, mount
 from pinecall.client import Client
 from pinecall.serve._held import Held
@@ -65,9 +66,19 @@ async def start(
     client.on_stopped(stopped)
     try:
         await client.connect()
+        # The documents a class declares as its base, once per process, before any call.
+        for slug, cls in classes:
+            await push_declared_docs(client, cls, _said_as(err, slug))
         return await leave(Held(client, mounted), asked, err)
     finally:
         printer.close()
+
+
+def _said_as(err: TextIO, slug: str) -> Callable[[str], None]:
+    def say(line: str) -> None:
+        err.write(f"{slug}  {line}\n")
+
+    return say
 
 
 async def leave(held: Held, asked: asyncio.Queue[str], err: TextIO) -> int:

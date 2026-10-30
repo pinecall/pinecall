@@ -32,6 +32,11 @@ def agent_log_url(base: str, agent: str) -> str:
     return door_at(base, f"/v1/agents/{quote(agent, safe='')}/calls")
 
 
+def knowledge_url(base: str, name: str) -> str:
+    """`PUT /v1/knowledge/{base}`: Markdown written into a base, the base's other files kept."""
+    return door_at(base, f"/v1/knowledge/{quote(name, safe='')}")
+
+
 def lookup_url(base: str, call: str) -> str:
     """`POST /v1/calls/{id}/lookup`: a search the gateway runs for a call this process serves."""
     return door_at(base, f"/v1/calls/{quote(call, safe='')}/lookup")

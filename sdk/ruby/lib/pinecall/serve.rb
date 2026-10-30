@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "serve/loading"
+require_relative "serve/declared_docs"
 require_relative "serve/held"
 require_relative "serve/masking"
 require_relative "serve/viewing"
@@ -52,6 +53,8 @@ module Pinecall
       asked = signals || trapped
       client.on_stopped { |why| err.puts(why) || asked.push(:stopped) }
       client.connect
+      # The documents a class declares as its base, once per process, before any call.
+      classes.each { |served, klass| DeclaredDocs.push(client, klass, served.file, err:) }
       Thread.new { ended(input, asked) }
       leave(held, asked)
     end
