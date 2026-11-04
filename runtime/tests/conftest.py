@@ -163,9 +163,13 @@ class Gateway:
     # The app served, for a test that plays the gateway losing what it held in memory.
     app: FastAPI
 
+    # No ceiling on frames unread: a test holds an app socket it never reads while a call writes
+    # entries down it, and websockets pauses reading the TCP connection at sixteen unread, so the
+    # server's close never arrives and the socket's close waits its ten seconds (2026-11-04: one
+    # test of two turns timed out on it, every run).
     def socket(self, path: str, headers: Mapping[str, str]) -> connect:
         """A WebSocket to the path, opened with these headers."""
-        return connect(f"ws{self.url.removeprefix('http')}{path}", additional_headers=dict(headers))
+        return connect(f"ws{self.url.removeprefix('http')}{path}", additional_headers=dict(headers), max_queue=None)
 
 
 # Served by uvicorn, as production serves it: an in-process transport cancels a socket's handler
