@@ -19,8 +19,10 @@ Commands:
 
 With nothing after it: every call this agent has run, newest first — when it came in, how long
 it lasted, why it ended, what it cost and the one line the agent left as its outcome. With a
-call id: that call whole — the same facts, and the SCORE, one line per judge that ran over it.
-log <call>: the call's log as the runtime keeps it, an entry a line, 200 entries a page.
+call id: that call whole — the same facts, and the SCORE: the judges that broke with their reason,
+the ones that held, the ones that did not apply.
+log <call>: the call's log as the runtime keeps it, an entry a line, 200 entries a page;
+the agent's state moves, its prompt's rewrites and its waits are left out unless --verbose.
 --agent names the agent from any folder; beside an agent's class it is that agent.
 
 Examples
@@ -38,4 +40,6 @@ Options:
   --after <seq>      read on from there
   --limit <n>        entries a page, at most 500; 200 when left out
   --types <a.b,c.d>  only these entry types
+  --verbose          every entry, the agent's state moves, prompt rewrites and
+                     waits too
   -h, --help         display help for command

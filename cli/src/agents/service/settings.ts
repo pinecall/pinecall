@@ -3,6 +3,7 @@
 import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 import { z } from "zod";
 
+import { getMemberNames } from "../../accounts/service/index.js";
 import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
@@ -141,9 +142,11 @@ export async function clearSettings(ctx: Context, fields: string[], options: Wri
   );
 }
 
+/** A corner's versions, its holder said by name rather than member id. */
 export async function settingsHistory(ctx: Context, agent: string | undefined, team: boolean): Promise<{ agent: string; history: TuningHistory }> {
   const name = agentNamed(ctx, agent);
-  return { agent: name, history: await api.getSettingsHistory(ctx.gateway(), name, team) };
+  const [history, nameOf] = await Promise.all([api.getSettingsHistory(ctx.gateway(), name, team), getMemberNames(ctx)]);
+  return { agent: name, history: { ...history, holder: history.holder === "" ? "" : nameOf(history.holder) } };
 }
 
 export async function settingsDiff(ctx: Context, agent: string | undefined, against: "team" | "production", team = false): Promise<{ agent: string; against: string; diff: TuningDiff }> {

@@ -2,6 +2,8 @@
 
 import { Writable } from "node:stream";
 
+import { paintLine } from "./paint.js";
+
 /** Lines for a terminal, from data; a string is one line. */
 export type Render<T> = (data: T) => string | readonly string[];
 
@@ -19,6 +21,8 @@ export interface IO {
   json: boolean;
   /** `PINECALL_DEBUG`: `debug` lines are written. */
   readonly verbose: boolean;
+  /** Whether the marks and hints are coloured: each stream a terminal, and no `NO_COLOR`. */
+  readonly color?: { out: boolean; err: boolean };
   /** A verb's answer: the object under `--json`, the rendered lines otherwise. */
   result<T>(data: T, render: Render<T>): void;
   /** A line of the answer written as it comes (a transcript, a log); silent under `--json`. */
@@ -36,6 +40,8 @@ export function systemIO(env: NodeJS.ProcessEnv = process.env): IO {
     columns: process.stdout.isTTY === true ? process.stdout.columns : undefined,
     interactive: process.stdin.isTTY === true,
     verbose: env["PINECALL_DEBUG"] !== undefined,
+    // https://no-color.org: any value of NO_COLOR, even empty, turns colour off.
+    color: { out: process.stdout.isTTY === true && env["NO_COLOR"] === undefined, err: process.stderr.isTTY === true && env["NO_COLOR"] === undefined },
   });
 }
 
@@ -45,17 +51,19 @@ export class StreamIO implements IO {
   readonly columns: number | undefined;
   readonly interactive: boolean;
   readonly verbose: boolean;
+  readonly color: { out: boolean; err: boolean };
   json = false;
 
   constructor(
     readonly stdout: Writable,
     readonly stderr: Writable,
-    options: { tty?: boolean; columns?: number | undefined; interactive?: boolean; verbose?: boolean } = {},
+    options: { tty?: boolean; columns?: number | undefined; interactive?: boolean; verbose?: boolean; color?: { out: boolean; err: boolean } } = {},
   ) {
     this.tty = options.tty ?? false;
     this.columns = options.columns;
     this.interactive = options.interactive ?? false;
     this.verbose = options.verbose ?? false;
+    this.color = options.color ?? { out: false, err: false };
   }
 
   result<T>(data: T, render: Render<T>): void {
@@ -64,15 +72,20 @@ export class StreamIO implements IO {
       return;
     }
     const lines = render(data);
-    for (const line of typeof lines === "string" ? [lines] : lines) this.stdout.write(`${line}\n`);
+    // A rendered answer may hold several lines in one string; each is painted on its own.
+    for (const line of typeof lines === "string" ? [lines] : lines) this.stdout.write(`${this.paint(line, this.color.out)}\n`);
   }
 
   print(line: string): void {
-    if (!this.json) this.stdout.write(`${line}\n`);
+    if (!this.json) this.stdout.write(`${this.paint(line, this.color.out)}\n`);
   }
 
   info(line: string): void {
-    this.stderr.write(`${line}\n`);
+    this.stderr.write(`${this.paint(line, this.color.err)}\n`);
+  }
+
+  private paint(text: string, on: boolean): string {
+    return on ? text.split("\n").map(paintLine).join("\n") : text;
   }
 
   warn(line: string): void {

@@ -5,6 +5,44 @@ import { isAbsolute, relative } from "node:path";
 /** The marks a check holds or breaks with. */
 export const HELD = "✓";
 export const BROKEN = "✗";
+/** The mark a next step opens with: what to type, at the foot of an answer or under a refusal. */
+export const NEXT = "→";
+
+/** `  → pinecall x · pinecall y`: the next steps, one line at the foot of an answer, no backticks. */
+export function formatHint(...steps: readonly string[]): string {
+  return `  ${NEXT} ${steps.join(" · ")}`;
+}
+
+/**
+ * A sentence and its next step as two lines: every sentence the CLI and the gateway write puts the
+ * step after a colon, opening with a backticked command; the first colon such a command follows is
+ * where the two lines part, and the backticks go. A sentence with no such colon stays one line.
+ */
+export function formatNotice(sentence: string): string[] {
+  const at = sentence.indexOf(": `");
+  if (at <= 0) return [sentence];
+  return [sentence.slice(0, at), formatHint(sentence.slice(at + 2).replaceAll("`", ""))];
+}
+
+/**
+ * A record in words, `stage ask · message.name Ana`: each field and its value, nested fields by
+ * their path, a list joined by commas. What a person reads instead of the record's JSON.
+ */
+export function formatPairs(record: unknown, under = ""): string {
+  if (record === null || typeof record !== "object" || Array.isArray(record)) return formatValue(record);
+  const said = Object.entries(record as Record<string, unknown>).map(([name, value]) => {
+    const path = under === "" ? name : `${under}.${name}`;
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? formatPairs(value, path) : `${path} ${formatValue(value)}`;
+  });
+  return said.filter((one) => one !== "").join(" · ");
+}
+
+function formatValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map(formatValue).join(", ");
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") return formatPairs(value);
+  return String(value);
+}
 
 /** `2026-10-16 14:05`, UTC, from epoch seconds; `-` for none. */
 export function date(epochSeconds: number | null | undefined): string {
@@ -32,6 +70,11 @@ export function duration(seconds: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60);
   const rest = Math.round(seconds % 60);
   return `${minutes}m ${String(rest).padStart(2, "0")}s`;
+}
+
+/** `3,483`, `20,500.5`, `0.8`: an amount as a column reads it, digits grouped, a fraction to one decimal. */
+export function amount(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
 /** `3 calls`, `1 call`: the noun agreed with the count. */

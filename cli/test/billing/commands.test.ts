@@ -14,25 +14,26 @@ describe("pinecall limits", () => {
     expect(ran.code).toBe(0);
     const lines = ran.out.split("\n");
     expect(lines[0]).toBe("sandbox");
-    expect(ran.out).toMatch(/minutes\s+12 of 30 · starts again 1 \w{3}/);
-    expect(ran.out).toMatch(/the rest\s+nothing used, no limit: messages, simulations, seats\n/);
+    expect(lines[1]).toMatch(/^QUOTA\s+USED\s+LIMIT\s+STARTS AGAIN$/);
+    expect(ran.out).toMatch(/\nminutes\s+12\s+30\s+1 \w{3}\n/);
+    // The quotas untouched and unlimited are one line, not rows of zeros.
+    expect(ran.out).toContain("\nnothing used, no limit: messages · simulations · seats\n");
     expect(ran.out).not.toMatch(/simulations\s+0/);
-    expect(ran.out).toMatch(/LLM tokens\s+20500\.5 of 1000000/);
-    expect(ran.out).toMatch(/bought numbers\s+0 of 0\n/);
-    expect(ran.out).toMatch(/budget\s+\$4\.25 of \$60 · starts again 1 \w{3}/);
-    expect(ran.out).toMatch(/hosted apps\s+1 of 3\n/);
-    expect(ran.out).toMatch(/memory facts\s+12 of 500\n/);
-    expect(ran.out).toMatch(/knowledge chunks\s+340 of 2000\n/);
-    expect(ran.out).toContain("yours: anthropic · lent by the runtime: google, cartesia, deepgram");
-    expect(ran.out).not.toContain("more:");
+    expect(ran.out).toMatch(/\nLLM tokens\s+20,500\.5\s+1,000,000\s+1 \w{3}\n/);
+    expect(ran.out).toMatch(/\nbought numbers\s+0\s+0\n/);
+    expect(ran.out).toMatch(/\nbudget\s+\$4\.25\s+\$60\s+1 \w{3}\n/);
+    expect(ran.out).toMatch(/\nhosted apps\s+1\s+3\n/);
+    expect(ran.out).toMatch(/\nknowledge chunks\s+340\s+2,000\n/);
+    expect(ran.out).toContain("\nkeys  yours: anthropic · the runtime lends google, cartesia, deepgram\n");
+    expect(ran.out).not.toContain("→");
   });
 
   it("says where to buy more when the deployment sells plans, and that it lends nothing", async () => {
     answer("get", "/v1/limits", { ...LIMITS, lends: [], billing_url: "https://billing.pinecall.io/org" });
     answer("get", "/v1/provider-keys", { vendors: [] });
     const ran = await run(["limits"]);
-    expect(ran.out).toContain("yours: none · lent by the runtime: none, bring a key for every vendor");
-    expect(ran.out).toContain("more: https://billing.pinecall.io/org");
+    expect(ran.out).toContain("keys  yours: none · the runtime lends none: bring a key for every vendor");
+    expect(ran.out).toContain("  → https://billing.pinecall.io/org buys more");
   });
 
   it("--json is the report whole", async () => {

@@ -16,7 +16,8 @@ describe("pinecall numbers", () => {
   it("alone lists this env's numbers", async () => {
     answer("get", "/v1/numbers", [A_ROW, { ...A_ROW, route: { ...A_ROUTE, number: "+34910000001", managed: true }, account: null }]);
     const ran = await run(["numbers"]);
-    expect(ran.out).toBe("+34910000000 · phone · → front-desk · sandbox · AC0123\n+34910000001 · phone · → front-desk · sandbox · bought here\n");
+    // One account says nothing: the column says how each came, imported or bought here.
+    expect(ran.out).toBe("NUMBER        CHANNEL  AGENT       ENV      HOW\n+34910000000  phone    front-desk  sandbox  imported\n+34910000001  phone    front-desk  sandbox  bought here\n");
   });
 
   it("import --dry-run prints the steps and says nothing was written", async () => {
@@ -48,6 +49,26 @@ describe("pinecall numbers", () => {
   });
 });
 
+describe("pinecall numbers available", () => {
+  it("is a table sorted by where each stands; the account said nowhere when there is one, a carrier's default name left out", async () => {
+    const owned = (number: string, name: string, more: Record<string, unknown> = {}): Record<string, unknown> => ({ number, name, account: "AC0123", imported: false, held_elsewhere: false, ...more });
+    answer("get", "/v1/numbers/available", { kind: "twilio", numbers: [owned("+12186633772", "(218) 663-3772"), owned("+14176743169", "(417) 674-3169", { held_elsewhere: true }), owned("+13617334133", "(361) 733-4133", { imported: true }), owned("+13186330963", "Florencia")] });
+    const ran = await run(["numbers", "available"]);
+    expect(ran.out).toBe(
+      [
+        "twilio · 4 numbers",
+        "NUMBER        NAME       HERE",
+        "+13617334133  —          routed here",
+        "+12186633772  —          not routed here",
+        "+13186330963  Florencia  not routed here",
+        "+14176743169  —          another org's",
+        "  → pinecall numbers import <number> --agent <slug> --dry-run checks one",
+        "",
+      ].join("\n"),
+    );
+  });
+});
+
 describe("pinecall carriers", () => {
   it("add twilio reads its secret off stdin", async () => {
     const sent = answer("put", "/v1/carrier", { kind: "twilio", account: "AC0123", label: "Clínica", networks: [] });
@@ -75,14 +96,14 @@ describe("pinecall carriers", () => {
   it("alone lists the accounts and how many numbers each routes", async () => {
     answer("get", "/v1/carriers", { carriers: [{ kind: "twilio", account: "AC0123", label: "", networks: [] }] });
     answer("get", "/v1/numbers", [A_ROW]);
-    expect((await run(["carriers"])).out).toBe("AC0123 · twilio · 1 number here\n");
+    expect((await run(["carriers"])).out).toBe("ACCOUNT  KIND    NUMBERS HERE\nAC0123   twilio  1\n");
   });
 });
 
 describe("pinecall line", () => {
   it("alone says whose terminal a ring lands in", async () => {
     answer("get", "/v1/agents/:slug/line", HELD_ELSEWHERE);
-    expect((await run(["line"])).out).toContain("rings in ana@clinica.test · `pinecall line from <+your-number>` routes yours");
+    expect((await run(["line"])).out).toBe("rings in ana@clinica.test\n  → pinecall line from <+your-number> routes yours, pinecall line claim takes it\n");
   });
 
   it("--agent reads the gateway's slug from any folder", async () => {
@@ -114,7 +135,7 @@ describe("pinecall callbacks", () => {
     const ran = await run(["callbacks"]);
     expect(ran.err).toBe("");
     expect(ran.out).toContain("front-desk  +34600000001  phone  via overflow on call_1");
-    expect(ran.out).toContain("more: --after 7");
+    expect(ran.out).toContain("\n  → --after 7 reads on\n");
   });
 
   it("refuses a cursor that is not one", async () => {

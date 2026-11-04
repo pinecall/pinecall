@@ -3,7 +3,7 @@
 import type { TuningDiff, TuningHistory } from "@pinecall/agents/wire";
 
 import type { CornerWritten } from "./service/corners.js";
-import { date, duration } from "../kit/format.js";
+import { count, date, duration, formatHint, formatNotice } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import { DECLARED_AS, FIELDS, WIRE, type AppProcess, type Field, type KilledAgent, type LexiconAnswer, type LexiconHistory, type LexiconRow, type HoldMelody, type ListedVoice, type PipelineReport, type Pulled, type TuningAnswer, type TuningBody, type TuningRow, type VoicePlayed, type WalkListed, type WalkPlayed } from "./service/index.js";
 
@@ -16,7 +16,7 @@ export const NO_WALKS = (agent: string): string => `${agent} published no walks:
 export const UNCHANGED = "nothing changed: no version written";
 export const NOTHING_KNOWN = (agent: string, corner: string): string => `${agent} knows nothing by heart in ${corner}: \`pinecall agent knowledge edit\` writes it`;
 
-export const NOTHING_SET = "nothing set in any corner: the runtime's defaults answer, and what the class declares · `pinecall agent set --help` names the fields";
+export const NOTHING_SET = "nothing set in any corner · the class and the runtime's defaults answer";
 
 /**
  * The settings table: one column per corner, one row per field some corner sets or the class fixes,
@@ -43,20 +43,22 @@ export function settings({ agent, answer }: { agent: string; answer: TuningAnswe
     return value.length > A_CELL ? `${value.slice(0, A_CELL - 1)}…` : value;
   };
   const set = FIELDS.filter((field) => declared(field) || corners.some((corner) => corner.row !== null && shown(corner.row.config, field) !== undefined));
-  const lines = [`${agent} · ${answer.world}`, ""];
+  const lines = [`${agent} · ${answer.world}`];
   if (set.length === 0) lines.push(`  ${NOTHING_SET}`);
   else {
     const widths = corners.map((corner) => Math.max(corner.name.length, ...set.map((field) => cell(corner, field).length)) + 2);
     const label = Math.max(...set.map((field) => field.length)) + 2;
-    lines.push(`  ${"".padEnd(label)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
+    lines.push("", `  ${"".padEnd(label)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
     for (const field of set) {
       lines.push(`  ${field.replaceAll("-", " ").padEnd(label)}${corners.map((corner, at) => cell(corner, field).padEnd(widths[at]!)).join("")}`.trimEnd());
     }
+    lines.push("");
   }
-  lines.push("");
-  lines.push(`  ${corners.map((corner) => `${corner.name}: ${corner.row === null ? "nothing set" : versionLine(corner.row)}`).join(" · ")}`);
+  // A corner nobody wrote says nothing: only the versions that stand are named.
+  const written = corners.filter((corner) => corner.row !== null);
+  if (written.length > 0) lines.push(`  ${written.map((corner) => `${corner.name} ${versionLine(corner.row!)}`).join(" · ")}`);
   const rest = FIELDS.length - set.length;
-  if (rest > 0 && set.length > 0) lines.push(`  ${rest} more field${rest === 1 ? "" : "s"} set nowhere: the runtime's defaults answer · \`pinecall agent set --help\` names them`);
+  lines.push(formatHint(set.length === 0 ? `pinecall agent set --help names the ${FIELDS.length} fields` : `${count(rest, "more field")} at the runtime's defaults · pinecall agent set --help names them`));
   return lines;
 }
 
@@ -156,7 +158,7 @@ export function changes(before: TuningBody, after: TuningBody, lead: string, joi
 
 /** The versions of a corner, newest first, each with what it changed over the one before. */
 export function history({ agent, history: kept }: { agent: string; history: TuningHistory }): string[] {
-  const lines = [`${agent} · ${kept.world} · ${kept.holder === "" ? "the org's own corner" : `corner ${kept.holder}`}`];
+  const lines = [`${agent} · ${kept.world} · ${kept.holder === "" ? "the org's own corner" : `${kept.holder}'s corner`}`];
   if (kept.rows.length === 0) return [...lines, "  nothing set yet"];
   // Each version is diffed against the previous one; the oldest against an empty config.
   kept.rows.forEach((row, at) => {
@@ -183,7 +185,7 @@ export function pushed(done: CornerWritten & { file: string }): string {
 }
 
 export function knowledge({ agent, corner, knowledge: text }: { agent: string; corner: string; knowledge: string | null }): string[] {
-  if (text === null) return [NOTHING_KNOWN(agent, corner)];
+  if (text === null) return formatNotice(NOTHING_KNOWN(agent, corner));
   return text.replace(/\n$/, "").split("\n");
 }
 
@@ -196,20 +198,24 @@ export function lexicon(answer: LexiconAnswer, wrote: "yours" | "team" = "yours"
   const team = wrote === "team" || answer.yours === null;
   const read = team ? answer.team : answer.yours;
   const lines = [`lexicon · ${answer.world}${wrote === "team" ? " · the team's corner" : answer.yours === null ? "" : " · your corner"}`];
-  if (read === null) lines.push("  nothing set: the voice says every word as it is written");
+  const said = read?.lexicon.said ?? [];
+  const heard = read?.lexicon.heard ?? [];
+  if (said.length === 0 && heard.length === 0) lines.push("  nothing set: the voice says every word as it is written");
   else {
-    const spoken = read.lexicon.said.map((one) => `${one.word} → "${one.spoken}"`).join(" · ");
-    lines.push(`  said     ${spoken || "—"}`);
-    lines.push(`  heard    ${read.lexicon.heard.join(" · ") || "—"}`);
+    const width = Math.max(0, ...said.map((one) => one.word.length));
+    lines.push(...said.map((one, at) => `  ${(at === 0 ? "says" : "").padEnd(5)}  ${one.word.padEnd(width)}  as "${one.spoken}"`));
+    if (heard.length > 0) lines.push(`  ${"hears".padEnd(5)}  ${heard.join(" · ")}`);
   }
-  lines.push("");
+  // A corner nobody wrote says nothing: only the versions that stand are named.
   const corners: [string, LexiconRow | null][] = [["yours", answer.yours], ["team", answer.team], ["production", answer.production]];
-  lines.push(`  ${corners.map(([name, row]) => `${name}: ${row === null ? "nothing set" : versionLine(row)}`).join(" · ")}`);
+  const written = corners.filter(([, row]) => row !== null);
+  if (written.length > 0) lines.push(`  ${written.map(([name, row]) => `${name} ${versionLine(row!)}`).join(" · ")}`);
+  if (said.length === 0 && heard.length === 0) lines.push(formatHint('pinecall lexicon add <word> --say "<spoken>" teaches the voice one'));
   return lines;
 }
 
 export function lexiconHistory(kept: LexiconHistory): string[] {
-  const lines = [`lexicon · ${kept.world} · ${kept.holder === "" ? "the org's own corner" : `corner ${kept.holder}`}`];
+  const lines = [`lexicon · ${kept.world} · ${kept.holder === "" ? "the org's own corner" : `${kept.holder}'s corner`}`];
   if (kept.rows.length === 0) lines.push("  nothing set yet");
   for (const row of kept.rows) lines.push(`  ${versionLine(row)}   said ${row.lexicon.said.length} · heard ${row.lexicon.heard.length}`);
   return lines;
@@ -240,36 +246,55 @@ export function melody(held: HoldMelody): string[] {
   return [`plays   ${plays}`, `after   ${after}`];
 }
 
-/** Every app connected in the env, one line each: id, agents, corner, host and address, SDK, connected since. */
+/** Every app connected in the env as a table: its id (what `agent stop` takes), its agents, whose, the host, the client, since when. */
 export function apps(found: AppProcess[]): string[] {
-  if (found.length === 0) return [NO_APPS];
-  return found.map((app) => {
-    const whose = app.holder === null ? "the org's" : (app.holder.name ?? app.holder.holder ?? "");
-    const where = `${app.host ?? "an unnamed host"}${app.address === null ? "" : ` (${app.address})`}`;
-    return `${app.app}  ${app.agents.join(", ") || "no agent yet"}  ${whose} · ${where} · ${app.sdk ?? "an unknown sdk"} · since ${date(app.connected_at)}`;
-  });
+  if (found.length === 0) return formatNotice(NO_APPS);
+  const rows = table(
+    ["app", "agents", "held by", "host", "client", "since"],
+    found.map((app) => [app.app, app.agents.join(", ") || "—", app.holder === null ? "the org" : (app.holder.name ?? app.holder.holder ?? "—"), app.host ?? "—", app.sdk ?? "—", date(app.connected_at)]),
+  );
+  const agents = new Set(found.flatMap((app) => app.agents)).size;
+  return [...rows, `${count(found.length, "app")} · ${count(agents, "agent")}`, formatHint("pinecall agent stop <app> lets one go")];
 }
 
 export function appStopped({ app }: { app: string }): string {
   return `stopped ${app}: its agents are free — a supervisor that restarts it (systemd, pm2) starts it again`;
 }
 
-export function killed({ agent, envs, apps }: KilledAgent): string {
-  const which = apps.length === 1 ? "one app" : `${apps.length} apps`;
-  return `killed ${agent} in ${envs.join(", ")}: ${which} let go of it (${apps.join(", ")}) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again`;
+export function killed({ agent, envs, apps }: KilledAgent): string[] {
+  return [
+    `killed ${agent} in ${envs.join(", ")} · ${count(apps.length, "app")} let go of it and kept their other agents`,
+    formatHint("its settings and calls stay", "an app that declares it again, a pinecall start, holds it again"),
+  ];
 }
 
-/** The voices by language, then by name; where each is from when the vendor says; then how many, and how to hear one. */
+/**
+ * The voices, one row per voice with every language it speaks: a vendor that lists one voice per
+ * language reads as 30 voices, not 240. The name shows only where it is not the id, where each is
+ * from only where the vendor says; then how many, and how to hear one.
+ */
 export function voices(found: ListedVoice[]): string[] {
   if (found.length === 0) return [NO_VOICES];
   const from = (voice: ListedVoice): string => [voice.country, voice.accent].filter((word) => word !== "").join(" ");
-  const sorted = [...found].sort((one, other) => one.language.localeCompare(other.language) || one.name.localeCompare(other.name));
-  const placed = sorted.some((voice) => from(voice) !== "");
-  const rows = table(
-    placed ? ["id", "name", "language", "gender", "from"] : ["id", "name", "language", "gender"],
-    sorted.map((voice) => (placed ? [voice.id, voice.name, voice.language, voice.gender, from(voice)] : [voice.id, voice.name, voice.language, voice.gender])),
+  const grouped = new Map<string, { voice: ListedVoice; languages: string[] }>();
+  for (const voice of found) {
+    const key = [voice.id, voice.name, voice.gender, from(voice)].join("\u0000");
+    const one = grouped.get(key) ?? { voice, languages: [] };
+    if (!one.languages.includes(voice.language)) one.languages.push(voice.language);
+    grouped.set(key, one);
+  }
+  const rows = [...grouped.values()].sort((one, other) => one.voice.name.localeCompare(other.voice.name) || from(one.voice).localeCompare(from(other.voice)));
+  const languages = new Set(found.map((voice) => voice.language));
+  const named = rows.some(({ voice }) => voice.name !== voice.id);
+  const placed = rows.some(({ voice }) => from(voice) !== "");
+  const several = languages.size > 1;
+  const headers = ["voice", ...(named ? ["name"] : []), "gender", ...(placed ? ["from"] : []), ...(several ? ["languages"] : [])];
+  const lines = table(
+    headers,
+    rows.map(({ voice, languages: spoken }) => [voice.id, ...(named ? [voice.name] : []), voice.gender, ...(placed ? [from(voice)] : []), ...(several ? [[...spoken].sort().join(" ")] : [])]),
   );
-  return [...rows, `${found.length} voice${found.length === 1 ? "" : "s"} · --language <tag> keeps one language · \`pinecall voices play <id>\` says a line in one`];
+  const spoken = languages.size === 1 ? `in ${[...languages][0]}` : count(languages.size, "language");
+  return [...lines, `${count(rows.length, "voice")} · ${spoken}`, formatHint(...(several ? ["--language <tag> keeps one"] : []), "pinecall voices play <id> says a line")];
 }
 
 export function voicePlayed(played: VoicePlayed): string {
@@ -297,7 +322,7 @@ function openingLine(report: PipelineReport): string {
 
 /** Each walk the agent published: its name, its button, its sentences and length, the voice it was recorded in. */
 export function walks({ agent, walks }: { agent: string; walks: WalkListed[] }): string[] {
-  if (walks.length === 0) return [NO_WALKS(agent)];
+  if (walks.length === 0) return formatNotice(NO_WALKS(agent));
   return table(
     ["walk", "title", "sentences", "length", "voice"],
     walks.map((walk) => [walk.name, walk.title, String(walk.sentences), duration(walk.ms / 1000), walk.voice ?? "—"]),

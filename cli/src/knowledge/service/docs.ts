@@ -114,7 +114,7 @@ export async function listBases(ctx: Context): Promise<api.KnowledgeList> {
 }
 
 /** A drop is never done on nobody's word: `memory forget` asks for --yes the same way. */
-export const SAY_YES_DROP = (base: string): string => `dropping ${base} cannot be undone, and nobody is at a terminal to say so: run it again with --yes`;
+export const SAY_YES_DROP = (base: string): string => `dropping ${base} cannot be undone, and nobody is at a terminal to say so: \`--yes\` drops it`;
 
 export async function dropBase(ctx: Context, base: string): Promise<{ base: string }> {
   await api.deleteBase(ctx.gateway(), base);

@@ -4,6 +4,34 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- **Every refusal is two lines**: what happened, `pinecall: …`, and the next step under it, `  → …`, with no
+  backticks. A word too many says which (`lexicon takes no argument, and "list" was typed`), and a word that is
+  one of the verb's flags typed without its dashes is answered with the flag (`→ pinecall agent clear --language`).
+- **Lists are tables with a header**: `agent list` (no IP), `sessions`, `runs`, `cases`, `personas`, `judges`
+  (an `ON` column; `show` keeps `recommended`), `limits` (used, limit, when it starts again), `deploy list` (a
+  failure said in its first line, the colon into the process's output gone), `deploy releases`, `docs list`,
+  `docs attached`, `numbers`, `numbers available`, `carriers`.
+- **What is long is grouped or counted**: `voices` is a row a voice with every language it speaks (thirty, not
+  two hundred and forty); `providers` is the vendors that run a call and a count of the rest, and `--all` lists
+  every vendor and the realtime models.
+- **Nothing reads as JSON**: `cases show` says the state, memory and expect in words (`stage book`, `judges
+  promises`); `sessions log` says a state, a tool's answer and the call's summary in words.
+- **The machinery is quiet**: `sessions log` leaves the agent's state moves, prompt rewrites and waits out
+  (counted in its head, `--verbose` shows them); `start` prints the turns and tools, and `--verbose` adds each
+  turn's latencies and the state's moves; `simulate` sums its latencies on the last line.
+- **A score reads the same everywhere** (`sessions <call>`, `simulate --judge`): how many judges broke of how
+  many held or broke, the ones that broke with their reason and the lines they cite (`#30`), the ones that held
+  by name, the ones that did not apply on one line.
+- **People by name**: a corner's history, the policy's `set by`, `deploy releases`, `studio list` and the
+  erasure and read trails say who by name, not `m_…`.
+- **Next steps at the foot**, `  → …`, instead of a sentence with a backticked command inside it.
+- **Plurals agree**: `1 file`, `2 times a day`, `3 personas`, never `(s)`.
+- **Colour on a terminal, on the marks alone**: `✓` green, `✗` red, the `→` and `–` lines dimmed; a pipe, a
+  file or `NO_COLOR` gets none.
+- `whoami` says its facts a label a line: the host, `key`, `from`, `opens`.
+
 ## [0.11.27] — the sign-in's file reads ~/.pinecall/session.json (2026-11-04)
 
 - **The sign-in's file reads `~/.pinecall/session.json`** in `whoami` and in `start`'s connected line: 0.11.26 meant to

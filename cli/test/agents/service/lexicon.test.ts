@@ -56,12 +56,12 @@ describe("the lexicon shown after a write", () => {
   it("with --team is the team's corner it wrote", () => {
     const lines = render.lexicon(both, "team");
     expect(lines[0]).toBe("lexicon · sandbox · the team's corner");
-    expect(lines[1]).toBe('  said     Vidal → "bee-DAHL"');
+    expect(lines[1]).toBe('  says   Vidal  as "bee-DAHL"');
   });
 
   it("without it is the person's own corner", () => {
     const lines = render.lexicon(both);
     expect(lines[0]).toBe("lexicon · sandbox · your corner");
-    expect(lines[1]).toBe('  said     DKV → "de ka uve"');
+    expect(lines[1]).toBe('  says   DKV  as "de ka uve"');
   });
 });

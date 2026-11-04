@@ -13,8 +13,10 @@ import * as service from "./service/index.js";
 const SESSIONS = `
 With nothing after it: every call this agent has run, newest first — when it came in, how long
 it lasted, why it ended, what it cost and the one line the agent left as its outcome. With a
-call id: that call whole — the same facts, and the SCORE, one line per judge that ran over it.
-log <call>: the call's log as the runtime keeps it, an entry a line, ${service.A_PAGE} entries a page.
+call id: that call whole — the same facts, and the SCORE: the judges that broke with their reason,
+the ones that held, the ones that did not apply.
+log <call>: the call's log as the runtime keeps it, an entry a line, ${service.A_PAGE} entries a page;
+the agent's state moves, its prompt's rewrites and its waits are left out unless --verbose.
 --agent names the agent from any folder; beside an agent's class it is that agent.
 
 Examples
@@ -74,11 +76,13 @@ export function register(program: Command, ctx: Context): void {
     .option("--after <seq>", "read on from there")
     .option("--limit <n>", `entries a page, at most 500; ${service.A_PAGE} when left out`)
     .option("--types <a.b,c.d>", "only these entry types")
+    .option("--verbose", "every entry, the agent's state moves, prompt rewrites and waits too")
     .action(async (call, flags) => {
       // `sessions` has a --limit of its own, and commander hands a flag both have to the group: read it there too.
       const limit = flags.limit ?? sessions.opts().limit;
       const input = service.ReadLogInput.parse({ call, after: numberOf("--after", flags.after), limit: numberOf("--limit", limit), types: listOf(flags.types) });
-      ctx.io.result(await service.readLog(ctx, input), (page) => render.log(page, input.after));
+      // Types named are shown whatever they are.
+      ctx.io.result(await service.readLog(ctx, input), (page) => render.log(page, input.after, flags.verbose === true || input.types !== undefined));
     });
 
   program

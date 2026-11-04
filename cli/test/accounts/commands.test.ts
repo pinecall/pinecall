@@ -59,7 +59,7 @@ describe("pinecall login", () => {
     writeFileSync(join(home, "session.json"), JSON.stringify({ gateways: { [GATEWAY]: { key: "pc_live_machine", org: "clinica" } }, last: GATEWAY }));
     const ran = await run(["whoami"], { cwd: folder(), key: null, env: { PINECALL_HOME: home } });
     expect(ran.code).toBe(0);
-    expect(ran.out.split("\n").slice(0, 2)).toEqual([`gateway ${GATEWAY} · org clinica · sandbox`, `  key k_4f2a1d9c66b30e17 from your sign-in (${home}/session.json) · ana-macbook`]);
+    expect(ran.out.split("\n").slice(0, 3)).toEqual(["gateway.test · org clinica · sandbox", "  key   k_4f2a1d9c66b30e17 · ana-macbook", `  from  your sign-in (${home}/session.json)`]);
     expect(sent[0]!.authorization).toBe("Bearer pc_live_machine");
   });
 });
@@ -71,9 +71,10 @@ describe("pinecall whoami", () => {
     expect(ran.code).toBe(0);
     expect(ran.out).toBe(
       [
-        `gateway ${GATEWAY} · org clinica · sandbox`,
-        "  key k_4f2a1d9c66b30e17 from the environment · ana-macbook",
-        "  a person's key: the sandbox without --prod, production with it",
+        "gateway.test · org clinica · sandbox",
+        "  key   k_4f2a1d9c66b30e17 · ana-macbook",
+        "  from  the environment",
+        "  opens the sandbox, and production with --prod: a person's key",
         "",
       ].join("\n"),
     );
@@ -91,8 +92,8 @@ describe("pinecall whoami", () => {
     const root = folder();
     writeFileSync(join(root, ".env"), `PINECALL_KEY=pc_live_from_dotenv\nPINECALL_URL=${GATEWAY}\n`);
     const ran = await run(["whoami"], { cwd: root, key: null, env: { PINECALL_URL: undefined } });
-    expect(ran.out).toContain("from .env");
-    expect(ran.out).toContain("a sandbox server's token: that environment alone");
+    expect(ran.out).toContain("  from  .env");
+    expect(ran.out).toContain("  opens the sandbox alone: a server's token");
   });
 });
 

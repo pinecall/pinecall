@@ -22,7 +22,7 @@ const A_SPEED = "--speed is a multiple of the caller's usual pace, 0.5 to 2";
 export const NOBODY = (name: string, agent: string): string => `no persona called ${name} for ${agent}: \`pinecall personas add ${name} --goal '…' --style '…'\`, or the console's Personas`;
 export const PINECALLS = (name: string): string => `${name} is one of Pinecall's personas: \`pinecall personas on|off ${name}\` switches it; write your own under another name`;
 export const SET_BY_THE_CLASS = (agent: string): string =>
-  `personas set by the class of ${agent}: its callers are code beside the class (agents/${agent}/harness.*, ownPersona), and which of Pinecall's it plays is personas({ on, own }) in the class; nothing is written here`;
+  `${agent}'s personas are code beside the class, and nothing is written here: \`agents/${agent}/harness.*\` holds its own (ownPersona) · personas({ on, own }) in the class switches Pinecall's`;
 
 /** What `add` and `edit` take; on `edit` only the fields named change. */
 export const WritePersonaInput = z.object({

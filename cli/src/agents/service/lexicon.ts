@@ -3,6 +3,7 @@
 import type { LexiconAnswer, LexiconBody, LexiconHistory } from "@pinecall/agents/wire";
 import { z } from "zod";
 
+import { getMemberNames } from "../../accounts/service/index.js";
 import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
@@ -51,8 +52,10 @@ export async function removeWords(ctx: Context, input: WordsInput): Promise<Lexi
   });
 }
 
+/** The lexicon's versions, its holder said by name rather than member id. */
 export async function lexiconHistory(ctx: Context, agent: string | undefined, team: boolean): Promise<LexiconHistory> {
-  return api.getLexiconHistory(ctx.gateway(), agentNamed(ctx, agent), team);
+  const [history, nameOf] = await Promise.all([api.getLexiconHistory(ctx.gateway(), agentNamed(ctx, agent), team), getMemberNames(ctx)]);
+  return { ...history, holder: history.holder === "" ? "" : nameOf(history.holder) };
 }
 
 // Read-modify-write of the whole row, guarded by the version it was read at: the words start from

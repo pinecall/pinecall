@@ -10,7 +10,7 @@ import { errorMessage, UsageError } from "../errors.js";
 import { languageOf } from "../project/language.js";
 import type { AgentHome } from "../project/layout.js";
 import * as telephony from "../telephony/service.js";
-import { line as describeLine } from "../telephony/render.js";
+import { lineSentence as describeLine } from "../telephony/render.js";
 import { runOnce, serveStart, spawnServing, type Child } from "./child.js";
 import { createCompanion, type Companion } from "./companion.js";
 import { consoleAddress, consoleUrl, TALK, whyNoConsole } from "./console.js";
@@ -26,6 +26,7 @@ export const StartInput = z.object({
   showPrompt: z.boolean().default(false),
   events: z.boolean().default(false),
   ui: z.boolean().default(false),
+  verbose: z.boolean().default(false),
   inspect: z.array(z.string()).default([]),
 });
 export type StartInput = z.infer<typeof StartInput>;
@@ -79,7 +80,7 @@ export async function start(ctx: Context, input: StartInput): Promise<number> {
     if (input.events) return await running.gone;
     if (input.ui) return await live(ctx.io, running, listenTo(relay, first.name), { slug: first.name, url: ctx.gateway().url });
     const agents = await Promise.all(homes.map(async (home): Promise<PlainAgent> => plainAgent(ctx, home, relay, who)));
-    return await plain(ctx.io, running, agents, ctx.gateway().url);
+    return await plain(ctx.io, running, agents, ctx.gateway().url, input.verbose);
   } finally {
     unwatch();
     await releases.close();

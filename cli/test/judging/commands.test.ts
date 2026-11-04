@@ -8,13 +8,15 @@ import { folder } from "../support/project.js";
 import { run } from "../support/run.js";
 
 describe("pinecall judges", () => {
-  it("alone lists the agent's: whose, the switch, a recommended one marked", async () => {
+  it("alone lists the agent's: whose, the switch, how it answers, when, what it asks; then how to read one", async () => {
     const sent = answer("get", "/v1/agents/:slug/judges", { judges: [A_LIBRARY_JUDGE, A_JUDGE] });
     const ran = await run(["judges"]);
     expect(ran.code).toBe(0);
     expect(sent[0]!.path).toBe("/v1/agents/front-desk/judges");
-    expect(ran.out).toMatch(/consent\s+pinecall\s+off · recommended\s+verdict\s+always/);
-    expect(ran.out).toMatch(/offers-next-slot\s+front-desk\s+on\s+verdict/);
+    expect(ran.out).toMatch(/^NAME\s+OWNER\s+ON\s+ANSWERS\s+WHEN\s+ASKS\n/);
+    expect(ran.out).toMatch(/\nconsent\s+pinecall\s+off\s+verdict\s+always/);
+    expect(ran.out).toMatch(/\noffers-next-slot\s+front-desk\s+on\s+verdict/);
+    expect(ran.out).toMatch(/\n {2}→ pinecall judges show <name> reads one\n$/);
   });
 
   it("show prints one judge whole; a name the list has not is exit 2", async () => {
@@ -49,7 +51,7 @@ describe("pinecall judges", () => {
     const sent = answer("get", "/v1/evals/calibration", { judges: [], labels_to_judge: 10, agrees_at_least: 0.8 });
     const ran = await run(["judges", "agreement", "--org"], { cwd: folder() });
     expect(sent[0]!.query).toEqual({});
-    expect(ran.out).toContain("no judge of the org has been labelled yet: `pinecall cases dismiss <case> --judge-was-wrong <judge>`");
+    expect(ran.out).toContain("no judge of the org has been labelled yet\n  → pinecall cases dismiss <case> --judge-was-wrong <judge> labels one");
   });
 
   it("--org lists the org's, from any folder", async () => {
@@ -63,7 +65,7 @@ describe("pinecall judges", () => {
     const sent = answer("put", "/v1/agents/:slug/judges/:name", { judges: [A_JUDGE] });
     const ran = await run(["judges", "add", "offers-next-slot", "--asks", A_JUDGE.question, "--answer", "score"]);
     expect(sent[0]!.body).toEqual({ question: A_JUDGE.question, answer: "score", when: "always" });
-    expect(ran.out).toBe("offers-next-slot written · 1 judge(s) in the list\n");
+    expect(ran.out).toBe("offers-next-slot written · 1 judge in the list\n");
   });
 
   it("rm of one of Pinecall's: the gateway's 409 in its words, which name the verb that switches it off", async () => {
@@ -71,7 +73,7 @@ describe("pinecall judges", () => {
     refuse("delete", "/v1/agents/:slug/judges/:name", 409, "consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off");
     const ran = await run(["judges", "rm", "consent"]);
     expect(ran.code).toBe(2);
-    expect(ran.err).toBe("pinecall: consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off\n");
+    expect(ran.err).toBe("pinecall: consent is one of Pinecall's judges and is never deleted\n  → pinecall judges off consent turns it off\n");
   });
 
   it("try prints a line per call and what it cost, writing nothing", async () => {
@@ -85,7 +87,7 @@ describe("pinecall judges", () => {
     });
     const ran = await run(["judges", "try", "offers-next-slot", "--calls", "CA_8f4a2c, CA_1b"]);
     expect(sent[0]!.body).toEqual({ name: "offers-next-slot", calls: ["CA_8f4a2c", "CA_1b"] });
-    expect(ran.out).toContain("CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  [seq 14]");
+    expect(ran.out).toContain("CA_8f4a2c  ✓ held  Offered Thursday at 09:30 unasked.  #14");
     expect(ran.out).toContain("· not judged: the call is still live");
     expect(ran.out).toContain("1 eval · $0.0031 · nothing was written");
   });

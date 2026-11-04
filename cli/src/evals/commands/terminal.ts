@@ -146,8 +146,9 @@ export async function simulateAtTheTerminal(ctx: Context, agent: string, input: 
       // Printed from the log, not from what was sent: on a spoken call the caller's turn is the STT output.
       const line = lineFor({ type: entry.type, data: entry.data } as Parameters<typeof lineFor>[0]);
       if (line === null) return;
-      const metrics = entry.type === "turn.agent" ? `  ${metricsLine(entry.data["metrics"] as Record<string, unknown> | undefined)}` : "";
-      ctx.io.print(`${line.mark} ${line.text}${metrics}`);
+      // A turn's latencies are the debug lines' (PINECALL_DEBUG): the end says the call's.
+      if (entry.type === "turn.agent") ctx.io.debug(metricsLine(entry.data["metrics"] as Record<string, unknown> | undefined));
+      ctx.io.print(`${line.mark} ${line.text}`);
     },
   }).finally(async () => {
     await (await ear)?.leave();

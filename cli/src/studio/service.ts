@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { z } from "zod";
 
+import { getMemberNames } from "../accounts/service/index.js";
 import * as api from "../api/studio.js";
 import type { Context } from "../context.js";
 import { GatewayError, UsageError } from "../errors.js";
@@ -96,8 +97,10 @@ export interface Code {
   files: number;
 }
 
+/** The Studio agents, each with who saved it by name. */
 export async function listAgents(ctx: Context): Promise<api.StudioAgent[]> {
-  return api.listAgents(ctx.gateway());
+  const [found, nameOf] = await Promise.all([api.listAgents(ctx.gateway()), getMemberNames(ctx)]);
+  return found.map((one) => ({ ...one, author: nameOf(one.author) }));
 }
 
 export async function getAgent(ctx: Context, name: string): Promise<api.StudioAgent> {

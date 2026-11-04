@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** The entry: the program is run, and every error becomes one sentence and an exit code. */
+/** The entry: the program is run, and every error becomes what happened and the next step, and an exit code. */
 
 import { CommanderError, type Command } from "@commander-js/extra-typings";
 import { realpathSync } from "node:fs";
@@ -10,7 +10,7 @@ import { ZodError } from "zod";
 import { createContext, type Context } from "./context.js";
 import { Cancelled, errorMessage, GatewayError, PinecallError } from "./errors.js";
 import { systemIO, type IO } from "./kit/io.js";
-import { usageErrorOf, verbsTyped } from "./kit/usage.js";
+import { formatFailure, readCommandTyped, usageErrorOf } from "./kit/usage.js";
 import { createProgram, MAP } from "./program.js";
 import { NEVER_HELD } from "./project/layout.js";
 
@@ -63,35 +63,37 @@ export async function main(
     if (readerLeft) return 0;
     return stopping.signal.aborted ? new Cancelled().exit : 0;
   } catch (failed) {
-    return readerLeft ? 0 : exitWith(failed, ctx, program === undefined ? [] : verbsTyped(program, argv));
+    return readerLeft ? 0 : exitWith(failed, ctx, program === undefined ? { verbs: [] } : readCommandTyped(program, argv));
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
   }
 }
 
-/** One sentence on stderr and the code: the only place an error is mapped to an exit. */
-function exitWith(thrown: unknown, ctx: Context, verbs: readonly string[]): number {
-  const io = ctx.io;
+/** What happened and the next step on stderr, and the code: the only place an error is mapped to an exit. */
+function exitWith(thrown: unknown, ctx: Context, typed: Partial<ReturnType<typeof readCommandTyped>>): number {
+  const say = (message: string): void => {
+    for (const line of formatFailure(message)) ctx.io.info(line);
+  };
   let failed = thrown;
   if (failed instanceof CommanderError) {
     // Help and version were printed by commander; a usage error is said here, in the CLI's own words.
     if (failed.code === "commander.helpDisplayed" || failed.code === "commander.version" || failed.code === "commander.help") return 0;
-    failed = usageErrorOf(failed, verbs);
+    failed = usageErrorOf(failed, typed.verbs ?? [], typed.leaf);
   }
   if (failed instanceof Cancelled) return failed.exit;
   // An input a verb's schema refuses is the arguments' fault: its messages, one sentence.
   if (failed instanceof ZodError) {
-    io.info(`pinecall: ${failed.issues.map((issue) => issue.message).join("; ")}`);
+    say(failed.issues.map((issue) => issue.message).join("; "));
     return CANNOT_RUN;
   }
   if (failed instanceof PinecallError) {
-    io.info(`pinecall: ${failed instanceof GatewayError ? (neverHeld(failed, ctx) ?? failed.message) : failed.message}`);
+    say(failed instanceof GatewayError ? (neverHeld(failed, ctx) ?? failed.message) : failed.message);
     return failed.exit;
   }
   if (failed instanceof Error && failed.name === "AbortError") return new Cancelled().exit;
   // Anything else — the network down, an answer that is no JSON — stopped the command from running.
-  io.info(`pinecall: ${errorMessage(failed)}`);
+  say(errorMessage(failed));
   return CANNOT_RUN;
 }
 

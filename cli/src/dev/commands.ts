@@ -63,6 +63,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--show-prompt", "the prompt a fresh instance would produce, then exit; no key, no gateway")
     .option("--events", "the agent's process's lines as it prints them, one JSON entry each, for a pipe")
     .option("--ui", "the full-screen terminal view; keys: p pause · c clear · e events · q quit")
+    .option("--verbose", "the plain log with each turn's latencies and the state's moves too")
     .option("--inspect [host:port]", "Node's own flag, given to a TypeScript agent's process")
     .option("--inspect-brk [host:port]", "Node's own flag, given to a TypeScript agent's process")
     .addHelpText("after", START)
@@ -72,7 +73,7 @@ export function register(program: Command, ctx: Context): void {
         ...(flags.inspect === undefined ? [] : [flags.inspect === true ? "--inspect" : `--inspect=${flags.inspect}`]),
         ...(flags.inspectBrk === undefined ? [] : [flags.inspectBrk === true ? "--inspect-brk" : `--inspect-brk=${flags.inspectBrk}`]),
       ];
-      const code = await start(ctx, StartInput.parse({ file, agent: flags.agent, showPrompt: flags.showPrompt === true, events: flags.events === true, ui: flags.ui === true, inspect }));
+      const code = await start(ctx, StartInput.parse({ file, agent: flags.agent, showPrompt: flags.showPrompt === true, events: flags.events === true, ui: flags.ui === true, verbose: flags.verbose === true, inspect }));
       if (code !== 0) throw new ProcessLeft(`the agent's process left with ${code}`, code);
     });
 

@@ -24,6 +24,19 @@ export async function listTeam(ctx: Context): Promise<api.MemberRow[]> {
   return (await api.listMembers(ctx.gateway())).members;
 }
 
+/**
+ * A member id (`m_18a0c129f20e`) as the person's name, for the rows that say who wrote them. A
+ * server's token may not list the org's people: then, and for an id that is no member's, the id.
+ */
+export async function getMemberNames(ctx: Context): Promise<(id: string) => string> {
+  try {
+    const named = new Map((await listTeam(ctx)).map((one) => [one.id, one.name || one.email]));
+    return (id) => named.get(id) ?? id;
+  } catch {
+    return (id) => id;
+  }
+}
+
 /** The member's password set; the gateway holds its floor and refuses a disabled member by name. */
 export async function setTeamPassword(ctx: Context, input: SetPasswordInput): Promise<api.MemberRow> {
   if (input.password === "") throw new UsageError(`no password for ${input.email}: type it, or pipe it in`);

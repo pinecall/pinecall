@@ -16,7 +16,7 @@ describe("pinecall agent", () => {
     expect(lines[0]).toBe("front-desk · sandbox");
     expect(lines.find((line) => line.trimStart().startsWith("voice "))).toMatch(/voice\s+\(team's\)\s+cartesia-ana\s+cartesia-ana/);
     expect(ran.out).toMatch(/greeting\s+\(team's\)\s+"Clínica Norte, good morning"/);
-    expect(ran.out).toContain("yours: nothing set · team: v3 · ana@clinica.test");
+    expect(ran.out).toContain("  team v3 · ana@clinica.test");
   });
 
   it("a field the class declares reads `class` in every corner", async () => {
@@ -72,10 +72,11 @@ describe("pinecall agent", () => {
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const some = await run(["agent"]);
     expect(some.out).not.toMatch(/\n {2}tts builds /);
-    expect(some.out).toMatch(/\n {2}\d+ more fields set nowhere: the runtime's defaults answer · `pinecall agent set --help` names them\n$/);
+    expect(some.out).toMatch(/\n {2}→ \d+ more fields at the runtime's defaults · pinecall agent set --help names them\n$/);
     answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: null, production: null });
     const none = await run(["agent"]);
-    expect(none.out).toBe(["front-desk · sandbox", "", "  nothing set in any corner: the runtime's defaults answer, and what the class declares · `pinecall agent set --help` names the fields", "", "  yours: nothing set · team: nothing set · production: nothing set", ""].join("\n"));
+    // Nothing anywhere is one line and the step: no table, and no corner said to hold nothing.
+    expect(none.out).toMatch(/^front-desk · sandbox\n {2}nothing set in any corner · the class and the runtime's defaults answer\n {2}→ pinecall agent set --help names the \d+ fields\n$/);
   });
 
   it("pull prints your own row as a file", async () => {
@@ -93,7 +94,7 @@ describe("pinecall agent", () => {
 
   it("list prints each process holding the org's agents", async () => {
     answer("get", "/v1/apps", { apps: [{ app: "app_1", agents: ["front-desk"], env: "sandbox", host: "ana-macbook", address: null, sdk: "ts 0.10.1", holder: { holder: "mem_ana", name: "ana@clinica.test" }, connected_at: 1_792_150_000 }] });
-    expect((await run(["agent", "list"])).out).toMatch(/^app_1 {2}front-desk {2}ana@clinica\.test · ana-macbook · ts 0\.10\.1 · since \d{4}-\d{2}-\d{2} \d{2}:\d{2}\n$/);
+    expect((await run(["agent", "list"])).out).toMatch(/^APP {4}AGENTS {6}HELD BY {11}HOST {9}CLIENT {5}SINCE\napp_1  front-desk  ana@clinica\.test  ana-macbook  ts 0\.10\.1  \d{4}-\d{2}-\d{2} \d{2}:\d{2}\n1 app · 1 agent\n {2}→ pinecall agent stop <app> lets one go\n$/);
   });
 });
 
@@ -103,7 +104,7 @@ describe("pinecall kill", () => {
     const ran = await run(["kill"]);
     expect(ran.code).toBe(0);
     expect(sent[0]!.path).toBe("/v1/agents/front-desk/kill");
-    expect(ran.out).toContain("killed front-desk in sandbox: one app let go of it (app_1) and kept their other agents");
+    expect(ran.out).toContain("killed front-desk in sandbox · 1 app let go of it and kept their other agents");
     expect(ran.out).toContain("its settings and calls stay");
     await run(["kill", "sales"], { cwd: folder() });
     expect(sent[1]!.path).toBe("/v1/agents/sales/kill");
@@ -121,9 +122,10 @@ describe("pinecall lexicon", () => {
   it("alone prints the words read and each corner's version", async () => {
     answer("get", "/v1/agents/:slug/lexicon", { world: "sandbox", yours: null, team: lexiconRow("", 2, [{ word: "Vidal", spoken: "bee-DAHL" }], ["Norte"]), production: null, fixed: [] });
     const ran = await run(["lexicon"]);
-    expect(ran.out).toContain('said     Vidal → "bee-DAHL"');
-    expect(ran.out).toContain("heard    Norte");
-    expect(ran.out).toContain("yours: nothing set · team: v2");
+    expect(ran.out).toContain('  says   Vidal  as "bee-DAHL"');
+    expect(ran.out).toContain("  hears  Norte");
+    expect(ran.out).toContain("  team v2");
+    expect(ran.out).not.toContain("nothing set");
   });
 
   it("add needs --say", async () => {
@@ -166,15 +168,15 @@ describe("pinecall voices", () => {
     answer("get", "/v1/providers", { providers: [{ name: "cartesia", voices_listed: true }], defaults: { tts: "cartesia" } });
     answer("get", "/v1/voices", { tts: "cartesia", language: null, voices: [{ id: "ana-es", name: "Ana", language: "es", description: "", gender: "female", country: "ES", accent: "castilian" }] });
     const ran = await run(["voices"]);
-    expect(ran.out).toMatch(/^ID\s+NAME\s+LANGUAGE\s+GENDER\s+FROM\nana-es\s+Ana\s+es\s+female\s+ES castilian\n1 voice · --language <tag> keeps one language/);
+    expect(ran.out).toBe("VOICE   NAME  GENDER  FROM\nana-es  Ana   female  ES castilian\n1 voice · in es\n  → pinecall voices play <id> says a line\n");
   });
 
-  it("voices come by language then name, and FROM is left out when no voice says where it is from", async () => {
+  it("a voice listed once a language is one row with its languages; NAME and FROM only where they say something", async () => {
     answer("get", "/v1/providers", { providers: [{ name: "google", voices_listed: true }], defaults: { tts: "google" } });
     const voice = (id: string, language: string): Record<string, unknown> => ({ id, name: id, language, description: "", gender: "female", country: "", accent: "" });
-    answer("get", "/v1/voices", { tts: "google", language: null, voices: [voice("Kore", "de"), voice("Aoede", "de"), voice("Zephyr", "en")] });
+    answer("get", "/v1/voices", { tts: "google", language: null, voices: [voice("Kore", "de"), voice("Aoede", "de"), voice("Kore", "en"), voice("Zephyr", "en")] });
     const ran = await run(["voices"]);
-    expect(ran.out.split("\n").slice(0, 4)).toEqual(["ID      NAME    LANGUAGE  GENDER", "Aoede   Aoede   de        female", "Kore    Kore    de        female", "Zephyr  Zephyr  en        female"]);
+    expect(ran.out).toBe(["VOICE   GENDER  LANGUAGES", "Aoede   female  de", "Kore    female  de en", "Zephyr  female  en", "3 voices · 2 languages", "  → --language <tag> keeps one · pinecall voices play <id> says a line", ""].join("\n"));
   });
 
   it("--json is the list", async () => {

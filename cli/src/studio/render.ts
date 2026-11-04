@@ -1,21 +1,21 @@
 /** Studio as a terminal reads it: the agents, one made, a file pulled or pushed, a tool tried, a deploy, the code written. */
 
-import { bytes, count, yesNo } from "../kit/format.js";
+import { bytes, count, formatNotice, yesNo } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import type { Code, Pulled, Pushed, StudioAgent, TryResult } from "./service.js";
 
 export const NO_AGENTS = "no Studio agent in this org here yet: `pinecall studio new <name>` makes one";
 
 export function agents(found: StudioAgent[]): string[] {
-  if (found.length === 0) return [NO_AGENTS];
+  if (found.length === 0) return formatNotice(NO_AGENTS);
   return table(
     ["name", "release", "saved by", "stopped"],
     found.map((one) => [one.name, one.release, one.author, yesNo(one.stopped)]),
   );
 }
 
-export function made(one: StudioAgent): string {
-  return `${one.name}: made in the ${one.env} as release ${one.release} — \`pinecall studio pull ${one.name}\` writes it to a file`;
+export function made(one: StudioAgent): string[] {
+  return formatNotice(`${one.name} · made in the ${one.env} as release ${one.release}: \`pinecall studio pull ${one.name}\` writes it to a file`);
 }
 
 export function pulled(one: Pulled): string {

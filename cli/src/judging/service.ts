@@ -26,7 +26,7 @@ export const ONE_OR_THE_OTHER = "--org and --agent name two lists: the org's jud
 export const TRY_IS_AN_AGENTS = "try asks one agent's calls: --agent names it, never --org";
 export const WHICH_CALLS = "try needs the calls: --last <n> (1 to 50) or --calls <id,id…>, one of them";
 export const SET_BY_THE_CLASS = (agent: string): string =>
-  `judges set by the class of ${agent}: its judges are code beside the class (agents/${agent}/harness.*, ownJudge), and which of Pinecall's its calls meet is judges({ on, own }) in the class; nothing is written here`;
+  `${agent}'s judges are code beside the class, and nothing is written here: \`agents/${agent}/harness.*\` holds its own (ownJudge) · judges({ on, own }) in the class switches Pinecall's`;
 const NOT_AN_ANSWER = (said: string): string => `--answer ${said}: verdict (held or broken), score (1 to 5), or choice:a,b,c (two choices at least)`;
 const NOT_WHEN = (said: string): string => `--when ${said}: always, simulations, or trigger:'…' (a yes-or-no asked first; a no is N/A)`;
 const NOT_READ = (said: string): string => `--reads ${said}: any of ${READS.join(", ")}, comma-separated`;

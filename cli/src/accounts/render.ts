@@ -1,6 +1,6 @@
 /** Accounts as a terminal reads them: the sign-in link, who signed in and in which org, who a key is, the secrets and the people. */
 
-import { date, yesNo } from "../kit/format.js";
+import { date, formatNotice, yesNo } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import type { Advice, MemberRow, ResetLink, SecretList, SignedIn, Whoami } from "./service/index.js";
 
@@ -27,9 +27,14 @@ export function loggedIn(done: SignedIn & { advice: Advice | null }): string[] {
 
 const STAGES: Record<string, string> = { stt: "ears", llm: "thinking", tts: "voice" };
 
-/** Three lines, each said once: where (gateway, org, env), the key (its id, where it was read from, its label), what it opens. */
+/** Where (gateway, org, env) on one line; the key, where it was read from, and what it opens, a label a line. */
 export function whoami(where: { url: string; source: string }, who: Whoami): string[] {
-  return [`gateway ${where.url} · org ${who.slug ?? who.org} · ${who.env}`, `  ${describe(who, where.source)}`, `  ${envsOf(who)}`];
+  return [
+    `${hostOf(where.url)} · org ${who.slug ?? who.org} · ${who.env}`,
+    `  key   ${[who.key_id, ...(who.label === null ? [] : [who.label])].join(" · ")}`,
+    `  from  ${where.source}`,
+    `  opens ${envsOf(who)}`,
+  ];
 }
 
 /** The key's line: its id, where it was read from, and the label it was issued under when it has one. */
@@ -39,18 +44,23 @@ export function describe(who: Whoami, source: string): string {
   return said.join(" · ");
 }
 
+// `https://cloud.pinecall.io` as a person names it; any other scheme or a port stays whole.
+function hostOf(url: string): string {
+  return url.replace(/^https:\/\//, "").replace(/\/$/, "");
+}
+
 /** Which envs the key opens at this gateway: a server's token its own, a person's by their switch. */
 export function envsOf(who: Whoami): string {
   if (who.name === undefined || who.name === null) {
     const token = who.env === "production" ? "production" : "sandbox";
-    return `a ${token} server's token: that environment alone${token === "production" ? ", with --prod" : ""}`;
+    return `the ${token} alone${token === "production" ? ", with --prod" : ""}: a server's token`;
   }
-  if (who.production) return "a person's key: the sandbox without --prod, production with it";
-  return "a person's key: the sandbox; production is refused until an admin turns your switch on in Team";
+  if (who.production) return "the sandbox, and production with --prod: a person's key";
+  return "the sandbox: production waits on an admin turning your switch on in Team";
 }
 
 export function secrets(found: SecretList): string[] {
-  if (found.secrets.length === 0) return [NO_SECRETS];
+  if (found.secrets.length === 0) return formatNotice(NO_SECRETS);
   return table(
     ["name", "set", "by"],
     found.secrets.map((secret) => [secret.name, date(secret.set_at), secret.set_by]),
@@ -78,5 +88,5 @@ export function passwordSet(member: MemberRow): string {
 
 export function resetLinkFor(reset: ResetLink): string[] {
   if (reset.link !== null) return [`${reset.email} chooses their password here, once:`, reset.link];
-  return [reset.mailed ? `${reset.email} was mailed a one-use link to choose their password` : `no link was handed over for ${reset.email}: the box sends no mail, so set it with \`pinecall team password ${reset.email}\``];
+  return reset.mailed ? [`${reset.email} was mailed a one-use link to choose their password`] : formatNotice(`no link was handed over for ${reset.email}, the box sends no mail: \`pinecall team password ${reset.email}\` sets it`);
 }

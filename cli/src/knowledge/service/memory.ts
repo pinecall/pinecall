@@ -15,7 +15,7 @@ const MEMORY_QUESTION = "{holds, asks, expects}";
 
 // An erasure is never done on nobody's word: `data erase` asks for --yes the same way.
 export const SAY_YES = (contact: string): string =>
-  `forgetting ${contact} cannot be undone, and nobody is at a terminal to say so: run it again with --yes`;
+  `forgetting ${contact} cannot be undone, and nobody is at a terminal to say so: \`--yes\` forgets them`;
 
 /** What `memory policy` takes: the agent, the two lists (neither reads the policy), whose corner, a note. */
 export const PolicyInput = z.object({

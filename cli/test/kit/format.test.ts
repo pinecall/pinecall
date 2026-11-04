@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { bytes, clipped, count, date, duration, money, timestamp } from "../../src/kit/format.js";
+import { amount, bytes, clipped, count, date, duration, formatHint, formatNotice, formatPairs, money, timestamp } from "../../src/kit/format.js";
 import { fields, table } from "../../src/kit/table.js";
 
 describe("formats", () => {
@@ -21,5 +21,20 @@ describe("formats", () => {
     expect(table(["id", "name"], [["a", "Ana"], ["long-id", null]])).toEqual(["ID       NAME", "a        Ana", "long-id  -"]);
     expect(table(["id"], [])).toEqual([]);
     expect(fields([["org", "clinica"], ["production", "yes"]])).toEqual(["org         clinica", "production  yes"]);
+  });
+
+  it("a next step is its own line at the foot, opened by an arrow, with no backticks", () => {
+    expect(formatHint("pinecall agent set --help names them", "--all lists every one")).toBe("  → pinecall agent set --help names them · --all lists every one");
+    expect(formatNotice("no base pushed yet: `pinecall docs push` sends one")).toEqual(["no base pushed yet", "  → pinecall docs push sends one"]);
+    // A colon no command follows stays in the sentence: the step is after the first colon a command does.
+    expect(formatNotice("--state: cannot read x.json — no such file")).toEqual(["--state: cannot read x.json — no such file"]);
+    expect(formatNotice("nobody holds it (running: ana), so it rings nowhere: `pinecall line claim` takes it")).toEqual(["nobody holds it (running: ana), so it rings nowhere", "  → pinecall line claim takes it"]);
+  });
+
+  it("a record in words, never its JSON: nested fields by their path, lists by commas", () => {
+    expect(formatPairs({ stage: "ask", message: { name: "Ana", about: "a delivery" } })).toBe("stage ask · message.name Ana · message.about a delivery");
+    expect(formatPairs({ judges: ["disclosed", "promises"] })).toBe("judges disclosed, promises");
+    expect(formatPairs({ done: null })).toBe("done —");
+    expect([amount(3483), amount(0.75)]).toEqual(["3,483", "0.8"]);
   });
 });

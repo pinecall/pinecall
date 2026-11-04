@@ -52,24 +52,26 @@ describe("the exit codes", () => {
     const ran = await run(["limits", "--version"]);
     expect(ran.code).toBe(2);
     expect(ran.out).toBe("");
-    expect(ran.err).toBe("pinecall: pinecall limits has no option --version: `pinecall limits --help` shows its flags\n");
+    expect(ran.err).toBe("pinecall: limits has no option --version\n  → pinecall limits --help shows its flags\n");
   });
 
   it("a verb nobody wrote, or a flag nobody declared, is 2, said in the CLI's words with the help that lists them", async () => {
     const verb = await run(["deploi"]);
     expect(verb.code).toBe(2);
-    expect(verb.err).toBe("pinecall: no verb deploi (did you mean deploy?): `pinecall --help` lists them\n");
+    expect(verb.err).toBe('pinecall: no verb "deploi" (did you mean deploy?)\n  → pinecall --help lists them\n');
     const flag = await run(["limits", "--everything"]);
     expect(flag.code).toBe(2);
-    expect(flag.err).toBe("pinecall: pinecall limits has no option --everything: `pinecall limits --help` shows its flags\n");
+    expect(flag.err).toBe("pinecall: limits has no option --everything\n  → pinecall limits --help shows its flags\n");
   });
 
   it("a word too many, an argument or a flag missing: the verb typed, what it takes, and its help", async () => {
-    expect((await run(["lexicon", "list"])).err).toBe("pinecall: pinecall lexicon takes nothing after it, and 1 were typed: `pinecall lexicon --help` says what it takes\n");
-    expect((await run(["sessions", "show", "call_1"])).err).toBe("pinecall: pinecall sessions takes 1 argument, and 2 were typed: `pinecall sessions --help` says what it takes\n");
-    expect((await run(["memory"])).err).toBe("pinecall: pinecall memory needs a <contact>: `pinecall memory --help` says what it takes\n");
-    expect((await run(["lexicon", "add", "DKV"])).err).toBe("pinecall: pinecall lexicon add needs --say <spoken>: `pinecall lexicon add --help` shows its flags\n");
-    expect((await run(["sessions", "--limit"])).err).toBe("pinecall: pinecall sessions: --limit <n> takes a value, and none was typed: `pinecall sessions --help` shows its flags\n");
+    expect((await run(["lexicon", "list"])).err).toBe('pinecall: lexicon takes no argument, and "list" was typed\n  → pinecall lexicon --help says what it takes\n');
+    expect((await run(["sessions", "show", "call_1"])).err).toBe('pinecall: sessions takes 1 argument, and "show call_1" was typed\n  → pinecall sessions --help says what it takes\n');
+    // A word that is one of the verb's flags, typed without its dashes: the flag is the next step.
+    expect((await run(["agent", "clear", "language"])).err).toBe('pinecall: agent clear takes no argument, and "language" was typed\n  → pinecall agent clear --language\n');
+    expect((await run(["memory"])).err).toBe("pinecall: memory needs a <contact>\n  → pinecall memory --help says what it takes\n");
+    expect((await run(["lexicon", "add", "DKV"])).err).toBe("pinecall: lexicon add needs --say <spoken>\n  → pinecall lexicon add --help shows its flags\n");
+    expect((await run(["sessions", "--limit"])).err).toBe("pinecall: --limit <n> takes a value, and none was typed\n  → pinecall sessions --help shows its flags\n");
   });
 
   it("an input a schema refuses is one sentence and 2, not a dump of the schema", async () => {
@@ -100,9 +102,9 @@ describe("the exit codes", () => {
     server.use(http.get(`${GATEWAY}/v1/limits`, () => new HttpResponse("<html>bad gateway</html>", { status: 502 })));
     expect((await run(["limits"])).err).toBe("pinecall: the gateway answered 502: <html>bad gateway</html>\n");
     refuse("get", "/v1/agents/:slug/settings", 404, "no agent front-desk in this org: `pinecall agent list` names the ones there are");
-    expect((await run(["agent"])).err).toBe("pinecall: front-desk is not on Pinecall yet, nothing has held it: `pinecall start` holds it from this terminal, `pinecall deploy` runs it on Pinecall\n");
+    expect((await run(["agent"])).err).toBe("pinecall: front-desk is not on Pinecall yet, nothing has held it\n  → pinecall start holds it from this terminal, pinecall deploy runs it on Pinecall\n");
     refuse("get", "/v1/agents/:slug/settings", 404, "no agent sales in this org: `pinecall agent list` names the ones there are");
-    expect((await run(["agent", "--agent", "sales"])).err).toBe("pinecall: no agent sales in this org: `pinecall agent list` names the ones there are\n");
+    expect((await run(["agent", "--agent", "sales"])).err).toBe("pinecall: no agent sales in this org\n  → pinecall agent list names the ones there are\n");
   });
 
   it("a network that is down is 2: the command could not run", async () => {

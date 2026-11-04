@@ -2,7 +2,7 @@
 
 import type { CallScore } from "@pinecall/agents/wire";
 
-import { BROKEN, clipped, HELD, money } from "../kit/format.js";
+import { BROKEN, clipped, count, formatHint, formatNotice, HELD, money } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import type { AgentJudging, Calibration, JudgeAgreement, JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
 
@@ -18,6 +18,8 @@ const MARK: Record<string, string> = { held: HELD, broken: BROKEN, deferred: DEF
 const WORD: Record<string, string> = { na: "n/a" };
 const NOBODY_JUDGED = "nobody judged this call";
 const NO_REASON = "no reason was written down";
+// Max width of a broken judge's reason under a call's score; `pinecall sessions <call> --json` has it whole.
+const REASON = 110;
 
 export const NO_JUDGES = (owner: JudgeOwner): string =>
   `${owner ?? "the org"} has no judges yet: \`pinecall judges add <name> --asks '…'\` (--org for every agent's), or the console's Judges`;
@@ -27,21 +29,21 @@ const A_SCREEN = 120;
 
 /** One line per judge, cut at the screen's width: name, whose, on or off, how it answers, when it runs, and what it holds a call to. */
 export function judges(owner: JudgeOwner, list: JudgeList, columns: number = A_SCREEN): string[] {
-  if (list.judges.length === 0) return [NO_JUDGES(owner)];
-  // A library judge Pinecall recommends says so beside its switch: the ones to turn on first.
+  if (list.judges.length === 0) return formatNotice(NO_JUDGES(owner));
+  // Whether Pinecall recommends a library judge is `judges show`'s: the list keeps to its switch.
   const rows = table(
-    ["name", "owner", "switch", "answers", "when", "asks"],
-    list.judges.map((row) => [row.name, row.owner, `${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`, row.answer, whenLabel(row), textOf(row)]),
+    ["name", "owner", "on", "answers", "when", "asks"],
+    list.judges.map((row) => [row.name, row.owner, row.on ? "on" : "off", row.answer, whenLabel(row), textOf(row)]),
   ).map((line) => clipped(line, columns));
-  rows.push(`\`pinecall judges show <name>\` prints one whole`);
-  if (owner !== null && list.judges.some((row) => row.fixed === true)) rows.push(`set by the class of ${owner}: its own are code beside the class (agents/${owner}/harness.*), judges({ on, own }) its switches`);
+  const fixed = owner !== null && list.judges.some((row) => row.fixed === true);
+  rows.push(formatHint("pinecall judges show <name> reads one", ...(fixed ? [`set in agents/${owner}/harness.* · judges({ on, own }) in the class`] : [])));
   return rows;
 }
 
 /** The rows written as code, one line each: the file and the name the class imports. */
 export function pulled(done: { written: { path: string; symbol: string }[] }): string[] {
   if (done.written.length === 0) return ["nothing to pull: the agent has no judges of its own as rows"];
-  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} judge(s) written as code · add them to judges({ own }) · the rows stay until \`pinecall judges rm\``];
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${count(done.written.length, "judge")} written as code`, formatHint("add them to judges({ own }) in the class", "the rows stay until pinecall judges rm")];
 }
 
 /** One judge whole: the line the list prints, then how and when it answers, what it reads, and its question. */
@@ -63,7 +65,7 @@ export const NO_LABELS = (owner: JudgeOwner): string =>
 
 /** One line per labelled judge: the labels, how many were compared and agreed, the rate, and whether it is trusted. */
 export function agreement(owner: JudgeOwner, read: Calibration): string[] {
-  if (read.judges.length === 0) return [NO_LABELS(owner)];
+  if (read.judges.length === 0) return formatNotice(NO_LABELS(owner));
   const rows = table(
     ["judge", "labelled", "compared", "agreed", "rate", "trusted"],
     read.judges.map((row) => [row.judge, row.labelled, row.compared, row.agreed, rateOf(row), trustedOf(row, read)]),
@@ -85,7 +87,7 @@ function pct(share: number): string {
 }
 
 export function changed(list: JudgeListChanged): string {
-  return `${list.done} · ${list.judges.length} judge(s) in the list`;
+  return `${list.done} · ${count(list.judges.length, "judge")} in the list`;
 }
 
 /** What a try answered: a line per call, then the evals and their cost. */
@@ -135,12 +137,28 @@ export function reasonOf(said: { reason: string }): string {
   return said.reason === "" ? NO_REASON : said.reason;
 }
 
-/** A call's score as printed: headline, one line per judge, then cost. */
+/**
+ * A call's score as printed: the headline, then the judges that broke with their reason and the
+ * lines they cite, the ones that held by name, a classification with what it answered, the ones
+ * that did not apply on one line; then what judging cost.
+ */
 export function callScore(score: CallScore): string[] {
-  return [headline(score), ...score.judges.map(oneJudge), costLine(score)];
+  const width = Math.max(0, ...score.judges.map((judgment) => judgment.name.length));
+  const broke = score.judges.filter((judgment) => judgment.verdict === "broken");
+  const held = score.judges.filter((judgment) => judgment.verdict === "held");
+  const classified = score.judges.filter((judgment) => judgment.verdict === "classified");
+  const rest = score.judges.filter((judgment) => !broke.includes(judgment) && !held.includes(judgment) && !classified.includes(judgment));
+  return [
+    headline(score),
+    ...broke.map((judgment) => `  ${BROKEN} ${judgment.name.padEnd(width)}  ${clipped(reasonOf(judgment), REASON)}${seqsOf(judgment)}`),
+    ...held.map((judgment) => `  ${HELD} ${judgment.name}`),
+    ...classified.map((judgment) => `  ${CLASSIFIED} ${judgment.name.padEnd(width)}  ${wordOf(judgment)}: ${reasonOf(judgment)}`),
+    ...(rest.length === 0 ? [] : [`  ${NOT_APPLICABLE} ${rest.map((judgment) => judgment.name).join(" · ")}  did not apply`]),
+    costLine(score),
+  ];
 }
 
-// Four states: passed, failed, judged with no verdict (only N/A and classifications), or not judged.
+// Four states: some broke, all held, judged with no verdict (only N/A and classifications), or not judged.
 function headline(score: CallScore): string {
   if (score.passed === undefined || score.passed === null) {
     if (score.judges.some((judgment) => judgment.verdict === "na" || judgment.verdict === "classified")) {
@@ -148,13 +166,9 @@ function headline(score: CallScore): string {
     }
     return `${SKIPPED} ${NOBODY_JUDGED}: ${score.not_judged ?? "the entry says nothing about why"}`;
   }
-  return `${score.passed ? HELD : BROKEN} ${score.passed ? "every judge held" : "a judge answered broken"}`;
-}
-
-// A verdict reads as its reason; a classification and an N/A say what they answered first.
-function oneJudge(judgment: Judgment): string {
-  const answered = judgment.verdict === "classified" || judgment.verdict === "na" ? `${wordOf(judgment)}: ` : "";
-  return `  ${MARK[judgment.verdict] ?? SKIPPED} ${judgment.name.padEnd(10)} ${answered}${reasonOf(judgment)}${seqsOf(judgment)}`;
+  const broke = score.judges.filter((judgment) => judgment.verdict === "broken").length;
+  const settled = broke + score.judges.filter((judgment) => judgment.verdict === "held").length;
+  return broke > 0 ? `${BROKEN} ${broke} of ${count(settled, "judge")} broke` : `${HELD} ${settled === 1 ? "the judge" : `all ${settled} judges`} held`;
 }
 
 // An unknown cost is omitted, not printed as zero; evals on the org's own key are never billed.
@@ -163,12 +177,12 @@ function costLine(score: CallScore): string {
   const evals = score.evals ?? 0;
   const priced = score.judge_cost_usd === undefined || score.judge_cost_usd === null ? "" : ` · ${money(score.judge_cost_usd)}`;
   const billed = score.own_key === true ? " · own key: evals not billed" : "";
-  return `  ${judgeCalls} judge call${judgeCalls === 1 ? "" : "s"} · ${evals} eval${evals === 1 ? "" : "s"}${priced}${billed}`;
+  return `  ${count(judgeCalls, "judge call")} · ${count(evals, "eval")}${priced}${billed}`;
 }
 
 function seqsOf(judgment: Judgment): string {
   const seqs = judgment.evidence.seqs;
-  return seqs.length === 0 ? "" : `  [seq ${seqs.join(", ")}]`;
+  return seqs.length === 0 ? "" : `  ${seqs.map((seq) => `#${seq}`).join(" ")}`;
 }
 
 function wordOf(judgment: Judgment): string {

@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
+import { getMemberNames } from "../accounts/service/index.js";
 import * as api from "../api/hosting.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
@@ -13,6 +14,9 @@ import { languageOf, type Language } from "../project/language.js";
 export type { AppLogs, HostedApp, Release } from "../api/hosting.js";
 
 export const A_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// The mark a release that failed is said with, as every check that broke is.
+const BROKEN_MARK = "✗";
 
 // The runner beats every five seconds, installs within five minutes and waits two for a register.
 export const FOLLOW_WITHIN_MS = 8 * 60 * 1000;
@@ -64,8 +68,10 @@ export async function listApps(ctx: Context): Promise<api.HostedApp[]> {
   return api.listApps(ctx.gateway());
 }
 
+/** The app's releases, each with who sent it by name. */
 export async function listReleases(ctx: Context, name: string): Promise<api.Release[]> {
-  return api.listReleases(ctx.gateway(), name);
+  const [found, nameOf] = await Promise.all([api.listReleases(ctx.gateway(), name), getMemberNames(ctx)]);
+  return found.map((one) => ({ ...one, author: nameOf(one.author) }));
 }
 
 /**
@@ -110,7 +116,7 @@ export async function startApp(ctx: Context, name: string): Promise<{ name: stri
 }
 
 /** A removal is never done on nobody's word: `data erase` and `memory forget` ask for --yes the same way. */
-export const SAY_YES = (name: string): string => `removing ${name} cannot be undone, and nobody is at a terminal to say so: run it again with --yes`;
+export const SAY_YES = (name: string): string => `removing ${name} cannot be undone, and nobody is at a terminal to say so: \`--yes\` removes it`;
 
 /** Stop hosting the app: its releases go, and its token is revoked. */
 export async function removeApp(ctx: Context, name: string): Promise<{ name: string }> {
@@ -153,11 +159,13 @@ export async function followRelease(ctx: Context, name: string, release: number,
 
 /** A release's standing on its app, or undefined while it is still on its way. */
 export function standingOf(app: api.HostedApp, ours: number): Settled | undefined {
-  if (app.live_release === ours) return { live: true, line: `${app.name}: release ${ours} is live` };
-  if (app.release !== null && app.release > ours) return { live: false, line: `release ${ours} was replaced by release ${app.release} before it went live` };
+  if (app.live_release === ours) return { live: true, line: `  release ${ours} is live` };
+  if (app.release !== null && app.release > ours) return { live: false, line: `  release ${ours} was replaced by release ${app.release} before it went live` };
   if (app.release === ours && app.failed_why !== null) {
     const before = app.live_release === null ? "nothing was serving before it" : `release ${app.live_release} keeps serving`;
-    return { live: false, line: `${app.name}: release ${ours} failed — ${before}\n${app.failed_why}` };
+    // What the process said, under the line that says it failed.
+    const said = app.failed_why.replace(/\n$/, "").split("\n").map((line) => `    ${line}`).join("\n");
+    return { live: false, line: `  ${BROKEN_MARK} release ${ours} failed, ${before}\n${said}` };
   }
   return undefined;
 }

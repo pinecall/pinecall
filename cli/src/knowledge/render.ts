@@ -2,10 +2,11 @@
 
 import { relative } from "node:path";
 
-import { BROKEN, date, HELD } from "../kit/format.js";
+import { BROKEN, count, date, formatHint, formatNotice, HELD } from "../kit/format.js";
+import { table } from "../kit/table.js";
 import type { BaseAttached, ContactFact, ContactRemembered, DocRemoved, DocsPulled, DocsPushed, DocsSkipped, ExtractionRun, Forgotten, KnowledgeList, KnowledgeScore, KnowledgeUses, MemoryScore, Policy } from "./service/index.js";
 
-export const NO_BASES = "no base pushed yet: pinecall docs push sends agents/<name>/docs/ under the agent's slug";
+export const NO_BASES = "no base pushed yet: `pinecall docs push` sends agents/<name>/docs/ under the agent's slug";
 export const NOTHING_ATTACHED = "no agent reads a base here: `pinecall docs attach <base>` gives one its base";
 
 // Superseded facts are dimmed on a TTY.
@@ -25,7 +26,7 @@ export function pushed(results: (DocsPushed | DocsSkipped)[]): string[] {
     const language = one.language === "simple" ? NO_LANGUAGE : one.language;
     const kept = (one.kept ?? 0) > 0 ? ` · ${one.kept} kept` : "";
     const readme = one.readme_skipped === true ? " · README.md skipped" : "";
-    return `${one.base} · ${one.files} files${kept} · ${one.chunks} chunks · ${language} · ${Math.round(one.took_ms)} ms${readme}`;
+    return `${one.base} · ${count(one.files, "file")}${kept} · ${count(one.chunks, "chunk")} · ${language} · ${Math.round(one.took_ms)} ms${readme}`;
   });
 }
 
@@ -42,8 +43,8 @@ export function removed({ base, path }: DocRemoved): string {
 }
 
 export function bases(found: KnowledgeList): string[] {
-  if (found.bases.length === 0) return [NO_BASES];
-  return found.bases.map((base) => `${base.base} · ${base.chunks} chunks · ${base.language} · pushed ${date(base.pushed_at)}`);
+  if (found.bases.length === 0) return formatNotice(NO_BASES);
+  return table(["base", "chunks", "language", "pushed"], found.bases.map((base) => [base.base, base.chunks.toLocaleString("en-US"), base.language, date(base.pushed_at)]));
 }
 
 export function dropped({ base }: { base: string }): string {
@@ -58,7 +59,7 @@ export function scores(results: (KnowledgeScore | DocsSkipped)[]): string[] {
 }
 
 export function score(one: KnowledgeScore): string[] {
-  const figures = `${one.base} · ${one.model} · ${one.questions} questions · recall@${one.k} ${one.recall_at_k.toFixed(2)} · nDCG@10 ${one.ndcg_at_10.toFixed(2)} · ${Math.round(one.took_ms)} ms`;
+  const figures = `${one.base} · ${one.model} · ${count(one.questions, "question")} · recall@${one.k} ${one.recall_at_k.toFixed(2)} · nDCG@10 ${one.ndcg_at_10.toFixed(2)} · ${Math.round(one.took_ms)} ms`;
   return [figures, ...one.misses.map((missed) => `  missed: ${missed.asks} → wanted ${missed.expects.join(" or ")}, got ${missed.found[0] ?? "nothing"}`)];
 }
 
@@ -71,8 +72,8 @@ export function detached(done: BaseAttached): string {
 }
 
 export function attachments(uses: KnowledgeUses): string[] {
-  if (uses.bases.length === 0) return [NOTHING_ATTACHED];
-  return uses.bases.map((one) => `${one.base} · read by ${one.agents.join(", ")}`);
+  if (uses.bases.length === 0) return formatNotice(NOTHING_ATTACHED);
+  return table(["base", "read by"], uses.bases.map((one) => [one.base, one.agents.join(", ")]));
 }
 
 /** Everything memory kept about a contact: the current facts, then the superseded ones, dimmed on a terminal. */
@@ -109,7 +110,7 @@ export function policy({ agent, answer }: Policy): string[] {
 
 /** A recall score: a summary line, then one line per missed question. */
 export function recall(one: MemoryScore): string[] {
-  const figures = `memory · ${one.model} · ${one.questions} questions · recall@${one.k} ${one.recall_at_k.toFixed(2)} · nDCG@10 ${one.ndcg_at_10.toFixed(2)} · ${Math.round(one.took_ms)} ms`;
+  const figures = `memory · ${one.model} · ${count(one.questions, "question")} · recall@${one.k} ${one.recall_at_k.toFixed(2)} · nDCG@10 ${one.ndcg_at_10.toFixed(2)} · ${Math.round(one.took_ms)} ms`;
   return [figures, ...one.misses.map((missed) => `  missed: ${missed.asks} → wanted ${missed.missing.join(", ")}, got ${missed.found[0] ?? "nothing"}`)];
 }
 

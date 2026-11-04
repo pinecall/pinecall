@@ -1,5 +1,7 @@
 /** The lines `pinecall start` prints once an agent is registered: connected, its routes, its line. */
 
+import { formatNotice } from "../kit/format.js";
+
 /** What the connected line says about one agent. */
 export interface Connected {
   slug: string;
@@ -29,9 +31,9 @@ export function connectedLine(agent: Connected): string {
   const said = [agent.slug];
   if (agent.org !== undefined) said.push(agent.org);
   if (agent.env !== undefined) said.push(agent.env);
-  said.push(`connected to ${agent.url}`);
+  said.push(agent.url.replace(/^https:\/\//, ""));
+  if (agent.tools !== undefined) said.push(agent.tools === 1 ? "1 tool" : `${agent.tools} tools`);
   if (agent.source !== undefined) said.push(`key from ${agent.source}`);
-  if (agent.tools !== undefined) said.push(`tools ${agent.tools}`);
   return said.join(" · ");
 }
 
@@ -39,28 +41,29 @@ export function connectedLine(agent: Connected): string {
 export function routesLine(slug: string, routes: readonly RouteOf[]): string {
   const its = routes.filter((one) => one.agent === slug);
   const said = its.map((one) => (one.number === null ? one.channel : `${one.channel} ${one.number}`));
-  return `doors    ${["web", ...said].join(" · ")}`;
+  return `  doors       ${["web", ...said].join(" · ")}`;
 }
 
 /** The console line: a signed-in link, or the address alone, or why there is none. */
 export function talkLine(url: string, signedIn: boolean): string {
-  return signedIn ? `talk to it  ${url}   (opens within five minutes, once)` : `talk to it  ${url}`;
+  return signedIn ? `  talk to it  ${url} · opens within five minutes, once` : `  talk to it  ${url}`;
 }
 
 export function talkUnavailable(why: string): string {
-  return `talk to it  not available: ${why}`;
+  return `  talk to it  not available: ${why}`;
 }
 
+/** Where the phone line rings: the sentence, without the next step `pinecall line` says. */
 export function lineLine(described: string): string {
-  return `line     ${described}`;
+  return `  line        ${formatNotice(described)[0] ?? described}`;
 }
 
 export function lineUnavailable(why: string): string {
-  return `line     not available: ${why}`;
+  return `  line        not available: ${why}`;
 }
 
 export function consoleLine(url: string): string {
-  return `console  ${url}   (opens within five minutes, once)`;
+  return `console  ${url} · opens within five minutes, once`;
 }
 
 /** The line a reload prints: the version of the class answering now. */

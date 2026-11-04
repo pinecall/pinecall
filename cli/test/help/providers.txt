@@ -34,14 +34,17 @@ the worker's — GET /v1/agents/<slug>/provider-keys, an org's own keys to an or
 on that org's key — and it is the whole reason the vault exists. A key that was lost is set
 again.
 
+Alone, the vendors that run a call here and how many wait on something; --all lists every
+vendor with its standing, and the models that hear and speak themselves.
+
 Examples
   $ pinecall providers --does tts
-  VENDOR        DOES         STANDING   VARIABLE              ALSO KNOWN AS
-  livekit       llm,stt,tts  ready                            inference lk
-  cartesia      stt,tts      no key     CARTESIA_API_KEY
-  elevenlabs    stt,tts      ready      ELEVEN_API_KEY        11labs eleven elevenlab
-  rime          tts          no key     RIME_API_KEY
-  speechmatics  stt,tts      no plugin  SPEECHMATICS_API_KEY
+  VENDOR      DOES         STANDING
+  cartesia    stt tts      ready
+  elevenlabs  stt tts      ready
+  google      llm stt tts  ready
+  3 run a call here · 24 have no key · ours: tts google
+    → pinecall providers add <vendor> brings a key · --all lists every vendor and the realtime models
 
 
 $ pinecall providers catalog --help
@@ -52,6 +55,8 @@ other names
 
 Options:
   --does <job>  only the vendors that do one job: llm | stt | tts
+  --all         every vendor, the ones waiting on a key too, and the realtime
+                models
   -h, --help    display help for command
 
 $ pinecall providers add --help

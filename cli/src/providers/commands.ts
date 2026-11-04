@@ -27,14 +27,17 @@ the worker's — GET /v1/agents/<slug>/provider-keys, an org's own keys to an or
 on that org's key — and it is the whole reason the vault exists. A key that was lost is set
 again.
 
+Alone, the vendors that run a call here and how many wait on something; --all lists every
+vendor with its standing, and the models that hear and speak themselves.
+
 Examples
   $ pinecall providers --does tts
-  VENDOR        DOES         STANDING   VARIABLE              ALSO KNOWN AS
-  livekit       llm,stt,tts  ready                            inference lk
-  cartesia      stt,tts      no key     CARTESIA_API_KEY
-  elevenlabs    stt,tts      ready      ELEVEN_API_KEY        11labs eleven elevenlab
-  rime          tts          no key     RIME_API_KEY
-  speechmatics  stt,tts      no plugin  SPEECHMATICS_API_KEY
+  VENDOR      DOES         STANDING
+  cartesia    stt tts      ready
+  elevenlabs  stt tts      ready
+  google      llm stt tts  ready
+  3 run a call here · 24 have no key · ours: tts google
+    → pinecall providers add <vendor> brings a key · --all lists every vendor and the realtime models
 `;
 
 export function register(program: Command, ctx: Context): void {
@@ -46,11 +49,13 @@ export function register(program: Command, ctx: Context): void {
     .command("catalog", { isDefault: true })
     .description("every vendor this build runs: what each does, its standing, its variable, its other names")
     .option("--does <job>", `only the vendors that do one job: ${service.MODALITIES.join(" | ")}`)
+    .option("--all", "every vendor, the ones waiting on a key too, and the realtime models")
     .action(async (flags) => {
       if (flags.does !== undefined && !(service.MODALITIES as readonly string[]).includes(flags.does)) {
         throw new UsageError(`no modality called ${flags.does}: ${service.MODALITIES.join(" | ")}`);
       }
-      ctx.io.result(await service.listProviders(ctx, service.ListProvidersInput.parse({ does: flags.does })), render.catalog);
+      const found = await service.listProviders(ctx, service.ListProvidersInput.parse({ does: flags.does }));
+      ctx.io.result(found, (catalog) => render.catalog(catalog, flags.all === true));
     });
   providers
     .command("add")

@@ -46,16 +46,26 @@ describe("pinecall sessions", () => {
     });
     const ran = await run(["sessions", "call_5b1f"]);
     expect(ran.code).toBe(0);
-    expect(ran.out).toContain("  outcome   Booked Thursday at ten.");
-    expect(ran.out).toContain("  ended     caller_hung_up · 1m 24s · 4 turns");
-    expect(ran.out).toContain("✓ every judge held · 1 judges · 1 model call · 1 eval");
+    expect(ran.out).toBe(
+      [
+        "call_5b1f",
+        "  outcome  Booked Thursday at ten.",
+        "  ended    caller hung up · 1m 24s · 4 turns",
+        "  cost     —",
+        "  score    ✓ the judge held",
+        "",
+        "  ✓ grounded",
+        "  → pinecall sessions log call_5b1f reads every entry",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("<call> an id the gateway does not know is refused by name", async () => {
     server.use(http.get(`${GATEWAY}/v1/calls/:call/state`, () => HttpResponse.json({ detail: "no such call" }, { status: 404 })));
     const ran = await run(["sessions", "call_typo"]);
     expect(ran.code).toBe(2);
-    expect(ran.err).toContain("no call call_typo on this gateway: `pinecall sessions` names the ones there are");
+    expect(ran.err).toBe("pinecall: no call call_typo on this gateway\n  → pinecall sessions names the ones there are\n");
   });
 
   it("show and list are no verbs of it any more", async () => {
@@ -72,8 +82,9 @@ describe("pinecall sessions", () => {
       next: 42,
     });
     const ran = await run(["sessions", "log", "call_5b1f", "--after", "40", "--types", "turn.user,agent.state"]);
-    expect(ran.out).toMatch(/^ {4}41 {2}\d{2}:\d{2}:\d{2}\.\d{3} {2}turn\.user {4}Thursday at ten, if Dr\. Vidal has it\.\n/);
-    expect(ran.out).toContain("more: pinecall sessions log call_5b1f --after 42");
+    // Types named are shown whatever they are: agent.state is quiet only when nobody asked for it.
+    expect(ran.out).toMatch(/^call_5b1f · 2 entries\n {4}41 {2}\d{2}:\d{2}:\d{2}\.\d{3} {2}turn\.user {4}Thursday at ten, if Dr\. Vidal has it\.\n/);
+    expect(ran.out).toContain("\n  → pinecall sessions log call_5b1f --after 42 reads on\n");
   });
 
   it("log refuses a cursor that is no number", async () => {
@@ -85,14 +96,14 @@ describe("pinecall data", () => {
   it("erase is refused without --yes, and nothing is sent", async () => {
     const ran = await run(["data", "erase", "call", "call_1"]);
     expect(ran.code).toBe(2);
-    expect(ran.err).toContain("erasing call call_1 cannot be undone: run it again with --yes");
+    expect(ran.err).toContain("pinecall: erasing call call_1 cannot be undone\n  → --yes erases it\n");
   });
 
   it("erase contact --yes says what went", async () => {
     const sent = answer("delete", "/v1/contacts/:contact", { id: 1, at: 1_792_150_000, what: "contact", subject: "+34600000001", env: "sandbox", asked_by: "m_ana", calls: 3, entries: 210, memories: 4, recordings: 2 });
     const ran = await run(["data", "erase", "contact", "+34600000001", "--yes"]);
     expect(sent[0]!.path).toBe("/v1/contacts/%2B34600000001");
-    expect(ran.out).toContain("contact +34600000001  3 call(s), 210 entries, 4 memories, 2 recording(s)  by m_ana");
+    expect(ran.out).toContain("contact +34600000001  3 calls, 210 entries, 4 memories, 2 recordings  by m_ana");
   });
 
   it("policy --no-disclosure and --calling-hours change their fields", async () => {

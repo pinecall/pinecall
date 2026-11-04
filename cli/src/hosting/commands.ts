@@ -105,8 +105,8 @@ export function register(program: Command, ctx: Context): void {
 
 /** The release followed until it is live (0), failed or replaced (1), or the time is up (1). */
 async function follow(ctx: Context, sent: service.Release | { name: string; release: number }): Promise<void> {
-  ctx.io.info(render.following(sent.name));
+  ctx.io.info(render.FOLLOWING);
   const said = await service.followRelease(ctx, sent.name, sent.release, service.FOLLOW_WITHIN_MS);
-  ctx.io.info(render.settled(said, sent.release, service.FOLLOW_WITHIN_MS));
+  for (const line of render.settled(said, sent.release, service.FOLLOW_WITHIN_MS)) ctx.io.info(line);
   if (said?.live !== true) throw new PinecallError(`release ${sent.release} is not live`);
 }

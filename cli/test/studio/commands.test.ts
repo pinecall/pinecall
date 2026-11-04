@@ -26,13 +26,13 @@ describe("pinecall studio", () => {
 
   it("list says how to make one when there is none", async () => {
     answer("get", "/v1/studio/agents", { agents: [] });
-    expect((await run(["studio", "list"])).out).toContain("`pinecall studio new <name>` makes one");
+    expect((await run(["studio", "list"])).out).toContain("\n  → pinecall studio new <name> makes one\n");
   });
 
   it("new makes one in the env asked", async () => {
     const sent = answer("post", "/v1/studio/agents", { ...AN_AGENT, release: 1 });
     const ran = await run(["studio", "new", "front-desk"]);
-    expect(ran.out).toBe("front-desk: made in the sandbox as release 1 — `pinecall studio pull front-desk` writes it to a file\n");
+    expect(ran.out).toBe("front-desk · made in the sandbox as release 1\n  → pinecall studio pull front-desk writes it to a file\n");
     expect(sent[0]!.body).toEqual({ name: "front-desk", note: "" });
   });
 
@@ -59,7 +59,7 @@ describe("pinecall studio", () => {
     write(root, "front-desk.studio.json", JSON.stringify({ release: 3, definition: DEFINITION }));
     const ran = await run(["studio", "push", "front-desk"], { cwd: root });
     expect(ran.code).toBe(2);
-    expect(ran.err).toContain("`pinecall studio pull front-desk` writes it again");
+    expect(ran.err).toContain("pinecall studio pull front-desk` writes it again");
   });
 
   it("push without the file is refused naming it", async () => {

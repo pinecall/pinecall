@@ -15,13 +15,13 @@ describe("pinecall docs", () => {
     answer("put", "/v1/knowledge/:base", { base: "front-desk", chunks: 12, language: "english", took_ms: 830.4 });
     const ran = await run(["docs", "push"], { cwd: project(["front-desk"], { "agents/front-desk/docs/hours.md": "# Hours" }) });
     expect(ran.code).toBe(0);
-    expect(ran.out).toBe("front-desk · 1 files · 12 chunks · english · 830 ms\n");
+    expect(ran.out).toBe("front-desk · 1 file · 12 chunks · english · 830 ms\n");
   });
 
   it("push says what the base kept and that the README stayed behind, and --replace is the one query", async () => {
     const sent = answer("put", "/v1/knowledge/:base", { base: "front-desk", chunks: 12, kept: 1, language: "english", took_ms: 830.4 });
     const cwd = project(["front-desk"], { "agents/front-desk/docs/README.md": "# What goes here", "agents/front-desk/docs/hours.md": "# Hours" });
-    expect((await run(["docs", "push"], { cwd })).out).toBe("front-desk · 1 files · 1 kept · 12 chunks · english · 830 ms · README.md skipped\n");
+    expect((await run(["docs", "push"], { cwd })).out).toBe("front-desk · 1 file · 1 kept · 12 chunks · english · 830 ms · README.md skipped\n");
     expect(sent[0]!.query).toEqual({});
     await run(["docs", "push", "--replace"], { cwd });
     expect(sent[1]!.query).toEqual({ replace: "true" });
@@ -56,7 +56,7 @@ describe("pinecall docs", () => {
     answer("post", "/v1/knowledge/:base/eval", { ...SCORE, recall_at_k: 0, misses: [{ asks: "When are you open?", expects: ["hours.md"], found: ["pricing.md"] }] });
     const ran = await run(["docs", "eval"], { cwd: project(["front-desk"], { "agents/front-desk/test/goldens/docs.json": GOLDEN }) });
     expect(ran.code).toBe(1);
-    expect(ran.out).toContain("front-desk · pplx-embed-v1 · 1 questions · recall@8 0.00 · nDCG@10 0.93 · 410 ms");
+    expect(ran.out).toContain("front-desk · pplx-embed-v1 · 1 question · recall@8 0.00 · nDCG@10 0.93 · 410 ms");
     expect(ran.out).toContain("  missed: When are you open? → wanted hours.md, got pricing.md");
   });
 
@@ -73,13 +73,13 @@ describe("pinecall docs", () => {
 
   it("attached lists which agents read which base", async () => {
     answer("get", "/v1/knowledge/attached", { bases: [{ base: "faq", agents: ["front-desk", "sales"] }] });
-    expect((await run(["docs", "attached"])).out).toBe("faq · read by front-desk, sales\n");
+    expect((await run(["docs", "attached"])).out).toBe("BASE  READ BY\nfaq   front-desk, sales\n");
   });
 
   it("drop asks for --yes when nobody is at a terminal, and drops with it", async () => {
     const dropped = answer("delete", "/v1/knowledge/:base");
     const asked = await run(["docs", "drop", "faq"]);
-    expect([asked.code, asked.err]).toEqual([2, "pinecall: dropping faq cannot be undone, and nobody is at a terminal to say so: run it again with --yes\n"]);
+    expect([asked.code, asked.err]).toEqual([2, "pinecall: dropping faq cannot be undone, and nobody is at a terminal to say so\n  → --yes drops it\n"]);
     expect(dropped).toHaveLength(0);
     expect((await run(["docs", "drop", "faq", "--yes"])).out).toBe("dropped faq\n");
     expect(dropped[0]!.path).toBe("/v1/knowledge/faq");
@@ -101,7 +101,7 @@ describe("pinecall memory", () => {
   it("forget off a terminal is refused without --yes, and nothing is erased", async () => {
     const ran = await run(["memory", "forget", "+34600000001"]);
     expect(ran.code).toBe(2);
-    expect(ran.err).toContain("run it again with --yes");
+    expect(ran.err).toContain("  → --yes forgets them");
   });
 
   it("forget --yes erases and says how many facts", async () => {

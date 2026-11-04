@@ -77,9 +77,9 @@ describe("a release", () => {
 
 describe("where a release stands", () => {
   it("is live, replaced, failed, or still on its way", () => {
-    expect(service.standingOf({ ...AN_APP, live_release: 4 }, 4)).toEqual({ live: true, line: "clinica: release 4 is live" });
-    expect(service.standingOf({ ...AN_APP, release: 5 }, 4)?.line).toBe("release 4 was replaced by release 5 before it went live");
-    expect(service.standingOf({ ...AN_APP, failed_why: "npm ci exited 1" }, 4)).toEqual({ live: false, line: "clinica: release 4 failed — release 3 keeps serving\nnpm ci exited 1" });
+    expect(service.standingOf({ ...AN_APP, live_release: 4 }, 4)).toEqual({ live: true, line: "  release 4 is live" });
+    expect(service.standingOf({ ...AN_APP, release: 5 }, 4)?.line).toBe("  release 4 was replaced by release 5 before it went live");
+    expect(service.standingOf({ ...AN_APP, failed_why: "npm ci exited 1" }, 4)).toEqual({ live: false, line: "  ✗ release 4 failed, release 3 keeps serving\n    npm ci exited 1" });
     expect(service.standingOf(AN_APP, 4)).toBeUndefined();
   });
 
@@ -87,7 +87,7 @@ describe("where a release stands", () => {
     const feed = stream("/v1/events");
     answer("get", "/v1/hosted", { apps: [{ ...AN_APP, live_release: 4 }] });
     const { ctx } = testContext();
-    expect(await service.followRelease(ctx, "clinica", 4, 5_000)).toEqual({ live: true, line: "clinica: release 4 is live" });
+    expect(await service.followRelease(ctx, "clinica", 4, 5_000)).toEqual({ live: true, line: "  release 4 is live" });
     expect(feed[0]!.query).toEqual({ types: "release.changed" });
   });
 

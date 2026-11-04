@@ -9,13 +9,14 @@ import type { ReadableStream as WebStream } from "node:stream/web";
 
 import { z } from "zod";
 
+import { getMemberNames } from "../../accounts/service/index.js";
 import * as api from "../../api/compliance.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
 
 export type { ConsentHistory, DoNotCall, DoNotCallImported, Erasure, ErasureTrail, OrgPolicy, OrgPolicyRow, Reads } from "../../api/compliance.js";
 
-export const SAY_YES = (what: string, who: string): string => `erasing ${what} ${who} cannot be undone: run it again with --yes`;
+export const SAY_YES = (what: string, who: string): string => `erasing ${what} ${who} cannot be undone: \`--yes\` erases it`;
 const ONE_OR_THE_OTHER = (a: string, b: string): string => `${a} and ${b} say two things about one field`;
 const ONE_DISCLOSURE = "one of --disclosure '<your words>', --platform-disclosure or --no-disclosure";
 const HOURS = /^(\d{1,2})-(\d{1,2})$/;
@@ -51,29 +52,39 @@ export const ConsentInput = z.object({
 });
 export type ConsentInput = z.infer<typeof ConsentInput>;
 
+// Who asked for an erasure, said by name rather than member id.
+async function namedErasure(ctx: Context, done: api.Erasure): Promise<api.Erasure> {
+  return { ...done, asked_by: (await getMemberNames(ctx))(done.asked_by) };
+}
+
 export async function eraseCall(ctx: Context, call: string): Promise<api.Erasure> {
-  return api.eraseCall(ctx.gateway(), call);
+  return namedErasure(ctx, await api.eraseCall(ctx.gateway(), call));
 }
 
 export async function eraseContact(ctx: Context, contact: string): Promise<api.Erasure> {
-  return api.eraseContact(ctx.gateway(), contact);
+  return namedErasure(ctx, await api.eraseContact(ctx.gateway(), contact));
 }
 
+/** The erasures, each with who asked for it by name. */
 export async function listErasures(ctx: Context): Promise<api.ErasureTrail> {
-  return api.listErasures(ctx.gateway());
+  const [trail, nameOf] = await Promise.all([api.listErasures(ctx.gateway()), getMemberNames(ctx)]);
+  return { ...trail, erasures: trail.erasures.map((one) => ({ ...one, asked_by: nameOf(one.asked_by) })) };
 }
 
+/** Who read the org's calls, each reader by name. */
 export async function listReads(ctx: Context, subject?: string): Promise<api.Reads> {
-  return api.listReads(ctx.gateway(), subject);
+  const [found, nameOf] = await Promise.all([api.listReads(ctx.gateway(), subject), getMemberNames(ctx)]);
+  return { ...found, reads: found.reads.map((one) => ({ ...one, reader: nameOf(one.reader) })) };
 }
 
-/** The policy read, or one field changed and the row written back whole. */
+/** The policy read, or one field changed and the row written back whole; who set it by name. */
 export async function policy(ctx: Context, input: PolicyInput): Promise<api.OrgPolicyRow> {
   const changes = changesOf(input);
   const gw = ctx.gateway();
   const kept = await api.getPolicy(gw);
-  if (Object.keys(changes).length === 0) return kept;
-  return api.putPolicy(gw, { ...kept.policy, ...changes });
+  const row = Object.keys(changes).length === 0 ? kept : await api.putPolicy(gw, { ...kept.policy, ...changes });
+  if (row.set_by === null) return row;
+  return { ...row, set_by: (await getMemberNames(ctx))(row.set_by) };
 }
 
 /** What stands for a number; a consent given, or the number put on the do-not-call list. */

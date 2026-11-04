@@ -11,6 +11,8 @@ Options:
                              JSON entry each, for a pipe
   --ui                       the full-screen terminal view; keys: p pause · c
                              clear · e events · q quit
+  --verbose                  the plain log with each turn's latencies and the
+                             state's moves too
   --inspect [host:port]      Node's own flag, given to a TypeScript agent's
                              process
   --inspect-brk [host:port]  Node's own flag, given to a TypeScript agent's

@@ -17,8 +17,8 @@ describe("pinecall deploy", () => {
     answer("get", "/v1/hosted", { apps: [{ ...AN_APP, live_release: 4 }] });
     const ran = await run(["deploy", "--name", "clinica"], { cwd: project(["front-desk"], SERVED) });
     expect(ran.code).toBe(0);
-    expect(ran.out).toBe("clinica: release 4 sent · 20 KB · 9f86d081884c\n");
-    expect(ran.err).toContain("clinica: release 4 is live");
+    expect(ran.out).toBe("clinica · release 4 sent · 20 KB · 9f86d081884c\n");
+    expect(ran.err).toBe("  installing · the release before keeps answering meanwhile\n  release 4 is live\n  → pinecall deploy logs reads its lines\n");
   });
 
   it("exits 1 when the release failed, and says what serves", async () => {
@@ -27,7 +27,8 @@ describe("pinecall deploy", () => {
     answer("get", "/v1/hosted", { apps: [{ ...AN_APP, failed_why: "npm ci exited 1" }] });
     const ran = await run(["deploy", "--name", "clinica"], { cwd: project(["front-desk"], SERVED) });
     expect(ran.code).toBe(1);
-    expect(ran.err).toContain("release 4 failed — release 3 keeps serving");
+    // What the process said sits under the line that says it failed.
+    expect(ran.err).toContain("  ✗ release 4 failed, release 3 keeps serving\n    npm ci exited 1\n  → pinecall deploy logs reads why\n");
   });
 
   it("--no-follow uploads and returns", async () => {
@@ -46,13 +47,18 @@ describe("pinecall deploy", () => {
   it("list says what serves and why the newest failed", async () => {
     answer("get", "/v1/hosted", { apps: [{ ...AN_APP, failed_why: "npm ci exited 1\nmore" }, { ...AN_APP, name: "sales", release: null, live_release: null }] });
     const ran = await run(["deploy", "list"]);
-    expect(ran.out).toBe("clinica  live: release 3 · release 4 failed: npm ci exited 1\nsales    no release yet\n");
+    expect(ran.out).toBe("APP      LIVE       NEWEST\nclinica  release 3  release 4 failed: npm ci exited 1\nsales    —          no release yet\n");
+  });
+
+  it("list says a failure in its first line, the colon that led into the process's output gone", async () => {
+    answer("get", "/v1/hosted", { apps: [{ ...AN_APP, live_release: null, failed_why: "the process exited before its agents registered:\nError: no module named x" }] });
+    expect((await run(["deploy", "list"])).out).toBe("APP      LIVE  NEWEST\nclinica  —     release 4 failed: the process exited before its agents registered\n");
   });
 
   it("releases prints one line each, newest first, the note last", async () => {
     answer("get", "/v1/hosted/:name/releases", { releases: [A_RELEASE] });
     const ran = await run(["deploy", "releases", "--name", "clinica"]);
-    expect(ran.out).toMatch(/^ {3}4 {2}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {5}20 KB {2}ana@clinica\.test {2}fix the greeting\n$/);
+    expect(ran.out).toMatch(/^RELEASE {2}WHEN {14}SIZE {3}BY {16}NOTE\n4 {8}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {2}20 KB {2}ana@clinica\.test {2}fix the greeting\n$/);
   });
 
   it("rollback refuses a release that is no number", async () => {
@@ -71,10 +77,10 @@ describe("pinecall deploy", () => {
     answer("post", "/v1/hosted/:name/stop");
     answer("post", "/v1/hosted/:name/start");
     const removed = answer("delete", "/v1/hosted/:name");
-    expect((await run(["deploy", "stop", "--name", "clinica"])).out).toContain("clinica: stopped");
-    expect((await run(["deploy", "start", "--name", "clinica"])).out).toContain("clinica: started");
+    expect((await run(["deploy", "stop", "--name", "clinica"])).out).toContain("clinica · stopped");
+    expect((await run(["deploy", "start", "--name", "clinica"])).out).toContain("clinica · started");
     const asked = await run(["deploy", "rm", "--name", "clinica"]);
-    expect([asked.code, asked.err]).toEqual([2, "pinecall: removing clinica cannot be undone, and nobody is at a terminal to say so: run it again with --yes\n"]);
+    expect([asked.code, asked.err]).toEqual([2, "pinecall: removing clinica cannot be undone, and nobody is at a terminal to say so\n  → --yes removes it\n"]);
     expect(removed).toHaveLength(0);
     expect((await run(["deploy", "rm", "--name", "clinica", "--yes"])).out).toContain("no longer hosted, its token revoked");
     expect(removed[0]!.path).toBe("/v1/hosted/clinica");

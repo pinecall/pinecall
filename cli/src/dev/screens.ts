@@ -42,7 +42,8 @@ export function listenTo(serving: Serving, slug: string): Listen {
 
 // Default mode: append-only lines without cursor movement, for process managers and `docker logs`.
 // With several agents each line is prefixed with the slug. Ends when the agent's process does.
-export async function plain(io: IO, running: Running, agents: PlainAgent[], url: string): Promise<number> {
+// What was said and done is printed; each turn's latencies and the state's moves only when verbose.
+export async function plain(io: IO, running: Running, agents: PlainAgent[], url: string, verbose = false): Promise<number> {
   const width = Math.max(...agents.map((agent) => agent.slug.length));
   const prefix = (slug: string): string => (agents.length > 1 ? `${slug.padEnd(width)} │ ` : "");
   for (const agent of agents) {
@@ -50,7 +51,7 @@ export async function plain(io: IO, running: Running, agents: PlainAgent[], url:
     agent.heard((event) => {
       const before = screen;
       screen = absorb(screen, event);
-      for (const line of newLines(before, screen)) io.print(`${prefix(agent.slug)}${line}`);
+      for (const line of newLines(before, screen, verbose)) io.print(`${prefix(agent.slug)}${line}`);
     });
   }
   for (const agent of agents) io.print(`${prefix(agent.slug)}${agent.connected}`);
@@ -61,13 +62,14 @@ export async function plain(io: IO, running: Running, agents: PlainAgent[], url:
 }
 
 // Lines an event added to the screen, so the plain log appends only those.
-function newLines(before: Screen, after: Screen): string[] {
+function newLines(before: Screen, after: Screen, verbose: boolean): string[] {
   const lines: string[] = [];
   for (const line of after.transcript.slice(before.transcript.length)) lines.push(`${line.mark} ${line.text}`);
   for (const line of after.tools.slice(before.tools.length)) lines.push(`${line.mark} ${line.text}`);
-  for (const metric of after.metrics.slice(before.metrics.length)) lines.push(`metrics  ${metric}`);
+  if (!verbose) return lines;
+  for (const metric of after.metrics.slice(before.metrics.length)) lines.push(`  metrics  ${metric}`);
   if (after.changed !== before.changed && after.changed.length > 0) {
-    lines.push(`state    ${after.changed.join(", ")}`);
+    lines.push(`  state    ${after.changed.join(", ")}`);
   }
   return lines;
 }

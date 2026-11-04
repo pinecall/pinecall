@@ -160,8 +160,9 @@ describe("pinecall simulate --judge", () => {
   });
 
   it("exits 2 with the reason when nobody judged: no judge on, only n/a, the evals used up", async () => {
+    // The reason's own next step, a command after its colon, is a line of its own.
     const nobody = [
-      [{ passed: null, not_judged: "no judge is on for this agent: `pinecall judges on <name>`" }, "no judge is on for this agent: `pinecall judges on <name>`"],
+      [{ passed: null, not_judged: "no judge is on for this agent: `pinecall judges on <name>`" }, "no judge is on for this agent\n  → pinecall judges on <name>"],
       [{ passed: null, judges: [{ ...held, name: "consent", verdict: "na" }], judge_calls: 1 }, "no judge held or broke, the rest classified the call or did not apply"],
       [{ passed: null, not_judged: "every judge run over this call failed and not one of them answered" }, "every judge run over this call failed and not one of them answered"],
     ] as const;
@@ -191,7 +192,7 @@ describe("pinecall eval", () => {
     });
     const ran = await run(["eval", "call_1"]);
     expect(ran.code).toBe(1);
-    expect(ran.out).toBe("call_1  front-desk\n  banned       broken    said guarantee at seq 14\n  e2e_latency  held      1.1s under 1.5s\n");
+    expect(ran.out).toBe("call_1 · front-desk\n  banned       broken    said guarantee at seq 14\n  e2e_latency  held      1.1s under 1.5s\n1 broken · 1 held\n");
   });
 });
 
@@ -200,15 +201,15 @@ describe("pinecall runs", () => {
     const sent = answer("get", "/v1/evals/runs", { runs: [aRun([{ metric: "tools", passed: false }])] });
     const ran = await run(["runs", "--limit", "5"]);
     expect(sent[0]!.query).toEqual({ limit: "5", agent: "front-desk" });
-    expect(ran.out).toMatch(/^front-desk · `pinecall runs --all` lists every agent's\nrun_1 {2}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {2}front-desk {8}done {5}0\/1\n$/);
+    expect(ran.out).toMatch(/^RUN {4}WHEN {14}AGENT {7}STATUS {2}HELD\nrun_1 {2}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {2}front-desk {2}done {4}0\/1\n {2}→ pinecall runs show <run> reads one · --all lists every agent's\n$/);
   });
 
   it("--all is every agent's; outside a project with no --agent, so is a bare runs", async () => {
     const sent = answer("get", "/v1/evals/runs", { runs: [] });
-    expect((await run(["runs", "--all"])).out).toBe("no run yet in this org: `pinecall test` makes one\n");
-    expect((await run(["runs"], { cwd: folder() })).out).toBe("no run yet in this org: `pinecall test` makes one\n");
+    expect((await run(["runs", "--all"])).out).toBe("no run yet in this org\n  → pinecall test makes one\n");
+    expect((await run(["runs"], { cwd: folder() })).out).toBe("no run yet in this org\n  → pinecall test makes one\n");
     expect(sent.map((one) => one.query)).toEqual([{ limit: "20" }, { limit: "20" }]);
-    expect((await run(["runs"])).out).toBe("front-desk has run no tests yet: `pinecall test` makes the first run · --all lists every agent's\n");
+    expect((await run(["runs"])).out).toBe("front-desk has run no tests yet\n  → pinecall test makes the first run · --all lists every agent's\n");
   });
 
   it("diff names what moved", async () => {
@@ -226,7 +227,9 @@ describe("pinecall cases", () => {
   it("alone is the inbox: how many wait, then a row per case", async () => {
     answer("get", "/v1/evals/cases", { cases: [A_CASE], pending: 1, pending_at_most: 50 });
     const ran = await run(["cases"]);
-    expect(ran.out).toMatch(/^1 case pending a decision · the inbox holds at most 50\npending\s+double-booked\s+/);
+    // One status on every row is said once, in the head.
+    expect(ran.out).toMatch(/^front-desk · 1 case pending a decision, of 50 the inbox holds\nCASE\s+BROKE\s+ENV\s+AGE\ndouble-booked\s+/);
+    expect(ran.out).toMatch(/\n {2}→ pinecall cases show <case> reads one · approve · dismiss\n$/);
   });
 
   it("--agent reads a slug from any folder", async () => {
@@ -269,8 +272,9 @@ describe("pinecall personas", () => {
   it("alone lists the agent's callers", async () => {
     answer("get", "/v1/agents/:slug/personas", { personas: [{ ...A_PERSONA, name: "confused-elder", owner: "pinecall", on: false, summary: "an elder who mishears" }, A_PERSONA] });
     const ran = await run(["personas"]);
-    expect(ran.out).toMatch(/confused-elder\s+pinecall off\s+an elder who mishears\n/);
-    expect(ran.out).toMatch(/apurado\s+yours\s+book the first slot tomorrow\n/);
+    expect(ran.out).toMatch(/^NAME\s+OWNER\s+ON\s+ABOUT\n/);
+    expect(ran.out).toMatch(/\nconfused-elder\s+pinecall\s+off\s+an elder who mishears\n/);
+    expect(ran.out).toMatch(/\napurado\s+yours\s+on\s+book the first slot tomorrow\n/);
   });
 
   it("add takes the facts as what=said", async () => {

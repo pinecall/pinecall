@@ -1,7 +1,7 @@
 /** Evals as a terminal reads them: the matrix, progress, runs, cases and groups, personas, a simulation, a replay. */
 
 import { HELD, BROKEN, callScore } from "../../judging/render.js";
-import { date } from "../../kit/format.js";
+import { clipped, count, date, formatHint, formatNotice, formatPairs, NEXT } from "../../kit/format.js";
 import { table } from "../../kit/table.js";
 import { type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Saved, type Simulated } from "../service/index.js";
 import { latencyLine } from "./matrix.js";
@@ -10,20 +10,24 @@ export { BottomBlock, header, progress, type Watched } from "./progress.js";
 export { cellOf, latencyLine, matrix, suite } from "./matrix.js";
 
 const NOTHING = "—";
+// Max width of a persona's line in the list; `personas show` has it whole.
+const ABOUT = 70;
 export const NO_PERSONAS_YET = (agent: string): string => `${agent} has no personas yet: \`pinecall personas add <name> --goal '…' --style '…'\`, or the console's Personas`;
 
 export const NO_RUNS = (agent: string | undefined): string => (agent === undefined ? "no run yet in this org: `pinecall test` makes one" : `${agent} has run no tests yet: \`pinecall test\` makes the first run · --all lists every agent's`);
 
-/** One line per run, newest first: id, when, agent, status, how much held; headed by whose they are. */
+/** The runs as a table, newest first: id, when, agent, status, how much held; then where the others are. */
 export function runs(found: EvalRun[], agent?: string): string[] {
-  if (found.length === 0) return [NO_RUNS(agent)];
-  const head = agent === undefined ? "every agent of the org" : `${agent} · \`pinecall runs --all\` lists every agent's`;
-  const rows = found.map((run) => {
-    const cells = run.matrix?.runs.length ?? run.calls.length;
-    const broken = new Set((run.matrix?.failures ?? []).map((one) => `${one.model} ${one.golden}`)).size;
-    return `${run.id}  ${date(run.started_at)}  ${run.agent.padEnd(16)}  ${run.status.padEnd(7)}  ${cells - broken}/${cells}`;
-  });
-  return [head, ...rows];
+  if (found.length === 0) return formatNotice(NO_RUNS(agent));
+  const rows = table(
+    ["run", "when", "agent", "status", "held"],
+    found.map((run) => {
+      const cells = run.matrix?.runs.length ?? run.calls.length;
+      const broken = new Set((run.matrix?.failures ?? []).map((one) => `${one.model} ${one.golden}`)).size;
+      return [run.id, date(run.started_at), run.agent, run.status, `${cells - broken}/${cells}`];
+    }),
+  );
+  return [...rows, formatHint("pinecall runs show <run> reads one", ...(agent === undefined ? [] : ["--all lists every agent's"]))];
 }
 
 export function moved({ before, after, moved: found }: { before: string; after: string; moved: Moved[] }): string[] {
@@ -33,7 +37,7 @@ export function moved({ before, after, moved: found }: { before: string; after: 
 
 export function promoted(done: Promoted, fromSeq: number): string[] {
   const turns = done.candidate.turns.filter((turn) => turn.say !== undefined).length;
-  return [`${done.path}  ${turns} caller turn(s) from seq ${fromSeq}`, ...done.notes.map((note) => `  ${note}`)];
+  return [`${done.path}  ${count(turns, "caller turn")} from seq ${fromSeq}`, ...done.notes.map((note) => `  ${note}`)];
 }
 
 /** Each judge's held-rate over the window against the baseline, then the most recent broken calls. */
@@ -45,7 +49,7 @@ export function drift(found: Drift): string[] {
     `  ${found.notJudged.now} not judged in the window, ${found.notJudged.before} in the baseline`,
   ];
   if (found.broke.length > 0) {
-    lines.push(`  the ${new Set(found.broke.map((one) => one.call)).size} most recent broken call(s):`);
+    lines.push(`  the most recent broken ${count(new Set(found.broke.map((one) => one.call)).size, "call")}:`);
     for (const broke of found.broke) lines.push(`    ${broke.call}  ${broke.judge}  seq ${broke.seqs.join(", ")}  ${broke.reason}`);
   }
   return lines;
@@ -53,34 +57,45 @@ export function drift(found: Drift): string[] {
 
 /** The inbox: how many wait, then one line a case — status, name, what broke, the env it came from, its age. */
 export function cases(list: CaseList, status?: string, now = Date.now() / 1000): string[] {
-  const waiting = `${list.pending} case${list.pending === 1 ? "" : "s"} pending a decision · the inbox holds at most ${list.pending_at_most}`;
+  const waiting = `${list.agent} · ${count(list.pending, "case")} pending a decision, of ${list.pending_at_most} the inbox holds`;
   if (list.cases.length === 0 && status !== undefined) return [waiting, `${list.agent} has no ${status} case`];
-  if (list.cases.length === 0) return [waiting, `${list.agent} has no cases here: a call a judge broke on is kept at hang-up, or \`pinecall cases keep <call> --name x\``];
-  return [waiting, ...table(["status", "name", "broke", "env", "age"], list.cases.map((one) => [one.status, one.name, brokeOf(one), one.source_env, ageOf(one.created_at, now)])).slice(1)];
+  if (list.cases.length === 0) return [waiting, ...formatNotice(`${list.agent} has no cases here, a call a judge broke on is kept at hang-up: \`pinecall cases keep <call> --name x\` keeps one by hand`)];
+  // One status everywhere is said once, in the head, and not on every row.
+  const one = new Set(list.cases.map((each) => each.status)).size === 1;
+  const rows = table(
+    [...(one ? [] : ["status"]), "case", "broke", "env", "age"],
+    list.cases.map((each) => [...(one ? [] : [each.status]), each.name, brokeOf(each), each.source_env, ageOf(each.created_at, now)]),
+  );
+  return [waiting, ...rows, formatHint("pinecall cases show <case> reads one", "approve", "dismiss")];
 }
 
 /** One case whole: what broke and why, its turns, the state, the expect, where it came from, and what to type next. */
 export function oneCase(one: EvalCase): string[] {
   const golden = one.golden;
-  const version = one.source_version === null ? "" : `, settings v${one.source_version}`;
+  const version = one.source_version === null ? "" : ` · settings v${one.source_version}`;
   const marks = [
     ...(one.held_out ? ["held out: played only when a run names it"] : []),
     ...(one.kept_in_repo ? ["kept in the repository: the nightly plays the file"] : []),
     ...(one.decided_by === null ? [] : [`${one.status} by ${one.decided_by}`]),
   ];
+  const width = Math.max(0, ...one.broke.map((broken) => broken.judge.length));
+  const opens: [string, string][] = [
+    ["opens in", Object.keys(golden.state ?? {}).length === 0 ? "nothing set" : formatPairs(golden.state)],
+    ...(golden.memory === undefined || golden.memory.length === 0 ? [] : [["memory", formatPairs(golden.memory)] as [string, string]]),
+    ...(golden.today === undefined ? [] : [["today", golden.today] as [string, string]]),
+    ["expects", Object.keys(golden.expect ?? {}).length === 0 ? "nothing" : formatPairs(golden.expect)],
+  ];
+  const label = Math.max(...opens.map(([name]) => name.length));
   return [
     `${one.name} · ${one.status} · ${one.agent}`,
-    `  ${origin(one)}${version})${one.source === "person" ? "" : ` · kept by ${one.author}`} · ${date(one.created_at)}`,
+    `  ${origin(one)}${version} · ${date(one.created_at)}`,
     ...marks.map((line) => `  ${line}`),
     "",
     "  broke",
-    ...(one.broke.length === 0 ? [`    ${NOTHING} nothing: ${one.source === "person" ? "a person wrote it, no call made it" : "a person kept it from a call that held"}`] : one.broke.map((broken) => `    ${broken.judge}  ${broken.reason}`)),
-    "  the turns",
-    ...golden.turns.flatMap((turn) => [`    ${turn.say === undefined ? `event ${turn.event?.name ?? ""} ${JSON.stringify(turn.event?.data ?? {})}` : `"${turn.say}"`}`, ...(turn.then ?? []).map((step) => `      then ${JSON.stringify(step)}`)]),
-    `  state   ${JSON.stringify(golden.state ?? {})}`,
-    ...(golden.memory === undefined || golden.memory.length === 0 ? [] : [`  memory  ${JSON.stringify(golden.memory)}`]),
-    ...(golden.today === undefined ? [] : [`  today   ${golden.today}`]),
-    `  expect  ${JSON.stringify(golden.expect ?? {})}`,
+    ...(one.broke.length === 0 ? [`    ${NOTHING} nothing: ${one.source === "person" ? "a person wrote it, no call made it" : "a person kept it from a call that held"}`] : one.broke.map((broken) => `    ${broken.judge.padEnd(width)}  ${broken.reason}`)),
+    "  turns",
+    ...golden.turns.flatMap((turn) => [`    ${turn.say === undefined ? `event ${turn.event?.name ?? ""} ${formatPairs(turn.event?.data ?? {})}` : `‹ ${turn.say}`}`, ...(turn.then ?? []).map((step) => `      then ${formatPairs(step)}`)]),
+    ...opens.map(([name, said]) => `  ${name.padEnd(label)}  ${said}`),
     "",
     ...nextForCase(one),
   ];
@@ -92,12 +107,16 @@ export function casesAdded(added: EvalCase[]): string[] {
 }
 
 export function caseKept(one: EvalCase): string[] {
-  return [`${one.name} kept · ${one.status} · ${one.agent} · from ${one.source_call}`, `  expect  ${JSON.stringify(one.golden.expect ?? {})}`];
+  return [`${one.name} kept · ${one.status} · ${one.agent} · from ${one.source_call}`, `  expects  ${formatPairs(one.golden.expect ?? {})}`];
 }
 
-// Where a case came from and who kept it, the parenthesis left open for the version: a call, or a person's hand.
+// Who keeps a case when a judge broke on its call: the runtime, at hang-up, and no person.
+const AT_HANG_UP = "the hang-up panel";
+
+// Where a case came from, its env, and the person who kept it when one did: a call, or a person's hand.
 function origin(one: EvalCase): string {
-  return one.source === "person" ? `written by ${one.author} (by hand, ${one.source_env}` : `from ${one.source_call} (${one.source_env}`;
+  if (one.source === "person") return `written by ${one.author} by hand · ${one.source_env}`;
+  return `from ${one.source_call} · ${one.source_env}${one.author === AT_HANG_UP ? " · kept at hang-up" : ` · kept by ${one.author}`}`;
 }
 
 export function caseDecided(one: EvalCase, wrong?: string): string {
@@ -119,7 +138,7 @@ export function casePulled({ path, case: marked }: { path: string; case: EvalCas
 export function groupLines(group: CaseGroup): string[] {
   const sims = group.simulations === 0 ? "" : ` (${group.simulations} simulated)`;
   const fix = group.proposal ? ` · fix: ${group.proposal.kind} ${group.proposal.where}` : "";
-  return [`${group.status.padEnd(9)} ${group.judge.padEnd(16)} ${String(group.cases).padStart(3)} call(s)${sims}${fix}  ${group.id}`, `          ${group.cause}`];
+  return [`${group.status.padEnd(9)} ${group.judge.padEnd(16)} ${count(group.cases, "call").padStart(9)}${sims}${fix}  ${group.id}`, `          ${group.cause}`];
 }
 
 export function groups(agent: string, found: CaseGroup[]): string[] {
@@ -134,59 +153,65 @@ export function proposed(one: CaseGroup): string[] {
   return [...groupLines(one), ...nextForGroup(one)];
 }
 
-export const APPLIED = "applied as a new version of your settings · `pinecall test --case` replays the group's calls on it";
+export const APPLIED = ["applied as a new version of your settings", formatHint("pinecall test --case replays the group's calls on it")];
 
 /** What to type next for a group, by what its proposal is. */
 export function nextForGroup(one: CaseGroup): string[] {
   const proposal = one.proposal;
-  if (proposal === undefined || proposal === null) return [`pinecall cases propose ${one.id}     ask the judge model for the cause and a fix`];
+  if (proposal === undefined || proposal === null) return [formatHint(`pinecall cases propose ${one.id} asks the judge model for the cause and a fix`)];
   const fix = [`  ${proposal.cause}`, `  proposes ${proposal.kind} · ${proposal.where} · ${typeof proposal.change === "string" ? proposal.change : JSON.stringify(proposal.change)} · ${Math.round(proposal.confidence * 100)}% sure`];
-  if (proposal.kind === "setting") return [...fix, `pinecall cases apply ${one.id}       write it as a new version of your settings`];
-  if (proposal.kind === "code") return [...fix, "  your assistant makes it: `pinecall mcp`, the cases tool, then `pinecall test --case`"];
+  if (proposal.kind === "setting") return [...fix, formatHint(`pinecall cases apply ${one.id} writes it as a new version of your settings`)];
+  if (proposal.kind === "code") return [...fix, formatHint("your assistant makes it: pinecall mcp, the cases tool, then pinecall test --case")];
   return fix;
 }
 
 /** Pinecall's first, then the agent's own (the class's, when it owns the roster); and a line when it has none of its own. */
 export function personas(agent: string, found: Persona[]): string[] {
-  const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : one.owner === "class" ? "class" : "yours");
-  const rows = table(["name", "whose", "goal"], found.map((one) => [one.name, whose(one), one.owner === "pinecall" ? (one.summary ?? one.goal) : one.goal])).slice(1);
-  const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
-  if (found.some((one) => one.fixed === true)) lines.push(`set by the class of ${agent}: its own are code beside the class (agents/${agent}/harness.*), personas({ on, own }) its switches`);
-  return lines;
+  const whose = (one: Persona): string => (one.owner === "pinecall" || one.owner === "class" ? one.owner : "yours");
+  const about = (one: Persona): string => (one.owner === "pinecall" ? (one.summary ?? one.goal) : one.about || one.goal);
+  const rows = table(["name", "owner", "on", "about"], found.map((one) => [one.name, whose(one), one.on ? "on" : "off", clipped(about(one), ABOUT)]));
+  const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, ...formatNotice(NO_PERSONAS_YET(agent))];
+  const steps = ["pinecall personas show <name> reads one", ...(found.some((one) => one.fixed === true) ? [`set in agents/${agent}/harness.* · personas({ on, own }) in the class`] : [])];
+  return [...lines, formatHint(...steps)];
 }
 
-/** One persona whole: goal, style, models, what it expects, how it acts, facts. */
+/** One persona whole, a label a line: what it is about, its goal and style, how it speaks, its facts, what it expects; a model only when not the runtime's. */
 export function persona(one: Persona): string[] {
   const facts = Object.entries(one.facts);
   const acts = one.behavior;
   const behaving = [
-    ...(acts.interrupts > 0 ? [`talks over ${Math.round(acts.interrupts * 100)}% of the answers`] : []),
-    ...(acts.pause_s > 0 ? [`pauses ${acts.pause_s}s before each line`] : []),
+    ...(acts.interrupts > 0 ? [`interrupts ${Math.round(acts.interrupts * 100)}% of the answers`] : []),
+    ...(acts.pause_s > 0 ? [`pauses ${acts.pause_s} s before each line`] : []),
     ...(acts.backchannels > 0 ? [`murmurs into ${Math.round(acts.backchannels * 100)}% of the answers`] : []),
     ...(acts.speed === 1 ? [] : [`speaks at ${acts.speed}× the vendor's tempo`]),
     ...(acts.interferer_db === null ? [] : [`a ${acts.ambience} ${acts.interferer_db} dB under it`]),
     ...(acts.packet_loss > 0 ? [`${Math.round(acts.packet_loss * 100)}% packets lost`] : []),
   ];
-  const theRuntimes = "the runtime's";
+  const models = [one.llm == null ? null : `played by ${one.llm}`, one.tts == null ? null : `read by ${one.tts}`, one.voice == null ? null : `voice ${one.voice}`].filter((said) => said !== null);
+  const pairs: [string, string][] = [
+    ...(one.about === "" ? [] : [["about", one.about] as [string, string]]),
+    ["goal", one.goal],
+    ["style", one.style],
+    ...(behaving.length === 0 ? [] : [["spoken", behaving.join(" · ")] as [string, string]]),
+    ...(models.length === 0 ? [] : [["models", models.join(" · ")] as [string, string]]),
+    ["facts", facts.length === 0 ? "none: this caller may state nothing about themselves" : facts.map(([what, said]) => `${what} ${said}`).join(" · ")],
+    ...(one.tags.length === 0 ? [] : [["tags", one.tags.join(", ")] as [string, string]]),
+  ];
+  const width = Math.max("expects".length, ...pairs.map(([label]) => label.length));
+  const expects = one.expects.length === 0 ? ["nothing: the expected-outcome judge answers n/a on its calls"] : one.expects;
   return [
-    `${one.name} · ${one.goal}`,
-    ...(one.owner === "pinecall" ? [`  Pinecall's · ${one.on ? "on" : "off"}${one.summary ? ` · ${one.summary}` : ""}`] : []),
-    ...(one.about === "" ? [] : [`  ${one.about}`]),
-    `  ${one.style}`,
-    `  played by ${one.llm ?? theRuntimes} · read by ${one.tts ?? theRuntimes} · voice ${one.voice ?? theRuntimes}`,
-    ...(behaving.length === 0 ? [] : [`  on a spoken line: ${behaving.join(", ")}`]),
-    ...(one.expects.length === 0 ? ["  (expects nothing: the expected-outcome judge answers N/A on its calls)"] : one.expects.map((line) => `  expects: ${line}`)),
-    ...(one.tags.length === 0 ? [] : [`  tags: ${one.tags.join(", ")}`]),
-    ...(facts.length === 0 ? ["  (no facts: this caller may state nothing about themselves)"] : facts.map(([what, said]) => `  ${what}: ${said}`)),
+    `${one.name} · ${one.owner === "pinecall" ? `Pinecall's · ${one.on ? "on" : "off"}` : one.owner}`,
+    ...pairs.map(([label, said]) => `  ${label.padEnd(width)}  ${said}`),
+    ...expects.map((line, at) => `  ${(at === 0 ? "expects" : "").padEnd(width)}  ${line}`),
   ];
 }
 
 export function personaWritten(verb: "add" | "edit", done: { name: string; personas: Persona[] }): string {
-  return `${done.name} ${verb === "add" ? "written" : "changed"} · ${done.personas.length} persona(s)`;
+  return `${done.name} ${verb === "add" ? "written" : "changed"} · ${count(done.personas.length, "persona")}`;
 }
 
 export function personaDropped(done: { name: string; personas: Persona[] }): string {
-  return `${done.name} dropped · ${done.personas.length} persona(s)`;
+  return `${done.name} dropped · ${count(done.personas.length, "persona")}`;
 }
 
 export function personaSwitched(done: { name: string; on: boolean }, agent: string): string {
@@ -194,30 +219,41 @@ export function personaSwitched(done: { name: string; on: boolean }, agent: stri
 }
 
 export function generated(written: GeneratedPersonas & Saved): string[] {
-  const bill = written.evals === 0 ? "on your own judge key: not billed" : `${written.evals} eval(s) · $${written.cost_usd.toFixed(4)}`;
-  const kept = written.written.length > 0 ? ` · written as ${written.written.map((one) => `${one.symbol} in ${one.path}`).join(", ")} · add each to personas({ own })` : written.saved ? " · saved" : " · `--save` keeps them";
-  return [...written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line) => `  expects: ${line}`)]), `${written.personas.length} caller(s) written · ${bill}${kept}`];
+  const bill = written.evals === 0 ? "on your own judge key: not billed" : `${count(written.evals, "eval")} · $${written.cost_usd.toFixed(4)}`;
+  const callers = written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line, at) => `  ${at === 0 ? "expects" : "       "}  ${line}`)]);
+  const head = `${count(written.personas.length, "caller")} · ${bill}`;
+  if (written.written.length > 0) return [...callers, head, ...written.written.map((one) => `  written  ${one.path} · ${one.symbol}`), formatHint("add each to personas({ own }) in the class")];
+  return [...callers, head, ...(written.saved ? ["  saved"] : [formatHint("--save keeps them")])];
 }
 
 /** The rows written as code, one line each: the file and the name the class imports. */
 export function pulled(what: string, done: { written: { path: string; symbol: string }[] }): string[] {
   if (done.written.length === 0) return [`nothing to pull: the agent has no ${what} of its own as rows`];
-  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} ${what} written as code · add them to ${what}({ own }) · the rows stay until \`pinecall ${what} rm\``];
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} ${what} written as code`, formatHint(`add them to ${what}({ own })`, `the rows stay until pinecall ${what} rm`)];
 }
-/** The end of a simulation: its call, the turns, the latencies, and every judge when judged. */
+/** The end of a simulation: its call, the turns and the worst latency, and every judge when judged. */
 export function simulated(said: Simulated): string[] {
-  const turns = said.callerTurns === null ? `${said.agentTurns} agent turn(s)` : `${said.callerTurns} caller turn(s) · ${said.agentTurns} agent turn(s) · ${said.line}`;
+  const turns = said.callerTurns === null ? count(said.agentTurns, "agent turn") : `${count(said.callerTurns, "caller turn")} · ${count(said.agentTurns, "agent turn")} · ${said.line}`;
   const measured = latencyLine(said.medians);
-  const lines = [`  ${said.call === "" ? "no call" : said.call} · ${turns}`, `  ${measured === "" ? "no metrics on this call" : measured}`];
+  const lines = [`${said.call === "" ? "no call" : said.call} · ${turns}${measured === "" ? "" : ` · ${measured}`}`];
   if (said.score !== null) lines.push(...callScore(said.score));
-  if (said.unjudged) lines.push(`no call.score within a minute: read the call with \`pinecall sessions ${said.call}\`, or the console → Sessions`);
+  if (said.unjudged) lines.push("no score within a minute", formatHint(`pinecall sessions ${said.call} reads it when the judges are done`));
+  else if (said.call !== "") lines.push(formatHint(`pinecall sessions ${said.call} reads it whole`));
   return lines;
 }
 
-/** A replay: a header line, then one aligned line per check. */
+/** A replay: the call and agent, one aligned line per check, how many of each, then each next step the checks named, once. */
 export function replayed(answer: Replayed): string[] {
   const width = Math.max(...answer.verdicts.map((verdict) => verdict.check.length));
-  return [`${answer.call}  ${answer.agent}`, ...answer.verdicts.map((verdict) => `  ${verdict.check.padEnd(width)}  ${verdict.status.padEnd(8)}  ${verdict.detail}`)];
+  const steps: string[] = [];
+  const rows = answer.verdicts.map((verdict) => {
+    const [said = verdict.detail, step] = formatNotice(verdict.detail);
+    if (step !== undefined && !steps.includes(step)) steps.push(step);
+    return `  ${verdict.check.padEnd(width)}  ${verdict.status.padEnd(8)}  ${said}`;
+  });
+  const tally = new Map<string, number>();
+  for (const verdict of answer.verdicts) tally.set(verdict.status, (tally.get(verdict.status) ?? 0) + 1);
+  return [`${answer.call} · ${answer.agent}`, ...rows, [...tally].map(([status, n]) => `${n} ${status}`).join(" · "), ...steps];
 }
 
 /** How long ago, in the largest whole unit: 40s, 12m, 3h, 2d. */
@@ -243,7 +279,7 @@ function nextForCase(one: EvalCase): string[] {
   if (one.status === "approved" && !one.kept_in_repo) next.push([`pinecall cases pull ${one.name}`, "a golden in the repository instead"]);
   if (one.status === "dismissed") next.push([`pinecall cases reopen ${one.name}`, "pending again"]);
   const wide = Math.max(...next.map(([command]) => command.length));
-  return next.map(([command, why]) => `  ${command.padEnd(wide)}  ${why}`);
+  return next.map(([command, why]) => `  ${NEXT} ${command.padEnd(wide)}  ${why}`);
 }
 
 function driftRow(row: JudgeDrift, width: number): string {

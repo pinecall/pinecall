@@ -11,15 +11,31 @@ describe("pinecall providers", () => {
     answer("get", "/v1/providers", CATALOG);
     const ran = await run(["providers"]);
     expect(ran.code).toBe(0);
-    expect(ran.out).not.toMatch(/cartesia\s+stt,tts\s+no key/);
-    expect(ran.out).toContain("no key: cartesia (stt,tts) · `pinecall providers add <vendor>` brings one");
-    expect(ran.out).toContain("3 vendors · ours: llm anthropic · stt deepgram · tts cartesia");
+    // The vendors that run a call, then how many wait and on what: a vendor with no key is a count, not a row.
+    expect(ran.out).toBe(
+      [
+        "VENDOR     DOES  STANDING",
+        "anthropic  llm   ready",
+        "deepgram   stt   ready",
+        "2 run a call here · 1 have no key · ours: llm anthropic · stt deepgram · tts cartesia",
+        "  → pinecall providers add <vendor> brings a key · --all lists every vendor and the realtime models",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("--all lists every vendor with its standing, and the realtime models a row a vendor", async () => {
+    answer("get", "/v1/providers", { ...CATALOG, realtime: { xai: ["grok-voice-3.0", "grok-voice-latest"] } });
+    const ran = await run(["providers", "--all"]);
+    expect(ran.out).toMatch(/\ncartesia\s+stt tts\s+no key\n/);
+    expect(ran.out).toMatch(/\nREALTIME\s+MODELS\nxai\s+grok-voice-3\.0, grok-voice-latest\n/);
+    expect(ran.out).toContain("  → pinecall providers add <vendor> brings a key\n");
   });
 
   it("--does keeps one job, and an unknown job is refused", async () => {
     answer("get", "/v1/providers", CATALOG);
     const ran = await run(["providers", "--does", "llm"]);
-    expect(ran.out).toContain("1 vendors");
+    expect(ran.out).toContain("\n1 run a call here · ours:");
     const wrong = await run(["providers", "--does", "vision"]);
     expect(wrong.code).toBe(2);
     expect(wrong.err).toContain("no modality called vision");
