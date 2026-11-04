@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.11.26 — released with the CLI's output review (2026-11-04)
+
 ## 0.11.25 — the class owns its judges and callers as code, its docs, its melody, its look and its timeouts (2026-11-04)
 
 - **`hold` and `widget`** as class attributes: the hold melody — a file beside the class, shipped once the agent

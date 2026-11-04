@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.26] — every refusal and every table reads to a person (2026-11-04)
 
 - **Every refusal in the CLI's own words.** A line typed wrong names the verb typed, what it takes and the
   `--help` that says so (`pinecall lexicon add needs --say <spoken>: …`, `pinecall memory needs a <contact>: …`,

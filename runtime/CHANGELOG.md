@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.26 — the replay's skipped checks say what a person types (2026-11-04)
 
 - **The replay's two skipped checks say what a person types.** `register` with no banned words: `pinecall eval
   <call> --policy <file>` reads them from a file of `{"banned": […]}`; `talk` with no `talk_share`: a policy
