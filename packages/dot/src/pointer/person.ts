@@ -5,9 +5,8 @@
 // the way a multiplayer cursor carries a name tag. The spotlight and the "here" ring live there too,
 // and, in the corner it rests in, what the visitor is saying and the buttons: captions, with hang-up
 // in a call and stop in a walk. They stand beside the resting face, and slide into its corner while
-// it tours, back aside as it comes home. Every colour is a custom property: --pc-face
-// (the dot and the arrow), --pc-face-ring, --pc-bubble, --pc-bubble-ink, --pc-heard, --pc-heard-ink,
-// --pc-hang.
+// it tours, back aside as it comes home. Every colour is a custom property: --pc-face (the dot and
+// the arrow), --pc-face-ring, --pc-bubble, --pc-bubble-ink, --pc-heard, --pc-heard-ink, --pc-hang.
 
 import type { Kind } from "./hover.js";
 import { ARROW, BACK, CAPTIONS, NEXT, PAUSE, STOP } from "./icons.js";
