@@ -98,8 +98,9 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `project/credentials.ts` | 116 | Where the key and gateway URL come from: the environment, else the nearest `.env`, else the project's `pinecall.json` and this machine's sign-in. |
 | `project/config.ts` | 54 | `pinecall.json`: where a project runs — the gateway and the org — committed beside its agents, with no secret in it. |
 | `project/session.ts` | 110 | `~/.pinecall/session.json`: who this machine is at each gateway — the sign-in, the keys in the person's orgs — and the phone it calls from. |
-| `project/language.ts` | 83 | Which language an agent is written in, and the command that starts its serve entry. |
-| `project/layout.ts` | 141 | The tenant's project: one folder per agent under `agents/`, holding its class, its documents and its tests. |
+| `project/language.ts` | 93 | Which language an agent is written in, and the command that starts its serve entry. |
+| `project/layout.ts` | 147 | The tenant's project: one folder per agent under `agents/`, holding its class, its documents and its tests. |
+| `project/harness.ts` | 152 | The agent's harness file: its own judges and callers as code, in its language, one more appended by `pull`, `generate --save` and the console. |
 
 ### `billing/`
 
@@ -171,7 +172,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 |---|---|---|
 | `judging/commands.ts` | 170 | `pinecall judges | judging`: every judge a call meets, one tried on calls, and whether the org's calls are judged and on what. |
 | `judging/render.ts` | 180 | Judging as a terminal reads it: the judges table, a try, the org's judging, and a call's score. |
-| `judging/service.ts` | 221 | Judging: every judge a call meets, one tried on calls, and whether the org's calls are judged and on what. |
+| `judging/service.ts` | 246 | Judging: every judge a call meets, one tried on calls, and whether the org's calls are judged and on what. |
 
 ### `calls/`
 
@@ -200,7 +201,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `evals/service/dataset.ts` | 201 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. |
 | `evals/service/goldens.ts` | 103 | Golden files on the tenant's disk and the schema the runner accepts. |
 | `evals/service/index.ts` | 82 | Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. |
-| `evals/service/personas.ts` | 240 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled to files. |
+| `evals/service/personas.ts` | 185 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled into its code. |
 | `evals/service/replay.ts` | 17 | Ring 3: one finished call rebuilt from its log and answered by the runtime's code checks; nothing re-run, no model asked. |
 | `evals/service/runs.ts` | 261 | The runs the gateway kept: listed, one shown, two diffed, a real call promoted to a candidate, each judge's drift. |
 | `evals/service/simulation.ts` | 261 | One simulated call: a model plays the persona against the agent wherever it is held, written or spoken, judged at hang-up. |
@@ -236,7 +237,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 |---|---|---|
 | `scaffold/commands.ts` | 98 | `pinecall new | generate`: a new project, an agent in it, one more golden for an agent. |
 | `scaffold/render.ts` | 32 | Scaffold as a terminal reads it: the next steps of a new project, the files a generate wrote. |
-| `scaffold/service.ts` | 181 | Scaffold: a new project and where it runs, an agent in it, one more golden for an agent. |
+| `scaffold/service.ts` | 175 | Scaffold: a new project and where it runs, an agent in it, one more golden for an agent. |
 
 ### `dev/` — the engine: `start`, `console`, `prompt`, the console's screens
 
@@ -249,7 +250,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `dev/handlers/chat.ts` | 61 | The console's Chat screen: written calls against the agent this process serves, so a tool's breakpoint works from the terminal. |
 | `dev/handlers/index.ts` | 41 | The console's dev verbs this process answers, one row per screen, over the agent's directory on disk. |
 | `dev/handlers/knowledge.ts` | 77 | The console's Docs and Memory screens: this directory's documents pushed and scored, its memory goldens run. |
-| `dev/handlers/runs.ts` | 92 | The console's Runs and Personas screens: a call promoted to a candidate, a generated persona kept as a file, the judges' drift, the reproductions a suite wrote. |
+| `dev/handlers/runs.ts` | 92 | The console's Runs and Personas screens: a call promoted to a candidate, a generated persona kept as code, the judges' drift, the reproductions a suite wrote. |
 | `dev/handlers/screen.ts` | 40 | What every console screen's handlers stand on, and how a failure of theirs is told to the console. |
 | `dev/handlers/suite.ts` | 117 | The console's Tests and Simulations screens: goldens and personas played through the agent this process serves. |
 | `dev/reload.ts` | 123 | A save reloads the agent: its folder watched, a burst of writes settled into one reload, the next copy answering before the one before drains. |

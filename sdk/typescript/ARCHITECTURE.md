@@ -56,7 +56,7 @@ a directory earns its place there by having a line in that table (§13).
 | `stages.ts` | `Stages<"a"|"b">`, `StageOf<T>`, and `lowerStage` — `stage:` is sugar over `when(state)` |
 | `visibility.ts` | `@state` in its three spellings — bare, `{ pii: true }`, `{ visibility }` — which fields are the state (`declaredStateOf`) and who may see them (`visibilityOf`, plus `static visibility = {…}`) |
 | `accepts.ts` | `static events = {…}`: which outside facts this class takes, and from whom |
-| `harness.ts` | `judges({ on })` and `personas({ on })`, what `static judges` and `static personas` hold; `harnessOf(ctor, file)` reads the folders beside the class (`judges/*.md` in the library's format, `test/personas/*.json` as a PUT takes one) into each `own`, refusing a bad file by sentence and a folder the class never declared |
+| `harness.ts` | `ownJudge({ name, asks, … })` and `ownPersona({ name, goal, style, … })`, each refused by sentence when wrong; `judges({ on, own })` and `personas({ on, own })`, what `static judges` and `static personas` hold, two of one name refused; `harnessOf(ctor)` is what the class declares, as the declaration sends it |
 | `view.ts` | `@view(Draw)` / `@view(Draw, "Cliente")`: the panel the class draws beside a conversation, and `viewOf`. `Who` is the conversation it is drawn about — `{ agent, contact, call }` |
 | `lifecycle.ts` | the hooks as a type (`onCall`, `onEnd`, `onMemory`, `onEvent`) and `runHook`, which authors their writes |
 

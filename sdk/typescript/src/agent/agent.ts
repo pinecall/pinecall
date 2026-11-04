@@ -188,9 +188,9 @@ export class Agent {
   static maxDuration?: number | "off";
   /** How long a turn waits for the model's first word, in seconds. */
   static llmTimeout?: number;
-  /** The judges the class owns: `judges({ on: ["consent", …] })`, plus the files under `judges/`. */
+  /** The judges the class owns: `judges({ on: ["consent", …], own: [ownJudge({…})] })`. */
   static judges?: Declared["judges"];
-  /** The personas the class owns: `personas({ on: ["in-a-hurry", …] })`, plus the files under `test/personas/`. */
+  /** The personas the class owns: `personas({ on: ["in-a-hurry", …], own: [ownPersona({…})] })`. */
   static personas?: Declared["personas"];
   /** The hold melody: a file beside the class and the wait before it (`{ file: "hold.mp3", afterS: 1.5 }`), or `"off"`. */
   static hold?: HoldDeclaration | "off";

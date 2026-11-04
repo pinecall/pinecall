@@ -172,13 +172,13 @@ it("sends the longest call in seconds and the model's timeout, and refuses a dur
   expect([config["max_duration_s"], config["llm_timeout_s"]]).toEqual([1200, 8]);
 });
 
-/** Recepción que es dueña de sus jueces y sus personas: los interruptores en la clase, los archivos al lado. */
+/** Recepción que es dueña de sus jueces y sus personas: los interruptores en la clase, ninguno propio. */
 class Juzgada extends ClinicaNorte {
   static override judges = judges({ on: ["consent"] });
   static override personas = personas({ on: ["in-a-hurry", "interrupts"] });
 }
 
-it("sends the judges and the personas the class owns, with no folder beside it an empty own", async () => {
+it("sends the judges and the personas the class owns, none of its own an empty own", async () => {
   mount(Juzgada, { pc, source: SOURCE, file: FILE, slug: "juzgada" });
   await pc.connect();
   for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 1));

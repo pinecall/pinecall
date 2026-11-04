@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { UsageError } from "../errors.js";
-import { AGENT_FILES } from "./language.js";
+import { AGENT_FILES, HARNESS_FILES, languageOf } from "./language.js";
 
 /** Project folder holding one subfolder per agent. */
 export const PROJECT_AGENTS = "agents";
@@ -25,12 +25,11 @@ export const MEMORY_GOLDEN = "memory.json";
  * paths themselves. Everything an agent is lives in its folder: copied, it is copied whole.
  *
  *     agents/<name>/agent.ts              the class and its private helpers
+ *     agents/<name>/harness.ts            the agent's own judges and callers as code (harness.py, harness.rb), when the class declares them
  *     agents/<name>/docs/                 what `docs push` sends when no folder is named
  *     agents/<name>/test/agent.test.ts    ring 0
  *     agents/<name>/test/goldens/         ring 1, plus the `docs.json` and `memory.json` goldens
  *     agents/<name>/test/memory/          extraction cases, one written call each
- *     agents/<name>/test/personas/        the agent's own simulated callers, one JSON file each, when the class declares them
- *     agents/<name>/judges/               the agent's own judges, one Markdown file each, when the class declares them
  *     agents/<name>/test/candidates/      real calls `runs promote` wrote, before a person keeps them
  *     lib/                                code shared by two or more agents
  */
@@ -42,8 +41,8 @@ export interface AgentHome {
   /** Project root, where verbs run. */
   root: string;
   goldens: string;
-  personas: string;
-  judges: string;
+  /** The agent's own judges and callers as code, named by its language. */
+  harness: string;
   candidates: string;
   docs: string;
   docsGolden: string;
@@ -63,14 +62,18 @@ export function homeOf(file: string): AgentHome {
     name,
     root,
     goldens: join(tests, "goldens"),
-    personas: join(tests, "personas"),
-    judges: join(folder, "judges"),
+    harness: join(folder, HARNESS_FILES[languageOf(path)]),
     candidates: join(tests, "candidates"),
     docs: join(folder, AGENT_DOCS),
     docsGolden: join(tests, "goldens", DOCS_GOLDEN),
     memoryGolden: join(tests, "goldens", MEMORY_GOLDEN),
     memoryCases: join(tests, "memory"),
   };
+}
+
+/** The title a slug reads as: `front-desk` is `Front Desk`. */
+export function titleOf(slug: string): string {
+  return slug.split("-").map((part) => part[0]!.toUpperCase() + part.slice(1)).join(" ");
 }
 
 /** Whether the path exists and is a directory. */

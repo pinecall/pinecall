@@ -180,8 +180,8 @@ module Pinecall
         end
 
         # `turn endpointing_ms: 300`, `docs base: "…", k: 4`, `memory remember: […], forget: […]`,
-        # `knowledge path: "…", text: "…"`, `judges on: [...]` and `personas on: [...]` (which of
-        # Pinecall's; the class's own are the files under `judges/` and `test/personas/`).
+        # `knowledge path: "…", text: "…"`, `judges on: [...], own: [...]` and `personas on: [...], own: [...]`
+        # (which of Pinecall's, and the class's own: `Pinecall.own_judge`, `Pinecall.own_persona`).
         AS_KEYWORDS.each do |field|
           define_method(field) do |**given|
             return environment[field] if given.empty?
@@ -228,12 +228,12 @@ module Pinecall
         end
 
         # The AgentConfig sent to the gateway: the contract, and the environment the class declares,
-        # the judges and the personas read from the folders beside the class's file.
+        # the judges and the personas it owns checked once more.
         def wire_config(tools: nil)
           here = source_file
           {
             **environment,
-            **Harness.declared(self, folder: here && File.dirname(here)),
+            **Harness.declared(self),
             hold: Melody.config_of(@hold, here),
             prompt: Prompt::FRAMEWORK,
             tools:,

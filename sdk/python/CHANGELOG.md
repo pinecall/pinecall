@@ -13,12 +13,14 @@
 - **`max_duration` and `llm_timeout`** as class attributes: the longest a voice call runs (minutes, or `"off"`)
   and how long a turn waits for the model's first word (seconds), fixed over the settings.
 
-- **A class owns its judges and its personas.** `judges = judges(on=["consent", …])` names which of
-  Pinecall's judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`, one
-  each, in the library's format; `personas = personas(on=[…])` the same for the callers
-  `pinecall simulate` plays, its own `agents/<slug>/test/personas/<name>.json`. Both reach the gateway
-  on `agent.configure` (`judges`, `personas` on `AgentConfig`), the console shows them locked, and a
-  bad file or a folder the class never declared is refused when the agent registers, by sentence.
+- **A class owns its judges and its personas, as code.** `judges = judges(on=["consent", …],
+  own=[OFFERS_NEXT_SLOT])` names which of Pinecall's judges the agent's calls meet and the agent's
+  own, each an `own_judge(name=…, asks=…, answer=…, choices=…, when=…, trigger=…, reads=…)`;
+  `personas = personas(on=…, own=…)` the same for the callers `pinecall simulate` plays, each of its
+  own an `own_persona(name=…, goal=…, style=…, …)`. `pinecall new` writes both in
+  `agents/<slug>/harness.py`. Both reach the gateway on `agent.configure` (`judges`, `personas` on
+  `AgentConfig`), the console shows them locked, and a wrong one, or two of one name, is refused
+  when the agent registers, by a sentence that names it.
 
 - **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the
   reply played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting`

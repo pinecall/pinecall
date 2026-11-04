@@ -30,14 +30,14 @@ export function judges(owner: JudgeOwner, list: JudgeList): string[] {
     ["name", "owner", "switch", "answers", "when", "asks"],
     list.judges.map((row) => [row.name, row.owner, `${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`, answerLabel(row), whenLabel(row), textOf(row)]),
   );
-  if (owner !== null && list.judges.some((row) => row.fixed === true)) rows.push(`set by the class of ${owner}: agents/${owner}/judges/ holds its own, judges({ on }) its switches`);
+  if (owner !== null && list.judges.some((row) => row.fixed === true)) rows.push(`set by the class of ${owner}: its own are code beside the class (agents/${owner}/harness.*), judges({ on, own }) its switches`);
   return rows;
 }
 
-/** The rows written as files, one line each. */
-export function pulled(done: { files: string[] }): string[] {
-  if (done.files.length === 0) return ["nothing to pull: the agent has no judges of its own as rows"];
-  return [...done.files, `${done.files.length} judge(s) written · the rows stay until \`pinecall judges rm\``];
+/** The rows written as code, one line each: the file and the name the class imports. */
+export function pulled(done: { written: { path: string; symbol: string }[] }): string[] {
+  if (done.written.length === 0) return ["nothing to pull: the agent has no judges of its own as rows"];
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} judge(s) written as code · add them to judges({ own }) · the rows stay until \`pinecall judges rm\``];
 }
 
 /** One judge whole: the line the list prints, then how and when it answers, what it reads, and its question. */

@@ -1,13 +1,12 @@
-/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled to files. */
-
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled into its code. */
 
 import { z } from "zod";
 
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
+import { appendPersona, type Appended } from "../../project/harness.js";
+import type { AgentHome } from "../../project/layout.js";
 import * as providers from "../../providers/service.js";
 import { AMBIENCES } from "./suite.js";
 
@@ -23,7 +22,7 @@ const A_SPEED = "--speed is a multiple of the caller's usual pace, 0.5 to 2";
 export const NOBODY = (name: string, agent: string): string => `no persona called ${name} for ${agent}: \`pinecall personas add ${name} --goal '…' --style '…'\`, or the console's Personas`;
 export const PINECALLS = (name: string): string => `${name} is one of Pinecall's personas: \`pinecall personas on|off ${name}\` switches it; write your own under another name`;
 export const SET_BY_THE_CLASS = (agent: string): string =>
-  `personas set by the class of ${agent}: its callers are the files under agents/${agent}/test/personas/, and which of Pinecall's it plays is personas({ on }) in the class; nothing is written here`;
+  `personas set by the class of ${agent}: its callers are code beside the class (agents/${agent}/harness.*, ownPersona), and which of Pinecall's it plays is personas({ on, own }) in the class; nothing is written here`;
 
 /** What `add` and `edit` take; on `edit` only the fields named change. */
 export const WritePersonaInput = z.object({
@@ -135,18 +134,18 @@ export async function switchPersona(ctx: Context, agent: string, name: string, o
   return { name, on, personas: await api.putPersona(ctx.gateway(), agent, name, { on }) };
 }
 
-/** What `generate --save` did with the callers: rows written, or files under the folder the class reads. */
+/** What `generate --save` did with the callers: rows written, or code appended to the harness file the class imports. */
 export interface Saved {
   saved: boolean;
-  /** The files written, when the class owns the roster; empty when rows were written or nothing was kept. */
-  files: string[];
+  /** What was written as code, when the class owns the roster; empty when rows were written or nothing was kept. */
+  written: Appended[];
 }
 
 /**
  * Callers written by the judge model from the agent; kept with `save`: as the agent's rows, or, when the
- * class owns its roster, as files under `folder` (`agents/<agent>/test/personas/`), which the class reads.
+ * class owns its roster, as code appended to the agent's harness file, for the class to import into `own`.
  */
-export async function generatePersonas(ctx: Context, agent: string, input: GenerateInput, folder?: string): Promise<api.GeneratedPersonas & Saved> {
+export async function generatePersonas(ctx: Context, agent: string, input: GenerateInput, home?: AgentHome): Promise<api.GeneratedPersonas & Saved> {
   const gw = ctx.gateway();
   const written = await api.generatePersonas(gw, agent, {
     n: input.n,
@@ -154,44 +153,24 @@ export async function generatePersonas(ctx: Context, agent: string, input: Gener
     ...(input.fromCall === undefined ? {} : { from_call: input.fromCall }),
     ...(input.template === undefined ? {} : { template: input.template }),
   });
-  if (!input.save) return { ...written, saved: false, files: [] };
-  if (folder !== undefined && ownedByTheClass(await listPersonas(ctx, agent))) {
-    const files: string[] = [];
-    for (const persona of written.personas) files.push(await writePersonaFile(folder, persona));
-    return { ...written, saved: true, files };
+  if (!input.save) return { ...written, saved: false, written: [] };
+  if (home !== undefined && ownedByTheClass(await listPersonas(ctx, agent))) {
+    return { ...written, saved: true, written: written.personas.map((persona) => appendPersona(home, persona)) };
   }
   for (const persona of written.personas) {
     const { name, ...rest } = persona;
     await api.putPersona(gw, agent, name, rest);
   }
-  return { ...written, saved: true, files: [] };
-}
-
-/** A persona as its file holds it: what `PUT …/personas/{name}` takes, the name being the file's. */
-export type PersonaFile = Omit<api.PersonaWrite, "was" | "on">;
-
-/** One caller written as `<folder>/<name>.json`, what the class reads; the same name again is replaced. */
-export async function writePersonaFile(folder: string, persona: { name: string } & PersonaFile): Promise<string> {
-  const { name, ...rest } = persona;
-  if (!A_NAME.test(name)) throw new UsageError(`${name} is no name for a caller: lower-case letters and digits joined by hyphens — apurado, price-shopper`);
-  await mkdir(folder, { recursive: true });
-  const path = join(folder, `${name}.json`);
-  await writeFile(path, `${JSON.stringify(rest, null, 2)}\n`, "utf8");
-  return path;
+  return { ...written, saved: true, written: [] };
 }
 
 /**
- * The agent's own callers the gateway keeps, written once as files under `folder` for a class that is
- * about to declare them; the rows stay, and `pinecall personas rm` drops them once the class owns the roster.
+ * The agent's own callers the gateway keeps, appended once as code to the agent's harness file for a class that
+ * is about to declare them; the rows stay, and `pinecall personas rm` drops them once the class owns the roster.
  */
-export async function pullPersonas(ctx: Context, agent: string, folder: string): Promise<{ files: string[] }> {
+export async function pullPersonas(ctx: Context, agent: string, home: AgentHome): Promise<{ written: Appended[] }> {
   const own = (await listPersonas(ctx, agent)).filter((one) => !isPinecalls(one) && one.owner !== "class");
-  const files: string[] = [];
-  for (const one of own) {
-    const { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior } = one;
-    files.push(await writePersonaFile(folder, { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior }));
-  }
-  return { files };
+  return { written: own.map(({ name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior }) => appendPersona(home, { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior })) };
 }
 
 /** Repeated `--fact 'what=said'` flags as a map. */

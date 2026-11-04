@@ -48,10 +48,8 @@ export {
   switchPersona,
   WritePersonaInput,
   writePersona,
-  writePersonaFile,
   type GeneratedPersonas,
   type Persona,
-  type PersonaFile,
   type Saved,
 } from "./personas.js";
 export { readPolicy, replayCall, type Replayed, type Verdict } from "./replay.js";

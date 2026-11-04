@@ -35,7 +35,8 @@ src/pinecall/
   _author.py                 who is writing right now — a `ContextVar`, per task, never a global
   _state.py                  the fields a class declares, `state(...)`, the stage, every write and who made it
   _config.py                 the world's twelve settings, refused at creation with the verb that sets each; the slug
-  _harness.py                `judges(on=…)`, `personas(on=…)`, and the folders beside the class's file read into each `own`
+  _harness.py                `own_judge(...)`, `own_persona(...)`, each refused by sentence when wrong; `judges(on=…, own=…)`, `personas(on=…, own=…)`
+  _beside.py                 the folder beside a class: its file's, for the `docs/` and the melody it ships from there
   _docs.py                   the `docs/` folder beside a class that declares its base, pushed once the agent registers
   _melody.py                 the hold melody a class declares: the file beside it, by hash on the wire, shipped once registered
   _tools.py                  `@tool`, the tools a class declares, what this state shows, running one

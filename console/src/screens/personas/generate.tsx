@@ -13,7 +13,7 @@ import { Face } from "./face";
  * after; the gateway writes as many as it writes unless asked (three). What comes back is drawn as the callers of the grid are, each with what it
  * wants, how it talks and what it holds the agent to, and is saved only when kept.
  */
-/** Where a kept caller goes: the agent's rows, or a file under `test/personas/` the class reads, written by the `pinecall start` in its directory. */
+/** Where a kept caller goes: the agent's rows, or code in `agents/<agent>/harness.*` the class imports, written by the `pinecall start` in its directory. */
 export type KeptAs = "rows" | "files";
 
 export function Generate({ agent, personas, keptAs, onKept, onCancel }: { agent: string; personas: Persona[]; keptAs: KeptAs; onKept: (personas: Persona[]) => void; onCancel: () => void }): ReactNode {
@@ -75,7 +75,7 @@ export function Generate({ agent, personas, keptAs, onKept, onCancel }: { agent:
           <h1 className="psn-doc-name">Generate callers</h1>
           <p className="psn-doc-about">
             A model reads {agent} — its prompt, its tools, what it knows — and writes callers to put it to the test, each with what it expects the agent to do. You choose which to keep; nothing is saved before.
-            {keptAs === "files" && <> The class owns the roster: a kept caller is a file under <span className="ui-fixed">agents/{agent}/test/personas/</span>, written by the <span className="ui-fixed">pinecall start</span> in its directory, for you to commit.</>}
+            {keptAs === "files" && <> The class owns the roster: a kept caller is code appended to <span className="ui-fixed">agents/{agent}/harness.*</span> by the <span className="ui-fixed">pinecall start</span> in its directory, for you to add to <span className="ui-fixed">personas({"{ own }"})</span> and commit.</>}
           </p>
         </div>
         <div className="psn-doc-actions">

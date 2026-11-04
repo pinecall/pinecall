@@ -87,7 +87,7 @@ and `PINECALL_URL` from the environment or the project's `.env`. Full reference:
 [docs/the-cli.md](https://github.com/pinecall/pinecall/blob/main/cli/docs/the-cli.md).
 
 A project holds one or more agents: `agents/<name>/agent.tsx`, their tests in
-`agents/<name>/test/` (goldens, memory, personas), and their judges in `agents/<name>/judges/`. Voice, model, language, greeting, knowledge and the documents an agent searches
+`agents/<name>/test/` (goldens, memory), and their own judges and callers as code in `agents/<name>/harness.ts`. Voice, model, language, greeting, knowledge and the documents an agent searches
 are per-world settings (`pinecall agent set --language es`), unless the class declares them
 itself — `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `static` fields — and then the class wins. Running in production on your own server:
 [Run it on your own server](https://docs.pinecall.io/guides/own-server/).

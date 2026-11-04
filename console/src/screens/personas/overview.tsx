@@ -50,7 +50,7 @@ export function Overview({
             The callers a model plays against {whose}, improvising every line — in Simulations, or in <span className="ui-fixed">pinecall simulate</span>.{" "}
             {fixed ? (
               <>
-                Set by the class of {agent}: its own are the files under <span className="ui-fixed">agents/{agent}/test/personas/</span>, which of Pinecall's it plays is <span className="ui-fixed">personas({"{ on }"})</span> in the class, and a change is a commit.
+                Set by the class of {agent}: its own are code beside the class (<span className="ui-fixed">agents/{agent}/harness.*</span>, each an <span className="ui-fixed">ownPersona</span>), which of Pinecall's it plays is <span className="ui-fixed">personas({"{ on, own }"})</span> in the class, and a change is a commit.
               </>
             ) : (
               "Switch on Pinecall's, or write your own."

@@ -33,6 +33,8 @@ THE_DOOR = [
     "judges",
     "knowledge",
     "llm",
+    "own_judge",
+    "own_persona",
     "panel",
     "personas",
     "realtime",

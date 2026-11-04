@@ -26,12 +26,12 @@ describe("the table", () => {
     await expect(answer("nobody.holds" as never, {})).rejects.toMatchObject({ status: 404 });
   });
 
-  it("writes a persona the console kept as a file the class reads", async () => {
+  it("writes a persona the console kept as code the class imports", async () => {
     const root = project(["front-desk"]);
     const answer = devHandler(screensFor({ ctx: testContext({ cwd: root }).ctx, home: homeOf(`${root}/agents/front-desk/agent.ts`), served: servedByTheGateway("front-desk") }));
     const written = await answer("personas.write", { name: "price-shopper", goal: "get a price", style: "blunt", expects: ["The agent should give the price."] });
-    expect(written).toEqual({ path: "agents/front-desk/test/personas/price-shopper.json", name: "price-shopper" });
-    expect(JSON.parse(readFileSync(`${root}/agents/front-desk/test/personas/price-shopper.json`, "utf8"))).toEqual({ goal: "get a price", style: "blunt", expects: ["The agent should give the price."] });
+    expect(written).toEqual({ path: "agents/front-desk/harness.ts", symbol: "priceShopper", name: "price-shopper" });
+    expect(readFileSync(`${root}/agents/front-desk/harness.ts`, "utf8")).toContain('export const priceShopper = ownPersona({\n  name: "price-shopper",\n  goal: "get a price",\n  style: "blunt",\n  expects: ["The agent should give the price."],\n});');
     await expect(answer("personas.write", { name: "Price Shopper", goal: "g", style: "s" })).rejects.toMatchObject({ status: 422 });
   });
 

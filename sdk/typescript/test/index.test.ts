@@ -57,6 +57,8 @@ const PUBLIC = [
     "onChange",
     "onLog",
     "optionsFor",
+    "ownJudge",
+    "ownPersona",
     "p",
     "parametersOf",
     "parseClassSource",

@@ -107,8 +107,8 @@ a test can watch the agent dial back.
 ## The rings above
 
 The verbs are the one `pinecall` CLI's, the same for a TypeScript project as for a Ruby or a Python
-one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/test/goldens/`, `agents/<slug>/test/memory/`,
-`agents/<slug>/test/personas/`, `agents/<slug>/judges/`, `agents/<slug>/docs/`.
+one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/harness.ts`, `agents/<slug>/test/goldens/`,
+`agents/<slug>/test/memory/`, `agents/<slug>/docs/`.
 
 | ring | what it asks | how |
 |---|---|---|
@@ -117,12 +117,12 @@ one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/test/goldens/
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
-**The callers and the judges can be the class's.** `static personas = personas({ on: [...] })` names
-which of Pinecall's callers `pinecall simulate` offers, and the agent's own callers are
-`test/personas/<name>.json`, one each, what `PUT …/personas/{name}` takes; `static judges =
-judges({ on: [...] })` names which of Pinecall's judges score every call at hang-up (ring 4), and
-the agent's own judges are `judges/<name>.md`, one each, in the library's format. Both travel with
-the code, are reviewed in a pull request and deploy with it; the console shows them locked. A class
+**The callers and the judges can be the class's, as code.** `static personas = personas({ on, own })`
+names which of Pinecall's callers `pinecall simulate` offers and the agent's own, each an
+`ownPersona({ name, goal, style, … })`; `static judges = judges({ on, own })` names which of
+Pinecall's judges score every call at hang-up (ring 4) and the agent's own, each an `ownJudge({
+name, asks, … })`. `pinecall new` writes both in `agents/<slug>/harness.ts`. They travel with the
+code, are reviewed in a pull request and deploy with it; the console shows them locked. A class
 that declares neither leaves them to the console and the CLI ([Writing an
 agent](writing-an-agent.md), the environment).
 

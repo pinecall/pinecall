@@ -102,19 +102,31 @@ declared there is refused when the class loads.
 | `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` | `pinecall docs push`, then `pinecall docs attach <base>` |
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` | `pinecall pipeline melody upload\|after\|off` |
 | `widget` | how the widget presents the agent | `static widget = { title, tagline, greeting, accent, autostart, theme }` | the agent's **Widget** screen |
-| `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …] })`, its own as `judges/<name>.md` | `pinecall judges on\|off\|add` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …] })`, its own as `test/personas/<name>.json` | `pinecall personas on\|off\|add` |
+| `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …], own: [offersNextSlot] })` | `pinecall judges on\|off\|add` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …], own: [hurried] })` | `pinecall personas on\|off\|add` |
 
-**The judges and the callers are the class's the same way.** `judges({ on })` names which of
-Pinecall's judges the agent's calls meet, every other off, and the agent's own judges are the files
-under `agents/<slug>/judges/`, one each, in the library's own format: front matter (`answer`,
-`choices`, `when`, `trigger`, `reads`) and the question below it, the file's name the judge's.
-`personas({ on })` is the same for the callers `pinecall simulate` plays, the agent's own under
-`agents/<slug>/test/personas/`, one JSON file each, what `PUT …/personas/{name}` takes. Declared,
-the class is the agent's list: the console shows both locked, "set by the class", and
-`pinecall judges add` or `personas add` is refused naming the class; a class that declares neither
-leaves both to the console and the CLI, as before. A folder with files beside a class that declares
-nothing is refused when the class loads, saying what to write. The org's own judges
+**The judges and the callers are the class's the same way, and they are code.** `judges({ on, own })`
+names which of Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's own
+(`own`), each an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`: the question
+the judge model answers about a finished call, and how and when. `personas({ on, own })` is the
+same for the callers `pinecall simulate` plays, each of its own an `ownPersona({ name, goal, style,
+about, facts, expects, behavior, … })`, what `PUT …/personas/{name}` takes. `pinecall new` writes
+them in `agents/<slug>/harness.ts`, one file for both, imported by the class:
+
+```ts
+// agents/front-desk/harness.ts
+import { ownJudge, ownPersona } from "@pinecall/agents";
+
+export const offersNextSlot = ownJudge({ name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"] });
+export const hurried = ownPersona({ name: "hurried", goal: "leave a message: the delivery has to come after 4 pm", style: "short sentences, interrupts", expects: ["The agent should write the message down."], behavior: { interrupts: 0.3, pauseS: 1 } });
+```
+
+A wrong one is refused when the class loads, by a sentence that names it (`offers-next-slot: a
+judge that answers one of several needs at least two choices`), and so are two of one name.
+Declared, the class is the agent's list: the console shows both locked, "set by the class", and
+`pinecall judges add` or `personas add` is refused naming the class; `pinecall judges pull`,
+`personas pull` and `personas generate --save` write code into that file instead. A class that
+declares neither leaves both to the console and the CLI, as before. The org's own judges
 (`pinecall judges add --org`) meet every agent's calls either way.
 
 **Neither a fact the agent remembers nor a chunk of a base ever reaches the prompt.** Both arrive
@@ -334,6 +346,6 @@ Every one of these is refused before any call, with a message that says what to 
 | two `@view` decorators | `ClinicaNorte declares two views (…); a class draws one panel` |
 | `language`, `greeting`, `says`, … as an instance field | `` `language` is the class's, not a call's state: declare it as static language = …`` |
 | both `@llm(…)` and a `static llm` | `ClinicaNorte declares both @llm(…) and a static llm; keep one` |
-| a judge file with no question, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers.md: a judge asks a question of a call: write one below the front matter`, … |
-| a persona file with no `goal` or `style`, or a key the wire does not know | `in-a-rush.json: a persona wants something: write its goal, in the first person` |
-| `judges/` or `test/personas/` with files, and a class that declares neither | `agents/x/judges holds 2 judge(s) and the class declares none: static judges = judges({ on: ["consent", …] }) declares them, and which of Pinecall's run` |
+| an `ownJudge` with no `asks`, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers: a judge asks a question of a call: write it as asks`, `offers: a judge that answers one of several needs at least two choices`, … |
+| an `ownPersona` with no `goal` or `style`, or a key the wire does not know | `in-a-rush: a persona wants something: write its goal, in the first person` |
+| two judges or two personas of one name in `own` | `two judges called offers-next-slot: a name is declared once` |

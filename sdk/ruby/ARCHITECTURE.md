@@ -45,7 +45,7 @@ lib/pinecall/
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
   agent/config.rb            the four a class may still declare, and the world's twelve, refused at load by name
-  agent/harness.rb           `judges on:` and `personas on:` filled in from the folders beside the class's file: `judges/*.md`, `test/personas/*.json`
+  agent/harness.rb           `Pinecall.own_judge` and `Pinecall.own_persona`, each refused by sentence when wrong; what `judges on:, own:` and `personas on:, own:` declare, as the declaration sends it
   agent/melody.rb            the hold melody a class declares: the file beside it, named on the wire by its sha256
   view.rb                    the ERB template and what it is rendered in
   rules.rb                   the framework's own words: the rules, the protocols, and the channel's

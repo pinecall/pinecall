@@ -260,21 +260,19 @@ export function registerPersonas(program: Command, ctx: Context): void {
     .option("--about <theme>")
     .option("--from-call <call>", "callers like this call's caller")
     .option("--template <name>", "callers like one of Pinecall's")
-    .option("--save", "keep every one: as the agent's own, or as files under test/personas/ when the class owns them")
+    .option("--save", "keep every one: as the agent's own, or as code in agents/<agent>/harness.* when the class owns them")
     .action(async (n, flags) => {
       const input = service.GenerateInput.parse({ n: numberOf("generate", n), about: flags.about, fromCall: flags.fromCall, template: flags.template, save: flags.save === true });
       const home = ctx.agent("personas", { agent: flags.agent, file: flags.file });
-      ctx.io.result(await service.generatePersonas(ctx, home.name, input, home.personas), render.generated);
+      ctx.io.result(await service.generatePersonas(ctx, home.name, input, home), render.generated);
     });
   personas
     .command("pull")
-    .description("the agent's own callers the gateway keeps, written as files for a class about to declare them")
+    .description("the agent's own callers the gateway keeps, written as code into the harness file for a class about to declare them")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
-    .option("--out <folder>", "agents/<agent>/test/personas when left out")
     .action(async (flags) => {
       const home = ctx.agent("personas", { agent: flags.agent, file: flags.file });
-      const folder = flags.out ?? home.personas;
-      ctx.io.result(await service.pullPersonas(ctx, home.name, folder), (done) => render.pulled("personas", done));
+      ctx.io.result(await service.pullPersonas(ctx, home.name, home), (done) => render.pulled("personas", done));
     });
 }

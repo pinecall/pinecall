@@ -487,7 +487,7 @@ One of: `television`, `cafe`, `office`, `street`.
 
 ### `JudgeDeclaration`
 
-One judge of the agent's own, as its class declares it: the file `judges/<name>.md` read. What `PUT /v1/agents/{slug}/judges/{name}` takes, with the name inside. Held to the same rules when declared: a question, two choices at least for a `choice`, a trigger's question for `trigger`, a name that is lower-case words joined by hyphens and none of Pinecall's.
+One judge of the agent's own, as its class declares it: an `ownJudge({ name, asks, … })` in its code, listed in `own`. What `PUT /v1/agents/{slug}/judges/{name}` takes, with the name inside. Held to the same rules when declared: a question, two choices at least for a `choice`, a trigger's question for `trigger`, a name that is lower-case words joined by hyphens and none of Pinecall's.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -524,7 +524,7 @@ How a simulated caller acts on a spoken line, beside what it says. Every field i
 
 ### `PersonaDeclaration`
 
-One caller of the agent's own, as its class declares it: the file `test/personas/<name>.json` read. What `PUT /v1/agents/{slug}/personas/{name}` takes, with the name inside, and held to the same rules when declared: a goal and a style, twenty expectations at most and none blank, a name that is lower-case words joined by hyphens and none of Pinecall's; its model, its voice's vendor and its voice are tried on the org's keys when declared, never on the run that plays it.
+One caller of the agent's own, as its class declares it: an `ownPersona({ name, goal, style, … })` in its code, listed in `own`. What `PUT /v1/agents/{slug}/personas/{name}` takes, with the name inside, and held to the same rules when declared: a goal and a style, twenty expectations at most and none blank, a name that is lower-case words joined by hyphens and none of Pinecall's; its model, its voice's vendor and its voice are tried on the org's keys when declared, never on the run that plays it.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -603,8 +603,8 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `state_fields` | `StateFieldSpec[]` | no | Who may see each field of the app's state. A field not listed is tenant: seen by the tenant's readers, never by the public. |
 | `view` | `ViewSpec` | no | The panel this agent draws beside a conversation, or absent when it draws none. |
 | `events` | `EventSpec[]` | no | The outside events this agent accepts and from whom. Anything else is refused before it touches the log. |
-| `judges` | `JudgesDeclared` | no | The judges the class owns: which of Pinecall's its calls meet, and its own, read from `judges/`. Declared, it wins over the console's and `pinecall judges`, which refuse it naming the class. Absent, the org writes the agent's judges as rows. |
+| `judges` | `JudgesDeclared` | no | The judges the class owns: which of Pinecall's its calls meet, and its own, each code beside the class. Declared, it wins over the console's and `pinecall judges`, which refuse it naming the class. Absent, the org writes the agent's judges as rows. |
 | `hold` | `HoldConfig` | no | The hold melody the class owns: its file by hash, the wait, or silence. Declared, the pipeline's hold doors refuse a write naming the class. |
 | `widget` | `WidgetLook` | no | How the widget presents the agent, owned by the class. Declared, `PUT …/widget` refuses naming the class. |
-| `personas` | `PersonasDeclared` | no | The personas the class owns: which of Pinecall's its runs play, and its own, read from `test/personas/`. Declared, it wins over the console's and `pinecall personas`. Absent, the org writes them as rows. |
+| `personas` | `PersonasDeclared` | no | The personas the class owns: which of Pinecall's its runs play, and its own, each code beside the class. Declared, it wins over the console's and `pinecall personas`. Absent, the org writes them as rows. |
 

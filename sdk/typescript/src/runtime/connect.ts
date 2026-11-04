@@ -104,8 +104,7 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
   const probe = instance as unknown as Record<string, unknown>;
   refuseTheEnvironment(probe);
   // Phone numbers are org rows managed with `pinecall numbers`, so a `phone` field is never sent.
-  // The folders beside the class fill in what `static judges` and `static personas` declare.
-  const options: AgentOptions = { tools, ...environmentOf(ctor), ...harnessOf(ctor, file) };
+  const options: AgentOptions = { tools, ...environmentOf(ctor), ...harnessOf(ctor) };
   const hold = holdConfigOf(ctor as unknown as typeof Agent, file);
   if (hold !== undefined) options.hold = hold;
   if (searchesKnowledge(source ?? ctor.toString(), file)) options.usesKnowledge = true;

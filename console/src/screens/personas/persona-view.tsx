@@ -123,7 +123,7 @@ export function PersonaView({
       </header>
       {fixed && (
         <p className="psn-doc-note">
-          Set by the class of {persona.agent}: {isPinecalls(persona) ? `${persona.on ? "on" : "off"} in its personas({ on })` : `the file agents/${persona.agent}/test/personas/${persona.name}.json`}. The class&apos;s declaration wins: change it in the code, or take
+          Set by the class of {persona.agent}: {isPinecalls(persona) ? `${persona.on ? "on" : "off"} in its personas({ on })` : `an ownPersona in agents/${persona.agent}/harness.*, listed in personas({ own })`}. The class&apos;s declaration wins: change it in the code, or take
           `personas` out of the class to write callers here.
         </p>
       )}

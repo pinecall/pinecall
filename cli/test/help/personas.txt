@@ -23,7 +23,8 @@ Commands:
   generate [options] [n]  callers written by the judge model from the agent;
                           printed, and kept with --save
   pull [options]          the agent's own callers the gateway keeps, written as
-                          files for a class about to declare them
+                          code into the harness file for a class about to
+                          declare them
   help [command]          display help for command
 
 A persona is a caller a model plays: a goal, a style, the facts they may state about themselves,
@@ -166,18 +167,17 @@ Options:
   --about <theme>
   --from-call <call>  callers like this call's caller
   --template <name>   callers like one of Pinecall's
-  --save              keep every one: as the agent's own, or as files under
-                      test/personas/ when the class owns them
+  --save              keep every one: as the agent's own, or as code in
+                      agents/<agent>/harness.* when the class owns them
   -h, --help          display help for command
 
 $ pinecall personas pull --help
 Usage: pinecall personas pull [options]
 
-the agent's own callers the gateway keeps, written as files for a class about to
-declare them
+the agent's own callers the gateway keeps, written as code into the harness file
+for a class about to declare them
 
 Options:
   --agent <name>
   --file <agent.tsx>
-  --out <folder>      agents/<agent>/test/personas when left out
   -h, --help          display help for command

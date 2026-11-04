@@ -9,7 +9,8 @@ import * as service from "../../src/judging/service.js";
 import { answer } from "../support/gateway.js";
 import { testContext } from "../support/context.js";
 import { A_JUDGE, A_LIBRARY_JUDGE, JUDGING } from "../support/fixtures.js";
-import { folder } from "../support/project.js";
+import { homeOf } from "../../src/project/layout.js";
+import { folder, project } from "../support/project.js";
 
 describe("whose list", () => {
   it("is the org's with --org, the project's one agent without", () => {
@@ -154,14 +155,15 @@ describe("a class that owns the agent's judges", () => {
     expect(sent).toHaveLength(1);
   });
 
-  it("pull writes the agent's own rows as files in the library's format, and neither Pinecall's nor the org's", async () => {
+  it("pull writes the agent's own rows as code the class imports, and neither Pinecall's nor the org's", async () => {
     const choice = { ...A_JUDGE, name: "call-reason", answer: "choice" as const, choices: ["book", "cancel"], when: "trigger" as const, trigger: "Did they ask for a slot?", reads: ["facts" as const] };
     answer("get", "/v1/agents/:slug/judges", { judges: [A_LIBRARY_JUDGE, { ...A_JUDGE, owner: "org" }, A_JUDGE, choice] });
-    const root = folder();
+    const root = project(["front-desk"]);
     const { ctx } = testContext();
-    const pulled = await service.pullJudges(ctx, "front-desk", `${root}/judges`);
-    expect(pulled.files).toEqual([`${root}/judges/offers-next-slot.md`, `${root}/judges/call-reason.md`]);
-    expect(readFileSync(`${root}/judges/offers-next-slot.md`, "utf8")).toBe(`---\nanswer: verdict\nwhen: always\n---\n${A_JUDGE.question}\n`);
-    expect(readFileSync(`${root}/judges/call-reason.md`, "utf8")).toBe(`---\nanswer: choice\nchoices: book, cancel\nwhen: trigger\ntrigger: Did they ask for a slot?\nreads: facts\n---\n${A_JUDGE.question}\n`);
+    const pulled = await service.pullJudges(ctx, "front-desk", homeOf(`${root}/agents/front-desk/agent.ts`));
+    expect(pulled.written).toEqual([{ path: "agents/front-desk/harness.ts", symbol: "offersNextSlot" }, { path: "agents/front-desk/harness.ts", symbol: "callReason" }]);
+    const code = readFileSync(`${root}/agents/front-desk/harness.ts`, "utf8");
+    expect(code).toContain(`export const offersNextSlot = ownJudge({\n  name: "offers-next-slot",\n  asks: ${JSON.stringify(A_JUDGE.question)},\n});`);
+    expect(code).toContain(`export const callReason = ownJudge({\n  name: "call-reason",\n  asks: ${JSON.stringify(A_JUDGE.question)},\n  answer: "choice",\n  choices: ["book", "cancel"],\n  when: "trigger",\n  trigger: "Did they ask for a slot?",\n  reads: ["facts"],\n});`);
   });
 });

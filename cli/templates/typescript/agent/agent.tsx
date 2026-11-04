@@ -2,7 +2,9 @@
 
 import { Agent, judges, personas, tool, type Stages } from "@pinecall/agents";
 
-// The eight judges Pinecall recommends, on for every call; the agent's own are the files under judges/.
+import { hurried } from "./harness.js";
+
+// The eight judges Pinecall recommends, on for every call; the agent's own go in harness.ts, as ownJudge({ … }).
 const RECOMMENDED = ["consent", "grounded", "promises", "disclosed", "identified", "honoured-stop", "ended-well", "expected-outcome"];
 
 // What a model in a hurry writes where the caller said nothing: never a message.
@@ -15,8 +17,8 @@ const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|prov
  */
 export default class {{Class}} extends Agent {
   static judges = judges({ on: RECOMMENDED });
-  // Pinecall's callers this agent is tested with, and its own under test/personas/.
-  static personas = personas({ on: ["in-a-hurry", "wrong-number"] });
+  // Pinecall's callers this agent is tested with, and its own from harness.ts.
+  static personas = personas({ on: ["in-a-hurry", "wrong-number"], own: [hurried] });
 
   stage: Stages<"ask" | "done"> = "ask";
   message?: { name: string; about: string } | undefined;

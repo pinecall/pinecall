@@ -421,7 +421,7 @@ A model plays one of the agent's personas against the agent wherever it is held,
 
 The agent's simulated callers: Pinecall's library switched on or off, its own written (a goal, a manner, facts, what it expects of the agent, how it acts on a line), callers generated from the agent, dropped.
 
-`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person and `save` the ones they keep. A class that declares `personas` owns the roster: the list says `fixed`, its own are the files under `agents/<agent>/test/personas/`, `save` writes files there, and `add`, `edit`, `rm`, `on` and `off` are refused naming the class. `simulate` runs one.
+`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person and `save` the ones they keep. A class that declares `personas` owns the roster: the list says `fixed`, its own are code beside the class (`agents/<agent>/harness.*`, `ownPersona`), `save` appends code there for the class to import into `own`, and `add`, `edit`, `rm`, `on` and `off` are refused naming the class. `simulate` runs one.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -447,7 +447,7 @@ The agent's simulated callers: Pinecall's library switched on or off, its own wr
 | `n` | a whole number 1–10 |  | `generate`: how many callers, 3 unless said |
 | `from_call` | text |  | `generate`: callers like this finished call's caller |
 | `template` | text |  | `generate`: callers like one of Pinecall's, by name |
-| `save` | true or false |  | `generate`: keep every caller written, as the agent's own or, when the class owns its roster, as files under agents/<agent>/test/personas/ |
+| `save` | true or false |  | `generate`: keep every caller written, as the agent's own or, when the class owns its roster, as code appended to agents/<agent>/harness.* |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ```json title="called with"

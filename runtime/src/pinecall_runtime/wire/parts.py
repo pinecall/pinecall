@@ -344,7 +344,7 @@ class MemoryConfig(WireModel):
 
 
 class JudgeDeclaration(WireModel):
-    """One judge of the agent's own, as its class declares it: `judges/<name>.md` read."""
+    """One judge of the agent's own, as its class declares it: an `ownJudge` in its code."""
 
     name: str
     question: str
@@ -381,7 +381,7 @@ class CallerBehavior(WireModel):
 
 
 class PersonaDeclaration(WireModel):
-    """One caller of the agent's own, as its class declares it: `test/personas/<name>.json` read."""
+    """One caller of the agent's own, as its class declares it: an `ownPersona` in its code."""
 
     name: str
     goal: str

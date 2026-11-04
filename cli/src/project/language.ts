@@ -3,6 +3,7 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { UsageError } from "../errors.js";
 
@@ -12,10 +13,19 @@ export const AGENT_FILES = ["agent.tsx", "agent.ts", "agent.rb", "agent.py"] as 
 /** A language an agent may be written in. */
 export type Language = "typescript" | "ruby" | "python";
 
+/** The templates `pinecall new` writes a project and an agent from: one folder per language, `common/` for every one. */
+export const TEMPLATE_ROOT = fileURLToPath(new URL("../../templates/", import.meta.url));
+
+/** The file beside the class that holds its own judges and callers as code, by language. */
+export const HARNESS_FILES: Record<Language, string> = { typescript: "harness.ts", python: "harness.py", ruby: "harness.rb" };
+
 /** The serve entry's two verbs. */
 export type ServeVerb = "start" | "prompt";
 
-const NO_FRAMEWORK = "this project does not install @pinecall/agents, which serves a TypeScript agent: npm i @pinecall/agents";
+/** The framework a TypeScript agent is written with, as it is installed and imported. */
+export const FRAMEWORK = "@pinecall/agents";
+
+const NO_FRAMEWORK = `this project does not install ${FRAMEWORK}, which serves a TypeScript agent: npm i ${FRAMEWORK}`;
 
 const inspectsNothing = (language: string): string => `--inspect attaches a Node debugger, and a ${language} agent runs no Node`;
 
@@ -62,7 +72,7 @@ export function serveCommand(language: Language, verb: ServeVerb, args: string[]
 export function serveEntryOf(root: string): string {
   for (let folder = root; ; folder = dirname(folder)) {
     const installed = join(folder, "node_modules", "@pinecall", "agents", "package.json");
-    if (existsSync(installed)) return createRequire(installed).resolve("@pinecall/agents/serve");
+    if (existsSync(installed)) return createRequire(installed).resolve(`${FRAMEWORK}/serve`);
     if (dirname(folder) === folder) throw new UsageError(NO_FRAMEWORK);
   }
 }

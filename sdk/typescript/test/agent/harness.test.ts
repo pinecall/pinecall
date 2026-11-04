@@ -1,37 +1,17 @@
-// The judges and the personas a class owns: the switches it declares, the files beside it read, and each refusal as a sentence.
-
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The judges and the personas a class owns: each built by sentence or refused by one, and the class's `own` sent as declared.
 
 import { describe, expect, it } from "vitest";
 
-import { Agent, DeclarationRefused, judges, optionsFor, personas } from "../../src/index.js";
-import { harnessOf, judgeOf, personaOf } from "../../src/agent/harness.js";
+import { Agent, DeclarationRefused, judges, optionsFor, ownJudge, ownPersona, personas } from "../../src/index.js";
+import { harnessOf } from "../../src/agent/harness.js";
 
-const OFFERS = `---
-answer: verdict
-when: always
-reads: [facts]
----
-Did the agent offer the next free slot before the caller asked twice?
-`;
+const OFFERS = ownJudge({ name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"] });
 
-const RUSH = JSON.stringify({ goal: "book today", style: "short, interrupts", expects: ["The agent should offer today."], behavior: { interrupts: 0.3, pause_s: 1 } });
+const RUSH = ownPersona({ name: "in-a-rush", goal: "book today", style: "short, interrupts", expects: ["The agent should offer today."], behavior: { interrupts: 0.3, pauseS: 1 } });
 
-/** A folder shaped like `agents/<slug>/`, with the files given under `judges/` and `test/personas/`. */
-function folder(files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "harness-"));
-  for (const [path, text] of Object.entries(files)) {
-    mkdirSync(join(dir, path, ".."), { recursive: true });
-    writeFileSync(join(dir, path), text);
-  }
-  return dir;
-}
-
-describe("a judge file", () => {
-  it("is read as the library writes one: front matter, then the question", () => {
-    expect(judgeOf("judges/offers-next-slot.md", OFFERS)).toEqual({
+describe("a judge of the agent's own", () => {
+  it("is the question it asks, with how and when it answers filled in", () => {
+    expect(OFFERS).toEqual({
       name: "offers-next-slot",
       question: "Did the agent offer the next free slot before the caller asked twice?",
       answer: "verdict",
@@ -42,30 +22,28 @@ describe("a judge file", () => {
     });
   });
 
-  it("takes the library's `on:` for when, and a comma-separated list", () => {
-    const read = judgeOf("x.md", "---\non: simulations\nreads: prompt, evidence\n---\nWas it kind?");
-    expect([read.when, read.reads]).toEqual(["simulations", ["prompt", "evidence"]]);
+  it("answers one of several, on a trigger, reading what it was told to", () => {
+    const read = ownJudge({ name: "reason", asks: "Why did they call?", answer: "choice", choices: ["book", "cancel"], when: "trigger", trigger: "Did the caller say why?", reads: ["prompt", "evidence"] });
+    expect([read.answer, read.choices, read.when, read.trigger, read.reads]).toEqual(["choice", ["book", "cancel"], "trigger", "Did the caller say why?", ["prompt", "evidence"]]);
   });
 
   it.each([
-    ["offers.md", "no front matter\n", "a judge opens with its front matter between two --- lines"],
-    ["offers.md", "---\n\n---\n\n", "a judge asks a question of a call: write one below the front matter"],
-    ["offers.md", "---\nanswer: maybe\n---\nQ?", 'answer is "maybe", not one of verdict, choice, score'],
-    ["offers.md", "---\nanswer: choice\nchoices: [a]\n---\nQ?", "a judge that answers one of several needs at least two choices"],
-    ["offers.md", "---\nchoices: [a, b]\n---\nQ?", "only a judge that answers one of several takes choices"],
-    ["offers.md", "---\nwhen: trigger\n---\nQ?", "a judge that runs on a trigger needs the trigger's question"],
-    ["offers.md", "---\nreads: dreams\n---\nQ?", 'reads is "dreams", not one of prompt, evidence, facts'],
-    ["Offers Slot.md", "---\n\n---\nQ?", "\"Offers Slot\" is not a judge's name: lower-case words joined by hyphens"],
-    ["offers.md", "---\nname: other\n---\nQ?", "its front matter says name: other, and the file is offers.md"],
-  ])("%s refused: %s", (file, text, sentence) => {
-    expect(() => judgeOf(file, text)).toThrow(DeclarationRefused);
-    expect(() => judgeOf(file, text)).toThrow(sentence);
+    [{ name: "offers", asks: " " }, "offers: a judge asks a question of a call: write it as asks"],
+    [{ name: "offers", asks: "Q?", answer: "maybe" }, 'offers: answer is "maybe", not one of verdict, choice, score'],
+    [{ name: "offers", asks: "Q?", answer: "choice", choices: ["a"] }, "offers: a judge that answers one of several needs at least two choices"],
+    [{ name: "offers", asks: "Q?", choices: ["a", "b"] }, "offers: only a judge that answers one of several takes choices"],
+    [{ name: "offers", asks: "Q?", when: "trigger" }, "offers: a judge that runs on a trigger needs the trigger's question"],
+    [{ name: "offers", asks: "Q?", reads: ["dreams"] }, 'offers: reads is "dreams", not one of prompt, evidence, facts'],
+    [{ name: "Offers Slot", asks: "Q?" }, "\"Offers Slot\" is not a judge's name: lower-case words joined by hyphens"],
+  ])("%o is refused: %s", (input, sentence) => {
+    expect(() => ownJudge(input as never)).toThrow(DeclarationRefused);
+    expect(() => ownJudge(input as never)).toThrow(sentence);
   });
 });
 
-describe("a persona file", () => {
-  it("is what a PUT takes, under the file's name, with the wire's keys camelCased for the class", () => {
-    expect(personaOf("test/personas/in-a-rush.json", RUSH)).toEqual({
+describe("a persona of the agent's own", () => {
+  it("is what a PUT takes, under its name, with the wire's keys camelCased for the class", () => {
+    expect(RUSH).toEqual({
       name: "in-a-rush",
       goal: "book today",
       style: "short, interrupts",
@@ -75,49 +53,42 @@ describe("a persona file", () => {
   });
 
   it.each([
-    ["in-a-rush.json", "{", "not JSON"],
-    ["in-a-rush.json", "[]", "a persona is a JSON object with a goal and a style"],
-    ["in-a-rush.json", '{"style": "s"}', "a persona wants something: write its goal, in the first person"],
-    ["in-a-rush.json", '{"goal": "g"}', "a persona talks some way: write its style"],
-    ["in-a-rush.json", '{"goal": "g", "style": "s", "name": "other"}', "it says its name is other, and the file is in-a-rush.json"],
-    ["in-a-rush.json", '{"goal": "g", "style": "s", "mood": "x"}', "mood"],
-    ["In A Rush.json", "{}", "\"In A Rush\" is not a persona's name"],
-  ])("%s refused: %s", (file, text, sentence) => {
-    expect(() => personaOf(file, text)).toThrow(DeclarationRefused);
-    expect(() => personaOf(file, text)).toThrow(sentence);
+    [{ name: "in-a-rush", style: "s" }, "in-a-rush: a persona wants something: write its goal, in the first person"],
+    [{ name: "in-a-rush", goal: "g" }, "in-a-rush: a persona talks some way: write its style"],
+    [{ name: "in-a-rush", goal: "g", style: "s", mood: "x" }, "in-a-rush: it: Unrecognized key"],
+    [{ name: "In A Rush", goal: "g", style: "s" }, "\"In A Rush\" is not a persona's name"],
+  ])("%o is refused: %s", (input, sentence) => {
+    expect(() => ownPersona(input as never)).toThrow(DeclarationRefused);
+    expect(() => ownPersona(input as never)).toThrow(sentence);
   });
 });
 
 describe("what the class owns", () => {
-  it("is its switches plus the folders beside it, as the declaration sends it", () => {
+  it("is its switches plus its own, as the declaration sends it", () => {
     class Owns extends Agent {
-      static override judges = judges({ on: ["consent", "grounded"] });
-      static override personas = personas({ on: ["in-a-hurry"] });
+      static override judges = judges({ on: ["consent", "grounded"], own: [OFFERS] });
+      static override personas = personas({ on: ["in-a-hurry"], own: [RUSH] });
     }
-    const dir = folder({ "judges/offers-next-slot.md": OFFERS, "test/personas/in-a-rush.json": RUSH });
-    const options = optionsFor(Owns, [], undefined, join(dir, "agent.tsx"), "class Owns {}");
-    expect(options.judges).toEqual({ on: ["consent", "grounded"], own: [expect.objectContaining({ name: "offers-next-slot" })] });
-    expect(options.personas).toEqual({ on: ["in-a-hurry"], own: [expect.objectContaining({ name: "in-a-rush" })] });
+    const options = optionsFor(Owns, [], undefined, undefined, "class Owns {}");
+    expect(options.judges).toEqual({ on: ["consent", "grounded"], own: [OFFERS] });
+    expect(options.personas).toEqual({ on: ["in-a-hurry"], own: [RUSH] });
   });
 
-  it("is nothing when the class declares nothing and no folder is there: the org writes them", () => {
+  it("is nothing when the class declares neither: the org writes them", () => {
     class Silent extends Agent {}
-    expect(harnessOf(Silent, join(folder({}), "agent.tsx"))).toEqual({});
     expect(harnessOf(Silent)).toEqual({});
   });
 
-  it("is an empty list plus the switches for a class that declares them with no folder", () => {
+  it("is an empty list plus the switches for a class that declares them with none of its own", () => {
     class Bare extends Agent {
       static override judges = judges();
     }
-    expect(harnessOf(Bare, join(folder({}), "agent.tsx"))).toEqual({ judges: { on: [], own: [] } });
+    expect(harnessOf(Bare)).toEqual({ judges: { on: [], own: [] } });
   });
 
-  it("refuses a folder with files that the class never declared, saying what to write", () => {
-    class Silent extends Agent {}
-    const withJudges = folder({ "judges/offers-next-slot.md": OFFERS });
-    expect(() => harnessOf(Silent, join(withJudges, "agent.tsx"))).toThrow("holds 1 judge(s) and the class declares none: static judges = judges({ on: [\"consent\", …] })");
-    const withPersonas = folder({ "test/personas/in-a-rush.json": RUSH });
-    expect(() => harnessOf(Silent, join(withPersonas, "agent.tsx"))).toThrow("holds 1 persona(s) and the class declares none: static personas = personas(");
+  it("refuses two of the same name, and an own judge written as a plain object that is wrong", () => {
+    expect(() => judges({ own: [OFFERS, OFFERS] })).toThrow("two judges called offers-next-slot: a name is declared once");
+    expect(() => personas({ own: [RUSH, { ...RUSH }] })).toThrow("two personas called in-a-rush: a name is declared once");
+    expect(() => judges({ own: [{ ...OFFERS, answer: "maybe" as never }] })).toThrow('offers-next-slot: answer is "maybe", not one of verdict, choice, score');
   });
 });

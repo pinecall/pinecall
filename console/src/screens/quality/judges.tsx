@@ -52,7 +52,7 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
   // them in two: the ones that guard a call, to switch on first, then the ones that grade it.
   const groups: { title: string; rows: JudgeRow[] }[] = [
     { title: agent === "" ? "The org's own · asked of every agent" : "The org's own · written with every agent in view", rows: judges.filter((judge) => judge.owner === "org") },
-    ...(agent === "" ? [] : [{ title: fixed ? `${agent}'s own · the files under agents/${agent}/judges/` : `${agent}'s own`, rows: judges.filter((judge) => judge.owner === agent || judge.owner === "class") }]),
+    ...(agent === "" ? [] : [{ title: fixed ? `${agent}'s own · code in agents/${agent}/harness.*` : `${agent}'s own`, rows: judges.filter((judge) => judge.owner === agent || judge.owner === "class") }]),
     {
       title: agent === "" ? "Recommended · guard every call, switched for every agent" : `Recommended · guard every call, switched for ${agent}`,
       rows: judges.filter((judge) => judge.owner === PINECALL && judge.recommended),
@@ -87,7 +87,7 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
       <p className="qly-bill">{ON_THE_BILL}</p>
       {fixed && (
         <p className="qly-bill">
-          Set by the class of {agent}: its own judges are the files under agents/{agent}/judges/, and which of Pinecall&apos;s its calls meet is judges({"{ on }"}) in the class. The org&apos;s own judges meet its calls on top, and are written with every agent in view.
+          Set by the class of {agent}: its own judges are code beside the class (agents/{agent}/harness.*, each an ownJudge), and which of Pinecall&apos;s its calls meet is judges({"{ on, own }"}) in the class. The org&apos;s own judges meet its calls on top, and are written with every agent in view.
         </p>
       )}
       {editing !== null && <JudgeForm whose={whose} agent={agent} editing={editing === "new" ? null : editing} onSaved={saved} onClose={() => setEditing(null)} />}

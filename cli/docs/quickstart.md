@@ -106,30 +106,27 @@ Inside the folder:
 ### TypeScript
 ```text
 agents/front-desk/agent.tsx              the class: its state, its one tool, its prompt, its judges and callers
-agents/front-desk/judges/                how to write a judge of its own; its README says the format
+agents/front-desk/harness.ts             its own judges and callers, as code: `hurried` to start, and how a judge is written
 agents/front-desk/test/agent.test.ts     a unit test: the class as software, no network
 agents/front-desk/test/goldens/          a golden: a conversation the model must hold
-agents/front-desk/test/personas/         its own callers: `hurried.json` to start
 package.json · tsconfig.json             the toolchain, with @pinecall/agents as the one dependency
 ```
 ### Python
 ```text
 agents/front-desk/agent.py                the class: its state, its one tool, its judges and callers
+agents/front-desk/harness.py              its own judges and callers, as code: `HURRIED` to start, and how a judge is written
 agents/front-desk/views/front-desk.jinja  its prompt's view, a template beside the class
-agents/front-desk/judges/                 how to write a judge of its own; its README says the format
 agents/front-desk/test/test_agent.py      a unit test: the class as software, no network
 agents/front-desk/test/goldens/           a golden: a conversation the model must hold
-agents/front-desk/test/personas/          its own callers: `hurried.json` to start
 pyproject.toml                            the toolchain, with pinecall as the one dependency
 ```
 ### Ruby
 ```text
 agents/front-desk/agent.rb                the class: its state, its one tool, its judges and callers
+agents/front-desk/harness.rb              its own judges and callers, as code: `HURRIED` to start, and how a judge is written
 agents/front-desk/views/front-desk.erb    its prompt's view, a template beside the class
-agents/front-desk/judges/                 how to write a judge of its own; its README says the format
 agents/front-desk/test/agent_test.rb      a unit test: the class as software, no network
 agents/front-desk/test/goldens/           a golden: a conversation the model must hold
-agents/front-desk/test/personas/          its own callers: `hurried.json` to start
 Gemfile · Rakefile                        the toolchain, with the pinecall gem as the one dependency
 ```
 :::
@@ -138,7 +135,7 @@ The agent `--agent` writes is a front desk: it answers from the documents it is 
 for anything else, takes a message — the caller's name and what the call is about — with its one
 tool, `takeMessage` (`take_message` in Python and Ruby). Its class declares the eight judges
 Pinecall recommends and two of its callers, so the console shows them from the first `start`,
-locked, as the class's; a judge of your own is a file under `judges/`, a caller under `test/personas/`.
+locked, as the class's; a judge or a caller of your own is code in `harness.ts` (`.py`, `.rb`), added to `own`.
 
 `pinecall.json`, at the project's root, says where it runs: the gateway you signed in to and your
 org there. With several orgs, `new` asks which. Commit it: it holds no key.

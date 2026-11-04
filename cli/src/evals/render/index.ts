@@ -190,14 +190,14 @@ export function personaSwitched(done: { name: string; on: boolean }, agent: stri
 
 export function generated(written: GeneratedPersonas & Saved): string[] {
   const bill = written.evals === 0 ? "on your own judge key: not billed" : `${written.evals} eval(s) · $${written.cost_usd.toFixed(4)}`;
-  const kept = written.files.length > 0 ? ` · saved as ${written.files.join(", ")}` : written.saved ? " · saved" : " · `--save` keeps them";
+  const kept = written.written.length > 0 ? ` · written as ${written.written.map((one) => `${one.symbol} in ${one.path}`).join(", ")} · add each to personas({ own })` : written.saved ? " · saved" : " · `--save` keeps them";
   return [...written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line) => `  expects: ${line}`)]), `${written.personas.length} caller(s) written · ${bill}${kept}`];
 }
 
-/** The rows written as files, one line each. */
-export function pulled(what: string, done: { files: string[] }): string[] {
-  if (done.files.length === 0) return [`nothing to pull: the agent has no ${what} of its own as rows`];
-  return [...done.files, `${done.files.length} ${what} written · the rows stay until \`pinecall ${what} rm\``];
+/** The rows written as code, one line each: the file and the name the class imports. */
+export function pulled(what: string, done: { written: { path: string; symbol: string }[] }): string[] {
+  if (done.written.length === 0) return [`nothing to pull: the agent has no ${what} of its own as rows`];
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} ${what} written as code · add them to ${what}({ own }) · the rows stay until \`pinecall ${what} rm\``];
 }
 /** The end of a simulation: its call, the turns, the latencies, and every judge when judged. */
 export function simulated(said: Simulated): string[] {

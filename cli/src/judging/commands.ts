@@ -127,12 +127,11 @@ export function register(program: Command, ctx: Context): void {
     .action(async (name, flags) => ctx.io.result(await service.removeJudge(ctx, owner(flags), name), render.changed));
   judges
     .command("pull")
-    .description("the agent's own judges the gateway keeps, written as files for a class about to declare them")
+    .description("the agent's own judges the gateway keeps, written as code into the harness file for a class about to declare them")
     .option("--agent <name>")
-    .option("--out <folder>", "agents/<agent>/judges when left out")
     .action(async (flags) => {
       const home = ctx.agent("judges pull", { agent: flags.agent });
-      ctx.io.result(await service.pullJudges(ctx, home.name, flags.out ?? home.judges), render.pulled);
+      ctx.io.result(await service.pullJudges(ctx, home.name, home), render.pulled);
     });
   judges
     .command("try")

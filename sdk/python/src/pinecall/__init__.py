@@ -7,6 +7,8 @@ from pinecall._config import realtime as realtime
 from pinecall._config import stt as stt
 from pinecall._config import voice as voice
 from pinecall._harness import judges as judges
+from pinecall._harness import own_judge as own_judge
+from pinecall._harness import own_persona as own_persona
 from pinecall._harness import personas as personas
 from pinecall._opening import improvise as improvise
 from pinecall._opening import words as words
@@ -68,6 +70,8 @@ __all__ = [
     "judges",
     "knowledge",
     "llm",
+    "own_judge",
+    "own_persona",
     "panel",
     "personas",
     "realtime",

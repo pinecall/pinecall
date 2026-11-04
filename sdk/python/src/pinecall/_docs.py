@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-from pinecall._harness import folder_of
+from pinecall._beside import folder_of
 from pinecall.client import Client
 from pinecall.wire._names import JsonObject
 

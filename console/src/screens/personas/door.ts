@@ -23,9 +23,9 @@ export const isPinecalls = (persona: Persona): boolean => persona.owner === "pin
 /** Whether the agent's class owns its roster: every row is then fixed, and this page writes none of them. */
 export const ownedByTheClass = (personas: readonly Persona[]): boolean => personas.some((one) => one.fixed === true);
 
-/** A persona the judge model wrote, kept as a file the class reads (`test/personas/<name>.json`) through the `pinecall start` in the agent's directory. */
-export async function keepPersonaFile(credentials: Credentials, agent: string, persona: ProposedPersona): Promise<{ path: string; name: string }> {
-  return (await dev(credentials, agent, "personas.write", persona)) as { path: string; name: string };
+/** A persona the judge model wrote, kept as code the class imports (`ownPersona` in `agents/<agent>/harness.*`) through the `pinecall start` in the agent's directory. */
+export async function keepPersonaFile(credentials: Credentials, agent: string, persona: ProposedPersona): Promise<{ path: string; symbol: string; name: string }> {
+  return (await dev(credentials, agent, "personas.write", persona)) as { path: string; symbol: string; name: string };
 }
 
 export type Written = PersonaPut;

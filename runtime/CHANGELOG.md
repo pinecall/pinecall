@@ -12,7 +12,7 @@
   declared, each wins over the settings' and is `fixed` (`409` on a set), the two knobs no class could declare.
 
 - **`personas.write`, a dev verb.** The console asks the `pinecall start` in the agent's directory to keep
-  a generated persona as a file under `test/personas/`, for a class that owns its roster; in the `evals` family.
+  a generated persona as code in `agents/<slug>/harness.*`, for a class that owns its roster; in the `evals` family.
 
 - **The lists say what the class owns, and no door writes it.** `GET /v1/agents/{slug}/judges` and `…/personas`
   of an agent whose class declares them list the class's: the library as the class switches it and the class's

@@ -155,8 +155,7 @@ def config_of(cls: type[Agent]) -> AgentConfig:
     """What the class declares: its layout, what it searches, shows and accepts, what it runs on."""
     declared: dict[str, object] = {
         **_config.environment_of(cls),
-        # The folders beside the class's file fill in what `judges` and `personas` declare.
-        **_harness.harness_of(cls, _harness.folder_of(cls)),
+        **_harness.harness_of(cls),
         # The melody the class ships, named by its hash.
         **_melody.hold_config_of(cls),
         "prompt": [spec.written() for spec in LAYOUT],

@@ -6,18 +6,19 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- **`pinecall new` and `generate agent` scaffold the harness.** The class declares the eight judges Pinecall
-  recommends and two of its callers (`judges({ on })`, `personas({ on })`, in each language's spelling), a
-  `judges/README.md` says how to write a judge file, and `test/personas/hurried.json` is the first caller: the
-  first `pinecall start` shows both in the console, locked, as the class's.
+- **`pinecall new` and `generate agent` scaffold the harness, as code.** The class declares the eight judges
+  Pinecall recommends and two of its callers (`judges({ on })`, `personas({ on, own })`, in each language's
+  spelling), and `harness.ts` (`.py`, `.rb`) beside it holds its own: `hurried`, an `ownPersona`, to start, and
+  how an `ownJudge` is written. The first `pinecall start` shows both in the console, locked, as the class's.
 
 - **A class that owns its judges and its personas is read as such.** `judges` and `personas` say
   `set by the class of <agent>` and mark the class's own `class`; `add`, `edit`, `rm`, `on` and `off`
-  for that agent are refused with exit 2, naming the folder (`agents/<agent>/judges/`,
-  `agents/<agent>/test/personas/`) and the switch in the class; `--org` is still the org's.
-  `judges pull` and `personas pull` write the agent's own rows as those files, once, for a class
-  about to declare them. `personas generate --save` writes files when the class owns the roster,
-  rows otherwise, and the console's "generate" keeps one through `pinecall start` (the dev verb
+  for that agent are refused with exit 2, naming the code (`agents/<agent>/harness.*`) and the switch
+  in the class; `--org` is still the org's. `judges pull` and `personas pull` append the agent's own
+  rows to that file as code, once, an `ownJudge` or an `ownPersona` each for the class to add to `own`
+  (the file written as `pinecall new` writes it when it is not there; a name it declares already is
+  refused). `personas generate --save` appends code the same way when the class owns the roster, rows
+  otherwise, and the console's "generate" keeps one through `pinecall start` (the dev verb
   `personas.write`). `personas push`, the one-time migration of files into rows, is gone.
 
 - **`webhook test` no longer says the post was signed when it was not**: a webhook set without

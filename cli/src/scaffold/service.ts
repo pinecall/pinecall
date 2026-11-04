@@ -2,7 +2,6 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
@@ -14,8 +13,8 @@ import { writeProjectConfig, type ProjectConfig } from "../project/config.js";
 import { prepareProjectKey } from "../project/credentials.js";
 import { readSignIn, type MachineSignIn } from "../project/session.js";
 import type { Golden } from "../evals/service/goldens.js";
-import { agentFilesOf, homeOf, PROJECT_AGENTS, type AgentHome } from "../project/layout.js";
-import { languageOf } from "../project/language.js";
+import { agentFilesOf, homeOf, PROJECT_AGENTS, titleOf, type AgentHome } from "../project/layout.js";
+import { languageOf, TEMPLATE_ROOT } from "../project/language.js";
 
 /** The languages a project is written in, each a folder under templates/. */
 export const TEMPLATES = ["typescript", "ruby", "python"] as const;
@@ -24,7 +23,6 @@ export type Template = (typeof TEMPLATES)[number];
 /** A slug the gateway accepts: what the folder, the agent's name and its URL path all are; a project is named the same way. */
 export const SLUG = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
-const TEMPLATE_ROOT = fileURLToPath(new URL("../../templates/", import.meta.url));
 // npm drops a published `.gitignore`, so the template carries it under another name.
 const RENAMED: Record<string, string> = { _gitignore: ".gitignore" };
 
@@ -134,10 +132,6 @@ export function createGolden(root: string, input: GoldenInput): string {
 export function wordsFor(slug: string, template: Template): Record<string, string> {
   const next = NEXT[template];
   return { slug, Class: titleOf(slug).replaceAll(" ", ""), Title: titleOf(slug), Language: next.language, install: next.install, ring0: next.ring0, file: next.file, agents: `^${OURS.version}` };
-}
-
-function titleOf(slug: string): string {
-  return slug.split("-").map((part) => part[0]!.toUpperCase() + part.slice(1)).join(" ");
 }
 
 function checkSlug(slug: string, whose = "an agent's"): void {

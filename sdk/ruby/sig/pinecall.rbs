@@ -476,6 +476,8 @@ module Pinecall
     def self?.channel_rules_for: (String | Symbol, String | Symbol) -> String
   end
 
+  def self.own_judge: (**untyped) -> Hash[Symbol, untyped]
+  def self.own_persona: (**untyped) -> Hash[Symbol, untyped]
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted
   def self.render: (Agent, **untyped) -> Blocks
   def self.show_prompt: (Agent, **untyped) -> String

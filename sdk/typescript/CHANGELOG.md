@@ -21,12 +21,14 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 - **A judge row says `fixed`** when the agent's class declares its judges (`owner: "class"` for its own), and
   `personas.write` is a dev verb the CLI's companion answers.
 
-- **A class owns its judges and its personas.** `static judges = judges({ on: ["consent", …] })` names
-  which of Pinecall's judges the agent's calls meet, and its own are `agents/<slug>/judges/<name>.md`,
-  one each, in the library's format; `static personas = personas({ on: [...] })` the same for the
-  callers `pinecall simulate` plays, its own `agents/<slug>/test/personas/<name>.json`. Both reach the
-  gateway on `agent.configure` (`judges`, `personas` on `AgentConfig`), the console shows them locked,
-  and a bad file or a folder the class never declared is refused when the class loads, by sentence.
+- **A class owns its judges and its personas, as code.** `static judges = judges({ on: ["consent", …],
+  own: [offersNextSlot] })` names which of Pinecall's judges the agent's calls meet and the agent's own,
+  each an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`; `static personas =
+  personas({ on, own })` the same for the callers `pinecall simulate` plays, each of its own an
+  `ownPersona({ name, goal, style, … })`. `pinecall new` writes both in `agents/<slug>/harness.ts`. Both
+  reach the gateway on `agent.configure` (`judges`, `personas` on `AgentConfig`), the console shows
+  them locked, and a wrong one, or two of one name, is refused when the class loads, by a sentence
+  that names it. `OwnJudge`, `OwnPersona` and `JudgeInput` are the types.
 
 - **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the
   reply played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting`
