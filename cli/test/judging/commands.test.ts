@@ -71,7 +71,7 @@ describe("pinecall judges", () => {
     refuse("delete", "/v1/agents/:slug/judges/:name", 409, "consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off");
     const ran = await run(["judges", "rm", "consent"]);
     expect(ran.code).toBe(2);
-    expect(ran.err).toBe("pinecall: the gateway answered 409: consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off\n");
+    expect(ran.err).toBe("pinecall: consent is one of Pinecall's judges and is never deleted: `pinecall judges off consent` turns it off\n");
   });
 
   it("try prints a line per call and what it cost, writing nothing", async () => {

@@ -75,6 +75,15 @@ describe("pinecall docs", () => {
     answer("get", "/v1/knowledge/attached", { bases: [{ base: "faq", agents: ["front-desk", "sales"] }] });
     expect((await run(["docs", "attached"])).out).toBe("faq · read by front-desk, sales\n");
   });
+
+  it("drop asks for --yes when nobody is at a terminal, and drops with it", async () => {
+    const dropped = answer("delete", "/v1/knowledge/:base");
+    const asked = await run(["docs", "drop", "faq"]);
+    expect([asked.code, asked.err]).toEqual([2, "pinecall: dropping faq cannot be undone, and nobody is at a terminal to say so: run it again with --yes\n"]);
+    expect(dropped).toHaveLength(0);
+    expect((await run(["docs", "drop", "faq", "--yes"])).out).toBe("dropped faq\n");
+    expect(dropped[0]!.path).toBe("/v1/knowledge/faq");
+  });
 });
 
 describe("pinecall memory", () => {

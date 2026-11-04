@@ -249,9 +249,65 @@ function entryReading(entry: Entry): string {
         : `${String(data["name"])} → ${cut(folded(typeof data["summary"] === "string" ? data["summary"] : JSON.stringify(data["output"] ?? null)))}`;
     case "docs.sources":
       return sourcesLine(data);
+    case "call.started":
+      return startedLine(data);
+    case "call.ended":
+      return `${folded(data["reason"] ?? "ended")}${typeof data["duration_s"] === "number" ? ` · ${duration(data["duration_s"])}` : ""}`;
+    case "state.changed":
+      return cut(stateLine(data));
+    case "prompt.changed":
+      return `${String(data["name"] ?? "")} · ${String(data["chars"] ?? 0)} chars`;
+    case "tools.changed": {
+      const visible = Array.isArray(data["visible"]) ? (data["visible"] as unknown[]).map(String) : [];
+      return visible.length === 0 ? "none visible" : `visible: ${visible.join(", ")}`;
+    }
+    case "agent.waiting":
+      return data["interrupted"] === true ? "the caller cut it off" : "said whole";
+    case "error":
+      return `${String(data["code"] ?? "error")}: ${folded(data["message"])}${data["recoverable"] === true ? " · recovered" : ""}`;
+    case "call.score":
+      return scoreReading(data);
     default:
-      return cut(folded(JSON.stringify(data)));
+      return entry.type.startsWith("metrics.") ? metricsReading(data) : cut(folded(JSON.stringify(data)));
   }
+}
+
+// How the call came in: its channel and medium, who it is from, the run it belongs to, what it is expected to do.
+function startedLine(data: Record<string, unknown>): string {
+  const said = [data["channel"], data["medium"], data["direction"]].filter((word): word is string => typeof word === "string" && word !== "");
+  if (typeof data["from"] === "string" && data["from"] !== "") said.push(`from ${data["from"]}`);
+  if (typeof data["caller"] === "string" && data["caller"] !== "") said.push(`caller ${data["caller"]}`);
+  if (typeof data["run"] === "string" && data["run"] !== "") said.push(`run ${data["run"]}`);
+  if (Array.isArray(data["expects"]) && data["expects"].length > 0) said.push(`expects ${data["expects"].length}`);
+  return said.join(" · ");
+}
+
+// Which fields moved, to what, and what moved them: `takeMessage set stage "done" · message {…}`.
+function stateLine(data: Record<string, unknown>): string {
+  const state = (data["state"] ?? {}) as Record<string, unknown>;
+  const changed = Array.isArray(data["changed"]) ? (data["changed"] as unknown[]).map(String) : Object.keys(state);
+  const cause = data["cause"] as { kind?: string; tool?: string } | undefined;
+  const by = cause === undefined ? "" : `${cause.tool ?? cause.kind ?? "something"} set `;
+  return `${by}${changed.map((name) => `${name} ${short(state[name])}`).join(" · ")}`;
+}
+
+// The times livekit measured, in milliseconds, and the model that took them.
+function metricsReading(data: Record<string, unknown>): string {
+  const said: string[] = [];
+  for (const name of ["ttft", "ttfb", "duration", "end_of_utterance_delay", "transcription_delay", "audio_duration"]) {
+    if (typeof data[name] === "number") said.push(`${name.replaceAll("_", " ")} ${Math.round(data[name] * 1000)} ms`);
+  }
+  const model = (data["metadata"] as { model_name?: unknown } | undefined)?.model_name;
+  if (typeof model === "string") said.push(model);
+  return said.length === 0 ? cut(folded(JSON.stringify(data))) : said.join(" · ");
+}
+
+// The verdict in a word and how many judges answered; `pinecall sessions <call>` has each one.
+function scoreReading(data: Record<string, unknown>): string {
+  const judges = Array.isArray(data["judges"]) ? data["judges"].length : 0;
+  const passed = data["passed"];
+  const verdict = passed === true ? `${HELD} every judge held` : passed === false ? `${BROKEN} a judge answered broken` : "– no judge held or broke";
+  return `${verdict} · ${judges} judge${judges === 1 ? "" : "s"}`;
 }
 
 // Where each chunk came from, not what it says: the excerpts would cut the line before the first heading.

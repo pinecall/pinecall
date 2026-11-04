@@ -14,7 +14,8 @@ Commands:
                            file of the folder the base has not is kept
   rm [options] <path>      one file taken out of the base
   list                     every base this org pushed in the env
-  drop <base>              remove a base
+  drop [options] <base>    remove a base, its files and chunks; asked once on a
+                           terminal
   eval [options] [golden]  recall@k and nDCG@10 of a golden's questions against
                            a base
   attach [options] <base>  the agent reads a base: one field of its settings,
@@ -120,9 +121,10 @@ Options:
 $ pinecall docs drop --help
 Usage: pinecall docs drop [options] <base>
 
-remove a base
+remove a base, its files and chunks; asked once on a terminal
 
 Options:
+  --yes       drop without asking; the only way without a terminal
   -h, --help  display help for command
 
 $ pinecall docs eval --help

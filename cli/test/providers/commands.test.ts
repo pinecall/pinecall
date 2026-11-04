@@ -11,7 +11,8 @@ describe("pinecall providers", () => {
     answer("get", "/v1/providers", CATALOG);
     const ran = await run(["providers"]);
     expect(ran.code).toBe(0);
-    expect(ran.out).toMatch(/cartesia\s+stt,tts\s+no key/);
+    expect(ran.out).not.toMatch(/cartesia\s+stt,tts\s+no key/);
+    expect(ran.out).toContain("no key: cartesia (stt,tts) · `pinecall providers add <vendor>` brings one");
     expect(ran.out).toContain("3 vendors · ours: llm anthropic · stt deepgram · tts cartesia");
   });
 

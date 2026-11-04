@@ -14,7 +14,7 @@ describe("the console", () => {
 
   it("an older gateway with no login codes is told to restart; any other failure in its own words", () => {
     expect(whyNoConsole(new GatewayError(404, "Not Found"))).toMatch(/older than this CLI/);
-    expect(whyNoConsole(new GatewayError(403, "no"))).toBe("the gateway answered 403: no");
+    expect(whyNoConsole(new GatewayError(403, "no"))).toBe("no");
     expect(whyNoConsole(new Error("offline"))).toBe("offline");
   });
 });

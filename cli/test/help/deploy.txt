@@ -20,7 +20,7 @@ Commands:
                                 releases and token stay
   start [options]               a stopped app runs again, its newest release
   rm [options]                  stop hosting the app: its releases go, and its
-                                token is revoked
+                                token is revoked; asked once on a terminal
   help [command]                display help for command
 
 Pinecall runs the project the way `pinecall start` would, in a container of its own: it installs
@@ -108,8 +108,10 @@ Options:
 $ pinecall deploy rm --help
 Usage: pinecall deploy rm [options]
 
-stop hosting the app: its releases go, and its token is revoked
+stop hosting the app: its releases go, and its token is revoked; asked once on a
+terminal
 
 Options:
   --name <app>
+  --yes         remove without asking; the only way without a terminal
   -h, --help    display help for command

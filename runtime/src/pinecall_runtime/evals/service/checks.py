@@ -43,15 +43,18 @@ NO_DECLARATION = (
     "run this while the app that declares the tools is connected"
 )
 NO_WORDS = (
-    "no words were declared for this call: send them as `banned` with the request, or point "
-    "`pinecall eval` at a policy file"
+    "no banned words were declared for this call: `pinecall eval <call> --policy <file>` reads them "
+    'from a file of {"banned": […]}'
 )
 NOTHING_MEASURED = "no turn of this call carried any of {names}"
 # A budget may name it like any latency: the worst barge-in of the call, in seconds.
 INTERRUPTION_DELAY = "interruption_delay"
 # A share of the talking time, 0 to 1, judged by its own check and never as seconds.
 TALK_SHARE = "talk_share"
-NO_TALK_BUDGET = "no talk_share in the budget: send one, the most of the talking the agent may do (0 to 1)"
+NO_TALK_BUDGET = (
+    'no talk_share in the budget: a policy file of {"budget": {"talk_share": 0.6}} sets the most of the '
+    "talking the agent may do, 0 to 1"
+)
 NOTHING_TIMED = "no turn of this call said when anybody started and stopped speaking"
 NOTHING_CUT_OFF = "no reply of the agent's was cut off in this call"
 # A cut-off reply the caller said no words over (a cough, a false start) is livekit's to resume,

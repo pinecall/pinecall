@@ -15,7 +15,8 @@ describe("pinecall limits", () => {
     const lines = ran.out.split("\n");
     expect(lines[0]).toBe("sandbox");
     expect(ran.out).toMatch(/minutes\s+12 of 30 · starts again 1 \w{3}/);
-    expect(ran.out).toMatch(/simulations\s+0, no limit\n/);
+    expect(ran.out).toMatch(/the rest\s+nothing used, no limit: messages, simulations, seats\n/);
+    expect(ran.out).not.toMatch(/simulations\s+0/);
     expect(ran.out).toMatch(/LLM tokens\s+20500\.5 of 1000000/);
     expect(ran.out).toMatch(/bought numbers\s+0 of 0\n/);
     expect(ran.out).toMatch(/budget\s+\$4\.25 of \$60 · starts again 1 \w{3}/);

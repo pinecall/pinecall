@@ -95,8 +95,8 @@ function said(pc: Pinecall, io: Io, events: boolean, masking: Map<string, Maskin
     const line = events ? eventLine(shown) : personLine(shown);
     if (line !== null) io.out.write(`${line}\n`);
   });
-  // On err because out is the wire the CLI folds; a person's own lines (`personLine`) already say it.
-  if (events) pc.onKilled((slug, why) => io.err.write(`${slug}  ✗ ${why}\n`));
+  // A kill travels on the wire as the `error` entry it is (`eventLine`), which the CLI says once; a person's
+  // own lines (`personLine`) say it too. Nothing more on err, or the CLI's reader would see it twice.
   let lost = false;
   pc.onErrors((failed) => {
     if (!aLostSocket(failed)) return void io.err.write(`${failed.stack ?? failed.message}\n`);

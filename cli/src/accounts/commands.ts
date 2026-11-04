@@ -2,7 +2,7 @@
 
 import type { Command } from "@commander-js/extra-typings";
 
-import { connectionLine, type Context } from "../context.js";
+import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 import { openInBrowser } from "../kit/browser.js";
 import { allOf, typedInSilence } from "../kit/stdin.js";
@@ -35,17 +35,16 @@ Examples
 `;
 
 const WHOAMI = `
-Prints the one gateway every verb talks to — PINECALL_URL, with the key from the environment or
-the project's .env — and what the gateway says the key is in the env asked: the org, the
-key's id, the env, the label it was issued under, and whether you may act in production.
-Then which envs the key opens there: a person's key opens the sandbox without --prod and
-production with it, while their production switch is on; a server's token opens the one env
-its prefix names. The key itself is neither printed nor sent anywhere else.
+Three lines. Where: the one gateway every verb talks to, the org the key is in, and the env this
+command acts in. The key: its id, where it was read from (the environment, the project's .env, or
+your sign-in), and the label it was issued under. What it opens: a person's key opens the sandbox
+without --prod and production with it, while their production switch is on; a server's token
+opens the one env its prefix names. The key itself is neither printed nor sent anywhere else.
 
 Examples
   $ pinecall whoami
-  gateway https://cloud.pinecall.io · key from .env · sandbox
-    org clinica · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
+  gateway https://cloud.pinecall.io · org clinica · sandbox
+    key k_4f2a1d9c66b30e17 from your sign-in (~/.pinecall/session.json) · ana-macbook
     a person's key: the sandbox without --prod, production with it
 `;
 
@@ -101,7 +100,8 @@ export function register(program: Command, ctx: Context): void {
     .addHelpText("after", WHOAMI)
     .action(async () => {
       const who = await service.getWhoami(ctx);
-      ctx.io.result(who, (one) => render.whoami(connectionLine(ctx), one));
+      const { url, source } = ctx.credentials();
+      ctx.io.result(who, (one) => render.whoami({ url, source }, one));
     });
 
   const secrets = program

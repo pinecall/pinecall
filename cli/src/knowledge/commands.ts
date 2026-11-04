@@ -122,9 +122,18 @@ export function register(program: Command, ctx: Context): void {
     .action(async () => ctx.io.result(await service.listBases(ctx), render.bases));
   docs
     .command("drop")
-    .description("remove a base")
+    .description("remove a base, its files and chunks; asked once on a terminal")
     .argument("<base>")
-    .action(async (base) => ctx.io.result(await service.dropBase(ctx, base), render.dropped));
+    .option("--yes", "drop without asking; the only way without a terminal")
+    .action(async (base, flags) => {
+      // Refused before the gateway is asked: nothing is dropped on nobody's word.
+      if (flags.yes !== true && !ctx.io.interactive) throw new UsageError(service.SAY_YES_DROP(base));
+      if (flags.yes !== true && !(await confirm(`drop the base ${base}, its files and chunks? [y/N] `, ctx.io))) {
+        ctx.io.print(render.NOT_DROPPED(base));
+        return;
+      }
+      ctx.io.result(await service.dropBase(ctx, base), render.dropped);
+    });
   docs
     .command("eval")
     .description("recall@k and nDCG@10 of a golden's questions against a base")

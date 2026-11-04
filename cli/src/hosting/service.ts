@@ -109,6 +109,9 @@ export async function startApp(ctx: Context, name: string): Promise<{ name: stri
   return { name };
 }
 
+/** A removal is never done on nobody's word: `data erase` and `memory forget` ask for --yes the same way. */
+export const SAY_YES = (name: string): string => `removing ${name} cannot be undone, and nobody is at a terminal to say so: run it again with --yes`;
+
 /** Stop hosting the app: its releases go, and its token is revoked. */
 export async function removeApp(ctx: Context, name: string): Promise<{ name: string }> {
   await api.deleteApp(ctx.gateway(), name);

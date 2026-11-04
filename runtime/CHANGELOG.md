@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **The replay's two skipped checks say what a person types.** `register` with no banned words: `pinecall eval
+  <call> --policy <file>` reads them from a file of `{"banned": […]}`; `talk` with no `talk_share`: a policy
+  file of `{"budget": {"talk_share": 0.6}}` sets it — in place of `send them as banned with the request`, an
+  API's words on a terminal.
+
 ## 0.11.25 — a code agent is one folder: its judges, callers, docs, melody, look and timeouts in the class (2026-11-04)
 
 - **The hold melody and the widget's look are declarable.** `AgentConfig.hold` (`{clip, name, after_s, off}`, the

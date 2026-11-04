@@ -43,6 +43,9 @@ export interface Appended {
 // Mirrors the gateway's name rule so a bad name gets a readable error.
 const A_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// How a caller acts when the code says nothing: only what differs from this is written into it.
+const BEHAVIOR_DEFAULTS: Record<string, unknown> = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television" };
+
 export const NOT_A_NAME = (name: string): string => `${name} is no name for one of the agent's own: lower-case letters and digits joined by hyphens — apurado, price-shopper`;
 export const DECLARED_ALREADY = (path: string, symbol: string): string => `${path} declares ${symbol} already: nothing is written over code; write it by hand, or under another name`;
 
@@ -65,7 +68,8 @@ export function appendPersona(home: AgentHome, persona: PersonaWritten): Appende
   if (persona.state !== undefined && Object.keys(persona.state).length > 0) given["state"] = persona.state;
   if (persona.expects !== undefined && persona.expects.length > 0) given["expects"] = persona.expects;
   if (persona.tags !== undefined && persona.tags.length > 0) given["tags"] = persona.tags;
-  if (persona.behavior !== undefined && Object.keys(persona.behavior).length > 0) given["behavior"] = { ...persona.behavior };
+  const behavior = Object.fromEntries(Object.entries(persona.behavior ?? {}).filter(([field, value]) => value !== BEHAVIOR_DEFAULTS[field]));
+  if (Object.keys(behavior).length > 0) given["behavior"] = behavior;
   for (const field of ["llm", "tts", "voice"] as const) if (persona[field] !== undefined && persona[field] !== null) given[field] = persona[field];
   return append(home, "persona", persona.name, given);
 }

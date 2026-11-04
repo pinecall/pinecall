@@ -76,6 +76,6 @@ describe("the server", () => {
     refuse("get", "/v1/whoami", 401, `the key ${KEY} was revoked`);
     const result = await host.callTool({ name: "whoami", arguments: {} });
     expect(result.isError).toBe(true);
-    expect(textOf(result)).toBe("the gateway answered 401: the key *** was revoked");
+    expect(textOf(result)).toBe("the key *** was revoked");
   });
 });

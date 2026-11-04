@@ -27,16 +27,15 @@ export function loggedIn(done: SignedIn & { advice: Advice | null }): string[] {
 
 const STAGES: Record<string, string> = { stt: "ears", llm: "thinking", tts: "voice" };
 
-/** The connection line, then who the key is there and which envs it opens, indented under it. */
-export function whoami(connection: string, who: Whoami): string[] {
-  return [connection, `  ${describe(who)}`, `  ${envsOf(who)}`];
+/** Three lines, each said once: where (gateway, org, env), the key (its id, where it was read from, its label), what it opens. */
+export function whoami(where: { url: string; source: string }, who: Whoami): string[] {
+  return [`gateway ${where.url} · org ${who.slug ?? who.org} · ${who.env}`, `  ${describe(who, where.source)}`, `  ${envsOf(who)}`];
 }
 
-/** One line: org, key id, env, label, production access. A key without a label skips it rather than dangling a separator. */
-export function describe(who: Whoami): string {
-  const said = [`org ${who.slug ?? who.org}`, `key ${who.key_id}`, who.env];
+/** The key's line: its id, where it was read from, and the label it was issued under when it has one. */
+export function describe(who: Whoami, source: string): string {
+  const said = [`key ${who.key_id} from ${source}`];
   if (who.label !== null) said.push(who.label);
-  said.push(`production: ${yesNo(who.production)}`);
   return said.join(" · ");
 }
 

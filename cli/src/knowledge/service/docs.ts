@@ -8,6 +8,7 @@ import { z } from "zod";
 import * as api from "../../api/knowledge.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
+import { pathFrom } from "../../kit/format.js";
 import { isDirectory, type AgentHome } from "../../project/layout.js";
 import { questionsOf } from "./cases.js";
 import { cornerRead, readSettings, writeCorner } from "./settings.js";
@@ -98,7 +99,7 @@ export async function pushDocs(ctx: Context, input: PushDocsInput): Promise<(Doc
     const homes = ctx.agents({ file: input.file, agent: input.agent });
     if (homes.length > 1) {
       return Promise.all(
-        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, how, home.name) : { agent: home.name, skipped: `no documents at ${home.docs}` })),
+        homes.map((home) => (existsSync(home.docs) ? pushOne(ctx, home.docs, home.name, how, home.name) : { agent: home.name, skipped: `no documents at ${pathFrom(ctx.cwd, home.docs)}` })),
       );
     }
     const home = homes[0]!;
@@ -111,6 +112,9 @@ export async function pushDocs(ctx: Context, input: PushDocsInput): Promise<(Doc
 export async function listBases(ctx: Context): Promise<api.KnowledgeList> {
   return api.listBases(ctx.gateway());
 }
+
+/** A drop is never done on nobody's word: `memory forget` asks for --yes the same way. */
+export const SAY_YES_DROP = (base: string): string => `dropping ${base} cannot be undone, and nobody is at a terminal to say so: run it again with --yes`;
 
 export async function dropBase(ctx: Context, base: string): Promise<{ base: string }> {
   await api.deleteBase(ctx.gateway(), base);
@@ -128,7 +132,7 @@ export async function evalDocs(ctx: Context, input: EvalDocsInput): Promise<(api
     if (homes.length > 1) {
       const scores: (api.KnowledgeScore | DocsSkipped)[] = [];
       for (const home of homes) {
-        scores.push(existsSync(home.docsGolden) ? await evalOne(ctx, home.docsGolden, home.name, input.k, home) : { agent: home.name, skipped: `no golden at ${home.docsGolden}` });
+        scores.push(existsSync(home.docsGolden) ? await evalOne(ctx, home.docsGolden, home.name, input.k, home) : { agent: home.name, skipped: `no golden at ${pathFrom(ctx.cwd, home.docsGolden)}` });
       }
       return scores;
     }
@@ -206,11 +210,12 @@ export function kReadWith(answer: api.TuningAnswer | null, base: string): number
 // The README at the folder's root stays behind: it describes the folder, not the business.
 async function pushOne(ctx: Context, dir: string, base: string, how: { language: string | undefined; replace: boolean }, agent?: string): Promise<DocsPushed> {
   const directory = resolve(dir);
-  if (!isDirectory(directory)) throw new UsageError(NO_DIRECTORY(directory));
+  const typed = pathFrom(ctx.cwd, directory);
+  if (!isDirectory(directory)) throw new UsageError(NO_DIRECTORY(typed));
   const found = markdownUnder(directory);
-  if (found.length === 0) throw new UsageError(NO_MARKDOWN(directory));
+  if (found.length === 0) throw new UsageError(NO_MARKDOWN(typed));
   const files = found.filter((one) => one.path !== README);
-  if (files.length === 0) throw new UsageError(ONLY_README(directory));
+  if (files.length === 0) throw new UsageError(ONLY_README(typed));
   const pushed = await api.pushBase(ctx.gateway(), base, files, how.language, how.replace);
   return { ...(agent === undefined ? {} : { agent }), ...pushed, files: files.length, ...(files.length === found.length ? {} : { readme_skipped: true as const }) };
 }
@@ -226,7 +231,7 @@ function agentIfAny(ctx: Context, input: EvalDocsInput): AgentHome | undefined {
 // `home` is the agent whose attachment supplies k when none was typed; with none (a golden and a base
 // named outside a project), the gateway's default k answers.
 async function evalOne(ctx: Context, golden: string, base: string, k: number | undefined, home: AgentHome | undefined): Promise<api.KnowledgeScore> {
-  const questions = questionsOf(resolve(golden), DOCS_QUESTION);
+  const questions = questionsOf(resolve(golden), DOCS_QUESTION, pathFrom(ctx.cwd, resolve(golden)));
   const attachment = k !== undefined || home === undefined ? null : await readSettings(ctx, home.name).catch(() => null);
   return api.scoreBase(ctx.gateway(), base, questions, k ?? kReadWith(attachment, base));
 }

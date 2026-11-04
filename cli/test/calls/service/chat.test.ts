@@ -95,6 +95,6 @@ describe("the socket", () => {
     await once(gateway, "listening");
     const url = `http://127.0.0.1:${(gateway.address() as AddressInfo).port}`;
     // 4000 plus the status: a 4404 is a name nothing answers to, exit 2 like any name typed wrong.
-    await expect(Chat.open(contextAt(url), { agent: "front-desk" })).rejects.toMatchObject({ status: 404, exit: 2, message: "the gateway answered 404: no process holds front-desk" });
+    await expect(Chat.open(contextAt(url), { agent: "front-desk" })).rejects.toMatchObject({ status: 404, exit: 2, message: "no process holds front-desk" });
   });
 });

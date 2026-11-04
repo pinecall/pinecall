@@ -49,14 +49,33 @@ describe("pinecall agent", () => {
     expect((await run(["agent", "set", "--llm-option", "no-equals"])).err).toContain("is not key=value");
   });
 
-  it("clear takes the fields named out of your own row, and a bare clear is refused", async () => {
+  it("clear takes the fields named by their flags out of your own row, says what moved, and a bare clear is refused", async () => {
     answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 2, { greeting: { say: "Hi" }, memory: { remember: ["x"], forget: [] }, voice: "v" }) });
-    const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
-    await run(["agent", "clear", "greeting", "memory"]);
+    const sent = answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 3, { voice: "v" }) });
+    const ran = await run(["agent", "clear", "--greeting", "--memory"]);
     expect((sent[0]!.body as { config: Record<string, unknown> }).config).toEqual({ voice: "v" });
+    expect(ran.out).toBe(["front-desk · sandbox · your corner v3", '  greeting "Hi" → —', "  memory remember 1 · forget 0 → —", ""].join("\n"));
     const bare = await run(["agent", "clear"]);
     expect(bare.code).toBe(2);
-    expect(bare.err).toContain("name the fields to clear, or --all");
+    expect(bare.err).toContain("name the fields to clear (--language, --voice, …), or --all");
+  });
+
+  it("set says what it moved, not the whole table", async () => {
+    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: tuningRow("mem_ana", 1, { language: "es-ES" }) });
+    const ran = await run(["agent", "set", "--language", "es-ES"]);
+    expect(ran.code).toBe(0);
+    expect(ran.out).toBe(["front-desk · sandbox · your corner v1", "  language — → es-ES", ""].join("\n"));
+  });
+
+  it("alone, a field set nowhere is one count, not a row of dashes; nothing set anywhere is one line", async () => {
+    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    const some = await run(["agent"]);
+    expect(some.out).not.toMatch(/\n {2}tts builds /);
+    expect(some.out).toMatch(/\n {2}\d+ more fields set nowhere: the runtime's defaults answer · `pinecall agent set --help` names them\n$/);
+    answer("get", "/v1/agents/:slug/settings", { ...SETTINGS, team: null, production: null });
+    const none = await run(["agent"]);
+    expect(none.out).toBe(["front-desk · sandbox", "", "  nothing set in any corner: the runtime's defaults answer, and what the class declares · `pinecall agent set --help` names the fields", "", "  yours: nothing set · team: nothing set · production: nothing set", ""].join("\n"));
   });
 
   it("pull prints your own row as a file", async () => {
@@ -147,7 +166,15 @@ describe("pinecall voices", () => {
     answer("get", "/v1/providers", { providers: [{ name: "cartesia", voices_listed: true }], defaults: { tts: "cartesia" } });
     answer("get", "/v1/voices", { tts: "cartesia", language: null, voices: [{ id: "ana-es", name: "Ana", language: "es", description: "", gender: "female", country: "ES", accent: "castilian" }] });
     const ran = await run(["voices"]);
-    expect(ran.out).toMatch(/^ID\s+NAME\s+LANGUAGE\s+GENDER\s+FROM\nana-es\s+Ana\s+es\s+female\s+ES castilian\n$/);
+    expect(ran.out).toMatch(/^ID\s+NAME\s+LANGUAGE\s+GENDER\s+FROM\nana-es\s+Ana\s+es\s+female\s+ES castilian\n1 voice · --language <tag> keeps one language/);
+  });
+
+  it("voices come by language then name, and FROM is left out when no voice says where it is from", async () => {
+    answer("get", "/v1/providers", { providers: [{ name: "google", voices_listed: true }], defaults: { tts: "google" } });
+    const voice = (id: string, language: string): Record<string, unknown> => ({ id, name: id, language, description: "", gender: "female", country: "", accent: "" });
+    answer("get", "/v1/voices", { tts: "google", language: null, voices: [voice("Kore", "de"), voice("Aoede", "de"), voice("Zephyr", "en")] });
+    const ran = await run(["voices"]);
+    expect(ran.out.split("\n").slice(0, 4)).toEqual(["ID      NAME    LANGUAGE  GENDER", "Aoede   Aoede   de        female", "Kore    Kore    de        female", "Zephyr  Zephyr  en        female"]);
   });
 
   it("--json is the list", async () => {

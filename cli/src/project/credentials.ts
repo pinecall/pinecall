@@ -1,5 +1,6 @@
 /** Where the key and gateway URL come from: the environment, else the nearest `.env`, else the project's `pinecall.json` and this machine's sign-in. */
 
+import { homedir } from "node:os";
 import { relative } from "node:path";
 
 import { accountsGateway, createOrgKey, listOrgs } from "../api/accounts.js";
@@ -54,7 +55,8 @@ export function readCredentials(env: NodeJS.ProcessEnv, from: string, home: stri
   } catch (failed) {
     return { url: CLOUD_URL, key: undefined, source: "nowhere", missing: errorMessage(failed) };
   }
-  const session = `your sign-in (${home}/${SESSION_FILE})`;
+  // The sign-in's file as a person writes it, `~/.pinecall/session.json`, when it is under their home.
+  const session = `your sign-in (${home === homedir() ? "~" : home}/${SESSION_FILE})`;
   if (project !== undefined) {
     const { gateway, org } = project.config;
     const inOrg = keyIn(home, gateway, org);

@@ -43,6 +43,8 @@ export function removed({ name }: { name: string }): string {
   return `${name}: no longer hosted, its token revoked`;
 }
 
+export const KEPT = (name: string): string => `${name} stays hosted: nothing removed`;
+
 /** The app's lines, said stale or missing first when they are. */
 export function logs(found: Logs): string[] {
   if (found.none) return [`${found.name}: Pinecall sent no lines yet — is it running? \`pinecall deploy list\` says`];

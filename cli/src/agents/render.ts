@@ -16,10 +16,13 @@ export const NO_WALKS = (agent: string): string => `${agent} published no walks:
 export const UNCHANGED = "nothing changed: no version written";
 export const NOTHING_KNOWN = (agent: string, corner: string): string => `${agent} knows nothing by heart in ${corner}: \`pinecall agent knowledge edit\` writes it`;
 
+export const NOTHING_SET = "nothing set in any corner: the runtime's defaults answer, and what the class declares · `pinecall agent set --help` names the fields";
+
 /**
- * The settings table: one column per corner, one row per field, then each corner's version. An
- * unset corner shows what it falls back to, e.g. `(team's)`; a field the class fixes says `class`
- * in every corner, since no corner's value is read for it.
+ * The settings table: one column per corner, one row per field some corner sets or the class fixes,
+ * then each corner's version and how many fields are set nowhere. An unset corner shows what it
+ * falls back to, e.g. `(team's)`; a field the class fixes says `class` in every corner, since no
+ * corner's value is read for it.
  */
 export function settings({ agent, answer }: { agent: string; answer: TuningAnswer }): string[] {
   const corners: { name: string; row: TuningRow | null; fallsTo: string }[] = [
@@ -28,24 +31,39 @@ export function settings({ agent, answer }: { agent: string; answer: TuningAnswe
     { name: "production", row: answer.production, fallsTo: "—" },
   ];
   const fixed = new Set(answer.fixed);
+  const declared = (field: Field): boolean => {
+    const as = DECLARED_AS[field];
+    return as !== undefined && fixed.has(as);
+  };
   const cell = (corner: (typeof corners)[number], field: Field): string => {
-    const declared = DECLARED_AS[field];
-    if (declared !== undefined && fixed.has(declared)) return "class";
+    if (declared(field)) return "class";
     if (corner.row === null) return corner.fallsTo;
     const value = shown(corner.row.config, field);
     if (value === undefined) return "—";
     return value.length > A_CELL ? `${value.slice(0, A_CELL - 1)}…` : value;
   };
-  const widths = corners.map((corner) => Math.max(corner.name.length, ...FIELDS.map((field) => cell(corner, field).length)) + 2);
+  const set = FIELDS.filter((field) => declared(field) || corners.some((corner) => corner.row !== null && shown(corner.row.config, field) !== undefined));
   const lines = [`${agent} · ${answer.world}`, ""];
-  const label = Math.max(...FIELDS.map((field) => field.length)) + 2;
-  lines.push(`  ${"".padEnd(label)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
-  for (const field of FIELDS) {
-    lines.push(`  ${field.replaceAll("-", " ").padEnd(label)}${corners.map((corner, at) => cell(corner, field).padEnd(widths[at]!)).join("")}`.trimEnd());
+  if (set.length === 0) lines.push(`  ${NOTHING_SET}`);
+  else {
+    const widths = corners.map((corner) => Math.max(corner.name.length, ...set.map((field) => cell(corner, field).length)) + 2);
+    const label = Math.max(...set.map((field) => field.length)) + 2;
+    lines.push(`  ${"".padEnd(label)}${corners.map((corner, at) => corner.name.padEnd(widths[at]!)).join("")}`.trimEnd());
+    for (const field of set) {
+      lines.push(`  ${field.replaceAll("-", " ").padEnd(label)}${corners.map((corner, at) => cell(corner, field).padEnd(widths[at]!)).join("")}`.trimEnd());
+    }
   }
   lines.push("");
   lines.push(`  ${corners.map((corner) => `${corner.name}: ${corner.row === null ? "nothing set" : versionLine(corner.row)}`).join(" · ")}`);
+  const rest = FIELDS.length - set.length;
+  if (rest > 0 && set.length > 0) lines.push(`  ${rest} more field${rest === 1 ? "" : "s"} set nowhere: the runtime's defaults answer · \`pinecall agent set --help\` names them`);
   return lines;
+}
+
+/** What a write changed, as one line per field: the agent, the env, the corner and its version, then `field before → after`. */
+export function written(done: CornerWritten): string[] {
+  const moved = changes(done.before, done.after, "  ", "\n");
+  return [`${done.agent} · ${done.answer.world} · ${done.corner} v${done.version ?? "?"}`, ...(moved === "" ? ["  nothing moved"] : [moved])];
 }
 
 // `clinica-norte (k 4 · tool · min 0.3)`: what the attachment sets, nothing it leaves to the default.
@@ -241,12 +259,17 @@ export function killed({ agent, envs, apps }: KilledAgent): string {
   return `killed ${agent} in ${envs.join(", ")}: ${which} let go of it (${apps.join(", ")}) and kept their other agents — its settings and calls stay, and an app that declares it again holds it again`;
 }
 
+/** The voices by language, then by name; where each is from when the vendor says; then how many, and how to hear one. */
 export function voices(found: ListedVoice[]): string[] {
   if (found.length === 0) return [NO_VOICES];
-  return table(
-    ["id", "name", "language", "gender", "from"],
-    found.map((voice) => [voice.id, voice.name, voice.language, voice.gender, [voice.country, voice.accent].filter((word) => word !== "").join(" ")]),
+  const from = (voice: ListedVoice): string => [voice.country, voice.accent].filter((word) => word !== "").join(" ");
+  const sorted = [...found].sort((one, other) => one.language.localeCompare(other.language) || one.name.localeCompare(other.name));
+  const placed = sorted.some((voice) => from(voice) !== "");
+  const rows = table(
+    placed ? ["id", "name", "language", "gender", "from"] : ["id", "name", "language", "gender"],
+    sorted.map((voice) => (placed ? [voice.id, voice.name, voice.language, voice.gender, from(voice)] : [voice.id, voice.name, voice.language, voice.gender])),
   );
+  return [...rows, `${found.length} voice${found.length === 1 ? "" : "s"} · --language <tag> keeps one language · \`pinecall voices play <id>\` says a line in one`];
 }
 
 export function voicePlayed(played: VoicePlayed): string {

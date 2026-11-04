@@ -2,7 +2,7 @@
 
 import type { CallScore } from "@pinecall/agents/wire";
 
-import { BROKEN, HELD, money } from "../kit/format.js";
+import { BROKEN, clipped, HELD, money } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import type { AgentJudging, Calibration, JudgeAgreement, JudgeList, JudgeListChanged, JudgeOwner, JudgeRow, JudgeTried, Judgment, JudgingReport } from "./service.js";
 
@@ -22,14 +22,18 @@ const NO_REASON = "no reason was written down";
 export const NO_JUDGES = (owner: JudgeOwner): string =>
   `${owner ?? "the org"} has no judges yet: \`pinecall judges add <name> --asks '…'\` (--org for every agent's), or the console's Judges`;
 
-/** One line per judge: name, whose, on or off, how it answers, when it runs, and what it holds a call to. */
-export function judges(owner: JudgeOwner, list: JudgeList): string[] {
+// A screen's width when stdout is no terminal: a pipe, a file, a test.
+const A_SCREEN = 120;
+
+/** One line per judge, cut at the screen's width: name, whose, on or off, how it answers, when it runs, and what it holds a call to. */
+export function judges(owner: JudgeOwner, list: JudgeList, columns: number = A_SCREEN): string[] {
   if (list.judges.length === 0) return [NO_JUDGES(owner)];
   // A library judge Pinecall recommends says so beside its switch: the ones to turn on first.
   const rows = table(
     ["name", "owner", "switch", "answers", "when", "asks"],
-    list.judges.map((row) => [row.name, row.owner, `${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`, answerLabel(row), whenLabel(row), textOf(row)]),
-  );
+    list.judges.map((row) => [row.name, row.owner, `${row.on ? "on" : "off"}${row.recommended ? " · recommended" : ""}`, row.answer, whenLabel(row), textOf(row)]),
+  ).map((line) => clipped(line, columns));
+  rows.push(`\`pinecall judges show <name>\` prints one whole`);
   if (owner !== null && list.judges.some((row) => row.fixed === true)) rows.push(`set by the class of ${owner}: its own are code beside the class (agents/${owner}/harness.*), judges({ on, own }) its switches`);
   return rows;
 }

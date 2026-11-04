@@ -4,6 +4,39 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **Every refusal in the CLI's own words.** A line typed wrong names the verb typed, what it takes and the
+  `--help` that says so (`pinecall lexicon add needs --say <spoken>: …`, `pinecall memory needs a <contact>: …`,
+  `no verb deploi (did you mean deploy?): …`), never commander's `error: required option '--say <spoken>' not
+  specified`. A refusal of the gateway is its sentence alone, with no `the gateway answered 404:` in front; the
+  status is named only when the answer carried no sentence. An agent of the project the gateway has never met
+  is said as what it is: `<agent> is not on Pinecall yet, nothing has held it: pinecall start holds it from this
+  terminal, pinecall deploy runs it on Pinecall`. A path in a refusal is written as you would type it from where
+  you are, never whole; the sign-in's file reads `~/.pinecall/session.json`.
+- **`whoami` says each fact once**: where (gateway, org, env), the key (its id, where it was read from, its
+  label), what it opens. `callbacks` no longer prints a connection line before its answer.
+- **`agent` prints the fields some corner sets** and counts the rest on one line, instead of thirty rows of
+  dashes; nothing set anywhere is one line. `agent set` and `agent clear` print what moved — the corner, its
+  new version, `field before → after` — not the table. `agent clear` takes the fields by the flags that set
+  them (`clear --language`), as `set` does.
+- **The wide tables read on one screen.** `judges` cuts what each judge asks at the terminal's width and
+  points at `show`; `voices` comes by language then name, leaves `FROM` out when no voice says where it is
+  from, and ends with how many and how to hear one; `providers` tables the vendors a call runs on and lists
+  the rest on one line per standing (`no key: assemblyai (stt), …`); `limits` counts the quotas nothing was
+  used of and no limit is set on together on one line, and says `41 · no limit`.
+- **`sessions log` says each entry in words**: how the call opened and ended, which fields of the state moved
+  and what moved them, which prompt block changed and its size, which tools became visible, a metric's times
+  in milliseconds and its model, an error's code and sentence, the score's verdict — no JSON, no hashes.
+- **`runs` is the agent's**, as `sessions` is: the one beside you or `--agent`; `--all` is every agent's of
+  the org, which a bare `runs` outside a project lists. `cases` opens with `2 cases pending a decision · the
+  inbox holds at most 50`. `start` prints a kill once.
+- **`deploy rm` and `docs drop` ask once on a terminal**, and without one do nothing until `--yes` says so,
+  as `memory forget` and `data erase` do.
+- **`personas generate --save` and `personas pull` write what the caller is, never a default**: a `behavior`
+  field at the runtime's own value is left out of the code. The harness template keeps its judge example
+  above the callers, so what is appended lands at the end of the file.
+
 ## [0.11.25] — pinecall new writes the harness as code, pull and generate write into it (2026-11-04)
 
 - **`pinecall new` and `generate agent` scaffold the harness, as code.** The class declares the eight judges

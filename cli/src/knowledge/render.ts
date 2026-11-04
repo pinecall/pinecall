@@ -50,6 +50,8 @@ export function dropped({ base }: { base: string }): string {
   return `dropped ${base}`;
 }
 
+export const NOT_DROPPED = (base: string): string => `${base} stays: nothing dropped`;
+
 /** Each score: a summary line, then one line per missed question; an agent passed over says why. */
 export function scores(results: (KnowledgeScore | DocsSkipped)[]): string[] {
   return results.flatMap((one) => ("skipped" in one ? [`${one.agent} · ${one.skipped}`] : score(one)));

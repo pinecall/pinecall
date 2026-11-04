@@ -68,6 +68,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `kit/stdin.ts` | 53 | Terminal input: a secret without echo, or the lines of a pipe. A key never lands in argv or the scrollback. |
 | `kit/table.ts` | 28 | Rows as aligned columns: the one table a verb prints. |
 | `kit/tarball.ts` | 97 | A project as a release: its files, never its secrets or its dependencies, as a gzipped tarball. |
+| `kit/usage.ts` | 57 | Commander's usage errors said in the CLI's own voice: the verbs typed, what they take, and where their help is. |
 | `kit/zip.ts` | 70 | A zip archive read whole in memory: each file's path and bytes, stored or deflated, none outside the folder it is read into. |
 
 ### `api/` — the gateway, the only place `fetch` and `/v1/` appear

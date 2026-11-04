@@ -73,7 +73,10 @@ describe("pinecall deploy", () => {
     const removed = answer("delete", "/v1/hosted/:name");
     expect((await run(["deploy", "stop", "--name", "clinica"])).out).toContain("clinica: stopped");
     expect((await run(["deploy", "start", "--name", "clinica"])).out).toContain("clinica: started");
-    expect((await run(["deploy", "rm", "--name", "clinica"])).out).toContain("no longer hosted, its token revoked");
+    const asked = await run(["deploy", "rm", "--name", "clinica"]);
+    expect([asked.code, asked.err]).toEqual([2, "pinecall: removing clinica cannot be undone, and nobody is at a terminal to say so: run it again with --yes\n"]);
+    expect(removed).toHaveLength(0);
+    expect((await run(["deploy", "rm", "--name", "clinica", "--yes"])).out).toContain("no longer hosted, its token revoked");
     expect(removed[0]!.path).toBe("/v1/hosted/clinica");
   });
 });

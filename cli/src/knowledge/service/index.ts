@@ -22,6 +22,7 @@ export {
   PushDocsInput,
   pushDocs,
   README,
+  SAY_YES_DROP,
   type BaseAttached,
   type DocsPushed,
   type DocsSkipped,

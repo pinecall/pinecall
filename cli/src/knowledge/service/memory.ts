@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import * as api from "../../api/knowledge.js";
 import type { Context } from "../../context.js";
+import { pathFrom } from "../../kit/format.js";
 import { questionsOf } from "./cases.js";
 import { readSettings, writeCorner } from "./settings.js";
 
@@ -76,6 +77,6 @@ export async function policy(ctx: Context, input: PolicyInput): Promise<Policy> 
 /** Every question of a recall golden asked of memory; no contact of the org's is read or written. */
 export async function evalMemory(ctx: Context, input: EvalMemoryInput): Promise<api.MemoryScore> {
   const golden = input.golden ?? ctx.agent("memory eval", { file: input.file, agent: input.agent }).memoryGolden;
-  const questions = questionsOf(resolve(golden), MEMORY_QUESTION);
+  const questions = questionsOf(resolve(golden), MEMORY_QUESTION, pathFrom(ctx.cwd, resolve(golden)));
   return api.scoreMemory(ctx.gateway(), questions, input.k);
 }

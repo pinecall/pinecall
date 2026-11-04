@@ -142,6 +142,10 @@ export function slugOf(cwd: string, verb: string, choice: AgentChoice = {}): str
   return oneAgentOf(cwd, verb).name;
 }
 
+/** The gateway knows no agent of that name, and the name is one of this project's: nothing has held it yet. */
+export const NEVER_HELD = (slug: string): string =>
+  `${slug} is not on Pinecall yet, nothing has held it: \`pinecall start\` holds it from this terminal, \`pinecall deploy\` runs it on Pinecall`;
+
 function noAgentHere(cwd: string): string {
   return `no agent here: looked for ${PROJECT_AGENTS}/<name>/${AGENT_FILES.join(" or ")} in ${cwd}`;
 }

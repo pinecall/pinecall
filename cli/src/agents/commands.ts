@@ -39,7 +39,8 @@ prints the corner's text; \`edit\` opens it in $EDITOR and saves what you wrote 
 version (an empty file takes it out). It is not the RAG: the documents a turn searches are
 \`pinecall docs\`, attached as \`bases\`.
 
-clear takes fields out of the corner's own row, so the runtime's default stands for them again.
+clear takes fields out of the corner's own row, each by the flag that set it (\`clear --language\`),
+so the runtime's default stands for them again. set and clear print what moved, a field a line.
 history, diff and rollback are the versions. pull prints the corner's config as JSON; push sends
 a file as the next version. list prints every process holding this org's agents in the env;
 stop <app> closes that app's socket.
@@ -129,21 +130,18 @@ export function register(program: Command, ctx: Context): void {
     const named = settingsOf(flags as Record<string, unknown>);
     if (Object.keys(named).length === 0) throw new UsageError("nothing to set: name a field (--voice, --llm, --greeting, …); `pinecall agent clear` takes one out");
     const input = service.SettingsInput.parse(named);
-    ctx.io.result(await service.setSettings(ctx, input, service.WriteOptions.parse(flags)), render.settings);
+    ctx.io.result(await service.setSettings(ctx, input, service.WriteOptions.parse(flags)), render.written);
   });
-  agent
-    .command("clear")
-    .description("take fields out of the corner's own row, so the corner below holds again; --all takes every one")
-    .argument("[fields...]", service.FIELDS.join(" · "))
-    .option("--all", "every field of the corner's own row")
-    .option("--agent <slug>")
-    .option("--team")
-    .action(async (fields, flags) => {
-      // A whole corner gone is said in a word of its own, never by forgetting to name a field.
-      if (fields.length === 0 && flags.all !== true) throw new UsageError("name the fields to clear, or --all for every one: `pinecall agent` shows what your corner sets");
-      if (fields.length > 0 && flags.all === true) throw new UsageError("--all clears every field: name fields, or --all, not both");
-      ctx.io.result(await service.clearSettings(ctx, fields, service.WriteOptions.parse(flags)), render.settings);
-    });
+  // A field is cleared by the flag that set it (`--language`), so set and clear read the same way.
+  const clear = agent.command("clear").description("take fields out of the corner's own row, so the corner below holds again; --all takes every one").option("--all", "every field of the corner's own row").option("--agent <slug>").option("--team");
+  for (const field of service.FIELDS) clear.option(`--${field}`);
+  clear.action(async (flags) => {
+    const fields = service.FIELDS.filter((field) => (flags as Record<string, unknown>)[camel(field)] === true);
+    // A whole corner gone is said in a word of its own, never by forgetting to name a field.
+    if (fields.length === 0 && flags.all !== true) throw new UsageError("name the fields to clear (--language, --voice, …), or --all for every one: `pinecall agent` shows what your corner sets");
+    if (fields.length > 0 && flags.all === true) throw new UsageError("--all clears every field: name fields, or --all, not both");
+    ctx.io.result(await service.clearSettings(ctx, fields, service.WriteOptions.parse(flags)), render.written);
+  });
   const knowledge = agent.command("knowledge").description("what the agent knows by heart: printed, or edited and kept as the next version");
   knowledge
     .command("show", { isDefault: true })

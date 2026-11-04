@@ -1,5 +1,7 @@
 /** The one way a date, an amount, a duration, a count or a verdict's mark is written for a terminal. */
 
+import { isAbsolute, relative } from "node:path";
+
 /** The marks a check holds or breaks with. */
 export const HELD = "✓";
 export const BROKEN = "✗";
@@ -47,6 +49,13 @@ export function bytes(n: number): string {
 /** `yes` / `no`. */
 export function yesNo(value: boolean): string {
   return value ? "yes" : "no";
+}
+
+/** A path as a person at `cwd` would type it: relative when it is under there, whole otherwise. */
+export function pathFrom(cwd: string, path: string): string {
+  const under = relative(cwd, path);
+  if (under === "") return ".";
+  return under.startsWith("..") || isAbsolute(under) ? path : under;
 }
 
 /** The text cut to `width` with an ellipsis, for a column. */

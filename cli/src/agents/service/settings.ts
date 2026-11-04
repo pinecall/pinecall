@@ -117,19 +117,18 @@ export async function showSettings(ctx: Context, agent: string | undefined): Pro
 }
 
 /** The fields named written as the next version of a corner; the whole set travels, so the rest is carried over. */
-export async function setSettings(ctx: Context, input: SettingsInput, options: WriteOptions): Promise<{ agent: string; answer: TuningAnswer }> {
+export async function setSettings(ctx: Context, input: SettingsInput, options: WriteOptions): Promise<CornerWritten> {
   const name = agentNamed(ctx, options.agent);
   const checked = withModelsNamed(input);
-  const written = await writeCorner(ctx, name, options.team, (config) => ({ ...config, ...fieldsOf(checked, config) }), options.note ?? null);
-  return { agent: name, answer: written.answer };
+  return writeCorner(ctx, name, options.team, (config) => ({ ...config, ...fieldsOf(checked, config) }), options.note ?? null);
 }
 
 /** Fields taken out of the corner's own row, so the runtime's default stands again; none named is every one. */
-export async function clearSettings(ctx: Context, fields: string[], options: WriteOptions): Promise<{ agent: string; answer: TuningAnswer }> {
+export async function clearSettings(ctx: Context, fields: string[], options: WriteOptions): Promise<CornerWritten> {
   const name = agentNamed(ctx, options.agent);
   const unknown = fields.filter((field) => !(FIELDS as readonly string[]).includes(field));
   if (unknown.length > 0) throw new UsageError(`no field called ${unknown.join(", ")}: ${FIELDS.join(" · ")}`);
-  const written = await writeCorner(
+  return writeCorner(
     ctx,
     name,
     options.team,
@@ -140,7 +139,6 @@ export async function clearSettings(ctx: Context, fields: string[], options: Wri
     },
     fields.length === 0 ? "cleared" : `cleared ${fields.join(", ")}`,
   );
-  return { agent: name, answer: written.answer };
 }
 
 export async function settingsHistory(ctx: Context, agent: string | undefined, team: boolean): Promise<{ agent: string; history: TuningHistory }> {
@@ -176,9 +174,10 @@ export async function pushSettings(ctx: Context, file: string, options: WriteOpt
   const config = read.config ?? (read as TuningBody);
   const gw = ctx.gateway();
   const standing = await readSettings(ctx, name);
-  if (sameSettings(config, cornerWritten(standing, options.team, gw)?.config ?? {})) throw new UsageError(`nothing changes in ${cornerName(standing, options.team, gw)}: it already reads as ${file}`);
+  const before = cornerWritten(standing, options.team, gw)?.config ?? {};
+  if (sameSettings(config, before)) throw new UsageError(`nothing changes in ${cornerName(standing, options.team, gw)}: it already reads as ${file}`);
   const answer = await api.putSettings(gw, name, { config, if_version: null, note: `pushed from ${file}`, team: options.team });
-  return { agent: name, corner: cornerName(answer, options.team, gw), version: cornerWritten(answer, options.team, gw)?.version ?? null, answer, file };
+  return { agent: name, corner: cornerName(answer, options.team, gw), version: cornerWritten(answer, options.team, gw)?.version ?? null, answer, before, after: config, file };
 }
 
 /** What the agent knows by heart in a corner: the text, or null when nothing is set there. */

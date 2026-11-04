@@ -66,7 +66,12 @@ export class GatewayClient {
       ...(options.body === undefined ? {} : { body: encoded(options.body) }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
-    if (!answered.ok) throw new GatewayError(answered.status, detailOf(await answered.text()));
+    if (!answered.ok) {
+      const text = await answered.text();
+      const detail = detailOf(text);
+      // A body with no `detail` (a proxy's page, nothing) is not a sentence of the gateway's: the status is named.
+      throw new GatewayError(answered.status, detail, detail !== text);
+    }
     return answered;
   }
 

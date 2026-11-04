@@ -52,14 +52,24 @@ describe("the exit codes", () => {
     const ran = await run(["limits", "--version"]);
     expect(ran.code).toBe(2);
     expect(ran.out).toBe("");
-    expect(ran.err).toContain("unknown option '--version'");
+    expect(ran.err).toBe("pinecall: pinecall limits has no option --version: `pinecall limits --help` shows its flags\n");
   });
 
-  it("a verb nobody wrote, or a flag nobody declared, is 2", async () => {
-    expect((await run(["deploi"])).code).toBe(2);
+  it("a verb nobody wrote, or a flag nobody declared, is 2, said in the CLI's words with the help that lists them", async () => {
+    const verb = await run(["deploi"]);
+    expect(verb.code).toBe(2);
+    expect(verb.err).toBe("pinecall: no verb deploi (did you mean deploy?): `pinecall --help` lists them\n");
     const flag = await run(["limits", "--everything"]);
     expect(flag.code).toBe(2);
-    expect(flag.err).toContain("unknown option '--everything'");
+    expect(flag.err).toBe("pinecall: pinecall limits has no option --everything: `pinecall limits --help` shows its flags\n");
+  });
+
+  it("a word too many, an argument or a flag missing: the verb typed, what it takes, and its help", async () => {
+    expect((await run(["lexicon", "list"])).err).toBe("pinecall: pinecall lexicon takes nothing after it, and 1 were typed: `pinecall lexicon --help` says what it takes\n");
+    expect((await run(["sessions", "show", "call_1"])).err).toBe("pinecall: pinecall sessions takes 1 argument, and 2 were typed: `pinecall sessions --help` says what it takes\n");
+    expect((await run(["memory"])).err).toBe("pinecall: pinecall memory needs a <contact>: `pinecall memory --help` says what it takes\n");
+    expect((await run(["lexicon", "add", "DKV"])).err).toBe("pinecall: pinecall lexicon add needs --say <spoken>: `pinecall lexicon add --help` shows its flags\n");
+    expect((await run(["sessions", "--limit"])).err).toBe("pinecall: pinecall sessions: --limit <n> takes a value, and none was typed: `pinecall sessions --help` shows its flags\n");
   });
 
   it("an input a schema refuses is one sentence and 2, not a dump of the schema", async () => {
@@ -69,7 +79,7 @@ describe("the exit codes", () => {
     expect(ran.err).toMatch(/^pinecall: --metric names one of/);
   });
 
-  it("every refusal of the gateway is 2, in its own words: the command could not run, and measured nothing", async () => {
+  it("every refusal of the gateway is 2, in its own words with no status in front: the command could not run, and measured nothing", async () => {
     for (const [status, detail] of [
       [400, "no vendor named 'nosuchvendor' is installed here"],
       [401, "the key is not one this gateway knows"],
@@ -82,8 +92,17 @@ describe("the exit codes", () => {
     ] as const) {
       refuse("get", "/v1/limits", status, detail);
       const ran = await run(["limits"]);
-      expect([ran.code, ran.err], String(status)).toEqual([2, `pinecall: the gateway answered ${status}: ${detail}\n`]);
+      expect([ran.code, ran.err], String(status)).toEqual([2, `pinecall: ${detail}\n`]);
     }
+  });
+
+  it("a body with no sentence in it names the status; an agent of the project the gateway never met is said to have never been held", async () => {
+    server.use(http.get(`${GATEWAY}/v1/limits`, () => new HttpResponse("<html>bad gateway</html>", { status: 502 })));
+    expect((await run(["limits"])).err).toBe("pinecall: the gateway answered 502: <html>bad gateway</html>\n");
+    refuse("get", "/v1/agents/:slug/settings", 404, "no agent front-desk in this org: `pinecall agent list` names the ones there are");
+    expect((await run(["agent"])).err).toBe("pinecall: front-desk is not on Pinecall yet, nothing has held it: `pinecall start` holds it from this terminal, `pinecall deploy` runs it on Pinecall\n");
+    refuse("get", "/v1/agents/:slug/settings", 404, "no agent sales in this org: `pinecall agent list` names the ones there are");
+    expect((await run(["agent", "--agent", "sales"])).err).toBe("pinecall: no agent sales in this org: `pinecall agent list` names the ones there are\n");
   });
 
   it("a network that is down is 2: the command could not run", async () => {

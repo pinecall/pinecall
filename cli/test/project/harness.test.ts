@@ -22,6 +22,9 @@ describe("a TypeScript agent", () => {
     expect(code.startsWith("// The judges and the callers of Front Desk's own, as code")).toBe(true);
     expect(code).toContain('import { ownJudge, ownPersona } from "@pinecall/agents";');
     expect(code).toContain("export const hurried = ownPersona({");
+    // The template's judge example sits above its caller, so what is appended ends the file.
+    expect(code.indexOf("// A judge of the agent's own")).toBeLessThan(code.indexOf("export const hurried"));
+    expect(code.trimEnd().endsWith("});")).toBe(true);
     expect(code).toContain(`
 export const offersNextSlot = ownJudge({
   name: "offers-next-slot",
@@ -43,6 +46,18 @@ export const inARush = ownPersona({
   },
 });
 `);
+  });
+
+  it("writes of a caller's behavior only what differs from the runtime's defaults, and none when nothing does", () => {
+    const root = project(["front-desk"]);
+    const home = homeOf(`${root}/agents/front-desk/agent.ts`);
+    const defaults = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television" };
+    appendPersona(home, { ...RUSH, name: "calm", behavior: defaults });
+    appendPersona(home, { ...RUSH, name: "noisy", behavior: { ...defaults, interferer_db: -12, ambience: "cafe" } });
+    const code = readFileSync(home.harness, "utf8");
+    expect(code).toContain('export const calm = ownPersona({\n  name: "calm",\n  goal: "book today",\n  style: "short, interrupts",\n  facts: {\n    "their name": "Luis",\n  },\n  expects: ["The agent should offer today."],\n});');
+    expect(code).toContain('  behavior: {\n    interfererDb: -12,\n    ambience: "cafe",\n  },\n');
+    expect(code).not.toContain("speed");
   });
 
   it("writes how and when a judge answers only when it is not the default", () => {

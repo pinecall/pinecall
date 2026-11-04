@@ -12,13 +12,18 @@ export { cellOf, latencyLine, matrix, suite } from "./matrix.js";
 const NOTHING = "—";
 export const NO_PERSONAS_YET = (agent: string): string => `${agent} has no personas yet: \`pinecall personas add <name> --goal '…' --style '…'\`, or the console's Personas`;
 
-/** One line per run, newest first: id, when, agent, status, how much held. */
-export function runs(found: EvalRun[]): string[] {
-  return found.map((run) => {
+export const NO_RUNS = (agent: string | undefined): string => (agent === undefined ? "no run yet in this org: `pinecall test` makes one" : `${agent} has run no tests yet: \`pinecall test\` makes the first run · --all lists every agent's`);
+
+/** One line per run, newest first: id, when, agent, status, how much held; headed by whose they are. */
+export function runs(found: EvalRun[], agent?: string): string[] {
+  if (found.length === 0) return [NO_RUNS(agent)];
+  const head = agent === undefined ? "every agent of the org" : `${agent} · \`pinecall runs --all\` lists every agent's`;
+  const rows = found.map((run) => {
     const cells = run.matrix?.runs.length ?? run.calls.length;
     const broken = new Set((run.matrix?.failures ?? []).map((one) => `${one.model} ${one.golden}`)).size;
     return `${run.id}  ${date(run.started_at)}  ${run.agent.padEnd(16)}  ${run.status.padEnd(7)}  ${cells - broken}/${cells}`;
   });
+  return [head, ...rows];
 }
 
 export function moved({ before, after, moved: found }: { before: string; after: string; moved: Moved[] }): string[] {
@@ -48,7 +53,7 @@ export function drift(found: Drift): string[] {
 
 /** The inbox: how many wait, then one line a case — status, name, what broke, the env it came from, its age. */
 export function cases(list: CaseList, status?: string, now = Date.now() / 1000): string[] {
-  const waiting = `${list.pending} waiting of at most ${list.pending_at_most}`;
+  const waiting = `${list.pending} case${list.pending === 1 ? "" : "s"} pending a decision · the inbox holds at most ${list.pending_at_most}`;
   if (list.cases.length === 0 && status !== undefined) return [waiting, `${list.agent} has no ${status} case`];
   if (list.cases.length === 0) return [waiting, `${list.agent} has no cases here: a call a judge broke on is kept at hang-up, or \`pinecall cases keep <call> --name x\``];
   return [waiting, ...table(["status", "name", "broke", "env", "age"], list.cases.map((one) => [one.status, one.name, brokeOf(one), one.source_env, ageOf(one.created_at, now)])).slice(1)];

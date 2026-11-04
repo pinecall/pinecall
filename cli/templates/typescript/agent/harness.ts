@@ -2,6 +2,10 @@
 
 import { ownPersona } from "@pinecall/agents";
 
+// A judge of the agent's own asks one question of every call at hang-up, answered held or broken; `pinecall judges try
+// <name> --last 5` asks it of the last calls before you keep it. One looks like this:
+//   export const messageTaken = ownJudge({ name: "message-taken", asks: "Did the agent write the message down before saying goodbye?" });
+
 /** Calls from the street, in a rush, with one thing to leave. */
 export const hurried = ownPersona({
   name: "hurried",
@@ -12,7 +16,3 @@ export const hurried = ownPersona({
   expects: ["The agent should write the message down with the caller's name and what it is about.", "The agent should not promise when the business will call back."],
   behavior: { interrupts: 0.3, pauseS: 1 },
 });
-
-// A judge of the agent's own asks one question of every call at hang-up, answered held or broken; `pinecall judges try
-// <name> --last 5` asks it of the last calls before you keep it. One looks like this:
-//   export const messageTaken = ownJudge({ name: "message-taken", asks: "Did the agent write the message down before saying goodbye?" });

@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /** The entry: the program is run, and every error becomes one sentence and an exit code. */
 
-import { CommanderError } from "@commander-js/extra-typings";
+import { CommanderError, type Command } from "@commander-js/extra-typings";
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { ZodError } from "zod";
 
-import { createContext } from "./context.js";
-import { Cancelled, errorMessage, PinecallError } from "./errors.js";
+import { createContext, type Context } from "./context.js";
+import { Cancelled, errorMessage, GatewayError, PinecallError } from "./errors.js";
 import { systemIO, type IO } from "./kit/io.js";
+import { usageErrorOf, verbsTyped } from "./kit/usage.js";
 import { createProgram, MAP } from "./program.js";
+import { NEVER_HELD } from "./project/layout.js";
 
 // 0 did it · 1 what was measured did not hold · 2 it could not run (the arguments, the settings, a refusal, the network) · 130 stopped.
 const CANNOT_RUN = 2;
@@ -49,18 +51,19 @@ export async function main(
   };
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
+  let program: Command | undefined;
   try {
     if (argv.length === 0) {
       io.print(MAP);
       return 0;
     }
-    const program = await createProgram(ctx, argv);
+    program = await createProgram(ctx, argv);
     await ctx.prepare();
     await program.parseAsync([...argv], { from: "user" });
     if (readerLeft) return 0;
     return stopping.signal.aborted ? new Cancelled().exit : 0;
   } catch (failed) {
-    return readerLeft ? 0 : exitWith(failed, io);
+    return readerLeft ? 0 : exitWith(failed, ctx, program === undefined ? [] : verbsTyped(program, argv));
   } finally {
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
@@ -68,11 +71,13 @@ export async function main(
 }
 
 /** One sentence on stderr and the code: the only place an error is mapped to an exit. */
-function exitWith(failed: unknown, io: IO): number {
+function exitWith(thrown: unknown, ctx: Context, verbs: readonly string[]): number {
+  const io = ctx.io;
+  let failed = thrown;
   if (failed instanceof CommanderError) {
-    // Help and version were printed by commander; a usage error was printed with the help.
+    // Help and version were printed by commander; a usage error is said here, in the CLI's own words.
     if (failed.code === "commander.helpDisplayed" || failed.code === "commander.version" || failed.code === "commander.help") return 0;
-    return CANNOT_RUN;
+    failed = usageErrorOf(failed, verbs);
   }
   if (failed instanceof Cancelled) return failed.exit;
   // An input a verb's schema refuses is the arguments' fault: its messages, one sentence.
@@ -81,13 +86,24 @@ function exitWith(failed: unknown, io: IO): number {
     return CANNOT_RUN;
   }
   if (failed instanceof PinecallError) {
-    io.info(`pinecall: ${failed.message}`);
+    io.info(`pinecall: ${failed instanceof GatewayError ? (neverHeld(failed, ctx) ?? failed.message) : failed.message}`);
     return failed.exit;
   }
   if (failed instanceof Error && failed.name === "AbortError") return new Cancelled().exit;
   // Anything else — the network down, an answer that is no JSON — stopped the command from running.
   io.info(`pinecall: ${errorMessage(failed)}`);
   return CANNOT_RUN;
+}
+
+// The gateway knows no agent of that name, and the name is an agent of this project: nothing has held it yet.
+function neverHeld(failed: GatewayError, ctx: Context): string | undefined {
+  const slug = failed.status === 404 ? /^no agent (\S+) in this org\b/.exec(failed.detail)?.[1] : undefined;
+  if (slug === undefined) return undefined;
+  try {
+    return ctx.agents().some((home) => home.name === slug) ? NEVER_HELD(slug) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // Run when executed (dist/main.js as the published bin), not when imported.

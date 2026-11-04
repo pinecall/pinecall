@@ -73,8 +73,9 @@ export async function createProgram(ctx: Context, argv: readonly string[] = []):
       // As wide as the terminal the help is written to (commander would read the process's own), 80 off one.
       getOutHelpWidth: () => ctx.io.columns ?? HELP_WIDTH,
       getErrHelpWidth: () => ctx.io.columns ?? HELP_WIDTH,
+      // A usage error is thrown (`exitOverride`) and `main.ts` says it in the CLI's own words: commander prints nothing.
+      outputError: () => undefined,
     })
-    .showHelpAfterError("(pinecall <verb> --help shows the verb's flags)")
     .hook("preAction", (root) => {
       // Read here, not at parse: the Context is handed to every domain before argv is known.
       const flags = root.opts();

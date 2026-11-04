@@ -49,7 +49,7 @@ describe("pinecall login", () => {
     for (const gone of [["link"], ["setup"], ["login", "--org", "acme"]]) {
       const ran = await run(gone);
       expect(ran.code).not.toBe(0);
-      expect(ran.err).toMatch(/unknown command|unknown option/);
+      expect(ran.err).toMatch(/no verb|has no option/);
     }
   });
 
@@ -59,20 +59,20 @@ describe("pinecall login", () => {
     writeFileSync(join(home, "session.json"), JSON.stringify({ gateways: { [GATEWAY]: { key: "pc_live_machine", org: "clinica" } }, last: GATEWAY }));
     const ran = await run(["whoami"], { cwd: folder(), key: null, env: { PINECALL_HOME: home } });
     expect(ran.code).toBe(0);
-    expect(ran.out.split("\n")[0]).toBe(`gateway ${GATEWAY} · org clinica · key from your sign-in (${home}/session.json) · sandbox`);
+    expect(ran.out.split("\n").slice(0, 2)).toEqual([`gateway ${GATEWAY} · org clinica · sandbox`, `  key k_4f2a1d9c66b30e17 from your sign-in (${home}/session.json) · ana-macbook`]);
     expect(sent[0]!.authorization).toBe("Bearer pc_live_machine");
   });
 });
 
 describe("pinecall whoami", () => {
-  it("prints the connection, who the key is, and which envs it opens", async () => {
+  it("prints where, the key, and which envs it opens, each once", async () => {
     const sent = answer("get", "/v1/whoami", WHO);
     const ran = await run(["whoami"]);
     expect(ran.code).toBe(0);
     expect(ran.out).toBe(
       [
-        `gateway ${GATEWAY} · key from the environment · sandbox`,
-        "  org clinica · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes",
+        `gateway ${GATEWAY} · org clinica · sandbox`,
+        "  key k_4f2a1d9c66b30e17 from the environment · ana-macbook",
         "  a person's key: the sandbox without --prod, production with it",
         "",
       ].join("\n"),
@@ -91,7 +91,7 @@ describe("pinecall whoami", () => {
     const root = folder();
     writeFileSync(join(root, ".env"), `PINECALL_KEY=pc_live_from_dotenv\nPINECALL_URL=${GATEWAY}\n`);
     const ran = await run(["whoami"], { cwd: root, key: null, env: { PINECALL_URL: undefined } });
-    expect(ran.out).toContain("key from .env");
+    expect(ran.out).toContain("from .env");
     expect(ran.out).toContain("a sandbox server's token: that environment alone");
   });
 });

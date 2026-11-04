@@ -3,7 +3,8 @@
 import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
-import { PinecallError } from "../errors.js";
+import { PinecallError, UsageError } from "../errors.js";
+import { confirm } from "../kit/confirm.js";
 import * as render from "./render.js";
 import * as service from "./service.js";
 
@@ -87,9 +88,19 @@ export function register(program: Command, ctx: Context): void {
     .action(async (flags) => ctx.io.result(await service.startApp(ctx, service.appName(ctx, flags.name)), render.started));
   deploy
     .command("rm")
-    .description("stop hosting the app: its releases go, and its token is revoked")
+    .description("stop hosting the app: its releases go, and its token is revoked; asked once on a terminal")
     .option("--name <app>")
-    .action(async (flags) => ctx.io.result(await service.removeApp(ctx, service.appName(ctx, flags.name)), render.removed));
+    .option("--yes", "remove without asking; the only way without a terminal")
+    .action(async (flags) => {
+      const name = service.appName(ctx, flags.name);
+      // Refused before the gateway is asked: nothing is removed on nobody's word.
+      if (flags.yes !== true && !ctx.io.interactive) throw new UsageError(service.SAY_YES(name));
+      if (flags.yes !== true && !(await confirm(`stop hosting ${name}? its releases go and its token is revoked [y/N] `, ctx.io))) {
+        ctx.io.print(render.KEPT(name));
+        return;
+      }
+      ctx.io.result(await service.removeApp(ctx, name), render.removed);
+    });
 }
 
 /** The release followed until it is live (0), failed or replaced (1), or the time is up (1). */

@@ -19,6 +19,9 @@ export interface CornerWritten {
   corner: string;
   version: number | null;
   answer: TuningAnswer;
+  /** What this key read before the write, and what it reads now: the fields that differ are what the write changed. */
+  before: TuningBody;
+  after: TuningBody;
 }
 
 /** The three corners as this key sees them: its own, the team's, production's. */
@@ -94,10 +97,12 @@ export async function writeCorner(ctx: Context, agent: string, team: boolean, ch
   const read = rowToStartFrom(standing, team);
   before?.(read);
   const own = cornerWritten(standing, team, gw)?.config ?? {};
-  const next = movedOnto(own, read?.config ?? {}, change(read?.config ?? {}));
+  const was = read?.config ?? {};
+  const after = change(was);
+  const next = movedOnto(own, was, after);
   // The gateway writes no version for it either; said here, before anything travels.
   if (sameSettings(next, own)) throw new UsageError(`nothing changes in ${cornerName(standing, team, gw)}: it already reads so`);
   const answer = await api.putSettings(gw, agent, { config: next, if_version: versionGuarded(standing, team, gw), note, team });
   // Name the corner the gateway actually wrote, which differs from the flag for a key with no corner.
-  return { agent, corner: cornerName(answer, team, gw), version: cornerWritten(answer, team, gw)?.version ?? null, answer };
+  return { agent, corner: cornerName(answer, team, gw), version: cornerWritten(answer, team, gw)?.version ?? null, answer, before: was, after };
 }

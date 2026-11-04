@@ -113,13 +113,12 @@ describe("what it prints of a value the agent declared private", () => {
 });
 
 describe("an agent an admin killed", () => {
-  it("is one line on err, `<slug>  ✗` and the gateway's sentence, while the wire stays on out", async () => {
+  it("travels on the wire alone, as the error entry it is: nothing on err, so the CLI's reader sees it once", async () => {
     const { io, running, held } = await serving("--events");
     held.kill(SLUG, `${SLUG} was killed by Ana`);
-    await until(() => io.said().includes("✗"));
+    await until(() => io.written().some((line) => line.includes("was killed by Ana")));
 
-    expect(io.said()).toBe(`${SLUG}  ✗ ${SLUG} was killed by Ana\n`);
-    expect(io.written().some((line) => line.includes("was killed by Ana"))).toBe(true);
+    expect(io.said()).toBe("");
     (io.input as PassThrough).end();
     await running;
   });

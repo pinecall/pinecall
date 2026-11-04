@@ -7,6 +7,7 @@ import { z } from "zod";
 import * as api from "../../api/knowledge.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
+import { pathFrom } from "../../kit/format.js";
 import { agentFilesOf, type AgentHome } from "../../project/layout.js";
 import { CASES, casesIn, matching, NO_CASES } from "./cases.js";
 
@@ -35,7 +36,7 @@ export async function remember(ctx: Context, input: RememberInput): Promise<api.
   }
   const folder = home?.memoryCases ?? CASES;
   const paths = input.paths.length > 0 ? input.paths : [folder];
-  if (input.paths.length === 0 && !existsSync(folder)) throw new UsageError(home === undefined ? NO_CASES : NO_CASES.replace(CASES, folder));
+  if (input.paths.length === 0 && !existsSync(folder)) throw new UsageError(home === undefined ? NO_CASES : NO_CASES.replace(CASES, pathFrom(ctx.cwd, folder)));
   const cases = matching(casesIn<api.ExtractionGolden>(paths), input.grep);
   if (cases.length === 0) throw new UsageError(`no case matched${input.grep === undefined ? "" : ` --grep ${input.grep}`}`);
   // Asked again outside an agent folder, so the refusal names where an agent belongs.

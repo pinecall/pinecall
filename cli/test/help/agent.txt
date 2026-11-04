@@ -11,7 +11,7 @@ Commands:
   show [options]                the settings in their three corners
   set [options]                 write the fields named as the next version of a
                                 corner
-  clear [options] [fields...]   take fields out of the corner's own row, so the
+  clear [options]               take fields out of the corner's own row, so the
                                 corner below holds again; --all takes every one
   knowledge                     what the agent knows by heart: printed, or
                                 edited and kept as the next version
@@ -53,7 +53,8 @@ prints the corner's text; `edit` opens it in $EDITOR and saves what you wrote as
 version (an empty file takes it out). It is not the RAG: the documents a turn searches are
 `pinecall docs`, attached as `bases`.
 
-clear takes fields out of the corner's own row, so the runtime's default stands for them again.
+clear takes fields out of the corner's own row, each by the flag that set it (`clear --language`),
+so the runtime's default stands for them again. set and clear print what moved, a field a line.
 history, diff and rollback are the versions. pull prints the corner's config as JSON; push sends
 a file as the next version. list prints every process holding this org's agents in the env;
 stop <app> closes that app's socket.
@@ -117,23 +118,43 @@ Options:
   -h, --help                         display help for command
 
 $ pinecall agent clear --help
-Usage: pinecall agent clear [options] [fields...]
+Usage: pinecall agent clear [options]
 
 take fields out of the corner's own row, so the corner below holds again; --all
 takes every one
 
-Arguments:
-  fields          voice · tts · tts-model · tts-builds · tts-options · stt ·
-                  stt-builds · stt-options · end-of-turn · llm · temperature ·
-                  llm-builds · llm-options · realtime · realtime-options · judge
-                  · judge-builds · judge-options · language · greeting · hangup
-                  · turn · memory · record · max-duration · knowledge · bases
-
 Options:
-  --all           every field of the corner's own row
+  --all               every field of the corner's own row
   --agent <slug>
   --team
-  -h, --help      display help for command
+  --voice
+  --tts
+  --tts-model
+  --tts-builds
+  --tts-options
+  --stt
+  --stt-builds
+  --stt-options
+  --end-of-turn
+  --llm
+  --temperature
+  --llm-builds
+  --llm-options
+  --realtime
+  --realtime-options
+  --judge
+  --judge-builds
+  --judge-options
+  --language
+  --greeting
+  --hangup
+  --turn
+  --memory
+  --record
+  --max-duration
+  --knowledge
+  --bases
+  -h, --help          display help for command
 
 $ pinecall agent knowledge --help
 Usage: pinecall agent knowledge [options] [command]

@@ -14,9 +14,14 @@ export function registerRuns(program: Command, ctx: Context): void {
   const runs = program.command("runs").description("the runs this gateway has done: list, show, diff, promote a call, watch the drift").addHelpText("after", HELP.runs);
   runs
     .command("list", { isDefault: true })
-    .description("the newest runs, with how each ended")
+    .description("the agent's newest runs, with how each ended; every agent's with --all")
     .option("--limit <n>", `how many, newest first, 1 to ${service.RUNS_MOST}`, "20")
-    .action(async (flags) => ctx.io.result(await service.listRuns(ctx, service.RunsLimit.parse(numberOf("--limit", flags.limit) ?? 20)), render.runs));
+    .option("--agent <slug>", "the agent, from any folder; the one beside you when left out")
+    .option("--all", "every agent's runs of the org")
+    .action(async (flags) => {
+      const agent = flags.all === true ? undefined : agentOrOrg(ctx, flags.agent);
+      ctx.io.result(await service.listRuns(ctx, service.RunsLimit.parse(numberOf("--limit", flags.limit) ?? 20), agent), (found) => render.runs(found, agent));
+    });
   runs
     .command("show")
     .description("one run whole: its matrix, each golden's verdicts and latencies")
@@ -65,6 +70,16 @@ export function registerRuns(program: Command, ctx: Context): void {
       ctx.io.result(found, render.drift);
       if (service.drifted(found)) throw new PinecallError("a judge fell further than the threshold allows");
     });
+}
+
+// The agent beside the person, or the one named; outside a project with none named, the org's runs are listed.
+function agentOrOrg(ctx: Context, named: string | undefined): string | undefined {
+  try {
+    return ctx.slug("runs", { agent: named });
+  } catch (refused) {
+    if (named !== undefined) throw refused;
+    return undefined;
+  }
 }
 
 export function registerCases(program: Command, ctx: Context): void {

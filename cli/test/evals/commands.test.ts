@@ -105,7 +105,7 @@ describe("pinecall test", () => {
   it("--version 99 is the gateway's 404, a version nothing answers to: exit 2", async () => {
     refuse("post", "/v1/evals/run", 404, "no version 99 of front-desk in the scope of the app that holds it");
     const ran = await run(["test", "--version", "99"], { cwd: project(["front-desk"], GOLDENS) });
-    expect([ran.code, ran.err]).toEqual([2, "pinecall: the gateway answered 404: no version 99 of front-desk in the scope of the app that holds it\n"]);
+    expect([ran.code, ran.err]).toEqual([2, "pinecall: no version 99 of front-desk in the scope of the app that holds it\n"]);
   });
 
   it("a run already going on the agent cannot start: the sentence names it, exit 2", async () => {
@@ -135,7 +135,7 @@ describe("a request the gateway's state contradicts", () => {
       [["cases", "apply", "grp_1"], "grp_1 proposes code, and only a setting is applied here"],
     ] as const) {
       const ran = await run(argv);
-      expect([ran.code, ran.err], argv.join(" ")).toEqual([2, `pinecall: the gateway answered 409: ${sentence}\n`]);
+      expect([ran.code, ran.err], argv.join(" ")).toEqual([2, `pinecall: ${sentence}\n`]);
     }
   });
 });
@@ -199,8 +199,16 @@ describe("pinecall runs", () => {
   it("alone lists the runs: id, when, agent, status, how many cells held", async () => {
     const sent = answer("get", "/v1/evals/runs", { runs: [aRun([{ metric: "tools", passed: false }])] });
     const ran = await run(["runs", "--limit", "5"]);
-    expect(sent[0]!.query).toEqual({ limit: "5" });
-    expect(ran.out).toMatch(/^run_1 {2}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {2}front-desk {8}done {5}0\/1\n$/);
+    expect(sent[0]!.query).toEqual({ limit: "5", agent: "front-desk" });
+    expect(ran.out).toMatch(/^front-desk · `pinecall runs --all` lists every agent's\nrun_1 {2}\d{4}-\d{2}-\d{2} \d{2}:\d{2} {2}front-desk {8}done {5}0\/1\n$/);
+  });
+
+  it("--all is every agent's; outside a project with no --agent, so is a bare runs", async () => {
+    const sent = answer("get", "/v1/evals/runs", { runs: [] });
+    expect((await run(["runs", "--all"])).out).toBe("no run yet in this org: `pinecall test` makes one\n");
+    expect((await run(["runs"], { cwd: folder() })).out).toBe("no run yet in this org: `pinecall test` makes one\n");
+    expect(sent.map((one) => one.query)).toEqual([{ limit: "20" }, { limit: "20" }]);
+    expect((await run(["runs"])).out).toBe("front-desk has run no tests yet: `pinecall test` makes the first run · --all lists every agent's\n");
   });
 
   it("diff names what moved", async () => {
@@ -218,7 +226,7 @@ describe("pinecall cases", () => {
   it("alone is the inbox: how many wait, then a row per case", async () => {
     answer("get", "/v1/evals/cases", { cases: [A_CASE], pending: 1, pending_at_most: 50 });
     const ran = await run(["cases"]);
-    expect(ran.out).toMatch(/^1 waiting of at most 50\npending\s+double-booked\s+/);
+    expect(ran.out).toMatch(/^1 case pending a decision · the inbox holds at most 50\npending\s+double-booked\s+/);
   });
 
   it("--agent reads a slug from any folder", async () => {

@@ -2,6 +2,10 @@
 
 from pinecall import own_persona
 
+# A judge of the agent's own asks one question of every call at hang-up, answered held or broken; `pinecall judges try
+# <name> --last 5` asks it of the last calls before you keep it. One looks like this:
+#   MESSAGE_TAKEN = own_judge(name="message-taken", asks="Did the agent write the message down before saying goodbye?")
+
 # Calls from the street, in a rush, with one thing to leave.
 HURRIED = own_persona(
     name="hurried",
@@ -15,7 +19,3 @@ HURRIED = own_persona(
     ],
     behavior={"interrupts": 0.3, "pause_s": 1},
 )
-
-# A judge of the agent's own asks one question of every call at hang-up, answered held or broken; `pinecall judges try
-# <name> --last 5` asks it of the last calls before you keep it. One looks like this:
-#   MESSAGE_TAKEN = own_judge(name="message-taken", asks="Did the agent write the message down before saying goodbye?")

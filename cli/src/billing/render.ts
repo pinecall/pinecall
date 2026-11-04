@@ -5,30 +5,35 @@ import { QUOTAS, type Limit, type LimitsReport } from "./service.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** The whole answer: the env, a line per quota, the keys line, and where to buy more when the deployment sells plans. */
+/**
+ * The whole answer: the env, a line per quota something was used of or a limit is set on, the quotas
+ * untouched and unlimited on one line, the keys line, and where to buy more when the deployment sells plans.
+ */
 export function limits(report: LimitsReport): string[] {
   const next = startsAgain(report.starts_again);
-  const pairs: [string, string][] = QUOTAS.map((quota) => {
+  const untouched = QUOTAS.filter((quota) => report.limits[quota.name].used === 0 && report.limits[quota.name].limit === null);
+  const pairs: [string, string][] = QUOTAS.filter((quota) => !untouched.includes(quota)).map((quota) => {
     const one = report.limits[quota.name];
     const shown = quota.dollars === true ? dollars(one) : meter(one);
     return [quota.label, quota.monthly && one.limit !== null ? `${shown} · starts again ${next}` : shown];
   });
+  if (untouched.length > 0) pairs.push([untouched.length === QUOTAS.length ? "every quota" : "the rest", `nothing used, no limit: ${untouched.map((quota) => quota.label).join(", ")}`]);
   pairs.push(["keys", keysLine(report.brought, report.limits.lends)]);
   const lines = [report.env, ...fields(pairs).map((line) => `  ${line}`)];
   if (report.limits.billing_url !== null) lines.push(`  more: ${report.limits.billing_url}`);
   return lines;
 }
 
-/** One quota as `used of limit`, or `used, no limit`. */
+/** One quota as `used of limit`, or `used · no limit`. */
 export function meter(one: Limit): string {
   const used = Number.isInteger(one.used) ? String(one.used) : one.used.toFixed(1);
-  return one.limit === null ? `${used}, no limit` : `${used} of ${one.limit}`;
+  return one.limit === null ? `${used} · no limit` : `${used} of ${one.limit}`;
 }
 
-/** One quota in dollars, to the cent: `$4.25 of $60`, or `$4.25, no limit`. */
+/** One quota in dollars, to the cent: `$4.25 of $60`, or `$4.25 · no limit`. */
 export function dollars(one: Limit): string {
   const used = `$${one.used.toFixed(2)}`;
-  return one.limit === null ? `${used}, no limit` : `${used} of $${one.limit}`;
+  return one.limit === null ? `${used} · no limit` : `${used} of $${one.limit}`;
 }
 
 /** Whose keys a call runs on: the org's own, then what the runtime lends (null lends every key it holds). */

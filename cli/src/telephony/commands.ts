@@ -2,7 +2,7 @@
 
 import type { Command } from "@commander-js/extra-typings";
 
-import { connectionLine, type Context } from "../context.js";
+import type { Context } from "../context.js";
 import { GatewayError, UsageError } from "../errors.js";
 import { secretReader } from "../kit/stdin.js";
 import * as render from "./render.js";
@@ -202,7 +202,6 @@ export function register(program: Command, ctx: Context): void {
     .action(async (flags) => {
       const after = flags.after === undefined ? undefined : Number(flags.after);
       if (after !== undefined && !Number.isInteger(after)) throw new UsageError(`--after takes the cursor the page before answered, not ${flags.after}`);
-      ctx.io.info(connectionLine(ctx));
       ctx.io.result(await service.listCallbacks(ctx, service.ListCallbacksInput.parse({ agent: flags.agent, after })), render.callbacks);
     });
 

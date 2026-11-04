@@ -15,11 +15,12 @@ export class UsageError extends PinecallError {
 }
 
 /**
- * The gateway answered outside 2xx; the message is the gateway's own `detail`. Always exit 2: a
- * refusal — a name nothing answers to (404), a state that contradicts the request (409), an input
- * its schema refuses (422), a key that may not (401, 403), a quota (429), a vendor with no key (503),
- * a bad request (400) — stopped the command from running, and measured nothing. Exit 1 is only for
- * what was measured and did not hold.
+ * The gateway answered outside 2xx; the message is the gateway's own `detail`, a sentence written
+ * for the person, and names the status only when the body had no `detail` to say (a proxy's page,
+ * nothing at all). Always exit 2: a refusal — a name nothing answers to (404), a state that
+ * contradicts the request (409), an input its schema refuses (422), a key that may not (401, 403),
+ * a quota (429), a vendor with no key (503), a bad request (400) — stopped the command from
+ * running, and measured nothing. Exit 1 is only for what was measured and did not hold.
  */
 export class GatewayError extends PinecallError {
   override readonly name = "GatewayError";
@@ -28,8 +29,9 @@ export class GatewayError extends PinecallError {
   constructor(
     readonly status: number,
     readonly detail: string,
+    said = true,
   ) {
-    super(`the gateway answered ${status}: ${detail}`);
+    super(said ? detail : `the gateway answered ${status}${detail === "" ? " with nothing" : `: ${detail}`}`);
   }
 }
 

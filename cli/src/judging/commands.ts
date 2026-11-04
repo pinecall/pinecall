@@ -75,7 +75,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <name>", "one agent's, when the project holds more")
     .action(async (flags) => {
       const whose = owner(flags);
-      ctx.io.result(await service.listJudges(ctx, whose), (list) => render.judges(whose, list));
+      ctx.io.result(await service.listJudges(ctx, whose), (list) => render.judges(whose, list, ctx.io.columns));
     });
   judges
     .command("show")

@@ -28,7 +28,7 @@ describe("push", () => {
     answer("put", "/v1/knowledge/:base", ({ path }) => ({ ...PUSHED, base: path.split("/").pop() }));
     const { ctx } = testContext({ cwd: root });
     expect(await service.pushDocs(ctx, {})).toEqual([
-      { agent: "front-desk", skipped: `no documents at ${root}/agents/front-desk/docs` },
+      { agent: "front-desk", skipped: "no documents at agents/front-desk/docs" },
       { agent: "sales", base: "sales", chunks: 12, language: "english", took_ms: 830.4, files: 1 },
     ]);
   });
@@ -64,7 +64,7 @@ describe("push", () => {
     expect(await service.pushDocs(ctx, {})).toEqual([{ ...PUSHED, files: 2, readme_skipped: true }]);
     expect((sent[0]!.body as { files: { path: string }[] }).files.map((one) => one.path)).toEqual(["hours.md", "notes/README.md"]);
     const alone = project(["front-desk"], { "agents/front-desk/docs/README.md": "# What goes here" });
-    await expect(service.pushDocs(testContext({ cwd: alone }).ctx, {})).rejects.toThrow(service.ONLY_README(`${alone}/agents/front-desk/docs`));
+    await expect(service.pushDocs(testContext({ cwd: alone }).ctx, {})).rejects.toThrow(service.ONLY_README("agents/front-desk/docs"));
   });
 
   it("refuses a folder that is not there, or holds no Markdown", async () => {

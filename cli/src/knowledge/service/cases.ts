@@ -11,12 +11,12 @@ import { DOCS_GOLDEN, isDirectory, MEMORY_GOLDEN } from "../../project/layout.js
 export const CASES = "agents/<name>/test/memory";
 export const NO_CASES = `no extraction goldens at ${CASES}: write one, or name the file or directory to run`;
 
-/** The questions of a golden file: a non-empty JSON list of the `shape` named in the refusal. */
-export function questionsOf(golden: string, shape: string): unknown[] {
-  if (!existsSync(golden)) throw new UsageError(`no golden at ${golden}: a JSON list of ${shape}`);
+/** The questions of a golden file: a non-empty JSON list of the `shape` named in the refusal, which names the file as `shown`. */
+export function questionsOf(golden: string, shape: string, shown = golden): unknown[] {
+  if (!existsSync(golden)) throw new UsageError(`no golden at ${shown}: a JSON list of ${shape}`);
   const questions = readJsonFile<unknown>("the golden", golden);
   if (!Array.isArray(questions) || questions.length === 0) {
-    throw new UsageError(`${golden} holds no questions: a golden is a JSON list of ${shape}`);
+    throw new UsageError(`${shown} holds no questions: a golden is a JSON list of ${shape}`);
   }
   return questions;
 }

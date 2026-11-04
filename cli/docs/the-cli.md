@@ -885,6 +885,8 @@ them like a real call's caller, `--template` writes one of the library's again f
 with `N` (say `1` for one). Each comes with what it expects. They are printed and saved nowhere; `--save` keeps every one as the
 agent's own — as rows, or, when the class owns the roster, as code appended to
 `agents/<agent>/harness.*`, an `ownPersona` each, for the class to add to `own`; the line names each.
+The code written holds what the caller is, never a default: a `behavior` field at the runtime's own
+value (`interrupts: 0`, `speed: 1`, no ambience) is left out, as `pull` leaves it out.
 Each caller written is one eval, none when your judges run on your own key. The console's
 "generate" keeps one the same way, through the `pinecall start` in the agent's directory.
 
@@ -927,8 +929,10 @@ when `pinecall start` or the deploy registers it. The list then says `set by the
 marks the class's own `class`, and `add`, `on`, `off` and `rm` for that agent are refused here with
 **exit 2**, naming the code and the switch; the org's list (`--org`) is always the org's, and its
 judges meet the agent's calls on top. `pull` appends the agent's own rows to that file as code,
-once, for the class to add to `own`; the rows stay until `rm`. `show <name>` prints one judge whole — whose, its switch, how and when it answers, what it
-reads, its question; a name the list has not is refused with exit 2.
+once, for the class to add to `own`; the rows stay until `rm`. The list's last column is what each
+judge asks, cut at the terminal's width (120 columns in a pipe); `show <name>` prints one judge
+whole — whose, its switch, how and when it answers, what it reads, its question; a name the list
+has not is refused with exit 2.
 
 ```console
 $ pinecall judges add offers-next-slot --asks "The agent offered the next free slot before the caller asked twice."
@@ -1049,10 +1053,10 @@ model is asked. Each answers `held`, `broken`, `deferred` or `skipped`; exits 1 
 $ pinecall eval call_29d7c7b6cdd643de9c659984a0125c8c
 call_29d7c7b6cdd643de9c659984a0125c8c  clinica-norte
   consent        held      no irreversible tool ran in this call; 1 tool call(s) did
-  register       skipped   no words were declared for this call: send them as `banned` …
+  register       skipped   no banned words were declared for this call: `pinecall eval <call> --policy <file>` reads them from a file of {"banned": […]}
   errors         held      the call logged no error
   latency        broken    llm_node_ttft 1.209s > 1.000s at its worst of 1 turns; e2e_latency 2.638s > 2.000s at its worst of 1 turns
-  talk           skipped   no talk_share in the budget: send one, the most of the talking the agent may do (0 to 1)
+  talk           skipped   no talk_share in the budget: a policy file of {"budget": {"talk_share": 0.6}} sets the most of the talking the agent may do, 0 to 1
   interruptions  skipped   no reply of the agent's was cut off in this call
 ```
 
@@ -1066,7 +1070,7 @@ recognises leaves `latency` `skipped`.
 ## `runs`
 
 ```
-pinecall runs list [--limit n] | show <id> | diff <a> <b>
+pinecall runs list [--limit n] [--agent <slug> | --all] | show <id> | diff <a> <b>
 pinecall runs promote <call-id> [--name x] [--agent <name>] [--out <dir>] [--from-seq n]
 pinecall runs drift [--agent <slug>] [--window 7d] [--baseline 30d] [--threshold 10] [--limit 200]
                 … any of them with --json: what the gateway answered, for a pipe
@@ -1074,11 +1078,14 @@ pinecall runs drift [--agent <slug>] [--window 7d] [--baseline 30d] [--threshold
 
 ```console
 $ pinecall runs list --limit 3
+clinica-norte · `pinecall runs --all` lists every agent's
 run_8a8870b59bc1  2026-09-11 12:47:23  clinica-norte     done     1/1
 run_5c6b559d6093  2026-09-11 11:56:49  clinica-norte     done     2/2
 ```
 
-`show` prints one run the way `test` printed its matrix when it happened — without the first
+`list` is the agent's runs, as `sessions` is the agent's calls: the one beside you, or `--agent`
+from any folder; `--all` is every agent's of the org, which a bare `runs` outside a project lists
+too. `show` prints one run the way `test` printed its matrix when it happened — without the first
 line, which carries the run id and belongs to a run that is still happening; `diff` says what moved between
 two, golden by golden — a measurement that HELD and is new to the later run is not a change and is
 left out, one that is BROKEN is printed (`not measured → broken`), and one the later run stopped
@@ -1148,7 +1155,7 @@ nightly or dismisses it:
 
 ```console
 $ pinecall cases
-1 waiting of at most 50
+1 case pending a decision · the inbox holds at most 50
 pending    promises-youll-call-me-tomorrow-29d7c7  promises  production  3h
 approved   thursday-afternoon                      —         sandbox     2d
 
@@ -1251,10 +1258,13 @@ call_5b1f0e9d2c7a4e8f9a1b3c5d7e9f1a2b
 ```
 
 `sessions log <call>` is the call's log as the runtime keeps it, an entry a line: its seq, its time
-in UTC, its type, and what it says — the turns, each tool call with its arguments and what it
-answered or why it was refused, the agent's states, and the rest (metrics, cost, the verdicts) as
-their data, cut at 160 characters; a search's `docs.sources` is its query and where each chunk came from
-(`"do you open on saturdays" → library-d/hours.md › Saturdays 0.91 · …`), the excerpts in `--json`. A page reads 200 entries (`--limit`, 1 to 500), and while
+in UTC, its type, and what it says, in words rather than its JSON — the turns, each tool call with its arguments and what it
+answered or why it was refused, the agent's states, how the call opened (`web · text · from web_2c0c…`)
+and ended, which fields of the state moved and what moved them (`takeMessage set stage "done" · message {…}`),
+which prompt block changed and its size, which tools became visible, a metric's times in milliseconds
+and the model that took them, an error's code and sentence, the score's verdict in a word; a search's `docs.sources` is its query and where each chunk came from
+(`"do you open on saturdays" → library-d/hours.md › Saturdays 0.91 · …`), the excerpts in `--json`.
+Any other kind is its data, cut at 160 characters. A page reads 200 entries (`--limit`, 1 to 500), and while
 there is more after it, it ends with the line that reads on (`--after <seq>`): the last seq the
 gateway read, so `--types turn.user,tool.call,tool.result`, which keeps only those, never ends the
 reading early — a page it narrowed to a few entries, or to none, still says where to go on (`<call> · nothing
@@ -1294,8 +1304,10 @@ pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--
                    [--max-duration 1-60|off]
                    [--remember '…' …] [--forget '…' …] [--team] [--note '…']
 pinecall agent knowledge [--team] · knowledge edit [--team] [--note '…']
-pinecall agent clear <voice|tts|tts-model|stt|end-of-turn|llm|temperature|llm-builds|llm-options|realtime|realtime-options|stt-builds|stt-options|tts-builds|tts-options
-                      |judge|judge-builds|judge-options|language|greeting|hangup|turn|memory|record|max-duration|knowledge|bases …> [--team]
+pinecall agent clear [--voice] [--tts] [--tts-model] [--stt] [--end-of-turn] [--llm] [--temperature] [--llm-builds] [--llm-options]
+                     [--realtime] [--realtime-options] [--stt-builds] [--stt-options] [--tts-builds] [--tts-options]
+                     [--judge] [--judge-builds] [--judge-options] [--language] [--greeting] [--hangup] [--turn] [--memory]
+                     [--record] [--max-duration] [--knowledge] [--bases] [--team]
 pinecall agent clear --all [--team]
 pinecall agent history [--team] · diff [--against team|production] [--team] · rollback <version> [--team]
 pinecall agent pull [--team] · push <file> [--team]
@@ -1306,8 +1318,15 @@ A version says what moved, so a write that changes nothing writes none: `set` wi
 with the values the corner holds, and `clear` of a field your corner does not set are refused with
 exit 2 before anything travels. **A write puts only what it moved in your corner**: the gateway
 builds a call field by field from the nearest corner that sets each, so the fields you never
-touched keep following the team's. `clear` takes fields out of your corner, so the team's hold
-again for them; a whole corner is `clear --all`, never a `clear` that forgot to name a field. A field the class declares is refused by `clear` as it is by `set`, with the same `409` naming the class.
+touched keep following the team's. `set` and `clear` print what moved — the corner and its new
+version, then `field before → after`, one a line — never the whole table. `clear` takes fields out
+of your corner by the flag that set each (`--language`), so the team's hold again for them; a whole
+corner is `clear --all`, never a `clear` that forgot to name a field. A field the class declares is
+refused by `clear` as it is by `set`, with the same `409` naming the class.
+
+Alone, the table prints a row per field some corner sets or the class declares, and counts the rest
+on one line, since a field set nowhere reads as the runtime's default; an agent with nothing set
+anywhere says so in one line.
 
 ```console
 $ pinecall agent
@@ -1315,20 +1334,22 @@ clinica-norte · sandbox
 
                 yours           team                        production
   voice         class           class                       class
-  tts           —               —                           —
-  tts model     —               —                           —
   stt           —               deepgram                    deepgram
   llm           —               anthropic/claude-haiku-5-5  anthropic/claude-haiku-5-5
   language      —               es                          es
   greeting      —               "Thanks for calling Clíni…  "Thanks for calling Clíni…
   hangup        —               when the person has what…   when the person has what…
-  turn          —               —                           —
   memory        —               remember 4 · forget 1       remember 4 · forget 1
   record        —               —                           keeps the audio
   knowledge     —               2,140 chars                 2,140 chars
   bases         —               clinica-norte (k 4)         clinica-norte (k 4)
 
   yours: v3 · m_ana · 2026-09-19 14:32 · "flat on the phone" · team: v11 · m_bruno · 2026-09-18 10:04 · production: v11 · m_ana · 2026-09-12 …
+  17 more fields set nowhere: the runtime's defaults answer · `pinecall agent set --help` names them
+
+$ pinecall agent set --language es-ES
+clinica-norte · sandbox · your corner v4
+  language — → es-ES
 ```
 
 **What an agent runs on is its settings', unless its class declares it** — per environment, per
@@ -1542,7 +1563,7 @@ pinecall kill [agent]                    … and with --prod, in production
 An admin's verb: the agent let go by **every** app that holds it in the environment, whoever's
 process it is — a colleague's `pinecall start`, a deploy, the org's own server. Each app is sent an
 `error` coded `killed` on that agent (`POST /v1/agents/{slug}/kill`, a key that opens both `team`
-and `app`): a `pinecall start` holding it prints `<agent>  ✗ <agent> was killed by <name>`, and every
+and `app`): a `pinecall start` holding it prints `✗ <agent> was killed by <name>`, once, and every
 app keeps answering for its other agents and does not declare this one again when its socket comes
 back. A `pinecall start` is two apps — the agent's process and the CLI's own socket beside it, which
 answers the console — so one kill lets go of both, and the process is the one that prints. The
@@ -1857,22 +1878,25 @@ The last line is **whose keys a call runs on**: the vendors the org brought keys
 ([`providers add`](#providers)), and the ones the runtime lends it. A vendor in neither refuses
 the call before it starts — bring a key for it.
 
+A quota nothing was used of and no limit is set on is not a row of its own: the untouched ones are
+counted together on one line, so a new org reads the few numbers that mean something.
+
 ```console
 $ pinecall limits
 sandbox
   minutes           12 of 30 · starts again 1 Nov
-  messages          41, no limit
-  LLM tokens        18210, no limit
+  messages          41 · no limit
+  LLM tokens        18210 · no limit
   evals             40 of 100 · starts again 1 Nov
-  simulations       3, no limit
-  budget            $1.20, no limit
+  simulations       3 · no limit
+  budget            $1.20 · no limit
   calls at once     0 of 1
-  agents            1, no limit
-  seats             2, no limit
+  agents            1 · no limit
+  seats             2 · no limit
   bought numbers    0 of 0
-  hosted apps       0, no limit
-  memory facts      14, no limit
-  knowledge chunks  226, no limit
+  memory facts      14 · no limit
+  knowledge chunks  226 · no limit
+  the rest          nothing used, no limit: hosted apps
   keys              yours: anthropic · lent by the runtime: google, cartesia, deepgram
 ```
 
@@ -1889,12 +1913,14 @@ pinecall providers list             # only the ones this org brought
 
 ```console
 $ pinecall providers --does tts
-VENDOR        DOES         STANDING
-livekit       llm,stt,tts  ready
-cartesia      stt,tts      no key
-elevenlabs    stt,tts      ready
-rime          tts          no key
-speechmatics  stt,tts      no plugin
+VENDOR      DOES         STANDING
+livekit     llm,stt,tts  ready
+elevenlabs  stt,tts      ready
+
+no key: cartesia (stt,tts), rime (tts) · `pinecall providers add <vendor>` brings one
+no plugin: speechmatics (stt,tts)
+
+5 vendors · ours: llm livekit · stt elevenlabs · tts elevenlabs
 ```
 
 With nothing after it: every vendor this build runs — every one LiveKit ships a plugin
@@ -1902,7 +1928,9 @@ for, plus `livekit` itself, which is LiveKit Inference and fronts most of them o
 project with no vendor key at all. `standing` is the one word for what each is still waiting for:
 `ready` is the only one that runs a call, `no plugin` and `no key` are the operator's to fix, and
 `its own` is a vendor whose credentials are a chain or a pair and never one key anybody could
-bring. Any of these names — or any of its aliases — is what `agent set --stt`, `--llm` and
+bring. The table is the vendors a call runs on now (`ready`, `its own`); the rest are one line per
+standing, each vendor with what it does, since thirty rows of `no key` say one thing. Any of these
+names — or any of its aliases — is what `agent set --stt`, `--llm` and
 `--tts` take: the six knobs are the agent's settings, and `pipeline` only reads them back. Under
 the table, how many vendors and which the platform runs each job on (`ours: …`), then one line per vendor whose plugin names realtime models — `realtime · xai:
 grok-voice-latest, grok-voice-3.0, …` — the models that hear and speak themselves, which
@@ -1933,21 +1961,25 @@ pinecall voices play <voice> ["the words"] [--tts <vendor>] [--model <model>] [-
 
 ```console
 $ pinecall voices --language es --country ES
-a7beff01-8f8b-4809-bfe6-e2166e57e0c2  Iria - Thoughtful Communicator  feminine   ES castilian
-de38f545-c574-44e8-9b54-a7d6fec1c6b1  Marta - Friendly Guide          feminine   ES castilian
-35b2cfc1-e6fb-4d69-a598-c1780612be4a  Darío - Steady Operator         masculine  ES castilian
+ID                                    NAME                            LANGUAGE  GENDER     FROM
+35b2cfc1-e6fb-4d69-a598-c1780612be4a  Darío - Steady Operator         es        masculine  ES castilian
+a7beff01-8f8b-4809-bfe6-e2166e57e0c2  Iria - Thoughtful Communicator  es        feminine   ES castilian
+de38f545-c574-44e8-9b54-a7d6fec1c6b1  Marta - Friendly Guide          es        feminine   ES castilian
+3 voices · --language <tag> keeps one language · `pinecall voices play <id>` says a line in one
 $ pinecall voices --tts rime
 rime lists no voices: its voice is the vendor's own id, set as it is — these list theirs: cartesia, elevenlabs, inworld, nvidia, speechify (--tts <vendor>)
 $ pinecall voices play de38f545-c574-44e8-9b54-a7d6fec1c6b1 "Hi, this is Clínica Norte's assistant." --language en
 de38f545-c574-44e8-9b54-a7d6fec1c6b1 · first audio 578 ms · whole sentence 915 ms · afplay
 ```
 
-With nothing after it: the vendor's voices in that language, one per line — the vendor `--tts` names, else
+With nothing after it: the vendor's voices in that language, one per line, by language and then by
+name — the vendor `--tts` names, else
 the one your corner's `tts` runs on, else the runtime's default (`providers` says which), so `no voice matches`
 with no `--tts` is that vendor listing none in the language; a vendor whose plugin lists its voices with no
 language at all (ElevenLabs) cannot be narrowed by `--language`, and says so — the id the agent's
 `voice` setting takes, then the name and, where the vendor says them, the language, the gender and
-where the accent is from. A vendor the providers row lists by language shows a voice once per language
+where the accent is from (a column left out when no voice of the list says); last, how many there are
+and how to hear one. A vendor the providers row lists by language shows a voice once per language
 it speaks there, its row saying which. The country is the column that matters for Spanish: `ES` is Spain and `MX` is
 Mexico, and a language code does not tell them apart; `--country` keeps one. The vendor is `--tts`,
 or **the platform's own voice** when none is named — `defaults.tts` of `GET /v1/providers`, what an
@@ -2186,21 +2218,20 @@ its secrets as `PINECALL_KEY` ([production.md](https://github.com/pinecall/pinec
 pinecall whoami [--prod]
 ```
 
-**The one endpoint**: the gateway and the key every verb finds ([above](#where-the-gateway-and-the-key-come-from)),
-on one line with the org a project names and where the key came from; under it what the gateway says the key is in the environment
-asked — the sandbox, or production with `--prod`: the org (its slug, or its id when the gateway
-carries none), the key's id, the environment, the label it was issued under, and whether the key may act
-in production — your switch, an admin's always, or a production server token; and under that
-which environments the key opens there: a person's key both, the sandbox without `--prod` and production
-with it while the switch is on; a server's token the one its prefix names. The exit code is 0
-when the gateway said who the key is, and 2 when it refused, in its words, when there is no key, or when
-it answers 404 — as every refusal of the gateway is ([exit codes](#exit-codes)). The key itself is
-neither printed nor sent anywhere else.
+**Three lines, each fact said once.** Where: the gateway every verb finds ([above](#where-the-gateway-and-the-key-come-from)),
+the org the key is in (its slug, or its id when the gateway carries none) and the environment this
+command acts in — the sandbox, or production with `--prod`. The key: its id, where it came from (the
+environment, the project's `.env`, or your sign-in) and the label it was issued under. What it opens
+there: a person's key both environments, the sandbox without `--prod` and production with it while
+their switch is on, and the sandbox alone until an admin turns the switch on; a server's token the one
+its prefix names. The exit code is 0 when the gateway said who the key is, and 2 when it refused, in
+its words, when there is no key, or when it answers 404 — as every refusal of the gateway is
+([exit codes](#exit-codes)). The key itself is neither printed nor sent anywhere else.
 
 ```console
 $ pinecall whoami
-gateway https://cloud.pinecall.io · org clinica · key from your sign-in (/Users/ana/.pinecall/session.json) · sandbox
-  org clinica · key k_4f2a1d9c66b30e17 · sandbox · ana-macbook · production: yes
+gateway https://cloud.pinecall.io · org clinica · sandbox
+  key k_4f2a1d9c66b30e17 from your sign-in (~/.pinecall/session.json) · ana-macbook
   a person's key: the sandbox without --prod, production with it
 ```
 
@@ -2238,7 +2269,7 @@ nothing, `--remove` takes it out. Every tool, and every assistant's file:
 
 ```
 pinecall docs list
-pinecall docs drop <base>
+pinecall docs drop <base> [--yes]
 pinecall docs push [dir] [--base <name>] [--language <code>] [--replace] [--agent <name>] [--file agent.tsx]
 pinecall docs pull [dir] [--base <name>] [--agent <name>] [--file agent.tsx]
 pinecall docs rm <path> [--base <name>] [--agent <slug>]
@@ -2250,7 +2281,8 @@ pinecall docs attached
 ```
 
 `attach` names a base the env has (`pinecall docs list` lists them): one it has not is refused with
-exit 2, naming the `push` that would write it.
+exit 2, naming the `push` that would write it. `drop` takes a base, its files and its chunks out for
+good, so on a terminal it asks once, and without one it does nothing until `--yes` says so.
 
 **The documents a turn searches** — the RAG, and only that. **The folder is a checkout of the
 base.** `push` reads every `*.md` under the directory — the agent's own `agents/<name>/docs/` when
@@ -2466,7 +2498,7 @@ The sandbox's platform unless `--prod`; each environment hosts its own apps.
 | `pinecall deploy rollback <n>` | release n's sources kept again as the next release, on the platform itself, and followed like any |
 | `pinecall deploy logs [--follow]` | the last lines of the app's process, fresh: asking is what makes the platform send them, a beat or two later, so the verb waits up to fifteen seconds for lines read after it asked (older ones are printed with how old they are). `--follow` keeps printing the lines that come, until Ctrl-C |
 | `pinecall deploy stop` · `start` | stopped, its process drains and nothing runs — its releases and token stay, and `list` says `stopped`; started, its newest release runs again |
-| `pinecall deploy rm` | the app no longer hosted: its releases go and its token is revoked |
+| `pinecall deploy rm [--yes]` | the app no longer hosted: its releases go and its token is revoked. It cannot be undone, so on a terminal it asks once, and without one it does nothing until `--yes` says so |
 
 The process prints no console link: a hosted app's output is a log, and a one-use code in a log is
 a way in for whoever reads it (see [`start`](#start)).
@@ -2672,6 +2704,18 @@ verification snippet per language.
 | `1` | the thing measured did not hold: a golden broke, a check failed, a judge answered broken, a drift fell past the threshold, the run itself broke (its reason printed with the report) |
 | `2` | this command could not run, and measured nothing: no key, a flag that is not a flag, a name nothing answers to, an input refused, **any refusal of the gateway** — 400, 401, 403, 404, 409, 422, 429, 503, in its own words — the network down, a verb that moved (`pipeline set` is `agent set` now) |
 | `130` | stopped: Ctrl-C (or SIGTERM) on a verb, which is not a failure |
+
+Every refusal is one sentence on stderr, `pinecall: …`, in the CLI's own words. A line typed wrong
+names the verb typed, what it takes and the `--help` that says so — `pinecall lexicon takes nothing
+after it, and 1 were typed: \`pinecall lexicon --help\` says what it takes`, `pinecall lexicon add
+needs --say <spoken>: …`, `pinecall memory needs a <contact>: …`, `no verb deploi (did you mean
+deploy?): \`pinecall --help\` lists them`. A refusal of the gateway is the gateway's sentence
+alone, with no status in front of it; the status is named only when the answer carried no sentence
+(a proxy's page: `the gateway answered 502: …`). An agent of the project the gateway has never
+met — `agent`, `judges`, `sessions`, `cases` and the rest before the first `pinecall start` — is
+said as what it is: `<agent> is not on Pinecall yet, nothing has held it: \`pinecall start\` holds
+it from this terminal, \`pinecall deploy\` runs it on Pinecall`. A path in a refusal is written as
+you would type it from where you are (`agents/clinica-norte/docs`), never whole.
 
 `start` and `prompt` run the agent's own process: when it leaves on its own they end with its exit code,
 whatever it is — 2 when the gateway refused what the class declares.
