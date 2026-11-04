@@ -266,7 +266,6 @@ export class Person {
     this.#person.classList.toggle("pc-up", side.up);
   }
 
-
   /** Out of the corner with the arrow showing, the buttons sliding into it; or back in it, and they aside. */
   tour(on: boolean): void {
     this.#person.classList.toggle("pc-touring", on);
