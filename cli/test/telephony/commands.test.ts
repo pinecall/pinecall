@@ -106,13 +106,13 @@ describe("pinecall line", () => {
 });
 
 describe("pinecall callbacks", () => {
-  it("says where it connected on stderr and the page on stdout, with the cursor to read on", async () => {
+  it("prints the page on stdout, nothing before it, with the cursor to read on", async () => {
     answer("get", "/v1/callbacks", {
       requests: [{ position: 1, agent: "front-desk", ts: 1_792_150_000, channel: "phone", number: "+34600000001", via: "overflow", call: "call_1" }],
       next: 7,
     });
     const ran = await run(["callbacks"]);
-    expect(ran.err).toContain("gateway https://gateway.test · key from the environment · sandbox");
+    expect(ran.err).toBe("");
     expect(ran.out).toContain("front-desk  +34600000001  phone  via overflow on call_1");
     expect(ran.out).toContain("more: --after 7");
   });
