@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.25 — a code agent is one folder: its judges, callers, docs, melody, look and timeouts in the class (2026-11-04)
 
 - **The hold melody and the widget's look are declarable.** `AgentConfig.hold` (`{clip, name, after_s, off}`, the
   file by its sha256) and `AgentConfig.widget` (what `PUT …/widget` takes): declared, each is `fixed`, the

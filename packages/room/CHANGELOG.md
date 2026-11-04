@@ -4,7 +4,7 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.25 — agent.waiting read, and a voice of the page's own (2026-11-04)
 
 - **`agent.waiting` is read.** The runtime writes it, in the public projection, when the agent's turn is over:
   every sentence of the reply played, every tool it called run. The wire parses it; a page that must not speak

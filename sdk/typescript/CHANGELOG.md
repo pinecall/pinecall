@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.25 — the class owns its judges and callers as code, its docs, its melody, its look and its timeouts (2026-11-04)
 
 - **`static hold` and `static widget`.** The hold melody — a file beside the class, uploaded once the agent
   registers unless the gateway holds it already, the wait before it, or `"off"` — and how the widget presents the

@@ -4,7 +4,7 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.25 — a page read aloud is recorded ahead, a name with spaces between its parts, the face kept on screen in flight (2026-11-04)
 
 - **A name is the element's words with a space between its parts** (`wordsOf`): a row of a table whose cells touch
   reads "la-espiga not held right now", so a walk finds it by those words; before, they ran together.

@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## [Unreleased]
+## [0.11.25] — the class owns its judges and callers as code, its docs, its melody, its look and its timeouts (2026-11-04)
 
 - **`hold` and `widget`** macros: the hold melody — a file beside the class, shipped once the agent registers
   unless the gateway holds it already, the wait before it, or `:off` — and how the widget presents the agent,
