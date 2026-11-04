@@ -5,6 +5,8 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.27 — released with the CLI's tilde (2026-11-04)
+
 ## 0.11.26 — the serve entry prints a kill once (2026-11-04)
 
 - **The serve entry prints a kill once.** With `--events`, an agent an admin killed travels as the `error`

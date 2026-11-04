@@ -4,6 +4,8 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.27] — released with the CLI's tilde (2026-11-04)
+
 ## [0.11.26] — released with the CLI's output review (2026-11-04)
 
 ## [0.11.25] — the class owns its judges and callers as code, its docs, its melody, its look and its timeouts (2026-11-04)
