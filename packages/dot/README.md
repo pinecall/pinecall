@@ -50,8 +50,7 @@ bobs and leans in while it listens, more slowly while it thinks, and squashes wi
 still under `prefers-reduced-motion`. Nothing is drawn outside the body, no halo and no shadow, so it sits on
 any background. `tutor()` takes the same `shape` and `color`, which tints its pointer too.
 
-**How the mouth is read.** Everything happens in the browser, from the element the agent's voice
-plays in (`state.voice`):
+**How the mouth is read.** Everything happens in the browser, from the element the agent's voice plays in (`state.voice`):
 
 | step | what |
 |---|---|
