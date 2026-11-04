@@ -205,7 +205,7 @@ agents/<name>/test/goldens/           goldens: the conversations `test` runs; be
                                       the questions `docs eval` asks the base, and `memory.json`,
                                       the questions `memory eval` asks recall
 agents/<name>/test/memory/            the extraction cases `remember` runs
-agents/<name>/test/personas/          the simulated callers kept in files
+agents/<name>/harness.ts              its own judges and callers, as code (harness.py, harness.rb)
 agents/<name>/test/candidates/        real calls `runs promote` wrote, before a person keeps them
 lib/                                  what two or more agents share
 ```

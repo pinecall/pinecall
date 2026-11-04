@@ -146,7 +146,7 @@ export const MemoryConfigSchema = z.strictObject({
  * knowledge, docs, memory, record — is the agent's settings' unless the class declares it: what
  * the class declares wins over the settings.
  */
-/** One judge of the agent's own, as its class declares it: `judges/<name>.md` read. */
+/** One judge of the agent's own, as its class declares it: an `ownJudge` in its code. */
 export const JudgeDeclarationSchema = z.strictObject({
   name: z.string(),
   question: z.string(),
@@ -183,7 +183,7 @@ export const CallerBehaviorSchema = z.strictObject({
 
 export type CallerBehavior = z.infer<typeof CallerBehaviorSchema>;
 
-/** One caller of the agent's own, as its class declares it: `test/personas/<name>.json` read. */
+/** One caller of the agent's own, as its class declares it: an `ownPersona` in its code. */
 export const PersonaDeclarationSchema = z.strictObject({
   name: z.string(),
   goal: z.string(),

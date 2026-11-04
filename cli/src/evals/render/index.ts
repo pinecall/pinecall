@@ -146,7 +146,7 @@ export function personas(agent: string, found: Persona[]): string[] {
   const whose = (one: Persona): string => (one.owner === "pinecall" ? `pinecall ${one.on ? "on" : "off"}` : one.owner === "class" ? "class" : "yours");
   const rows = table(["name", "whose", "goal"], found.map((one) => [one.name, whose(one), one.owner === "pinecall" ? (one.summary ?? one.goal) : one.goal])).slice(1);
   const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, NO_PERSONAS_YET(agent)];
-  if (found.some((one) => one.fixed === true)) lines.push(`set by the class of ${agent}: agents/${agent}/test/personas/ holds its own, personas({ on }) its switches`);
+  if (found.some((one) => one.fixed === true)) lines.push(`set by the class of ${agent}: its own are code beside the class (agents/${agent}/harness.*), personas({ on, own }) its switches`);
   return lines;
 }
 
