@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`credits.exhausted` carries `calls`**: the calls holding the org's seats when the calls-at-once limit refused.
+
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
 
 ## 0.11.26 — released with the CLI's output review (2026-11-04)

@@ -12,6 +12,16 @@ class AppFailed(WireModel):
     why: str
 
 
+class OrgQuiet(WireModel):
+    """A newborn org with no call that went well: the operators' alert, said once, on no log."""
+
+    org: str
+    name: str
+    created_at: float
+    calls: int
+    failed: int
+
+
 class ReleaseChanged(WireModel):
     """A hosted app's release changed where it stands: uploaded, live, failed or replaced."""
 

@@ -108,7 +108,7 @@ A page asked for a code to show beside the agent's phone number (POST /v1/codes)
 
 ### `credits.exhausted`
 
-The gateway refused a call, a simulation, a written turn or a register because one of the org's quotas ran out. Written into the agent's own log, which is the org's, before the endpoint says no, once for each refusal whichever quota it was (`concurrent_calls` and `simulations` too); the org's admins are mailed once an hour for each quota.
+The gateway refused a call, a simulation, a written turn or a register because one of the org's quotas ran out. Written into the agent's own log, which is the org's, before the endpoint says no, once for each refusal whichever quota it was (`concurrent_calls` and `simulations` too); the org's admins are mailed once an hour for each quota. At the calls-at-once limit the entry, the refusal and the mail name the calls still open, so the person knows what to end: an org of one seat whose own test call still ran read `1 of its 1 concurrent calls` and did not know the call was its own.
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -116,6 +116,7 @@ The gateway refused a call, a simulation, a written turn or a register because o
 | `quota` | `"minutes" | "messages" | "agents" | "concurrent_calls" | "memory_facts" | "knowledge_chunks" | "numbers" | "seats" | "llm_tokens" | "hosted_apps" | "evals" | "simulations" | "budget_usd"` | yes | Which quota: minutes of call, messages, agents held, calls at once, facts memory keeps, chunks the knowledge bases keep, numbers the platform bought for the org, people it seats, tokens its models read and wrote, apps the platform hosts for it, judges that answered on the platform's key this month, calls a simulated caller played this month, dollars its calls in both environments cost this month. Every quota a gateway can refuse for is a word here, whether or not that refusal is one an entry is written for: a push and an invitation name no agent, so they are answered at the endpoint and never logged. |
 | `used` | `number` | yes | How much the org had consumed when the endpoint refused. |
 | `limit` | `integer` | yes | The quota the operator set. |
+| `calls` | `string[]` | yes | The calls open when `concurrent_calls` refused — what holds the org's seats, on every gateway — so the refusal and the mail can name what to end. Empty for any other quota. |
 
 ### `evals.spent`
 
@@ -305,6 +306,33 @@ The org's calls cost more today than its own days usually do. Written at the sea
 | `today_usd` | `number` | yes | What the org's calls that started today cost so far. |
 | `usual_usd` | `number` | yes | What one of its days usually costs: the trailing four weeks' mean. |
 | `multiple` | `number` | yes | How many times the usual day today is. |
+
+### `vendor.failed`
+
+A vendor failed the call: a component's error named its plugin (`error` with `component_failed` or `component_dead_end`), the model said nothing within its deadline (`llm_timeout`), or a stage switched away from its vendor (`vendor.switched` with `available` false). Written at the seal, on the call's agent's log, once per call whatever the count of errors on it: the org's alert, mailed to its admins and the box's operators once an hour per vendor, posted to the webhooks, and the mail's button opens the call. On the org's own key the mail points at Settings ▸ Providers; on a lent key it says the operators were told.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `call` | `string` | yes | The call the vendor failed. |
+| `stage` | `"llm" | "stt" | "tts"` | yes | The stage that failed: the model, the transcription or the voice. |
+| `vendor` | `string` | yes | The vendor as the error named its plugin, or as `vendor.switched` named it; `""` when nothing named one (a model that said nothing). |
+| `model` | `string | null` | yes | Its model, when `vendor.switched` said it; null off an error. |
+| `code` | `string` | yes | The error's code, or `vendor.switched`. |
+| `message` | `string` | yes | The error's first line, 300 characters at most. |
+| `own_key` | `boolean` | yes | Whether the call ran the vendor on the org's own key, where the failure is the org's to look at. |
+| `errors` | `integer` | yes | How many vendor errors the log holds, every stage together. |
+
+### `org.quiet`
+
+A newborn org has had no call that went well: a day after it signed up, every call it made ended with a vendor's failure (`vendor.failed`), or it made none. The box's operators' alert, said once per org, on no agent's log — the org is never mailed that nobody has called it. Swept once an hour by every gateway, over the orgs between a day and a week old; the lock on the org keeps two gateways from saying it twice. Posted to the operator's webhook with `agent` null.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `org` | `string` | yes | The org's id. |
+| `name` | `string` | yes | Its name. |
+| `created_at` | `number` | yes | When it signed up, unix seconds. |
+| `calls` | `integer` | yes | How many of its calls ended, both environments. |
+| `failed` | `integer` | yes | How many of those a vendor failed. |
 
 ### `supervisor.ended`
 

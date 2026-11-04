@@ -10,6 +10,15 @@ export const AppFailedSchema = z.strictObject({
   why: z.string(),
 });
 
+/** A newborn org has had no call that went well: the operators' alert, said once, on no agent's log. */
+export const OrgQuietSchema = z.strictObject({
+  org: z.string(),
+  name: z.string(),
+  created_at: z.number(),
+  calls: z.int(),
+  failed: z.int(),
+});
+
 /** A hosted app's release changed where it stands: uploaded, live, failed or replaced. */
 export const ReleaseChangedSchema = z.strictObject({
   app: z.string(),

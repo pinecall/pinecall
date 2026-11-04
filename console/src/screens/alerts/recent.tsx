@@ -13,12 +13,14 @@ const NAMED: Record<string, string> = {
   "monitor.fired": "A monitor fired",
   "spend.unusual": "Unusual spend",
   "credits.exhausted": "Out of quota",
+  "vendor.failed": "A vendor failed a call",
+  "org.quiet": "A new org is quiet",
   "app.failed": "An app went down",
 };
 
-/** What one alert is about: the monitor's name, the app, the quota; the org's spend has none. */
+/** What one alert is about: the monitor's name, the app, the quota, the vendor; the org's spend has none. */
 function about(one: Alert): string {
-  const named = one.data["name"] ?? one.data["app"] ?? one.data["quota"];
+  const named = one.data["name"] ?? one.data["app"] ?? one.data["quota"] ?? one.data["vendor"];
   return typeof named === "string" ? named : "";
 }
 

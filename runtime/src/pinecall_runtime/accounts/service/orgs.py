@@ -1,6 +1,7 @@
 """Orgs: made with the limits the box gives a newborn, found by id or slug, removed whole."""
 
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,7 @@ from pinecall_runtime.accounts.repository import OrgRepository
 from pinecall_runtime.exceptions import Conflict, NotFound
 from pinecall_runtime.kit.crypto import random_id
 from pinecall_runtime.kit.text import parse_slug
+from pinecall_runtime.postgres import box_wide
 from pinecall_runtime.wire.parts import ModelConfig
 
 ID_PREFIX = "org_"
@@ -58,6 +60,12 @@ async def find_org(session: AsyncSession, named: str) -> Org | None:
 async def list_orgs(session: AsyncSession) -> Sequence[Org]:
     """Every org, oldest first."""
     return await OrgRepository(session).list_all()
+
+
+async def list_newborns(session: AsyncSession, since: datetime, until: datetime) -> Sequence[Org]:
+    """The orgs made in the window, oldest first: the box's to look at, whoever asks."""
+    with box_wide():
+        return await OrgRepository(session).born_between(since, until)
 
 
 async def delete_org(session: AsyncSession, org_id: str) -> bool:

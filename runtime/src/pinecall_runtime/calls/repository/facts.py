@@ -119,6 +119,15 @@ class FactsRepository(Repository[CallFact]):
 
     model = CallFact
 
+    async def ended_of_org(self, org: str) -> list[str]:
+        """The org's calls that ended, in either env: the newborns' sweep reads them box-wide."""
+        statement = (
+            select(CallLogHead.log)
+            .join(CallFact, CallFact.call == CallLogHead.log)
+            .where(CallLogHead.org == org, CallLogHead.call.is_not(None), CallFact.ended_at.is_not(None))
+        )
+        return [str(log) for log in (await self.session.execute(statement)).scalars()]
+
     # A summary is what gives a call its cost, so a simulated call with none has begun and not ended.
     async def simulating(self, org: str, env: Env, since: float, simulated_from: str) -> int:
         """How many simulated calls of the org in the env began since then and have no summary yet."""

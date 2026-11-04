@@ -3,12 +3,15 @@
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from sqlalchemy import delete, func, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as upsert
 
 from pinecall_runtime.alerts.models import Alert, Monitor, OrgWebhook
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.repository import Repository
+
+# A transaction-scoped advisory lock on one subject, released at commit or rollback.
+CLAIMED = text("select pg_try_advisory_xact_lock(hashtext(cast(:key as text)))")
 
 
 class MonitorRepository(Repository[Monitor]):
@@ -86,6 +89,25 @@ class AlertRepository(Repository[Alert]):
             Alert.at >= since,
         )
         return await self.count(statement) > 0
+
+    async def kept_since(self, org: str, env: Env, kind: str, subject: str, since: datetime) -> bool:
+        """Whether an alert of this kind and subject was raised since then, mailed or not."""
+        statement = self.statement().where(
+            Alert.org == org, Alert.env == env, Alert.kind == kind, Alert.subject == subject, Alert.at >= since
+        )
+        return await self.count(statement) > 0
+
+    async def calls_failed_of(self, org: str) -> set[str]:
+        """The calls a vendor failed for the org, in either env, as their alerts named them."""
+        statement = select(Alert.data["call"].astext).where(Alert.org == org, Alert.kind == "vendor.failed")
+        return {str(call) for call in (await self.session.execute(statement)).scalars() if call}
+
+    # Two gateways sweeping the same hour would both find the org quiet and both say so: the first
+    # to take the lock says it, the second finds the alert kept once the first commits.
+    async def claim_subject(self, kind: str, subject: str) -> bool:
+        """Take the transaction's lock on this kind and subject; False when another transaction holds it."""
+        taken = await self.session.execute(CLAIMED, {"key": f"{kind}:{subject}"})
+        return bool(taken.scalar_one())
 
     async def forget_before(self, cut: datetime) -> int:
         """Forget every alert raised before the cut; how many."""

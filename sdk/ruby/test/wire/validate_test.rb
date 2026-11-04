@@ -61,7 +61,7 @@ class ValidateTest < Minitest::Test
     assert_equal summary, Pinecall::Wire::Validate.call!("CallSummary", summary, where: "call.summary")
     tried = { kind: "try", name: "grounded", env: "sandbox", calls: %w[call_1 call_2], evals: 2, judge_calls: 2 }
     assert_equal tried, Pinecall::Wire::Validate.call!("EvalsSpent", tried, where: "evals.spent")
-    refused = { org: "org_1", quota: "evals", used: 500.0, limit: 500 }
+    refused = { org: "org_1", quota: "evals", used: 500.0, limit: 500, calls: [] }
     assert_equal refused, Pinecall::Wire::Validate.call!("CreditsExhausted", refused, where: "credits.exhausted")
   end
 

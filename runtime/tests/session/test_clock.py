@@ -52,7 +52,7 @@ async def test_the_orgs_minutes_ending_the_call_first_are_written_before_it_ends
 ) -> None:
     session = a_session(box, NOBODY)
     await session.start()
-    spent = CreditsExhausted(org="org_1", quota="minutes", used=30, limit=30)
+    spent = CreditsExhausted(org="org_1", quota="minutes", used=30, limit=30, calls=[])
     await clock.keep_time(session, 1, exhausted=spent)
     await session.close()
     written = await kinds(store, call)

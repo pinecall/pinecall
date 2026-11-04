@@ -10,6 +10,7 @@ from pinecall_runtime.wire.base import Entry, WireModel
 from pinecall_runtime.wire.feed import (
     AppFailed,
     JudgeBroke,
+    OrgQuiet,
     ReleaseChanged,
     RunChanged,
     ToolFailed,
@@ -346,6 +347,8 @@ class CreditsExhausted(WireModel):
     quota: QuotaName
     used: float
     limit: int
+    # The calls open when `concurrent_calls` refused: what holds the seats. Empty for any other quota.
+    calls: list[str]
 
 
 class MonitorFired(WireModel):
@@ -598,6 +601,21 @@ class VendorSwitched(WireModel):
     serving_model: str
 
 
+class VendorFailed(WireModel):
+    """A vendor failed the call: the org's alert, once a call, on the agent's log at the seal."""
+
+    call: str
+    stage: Literal["llm", "stt", "tts"]
+    # The vendor as the catalog names it, "" when the error named none (a model that said nothing).
+    vendor: str
+    model: str | None
+    code: str
+    message: str
+    # Whether the call ran the vendor on the org's own key, where a failure is the org's to look at.
+    own_key: bool
+    errors: int
+
+
 EVENTS: dict[str, type[WireModel]] = {
     "agent.configured": AgentConfigured,
     "agent.detached": AgentDetached,
@@ -650,6 +668,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "metrics.tts": TTSMetrics,
     "metrics.vad": VADMetrics,
     "monitor.fired": MonitorFired,
+    "org.quiet": OrgQuiet,
     "participant.joined": ParticipantJoined,
     "participant.left": ParticipantLeft,
     "participant.speaking": ParticipantSpeaking,
@@ -678,6 +697,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "turn.user": UserTurnEnded,
     "user.state": UserStateChanged,
     "user.transcript": UserTranscript,
+    "vendor.failed": VendorFailed,
     "vendor.switched": VendorSwitched,
     "worker.changed": WorkerChanged,
 }

@@ -10,7 +10,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.alerts.service.kept import keep_alert
-from pinecall_runtime.alerts.service.telling import Mailer, mail_alert
+from pinecall_runtime.alerts.service.telling import OPERATORS_ALONE, Mailer, mail_alert
 from pinecall_runtime.alerts.service.webhooks import Webhook, operator_webhook_of, webhook_of
 from pinecall_runtime.exceptions import QuotaExceeded
 from pinecall_runtime.kit.auth import Scope
@@ -18,8 +18,8 @@ from pinecall_runtime.kit.handles import Handles
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.kit.time import epoch
 from pinecall_runtime.wire.base import WireModel
-from pinecall_runtime.wire.events import CreditsExhausted, MonitorFired, SpendUnusual
-from pinecall_runtime.wire.feed import AppFailed
+from pinecall_runtime.wire.events import CreditsExhausted, MonitorFired, SpendUnusual, VendorFailed
+from pinecall_runtime.wire.feed import AppFailed, OrgQuiet
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,8 @@ KIND_OF: dict[type[WireModel], str] = {
     SpendUnusual: "spend.unusual",
     CreditsExhausted: "credits.exhausted",
     AppFailed: "app.failed",
+    VendorFailed: "vendor.failed",
+    OrgQuiet: "org.quiet",
 }
 
 
@@ -89,7 +91,9 @@ async def raise_alert(
     mailed = await mail_alert(session, alerting.outbox, handles.settings.address, scope, kind, data)
     await keep_alert(session, scope, agent, kind, data, mailed=mailed)
     payload = payload_of(scope, agent, kind, data)
-    heard_by = (await webhook_of(session, handles.vault, scope.org), await operator_webhook_of(session, handles.vault))
+    # An alert that is the operators' alone is never posted to the org's webhook either.
+    theirs = None if kind in OPERATORS_ALONE else await webhook_of(session, handles.vault, scope.org)
+    heard_by = (theirs, await operator_webhook_of(session, handles.vault))
     for webhook in heard_by:
         if webhook is None:
             continue
@@ -103,9 +107,27 @@ async def credits_exhausted(
 ) -> None:
     """Say on the agent's log, and to the webhook, that one of the org's quotas ran out."""
     alert = CreditsExhausted.model_validate(
-        {"org": scope.org, "quota": refused.quota, "used": refused.used, "limit": refused.limit}
+        {
+            "org": scope.org,
+            "quota": refused.quota,
+            "used": refused.used,
+            "limit": refused.limit,
+            "calls": list(refused.calls),
+        }
     )
     await raise_alert(session, alerting, scope, agent, alert)
+
+
+async def vendor_failed(
+    session: AsyncSession, alerting: Alerting, scope: Scope, agent: str, failed: VendorFailed
+) -> None:
+    """Say on the agent's log, to its admins and to the webhooks that a vendor failed the call."""
+    await raise_alert(session, alerting, scope, agent, failed)
+
+
+async def org_quiet(session: AsyncSession, alerting: Alerting, scope: Scope, quiet: OrgQuiet) -> None:
+    """Say to the box's operators that a newborn org has had no call that went well."""
+    await raise_alert(session, alerting, scope, None, quiet)
 
 
 # Said in a transaction of its own: a request about to be refused rolls its own back, and an alert the

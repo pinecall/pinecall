@@ -2734,7 +2734,7 @@ alerts go to https://hooks.example.com/pinecall · signed
 
 Where this org's alerts are posted beyond the agent's log, the list above and the admins' mail: a URL of your own, optional — Slack, PagerDuty,
 your backend. Every alert — a monitor that fired (`monitor.fired`), today's spend three times
-the usual (`spend.unusual`), a quota that ran out (`credits.exhausted`) — is posted as it is. The URL is on the public internet: one whose host is local, private or link-local, or resolves there (`127.0.0.1`, `10.…`, `169.254.…`, `localhost`, `*.internal`), is refused, since the deployment would post into itself on an org's word
+the usual (`spend.unusual`), a quota that ran out (`credits.exhausted`), a vendor that failed a call (`vendor.failed`) — is posted as it is. The URL is on the public internet: one whose host is local, private or link-local, or resolves there (`127.0.0.1`, `10.…`, `169.254.…`, `localhost`, `*.internal`), is refused, since the deployment would post into itself on an org's word
 written, as JSON `{type, org, env, agent, at, data}` with `x-pinecall-event` naming the type,
 tried twice within five seconds; a URL that fails is logged and the log keeps the alert. `set`
 takes the URL on the command line and, with `--secret`, the secret from stdin — typed without echo

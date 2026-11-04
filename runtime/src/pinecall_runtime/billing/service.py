@@ -1,6 +1,6 @@
 """Quotas and admission: an org's limits in an env against what it used there, before it uses more."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, cast
@@ -126,6 +126,27 @@ class LimitReached(QuotaExceeded):
         )
 
 
+# Named so the person knows what to end: an org of one seat whose own test call still runs read
+# `1 of its 1 concurrent calls` and did not know the call was its own (2026-11-04).
+NAMED_AT_MOST = 3
+
+
+class SeatsTaken(LimitReached):
+    """Every call the org may run at once in the env is running: the calls that hold the seats, named."""
+
+    def __init__(self, env: Env, running: Sequence[str], limit: int) -> None:
+        super().__init__(env, "concurrent_calls", len(running), limit)
+        self.calls = tuple(running)
+        named = ", ".join(running[:NAMED_AT_MOST])
+        more = f" and {len(running) - NAMED_AT_MOST} more" if len(running) > NAMED_AT_MOST else ""
+        each = "it" if len(running) == 1 else "them"
+        self.message = (
+            f"{self.message}: {named}{more} still open — end {each} in the console's Calls, or wait for "
+            f"{each} to end; a test and a simulation each count as a call"
+        )
+        self.args = (self.message,)
+
+
 class BudgetReached(QuotaExceeded):
     """The org has spent its month's budget, both envs together."""
 
@@ -214,11 +235,14 @@ async def spent_in_month(session: AsyncSession, org: str, month: date) -> float:
 # ── admission: one more of something ──
 
 
-# `at` is the log's clock, so a call is held to the month its summary will be counted in.
-async def admit_call(session: AsyncSession, org: str, env: Env, *, running: int, at: float) -> Ceiling | None:
+# `at` is the log's clock, so a call is held to the month its summary will be counted in; `running`
+# is the org's calls open in the env now, so a refusal can say which ones hold the seats.
+async def admit_call(session: AsyncSession, org: str, env: Env, *, running: Sequence[str], at: float) -> Ceiling | None:
     """Admit one more call, with its ceiling; None when the org's minutes have no limit."""
     quotas = await get_quotas(session, org, env)
-    _refuse_past(quotas, env, "concurrent_calls", running)
+    seats = quotas.limit_reached("concurrent_calls", len(running))
+    if seats is not None:
+        raise SeatsTaken(env, running, seats)
     month = month_of(at)
     if quotas.budget_usd is not None:
         spent = await spent_in_month(session, org, month)

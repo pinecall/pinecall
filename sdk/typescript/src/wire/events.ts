@@ -119,6 +119,7 @@ export const CreditsExhaustedSchema = z.strictObject({
   quota: z.enum(["minutes", "messages", "agents", "concurrent_calls", "memory_facts", "knowledge_chunks", "numbers", "seats", "llm_tokens", "hosted_apps", "evals", "simulations", "budget_usd"]),
   used: z.number(),
   limit: z.int(),
+  calls: z.array(z.string()),
 });
 
 /**
@@ -198,6 +199,18 @@ export const VendorSwitchedSchema = z.strictObject({
   available: z.boolean(),
   serving: z.string(),
   serving_model: z.string(),
+});
+
+/** A vendor failed the call: the org's alert, once a call, on the agent's log at the seal. */
+export const VendorFailedSchema = z.strictObject({
+  call: z.string(),
+  stage: z.enum(["llm", "stt", "tts"]),
+  vendor: z.string(),
+  model: z.string().nullable(),
+  code: z.string(),
+  message: z.string(),
+  own_key: z.boolean(),
+  errors: z.int(),
 });
 
 /**

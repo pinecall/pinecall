@@ -36,6 +36,11 @@ class OrgRepository(Repository[Org]):
         """Every org, oldest first."""
         return await self.all(self.statement().order_by(Org.created_at, Org.id))
 
+    async def born_between(self, since: datetime, until: datetime) -> Sequence[Org]:
+        """The orgs made in the window, oldest first."""
+        statement = self.statement().where(Org.created_at >= since, Org.created_at < until)
+        return await self.all(statement.order_by(Org.created_at, Org.id))
+
 
 class MemberRepository(Repository[Member]):
     """Members within an org, and a person's rows across orgs."""

@@ -67,7 +67,11 @@ in both environments.
 
 A refusal is a `429` whose sentence names the quota, what was used and the limit
 (`the org has used 30 of its 30 minutes in the sandbox`), and `credits.exhausted` lands in the
-agent's log with the same numbers.
+agent's log with the same numbers. At the calls-at-once limit the sentence also names the calls
+still open and what to do (`…1 of its 1 concurrent calls in the sandbox: call_8ff9… still open —
+end it in the console's Calls, or wait for it to end; a test and a simulation each count as a
+call`), the entry carries them as `calls`, and the mail says the same: a person whose own test
+call still ran could not tell the seat was theirs.
 
 ## What a new org is given
 

@@ -45,7 +45,7 @@ it("reads a written golden's call.summary with its run, evals.spent, and credits
   expect(eventOf(decodeEntry(entry("call.summary", summary)))).toMatchObject({ data: { run: "run_8f4a2c" } });
   const tried = { kind: "try", name: "grounded", env: "sandbox", calls: ["call_1", "call_2"], evals: 2, judge_calls: 2, judge_cost_usd: 0.002 };
   expect(eventOf(decodeEntry(entry("evals.spent", tried)))).toMatchObject({ data: { evals: 2, env: "sandbox" } });
-  const refused = { org: "org_1", quota: "evals", used: 500, limit: 500 };
+  const refused = { org: "org_1", quota: "evals", used: 500, limit: 500, calls: [] };
   expect(eventOf(decodeEntry(entry("credits.exhausted", refused)))).toMatchObject({ data: { quota: "evals" } });
 });
 

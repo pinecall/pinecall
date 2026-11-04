@@ -422,7 +422,7 @@ The numbers the org watches over a window — latency, the judges' held rate, es
 
 ## `webhook`
 
-Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.
+Where the org posts its alerts — a monitor fired, the spend unusual, a quota out, a vendor that failed a call — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.
 
 `webhook` reads where this org's alerts are posted beyond the agent's log ({type, org, env, agent, at, data}, with x-pinecall-event and, when a secret is set, x-pinecall-signature as sha256=<HMAC-SHA256 of the body>), proves the URL with a test post, and can stop it. Pointing it somewhere is never a tool, since the secret is a credential: the person types `pinecall webhook set <url> --secret` in a terminal, where the secret is read off stdin.
 
@@ -461,9 +461,9 @@ Where the org posts its alerts — a monitor fired, the spend unusual, a quota o
 
 ## `alerts`
 
-What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a hosted app down — whether or not a webhook is set, and whether each was mailed.
+What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a vendor that failed a call, a hosted app down — whether or not a webhook is set, and whether each was mailed.
 
-`alerts` reads what this org was told in the env (`prod` for production's): each alert's kind (`monitor.fired`, `spend.unusual`, `credits.exhausted`, `app.failed`), its agent, its data — the monitor and the value that crossed, the app, the quota — when it was raised, and whether it was mailed to the org's admins. Kept 90 days whether or not a webhook is set. Read it when the person asks what went wrong lately, or whether a monitor fired; `monitors` says what is watched, `webhook` where alerts are posted.
+`alerts` reads what this org was told in the env (`prod` for production's): each alert's kind (`monitor.fired`, `spend.unusual`, `credits.exhausted`, `vendor.failed`, `app.failed`), its agent, its data — the monitor and the value that crossed, the app, the quota and the calls holding its seats, the vendor and the call it failed — when it was raised, and whether it was mailed to the org's admins. Kept 90 days whether or not a webhook is set. Read it when the person asks what went wrong lately, or whether a monitor fired; `monitors` says what is watched, `webhook` where alerts are posted.
 
 | parameter | takes | | what it is |
 |---|---|---|---|

@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **A vendor that fails a call raises `vendor.failed`.** At the seal, a component's error naming its plugin, a
+  model that said nothing within its deadline, or a stage that switched away from its vendor becomes one alert
+  on the agent's log, mailed to the org's admins and the box's operators once an hour per vendor, posted to the
+  webhooks; the mail opens the call and, on the org's own key, points at Settings ▸ Providers. Until now a
+  Gemini 504 on a tenant's own key was two lines in the call's log and nobody was told.
+- **`credits.exhausted` names the calls holding the seats.** At the calls-at-once limit the refusal, the entry
+  (`calls`) and the mail say which calls are still open and what to do — end them in the console's Calls, or
+  wait; a test and a simulation each count as a call. An org of one seat whose own test call still ran read
+  `1 of its 1 concurrent calls` and did not know the call was its own.
+- **A newborn org with no call that went well is pointed at, once.** Every gateway sweeps the orgs between a
+  day and a week old each hour; one whose every ended call a vendor failed, or that made none, raises
+  `org.quiet` to the box's operators alone — never to the org — with its calls counted, so somebody reaches
+  out before it leaves.
+
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
 
 ## 0.11.26 — the replay's skipped checks say what a person types (2026-11-04)

@@ -120,8 +120,11 @@ on `/metrics` while it lasts, for the alert.
 ## 4. Where your orgs pay
 
 `PINECALL_BILLING_URL` is answered to every org in `GET /v1/limits`: the page where it buys more.
-A quota that refuses writes `credits.exhausted {org, quota, used, limit}` on the agent's log, the
-moment the layer or the console can offer it.
+A quota that refuses writes `credits.exhausted {org, quota, used, limit, calls}` on the agent's log, the
+moment the layer or the console can offer it. A vendor that fails a call writes `vendor.failed` at the
+seal and mails the org's admins — on the org's own key, pointing at Settings ▸ Providers — and the
+box's operators; a newborn org a day old with no call that went well is pointed at once, to the
+operators alone (`org.quiet`), so somebody reaches out before it leaves.
 
 ## 5. What is not in the runtime
 

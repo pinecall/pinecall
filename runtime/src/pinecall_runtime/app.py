@@ -20,7 +20,9 @@ from pinecall_runtime.accounts.auth import resolve_actor
 from pinecall_runtime.accounts.service import attempts, keys, mail, signin, tokens
 from pinecall_runtime.agents.service.prompts import PromptCache
 from pinecall_runtime.agents.service.registry import AgentRegistry
+from pinecall_runtime.alerts import service as alerts
 from pinecall_runtime.calls import service as calls
+from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.tasks import reap_forever
 from pinecall_runtime.calls.writer import LANES
 from pinecall_runtime.config import Settings, load_settings
@@ -152,6 +154,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         "reaper": box_task(reap_forever(serving)),
         "sweep": box_task(sweep_offers(offering)),
         "roster": box_task(watch_roster(roster)),
+        "newborns": box_task(alerts.watch_newborns_forever(serving, FactsRepository)),
     }
     # After the start, so a slow SFU never keeps the gateway from answering; again until whole.
     trunks = box_task(telephony.rebuilt_until_whole(handles))

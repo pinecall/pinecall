@@ -31,6 +31,7 @@ from pinecall.wire.events_call import (
 from pinecall.wire.events_feed import (
     AppFailed,
     JudgeBroke,
+    OrgQuiet,
     ReleaseChanged,
     RunChanged,
     ToolFailed,
@@ -54,6 +55,7 @@ from pinecall.wire.events_turn import (
     UserStateChanged,
     UserTranscript,
     UserTurnEnded,
+    VendorFailed,
     VendorSwitched,
 )
 from pinecall.wire.frames import Entry, WireModel
@@ -194,6 +196,8 @@ class CreditsExhausted(WireModel):
     quota: QuotaName
     used: float
     limit: int
+    # The calls open when `concurrent_calls` refused, holding the seats; empty for any other quota.
+    calls: list[str]
 
 
 class EvalsSpent(WireModel):
@@ -338,6 +342,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "metrics.stt": STTMetrics,
     "metrics.tts": TTSMetrics,
     "metrics.vad": VADMetrics,
+    "org.quiet": OrgQuiet,
     "participant.joined": ParticipantJoined,
     "participant.left": ParticipantLeft,
     "participant.speaking": ParticipantSpeaking,
@@ -366,6 +371,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "turn.user": UserTurnEnded,
     "user.state": UserStateChanged,
     "user.transcript": UserTranscript,
+    "vendor.failed": VendorFailed,
     "vendor.switched": VendorSwitched,
     "worker.changed": WorkerChanged,
 }

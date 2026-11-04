@@ -215,7 +215,8 @@ module Pinecall
           org: { kind: :str, required: true },
           quota: { kind: :enum, values: %w[minutes messages agents concurrent_calls memory_facts knowledge_chunks numbers seats llm_tokens hosted_apps evals simulations budget_usd], required: true },
           used: { kind: :float, required: true },
-          limit: { kind: :int, required: true }
+          limit: { kind: :int, required: true },
+          calls: { kind: :list, items: { kind: :str }, required: true }
         }.freeze,
         "EvalsSpent" => {
           kind: { kind: :enum, values: %w[try generate propose], required: true },
@@ -391,6 +392,23 @@ module Pinecall
           final: { kind: :bool, required: true },
           language: { kind: :str },
           confidence: { kind: :float }
+        }.freeze,
+        "VendorFailed" => {
+          call: { kind: :str, required: true },
+          stage: { kind: :enum, values: %w[llm stt tts], required: true },
+          vendor: { kind: :str, required: true },
+          model: { kind: :str, null: true },
+          code: { kind: :str, required: true },
+          message: { kind: :str, required: true },
+          own_key: { kind: :bool, required: true },
+          errors: { kind: :int, required: true }
+        }.freeze,
+        "OrgQuiet" => {
+          org: { kind: :str, required: true },
+          name: { kind: :str, required: true },
+          created_at: { kind: :float, required: true },
+          calls: { kind: :int, required: true },
+          failed: { kind: :int, required: true }
         }.freeze,
         "VendorSwitched" => {
           stage: { kind: :enum, values: %w[llm stt tts], required: true },

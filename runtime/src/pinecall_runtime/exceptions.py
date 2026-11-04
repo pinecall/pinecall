@@ -1,5 +1,7 @@
 """The one error hierarchy: every error the runtime raises on purpose, with its HTTP status."""
 
+from collections.abc import Sequence
+
 
 class PinecallError(Exception):
     """Base of every deliberate error; the message is the sentence a person reads."""
@@ -60,11 +62,13 @@ class TooManyRequests(PinecallError):
 class QuotaExceeded(TooManyRequests):
     """A limit of the org is reached: which one, what was used and the limit."""
 
-    def __init__(self, message: str, *, quota: str, used: float, limit: int) -> None:
+    def __init__(self, message: str, *, quota: str, used: float, limit: int, calls: Sequence[str] = ()) -> None:
         super().__init__(message)
         self.quota = quota
         self.used = used
         self.limit = limit
+        # The calls holding the seats when `concurrent_calls` refused; nothing for any other quota.
+        self.calls = tuple(calls)
 
 
 class UpstreamError(PinecallError):

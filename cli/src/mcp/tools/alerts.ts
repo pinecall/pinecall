@@ -54,7 +54,7 @@ export const alerts = tool({
     limit: z.number().int().min(1).max(200).optional().describe("how many, newest first; 50 when left out, 200 at most"),
   },
   manual:
-    "`alerts` reads what this org was told in the env (`prod` for production's): each alert's kind (`monitor.fired`, `spend.unusual`, `credits.exhausted`, `app.failed`), its agent, its data — the monitor and the value that crossed, the app, the quota — when it was raised, and whether it was mailed to the org's admins. Kept 90 days whether or not a webhook is set. Read it when the person asks what went wrong lately, or whether a monitor fired; `monitors` says what is watched, `webhook` where alerts are posted.",
+    "`alerts` reads what this org was told in the env (`prod` for production's): each alert's kind (`monitor.fired`, `spend.unusual`, `credits.exhausted`, `vendor.failed`, `app.failed`), its agent, its data — the monitor and the value that crossed, the app, the quota and the calls holding its seats, the vendor and the call it failed — when it was raised, and whether it was mailed to the org's admins. Kept 90 days whether or not a webhook is set. Read it when the person asks what went wrong lately, or whether a monitor fired; `monitors` says what is watched, `webhook` where alerts are posted.",
   handler: async (args, ctx) => ({ alerts: await service.listAlerts(ctx, args.limit ?? 50) }),
 });
 

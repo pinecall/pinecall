@@ -41,10 +41,10 @@ from pinecall_runtime.wire.signal import Bound, ForApp, Killed
 
 logger = logging.getLogger(__name__)
 
-# Where each gateway says how many calls each org runs on it, and how often.
+# Where each gateway says which calls each org runs on it, and how often.
 RUNNING_CHANNEL = "running"
 RUNNING_EVERY_S = 1.0
-_RUNNING: TypeAdapter[dict[str, int]] = TypeAdapter(dict[str, int])
+_RUNNING: TypeAdapter[dict[str, list[str]]] = TypeAdapter(dict[str, list[str]])
 
 # How long a call another gateway opened stays served here with no endpoint asking for it.
 FIRST_SEEN_IDLE_S = 600.0
@@ -287,9 +287,13 @@ class Live:
     # past the limit by what they opened that second.
     def running(self, org: str, env: Env) -> int:
         """How many of the org's calls are open in the env, on every gateway of the box."""
+        return len(self.holding(org, env))
+
+    def holding(self, org: str, env: Env) -> list[str]:
+        """The org's calls open in the env, on every gateway of the box: what holds its seats."""
         named = f"{org}|{env.value}"
-        theirs = sum(heard.share.get(named, 0) for heard in self.counted.theirs.values())
-        return self._running_here().get(named, 0) + theirs
+        theirs = [call for heard in self.counted.theirs.values() for call in heard.share.get(named, ())]
+        return [*self._running_here().get(named, ()), *theirs]
 
     def in_use(self, call: str, now: float) -> None:
         """An endpoint asked for a call first seen here: it stays while it is asked for."""
@@ -368,13 +372,13 @@ class Live:
         if served.app is not None:
             await self.tell(served.app, Entry.unstored(command.agent, "error", why.dump()))
 
-    def _running_here(self) -> dict[str, int]:
-        counts: dict[str, int] = {}
+    def _running_here(self) -> dict[str, list[str]]:
+        open_here: dict[str, list[str]] = {}
         for served in self.calls.values():
             if served.opened_here:
                 named = f"{served.scope.org}|{served.scope.env.value}"
-                counts[named] = counts.get(named, 0) + 1
-        return counts
+                open_here.setdefault(named, []).append(served.call)
+        return open_here
 
     def _say_sockets(self) -> None:
         self.elsewhere.shared.put(

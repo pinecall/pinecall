@@ -110,6 +110,9 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
             async with serving.handles.sessions.begin() as session:
                 await drift_folded(session, served.call, entries, score)
                 await _keep_as_case(session, serving, served, score)
+                failed = alerts.failure_of(served.call, entries, lent=lent)
+                if failed is not None:
+                    await alerts.vendor_failed(session, serving, served.scope, served.agent, failed)
                 at = serving.logs.store.clock()
                 await alerts.watch_spend(
                     session,

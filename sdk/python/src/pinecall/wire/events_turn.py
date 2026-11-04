@@ -140,6 +140,19 @@ class UserTranscript(WireModel):
     confidence: float | None = None
 
 
+class VendorFailed(WireModel):
+    """A vendor failed the call: the org's alert, once a call, on the agent's log at the seal."""
+
+    call: str
+    stage: Literal["llm", "stt", "tts"]
+    vendor: str
+    model: str | None
+    code: str
+    message: str
+    own_key: bool
+    errors: int
+
+
 class VendorSwitched(WireModel):
     """A stage's vendor failed or came back; `serving` is the vendor the stage runs on now."""
 

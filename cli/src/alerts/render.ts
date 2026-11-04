@@ -57,9 +57,9 @@ function fired(monitor: Monitor): string {
   return monitor.fired_on === null ? "never fired" : `fired ${monitor.fired_on} at ${monitor.fired_value}`;
 }
 
-/** What an alert is about, read off its data: the monitor, the app, the quota; the org's spend has none. */
+/** What an alert is about, read off its data: the monitor, the app, the quota, the vendor; the org's spend has none. */
 function about(one: Alert): string {
-  const named = one.data["name"] ?? one.data["app"] ?? one.data["quota"];
+  const named = one.data["name"] ?? one.data["app"] ?? one.data["quota"] ?? one.data["vendor"];
   return typeof named === "string" ? named : "—";
 }
 

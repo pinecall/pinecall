@@ -8,9 +8,11 @@ from pinecall_runtime.alerts.service.delivery import (
     Logs,
     credits_exhausted,
     credits_refused,
+    org_quiet,
     payload_of,
     post_alert,
     raise_alert,
+    vendor_failed,
 )
 from pinecall_runtime.alerts.service.kept import (
     KEPT_DAYS,
@@ -30,7 +32,9 @@ from pinecall_runtime.alerts.service.monitors import (
     list_monitors,
     measure,
 )
+from pinecall_runtime.alerts.service.newborns import CallLedger, watch_newborns, watch_newborns_forever
 from pinecall_runtime.alerts.service.spend import SpendLedger, Unusual, unusual_spend, watch_spend
+from pinecall_runtime.alerts.service.vendors import failure_of
 from pinecall_runtime.alerts.service.webhooks import (
     THE_OPERATOR_HEARS_NOTHING,
     Webhook,
@@ -53,6 +57,7 @@ __all__ = [
     "SIGNATURE_HEADER",
     "THE_OPERATOR_HEARS_NOTHING",
     "Alerting",
+    "CallLedger",
     "Logs",
     "Series",
     "SeriesDay",
@@ -69,11 +74,13 @@ __all__ = [
     "delete_operator_webhook",
     "delete_webhook",
     "every_orgs_alerts",
+    "failure_of",
     "forget_alerts",
     "keep_alert",
     "list_monitors",
     "measure",
     "operator_webhook_of",
+    "org_quiet",
     "payload_of",
     "post_alert",
     "put_operator_webhook",
@@ -81,6 +88,9 @@ __all__ = [
     "raise_alert",
     "test_webhook",
     "unusual_spend",
+    "vendor_failed",
+    "watch_newborns",
+    "watch_newborns_forever",
     "watch_spend",
     "webhook_of",
 ]

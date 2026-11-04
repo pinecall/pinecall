@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that
+  failed a call, a newborn org with no call that went well, and the calls holding an org's seats when the
+  calls-at-once limit refused: the gateway's, read off the log, nothing for an app to fold.
+
 ## [0.11.27] — released with the CLI's tilde (2026-11-04)
 
 ## [0.11.26] — released with the CLI's output review (2026-11-04)

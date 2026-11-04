@@ -116,6 +116,7 @@ export const CreditsExhaustedSchema = z.strictObject({
   quota: z.enum(["minutes", "messages", "agents", "concurrent_calls", "memory_facts", "knowledge_chunks", "numbers", "seats", "llm_tokens"]),
   used: z.number(),
   limit: z.int(),
+  calls: z.array(z.string()),
 });
 
 /**

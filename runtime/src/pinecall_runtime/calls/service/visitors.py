@@ -195,7 +195,7 @@ async def admit_call(session: AsyncSession, serving: Serving, scope: Scope, agen
             session,
             scope.org,
             scope.env,
-            running=serving.live.running(scope.org, scope.env),
+            running=serving.live.holding(scope.org, scope.env),
             at=serving.logs.store.clock(),
         )
     except QuotaExceeded as refused:

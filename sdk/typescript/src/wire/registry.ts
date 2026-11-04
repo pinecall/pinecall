@@ -70,6 +70,7 @@ import {
   UserStateChangedSchema,
   UserTranscriptSchema,
   UserTurnEndedSchema,
+  VendorFailedSchema,
   VendorSwitchedSchema,
 } from "./events.js";
 import {
@@ -96,6 +97,7 @@ import {
 import {
   AppFailedSchema,
   JudgeBrokeSchema,
+  OrgQuietSchema,
   ReleaseChangedSchema,
   RunChangedSchema,
   ToolFailedSchema,
@@ -176,6 +178,7 @@ export const EVENT_SCHEMAS = {
   "metrics.stt": STTMetricsSchema,
   "metrics.tts": TTSMetricsSchema,
   "metrics.vad": VADMetricsSchema,
+  "org.quiet": OrgQuietSchema,
   "participant.joined": ParticipantJoinedSchema,
   "participant.left": ParticipantLeftSchema,
   "participant.speaking": ParticipantSpeakingSchema,
@@ -204,6 +207,7 @@ export const EVENT_SCHEMAS = {
   "turn.user": UserTurnEndedSchema,
   "user.state": UserStateChangedSchema,
   "user.transcript": UserTranscriptSchema,
+  "vendor.failed": VendorFailedSchema,
   "vendor.switched": VendorSwitchedSchema,
   "worker.changed": WorkerChangedSchema,
 } as const;

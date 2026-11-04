@@ -62,10 +62,14 @@ async def test_a_call_past_the_concurrent_limit_is_refused_and_one_under_it_is_g
     """The ceiling of a call admitted is the org's minutes left; one more than it may run is refused."""
     await limited(sessions, tenant, billing.Quotas(concurrent_calls=2, minutes=30))
     async with sessions() as session:
-        ceiling = await billing.admit_call(session, tenant.org, Env.sandbox, running=1, at=NOW)
+        ceiling = await billing.admit_call(session, tenant.org, Env.sandbox, running=["call_a"], at=NOW)
         assert ceiling == billing.Ceiling(seconds=30 * 60, minutes=30)
-        with pytest.raises(QuotaExceeded, match="2 concurrent calls in the sandbox"):
-            await billing.admit_call(session, tenant.org, Env.sandbox, running=2, at=NOW)
+        with pytest.raises(
+            QuotaExceeded, match="2 concurrent calls in the sandbox: call_a, call_b still open"
+        ) as refused:
+            await billing.admit_call(session, tenant.org, Env.sandbox, running=["call_a", "call_b"], at=NOW)
+        assert refused.value.calls == ("call_a", "call_b")
+        assert "end them in the console's Calls" in str(refused.value)
 
 
 @needs_the_database
@@ -113,7 +117,7 @@ async def test_an_org_without_limits_is_admitted_without_a_ceiling(
     """No minutes, messages or tokens set: the call runs as long as it runs."""
     await limited(sessions, tenant, billing.Quotas())
     async with sessions() as session:
-        assert await billing.admit_call(session, tenant.org, Env.sandbox, running=0, at=NOW) is None
+        assert await billing.admit_call(session, tenant.org, Env.sandbox, running=[], at=NOW) is None
 
 
 # ── what the org is shown: every limit it was given ──

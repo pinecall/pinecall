@@ -4,6 +4,11 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`alerts` and `webhook` know a vendor that failed a call (`vendor.failed`)**: listed with the vendor under
+  "about", named in the webhook's and the MCP's words; a quota alert's data names the calls holding the seats.
+
 ## [Unreleased]
 
 - **Every refusal is two lines**: what happened, `pinecall: …`, and the next step under it, `  → …`, with no

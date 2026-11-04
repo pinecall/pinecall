@@ -34,7 +34,8 @@ Examples
 
 const WEBHOOK = `
 Every alert of the org — a monitor that fired (monitor.fired), today's spend three times the
-usual (spend.unusual), a quota that ran out (credits.exhausted) — is written on the agent's log
+usual (spend.unusual), a quota that ran out (credits.exhausted), a vendor that failed a call
+(vendor.failed) — is written on the agent's log
 and, with a webhook set, posted there too as JSON; a hosted app that went down (app.failed) is
 no agent's, so it is posted alone, with agent null. The post is {type, org, env, agent, at, data}, with
 x-pinecall-event naming the type. Tried twice within five seconds; a URL that fails is logged
@@ -68,10 +69,10 @@ Examples
 
 const ALERTS = `
 Every alert of the org in this env — a monitor that fired (monitor.fired), today's spend three
-times the usual (spend.unusual), a quota that ran out (credits.exhausted), a hosted app that went
-down (app.failed) — is kept for 90 days whether or not a webhook is set. Each is mailed to the
-org's admins and the box's operators, once an hour per monitor, app or quota; "mailed" says whether
-this one was. --prod reads production's.
+times the usual (spend.unusual), a quota that ran out (credits.exhausted), a vendor that failed a
+call (vendor.failed), a hosted app that went down (app.failed) — is kept for 90 days whether or not
+a webhook is set. Each is mailed to the org's admins and the box's operators, once an hour per
+monitor, app, quota or vendor; "mailed" says whether this one was. --prod reads production's.
 
 Examples
   $ pinecall alerts

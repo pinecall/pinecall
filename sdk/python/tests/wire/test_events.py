@@ -59,6 +59,6 @@ def test_a_judge_tried_and_an_evals_refusal_on_the_agents_log_read() -> None:
         agent="clinica-norte",
         type="credits.exhausted",
         ephemeral=False,
-        data={"org": "org_1", "quota": "evals", "used": 500.0, "limit": 500},
+        data={"org": "org_1", "quota": "evals", "used": 500.0, "limit": 500, "calls": []},
     )
     assert event_of(refused).written()["quota"] == "evals"
