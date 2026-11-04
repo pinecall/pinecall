@@ -48,7 +48,9 @@ async def list_simulations(
     reader: EvalsReader, session: Session, query: Annotated[schemas.SimulationQuery, Query()]
 ) -> schemas.PersonaRunList:
     """Every simulated call in the key's env and scope, or the agents named's, newest first."""
-    wanted = calls.PersonaRunFilters(agents=tuple(query.agent), before=query.before, call=query.call)
+    wanted = calls.PersonaRunFilters(
+        agents=tuple(query.agent), before=query.before, call=query.call, comparison=query.comparison
+    )
     return await _runs(session, reader, wanted, query.limit)
 
 
@@ -184,6 +186,8 @@ def _run_row(run: calls.PersonaRun) -> schemas.PersonaRunRow:
             "score": None if score is None else score.dump(),
             "played_by": _played_by(run),
             "caller_cost_usd": run.facts.caller_cost_usd,
+            "against": facts.against,
+            "comparison": facts.comparison,
         }
     )
 

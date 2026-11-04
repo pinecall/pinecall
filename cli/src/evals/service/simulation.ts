@@ -213,7 +213,7 @@ async function followUntilScored(ctx: Context, call: string, over: Promise<unkno
 }
 
 // `call.score` is written after hang-up, once the judges answered: asked for again until it is, up to the judging's time.
-async function scoreOf(ctx: Context, call: string): Promise<CallScore | null> {
+export async function scoreOf(ctx: Context, call: string): Promise<CallScore | null> {
   const deadline = Date.now() + JUDGING_MAY_TAKE_MS;
   while (Date.now() < deadline) {
     const sealed = (await calls.listCallEntries(ctx.gateway(), call, { types: ["call.score"] })).entries.find((entry) => entry.type === "call.score");

@@ -150,6 +150,10 @@ class CallFacts:
     caller_llm: str | None = None
     caller_tts: str | None = None
     caller_voice: str | None = None
+    # Not a fold either: what the agent ran on over its settings, and the comparison the call was placed
+    # in, kept when the simulation is placed. None for a call that ran the settings, placed on its own.
+    against: dict[str, Any] | None = None
+    comparison: str | None = None
     # Not a fold either: the state's line, written at the seal (`line_of`), None while the call is live.
     line: JsonObject | None = None
 

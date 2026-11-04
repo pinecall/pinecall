@@ -170,10 +170,15 @@ export const simulate = tool({
     llm: z.string().optional().describe("the model that plays the caller this run (vendor/model); the persona's when left out"),
     tts: z.string().optional().describe("the vendor the caller's voice is read by this run; the persona's when left out"),
     caller_voice: z.string().optional().describe("the caller's voice this run, one of that vendor's (`voices`)"),
+    against: z
+      .array(service.AgentValuesInput)
+      .max(10)
+      .optional()
+      .describe("the agent on these values for this run alone — {stt, llm, tts, voice, language, temperature}, each `vendor/model` — the sandbox's, with a key that edits the pipeline; two or more are a comparison: every configuration placed at once against the same caller, answered as a table best first"),
     wait_s: WAIT,
   },
   manual:
-    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
+    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (every judge held, then the fastest reply, then the cheapest), each row naming its call. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
   handler: async (args, ctx) => {
     const reached = await ctx.session.reach(ctx, args.agent);
     const going = ctx.session.simulations.get(reached.slug);
@@ -197,12 +202,22 @@ export const simulate = tool({
       ambience: args.ambience,
       packetLoss: args.packet_loss,
     });
+    const against = args.against ?? [];
+    if (against.length > 1) {
+      let placed: (started: unknown) => void = () => undefined;
+      const begun = new Promise<unknown>((known) => (placed = known));
+      const pending = service.compare(ctx, reached.slug, persona, input, against, (started) => placed(started)).then((done) => ({ comparison: done.comparison, refused: done.refused, rows: done.table.rows, env: ctx.env }));
+      const started: InFlight = { pending, begun, soFar: () => ({ status: "running", says: "the comparison's calls are on the line: call simulate with action wait to keep waiting" }) };
+      ctx.session.simulations.set(reached.slug, started);
+      return await waited(ctx.session.simulations, reached.slug, started, args.wait_s ?? WAIT_S);
+    }
     const transcript: string[] = [];
     let begun: (call: string) => void = () => undefined;
     const opened = new Promise<string>((known) => (begun = known));
-    const pending = service
-      .simulate(ctx, { slug: reached.slug, app: () => reached.app }, persona, input, { onOpened: (call) => begun(call), onEntry: (entry) => transcriptLine(transcript, entry) })
-      .then((said) => ({ call: said.call, transcript, score: said.score, medians: said.medians, env: ctx.env }));
+    const listeners = { onOpened: (call: string) => begun(call), onEntry: (entry: Parameters<typeof transcriptLine>[1]) => transcriptLine(transcript, entry) };
+    const one = against[0];
+    const played = one === undefined ? service.simulate(ctx, { slug: reached.slug, app: () => reached.app }, persona, input, listeners) : service.simulateAgainst(ctx, reached.slug, persona, input, one, listeners);
+    const pending = played.then((said) => ({ call: said.call, transcript, score: said.score, medians: said.medians, env: ctx.env }));
     const started: InFlight = { pending, begun: opened, soFar: () => ({ status: "running", transcript_so_far: [...transcript], says: "call simulate with action wait to keep waiting" }) };
     ctx.session.simulations.set(reached.slug, started);
     return await waited(ctx.session.simulations, reached.slug, started, args.wait_s ?? WAIT_S);

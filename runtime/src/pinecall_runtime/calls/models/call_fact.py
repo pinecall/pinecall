@@ -16,6 +16,7 @@ class CallFact(Model):
     __table_args__ = (
         Index("call_facts_by_contact", "contact", postgresql_where="contact IS NOT NULL"),
         Index("call_facts_by_persona", "persona", postgresql_where="persona IS NOT NULL"),
+        Index("call_facts_by_comparison", "comparison", postgresql_where="comparison IS NOT NULL"),
     )
 
     call: Mapped[str] = mapped_column(Text, primary_key=True)
@@ -58,6 +59,11 @@ class CallFact(Model):
     caller_llm: Mapped[str | None] = mapped_column(Text)
     caller_tts: Mapped[str | None] = mapped_column(Text)
     caller_voice: Mapped[str | None] = mapped_column(Text)
+    # The voice and models the agent ran on for this call alone, over its settings, as a test room asks
+    # them; and the comparison the call was placed in with the others of its persona. NULL for a call
+    # that ran the settings as they are, and for one placed on its own.
+    against: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    comparison: Mapped[str | None] = mapped_column(Text)
     # What a list shows of the call, as its state said at the seal (`facts.line_of`): a list reads
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.

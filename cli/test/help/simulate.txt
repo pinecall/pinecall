@@ -23,6 +23,9 @@ Options:
   --tts <vendor>           the vendor the caller's voice is read by this run
   --caller-voice <id>      the caller's voice this run: pinecall voices list
                            names them
+  --against <values>       the agent on these for this run: stt=, llm=, tts=,
+                           voice=, language=, temperature=; again for another,
+                           compared
   --agent <name>
   --file <agent.tsx>
   -h, --help               display help for command
@@ -33,9 +36,14 @@ colleague's, production's with --prod; nothing is started here. The call lands i
 any other. --background-noise, --ambience and --packet-loss are spoken runs only. --llm, --tts and
 --caller-voice play the caller on another model or voice for this run alone; the persona keeps its
 own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts
-as one simulation, and what its caller cost is kept with the call.
+as one simulation, and what its caller cost is kept with the call. --against runs THE AGENT on
+other values for this run alone — stt=, llm=, tts=, voice=, language=, temperature=, joined by
+commas, as the console's test room does; said twice or more, every configuration is placed at
+once against the same caller and the table reads them best first: the judges, then the reply time,
+then the cost. In the sandbox only, with a key that edits the pipeline.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2
   $ pinecall simulate --persona hurried --voice --tts google --caller-voice Puck
+  $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
 

@@ -206,6 +206,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `evals/service/personas.ts` | 185 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled into its code. |
 | `evals/service/replay.ts` | 17 | Ring 3: one finished call rebuilt from its log and answered by the runtime's code checks; nothing re-run, no model asked. |
 | `evals/service/runs.ts` | 261 | The runs the gateway kept: listed, one shown, two diffed, a real call promoted to a candidate, each judge's drift. |
+| `evals/service/comparison.ts` | 125 | A simulation the gateway plays with the agent on other voices and models, and a comparison of several, followed through their logs. |
 | `evals/service/simulation.ts` | 261 | One simulated call: a model plays the persona against the agent wherever it is held, written or spoken, judged at hang-up. |
 | `evals/service/suite.ts` | 328 | A golden suite run through the agent wherever it is held, scored by the gateway; its report, latencies and reproductions. |
 

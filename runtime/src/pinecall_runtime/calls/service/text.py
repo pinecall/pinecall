@@ -1,8 +1,9 @@
 """Written calls on the gateway: opened on the socket that holds the agent, or taken up again."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,13 +47,21 @@ class TextSetup:
 
 
 async def open_text(
-    session_: AsyncSession, serving: Serving, registration: registry.Registration, context: CallContext
+    session_: AsyncSession,
+    serving: Serving,
+    registration: registry.Registration,
+    context: CallContext,
+    *,
+    test: Mapping[str, Any] | None = None,
 ) -> session.Session:
-    """A new written call on the socket that holds the agent, admitted and unstarted."""
+    """A new written call on the socket that holds the agent, admitted and unstarted.
+
+    `test` is a test room's own voice and models, checked at the endpoint, over the settings for this call alone.
+    """
     scope = registration.scope
     catalog = await providers.get_catalog(session_)
     config, versions = await settings.tuned_for_call(
-        session_, registration.config, scope, catalog, settings.Picked(call=context.call)
+        session_, registration.config, scope, catalog, settings.Picked(call=context.call), test=test
     )
     model = providers.thinking_of(config, catalog, await providers.keys_of(session_, serving.handles.vault, scope))
     return await open_text_as(session_, serving, registration, context, TextSetup(config, versions, model))

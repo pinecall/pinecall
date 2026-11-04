@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A simulation can run the agent on another voice or model, and several can be compared.** `POST /v1/simulations`
+  takes `against` `{stt, llm, tts, voice, language, temperature}`, the test room's knobs, for the agent on that call
+  alone; `POST /v1/simulations/compare` places one persona against the agent under up to ten of them at once, and
+  `GET /v1/simulations/compare/{id}` reads the table — judges, latency medians, cost — best first. The call keeps
+  what the agent ran on (`against`) and its comparison; `GET /v1/simulations?comparison=` lists one's calls.
 - **A spoken simulation with no seat waits for one** instead of being refused: up to three minutes, the
   time a scaled worker's node takes, with `fleet.full` on the agent's log once. Ten placed together on a
   sandbox of two seats were refused eight times before the node came. The chart's `workers.scaled.<world>.min`

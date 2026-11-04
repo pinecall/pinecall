@@ -47,6 +47,8 @@ class PersonaRunFilters:
     agents: tuple[str, ...] = ()
     # One simulated call by its id.
     call: str | None = None
+    # The calls of one comparison, by its id.
+    comparison: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +106,7 @@ where head.org = :org and head.env = :env and head.holder = :holder
   and (cardinality(cast(:agents as text[])) = 0 or head.agent = any(cast(:agents as text[])))
   and (cast(:persona as text) is null or f.persona = :persona)
   and (cast(:call as text) is null or head.log = :call)
+  and (cast(:comparison as text) is null or f.comparison = :comparison)
 """
 
 FOUND_COUNT = text("select count(*) as total " + MATCHING)
@@ -192,6 +195,17 @@ class FactsRepository(Repository[CallFact]):
         )
         await self.session.execute(statement)
 
+    async def keep_against(self, call: str, against: Mapping[str, Any] | None, comparison: str | None) -> None:
+        """Keep what the agent ran on for the call over its settings, and the comparison it was placed in."""
+        statement = insert(CallFact).values(
+            call=call, against=None if against is None else dict(against), comparison=comparison
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=[CallFact.call],
+            set_={"against": statement.excluded.against, "comparison": statement.excluded.comparison},
+        )
+        await self.session.execute(statement)
+
     async def billed_of(self, calls: Sequence[str]) -> dict[str, tuple[tuple[str, ...], float]]:
         """For each of the calls that has either: the vendors it ran on the box's key, and its caller's cost."""
         if not calls:
@@ -254,6 +268,7 @@ class FactsRepository(Repository[CallFact]):
             "agents": list(wanted.agents),
             "persona": wanted.persona,
             "call": wanted.call,
+            "comparison": wanted.comparison,
         }
         total = (await self.session.execute(PERSONA_RUNS_COUNT, params)).scalar_one()
         page = {**params, "before": wanted.before, "limit": limit + 1}

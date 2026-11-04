@@ -2,6 +2,8 @@
 
 import { HELD, BROKEN, callScore } from "../../judging/render.js";
 import { clipped, count, date, formatHint, formatNotice, formatPairs, NEXT } from "../../kit/format.js";
+import type { AgentValues } from "../../api/evals.js";
+import type { Compared } from "../service/comparison.js";
 import { table } from "../../kit/table.js";
 import { type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Saved, type Simulated } from "../service/index.js";
 import { latencyLine } from "./matrix.js";
@@ -296,3 +298,42 @@ function secondsAs(seconds: number): string {
 }
 
 export { BROKEN, HELD };
+
+/** Seconds as the table says them: 1.24 s, 480 ms; nothing for a measure no turn took. */
+function seconds(value: number | null): string {
+  if (value === null) return "";
+  return value >= 1 ? `${value.toFixed(2)} s` : `${String(Math.round(value * 1000))} ms`;
+}
+
+/** The agent's values in a few words: `thinks groq/openai/gpt-oss-120b · speaks deepgram`; its own settings when none. */
+export function against(values: AgentValues): string {
+  const pairs: [string, string | number | undefined][] = [["hears", values.stt], ["thinks", values.llm], ["speaks", values.tts], ["voice", values.voice], ["language", values.language], ["temperature", values.temperature]];
+  const said = pairs.flatMap(([name, value]) => (value === undefined ? [] : [`${name} ${String(value)}`]));
+  return said.length === 0 ? "the agent's own settings" : said.join(" · ");
+}
+
+/** A comparison: the persona against the agent, one row per configuration best first, what was not placed, and how to read a call whole. */
+export function comparison(done: Compared): string[] {
+  const found = done.table;
+  const lines = [`${found.persona} against ${found.agent} · ${count(found.rows.length, "call")} · best first`];
+  lines.push(
+    ...table(
+      ["#", "the agent runs on", "judges", "reply", "thinks", "speaks", "hears", "cost", "length", "call"],
+      found.rows.map((row, index) => [
+        index + 1,
+        against(row.against),
+        row.ended_at === null ? "on a call" : row.score === null ? (row.end_reason ?? "not judged").replace(/_/g, " ") : `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`,
+        seconds(row.latency.e2e_latency),
+        seconds(row.latency.llm_node_ttft),
+        seconds(row.latency.tts_node_ttfb),
+        seconds(row.latency.transcription_delay),
+        row.cost_usd === null ? "" : `$${row.cost_usd.toFixed(4)}`,
+        row.ended_at === null ? "" : `${String(Math.round(row.ended_at - row.started_at))} s`,
+        row.call,
+      ]),
+    ),
+  );
+  for (const one of done.refused) lines.push(`not placed, ${against(one.against)}: ${one.why}`);
+  lines.push(formatHint("pinecall sessions <call> reads one whole"));
+  return lines;
+}

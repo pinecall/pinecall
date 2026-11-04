@@ -152,6 +152,22 @@ export const CaseGroupListSchema = z.strictObject({
  * One simulation this caller has run: the call it was, and what the call came to. Read off the
  * call index, never off a log — the same row the sessions list is drawn from.
  */
+/**
+ * The knobs a call may run the agent on over its saved settings, as a test room asks them (the
+ * runtime's TEST_KNOBS): each stage as `vendor/model`, a voice, a language, a temperature; nothing
+ * named is the agent's own. The sandbox's alone.
+ */
+export const AgentValuesSchema = z.strictObject({
+  stt: z.string().optional(),
+  llm: z.string().optional(),
+  tts: z.string().optional(),
+  voice: z.string().optional(),
+  language: z.string().optional(),
+  temperature: z.number().optional(),
+});
+
+export type AgentValues = z.infer<typeof AgentValuesSchema>;
+
 export const PersonaRunSchema = z.strictObject({
   call: z.string(),
   agent: z.string(),
@@ -168,9 +184,63 @@ export const PersonaRunSchema = z.strictObject({
   played_by: z.strictObject({ llm: z.string().nullable(), tts: z.string().nullable(), voice: z.string().nullable() }).nullable(),
   /** What that caller's lines and voice cost, in US dollars. */
   caller_cost_usd: z.number(),
+  /** The voice and models the agent was run on for this call alone, over its own settings; null when its own. */
+  against: AgentValuesSchema.nullable(),
+  /** The comparison this call was placed in, with the others of the same persona; null for a run of its own. */
+  comparison: z.string().nullable(),
 });
 
 export type PersonaRun = z.infer<typeof PersonaRunSchema>;
+
+/** A turn's latency medians over one call, in seconds; a measure nobody took is null. */
+export const LatencySchema = z.strictObject({
+  e2e_latency: z.number().nullable(),
+  llm_node_ttft: z.number().nullable(),
+  tts_node_ttfb: z.number().nullable(),
+  transcription_delay: z.number().nullable(),
+  end_of_turn_delay: z.number().nullable(),
+});
+
+export type Latency = z.infer<typeof LatencySchema>;
+
+/** One call of a comparison: the agent's values it ran on, how it went, what it cost, and how fast it was. */
+export const ComparisonRowSchema = z.strictObject({
+  call: z.string(),
+  against: AgentValuesSchema,
+  started_at: z.number(),
+  ended_at: z.number().nullable(),
+  turns: z.int(),
+  end_reason: EndReasonSchema.nullable(),
+  score: SessionScoreSchema.nullable(),
+  cost_usd: z.number().nullable(),
+  latency: LatencySchema,
+});
+
+export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;
+
+/**
+ * GET /v1/simulations/compare/{id}: one persona against the agent under several voices and models,
+ * placed together; the rows best first — every judge held, then the fastest reply, then the cheapest.
+ */
+export const ComparisonSchema = z.strictObject({
+  comparison: z.string(),
+  agent: z.string(),
+  persona: z.string(),
+  voice: z.boolean(),
+  rows: z.array(ComparisonRowSchema),
+});
+
+export type Comparison = z.infer<typeof ComparisonSchema>;
+
+/** POST /v1/simulations/compare, the answer: the comparison's id, each call placed, and what was refused. */
+export const ComparisonStartedSchema = z.strictObject({
+  comparison: z.string(),
+  voice: z.boolean(),
+  calls: z.array(z.strictObject({ against: AgentValuesSchema, call: z.string() })),
+  refused: z.array(z.strictObject({ against: AgentValuesSchema, why: z.string() })),
+});
+
+export type ComparisonStarted = z.infer<typeof ComparisonStartedSchema>;
 
 /**
  * Simulated calls, newest first, a page at a time: one caller's to the agent (GET

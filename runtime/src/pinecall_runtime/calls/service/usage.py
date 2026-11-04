@@ -1,5 +1,6 @@
 """What a scope used: a window of whole days in numbers, its series, and the metered feed."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -139,6 +140,13 @@ async def keep_caller_cost(session: AsyncSession, call: str, usd: float) -> None
 async def keep_caller_played(session: AsyncSession, call: str, *, llm: str, tts: str | None, voice: str | None) -> None:
     """Keep who plays a simulated caller with the call's facts: its lines' model, its voice's, the voice."""
     await FactsRepository(session).keep_caller(call, {"caller_llm": llm, "caller_tts": tts, "caller_voice": voice})
+
+
+async def keep_agent_values(
+    session: AsyncSession, call: str, *, against: Mapping[str, Any] | None, comparison: str | None
+) -> None:
+    """Keep the voice and models the agent runs on for the call over its settings, and its comparison."""
+    await FactsRepository(session).keep_against(call, against, comparison)
 
 
 # Not in the summary: the gateway keeps both with the call's facts — the lent vendors at the seal,

@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.enums import Env
-from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, TooManyAtOnce, wait_for_a_seat
+from pinecall_runtime.evals.service.seats import wait_for_a_seat
+from pinecall_runtime.evals.service.simulations import AT_ONCE, Simulations, TooManyAtOnce
 from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.redis import LocalSignal
@@ -275,3 +276,45 @@ async def test_a_spoken_simulation_gives_up_on_a_seat_in_time() -> None:
 
     with pytest.raises(ServiceUnavailable, match="every seat of the sandbox's fleet held a call for 0 s"):
         await wait_for_a_seat(never, full, env=Env.sandbox, within_s=0.0, every_s=0.01)
+
+
+@needs_the_services
+async def test_a_comparison_places_the_persona_against_the_agent_under_each_values_and_reads_them_as_a_table(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """Two written calls at once under one id, each the agent on its own values; the list and the table carry them."""
+    against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "against": against}
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
+        assert answer.status_code == 200, answer.text
+        started = answer.json()
+        assert started["comparison"].startswith("cmp_") and started["refused"] == [] and started["voice"] is False
+        assert [one["against"] for one in started["calls"]] == against
+        calls = [str(one["call"]) for one in started["calls"]]
+        page: dict[str, object] = {}
+        for _ in range(200):
+            listed = await gateway.http.get(
+                "/v1/simulations", params={"comparison": started["comparison"]}, headers=tenant.server
+            )
+            page = listed.json()
+            if sorted(run["call"] for run in page["runs"]) == sorted(calls):  # type: ignore[index]
+                break
+            await asyncio.sleep(0.05)
+        runs: list[dict[str, object]] = page["runs"]  # type: ignore[assignment]
+        assert {run["call"]: run["against"] for run in runs} == dict(zip(calls, against, strict=True))
+        assert {run["comparison"] for run in runs} == {started["comparison"]}
+        table = (
+            await gateway.http.get(f"/v1/simulations/compare/{started['comparison']}", headers=tenant.server)
+        ).json()
+        assert (table["agent"], table["persona"], table["voice"]) == (agent, "in-a-hurry", False)
+        assert sorted(row["call"] for row in table["rows"]) == sorted(calls)
+        measures = {"e2e_latency", "llm_node_ttft", "tts_node_ttfb", "transcription_delay", "end_of_turn_delay"}
+        assert all(set(row["latency"]) == measures for row in table["rows"])
+    # A key that does not edit the pipeline is refused before anything opens; so is a knob no test room has.
+    refused = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.server)
+    assert refused.status_code == 403 and "pipeline" in refused.text
+    stray = await gateway.http.post("/v1/simulations", json={**body, "against": {"foo": "bar"}}, headers=tenant.person)
+    assert stray.status_code == 422
+    missing = await gateway.http.get("/v1/simulations/compare/cmp_nobody", headers=tenant.server)
+    assert missing.status_code == 404

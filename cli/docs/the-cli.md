@@ -742,7 +742,8 @@ names a version of the corner the run plays on.
 ```
 pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05]
-                  [--llm vendor/model] [--tts vendor] [--caller-voice id] [--agent <name>] [--file agent.tsx]
+                  [--llm vendor/model] [--tts vendor] [--caller-voice id]
+                  [--against stt=…,llm=…,tts=…,voice=…]… [--agent <name>] [--file agent.tsx]
 ```
 
 A model in the gateway plays the caller — every turn improvised from the persona's goal, its style
@@ -791,6 +792,34 @@ the agent does not have. A model or a vendor the runtime lacks, or one nobody ke
 caller runs on the runtime's keys unless the org brought that vendor's; each run that opens counts as one
 simulation of the org's `simulations` from the moment its call begins (`limits` adds it when the call ends), and what its caller cost is kept with the call — the usage
 feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` names it).
+
+`--against` runs **the agent** on other values for this run alone — `stt=`, `llm=`, `tts=`,
+`voice=`, `language=`, `temperature=`, joined by commas: `--against llm=groq/openai/gpt-oss-120b,tts=deepgram`
+— as the console's test room does; the agent's saved settings do not change, and the call keeps what
+it ran on. In the sandbox only, with a key that edits the pipeline (`403` otherwise); a knob the test
+room does not have is refused. The gateway plays the caller then, written or spoken, and this
+terminal follows the call's log. Said **twice or more, it is a comparison**: the same caller against
+every configuration, every call placed at once (`pinecall limits` holds ten simulations on the line
+per org), judged as each one ends, and printed as one table best first — every judge held, then the
+most held, then the fastest reply, then the cheapest — one row per configuration with its judges,
+its reply, model, voice and hearing medians, its cost, its length and its call:
+
+```console
+$ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b \
+    --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
+hurried · leave a message for the business: I am Ana García and the delivery for tomorrow has to come after 4 pm
+cmp_7f3a1c9b2d4e · 3 calls placed · judged as each one ends
+hurried against receptionist · 3 calls · best first
+#  THE AGENT RUNS ON                                        JUDGES    REPLY    THINKS  SPEAKS  HEARS   COST     LENGTH  CALL
+1  thinks groq/openai/gpt-oss-120b                          held 7/7  0.84 s   210 ms  120 ms  0 ms    $0.0091  41 s    call_…
+2  thinks anthropic/claude-haiku-5-5 · speaks deepgram      held 7/7  1.12 s   480 ms  110 ms  0 ms    $0.0120  44 s    call_…
+3  thinks google/gemini-3.5-flash-lite                      broke 6/7 1.31 s   620 ms  170 ms  0 ms    $0.0074  39 s    call_…
+  → pinecall sessions <call> reads one whole
+```
+
+A configuration the gateway refuses (a vendor nobody keyed, the org's limits) is said under the
+table, `not placed`, and the others go on; `--listen` is one call, so a comparison refuses it. The
+console's Simulations has the same under "Compare", and opens each row's call.
 
 `--listen` puts the call on **this machine's speakers** while it happens: the same hidden `observe`
 seat the console's listen button takes, joined from Node, both tracks mixed onto whichever of

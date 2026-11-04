@@ -15,7 +15,7 @@ import { HELP } from "../help.js";
 
 import { registerCases, registerPersonas, registerRuns } from "./dataset.js";
 import { numberOf, repeated } from "../../kit/flags.js";
-import { simulateAtTheTerminal, test } from "./terminal.js";
+import { compareAtTheTerminal, simulateAtTheTerminal, test } from "./terminal.js";
 
 export function register(program: Command, ctx: Context): void {
   program
@@ -64,6 +64,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--llm <vendor/model>", "the model that plays the caller this run; the persona's when unsaid")
     .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
     .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
+    .option("--against <values>", "the agent on these for this run: stt=, llm=, tts=, voice=, language=, temperature=; again for another, compared", repeated)
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)
@@ -83,7 +84,13 @@ export function register(program: Command, ctx: Context): void {
         callerVoice: flags.callerVoice,
       });
       const agent = ctx.agent("simulate", { file: flags.file, agent: flags.agent }).name;
-      service.requireHeld(await simulateAtTheTerminal(ctx, agent, input, listen));
+      const against = (flags.against ?? []).map(service.parseAgainst);
+      if (against.length > 1) {
+        if (listen) throw new UsageError("--listen plays one call: a comparison runs several at once");
+        await compareAtTheTerminal(ctx, agent, input, against);
+        return;
+      }
+      service.requireHeld(await simulateAtTheTerminal(ctx, agent, input, listen, against[0]));
     });
 
   program

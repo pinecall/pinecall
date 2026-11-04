@@ -329,7 +329,7 @@ The org's dataset: real calls and simulations kept as cases, grouped by the judg
 
 A model plays one of the agent's personas against the agent wherever it is held, written or spoken, and the call is judged at hang-up.
 
-`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.
+`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (every judge held, then the fastest reply, then the cheapest), each row naming its call. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -344,6 +344,7 @@ A model plays one of the agent's personas against the agent wherever it is held,
 | `llm` | text |  | the model that plays the caller this run (vendor/model); the persona's when left out |
 | `tts` | text |  | the vendor the caller's voice is read by this run; the persona's when left out |
 | `caller_voice` | text |  | the caller's voice this run, one of that vendor's (`voices`) |
+| `against` | a list of object of `stt` · `llm` · `tts` · `voice` · `language` · `temperature` |  | the agent on these values for this run alone — {stt, llm, tts, voice, language, temperature}, each `vendor/model` — the sandbox's, with a key that edits the pipeline; two or more are a comparison: every configuration placed at once against the same caller, answered as a table best first |
 | `wait_s` | a whole number 0–50 |  | how long to wait before answering what is known so far, in seconds; 25 when left out |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 

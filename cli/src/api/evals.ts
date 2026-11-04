@@ -193,3 +193,95 @@ export function startVoiceCall(gw: GatewayClient, body: VoiceCallRequest): Promi
 export function replayCall(gw: GatewayClient, call: string, policy: ReplayPolicy): Promise<Replayed> {
   return gw.post<Replayed>(`/v1/evals/replay/${seg(call)}`, policy);
 }
+
+/**
+ * The voice and models a run puts the agent on over its settings, as a test room asks them: each
+ * stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature; nothing named
+ * is the agent's own. The sandbox's alone, with a key that edits the pipeline.
+ */
+export interface AgentValues {
+  stt?: string | undefined;
+  llm?: string | undefined;
+  tts?: string | undefined;
+  voice?: string | undefined;
+  language?: string | undefined;
+  temperature?: number | undefined;
+}
+
+/** `POST /v1/simulations`: a persona put on the agent, the gateway playing the caller; written or spoken. */
+export interface SimulationRequest {
+  agent: string;
+  persona: string;
+  voice: boolean;
+  turns: number;
+  interferer_db?: number;
+  packet_loss?: number;
+  ambience?: string;
+  played_by?: { llm?: string; tts?: string; voice?: string };
+  against?: AgentValues;
+}
+
+/** The call a simulation plays on, watched like any call. */
+export interface SimulationStarted {
+  call: string;
+  voice: boolean;
+}
+
+/** `POST /v1/simulations/compare`: one persona against the agent under each of these, placed together. */
+export interface ComparisonRequest extends Omit<SimulationRequest, "against"> {
+  against: AgentValues[];
+}
+
+/** What a comparison placed, and what it could not. */
+export interface ComparisonStarted {
+  comparison: string;
+  voice: boolean;
+  calls: { against: AgentValues; call: string }[];
+  refused: { against: AgentValues; why: string }[];
+}
+
+/** A turn's measures over one call, each its median in seconds; one no turn reported is null. */
+export interface Latency {
+  e2e_latency: number | null;
+  llm_node_ttft: number | null;
+  tts_node_ttfb: number | null;
+  transcription_delay: number | null;
+  end_of_turn_delay: number | null;
+}
+
+/** One call of a comparison: what the agent ran on, how it went, what it cost, how fast it was. */
+export interface ComparisonRow {
+  call: string;
+  against: AgentValues;
+  started_at: number;
+  ended_at: number | null;
+  turns: number;
+  end_reason: string | null;
+  score: { held: number; judged: number; passed: boolean; reason: string | null } | null;
+  cost_usd: number | null;
+  latency: Latency;
+}
+
+/** `GET /v1/simulations/compare/{id}`: the comparison's calls, best first. */
+export interface Comparison {
+  comparison: string;
+  agent: string;
+  persona: string;
+  voice: boolean;
+  rows: ComparisonRow[];
+}
+
+/** A simulation the gateway plays and answers at once with its call; followed through the call's log. */
+export function startSimulation(gw: GatewayClient, body: SimulationRequest): Promise<SimulationStarted> {
+  return gw.post<SimulationStarted>("/v1/simulations", body);
+}
+
+/** A comparison placed at once: its id, the calls that started, and what was refused. */
+export function startComparison(gw: GatewayClient, body: ComparisonRequest): Promise<ComparisonStarted> {
+  return gw.post<ComparisonStarted>("/v1/simulations/compare", body);
+}
+
+/** The comparison's table as it stands: the rows best first, a call still on the line last. */
+export function getComparison(gw: GatewayClient, comparison: string): Promise<Comparison> {
+  return gw.get<Comparison>(`/v1/simulations/compare/${seg(comparison)}`);
+}

@@ -38,7 +38,7 @@ rates, and whether it hung up because the call had spent the providers row's
 one said. A model or a voice the rates do not price costs nothing here, as on a call.
 
 `POST /v1/simulations` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?, ambience?,
-played_by?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
+played_by?, against?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
 calls it, so whatever holds it answers — a process deployed, on a server of the org's, or a
 developer's `pinecall start`. Spoken (`voice`, the default) it is the call above; written, it is
 the chat the widget has, each line the persona's model improvises said once the agent's whole
@@ -69,6 +69,26 @@ call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any c
 run alone, over the persona's own; each unsaid stays the persona's, and a `tts` with no `voice`
 drops the persona's voice for one of that vendor's the agent does not have. A model, a vendor or a
 voice the deployment lacks is `400` before the answer, as when a persona is written.
+
+`against` `{stt?, llm?, tts?, voice?, language?, temperature?}` runs **the agent** on another voice or
+model for this call alone, over its settings, as the console's test room does: each stage as
+`vendor/model`, a voice of the voice vendor's, a language, a temperature; nothing named is the
+agent's own. The sandbox's alone (`403` in production), those knobs alone (`422` for any other), and a
+key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nobody keyed is refused as
+the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
+
+`POST /v1/simulations/compare` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?,
+ambience?, played_by?, against: [{…}, …]}` is one persona against the agent under each of the values
+named, one to ten, every call placed at once under one id: the answer is `{comparison, voice, calls:
+[{against, call}], refused: [{against, why}]}` — what started, and what was refused in the gateway's
+words (a vendor nobody keyed, the org's limits), the ones that started going on. The persona does not
+change; the agent does. `GET /v1/simulations/compare/{comparison}` reads the table: `{comparison,
+agent, persona, voice, rows: [{call, against, started_at, ended_at, turns, end_reason, score,
+cost_usd, latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay,
+end_of_turn_delay}}]}`, each measure the median over the call's turns in seconds (null while no turn
+reported it), the rows best first — every judge held, then the most held, then the fastest reply,
+then the cheapest, a call still on the line last — and `404` for an id of nobody's in this key's org
+and env. `GET /v1/simulations?comparison=` pages the same calls as runs.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`
 
@@ -115,7 +135,9 @@ key's environment, newest first, each with its turns, how it ended, its cost in
 US dollars and the judges' score, and who played the caller as it ran: `played_by` `{llm, tts,
 voice}` (`vendor/model` of its lines, the persona's own or the run's, and of its voice, `tts` and `voice` null on a written call;
 the row null for a call simulated before the runtime kept it) and `caller_cost_usd`, what that
-caller cost. `GET /v1/simulations` pages every simulated call the same way, or the agents named's
+caller cost; `against`, the voice and models the agent ran on over its settings for that call
+(null when it ran them as they are) and `comparison`, the id of the comparison it was placed in (null
+when placed on its own). `GET /v1/simulations` pages every simulated call the same way, or the agents named's
 (`?agent=`, once or more), and `?call=` reads one.
 
 ## Callers written for the agent — `POST /v1/agents/{slug}/personas/generate`

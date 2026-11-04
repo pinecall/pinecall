@@ -1,6 +1,6 @@
 """The bodies of the eval endpoints: a suite and its run, a replay, the simulated caller."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -179,6 +179,22 @@ class NextLineResponse(Row):
     hangup: bool = False
 
 
+class AgentValues(Schema):
+    """The voice and models a run puts the agent on, over its settings, as a test room asks them (TEST_KNOBS)."""
+
+    # Each stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature.
+    stt: str | None = None
+    llm: str | None = None
+    tts: str | None = None
+    voice: str | None = None
+    language: str | None = None
+    temperature: float | None = None
+
+    def named(self) -> dict[str, Any]:
+        """Only what is said."""
+        return self.model_dump(exclude_none=True)
+
+
 class PlaceVoiceCallRequest(Schema):
     """POST /v1/evals/voice, the body: the room, the agent, the persona, and the line."""
 
@@ -219,8 +235,8 @@ class PlayedBy(Schema):
     voice: str | None = None
 
 
-class SimulationRequest(Schema):
-    """POST /v1/simulations, the body: the agent, one of its personas, a written or spoken line."""
+class SimulationWants(Schema):
+    """What a simulation is placed with: the agent, one of its personas, a written or spoken line, who plays it."""
 
     agent: str
     persona: str
@@ -237,6 +253,14 @@ class SimulationRequest(Schema):
     played_by: PlayedBy | None = None
 
 
+class SimulationRequest(SimulationWants):
+    """POST /v1/simulations, the body: one simulation, and the agent's own voice and models for it, if any."""
+
+    # The voice and models the agent runs on for this call alone, over its settings: the sandbox's, a
+    # key that edits the pipeline, as a test room's are.
+    against: AgentValues | None = None
+
+
 class SimulationStarted(Row):
     """POST /v1/simulations, the answer: the call it plays on, watched like any call."""
 
@@ -251,6 +275,69 @@ class SessionScore(WireModel):
     judged: int
     passed: bool
     reason: str | None
+
+
+class ComparisonRequest(SimulationWants):
+    """POST /v1/simulations/compare, the body: one persona, the agent under each of these, placed together."""
+
+    against: list[AgentValues] = Field(min_length=1, max_length=10)
+
+
+class ComparedCall(Row):
+    """One call a comparison placed: what the agent runs on, and the call."""
+
+    against: dict[str, Any]
+    call: str
+
+
+class ComparedRefusal(Row):
+    """One call a comparison could not place, and the refusal in the gateway's words."""
+
+    against: dict[str, Any]
+    why: str
+
+
+class ComparisonStarted(Row):
+    """POST /v1/simulations/compare, the answer: the comparison's id, each call placed, what was refused."""
+
+    comparison: str
+    voice: bool
+    calls: list[ComparedCall]
+    refused: list[ComparedRefusal]
+
+
+class Latency(Row):
+    """A turn's measures over one call, each its median in seconds; one no turn reported is null."""
+
+    e2e_latency: float | None
+    llm_node_ttft: float | None
+    tts_node_ttfb: float | None
+    transcription_delay: float | None
+    end_of_turn_delay: float | None
+
+
+class ComparisonRow(Row):
+    """One call of a comparison: what the agent ran on, how it went, what it cost, how fast it was."""
+
+    call: str
+    against: dict[str, Any]
+    started_at: float
+    ended_at: float | None
+    turns: int
+    end_reason: EndReason | None
+    score: SessionScore | None
+    cost_usd: float | None
+    latency: Latency
+
+
+class Comparison(Row):
+    """GET /v1/simulations/compare/{id}: the calls of one comparison, best first."""
+
+    comparison: str
+    agent: str
+    persona: str
+    voice: bool
+    rows: list[ComparisonRow]
 
 
 class PersonaRunRow(Row):
@@ -271,6 +358,10 @@ class PersonaRunRow(Row):
     # and what that cost; None for a call simulated before the runtime kept it.
     played_by: PlayedBy | None = None
     caller_cost_usd: float = 0.0
+    # What the agent ran on over its settings, and the comparison the call was placed in; None for a
+    # call that ran the settings, placed on its own.
+    against: dict[str, Any] | None = None
+    comparison: str | None = None
 
 
 class PersonaRunList(Row):
@@ -294,3 +385,5 @@ class SimulationQuery(PersonaRunQuery):
     agent: list[str] = Field(default_factory=list[str])
     # One simulated call, by its id.
     call: str | None = None
+    # The calls of one comparison, by its id.
+    comparison: str | None = None

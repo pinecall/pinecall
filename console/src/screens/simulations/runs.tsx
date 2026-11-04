@@ -54,7 +54,7 @@ export function RunsTable({ inView, read }: { inView: string; read: Runs }): Rea
               <span className="runs-words">
                 <span className="runs-name">{run.persona ?? "a caller"}</span>
                 <span className="runs-sub">
-                  {[ago(run.started_at), inView === "" ? run.agent : null, `${String(run.turns)} turns`, run.ended_at === null ? null : duration(run)].filter((part) => part !== null).join(" · ")}
+                  {[ago(run.started_at), inView === "" ? run.agent : null, `${String(run.turns)} turns`, run.ended_at === null ? null : duration(run), run.comparison === null ? null : "compared"].filter((part) => part !== null).join(" · ")}
                 </span>
               </span>
               <Verdict run={run} />

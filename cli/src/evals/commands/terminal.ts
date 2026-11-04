@@ -5,7 +5,9 @@ import { existsSync, watch } from "node:fs";
 import { listenTo } from "../../calls/service/listening.js";
 import { lineFor, metricsLine } from "../../calls/render.js";
 import type { Context } from "../../context.js";
+import type * as api from "../../api/evals.js";
 import { errorMessage, PinecallError, UsageError } from "../../errors.js";
+import { count } from "../../kit/format.js";
 import { isDirectory } from "../../project/layout.js";
 import * as render from "../render/index.js";
 import * as service from "../service/index.js";
@@ -120,14 +122,15 @@ async function suiteAtTheTerminal(ctx: Context, agent: string, paths: string[], 
 }
 
 // The call printed as it happens, the ending under it; on a spoken call with --listen, played here too.
-export async function simulateAtTheTerminal(ctx: Context, agent: string, input: service.SimulateInput, listen: boolean): Promise<service.Simulated> {
+// With `against`, the gateway plays the caller and the agent runs on those values, followed through its log.
+export async function simulateAtTheTerminal(ctx: Context, agent: string, input: service.SimulateInput, listen: boolean, against?: api.AgentValues): Promise<service.Simulated> {
   const persona = await service.getPersona(ctx, agent, input.persona);
-  ctx.io.print(`${persona.name} · ${persona.goal}`);
+  ctx.io.print(`${persona.name} · ${persona.goal}${against === undefined ? "" : ` · the agent on ${render.against(against)}`}`);
   // Listening is best effort: no player or room library must not fail the simulation.
   let ear: Promise<{ leave(): Promise<void> } | null> = Promise.resolve(null);
   let joined = false;
   // The seat is left however the call ended: a refusal included, or a listener still joined holds the process.
-  const said = await service.simulate(ctx, { slug: agent }, persona, input, {
+  const listeners: service.SimulationListeners = {
     onOpened: (call) => {
       if (!listen || joined) return;
       joined = true;
@@ -150,9 +153,22 @@ export async function simulateAtTheTerminal(ctx: Context, agent: string, input: 
       if (entry.type === "turn.agent") ctx.io.debug(metricsLine(entry.data["metrics"] as Record<string, unknown> | undefined));
       ctx.io.print(`${line.mark} ${line.text}`);
     },
-  }).finally(async () => {
+  };
+  const played = against === undefined ? service.simulate(ctx, { slug: agent }, persona, input, listeners) : service.simulateAgainst(ctx, agent, persona, input, against, listeners);
+  const said = await played.finally(async () => {
     await (await ear)?.leave();
   });
   ctx.io.result(said, render.simulated);
   return said;
+}
+
+// Nothing of the calls is printed as they happen, several run at once: what was placed, then the table.
+export async function compareAtTheTerminal(ctx: Context, agent: string, input: service.SimulateInput, against: readonly api.AgentValues[]): Promise<service.Compared> {
+  const persona = await service.getPersona(ctx, agent, input.persona);
+  ctx.io.print(`${persona.name} · ${persona.goal}`);
+  const done = await service.compare(ctx, agent, persona, input, against, (started) => {
+    ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
+  });
+  ctx.io.result(done, render.comparison);
+  return done;
 }

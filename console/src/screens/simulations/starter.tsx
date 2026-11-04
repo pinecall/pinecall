@@ -11,6 +11,8 @@ import { Icon, Input, Segmented, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
 import { PlayedBy, type Played } from "../personas/played-by";
 import { Callers, keyOf } from "./callers";
+import { AgainstRows, twoRows } from "./against";
+import { startComparison, trimmed, type AgentValues } from "./comparing";
 import { playedBy, startSimulation } from "./simulating";
 import "./starter.css";
 
@@ -88,8 +90,8 @@ export function Starter({
   /** The caller the page was opened for (Personas' "Use in a simulation"), ticked from the start. */
   asked?: string | undefined;
   typical: Typical;
-  /** Told the calls' ids the moment there are some, and whether they are on a spoken line. */
-  onStarted: (calls: string[], spoken: boolean) => void;
+  /** Told the calls' ids the moment there are some, whether they are on a spoken line, and the comparison they are, when they are one. */
+  onStarted: (calls: string[], spoken: boolean, comparison?: string) => void;
 }): ReactNode {
   const credentials = useCredentials();
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -101,6 +103,9 @@ export function Starter({
   const [background, setBackground] = useState<Background>("");
   const [played, setPlayed] = useState<Played>(THE_PERSONAS);
   const [choosing, setChoosing] = useState(false);
+  // A comparison: one caller, the agent under each of these, placed together.
+  const [comparing, setComparing] = useState(false);
+  const [against, setAgainst] = useState<AgentValues[]>(twoRows);
   const [all, setAll] = useState(asked !== undefined);
   const [calling, setCalling] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
@@ -132,6 +137,10 @@ export function Starter({
     if (calling || total === 0) return;
     setCalling(true);
     setRefused(null);
+    if (comparing) {
+      await compare();
+      return;
+    }
     const calls: string[] = [];
     try {
       for (const persona of chosen) {
@@ -157,8 +166,37 @@ export function Starter({
     if (calls.length > 0) onStarted(calls, spoken);
   };
 
+  // One persona, the agent under each configuration: the gateway places them at once and says
+  // which were refused; the ones that started are the comparison.
+  const compare = async (): Promise<void> => {
+    const [persona] = chosen;
+    if (persona === undefined || chosen.length !== 1) {
+      setRefused("A comparison is one caller: tick exactly one.");
+      setCalling(false);
+      return;
+    }
+    try {
+      const started = await startComparison(credentials, {
+        agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
+        persona: persona.name,
+        voice: spoken,
+        turns,
+        ...playedBy(played),
+        ...(line === "noisy" ? { interferer_db: noise, packet_loss: loss / 100, ...(background === "" ? {} : { ambience: background }) } : {}),
+        against: against.map(trimmed),
+      });
+      if (started.refused.length > 0) setRefused(started.refused.map((one) => one.why).join(" · "));
+      if (started.calls.length > 0) onStarted(started.calls.map((one) => one.call), spoken, started.comparison);
+    } catch (failed) {
+      setRefused(failed instanceof GatewayError ? failed.message : String(failed));
+    } finally {
+      setCalling(false);
+    }
+  };
+
   const minutes = typical.seconds === null ? null : Math.max(1, Math.round(typical.seconds / 60));
-  const cost = typical.usd === null ? null : typical.usd * total;
+  const placed = comparing ? against.length : total;
+  const cost = typical.usd === null ? null : typical.usd * placed;
 
   return (
     <section className="sim-card" aria-label="new simulation">
@@ -236,16 +274,30 @@ export function Starter({
         )}
       </div>
 
+      <div className="sim-played">
+        <button type="button" className="sim-link" onClick={() => setComparing(!comparing)}>
+          {comparing ? "One call per caller, the agent as it is set" : "Compare: the agent under other voices and models, one caller, side by side"}
+        </button>
+        {comparing && (
+          <>
+            <AgainstRows rows={against} onChange={setAgainst} />
+            <p className="sim-note">The caller stays the same; the agent changes. Every call is placed at once and the table reads them best first: the judges, then the reply time, then the cost. In the sandbox only; the agent&apos;s saved settings don&apos;t change.</p>
+          </>
+        )}
+      </div>
+
       {refused !== null && <p className="sim-refused">{refused}</p>}
       <div className="sim-foot">
         <span className="sim-foot-said">
           {total === 0
-            ? "Tick who calls to run."
-            : [`${String(total)} ${total === 1 ? "call" : "calls"}`, total > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
+            ? comparing
+              ? "Tick one caller to compare."
+              : "Tick who calls to run."
+            : [`${String(placed)} ${placed === 1 ? "call" : "calls"}`, placed > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
         </span>
-        <button type="button" className="sim-run" disabled={calling || total === 0} onClick={() => void run()}>
+        <button type="button" className="sim-run" disabled={calling || total === 0 || (comparing && total !== 1)} onClick={() => void run()}>
           <Icon name="play" size={14} />
-          {calling ? "Starting…" : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
+          {calling ? "Starting…" : comparing ? `Compare ${String(against.length)} configurations` : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
         </button>
       </div>
     </section>

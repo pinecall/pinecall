@@ -1,0 +1,69 @@
+"""A comparison's rows: a call's latency medians read off its log, and the rows ranked best first."""
+
+from pathlib import Path
+
+from pydantic import TypeAdapter
+
+from pinecall_runtime.evals.schemas import ComparisonRow, Latency, SessionScore
+from pinecall_runtime.evals.service.comparisons import latency_of, ranked
+from pinecall_runtime.wire.base import Entry
+
+GOLDEN = Path(__file__).resolve().parents[1] / "wire" / "golden" / "call-log.json"
+_ENTRIES: TypeAdapter[list[Entry]] = TypeAdapter(list[Entry])
+
+
+def test_a_calls_latency_is_each_measures_median_over_its_turns() -> None:
+    """The golden log's turns carry their metrics: the medians are numbers, and a measure no turn took is None."""
+    entries = _ENTRIES.validate_json(GOLDEN.read_bytes())
+    latency = latency_of(entries)
+    assert latency.e2e_latency is not None and latency.e2e_latency > 0
+    assert latency.llm_node_ttft is not None and latency.llm_node_ttft > 0
+    assert latency_of([]) == Latency(
+        e2e_latency=None, llm_node_ttft=None, tts_node_ttfb=None, transcription_delay=None, end_of_turn_delay=None
+    )
+
+
+def a_row(
+    call: str,
+    *,
+    ended: bool = True,
+    score: SessionScore | None = None,
+    e2e: float | None = None,
+    cost: float | None = None,
+) -> ComparisonRow:
+    """One call of a comparison as its row."""
+    return ComparisonRow(
+        call=call,
+        against={"llm": f"acme/{call}"},
+        started_at=1.0,
+        ended_at=40.0 if ended else None,
+        turns=4,
+        end_reason="caller_hung_up" if ended else None,
+        score=score,
+        cost_usd=cost,
+        latency=Latency(
+            e2e_latency=e2e, llm_node_ttft=None, tts_node_ttfb=None, transcription_delay=None, end_of_turn_delay=None
+        ),
+    )
+
+
+def test_the_rows_are_ranked_by_judges_then_speed_then_cost_with_a_live_call_last() -> None:
+    """Every judge held beats most held; then the fastest reply; then the cheapest; a call still on the line is last."""
+    held = SessionScore(held=4, judged=4, passed=True, reason=None)
+    mostly = SessionScore(held=3, judged=4, passed=False, reason="one broke")
+    rows = [
+        a_row("live", ended=False),
+        a_row("cheap-but-broke", score=mostly, e2e=0.8, cost=0.01),
+        a_row("held-slow", score=held, e2e=2.0, cost=0.02),
+        a_row("held-fast-dear", score=held, e2e=1.0, cost=0.05),
+        a_row("held-fast-cheap", score=held, e2e=1.0, cost=0.02),
+        a_row("unjudged", score=None, e2e=0.5, cost=0.01),
+    ]
+    assert [row.call for row in ranked(rows)] == [
+        "held-fast-cheap",
+        "held-fast-dear",
+        "held-slow",
+        "cheap-but-broke",
+        "unjudged",
+        "live",
+    ]

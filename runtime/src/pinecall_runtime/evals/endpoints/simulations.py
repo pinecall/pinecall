@@ -1,18 +1,23 @@
 """The simulation endpoints: a persona put on the agent, the caller's next line, a spoken call placed."""
 
+from typing import Any
+
 from fastapi import APIRouter
 
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
-from pinecall_runtime.agents.service import registry
+from pinecall_runtime.agents.service import registry, settings
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
+from pinecall_runtime.enums import KeyScope
 from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey, TheSimulations
 from pinecall_runtime.evals.endpoints.reading import declared_personas_of
-from pinecall_runtime.exceptions import NotFound
+from pinecall_runtime.exceptions import Forbidden, NotFound, PinecallError
 from pinecall_runtime.judging import service as judging
-from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.auth import Actor, Scope
+from pinecall_runtime.kit.crypto import random_id
+from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session_
@@ -22,6 +27,7 @@ router = APIRouter()
 # A caller's line is a model call: a call of forty turns says forty, and several run side by side.
 LINES_A_MINUTE = 120
 TOO_MANY_LINES = "more than 120 caller lines this minute from this org: try again in a minute"
+A_PIPELINE_KEY = "a key that opens `pipeline` runs the agent on another voice or model for a simulation"
 
 
 # The gateway plays the caller, so the agent is called as anybody calls it: the process that
@@ -36,6 +42,71 @@ async def simulate(
     body: schemas.SimulationRequest, actor: EvalsKey, serving: TheServing, simulations: TheSimulations, session: Session
 ) -> schemas.SimulationStarted:
     """Put one of the agent's personas on it, written or spoken; the call's id at once."""
+    against = _agent_values(actor, body.against)
+    return await _placed(session, serving, simulations, actor, body, against=against, comparison=None)
+
+
+# Each call is placed as `POST /v1/simulations` places one, under one id they share; one refused
+# (a vendor nobody keyed, the org's limits) is said beside the ones that started, which go on.
+@router.post("/v1/simulations/compare")
+async def compare(
+    body: schemas.ComparisonRequest, actor: EvalsKey, serving: TheServing, simulations: TheSimulations, session: Session
+) -> schemas.ComparisonStarted:
+    """One persona against the agent under each voice and models named, placed together; what started and what not."""
+    comparison = random_id(service.COMPARISON_PREFIX, 6)
+    started: list[schemas.ComparedCall] = []
+    refused: list[schemas.ComparedRefusal] = []
+    for values in body.against:
+        against = _agent_values(actor, values)
+        try:
+            placed = await _placed(session, serving, simulations, actor, body, against=against, comparison=comparison)
+        except PinecallError as why:
+            refused.append(schemas.ComparedRefusal(against=against, why=str(why)))
+            continue
+        started.append(schemas.ComparedCall(against=against, call=placed.call))
+    return schemas.ComparisonStarted(comparison=comparison, voice=body.voice, calls=started, refused=refused)
+
+
+@router.get("/v1/simulations/compare/{comparison}")
+async def read_comparison(
+    comparison: str, actor: EvalsKey, serving: TheServing, session: Session
+) -> schemas.Comparison:
+    """The comparison's calls, best first: every judge held, then the fastest reply, then the cheapest."""
+    wanted = calls.PersonaRunFilters(comparison=comparison)
+    found = await calls.runs_of_persona(session, actor.scope, wanted, limit=service.COMPARED_AT_MOST)
+    if not found.runs:
+        raise NotFound(service.NO_SUCH_COMPARISON.format(comparison=comparison))
+    rows = [await service.compared_row(serving, run) for run in found.runs]
+    first = calls.facts_of(found.runs[0].facts)
+    return schemas.Comparison(
+        comparison=comparison,
+        agent=found.runs[0].agent,
+        persona=first.persona or "",
+        voice=first.spoken,
+        rows=service.ranked(rows),
+    )
+
+
+# A test room's rule: the sandbox's alone, only those knobs, and a key that edits the pipeline.
+def _agent_values(actor: Actor, against: schemas.AgentValues | None) -> JsonObject:
+    named: dict[str, Any] = {} if against is None else against.named()
+    if not named:
+        return {}
+    if KeyScope.pipeline not in actor.scopes:
+        raise Forbidden(A_PIPELINE_KEY)
+    return settings.check_test_values(named, env=actor.env)
+
+
+async def _placed(
+    session: Session,
+    serving: calls.Serving,
+    simulations: service.Simulations,
+    actor: Actor,
+    body: schemas.SimulationWants,
+    *,
+    against: JsonObject,
+    comparison: str | None,
+) -> schemas.SimulationStarted:
     keys.check_agent(actor, body.agent)
     scope = actor.scope
     roster = await declared_personas_of(session, serving, scope, body.agent)
@@ -56,7 +127,15 @@ async def simulate(
         await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice, waits=True)
         line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
         placed = service.Placed(
-            call, body.agent, caller, body.turns, line, dict(persona.state), waits_for_seat=body.voice
+            call,
+            body.agent,
+            caller,
+            body.turns,
+            line,
+            dict(persona.state),
+            waits_for_seat=body.voice,
+            against=against,
+            comparison=comparison,
         )
         if body.voice:
             await service.claim_new_call(session, serving, placed.call, body.agent, scope)

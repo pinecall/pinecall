@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`simulate --against` runs the agent on other voices and models for the run, and twice or more compares them.**
+  `--against llm=groq/openai/gpt-oss-120b,tts=deepgram` is the test room's knobs for the agent on that call alone;
+  said for several configurations, every call is placed at once against the same caller and printed as one table
+  best first — judges, reply, model, voice and hearing medians, cost, length, call. The MCP's `simulate` takes
+  `against` the same way and answers the table.
 - **The template's receptionist says it is an automated assistant in its first sentence**, says when it does not
   have an answer, and never claims to have passed a message on. The library's `disclosed` judge broke on every call
   of a fresh `pinecall init`, and a question the documents did not answer became "your message has been passed to

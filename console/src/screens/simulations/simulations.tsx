@@ -10,6 +10,7 @@ import { rowAt } from "../../lib/harness";
 import { useOrg } from "../../lib/org";
 import { useScopes } from "../../lib/whoami";
 import { Button, Page, PageHead } from "../../ui";
+import { ComparisonTable } from "./comparison";
 import { RunsTable } from "./runs";
 import { Starter, type Typical } from "./starter";
 import { useRuns } from "./use-runs";
@@ -33,6 +34,7 @@ export function Simulations(): ReactNode {
   const { agents } = useOrg();
   const spoken = search.get("spoken") === "1";
   const preferred = search.get("persona") ?? undefined;
+  const comparison = search.get("comparison");
   // Who is in view is the sidebar's to say, and nothing here narrows it further: with one agent in
   // view, its callers; with every agent, every agent's own callers, each ringing the agent it was
   // written for. Pinecall's library is one list for every agent, so with every agent in view it
@@ -49,9 +51,14 @@ export function Simulations(): ReactNode {
 
   const read = useRuns(inView, round);
 
-  // One call started is the one to watch; several stay here, in Runs, as they come.
-  const started = (calls: string[], voice: boolean): void => {
+  // One call started is the one to watch; several stay here, in Runs, as they come; a comparison
+  // is its table, read as its calls end.
+  const started = (calls: string[], voice: boolean, compared?: string): void => {
     setRound((one) => one + 1);
+    if (compared !== undefined) {
+      void navigate(`${rowAt(inView, "simulations")}?comparison=${encodeURIComponent(compared)}`);
+      return;
+    }
     const only = calls.length === 1 ? calls[0] : undefined;
     if (only !== undefined) void navigate(`${rowAt(inView, "simulations")}/${only}${voice ? "?spoken=1" : ""}`);
   };
@@ -81,6 +88,7 @@ export function Simulations(): ReactNode {
   return (
     <Page width={1060}>
       <PageHead title="Simulations" lede="Pretend callers ring your agent before real ones do. Judges check every call." />
+      {comparison !== null && <ComparisonTable inView={inView} comparison={comparison} />}
       <Starter inView={inView} agents={agents.map((one) => one.slug)} agent={agent} onAgent={setPicked} personas={personas} asking={asking} asked={preferred} typical={typical} onStarted={started} />
       <RunsTable inView={inView} read={read} />
     </Page>
