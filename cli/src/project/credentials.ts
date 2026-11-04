@@ -56,7 +56,7 @@ export function readCredentials(env: NodeJS.ProcessEnv, from: string, home: stri
     return { url: CLOUD_URL, key: undefined, source: "nowhere", missing: errorMessage(failed) };
   }
   // The sign-in's file as a person writes it, `~/.pinecall/session.json`, when it is under their home.
-  const session = `your sign-in (${home === homedir() ? "~" : home}/${SESSION_FILE})`;
+  const session = `your sign-in (${home.startsWith(`${homedir()}/`) ? `~${home.slice(homedir().length)}` : home}/${SESSION_FILE})`;
   if (project !== undefined) {
     const { gateway, org } = project.config;
     const inOrg = keyIn(home, gateway, org);
