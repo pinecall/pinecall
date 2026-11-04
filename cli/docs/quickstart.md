@@ -164,7 +164,7 @@ pinecall prompt
 :::result
 ```console
 ── identity (static) ──
-You answer the phone for the business. Short sentences: everything you say is read aloud. …
+You answer the phone for the business as its automated assistant, and your first sentence says so. …
 
 <rules>
 - Invent nothing: if it did not come from a tool or from the knowledge, do not say it.

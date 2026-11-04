@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The template's receptionist says it is an automated assistant in its first sentence**, says when it does not
+  have an answer, and never claims to have passed a message on. The library's `disclosed` judge broke on every call
+  of a fresh `pinecall init`, and a question the documents did not answer became "your message has been passed to
+  the team" (a tenant's first three calls, 2026-11-04).
 - **`alerts` and `webhook` know a vendor that failed a call (`vendor.failed`)**: listed with the vendor under
   "about", named in the webhook's and the MCP's words; a quota alert's data names the calls holding the seats.
 

@@ -16,7 +16,8 @@ Commands:
   help [command]       display help for command
 
 Every alert of the org — a monitor that fired (monitor.fired), today's spend three times the
-usual (spend.unusual), a quota that ran out (credits.exhausted) — is written on the agent's log
+usual (spend.unusual), a quota that ran out (credits.exhausted), a vendor that failed a call
+(vendor.failed) — is written on the agent's log
 and, with a webhook set, posted there too as JSON; a hosted app that went down (app.failed) is
 no agent's, so it is posted alone, with agent null. The post is {type, org, env, agent, at, data}, with
 x-pinecall-event naming the type. Tried twice within five seconds; a URL that fails is logged

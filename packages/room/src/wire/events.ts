@@ -113,7 +113,7 @@ export const ConfirmRequestSchema = z.strictObject({
  */
 export const CreditsExhaustedSchema = z.strictObject({
   org: z.string(),
-  quota: z.enum(["minutes", "messages", "agents", "concurrent_calls", "memory_facts", "knowledge_chunks", "numbers", "seats", "llm_tokens"]),
+  quota: z.enum(["minutes", "messages", "agents", "concurrent_calls", "memory_facts", "knowledge_chunks", "numbers", "seats", "llm_tokens", "hosted_apps", "evals", "simulations", "budget_usd"]),
   used: z.number(),
   limit: z.int(),
   calls: z.array(z.string()),

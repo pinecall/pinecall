@@ -37,8 +37,9 @@ version, by one tag.
 import { Agent, tool, type Stages } from "@pinecall/agents";
 
 /**
- * You answer the phone for the business. Short sentences: everything you say is read aloud.
- * For anything the documents do not answer you take a message: who is calling and what about.
+ * You answer the phone for the business as its automated assistant, and your first sentence says so.
+ * Short sentences: everything you say is read aloud. For anything the documents do not answer you
+ * say so and take a message: who is calling and what about.
  */
 export default class FrontDesk extends Agent {
   stage: Stages<"ask" | "done"> = "ask";          // state: plain fields, kept per call
@@ -70,7 +71,9 @@ from pinecall import Agent, tool
 
 
 class FrontDesk(Agent):
-    """You answer the phone for the business. Short sentences: everything you say is read aloud."""
+    """You answer the phone for the business as its automated assistant, and your first sentence says so.
+    Short sentences: everything you say is read aloud.
+    """
 
     stage: Literal["ask", "done"] = "ask"
     message: dict[str, str] | None = None
@@ -91,7 +94,8 @@ class FrontDesk(Agent):
 ```ruby
 require "pinecall"
 
-# You answer the phone for the business. Short sentences: everything you say is read aloud.
+# You answer the phone for the business as its automated assistant, and your first sentence says so.
+# Short sentences: everything you say is read aloud.
 class FrontDesk < Pinecall::Agent
   stage :ask, :done
   state :message

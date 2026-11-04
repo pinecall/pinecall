@@ -47,7 +47,7 @@ class Agent:
 
     ```python
     class Front(Agent):
-        \"\"\"You answer the phone for the business.\"\"\"
+        \"\"\"You answer the phone for the business as its automated assistant.\"\"\"
 
         stage: Literal["ask", "done"] = "ask"
         message: dict | None = None

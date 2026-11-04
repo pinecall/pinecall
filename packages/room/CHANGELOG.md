@@ -6,7 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
-- **`credits.exhausted` carries `calls`**: the calls holding the org's seats when the calls-at-once limit refused.
+- **`credits.exhausted` carries `calls`**: the calls holding the org's seats when the calls-at-once limit refused;
+  and its `quota` reads every quota the runtime refuses for (`hosted_apps`, `evals`, `simulations`, `budget_usd` were
+  missing, so an entry for one of them did not parse on the page).
 
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
 

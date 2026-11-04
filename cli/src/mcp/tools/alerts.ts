@@ -33,7 +33,7 @@ export const monitors = tool({
 
 export const webhook = tool({
   name: "webhook",
-  description: "Where the org posts its alerts — a monitor fired, the spend unusual, a quota out — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.",
+  description: "Where the org posts its alerts — a monitor fired, the spend unusual, a quota out, a vendor that failed a call — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.",
   schema: {
     action: z.enum(["show", "test", "clear"]).describe("show says the URL and whether posts are signed; test posts one webhook.test event and says whether the URL answered 2xx; clear stops the posting"),
   },
@@ -49,7 +49,7 @@ export const webhook = tool({
 
 export const alerts = tool({
   name: "alerts",
-  description: "What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a hosted app down — whether or not a webhook is set, and whether each was mailed.",
+  description: "What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a vendor that failed a call, a hosted app down — whether or not a webhook is set, and whether each was mailed.",
   schema: {
     limit: z.number().int().min(1).max(200).optional().describe("how many, newest first; 50 when left out, 200 at most"),
   },
