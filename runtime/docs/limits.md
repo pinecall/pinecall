@@ -56,11 +56,12 @@ in both environments.
   claims no call, opens none and counts nothing. One that opens weighs on the limit from the
   moment its call begins, and is added to the month's usage when its call is summed up. A run that
   reaches the limit stops where it is. A simulated call never counts minutes, and neither does a call an eval run
-  opened. Besides the month's count, **an org has at most three simulated calls on the line at
+  opened. Besides the month's count, **an org has at most ten simulated calls on the line at
   once in each environment**, on every gateway of the platform together: a simulation takes a
-  seat of the fleet beside the real callers and a share of the gateway that plays its caller, and
-  ten placed in one burst saturated a fleet of two workers and sent five callers to the overflow.
-  The fourth is refused `429` with `Retry-After` (`the org has 3 simulated calls on the line in
+  seat of the fleet beside the real callers and a share of the gateway that plays its caller — ten
+  are ~2.5 vCPU of a worker machine (`scaling.md`), nothing for a scaled worker, and the fleet's
+  seats, not this line, are what a burst waits on: a simulation with no seat is refused at once.
+  The eleventh is refused `429` with `Retry-After` (`the org has 10 simulated calls on the line in
   sandbox, the most at once: wait for one to end`), counted from the moment a simulation is
   placed until its caller hangs up; the console's Simulations starts what it can and says so. A
   simulated call the worker opens is a call like any other to `concurrent_calls`.

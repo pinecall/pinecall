@@ -54,9 +54,11 @@ THE_CALLERS_MODEL = "the caller's model"
 
 # The calls a simulated caller may be on at once, per org and env, on every gateway of the box.
 # A simulation takes a seat of the fleet beside the real callers and a share of the gateway that
-# plays its caller: ten placed in one burst on 2026-10-21 saturated production's two workers and
-# sent five callers to the overflow.
-AT_ONCE = 3
+# plays its caller: ten placed in one burst on 2026-10-21 saturated production's two core workers
+# and sent five callers to the overflow, before the scaled workers existed; ten are ~2.5 vCPU of a
+# scaled worker's machine, and a simulation with no seat is refused at once, so the fleet's seats,
+# not this line, are what holds a burst. Three until 2026-11-04.
+AT_ONCE = 10
 # The channel each gateway says its simulated calls on, and how often; a change is said at once.
 SIMULATING_CHANNEL = "simulating"
 SIMULATING_EVERY_S = 1.0

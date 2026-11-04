@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **An org may have ten simulated calls on the line at once** in each environment, not three: ten are
+  ~2.5 vCPU of a scaled worker's machine, and the fleet's seats, not this line, hold a burst. A comparison
+  of an agent under several models needs them placed together.
 - **A vendor that fails a call raises `vendor.failed`.** At the seal, a component's error naming its plugin, a
   model that said nothing within its deadline, or a stage that switched away from its vendor becomes one alert
   on the agent's log, mailed to the org's admins and the box's operators once an hour per vendor, posted to the

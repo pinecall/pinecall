@@ -50,7 +50,7 @@ const LINES: readonly { value: Line; label: string }[] = [
 
 // The gateway holds an org to this many simulated calls on the line at once in a world: a run of
 // more starts these and says so, and the rest are started once one ends.
-const AT_ONCE = 3;
+const AT_ONCE = 10;
 
 /** What a call of these has cost and taken so far: the estimate under the button, read off the runs already made. */
 export interface Typical {
