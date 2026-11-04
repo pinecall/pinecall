@@ -50,7 +50,7 @@ export async function holdAudio(door: Door, agent: string): Promise<Camel<HoldAu
 }
 
 /** The file the class declares as its melody, shipped by the process that holds the agent; the body is the file. */
-export async function uploadHoldAudio(door: Door, agent: string, file: Uint8Array, name: string): Promise<Camel<HoldAudio>> {
+export async function uploadHoldAudio(door: Door, agent: string, file: Uint8Array<ArrayBuffer>, name: string): Promise<Camel<HoldAudio>> {
   const answered = await fetch(`${holdAudioUrl(door.url, agent)}?name=${encodeURIComponent(name)}`, {
     method: "PUT",
     headers: { ...signed(door.apiKey, door.env), "content-type": "application/octet-stream" },

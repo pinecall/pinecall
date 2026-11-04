@@ -276,7 +276,7 @@ export class Pinecall implements AgentGateway {
   /** What the agent plays while a tool runs, and the hash of the file that landed. */
   holdAudio = (agent: string): Promise<Camel<HoldAudio>> => holdAudio(this.#reading({}), agent);
   /** The file the class declares as its melody, shipped by this process. */
-  uploadHoldAudio = (agent: string, file: Uint8Array, name: string): Promise<Camel<HoldAudio>> => uploadHoldAudio(this.#reading({}), agent, file, name);
+  uploadHoldAudio = (agent: string, file: Uint8Array<ArrayBuffer>, name: string): Promise<Camel<HoldAudio>> => uploadHoldAudio(this.#reading({}), agent, file, name);
   /** Markdown files into a base by their paths, the base's other files kept: what `pinecall docs push` sends. */
   pushKnowledge = (base: string, files: KnowledgeFile[]): Promise<Camel<KnowledgePushed>> => pushKnowledge(this.#reading({}), base, files);
 

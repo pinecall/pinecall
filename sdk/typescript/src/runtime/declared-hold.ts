@@ -32,11 +32,12 @@ export function holdConfigOf(ctor: typeof Agent, file: string | undefined): Came
 }
 
 /** The file the class ships as its melody, read beside the class: its bytes, its name, its sha256. */
-export function melodyOf(declared: HoldDeclaration, file: string | undefined): { bytes: Uint8Array; name: string; sha256: string } {
+export function melodyOf(declared: HoldDeclaration, file: string | undefined): { bytes: Uint8Array<ArrayBuffer>; name: string; sha256: string } {
   if (declared.file === undefined) throw new DeclarationRefused(NOT_A_HOLD);
   const path = file === undefined ? resolve(declared.file) : resolve(dirname(resolve(file)), declared.file);
   if (!existsSync(path)) throw new DeclarationRefused(NO_SUCH_FILE(path));
-  const bytes = readFileSync(path);
+  // A copy over an ArrayBuffer of its own: what `fetch` takes as a body under the DOM's types, which a Node Buffer is not.
+  const bytes = new Uint8Array(readFileSync(path));
   return { bytes, name: basename(path), sha256: createHash("sha256").update(bytes).digest("hex") };
 }
 
