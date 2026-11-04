@@ -96,14 +96,15 @@ spec:
     - { parameter: token, name: pinecall-fleet-keys, key: {{ $world }} }
 ---
 # The gateway computes how many; KEDA keeps the Deployment at it: up at once, down one at a time,
-# never sooner than ten minutes after the last change, each going only once its calls end.
+# never sooner than ten minutes after the last change, each going only once its calls end; never
+# under `min`, a worker kept warm for a burst that cannot wait for a node (0 unless the values say).
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: worker-scaled-{{ $world }}
 spec:
   scaleTargetRef: { name: worker-scaled-{{ $world }} }
-  minReplicaCount: 0
+  minReplicaCount: {{ $scaled.min | default 0 }}
   maxReplicaCount: {{ $scaled.most }}
   pollingInterval: 15
   cooldownPeriod: 600

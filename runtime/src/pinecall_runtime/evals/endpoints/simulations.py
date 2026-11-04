@@ -29,7 +29,8 @@ TOO_MANY_LINES = "more than 120 caller lines this minute from this org: try agai
 # `pinecall start` — answers, and nothing about the agent changes for a simulation. What can be
 # refused is refused before the answer: the persona, nobody holding the agent, the org's limits,
 # the calls already on the line, a call id taken. The conversation is played after it, and
-# watched as any call is.
+# watched as any call is; a spoken one with no seat free waits for the fleet to grow (a scaled
+# worker's node takes a minute or two), `fleet.full` on the agent's log meanwhile.
 @router.post("/v1/simulations")
 async def simulate(
     body: schemas.SimulationRequest, actor: EvalsKey, serving: TheServing, simulations: TheSimulations, session: Session
@@ -52,9 +53,11 @@ async def simulate(
     # refuses the call: a burst of requests can never all pass the count together.
     simulations.admit(call, scope)
     try:
-        await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice)
+        await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice, waits=True)
         line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
-        placed = service.Placed(call, body.agent, caller, body.turns, line, dict(persona.state))
+        placed = service.Placed(
+            call, body.agent, caller, body.turns, line, dict(persona.state), waits_for_seat=body.voice
+        )
         if body.voice:
             await service.claim_new_call(session, serving, placed.call, body.agent, scope)
             simulations.play(placed.call, scope, _spoken(serving, scope, placed))

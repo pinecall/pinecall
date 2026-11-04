@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A spoken simulation with no seat waits for one** instead of being refused: up to three minutes, the
+  time a scaled worker's node takes, with `fleet.full` on the agent's log once. Ten placed together on a
+  sandbox of two seats were refused eight times before the node came. The chart's `workers.scaled.<world>.min`
+  keeps a scaled worker warm, so a burst finds its seats at once; Pinecall's sandbox keeps one.
 - **An org may have ten simulated calls on the line at once** in each environment, not three: ten are
   ~2.5 vCPU of a scaled worker's machine, and the fleet's seats, not this line, hold a burst. A comparison
   of an agent under several models needs them placed together.

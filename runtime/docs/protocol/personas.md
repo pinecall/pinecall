@@ -43,7 +43,12 @@ calls it, so whatever holds it answers — a process deployed, on a server of th
 developer's `pinecall start`. Spoken (`voice`, the default) it is the call above; written, it is
 the chat the widget has, each line the persona's model improvises said once the agent's whole
 answer is in, until the caller hangs up (sixty seconds with no answer end the call `timeout`). What
-the persona expects rides the call, which is sealed and judged like any other. Spoken, the caller
+the persona expects rides the call, which is sealed and judged like any other. Spoken with every
+seat of the environment's fleet holding a call, it is not refused as `POST /v1/evals/voice` is: the
+call is claimed and counted, `fleet.full` is written on the agent's log once, and the caller waits
+up to three minutes for a seat — the fleet grows on the calls already on it — before it gives up
+(`every seat of the sandbox's fleet held a call for 180 s: the simulation did not start`, on no
+log; `GET /v1/simulations` lists the call with no start). Spoken, the caller
 acts as its `behavior` says: it talks over that share of the agent's answers (`interrupts`, 0 to
 1) some way into them, as a person cutting in does, so the agent's barge-in is what is tested; it
 murmurs an "mm-hmm" in its language into that share of them (`backchannels`, 0 to 1) a few
@@ -56,8 +61,8 @@ the caller of the `ambience` it names: a `television` (a voice read in the calle
 same sound every run. What can be refused is refused before the answer: a persona neither the agent
 nor Pinecall has by that name, or nobody holding the agent in the key's world and scope, `404`; the
 org's limits as on a call, `simulations` among them (`429`, with `credits.exhausted` on the agent's log, and the call is never opened nor counted), a caller whose model, or whose voice when spoken, is on a vendor nobody keyed (`503`), and the org's simulated calls already on the
-line in the world — three at most, on every gateway together, `429` with `Retry-After` for the
-fourth ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
+line in the world — ten at most, on every gateway together, `429` with `Retry-After` for the
+eleventh ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
 call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any call.
 `played_by` `{llm?, tts?, voice?}` plays the caller on another model, voice vendor or voice for this

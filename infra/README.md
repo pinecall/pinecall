@@ -145,7 +145,9 @@ and Pinecall's services. Each environment has the rest of a call to itself, so a
 shares a machine with a production call: a **media pool** of one node (`media-<world>`,
 `media_type`; production's an e2-standard-4, the sandbox's an e2-standard-2) with the environment's own
 LiveKit, its livekit-sip and its core workers, and a **workers pool** from 0 (`workers-<world>`,
-`workers_max`: 10 nodes for production, 3 for the sandbox) for its scaled workers. Each pool is
+`workers_max`: 10 nodes for production, 3 for the sandbox) for its scaled workers — from one node
+where the chart's `workers.scaled.<world>.min` keeps a scaled worker warm, as the sandbox's is for a
+burst of simulations that cannot wait for a node. Each pool is
 tainted with its name, so nothing of another environment lands there. A sandbox burst fills the
 sandbox's node and its pool to its own ceiling, and nothing else.
 

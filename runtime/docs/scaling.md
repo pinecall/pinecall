@@ -379,7 +379,11 @@ each pod let go drains its calls first (KEDA's `ScaledObject`, `charts/pinecall/
 workers.yaml`). A pod with no node to go to waits for the cluster autoscaler, which makes a node of
 the pool for it and removes a node once it is empty; nothing else sizes the pool, and its ceiling
 is Terraform's (`workers_max`). The ceiling of the pods is `workers.scaled.<world>.most` in the
-chart's values.
+chart's values, and their floor `min`: a scaled worker kept warm whatever the calls, so a burst
+finds its 32 seats at once instead of waiting the minute or two its node takes (the sandbox's is
+1 since 2026-11-04, for ten simulations placed together). A spoken simulation with no seat waits
+up to three minutes for one, saying `fleet.full` on the agent's log; a real call goes to the
+overflow, and a golden run stops.
 
 Measured on staging on 2026-10-03, with the lab (`infra/lab/`: SIP callers with real audio from a
 machine of their own, through the cluster's SIP node and LiveKit, the vendors faked on their own

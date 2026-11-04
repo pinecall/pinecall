@@ -3,7 +3,8 @@
 import asyncio
 import dataclasses
 import logging
-from collections.abc import AsyncGenerator, Coroutine
+import time
+from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Never
@@ -37,6 +38,7 @@ from pinecall_runtime.providers import service as providers
 from pinecall_runtime.redis import LocalSignal, Signal
 from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.dispatch import Dispatch
+from pinecall_runtime.wire.events import FleetFull
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,12 @@ NO_LINE = "the simulated call could not be held: {broke}"
 # the overflow's sentence: refused at once instead, which costs nothing and says why.
 NO_SEAT = "every seat of the {env}'s fleet holds a call now: ask again in a few seconds, when one ends"
 A_SEAT_FREES_S = 10
+# A simulation the console or the CLI starts waits for a seat instead: the fleet grows on the calls
+# already on it (a scaled worker's node takes a minute or two), and ten placed together on a
+# sandbox of two seats were refused eight times before the node came (2026-11-04).
+SEAT_WAITED_S = 180.0
+SEAT_ASKED_EVERY_S = 2.0
+NO_SEAT_IN_TIME = "every seat of the {env}'s fleet held a call for {waited:.0f} s: the simulation did not start"
 # A call id names a room, a log and a recording: a simulated caller is put on a new one alone.
 NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a call id nobody opened"
 # Longer than any run, so the caller's token never ends a call first.
@@ -96,6 +104,8 @@ class Placed:
     turns: int
     line: spoken.Line = field(default_factory=spoken.Line)
     state: JsonObject = field(default_factory=dict[str, Json])
+    # Spoken with no seat free: wait SEAT_WAITED_S for the fleet to grow rather than refuse at once.
+    waits_for_seat: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,14 +229,16 @@ async def admit_simulation(
     persona: judging.CallerPersona | None = None,
     *,
     voice: bool = False,
+    waits: bool = False,
 ) -> str | None:
     """A simulated call admitted before anything opens, or refused; the model that plays its caller.
 
     Past the org's simulations is refused with credits.exhausted on the agent's log. A spoken one with
-    every seat of the env's fleet taken is refused at once. A caller whose model, or whose voice when
-    spoken, is on a vendor nobody keyed is refused as its run would be.
+    every seat of the env's fleet taken is refused at once, unless it `waits`: then it is played once
+    a seat frees (`wait_for_a_seat`). A caller whose model, or whose voice when spoken, is on a vendor
+    nobody keyed is refused as its run would be.
     """
-    if voice and not await serving.offering.has_a_seat(await fleet.fleet_of_env(session_, scope.env)):
+    if voice and not waits and not await serving.offering.has_a_seat(await fleet.fleet_of_env(session_, scope.env)):
         raise TooManyRequests(NO_SEAT.format(env=scope.env.value), retry_after_s=A_SEAT_FREES_S)
     try:
         playing = await calls.simulating(session_, scope.org, scope.env, at=epoch())
@@ -356,6 +368,9 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
         spending = Spending(await providers.get_catalog(session_))
         running = await caller_voice(session_, serving, scope, placed.agent, persona)
         notice = await opens_with_a_notice(session_, scope, running.language)
+        the_fleet = await fleet.fleet_of_env(session_, scope.env)
+    if placed.waits_for_seat:
+        await seat_waited_for(serving, scope, placed.agent, the_fleet)
     async with caller_model(serving, scope, persona) as model:
         speech = providers.tts_of(running)
         caller = Caller(persona, model.llm, spending, speech)
@@ -369,6 +384,42 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
             await speech.aclose()
             await _kept(serving, placed.call, spending)
     return turns, spending
+
+
+async def seat_waited_for(serving: calls.Serving, scope: Scope, agent: str, the_fleet: str) -> float:
+    """Wait for a seat of the fleet, saying `fleet.full` on the agent's log once; the seconds waited."""
+
+    async def asks() -> bool:
+        return await serving.offering.has_a_seat(the_fleet)
+
+    async def full() -> None:
+        totals = serving.roster.totals_of(the_fleet, time.time())
+        said = FleetFull(channel=Channel.web, workers=totals.workers, active=totals.active)
+        await serving.logs.agent(agent).append("fleet.full", said.dump())
+
+    return await wait_for_a_seat(asks, full, env=scope.env)
+
+
+async def wait_for_a_seat(
+    asks: Callable[[], Awaitable[bool]],
+    full: Callable[[], Awaitable[None]],
+    *,
+    env: Env,
+    within_s: float = SEAT_WAITED_S,
+    every_s: float = SEAT_ASKED_EVERY_S,
+) -> float:
+    """Ask for a seat every few seconds until one is there; `full` is told once, on the first miss."""
+    began = time.monotonic()
+    told = False
+    while not await asks():
+        if not told:
+            await full()
+            told = True
+        waited = time.monotonic() - began
+        if waited >= within_s:
+            raise ServiceUnavailable(NO_SEAT_IN_TIME.format(env=env.value, waited=waited))
+        await asyncio.sleep(every_s)
+    return time.monotonic() - began
 
 
 # The agent says the org's recording notice before its greeting: a caller that did not expect it would
