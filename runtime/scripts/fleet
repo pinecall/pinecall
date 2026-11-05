@@ -40,6 +40,12 @@ def main(argv: list[str]) -> None:
     path.write_text("".join(lines))
     print(lines[at].strip())
     ops = path.resolve().parent.parent
+    tracked = subprocess.run(
+        ["git", "-C", str(ops), "ls-files", "--error-unmatch", str(path.resolve())], capture_output=True
+    )
+    if tracked.returncode != 0:
+        print(f"{path} is not tracked by git: written, not committed")
+        return
     if subprocess.run(["git", "-C", str(ops), "diff", "--quiet", "--", str(path.resolve())]).returncode == 0:
         print(f"{path.name} already said so; nothing to commit")
         return

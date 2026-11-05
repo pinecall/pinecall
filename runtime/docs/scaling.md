@@ -381,9 +381,8 @@ the pool for it and removes a node once it is empty; nothing else sizes the pool
 is Terraform's (`workers_max`). The ceiling of the pods is `workers.scaled.<world>.most` in the
 chart's values, and their floor `min`: a scaled worker kept warm whatever the calls, so a burst
 finds its 32 seats at once instead of waiting the minute or two its node takes (the sandbox's is
-1 since 2026-11-04, for ten simulations placed together; `make fleet ENV=production WORLD=sandbox
-MIN=1` is that one line written, committed and released at the image that runs, and `MIN=0` lets
-the worker go). A spoken simulation with no seat waits
+1 since 2026-11-04, for ten simulations placed together; [Keeping workers warm](#keeping-workers-warm)
+changes it in one line). A spoken simulation with no seat waits
 up to three minutes for one, saying `fleet.full` on the agent's log; a real call goes to the
 overflow, and a golden run stops.
 
@@ -417,6 +416,43 @@ the node: the core node's services are one of each.
 Down, the same night with no call after 23:11 UTC: KEDA let the second scaled worker go at 23:17:53
 and the last at 23:28:11, ten minutes apart as its window says; the cluster autoscaler deleted the
 first empty node at 23:30 and marked the second at 23:38, the workers pool back to zero nodes.
+
+## Keeping workers warm
+
+Each world's scaled workers are one line of the chart's values, `workers.scaled.<world>`:
+
+| key | what it is | what it costs |
+|---|---|---|
+| `min` | scaled workers kept up whatever the calls | one node of the world's workers pool each, always on: an e2-standard-8, about US$195 a month on demand |
+| `most` | how many the fleet may grow to | nothing until the calls ask for them |
+| `seats` | calls one scaled worker takes at once | — |
+
+`make fleet` (the runtime's Makefile) changes that line and nothing else:
+
+```
+make fleet ENV=production WORLD=sandbox MIN=1          # one warm worker of 32 seats
+make fleet ENV=production WORLD=sandbox MIN=0          # back to none: the fleet grows from the core alone
+make fleet ENV=production WORLD=production MIN=2 MOST=5
+```
+
+It writes the line in the operator's values (`$(OPS)/values/<ENV>.yaml`), commits it there when
+`$(OPS)` is a git repository, and releases `charts/pinecall` again at the image tag the release
+runs, read from Helm: no image is built and no code goes out. When the chart in this checkout
+differs from that image's commit it refuses and names `make image && make deploy`, since a chart
+the running image was not built with is a deploy, not a change of size. A value already written is
+released again all the same, and nothing moves.
+
+Measured on production on 2026-11-05, `WORLD=sandbox MIN=1` (already 1): 72 s from the command to
+Helm's revision, the ScaledObject at `min=1 max=3`, the warm worker and every other pod kept as
+they ran. A higher `MIN` starts its pods at once and each waits the minute or two its node takes;
+a lower one lets them go as a lower call count would, one every five minutes, never sooner than ten
+minutes after the last change, each draining its calls first.
+
+While `min` is 1 or more, Helm prints two warnings from KEDA: `pollingInterval` and
+`cooldownPeriod` only act when the floor is 0, the one being how often KEDA asks the gateway while
+the Deployment sits at none and the other how long it waits before going back to none. Above the
+floor the HPA's own `behavior` (the template's `scaleDown`) is what paces the way down, so both are
+expected and nothing is wrong.
 
 ## The shape of the numbers
 

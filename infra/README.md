@@ -149,8 +149,9 @@ LiveKit, its livekit-sip and its core workers, and a **workers pool** from 0 (`w
 `workers_max`: 10 nodes for production, 3 for the sandbox) for its scaled workers — from one node
 where the chart's `workers.scaled.<world>.min` keeps a scaled worker warm, as the sandbox's is for a
 burst of simulations that cannot wait for a node (`make fleet ENV=<env> WORLD=<world> MIN=<n>` writes
-that line, commits it and releases the chart at the image that runs; `MOST=<n>` moves the ceiling of
-pods with it). Each pool is
+that line and releases the chart at the image that runs, in about a minute; `MOST=<n>` moves the
+ceiling of pods with it; the runtime's `docs/scaling.md`, "Keeping workers warm", has what each
+costs). Each pool is
 tainted with its name, so nothing of another environment lands there. A sandbox burst fills the
 sandbox's node and its pool to its own ceiling, and nothing else.
 

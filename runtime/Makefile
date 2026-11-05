@@ -151,8 +151,8 @@ deploy:           ## ENV=staging: charts/pinecall released at TAG=<commit> (make
 	PINECALL_URL=https://$(DOMAIN) uv run pytest -q tests/live
 
 # How many scaled workers a world keeps warm (32 seats and an e2-standard-8 each, ~US$195 a month),
-# changed in one line: the values' `workers.scaled.<WORLD>` written and committed in OPS
-# (scripts/fleet), then charts/pinecall released again at the image that runs. No image and no
+# changed in one line: the values' `workers.scaled.<WORLD>` written, and committed where OPS is a
+# git repository (scripts/fleet), then charts/pinecall released again at the image that runs. No image and no
 # code go out, so the chart here must be the one that image's commit released.
 fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that many scaled workers kept warm, at the image that runs
 	@[ -n "$(WORLD)" ] && [ -n "$(MIN)" ] || { echo "make fleet: WORLD=sandbox|production MIN=<n>, and MOST=<n> for the ceiling" >&2; exit 2; }
