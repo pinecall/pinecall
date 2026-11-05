@@ -37,6 +37,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Undo."""
-    op.drop_index("call_facts_by_comparison", table_name="call_facts", postgresql_where=sa.text("comparison IS NOT NULL"))
+    op.drop_index(
+        "call_facts_by_comparison", table_name="call_facts", postgresql_where=sa.text("comparison IS NOT NULL")
+    )
     op.drop_column("call_facts", "comparison")
     op.drop_column("call_facts", "against")
