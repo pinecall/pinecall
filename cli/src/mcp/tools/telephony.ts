@@ -11,7 +11,7 @@ export const line = tool({
   description: "Who answers the agent's number right now and who could take it; which phone is the person's own, so their calls reach their copy.",
   schema: {
     action: z.enum(["show", "from", "forget", "claim", "release"]).describe("show whose process a ring lands in; from says which phone is the person's own; forget drops it; claim takes the line for this copy; release gives it back"),
-    agent: AGENT,
+    agent: AGENT.describe("the agent's name; the project's only agent when left out. `from`: the agent a call from the phone reaches"),
     number: z.string().optional().describe("`from`: the person's own phone, in +E.164"),
   },
   manual:

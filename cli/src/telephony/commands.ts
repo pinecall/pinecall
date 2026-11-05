@@ -48,17 +48,19 @@ const LINE = `
 With nothing after it: who is answering this agent's number right now, and who else is running
 it and could take it.
 
-\`from <+number>\` says which phone is YOURS, once, and every call you make reaches your own
-agent — while you are running the agent your phone reaches your copy, and everybody else
-reaches production. It is kept in ~/.pinecall/session.json under the gateway's URL, and re-sent
-by every \`pinecall start\`. \`forget\` undoes it.
+\`from <+number>\` says which phone is YOURS, once. A call from it to the box's test number, which
+the answer names, reaches your org's sandbox agent — the one \`--agent\` names, or the one the org
+holds — in your own copy while \`pinecall start\` holds one, else in the org's own; a call from it to
+a production number does the same, while everybody else reaches production. It is kept in
+~/.pinecall/session.json under the gateway's URL, and re-sent by every \`pinecall start\`.
+\`forget\` undoes it.
 
 \`claim\` and \`release\` are the fallback, for a call from a number nobody said was theirs. The
 first terminal to hold the agent has it.
 
 Examples
   $ pinecall line from +59899111111
-  calls from +59899111111 reach this terminal
+  calls from +59899111111 reach your copy of the agent you hold · dial +13617334133 to hear it
   $ pinecall line
   rings in berna@clinica.test · \`pinecall line from <+your-number>\` routes yours, or \`claim\` takes it
 `;
