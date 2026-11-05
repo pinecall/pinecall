@@ -18,6 +18,7 @@ make test [T=tests/calls]         every suite on a local Postgres and Redis (col
 uv run alembic check              the models are the schema (empty diff)
 make image                        the runtime's image at this commit
 make deploy ENV=<env>             the chart released on the cluster at that image, then the live suite
+make fleet ENV=<env> WORLD=<world> MIN=<n>   that world keeps n scaled workers warm, at the image that runs
 make logs ENV=<env>               the gateways' and the workers' logs of the last hour
 ```
 

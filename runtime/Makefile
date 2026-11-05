@@ -1,4 +1,4 @@
-# check · test · db · hooks · local · tf-* · image · suite · deploy · hosting · restore-from-box · logs.
+# check · test · db · hooks · local · tf-* · image · suite · deploy · fleet · hosting · restore-from-box · logs.
 
 # The laptop's Postgres and Redis, for the suites only: in colima, on tmpfs, thrown away with
 # their containers.
@@ -150,6 +150,20 @@ deploy:           ## ENV=staging: charts/pinecall released at TAG=<commit> (make
 	  -f $(VALUES) --set image.tag=$(TAG) --wait --timeout 20m
 	PINECALL_URL=https://$(DOMAIN) uv run pytest -q tests/live
 
+# How many scaled workers a world keeps warm (32 seats and an e2-standard-8 each, ~US$195 a month),
+# changed in one line: the values' `workers.scaled.<WORLD>` written and committed in OPS
+# (scripts/fleet), then charts/pinecall released again at the image that runs. No image and no
+# code go out, so the chart here must be the one that image's commit released.
+fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that many scaled workers kept warm, at the image that runs
+	@[ -n "$(WORLD)" ] && [ -n "$(MIN)" ] || { echo "make fleet: WORLD=sandbox|production MIN=<n>, and MOST=<n> for the ceiling" >&2; exit 2; }
+	scripts/fleet $(VALUES) $(WORLD) $(MIN) $(MOST)
+	@running=$$(helm get values pinecall --kube-context $(CONTEXT) -o json \
+	  | python3 -c 'import json, sys; print(json.load(sys.stdin)["image"]["tag"])'); \
+	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
+	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
+	helm upgrade pinecall $(INFRA)/charts/pinecall --kube-context $(CONTEXT) \
+	  -f $(VALUES) --set image.tag=$$running --wait --timeout 10m
+
 # The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
 # at TAG=<commit>, the same image as the runtime's. Its context is the regional Autopilot cluster's.
 HOSTING   = gke_$(PROJECT)_$(REGION)_pinecall-$(ENV)-hosting
@@ -188,4 +202,4 @@ logs:             ## ENV=…: the gateways' and the workers' logs of the last ho
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-plan tf-apply image suite deploy restore-from-box logs
+.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-plan tf-apply image suite deploy fleet restore-from-box logs

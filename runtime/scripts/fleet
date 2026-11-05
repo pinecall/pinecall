@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""A world's warm scaled workers, changed on the values' one line and committed: fleet <values> <world> <min> [most]."""
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+WORLDS = ("production", "sandbox")
+LINE = re.compile(
+    r"^(?P<indent>\s+)(?P<world>production|sandbox): "
+    r"\{ seats: (?P<seats>\d+), most: (?P<most>\d+), min: (?P<min>\d+) \}$"
+)
+
+
+def count(n: int, noun: str) -> str:
+    """`1 scaled worker`, `2 scaled workers`."""
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
+def main(argv: list[str]) -> None:
+    """Rewrites `workers.scaled.<world>` in the values, prints the line, commits it where the values live."""
+    if len(argv) not in (4, 5):
+        sys.exit("fleet <values.yaml> <world> <min> [<most>]")
+    path, world, floor = Path(argv[1]), argv[2], int(argv[3])
+    if world not in WORLDS:
+        sys.exit(f"{world} is no world: production or sandbox")
+    lines = path.read_text().splitlines(keepends=True)
+    hits = [i for i, line in enumerate(lines) if (hit := LINE.match(line)) and hit["world"] == world]
+    if len(hits) != 1:
+        shape = f"{world}: {{ seats: N, most: N, min: N }}"
+        sys.exit(f"{path} needs one line `{shape}` under workers.scaled, and has {len(hits)}")
+    at = hits[0]
+    found = LINE.match(lines[at])
+    assert found is not None
+    most = int(argv[4]) if len(argv) == 5 else int(found["most"])
+    if floor > most:
+        sys.exit(f"min {floor} is over most {most}: MOST=<n> raises the ceiling with it")
+    lines[at] = f"{found['indent']}{world}: {{ seats: {found['seats']}, most: {most}, min: {floor} }}\n"
+    path.write_text("".join(lines))
+    print(lines[at].strip())
+    ops = path.resolve().parent.parent
+    if subprocess.run(["git", "-C", str(ops), "diff", "--quiet", "--", str(path.resolve())]).returncode == 0:
+        print(f"{path.name} already said so; nothing to commit")
+        return
+    message = f"{path.stem}: the {world} keeps {count(floor, 'scaled worker')} warm, {most} at most"
+    subprocess.run(["git", "-C", str(ops), "commit", "-q", "-m", message, "--", str(path.resolve())], check=True)
+    print(f"committed in {ops}: {message}")
+
+
+main(sys.argv)

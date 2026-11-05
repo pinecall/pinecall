@@ -75,6 +75,7 @@ $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.ya
     --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0"
 $ make image                        # the runtime at this commit
 $ make deploy ENV=<env>             # the front door, Postgres, the runtime at that image, the live suite
+$ make fleet ENV=<env> WORLD=sandbox MIN=1   # that world keeps one scaled worker warm (MIN=0 lets it go), no new image
 $ make suite ENV=<env>              # every suite inside the cluster
 ```
 
@@ -147,7 +148,9 @@ shares a machine with a production call: a **media pool** of one node (`media-<w
 LiveKit, its livekit-sip and its core workers, and a **workers pool** from 0 (`workers-<world>`,
 `workers_max`: 10 nodes for production, 3 for the sandbox) for its scaled workers — from one node
 where the chart's `workers.scaled.<world>.min` keeps a scaled worker warm, as the sandbox's is for a
-burst of simulations that cannot wait for a node. Each pool is
+burst of simulations that cannot wait for a node (`make fleet ENV=<env> WORLD=<world> MIN=<n>` writes
+that line, commits it and releases the chart at the image that runs; `MOST=<n>` moves the ceiling of
+pods with it). Each pool is
 tainted with its name, so nothing of another environment lands there. A sandbox burst fills the
 sandbox's node and its pool to its own ceiling, and nothing else.
 

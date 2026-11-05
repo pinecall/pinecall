@@ -381,7 +381,9 @@ the pool for it and removes a node once it is empty; nothing else sizes the pool
 is Terraform's (`workers_max`). The ceiling of the pods is `workers.scaled.<world>.most` in the
 chart's values, and their floor `min`: a scaled worker kept warm whatever the calls, so a burst
 finds its 32 seats at once instead of waiting the minute or two its node takes (the sandbox's is
-1 since 2026-11-04, for ten simulations placed together). A spoken simulation with no seat waits
+1 since 2026-11-04, for ten simulations placed together; `make fleet ENV=production WORLD=sandbox
+MIN=1` is that one line written, committed and released at the image that runs, and `MIN=0` lets
+the worker go). A spoken simulation with no seat waits
 up to three minutes for one, saying `fleet.full` on the agent's log; a real call goes to the
 overflow, and a golden run stops.
 

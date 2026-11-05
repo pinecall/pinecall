@@ -178,4 +178,5 @@ known-first-party = ["pinecall_runtime", "tests"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D1", "ARG", "T20"]
 "src/pinecall_runtime/migrations/**" = ["D1"]
-# The load lab is a script a person runs: its lines are its output.
+# A script a person runs from the Makefile: its lines are its output.
+"scripts/fleet" = ["T20"]
