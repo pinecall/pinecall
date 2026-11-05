@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The class the providers row names for a vendor runs the models it lists; the rest run on the plugin's own.**
+  Deepgram's row builds `STTv2`, Flux's door, and the catalogue offers `nova-3` and the others: every call that
+  named one was refused at the socket. A model the named class does not list by name (its `model` argument's
+  Literal), that the plugin's own class for the stage does, is built with that class and ends no turn.
+- **A row that names the ears' language hints wins over the platform's**, as one that names the language does:
+  Deepgram's `flux-general-en` refuses any `language_hint`, so its row says `language_hint: []`.
 - **A model named for a plugin that takes its options as one object reaches that object.** Soniox's STT takes
   `params=STTOptions(model=…)`, not `model=`: every call that named a Soniox model was refused by the plugin
   and never started. The runtime puts the model inside the options object where the plugin takes no `model`.

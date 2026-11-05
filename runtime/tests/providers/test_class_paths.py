@@ -5,7 +5,13 @@ LLM on the Responses API in its `responses` module (xAI's Grok); its realtime mo
 import types
 from typing import Literal
 
-from pinecall_runtime.providers.service.plugins import class_path, default_models, realtime_models, realtime_path
+from pinecall_runtime.providers.service.plugins import (
+    class_path,
+    default_models,
+    models_listed,
+    realtime_models,
+    realtime_path,
+)
 
 
 class LLM:
@@ -38,6 +44,21 @@ class TalksAnything:
 
     def __init__(self, *, model: str = "rt") -> None:
         self.model = model
+
+
+class Flux:
+    """A second class of ears that types the models it runs, as Deepgram's `STTv2` does."""
+
+    def __init__(self, *, model: Literal["flux-en", "flux-multi"] | str = "flux-en") -> None:
+        self.model = model
+
+
+def test_the_models_a_class_lists_are_what_it_types_its_model_argument_with() -> None:
+    module = types.SimpleNamespace(STT=STT, STTv2=Flux, TTS=TTS)
+    assert models_listed(module, "STTv2") == ("flux-en", "flux-multi")
+    assert models_listed(module, "STT") == ()
+    assert models_listed(module, "TTS") == ()
+    assert models_listed(module, "nothing.here") == ()
 
 
 def test_a_class_at_the_top_of_the_module_is_found_there() -> None:

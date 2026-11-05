@@ -369,7 +369,9 @@ def _built[T](
     # A row that names the language wins: a vendor may want the full tag the call cuts to its base.
     if not any(name in running.options for name in THE_LANGUAGE):
         given |= _first(accepts, THE_LANGUAGE, primary_language(running.language))
-    given |= _first(accepts, THE_HINTS, list(running.hints) or None)
+    # And one that names the hints: Deepgram's `flux-general-en` takes none, and the row says so.
+    if not any(name in running.options for name in THE_HINTS):
+        given |= _first(accepts, THE_HINTS, list(running.hints) or None)
     if running.model is not None:
         given |= _the_model(made, accepts, given, running.model)
     # A voice whose plugin takes no voice argument is the model it speaks with: Deepgram's voices are

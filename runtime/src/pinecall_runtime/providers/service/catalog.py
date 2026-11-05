@@ -8,7 +8,7 @@ from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable, ValidationError
 from pinecall_runtime.platform import service as platform
 from pinecall_runtime.providers.schemas import VECTOR_WIDTH, Catalog, Stage, StageOptions
-from pinecall_runtime.providers.service.plugins import MODALITIES, vendor_doing
+from pinecall_runtime.providers.service.plugins import MODALITIES, class_path, models_listed, plugin, vendor_doing
 
 ROW = "providers"
 
@@ -40,11 +40,29 @@ async def seed_catalog(session: AsyncSession, seeded: Catalog) -> None:
 
 
 def tuning_of(catalog: Catalog, modality: Modality, vendor: str, model: str | None) -> StageOptions | None:
-    """What a vendor is told for a stage: the longest key naming the model's id, else its own."""
+    """What a vendor is told for a stage: the longest key naming the model's id, else its own; the class the
+    key names, for the models it lists, else the plugin's own class for the stage, which ends no turn."""
     stage = f"{modality}/{vendor}"
     models = (key.removeprefix(f"{stage}/") for key in catalog.tuning if key.startswith(f"{stage}/"))
     named = None if model is None else longest_prefix(models, model)
-    return catalog.tuning.get(stage if named is None else f"{stage}/{named}")
+    options = catalog.tuning.get(stage if named is None else f"{stage}/{named}")
+    if options is None or options.builds is None or model is None or _its_class_runs(vendor, modality, options, model):
+        return options
+    return options.model_copy(update={"builds": None, "ends_the_turn": False})
+
+
+# A class the row names (Deepgram's `STTv2`, Flux's door) runs the models it lists by name; a model it
+# does not list that the plugin's own class for the stage lists runs on that class, which ends no
+# turn, as the row said the named class does. Listed by neither, the row's word stands. Deepgram's
+# `nova-3` was built as `STTv2` and refused at the socket, so every call that named it never began
+# (2026-11-05).
+def _its_class_runs(vendor: str, modality: Modality, options: StageOptions, model: str) -> bool:
+    module = plugin(vendor)
+    listed = () if options.builds is None else models_listed(module, options.builds)
+    if not listed or model in listed:
+        return True
+    own = class_path(module, modality)
+    return own is None or model not in models_listed(module, own)
 
 
 def longest_prefix(keys: Iterable[str], name: str) -> str | None:

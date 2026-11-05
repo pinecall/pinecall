@@ -276,18 +276,24 @@ def refuse_realtime_as_llm(vendor: str, model: str | None, builds: str | None) -
         )
 
 
-def realtime_models(module: object) -> tuple[str, ...]:
-    """The models the plugin's realtime class runs, by name; none where it has no such class or names none."""
-    path = realtime_path(module)
-    made = None if path is None else _at(module, path)
+def models_listed(module: object, path: str) -> tuple[str, ...]:
+    """The models the class at the path types its `model` argument with (a Literal); none where it types none."""
+    made = _at(module, path)
     if not isinstance(made, type):
         return ()
     try:
         argument = inspect.signature(made, eval_str=True).parameters.get("model")
     except (NameError, TypeError, ValueError):
-        argument = None
-    declared = None if argument is None else argument.annotation
-    typed = _literal_in(declared)
+        return ()
+    return () if argument is None else _literal_in(argument.annotation)
+
+
+def realtime_models(module: object) -> tuple[str, ...]:
+    """The models the plugin's realtime class runs, by name; none where it has no such class or names none."""
+    path = realtime_path(module)
+    if path is None:
+        return ()
+    typed = models_listed(module, path)
     if typed:
         return typed
     for holder in (module, getattr(module, "models", None)):

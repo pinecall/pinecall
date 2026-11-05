@@ -70,6 +70,13 @@ class NoTerms(_Ears):
         super().__init__(api_key=api_key)
 
 
+class HintedEars(_Ears):
+    """As Deepgram's `STTv2`: `language_hint=[...]`, which one of its models refuses."""
+
+    def __init__(self, *, api_key: str, language_hint: list[str] | None = None) -> None:
+        super().__init__(api_key=api_key, language_hint=language_hint)
+
+
 def _built(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> dict[str, object]:
     def the_class(_modality: Modality, _running: Running) -> type:
         return made
@@ -183,3 +190,12 @@ def test_a_voice_is_not_refused_by_a_tts_with_no_voice_argument(monkeypatch: pyt
 
     monkeypatch.setattr(stages, "_class_of", the_class)
     stages._refuse_untaken("tts", Running(vendor="v", credentials="k"), ["voice"])  # pyright: ignore[reportPrivateUsage]
+
+
+def test_the_platforms_hints_reach_the_ears_unless_the_row_names_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Deepgram's `flux-general-en` refuses any `language_hint` at the socket: the row for it names none."""
+    hinted = _built(monkeypatch, HintedEars, Running(vendor="v", credentials="k", hints=("es", "en")))
+    assert hinted["language_hint"] == ["es", "en"]
+    row: dict[str, list[str]] = {"language_hint": []}
+    told = _built(monkeypatch, HintedEars, Running(vendor="v", credentials="k", hints=("es", "en"), options=row))
+    assert told["language_hint"] == []
