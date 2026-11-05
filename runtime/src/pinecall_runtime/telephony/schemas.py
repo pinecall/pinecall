@@ -222,11 +222,16 @@ class RingAtTestLine(WireModel):
     holder: str | None = None
 
 
+# The worker's scope rides the query of every door it asks (`?org=&env=&holder=`), read by its key's
+# auth; a query model that refused the three answered 422 to every dial (2026-11-05).
 class ColdTransferQuery(Schema):
     """A worker asking whether the caller may be sent on: to whom, from which call."""
 
     to: str
     call: str
+    org: str | None = None
+    env: Env | None = None
+    holder: str | None = None
 
 
 class LegTrunkQuery(Schema):
@@ -235,6 +240,9 @@ class LegTrunkQuery(Schema):
     to: str
     call: str
     shown: str | None = Field(None, alias="from")
+    org: str | None = None
+    env: Env | None = None
+    holder: str | None = None
 
 
 # ── numbers and the accounts they live in ──

@@ -9,6 +9,9 @@
   and goes on in the same room; a phone nobody said was theirs reaches the agent the number is routed to. The
   phone is the member's row now (`members.test_phone`, `test_agent`, migration 000018), said to every gateway
   as it starts: a person with no terminal kept nothing across a gateway's restart before.
+- **A dial placed by the worker reaches its carrier again.** The leg and cold-transfer doors read their query
+  into a model that refused the worker's own scope (`?org=&env=&holder=`), so every outbound call ended
+  `dial_failed` before anything rang.
 - **The newborn orgs a sweep finds quiet are one mail to the operators**, not one each: a launch day is
   hundreds of orgs, and `org.quiet` mailed hundreds of times is read by nobody. Each is still kept and posted.
 - **A developer's phone at a production number reaches the org's own sandbox copy** when nobody of theirs holds

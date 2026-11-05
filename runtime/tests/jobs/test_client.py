@@ -18,7 +18,7 @@ from pinecall_runtime.jobs.service.client import GatewayClient, _command_of, gat
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.session.writing import Writing
 from pinecall_runtime.wire.events import Custom
-from tests.conftest import Gateway, Tenant, needs_the_services
+from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
 pytestmark = needs_the_services
 
@@ -231,3 +231,22 @@ def test_a_command_frame_this_worker_cannot_read_is_skipped_and_one_it_can_is_re
     )
     assert read is not None and read.type == "state.set"
     assert "reading a command of the app failed on call_1" in caplog.text
+
+
+# The worker's scope rides the query of every door it asks: the leg and cold-transfer doors read
+# their query into a model that refused it, and every dial on production failed (2026-11-05).
+async def test_the_leg_and_cold_transfer_doors_take_the_workers_scope_in_their_query(
+    gateway: Gateway, fleet: GatewayClient, tenant: Tenant, agent: str
+) -> None:
+    scope = Scope(tenant.org, Env.sandbox, "")
+    async with holding(gateway, tenant, agent):
+        for ask in (
+            partial(fleet.leg, agent, scope, to="+15550100000", call="call_leg", shown=None),
+            partial(fleet.sent_on, agent, scope, to="+15550100000", call="call_leg"),
+        ):
+            # Answered, or refused on the guards in the gateway's words: never on the query's shape.
+            try:
+                await ask()
+            except GatewayUnavailable as refused:
+                assert refused.answered != 422, str(refused)
+                assert "Extra inputs" not in str(refused)
