@@ -322,7 +322,7 @@ export function comparison(done: Compared): string[] {
       found.rows.map((row, index) => [
         index + 1,
         against(row.against),
-        row.ended_at === null ? "on a call" : row.score === null ? (row.end_reason ?? "not judged").replace(/_/g, " ") : `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`,
+        row.ended_at === null ? "on a call" : row.why !== null ? "never started" : row.score === null ? (row.end_reason ?? "not judged").replace(/_/g, " ") : `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`,
         seconds(row.latency.e2e_latency),
         seconds(row.latency.llm_node_ttft),
         seconds(row.latency.tts_node_ttfb),
@@ -333,6 +333,7 @@ export function comparison(done: Compared): string[] {
       ]),
     ),
   );
+  for (const row of found.rows) if (row.why !== null) lines.push(`never started, ${against(row.against)}: ${row.why}`);
   for (const one of done.refused) lines.push(`not placed, ${against(one.against)}: ${one.why}`);
   lines.push(formatHint("pinecall sessions <call> reads one whole"));
   return lines;

@@ -147,6 +147,8 @@ openai,stt,gpt-4o-transcribe-diarize,gpt-4o-transcribe-diarize,2026-10-19,https:
 openai,stt,whisper-1,whisper-1,2026-10-19,https://developers.openai.com/api/docs/pricing.md
 rime,tts,coda,coda,2026-10-19,https://users.rime.ai/data/voices/voice_details.json
 rime,tts,mistv3,mistv3,2026-10-19,https://users.rime.ai/data/voices/voice_details.json
+soniox,stt,stt-rt-v6,Speech-to-Text Real-time v6,2026-11-05,https://soniox.com/docs/stt/models
+soniox,stt,stt-async-v6,Speech-to-Text Async v6,2026-11-05,https://soniox.com/docs/stt/models
 soniox,stt,stt-rt-v5,Speech-to-Text Real-time v5,2026-10-19,https://api.soniox.com/v1/models
 soniox,stt,stt-async-v5,Speech-to-Text Async v5,2026-10-19,https://api.soniox.com/v1/models
 soniox,tts,tts-rt-v2,tts-rt-v2,2026-10-19,https://soniox.com/docs/tts/models.mdx

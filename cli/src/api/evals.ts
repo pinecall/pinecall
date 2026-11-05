@@ -260,6 +260,7 @@ export interface ComparisonRow {
   score: { held: number; judged: number; passed: boolean; reason: string | null } | null;
   cost_usd: number | null;
   latency: Latency;
+  why: string | null;
 }
 
 /** `GET /v1/simulations/compare/{id}`: the comparison's calls, best first. */

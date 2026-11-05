@@ -4,13 +4,21 @@ from collections.abc import AsyncGenerator
 from typing import cast
 
 import pytest
+from livekit.agents import JobContext
 
 from pinecall_runtime.agents.schemas import PipelineKeys, RunningStage
 from pinecall_runtime.calls.service import CALLER_HUNG_UP
+from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.jobs.service.client import GatewayClient
-from pinecall_runtime.jobs.service.job import _follow_commands, follow_command, pipeline_of
+from pinecall_runtime.jobs.service.job import (
+    SESSION_FAILED,
+    _follow_commands,
+    follow_command,
+    pipeline_of,
+    session_refused,
+)
 from pinecall_runtime.session import service as session
-from pinecall_runtime.wire.base import Command
+from pinecall_runtime.wire.base import BatchedEntry, Command, Entry
 
 STAGE = RunningStage(vendor="acme", credentials="k", model="acme-1")
 
@@ -73,3 +81,47 @@ async def test_a_command_the_session_breaks_on_is_said_with_its_call_and_the_nex
     )
     assert gone == ["caller"]
     assert "a command of the app failed on call_1" in caplog.text
+
+
+class Sealing:
+    """A gateway that keeps what a call's writer sent it and how the call was sealed."""
+
+    def __init__(self) -> None:
+        self.written: list[BatchedEntry] = []
+        self.sealed_as: list[tuple[str, str]] = []
+
+    async def append_many(self, call: str, entries: list[BatchedEntry], *, after: int) -> list[Entry]:
+        self.written.extend(entries)
+        return [
+            Entry(seq=after + n + 1, ts=one.ts, call=call, agent="a", type=one.type, ephemeral=False, data=one.data)
+            for n, one in enumerate(entries)
+        ]
+
+    async def sealed(self, call: str, sealing: object) -> None:
+        self.sealed_as.append((call, str(getattr(sealing, "outcome", ""))))
+
+
+class Shutting:
+    """A job context that remembers why it was shut down."""
+
+    def __init__(self) -> None:
+        self.reasons: list[str] = []
+
+    def shutdown(self, reason: str = "") -> None:
+        self.reasons.append(reason)
+
+
+# A worker whose session could not be built left the call ringing for the reaper's ten minutes, sealed
+# `drained` with nothing of why (2026-11-05, a Soniox model the plugin refused as an argument).
+async def test_a_session_the_worker_cannot_build_ends_the_call_at_once_with_the_refusal_on_its_log() -> None:
+    gateway, ctx = Sealing(), Shutting()
+    refused = ValidationError("soniox refused its STT: STT.__init__() got an unexpected keyword argument 'model'")
+    await session_refused(cast(JobContext, ctx), cast(GatewayClient, gateway), "call_1", refused)
+    assert [(one.type, one.data.get("code"), one.data.get("recoverable")) for one in gateway.written] == [
+        ("error", SESSION_FAILED, False),
+        ("call.ended", None, None),
+    ]
+    assert gateway.written[0].data["message"] == str(refused)
+    assert gateway.written[1].data["reason"] == "error"
+    assert gateway.sealed_as == [("call_1", f"the session could not be built: {refused}")]
+    assert ctx.reasons == [SESSION_FAILED]

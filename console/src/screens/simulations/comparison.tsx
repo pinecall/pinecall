@@ -99,6 +99,13 @@ function Judges({ row }: { row: ComparisonRow }): ReactNode {
       </Pill>
     );
   }
+  if (row.why !== null) {
+    return (
+      <span className="runs-unjudged" title={row.why}>
+        never started
+      </span>
+    );
+  }
   if (row.score === null) return <span className="runs-unjudged">{row.end_reason === null ? "not judged" : row.end_reason.replace(/_/g, " ")}</span>;
   const tone = row.score.passed ? "green" : "red";
   return (

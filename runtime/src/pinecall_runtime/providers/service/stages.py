@@ -4,8 +4,6 @@ import asyncio
 import dataclasses
 import inspect
 import logging
-import types
-import typing
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Never, override
 
@@ -44,6 +42,7 @@ from pinecall_runtime.providers.service.plugins import (
     primary_language,
     realtime_path,
 )
+from pinecall_runtime.providers.service.shaping import options_object, shaped
 from pinecall_runtime.wire.metrics import LLMModelUsage
 
 logger = logging.getLogger(__name__)
@@ -54,6 +53,8 @@ logger = logging.getLogger(__name__)
 # asks every model for temperature 0 (`run_result.py`), which a vendor's SDK may no longer take
 # at all, and the operator chose the model's own.
 SAMPLING = frozenset({"temperature", "top_p", "top_k"})
+# The argument a plugin names its model by, and the field of its options object when it takes one.
+THE_MODEL = "model"
 
 
 # A plugin's constructor takes no field for every request (a model's thinking, its effort), and
@@ -370,7 +371,7 @@ def _built[T](
         given |= _first(accepts, THE_LANGUAGE, primary_language(running.language))
     given |= _first(accepts, THE_HINTS, list(running.hints) or None)
     if running.model is not None:
-        given["model"] = running.model
+        given |= _the_model(made, accepts, given, running.model)
     # A voice whose plugin takes no voice argument is the model it speaks with: Deepgram's voices are
     # its models (`aura-2-celeste-es`), so a voice the row keeps per language reaches it this way.
     if modality == "tts" and running.voice is not None and not accepts & set(THE_VOICE):
@@ -383,15 +384,30 @@ def _built[T](
     # the vendor refusing its stage, said in its own words. A model that takes no words to expect
     # (Cartesia's ink-whisper refuses `keyterm`) is built without them: the words help, never stop it.
     try:
-        return constructor(**_shaped(made, given))
+        return constructor(**shaped(made, given))
     except Exception as refused:
         if given != plain:
             logger.info("%s %s takes no words to expect (%s): built without them", running.vendor, named, refused)
             try:
-                return constructor(**_shaped(made, plain | _inside_its_options(made, accepts, plain, running, ())))
+                return constructor(**shaped(made, plain | _inside_its_options(made, accepts, plain, running, ())))
             except Exception as again:
                 raise ValidationError(f"{running.vendor} refused its {named}: {again}") from again
         raise ValidationError(f"{running.vendor} refused its {named}: {refused}") from refused
+
+
+# The model named, where the plugin takes it: its `model` argument, or the `model` of the one options
+# object it takes instead (Soniox's `params=STTOptions(model=…)`), beside what the row put there. A
+# plugin that takes neither is handed the argument, and refuses it in its own words. Soniox was handed
+# `model=` and refused it, so every call that named a Soniox model never started (2026-11-05).
+def _the_model(made: type, accepts: frozenset[str], given: Mapping[str, object], model: str) -> dict[str, object]:
+    found = None if THE_MODEL in accepts else options_object(made)
+    if found is None or THE_MODEL not in found[1]:
+        return {THE_MODEL: model}
+    name = found[0]
+    already = given.get(name)
+    if already is not None and not a_mapping(already):
+        return {}
+    return {name: {**dict(already or {}), THE_MODEL: model}}
 
 
 # A plugin that takes its options as one object (Soniox's `params`) finds the language and the words to
@@ -400,7 +416,7 @@ def _built[T](
 def _inside_its_options(
     made: type, accepts: frozenset[str], given: Mapping[str, object], running: Running, hear: tuple[str, ...]
 ) -> dict[str, object]:
-    found = _options_object(made)
+    found = options_object(made)
     if found is None:
         return {}
     name, fields = found
@@ -421,19 +437,6 @@ def _inside_its_options(
         elif A_CONTEXT in fields and A_CONTEXT not in inside:
             inside[A_CONTEXT] = {"terms": list(hear)}
     return {name: inside} if inside else {}
-
-
-# The argument whose declared type is a dataclass, and that dataclass's fields.
-def _options_object(made: type) -> tuple[str, frozenset[str]] | None:
-    try:
-        declared = inspect.signature(made, eval_str=True).parameters
-    except (NameError, TypeError, ValueError):
-        return None
-    for name, parameter in declared.items():
-        shape = _dataclass_in(parameter.annotation)
-        if shape is not None:
-            return name, frozenset(field.name for field in dataclasses.fields(shape))
-    return None
 
 
 def _every_parameter(vendor: str) -> frozenset[str]:
@@ -462,39 +465,3 @@ def _credentials(credentials: Credentials, accepts: frozenset[str]) -> dict[str,
 def _first(accepts: frozenset[str], names: tuple[str, ...], value: object) -> dict[str, object]:
     chosen = next((name for name in names if name in accepts), None)
     return {} if chosen is None or value is None else {chosen: value}
-
-
-# A plugin that takes its options as one object (`params=STTOptions(...)`) is given that object,
-# built from the row's mapping field by field, however deep.
-def _shaped(made: type, given: Mapping[str, object]) -> dict[str, object]:
-    try:
-        declared = {
-            name: parameter.annotation for name, parameter in inspect.signature(made, eval_str=True).parameters.items()
-        }
-    except (NameError, TypeError):
-        return dict(given)
-    return {name: _as_declared(declared.get(name), value) for name, value in given.items()}
-
-
-def _as_declared(declared: object, value: object) -> object:
-    shape = _dataclass_in(declared)
-    if shape is None:
-        # JSON has one number: `speed=1.0` arrives as 1, and a parameter typed float alone takes 1.0.
-        return float(value) if type(value) is int and _takes_a_float(declared) else value
-    if not a_mapping(value):
-        return value
-    typed = typing.get_type_hints(shape)
-    return shape(**{name: _as_declared(typed.get(name), given) for name, given in value.items()})
-
-
-def _takes_a_float(declared: object) -> bool:
-    options = typing.get_args(declared) or (declared,)
-    return float in options and int not in options
-
-
-def _dataclass_in(declared: object) -> type | None:
-    if isinstance(declared, type) and dataclasses.is_dataclass(declared):
-        return declared
-    if isinstance(declared, types.UnionType):
-        return next((one for one in typing.get_args(declared) if _dataclass_in(one)), None)
-    return None

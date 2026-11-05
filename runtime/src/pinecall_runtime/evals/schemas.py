@@ -328,6 +328,9 @@ class ComparisonRow(Row):
     score: SessionScore | None
     cost_usd: float | None
     latency: Latency
+    # Why the call ended before it began — a vendor that refused its stage — from the log's `error`;
+    # None for a call that ran.
+    why: str | None
 
 
 class Comparison(Row):

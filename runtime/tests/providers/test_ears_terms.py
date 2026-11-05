@@ -99,6 +99,19 @@ def test_what_the_row_put_in_the_options_object_stands(monkeypatch: pytest.Monke
     assert given["params"] == Options(model="rt-pro", language_hints=["pt"], context=Context(terms=list(HEAR)))
 
 
+def test_the_model_named_goes_inside_the_options_object_of_ears_that_take_no_model_argument(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Soniox's `params=STTOptions(model=...)`: handed `model=`, it refused it and the call never started."""
+    given = _built(monkeypatch, TermsInsideItsOptions, Running(vendor="v", credentials="k", model="stt-rt-v5"))
+    assert given["params"] == Options(model="stt-rt-v5", context=Context(terms=list(HEAR)))
+    assert "model" not in given
+    row = {"params": {"language_hints": ["pt"]}}
+    named = Running(vendor="v", credentials="k", model="stt-rt-v5", options=row)
+    kept = _built(monkeypatch, TermsInsideItsOptions, named)
+    assert kept["params"] == Options(model="stt-rt-v5", language_hints=["pt"], context=Context(terms=list(HEAR)))
+
+
 def test_ears_that_take_no_words_are_built_without_them(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _built(monkeypatch, NoTerms, Running(vendor="v", credentials="k")) == {"api_key": "k"}
 

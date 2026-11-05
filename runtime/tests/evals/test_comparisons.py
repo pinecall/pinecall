@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from pinecall_runtime.evals.schemas import ComparisonRow, Latency, SessionScore
-from pinecall_runtime.evals.service.comparisons import latency_of, ranked
+from pinecall_runtime.evals.service.comparisons import latency_of, ranked, why_it_never_began
 from pinecall_runtime.wire.base import Entry
 
 GOLDEN = Path(__file__).resolve().parents[1] / "wire" / "golden" / "call-log.json"
@@ -44,6 +44,7 @@ def a_row(
         latency=Latency(
             e2e_latency=e2e, llm_node_ttft=None, tts_node_ttfb=None, transcription_delay=None, end_of_turn_delay=None
         ),
+        why=None,
     )
 
 
@@ -67,3 +68,19 @@ def test_the_rows_are_ranked_by_judges_then_speed_then_cost_with_a_live_call_las
         "unjudged",
         "live",
     ]
+
+
+def test_why_a_call_never_began_is_its_unrecoverable_error_and_nothing_for_one_that_ran() -> None:
+    """The worker's refusal before call.started names why; a call that started has no why, whatever errors it met."""
+    entries = _ENTRIES.validate_json(GOLDEN.read_bytes())
+    assert why_it_never_began(entries) is None
+    refused = Entry(
+        seq=2,
+        ts=2.0,
+        call="call_1",
+        agent="a",
+        type="error",
+        ephemeral=False,
+        data={"code": "session_failed", "message": "soniox refused its STT", "recoverable": False},
+    )
+    assert why_it_never_began([refused]) == "soniox refused its STT"

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A model named for a plugin that takes its options as one object reaches that object.** Soniox's STT takes
+  `params=STTOptions(model=…)`, not `model=`: every call that named a Soniox model was refused by the plugin
+  and never started. The runtime puts the model inside the options object where the plugin takes no `model`.
+- **A session the worker cannot build ends the call at once**, `error` with `session_failed` and the vendor's
+  refusal on its log, reason `error`; it used to ring for the reaper's ten minutes and seal `drained` with nothing
+  of why. A comparison lists such a call as `never started` with the reason, instead of leaving it out.
 - **A simulation can run the agent on another voice or model, and several can be compared.** `POST /v1/simulations`
   takes `against` `{stt, llm, tts, voice, language, temperature}`, the test room's knobs, for the agent on that call
   alone; `POST /v1/simulations/compare` places one persona against the agent under up to ten of them at once, and

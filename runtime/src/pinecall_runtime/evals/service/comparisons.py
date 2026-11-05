@@ -18,6 +18,7 @@ MEASURES = ("e2e_latency", "llm_node_ttft", "tts_node_ttfb", "transcription_dela
 async def compared_row(serving: calls.Serving, run: calls.PersonaRun) -> ComparisonRow:
     """One call of the comparison as its row: what the agent ran on, how it went, its cost, its latencies."""
     facts = calls.facts_of(run.facts)
+    entries = await serving.logs.store.whole(facts.call)
     score = None
     if facts.judged is not None and facts.passed is not None:
         score = SessionScore(held=facts.held or 0, judged=facts.judged, passed=facts.passed, reason=facts.reason)
@@ -31,9 +32,20 @@ async def compared_row(serving: calls.Serving, run: calls.PersonaRun) -> Compari
             "end_reason": facts.end_reason,
             "score": None if score is None else score.dump(),
             "cost_usd": facts.cost_usd,
-            "latency": latency_of(await serving.logs.store.whole(facts.call)).model_dump(),
+            "latency": latency_of(entries).model_dump(),
+            "why": why_it_never_began(entries),
         }
     )
+
+
+def why_it_never_began(entries: Iterable[Entry]) -> str | None:
+    """The reason a call ended before it began, from its log's unrecoverable error; None for one that ran."""
+    for entry in entries:
+        if entry.type == "error" and entry.data.get("recoverable") is False:
+            return str(entry.data.get("message") or "")
+        if entry.type == "call.started":
+            return None
+    return None
 
 
 def latency_of(entries: Iterable[Entry]) -> Latency:

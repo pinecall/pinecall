@@ -214,6 +214,8 @@ export const ComparisonRowSchema = z.strictObject({
   score: SessionScoreSchema.nullable(),
   cost_usd: z.number().nullable(),
   latency: LatencySchema,
+  /** Why the call ended before it began, from its log's error; null for a call that ran. */
+  why: z.string().nullable(),
 });
 
 export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;

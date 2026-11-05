@@ -50,6 +50,7 @@ WRITTEN_SCOPE = "chat"
 A_CHAT_WAITS_S = 600.0
 
 ANSWERED_IN = "the pipeline is live %.2fs after the job arrived"
+SESSION_FAILED = "session_failed"
 
 
 async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings) -> None:
@@ -99,11 +100,15 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
 
     platform = _platform_of(gateway, context.call, config, seal, measures_path(settings))
     call = session.Call(context, config, platform, audio, _carried_history(opened))
-    running = (
-        session.text_session(call, pipeline.llm, settings.text_lookup_budget_ms, settings.max_tool_steps)
-        if typed
-        else session.voice_session(call, pipeline, settings.voice_lookup_budget_ms, settings.max_tool_steps)
-    )
+    try:
+        running = (
+            session.text_session(call, pipeline.llm, settings.text_lookup_budget_ms, settings.max_tool_steps)
+            if typed
+            else session.voice_session(call, pipeline, settings.voice_lookup_budget_ms, settings.max_tool_steps)
+        )
+    except PinecallError as refused:
+        await session_refused(ctx, gateway, context.call, refused)
+        return
 
     # Registered before anything else can fail: a call that dies in its setup still seals.
     # livekit reads a shutdown callback's `__code__`, which a `partial` has not. The stream of the
@@ -224,6 +229,19 @@ async def apply_command(running: session.Session, command: Command) -> None:
     except PinecallError as refused:
         error = ErrorEvent(code="refused", message=str(refused), command=command.type, id=command.id, recoverable=True)
         running.call.writing.write("error", error)
+
+
+# A session the worker cannot build — a vendor that refused its stage — ends the call at once, the
+# refusal on its log: a Soniox model handed as an argument its plugin does not take left a call
+# ringing for the reaper's ten minutes, sealed `drained` with nothing of why (2026-11-05).
+async def session_refused(ctx: JobContext, gateway: GatewayClient, call: str, refused: PinecallError) -> None:
+    """End the call that has no session with the refusal written on its log, and let the job go."""
+    logger.warning("call %s: the session could not be built: %s", call, refused)
+    writing = open_writer(gateway, call)
+    writing.write("error", ErrorEvent(code=SESSION_FAILED, message=str(refused), recoverable=False))
+    ended = CallEnded(reason="error", ended_by="platform", ended_at=time.time(), duration_s=0.0)
+    await end_and_seal(gateway, writing, ended, f"the session could not be built: {refused}")
+    ctx.shutdown(reason=SESSION_FAILED)
 
 
 # The caller and their carrier stay where they are: production's LiveKit holds their phone_leg.

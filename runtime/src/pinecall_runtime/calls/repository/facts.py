@@ -101,7 +101,7 @@ limit :limit
 THE_PERSONAS_RUNS = """
 from call_log_head head join call_facts f on f.call = head.log
 where head.org = :org and head.env = :env and head.holder = :holder
-  and head.call is not null and f.persona is not null
+  and head.call is not null and (f.persona is not null or f.comparison is not null)
   and (cast(:agent as text) is null or head.agent = :agent)
   and (cardinality(cast(:agents as text[])) = 0 or head.agent = any(cast(:agents as text[])))
   and (cast(:persona as text) is null or f.persona = :persona)
