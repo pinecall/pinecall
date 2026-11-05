@@ -4,7 +4,7 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.28 — credits.exhausted carries the calls holding the seats (2026-11-05)
 
 - **`credits.exhausted` carries `calls`**: the calls holding the org's seats when the calls-at-once limit refused;
   and its `quota` reads every quota the runtime refuses for (`hosted_apps`, `evals`, `simulations`, `budget_usd` were

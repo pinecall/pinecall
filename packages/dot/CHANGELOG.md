@@ -4,6 +4,8 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.28 — released with the CLI's output and the simulation's comparison (2026-11-05)
+
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
 
 ## 0.11.26 — released with the CLI's output review (2026-11-04)

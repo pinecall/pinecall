@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.28 — the wire reads vendor.failed and org.quiet (2026-11-05)
 
 - **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that
   failed a call, a newborn org with no call that went well, and the calls holding an org's seats when the

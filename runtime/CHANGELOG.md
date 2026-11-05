@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.28 — a simulation compares voices and models, and Scribe is told when speech ends (2026-11-05)
 
 - **Ears that commit a segment only when told are told by the session's VAD**, at each end of speech it
   hears, where their row says `commits_when_told`: ElevenLabs' Scribe realtime with no `server_vad` sends
