@@ -436,6 +436,7 @@ class RunningStage(WireModel):
     language: str | None = None
     hints: list[str] = Field(default_factory=list[str])
     ends_the_turn: bool = False
+    commits_when_told: bool = False
     turn_model: Literal["v1-mini", "smart-turn-v3"] = "smart-turn-v3"
     request: dict[str, Any] = Field(default_factory=dict[str, Any])
     lent: bool = False

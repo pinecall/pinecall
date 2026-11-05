@@ -108,7 +108,8 @@ vendor and model each stage runs when an agent names none, the voice per languag
 vendor is told for a stage (the class it builds where it is not `STT`/`TTS`/`LLM` — for the models that
 class lists by name, where it lists any: one it does not list that the plugin's own class does runs on
 that class, which ends no turn — its keyword arguments by the plugin's own names, which win over the
-language and the hints the platform would pass, whether its ears end the turn), the languages the ears
+language and the hints the platform would pass, whether its ears end the turn, whether the session's
+VAD tells them to commit at each end of speech), the languages the ears
 listen for, the price of each model, the judge, and the one embedder every knowledge base and
 fact is written with (its URL, model, wire shape and width; its key is the platform's
 `credentials/<vendor>` row). The first platform is seeded from the one before it; after that, nothing

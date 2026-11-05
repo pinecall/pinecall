@@ -59,6 +59,9 @@ class StageOptions(Schema):
     options: dict[str, Any] = Field(default_factory=dict[str, Any])
     # The ears end the turn themselves, so the session stacks no detector on top.
     ends_the_turn: bool = False
+    # The ears close no segment on their own (Scribe realtime with no `server_vad`): the session's
+    # VAD tells them to commit at each end of speech it hears.
+    commits_when_told: bool = False
     # Where they do not, which local model reads the end of the turn off the audio; None is the
     # platform's, Smart Turn v3.
     turn_model: TurnModel | None = None

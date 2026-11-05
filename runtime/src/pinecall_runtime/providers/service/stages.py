@@ -7,7 +7,7 @@ import logging
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Never, override
 
-from livekit.agents import llm, stt, tts
+from livekit.agents import llm, stt, tts, vad
 from livekit.agents.llm import Tool, ToolChoice
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, NOT_GIVEN, APIConnectOptions, NotGivenOr
 from livekit.agents.utils import is_given
@@ -15,6 +15,7 @@ from livekit.agents.utils import is_given
 from pinecall_runtime.agents.declaration import Modality, Tuning, Turn
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping
+from pinecall_runtime.providers.service.committing import CommittedByVAD
 from pinecall_runtime.providers.service.plugins import (
     A_CONTEXT,
     A_TTS,
@@ -194,9 +195,12 @@ def build_thinking(running: Running) -> Thinking:
 
 # livekit's adapter wraps ears that do not stream with a VAD the session does not hold, and refuses
 # voices of another channel count: such a fallback is left out and the call runs on the rest.
-def build_ears(running: Running, turn: Turn | None, hear: Sequence[str] = ()) -> Ears:
-    """The ears a call hears with, over its fallbacks when the stage names any that stream."""
+def build_ears(running: Running, turn: Turn | None, hear: Sequence[str] = (), hearing: vad.VAD | None = None) -> Ears:
+    """The ears a call hears with, over its fallbacks when the stage names any that stream; ears
+    that commit only when told are told by the session's VAD, where it lends one."""
     primary = stt_of(running, turn, hear)
+    if hearing is not None and running.commits_when_told:
+        primary = CommittedByVAD(primary, hearing)
     if not primary.capabilities.streaming:
         return primary
     backups: list[stt.STT[Never]] = []

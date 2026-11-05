@@ -356,6 +356,7 @@ def _running_stage(running: providers.Running) -> schemas.RunningStage:
         language=running.language,
         hints=list(running.hints),
         ends_the_turn=running.ends_the_turn,
+        commits_when_told=running.commits_when_told,
         turn_model=running.turn_model,
         request=dict(running.request),
         lent=running.lent,

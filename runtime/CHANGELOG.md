@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Ears that commit a segment only when told are told by the session's VAD**, at each end of speech it
+  hears, where their row says `commits_when_told`: ElevenLabs' Scribe realtime with no `server_vad` sends
+  the commit only when its stream is flushed, and livekit never flushes the ears at the end of speech, so
+  a call on it heard nothing for its whole length. The stage reaches the worker with the flag.
 - **The class the providers row names for a vendor runs the models it lists; the rest run on the plugin's own.**
   Deepgram's row builds `STTv2`, Flux's door, and the catalogue offers `nova-3` and the others: every call that
   named one was refused at the socket. A model the named class does not list by name (its `model` argument's

@@ -42,7 +42,7 @@ def voice_session(
             call, providers.build_realtime(stages.realtime), stages, lookup_budget_ms, tool_steps or TOOL_STEPS
         )
     thinking = providers.build_thinking(stages.llm)
-    ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}))
+    ears = providers.build_ears(stages.stt, call.config.turn, keyterms(call.config, {}), speech_detector())
     voice = providers.build_voice(stages.tts)
     write_switches(call.writing, (thinking, ears, voice))
     live: AgentSession[None] = AgentSession(

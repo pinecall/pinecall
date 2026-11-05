@@ -123,6 +123,8 @@ class Running:
     hints: tuple[str, ...] = ()
     # The ears end the turn themselves, so the session stacks no detector on top.
     ends_the_turn: bool = False
+    # The ears close no segment on their own: the session's VAD tells them to commit at each end of speech.
+    commits_when_told: bool = False
     # Which local model reads the end of the turn off the audio, where the ears do not.
     turn_model: TurnModel = "smart-turn-v3"
     # What every request of an llm stage carries beside the conversation, in the vendor's names.

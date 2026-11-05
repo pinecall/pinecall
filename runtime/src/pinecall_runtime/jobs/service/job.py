@@ -407,6 +407,7 @@ def _running(stage: agents.RunningStage) -> providers.Running:
         language=stage.language,
         hints=tuple(stage.hints),
         ends_the_turn=stage.ends_the_turn,
+        commits_when_told=stage.commits_when_told,
         turn_model=stage.turn_model,
         request=stage.request,
         lent=stage.lent,

@@ -40,11 +40,14 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
   the simulated caller's and a call's alike; a field the runtime asks for itself wins over it. On
   any other stage `request` is `400`. The judge is asked at its model's own temperature: put one
   in `request` where its model takes it.
-  How a spoken turn ends is the ears' `tuning` too, `"stt/<vendor>": {ends_the_turn, turn_model}`:
-  ears with `ends_the_turn` close the turn themselves; the others get a local model that reads it
-  off the caller's audio on the worker's CPU, no transcript: `turn_model` `smart-turn-v3` (Daily's
-  Smart Turn v3, 23 languages, its weights baked into the image; the default, left out) or `v1-mini`
-  (livekit's own). An agent may name its own (`end_of_turn`), which wins over the row.
+  How a spoken turn ends is the ears' `tuning` too, `"stt/<vendor>": {ends_the_turn, commits_when_told,
+  turn_model}`: ears with `ends_the_turn` close the turn themselves; the others get a local model that
+  reads it off the caller's audio on the worker's CPU, no transcript: `turn_model` `smart-turn-v3`
+  (Daily's Smart Turn v3, 23 languages, its weights baked into the image; the default, left out) or
+  `v1-mini` (livekit's own). An agent may name its own (`end_of_turn`), which wins over the row. Ears
+  that close no segment on their own (ElevenLabs' Scribe realtime with no `server_vad` among its
+  options commits only when told) take `commits_when_told`: the session's own VAD, the one the
+  turn is read from, tells them to commit at each end of speech it hears.
   A default stage may name who takes over, in order: `"defaults": {"llm": {"vendor", "model",
   "fallbacks": [{"vendor", "model"}]}}`. Each is checked as the default is; a fallback names none
   of its own, the judge names none, and the ears' fallbacks end the turn as the default does

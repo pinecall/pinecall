@@ -381,6 +381,7 @@ def _on_its_key(modality: Modality, vendor: str, named: str | None, catalog: Cat
         builds=options.builds,
         options=dict(options.options),
         ends_the_turn=options.ends_the_turn,
+        commits_when_told=options.commits_when_told,
         turn_model=options.turn_model or chosen.turn_model,
         request=dict(options.request),
     )
