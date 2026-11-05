@@ -16,7 +16,7 @@ from pinecall_runtime.kit.time import now, today_in
 from pinecall_runtime.postgres import Session
 from pinecall_runtime.telephony import schemas
 from pinecall_runtime.telephony import service as telephony
-from pinecall_runtime.telephony.auth import NumbersKey, TalkKey, WorkerKey
+from pinecall_runtime.telephony.auth import NumbersKey, TalkKey, TheOperator, WorkerKey
 from pinecall_runtime.telephony.service import (
     accounts,
     catalog,
@@ -373,3 +373,18 @@ def _guards_row(guards: dial_policy.Guards) -> schemas.DialGuards:
         per_day=guards.per_day,
         max_duration_s=guards.max_duration_s,
     )
+
+
+# ── the box's test line ──
+
+
+@router.get("/v1/ops/test-line")
+async def get_test_line(_actor: TheOperator, session: Session) -> schemas.BoxTestLine:
+    """The box's test line: the sandbox number a person calls to reach their own agent, or null."""
+    return schemas.BoxTestLine(number=await telephony.get_test_line(session))
+
+
+@router.put("/v1/ops/test-line")
+async def put_test_line(body: schemas.BoxTestLine, _actor: TheOperator, session: Session) -> schemas.BoxTestLine:
+    """Make one of the box's own sandbox numbers the test line, or forget it with a null number."""
+    return schemas.BoxTestLine(number=await telephony.put_test_line(session, body.number))

@@ -81,14 +81,14 @@ class Alerting(Protocol):
 # Kept whatever else reaches: a webhook is an org's choice, and an alert nobody set one for is
 # still mailed and still listed. The mail goes in the background; the posts are waited for.
 async def raise_alert(
-    session: AsyncSession, alerting: Alerting, scope: Scope, agent: str | None, alert: WireModel
+    session: AsyncSession, alerting: Alerting, scope: Scope, agent: str | None, alert: WireModel, *, mail: bool = True
 ) -> None:
-    """On the agent's log when it is one agent's, kept, mailed, and posted to the org's webhook and the operator's."""
+    """On the agent's log when it is one agent's, kept, mailed unless a digest will, posted to the webhooks."""
     kind, data = KIND_OF[type(alert)], alert.dump()
     handles = alerting.handles
     if agent is not None:
         await alerting.logs.agent(agent).append(kind, data)
-    mailed = await mail_alert(session, alerting.outbox, handles.settings.address, scope, kind, data)
+    mailed = mail and await mail_alert(session, alerting.outbox, handles.settings.address, scope, kind, data)
     await keep_alert(session, scope, agent, kind, data, mailed=mailed)
     payload = payload_of(scope, agent, kind, data)
     # An alert that is the operators' alone is never posted to the org's webhook either.
@@ -125,9 +125,10 @@ async def vendor_failed(
     await raise_alert(session, alerting, scope, agent, failed)
 
 
+# Kept and posted one org at a time; the operators are mailed the sweep's quiet orgs as one digest.
 async def org_quiet(session: AsyncSession, alerting: Alerting, scope: Scope, quiet: OrgQuiet) -> None:
-    """Say to the box's operators that a newborn org has had no call that went well."""
-    await raise_alert(session, alerting, scope, None, quiet)
+    """Keep that a newborn org has had no call that went well, for the box's operators."""
+    await raise_alert(session, alerting, scope, None, quiet, mail=False)
 
 
 # Said in a transaction of its own: a request about to be refused rolls its own back, and an alert the

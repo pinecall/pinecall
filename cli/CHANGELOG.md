@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- **`line from` names the agent a call from your phone reaches, and prints the box's test line to dial.**
+  `pinecall line from +… [--agent <name>]`: a call from that phone to the test line the answer names reaches your
+  org's sandbox agent — the agent named, or the one the org holds — in your own copy or the org's; nothing to buy.
+  The MCP's `line` takes `agent` with `from` the same way.
+
 ## [0.11.28] — every line reads to a person, and a simulation compares models (2026-11-05)
 
 - **`simulate --against` runs the agent on other voices and models for the run, and twice or more compares them.**

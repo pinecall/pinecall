@@ -1,6 +1,6 @@
 """Who an alert is mailed to and what it says: the org's admins and the box's operators, once an hour per subject."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
@@ -108,15 +108,38 @@ def _vendor(data: JsonObject) -> tuple[str, str]:
     return f"{vendor or f'The {stage}'} failed a call", said
 
 
-def _quiet(data: JsonObject) -> tuple[str, str]:
+def _quiet_had(data: JsonObject) -> str:
     calls, failed = int(data.get("calls") or 0), int(data.get("failed") or 0)
     if calls == 0:
-        had = "has made no call yet"
-    else:
-        plural = "" if calls == 1 else "s"
-        had = f"has had no call that went well: {calls} call{plural}, {failed} failed on a vendor"
-    said = f"{data.get('name')} ({data.get('org')}) signed up a day ago and {had}. Reach out."
+        return "has made no call yet"
+    plural = "" if calls == 1 else "s"
+    return f"has had no call that went well: {calls} call{plural}, {failed} failed on a vendor"
+
+
+def _quiet(data: JsonObject) -> tuple[str, str]:
+    said = f"{data.get('name')} ({data.get('org')}) signed up a day ago and {_quiet_had(data)}. Reach out."
     return f"{data.get('name')} is quiet", said
+
+
+# One mail a sweep, however many signed up the day before: a launch day is hundreds of orgs, and
+# an operator mailed hundreds of times reads none of them.
+async def mail_quiet_digest(
+    session: AsyncSession, outbox: Mailer, address: str | None, quiets: Sequence[JsonObject]
+) -> bool:
+    """Mail the box's operators the newborn orgs a sweep found quiet, as one list; whether it went."""
+    operators = await members.operators_of_the_box(session)
+    if not quiets or not operators:
+        return False
+    brand = await platform.get_brand(session)
+    count = len(quiets)
+    title = f"{count} new org{'' if count == 1 else 's'} signed up a day ago and {'is' if count == 1 else 'are'} quiet"
+    said = " · ".join(f"{data.get('name')} ({data.get('org')}) {_quiet_had(data)}" for data in quiets) + ". Reach out."
+    link = None if address is None else f"{address}{OPERATORS_SCREEN}"
+    went = False
+    for email in operators:
+        mailed = emails.alert_email(email, brand, title=title, said=said, whose="the newborn orgs", link=link)
+        went = await outbox.post(None, mailed) or went
+    return went
 
 
 def _app(data: JsonObject) -> tuple[str, str]:

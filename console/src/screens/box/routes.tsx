@@ -1,13 +1,14 @@
 /** Routes: every number the box answers at, of every org and world — how it came, and what a call to it does now. */
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState, type FormEvent, type ReactNode } from "react";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { prettyNumber } from "@pinecall/core/calls";
-import { Card, CardFoot, CardHead, Empty, Input, Page, PageHead, Pill, Refused, TableHead, TableRow } from "../../ui";
+import { Button, Card, CardFoot, CardHead, Empty, Input, Page, PageHead, Pill, Refused, TableHead, TableRow, TextAction } from "../../ui";
 import { cameIn, matching, whenItRings } from "./box-numbers";
+import { readTestLine, saveTestLine } from "./door-box";
 import { readBoxNumbers } from "./door-floor";
-import { useDoor } from "./use-door";
+import { useDoor, useMove } from "./use-door";
 import "./box.css";
 
 const COLUMNS = "minmax(0,1.1fr) minmax(0,1fr) 100px minmax(0,1fr) 84px minmax(0,1fr) minmax(0,1.2fr)";
@@ -27,6 +28,8 @@ export function BoxRoutes(): ReactNode {
       <PageHead title="Routes" lede="Every number this box answers at, of every org and world, and what a call to it does now." />
 
       <Refused>{numbers.refused}</Refused>
+
+      <TestLine sandboxNumbers={(numbers.value ?? []).filter((row) => row.env === "sandbox" && row.channel === "phone").map((row) => row.number)} />
 
       {numbers.value !== undefined && (
         <Card>
@@ -68,5 +71,53 @@ export function BoxRoutes(): ReactNode {
         </Card>
       )}
     </Page>
+  );
+}
+
+/**
+ * The test line: one sandbox number of the box's own that a person calls, from the phone they said
+ * was theirs, to reach their own sandbox agent. The number's own agent answers everybody else.
+ */
+function TestLine({ sandboxNumbers }: { sandboxNumbers: string[] }): ReactNode {
+  const credentials = useCredentials();
+  const line = useDoor(useCallback(() => readTestLine(credentials), [credentials]));
+  const move = useMove();
+  const [typed, setTyped] = useState("");
+
+  const save = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (await move.move(() => saveTestLine(credentials, typed.trim()))) {
+      setTyped("");
+      await line.reread();
+    }
+  };
+  const forget = async (): Promise<void> => {
+    if (await move.move(() => saveTestLine(credentials, null))) await line.reread();
+  };
+
+  return (
+    <Card>
+      <CardHead title="The test line" meta={line.value === undefined ? undefined : line.value === null ? "none" : prettyNumber(line.value)} />
+      <div className="box-line-body">
+        <span className="ui-note">
+          A person calls it from the phone they said was theirs (Phone testing) and their own sandbox agent answers. One of this box&apos;s numbers routed in the sandbox: its own
+          agent answers anybody else, and should say so.
+        </span>
+        {line.value !== undefined && line.value !== null ? (
+          <span className="box-line-row">
+            <span className="ui-cell-strong">{prettyNumber(line.value)}</span>
+            <TextAction onClick={() => void forget()}>Forget</TextAction>
+          </span>
+        ) : (
+          <form className="box-line-row" onSubmit={(event) => void save(event)}>
+            <Input value={typed} placeholder={sandboxNumbers[0] ?? "+15550100000"} aria-label="The test line" onChange={(event) => setTyped(event.target.value)} />
+            <Button kind="primary" size="form" type="submit" disabled={move.busy || typed.trim() === ""}>
+              Make it the test line
+            </Button>
+          </form>
+        )}
+        <Refused>{move.refused ?? line.refused}</Refused>
+      </div>
+    </Card>
   );
 }

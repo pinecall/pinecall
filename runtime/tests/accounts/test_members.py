@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pinecall_runtime.accounts.service import members, signin
 from pinecall_runtime.enums import MemberStatus, Role
 from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
-from tests.conftest import Gateway, Tenant, needs_the_database, needs_the_services
+from tests.conftest import Gateway, Tenant, make_tenant, needs_the_database, needs_the_services
 
 NEW_PASSWORD = "a-new-password-of-ours"
 
@@ -60,3 +60,28 @@ async def test_an_admin_sets_a_members_password_through_the_door(gateway: Gatewa
         f"/v1/members/{tenant.member}/password", json={"password": "x"}, headers=tenant.person
     )
     assert short.status_code == 400, short.text
+
+
+# ── the phone a person tests from ──
+
+
+@needs_the_database
+async def test_a_phone_is_one_persons_on_the_whole_box_and_the_newest_to_say_so_has_it(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    phone = "+34600000000"
+    other = await make_tenant(sessions)
+    async with sessions.begin() as session:
+        await members.set_test_phone(session, tenant.org, tenant.member, phone, None)
+        whose = await members.whose_test_phone(session, phone)
+        assert whose is not None and whose.id == tenant.member
+        await members.set_test_phone(session, other.org, other.member, phone, "front")
+    async with sessions() as session:
+        whose = await members.whose_test_phone(session, phone)
+        assert whose is not None and (whose.org, whose.test_agent) == (other.org, "front")
+        assert (await members.get_member(session, tenant.org, tenant.member)).test_phone is None
+        assert [m.id for m in await members.test_phones(session) if m.test_phone == phone] == [other.member]
+    async with sessions.begin() as session:
+        assert await members.forget_test_phone(session, other.org, other.member) == phone
+        assert await members.forget_test_phone(session, other.org, other.member) is None
+        assert await members.whose_test_phone(session, phone) is None

@@ -298,6 +298,14 @@
   color: var(--red);
 }
 
+/* Run callers, or compare models: the form's two shapes, picked over it. */
+.sim-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .sim-played {
   display: flex;
   flex-direction: column;

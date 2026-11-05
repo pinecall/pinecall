@@ -69,6 +69,8 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
         ctx, gateway, dispatch, arrival, route
     ):
         return
+    if telephony.may_be_a_testers(dispatch, arrival, route):
+        route, dispatch = await _test_line(gateway, dispatch, arrival, route)
     scope = Scope(route.org, route.env, dispatch.holder or "")
     context = context_of(ctx, dispatch, arrival, route, settings)
     config, keys, played = await asyncio.gather(
@@ -269,6 +271,32 @@ async def _hand_over(
         return False
     ctx.shutdown(reason=f"handed to {handed.fleet}")
     return True
+
+
+# A ring at the box's test line is the caller's own: the gateway says whose sandbox agent, and the
+# call goes on here as that org's, in the copy that takes a ring from that phone. A phone nobody
+# said was theirs, or one whose agent nobody holds, is answered by the agent the number is routed
+# to, which tells the caller so.
+async def _test_line(
+    gateway: GatewayClient, dispatch: Dispatch, arrival: channels.Arrival, route: Route
+) -> tuple[Route, Dispatch]:
+    try:
+        handed = await gateway.test_line_rings_for(str(route.number), arrival.caller)
+    except GatewayUnavailable:
+        logger.warning("could not ask whose phone rings %s: the call stays with %s", route.number, route.agent)
+        return route, dispatch
+    if handed.org is None or handed.agent is None or handed.holder is None:
+        return route, dispatch
+    moved = dispatch.model_copy(
+        update={
+            "agent": handed.agent,
+            "org": handed.org,
+            "env": Env.sandbox,
+            "holder": handed.holder,
+            "caller": arrival.caller,
+        }
+    )
+    return telephony.handed_to(route, arrival, handed.org, handed.agent), moved
 
 
 def _recording_path(config: agents.AgentConfig, settings: Settings, call: str, *, typed: bool) -> Path | None:

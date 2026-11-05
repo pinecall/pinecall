@@ -7,18 +7,24 @@ import pytest
 from livekit.agents import JobContext
 
 from pinecall_runtime.agents.schemas import PipelineKeys, RunningStage
+from pinecall_runtime.calls.context import Route
 from pinecall_runtime.calls.service import CALLER_HUNG_UP
-from pinecall_runtime.exceptions import ValidationError
+from pinecall_runtime.enums import Channel, Env
+from pinecall_runtime.exceptions import GatewayUnavailable, ValidationError
 from pinecall_runtime.jobs.service.client import GatewayClient
 from pinecall_runtime.jobs.service.job import (
     SESSION_FAILED,
     _follow_commands,
+    _test_line,
     follow_command,
     pipeline_of,
     session_refused,
 )
 from pinecall_runtime.session import service as session
+from pinecall_runtime.telephony.schemas import RingAtTestLine
 from pinecall_runtime.wire.base import BatchedEntry, Command, Entry
+from pinecall_runtime.wire.dispatch import Dispatch
+from tests.channels.test_routes import A_PHONE, CALLER, IN_THE_SANDBOX, NUMBER
 
 STAGE = RunningStage(vendor="acme", credentials="k", model="acme-1")
 
@@ -125,3 +131,51 @@ async def test_a_session_the_worker_cannot_build_ends_the_call_at_once_with_the_
     assert gateway.written[1].data["reason"] == "error"
     assert gateway.sealed_as == [("call_1", f"the session could not be built: {refused}")]
     assert ctx.reasons == [SESSION_FAILED]
+
+
+class Handing:
+    """A gateway that answers whose a ring at the test line is, or fails to."""
+
+    def __init__(self, handed: RingAtTestLine | Exception) -> None:
+        self.handed = handed
+        self.asked: list[tuple[str, str]] = []
+
+    async def test_line_rings_for(self, number: str, caller: str) -> RingAtTestLine:
+        self.asked.append((number, caller))
+        if isinstance(self.handed, Exception):
+            raise self.handed
+        return self.handed
+
+
+AT_THE_LINE = Dispatch(org="org_box", env=Env.sandbox)
+
+
+async def test_a_ring_at_the_test_line_goes_on_as_the_callers_orgs_agents_in_the_copy_that_takes_it() -> None:
+    gateway = Handing(RingAtTestLine(org="org_b", agent="front", holder="m_ana"))
+    route, moved = await _test_line(cast(GatewayClient, gateway), AT_THE_LINE, A_PHONE, IN_THE_SANDBOX)
+    assert route == Route(org="org_b", agent="front", channel=Channel.phone, number=NUMBER, env=Env.sandbox)
+    assert (moved.org, moved.agent, moved.holder, moved.env, moved.caller) == (
+        "org_b",
+        "front",
+        "m_ana",
+        Env.sandbox,
+        CALLER,
+    )
+    assert gateway.asked == [(NUMBER, CALLER)]
+
+
+@pytest.mark.parametrize(
+    "handed",
+    [
+        RingAtTestLine(),
+        RingAtTestLine(org="org_b"),
+        RingAtTestLine(org="org_b", agent="front"),
+        GatewayUnavailable("the gateway did not answer"),
+    ],
+    ids=["nobody's phone", "no agent named among several", "nobody holds the agent", "the gateway is down"],
+)
+async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_agent(
+    handed: RingAtTestLine | Exception,
+) -> None:
+    route, moved = await _test_line(cast(GatewayClient, Handing(handed)), AT_THE_LINE, A_PHONE, IN_THE_SANDBOX)
+    assert (route, moved) == (IN_THE_SANDBOX, AT_THE_LINE)

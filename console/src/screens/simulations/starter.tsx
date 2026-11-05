@@ -7,6 +7,7 @@ import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { usd } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
+import { WORLD } from "../../lib/mode";
 import { Icon, Input, Segmented, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
 import { PlayedBy, type Played } from "../personas/played-by";
@@ -53,6 +54,18 @@ const LINES: readonly { value: Line; label: string }[] = [
 // The gateway holds an org to this many simulated calls on the line at once in a world: a run of
 // more starts these and says so, and the rest are started once one ends.
 const AT_ONCE = 10;
+
+// What the form does: several callers, each its own call; or one caller against the agent under
+// several configurations, read as one table. Production has neither: one caller, one call, a check
+// of the agent as it is deployed.
+type Doing = "run" | "compare";
+
+const DOINGS: readonly { value: Doing; label: string }[] = [
+  { value: "run", label: "Run callers" },
+  { value: "compare", label: "Compare models" },
+];
+
+const CHECKING = WORLD === "production";
 
 /** What a call of these has cost and taken so far: the estimate under the button, read off the runs already made. */
 export interface Typical {
@@ -197,17 +210,40 @@ export function Starter({
   const minutes = typical.seconds === null ? null : Math.max(1, Math.round(typical.seconds / 60));
   const placed = comparing ? against.length : total;
   const cost = typical.usd === null ? null : typical.usd * placed;
+  // A check is one call: more than one caller ticked runs nothing.
+  const oneOnly = CHECKING || comparing;
 
   return (
-    <section className="sim-card" aria-label="new simulation">
-      <div className="sim-card-title">New simulation</div>
+    <section className="sim-card" aria-label={CHECKING ? "check call" : "new simulation"}>
+      <div className="sim-card-title">{CHECKING ? "Check call" : "New simulation"}</div>
+      {CHECKING ? (
+        <p className="sim-note">One caller, one call against the agent as it is deployed, on production&apos;s keys and knowledge, judged at hang-up. To compare models or play several callers, use the sandbox.</p>
+      ) : (
+        <div className="sim-tabs">
+          <Segmented options={DOINGS} value={comparing ? "compare" : "run"} onChange={(doing) => setComparing(doing === "compare")} />
+          <span className="sim-note">{comparing ? "One caller, the agent under each configuration, every call placed at once and read as one table." : "Each caller ticked is a call of its own, judged when it ends."}</span>
+        </div>
+      )}
       <div className="sim-who">
         <div className="sim-who-head">
-          <span className="sim-label">Who calls</span>
+          <span className="sim-label">{oneOnly ? "Who calls (one)" : "Who calls"}</span>
           <span className="sim-who-links">
             {hasOff && (
               <button type="button" className="sim-link" onClick={() => setAll(!all)}>
                 {all ? "Only the ones switched on" : "Show the ones switched off"}
+              </button>
+            )}
+            {!CHECKING && (
+              <button
+                type="button"
+                className="sim-link"
+                onClick={() => {
+                  // Closed is the personas' own again, never a choice left behind out of sight.
+                  if (choosing) setPlayed(THE_PERSONAS);
+                  setChoosing(!choosing);
+                }}
+              >
+                {choosing ? "Played as each persona says" : "Played by…"}
               </button>
             )}
             <Link to={rowAt(inView, "personas")}>Edit personas</Link>
@@ -222,7 +258,21 @@ export function Starter({
             {String(unheld)} {unheld === 1 ? "caller is" : "callers are"} written for an agent nobody runs right now, so {unheld === 1 ? "it is" : "they are"} not listed: deploy the agent, or run pinecall start in its directory.
           </p>
         )}
+        {choosing && (
+          <div className="sim-played">
+            <PlayedBy played={played} onChange={setPlayed} unsaid={UNSAID} />
+            <p className="sim-note">For these calls alone; the personas keep their own. The callers run on the runtime's keys unless you brought that vendor's, and each call counts as one simulation.</p>
+          </div>
+        )}
       </div>
+
+      {comparing && (
+        <div className="sim-played">
+          <span className="sim-label">The agent under</span>
+          <AgainstRows rows={against} onChange={setAgainst} />
+          <p className="sim-note">The caller stays the same; the agent changes. The table reads them best first: the judges, then the reply time, then the cost. The agent's saved settings don't change.</p>
+        </div>
+      )}
 
       <div className="sim-options">
         <div className="sim-option">
@@ -254,50 +304,18 @@ export function Starter({
         </div>
       )}
 
-      <div className="sim-played">
-        <button
-          type="button"
-          className="sim-link"
-          onClick={() => {
-            // Closed is the personas' own again, never a choice left behind out of sight.
-            if (choosing) setPlayed(THE_PERSONAS);
-            setChoosing(!choosing);
-          }}
-        >
-          {choosing ? "Play each caller as its persona says" : "Played by: each persona's own model and voice · change for this run"}
-        </button>
-        {choosing && (
-          <>
-            <PlayedBy played={played} onChange={setPlayed} unsaid={UNSAID} />
-            <p className="sim-note">For these calls alone; the personas keep their own. The callers run on the runtime's keys unless you brought that vendor's, and each call counts as one simulation.</p>
-          </>
-        )}
-      </div>
-
-      <div className="sim-played">
-        <button type="button" className="sim-link" onClick={() => setComparing(!comparing)}>
-          {comparing ? "One call per caller, the agent as it is set" : "Compare: the agent under other voices and models, one caller, side by side"}
-        </button>
-        {comparing && (
-          <>
-            <AgainstRows rows={against} onChange={setAgainst} />
-            <p className="sim-note">The caller stays the same; the agent changes. Every call is placed at once and the table reads them best first: the judges, then the reply time, then the cost. In the sandbox only; the agent&apos;s saved settings don&apos;t change.</p>
-          </>
-        )}
-      </div>
-
       {refused !== null && <p className="sim-refused">{refused}</p>}
       <div className="sim-foot">
         <span className="sim-foot-said">
           {total === 0
-            ? comparing
-              ? "Tick one caller to compare."
+            ? oneOnly
+              ? "Tick one caller."
               : "Tick who calls to run."
             : [`${String(placed)} ${placed === 1 ? "call" : "calls"}`, placed > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
         </span>
-        <button type="button" className="sim-run" disabled={calling || total === 0 || (comparing && total !== 1)} onClick={() => void run()}>
+        <button type="button" className="sim-run" disabled={calling || total === 0 || (oneOnly && total !== 1)} onClick={() => void run()}>
           <Icon name="play" size={14} />
-          {calling ? "Starting…" : comparing ? `Compare ${String(against.length)} configurations` : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
+          {calling ? "Starting…" : comparing ? `Compare ${String(against.length)} configurations` : CHECKING ? "Run one call" : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
         </button>
       </div>
     </section>

@@ -67,7 +67,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/agents/{slug}/pipeline/hold-audio/played` | pipeline | The runtime's melody back, or silence; an uploaded clip is forgotten either way, the wait kept. |
 | `PUT` | `/v1/agents/{slug}/pipeline/hold-audio/after` | pipeline | Seconds of the agent's quiet before the melody starts, from the next call on; null is the runtime's. |
 | `GET` | `/v1/agents/{slug}/provider-keys` | app · fleet | The three stages a call of the agent runs, each on the key it runs on, and the org's collector for its traces. |
-| `GET` | `/v1/agents/{slug}/rings-for` | fleet | Where a production ring from this phone goes: a developer's scope and fleet, or nowhere. |
+| `GET` | `/v1/test-line/rings-for` | fleet | Whose sandbox agent a ring at the box's test line is for: the org, the agent and the copy, or nobody's. |
+| `GET` | `/v1/agents/{slug}/rings-for` | fleet | Where a production ring from this phone goes: a member's sandbox copy, or the org's own, and its fleet; or nowhere. |
 | `GET` | `/v1/agents/{slug}/sessions` | calls | The agent's newest calls, one row each. |
 | `GET` | `/v1/agents/{slug}/settings` | pipeline · words | The agent's settings as this key sees them: yours, the team's and production's. |
 | `PUT` | `/v1/agents/{slug}/settings` | pipeline · words | The agent's next version in this scope or the team's, checked as a call would build it. |
@@ -195,8 +196,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/knowledge/{base}/files/{path:path}` | knowledge | Put one file into the base, beginning the base when there is none; only it is cut. |
 | `GET` | `/v1/limits` | — | Each quota of the key's environment as {limit, used}, the lends, and where to buy more. |
 | `DELETE` | `/v1/line/from` | app (a person's key, in the sandbox) | Stop sending this person's phones to their scope, and say which were forgotten. |
-| `PUT` | `/v1/line/from` | app (a person's key, in the sandbox) | Send rings from this phone to the key's person's own scope. |
-| `GET` | `/v1/line/numbers` | app (a person's key, in the sandbox) | The production numbers a developer's phone can dial, and the phones that are theirs. |
+| `PUT` | `/v1/line/from` | app (a person's key, in the sandbox) | This phone is the person's own: a call from it reaches their copy of the agent named, or of the one held. |
+| `GET` | `/v1/line/numbers` | app (a person's key, in the sandbox) | The phone that is the person's, the box's test line, and the production numbers it can dial. |
 | `POST` | `/v1/livekit/webhook` | — | A room event LiveKit signed with the platform's key, `?world=` naming the LiveKit that sent it (production's unless it says `sandbox`): an agent lost mid-call has its caller told once and its call ended as `drained`, a caller alone in a room is offered a worker, a room an agent joined or that ended is let go, and a hand-over's bridge goes with either of its legs. |
 | `POST` | `/v1/login` | — | A key for a person and a device, from a password, or from a one-use code. |
 | `POST` | `/v1/login/codes` | — | A one-use word that gives a browser a key like this one, for five minutes. |
@@ -230,6 +231,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/numbers/{number}/env` | numbers | Move the number into the other environment: its row and the two rules. |
 | `GET` | `/v1/ops/admission` | operator | What a newborn org is given in each environment; nothing limited on a deployment that never said. |
 | `PUT` | `/v1/ops/admission` | operator | What a newborn org is given, replaced whole. |
+| `GET` | `/v1/ops/test-line` | operator | The box's test line: the sandbox number a person calls to reach their own agent, or null. |
+| `PUT` | `/v1/ops/test-line` | operator | Make one of the box's own sandbox numbers the test line, or forget it with a null number. |
 | `GET` | `/v1/ops/alerts` | operator | Every org's alerts kept, or one org's (`?org=`, `?env=`), newest first: what broke for the platform's tenants. |
 | `GET` | `/v1/ops/brand` | operator | What the platform's letters and sign-in page are called and painted with. |
 | `PUT` | `/v1/ops/brand` | operator | The brand changed field by field: one left out stays, an empty one goes to the default. |

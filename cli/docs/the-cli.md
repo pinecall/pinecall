@@ -517,28 +517,37 @@ decision: the first `pinecall start` to hold the agent answers its ring and you 
 With three it used to be whoever restarted last — so you would dial the number to test your change
 and be answered in a colleague's scrollback, with nothing on either screen saying so.
 
-**Say which phone is yours, once.** Then every call you make lands in your own agent: no claim, no
+**Say which phone is yours, once.** Then a call you make lands in your own agent: no claim, no
 coordination, three of you testing at the same time.
 
-**It works on the production number, and that is the usual case.** A call from your phone to a
-number that answers in production reaches your sandbox copy while you are holding that agent — your
-class, your tools, your terminal, a sandbox log marked `diverted_from: production` — and every other
-caller reaches production exactly as before. Stop `pinecall start`, or `pinecall line forget`, and
-your own calls go back to production. That is how a team tests on the line its customers use, with
-one number: a sandbox number is optional, and when an org has one, your phone reaches your copy
-there too. The gateway's worker asks for this on every production ring
-(`GET /v1/agents/{slug}/rings-for`), so nothing here knocks at that endpoint.
+**At Pinecall's test number, with no number of your own.** The box keeps one sandbox number as its
+test line (the console's Phone testing says which; `from` prints it): a call from your phone to it
+reaches **your org's sandbox agent** — the one you name with `--agent`, or the one agent the org
+holds — in your own copy while `pinecall start` holds one, else in the org's own: the copy Pinecall
+runs for a deployed app or a Studio agent. Nothing to buy, no production needed; the call is yours,
+in the sandbox, against its minutes. From a phone nobody said was theirs, the number says so.
+
+**And at your production numbers.** A call from your phone to a number that answers in production
+reaches your sandbox copy of that agent the same way — your class, your tools, your terminal, a
+sandbox log marked `diverted_from: production` — and every other caller reaches production exactly
+as before. Stop `pinecall start`, and your calls land in the org's own sandbox copy if it holds one,
+else in production; `pinecall line forget` sends them back to production outright. That is how a
+team tests on the line its customers use, with one number. The gateway's worker asks for this on
+every production ring (`GET /v1/agents/{slug}/rings-for`), so nothing here knocks at that endpoint.
 
 ```console
 $ pinecall line from +59899111111
-calls from +59899111111 reach this terminal
+calls from +59899111111 reach your copy of the agent you hold · dial +13617334133 to hear it
+
+$ pinecall line from +59899111111 --agent front-desk
+calls from +59899111111 reach your copy of front-desk · dial +13617334133 to hear it
 ```
 
 A phone is a **person's** and not an agent's, so it works in whatever directory you are standing
-in and on every agent you hold; a person has one, and `from` said again replaces it. It is said in the sandbox and kept under the gateway's URL (`calling`
-in `~/.pinecall/session.json`) and re-sent by every `pinecall start` when it starts — the gateway keeps
-it beside its live table and not in a row, because it is only meaningful next to a socket: a
-developer running nothing has no corner for a call to land in. `forget` undoes it. `claim`,
+in; a person has one, and `from` said again replaces it. It is said in the sandbox, kept by the
+gateway as a row of yours (a person with no terminal keeps it across the gateway's restarts) and
+under the gateway's URL on this machine (`calling` in `~/.pinecall/session.json`), re-sent by every
+`pinecall start` when it starts. `forget` undoes it. `claim`,
 `release` and the bare `line` (`line show`) are about one agent: at a project's root with several, name it with
 `--agent`. A number that is not in E.164 form is refused here, with exit 2 and the shape in the
 sentence (`a number is +E.164: +34600000000, not …`), before the gateway is asked; the gateway

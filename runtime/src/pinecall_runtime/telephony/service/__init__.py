@@ -1,9 +1,11 @@
 """The telephony rules, one module per noun; what other domains use is named here once."""
 
 from pinecall_runtime.telephony.schemas import (
+    BoxTestLine,
     Consent,
     LegTrunk,
     LegTrunkResponse,
+    RingAtTestLine,
     RingHandoff,
     SipPeer,
     Traceback,
@@ -81,6 +83,7 @@ from pinecall_runtime.telephony.service.records import (
     records_on_the_box,
 )
 from pinecall_runtime.telephony.service.sip import hand_over_trunk, rebuilt_until_whole, repointed
+from pinecall_runtime.telephony.service.test_line import get_test_line, handed_to, may_be_a_testers, put_test_line
 
 __all__ = [
     "CALLER_NUMBER",
@@ -88,6 +91,7 @@ __all__ = [
     "HAND_OVER_LEG_PREFIX",
     "LEG_PREFIX",
     "NO_LEG",
+    "BoxTestLine",
     "CarrierAccount",
     "Consent",
     "Dial",
@@ -98,6 +102,7 @@ __all__ = [
     "Legs",
     "NumberImport",
     "Reached",
+    "RingAtTestLine",
     "RingHandoff",
     "RouteRecord",
     "SipPeer",
@@ -118,16 +123,19 @@ __all__ = [
     "drop_box_twilio",
     "end_reason_of",
     "every_network",
+    "get_test_line",
     "give_consent",
     "guard_dial",
     "guard_second_leg",
     "guards_of",
     "hand_over_trunk",
     "handed_on",
+    "handed_to",
     "is_a_phone",
     "leg_to",
     "leg_trunk",
     "may_be_a_developers",
+    "may_be_a_testers",
     "meta_token_for",
     "openings",
     "opted_out_on",
@@ -136,6 +144,7 @@ __all__ = [
     "phone_routes_of",
     "put_box_twilio",
     "put_guards",
+    "put_test_line",
     "rebuilt_until_whole",
     "record_of",
     "records_of",

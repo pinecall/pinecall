@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 
 import { useLimits } from "../../lib/limits";
+import { useProductionLimits } from "../../lib/plan";
 import { inTheWorld, WORLD } from "../../lib/mode";
 import { useOrg } from "../../lib/org";
 import { markWelcomed } from "../../lib/preferences";
@@ -18,7 +19,7 @@ import type { Language } from "./agent-code";
 import { TryStep } from "./try-step";
 import "./welcome.css";
 
-const TITLES = ["Welcome", "What an agent is", "Run it on your computer", "Talk to it", "A simulated caller", "A phone number", "Call it from your mobile", "Go live"] as const;
+const TITLES = ["Welcome", "What an agent is", "Run it on your computer", "Talk to it", "A simulated caller", "Call it from your mobile", "A number of your own", "Go live"] as const;
 
 /** The step that gets the agent running: the one a later step sends a person back to. */
 const RUN = 2;
@@ -29,6 +30,7 @@ export function Welcome(): ReactNode {
   const limits = useLimits();
   const { agents } = useOrg();
   const routed = useRouted();
+  const production = useProductionLimits();
   const first = (useWhoami()?.name ?? "").split(" ")[0] ?? "";
   const [step, setStep] = useState(0);
   const [language, setLanguage] = useState<Language>("typescript");
@@ -51,8 +53,8 @@ export function Welcome(): ReactNode {
     <RunStep key="run" language={language} agents={agents} />,
     <TryStep key="try" agents={agents} onBack={() => setStep(RUN)} />,
     <SimulateStep key="simulate" agents={agents} onBack={() => setStep(RUN)} />,
-    <NumberStep key="number" routed={routed} />,
-    <PhoneStep key="phone" routed={routed} running={agents.length > 0} />,
+    <PhoneStep key="phone" agents={agents} routed={routed} />,
+    <NumberStep key="number" routed={routed} buys={production === null ? null : production.numbers.limit !== 0} />,
     <Ready key="ready" world={WORLD} />,
   ][step];
 

@@ -70,3 +70,15 @@ export async function readAdmission(credentials: Credentials): Promise<Admission
 export async function saveAdmission(credentials: Credentials, wanted: Admission): Promise<void> {
   await put(credentials, `${OPS}/admission`, wanted);
 }
+
+// ── the test line ───────────────────────────────────────────────────────────────
+
+/** The box's test line: the sandbox number a person calls to reach their own agent; null with none. */
+export async function readTestLine(credentials: Credentials): Promise<string | null> {
+  return z.looseObject({ number: z.string().nullable() }).parse(await read(credentials, `${OPS}/test-line`)).number;
+}
+
+/** Make one of the box's own sandbox numbers the test line; null forgets it. */
+export async function saveTestLine(credentials: Credentials, number: string | null): Promise<void> {
+  await put(credentials, `${OPS}/test-line`, { number });
+}

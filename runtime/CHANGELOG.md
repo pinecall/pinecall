@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **The box's test line: a person calls their sandbox agent from their own phone with no number of their own.**
+  One sandbox number of the box's (`box test-line set`, `PUT /v1/ops/test-line`) answers a call from the phone a
+  person said was theirs (`PUT /v1/line/from {number, agent?}`) with their org's sandbox agent, in their own
+  copy or the org's own: an app the box hosts, a Studio agent. The worker asks `GET /v1/test-line/rings-for`
+  and goes on in the same room; a phone nobody said was theirs reaches the agent the number is routed to. The
+  phone is the member's row now (`members.test_phone`, `test_agent`, migration 000018), said to every gateway
+  as it starts: a person with no terminal kept nothing across a gateway's restart before.
+- **The newborn orgs a sweep finds quiet are one mail to the operators**, not one each: a launch day is
+  hundreds of orgs, and `org.quiet` mailed hundreds of times is read by nobody. Each is still kept and posted.
+- **A developer's phone at a production number reaches the org's own sandbox copy** when nobody of theirs holds
+  one: a Studio agent's ring went to production and was refused there (2026-11-05). A phone another org's
+  member says is theirs diverts nothing of this org's. The door checks the agent against the org the ring was
+  for, not the fleet key's own: filed under the box's org, the key was answered `404` for every agent.
+
 ## 0.11.28 — a simulation compares voices and models, and Scribe is told when speech ends (2026-11-05)
 
 - **Ears that commit a segment only when told are told by the session's VAD**, at each end of speech it

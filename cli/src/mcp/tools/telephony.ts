@@ -15,11 +15,11 @@ export const line = tool({
     number: z.string().optional().describe("`from`: the person's own phone, in +E.164"),
   },
   manual:
-    "`line show` says whose process a ring at the agent's number lands in. `from <number>` says which phone is the person's own, once: their calls reach the copy they hold (the one `start` holds) while everybody else reaches production. `claim` takes the line for this copy, `release` gives it back, `forget` drops the phone.",
+    "`line show` says whose process a ring at the agent's number lands in. `from <number>` says which phone is the person's own, once: a call from it reaches their sandbox agent (`agent` names which; left out, the one the org holds) at the box's test line, which the answer names, or at a production number, where everybody else reaches production. `claim` takes the line for this copy, `release` gives it back, `forget` drops the phone.",
   handler: async (args, ctx) => {
     if (args.action === "from") {
       if (args.number === undefined) throw new ToolRefused("from takes the person's own phone, in +E.164");
-      return await service.setCallerNumber(ctx, args.number);
+      return await service.setCallerNumber(ctx, args.number, args.agent);
     }
     if (args.action === "forget") return await service.forgetCallerNumber(ctx);
     const choice = { agent: args.agent };

@@ -289,9 +289,10 @@ class RingTarget(WireModel):
 
 
 class DeveloperPhone(WireModel):
-    """The phone a developer calls from."""
+    """The phone a developer calls from, and the agent a call from it reaches (none: the one the org holds)."""
 
     number: str
+    agent: str | None = None
 
 
 class TestNumber(WireModel):
@@ -302,10 +303,13 @@ class TestNumber(WireModel):
 
 
 class TestNumbers(WireModel):
-    """The person's own phones, and the production numbers they can dial to test."""
+    """The person's own phone, the agent it reaches, the box's test line, and the production numbers it can dial."""
 
     calling: list[str]
     numbers: list[TestNumber]
+    agent: str | None = None
+    # The box's own sandbox number a call from the phone reaches that agent at; null on a box with none.
+    test_line: str | None = None
 
 
 class JudgingSettings(WireModel):

@@ -345,3 +345,22 @@
 /* Accounts: connecting one more, over the list. */
 .num-connect-more { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .num-account-pick { display: flex; align-items: center; gap: 8px; }
+
+/* Phone testing: the number to dial, and a row that says what a call from the phone reaches. */
+.num-dial {
+  display: block;
+  font-family: var(--face-fixed);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.num-dial-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13.5px;
+}

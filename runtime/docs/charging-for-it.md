@@ -124,7 +124,7 @@ A quota that refuses writes `credits.exhausted {org, quota, used, limit, calls}`
 moment the layer or the console can offer it. A vendor that fails a call writes `vendor.failed` at the
 seal and mails the org's admins — on the org's own key, pointing at Settings ▸ Providers — and the
 box's operators; a newborn org a day old with no call that went well is pointed at once, to the
-operators alone (`org.quiet`), so somebody reaches out before it leaves.
+operators alone (`org.quiet`, kept per org, the sweep's orgs mailed as one list), so somebody reaches out before it leaves.
 
 ## 5. What is not in the runtime
 

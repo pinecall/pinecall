@@ -19,10 +19,12 @@ app = typer.Typer(help="its keys, its Twilio, what a new org gets, where its ale
 keys_app = typer.Typer(help="the vendor keys the box holds; never shown", no_args_is_help=True)
 account_app = typer.Typer(help="the Twilio account the box buys numbers on for its orgs", no_args_is_help=True)
 admission_app = typer.Typer(help="what a newborn org is given, per env", no_args_is_help=True)
+test_line_app = typer.Typer(help="the sandbox number a person calls to reach their own agent", no_args_is_help=True)
 alerts_app = typer.Typer(help="the operator's URL, where every org's alerts are posted too", no_args_is_help=True)
 app.add_typer(keys_app, name="keys")
 app.add_typer(account_app, name="numbers-account")
 app.add_typer(admission_app, name="admission")
+app.add_typer(test_line_app, name="test-line")
 app.add_typer(alerts_app, name="alerts")
 
 # The account the box buys numbers on is sealed beside the keys and is no vendor of a call.
@@ -251,4 +253,38 @@ async def box_alerts_rm(ctx: typer.Context) -> int:
     async with context.sessions.begin() as session:
         await alerts.delete_operator_webhook(session)
     context.out.line("the operator hears no alert: each org's own webhook goes on")
+    return OK
+
+
+@test_line_app.command("show")
+@verb
+async def test_line_show(ctx: typer.Context) -> int:
+    """The box's test line, or that it has none."""
+    context = context_of(ctx)
+    async with context.sessions() as session:
+        number = await telephony.get_test_line(session)
+    context.out.line(number or "the box has no test line: `box test-line set <number>` makes a sandbox number it")
+    return OK
+
+
+# One of the box's own numbers, routed in the sandbox to the agent that answers a phone nobody said was theirs.
+@test_line_app.command("set")
+@verb
+async def test_line_set(ctx: typer.Context, number: Annotated[str, typer.Argument(metavar="<+E.164>")]) -> int:
+    """Make this sandbox number the test line."""
+    context = context_of(ctx)
+    async with context.sessions.begin() as session:
+        kept = await telephony.put_test_line(session, number)
+    context.out.line(f"a call to {kept} from a phone a person said was theirs reaches their sandbox agent")
+    return OK
+
+
+@test_line_app.command("rm")
+@verb
+async def test_line_rm(ctx: typer.Context) -> int:
+    """Forget the test line; the number keeps ringing its own agent."""
+    context = context_of(ctx)
+    async with context.sessions.begin() as session:
+        await telephony.put_test_line(session, None)
+    context.out.line("the box has no test line now")
     return OK

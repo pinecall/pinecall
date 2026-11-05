@@ -173,9 +173,10 @@ export function register(program: Command, ctx: Context): void {
     .action(async (file, flags) => ctx.io.result(await service.showLine(ctx, { file, agent: flags.agent }), render.line));
   line
     .command("from")
-    .description("which phone is yours: its calls reach your own agent")
+    .description("which phone is yours: its calls reach your own agent, at the test line or at a production number")
     .argument("<number>", "+E.164")
-    .action(async (number) => ctx.io.result(await service.setCallerNumber(ctx, number), render.calling));
+    .option("--agent <name>", "the agent a call from it reaches; left out, the one the org holds")
+    .action(async (number, flags) => ctx.io.result(await service.setCallerNumber(ctx, number, flags.agent), render.calling));
   line
     .command("forget")
     .description("your phone no longer routed to you")

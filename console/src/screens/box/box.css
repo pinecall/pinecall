@@ -386,3 +386,18 @@
 }
 
 .box-key-row { display: inline-flex; align-items: center; gap: 14px; }
+
+/* The test line card on Routes: the sentence, then the number or the field to type one. */
+.box-line-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.box-line-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}

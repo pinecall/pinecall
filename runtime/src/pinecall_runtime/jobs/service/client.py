@@ -114,6 +114,11 @@ class GatewayClient:
         text = await self._read("GET", f"/v1/agents/{slug}/rings-for", params={"org": org, "caller": caller})
         return telephony.RingHandoff.model_validate(text)
 
+    async def test_line_rings_for(self, number: str, caller: str) -> telephony.RingAtTestLine:
+        """Whose sandbox agent a ring at the box's test line is for, if the number is it and the phone is known."""
+        text = await self._read("GET", "/v1/test-line/rings-for", params={"number": number, "caller": caller})
+        return telephony.RingAtTestLine.model_validate(text)
+
     # The gateway judges the leg (shape and pace) and names the trunk; a refusal is its sentence.
     async def leg(self, slug: str, scope: Scope, *, to: str, call: str, shown: str | None) -> telephony.LegTrunk:
         """How to dial a leg of the call: the trunk inline and the number shown."""

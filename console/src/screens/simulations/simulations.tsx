@@ -7,7 +7,9 @@ import { useListen } from "@pinecall/core/use-listen";
 import { useRoomOpen } from "@pinecall/core/use-room-open";
 import { useSupervise } from "@pinecall/core/use-supervise";
 import { rowAt } from "../../lib/harness";
+import { WORLD } from "../../lib/mode";
 import { useOrg } from "../../lib/org";
+import { PlanWall, productionClosed, useProductionLimits } from "../../lib/plan";
 import { useScopes } from "../../lib/whoami";
 import { Button, Page, PageHead } from "../../ui";
 import { ComparisonTable } from "./comparison";
@@ -50,6 +52,7 @@ export function Simulations(): ReactNode {
   const [round, setRound] = useState(0);
 
   const read = useRuns(inView, round);
+  const production = useProductionLimits();
 
   // One call started is the one to watch; several stay here, in Runs, as they come; a comparison
   // is its table, read as its calls end.
@@ -85,11 +88,19 @@ export function Simulations(): ReactNode {
     seconds: done.length === 0 ? null : done.reduce((sum, run) => sum + ((run.ended_at ?? run.started_at) - run.started_at), 0) / done.length,
     usd: done.length === 0 ? null : done.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) / done.length,
   };
+  const checking = WORLD === "production";
   return (
     <Page width={1060}>
-      <PageHead title="Simulations" lede="Pretend callers ring your agent before real ones do. Judges check every call." />
+      <PageHead
+        title={checking ? "Check call" : "Simulations"}
+        lede={checking ? "One pretend caller against the agent as it is deployed: the check after a deploy. Simulations proper live in the sandbox." : "Pretend callers ring your agent before real ones do. Judges check every call."}
+      />
       {comparison !== null && <ComparisonTable inView={inView} comparison={comparison} />}
-      <Starter inView={inView} agents={agents.map((one) => one.slug)} agent={agent} onAgent={setPicked} personas={personas} asking={asking} asked={preferred} typical={typical} onStarted={started} />
+      {checking && productionClosed(production) && production !== null ? (
+        <PlanWall limits={production} doing="A check call" />
+      ) : (
+        <Starter inView={inView} agents={agents.map((one) => one.slug)} agent={agent} onAgent={setPicked} personas={personas} asking={asking} asked={preferred} typical={typical} onStarted={started} />
+      )}
       <RunsTable inView={inView} read={read} />
     </Page>
   );

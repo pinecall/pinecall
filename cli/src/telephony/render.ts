@@ -144,8 +144,10 @@ export function released(said: TheLine): string[] {
   return formatNotice(`let go, and nobody else is running ${said.agent}, so a call from a number nobody said was theirs rings nowhere: \`pinecall line claim\` takes it`);
 }
 
-export function calling({ calling: numbers }: { calling: string[] }): string {
-  return `calls from ${numbers.join(", ")} reach this terminal`;
+export function calling({ calling: numbers, agent, test_line: line }: { calling: string[]; agent?: string | null; test_line?: string | null }): string {
+  const reach = agent ? `your copy of ${agent}` : "your copy of the agent you hold";
+  const dial = line ? ` · dial ${line} to hear it` : "";
+  return `calls from ${numbers.join(", ")} reach ${reach}${dial}`;
 }
 
 export function callerForgotten({ forgot }: { forgot: string[] }): string {

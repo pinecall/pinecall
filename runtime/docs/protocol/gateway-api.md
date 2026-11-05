@@ -240,8 +240,10 @@ call: listening is hidden and silent; supervising publishes a microphone and sen
 `POST /v1/calls/{call}/verbs` takes one verb, `say`, `whisper`, `takeover`, `release`, `transfer`
 or `end`, with the `supervise` seat or a key that opens `supervise` and `calls` (or `fleet`) as the bearer, and answers `202`; each lands in the log as
 its own `supervisor.*` entry. A call with no room is steered the same way, less `transfer`.
-Where a ring lands, a developer's own phone and the agent's line: `PUT`·`DELETE /v1/line/from`,
-`GET /v1/line/numbers`, `GET`·`POST`·`DELETE /v1/agents/{slug}/line`.
+Where a ring lands, a developer's own phone and the agent's line: `PUT`·`DELETE /v1/line/from`
+(`{number, agent?}`: a call from the phone reaches the person's copy of that agent, or of the one the org holds,
+at the box's test line or at a production number), `GET /v1/line/numbers` (`{calling, agent, test_line, numbers}`),
+`GET`·`POST`·`DELETE /v1/agents/{slug}/line`.
 
 ## 5. What an agent runs on, knows and remembers
 

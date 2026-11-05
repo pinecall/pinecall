@@ -4,14 +4,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 
-from pinecall_runtime.accounts.service import orgs
+from pinecall_runtime.accounts.service import members, orgs
 from pinecall_runtime.agents import schemas
-from pinecall_runtime.agents.auth import AppKey, CallsKey, FleetKey, KnownAgent, TheOperator, sees_every_scope
+from pinecall_runtime.agents.auth import (
+    AppKey,
+    CallsKey,
+    FleetKey,
+    KnownAgent,
+    TheOperator,
+    known_agent,
+    sees_every_scope,
+)
 from pinecall_runtime.agents.service.registry import AgentRegistry, named_holder
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.channels import service as channels
 from pinecall_runtime.enums import Channel, Env
-from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound
+from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ValidationError
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.handles import handles_of
@@ -124,42 +132,44 @@ async def drop_line(slug: KnownAgent, actor: AppKey, request: Request, session: 
     return await _line(_registry(request), session, actor.scope, slug)
 
 
+# The phone is the row's, so a gateway starting again still knows it, and the registry's, so every
+# gateway knows it now; the two are written together.
 @router.put("/v1/line/from")
-async def put_developer_phone(body: schemas.DeveloperPhone, actor: AppKey, request: Request) -> dict[str, list[str]]:
-    """Send rings from this phone to the key's person's own scope."""
+async def put_developer_phone(
+    body: schemas.DeveloperPhone, actor: AppKey, request: Request, session: Session
+) -> schemas.TestNumbers:
+    """This phone is the person's own: a call from it reaches their copy of the agent named, or of the one held."""
     holder = _person_of(actor)
-    _registry(request).calls_from(actor.env, parse_e164(body.number), holder)
-    return {"calling": _registry(request).phones_of(actor.env, holder)}
+    number = parse_e164(body.number)
+    agent = None if body.agent is None else await known_agent(body.agent, request)
+    await members.set_test_phone(session, actor.org, holder, number, agent)
+    _registry(request).calls_from(actor.env, number, holder)
+    return await _test_numbers(session, actor, holder)
 
 
 @router.delete("/v1/line/from")
-async def drop_developer_phones(actor: AppKey, request: Request) -> dict[str, list[str]]:
+async def drop_developer_phones(actor: AppKey, request: Request, session: Session) -> dict[str, list[str]]:
     """Stop sending this person's phones to their scope, and say which were forgotten."""
-    return {"forgot": _registry(request).forget_calls_from(actor.env, _person_of(actor))}
+    holder = _person_of(actor)
+    forgotten = await members.forget_test_phone(session, actor.org, holder)
+    said = _registry(request).forget_calls_from(actor.env, holder)
+    return {"forgot": sorted({*said, *([forgotten] if forgotten else [])})}
 
 
 # A developer lacks the numbers scope in production: this shows production's numbers and agents.
 @router.get("/v1/line/numbers")
-async def list_test_numbers(actor: AppKey, request: Request, session: Session) -> schemas.TestNumbers:
-    """The production numbers a developer's phone can dial, and the phones that are theirs."""
-    holder = _person_of(actor)
-    routes = await channels.routes_of_org(session, actor.org, Env.production)
-    return schemas.TestNumbers(
-        calling=_registry(request).phones_of(actor.env, holder),
-        numbers=[
-            schemas.TestNumber(number=route.number, agent=route.agent)
-            for route in routes
-            if route.channel == Channel.phone
-        ],
-    )
+async def list_test_numbers(actor: AppKey, session: Session) -> schemas.TestNumbers:
+    """The phone that is the person's, the box's test line, and the production numbers it can dial."""
+    return await _test_numbers(session, actor, _person_of(actor))
 
 
 # A developer's own phone dialling the production number reaches their sandbox copy, while they
-# hold it; every other caller reaches production. Where the sandbox has a LiveKit of its own, the
-# ring is dialled there over SIP, through the trunk the answer carries.
+# hold it, or the org's own copy when nobody of theirs does (an app the box hosts, a Studio agent);
+# every other caller reaches production. Where the sandbox has a LiveKit of its own, the ring is
+# dialled there over SIP, through the trunk the answer carries.
 @router.get("/v1/agents/{slug}/rings-for")
 async def rings_for(
-    slug: KnownAgent,
+    slug: str,
     _actor: FleetKey,
     request: Request,
     session: Session,
@@ -167,17 +177,49 @@ async def rings_for(
     caller: Annotated[str, Query()],
 ) -> telephony.RingHandoff:
     """Where a production ring from this phone goes: a developer's scope and fleet, or nowhere."""
+    # The agent is the org's the ring was for, never the fleet's key's own org.
     registry = _registry(request)
-    taking = registry.taking_a_ring(Scope(org, Env.sandbox), slug, caller)
-    if taking is None or not taking.scope.holder:
+    if not await registry.is_known(org, slug):
         return telephony.RingHandoff()
-    if caller not in registry.phones_of(Env.sandbox, taking.scope.holder):
+    taking = registry.taking_a_ring(Scope(org, Env.sandbox), slug, caller)
+    if taking is None or not await _a_members_phone(session, org, caller):
         return telephony.RingHandoff()
     return telephony.RingHandoff(
         holder=taking.scope.holder,
         fleet=await fleet.fleet_of_env(session, Env.sandbox),
         trunk=telephony.hand_over_trunk(handles_of(request), caller),
     )
+
+
+# A ring at the box's test line is already in the sandbox: the worker that took it runs the call
+# as the caller's org's, in whichever copy takes a ring from that phone.
+@router.get("/v1/test-line/rings-for")
+async def test_line_rings_for(
+    _actor: FleetKey,
+    request: Request,
+    session: Session,
+    number: Annotated[str, Query()],
+    caller: Annotated[str, Query()],
+) -> telephony.RingAtTestLine:
+    """Whose sandbox agent a ring at the box's test line is for: the org, the agent and the copy, or nobody's."""
+    if parse_e164(number) != await telephony.get_test_line(session):
+        return telephony.RingAtTestLine()
+    try:
+        phone = parse_e164(caller)
+    except ValidationError:
+        # A withheld number is nobody's.
+        return telephony.RingAtTestLine()
+    member = await members.whose_test_phone(session, phone)
+    if member is None:
+        return telephony.RingAtTestLine()
+    registry = _registry(request)
+    scope = Scope(member.org, Env.sandbox)
+    agent = member.test_agent or _the_one_held(registry, scope)
+    if agent is None:
+        return telephony.RingAtTestLine(org=member.org)
+    taking = registry.taking_a_ring(scope, agent, caller)
+    holder = None if taking is None else taking.scope.holder
+    return telephony.RingAtTestLine(org=member.org, agent=agent, holder=holder)
 
 
 # ── private ──
@@ -200,6 +242,34 @@ def _person_of(actor: Actor) -> str:
     if actor.person is None:
         raise Forbidden(NOBODY_TO_ROUTE_TO)
     return actor.person.id
+
+
+async def _test_numbers(session: Session, actor: Actor, holder: str) -> schemas.TestNumbers:
+    member = await members.get_member(session, actor.org, holder)
+    routes = await channels.routes_of_org(session, actor.org, Env.production)
+    return schemas.TestNumbers(
+        calling=[member.test_phone] if member.test_phone else [],
+        agent=member.test_agent,
+        test_line=await telephony.get_test_line(session),
+        numbers=[
+            schemas.TestNumber(number=route.number, agent=route.agent)
+            for route in routes
+            if route.channel == Channel.phone
+        ],
+    )
+
+
+# The phone a ring comes from is a member's of this org: another org's member saying a phone is
+# theirs diverts nothing of this org's.
+async def _a_members_phone(session: Session, org: str, caller: str) -> bool:
+    member = await members.whose_test_phone(session, caller)
+    return member is not None and member.org == org
+
+
+# The agent a phone reaches when its person named none: the one the org holds, if it holds one.
+def _the_one_held(registry: AgentRegistry, scope: Scope) -> str | None:
+    slugs = {held.slug for held in registry.holding(scope, every_scope=True) if held.takes_unclaimed}
+    return next(iter(slugs)) if len(slugs) == 1 else None
 
 
 async def _line(registry: AgentRegistry, session: Session, scope: Scope, slug: str) -> schemas.RingTarget:

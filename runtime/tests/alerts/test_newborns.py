@@ -6,6 +6,7 @@ from datetime import timedelta
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from pinecall_runtime.accounts.service import members
 from pinecall_runtime.alerts.service.delivery import raise_alert
 from pinecall_runtime.alerts.service.kept import alerts_of
 from pinecall_runtime.alerts.service.newborns import watch_newborns
@@ -20,7 +21,7 @@ from pinecall_runtime.kit.time import now
 from pinecall_runtime.redis import LocalSignal
 from pinecall_runtime.wire.events import VendorFailed
 from tests.alerts.test_delivery import Alerting, Posted, WrittenLogs
-from tests.conftest import Tenant, needs_the_database
+from tests.conftest import Tenant, make_tenant, needs_the_database
 from tests.fakes.livekit import per_world
 from tests.fakes.webhooks import Receiver
 
@@ -101,3 +102,26 @@ async def test_a_newborn_with_a_call_that_went_well_is_left_alone(
     async with sessions() as session:
         kept = await alerts_of(session, Scope(tenant.org, Env.sandbox))
     assert [row.kind for row in kept] == []
+
+
+# A launch day is hundreds of newborn orgs: mailed one by one, the operators read none of them.
+@needs_the_database
+async def test_the_quiet_newborns_of_one_sweep_are_one_mail_to_the_operators(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    other = await make_tenant(sessions)
+    logs, outbox = WrittenLogs(), Posted()
+    servers = per_world()
+    async with sessions.begin() as session:
+        await members.set_operator(session, tenant.org, tenant.member, on=True)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(Receiver().answer)) as http:
+        alerting = Alerting(Handles(load_settings(), VAULT, http, servers, LocalSignal(), sessions), logs, outbox)
+        pointed = await watch_newborns(sessions, alerting, FactsRepository, at=now() + timedelta(days=2))
+    for server in servers.values():
+        await server.aclose()
+    assert {tenant.org, other.org} <= set(pointed)
+    digests = [email for _, email in outbox.sent if "quiet" in email.subject]
+    assert [email.to for email in digests] == [f"admin@{tenant.slug}.test"], "one mail, to the operator alone"
+    assert tenant.org in digests[0].text and other.org in digests[0].text
+    async with sessions.begin() as session:
+        await members.set_operator(session, tenant.org, tenant.member, on=False)

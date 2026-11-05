@@ -12,6 +12,7 @@ from pinecall_runtime.accounts.models import Org
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.alerts.repository import AlertRepository
 from pinecall_runtime.alerts.service.delivery import Alerting, org_quiet
+from pinecall_runtime.alerts.service.telling import mail_quiet_digest
 from pinecall_runtime.enums import Env
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.loops import survived
@@ -44,31 +45,37 @@ async def watch_newborns(
     *,
     at: datetime | None = None,
 ) -> list[str]:
-    """Point at every newborn org a day old with no call that went well, once each; the orgs pointed at."""
+    """Point at every newborn org a day old with no call that went well, once each, in one mail; the orgs pointed at."""
     at = at or now()
     async with sessions() as session:
         newborns = await orgs.list_newborns(session, at - NEWBORN_FOR, at - QUIET_AFTER)
-    pointed: list[str] = []
+    quiets: list[OrgQuiet] = []
     # One transaction per org: the sweep never holds a connection across the orgs, nor across the
     # webhooks an alert waits on.
     for org in newborns:
         async with sessions.begin() as session:
-            if await _point_at(session, alerting, ledger_of(session), org):
-                pointed.append(org.id)
-    return pointed
+            quiet = await _point_at(session, alerting, ledger_of(session), org)
+            if quiet is not None:
+                quiets.append(quiet)
+    if quiets:
+        async with sessions() as session:
+            await mail_quiet_digest(
+                session, alerting.outbox, alerting.handles.settings.address, [q.dump() for q in quiets]
+            )
+    return [quiet.org for quiet in quiets]
 
 
-async def _point_at(session: AsyncSession, alerting: Alerting, ledger: CallLedger, org: Org) -> bool:
+async def _point_at(session: AsyncSession, alerting: Alerting, ledger: CallLedger, org: Org) -> OrgQuiet | None:
     with box_wide():
         alerts = AlertRepository(session)
         if await alerts.kept_since(org.id, Env.sandbox, KIND, org.id, org.created_at):
-            return False
+            return None
         if not await alerts.claim_subject(KIND, org.id):
-            return False
+            return None
         ended = await ledger.ended_of_org(org.id)
         failed = await alerts.calls_failed_of(org.id)
     if set(ended) - failed:
-        return False
+        return None
     quiet = OrgQuiet(
         org=org.id,
         name=org.name,
@@ -77,7 +84,7 @@ async def _point_at(session: AsyncSession, alerting: Alerting, ledger: CallLedge
         failed=len([call for call in ended if call in failed]),
     )
     await org_quiet(session, alerting, Scope(org.id, Env.sandbox), quiet)
-    return True
+    return quiet
 
 
 async def watch_newborns_forever(alerting: Alerting, ledger_of: Callable[[AsyncSession], CallLedger]) -> None:

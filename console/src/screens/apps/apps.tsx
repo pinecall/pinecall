@@ -5,6 +5,7 @@ import { Link } from "react-router";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
+import { PlanWall, productionClosed, useProductionLimits } from "../../lib/plan";
 import { useWorld } from "../../lib/world";
 import { Card, Empty, Page, PageHead, Pill, Refused, TableHead, Tag, TextAction } from "../../ui";
 import { readHosted, readServed, removeApp, startApp, stopApp, type Hosted } from "./door";
@@ -27,6 +28,7 @@ type Opened = { name: string; what: "logs" | "releases" } | null;
 export function Apps(): ReactNode {
   const credentials = useCredentials();
   const { world } = useWorld();
+  const production = useProductionLimits();
   const [apps, setApps] = useState<Hosted[] | null>(null);
   const [served, setServed] = useState<Map<string, number>>(new Map());
   const [opened, setOpened] = useState<Opened>(null);
@@ -93,6 +95,8 @@ export function Apps(): ReactNode {
       />
 
       <Refused>{refused}</Refused>
+
+      {world === "production" && production !== null && productionClosed(production) && <PlanWall limits={production} doing="Hosting an app for your customers" />}
 
       <Card>
         {apps !== null && apps.length === 0 ? (

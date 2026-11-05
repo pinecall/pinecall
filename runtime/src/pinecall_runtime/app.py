@@ -17,7 +17,7 @@ from starlette.types import Scope
 
 from pinecall_runtime import api
 from pinecall_runtime.accounts.auth import resolve_actor
-from pinecall_runtime.accounts.service import attempts, keys, mail, signin, tokens
+from pinecall_runtime.accounts.service import attempts, keys, mail, members, signin, tokens
 from pinecall_runtime.agents.service.prompts import PromptCache
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.alerts import service as alerts
@@ -26,6 +26,7 @@ from pinecall_runtime.calls.repository.facts import FactsRepository
 from pinecall_runtime.calls.tasks import reap_forever
 from pinecall_runtime.calls.writer import LANES
 from pinecall_runtime.config import Settings, load_settings
+from pinecall_runtime.enums import Env
 from pinecall_runtime.evals import service as evals
 from pinecall_runtime.exceptions import (
     ConfigurationError,
@@ -115,6 +116,11 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     await _started(stack, live)
     registry = AgentRegistry(signal, logs)
     await _started(stack, registry)
+    # The phones people said were theirs are rows: a gateway starting says them again to the others.
+    async with sessions() as session:
+        for member in await members.test_phones(session):
+            if member.test_phone is not None:
+                registry.calls_from(Env.sandbox, member.test_phone, member.id)
     roster = fleet.Roster(signal, on_change=lambda event: logs.announce_to_the_box("worker.changed", event))
     await _started(stack, roster)
     offering = fleet.Offering(sessions, servers, roster)

@@ -204,6 +204,24 @@ class RingHandoff(WireModel):
     trunk: LegTrunk | None = None
 
 
+class BoxTestLine(WireModel):
+    """GET · PUT /v1/ops/test-line: the box's sandbox number a person calls to reach their own agent, or null."""
+
+    number: str | None = None
+
+
+class RingAtTestLine(WireModel):
+    """GET /v1/test-line/rings-for: whose sandbox agent a ring at the test line is for; nulls for nobody's.
+
+    The org alone: the phone is a member's, but they named no agent and the org holds several.
+    The org and the agent, no holder: nobody holds that agent in the sandbox right now.
+    """
+
+    org: str | None = None
+    agent: str | None = None
+    holder: str | None = None
+
+
 class ColdTransferQuery(Schema):
     """A worker asking whether the caller may be sent on: to whom, from which call."""
 

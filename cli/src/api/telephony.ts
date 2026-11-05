@@ -174,9 +174,16 @@ export function releaseLine(gw: GatewayClient, slug: string): Promise<TheLine> {
   return gw.delete<TheLine>(linePath(slug));
 }
 
-/** Per person, not per agent: one phone covers every agent they run. */
-export function setCallerNumber(gw: GatewayClient, number: string): Promise<{ calling: string[] }> {
-  return gw.put<{ calling: string[] }>("/v1/line/from", { number });
+/** What the gateway says of the person's phone: the phone, the agent it reaches, the box's test line to dial. */
+export interface CallerNumber {
+  calling: string[];
+  agent?: string | null;
+  test_line?: string | null;
+}
+
+/** Per person, not per agent: one phone, reaching the agent named or the one the org holds. */
+export function setCallerNumber(gw: GatewayClient, number: string, agent?: string): Promise<CallerNumber> {
+  return gw.put<CallerNumber>("/v1/line/from", agent === undefined ? { number } : { number, agent });
 }
 
 export function deleteCallerNumber(gw: GatewayClient): Promise<{ forgot: string[] }> {

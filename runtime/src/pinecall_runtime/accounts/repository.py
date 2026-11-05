@@ -79,6 +79,20 @@ class MemberRepository(Repository[Member]):
         """Every membership of the address, oldest first. Read box-wide by the caller."""
         return await self.all(self.statement().where(Member.email == email).order_by(Member.created_at, Member.id))
 
+    async def get_by_test_phone(self, phone: str) -> Member | None:
+        """Whose phone this is, in whatever org. Read box-wide by the caller."""
+        return await self.one_or_none(self.statement().where(Member.test_phone == phone))
+
+    async def with_test_phones(self) -> Sequence[Member]:
+        """Everyone who said which phone is theirs, in every org. Read box-wide by the caller."""
+        return await self.all(self.statement().where(Member.test_phone.is_not(None)).order_by(Member.id))
+
+    async def take_test_phone(self, phone: str) -> None:
+        """A phone is one person's: whoever had it before has it no more. Run box-wide by the caller."""
+        await self.session.execute(
+            update(Member).where(Member.test_phone == phone).values(test_phone=None, test_agent=None)
+        )
+
     async def count_seated(self, org: str) -> int:
         """Every member not disabled holds a seat."""
         return await self.count(self.statement().where(Member.org == org, Member.status != MemberStatus.disabled))

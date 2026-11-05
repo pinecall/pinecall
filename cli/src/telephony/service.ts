@@ -159,10 +159,10 @@ export async function releaseLine(ctx: Context, choice: { agent?: string | undef
 }
 
 /** The person's own phone, said to the gateway and kept on this machine, so every `start` says it again. */
-export async function setCallerNumber(ctx: Context, number: string): Promise<{ calling: string[] }> {
+export async function setCallerNumber(ctx: Context, number: string, agent?: string): Promise<api.CallerNumber> {
   if (!E164.test(number)) throw new UsageError(`a number is +E.164: +34600000000, not ${number}`);
   const gw = ctx.gateway();
-  const said = await api.setCallerNumber(gw, number);
+  const said = await api.setCallerNumber(gw, number, agent);
   accounts.writeCallerNumber(accounts.homeOf(ctx.processEnv), gw.url, number);
   return said;
 }

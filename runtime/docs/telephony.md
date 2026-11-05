@@ -87,9 +87,10 @@ named none would dispatch every trunk's calls.
 
 ## A developer's own phone: the hand-over
 
-A developer who holds a sandbox copy of an agent and registered their own phone
-(`PUT /v1/line/from`) reaches that copy when the phone calls one of the org's production numbers;
-every other caller reaches production's agent. The call arrives as any other, on production's
+A developer who registered their own phone (`PUT /v1/line/from`) reaches their sandbox copy of an
+agent when the phone calls one of the org's production numbers, or the org's own sandbox copy (an
+app the box hosts, a Studio agent) when they hold none; every other caller reaches production's
+agent. The call arrives as any other, on production's
 LiveKit, and production's worker asks the gateway whose ring it is
 (`GET /v1/agents/{slug}/rings-for`).
 
@@ -121,6 +122,32 @@ up the caller.
 The cloud's firewall in front of the sandbox's SIP node must admit 5060 from production's media
 address too (Terraform's `sip_sources`, beside the carriers' networks); its RTP range is open to
 every address already.
+
+## The box's test line
+
+A person with no production number, or none of their own, still calls their agent from a phone:
+the box keeps **one sandbox number of its own as the test line** (`pinecall-runtime box test-line
+set +1…`, `PUT /v1/ops/test-line`; the console's Box settings ▸ Numbers). The person says which
+phone is theirs (`PUT /v1/line/from {number, agent?}`, the console's Phone testing, `pinecall line
+from`), and a call from that phone to the test line is answered by **their org's sandbox agent**:
+the one they named, or the one agent the org holds. It is answered in their own copy when they hold
+one (`pinecall start`), else in the org's own, which is where an app the box hosts and a Studio
+agent are held. The call is the caller's org's, logged in its sandbox at the test line's number,
+counted against its sandbox minutes.
+
+The number is routed like any other of the box's, in the sandbox, to an agent of the operator's own
+org: that agent answers a phone nobody said was theirs, and a phone whose person named no agent
+while the org holds several, or whose agent nobody holds right now, and tells the caller so. The
+ring arrives on the sandbox's LiveKit as the operator's org's; the worker asks the gateway whose it
+is (`GET /v1/test-line/rings-for?number=&caller=`, the fleet's key) and goes on in the same room as
+the caller's org's agent. Nothing is handed over, and production is never involved.
+
+A phone is one person's on the whole box: said again by another member, of this org or another, it
+is theirs from then on, so no org diverts another's calls. The phone is a row of the member's
+(`members.test_phone`, `test_agent`) and is said to every gateway as it starts: a person with no
+terminal keeps it across the gateways' restarts. The same phone at one of the org's **production**
+numbers is the hand-over above, which also lands in the org's own sandbox copy when nobody of theirs
+holds one.
 
 ## The carrier catalog: what the operator admits
 

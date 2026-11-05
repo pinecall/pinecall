@@ -268,6 +268,7 @@ box admission show
 box admission set --env production|sandbox [--later] [--minutes n] [--messages n] [--evals n] [--simulations n] …
                   [--budget-usd n] [--lends <vendor[/model],…|all|none>]
 box alerts list [--org <id>] [--limit n] · box alerts show · box alerts set <url> [--secret] · box alerts rm
+box test-line show · box test-line set <+E.164> · box test-line rm
 ```
 
 What the box itself holds. `keys` are its own vendor keys, the ones an org without its own runs on
@@ -282,10 +283,13 @@ environment's limits and lends for a person's first org (`--later`: any later on
 as it stands; `--lends` left out lends every key. `alerts` is where the operator hears every org's
 alerts: each one — a monitor fired, unusual spend, a quota run out, a hosted app that went down — is
 kept 90 days (`list`, every org's newest first, or one's with `--org`), mailed to the org's admins and
-the box's operators (once an hour per monitor, app or quota), and posted to the URL `set` names as
+the box's operators (once an hour per monitor, app or quota; the newborn orgs an hourly sweep finds quiet, as one mail), and posted to the URL `set` names as
 well as to the org's own, the same JSON body (`org` and `env` name whose it is, `x-pinecall-event`
 the kind, signed with the secret when one is given; `--secret` reads it from stdin). A webhook is
-never needed: an org that named no URL of its own is still kept, mailed and seen by the operator. The doors are [protocol/operator-api.md](protocol/operator-api.md).
+never needed: an org that named no URL of its own is still kept, mailed and seen by the operator. `test-line` is
+the one sandbox number of the box's own that a person calls, from the phone they said was theirs, to reach their
+own sandbox agent ([telephony.md](telephony.md), "The box's test line"): `set` wants a number the box routes in the
+sandbox, and `rm` leaves the number ringing its own agent. The doors are [protocol/operator-api.md](protocol/operator-api.md).
 
 ```
 $ printf '%s\n' "$CARTESIA_API_KEY" | pinecall-runtime box keys set cartesia
@@ -293,6 +297,7 @@ $ pinecall-runtime box admission set --env sandbox --minutes 30 --evals 100 --si
 $ pinecall-runtime box admission set --env production --minutes 0 --lends none
 $ printf '%s\n' "$TWILIO_SECRET" | pinecall-runtime box numbers-account set --account-sid AC… --user SK… --label Pinecall
 $ printf '%s\n' "$ALERTS_SECRET" | pinecall-runtime box alerts set https://hooks.example.com/pinecall-ops --secret
+$ pinecall-runtime box test-line set +13617334133
 ```
 
 ## `keys`

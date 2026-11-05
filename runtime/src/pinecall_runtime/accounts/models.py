@@ -70,6 +70,8 @@ class Member(Model):
         UniqueConstraint("org", "email"),
         # The operators, few among the members, found without a scan.
         Index("members_operators", "id", postgresql_where="operator"),
+        # A phone is one person's on the whole box: a ring from it is looked up here.
+        Index("members_by_test_phone", "test_phone", unique=True, postgresql_where="test_phone IS NOT NULL"),
     )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
@@ -87,6 +89,11 @@ class Member(Model):
     # Granted by an admin, checked per request.
     production: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    # The phone this person tests from, E.164: a call from it to the box's test line, or to one of
+    # the org's production numbers, reaches their sandbox copy. The agent it reaches, or null for
+    # the one agent the org holds.
+    test_phone: Mapped[str | None] = mapped_column(Text)
+    test_agent: Mapped[str | None] = mapped_column(Text)
 
     @property
     def opens_production(self) -> bool:

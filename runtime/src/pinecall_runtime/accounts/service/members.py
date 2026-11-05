@@ -285,6 +285,44 @@ async def remove_member(session: AsyncSession, org: str, member_id: str) -> None
     await members.delete(member)
 
 
+# ── the phone a person tests from ──
+
+
+async def set_test_phone(session: AsyncSession, org: str, member_id: str, phone: str, agent: str | None) -> Member:
+    """This phone is the member's own from now on, and nobody else's; a call from it reaches the agent named."""
+    members = MemberRepository(session)
+    member = await members.get(org, member_id)
+    if member is None:
+        raise NoSuchMember()
+    with box_wide():
+        await members.take_test_phone(phone)
+    await members.update(member, test_phone=phone, test_agent=agent)
+    return member
+
+
+async def forget_test_phone(session: AsyncSession, org: str, member_id: str) -> str | None:
+    """The member's phone is nobody's again; the phone forgotten, or None when there was none."""
+    members = MemberRepository(session)
+    member = await members.get(org, member_id)
+    if member is None:
+        raise NoSuchMember()
+    forgotten = member.test_phone
+    await members.update(member, test_phone=None, test_agent=None)
+    return forgotten
+
+
+async def whose_test_phone(session: AsyncSession, phone: str) -> Member | None:
+    """The one member on the box whose phone this is, or None."""
+    with box_wide():
+        return await MemberRepository(session).get_by_test_phone(phone)
+
+
+async def test_phones(session: AsyncSession) -> Sequence[Member]:
+    """Everyone on the box who said which phone is theirs: what a gateway starting remembers."""
+    with box_wide():
+        return await MemberRepository(session).with_test_phones()
+
+
 async def admins_of(session: AsyncSession, org: str) -> list[str]:
     """The addresses of the org's admins who may sign in: who an alert of the org is mailed to."""
     return sorted({member.email for member in await MemberRepository(session).active_admins(org)})

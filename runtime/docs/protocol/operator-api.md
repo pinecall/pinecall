@@ -68,6 +68,10 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
 - `GET` · `PUT /v1/ops/admission`: what a newborn org is given in each environment, `{first: {env:
   quotas}, later: {env: quotas} | null}`: `first` for a person's first org, `later`, when set, for
   any other (one trial per person). Read when an org is made; a deployment that never said gives none.
+- `GET` · `PUT /v1/ops/test-line`: `{number}`, the box's test line — one of its own numbers, routed in the
+  sandbox, that a person calls from the phone they said was theirs to reach their own sandbox agent
+  ([telephony.md](../telephony.md), "The box's test line"); `PUT` refuses a number the box does not
+  route in the sandbox, and `{number: null}` forgets it.
 - `GET` · `PUT /v1/ops/fleets`: the fleet of workers each environment's calls are dispatched to,
   `{production, sandbox}`.
 

@@ -1,27 +1,28 @@
-/** Step: which mobile is yours, said here, so a call from it reaches the copy running on your computer. */
+/** Step: which mobile is yours, said here, and the number to call it from so your agent answers in the sandbox. */
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { prettyNumber } from "@pinecall/core/calls";
-import { drop, put, read, saidBy } from "@pinecall/core/api";
+import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { Button, Input, Refused, TextAction } from "../../ui";
+import type { HeldAgent } from "@pinecall/core/wire/rest-org";
+import { forgetPhone, readLine, sayPhone, whatAPhoneReaches, type Line } from "../../lib/line";
+import { Button, Input, Refused, Select, SelectItem, TextAction } from "../../ui";
 import { Command } from "./command";
 import type { Routed } from "./number-step";
 
-export function PhoneStep({ routed, running }: { routed: Routed[] | null; running: boolean }): ReactNode {
+export function PhoneStep({ agents, routed }: { agents: HeldAgent[]; routed: Routed[] | null }): ReactNode {
   const credentials = useCredentials();
-  // A phone is said in the sandbox, whichever console this is: it is the sandbox copy a call reaches.
-  const sandbox = useMemo(() => ({ ...credentials, world: "sandbox" as const }), [credentials]);
-  const [calling, setCalling] = useState<string[]>([]);
+  const [line, setLine] = useState<Line | null>(null);
   const [number, setNumber] = useState("");
+  const [agent, setAgent] = useState("");
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  const held = agents.map((one) => one.slug);
 
   const reread = useCallback(async (): Promise<void> => {
-    const answer = (await read(sandbox, "/v1/line/numbers")) as { calling?: string[] };
-    setCalling(answer.calling ?? []);
-  }, [sandbox]);
+    setLine(await readLine(credentials));
+  }, [credentials]);
 
   useEffect(() => {
     reread().catch(() => undefined);
@@ -32,9 +33,8 @@ export function PhoneStep({ routed, running }: { routed: Routed[] | null; runnin
     setBusy(true);
     setRefused(null);
     try {
-      await put(sandbox, "/v1/line/from", { number: number.trim() });
+      setLine(await sayPhone(credentials, number.trim(), agent === "" ? null : agent));
       setNumber("");
-      await reread();
     } catch (failed) {
       setRefused(saidBy(failed));
     } finally {
@@ -45,29 +45,40 @@ export function PhoneStep({ routed, running }: { routed: Routed[] | null; runnin
   const forget = async (): Promise<void> => {
     setRefused(null);
     try {
-      await drop(sandbox, "/v1/line/from");
+      await forgetPhone(credentials);
       await reread();
     } catch (failed) {
       setRefused(saidBy(failed));
     }
   };
 
+  const calling = line?.calling ?? [];
+  const testLine = line?.test_line ?? null;
   const [dial] = routed ?? [];
+  const reaches = line === null ? null : whatAPhoneReaches(line, held, []);
   return (
     <>
       <p className="wel-lead">
-        Tell Pinecall which mobile is yours. Then, while <code className="wel-inline">pinecall start</code> runs on your computer, a call from that phone reaches <b>your copy</b>, with the
-        conversation in your terminal. Everybody else who calls the number still reaches production.
+        Tell Pinecall which mobile is yours, once. Then call Pinecall&apos;s test number from it and <b>your agent answers</b>, here in the sandbox: nothing to buy, no card. The
+        call shows up in Calls as it happens.
       </p>
       <div className="wel-block">
         {calling.length > 0 ? (
           <div className="wel-waiting wel-waiting-ok">
-            ✓ Calls from {calling.map(prettyNumber).join(", ")} reach your copy{running ? "" : ", once pinecall start is running"}.{" "}
-            <TextAction onClick={() => void forget()}>Forget</TextAction>
+            ✓ {calling.map(prettyNumber).join(", ")} is yours{line?.agent ? `, and reaches ${line.agent}` : ""}. <TextAction onClick={() => void forget()}>Forget</TextAction>
           </div>
         ) : (
           <form className="wel-form" onSubmit={(event) => void say(event)}>
             <Input value={number} placeholder="Your mobile, with the country code: +34600000000" autoComplete="tel" onChange={(event) => setNumber(event.target.value)} />
+            {held.length > 1 && (
+              <Select value={agent} onValueChange={setAgent} placeholder="The agent it reaches" aria-label="The agent a call from this phone reaches">
+                {held.map((slug) => (
+                  <SelectItem key={slug} value={slug}>
+                    {slug}
+                  </SelectItem>
+                ))}
+              </Select>
+            )}
             <Button kind="primary" size="form" type="submit" disabled={busy || number.trim() === ""}>
               {busy ? "Saving…" : "This phone is mine"}
             </Button>
@@ -79,13 +90,20 @@ export function PhoneStep({ routed, running }: { routed: Routed[] | null; runnin
       </div>
       <div className="wel-block">
         <strong>Then call</strong>
-        {dial === undefined ? (
-          <span className="wel-hint">Your org has no number yet: the step before gets one. Once it has, this says which to dial.</span>
-        ) : (
+        {testLine !== null ? (
+          <>
+            <span className="wel-dial">{prettyNumber(testLine)}</span>
+            <span className="wel-hint">
+              {reaches === null ? "" : `From that phone. It reaches: ${reaches.said}`}
+            </span>
+          </>
+        ) : dial !== undefined ? (
           <span className="wel-hint">
-            Dial <b className="wel-number-digits">{prettyNumber(dial.number)}</b> from that phone. {dial.agent} answers from your computer, and the call appears in Calls the moment it
-            starts, marked as diverted from production.
+            Dial <b className="wel-number-digits">{prettyNumber(dial.number)}</b> from that phone: {dial.agent} answers from the sandbox, and the call appears in Calls marked as
+            diverted from production.
           </span>
+        ) : (
+          <span className="wel-hint">This box has no test number yet, and your org no number of its own: the next step gets one.</span>
         )}
       </div>
     </>
