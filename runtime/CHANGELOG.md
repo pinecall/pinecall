@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A model that takes no prefill runs the agent again.** The line the agent is still saying while a tool runs
+  reached the next request as a trailing assistant message; Claude Haiku 5.5 refused it whole (400, "does not
+  support assistant message prefill") and the call ended in an error. It goes last as a system note quoting
+  the line (`ALREADY_SAID`), on every vendor.
 - **The box's test line: a person calls their sandbox agent from their own phone with no number of their own.**
   One sandbox number of the box's (`box test-line set`, `PUT /v1/ops/test-line`) answers a call from the phone a
   person said was theirs (`PUT /v1/line/from {number, agent?}`) with their org's sandbox agent, in their own

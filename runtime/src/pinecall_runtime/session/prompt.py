@@ -93,19 +93,25 @@ class Request(llm.ChatContext):
         return formatted  # pyright: ignore[reportUnknownVariableType]
 
 
+# A line the agent is still saying (a tool's announcement, playing while the tool ran) reaches the history only
+# once it has played; the reply is asked for before that. Told as a note, the model goes on from it instead of
+# saying it again. Never as a trailing assistant message: that is a prefill, and a model that takes none refuses
+# the whole request (Claude Haiku 5.5, 400 "does not support assistant message prefill", 2026-11-06).
+ALREADY_SAID = (
+    "You have already said this to the caller, and they heard it: {line} Go on from there, and never say it again."
+)
+
+
 # Always a new context: livekit reuses its own across a turn's tool steps, so additions would
 # pile up. The order is the one prompt-injection.md states: static blocks, history, the view after
-# the caller's words.
+# the caller's words, and last what the agent is still saying.
 def request(
     history: llm.ChatContext, blocks: Blocks, lookups: Sequence[llm.ChatItem] = (), saying: Sequence[str] = ()
 ) -> Request:
     """One request: the history with the lookups spliced in, the dynamic blocks after the caller, what is said last."""
     items = _ahead_of_the_caller(history.items, lookups)
     dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
-    # A line the agent is still saying (a tool's announcement, playing while the tool ran) reaches the history only
-    # once it has played; the reply is asked for before that. Sent as said, the model goes on from it instead of
-    # saying it again.
-    said = [llm.ChatMessage(role="assistant", content=[line]) for line in saying]
+    said = [llm.ChatMessage(role="system", content=[ALREADY_SAID.format(line=line)]) for line in saying]
     return Request([*_after_the_caller(items, dynamic), *said], blocks.of("static"))
 
 

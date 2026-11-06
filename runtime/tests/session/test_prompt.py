@@ -8,7 +8,15 @@ from livekit.agents import llm
 from pinecall_runtime.agents.declaration import DEFAULT_LAYOUT, Greeting, PromptBlock, block_hash
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_list, a_mapping
-from pinecall_runtime.session.prompt import Blocks, Request, greeting_for, interruptible, knowledge_changed, request
+from pinecall_runtime.session.prompt import (
+    ALREADY_SAID,
+    Blocks,
+    Request,
+    greeting_for,
+    interruptible,
+    knowledge_changed,
+    request,
+)
 
 LAYOUT = (
     PromptBlock("identity", "static"),
@@ -157,15 +165,17 @@ def test_a_tool_round_ends_the_request_and_the_dynamic_blocks_stay_after_the_cal
     ]
 
 
-def test_a_line_the_agent_is_still_saying_ends_the_request_as_its_own_words_after_the_tool_round() -> None:
+def test_a_line_the_agent_is_still_saying_ends_the_request_as_a_note_never_as_a_prefill() -> None:
+    """A trailing assistant message is a prefill, which Claude Haiku 5.5 refuses whole (2026-11-06)."""
     history = _history()
     history.items.append(llm.FunctionCall(call_id="t1", name="book", arguments='{"slot": "a"}'))
     history.items.append(llm.FunctionCallOutput(call_id="t1", name="book", output="booked", is_error=False))
     params = request(history, _written(view="Turnos libres"), saying=["Let me book that for you."]).items
     last = params[-1]
-    assert isinstance(last, llm.ChatMessage) and last.role == "assistant"
-    assert last.text_content == "Let me book that for you."
+    assert isinstance(last, llm.ChatMessage) and last.role == "system"
+    assert last.text_content == ALREADY_SAID.format(line="Let me book that for you.")
     assert params[-2].type == "function_call_output"
+    assert not any(isinstance(item, llm.ChatMessage) and item.role == "assistant" for item in params[-2:])
 
 
 def test_with_nothing_being_said_the_request_ends_as_before() -> None:
