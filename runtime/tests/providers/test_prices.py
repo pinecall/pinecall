@@ -28,8 +28,9 @@ def test_a_voice_whose_rate_is_per_token_is_priced_by_the_tokens_its_plugin_coun
         provider="api.openai.com", model="gpt-4o-mini-tts", input_tokens=8, output_tokens=76, characters_count=26
     )
     cost = cost_of([openai], priced({"gpt-4o-mini-tts": Rate(input=0.6, output=12.0)}))
+    # A row's dollars are rounded to the millionth, as every cost row is.
     assert [(row.unit, row.quantity, row.usd) for row in cost.rows] == [
-        ("input_tokens", 8, 0.0000048),
+        ("input_tokens", 8, 0.000005),
         ("output_tokens", 76, 0.000912),
     ]
 
