@@ -174,7 +174,7 @@ def _sees(reader: Reader, owner: Scope | None) -> bool:
     if reader.actor is None or mine is None or owner is None:
         return False
     same = mine.org == owner.org and mine.env is owner.env
-    return same and (owner.holder in ("", mine.holder) or keys.sees_every_corner(reader.actor))
+    return same and (owner.holder in ("", mine.holder) or keys.sees_every_copy(reader.actor))
 
 
 # The agent an endpoint names in its path or its query; a body's agent is checked by its endpoint.

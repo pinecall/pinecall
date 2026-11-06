@@ -332,7 +332,7 @@ def env_of_request(key: ApiKey, member: Member | None, asked: str | None) -> Env
 
 
 # Both team and app: a manager holds team alone and does not open developers' sandboxes.
-def sees_every_corner(actor_: Actor) -> bool:
+def sees_every_copy(actor_: Actor) -> bool:
     """Whether a person's key may read every colleague's copy in the sandbox, not only their own."""
     return actor_.env is Env.sandbox and actor_.person is not None and {KeyScope.team, KeyScope.app} <= actor_.scopes
 
@@ -344,7 +344,7 @@ def scope_of_request(actor_: Actor, looking_at: Member | None = None) -> Scope:
         return Scope(actor_.org, actor_.env, THE_ORGS_OWN)
     if looking_at is None or looking_at.id == person.id:
         return Scope(actor_.org, actor_.env, person.id)
-    if not sees_every_corner(actor_):
+    if not sees_every_copy(actor_):
         raise Forbidden("only a key that sees every scope opens a colleague's, and only in the sandbox")
     if looking_at.org != actor_.org or looking_at.status is not MemberStatus.active:
         raise Forbidden("no active member of this org answers to that scope")

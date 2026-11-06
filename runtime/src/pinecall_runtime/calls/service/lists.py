@@ -4,7 +4,7 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pinecall_runtime.accounts.repository import MemberRepository
+from pinecall_runtime.accounts import service as accounts
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.facts import LINE_FIELDS, CallFacts, facts_of, line_of
 from pinecall_runtime.calls.latencies import Median, medians
@@ -94,7 +94,7 @@ async def _holders_named(session: AsyncSession, heads: Iterable[CallLogHead]) ->
     orgs = {head.org for head in heads if head.holder and head.org}
     named: dict[str, str] = {}
     for org in orgs:
-        named.update({member.id: member.name for member in await MemberRepository(session).list_of_org(org)})
+        named.update({member.id: member.name for member in await accounts.members.list_members(session, org)})
     return named
 
 

@@ -58,6 +58,6 @@ async def _sessions(
 # key that opens colleagues' copies, in its own, lists every copy, and in a colleague's, that one.
 def _copies_listed(actor: Actor) -> tuple[str, ...] | None:
     person = actor.person
-    if keys.sees_every_corner(actor) and person is not None and actor.holder == person.id:
+    if keys.sees_every_copy(actor) and person is not None and actor.holder == person.id:
         return None
     return tuple(sorted({THE_ORGS_OWN, actor.holder}))
