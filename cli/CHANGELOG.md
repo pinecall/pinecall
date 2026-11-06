@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A comparison the gateway refused whole says why.** `simulate --against … --against …` with every row refused
+  printed "0 calls placed · N refusals" and then "no comparison … in this key's org and env", never the reason;
+  it now fails with the gateway's reason, said once (`no app holds agent dentist: …`), and asks for no table.
 - **`line from` names the agent a call from your phone reaches, and prints the box's test line to dial.**
   `pinecall line from +… [--agent <name>]`: a call from that phone to the test line the answer names reaches your
   org's sandbox agent — the agent named, or the one the org holds — in your own copy or the org's; nothing to buy.

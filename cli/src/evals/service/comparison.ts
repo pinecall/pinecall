@@ -92,6 +92,8 @@ export async function compare(ctx: Context, agent: string, written: Persona, inp
   const persona = playedBy(written, input);
   const started = await api.startComparison(ctx.gateway(), { ...wanted(agent, persona, input), against: [...against] });
   onPlaced?.(started);
+  // Nothing placed, there is no table to read: the gateway's reasons are the answer.
+  if (started.calls.length === 0) throw new UsageError(nonePlaced(started.refused));
   await Promise.all(started.calls.map((one) => followUntilEnded(ctx, one.call)));
   const deadline = Date.now() + JUDGED_WITHIN_MS;
   let table = await api.getComparison(ctx.gateway(), started.comparison);
@@ -100,6 +102,13 @@ export async function compare(ctx: Context, agent: string, written: Persona, inp
     table = await api.getComparison(ctx.gateway(), started.comparison);
   }
   return { comparison: started.comparison, refused: started.refused, table };
+}
+
+// One reason said once, with how many rows it refused, so nine rows refused alike read as one line.
+function nonePlaced(refused: readonly { why: string }[]): string {
+  const reasons = [...new Set(refused.map((one) => one.why))];
+  const rows = refused.length === 1 ? "the one row was" : `all ${String(refused.length)} rows were`;
+  return `no call was placed: ${rows} refused — ${reasons.join("; ")}`;
 }
 
 // Follow the call's log from its first entry to call.ended; what the log holds past the cursor then is read once.
