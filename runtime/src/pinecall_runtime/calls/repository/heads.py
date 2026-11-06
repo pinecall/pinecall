@@ -236,9 +236,11 @@ class HeadRepository(Repository[CallLogHead]):
         )
 
     # The operator's way back from a claim: an agent registered with the wrong key.
+    # The copy a call was held in belongs to a member of the org it leaves: in the new org every
+    # moved call is the org's own, else nobody there could read it.
     async def move_logs(self, agent: str, org: str) -> int:
-        """Move every log of the agent to another org; how many moved."""
-        statement = update(CallLogHead).where(CallLogHead.agent == agent).values(org=org)
+        """Move every log of the agent to another org, as that org's own; how many moved."""
+        statement = update(CallLogHead).where(CallLogHead.agent == agent).values(org=org, holder=None)
         return await self.changed(statement)
 
     async def among(self, calls: Sequence[str]) -> dict[str, CallLogHead]:

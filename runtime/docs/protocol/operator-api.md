@@ -87,7 +87,8 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
   then the org and what cascades from it, with one row in the erasure trail that outlives it
   ([gateway-api.md](gateway-api.md) §Erasing). `409` while a live key or a route still names it.
 - `PUT /v1/ops/orgs/{named}/agents {agent}`: an agent registered with the wrong org's key moved
-  into this one, its logs and its numbers with it: `{agent, org, logs, numbers, stayed}`. `409`
+  into this one, its logs and its numbers with it, every log as the org's own (a call held in a
+  member's copy of the org it left is nobody's copy here): `{agent, org, logs, numbers, stayed}`. `409`
   while somebody holds it, `404` for a slug that never wrote a log; a number the org already
   answers at stays where it was and is named.
 - `DELETE /v1/ops/orgs/{named}/agents/{agent}`: an agent that is not the org's — run once under

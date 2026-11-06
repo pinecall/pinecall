@@ -129,10 +129,13 @@ def _priced(used: ModelUsage, rates: Mapping[str, Rate]) -> list[CostRow] | None
         case LLMModelUsage():
             return None if rate is None or rate.input is None else _tokens(used, rate)
         case TTSModelUsage():
-            # A voice is priced as its vendor bills it: by the character read, or by the second of
-            # audio it made (Gemini's, whose price is per audio token).
+            # A voice is priced as its vendor bills it: by the character read, by the second of audio
+            # it made (Gemini's, whose price is per audio token), or by the tokens its plugin counts,
+            # text in and audio out (OpenAI's).
             if rate is not None and rate.characters is None and rate.audio_seconds is not None:
                 return _counted(used, "audio_seconds", quantity=used.audio_duration or 0.0, per=rate.audio_seconds)
+            if rate is not None and rate.characters is None and rate.output is not None:
+                return _spoken_tokens(used, rate)
             return _counted(
                 used, "characters", quantity=used.characters_count or 0, per=None if rate is None else rate.characters
             )
@@ -156,6 +159,18 @@ def _tokens(used: LLMModelUsage, rate: Rate) -> list[CostRow]:
         ("input_tokens", max((used.input_tokens or 0) - cached - written, 0), rate.input),
         ("cached_input_tokens", cached, rate.input if rate.cached_input is None else rate.cached_input),
         ("cache_creation_tokens", written, rate.cache_creation),
+        ("output_tokens", used.output_tokens or 0, rate.output),
+    ]
+    return [
+        _row(used, unit, quantity=tokens, per=per, usd=tokens / A_MILLION * per)
+        for unit, tokens, per in counted
+        if tokens > 0 and per is not None
+    ]
+
+
+def _spoken_tokens(used: TTSModelUsage, rate: Rate) -> list[CostRow]:
+    counted: list[tuple[Unit, int, float | None]] = [
+        ("input_tokens", used.input_tokens or 0, rate.input),
         ("output_tokens", used.output_tokens or 0, rate.output),
     ]
     return [

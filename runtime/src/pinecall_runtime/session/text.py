@@ -61,7 +61,12 @@ async def hear_text(session: Session, text: str) -> str:
     replies = (
         item for item in reversed(reply.chat_items) if isinstance(item, llm.ChatMessage) and item.role == "assistant"
     )
-    return next((item.text_content or "" for item in replies), "")
+    said = next((item.text_content or "" for item in replies), "")
+    # The model hung up in this turn (end_call): a spoken call ends with its session, a written one here,
+    # once its last reply is said.
+    if session.ended is not None and not session.closed:
+        await session.close()
+    return said
 
 
 # A golden's line: the same turn as hear_text, run as livekit's test run so its events can be

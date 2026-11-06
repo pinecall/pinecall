@@ -19,7 +19,7 @@ from pinecall_runtime.calls.models import CallLogHead, log_name
 from pinecall_runtime.calls.reducer import reduce
 from pinecall_runtime.calls.repository.entries import Positioned
 from pinecall_runtime.calls.repository.facts import FactsRepository
-from pinecall_runtime.calls.repository.heads import Claim, Claimant
+from pinecall_runtime.calls.repository.heads import Claim, Claimant, HeadRepository
 from pinecall_runtime.calls.schemas import DEFAULT_LIMIT
 from pinecall_runtime.calls.service import lists
 from pinecall_runtime.calls.store import Store
@@ -416,16 +416,21 @@ async def test_a_logs_claimant_is_its_org_and_world_and_an_agents_log_has_no_wor
     assert await store.claimant(None, agent) == Claimant("clinica", None)
 
 
-async def test_the_operator_moves_every_log_of_an_agent_to_another_org(
+# 2026-11-06: 47 calls moved into a new org stayed invisible there: the move kept the holder, a
+# member's copy of the org they left, and the new org's readers see the org's own calls and their own copy.
+async def test_the_operator_moves_every_log_of_an_agent_to_another_org_as_that_orgs_own(
     store: Store, call: str, agent: str, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
-    await store.claim(call, agent, "wrong")
+    await store.claim(call, agent, "wrong", Claim(Scope("wrong", Env.sandbox, "k_a_member_of_wrong")))
     await store.claim(None, agent, "wrong")
     async with sessions.begin() as session:
         assert await lists.move_logs(session, agent, "right") == 2
         assert await lists.move_logs(session, f"{agent}-nobody", "right") == 0
     assert await store.owner(agent) == "right"
-    assert await store.claimant(call, agent) == Claimant("right", None)
+    assert await store.claimant(call, agent) == Claimant("right", Env.sandbox)
+    async with sessions() as session:
+        head = await HeadRepository(session).head_of_call(call)
+    assert head is not None and head.scope == Scope("right", Env.sandbox, "")
 
 
 # ── across every log ──

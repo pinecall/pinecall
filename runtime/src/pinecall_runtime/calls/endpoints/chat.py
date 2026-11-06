@@ -222,6 +222,10 @@ async def _turns(websocket: WebSocket, serving: Serving, running: session.Sessio
                     await _closed(websocket, str(refused), code_of(refused))
                     return
             await session.hear_text(running, data)
+            # The agent hung up on this turn: the caller hears the call is over, as when they hang up.
+            if running.closed:
+                await _closed(websocket, OVER.format(reason=running.ended[0] if running.ended else "agent_hung_up"))
+                return
     except WebSocketDisconnect as gone:
         if gone.code != SERVICE_RESTART and not running.closed:
             await session.end_text(running, "caller_hung_up", "caller")

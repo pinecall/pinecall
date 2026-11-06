@@ -3,7 +3,7 @@
 import pytest
 
 import pinecall_runtime.session.text as text
-from pinecall_runtime.agents.declaration import AgentConfig, Docs, Greeting, MemoryPolicy, ToolSpec
+from pinecall_runtime.agents.declaration import AgentConfig, Docs, Greeting, Hangup, MemoryPolicy, ToolSpec
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.exceptions import Conflict
 from pinecall_runtime.wire.parts import Supervisor
@@ -232,6 +232,22 @@ async def test_a_call_taken_up_writes_no_call_started_and_says_no_greeting(box: 
     written = await kinds(store, call)
     assert "call.started" not in written
     assert "turn.agent" not in written
+
+
+# 2026-11-06: a written simulation whose agent hung up went on until the caller's turns ran out: end_call
+# closes a spoken call with its session, and nothing closed the written one.
+@needs_the_database
+async def test_the_agent_hanging_up_ends_the_written_call_after_its_last_reply(
+    box: Box, store: Store, call: str
+) -> None:
+    may_hang_up = AgentConfig(slug="clinica-norte", hangup=Hangup(when="the caller said goodbye"))
+    session = a_session(box, may_hang_up, ["Adiós.", {"name": "end_call", "call_id": "t1"}])
+    await session.start()
+    sentence = await text.hear_text(session, "chau")
+    assert sentence == "Adiós."
+    assert session.closed
+    ended = next(entry for entry in await store.whole(call) if entry.type == "call.ended")
+    assert (ended.data["reason"], ended.data["ended_by"]) == ("agent_hung_up", "agent")
 
 
 @needs_the_database

@@ -22,6 +22,18 @@ def test_a_voice_whose_rate_is_per_character_is_priced_by_the_characters_it_read
     assert [(row.unit, row.quantity, row.usd) for row in cost.rows] == [("characters", 600, 0.03)]
 
 
+# 2026-11-06: OpenAI's voice went unpriced on every call, its rate being per token, text in and audio out.
+def test_a_voice_whose_rate_is_per_token_is_priced_by_the_tokens_its_plugin_counted() -> None:
+    openai = TTSModelUsage(
+        provider="api.openai.com", model="gpt-4o-mini-tts", input_tokens=8, output_tokens=76, characters_count=26
+    )
+    cost = cost_of([openai], priced({"gpt-4o-mini-tts": Rate(input=0.6, output=12.0)}))
+    assert [(row.unit, row.quantity, row.usd) for row in cost.rows] == [
+        ("input_tokens", 8, 0.0000048),
+        ("output_tokens", 76, 0.000912),
+    ]
+
+
 def test_a_voice_with_no_rate_is_listed_unpriced_never_priced_at_zero() -> None:
     cost = cost_of([GEMINI], priced({}))
     assert (cost.rows, [(row.provider, row.model) for row in cost.unpriced]) == (

@@ -338,6 +338,9 @@ class Threads:
                             await session.end_text(running, "timeout", "platform")
                             return
                     await session.hear_text(running, answer)
+                    # The agent hung up on this message: the thread is over, the contact's next one opens a call.
+                    if running.closed:
+                        return
         finally:
             self.open.pop(key, None)
             self.serving.live.owners.holding("|".join(key), here=False)

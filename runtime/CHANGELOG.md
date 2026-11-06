@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **An agent moved into an org arrives as that org's own.** `PUT /v1/ops/orgs/{org}/agents` kept each
+  call's holder, a member's copy of the org it left, so nobody in the new org could read the 47 calls
+  moved on 2026-11-06. The move clears it.
+- **A written call ends when the agent hangs up.** The model's `end_call` closed a spoken call with its session
+  and left a written one open: the chat socket, a WhatsApp thread and a written simulation went on until the
+  caller left or the time ran out. A written turn in which the agent hung up ends the call after its last
+  reply, `agent_hung_up`, and the chat socket closes with it.
+- **A voice priced per token is priced.** OpenAI's `gpt-4o-mini-tts` bills text tokens in and audio tokens
+  out; the meter knew characters and seconds alone and listed every call on it as unpriced. A voice whose
+  rate names `input_tokens` and `output_tokens` is priced by the tokens its plugin reports.
 - **The sandbox's calls list shows what a call read already let through.** `GET /v1/sessions` (and an
   agent's) listed the reader's own copy alone, so a Studio agent's calls (the org's own copy) and a
   colleague's never appeared, and an operator or admin opening an org saw an empty Calls. It lists the
