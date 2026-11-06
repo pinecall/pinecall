@@ -26,6 +26,8 @@ class ListFilters:
     q: str | None = None
     channel: str | None = None
     before: str | None = None
+    # The copies listed: the scope's own alone when empty, every copy of the env when None.
+    holders: tuple[str, ...] | None = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,11 +72,12 @@ class PersonaRuns:
 
 
 # words is an escaped LIKE pattern and digits its digits; a call with no facts row still matches
-# a filter on the agent alone.
+# a filter on the agent alone. holders null is every copy of the env.
 MATCHING = """
 from call_log_head head left join call_facts f on f.call = head.log
 where head.org = :org and head.call is not null
-  and head.env = :env and head.holder = :holder
+  and head.env = :env
+  and (cast(:holders as text[]) is null or head.holder = any(cast(:holders as text[])))
   and (cast(:agent as text) is null or head.agent = :agent)
   and (cast(:channel as text) is null or f.channel = :channel)
   and (cast(:words as text) is null
@@ -195,14 +198,20 @@ class FactsRepository(Repository[CallFact]):
         )
         await self.session.execute(statement)
 
-    async def keep_against(self, call: str, against: Mapping[str, Any] | None, comparison: str | None) -> None:
-        """Keep what the agent ran on for the call over its settings, and the comparison it was placed in."""
+    async def keep_against(
+        self, call: str, against: Mapping[str, Any] | None, comparison: str | None, persona: str | None = None
+    ) -> None:
+        """Keep what the agent ran on for the call over its settings, the comparison it was placed in, its caller."""
         statement = insert(CallFact).values(
-            call=call, against=None if against is None else dict(against), comparison=comparison
+            call=call, against=None if against is None else dict(against), comparison=comparison, persona=persona
         )
         statement = statement.on_conflict_do_update(
             index_elements=[CallFact.call],
-            set_={"against": statement.excluded.against, "comparison": statement.excluded.comparison},
+            set_={
+                "against": statement.excluded.against,
+                "comparison": statement.excluded.comparison,
+                "persona": func.coalesce(statement.excluded.persona, CallFact.persona),
+            },
         )
         await self.session.execute(statement)
 
@@ -247,7 +256,7 @@ class FactsRepository(Repository[CallFact]):
         params = {
             "org": scope.org,
             "env": scope.env.value,
-            "holder": scope.holder,
+            "holders": None if wanted.holders is None else list(wanted.holders or (scope.holder,)),
             "agent": wanted.agent,
             "channel": wanted.channel,
             "words": None if wanted.q is None else _like_escaped(wanted.q),

@@ -13,7 +13,7 @@ import { isPinecalls, type Persona } from "../personas/door";
 import { PlayedBy, type Played } from "../personas/played-by";
 import { Callers, keyOf } from "./callers";
 import { AgainstRows, twoRows } from "./against";
-import { startComparison, trimmed, type AgentValues } from "./comparing";
+import { COMPARED_AT_MOST, startComparison, trimmed, type AgentValues } from "./comparing";
 import { playedBy, startSimulation } from "./simulating";
 import "./starter.css";
 
@@ -55,8 +55,8 @@ const LINES: readonly { value: Line; label: string }[] = [
 // more starts these and says so, and the rest are started once one ends.
 const AT_ONCE = 10;
 
-// What the form does: several callers, each its own call; or one caller against the agent under
-// several configurations, read as one table. Production has neither: one caller, one call, a check
+// What the form does: several callers, each its own call; or each caller ticked against the agent
+// under several configurations, one call per pair, read as one table. Production has neither: one caller, one call, a check
 // of the agent as it is deployed.
 type Doing = "run" | "compare";
 
@@ -116,7 +116,7 @@ export function Starter({
   const [background, setBackground] = useState<Background>("");
   const [played, setPlayed] = useState<Played>(THE_PERSONAS);
   const [choosing, setChoosing] = useState(false);
-  // A comparison: one caller, the agent under each of these, placed together.
+  // A comparison: each caller ticked, the agent under each of these, placed together.
   const [comparing, setComparing] = useState(false);
   const [against, setAgainst] = useState<AgentValues[]>(twoRows);
   const [all, setAll] = useState(asked !== undefined);
@@ -139,6 +139,9 @@ export function Starter({
   const total = chosen.length;
   const hasOff = held.some((persona) => isPinecalls(persona) && !persona.on);
 
+  // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
+  const ringing = (persona: Persona): string => (isPinecalls(persona) || inView !== "" ? agent : persona.agent);
+
   const toggle = (persona: Persona): void => {
     const next = new Set(picked);
     if (next.has(keyOf(persona))) next.delete(keyOf(persona));
@@ -157,10 +160,9 @@ export function Starter({
     const calls: string[] = [];
     try {
       for (const persona of chosen) {
-        // An agent's own caller rings the agent it was written for; Pinecall's ring the one picked.
         calls.push(
           await startSimulation(credentials, {
-            agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
+            agent: ringing(persona),
             persona: persona.name,
             voice: spoken,
             turns,
@@ -179,19 +181,21 @@ export function Starter({
     if (calls.length > 0) onStarted(calls, spoken);
   };
 
-  // One persona, the agent under each configuration: the gateway places them at once and says
-  // which were refused; the ones that started are the comparison.
+  // Each caller ticked, the agent under each configuration: the gateway places one call per pair at
+  // once and says which were refused; the ones that started are the comparison.
   const compare = async (): Promise<void> => {
-    const [persona] = chosen;
-    if (persona === undefined || chosen.length !== 1) {
-      setRefused("A comparison is one caller: tick exactly one.");
+    const [persona, ...more] = chosen;
+    const rung = new Set(chosen.map(ringing));
+    if (persona === undefined || rung.size !== 1) {
+      setRefused(persona === undefined ? "Tick a caller to compare." : "A comparison rings one agent: tick callers of the same agent.");
       setCalling(false);
       return;
     }
     try {
       const started = await startComparison(credentials, {
-        agent: isPinecalls(persona) || inView !== "" ? agent : persona.agent,
+        agent: ringing(persona),
         persona: persona.name,
+        ...(more.length === 0 ? {} : { more_personas: more.map((one) => one.name) }),
         voice: spoken,
         turns,
         ...playedBy(played),
@@ -208,10 +212,11 @@ export function Starter({
   };
 
   const minutes = typical.seconds === null ? null : Math.max(1, Math.round(typical.seconds / 60));
-  const placed = comparing ? against.length : total;
+  const placed = comparing ? total * against.length : total;
   const cost = typical.usd === null ? null : typical.usd * placed;
-  // A check is one call: more than one caller ticked runs nothing.
-  const oneOnly = CHECKING || comparing;
+  // A check is one call: more than one caller ticked runs nothing. A comparison is a call per caller and configuration, ten at most.
+  const oneOnly = CHECKING;
+  const tooMany = comparing && placed > COMPARED_AT_MOST;
 
   return (
     <section className="sim-card" aria-label={CHECKING ? "check call" : "new simulation"}>
@@ -221,7 +226,7 @@ export function Starter({
       ) : (
         <div className="sim-tabs">
           <Segmented options={DOINGS} value={comparing ? "compare" : "run"} onChange={(doing) => setComparing(doing === "compare")} />
-          <span className="sim-note">{comparing ? "One caller, the agent under each configuration, every call placed at once and read as one table." : "Each caller ticked is a call of its own, judged when it ends."}</span>
+          <span className="sim-note">{comparing ? "Each caller ticked against the agent under each configuration: one call per pair, 10 at most, placed at once and read as one table." : "Each caller ticked is a call of its own, judged when it ends."}</span>
         </div>
       )}
       <div className="sim-who">
@@ -311,11 +316,20 @@ export function Starter({
             ? oneOnly
               ? "Tick one caller."
               : "Tick who calls to run."
-            : [`${String(placed)} ${placed === 1 ? "call" : "calls"}`, placed > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null, minutes === null ? null : `about ${String(minutes)} min each`, cost === null ? null : `around ${usd(cost)}`, "judged when each one ends"].filter((part) => part !== null).join(" · ")}
+            : [
+                `${String(placed)} ${placed === 1 ? "call" : "calls"}`,
+                tooMany ? `a comparison is ${String(COMPARED_AT_MOST)} calls at most: fewer callers or configurations` : null,
+                !comparing && placed > AT_ONCE ? `${String(AT_ONCE)} at once at most` : null,
+                minutes === null ? null : `about ${String(minutes)} min each`,
+                cost === null ? null : `around ${usd(cost)}`,
+                "judged when each one ends",
+              ]
+                .filter((part) => part !== null)
+                .join(" · ")}
         </span>
-        <button type="button" className="sim-run" disabled={calling || total === 0 || (oneOnly && total !== 1)} onClick={() => void run()}>
+        <button type="button" className="sim-run" disabled={calling || total === 0 || (oneOnly && total !== 1) || tooMany} onClick={() => void run()}>
           <Icon name="play" size={14} />
-          {calling ? "Starting…" : comparing ? `Compare ${String(against.length)} configurations` : CHECKING ? "Run one call" : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
+          {calling ? "Starting…" : comparing ? `Compare ${String(against.length)} configurations${total > 1 ? ` × ${String(total)} callers` : ""}` : CHECKING ? "Run one call" : total === 0 ? "Run" : `Run ${String(total)} ${total === 1 ? "call" : "calls"}`}
         </button>
       </div>
     </section>

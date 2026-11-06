@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from pinecall_runtime.evals.schemas import ComparisonRow, Latency, SessionScore
-from pinecall_runtime.evals.service.comparisons import latency_of, ranked, why_it_never_began
+from pinecall_runtime.evals.service.comparisons import in_the_order_placed, latency_of, ranked, why_it_never_began
 from pinecall_runtime.wire.base import Entry
 
 GOLDEN = Path(__file__).resolve().parents[1] / "wire" / "golden" / "call-log.json"
@@ -30,12 +30,15 @@ def a_row(
     score: SessionScore | None = None,
     e2e: float | None = None,
     cost: float | None = None,
+    persona: str = "in-a-hurry",
+    started_at: float = 1.0,
 ) -> ComparisonRow:
     """One call of a comparison as its row."""
     return ComparisonRow(
         call=call,
+        persona=persona,
         against={"llm": f"acme/{call}"},
-        started_at=1.0,
+        started_at=started_at,
         ended_at=40.0 if ended else None,
         turns=4,
         end_reason="caller_hung_up" if ended else None,
@@ -68,6 +71,19 @@ def test_the_rows_are_ranked_by_judges_then_speed_then_cost_with_a_live_call_las
         "unjudged",
         "live",
     ]
+
+
+def test_several_callers_are_ranked_each_on_its_own_in_the_order_they_were_placed() -> None:
+    """A table of two callers reads one caller at a time: the first placed, its best first, then the next."""
+    held = SessionScore(held=2, judged=2, passed=True, reason=None)
+    rows = [
+        a_row("rude-fast", persona="angry", started_at=2.0, score=held, e2e=0.5),
+        a_row("hurry-slow", persona="in-a-hurry", started_at=1.0, score=held, e2e=2.0),
+        a_row("rude-slow", persona="angry", started_at=2.1, score=held, e2e=3.0),
+        a_row("hurry-fast", persona="in-a-hurry", started_at=1.1, score=held, e2e=1.0),
+    ]
+    assert in_the_order_placed(rows) == ["in-a-hurry", "angry"]
+    assert [row.call for row in ranked(rows)] == ["hurry-fast", "hurry-slow", "rude-fast", "rude-slow"]
 
 
 def test_why_a_call_never_began_is_its_unrecoverable_error_and_nothing_for_one_that_ran() -> None:

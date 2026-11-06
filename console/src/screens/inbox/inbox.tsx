@@ -8,6 +8,7 @@ import { GatewayError } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { elapsed, isLive, wantsAPerson, type CallDay } from "@pinecall/core/calls";
 import { clockOf, dayOf } from "../../lib/format";
+import { copyOf } from "../../lib/corners";
 import { useOrg } from "../../lib/org";
 import { Avatar, Icon, Pill, usePane } from "../../ui";
 import { Call } from "../call";
@@ -37,7 +38,7 @@ export function Inbox({ listed, focus, onFocus }: { listed: readonly SessionLine
   const navigate = useNavigate();
   const { search } = useLocation();
   const credentials = useCredentials();
-  const { floorError } = useOrg();
+  const { floorError, me } = useOrg();
   const threads = useMemo(() => threadsOf(listed), [listed]);
   const [query, setQuery] = useState("");
   const pane = usePane({ name: "agent.conversations", initial: 292, min: 200, max: 520, side: "left" });
@@ -113,6 +114,7 @@ export function Inbox({ listed, focus, onFocus }: { listed: readonly SessionLine
                     thread={thread}
                     name={nameOf(thread, door)}
                     whose={agent === "" ? thread.latest.agent : undefined}
+                    copy={copyOf(thread.latest, me)}
                     fresh={(door?.get(thread.contact)?.unread ?? 0) > 0}
                     on={thread === open}
                     onOpen={() => void navigate(hrefOf(thread.latest.call))}
@@ -201,12 +203,15 @@ function ThreadRow({
   thread,
   name,
   whose,
+  copy,
   fresh,
   on,
   onOpen,
 }: {
   thread: Thread;
   name: string;
+  /** Whose copy took its newest call, when a colleague's did. */
+  copy: string | undefined;
   /** The agent of its newest call, on the org's list where threads of every agent sit together. */
   whose: string | undefined;
   /** Something came in on it this reader has not opened yet. */
@@ -233,7 +238,7 @@ function ThreadRow({
         </span>
         <span className="ib-row-last">{lastOf(thread)}</span>
         <span className="ib-row-bottom">
-          <span className="ib-row-where">{[whose, line.channel].filter((one) => one !== undefined && one !== null).join(" · ")}</span>
+          <span className="ib-row-where">{[whose, line.channel, copy].filter((one) => one !== undefined && one !== null).join(" · ")}</span>
           {markOf(line, fresh)}
         </span>
       </span>

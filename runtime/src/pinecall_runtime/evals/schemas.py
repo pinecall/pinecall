@@ -278,14 +278,22 @@ class SessionScore(WireModel):
 
 
 class ComparisonRequest(SimulationWants):
-    """POST /v1/simulations/compare, the body: one persona, the agent under each of these, placed together."""
+    """POST /v1/simulations/compare, the body: a persona or more, the agent under each of these, placed together."""
 
     against: list[AgentValues] = Field(min_length=1, max_length=10)
+    # More callers beside `persona`, each against every configuration as it is: one call per pair.
+    more_personas: list[str] = Field(default_factory=list[str], max_length=9)
+
+    @property
+    def personas(self) -> list[str]:
+        """Every caller of the comparison, `persona` first, each once."""
+        return list(dict.fromkeys([self.persona, *self.more_personas]))
 
 
 class ComparedCall(Row):
-    """One call a comparison placed: what the agent runs on, and the call."""
+    """One call a comparison placed: the caller, what the agent runs on, and the call."""
 
+    persona: str
     against: dict[str, Any]
     call: str
 
@@ -293,6 +301,7 @@ class ComparedCall(Row):
 class ComparedRefusal(Row):
     """One call a comparison could not place, and the refusal in the gateway's words."""
 
+    persona: str
     against: dict[str, Any]
     why: str
 
@@ -317,9 +326,10 @@ class Latency(Row):
 
 
 class ComparisonRow(Row):
-    """One call of a comparison: what the agent ran on, how it went, what it cost, how fast it was."""
+    """One call of a comparison: the caller, what the agent ran on, how it went, what it cost, how fast it was."""
 
     call: str
+    persona: str
     against: dict[str, Any]
     started_at: float
     ended_at: float | None
@@ -334,11 +344,13 @@ class ComparisonRow(Row):
 
 
 class Comparison(Row):
-    """GET /v1/simulations/compare/{id}: the calls of one comparison, best first."""
+    """GET /v1/simulations/compare/{id}: the calls of one comparison, each caller's best first."""
 
     comparison: str
     agent: str
+    # The first caller; `personas` is every one, in the order they were placed.
     persona: str
+    personas: list[str]
     voice: bool
     rows: list[ComparisonRow]
 

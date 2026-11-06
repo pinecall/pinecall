@@ -35,6 +35,8 @@ export interface Org {
   insights: Insights | null;
   /** Whether the person is a box operator; null while loading. */
   operator: boolean | null;
+  /** The reader's own member id, whose sandbox copy is theirs; null for a key without a person. */
+  me: string | null;
 }
 
 const Held = createContext<Org | null>(null);
@@ -78,6 +80,7 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
       here: orgs?.find((one) => one.here) ?? null,
       insights,
       operator,
+      me: me ?? null,
     }),
     [floor.lines, floor.connection, floor.error, held.agents, held.loaded, held.error, orgs, me, insights, operator],
   );

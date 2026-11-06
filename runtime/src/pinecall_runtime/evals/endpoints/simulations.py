@@ -13,7 +13,7 @@ from pinecall_runtime.enums import KeyScope
 from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey, TheSimulations
 from pinecall_runtime.evals.endpoints.reading import declared_personas_of
-from pinecall_runtime.exceptions import Forbidden, NotFound, PinecallError
+from pinecall_runtime.exceptions import Forbidden, NotFound, PinecallError, ValidationError
 from pinecall_runtime.judging import service as judging
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.crypto import random_id
@@ -46,24 +46,35 @@ async def simulate(
     return await _placed(session, serving, simulations, actor, body, against=against, comparison=None)
 
 
-# Each call is placed as `POST /v1/simulations` places one, under one id they share; one refused
-# (a vendor nobody keyed, the org's limits) is said beside the ones that started, which go on.
+# Each call is placed as `POST /v1/simulations` places one, under one id they share: every caller
+# against every configuration. One refused (a vendor nobody keyed, the org's limits) is said beside
+# the ones that started, which go on.
 @router.post("/v1/simulations/compare")
 async def compare(
     body: schemas.ComparisonRequest, actor: EvalsKey, serving: TheServing, simulations: TheSimulations, session: Session
 ) -> schemas.ComparisonStarted:
-    """One persona against the agent under each voice and models named, placed together; what started and what not."""
+    """Each persona against the agent under each voice and models named, placed together; what started and what not."""
+    personas = body.personas
+    pairs = len(personas) * len(body.against)
+    if pairs > service.COMPARED_AT_MOST:
+        raise ValidationError(service.TOO_MANY_COMPARED.format(personas=len(personas), configs=len(body.against)))
     comparison = random_id(service.COMPARISON_PREFIX, 6)
     started: list[schemas.ComparedCall] = []
     refused: list[schemas.ComparedRefusal] = []
-    for values in body.against:
-        against = _agent_values(actor, values)
-        try:
-            placed = await _placed(session, serving, simulations, actor, body, against=against, comparison=comparison)
-        except PinecallError as why:
-            refused.append(schemas.ComparedRefusal(against=against, why=str(why)))
-            continue
-        started.append(schemas.ComparedCall(against=against, call=placed.call))
+    for persona in personas:
+        wants = schemas.SimulationWants.model_validate(
+            {**body.model_dump(exclude={"against", "more_personas"}), "persona": persona}
+        )
+        for values in body.against:
+            against = _agent_values(actor, values)
+            try:
+                placed = await _placed(
+                    session, serving, simulations, actor, wants, against=against, comparison=comparison
+                )
+            except PinecallError as why:
+                refused.append(schemas.ComparedRefusal(persona=persona, against=against, why=str(why)))
+                continue
+            started.append(schemas.ComparedCall(persona=persona, against=against, call=placed.call))
     return schemas.ComparisonStarted(comparison=comparison, voice=body.voice, calls=started, refused=refused)
 
 
@@ -71,17 +82,19 @@ async def compare(
 async def read_comparison(
     comparison: str, actor: EvalsKey, serving: TheServing, session: Session
 ) -> schemas.Comparison:
-    """The comparison's calls, best first: every judge held, then the fastest reply, then the cheapest."""
+    """The comparison's calls, each caller's best first: every judge held, then the fastest reply, then the cheapest."""
     wanted = calls.PersonaRunFilters(comparison=comparison)
     found = await calls.runs_of_persona(session, actor.scope, wanted, limit=service.COMPARED_AT_MOST)
     if not found.runs:
         raise NotFound(service.NO_SUCH_COMPARISON.format(comparison=comparison))
     rows = [await service.compared_row(serving, run) for run in found.runs]
     first = calls.facts_of(found.runs[0].facts)
+    personas = service.in_the_order_placed(rows)
     return schemas.Comparison(
         comparison=comparison,
         agent=found.runs[0].agent,
-        persona=first.persona or "",
+        persona=personas[0],
+        personas=personas,
         voice=first.spoken,
         rows=service.ranked(rows),
     )

@@ -71,6 +71,9 @@ class CallRow(WireModel):
     score: SessionScore | None = None
     flags: list[SessionFlag] | None = None
     attention: AttentionState | None = None
+    # Whose copy of the agent took it, to a list asked with holders: a member's id and name, "" the org's own.
+    holder: str | None = None
+    holder_name: str | None = None
 
 
 class CallList(WireModel):
@@ -180,6 +183,9 @@ class OpenCallRequest(WireModel):
     # The Twilio account an inbound leg says it came from (X-Twilio-AccountSid); None from any
     # other carrier, or from a worker of an older release.
     carrier_account: str | None = None
+    # The test room's own voice and models the worker runs this call on (its dispatch's tuning), so the
+    # gateway opens the call as it runs: the platform's first words in that language.
+    tuning: JsonObject | None = None
 
 
 class OpenCallResponse(WireModel):
@@ -403,6 +409,8 @@ class ListQuery(Schema):
     agent: str | None = None
     channel: str | None = None
     before: str | None = None
+    # Each row also says whose copy of the agent took it (holder, holder_name).
+    holders: bool = False
 
 
 class ThreadQuery(Schema):

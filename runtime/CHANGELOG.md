@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The sandbox's calls list shows what a call read already let through.** `GET /v1/sessions` (and an
+  agent's) listed the reader's own copy alone, so a Studio agent's calls (the org's own copy) and a
+  colleague's never appeared, and an operator or admin opening an org saw an empty Calls. It lists the
+  reader's copy and the org's; a key that opens colleagues' copies lists every copy and opens any of
+  those calls. `holders=true` adds whose copy took each line (`holder`, `holder_name`); unasked, a line
+  is the shape it was, so an app built before still parses it.
+- **A comparison takes several callers.** `POST /v1/simulations/compare` takes `more_personas` beside
+  `persona`: each caller against each configuration, one call per pair, ten at most (`400` past that).
+  Calls, refusals and the table's rows carry their `persona`; the table carries `personas` and reads
+  caller by caller, each one's best first.
+
 - **The platform speaks Arabic.** The AI disclosure and the recording notice exist in Arabic now; an agent set
   to `ar` opened every call with "This call may be recorded." in English before.
 - **A model that takes no prefill runs the agent again.** The line the agent is still saying while a tool runs

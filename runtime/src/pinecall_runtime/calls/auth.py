@@ -162,18 +162,19 @@ def asked_by(actor: Actor) -> str:
     return actor.person.id if actor.person is not None else actor.key_id
 
 
-# The org's own calls and the reader's own scope; a token is checked by its call, the fleet's
-# key reads the calls of the env it serves and none of the other.
+# The org's own calls and the reader's own scope, or every copy's to a key that opens colleagues'
+# copies; a token is checked by its call, the fleet's key reads the calls of the env it serves
+# and none of the other.
 def _sees(reader: Reader, owner: Scope | None) -> bool:
     if reader.visit is not None:
         return True
     if reader.actor is not None and is_the_fleet(reader.actor):
         return owner is not None and owner.env is reader.actor.env
     mine = reader.scope
-    if mine is None or owner is None:
+    if reader.actor is None or mine is None or owner is None:
         return False
     same = mine.org == owner.org and mine.env is owner.env
-    return same and owner.holder in ("", mine.holder)
+    return same and (owner.holder in ("", mine.holder) or keys.sees_every_corner(reader.actor))
 
 
 # The agent an endpoint names in its path or its query; a body's agent is checked by its endpoint.

@@ -6,7 +6,9 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { byDay, isLive, whoOn, type CallDay } from "@pinecall/core/calls";
 import { floorMoved, matches, useServerSearch, type Filter } from "@pinecall/core/calls-search";
+import { copyOf } from "../../lib/corners";
 import { clockOf, dayOf, duration, lettersFor, liveFirst, utcDay, webVisitor } from "../../lib/format";
+import { useOrg } from "../../lib/org";
 import { Avatar, Button, Card, CardFoot, Empty, Input, Pill, Refused, Select, SelectItem, TableHead, TableRow, type Tone } from "../../ui";
 import { keeps, type Status } from "./status";
 
@@ -170,6 +172,7 @@ function Row({ line, columns, org, base }: { line: SessionLine; columns: string;
   const who = whoOn(line, webVisitor);
   const live = isLive(line);
   const ended = endedAs(line);
+  const copy = copyOf(line, useOrg().me);
   return (
     <TableRow columns={columns} to={`${base}/${line.call}`}>
       <span className={live ? "calls-who-avatar calls-who-avatar-live" : "calls-who-avatar"} title={line.call}>
@@ -183,6 +186,7 @@ function Row({ line, columns, org, base }: { line: SessionLine; columns: string;
       <span className="ui-cell">
         {line.channel ?? "—"}
         {line.direction === "outbound" && <span className="calls-out"> · out</span>}
+        {copy !== undefined && <span className="calls-out"> · {copy}</span>}
       </span>
       <span>
         <Pill tone={ended.tone} small>

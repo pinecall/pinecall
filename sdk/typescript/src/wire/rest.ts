@@ -58,6 +58,9 @@ export const SessionLineSchema = z.strictObject({
   score: SessionScoreSchema.nullable().nullish(),
   flags: z.array(SessionFlagSchema).nullish(),
   attention: AttentionStateSchema.nullable().nullish(),
+  /** Whose copy of the agent took it, on a list asked with `holders`: a member's id, "" the org's own. */
+  holder: z.string().nullish(),
+  holder_name: z.string().nullish(),
 });
 
 export type SessionLine = z.infer<typeof SessionLineSchema>;

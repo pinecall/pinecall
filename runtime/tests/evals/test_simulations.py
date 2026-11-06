@@ -279,18 +279,27 @@ async def test_a_spoken_simulation_gives_up_on_a_seat_in_time() -> None:
 
 
 @needs_the_services
-async def test_a_comparison_places_the_persona_against_the_agent_under_each_values_and_reads_them_as_a_table(
+async def test_a_comparison_places_each_persona_against_the_agent_under_each_values_and_reads_them_as_a_table(
     gateway: Gateway, tenant: Tenant, agent: str
 ) -> None:
-    """Two written calls at once under one id, each the agent on its own values; the list and the table carry them."""
+    """Two callers by two values, four written calls at once under one id; the list and the table carry them."""
     against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
-    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "against": against}
+    personas = ["in-a-hurry", "asks-for-a-person"]
+    body = {
+        "agent": agent,
+        "persona": personas[0],
+        "more_personas": personas[1:],
+        "voice": False,
+        "turns": 1,
+        "against": against,
+    }
     async with holding(gateway, tenant, agent):
         answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
         assert answer.status_code == 200, answer.text
         started = answer.json()
         assert started["comparison"].startswith("cmp_") and started["refused"] == [] and started["voice"] is False
-        assert [one["against"] for one in started["calls"]] == against
+        pairs = [(persona, values) for persona in personas for values in against]
+        assert [(one["persona"], one["against"]) for one in started["calls"]] == pairs
         calls = [str(one["call"]) for one in started["calls"]]
         page: dict[str, object] = {}
         for _ in range(200):
@@ -302,13 +311,17 @@ async def test_a_comparison_places_the_persona_against_the_agent_under_each_valu
                 break
             await asyncio.sleep(0.05)
         runs: list[dict[str, object]] = page["runs"]  # type: ignore[assignment]
-        assert {run["call"]: run["against"] for run in runs} == dict(zip(calls, against, strict=True))
+        assert {run["call"]: run["against"] for run in runs} == {
+            call: values for call, (_, values) in zip(calls, pairs, strict=True)
+        }
         assert {run["comparison"] for run in runs} == {started["comparison"]}
         table = (
             await gateway.http.get(f"/v1/simulations/compare/{started['comparison']}", headers=tenant.server)
         ).json()
-        assert (table["agent"], table["persona"], table["voice"]) == (agent, "in-a-hurry", False)
-        assert sorted(row["call"] for row in table["rows"]) == sorted(calls)
+        assert (table["agent"], table["voice"], sorted(table["personas"])) == (agent, False, sorted(personas))
+        assert {row["call"]: row["persona"] for row in table["rows"]} == {
+            call: persona for call, (persona, _) in zip(calls, pairs, strict=True)
+        }
         measures = {"e2e_latency", "llm_node_ttft", "tts_node_ttfb", "transcription_delay", "end_of_turn_delay"}
         assert all(set(row["latency"]) == measures for row in table["rows"])
     # A key that does not edit the pipeline is refused before anything opens; so is a knob no test room has.
@@ -318,3 +331,7 @@ async def test_a_comparison_places_the_persona_against_the_agent_under_each_valu
     assert stray.status_code == 422
     missing = await gateway.http.get("/v1/simulations/compare/cmp_nobody", headers=tenant.server)
     assert missing.status_code == 404
+    # One call per pair, ten at most: six callers by two values is refused before anything is placed.
+    many = {**body, "more_personas": ["a", "b", "c", "d", "e"]}
+    too_many = await gateway.http.post("/v1/simulations/compare", json=many, headers=tenant.person)
+    assert too_many.status_code == 400 and "10 calls at most" in too_many.text

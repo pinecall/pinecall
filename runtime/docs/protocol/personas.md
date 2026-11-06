@@ -77,18 +77,21 @@ agent's own. The sandbox's alone (`403` in production), those knobs alone (`422`
 key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nobody keyed is refused as
 the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
 
-`POST /v1/simulations/compare` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?,
-ambience?, played_by?, against: [{…}, …]}` is one persona against the agent under each of the values
-named, one to ten, every call placed at once under one id: the answer is `{comparison, voice, calls:
-[{against, call}], refused: [{against, why}]}` — what started, and what was refused in the gateway's
-words (a vendor nobody keyed, the org's limits), the ones that started going on. The persona does not
-change; the agent does. `GET /v1/simulations/compare/{comparison}` reads the table: `{comparison,
-agent, persona, voice, rows: [{call, against, started_at, ended_at, turns, end_reason, score,
-cost_usd, latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay,
-end_of_turn_delay}}]}`, each measure the median over the call's turns in seconds (null while no turn
-reported it), the rows best first — every judge held, then the most held, then the fastest reply,
-then the cheapest, a call still on the line last — and `404` for an id of nobody's in this key's org
-and env. `GET /v1/simulations?comparison=` pages the same calls as runs.
+`POST /v1/simulations/compare` `{agent, persona, more_personas?, voice?, turns?, interferer_db?,
+packet_loss?, ambience?, played_by?, against: [{…}, …]}` puts each caller — `persona`, then each of
+`more_personas` — against the agent under each of the values named, one to ten: one call per caller and
+values, ten calls at most (`400` past that, before anything is placed), every call placed at once under
+one id. The answer is `{comparison, voice, calls: [{persona, against, call}], refused: [{persona,
+against, why}]}` — what started, and what was refused in the gateway's words (a vendor nobody keyed,
+the org's limits), the ones that started going on. The callers do not change; the agent does.
+`GET /v1/simulations/compare/{comparison}` reads the table: `{comparison, agent, persona, personas,
+voice, rows: [{call, persona, against, started_at, ended_at, turns, end_reason, score, cost_usd,
+latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay, end_of_turn_delay}}]}`
+(`persona` the first caller, `personas` every one in the order placed), each measure the median over
+the call's turns in seconds (null while no turn reported it), the rows caller by caller and each
+caller's best first — every judge held, then the most held, then the fastest reply, then the
+cheapest, a call still on the line last — and `404` for an id of nobody's in this key's org and env.
+`GET /v1/simulations?comparison=` pages the same calls as runs.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`
 

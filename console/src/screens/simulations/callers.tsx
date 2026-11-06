@@ -49,10 +49,17 @@ interface Group {
 function groupsOf({ inView, agent, personas, all }: CallersProps): Group[] {
   const ordered = inOrder(personas);
   if (inView === "") {
-    // Every agent in view: each agent's own callers ring it, Pinecall's library rings the one picked.
+    // Every agent in view: each agent's own callers ring it, Pinecall's library rings the one picked
+    // — the ones switched on for it, or, none switched on yet, any of them, as with the agent in view.
+    const library = ordered.filter(isPinecalls);
+    const switchedOn = library.filter((persona) => persona.on);
     return [
       { title: "Written for your agents", personas: ordered.filter((persona) => !isPinecalls(persona)), rings: true },
-      { title: `Pinecall's callers · ring ${agent}`, personas: ordered.filter((persona) => isPinecalls(persona) && (all || persona.on)), rings: false },
+      {
+        title: switchedOn.length === 0 ? `Pinecall's callers · none switched on for ${agent} yet, any can still call` : `Pinecall's callers · ring ${agent}`,
+        personas: all || switchedOn.length === 0 ? library : switchedOn,
+        rings: false,
+      },
     ];
   }
   const on = ordered.filter(isOn);

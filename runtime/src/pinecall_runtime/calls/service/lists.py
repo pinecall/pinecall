@@ -1,9 +1,10 @@
 """The lists of calls and what other domains ask of the log: rows, latencies, heads, contacts."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pinecall_runtime.accounts.repository import MemberRepository
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.facts import LINE_FIELDS, CallFacts, facts_of, line_of
 from pinecall_runtime.calls.latencies import Median, medians
@@ -60,11 +61,17 @@ async def facts_of_calls(session: AsyncSession, calls: Sequence[str]) -> dict[st
 # One row per call as a list draws it. A sealed call's line was written with its seal and is read
 # off its facts row; a live one, or one sealed before the line existed, is folded from its log.
 async def call_rows(
-    session: AsyncSession, logs: Logs, calls: Sequence[str], declared: dict[str, AgentConfig | None]
+    session: AsyncSession,
+    logs: Logs,
+    calls: Sequence[str],
+    declared: dict[str, AgentConfig | None],
+    *,
+    holders: bool = False,
 ) -> list[CallRow]:
-    """The calls as a list shows them, the ones nothing was written to left out."""
+    """The calls as a list shows them, the ones nothing was written to left out; whose copy took each when asked."""
     heads = await HeadRepository(session).among(calls)
     facts = await facts_of_calls(session, calls)
+    names = await _holders_named(session, heads.values()) if holders else None
     rows: list[CallRow] = []
     for call in calls:
         head, fact = heads.get(call), facts.get(call)
@@ -77,11 +84,23 @@ async def call_rows(
             line = None if line is None else {**line, **_masked(state, declared)}
         if line is None or not line.get("seq"):
             continue
-        rows.append(_row(call, head, line, fact))
+        rows.append(_row(call, head, line, fact, names))
     return rows
 
 
-def _row(call: str, head: CallLogHead, line: JsonObject, fact: CallFacts | None) -> CallRow:
+# A copy is named by its member, read once per org the page holds; one who left keeps the id. A
+# row says it only to a reader who asked: an app built before strict-parses the row it knew.
+async def _holders_named(session: AsyncSession, heads: Iterable[CallLogHead]) -> dict[str, str]:
+    orgs = {head.org for head in heads if head.holder and head.org}
+    named: dict[str, str] = {}
+    for org in orgs:
+        named.update({member.id: member.name for member in await MemberRepository(session).list_of_org(org)})
+    return named
+
+
+def _row(
+    call: str, head: CallLogHead, line: JsonObject, fact: CallFacts | None, names: Mapping[str, str] | None
+) -> CallRow:
     score = None
     if fact is not None and fact.judged is not None and fact.passed is not None:
         score = SessionScore(held=fact.held or 0, judged=fact.judged, passed=fact.passed, reason=fact.reason)
@@ -94,6 +113,7 @@ def _row(call: str, head: CallLogHead, line: JsonObject, fact: CallFacts | None)
             "live": not head.sealed,
             "score": None if score is None else score.dump(),
             "flags": [] if fact is None else fact.flags,
+            **({} if names is None else {"holder": head.holder or "", "holder_name": names.get(head.holder or "")}),
         }
     )
 

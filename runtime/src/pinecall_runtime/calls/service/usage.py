@@ -142,11 +142,18 @@ async def keep_caller_played(session: AsyncSession, call: str, *, llm: str, tts:
     await FactsRepository(session).keep_caller(call, {"caller_llm": llm, "caller_tts": tts, "caller_voice": voice})
 
 
+# The caller is kept with them: a comparison's table names each row's caller from the first read,
+# before the seal folds the call.
 async def keep_agent_values(
-    session: AsyncSession, call: str, *, against: Mapping[str, Any] | None, comparison: str | None
+    session: AsyncSession,
+    call: str,
+    *,
+    against: Mapping[str, Any] | None,
+    comparison: str | None,
+    persona: str | None = None,
 ) -> None:
-    """Keep the voice and models the agent runs on for the call over its settings, and its comparison."""
-    await FactsRepository(session).keep_against(call, against, comparison)
+    """Keep the voice and models the agent runs on for the call over its settings, its comparison and caller."""
+    await FactsRepository(session).keep_against(call, against, comparison, persona)
 
 
 # Not in the summary: the gateway keeps both with the call's facts — the lent vendors at the seal,

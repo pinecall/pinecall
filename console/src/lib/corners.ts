@@ -1,5 +1,6 @@
 /** Per-person agent copies (sandbox corners): filtering and ownership. */
 
+import { type SessionLine } from "@pinecall/core/wire/rest";
 import { type HeldAgent } from "@pinecall/core/wire/rest-org";
 
 import type { Whose } from "./whoami";
@@ -48,4 +49,10 @@ export function whoseCorner(held: HeldAgent): string {
 /** The current member's subject, or null for a key without one. */
 export function meIn(whose: Whose | null): string | null {
   return whose?.subject ?? null;
+}
+
+/** "Dana's copy" for a call a colleague's copy took; nothing for the reader's own or the org's. */
+export function copyOf(line: SessionLine, me: string | null): string | undefined {
+  if (line.holder === undefined || line.holder === null || line.holder === "" || line.holder === me) return undefined;
+  return `${line.holder_name ?? "a colleague"}'s copy`;
 }

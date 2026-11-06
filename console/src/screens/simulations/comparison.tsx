@@ -1,6 +1,6 @@
-/** A comparison's table: the same persona against the agent under each configuration, best first, each row opening its call. */
+/** A comparison's table: each caller against the agent under each configuration, caller by caller and best first, each row opening its call. */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { saidBy } from "@pinecall/core/api";
@@ -61,7 +61,7 @@ export function ComparisonTable({ inView, comparison }: { inView: string; compar
       <div className="runs-head">
         <span className="runs-title">Comparison</span>
         <span className="runs-meta">
-          {read === null ? (refused ?? "reading…") : [`${read.persona} against ${read.agent}`, `${String(read.rows.length)} ${read.rows.length === 1 ? "call" : "calls"}`, live === 0 ? "best first" : `${String(live)} on a call`].join(" · ")}
+          {read === null ? (refused ?? "reading…") : [`${read.personas.join(", ")} against ${read.agent}`, `${String(read.rows.length)} ${read.rows.length === 1 ? "call" : "calls"}`, live === 0 ? "best first" : `${String(live)} on a call`].join(" · ")}
         </span>
         <Link className="sim-link" to={base}>
           Every simulation
@@ -70,23 +70,37 @@ export function ComparisonTable({ inView, comparison }: { inView: string; compar
       {read !== null && (
         <div className="sims-cmp-table">
           <TableHead columns={COLUMNS} labels={LABELS} />
-          {read.rows.map((row, index) => (
-            <TableRow key={row.call} columns={COLUMNS} to={`${base}/${row.call}${read.voice ? "?spoken=1" : ""}`}>
-              <span className="sims-cmp-n">{String(index + 1)}</span>
-              <span className="sims-cmp-said">{said(row.against)}</span>
-              <Judges row={row} />
-              <span className="sims-cmp-num">{seconds(row.latency.e2e_latency)}</span>
-              <span className="sims-cmp-num">{seconds(row.latency.llm_node_ttft)}</span>
-              <span className="sims-cmp-num">{seconds(row.latency.tts_node_ttfb)}</span>
-              <span className="sims-cmp-num">{seconds(row.latency.transcription_delay)}</span>
-              <span className="sims-cmp-num">{row.cost_usd === null ? "" : usd(row.cost_usd)}</span>
-              <span className="sims-cmp-num">{row.ended_at === null ? "" : duration(row)}</span>
-            </TableRow>
+          {read.personas.map((persona) => (
+            <Fragment key={persona}>
+              {/* Several callers: each heads its own rows, numbered from one, so a ranking reads per caller. */}
+              {read.personas.length > 1 && <div className="sims-cmp-who">{persona}</div>}
+              {read.rows
+                .filter((row) => row.persona === persona)
+                .map((row, index) => (
+                  <Row key={row.call} row={row} index={index} to={`${base}/${row.call}${read.voice ? "?spoken=1" : ""}`} />
+                ))}
+            </Fragment>
           ))}
         </div>
       )}
       {refused !== null && read !== null && <p className="sim-note sim-refused">{refused}</p>}
     </section>
+  );
+}
+
+function Row({ row, index, to }: { row: ComparisonRow; index: number; to: string }): ReactNode {
+  return (
+    <TableRow columns={COLUMNS} to={to}>
+      <span className="sims-cmp-n">{String(index + 1)}</span>
+      <span className="sims-cmp-said">{said(row.against)}</span>
+      <Judges row={row} />
+      <span className="sims-cmp-num">{seconds(row.latency.e2e_latency)}</span>
+      <span className="sims-cmp-num">{seconds(row.latency.llm_node_ttft)}</span>
+      <span className="sims-cmp-num">{seconds(row.latency.tts_node_ttfb)}</span>
+      <span className="sims-cmp-num">{seconds(row.latency.transcription_delay)}</span>
+      <span className="sims-cmp-num">{row.cost_usd === null ? "" : usd(row.cost_usd)}</span>
+      <span className="sims-cmp-num">{row.ended_at === null ? "" : duration(row)}</span>
+    </TableRow>
   );
 }
 

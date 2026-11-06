@@ -203,9 +203,10 @@ export const LatencySchema = z.strictObject({
 
 export type Latency = z.infer<typeof LatencySchema>;
 
-/** One call of a comparison: the agent's values it ran on, how it went, what it cost, and how fast it was. */
+/** One call of a comparison: the caller, the agent's values it ran on, how it went, what it cost, and how fast it was. */
 export const ComparisonRowSchema = z.strictObject({
   call: z.string(),
+  persona: z.string(),
   against: AgentValuesSchema,
   started_at: z.number(),
   ended_at: z.number().nullable(),
@@ -221,13 +222,16 @@ export const ComparisonRowSchema = z.strictObject({
 export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;
 
 /**
- * GET /v1/simulations/compare/{id}: one persona against the agent under several voices and models,
- * placed together; the rows best first — every judge held, then the fastest reply, then the cheapest.
+ * GET /v1/simulations/compare/{id}: a persona or more against the agent under several voices and
+ * models, placed together; caller by caller in the order placed, each one's rows best first — every
+ * judge held, then the fastest reply, then the cheapest.
  */
 export const ComparisonSchema = z.strictObject({
   comparison: z.string(),
   agent: z.string(),
+  /** The first caller; `personas` is every one, in the order placed. */
   persona: z.string(),
+  personas: z.array(z.string()),
   voice: z.boolean(),
   rows: z.array(ComparisonRowSchema),
 });
@@ -238,8 +242,8 @@ export type Comparison = z.infer<typeof ComparisonSchema>;
 export const ComparisonStartedSchema = z.strictObject({
   comparison: z.string(),
   voice: z.boolean(),
-  calls: z.array(z.strictObject({ against: AgentValuesSchema, call: z.string() })),
-  refused: z.array(z.strictObject({ against: AgentValuesSchema, why: z.string() })),
+  calls: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, call: z.string() })),
+  refused: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, why: z.string() })),
 });
 
 export type ComparisonStarted = z.infer<typeof ComparisonStartedSchema>;

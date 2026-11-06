@@ -214,6 +214,14 @@
   font-size: 12px;
 }
 
+/* A comparison of several callers: each caller heads its own rows. */
+.sims-cmp-who {
+  padding: 14px 16px 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .sims-cmp-said {
   font-size: 13px;
   overflow: hidden;

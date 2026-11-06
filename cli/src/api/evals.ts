@@ -227,17 +227,19 @@ export interface SimulationStarted {
   voice: boolean;
 }
 
-/** `POST /v1/simulations/compare`: one persona against the agent under each of these, placed together. */
+/** `POST /v1/simulations/compare`: a persona or more against the agent under each of these, one call per pair, placed together. */
 export interface ComparisonRequest extends Omit<SimulationRequest, "against"> {
   against: AgentValues[];
+  /** More callers beside `persona`, each against every configuration as it is. */
+  more_personas?: string[];
 }
 
 /** What a comparison placed, and what it could not. */
 export interface ComparisonStarted {
   comparison: string;
   voice: boolean;
-  calls: { against: AgentValues; call: string }[];
-  refused: { against: AgentValues; why: string }[];
+  calls: { persona: string; against: AgentValues; call: string }[];
+  refused: { persona: string; against: AgentValues; why: string }[];
 }
 
 /** A turn's measures over one call, each its median in seconds; one no turn reported is null. */
@@ -249,9 +251,10 @@ export interface Latency {
   end_of_turn_delay: number | null;
 }
 
-/** One call of a comparison: what the agent ran on, how it went, what it cost, how fast it was. */
+/** One call of a comparison: the caller, what the agent ran on, how it went, what it cost, how fast it was. */
 export interface ComparisonRow {
   call: string;
+  persona: string;
   against: AgentValues;
   started_at: number;
   ended_at: number | null;
@@ -263,11 +266,13 @@ export interface ComparisonRow {
   why: string | null;
 }
 
-/** `GET /v1/simulations/compare/{id}`: the comparison's calls, best first. */
+/** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first. */
 export interface Comparison {
   comparison: string;
   agent: string;
+  /** The first caller; `personas` is every one, in the order placed. */
   persona: string;
+  personas: string[];
   voice: boolean;
   rows: ComparisonRow[];
 }

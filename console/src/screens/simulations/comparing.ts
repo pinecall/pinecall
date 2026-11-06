@@ -1,4 +1,4 @@
-/** Start a comparison — one persona against the agent under several voices and models, placed together — and read its table. */
+/** Start a comparison — a persona or more against the agent under several voices and models, placed together — and read its table. */
 
 import { post, read, type Credentials } from "@pinecall/core/api";
 import { type AgentValues, type Comparison, type ComparisonRow, ComparisonSchema, type ComparisonStarted, ComparisonStartedSchema } from "@pinecall/core/wire/rest-evals";
@@ -7,12 +7,14 @@ import type { Wanted } from "./simulating";
 
 export type { AgentValues, Comparison, ComparisonRow, ComparisonStarted };
 
-/** What a comparison is started with: one simulation's wants, and the agent's values for each call (runtime evals/schemas.py ComparisonRequest). */
+/** What a comparison is started with: one simulation's wants, more callers beside its persona, and the agent's values for each call (runtime evals/schemas.py ComparisonRequest). */
 export interface Compared extends Omit<Wanted, "against"> {
   against: AgentValues[];
+  /** More callers, each against every configuration as `persona` is: one call per pair. */
+  more_personas?: string[];
 }
 
-/** The gateway holds an org to this many calls in one comparison. */
+/** The gateway holds an org to this many calls in one comparison, callers times configurations. */
 export const COMPARED_AT_MOST = 10;
 
 /**
@@ -23,7 +25,7 @@ export async function startComparison(credentials: Credentials, wanted: Compared
   return ComparisonStartedSchema.parse(await post(credentials, "/v1/simulations/compare", wanted));
 }
 
-/** GET /v1/simulations/compare/{id}: the rows best first — every judge held, then the fastest, then the cheapest. */
+/** GET /v1/simulations/compare/{id}: caller by caller, each one's rows best first — every judge held, then the fastest, then the cheapest. */
 export async function readComparison(credentials: Credentials, comparison: string): Promise<Comparison> {
   return ComparisonSchema.parse(await read(credentials, `/v1/simulations/compare/${encodeURIComponent(comparison)}`));
 }

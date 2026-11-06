@@ -57,7 +57,8 @@ export function useFloor(limit = FLOOR_ROWS): Floor {
     () => {
       void (async (): Promise<void> => {
         try {
-          const listed = SessionListSchema.parse(await read(credentials, "/v1/sessions", { limit }));
+          // `holders`: each row says whose copy took it, so a sandbox list of every copy can name it.
+          const listed = SessionListSchema.parse(await read(credentials, "/v1/sessions", { limit, holders: "true" }));
           setLines(listed.calls);
           setError(null);
           setRefusedWith(null);

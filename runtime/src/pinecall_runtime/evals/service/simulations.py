@@ -449,7 +449,11 @@ async def _against(serving: calls.Serving, placed: Placed) -> None:
         return
     async with serving.handles.sessions.begin() as session_:
         await calls.keep_agent_values(
-            session_, placed.call, against=placed.against or None, comparison=placed.comparison
+            session_,
+            placed.call,
+            against=placed.against or None,
+            comparison=placed.comparison,
+            persona=placed.persona.name,
         )
 
 
