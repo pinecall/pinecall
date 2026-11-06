@@ -24,8 +24,8 @@ Options:
   --caller-voice <id>      the caller's voice this run: pinecall voices list
                            names them
   --against <values>       the agent on these for this run: stt=, llm=, tts=,
-                           voice=, language=, temperature=; again for another,
-                           compared
+                           voice=, language=, temperature=, end_of_turn=; again
+                           for another, compared
   --agent <name>
   --file <agent.tsx>
   -h, --help               display help for command

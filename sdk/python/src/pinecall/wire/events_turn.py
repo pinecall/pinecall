@@ -125,6 +125,14 @@ class UserTurnEnded(WireModel):
     metrics: UserTurnMetrics
 
 
+class TurnDetection(WireModel):
+    """Who says the caller's turn is over on this call, written once as it opens."""
+
+    by: Literal["stt", "livekit", "smart-turn"]
+    model: str
+    min_silence_s: float | None = None
+
+
 class UserStateChanged(WireModel):
     """The caller's state changed, in the session's own words."""
 

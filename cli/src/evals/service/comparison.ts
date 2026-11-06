@@ -11,8 +11,8 @@ import { UsageError } from "../../errors.js";
 import { playedBy, ranOn, scoreOf, type Simulated, type SimulateInput, type SimulationListeners } from "./simulation.js";
 import { mediansOf } from "./suite.js";
 
-/** The knobs `--against` takes, the test room's: each stage as vendor/model, a voice, a language, a temperature. */
-export const AGAINST_KNOBS = ["stt", "llm", "tts", "voice", "language", "temperature"] as const;
+/** The knobs `--against` takes, the test room's: each stage as vendor/model, a voice, a language, a temperature, who ends the turn. */
+export const AGAINST_KNOBS = ["stt", "llm", "tts", "voice", "language", "temperature", "end_of_turn"] as const;
 
 export const AgentValuesInput = z.strictObject({
   stt: z.string().min(1).optional(),
@@ -21,6 +21,7 @@ export const AgentValuesInput = z.strictObject({
   voice: z.string().min(1).optional(),
   language: z.string().min(1).optional(),
   temperature: z.number().optional(),
+  end_of_turn: z.enum(["stt", "livekit", "smart-turn"]).optional(),
 });
 export type AgentValuesInput = z.infer<typeof AgentValuesInput>;
 

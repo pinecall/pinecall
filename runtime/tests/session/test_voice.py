@@ -17,9 +17,10 @@ from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
 from pinecall_runtime.session.listener import is_spoken
+from pinecall_runtime.wire import events as wire
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
-from tests.fakes.acme import AcmeLLM, AcmeTTS
+from tests.fakes.acme import ACME, AcmeLLM, AcmeTTS
 from tests.fakes.talker import TalkerRealtime
 from tests.session.conftest import (
     Box,
@@ -113,6 +114,27 @@ async def test_the_row_may_read_the_turn_with_smart_turn_whose_weights_load_once
     assert type(detector).__name__ == "SmartTurnDetector"
     again = spoken_call(box, NOBODY, turn_model="smart-turn-v3")
     assert again.live.options.turn_handling.get("turn_detection") is detector
+
+
+# 2026-11-06: on Scribe the agent spoke over a caller who paused between sentences: the detector closed the
+# turn on the first silence, and `endpointing_ms`, which would have made it wait, was refused as untaken.
+@needs_the_database
+async def test_the_agents_endpointing_is_the_least_silence_the_detector_waits_on_ears_that_leave_the_turn_open(
+    box: Box,
+) -> None:
+    patient = AgentConfig(slug="clinica-norte", turn=Turn(endpointing_ms=800))
+    local = spoken_call(box, patient)
+    endpointing = local.live.options.turn_handling.get("endpointing") or {}
+    assert (endpointing.get("min_delay"), endpointing.get("max_delay")) == (0.8, 3.0)
+    assert local.turn == wire.TurnDetection(by="livekit", model="v1-mini", min_silence_s=0.8)
+    # Ears that end the turn take the silence as their own timeout, and livekit's half second stays here.
+    deciding = spoken_call(box, patient, ends_the_turn=True)
+    assert (deciding.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == 0.5
+    assert deciding.turn == wire.TurnDetection(by="stt", model=ACME)
+    # Smart Turn streams, and livekit waits its tighter 0.3 s on a streaming detector when nothing is set.
+    unset = spoken_call(box, NOBODY, turn_model="smart-turn-v3")
+    assert (unset.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == 0.3
+    assert unset.turn == wire.TurnDetection(by="smart-turn", model="smart-turn-v3")
 
 
 @needs_the_database

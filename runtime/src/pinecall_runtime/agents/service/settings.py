@@ -272,7 +272,7 @@ def dump_tuning(tuning: Tuning) -> dict[str, Any]:
 
 
 # What a test room may change for its own call: the voice, the models and the language they run in.
-TEST_KNOBS = frozenset({"stt", "llm", "tts", "tts_model", "voice", "language", "temperature"})
+TEST_KNOBS = frozenset({"stt", "llm", "tts", "tts_model", "voice", "language", "temperature", "end_of_turn"})
 NOT_FOR_A_TEST = "a test room changes only the voice and the models, so {names} {are} not its to set"
 
 

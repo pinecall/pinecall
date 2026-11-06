@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`endpointing_ms` reaches the detector on ears that leave the turn open.** On Scribe, Soniox and every
+  recogniser but Flux the knob was refused as untaken; it is the least silence before livekit's detector or
+  Smart Turn is asked whether the caller is done now (`endpointing.min_delay`), so an agent whose callers
+  pause between sentences waits for them. Flux keeps taking it as its own timeout.
+- **A spoken call says who ends the caller's turn.** `turn.detection`, after `call.started`: the ears
+  themselves, livekit's detector or Smart Turn, its model, and the least silence it waits.
+- **A test room and `against` take `end_of_turn`** (`stt`, `livekit`, `smart-turn`), so a comparison can
+  put the same ears under each detector.
 - **A vendor named with no model runs the platform default's model.** A test room or comparison that set
   only the temperature, or a class declaring `llm: "google"` alone, left the model to the plugin, and
   Google's plugin runs `gemini-2.5-flash`, which Google retired under "new users": every such call ended

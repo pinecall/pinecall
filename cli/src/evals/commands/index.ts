@@ -64,7 +64,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--llm <vendor/model>", "the model that plays the caller this run; the persona's when unsaid")
     .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
     .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
-    .option("--against <values>", "the agent on these for this run: stt=, llm=, tts=, voice=, language=, temperature=; again for another, compared", repeated)
+    .option("--against <values>", "the agent on these for this run: stt=, llm=, tts=, voice=, language=, temperature=, end_of_turn=; again for another, compared", repeated)
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)

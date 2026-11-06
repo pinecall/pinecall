@@ -270,6 +270,9 @@ def refuse_untaken_knobs(ears: Running, voice: Running, tuning: Tuning) -> None:
         "eot_threshold": turn.eot_threshold,
         "eager_eot_threshold": turn.eager_eot_threshold,
     }
+    # Ears that leave the turn open never take the silence: the session's detector does (session/voice.py).
+    if not ears.ends_the_turn:
+        heard.pop("endpointing_ms")
     _refuse_untaken("stt", ears, [knob for knob, value in heard.items() if value is not None])
     _refuse_untaken("tts", voice, ["voice"] if tuning.voice is not None else [])
 

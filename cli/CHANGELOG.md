@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`--against` takes `end_of_turn=`** (`stt`, `livekit`, `smart-turn`), so a comparison can put the same ears under
+  each detector; the table names it (`end of turn livekit`).
 - **A comparison's row that ended in error says so.** A call whose ears failed before the caller spoke was judged on its
   greeting, and the table showed it held (`✓ 1/1`); its judges' column reads `ended in error` now.
 - **A comparison the gateway refused whole says why.** `simulate --against … --against …` with every row refused

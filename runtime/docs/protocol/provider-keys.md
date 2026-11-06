@@ -52,10 +52,13 @@ row, and the suite proves it before a call does: every installed vendor is built
 alone, and either reports the model and the provider the usage reads and the capabilities the
 session reads, or is refused in our words, never in its own exception.
 
-A knob the org sets that the vendor takes under no name — a turn's `endpointing_ms`,
-`eot_threshold` or `eager_eot_threshold` on ears that have no such parameter, a `voice` on a voice
-that picks none — is **refused where it is set**, `400 soniox's stt takes no eager_eot_threshold`
-on `PUT /v1/agents/{slug}/settings` with a `pipeline` key, instead of being dropped on every call.
+A knob the org sets that the vendor takes under no name — a turn's `eot_threshold` or
+`eager_eot_threshold` on ears that have no such parameter, a `voice` on a voice that picks none — is
+**refused where it is set**, `400 soniox's stt takes no eager_eot_threshold` on
+`PUT /v1/agents/{slug}/settings` with a `pipeline` key, instead of being dropped on every call. A
+turn's `endpointing_ms` is never untaken: ears that end the turn themselves take it as their timeout,
+and on ears that leave the turn open it is the least silence before the session's own detector
+(livekit's or Smart Turn) is asked whether the caller is done, said on the call's `turn.detection`.
 A set a `words` key writes carries those knobs over untouched and is not refused for them, and a
 setting stored before this refusal still runs as it did. The abstraction stops where a vendor's
 behaviour is not a parameter: a stream's timing, how it cuts a sentence, what its confidence

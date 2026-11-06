@@ -575,6 +575,17 @@ class UserTurnEnded(WireModel):
     metrics: UserTurnMetrics
 
 
+class TurnDetection(WireModel):
+    """Who says the caller's turn is over on this call, written once as it opens."""
+
+    # The ears themselves (Deepgram Flux), livekit's detector or Smart Turn, a model on the worker.
+    by: Literal["stt", "livekit", "smart-turn"]
+    # The ears' model when they decide it; else the detector's checkpoint (v1-mini, smart-turn-v3).
+    model: str
+    # The least silence, in seconds, before the detector is asked; null where the ears decide it or none is set.
+    min_silence_s: float | None = None
+
+
 class UserStateChanged(WireModel):
     """The caller's state changed."""
 
@@ -698,6 +709,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "user.state": UserStateChanged,
     "user.transcript": UserTranscript,
     "vendor.failed": VendorFailed,
+    "turn.detection": TurnDetection,
     "vendor.switched": VendorSwitched,
     "worker.changed": WorkerChanged,
 }

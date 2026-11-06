@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+
+- **The wire reads `turn.detection`**: who ends the caller's turn on a spoken call (the ears, livekit's detector or
+  Smart Turn), its model, and the least silence it waits. Written once after `call.started`; the gateway's, not folded.
+
 ## [0.11.28] — the wire reads vendor.failed and org.quiet (2026-11-05)
 
 - **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that

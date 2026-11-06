@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from functools import cache
+from typing import Literal
 
 from livekit.agents import NOT_GIVEN, NotGivenOr, inference, llm
 from livekit.agents.voice import AgentSession, STTContextOptions
@@ -10,7 +11,7 @@ from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
 from livekit.agents.voice.turn import InterruptionOptions, TurnDetectionMode, TurnHandlingOptions
 from smart_turn_livekit import SmartTurnDetector  # pyright: ignore[reportMissingTypeStubs]
 
-from pinecall_runtime.agents.declaration import AgentConfig
+from pinecall_runtime.agents.declaration import AgentConfig, Turn
 from pinecall_runtime.kit.said import saying
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session.call import Call
@@ -18,6 +19,7 @@ from pinecall_runtime.session.hearing import keyterms, policy_for
 from pinecall_runtime.session.listener import write_switches
 from pinecall_runtime.session.lookups import VOICE_LOOKUP_MS, Lookups
 from pinecall_runtime.session.session import TOOL_STEPS, Session
+from pinecall_runtime.wire import events as wire
 
 # The local end-of-turn model: left unset, livekit may pick the hosted one and send the
 # caller's words to a cloud.
@@ -30,6 +32,8 @@ SMART_TURN: providers.TurnModel = "smart-turn-v3"
 # caller's 4 sentences, 0.25 s exactly the 4, while "Sí." and "No." alone still open one (0.35 s
 # of speech, the shortest measured). Keeping noise from the ears is how Whisper is kept honest.
 MIN_SPEECH_S = 0.25
+# livekit's own longest wait for a detector that is unsure the caller is done.
+MAX_SILENCE_S = 3.0
 
 
 def voice_session(
@@ -58,8 +62,24 @@ def voice_session(
         max_tool_steps=tool_steps or TOOL_STEPS,
     )
     return Session(
-        live, (thinking, ears, voice), Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS)
+        live,
+        (thinking, ears, voice),
+        Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS),
+        turn=_turn_detection(stages.stt, call.config.turn),
     )
+
+
+# Said on the log as the call opens, so a transcript says who ended each caller's turn and on what silence.
+def _turn_detection(ears: providers.Running, turn: Turn | None) -> wire.TurnDetection:
+    if ears.ends_the_turn:
+        return wire.TurnDetection(by="stt", model=ears.model or ears.vendor)
+    by: Literal["livekit", "smart-turn"] = "smart-turn" if ears.turn_model == SMART_TURN else "livekit"
+    return wire.TurnDetection(by=by, model=ears.turn_model, min_silence_s=_min_silence(turn))
+
+
+# The agent's endpointing, in seconds, for the detector the session stacks on ears that leave the turn open.
+def _min_silence(turn: Turn | None) -> float | None:
+    return None if turn is None or turn.endpointing_ms is None else turn.endpointing_ms / 1000
 
 
 # A realtime model hears the caller, takes the turn and answers in its own voice: the session has no
@@ -123,7 +143,8 @@ def _text_transforms_of(config: AgentConfig) -> NotGivenOr[Sequence[transforms.T
 
 # Interruptions are judged by the local VAD: livekit's adaptive detector streams the caller's
 # audio to its cloud. A false interruption is not resumed: livekit replays the whole sentence.
-# No endpointing here: the agent's own already reaches the ears, and both would wait twice.
+# The agent's endpointing reaches the ears that end the turn (Flux's timeout), and the detector
+# stacked on the others as the least silence before it is asked: never both, which would wait twice.
 def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingOptions:
     policy = policy_for(config.language, config.turn)
     interruption: InterruptionOptions = {
@@ -134,7 +155,7 @@ def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingO
     }
     if policy.min_speech_s is not None:
         interruption["min_duration"] = policy.min_speech_s
-    return {
+    handling: TurnHandlingOptions = {
         # Ears that end the turn themselves decide it; the local detector stacked on them waits
         # its whole delay after a pause in the middle of a sentence.
         "turn_detection": "stt" if ears.ends_the_turn else _end_of_turn(ears.turn_model),
@@ -143,3 +164,8 @@ def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingO
         "preemptive_generation": {"enabled": False},
         "interruption": interruption,
     }
+    silence = _min_silence(config.turn)
+    if not ears.ends_the_turn and silence is not None:
+        # The most it waits when the detector is unsure stays livekit's, unless the least is longer.
+        handling["endpointing"] = {"min_delay": silence, "max_delay": max(silence, MAX_SILENCE_S)}
+    return handling

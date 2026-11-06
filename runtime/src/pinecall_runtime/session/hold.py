@@ -1,11 +1,13 @@
-"""Hold music: the clip played into the room while the caller waits, faded in and out."""
+"""The line on hold: the agent silenced and given its hearing back, and the clip played meanwhile, faded in and out."""
 
 import asyncio
+import contextlib
 import logging
 import time
 from pathlib import Path
 
 from livekit import rtc
+from livekit.agents.voice import AgentSession
 from livekit.agents.voice.background_audio import AudioConfig, BackgroundAudioPlayer, PlayHandle
 
 from pinecall_runtime.agents import service as agents
@@ -104,3 +106,22 @@ class HoldMusic:
         if self.playing_since is not None:
             self.played.append((self.playing_since, time.time()))
             self.playing_since = None
+
+
+# interrupt() raises when nothing is playing or the session has stopped.
+async def silence(live: AgentSession[None]) -> None:
+    """Stop the agent's speech now, and keep it from hearing or speaking until it is given back."""
+    # The future waits for the speech to end: a hold asked from a tool of that speech would wait
+    # out livekit's five seconds before the line was marked held (measured 2026-10-24), while the
+    # speech itself is cut as the call returns. The audio goes off here, now.
+    with contextlib.suppress(RuntimeError):
+        live.interrupt(force=True)
+    live.output.set_audio_enabled(False)
+    live.input.set_audio_enabled(False)
+
+
+# The ears first, then the voice, so the agent never speaks before it can hear.
+def hear_again(live: AgentSession[None]) -> None:
+    """Let the caller's audio reach the ears again after a pause."""
+    live.input.set_audio_enabled(True)
+    live.output.set_audio_enabled(True)

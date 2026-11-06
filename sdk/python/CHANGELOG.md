@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **The wire reads `turn.detection`**: who ends the caller's turn on a spoken call (the ears, livekit's detector or
+  Smart Turn), its model, and the least silence it waits. Written once after `call.started`.
+
 ## 0.11.28 — the wire reads vendor.failed and org.quiet (2026-11-05)
 
 - **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that

@@ -39,3 +39,8 @@ def test_a_room_changes_the_voice_and_the_models_and_nothing_else() -> None:
 def test_a_value_the_settings_would_refuse_is_refused_here_too() -> None:
     with pytest.raises(ValidationError):
         settings.check_test_values({"temperature": -1}, env=Env.sandbox)
+
+
+def test_a_room_may_say_who_ends_the_callers_turn() -> None:
+    asked = {"stt": "acme/nova", "end_of_turn": "livekit"}
+    assert settings.check_test_values(asked, env=Env.sandbox) == asked

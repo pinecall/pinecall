@@ -54,6 +54,12 @@ it("reads call.started with what a simulated caller expects", () => {
   expect(eventOf(decodeEntry(entry("call.started", started)))).toMatchObject({ data: { expects: ["The agent should get to the point."] } });
 });
 
+it("reads turn.detection: who ends the caller's turn, and the least silence it waits", () => {
+  const detection = { by: "smart-turn", model: "smart-turn-v3", min_silence_s: 0.8 };
+  expect(eventOf(decodeEntry(entry("turn.detection", detection))).type).toBe("turn.detection");
+  expect(eventOf(decodeEntry(entry("turn.detection", { by: "stt", model: "flux-general-multi" }))).type).toBe("turn.detection");
+});
+
 it("reads spend.unusual and vendor.switched", () => {
   const spend = { org: "org_1", day: "2026-10-01", today_usd: 31.5, usual_usd: 9.2, multiple: 3.4 };
   expect(eventOf(decodeEntry(entry("spend.unusual", spend))).type).toBe("spend.unusual");

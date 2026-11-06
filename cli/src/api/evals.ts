@@ -206,6 +206,7 @@ export interface AgentValues {
   voice?: string | undefined;
   language?: string | undefined;
   temperature?: number | undefined;
+  end_of_turn?: "stt" | "livekit" | "smart-turn" | undefined;
 }
 
 /** `POST /v1/simulations`: a persona put on the agent, the gateway playing the caller; written or spoken. */

@@ -4,7 +4,7 @@ import contextlib
 import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Sequence
 
-from pinecall_runtime.calls import private
+from pinecall_runtime.calls import feeds, private
 from pinecall_runtime.calls.fanout import EVERYTHING, Fanout, Filter, Subscription
 from pinecall_runtime.calls.models import log_name
 from pinecall_runtime.calls.reducer import reduce
@@ -27,34 +27,10 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.redis import LocalSignal, Signal
 from pinecall_runtime.wire.base import BatchedEntry, Entry, WireModel
 from pinecall_runtime.wire.events import EPHEMERAL_EVENTS, TERMINAL_EVENT
-from pinecall_runtime.wire.feed import ToolFailed, ToolRan
-from pinecall_runtime.wire.parts import ToolResult
 from pinecall_runtime.wire.state import State
 
 # Runs inline on every append, before append returns: for work that is part of the write.
 type Tap = Callable[[Entry], Awaitable[None]]
-
-# A call sealed and a call judged: a list redraws its row then, so they are on the feed, with no
-# data, since the outcome and the verdicts are the call's content; a reader reads them off the call.
-ONLY_THAT_IT_HAPPENED = frozenset({"call.summary", "call.score"})
-
-# What an org's feed and the box's carry: the lifecycle, never the content of a call.
-ORG_EVENTS = frozenset(
-    {
-        "agent.registered",
-        "agent.detached",
-        "call.ringing",
-        "call.dialing",
-        "call.started",
-        "call.ended",
-        "attention.requested",
-        "attention.answered",
-        "supervisor.took_over",
-        "supervisor.released",
-        "call.summary",
-        "call.score",
-    }
-)
 
 
 # Readers and the writer share the one Log of a name: a reader often arrives before the writer.
@@ -399,11 +375,11 @@ class Logs:
     # the org's feed in that env and are kept nowhere, so a reader asks the endpoint for the rest.
     def announce(self, scope: Scope, kind: str, event: WireModel) -> None:
         """Say on the org's feed, in the scope's env, that something changed."""
-        self.relay.local(FEED_CHANNEL.format(org=scope.org, env=scope.env.value), news(kind, event))
+        self.relay.local(FEED_CHANNEL.format(org=scope.org, env=scope.env.value), feeds.news(kind, event))
 
     def announce_to_the_box(self, kind: str, event: WireModel) -> None:
         """Say on the box's feed that something changed (a worker, say)."""
-        self.relay.local(BOX_CHANNEL, news(kind, event))
+        self.relay.local(BOX_CHANNEL, feeds.news(kind, event))
 
     # What wakes a reader of the metered rows: a row written on any gateway, said as it is, after
     # it is stored. The reader reads the rows from its cursor; the entry is only the news.
@@ -459,41 +435,25 @@ class Logs:
         log = self._logs.get(channel.removeprefix(LOG_PREFIX))
         return None if log is None else log.fanout
 
-    # An agent's own entries serve both envs, so they reach the org's feed in each.
     async def _feed(self, entry: Entry) -> None:
         if entry.type in METERED_TYPES:
             self.relay.local(USAGE_CHANNEL, entry.model_copy(update={"data": {}}))
+        # Every tool.result passes here, whichever gateway or worker wrote it.
         if entry.type == "tool.result":
             await self._announce_tool(entry)
-        if entry.type not in ORG_EVENTS:
+        carried = feeds.on_the_feeds(entry)
+        if carried is None:
             return
         claimant = await self.claimant_of(entry)
-        if claimant is None:
-            return
-        if entry.type in ONLY_THAT_IT_HAPPENED:
-            entry = entry.model_copy(update={"data": {}})
-        self.relay.local(BOX_CHANNEL, entry)
-        envs = tuple(Env) if claimant.env is None else (claimant.env,)
-        for env in envs:
-            self.relay.local(FEED_CHANNEL.format(org=claimant.org, env=env.value), entry)
+        if claimant is not None:
+            for channel in feeds.feed_channels(claimant):
+                self.relay.local(channel, carried)
 
-    # Every tool.result passes here, whichever gateway or worker wrote it: said with the tool's name and
-    # seconds, never its error, arguments or output, which are the call's content.
     async def _announce_tool(self, entry: Entry) -> None:
         claimant = await self.claimant_of(entry)
-        try:
-            result = ToolResult.parse(entry.data, entry.type)
-        except ValidationError:
-            return
-        if claimant is None or claimant.env is None or entry.call is None:
-            return
-        scope = Scope(claimant.org, claimant.env)
-        if result.error is None:
-            ran = ToolRan(call=entry.call, agent=entry.agent, name=result.name, duration_s=result.duration_s)
-            self.announce(scope, "tool.ran", ran)
-        else:
-            failed = ToolFailed(call=entry.call, agent=entry.agent, name=result.name, duration_s=result.duration_s)
-            self.announce(scope, "tool.failed", failed)
+        said = None if claimant is None else feeds.tool_news(entry, claimant)
+        if said is not None:
+            self.announce(*said)
 
     # On every read, so readers asking for arbitrary names cannot grow the tables without bound.
     def _prune(self, *, but: str = "") -> None:
@@ -506,9 +466,3 @@ class Logs:
             del self._logs[name]
         for key in [k for k, feed in self._feeds.items() if not feed.readers]:
             del self._feeds[key]
-
-
-# What a feed says of a change no log holds: its type and ids, the moment it is said, kept nowhere.
-def news(kind: str, event: WireModel) -> Entry:
-    """An entry of the feed for something that changed, said once and never stored."""
-    return Entry(seq=0, ts=time.time(), call=None, agent="", type=kind, ephemeral=True, data=event.dump())

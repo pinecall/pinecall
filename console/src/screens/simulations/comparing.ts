@@ -39,6 +39,7 @@ export function said(values: AgentValues): string {
     ["voice", values.voice],
     ["language", values.language],
     ["temperature", values.temperature],
+    ["end of turn", values.end_of_turn],
   ];
   const named = parts.flatMap(([name, value]) => (value === undefined ? [] : [`${name} ${String(value)}`]));
   return named.length === 0 ? "the agent's own settings" : named.join(" · ");
@@ -53,5 +54,6 @@ export function trimmed(values: AgentValues): AgentValues {
   if (values.voice) kept.voice = values.voice;
   if (values.language) kept.language = values.language;
   if (values.temperature !== undefined) kept.temperature = values.temperature;
+  if (values.end_of_turn) kept.end_of_turn = values.end_of_turn;
   return kept;
 }

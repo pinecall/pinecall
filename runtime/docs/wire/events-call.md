@@ -242,6 +242,16 @@ The agent's reply is over and this is what was said. With it, everything the ses
 | `interrupted` | `boolean` | yes | True when the caller cut the reply short. |
 | `metrics` | `AgentTurnMetrics` | yes | What the session measured about the agent's reply. |
 
+### `turn.detection`
+
+Who says the caller's turn is over on this call, written once as a spoken call opens, after `call.started`: the ears themselves where their recogniser decides it (Deepgram Flux), else the detector the session stacks on them, livekit's or Smart Turn, a model on the worker. A written call has none.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `by` | `"stt" | "livekit" | "smart-turn"` | yes | Who decides the turn is over. |
+| `model` | `string` | yes | The ears' model when they decide it; else the detector's checkpoint (`v1-mini`, `smart-turn-v3`). |
+| `min_silence_s` | `number` | no | The least silence, in seconds, before the detector is asked whether the caller is done: the agent's `endpointing_ms`. Absent where the ears decide it, or where none is set and livekit's own half second holds. |
+
 ### `turn.user`
 
 The caller's turn is over and this is what they said. With it, everything the session measured about the turn.

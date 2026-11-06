@@ -9,7 +9,7 @@ from pinecall_runtime.kit.schemas import Row, Schema
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.goldens import Golden
-from pinecall_runtime.wire.parts import Ambience, EndReason, ModelConfig, ScoreVerdict
+from pinecall_runtime.wire.parts import Ambience, EndOfTurn, EndReason, ModelConfig, ScoreVerdict
 
 # A listing's page is never longer than this, whatever the reader asks; a screen when unsaid.
 LONGEST_LIST = 200
@@ -182,13 +182,14 @@ class NextLineResponse(Row):
 class AgentValues(Schema):
     """The voice and models a run puts the agent on, over its settings, as a test room asks them (TEST_KNOBS)."""
 
-    # Each stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature.
+    # Each stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature, who ends the turn.
     stt: str | None = None
     llm: str | None = None
     tts: str | None = None
     voice: str | None = None
     language: str | None = None
     temperature: float | None = None
+    end_of_turn: EndOfTurn | None = None
 
     def named(self) -> dict[str, Any]:
         """Only what is said."""

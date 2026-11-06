@@ -154,7 +154,8 @@ export const CaseGroupListSchema = z.strictObject({
  */
 /**
  * The knobs a call may run the agent on over its saved settings, as a test room asks them (the
- * runtime's TEST_KNOBS): each stage as `vendor/model`, a voice, a language, a temperature; nothing
+ * runtime's TEST_KNOBS): each stage as `vendor/model`, a voice, a language, a temperature, who ends the
+ * caller's turn; nothing
  * named is the agent's own. The sandbox's alone.
  */
 export const AgentValuesSchema = z.strictObject({
@@ -164,6 +165,7 @@ export const AgentValuesSchema = z.strictObject({
   voice: z.string().optional(),
   language: z.string().optional(),
   temperature: z.number().optional(),
+  end_of_turn: z.enum(["stt", "livekit", "smart-turn"]).optional(),
 });
 
 export type AgentValues = z.infer<typeof AgentValuesSchema>;

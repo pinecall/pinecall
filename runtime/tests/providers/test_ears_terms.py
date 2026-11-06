@@ -8,7 +8,8 @@ from typing import Never, override
 import pytest
 from livekit.agents import stt, tts
 
-from pinecall_runtime.agents.declaration import Modality
+from pinecall_runtime.agents.declaration import Modality, Tuning, Turn
+from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers.service import stages
 from pinecall_runtime.providers.service.plugins import Running
 
@@ -199,3 +200,18 @@ def test_the_platforms_hints_reach_the_ears_unless_the_row_names_them(monkeypatc
     row: dict[str, list[str]] = {"language_hint": []}
     told = _built(monkeypatch, HintedEars, Running(vendor="v", credentials="k", hints=("es", "en"), options=row))
     assert told["language_hint"] == []
+
+
+# 2026-11-06: on Scribe `endpointing_ms` was refused as untaken, and the agent spoke over callers who paused.
+def test_the_silence_is_the_detectors_on_ears_that_leave_the_turn_open_and_the_ears_own_where_they_end_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def the_class(_modality: Modality, _running: Running) -> type:
+        return NoTerms
+
+    monkeypatch.setattr(stages, "_class_of", the_class)
+    patient = Tuning(turn=Turn(endpointing_ms=800))
+    voice = Running(vendor="v", credentials="k")
+    stages.refuse_untaken_knobs(Running(vendor="v", credentials="k"), voice, patient)
+    with pytest.raises(ValidationError, match="takes no endpointing_ms"):
+        stages.refuse_untaken_knobs(Running(vendor="v", credentials="k", ends_the_turn=True), voice, patient)

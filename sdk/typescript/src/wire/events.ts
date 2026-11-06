@@ -353,6 +353,13 @@ export const ToolsChangedSchema = z.strictObject({
  * The caller's turn is over and this is what they said. With it, everything the session measured
  * about the turn.
  */
+/** Who says the caller's turn is over on this call, written once as it opens. */
+export const TurnDetectionSchema = z.strictObject({
+  by: z.enum(["stt", "livekit", "smart-turn"]),
+  model: z.string(),
+  min_silence_s: z.number().nullable().optional(),
+});
+
 export const UserTurnEndedSchema = z.strictObject({
   speech_id: z.string(),
   item_id: z.string().nullish(),

@@ -752,7 +752,7 @@ names a version of the corner the run plays on.
 pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05]
                   [--llm vendor/model] [--tts vendor] [--caller-voice id]
-                  [--against stt=…,llm=…,tts=…,voice=…]… [--agent <name>] [--file agent.tsx]
+                  [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--agent <name>] [--file agent.tsx]
 ```
 
 A model in the gateway plays the caller — every turn improvised from the persona's goal, its style
@@ -803,7 +803,7 @@ simulation of the org's `simulations` from the moment its call begins (`limits` 
 feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` names it).
 
 `--against` runs **the agent** on other values for this run alone — `stt=`, `llm=`, `tts=`,
-`voice=`, `language=`, `temperature=`, joined by commas: `--against llm=groq/openai/gpt-oss-120b,tts=deepgram`
+`voice=`, `language=`, `temperature=`, `end_of_turn=` (`stt`, `livekit`, `smart-turn`), joined by commas: `--against llm=groq/openai/gpt-oss-120b,tts=deepgram`
 — as the console's test room does; the agent's saved settings do not change, and the call keeps what
 it ran on. In the sandbox only, with a key that edits the pipeline (`403` otherwise); a knob the test
 room does not have is refused. The gateway plays the caller then, written or spoken, and this
@@ -1487,15 +1487,17 @@ pointed at your server: `--judge openai/qwen3-32b --judge-option base_url=http:/
 options run on your own key alone, as every stage's do. `clear judge` goes back to the org's.
 
 **How a turn is decided is four numbers, and two of them are confidences.** `--endpointing-ms` is
-the longest silence a caller is left in before the turn is called finished, and
+the silence a caller is left in before the turn is called finished: ears that decide the turn
+themselves (Flux) take it as their end-of-turn timeout, and on ears that leave it open it is the
+least silence before the detector on the worker (`--end-of-turn livekit` or `smart-turn`) is asked
+whether the caller is done, so a caller who pauses between sentences is not spoken over; and
 `--min-interruption-words` how many words it takes to stop the agent mid-sentence. The other two
 are for a recogniser that decides the end of a turn *itself* — Deepgram Flux, which is the
 runtime's own ears: `--eot-threshold` is how sure it must be before it ends one, and
 `--eager-eot-threshold` the lower bar at which it says a turn MIGHT be over, which is what lets
-the model start on an answer that is thrown away if the caller carries on. Each number is tried on
-the ears before it is kept, inside the vendor's own range: Flux takes `--endpointing-ms` as its
-end-of-turn timeout, and a value it refuses is refused there, in its words, naming the knobs tried
-(`turn endpointing_ms=400`).
+the model start on an answer that is thrown away if the caller carries on. The two confidences are tried on
+the ears before they are kept, inside the vendor's own range, and a value refused is refused
+there, in the vendor's words, naming the knobs tried (`turn eot_threshold=0.95`).
 
 **What never takes the floor**, whatever the numbers. While the agent speaks, a turn that only
 agrees ("mm-hm", "sí") is dropped before it can interrupt; so is, for a second and

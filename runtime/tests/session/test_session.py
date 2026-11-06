@@ -1305,6 +1305,21 @@ async def test_a_spoken_calls_recording_is_whole_before_the_seal_names_it(
     assert channels_at_the_seal == [2]
 
 
+@needs_the_database
+async def test_a_spoken_call_says_who_ends_the_callers_turn_right_after_it_started(
+    box: Box, server: Server, store: Store, call: str
+) -> None:
+    session = spoken_call(box, NOBODY, turn_model="smart-turn-v3")
+    session.live.input.audio = Microphone(tone(300, 0.2))
+    session.live.output.audio = Speaker()
+    await session.start(room=_a_room(box, session.call, server))
+    await session.close()
+    written = await kinds(store, call)
+    assert written.index("turn.detection") == written.index("call.started") + 1
+    said = next(entry.data for entry in await store.whole(call) if entry.type == "turn.detection")
+    assert said == {"by": "smart-turn", "model": "smart-turn-v3", "min_silence_s": None}
+
+
 # ── the line ──
 
 

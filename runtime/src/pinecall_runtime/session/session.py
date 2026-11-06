@@ -16,7 +16,7 @@ from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.session import echo, prompt, recording
 from pinecall_runtime.session.agent import CallAgent
 from pinecall_runtime.session.hearing import keyterms
-from pinecall_runtime.session.hold import HoldMusic
+from pinecall_runtime.session.hold import HoldMusic, hear_again, silence
 from pinecall_runtime.session.listener import Built, Listener, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
@@ -80,12 +80,20 @@ NO_LINE = "a written conversation has no line to transfer"
 class Session:
     """One call's AgentSession and the call it writes: its events, commands, time and end."""
 
-    def __init__(self, live: AgentSession[None], built: tuple[Built, ...], lookups: Lookups) -> None:
+    def __init__(
+        self,
+        live: AgentSession[None],
+        built: tuple[Built, ...],
+        lookups: Lookups,
+        turn: wire.TurnDetection | None = None,
+    ) -> None:
         """The session of a call nobody has spoken on, its agent holding every tool."""
         self.call = lookups.call
         self.live = live
         self.built = built
         self.lookups = lookups
+        # Who ends the caller's turn on a spoken call, said on the log as it opens; a written call has none.
+        self.turn = turn
         lookups.sign = signing(built)
         self.blocks = prompt.Blocks(self.call.config.prompt, self.call.config.knowledge or "")
         toolbox = Toolbox(
@@ -140,6 +148,8 @@ class Session:
         await self.call.writing.write(
             "call.started", started(self.call.context, self.started_at, worker, medium=medium)
         )
+        if self.turn is not None:
+            await self.call.writing.write("turn.detection", self.turn)
         knowledge = prompt.knowledge_changed(self.blocks)
         if knowledge is not None:
             await self.call.writing.write("prompt.changed", knowledge)
@@ -479,22 +489,3 @@ class Session:
 def given_or_unset[T](value: T | None) -> NotGivenOr[T]:
     """The value, or livekit's NOT_GIVEN when it is None."""
     return NOT_GIVEN if value is None else value
-
-
-# interrupt() raises when nothing is playing or the session has stopped.
-async def silence(live: AgentSession[None]) -> None:
-    """Stop the agent's speech now, and keep it from hearing or speaking until it is given back."""
-    # The future waits for the speech to end: a hold asked from a tool of that speech would wait
-    # out livekit's five seconds before the line was marked held (measured 2026-10-24), while the
-    # speech itself is cut as the call returns. The audio goes off here, now.
-    with contextlib.suppress(RuntimeError):
-        live.interrupt(force=True)
-    live.output.set_audio_enabled(False)
-    live.input.set_audio_enabled(False)
-
-
-# The ears first, then the voice, so the agent never speaks before it can hear.
-def hear_again(live: AgentSession[None]) -> None:
-    """Let the caller's audio reach the ears again after a pause."""
-    live.input.set_audio_enabled(True)
-    live.output.set_audio_enabled(True)

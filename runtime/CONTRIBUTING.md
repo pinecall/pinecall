@@ -40,7 +40,7 @@ the same name, one module per noun (`calls/service/seal.py`, `knowledge/reposito
 `accounts/endpoints/keys.py`), with the package's `__init__.py` naming what other domains use.
 
 `calls/` and `session/` are engines and hold the extra modules listed here: `calls/` the log's
-(`store`, `writer`, `relay`, `fanout`, `logs`, `facts`, `reducer`, `readers`, `private`,
+(`store`, `writer`, `relay`, `fanout`, `logs`, `feeds`, `facts`, `reducer`, `readers`, `private`,
 `histogram`, `latencies`, `metering`, `recordings`, `context`); `session/` the call on LiveKit
 (`call`, `writing`, `session`, `agent`, `prompt`, `tools`, `lookups`, `hearing`, `voice`, `text`,
 `room`, `widget`, `hold`, `recording`, `clock`, `listener`, `echo`, `repeats`). An engine module imports

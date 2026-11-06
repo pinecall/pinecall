@@ -48,6 +48,7 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "relay",
             "fanout",
             "logs",
+            "feeds",
             "facts",
             "reducer",
             "readers",
