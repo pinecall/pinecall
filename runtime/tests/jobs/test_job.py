@@ -164,18 +164,22 @@ async def test_a_ring_at_the_test_line_goes_on_as_the_callers_orgs_agents_in_the
     assert gateway.asked == [(NUMBER, CALLER)]
 
 
+# 2026-11-06: a person whose phone was not registered heard "or your agent is not running" and
+# went looking for the wrong thing; the number's own agent is told which reason it is.
 @pytest.mark.parametrize(
-    "handed",
+    ("handed", "why", "agent"),
     [
-        RingAtTestLine(),
-        RingAtTestLine(org="org_b"),
-        RingAtTestLine(org="org_b", agent="front"),
-        GatewayUnavailable("the gateway did not answer"),
+        (RingAtTestLine(), "phone_not_said", ""),
+        (RingAtTestLine(org="org_b"), "no_agent_named", ""),
+        (RingAtTestLine(org="org_b", agent="front"), "agent_not_running", "front"),
+        (GatewayUnavailable("the gateway did not answer"), "unavailable", ""),
     ],
     ids=["nobody's phone", "no agent named among several", "nobody holds the agent", "the gateway is down"],
 )
-async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_agent(
-    handed: RingAtTestLine | Exception,
+async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_agent_told_why(
+    handed: RingAtTestLine | Exception, why: str, agent: str
 ) -> None:
     route, moved = await _test_line(cast(GatewayClient, Handing(handed)), AT_THE_LINE, A_PHONE, IN_THE_SANDBOX)
-    assert (route, moved) == (IN_THE_SANDBOX, AT_THE_LINE)
+    assert route == IN_THE_SANDBOX
+    assert (moved.org, moved.agent, moved.holder) == (AT_THE_LINE.org, AT_THE_LINE.agent, AT_THE_LINE.holder)
+    assert moved.metadata == {"test_line": why, "test_line_agent": agent}

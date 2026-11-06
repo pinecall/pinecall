@@ -136,8 +136,11 @@ agent are held. The call is the caller's org's, logged in its sandbox at the tes
 counted against its sandbox minutes.
 
 The number is routed like any other of the box's, in the sandbox, to an agent of the operator's own
-org: that agent answers a phone nobody said was theirs, and a phone whose person named no agent
-while the org holds several, or whose agent nobody holds right now, and tells the caller so. The
+org: that agent answers a phone nobody said was theirs, a phone whose person named no agent while
+the org holds none or several, and one whose agent nobody holds right now. It is told which in the
+call's metadata, `test_line` (`phone_not_said`, `no_agent_named`, `agent_not_running` with
+`test_line_agent`, or `unavailable` when the gateway did not answer), so it tells the caller the
+one thing to fix: a Studio agent reads it as `{{metadata.test_line}}`. The
 ring arrives on the sandbox's LiveKit as the operator's org's; the worker asks the gateway whose it
 is (`GET /v1/test-line/rings-for?number=&caller=`, the fleet's key) and goes on in the same room as
 the caller's org's agent. Nothing is handed over, and production is never involved.

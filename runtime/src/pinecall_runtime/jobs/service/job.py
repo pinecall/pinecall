@@ -50,6 +50,11 @@ WRITTEN_SCOPE = "chat"
 A_CHAT_WAITS_S = 600.0
 
 ANSWERED_IN = "the pipeline is live %.2fs after the job arrived"
+# Why a ring at the box's test line stayed with the number's own agent, said in the call's metadata.
+PHONE_NOT_SAID = "phone_not_said"
+NO_AGENT_NAMED = "no_agent_named"
+AGENT_NOT_RUNNING = "agent_not_running"
+TEST_LINE_UNAVAILABLE = "unavailable"
 SESSION_FAILED = "session_failed"
 
 
@@ -275,8 +280,9 @@ async def _hand_over(
 
 # A ring at the box's test line is the caller's own: the gateway says whose sandbox agent, and the
 # call goes on here as that org's, in the copy that takes a ring from that phone. A phone nobody
-# said was theirs, or one whose agent nobody holds, is answered by the agent the number is routed
-# to, which tells the caller so.
+# said was theirs, one whose person named no agent among several, or one whose agent nobody holds,
+# is answered by the agent the number is routed to, told which of them it is in the call's metadata
+# (`{{metadata.test_line}}` in a Studio agent): a caller hears what to fix, not every reason at once.
 async def _test_line(
     gateway: GatewayClient, dispatch: Dispatch, arrival: channels.Arrival, route: Route
 ) -> tuple[Route, Dispatch]:
@@ -284,9 +290,13 @@ async def _test_line(
         handed = await gateway.test_line_rings_for(str(route.number), arrival.caller)
     except GatewayUnavailable:
         logger.warning("could not ask whose phone rings %s: the call stays with %s", route.number, route.agent)
-        return route, dispatch
-    if handed.org is None or handed.agent is None or handed.holder is None:
-        return route, dispatch
+        return route, _told(dispatch, TEST_LINE_UNAVAILABLE, None)
+    if handed.org is None:
+        return route, _told(dispatch, PHONE_NOT_SAID, None)
+    if handed.agent is None:
+        return route, _told(dispatch, NO_AGENT_NAMED, None)
+    if handed.holder is None:
+        return route, _told(dispatch, AGENT_NOT_RUNNING, handed.agent)
     moved = dispatch.model_copy(
         update={
             "agent": handed.agent,
@@ -297,6 +307,11 @@ async def _test_line(
         }
     )
     return telephony.handed_to(route, arrival, handed.org, handed.agent), moved
+
+
+def _told(dispatch: Dispatch, why: str, agent: str | None) -> Dispatch:
+    said = {"test_line": why, "test_line_agent": agent or ""}
+    return dispatch.model_copy(update={"metadata": {**dispatch.metadata, **said}})
 
 
 def _recording_path(config: agents.AgentConfig, settings: Settings, call: str, *, typed: bool) -> Path | None:

@@ -13,6 +13,8 @@
   and goes on in the same room; a phone nobody said was theirs reaches the agent the number is routed to. The
   phone is the member's row now (`members.test_phone`, `test_agent`, migration 000018), said to every gateway
   as it starts: a person with no terminal kept nothing across a gateway's restart before.
+- **The test line's own agent is told why a ring stayed with it**, in the call's metadata (`test_line`: the phone
+  not said, no agent named, the agent not running, the gateway down): a caller hears the one thing to fix.
 - **A dial placed by the worker reaches its carrier again.** The leg and cold-transfer doors read their query
   into a model that refused the worker's own scope (`?org=&env=&holder=`), so every outbound call ended
   `dial_failed` before anything rang.
