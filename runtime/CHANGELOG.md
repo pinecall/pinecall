@@ -5,6 +5,11 @@
 - **An agent moved into an org arrives as that org's own.** `PUT /v1/ops/orgs/{org}/agents` kept each
   call's holder, a member's copy of the org it left, so nobody in the new org could read the 47 calls
   moved on 2026-11-06. The move clears it.
+- **A call's stream hears its call end, however many open at once.** `GET /v1/calls/{call}/events` as a
+  stream made the call's log when the request came in and subscribed when the stream started; a request in
+  between pruned the log as unread, and the stream, left on the dropped copy, never heard anything live, its
+  call's end included. Three of nine streams a comparison opened at once hung that way, and the CLI never printed
+  the table. The log is looked up as the stream starts, and a log with a stream on it is never pruned.
 - **A written call ends when the agent hangs up.** The model's `end_call` closed a spoken call with its session
   and left a written one open: the chat socket, a WhatsApp thread and a written simulation went on until the
   caller left or the time ran out. A written turn in which the agent hung up ends the call after its last

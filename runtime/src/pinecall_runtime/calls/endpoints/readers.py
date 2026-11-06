@@ -60,7 +60,7 @@ async def stream_events(
     if over and cursor >= await store.latest_seq(call):
         return Response(status_code=204)
     if sse.wants_sse(request):
-        entries = serving.logs.reading(call).stream(after=cursor, only=only)
+        entries = serving.logs.stream(call, after=cursor, only=only)
         return sse.streamed(
             sse.paced(_projected(entries, reader, config, ends=True), closing=request.app.state.closing)
         )

@@ -1,8 +1,7 @@
 """The org's feed: what it says of a tool that ran and nothing of what it did; and a reader's markers."""
 
 import asyncio
-from collections.abc import AsyncGenerator
-from typing import cast, override
+from typing import override
 
 from pinecall_runtime.agents.declaration import Versions
 from pinecall_runtime.calls.fanout import Subscription
@@ -74,7 +73,7 @@ async def test_a_reader_resumed_at_the_end_is_told_it_caught_up_by_the_agent_who
     reading = Logs(store).reading(call).stream(after=written.seq)
     caught_up = await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)
     assert (caught_up.type, caught_up.agent) == ("log.caught_up", agent)
-    await cast(AsyncGenerator[Entry], reading).aclose()
+    await reading.aclose()
 
 
 class SlowSignal(LocalSignal):
@@ -110,6 +109,37 @@ async def test_a_reader_still_waiting_for_its_follow_is_not_pruned_and_hears_wha
     assert (await heard(reader)).seq == written.seq
     reader.close()
     await logs.close()
+
+
+# 2026-11-06: of nine streams a comparison opened at once, three never heard their call end. Each request
+# made its log before its stream started, and the next request's prune dropped the ones not yet subscribed.
+async def test_a_stream_another_request_prunes_around_before_it_starts_hears_its_call_live(
+    store: Store, call: str, agent: str
+) -> None:
+    logs = Logs(store)
+    await store.claim(call, agent, ORG, Claim(Scope(ORG, Env.sandbox), Versions(config=1)))
+    reading = logs.stream(call)
+    logs.reading(f"{call}_another")
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).type == "log.caught_up"
+    written = await logs.writing(call, agent).append("custom", {"name": "x", "data": {}})
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).seq == written.seq
+    await reading.aclose()
+
+
+async def test_a_stream_that_fell_behind_keeps_its_log_while_it_follows_again(
+    store: Store, call: str, agent: str
+) -> None:
+    logs = Logs(store)
+    await store.claim(call, agent, ORG, Claim(Scope(ORG, Env.sandbox), Versions(config=1)))
+    reading = logs.stream(call)
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).type == "log.caught_up"
+    logs.reading(call).fanout.drop()
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).type == "log.gap"
+    logs.reading(f"{call}_another")
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).type == "log.caught_up"
+    written = await logs.writing(call, agent).append("custom", {"name": "x", "data": {}})
+    assert (await asyncio.wait_for(anext(reading), HEARD_WITHIN_S)).seq == written.seq
+    await reading.aclose()
 
 
 async def test_a_follow_that_fails_lets_its_reader_go(store: Store, call: str) -> None:

@@ -1,7 +1,8 @@
 """The logs open in this process: append, the live readers, replay, the feeds."""
 
+import contextlib
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Sequence
 
 from pinecall_runtime.calls import private
 from pinecall_runtime.calls.fanout import EVERYTHING, Fanout, Filter, Subscription
@@ -69,6 +70,9 @@ class Log:
         self.sealed = False
         # Set by Logs.writing: a held log outlives its readers until the process forgets it.
         self.kept_open = False
+        # The streams reading it now. A stream's reader leaves the fanout for a moment when it falls
+        # behind and follows again; the log is not pruned in between.
+        self.streams = 0
         # Set by the call's writer: what it masks by. None on a log nobody declared anything for.
         self.privacy: private.Privacy | None = None
         # The private values of the entries appended or opened here, by seq, for the app's socket.
@@ -207,43 +211,47 @@ class Log:
         reader = self.fanout.subscribe(only, after=lambda: relay.unfollow(channel))
         return await relay.follow_for(channel, reader)
 
-    async def stream(self, *, after: int = 0, only: Filter = EVERYTHING) -> AsyncIterator[Entry]:
+    async def stream(self, *, after: int = 0, only: Filter = EVERYTHING) -> AsyncGenerator[Entry]:
         """The backlog above the cursor, log.caught_up, then what is written from then on."""
         cursor = after
-        while True:
-            # Subscribed before the backlog is read, so nothing written between the two is lost.
-            subscription = await self.follow(only)
-            try:
-                # Asked before the backlog: a log sealed by then is whole in it, and one sealed
-                # after ends its readers here, once they drained what they were given.
-                over = self.sealed or await self._store.is_sealed(self.name)
-                for entry in await self._store.whole(self.name, after=cursor):
-                    cursor = entry.seq
-                    self.agent = self.agent or entry.agent
-                    if only.passes(entry):
-                        yield entry
-                if not self.agent and cursor:
-                    self.agent = await self._said_by(cursor)
-                yield self._marker(cursor, "log.caught_up", {"seq": cursor})
-                if over:
-                    return
-                async for entry in subscription:
-                    if entry.seq > cursor:
+        self.streams += 1
+        try:
+            while True:
+                # Subscribed before the backlog is read, so nothing written between the two is lost.
+                subscription = await self.follow(only)
+                try:
+                    # Asked before the backlog: a log sealed by then is whole in it, and one sealed
+                    # after ends its readers here, once they drained what they were given.
+                    over = self.sealed or await self._store.is_sealed(self.name)
+                    for entry in await self._store.whole(self.name, after=cursor):
                         cursor = entry.seq
-                        yield entry
-                if not subscription.dropped:
-                    return
-            finally:
-                subscription.close()
-            # Fell behind: a gap says what was missed and, for a call, carries the state instead
-            # of the entries. An agent's log reduces to no state, so its gap re-reads the store.
-            if self.call is None:
-                yield self._marker(cursor, "log.gap", {"from_seq": cursor + 1, "to_seq": cursor, "snapshot": None})
-                continue
-            to_seq = max(await self._store.latest_seq(self.name), cursor)
-            snapshot = (await self.snapshot()).dump()
-            yield self._marker(to_seq, "log.gap", {"from_seq": cursor + 1, "to_seq": to_seq, "snapshot": snapshot})
-            cursor = to_seq
+                        self.agent = self.agent or entry.agent
+                        if only.passes(entry):
+                            yield entry
+                    if not self.agent and cursor:
+                        self.agent = await self._said_by(cursor)
+                    yield self._marker(cursor, "log.caught_up", {"seq": cursor})
+                    if over:
+                        return
+                    async for entry in subscription:
+                        if entry.seq > cursor:
+                            cursor = entry.seq
+                            yield entry
+                    if not subscription.dropped:
+                        return
+                finally:
+                    subscription.close()
+                # Fell behind: a gap says what was missed and, for a call, carries the state instead
+                # of the entries. An agent's log reduces to no state, so its gap re-reads the store.
+                if self.call is None:
+                    yield self._marker(cursor, "log.gap", {"from_seq": cursor + 1, "to_seq": cursor, "snapshot": None})
+                    continue
+                to_seq = max(await self._store.latest_seq(self.name), cursor)
+                snapshot = (await self.snapshot()).dump()
+                yield self._marker(to_seq, "log.gap", {"from_seq": cursor + 1, "to_seq": to_seq, "snapshot": snapshot})
+                cursor = to_seq
+        finally:
+            self.streams -= 1
 
     def _split(self, kind: str, data: JsonObject) -> private.Split:
         privacy = self.privacy
@@ -333,6 +341,16 @@ class Logs:
         """The call's log for a reader, whoever writes it."""
         self._prune(but=call)
         return self._log(call, "")
+
+    # The log is looked up when the reader starts, never when its request came in: a log handed
+    # out and not yet subscribed has no reader, so another request's prune drops it, and a reader
+    # that subscribes to the dropped copy hears nothing live, its call's end included. Nothing
+    # awaits between the lookup and the subscription, so no prune runs in between.
+    async def stream(self, call: str, *, after: int = 0, only: Filter = EVERYTHING) -> AsyncGenerator[Entry]:
+        """A reader of the call's log: the backlog above the cursor, log.caught_up, then what is written."""
+        async with contextlib.aclosing(self.reading(call).stream(after=after, only=only)) as entries:
+            async for entry in entries:
+                yield entry
 
     def agent(self, slug: str) -> Log:
         """The agent's own log, for writing or reading."""
@@ -480,7 +498,9 @@ class Logs:
     # On every read, so readers asking for arbitrary names cannot grow the tables without bound.
     def _prune(self, *, but: str = "") -> None:
         idle = [
-            name for name, log in self._logs.items() if name != but and not log.kept_open and not log.fanout.readers
+            name
+            for name, log in self._logs.items()
+            if name != but and not log.kept_open and not log.fanout.readers and not log.streams
         ]
         for name in idle:
             del self._logs[name]

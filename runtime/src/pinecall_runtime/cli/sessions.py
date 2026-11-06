@@ -91,7 +91,7 @@ async def sessions_tail(
         if named is None:
             raise NotFound(NO_LIVE_CALL)
         await _read_by_the_operator(context, named, ReadKind.log)
-    async for entry in calls.Logs(store).reading(named).stream():
+    async for entry in calls.Logs(store).stream(named):
         context.out.line(json.dumps(entry.dump()) if context.out.as_json else _line(entry))
         if entry.type == TERMINAL_EVENT:
             return OK
