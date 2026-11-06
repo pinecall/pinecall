@@ -370,8 +370,10 @@ def _a_snapshot_of(entry: str, model: str) -> bool:
     return model.startswith(entry) and A_SNAPSHOT.fullmatch(model[len(entry) :]) is not None
 
 
+# A vendor named with no model runs the row's model for it, else the platform default's where the
+# default is that vendor: never the plugin's own, which Google retires under new users without notice.
 def _on_its_key(modality: Modality, vendor: str, named: str | None, catalog: Catalog, keys: Keyring) -> Running:
-    model = named or catalog.models.get(f"{modality}{SEPARATOR}{vendor}")
+    model = named or catalog.models.get(f"{modality}{SEPARATOR}{vendor}") or _the_defaults(catalog, modality, vendor)
     chosen = running_on(keys, vendor, model)
     options = tuning_of(catalog, modality, vendor, model)
     if options is None:
@@ -385,6 +387,11 @@ def _on_its_key(modality: Modality, vendor: str, named: str | None, catalog: Cat
         turn_model=options.turn_model or chosen.turn_model,
         request=dict(options.request),
     )
+
+
+def _the_defaults(catalog: Catalog, modality: Modality, vendor: str) -> str | None:
+    default = catalog.defaults[modality]
+    return default.model if default.vendor == vendor else None
 
 
 def _over(primary: Running, *fallbacks: Running) -> Running:

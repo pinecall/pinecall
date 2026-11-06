@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A vendor named with no model runs the platform default's model.** A test room or comparison that set
+  only the temperature, or a class declaring `llm: "google"` alone, left the model to the plugin, and
+  Google's plugin runs `gemini-2.5-flash`, which Google retired under "new users": every such call ended
+  at its first turn with a 404. Where the catalog's `models` has no row for the vendor and the default
+  of the stage is that vendor, the default's model runs; the plugin's own never does.
 - **An agent moved into an org arrives as that org's own.** `PUT /v1/ops/orgs/{org}/agents` kept each
   call's holder, a member's copy of the org it left, so nobody in the new org could read the 47 calls
   moved on 2026-11-06. The move clears it.

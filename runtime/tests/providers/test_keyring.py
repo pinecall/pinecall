@@ -3,7 +3,8 @@ a realtime model runs on the org's own alone."""
 
 import pytest
 
-from pinecall_runtime.agents.declaration import AgentConfig, Model
+from pinecall_runtime.agents.declaration import AgentConfig, Model, Tuning
+from pinecall_runtime.agents.service.tuning import _thinking
 from pinecall_runtime.exceptions import Conflict, ServiceUnavailable
 from pinecall_runtime.providers.schemas import Catalog
 from pinecall_runtime.providers.service import Keyring, keyring, stage_on_its_key
@@ -68,3 +69,26 @@ def test_the_pipeline_carries_the_realtime_model_beside_the_llm_where_the_agent_
     built = keyring.build_pipeline(talking, configured(), keys)
     assert built.realtime is not None
     assert (built.realtime.vendor, built.realtime.model, built.llm.vendor) == (vendor, "voice-3", acme.ACME)
+
+
+# Google retired gemini-2.5-flash under "new users", the model its plugin runs when told none: a test
+# room that sets only the temperature named the vendor alone, and every call of it died at the first turn.
+def test_a_vendor_named_alone_runs_the_defaults_model_where_the_default_is_that_vendor() -> None:
+    """No model and no `models` row: the default's model, never the plugin's own; another vendor's stays None."""
+    alone = Model(provider=acme.ACME, model="")
+    ran = stage_on_its_key("llm", alone, _tuned(), Keyring(box={acme.ACME: "box-key"}))
+    assert ran.model == acme.MODEL
+    row = _tuned().model_dump(mode="json")
+    row["defaults"]["llm"] = {"vendor": "other", "model": "other-1"}
+    on_another = stage_on_its_key("llm", alone, Catalog.model_validate(row), Keyring(box={acme.ACME: "box-key"}))
+    assert on_another.model is None
+
+
+# The production symptom whole: a test room that sets the temperature alone, the agent on the default's
+# vendor, names that vendor with no model; the pipeline runs the default's model, not the plugin's own.
+def test_a_test_room_that_sets_the_temperature_alone_runs_the_defaults_model() -> None:
+    thinking = _thinking(AgentConfig(slug="front"), Tuning(temperature=0.2), {"llm": acme.ACME})
+    assert thinking is not None and (thinking.provider, thinking.model) == (acme.ACME, "")
+    config = AgentConfig(slug="front", llm=thinking)
+    pipeline = keyring.build_pipeline(config, _tuned(), Keyring(box={acme.ACME: "box-key"}))
+    assert (pipeline.llm.model, pipeline.llm.options["temperature"]) == (acme.MODEL, 0.2)
