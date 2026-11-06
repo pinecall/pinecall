@@ -1,5 +1,6 @@
 """The persona endpoints: Pinecall's switched, an agent's own, what each ran, and the org's at once."""
 
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -161,7 +162,8 @@ async def _runs(
     scope = reader.scope
     if reader.actor is None or scope is None:
         raise Forbidden(A_KEY_LISTS)
-    found = await calls.runs_of_persona(session, scope, wanted, limit=limit)
+    asked = replace(wanted, holders=calls.copies_listed(reader.actor))
+    found = await calls.runs_of_persona(session, scope, asked, limit=limit)
     return schemas.PersonaRunList(runs=[_run_row(run) for run in found.runs], total=found.total, next=found.next)
 
 

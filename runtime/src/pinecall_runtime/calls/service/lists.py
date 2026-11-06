@@ -5,6 +5,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts import service as accounts
+from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.facts import LINE_FIELDS, CallFacts, facts_of, line_of
 from pinecall_runtime.calls.latencies import Median, medians
@@ -30,7 +31,7 @@ from pinecall_runtime.calls.schemas import (
     ThreadRow,
 )
 from pinecall_runtime.enums import Channel, Env
-from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.auth import THE_ORGS_OWN, Actor, Scope
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.postgres import box_wide
@@ -40,6 +41,16 @@ from pinecall_runtime.wire.state import State, Turn
 
 # The calls merged into one thread, newest first: each costs a log read.
 CALLS_IN_A_THREAD = 20
+
+
+# What a list reads is what a call read lets through: the reader's own copy and the org's; a key
+# that opens colleagues' copies, in its own, lists every copy, and in a colleague's, that one.
+def copies_listed(actor: Actor) -> tuple[str, ...] | None:
+    """The copies a list of calls or runs reads for this key: their holders, or None for every copy."""
+    person = actor.person
+    if keys.sees_every_copy(actor) and person is not None and actor.holder == person.id:
+        return None
+    return tuple(sorted({THE_ORGS_OWN, actor.holder}))
 
 
 async def find_calls(session: AsyncSession, scope: Scope, wanted: ListFilters, *, limit: int) -> Found:

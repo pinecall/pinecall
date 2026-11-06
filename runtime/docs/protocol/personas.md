@@ -141,7 +141,9 @@ the row null for a call simulated before the runtime kept it) and `caller_cost_u
 caller cost; `against`, the voice and models the agent ran on over its settings for that call
 (null when it ran them as they are) and `comparison`, the id of the comparison it was placed in (null
 when placed on its own). `GET /v1/simulations` pages every simulated call the same way, or the agents named's
-(`?agent=`, once or more), and `?call=` reads one.
+(`?agent=`, once or more), and `?call=` reads one. These lists and a comparison's table read the copies
+the calls list reads: in the sandbox the reader's own and the org's (a Studio agent's runs, an app the
+box hosts), and every copy to a key that opens colleagues' ([gateway-api](gateway-api.md)).
 
 ## Callers written for the agent — `POST /v1/agents/{slug}/personas/generate`
 

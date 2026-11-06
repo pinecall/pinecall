@@ -32,6 +32,7 @@ from pinecall_runtime.calls.service.dialing import PlacedCall, Placement, place_
 from pinecall_runtime.calls.service.drift import rebuild as rebuild_drift
 from pinecall_runtime.calls.service.kills import kill_agent
 from pinecall_runtime.calls.service.lists import (
+    copies_listed,
     ever_reached,
     facts_of_calls,
     facts_taught_by,
@@ -105,6 +106,7 @@ __all__ = [
     "attach",
     "attach_parked",
     "claim_code",
+    "copies_listed",
     "declare_for_the_call",
     "differing",
     "drift_folded",

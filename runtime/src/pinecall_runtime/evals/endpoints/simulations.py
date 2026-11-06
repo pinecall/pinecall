@@ -83,7 +83,7 @@ async def read_comparison(
     comparison: str, actor: EvalsKey, serving: TheServing, session: Session
 ) -> schemas.Comparison:
     """The comparison's calls, each caller's best first: every judge held, then the fastest reply, then the cheapest."""
-    wanted = calls.PersonaRunFilters(comparison=comparison)
+    wanted = calls.PersonaRunFilters(comparison=comparison, holders=calls.copies_listed(actor))
     found = await calls.runs_of_persona(session, actor.scope, wanted, limit=service.COMPARED_AT_MOST)
     if not found.runs:
         raise NotFound(service.NO_SUCH_COMPARISON.format(comparison=comparison))

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.accounts.service import keys, members
 from pinecall_runtime.agents.declaration import Versions
+from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.context import new_call_id
 from pinecall_runtime.calls.repository.heads import Claim
 from pinecall_runtime.enums import Env, Role
@@ -94,3 +95,21 @@ async def test_an_admin_opens_a_colleagues_call_and_a_developer_does_not(
     assert read.status_code == 200, read.text
     refused = await gateway.http.get(events(admins), headers={**dana.headers, **as_json})
     assert refused.status_code == 404, refused.text
+
+
+# A Studio agent is the org's own copy: a simulation against it is listed and its comparison read
+# by the person who placed it, whose own copy holds nothing of it.
+async def test_a_simulation_the_orgs_own_copy_took_is_listed_and_its_comparison_read(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    call = await a_call_on(gateway, tenant, agent, THE_ORGS_OWN)
+    comparison = f"cmp_{call[-6:]}"
+    async with sessions.begin() as session:
+        await calls.keep_agent_values(session, call, against={}, comparison=comparison, persona="in-a-hurry")
+
+    runs = await gateway.http.get("/v1/simulations", params={"comparison": comparison}, headers=tenant.person)
+    assert runs.status_code == 200, runs.text
+    assert [run["call"] for run in runs.json()["runs"]] == [call]
+    table = await gateway.http.get(f"/v1/simulations/compare/{comparison}", headers=tenant.person)
+    assert table.status_code == 200, table.text
+    assert (table.json()["personas"], [row["call"] for row in table.json()["rows"]]) == (["in-a-hurry"], [call])

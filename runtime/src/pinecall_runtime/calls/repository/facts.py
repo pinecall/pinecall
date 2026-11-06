@@ -51,6 +51,8 @@ class PersonaRunFilters:
     call: str | None = None
     # The calls of one comparison, by its id.
     comparison: str | None = None
+    # The copies read: the scope's own alone when empty, every copy of the env when None.
+    holders: tuple[str, ...] | None = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,10 +102,11 @@ limit :limit
 """
 
 # A persona's runs to one agent, the runs to the agents named, or, none named, every simulated
-# call of the scope.
+# call of the copies read; holders null is every copy of the env.
 THE_PERSONAS_RUNS = """
 from call_log_head head join call_facts f on f.call = head.log
-where head.org = :org and head.env = :env and head.holder = :holder
+where head.org = :org and head.env = :env
+  and (cast(:holders as text[]) is null or head.holder = any(cast(:holders as text[])))
   and head.call is not null and (f.persona is not null or f.comparison is not null)
   and (cast(:agent as text) is null or head.agent = :agent)
   and (cardinality(cast(:agents as text[])) = 0 or head.agent = any(cast(:agents as text[])))
@@ -272,7 +275,7 @@ class FactsRepository(Repository[CallFact]):
         params = {
             "org": scope.org,
             "env": scope.env.value,
-            "holder": scope.holder,
+            "holders": None if wanted.holders is None else list(wanted.holders or (scope.holder,)),
             "agent": wanted.agent,
             "agents": list(wanted.agents),
             "persona": wanted.persona,
