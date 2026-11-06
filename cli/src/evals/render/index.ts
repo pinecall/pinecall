@@ -2,7 +2,7 @@
 
 import { HELD, BROKEN, callScore } from "../../judging/render.js";
 import { clipped, count, date, formatHint, formatNotice, formatPairs, NEXT } from "../../kit/format.js";
-import type { AgentValues } from "../../api/evals.js";
+import type { AgentValues, ComparisonRow } from "../../api/evals.js";
 import type { Compared } from "../service/comparison.js";
 import { table } from "../../kit/table.js";
 import { type CaseGroup, type CaseList, type Drift, type EvalCase, type EvalRun, type GeneratedPersonas, type JudgeDrift, type Moved, type Persona, type Promoted, type Rate, type Replayed, type Saved, type Simulated } from "../service/index.js";
@@ -312,6 +312,15 @@ export function against(values: AgentValues): string {
   return said.length === 0 ? "the agent's own settings" : said.join(" · ");
 }
 
+/** The judges' column of one call: a call that ended in error reads so, whatever a judge made of what little it had. */
+export function verdictOf(row: ComparisonRow): string {
+  if (row.ended_at === null) return "on a call";
+  if (row.why !== null) return "never started";
+  if (row.end_reason === "error") return "ended in error";
+  if (row.score === null) return (row.end_reason ?? "not judged").replace(/_/g, " ");
+  return `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`;
+}
+
 /** A comparison: the persona against the agent, one row per configuration best first, what was not placed, and how to read a call whole. */
 export function comparison(done: Compared): string[] {
   const found = done.table;
@@ -322,7 +331,7 @@ export function comparison(done: Compared): string[] {
       found.rows.map((row, index) => [
         index + 1,
         against(row.against),
-        row.ended_at === null ? "on a call" : row.why !== null ? "never started" : row.score === null ? (row.end_reason ?? "not judged").replace(/_/g, " ") : `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`,
+        verdictOf(row),
         seconds(row.latency.e2e_latency),
         seconds(row.latency.llm_node_ttft),
         seconds(row.latency.tts_node_ttfb),

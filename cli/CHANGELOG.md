@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A comparison's row that ended in error says so.** A call whose ears failed before the caller spoke was judged on its
+  greeting, and the table showed it held (`✓ 1/1`); its judges' column reads `ended in error` now.
 - **A comparison the gateway refused whole says why.** `simulate --against … --against …` with every row refused
   printed "0 calls placed · N refusals" and then "no comparison … in this key's org and env", never the reason;
   it now fails with the gateway's reason, said once (`no app holds agent dentist: …`), and asks for no table.
