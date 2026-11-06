@@ -134,7 +134,9 @@ the call it names: the sandbox's key lists the sandbox's, production's lists pro
 The worker's endpoints (`POST /v1/calls`, `/events`, `/entries`, `/sealed`, `/tools`,
 `/remember`, `/recording/key`, `/commands`, `/judging`, `/done`) belong to whoever opened the call: the fleet's key
 for a call the fleet's worker opened, an org's `app` key for one its own worker opened, nobody
-for a written call, which the gateway runs itself. Another key is answered `404`; so is a
+for a written call, which the gateway runs itself. `POST /v1/calls` carries the test room's own voice and
+models the worker runs the call on (`tuning`, its dispatch's), so the call opens as it runs: the platform's
+first words in that language. Another key is answered `404`; so is a
 `/reopened` (a call the gateway forgot, served again) outside the call's own scope. `/lookup` is
 the one exception: the agent's own process searches its knowledge on a call it serves (the
 framework's `knowledge.search`), whoever opened the call, so it takes the org's `app` key in the

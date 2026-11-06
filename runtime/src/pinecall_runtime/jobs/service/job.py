@@ -89,6 +89,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
             context=context,
             app=dispatch.app or settings.app,
             carrier_account=arrival.carrier_account,
+            tuning=dispatch.tuning or None,
         )
     )
     # An outbound call is its far end answering: nothing is built for a phone_leg that never came up.

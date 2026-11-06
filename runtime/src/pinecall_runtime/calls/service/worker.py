@@ -32,6 +32,7 @@ from pinecall_runtime.enums import Direction, Opener
 from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ValidationError
 from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.crypto import Vault
+from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import service as session
 from pinecall_runtime.telephony import service as telephony
@@ -69,7 +70,7 @@ async def open_call(session_: AsyncSession, serving: Serving, actor: Actor, body
     ceiling = await visitors.admit_call(session_, serving, scope, body.agent)
     registration = serving_agent(serving.registry, scope, body.agent, body.app, context)
     _check_served(serving, scope, body, registration)
-    config, versions = await _tuned(session_, serving, scope, body.agent, registration, context.call)
+    config, versions = await _tuned(session_, serving, scope, body.agent, registration, context.call, body.tuning)
     # Asked again by a worker whose gateway died with the answer: the same call, one ringing.
     again = await openings.opening_of(session_, context.call) is not None
     opener = _opener_of(actor)
@@ -109,7 +110,7 @@ async def reopen_call(session_: AsyncSession, serving: Serving, actor: Actor, ca
     if kept.sealed:
         raise Conflict(SEALED.format(call=call))
     registration = serving.registry.serving(scope, body.agent, None)
-    config, _ = await _tuned(session_, serving, scope, body.agent, registration, call)
+    config, _ = await _tuned(session_, serving, scope, body.agent, registration, call, body.tuning)
     await kept_before_served(serving, scope.org, body.context, config)
     serve_call(serving, None, body.context, config, scope)
     serving.live.set_opener(call, kept.opened_by)
@@ -229,11 +230,13 @@ async def _tuned(
     agent: str,
     registration: registry.Registration | None,
     call: str,
+    tuning: JsonObject | None,
 ) -> tuple[AgentConfig, Versions]:
     declared = serving.registry.holder_of(scope, agent) if registration is None else registration
     config = AgentConfig(slug=agent) if declared is None else declared.config
     catalog = await providers.get_catalog(session_)
-    return await settings.tuned_for_call(session_, config, scope, catalog, settings.Picked(call=call))
+    test = settings.check_test_values(tuning, env=scope.env)
+    return await settings.tuned_for_call(session_, config, scope, catalog, settings.Picked(call=call), test)
 
 
 # The worker says the disclosure before the greeting, and the notice only where it records.

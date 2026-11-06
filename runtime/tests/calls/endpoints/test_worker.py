@@ -47,6 +47,17 @@ def a_call(tenant: Tenant, agent: str) -> CallContext:
     )
 
 
+# 2026-11-06: a comparison row in Arabic opened with "This call may be recorded." in English, because the
+# worker opened the call without the row's language and the gateway read the team's, unset.
+async def test_a_call_opens_with_its_first_words_in_the_language_the_worker_runs_it_in(
+    fleet: GatewayClient, tenant: Tenant, agent: str
+) -> None:
+    plain = await fleet.open(OpenCallRequest(agent=agent, context=a_call(tenant, agent)))
+    assert plain.recording_notice == "This call may be recorded."
+    arabic = await fleet.open(OpenCallRequest(agent=agent, context=a_call(tenant, agent), tuning={"language": "ar"}))
+    assert arabic.recording_notice == "قد يتم تسجيل هذه المكالمة."
+
+
 # M B10 (2026-10-23): the endpoints took a call.started with no `caller` (`Contact | null`, required
 # by wire/events-call.md), and the seal of its call answered 500 for ever, the call holding its seat.
 async def test_a_call_started_with_no_caller_is_refused_by_every_endpoint_that_writes_and_nothing_is_written(

@@ -13,8 +13,10 @@
   Calls, refusals and the table's rows carry their `persona`; the table carries `personas` and reads
   caller by caller, each one's best first.
 
-- **The platform speaks Arabic.** The AI disclosure and the recording notice exist in Arabic now; an agent set
-  to `ar` opened every call with "This call may be recorded." in English before.
+- **The platform speaks Arabic, and in the language the call runs in.** The AI disclosure and the recording
+  notice exist in Arabic now; an agent set to `ar` opened every call with "This call may be recorded." in English
+  before. And a worker opens a call with the test room's own voice and models (`POST /v1/calls`, `tuning`), so a
+  comparison row in Arabic gets its first words in Arabic: the gateway read the team's language, unset, before.
 - **A model that takes no prefill runs the agent again.** The line the agent is still saying while a tool runs
   reached the next request as a trailing assistant message; Claude Haiku 5.5 refused it whole (400, "does not
   support assistant message prefill") and the call ended in an error. It goes last as a system note quoting
