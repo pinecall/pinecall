@@ -430,7 +430,10 @@ async def test_the_operator_moves_every_log_of_an_agent_to_another_org_as_that_o
     assert await store.claimant(call, agent) == Claimant("right", Env.sandbox)
     async with sessions() as session:
         head = await HeadRepository(session).head_of_call(call)
+        row = await session.get(CallLogHead, log_name(call, agent))
     assert head is not None and head.scope == Scope("right", Env.sandbox, "")
+    # "" as a claim writes the org's own, which the lists match by value; null would list nowhere.
+    assert row is not None and row.holder == ""
 
 
 # ── across every log ──
