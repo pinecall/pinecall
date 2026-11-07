@@ -1,4 +1,4 @@
-/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, its cases under it — and on the right the agent to try, with the way to deploy it under it. */
+/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, its cases a tab of their own — and on the right the agent to try, with the way to deploy it under it. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -14,17 +14,17 @@ import { Collection } from "./collect";
 import { deployStudioAgent, readCode, readStudioAgent, saveStudioAgent, type Definition, type StudioAgent } from "./door";
 import { changed } from "./draft";
 import { Head } from "./head";
-import { GreetingSection, Instructions } from "./instructions";
+import { GreetingTab } from "./greeting";
+import { Instructions } from "./instructions";
 import { Live, productionSaid } from "./live";
 import { TestSection } from "./test";
-import { Tip } from "./tip";
 import { Tools } from "./tools";
 import { TryIt } from "./try-it";
 
 const CONFLICT = 409;
 
-/** The four tabs of the definition, and the voice and models the room beside is tried with. */
-type Tab = "instructions" | "greeting" | "tools" | "collect" | "voice";
+/** The four tabs of the definition, the voice and models the room beside is tried with, and the agent's cases. */
+type Tab = "instructions" | "greeting" | "tools" | "collect" | "voice" | "test";
 
 /** What the editor is doing, so one button at a time says so. */
 type Busy = "saving" | "deploying" | "downloading" | "reloading" | null;
@@ -135,7 +135,8 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
     { tab: "greeting" as const, name: "Greeting", icon: <Icon name="chat" size={15} /> },
     { tab: "tools" as const, name: "Tools", icon: <Icon name="plug" size={15} />, mark: draft.tools.length === 0 ? undefined : <span className="sto-tab-mark">{draft.tools.length}</span> },
     { tab: "collect" as const, name: "Data collection", icon: <Icon name="clipboard" size={15} />, mark: draft.collect === null || draft.collect === undefined ? undefined : <span className="sto-tab-mark">On</span> },
-    { tab: "voice" as const, name: "Voice & models", icon: <Icon name="sliders" size={15} />, mark: asking(tried) ? <span className="sto-tab-mark">Test</span> : undefined },
+    { tab: "voice" as const, name: "Voice & models", icon: <Icon name="sliders" size={15} />, mark: asking(tried) ? <span className="sto-tab-mark">Trying</span> : undefined },
+    { tab: "test" as const, name: "Test", icon: <Icon name="flask" size={15} /> },
   ];
   const asked = params.get("tab");
   const tab: Tab = tabs.some((one) => one.tab === asked) ? (asked as Tab) : "instructions";
@@ -167,8 +168,8 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
           <div className="sto-tabs">
             <Tabs label="The agent's definition" tabs={tabs} on={tab} onPick={(picked) => setParams(picked === "instructions" ? {} : { tab: picked })} />
           </div>
-          {tab === "instructions" && <Instructions text={draft.instructions} onChange={(instructions) => edit({ instructions })} tip={<Tip agent={name} />} />}
-          {tab === "greeting" && <GreetingSection greeting={draft.greeting} onChange={(greeting) => edit({ greeting })} />}
+          {tab === "instructions" && <Instructions text={draft.instructions} onChange={(instructions) => edit({ instructions })} />}
+          {tab === "greeting" && <GreetingTab greeting={draft.greeting} onChange={(greeting) => edit({ greeting })} />}
           {tab === "tools" && <Tools agent={name} definition={draft} secrets={secrets} onChange={(tools) => edit({ tools })} />}
           {tab === "collect" && <Collection collect={draft.collect} secrets={secrets} onChange={(collect) => edit({ collect })} />}
           {tab === "voice" && (
@@ -177,10 +178,7 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
               <TestValuesTab agent={name} values={tried} onApply={setTried} />
             </div>
           )}
-          {/* Under the definition whichever tab is open: the agent's tests are its cases, played against the agent the gateway holds. */}
-          <div className="sto-test">
-            <TestSection agent={name} />
-          </div>
+          {tab === "test" && <TestSection agent={name} />}
         </Page>
       </div>
       <TryIt key={round} agent={name} release={read.release} values={tried} onReset={() => setRound((was) => was + 1)} />
