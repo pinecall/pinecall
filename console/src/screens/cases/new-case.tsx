@@ -19,7 +19,18 @@ const REGISTERS = [
  * class's own names, so a case that names them breaks when the class renames them — that is a
  * golden for the repository (`pinecall cases pull`), and the form says so.
  */
-export function NewCase({ agent, onWritten, onClose }: { agent: string; onWritten: (kept: EvalCase) => void; onClose: () => void }): ReactNode {
+export function NewCase({
+  agent,
+  onWritten,
+  onClose,
+  called = "case",
+}: {
+  agent: string;
+  onWritten: (kept: EvalCase) => void;
+  onClose: () => void;
+  /** What the screen calls it: Studio says golden, as a class's folder does. */
+  called?: "case" | "golden";
+}): ReactNode {
   const credentials = useCredentials();
   const [form, setForm] = useState<Written>(BLANK);
   const [refused, setRefused] = useState<string | null>(null);
@@ -42,7 +53,9 @@ export function NewCase({ agent, onWritten, onClose }: { agent: string; onWritte
   const namesCode = form.state.trim() !== "" || form.tools.trim() !== "" || form.notTools.trim() !== "";
   return (
     <section className="cs-new">
-      <h2 className="cs-new-title">New case for {agent}</h2>
+      <h2 className="cs-new-title">
+        New {called} for {agent}
+      </h2>
       <Field label="Name">
         <Input value={form.name} placeholder="no-dice-un-precio" onChange={(event) => set("name")(event.target.value)} />
       </Field>
@@ -81,13 +94,13 @@ export function NewCase({ agent, onWritten, onClose }: { agent: string; onWritte
       </div>
       {namesCode && (
         <p className="cs-none">
-          This case names the agent&apos;s state or tools. If the agent is a class, keep it beside the code: <span className="ui-fixed">pinecall cases pull {form.name.trim() || "<name>"}</span>.
+          This {called} names the agent&apos;s state or tools. If the agent is a class, keep it beside the code: <span className="ui-fixed">pinecall cases pull {form.name.trim() || "<name>"}</span>.
         </p>
       )}
       {refused !== null && <p className="cs-bad">{refused}</p>}
       <div className="cs-new-actions">
         <Button kind="primary" disabled={busy} onClick={() => void save()}>
-          {busy ? "Saving…" : "Save case"}
+          {busy ? "Saving…" : `Save ${called}`}
         </Button>
         <Button disabled={busy} onClick={onClose}>
           Cancel

@@ -1,4 +1,4 @@
-/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, its cases a tab of their own — and on the right the agent to try, with the way to deploy it under it. */
+/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, its goldens a tab of their own — and on the right the agent to try, with the way to deploy it under it. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -23,7 +23,7 @@ import { TryIt } from "./try-it";
 
 const CONFLICT = 409;
 
-/** The four tabs of the definition, the voice and models the room beside is tried with, and the agent's cases. */
+/** The four tabs of the definition, the voice and models the room beside is tried with, and the agent's goldens. */
 type Tab = "instructions" | "greeting" | "tools" | "collect" | "voice" | "test";
 
 /** What the editor is doing, so one button at a time says so. */
@@ -136,7 +136,7 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
     { tab: "tools" as const, name: "Tools", icon: <Icon name="plug" size={15} />, mark: draft.tools.length === 0 ? undefined : <span className="sto-tab-mark">{draft.tools.length}</span> },
     { tab: "collect" as const, name: "Data collection", icon: <Icon name="clipboard" size={15} />, mark: draft.collect === null || draft.collect === undefined ? undefined : <span className="sto-tab-mark">On</span> },
     { tab: "voice" as const, name: "Voice & models", icon: <Icon name="sliders" size={15} />, mark: asking(tried) ? <span className="sto-tab-mark">Trying</span> : undefined },
-    { tab: "test" as const, name: "Test", icon: <Icon name="flask" size={15} /> },
+    { tab: "test" as const, name: "Goldens", icon: <Icon name="flask" size={15} /> },
   ];
   const asked = params.get("tab");
   const tab: Tab = tabs.some((one) => one.tab === asked) ? (asked as Tab) : "instructions";
