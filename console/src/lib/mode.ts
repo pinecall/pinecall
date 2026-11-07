@@ -54,7 +54,7 @@ export function theBoxsOwnName(): string {
 }
 
 /** The sidebar's icons, by name (ui/icon.tsx). */
-export type ScreenIcon = "home" | "grid" | "activity" | "list" | "chart" | "phone" | "key" | "plug" | "users" | "building" | "server" | "route" | "sliders" | "check" | "memory" | "words" | "book" | "headphones" | "persona" | "bell" | "chat" | "flask" | "bot" | "scale" | "shield";
+export type ScreenIcon = "home" | "grid" | "activity" | "list" | "chart" | "phone" | "key" | "plug" | "users" | "building" | "server" | "route" | "sliders" | "check" | "memory" | "words" | "book" | "headphones" | "persona" | "bell" | "chat" | "flask" | "bot" | "scale" | "shield" | "card";
 
 /**
  * Where a row sits in the sidebar. Unmarked rows are what is LOOKED AT — Overview, Calls, Quality —
@@ -89,6 +89,8 @@ export interface Screen {
   group?: ScreenGroup;
   /** The box's own: drawn and routed only for a person the box made an operator. */
   operator?: true;
+  /** Drawn only on a runtime that names where the org pays (`billing_url` of GET /v1/limits). */
+  billed?: true;
 }
 
 const BOTH = ["production", "sandbox"] as const;
@@ -135,6 +137,9 @@ export const ORG_SCREENS: readonly Screen[] = [
   { key: "numbers", path: "numbers", name: "Numbers", in: PRODUCTIONS, icon: "phone", group: "workspace" },
   { key: "team", path: "team", name: "Team", in: PRODUCTIONS, icon: "users", group: "workspace" },
   { key: "usage", path: "usage", name: "Usage", in: PRODUCTIONS, icon: "chart", group: "workspace" },
+  // Where the org's plan is bought and changed: the page the runtime names, signed in as the person.
+  // The runtime holds no plan, so the row is a door out, drawn only where there is somewhere to go.
+  { key: "billing", path: "billing", name: "Billing", in: BOTH, icon: "card", group: "workspace", billed: true },
   // The org's data, a tab each: its rules and what a call says first, who may be called, the world
   // exported and a contact erased with the trail of every erasure, and who read what.
   { key: "org-data", path: "data", name: "Privacy", in: BOTH, icon: "shield", opensOn: "first-tab", group: "workspace" },
@@ -209,6 +214,11 @@ export function screensOf(table: readonly Screen[], world: World = WORLD, operat
 /** Whether this console has that screen, by its key. */
 export function has(table: readonly Screen[], key: string, world: World = WORLD): boolean {
   return table.some((screen) => screen.key === key && screen.in.includes(world));
+}
+
+/** Of these screens, the ones this runtime draws: a billed row only where it names where the org pays. */
+export function drawn(screens: readonly Screen[], billed: boolean): Screen[] {
+  return screens.filter((screen) => screen.billed !== true || billed);
 }
 
 /** The sidebar's rows of a table: the screens that are not a tab of another. */

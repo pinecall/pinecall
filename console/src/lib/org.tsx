@@ -1,12 +1,13 @@
-/** Org context shared by all screens: calls, agents, orgs, insights, operator flag. */
+/** Org context shared by all screens: calls, agents, orgs, insights, operator flag, and this world's limits. */
 
 import { type SessionLine } from "@pinecall/core/wire/rest";
-import { type HeldAgent } from "@pinecall/core/wire/rest-org";
+import { type HeldAgent, type Limits } from "@pinecall/core/wire/rest-org";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { bySlug, meIn } from "./corners";
 import { useInsights, type Insights } from "./insights";
+import { useLimits } from "./limits";
 import { orgsOf, type OrgOf } from "@pinecall/core/login";
 import { useOperator } from "./operator";
 import type { Connection } from "@pinecall/core/stream";
@@ -37,6 +38,8 @@ export interface Org {
   operator: boolean | null;
   /** The reader's own member id, whose sandbox copy is theirs; null for a key without a person. */
   me: string | null;
+  /** This world's limits and where the org buys more; null until read, or on a gateway without the door. */
+  limits: Limits | null;
 }
 
 const Held = createContext<Org | null>(null);
@@ -48,6 +51,7 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
   const insights = useInsights();
   const operator = useOperator();
   const held = useHeldAgents(floor.agentsChanged);
+  const limits = useLimits();
   const [orgs, setOrgs] = useState<OrgOf[] | null>(null);
 
   useEffect(() => {
@@ -81,8 +85,9 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
       insights,
       operator,
       me: me ?? null,
+      limits,
     }),
-    [floor.lines, floor.connection, floor.error, held.agents, held.loaded, held.error, orgs, me, insights, operator],
+    [floor.lines, floor.connection, floor.error, held.agents, held.loaded, held.error, orgs, me, insights, operator, limits],
   );
   return <Held value={value}>{children}</Held>;
 }

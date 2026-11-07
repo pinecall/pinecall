@@ -37,6 +37,8 @@ export const SCOPE_OF: Record<string, string> = {
   telemetry: "providers",
   team: "team",
   usage: "usage",
+  // Where the org buys more is the business of whoever reads what it spends: admins and managers.
+  billing: "usage",
   "org-data": "team",
   "data-rules": "team",
   "data-consent": "team",

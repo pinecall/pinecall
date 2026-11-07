@@ -1,4 +1,4 @@
-/** /billing: hands the signed-in person to the box's billing page, as themselves, in this org. */
+/** Billing: hands the signed-in person to where the org pays, as themselves, in this org — from the sidebar's row, or back from that page. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -10,9 +10,11 @@ import { LimitsSchema } from "@pinecall/core/wire/rest-org";
 import "./billing.css";
 
 /**
- * The billing page sends anyone who arrives without a session here: the shell has already signed
- * them in, so a one-use login code carries them back, in the org they are working in, with the plan
- * they picked. The billing page is the box's own (`billing_url` of GET /v1/limits); none, nothing bills.
+ * The runtime holds no plan: where the org buys one is the page it names (`billing_url` of GET
+ * /v1/limits), and this screen is the door to it, signed in — a one-use login code carries the
+ * person there, in the org they are working in. The same page sends anyone who arrives without a
+ * session here, with the plan they picked, and the shell signs them in first. A runtime that names
+ * no page draws no Billing row (lib/mode.ts), so this is reached only by a path typed by hand.
  */
 export function BillingHop(): ReactNode {
   const credentials = useCredentials();

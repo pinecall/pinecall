@@ -9,8 +9,9 @@ import { useFed } from "@pinecall/core/use-fed";
 import { aLoginCode } from "@pinecall/core/login";
 import { Stat } from "../ui";
 
-// The minutes and the spend a limit counts are what a call that ended or was summarised added.
-const WHAT_USES_A_LIMIT = ["call.ended", "call.summary"] as const;
+// The minutes and the spend a limit counts are what a call that ended or was summarised added; a
+// refusal says a quota is used up, and the strip over every screen must say so at once.
+const WHAT_USES_A_LIMIT = ["call.ended", "call.summary", "credits.exhausted"] as const;
 
 /** Read limits on open and when the feed says a call used some; null until loaded, or on 404. */
 export function useLimits(): Limits | null {

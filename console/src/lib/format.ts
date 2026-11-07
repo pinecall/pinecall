@@ -6,6 +6,11 @@ import { NOTHING, isLive, visitorId, wantsAPerson } from "@pinecall/core/calls";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+/** The first of next month (UTC), as `1 Nov`: when minutes, evals and simulations start again. */
+export function startsAgain(now: Date): string {
+  return `1 ${MONTHS[(now.getUTCMonth() + 1) % 12]}`;
+}
+
 /** Order: live calls waiting for a person, other live calls, ended calls. */
 export function liveFirst(lines: SessionLine[]): SessionLine[] {
   const live = lines.filter(isLive);

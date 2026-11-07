@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The console says when the world refuses, and where the org buys more.** A strip over every screen
+  while a monthly quota is used up — minutes, messages, tokens, spend, evals or simulations, as used of its
+  limit, what that refuses and when it starts again — or production is closed to the org, with **Upgrade**
+  beside it; and a **Billing** row in the workspace, for admins and managers, the door out to the page the
+  runtime names in `GET /v1/limits`, signed in. The only way there was a link inside Overview's limits card,
+  drawn with every agent in view. A runtime that names no `PINECALL_BILLING_URL` draws neither.
 - **Ears that leave the turn open wait 700 ms of silence before the detector is asked, unless the agent
   sets `endpointing_ms`.** livekit's own 0.3 s on Smart Turn and 0.5 s on its detector closed the turn at
   the pauses inside a caller's sentence: at 500 ms four lines of five were cut in two, a phone number

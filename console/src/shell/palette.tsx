@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 
-import { AGENT_SCREENS, BOX_SCREENS, ORG_SCREENS, screensOf, WORLD } from "../lib/mode";
+import { AGENT_SCREENS, BOX_SCREENS, drawn, ORG_SCREENS, screensOf, WORLD } from "../lib/mode";
 import { useOrg } from "../lib/org";
 import { opens } from "@pinecall/core/scopes";
 import { useScopes } from "../lib/whoami";
@@ -24,7 +24,7 @@ const MOST = 40;
 export function Palette({ agent, onClose }: { agent: string; onClose: () => void }): ReactNode {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
-  const { agents, lines, operator } = useOrg();
+  const { agents, lines, operator, limits } = useOrg();
   const scopes = useScopes();
   const navigate = useNavigate();
   const input = useRef<HTMLInputElement>(null);
@@ -39,7 +39,7 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
       const line = lines.find((one) => one.call === query.trim());
       all.push({ group: "Open", label: query.trim(), sub: line?.agent ?? "by its id", to: `/calls/${query.trim()}` });
     }
-    for (const screen of screensOf(ORG_SCREENS).filter((one) => open(one.key))) {
+    for (const screen of drawn(screensOf(ORG_SCREENS), limits?.billing_url != null).filter((one) => open(one.key))) {
       all.push({ group: "Screens", label: screen.name, sub: "", to: `/${screen.path}` });
     }
     for (const screen of screensOf(BOX_SCREENS, WORLD, operator === true)) {
@@ -60,7 +60,7 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
     }
     if (words === "") return all.filter((hit) => hit.group !== "Calls").slice(0, MOST);
     return all.filter((hit) => `${hit.label} ${hit.sub}`.toLowerCase().includes(words)).slice(0, MOST);
-  }, [query, agents, lines, agent, scopes, operator]);
+  }, [query, agents, lines, agent, scopes, operator, limits]);
 
   useEffect(() => setCursor(0), [query]);
 

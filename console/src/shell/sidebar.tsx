@@ -6,7 +6,7 @@ import { NavLink, useLocation } from "react-router";
 import { GatewayError } from "@pinecall/core/api";
 import { opens } from "@pinecall/core/scopes";
 import { wantsAPerson } from "@pinecall/core/calls";
-import { AGENT_SCREENS, BOX_SCREENS, inTheOtherWorld, ORG_SCREENS, rowOf, rowsOf, screenAt, tabsOf, WORLD, type Screen } from "../lib/mode";
+import { AGENT_SCREENS, BOX_SCREENS, drawn, inTheOtherWorld, ORG_SCREENS, rowOf, rowsOf, screenAt, tabsOf, WORLD, type Screen } from "../lib/mode";
 import { useOrg } from "../lib/org";
 import { orgOf, useScopes, useWhoami } from "../lib/whoami";
 import { useWorld } from "../lib/world";
@@ -23,7 +23,7 @@ export function Sidebar({ agent, onSearch }: { agent: string; onSearch: () => vo
   const [folded, setFolded] = useState(false);
   const scopes = useScopes();
   const whose = useWhoami();
-  const { live, here, operator } = useOrg();
+  const { live, here, operator, limits } = useOrg();
   const { pathname } = useLocation();
   const open = (screen: Screen): boolean => scopes === null || opens(scopes, screen.key);
   const person = whose?.name ?? whose?.label ?? "";
@@ -62,7 +62,8 @@ export function Sidebar({ agent, onSearch }: { agent: string; onSearch: () => vo
   const looked = rows.filter((row) => row.group === undefined);
   const built = rows.filter((row) => row.group === "build");
   const harness = rows.filter((row) => row.group === "harness");
-  const workspace = rowsOf(ORG_SCREENS).filter((row) => row.group === "workspace");
+  // Billing is a door out to where the org pays: drawn only where the runtime names such a place.
+  const workspace = drawn(rowsOf(ORG_SCREENS), limits?.billing_url != null).filter((row) => row.group === "workspace");
   const yours = rowsOf(ORG_SCREENS).filter((row) => row.group === "yours" && open(row))[0];
   const box = rowsOf(BOX_SCREENS, WORLD, operator === true);
   const who = (

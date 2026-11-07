@@ -1,4 +1,4 @@
-/** The console's frame: the sidebar, the top bar, the tabs of the row on screen, and the screen. */
+/** The console's frame: the sidebar, the strip while the world refuses, the top bar, the tabs of the row on screen, and the screen. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Outlet, useParams } from "react-router";
@@ -11,6 +11,7 @@ import { Palette } from "./palette";
 import { Ringing } from "./ringing";
 import { ScreenTabs } from "./screen-tabs";
 import { Sidebar } from "./sidebar";
+import { Strip } from "./strip";
 import { Top } from "./top";
 import "./shell.css";
 
@@ -53,6 +54,7 @@ function Frame(): ReactNode {
     <div className="frame">
       <Sidebar agent={missing ? "" : agent} onSearch={() => setSearching(true)} />
       <div className="frame-main">
+        <Strip />
         <Top agent={agent} />
         {!missing && <ScreenTabs agent={agent} />}
         <div className="frame-screen">{missing ? <Missing agent={agent} /> : <Outlet />}</div>

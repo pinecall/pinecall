@@ -3,7 +3,8 @@
 import { describe, expect, test } from "vitest";
 
 import { keysSaid, lending } from "../src/lib/limits";
-import { startsAgain, usedOf } from "../src/screens/overview/limits-card";
+import { startsAgain } from "../src/lib/format";
+import { usedOf } from "../src/screens/overview/limits-card";
 
 describe("what the runtime lends of a vendor", () => {
   test("lends null lends every vendor the runtime holds a key for", () => {

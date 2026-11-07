@@ -120,8 +120,13 @@ on `/metrics` while it lasts, for the alert.
 ## 4. Where your orgs pay
 
 `PINECALL_BILLING_URL` is answered to every org in `GET /v1/limits`: the page where it buys more.
+The console draws what that answers and nothing of the layer's own: a **Billing** row in its workspace,
+for a key that holds `usage`, which hands the person to that page signed in (a one-use code from
+`POST /v1/login/code`, taken by the page's `?login=`), and the same link beside its limits and under a
+strip over every screen while a quota of the world is used up or production is closed to the org. A
+runtime that names no page draws none of them.
 A quota that refuses writes `credits.exhausted {org, quota, used, limit, calls}` on the agent's log, the
-moment the layer or the console can offer it. A vendor that fails a call writes `vendor.failed` at the
+moment the layer or the console can offer it, and the console's strip says so at once. A vendor that fails a call writes `vendor.failed` at the
 seal and mails the org's admins — on the org's own key, pointing at Settings ▸ Providers — and the
 box's operators; a newborn org a day old with no call that went well is pointed at once, to the
 operators alone (`org.quiet`, kept per org, the sweep's orgs mailed as one list), so somebody reaches out before it leaves.

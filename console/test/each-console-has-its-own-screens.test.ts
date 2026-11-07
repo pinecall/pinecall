@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { headersFor } from "@pinecall/core/api";
-import { AGENT_SCREENS, BOX_SCREENS, ORG_SCREENS, has, rowOf, rowsOf, screenAt, screensOf, tabsOf } from "../src/lib/mode.js";
+import { AGENT_SCREENS, BOX_SCREENS, drawn, ORG_SCREENS, has, rowOf, rowsOf, screenAt, screensOf, tabsOf } from "../src/lib/mode.js";
 
 const names = (table: typeof ORG_SCREENS, world: "production" | "sandbox"): string[] =>
   screensOf(table, world).map((screen) => screen.name);
@@ -38,8 +38,16 @@ describe("production's console", () => {
   });
 
   it("runs the org from the workspace: its numbers, its people, its bill, its data and its settings", () => {
-    expect(workspace("production")).toEqual(["Numbers", "Team", "Usage", "Privacy", "Settings"]);
+    expect(workspace("production")).toEqual(["Numbers", "Team", "Usage", "Billing", "Privacy", "Settings"]);
     expect(tabs(ORG_SCREENS, "org-settings", "production")).toEqual(["API keys", "Providers", "Telemetry", "Alerts"]);
+  });
+
+  it("draws Billing, the door out to where the org pays, only on a runtime that names such a place", () => {
+    const rows = rowsOf(ORG_SCREENS, "production");
+    expect(drawn(rows, true).map((screen) => screen.name)).toContain("Billing");
+    expect(drawn(rows, false).map((screen) => screen.name)).not.toContain("Billing");
+    expect(drawn(rows, false)).toEqual(rows.filter((screen) => screen.key !== "billing"));
+    expect(screenAt("/billing")?.key).toBe("billing");
   });
 
   it("keeps the org's data under Privacy, a tab each: its rules, consent, export and erasure, who read what", () => {
@@ -95,9 +103,9 @@ describe("the box's screens", () => {
 });
 
 describe("the sandbox's console", () => {
-  it("is the workshop: the same rows looked at, no numbers, people or bill, and its own API keys, provider keys and notices", () => {
+  it("is the workshop: the same rows looked at, no numbers, people or usage, the way out to where the org pays, and its own API keys, provider keys and notices", () => {
     expect(looked(ORG_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Observability", "Agents", "Studio", "Knowledge"]);
-    expect(workspace("sandbox")).toEqual(["Privacy", "Settings"]);
+    expect(workspace("sandbox")).toEqual(["Billing", "Privacy", "Settings"]);
     expect(tabs(ORG_SCREENS, "org-settings", "sandbox")).toEqual(["API keys", "Providers", "Telemetry", "Alerts", "Phone testing"]);
   });
 

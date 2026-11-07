@@ -631,6 +631,32 @@
 
 /* ── the top bar ──────────────────────────────────────────────────────────── */
 
+/* The strip: over the top bar, amber, only while the world refuses (shell/strip.tsx). */
+.strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 7px 24px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--amber);
+  background: var(--amber-soft);
+  border-bottom: 1px solid var(--line);
+}
+
+.strip-said {
+  flex: 1;
+  min-width: 0;
+}
+
+.strip-action {
+  flex: none;
+  color: var(--amber);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .top {
   height: var(--head);
   flex: none;

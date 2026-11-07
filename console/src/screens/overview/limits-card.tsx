@@ -5,11 +5,10 @@ import { Link } from "react-router";
 
 import type { Limits } from "@pinecall/core/wire/rest-org";
 import { useCredentials } from "@pinecall/core/credentials";
+import { startsAgain } from "../../lib/format";
 import { keysSaid, openBilling } from "../../lib/limits";
 import { Card, CardHead, Stat, Stats } from "../../ui";
 import { readVendors } from "../providers/door";
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // The meters a new org asks about first; the rest are the Usage screen's.
 const SHOWN: { name: "minutes" | "evals" | "simulations" | "numbers"; label: string; monthly: boolean }[] = [
@@ -18,11 +17,6 @@ const SHOWN: { name: "minutes" | "evals" | "simulations" | "numbers"; label: str
   { name: "simulations", label: "Simulations", monthly: true },
   { name: "numbers", label: "Bought numbers", monthly: false },
 ];
-
-/** The first of next month (UTC), as `1 Nov`: when minutes, evals and simulations start again. */
-export function startsAgain(now: Date): string {
-  return `1 ${MONTHS[(now.getUTCMonth() + 1) % 12]}`;
-}
 
 /** One meter as what is used of the limit, or what is used when there is none. */
 export function usedOf(meter: { limit: number | null; used: number }): { value: string; of: string } {

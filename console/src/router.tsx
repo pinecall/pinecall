@@ -78,6 +78,8 @@ const ORG: Record<string, ReactNode> = {
   observability: <Observability />,
   team: <Team />,
   usage: <Usage />,
+  // A door out: the person is handed to where the org pays, signed in there (screens/billing).
+  billing: <BillingHop />,
   notifications: <Notifications />,
   "org-data": <FirstTab />,
   "data-rules": <PrivacyRules />,
@@ -219,8 +221,6 @@ export const router = createBrowserRouter(
         // built from the gateway the terminal was pointed at (cli/login.ts), which is the box's
         // own name, so the card is production's console and not the sandbox's.
         ...(WORLD === "production" ? [{ path: "cli", element: <Terminal /> }] : []),
-        // Where billing.pinecall.io sends a person with no session: back there signed in, in this org.
-        ...(WORLD === "production" ? [{ path: "billing", element: <BillingHop /> }] : []),
         // The guide a new org lands on, and Overview's Get started opens again.
         { path: "welcome", element: <Welcome /> },
         // One base of the org's documents, its files read and edited one at a time.
