@@ -27,32 +27,38 @@ function rowOf(table: readonly Screen[], screen: Screen): string {
 }
 
 /**
- * Every screen this console has that the key opens: the org's, the box's for an operator, and
- * the agent in view's under its own name.
+ * Every screen this console has that the key opens: an agent's under its own name, the org's, and
+ * the box's for an operator. With an agent IN VIEW its screens come first, so "calls" lands on its
+ * calls, and the org's row of the same name says "every agent" beside it; with every agent in
+ * view the org's come first and `agent` (the first held, if any) is listed after, as a way in.
  */
-export function screenHits({ scopes, billed, operator, agent }: { scopes: readonly string[] | null; billed: boolean; operator: boolean; agent: string }): Hit[] {
+export function screenHits({ scopes, billed, operator, agent, inView }: { scopes: readonly string[] | null; billed: boolean; operator: boolean; agent: string; inView: boolean }): Hit[] {
   const open = (key: string): boolean => scopes === null || opens(scopes, key);
-  const hits: Hit[] = [];
-  for (const screen of drawn(screensOf(ORG_SCREENS), billed).filter((one) => open(one.key))) {
-    hits.push({ kind: "screen", group: "Screens", icon: iconOf(ORG_SCREENS, screen), label: screen.name, where: rowOf(ORG_SCREENS, screen), to: `/${screen.path}` });
-  }
-  for (const screen of screensOf(BOX_SCREENS, WORLD, operator)) {
-    hits.push({ kind: "screen", group: "Box", icon: iconOf(BOX_SCREENS, screen), label: screen.name, where: rowOf(BOX_SCREENS, screen), to: `/${screen.path}` });
-  }
+  const own: Hit[] = [];
   if (agent !== "") {
     for (const screen of screensOf(AGENT_SCREENS).filter((one) => open(one.key))) {
-      hits.push({ kind: "screen", group: agent, icon: iconOf(AGENT_SCREENS, screen), label: screen.name, where: rowOf(AGENT_SCREENS, screen), to: `/a/${agent}/${screen.path}` });
+      own.push({ kind: "screen", group: agent, icon: iconOf(AGENT_SCREENS, screen), label: screen.name, where: rowOf(AGENT_SCREENS, screen), to: `/a/${agent}/${screen.path}` });
     }
   }
-  return hits;
+  const named = new Set(inView ? own.map((hit) => hit.kind === "screen" && hit.label) : []);
+  const orgs: Hit[] = [];
+  for (const screen of drawn(screensOf(ORG_SCREENS), billed).filter((one) => open(one.key))) {
+    const where = rowOf(ORG_SCREENS, screen);
+    orgs.push({ kind: "screen", group: "Screens", icon: iconOf(ORG_SCREENS, screen), label: screen.name, where: where !== "" ? where : named.has(screen.name) ? "every agent" : "", to: `/${screen.path}` });
+  }
+  for (const screen of screensOf(BOX_SCREENS, WORLD, operator)) {
+    orgs.push({ kind: "screen", group: "Box", icon: iconOf(BOX_SCREENS, screen), label: screen.name, where: rowOf(BOX_SCREENS, screen), to: `/${screen.path}` });
+  }
+  return inView ? [...own, ...orgs] : [...orgs, ...own];
 }
 
 export function agentHits(agents: readonly HeldAgent[]): Hit[] {
   return agents.map((held) => ({ kind: "agent", group: "Agents", held, to: `/a/${held.slug}/overview` }));
 }
 
-export function callHits(lines: readonly SessionLine[], group: "Calls" | "Recent calls"): Hit[] {
-  return lines.map((line) => ({ kind: "call", group, line, to: `/calls/${line.call}` }));
+/** `base` is the calls screen a hit opens under: the org's, or the agent in view's, so the agent stays in view. */
+export function callHits(lines: readonly SessionLine[], group: "Calls" | "Recent calls", base = "/calls"): Hit[] {
+  return lines.map((line) => ({ kind: "call", group, line, to: `${base}/${line.call}` }));
 }
 
 /** The words a hit is found by: a screen's name and row, an agent's slug and channels, a call's id, parties, agent and outcome. */

@@ -37,9 +37,13 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
 
   const words = query.trim();
   const asking = words.length >= ASK_FROM && !A_CALL.test(words);
-  // The gateway searches every call it keeps, not only the page the floor holds; a gateway that
-  // cannot (no `total` in its answer) leaves the search to the rows held, as the calls screen does.
-  const found = useServerSearch("", { query: words, agent: "", channel: "" }, 1, floorMoved(lines), asking).found;
+  // With an agent in view the calls are its own, opened under its path so it stays in view; with
+  // every agent in view they are the org's. The gateway searches every call it keeps, not only the
+  // page the floor holds; a gateway that cannot (no `total` in its answer) leaves the search to the
+  // rows held, as the calls screen does.
+  const own = useMemo(() => (agent === "" ? lines : lines.filter((line) => line.agent === agent)), [lines, agent]);
+  const base = agent === "" ? "/calls" : `/a/${encodeURIComponent(agent)}/calls`;
+  const found = useServerSearch(agent, { query: words, agent: "", channel: "" }, 1, floorMoved(own), asking).found;
 
   const hits = useMemo((): Hit[] => {
     const all: Hit[] = [];
@@ -48,11 +52,11 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
       all.push(held !== undefined ? { kind: "call", group: "Calls", line: held, to: `/calls/${words}` } : { kind: "screen", group: "Open", icon: "external", label: words, where: "a call, by its id", to: `/calls/${words}` });
     }
     const here = agent === "" ? (agents[0]?.slug ?? "") : agent;
-    const still = screenHits({ scopes, billed: limits?.billing_url != null, operator: operator === true, agent: here });
-    if (words === "") return [...still, ...agentHits(agents), ...callHits(lines.slice(0, RECENT), "Recent calls")].slice(0, MOST);
-    const calls = found !== null ? found.rows : lines.filter((line) => matches(line, words));
-    return [...all, ...matching([...still, ...agentHits(agents)], words), ...callHits(calls, "Calls")].slice(0, MOST);
-  }, [words, agents, lines, agent, scopes, operator, limits, found]);
+    const still = screenHits({ scopes, billed: limits?.billing_url != null, operator: operator === true, agent: here, inView: agent !== "" });
+    if (words === "") return [...still, ...agentHits(agents), ...callHits(own.slice(0, RECENT), "Recent calls", base)].slice(0, MOST);
+    const calls = found !== null ? found.rows : own.filter((line) => matches(line, words));
+    return [...all, ...matching([...still, ...agentHits(agents)], words), ...callHits(calls, "Calls", base)].slice(0, MOST);
+  }, [words, agents, lines, own, base, agent, scopes, operator, limits, found]);
 
   useEffect(() => setCursor(0), [words]);
   // The row the arrows are on stays in view. Braced: an effect's return is its cleanup, and React
