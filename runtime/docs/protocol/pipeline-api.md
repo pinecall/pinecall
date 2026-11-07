@@ -18,6 +18,7 @@ What one agent would hear, decide and speak with on its next call, and how fast 
   "defaults": { "llm": "anthropic", "stt": "soniox", "tts": "elevenlabs" },
   "models": { "tts/elevenlabs": [ "eleven_flash_v2_5" ] },
   "realtime": { "xai": [ "grok-voice-latest", "grok-voice-3.0" ] },
+  "voice_defaults": { "elevenlabs/es": "a-voice", "google/en": "Kore" },
   "calls": 12,
   "medians": [ { "name": "transcription_delay", "seconds": 0.13, "turns": 41 } ],
   "unavailable_reasons": { "speaks": "elevenlabs has no key: the org brought none and the box holds none" } }
@@ -31,7 +32,8 @@ notice, a greeting given as words, a read-back) — xAI's can, so its calls use 
 `decides` answers the agent's written calls; null otherwise. Nothing is built to answer. `providers` are the rows
 `GET /v1/providers` answers this org ([provider-keys.md](provider-keys.md)); `defaults` and `models`
 are the providers row's, and `realtime` the models that hear and speak themselves, by vendor, as that
-page says. `medians` pools every turn of the agent's last twenty calls, livekit's own
+page says. `voice_defaults` is the row's voice per vendor and language (`vendor/language`), the one a
+call speaks when the agent picked none: what the console's voice picker marks as the default. `medians` pools every turn of the agent's last twenty calls, livekit's own
 field names, the median and not the mean; a measure nobody took has no row. `e2e_latency` is
 the caller's wait to the agent's first sound, as the session writes it
 ([metrics.md](../wire/metrics.md)), and one row is the runtime's: `talk_share`, the agent's part

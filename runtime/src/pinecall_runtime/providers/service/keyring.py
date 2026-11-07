@@ -289,8 +289,9 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
     )
 
 
-# The model a call on a vendor runs when none is picked: the row's, else the one the plugin builds
-# where its constructor says one.
+# The model a call on a vendor runs when none is picked, in the order `_on_its_key` takes it: the
+# row's for that vendor, else the platform default's where the default is that vendor, else the one
+# the plugin builds where its constructor says one — which a call never runs on the default's vendor.
 def runs_of(catalog: Catalog, installed: Mapping[str, Vendor]) -> dict[str, str]:
     """By `stage/vendor`, the model that runs when none is picked, where it is known."""
     runs = {
@@ -298,6 +299,9 @@ def runs_of(catalog: Catalog, installed: Mapping[str, Vendor]) -> dict[str, str]
         for vendor in installed.values()
         for stage, model in vendor.defaults.items()
     }
+    for stage, default in catalog.defaults.items():
+        if default.model:
+            runs[f"{stage}{SEPARATOR}{default.vendor}"] = default.model
     runs.update(catalog.models)
     return runs
 

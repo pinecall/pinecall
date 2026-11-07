@@ -52,6 +52,9 @@ export const ReportSchema = z.object({
   runs: z.record(z.string(), z.string()),
   // By vendor, the models that hear and speak themselves: an LLM pick that needs no ears and no voice.
   realtime: z.record(z.string(), z.array(z.string())),
+  /** By "<vendor>/<language>", the voice a call speaks when none is picked: the providers row's. */
+  // A gateway from before it said them reads as naming none.
+  voice_defaults: z.record(z.string(), z.string()).default({}),
   calls: z.int(),
   medians: z.array(MeasuredSchema),
   unavailable_reasons: z.record(z.string(), z.string()),

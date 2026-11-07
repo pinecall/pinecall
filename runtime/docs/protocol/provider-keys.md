@@ -19,8 +19,9 @@ A vendor is a livekit plugin installed on the platform; nothing in code lists th
 (installed, and no key would run it for this org) or `broken` (the plugin does not import, `broken`
 says why). `ready` is the first two. `voices_listed` says whether `GET /v1/voices` lists that
 vendor's voices. `defaults` is the platform's providers row. `runs` is, by stage and vendor, the model a call runs when
-none is picked: the row's, else the one the vendor's plugin builds where its constructor names one; a
-vendor absent decides inside its plugin. `models` is, by stage and vendor, what a picker offers
+none is picked, in the order a call takes it: the row's for that vendor, else the platform default's
+model where the default is that vendor, else the one the vendor's plugin builds where its constructor
+names one; a vendor absent decides inside its plugin. `models` is, by stage and vendor, what a picker offers
 **this org**: the one that runs first, then the ones the row offers
 (`pinecall-runtime providers models <file> --apply` writes them from voicedex's file; `setup` writes the
 ones the package ships), kept to what the platform lends the org where it lends by model (`vendor/model`

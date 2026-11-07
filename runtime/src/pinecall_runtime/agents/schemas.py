@@ -229,11 +229,14 @@ class ScopeHolder(WireModel):
 
 
 class AgentRow(WireModel):
-    """An agent some socket of the org holds, the channels it answers, and whose scope."""
+    """An agent some socket of the org holds, the channels it answers, whose scope, and what it is."""
 
     slug: str
     channels: list[Channel]
     holder: ScopeHolder | None = None
+    # A class an app of the org holds, or a definition the gateway holds for Studio: the console
+    # draws Studio for the second alone, and writes a golden, a persona or a judge for it alone.
+    kind: Literal["class", "studio"] = "class"
 
 
 class AgentList(WireModel):
@@ -423,6 +426,8 @@ class PipelineReport(WireModel):
     runs: dict[str, str]
     # By vendor, the models that hear and speak themselves, as GET /v1/providers lists them.
     realtime: dict[str, list[str]]
+    # By vendor and language (`google/en`), the voice a call speaks when none is picked: the row's.
+    voice_defaults: dict[str, str] = Field(default_factory=dict[str, str])
     calls: int
     medians: list[Measured]
     unavailable_reasons: dict[str, str]
