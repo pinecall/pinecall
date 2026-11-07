@@ -91,7 +91,12 @@ export interface Screen {
   operator?: true;
   /** Drawn only on a runtime that names where the org pays (`billing_url` of GET /v1/limits). */
   billed?: true;
+  /** Drawn only for an agent of this kind: Studio is a definition's, never a class's. */
+  only?: AgentKind;
 }
+
+/** What an agent is: a class an app holds, or a definition the gateway holds for Studio (`kind` of GET /v1/agents). */
+export type AgentKind = "class" | "studio";
 
 const BOTH = ["production", "sandbox"] as const;
 const PRODUCTIONS = ["production"] as const;
@@ -186,7 +191,7 @@ export const AGENT_SCREENS: readonly Screen[] = [
   { key: "calls", path: "calls", name: "Calls", in: BOTH, icon: "list" },
   { key: "quality", path: "quality", name: "Quality", in: BOTH, icon: "check" },
   // An agent built with no code: its definition edited in the sandbox beside a live preview, read in production.
-  { key: "studio", path: "studio", name: "Studio", in: BOTH, icon: "bot", group: "build" },
+  { key: "studio", path: "studio", name: "Studio", in: BOTH, icon: "bot", group: "build", only: "studio" },
   { key: "talk", path: "playground", name: "Playground", tab: "Chat", in: BOTH, icon: "chat", group: "build" },
   { key: "devchat", path: "dev-chat", name: "Dev chat", in: THE_WORKSHOPS, under: "talk" },
   { key: "test", path: "test", name: "Test", tab: "Overview", in: BOTH, icon: "flask", group: "build" },
@@ -216,9 +221,9 @@ export function has(table: readonly Screen[], key: string, world: World = WORLD)
   return table.some((screen) => screen.key === key && screen.in.includes(world));
 }
 
-/** Of these screens, the ones this runtime draws: a billed row only where it names where the org pays. */
-export function drawn(screens: readonly Screen[], billed: boolean): Screen[] {
-  return screens.filter((screen) => screen.billed !== true || billed);
+/** Of these screens, the ones drawn here: a billed row only where the runtime names where the org pays, a kind's row only for an agent of that kind. */
+export function drawn(screens: readonly Screen[], billed: boolean, kind: AgentKind | null = null): Screen[] {
+  return screens.filter((screen) => (screen.billed !== true || billed) && (screen.only === undefined || screen.only === kind));
 }
 
 /** The sidebar's rows of a table: the screens that are not a tab of another. */

@@ -7,6 +7,7 @@ import { useCredentials } from "@pinecall/core/credentials";
 import { Button, Card, CardHead, Chips, Empty, Refused, TableHead } from "../../ui";
 import { BEFORE_DAYS, NOW_DAYS, type Drifted } from "./drift";
 import type { HeldRate } from "./held-rates";
+import { useAgentKind } from "../../lib/org";
 import { JudgeForm } from "./judge-form";
 import { JUDGE_COLUMNS, JudgeLine, type Standing } from "./judge-row";
 import { dropJudge, PINECALL, writeJudge, type JudgeRow, type Whose } from "./judges-door";
@@ -48,6 +49,8 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
   const owner = agent === "" ? "org" : agent;
   // The class owns the agent's list: its files and its switches, read when it registers; nothing of it is written here.
   const fixed = agent !== "" && (listed.judges ?? []).some((judge) => judge.fixed === true);
+  // A class keeps its own judges beside its code: the console writes one for a Studio agent, or for every agent.
+  const kind = useAgentKind(agent);
   // The org's own first, what somebody here wrote, then the agent's own; Pinecall's library after
   // them in two: the ones that guard a call, to switch on first, then the ones that grade it.
   const groups: { title: string; rows: JudgeRow[] }[] = [
@@ -78,7 +81,7 @@ export function Judges({ agent, rates, read, drifted }: { agent: string; rates: 
       <div className="qly-bar">
         <Chips options={SHOWS} value={show} onChange={setShow} />
         <span className="qly-bar-meta">{drift === null ? `held over the newest ${read} judged calls` : `held over the newest ${read} judged calls · drift: the last ${NOW_DAYS} days against the last ${BEFORE_DAYS}`}</span>
-        {!fixed && (
+        {!fixed && (agent === "" || kind === "studio") && (
           <Button size="sm" onClick={() => setEditing("new")} disabled={editing !== null}>
             {agent === "" ? "New judge for every agent" : `New judge for ${agent}`}
           </Button>

@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { asking, type TestValues } from "../../lib/test-values";
+import { TestValuesPanel } from "../settings";
 import { Icon, Segmented } from "../../ui";
 import { useRoom } from "../talk";
 import { fromRoom, Messages, type Message } from "./messages";
@@ -32,8 +33,10 @@ const HOWS: readonly { value: How; label: ReactNode }[] = [
   },
 ];
 
-export function TryIt({ agent, release, values, onReset }: { agent: string; release: number; values: TestValues | null; onReset: () => void }): ReactNode {
+export function TryIt({ agent, release, values, onValues, onReset }: { agent: string; release: number; values: TestValues | null; onValues: (values: TestValues | null) => void; onReset: () => void }): ReactNode {
   const room = useRoom(agent, values);
+  // Another voice or model for this chat alone, picked in the same panel the Playground opens.
+  const [tuning, setTuning] = useState(false);
   const { playing, play, stop } = usePlaying(agent);
   const [how, setHow] = useState<How>("type");
   const [over, setOver] = useState(false);
@@ -97,10 +100,14 @@ export function TryIt({ agent, release, values, onReset }: { agent: string; rele
           <span className="sto-chat-under">Answers with release {release}{asking(values) ? " · on test values" : ""}</span>
         </span>
         <Segmented options={HOWS} value={how} onChange={pick} />
+        <button type="button" className={asking(values) ? "sto-icon-button sto-icon-button-on" : "sto-icon-button"} title={asking(values) ? "On test values: another voice or model for this chat" : "Try another voice or model in this chat"} aria-label="Voice and models for this chat" onClick={() => setTuning((was) => !was)}>
+          <Icon name="sliders" size={15} />
+        </button>
         <button type="button" className="sto-icon-button" title="Start over" aria-label="Start over" onClick={() => void startOver()}>
           <Icon name="undo" size={15} />
         </button>
       </div>
+      {tuning && <TestValuesPanel agent={agent} values={values} onApply={onValues} onClose={() => setTuning(false)} />}
       <Pretend agent={agent} playing={playing} onPlay={(persona) => void play(persona)} disabled={inside} />
       {playing.call !== null ? (
         <Played call={playing.call} onOver={setOver} />

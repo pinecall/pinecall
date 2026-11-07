@@ -23,8 +23,9 @@ async def also_holds(app: ClientConnection, agent: str) -> None:
 
 
 async def held(gateway: Gateway, tenant: Tenant) -> list[str]:
-    """The slugs the org's agents list shows, as the console and the playground read them."""
+    """The slugs the org's agents list shows, as the console reads them; each a class, held by an app."""
     answer = await gateway.http.get("/v1/agents", headers=tenant.server)
+    assert all(row["kind"] == "class" for row in answer.json()["agents"])
     return sorted(row["slug"] for row in answer.json()["agents"])
 
 

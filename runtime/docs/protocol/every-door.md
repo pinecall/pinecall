@@ -16,7 +16,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 |---|---|---|---|
 | `GET` | `/.well-known/pinecall` | — | What this gateway is and how it signs people in, before anybody holds a key. |
 | `GET` | `/metrics` | loopback | What the gateway counted and holds, as Prometheus text; refused to anything that came through Caddy. |
-| `GET` | `/v1/agents` | calls | The org's held agents in the environment: one row per slug, one per scope for a team reader. |
+| `GET` | `/v1/agents` | calls | The org's held agents in the environment: one row per slug, one per scope for a team reader, each `kind` `class` or `studio`. |
 | `GET` | `/v1/agents/{slug}/calls` | calls | An agent's own log: its registrations, its declarations, its errors. It never ends. |
 | `PUT` | `/v1/agents/{slug}/cases/{name}` | evals | Write a golden as a case of the agent, by hand; their own name again rewrites it, a call's is a 409. |
 | `POST` | `/v1/agents/{slug}/cold-transfer` | app · fleet | A cold transfer's leg, past the shape and the pace, its ledger row written; no trunk, since a REFER dials nothing of the platform's. |

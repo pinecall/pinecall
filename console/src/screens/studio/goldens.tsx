@@ -1,4 +1,4 @@
-/** The editor's Goldens: the conversations the agent must hold — written here by hand, or a call kept and approved — and Run, which plays them against the agent the gateway holds, each verdict under it. */
+/** A Studio agent's goldens, as Test ▸ Goldens draws them: the conversations it must hold — written here by hand, or a call kept and approved — and Run, which plays them against the agent the gateway holds, each verdict under it. */
 
 import { useState, type ReactNode } from "react";
 
@@ -11,7 +11,7 @@ import { readRun, runCases, type EvalRun } from "../evals";
 import { Section } from "./section";
 import { playable, resultsOf, tallyWords, type CaseResult } from "./testing";
 
-export function TestSection({ agent }: { agent: string }): ReactNode {
+export function StudioGoldens({ agent }: { agent: string }): ReactNode {
   const credentials = useCredentials();
   const { listed, asking, written } = useCases(agent);
   const [writing, setWriting] = useState(false);

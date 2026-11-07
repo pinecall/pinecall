@@ -11,6 +11,7 @@ function held(slug: string, holder?: string, name?: string): HeldAgent {
   return {
     slug,
     channels: ["web"],
+    kind: "class",
     ...(holder === undefined ? {} : { holder: { holder, name: name ?? null } }),
   };
 }

@@ -3,3 +3,4 @@
 export { Studio } from "./studio";
 export { makeStudioAgent } from "./door";
 export { NewAgent } from "./new-agent";
+export { StudioGoldens } from "./goldens";

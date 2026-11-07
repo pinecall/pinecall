@@ -7,7 +7,7 @@ import { GatewayError } from "@pinecall/core/api";
 import { opens } from "@pinecall/core/scopes";
 import { wantsAPerson } from "@pinecall/core/calls";
 import { AGENT_SCREENS, BOX_SCREENS, drawn, inTheOtherWorld, ORG_SCREENS, rowOf, rowsOf, screenAt, tabsOf, WORLD, type Screen } from "../lib/mode";
-import { useOrg } from "../lib/org";
+import { useAgentKind, useOrg } from "../lib/org";
 import { orgOf, useScopes, useWhoami } from "../lib/whoami";
 import { useWorld } from "../lib/world";
 import { Icon, initialsOf } from "../ui";
@@ -24,6 +24,7 @@ export function Sidebar({ agent, onSearch }: { agent: string; onSearch: () => vo
   const scopes = useScopes();
   const whose = useWhoami();
   const { live, here, operator, limits } = useOrg();
+  const kind = useAgentKind(agent);
   const { pathname } = useLocation();
   const open = (screen: Screen): boolean => scopes === null || opens(scopes, screen.key);
   const person = whose?.name ?? whose?.label ?? "";
@@ -58,7 +59,7 @@ export function Sidebar({ agent, onSearch }: { agent: string; onSearch: () => vo
     );
   };
 
-  const rows = rowsOf(table);
+  const rows = drawn(rowsOf(table), false, kind);
   const looked = rows.filter((row) => row.group === undefined);
   const built = rows.filter((row) => row.group === "build");
   const harness = rows.filter((row) => row.group === "harness");

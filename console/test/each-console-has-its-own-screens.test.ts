@@ -119,6 +119,17 @@ describe("an agent's screens", () => {
   it("are the org's three rows looked at, then what builds the agent, and never a word the workspace says", () => {
     expect(looked(AGENT_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality"]);
     expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+  });
+
+  it("draw Studio for an agent built in Studio alone: a class has no definition to edit", () => {
+    const build = (kind: "class" | "studio" | null): string[] =>
+      drawn(rowsOf(AGENT_SCREENS, "sandbox"), false, kind)
+        .filter((screen) => screen.group === "build")
+        .map((screen) => screen.name);
+    expect(build("studio")).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+    expect(build("class")).toEqual(["Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+    // Not said yet (the list still being read): a class, until it says otherwise.
+    expect(build(null)).toEqual(build("class"));
     const words = rowsOf(AGENT_SCREENS, "production").map((screen) => screen.name);
     expect(words.filter((word) => workspace("production").includes(word))).toEqual([]);
   });

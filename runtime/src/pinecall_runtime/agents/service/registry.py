@@ -3,7 +3,7 @@
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import uuid4
 
 from pydantic import TypeAdapter
@@ -133,6 +133,10 @@ class NoDevAnswerer(Conflict):
         )
 
 
+# The SDK word the gateway's own holder registers a Studio agent under: what tells one from a class.
+BUILT_IN_STUDIO = "studio"
+
+
 @dataclass(frozen=True, slots=True)
 class Registration:
     """One agent as one app socket holds it."""
@@ -157,6 +161,11 @@ class Registration:
     def held_as(self) -> Held:
         """The registry's key for this agent in its scope."""
         return (self.scope, self.slug)
+
+    @property
+    def kind(self) -> Literal["class", "studio"]:
+        """What the agent is: a class an app holds, or a definition the gateway holds for Studio."""
+        return "studio" if self.sdk == BUILT_IN_STUDIO else "class"
 
 
 @dataclass(frozen=True, slots=True)

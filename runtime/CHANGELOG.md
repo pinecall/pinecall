@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The model a vendor runs when none is picked is the one a call runs.** `GET /v1/providers` and the
+  pipeline report said `runs: {"llm/google": "gemini-2.5-flash"}`, the Google plugin's own, while a call
+  on Google with no model ran the platform default's `gemini-3.5-flash-lite`: the console's Configure
+  card and every model picker named the retired model as the default. `runs` now takes the model in
+  the order a call does — the row's for that vendor, then the default's where the default is that
+  vendor, then the plugin's — so the default the console shows is the one that answers.
+- **The agents list says what each agent is.** `GET /v1/agents` rows carry `kind`: `class` for an
+  agent an app of the org holds, `studio` for a definition the gateway holds for Studio. The console
+  draws Studio, and writes goldens, personas and judges, for the second alone: a class owns its own.
+- **The pipeline report says the voice a call speaks unpicked.** `GET /v1/agents/{slug}/pipeline`
+  carries `voice_defaults`, the providers row's voice per vendor and language, so the console's voice
+  picker marks the one a caller hears when the agent picked none instead of "the vendor's own default".
 - **Continue with Google.** The operator keeps one OAuth client at `PUT /v1/ops/signin/google` (the
   secret sealed; the console's Box ▸ Settings ▸ Sign-in draws it) and the floor says `google: true`.
   `GET /v1/login/google` and its callback check Google's id_token as an org's provider's is checked

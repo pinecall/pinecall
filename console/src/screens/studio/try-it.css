@@ -1,6 +1,7 @@
 /* The Try-it chat: its head, the callers a model plays, the conversation as bubbles, the box, and what production answers with under it. */
 
 .sto-chat {
+  position: relative;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -38,6 +39,8 @@
   align-items: center;
   gap: 5px;
 }
+
+.sto-icon-button-on { color: var(--accent-ink); background: var(--accent-soft); }
 
 .sto-icon-button {
   display: inline-flex;

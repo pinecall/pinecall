@@ -92,6 +92,8 @@ export const HeldAgentSchema = z.strictObject({
   slug: z.string(),
   channels: z.array(ChannelSchema),
   holder: LineHolderSchema.nullable().nullish(),
+  /** A class an app holds, or a definition the gateway holds for Studio; a gateway from before it said reads as a class. */
+  kind: z.enum(["class", "studio"]).default("class"),
 });
 
 export type HeldAgent = z.infer<typeof HeldAgentSchema>;

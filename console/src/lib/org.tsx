@@ -8,6 +8,7 @@ import { useCredentials } from "@pinecall/core/credentials";
 import { bySlug, meIn } from "./corners";
 import { useInsights, type Insights } from "./insights";
 import { useLimits } from "./limits";
+import type { AgentKind } from "./mode";
 import { orgsOf, type OrgOf } from "@pinecall/core/login";
 import { useOperator } from "./operator";
 import type { Connection } from "@pinecall/core/stream";
@@ -93,6 +94,19 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
 }
 
 /** The shared org; throws outside the shell. */
+/** What the agent in view is, off the org's list; null with no agent in view or one the list does not hold (a class, until it says). */
+export function useAgentKind(agent: string): AgentKind | null {
+  const { agents } = useOrg();
+  if (agent === "") return null;
+  return agents.find((one) => one.slug === agent)?.kind ?? null;
+}
+
+/** Every held agent's kind, by slug: whom a caller or a golden may be written for. */
+export function useAgentKinds(): ReadonlyMap<string, AgentKind> {
+  const { agents } = useOrg();
+  return new Map(agents.map((one) => [one.slug, one.kind]));
+}
+
 export function useOrg(): Org {
   const held = useContext(Held);
   if (held === null) throw new Error("a screen was mounted outside the shell's org");

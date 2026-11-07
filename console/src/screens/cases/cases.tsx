@@ -10,6 +10,7 @@ import { CaseView } from "./case-view";
 import type { CaseGroup } from "./door";
 import { GroupRow } from "./group-row";
 import { NewCase } from "./new-case";
+import { useAgentKind } from "../../lib/org";
 import { useCases } from "./use-cases";
 import "./cases.css";
 
@@ -33,6 +34,8 @@ export function Cases(): ReactNode {
   const [show, setShow] = useState<Show>("pending");
   const [writing, setWriting] = useState(false);
   const { listed, groups, asking, decided, grouped, written } = useCases(agent);
+  // A class keeps its goldens beside its code: the console writes one for a Studio agent alone.
+  const kind = useAgentKind(agent);
   const chosen = listed?.cases.find((kept) => kept.agent === owner && kept.name === open);
 
   if (chosen !== undefined) {
@@ -54,7 +57,7 @@ export function Cases(): ReactNode {
       <PageHead
         title="Cases"
         lede="Real calls a judge broke on, grouped by cause, and the cases a person kept or wrote."
-        actions={agent !== "" && !writing && <Button onClick={() => setWriting(true)}>New case</Button>}
+        actions={agent !== "" && kind === "studio" && !writing && <Button onClick={() => setWriting(true)}>New case</Button>}
       />
       {writing && (
         <NewCase

@@ -67,6 +67,9 @@ async def test_a_studio_agent_is_held_by_the_gateway_and_listed_as_its_process(
     await made(gateway, tenant, agent)
     processes = (await gateway.http.get("/v1/apps", headers=tenant.person)).json()
     assert any(agent in json.dumps(item) and "pinecall-studio" in json.dumps(item) for item in processes["apps"])
+    # The agents list says what it is, so the console draws Studio for it and not for a class.
+    listed = (await gateway.http.get("/v1/agents", headers=tenant.person)).json()["agents"]
+    assert next(row["kind"] for row in listed if row["slug"] == agent) == "studio"
 
 
 async def test_an_app_registering_a_studio_agents_slug_is_refused(gateway: Gateway, tenant: Tenant, agent: str) -> None:

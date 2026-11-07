@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
 
 import { useCredentials } from "@pinecall/core/credentials";
+import { useAgentKind } from "../../lib/org";
+import { StudioGoldens } from "../studio";
 import { dayAndTime } from "../../lib/format";
 import { inTheOtherWorld, WORLD } from "../../lib/mode";
 import { Button, Card, CardHead, Empty, Page, PageHead, Refused, Stat, Stats } from "../../ui";
@@ -30,6 +32,22 @@ function heldIn(run: EvalRun | undefined): Map<string, boolean> {
 // calls are judged is Quality's; this is the goldens alone.
 export function Evals(): ReactNode {
   const agent = useParams()["agent"] ?? "";
+  const kind = useAgentKind(agent);
+  // A Studio agent has no folder: its goldens are the gateway's, one card.
+  if (kind === "studio") return <StudioEvals agent={agent} />;
+  return <ClassEvals agent={agent} />;
+}
+
+function StudioEvals({ agent }: { agent: string }): ReactNode {
+  return (
+    <Page width={1060} tight>
+      <PageHead title="Goldens" lede="Conversations written down, and what the agent must do in each: played against it before a change ships." />
+      <StudioGoldens agent={agent} />
+    </Page>
+  );
+}
+
+function ClassEvals({ agent }: { agent: string }): ReactNode {
   const credentials = useCredentials();
   const [params, setParams] = useSearchParams();
   const runs = useEvalRuns(agent);
