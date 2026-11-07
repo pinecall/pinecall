@@ -1491,7 +1491,9 @@ the silence a caller is left in before the turn is called finished: ears that de
 themselves (Flux) take it as their end-of-turn timeout, and on ears that leave it open it is the
 least silence before the detector on the worker (`--end-of-turn livekit` or `smart-turn`) is asked
 whether the caller is done, so a caller who pauses between sentences is not spoken over; and
-`--min-interruption-words` how many words it takes to stop the agent mid-sentence. The other two
+`--min-interruption-words` how many words it takes to stop the agent mid-sentence; a sound that
+stops it and brings no words within a second is not an interruption, and the agent goes on where
+it paused. The other two
 are for a recogniser that decides the end of a turn *itself* — Deepgram Flux, which is the
 runtime's own ears: `--eot-threshold` is how sure it must be before it ends one, and
 `--eager-eot-threshold` the lower bar at which it says a turn MIGHT be over, which is what lets

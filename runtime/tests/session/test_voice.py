@@ -15,7 +15,7 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest
-from pinecall_runtime.session.hearing import MIN_WORDS, keyterms
+from pinecall_runtime.session.hearing import FALSE_INTERRUPTION_TIMEOUT_S, MIN_WORDS, keyterms
 from pinecall_runtime.session.listener import is_spoken
 from pinecall_runtime.wire import events as wire
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
@@ -145,6 +145,15 @@ async def test_what_it_takes_to_cut_the_agent_off_is_the_agents_own_else_two_wor
     inherited = spoken_call(box, NOBODY)
     assert declared.live.options.interruption.get("min_words") == 4
     assert inherited.live.options.interruption.get("min_words") == MIN_WORDS == 2
+
+
+# 2026-11-06: a caller finishing a phone number the ears had already closed stopped the reply being
+# written, and with no resume it was never said: the agent sat silent until the caller spoke again.
+@needs_the_database
+async def test_a_sound_that_brings_no_words_within_a_second_is_false_and_the_reply_goes_on(box: Box) -> None:
+    interruption = spoken_call(box, NOBODY).live.options.interruption
+    assert interruption.get("resume_false_interruption") is True
+    assert interruption.get("false_interruption_timeout") == FALSE_INTERRUPTION_TIMEOUT_S == 1.0
 
 
 @needs_the_database

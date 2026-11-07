@@ -142,7 +142,10 @@ def _text_transforms_of(config: AgentConfig) -> NotGivenOr[Sequence[transforms.T
 
 
 # Interruptions are judged by the local VAD: livekit's adaptive detector streams the caller's
-# audio to its cloud. A false interruption is not resumed: livekit replays the whole sentence.
+# audio to its cloud. A sound that brings no words within the policy's second is a false
+# interruption, and the reply it stopped goes on where it was paused: with no resume, a reply
+# cancelled while still being written was never said, and the agent sat silent for 33 s after a
+# caller finished a phone number the ears had already closed (2026-11-06).
 # The agent's endpointing reaches the ears that end the turn (Flux's timeout), and the detector
 # stacked on the others as the least silence before it is asked: never both, which would wait twice.
 def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingOptions:
@@ -151,7 +154,7 @@ def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingO
         "min_words": policy.min_words,
         "mode": "vad",
         "false_interruption_timeout": policy.false_interruption_s,
-        "resume_false_interruption": False,
+        "resume_false_interruption": True,
     }
     if policy.min_speech_s is not None:
         interruption["min_duration"] = policy.min_speech_s

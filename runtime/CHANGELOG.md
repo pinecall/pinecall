@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A reply stopped by a sound that brings no words goes on where it paused.** A caller's noise, or the
+  end of a phone number the ears had already closed, stopped the reply as it was being written, and
+  with no resume it was never said: the agent sat silent for 33 s until the caller spoke again. A
+  sound with no transcript within a second is a false interruption, and the reply resumes.
 - **`endpointing_ms` reaches the detector on ears that leave the turn open.** On Scribe, Soniox and every
   recogniser but Flux the knob was refused as untaken; it is the least silence before livekit's detector or
   Smart Turn is asked whether the caller is done now (`endpointing.min_delay`), so an agent whose callers
