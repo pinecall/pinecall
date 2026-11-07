@@ -1,8 +1,8 @@
-/** The callers to choose from, as one select of many: a field that shows who will call, opening a list of each caller's name and what it is about — the agent's own, Pinecall's library and the ones switched off. */
+/** The callers to choose from, as one select of many: chips of the chosen with their initials, as Personas draws them, and a search, opening a list of each caller — the agent's own first, then Pinecall's library and the ones switched off. */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Icon, Pill, Select, SelectItem } from "../../ui";
+import { Avatar, Icon, Pill, Select, SelectItem } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
 
 /** What picks a caller out: its owner, the agent it was written for, and its name. */
@@ -73,8 +73,14 @@ function groupsOf({ inView, agent, personas, all }: CallersProps): Group[] {
 export function Callers(props: CallersProps): ReactNode {
   const { inView, agents, agent, onAgent, personas, picked, onPick } = props;
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const box = useRef<HTMLDivElement>(null);
-  const groups = groupsOf(props).filter((group) => group.personas.length > 0);
+  const typed = useRef<HTMLInputElement>(null);
+  const asked = query.trim().toLowerCase();
+  const matches = (persona: Persona): boolean => asked === "" || `${persona.name} ${aboutOf(persona)}`.toLowerCase().includes(asked);
+  const groups = groupsOf(props)
+    .map((group) => ({ ...group, personas: group.personas.filter(matches) }))
+    .filter((group) => group.personas.length > 0);
   const chosen = inOrder(personas).filter((persona) => picked.has(keyOf(persona)));
 
   // Open, the list closes on a click anywhere else and on Escape, as a select's menu does.
@@ -96,21 +102,63 @@ export function Callers(props: CallersProps): ReactNode {
 
   const library = inView === "" && personas.some(isPinecalls);
   return (
-    <div className="sim-menu">
-      <div className="sim-menu-pick" ref={box}>
-        <button type="button" className={open ? "sim-menu-field sim-menu-field-open" : "sim-menu-field"} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {chosen.length === 0 ? (
-            <span className="sim-menu-empty">Choose who calls…</span>
-          ) : (
-            <span className="sim-menu-said">{saidOf(chosen)}</span>
+    <div className="sim-callers">
+      <div className="sim-pick" ref={box}>
+        {/* The field: each caller chosen a chip with its face and a cross, then the search. */}
+        <div
+          className={open ? "sim-pick-field sim-pick-field-open" : "sim-pick-field"}
+          onClick={() => {
+            setOpen(true);
+            typed.current?.focus();
+          }}
+        >
+          {chosen.map((persona) => (
+            <span key={keyOf(persona)} className="sim-pick-chip">
+              <Avatar name={persona.name} size={20} round />
+              {persona.name}
+              <button
+                type="button"
+                className="sim-pick-unchip"
+                aria-label={`Remove ${persona.name}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPick(persona);
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {chosen.length === 0 && (
+            <span className="sim-pick-lead" aria-hidden>
+              <Icon name="users" size={15} />
+            </span>
           )}
+          <input
+            ref={typed}
+            className="sim-pick-search"
+            value={query}
+            placeholder={chosen.length === 0 ? "Choose who calls…" : "Add another…"}
+            aria-label="Search the callers"
+            onFocus={() => setOpen(true)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+            onKeyDown={(event) => {
+              // Backspace on an empty search takes the last chip off, as select2 does.
+              const last = chosen[chosen.length - 1];
+              if (event.key === "Backspace" && query === "" && last !== undefined) onPick(last);
+            }}
+          />
           <Icon name="chevron" size={15} />
-        </button>
+        </div>
         {open && (
-          <div className="sim-menu-list" role="listbox" aria-multiselectable aria-label="Who calls">
+          <div className="sim-pick-list" role="listbox" aria-multiselectable aria-label="Who calls">
+            {groups.length === 0 && <p className="sim-pick-none">No caller matches “{query}”.</p>}
             {groups.map((group) => (
-              <div key={group.title} className="sim-menu-group">
-                <div className="sim-menu-title">{group.title}</div>
+              <div key={group.title} className="sim-pick-group">
+                <div className="sim-pick-title">{group.title}</div>
                 {group.personas.map((persona) => (
                   <Row key={keyOf(persona)} persona={persona} rings={group.rings ? persona.agent : undefined} on={picked.has(keyOf(persona))} onPick={() => onPick(persona)} />
                 ))}
@@ -120,7 +168,7 @@ export function Callers(props: CallersProps): ReactNode {
         )}
       </div>
       {library && agents.length > 1 && (
-        <span className="sim-menu-ring">
+        <label className="sim-callers-ring">
           Pinecall&apos;s callers ring
           <Select size="sm" value={agent} onValueChange={onAgent} aria-label="The agent Pinecall's callers ring">
             {agents.map((one) => (
@@ -129,36 +177,36 @@ export function Callers(props: CallersProps): ReactNode {
               </SelectItem>
             ))}
           </Select>
-        </span>
+        </label>
       )}
     </div>
   );
 }
 
-// Who will call, in the field: two names, or two and how many more.
-function saidOf(chosen: readonly Persona[]): string {
-  const [first, second] = chosen;
-  if (second === undefined) return first?.name ?? "";
-  return chosen.length === 2 ? `${first!.name} and ${second.name}` : `${first!.name}, ${second.name} and ${String(chosen.length - 2)} more`;
+// What a caller wants, in a line: Pinecall's own say it in their summary, a written one in its about.
+function aboutOf(persona: Persona): string {
+  return isPinecalls(persona) ? (persona.summary ?? persona.goal) : persona.about !== "" ? persona.about : persona.goal;
 }
 
+// One caller in the list: its face, its name and what it wants, ticked when chosen.
 function Row({ persona, rings, on, onPick }: { persona: Persona; rings?: string | undefined; on: boolean; onPick: () => void }): ReactNode {
   return (
-    <button type="button" role="option" aria-selected={on} className={on ? "sim-menu-row sim-menu-row-on" : "sim-menu-row"} onClick={onPick}>
-      <span className="sim-menu-check" aria-hidden>
-        {on && <Icon name="tick" size={11} />}
-      </span>
-      <span className="sim-menu-words">
-        <span className="sim-menu-name">
+    <button type="button" role="option" aria-selected={on} className={on ? "sim-pick-row sim-pick-row-on" : "sim-pick-row"} onClick={onPick}>
+      <Avatar name={persona.name} size={28} round />
+      <span className="sim-pick-words">
+        <span className="sim-pick-name">
           {persona.name}
-          {rings !== undefined && <span className="sim-menu-rings">rings {rings}</span>}
+          {rings !== undefined && <span className="sim-pick-rings">rings {rings}</span>}
           {persona.tags.includes("red-team") && (
             <Pill tone="red" small>
-              red-team
+              red team
             </Pill>
           )}
         </span>
-        {persona.about !== "" && <span className="sim-menu-about">{persona.about}</span>}
+        <span className="sim-pick-about">{aboutOf(persona)}</span>
+      </span>
+      <span className="sim-pick-check" aria-hidden>
+        {on && <Icon name="tick" size={11} />}
       </span>
     </button>
   );

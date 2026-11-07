@@ -113,3 +113,8 @@
   font-size: 13px;
   color: var(--ink-4);
 }
+
+/* No callers yet: Pinecall's callers to come, a row of faces. */
+.psn-none-art { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.psn-none-one { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.psn-none-name { font-size: 11px; color: var(--ink-4); }

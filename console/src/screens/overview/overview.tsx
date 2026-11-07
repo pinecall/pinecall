@@ -16,6 +16,7 @@ import { CallsByDay, CHANNEL_NAME, Legend, Shares } from "./charts";
 import { CHANNELS, daysOf, windowWithCalls } from "./counted";
 import { LimitsCard } from "./limits-card";
 import { NeedsALook } from "./needs-a-look";
+import { NoCalls } from "./no-calls";
 import { OnTheLine } from "./on-the-line";
 import { isFirstRun } from "../welcome/first-run";
 import { Setup } from "./setup";
@@ -54,6 +55,8 @@ export function Overview(): ReactNode {
   const theirSuites = [...suites.values()].filter((suite) => agent === "" || suite.agent === agent);
   const first = (whose?.name ?? "").split(" ")[0] ?? "";
   const said = windowSaid(range);
+  // The month held no call and nobody is on the line: one card says what comes here, in place of zeros and empty charts.
+  const quiet = month === null ? null : month.conversations.now === 0 && onAir.length === 0;
 
   // A new org opens on the guide, once; the browser remembers it was shown or skipped.
   if (agent === "" && isFirstRun(agentsLoaded, agents.length)) return <Navigate to="/welcome" replace />;
@@ -64,52 +67,58 @@ export function Overview(): ReactNode {
         <PageHead
           title={agent !== "" ? agent : first === "" ? greeting() : `${greeting()}, ${first}`}
           lede={standing(onAir.length, onAir.some((line) => line.attention?.status === "open"), agent)}
-          actions={<WindowPicker days={range} onPick={pickRange} />}
+          actions={quiet === false ? <WindowPicker days={range} onPick={pickRange} /> : undefined}
         />
 
-        {agent === "" && <Setup agents={agents.length} limits={limits} />}
+        {agent === "" && <Setup agents={agents.length} />}
 
-        <section className="ovw-section" aria-label="On the line now">
-          <div className="ovw-section-head">
-            <span className={onAir.length > 0 ? "ovw-pulse ovw-pulse-on" : "ovw-pulse"} aria-hidden />
-            On the line now
-          </div>
-          <OnTheLine live={onAir} agent={agent} />
-        </section>
+        {quiet === true && <NoCalls agent={agent} />}
 
-        <Stats min={170} apart>
-          <Numbers counted={counted} before={before} said={said} />
-        </Stats>
+        {quiet === false && (
+          <>
+            <section className="ovw-section" aria-label="On the line now">
+              <div className="ovw-section-head">
+                <span className={onAir.length > 0 ? "ovw-pulse ovw-pulse-on" : "ovw-pulse"} aria-hidden />
+                On the line now
+              </div>
+              <OnTheLine live={onAir} agent={agent} />
+            </section>
 
-        <div className="ovw-pair">
-          <Card>
-            <CardHead title="Calls a day" meta={<Legend />} />
-            {counted === null ? <Empty>Counting the calls…</Empty> : <CallsByDay days={days} />}
-          </Card>
-          <div className="ovw-column">
-            <Card>
-              <CardHead title="How calls end" meta={said} />
-              {(counted?.endings.length ?? 0) === 0 ? (
-                <Empty>No call has ended {said}.</Empty>
-              ) : (
-                <Shares rows={(counted?.endings ?? []).slice(0, 6).map((one) => ({ name: one.reason.replace(/_/g, " "), count: one.count }))} />
-              )}
-              {agent === "" && (
-                <div className="ovw-card-part">
-                  <CardHead title="Where calls come in" meta={said} />
-                  <Shares tone="channel" rows={CHANNELS.map((channel) => ({ name: CHANNEL_NAME[channel], count: counted?.channels[channel] ?? 0, key: channel }))} />
-                </div>
-              )}
-            </Card>
-            {agent !== "" && <Speed agent={agent} />}
-          </div>
-        </div>
+            <Stats min={170} apart>
+              <Numbers counted={counted} before={before} said={said} />
+            </Stats>
 
-        <NeedsALook lines={mine} suites={theirSuites} agent={agent} />
+            <div className="ovw-pair">
+              <Card>
+                <CardHead title="Calls a day" meta={<Legend />} />
+                {counted === null ? <Empty>Counting the calls…</Empty> : <CallsByDay days={days} />}
+              </Card>
+              <div className="ovw-column">
+                <Card>
+                  <CardHead title="How calls end" meta={said} />
+                  {(counted?.endings.length ?? 0) === 0 ? (
+                    <Empty>No call has ended {said}.</Empty>
+                  ) : (
+                    <Shares rows={(counted?.endings ?? []).slice(0, 6).map((one) => ({ name: one.reason.replace(/_/g, " "), count: one.count }))} />
+                  )}
+                  {agent === "" && (
+                    <div className="ovw-card-part">
+                      <CardHead title="Where calls come in" meta={said} />
+                      <Shares tone="channel" rows={CHANNELS.map((channel) => ({ name: CHANNEL_NAME[channel], count: counted?.channels[channel] ?? 0, key: channel }))} />
+                    </div>
+                  )}
+                </Card>
+                {agent !== "" && <Speed agent={agent} />}
+              </div>
+            </div>
 
-        {agent === "" && limits !== null && <LimitsCard limits={limits} />}
+            <NeedsALook lines={mine} suites={theirSuites} agent={agent} />
 
-        {agent === "" && <AgentsTable agents={agents} live={live} counted={counted} suites={suites} said={said} />}
+            {agent === "" && limits !== null && <LimitsCard limits={limits} />}
+
+            {agent === "" && <AgentsTable agents={agents} live={live} counted={counted} suites={suites} said={said} />}
+          </>
+        )}
       </div>
     </Page>
   );

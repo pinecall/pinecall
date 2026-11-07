@@ -3,10 +3,11 @@
 import type { ReactNode } from "react";
 
 import { ago } from "../../lib/format";
-import { Button, Card, Empty, Page, PageHead, Stat, Stats } from "../../ui";
+import { Button, Page, PageHead, Stat, Stats } from "../../ui";
 import type { Persona, PersonaRun } from "./door";
 import { whoseIs } from "../../lib/harness";
 import { PersonaGrid } from "./grid";
+import { NoCallers } from "./no-callers";
 import { standingOf, type Standing, type Standings } from "./use-run-standings";
 
 /**
@@ -16,6 +17,7 @@ import { standingOf, type Standing, type Standings } from "./use-run-standings";
  */
 export function Overview({
   agent,
+  agents,
   personas,
   standings,
   fixed,
@@ -24,6 +26,8 @@ export function Overview({
   onSwitch,
 }: {
   agent: string;
+  /** How many agents a caller may be written for: none, and the library has no agent to be read through. */
+  agents: number;
   personas: Persona[];
   standings: Standings;
   /** The class owns the roster: nothing is written here, and a generated caller is kept as a file. */
@@ -38,7 +42,12 @@ export function Overview({
   const newest = runs[0];
 
   if (personas.length === 0) {
-    return <NoCallers onNew={onNew} />;
+    return (
+      <Page>
+        <PageHead title="Personas" />
+        <NoCallers agent={agent} agents={agents} onNew={onNew} onGenerate={onGenerate} />
+      </Page>
+    );
   }
 
   return (
@@ -47,7 +56,7 @@ export function Overview({
         title="Personas"
         lede={
           <>
-            The callers a model plays against {whose}, improvising every line — in Simulations, or in <span className="ui-fixed">pinecall simulate</span>.{" "}
+            The callers a model plays against {whose}, improvising every line.{" "}
             {fixed ? (
               <>
                 Set by the class of {agent}: its own are code beside the class (<span className="ui-fixed">agents/{agent}/harness.*</span>, each an <span className="ui-fixed">ownPersona</span>), which of Pinecall's it plays is <span className="ui-fixed">personas({"{ on, own }"})</span> in the class, and a change is a commit.
@@ -83,28 +92,6 @@ export function Overview({
       <PersonaGrid agent={agent} personas={personas} standings={standings} onSwitch={onSwitch} />
 
 
-    </Page>
-  );
-}
-
-// An agent with nobody written yet is the one place the whole sentence belongs: there is nothing to
-// show, and what a persona IS is exactly what the person is missing.
-function NoCallers({ onNew }: { onNew: () => void }): ReactNode {
-  return (
-    <Page>
-      <PageHead
-        title="Personas"
-        lede="A persona is somebody who calls this business wanting something: a goal, a manner, and the few facts they may state about themselves. A model plays them against an agent and improvises every line — there is no script to write."
-        ledeWidth={640}
-        actions={
-          <Button kind="primary" size="base" onClick={onNew}>
-            New persona
-          </Button>
-        }
-      />
-      <Card>
-        <Empty>No callers yet. The first one takes a minute: what they want, how they talk, and what they know about themselves.</Empty>
-      </Card>
     </Page>
   );
 }

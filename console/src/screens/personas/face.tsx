@@ -29,6 +29,9 @@ const OF_THE_LIBRARY: Readonly<Record<string, number>> = {
   "unauthorized-action": 20,
 };
 
+/** Pinecall's own callers by name, as their faces are drawn: what an empty roster shows is coming. */
+export const THE_LIBRARY: readonly string[] = Object.keys(OF_THE_LIBRARY);
+
 /** The face number of a name: the library's by character, any other stable from its letters (FNV-1a). */
 export function faceOf(name: string): number {
   const fixed = OF_THE_LIBRARY[name];

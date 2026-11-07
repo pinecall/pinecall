@@ -5,6 +5,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { ownedAt, rowAt, useHarnessAgents } from "../../lib/harness";
+import { useAgentKinds } from "../../lib/org";
 import { usePane } from "../../ui";
 import { isPinecalls, ownedByTheClass, readPersonas, switchPersona, type Persona } from "./door";
 import { Generate } from "./generate";
@@ -37,12 +38,15 @@ export function Personas(): ReactNode {
   const { personas: kept, asking, setPersonas, reread } = usePersonas(agent);
   // The class owns the roster: its files and its switches, read when it registers; nothing is written here.
   const fixed = agent !== "" && ownedByTheClass(kept ?? []);
+  // Only a Studio agent takes a caller written here: a class keeps its own beside its code.
+  const kinds = useAgentKinds();
+  const writes = (slug: string): boolean => kinds.get(slug) === "studio";
   // With every agent in view, the org's agents' callers: the ones Viewing offers, and no other slug.
   const theOrgs = useHarnessAgents(agent);
   // Pinecall's library is switched per agent, so the org's list carries none: with every agent in
   // view it is shown as the first agent reads it, its switches left to an agent in view.
   const library = useLibrary(agent === "" ? (theOrgs?.[0] ?? null) : null);
-  const personas = kept === null || theOrgs === null ? null : [...kept.filter((one) => theOrgs.includes(one.agent)), ...library];
+  const personas = kept === null || theOrgs === null || library === null ? null : [...kept.filter((one) => theOrgs.includes(one.agent)), ...library];
   // What every caller has done, read once here for the overview's standing.
   const standings = useRunStandings(personas);
   const adding = search.get("new") === "1";
@@ -52,7 +56,7 @@ export function Personas(): ReactNode {
   // The caller being READ, which is the only state the runs pane stands beside.
   const reading = chosen !== undefined && !adding && !editing && !generating ? chosen : null;
   // Whom a new caller may be written for: the agent in view, or any agent of the org.
-  const owners = [...(theOrgs ?? [])].sort();
+  const owners = [...(theOrgs ?? [])].filter(writes).sort();
 
   const go = (persona: Pick<Persona, "agent" | "name"> | null, how: "" | "edit" | "new" | "generate" = ""): void => {
     const asked = how === "" ? "" : `?${how}=1`;
@@ -87,7 +91,7 @@ export function Personas(): ReactNode {
           ) : personas === null ? (
             <p className="psn-empty">{asking ?? "Asking the gateway…"}</p>
           ) : chosen === undefined ? (
-            <Overview agent={agent} personas={personas ?? []} standings={standings} fixed={fixed} onNew={() => go(null, "new")} onGenerate={() => go(null, "generate")} onSwitch={switched} />
+            <Overview agent={agent} agents={owners.length} personas={personas} standings={standings} fixed={fixed || (agent !== "" && !writes(agent))} onNew={() => go(null, "new")} onGenerate={() => go(null, "generate")} onSwitch={switched} />
           ) : editing ? (
             <PersonaEditor key={`${chosen.agent}/${chosen.name}`} owners={[chosen.agent]} was={chosen} onSaved={saved} onCancel={() => go(chosen)} />
           ) : (
@@ -115,21 +119,24 @@ export function Personas(): ReactNode {
   );
 }
 
-/** Pinecall's personas as one agent reads them, for the every-agent view; none when no agent is named. */
-function useLibrary(agent: string | null): Persona[] {
+/** Pinecall's personas as one agent reads them, for the every-agent view: none when no agent is named, null while asked. */
+function useLibrary(agent: string | null): Persona[] | null {
   const credentials = useCredentials();
-  const [library, setLibrary] = useState<Persona[]>([]);
+  const [library, setLibrary] = useState<Persona[] | null>(null);
   useEffect(() => {
     if (agent === null) {
       setLibrary([]);
       return;
     }
     let gone = false;
+    setLibrary(null);
     readPersonas(credentials, agent).then(
       (read) => {
         if (!gone) setLibrary(read.filter(isPinecalls));
       },
-      () => undefined,
+      () => {
+        if (!gone) setLibrary([]);
+      },
     );
     return () => {
       gone = true;

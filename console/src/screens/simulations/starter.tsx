@@ -8,7 +8,7 @@ import { useCredentials } from "@pinecall/core/credentials";
 import { usd } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
 import { WORLD } from "../../lib/mode";
-import { Icon, Input, Segmented, Select, SelectItem } from "../../ui";
+import { Icon, Input, Segmented, Select, SelectItem, type IconName } from "../../ui";
 import { isPinecalls, type Persona } from "../personas/door";
 import { PlayedBy, type Played } from "../personas/played-by";
 import { Callers, keyOf } from "./callers";
@@ -45,10 +45,17 @@ const UNSAID = { llm: "Each persona's own model", tts: "Each persona's own voice
 // The line is written, or spoken — quiet, or with a voice and the street behind it.
 type Line = "written" | "quiet" | "noisy";
 
-const LINES: readonly { value: Line; label: string }[] = [
-  { value: "written", label: "Written" },
-  { value: "quiet", label: "Quiet" },
-  { value: "noisy", label: "Noisy" },
+const LINES: readonly { value: Line; icon: IconName; title: string; sub: string }[] = [
+  { value: "written", icon: "keyboard", title: "Chat", sub: "Typed, the fastest. Uses no call minutes." },
+  { value: "quiet", icon: "phone", title: "Phone call", sub: "Spoken out loud, on a clear line." },
+  { value: "noisy", icon: "speaker", title: "Noisy phone call", sub: "Spoken, with a TV or a street behind the caller." },
+];
+
+// How long the caller talks: the turns it improvises before it hangs up, at most thirty.
+const LENGTHS: readonly { value: string; label: string }[] = [
+  { value: "6", label: "Short" },
+  { value: String(TURNS), label: "Normal" },
+  { value: "30", label: "Long" },
 ];
 
 // The gateway holds an org to this many simulated calls on the line at once in a world: a run of
@@ -60,9 +67,9 @@ const AT_ONCE = 10;
 // of the agent as it is deployed.
 type Doing = "run" | "compare";
 
-const DOINGS: readonly { value: Doing; label: string }[] = [
-  { value: "run", label: "Run callers" },
-  { value: "compare", label: "Compare models" },
+const DOINGS: readonly { value: Doing; icon: IconName; title: string; sub: string }[] = [
+  { value: "run", icon: "headphones", title: "Run callers", sub: "Pretend callers ring your agent, each call judged when it ends." },
+  { value: "compare", icon: "scale", title: "Compare models", sub: "The same callers against two or more setups, side by side." },
 ];
 
 const CHECKING = WORLD === "production";
@@ -224,89 +231,133 @@ export function Starter({
       {CHECKING ? (
         <p className="sim-note">One caller, one call against the agent as it is deployed, on production&apos;s keys and knowledge, judged at hang-up. To compare models or play several callers, use the sandbox.</p>
       ) : (
-        <div className="sim-tabs">
-          <Segmented options={DOINGS} value={comparing ? "compare" : "run"} onChange={(doing) => setComparing(doing === "compare")} />
-          <span className="sim-note">{comparing ? "Each caller ticked against the agent under each configuration: one call per pair, 10 at most, placed at once and read as one table." : "Each caller ticked is a call of its own, judged when it ends."}</span>
+        <div className="sim-doings" role="radiogroup" aria-label="What to run">
+          {DOINGS.map((one) => (
+            <button key={one.value} type="button" role="radio" aria-checked={(one.value === "compare") === comparing} className={(one.value === "compare") === comparing ? "sim-doing sim-doing-on" : "sim-doing"} onClick={() => setComparing(one.value === "compare")}>
+              <span className="sim-doing-icon">
+                <Icon name={one.icon} size={16} />
+              </span>
+              <span className="sim-doing-title">{one.title}</span>
+              <span className="sim-doing-sub">{one.sub}</span>
+            </button>
+          ))}
         </div>
       )}
-      <div className="sim-who">
-        <div className="sim-who-head">
-          <span className="sim-label">{oneOnly ? "Who calls (one)" : "Who calls"}</span>
+
+      <div className="sim-step">
+        <div className="sim-step-head">
+          <span className="sim-label">
+            <Icon name="users" size={14} />
+            {oneOnly ? "Who calls · pick one" : "Who calls"}
+          </span>
           <span className="sim-who-links">
             {hasOff && (
               <button type="button" className="sim-link" onClick={() => setAll(!all)}>
-                {all ? "Only the ones switched on" : "Show the ones switched off"}
-              </button>
-            )}
-            {!CHECKING && (
-              <button
-                type="button"
-                className="sim-link"
-                onClick={() => {
-                  // Closed is the personas' own again, never a choice left behind out of sight.
-                  if (choosing) setPlayed(THE_PERSONAS);
-                  setChoosing(!choosing);
-                }}
-              >
-                {choosing ? "Played as each persona says" : "Played by…"}
+                {all ? "Hide the ones switched off" : "Show the ones switched off"}
               </button>
             )}
             <Link to={rowAt(inView, "personas")}>Edit personas</Link>
           </span>
         </div>
-        {agents.length === 0 && <p className="sim-note">No agent is running in this world: deploy one, or run pinecall start in its directory.</p>}
+        {agents.length === 0 && <p className="sim-note">No agent is running right now. Start or deploy one, and its callers show up here.</p>}
         {personas === null && asking !== null && <p className="sim-note">{asking}</p>}
-        {personas !== null && personas.length === 0 && <p className="sim-note">No personas yet: write the first caller in Personas.</p>}
+        {personas !== null && personas.length === 0 && <p className="sim-note">No callers yet: write the first one in Personas.</p>}
         {personas !== null && held.length > 0 && <Callers inView={inView} agents={agents} agent={agent} onAgent={onAgent} personas={held} picked={picked} onPick={toggle} all={all} />}
         {unheld > 0 && (
           <p className="sim-note">
-            {String(unheld)} {unheld === 1 ? "caller is" : "callers are"} written for an agent nobody runs right now, so {unheld === 1 ? "it is" : "they are"} not listed: deploy the agent, or run pinecall start in its directory.
+            {String(unheld)} more {unheld === 1 ? "caller belongs" : "callers belong"} to agents that are not running right now.
           </p>
-        )}
-        {choosing && (
-          <div className="sim-played">
-            <PlayedBy played={played} onChange={setPlayed} unsaid={UNSAID} />
-            <p className="sim-note">For these calls alone; the personas keep their own. The callers run on the runtime's keys unless you brought that vendor's, and each call counts as one simulation.</p>
-          </div>
         )}
       </div>
 
       {comparing && (
-        <div className="sim-played">
-          <span className="sim-label">The agent under</span>
+        <div className="sim-step">
+          <div className="sim-step-head">
+            <span className="sim-label">
+              <Icon name="scale" size={14} />
+              Setups to compare
+            </span>
+            <span className="sim-note">Same callers, a different agent in each. Results come back side by side, best first.</span>
+          </div>
           <AgainstRows rows={against} onChange={setAgainst} />
-          <p className="sim-note">The caller stays the same; the agent changes. The table reads them best first: the judges, then the reply time, then the cost. The agent's saved settings don't change.</p>
         </div>
       )}
 
-      <div className="sim-options">
-        <div className="sim-option">
-          <span className="sim-label">The line</span>
-          <Segmented options={LINES} value={line} onChange={setLine} />
-        </div>
-        <div className="sim-option">
-          <span className="sim-label">Turns each</span>
-          <Input size="sm" type="number" aria-label="Turns the caller says" min={1} max={30} value={turns} onChange={(event) => setTurns(Number(event.target.value))} />
+      <div className="sim-step">
+        <span className="sim-label">
+          <Icon name="phone" size={14} />
+          How they call
+        </span>
+        <div className="sim-doings" role="radiogroup" aria-label="How they call">
+          {LINES.map((one) => (
+            <button key={one.value} type="button" role="radio" aria-checked={line === one.value} className={line === one.value ? "sim-doing sim-doing-on" : "sim-doing"} onClick={() => setLine(one.value)}>
+              <span className="sim-doing-icon">
+                <Icon name={one.icon} size={16} />
+              </span>
+              <span className="sim-doing-title">{one.title}</span>
+              <span className="sim-doing-sub">{one.sub}</span>
+            </button>
+          ))}
         </div>
       </div>
-      {line === "noisy" && (
-        <div className="sim-noise">
-          <Select size="sm" value={background} onValueChange={(value) => setBackground(value as Background)} aria-label="What plays behind the caller">
-            {BACKGROUNDS.map((one) => (
-              <SelectItem key={one.value} value={one.value}>
-                {one.label}
-              </SelectItem>
-            ))}
-          </Select>
-          <label className="sim-turns">
-            <Input size="sm" type="number" aria-label="Noise, dB under" min={0} max={60} value={noise} onChange={(event) => setNoise(Number(event.target.value))} />
-            <span>dB under</span>
-          </label>
-          <label className="sim-turns">
-            <Input size="sm" type="number" aria-label="Packets lost, %" min={0} max={100} value={loss} onChange={(event) => setLoss(Number(event.target.value))} />
-            <span>% lost</span>
-          </label>
-        </div>
+
+      <div className="sim-length">
+        <span className="sim-label">
+          <Icon name="wave" size={14} />
+          How long
+        </span>
+        <Segmented options={LENGTHS} value={String(turns)} onChange={(picked) => setTurns(Number(picked))} />
+        <span className="sim-note">The caller says up to {String(turns)} things, then hangs up.</span>
+      </div>
+
+      {(line === "noisy" || !CHECKING) && (
+        <details className="sim-more" open={choosing || line === "noisy" ? true : undefined}>
+          <summary>More options</summary>
+          <div className="sim-more-body">
+            {line === "noisy" && (
+              <div className="sim-noise">
+                <span className="sim-label">The noise</span>
+                <Select size="sm" value={background} onValueChange={(value) => setBackground(value as Background)} aria-label="What plays behind the caller">
+                  {BACKGROUNDS.map((one) => (
+                    <SelectItem key={one.value} value={one.value}>
+                      {one.label}
+                    </SelectItem>
+                  ))}
+                </Select>
+                <label className="sim-turns">
+                  <Input size="sm" type="number" aria-label="Noise, dB under" min={0} max={60} value={noise} onChange={(event) => setNoise(Number(event.target.value))} />
+                  <span>dB under the voice</span>
+                </label>
+                <label className="sim-turns">
+                  <Input size="sm" type="number" aria-label="Packets lost, %" min={0} max={100} value={loss} onChange={(event) => setLoss(Number(event.target.value))} />
+                  <span>% of the line lost</span>
+                </label>
+              </div>
+            )}
+            {!CHECKING && (
+              <div className="sim-played">
+                <label className="sim-check">
+                  <input
+                    type="checkbox"
+                    checked={choosing}
+                    onChange={() => {
+                      // Unticked is the personas' own again, never a choice left behind out of sight.
+                      if (choosing) setPlayed(THE_PERSONAS);
+                      setChoosing(!choosing);
+                    }}
+                  />
+                  Play the callers on another model or voice
+                </label>
+                {choosing && (
+                  <>
+                    <PlayedBy played={played} onChange={setPlayed} unsaid={UNSAID} />
+                    <p className="sim-note">For these calls alone; the personas keep their own.</p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
       {refused !== null && <p className="sim-refused">{refused}</p>}
