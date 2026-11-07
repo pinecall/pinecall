@@ -123,9 +123,9 @@ sentences, and there are no UI suites: `tsc` against the DOM and a clean build a
   to no one — and the imports it needed sat there unused while the typecheck and the suite both
   passed. `noUnusedLocals` is on in
   every package, so tsc refuses the next one.
-- **The widget tag and the SSO redirect must never name the sandbox.** Both ask
-  `lib/mode.ts:theBoxsOwnName()`, which is this page's origin and never a path under it — a site
-  handed `/sandbox/…` would load its widget from the workshop.
+- **The SSO redirect and a carrier's address must never name the sandbox.** Both ask
+  `lib/mode.ts:theBoxsOwnName()`, which is this page's origin and never a path under it — an
+  identity provider handed `/sandbox/…` would send production's sign-in to the workshop.
 - **The bundle is not reproducible across installs.** vite's minifier (rolldown) is a transitive
   dependency, and a fresh install resolved 1.2.9 where the agents repo had 1.2.7: same sources,
   same production build, output 7% larger and shaped differently. Measured 2026-09-21. The

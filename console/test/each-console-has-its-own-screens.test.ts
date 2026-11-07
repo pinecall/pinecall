@@ -110,7 +110,7 @@ describe("the sandbox's console", () => {
   });
 
   it("has every screen of an agent, Dev chat among them", () => {
-    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Studio", "Playground", "Dev chat", "Test", "Goldens", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Widget", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
+    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Studio", "Playground", "Dev chat", "Test", "Goldens", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
   });
 });
 
@@ -118,7 +118,7 @@ describe("the sandbox's console", () => {
 describe("an agent's screens", () => {
   it("are the org's three rows looked at, then what builds the agent, and never a word the workspace says", () => {
     expect(looked(AGENT_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality"]);
-    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
   });
 
   it("draw Studio for an agent built in Studio alone: a class has no definition to edit", () => {
@@ -126,8 +126,8 @@ describe("an agent's screens", () => {
       drawn(rowsOf(AGENT_SCREENS, "sandbox"), false, kind)
         .filter((screen) => screen.group === "build")
         .map((screen) => screen.name);
-    expect(build("studio")).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
-    expect(build("class")).toEqual(["Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon", "Widget"]);
+    expect(build("studio")).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
+    expect(build("class")).toEqual(["Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
     // Not said yet (the list still being read): a class, until it says otherwise.
     expect(build(null)).toEqual(build("class"));
     const words = rowsOf(AGENT_SCREENS, "production").map((screen) => screen.name);
@@ -139,7 +139,7 @@ describe("an agent's screens", () => {
     expect(screenAt("/a/clinica-norte/calls/call_9f")?.key).toBe("calls");
   });
 
-  it("keep what it runs on a row each: its settings, the pipeline, its lexicon and the widget", () => {
+  it("keep what it runs on a row each: its settings, the pipeline and its lexicon", () => {
     expect(tabs(AGENT_SCREENS, "settings", "production")).toEqual(["Configure"]);
     expect(screenAt("/a/clinica-norte/lexicon")?.key).toBe("lexicon");
     expect(screenAt("/lexicon")).toBeUndefined();

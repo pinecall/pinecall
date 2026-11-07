@@ -45,9 +45,9 @@ export const WORLD: World = typeof window === "undefined" ? "production" : world
 export const WORLD_BASE: string = baseOf(WORLD);
 
 /**
- * The name this box is known by from OUTSIDE: what a widget tag pasted into a customer's site
- * loads from, and what an identity provider is registered with. One name serves both worlds, so
- * it is this page's origin and never a path under it: a site is handed the box, not a world.
+ * The name this box is known by from OUTSIDE: what an identity provider is registered with and
+ * a carrier is pointed at. One name serves both worlds, so it is this page's origin and never a
+ * path under it: the outside is handed the box, not a world.
  */
 export function theBoxsOwnName(): string {
   return window.location.origin;
@@ -185,7 +185,7 @@ export const BOX_SCREENS: readonly Screen[] = [
 // rows: a caller put on it live, the callers written for it, the real calls a judge broke on
 // waiting for a person, the judges its real calls are held to, and the monitors over them.
 // Knowledge is what it searches and what it learned. Configure is what it runs on; the pipeline
-// that results, its lexicon and the widget that embeds it are a row each, beside it.
+// that results and its lexicon are a row each, beside it.
 export const AGENT_SCREENS: readonly Screen[] = [
   { key: "agent-overview", path: "overview", name: "Overview", in: BOTH, icon: "grid" },
   { key: "calls", path: "calls", name: "Calls", in: BOTH, icon: "list" },
@@ -202,7 +202,6 @@ export const AGENT_SCREENS: readonly Screen[] = [
   { key: "settings", path: "configure", name: "Configure", in: BOTH, icon: "sliders", group: "build" },
   { key: "pipeline", path: "pipeline", name: "Pipeline", in: BOTH, icon: "activity", group: "build" },
   { key: "lexicon", path: "lexicon", name: "Lexicon", in: BOTH, icon: "words", group: "build" },
-  { key: "widget", path: "widget", name: "Widget", in: BOTH, icon: "plug", group: "build" },
   { key: "simulations", path: "simulations", name: "Simulations", in: BOTH, icon: "headphones", group: "harness" },
   { key: "personas", path: "personas", name: "Personas", in: BOTH, icon: "persona", group: "harness" },
   // A real call a judge broke on waits here for a person.

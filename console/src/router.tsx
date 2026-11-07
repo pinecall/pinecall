@@ -42,7 +42,6 @@ import { Team } from "./screens/team";
 import { Usage } from "./screens/usage";
 import { JudgesTab, Quality } from "./screens/quality";
 import { TestOverview } from "./screens/test-overview";
-import { Widget, WidgetPreview } from "./screens/widget";
 import { FirstTab } from "./shell/screen-tabs";
 import { Welcome } from "./screens/welcome/welcome";
 import { Shell } from "./shell/shell";
@@ -121,7 +120,6 @@ const AGENT: Record<string, ReactNode> = {
   settings: <Settings />,
   pipeline: <Pipeline />,
   lexicon: <Lexicon />,
-  widget: <Widget />,
 };
 
 // A call in the path is the call itself under Calls — the one page a call has, live or over, the
@@ -239,9 +237,6 @@ export const router = createBrowserRouter(
         { path: "calls/:call/show", element: <CallShow /> },
       ],
     },
-    // A blank page with nothing but the widget on it, the way a site would have it: outside the
-    // shell, the same key.
-    { path: "/a/:agent/widget/preview", element: <WidgetPreview /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ],
   // The world's base, not the API's: the sandbox's screens live under `/sandbox`, its doors do not.

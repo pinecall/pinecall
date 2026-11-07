@@ -46,7 +46,7 @@ export function Ringing(): ReactNode {
     const seen = known.current;
     // A model playing a caller is a test somebody started, not a caller to answer: it never pops.
     const real = live.filter((line) => !isSimulated(line));
-    // Skip calls this tab started (Talk, Chat, widget preview).
+    // Skip calls this tab started (Talk, Chat).
     const arrived = real.filter((line) => !seen.has(line.call) && !isOurs(line.call));
     live.forEach((line) => seen.add(line.call));
     // Asks for a person pop even on calls that are not new.
