@@ -31,7 +31,9 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
-  useEffect(() => input.current?.focus(), []);
+  useEffect(() => {
+    input.current?.focus();
+  }, []);
 
   const words = query.trim();
   const asking = words.length >= ASK_FROM && !A_CALL.test(words);
@@ -53,7 +55,11 @@ export function Palette({ agent, onClose }: { agent: string; onClose: () => void
   }, [words, agents, lines, agent, scopes, operator, limits, found]);
 
   useEffect(() => setCursor(0), [words]);
-  useEffect(() => list.current?.querySelector(".palette-item-on")?.scrollIntoView({ block: "nearest" }), [cursor]);
+  // The row the arrows are on stays in view. Braced: an effect's return is its cleanup, and React
+  // throws on a value that is neither a function nor undefined.
+  useEffect(() => {
+    list.current?.querySelector(".palette-item-on")?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
 
   const go = (hit: Hit | undefined): void => {
     if (hit === undefined) return;
