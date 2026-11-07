@@ -377,6 +377,22 @@ class SignUp(Schema):
     turnstile: TurnstileToken = None
 
 
+class GoogleSignUp(Schema):
+    """POST /v1/signup/google: the token Google's callback handed the page, and the workspace's name or slug."""
+
+    token: str
+    org: str | None = None
+    name: str | None = None
+    device: str | None = None
+
+
+class GoogleNewcomer(Row):
+    """GET /v1/signup/google/{token}: whom Google vouched for, whom nobody here knows yet."""
+
+    email: str
+    person: str
+
+
 class CodeMailed(Row):
     """POST /v1/signup, the answer: where the code went and when it dies; never the code."""
 

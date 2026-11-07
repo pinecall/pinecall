@@ -201,8 +201,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/livekit/webhook` | — | A room event LiveKit signed with the platform's key, `?world=` naming the LiveKit that sent it (production's unless it says `sandbox`): an agent lost mid-call has its caller told once and its call ended as `drained`, a caller alone in a room is offered a worker, a room an agent joined or that ended is let go, and a hand-over's bridge goes with either of its legs. |
 | `POST` | `/v1/login` | — | A key for a person and a device, from a password, or from a one-use code. |
 | `POST` | `/v1/login/codes` | — | A one-use word that gives a browser a key like this one, for five minutes. |
-| `GET` | `/v1/login/google` | — | Platform-wide "Continue with Google", which this version does not have. |
-| `GET` | `/v1/login/google/callback` | — | Platform-wide Google's callback, which this version does not have. |
+| `GET` | `/v1/login/google` | — | 302 to Google, with a state, a nonce and a PKCE challenge. |
+| `GET` | `/v1/login/google/callback` | — | The code exchanged; 302 to the console signed in, to the sign-up for a newcomer, or with why not. |
 | `POST` | `/v1/login/org` | — | The same person's key in another org of theirs, or a visit for a person of the platform. |
 | `GET` | `/v1/login/orgs` | — | Every org this key's person may open, oldest first, and which one this key opens. |
 | `POST` | `/v1/login/orgs` | — | The orgs an address and a password open, minting nothing. |
@@ -288,9 +288,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/ops/routes` | operator | A number answered by this org's agent, in this environment, on this channel; admitted on the SFU at once, the carrier untouched. |
 | `DELETE` | `/v1/ops/routes/{number}` | operator | The org's route at the number forgotten, and its admission; 404 for a number nobody typed. |
 | `GET` | `/v1/ops/traceback` | operator | Every phone call with a number, kept or erased, and every dial to it, of every org. |
-| `GET` | `/v1/ops/signin` | operator | Every provider the platform could offer every org's people: none wired in this version. |
-| `DELETE` | `/v1/ops/signin/google` | operator | Refused: platform-wide Google sign-in is not in this version. |
-| `PUT` | `/v1/ops/signin/google` | operator | Refused: platform-wide Google sign-in is not in this version. |
+| `GET` | `/v1/ops/signin` | operator | Every provider the platform offers every org's people, and the URI each registers; never a secret. |
+| `DELETE` | `/v1/ops/signin/google` | operator | Forget the client: the button goes from every page. |
+| `PUT` | `/v1/ops/signin/google` | operator | Keep the OAuth client the operator made at Google: "Continue with Google" shows on every page. |
 | `GET` | `/v1/ops/usage` | operator | Every org's metered rows after the cursor, totals per org; or the same as a stream. |
 | `GET` | `/v1/ops/whoami` | operator | The platform this key opens, and the person holding it; nobody for the platform's own key. |
 | `POST` | `/v1/org/consents` | talk | One fact about a number, a consent or an opt-out; what stands for it after. |
@@ -331,6 +331,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/sessions` | calls | The org's newest calls across its agents, one row each. |
 | `POST` | `/v1/signup` | — | Keep the sign-up and mail its six digits. |
 | `POST` | `/v1/signup/resend` | — | A new code for a sign-up still waiting; the first one no longer works. |
+| `POST` | `/v1/signup/google` | — | The workspace named: the org made, its admin the address Google vouched for, no password and no code. |
+| `GET` | `/v1/signup/google/{token}` | — | Whom Google vouched for, spending nothing: the page asks them only for a workspace. |
 | `POST` | `/v1/signup/verify` | — | The mailed code back: the org made, its admin seated, their first key and a login code. |
 | `POST` | `/v1/tokens` | talk | A room token for one of the key's agents, the dispatch to its environment's fleet inside it. |
 | `GET` | `/v1/usage` | usage | The org's metered rows after the cursor, their totals, and the next cursor. |

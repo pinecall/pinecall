@@ -34,6 +34,8 @@ LOGIN_CODE = ("lc_", 300.0)
 PAIRING = ("cli_", 600.0)
 HANDSHAKE = ("st_", 600.0)
 SIGNUP = ("su_", 15 * 60.0)
+# Somebody Google vouched for whom nobody knows, between its callback and the workspace they name.
+NEWCOMER = ("gs_", 10 * 60.0)
 CODE_DIGITS = 6
 CODE_ATTEMPTS = 6
 A_BROWSER = "console"
@@ -117,6 +119,34 @@ class PendingSignUp:
     name: str | None = None
     device: str | None = None
 
+    def founding(self) -> "Founding":
+        """The org this sign-up makes, once its code came back."""
+        return Founding(self.email, self.slug, self.person, self.name, self.hashed, self.device)
+
+
+@dataclass(frozen=True, slots=True)
+class Founding:
+    """An org about to be made: its admin's address and name, the org's slug and name, their password if any."""
+
+    email: str
+    slug: str
+    person: str
+    name: str | None
+    # None for somebody Google vouched for: they sign in through it, or choose one by a reset.
+    hashed: str | None
+    device: str | None = None
+    # Google verified the address: the founder is seated verified, as an org's own provider seats.
+    vouched: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Newcomer:
+    """Somebody Google vouched for whom nobody here knows: their address, their name, a terminal waiting."""
+
+    email: str
+    person: str
+    pairing: str | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class Handshake:
@@ -152,6 +182,7 @@ class SignIns:
         self.pairings = OneTimeSecrets(*PAIRING, TypeAdapter(WaitingTerminal), sessions, vault)
         self.signups = OneTimeSecrets(*SIGNUP, TypeAdapter(PendingSignUp), sessions, vault)
         self.handshakes = OneTimeSecrets(*HANDSHAKE, TypeAdapter(Handshake), sessions, vault)
+        self.newcomers = OneTimeSecrets(*NEWCOMER, TypeAdapter(Newcomer), sessions, vault)
         self.attempts = AttemptThrottle(sessions, SIGN_IN_TRIES)
         self.passwords = PasswordThrottle(sessions)
 
@@ -384,14 +415,14 @@ class SignUps:
         return kept.value
 
 
-async def found_org(session: AsyncSession, signup: PendingSignUp, codes: OneTimeSecrets[CodeHolder]) -> Founded:
-    """The org of a verified sign-up, its admin seated, their key, and the console's code."""
-    already = len(await members.memberships_of(session, signup.email))
-    org = await orgs.create_org(session, signup.slug, signup.name or signup.slug, already=already)
-    invitee = members.Invitee(signup.email, signup.person, Role.admin)
-    link = await members.invite(session, org.id, invitee, seats=None)
-    admin = await members.seat_founder(session, link.token, signup.hashed) or link.member
-    key, secret = await issue_person_key(session, admin, label=signup.device or SIGNED_UP)
+async def found_org(session: AsyncSession, founding: Founding, codes: OneTimeSecrets[CodeHolder]) -> Founded:
+    """The org of a proven address, its admin seated, their key, and the console's code."""
+    already = len(await members.memberships_of(session, founding.email))
+    org = await orgs.create_org(session, founding.slug, founding.name or founding.slug, already=already)
+    invitee = members.Invitee(founding.email, founding.person, Role.admin)
+    link = await members.invite(session, org.id, invitee, seats=None, vouched=founding.vouched)
+    admin = await members.seat_founder(session, link.token, founding.hashed) or link.member
+    key, secret = await issue_person_key(session, admin, label=founding.device or SIGNED_UP)
     code, code_expires_at = await codes.mint(holder_of_member(admin))
     return Founded(org.id, org.slug, admin, SignedIn(key, secret, admin), code, code_expires_at)
 

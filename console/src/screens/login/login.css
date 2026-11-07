@@ -383,11 +383,6 @@ select.login-workspace-input {
   box-shadow: inset 0 0 0 1px rgba(233, 233, 237, 0.2);
 }
 
-.login-sso:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
 .login-sso + .login-sso {
   margin-top: 10px;
 }
@@ -401,10 +396,6 @@ select.login-workspace-input {
 
 .login-sso-pick {
   margin-top: 14px;
-}
-
-.login-sso-pick .login-workspace {
-  margin-bottom: 0;
 }
 
 .login-sso-note {

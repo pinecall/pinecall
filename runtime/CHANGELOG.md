@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Continue with Google.** The operator keeps one OAuth client at `PUT /v1/ops/signin/google` (the
+  secret sealed; the console's Box ▸ Settings ▸ Sign-in draws it) and the floor says `google: true`.
+  `GET /v1/login/google` and its callback check Google's id_token as an org's provider's is checked
+  and refuse an address Google has not verified. An address that is a member somewhere signs in to
+  its oldest org — an invitation taken, a password left as it is: either way in opens the same
+  account. One nobody knows, where sign-ups are open, lands on `/signup?google=<token>`, a one-use
+  token of ten minutes: `GET /v1/signup/google/{token}` reads whom Google vouched for, and
+  `POST /v1/signup/google {token, name}` makes the org with no password and no mailed code. A
+  terminal's `pairing` rides it through, as it does an org's SSO. The console draws the button on
+  top of the sign-in and the sign-up, and asks a newcomer for one thing, the workspace's name. An
+  org's own provider is no longer a button for everybody: it shows once the address typed is of a
+  domain an org proved.
 - **A password is never behind the captcha; the login throttle got two budgets.** Turnstile gated
   `/v1/login` and `/v1/login/orgs` since 2026-10-21, and nothing but the console's page on the
   platform's own name can draw Cloudflare's widget: the supervisors' phone app could not sign in,

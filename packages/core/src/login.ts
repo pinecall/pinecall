@@ -107,16 +107,6 @@ async function discover(base: string, email: string): Promise<Response> {
   });
 }
 
-/** Whether the gateway supports SSO (the discover door exists). Probes with an empty address. */
-export async function gatewayHasSso(base: string): Promise<boolean> {
-  try {
-    const answer = await discover(base, "");
-    return answer.status !== 404 && answer.status !== 405;
-  } catch {
-    return false;
-  }
-}
-
 /** Orgs whose SSO covers this address; does not reveal whether the person exists. */
 export async function ssoOrgsFor(base: string, email: string): Promise<SsoOrg[]> {
   return SsoOrgsSchema.parse(await answered(await discover(base, email))).orgs;
@@ -127,9 +117,12 @@ export function ssoUrl(base: string, org: string): string {
   return gatewayUrl(base, `/v1/login/sso?org=${encodeURIComponent(org)}`).toString();
 }
 
-/** Google sign-in URL; returns with `?login=` or `?refused=`. */
-export function googleUrl(base: string): string {
-  return gatewayUrl(base, "/v1/login/google").toString();
+/**
+ * Google sign-in URL; returns with `?login=` (or `/cli?c=&login=` for a waiting terminal),
+ * `/signup?google=` for an address nobody knows, or `?refused=`.
+ */
+export function googleUrl(base: string, pairing?: string): string {
+  return gatewayUrl(base, pairing === undefined ? "/v1/login/google" : `/v1/login/google?pairing=${encodeURIComponent(pairing)}`).toString();
 }
 
 /** Redirect URI an operator registers with Google. */

@@ -4,14 +4,16 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 
 import { GatewayError } from "@pinecall/core/api";
 import { discovered, type Discovered } from "@pinecall/core/the-floor";
-import { gatewayHasSso, googleUrl, loginWithPassword, orgsForPassword, ssoOrgsFor, ssoUrl, type Opens, type Signed, type SsoOrg } from "@pinecall/core/login";
+import { loginWithPassword, orgsForPassword, ssoOrgsFor, ssoUrl, type Opens, type Signed, type SsoOrg } from "@pinecall/core/login";
 import { DEVICE } from "../../lib/device";
 import { inTheWorld, WORLD } from "../../lib/mode";
+import { ContinueWithGoogle } from "./google-button";
 import { WayIn } from "./way-in";
 
 /**
- * One login for both worlds. A sign-up is offered only where the gateway says it takes one
- * (`/.well-known/pinecall`): the console ships in every self-hosted runtime.
+ * One login for both worlds. Google and a sign-up are offered only where the gateway says it has
+ * them (`/.well-known/pinecall`): the console ships in every self-hosted runtime. An org's own
+ * provider is never a button: it shows once the address typed is of a domain an org proved.
  * The gateway returns one refusal for every failure so it doesn't reveal which orgs exist.
  */
 export function Login({ base, onSigned }: { base: string; onSigned: (signed: Signed) => void }): ReactNode {
@@ -19,7 +21,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  // SSO providers return refusals in the query string.
+  // Google and an org's provider return refusals in the query string.
   const [refused, setRefused] = useState<string | null>(() => new URLSearchParams(window.location.search).get("refused"));
   const [forgot, setForgot] = useState(false);
   const [floor, setFloor] = useState<Discovered | null>(null);
@@ -27,16 +29,11 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
   const [opens, setOpens] = useState<Opens[] | null>(null);
   const [known, setKnown] = useState(true);
   const asked = useRef("");
-  const [hasSso, setHasSso] = useState(false);
   const [ssoOrgs, setSsoOrgs] = useState<SsoOrg[] | null>(null);
-  const [ssoNote, setSsoNote] = useState<string | null>(null);
-  const [ssoBusy, setSsoBusy] = useState(false);
+  const ssoAsked = useRef("");
 
   useEffect(() => {
     let gone = false;
-    void gatewayHasSso(base).then((has) => {
-      if (!gone) setHasSso(has);
-    });
     // Google and a sign-up are shown only when the gateway advertises them.
     void discovered(base).then((said) => {
       if (!gone) setFloor(said);
@@ -46,24 +43,16 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     };
   }, [base]);
 
-  const withSso = async (): Promise<void> => {
-    setSsoNote(null);
-    setSsoOrgs(null);
-    if (email.trim() === "") {
-      setSsoNote("Type your work email first: it says which workspace signs you in.");
-      return;
-    }
-    setSsoBusy(true);
+  // Asked on the address's blur, once per address: the door shares the login throttle.
+  const askSso = async (): Promise<void> => {
+    const typed = email.trim().toLowerCase();
+    if (!typed.includes("@") || typed === ssoAsked.current) return;
+    ssoAsked.current = typed;
     try {
-      const found = await ssoOrgsFor(base, email.trim());
-      const only = found[0];
-      if (found.length === 1 && only !== undefined) window.location.assign(ssoUrl(base, only.slug ?? only.org));
-      else if (found.length === 0) setSsoNote("No workspace signs in with a provider for that address.");
-      else setSsoOrgs(found);
-    } catch (failed) {
-      setSsoNote(failed instanceof GatewayError ? failed.message : String(failed));
-    } finally {
-      setSsoBusy(false);
+      setSsoOrgs(await ssoOrgsFor(base, typed));
+    } catch {
+      // An older gateway without the door, or the throttle: the password still works.
+      setSsoOrgs(null);
     }
   };
 
@@ -103,7 +92,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
   return (
     <WayIn
       title="Sign in"
-      lede="Use the email and password you were invited with."
+      lede={hasGoogle ? "Continue with Google, or with your email and password." : "Use the email and password you were invited with."}
       aside={
         floor?.signup === true ? (
           <>
@@ -113,6 +102,8 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
       }
     >
       <form onSubmit={(event) => void submit(event)}>
+        {hasGoogle && <ContinueWithGoogle base={base} />}
+
         <label className="login-label" htmlFor="login-email">
           Email
         </label>
@@ -122,10 +113,22 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          onBlur={() => void askSso()}
           autoComplete="username"
-          autoFocus
+          autoFocus={!hasGoogle}
           required
         />
+        {ssoOrgs !== null && ssoOrgs.length > 0 && (
+          <div className="login-sso-pick">
+            {ssoOrgs.map((one) => (
+              <button key={one.org} type="button" className="login-sso" onClick={() => window.location.assign(ssoUrl(base, one.slug ?? one.org))}>
+                <span className="login-sso-glyph" />
+                Continue with {one.name ?? one.slug ?? one.org}
+              </button>
+            ))}
+            <p className="login-sso-note">Your workspace signs you in with its own provider.</p>
+          </div>
+        )}
 
         <div className="login-label-row">
           <label className="login-label" htmlFor="login-password">
@@ -197,70 +200,12 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
 
         {refused !== null && <p className="login-refused">{refused}</p>}
 
-        {(hasSso || hasGoogle) && (
-          <div className="login-or">
-            <span className="login-or-line" />
-            <span className="login-or-word">or</span>
-            <span className="login-or-line" />
-          </div>
-        )}
-
-        {hasGoogle && (
-          <button type="button" className="login-sso login-google" onClick={() => window.location.assign(googleUrl(base))}>
-            <GoogleGlyph />
-            Continue with Google
-          </button>
-        )}
-
-        {hasSso && (
-          <>
-            <button type="button" className="login-sso" disabled={ssoBusy} onClick={() => void withSso()}>
-              <span className="login-sso-glyph" />
-              {ssoBusy ? "Looking for your workspace…" : "Continue with SSO"}
-            </button>
-            {ssoOrgs !== null && (
-              <div className="login-sso-pick">
-                <label className="login-label" htmlFor="login-sso-org">
-                  Which workspace
-                </label>
-                <div className="login-workspace">
-                  <span className="login-workspace-tile">·</span>
-                  <select
-                    id="login-sso-org"
-                    className="login-workspace-input"
-                    defaultValue=""
-                    onChange={(event) => event.target.value !== "" && window.location.assign(ssoUrl(base, event.target.value))}
-                  >
-                    <option value="" disabled>
-                      Choose one…
-                    </option>
-                    {ssoOrgs.map((one) => (
-                      <option key={one.org} value={one.slug ?? one.org}>
-                        {one.name ?? one.slug ?? one.org}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-            {ssoNote !== null && <p className="login-sso-note">{ssoNote}</p>}
-          </>
-        )}
-
-        <p className="login-note">Invited and no password yet? Open the link in your invitation — that is where you choose one.</p>
+        <p className="login-note">
+          {hasGoogle
+            ? "Invited and no password yet? Continue with Google on the address you were invited at, or open the link in your invitation."
+            : "Invited and no password yet? Open the link in your invitation — that is where you choose one."}
+        </p>
       </form>
     </WayIn>
-  );
-}
-
-// Google's brand colours, per its sign-in guidelines.
-function GoogleGlyph(): ReactNode {
-  return (
-    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-    </svg>
   );
 }

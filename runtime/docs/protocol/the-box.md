@@ -34,6 +34,10 @@ an empty string goes back to the default, the only way to clear a logo. `accent`
 
 ## Continue with Google — `GET /v1/ops/signin`, `PUT` · `DELETE /v1/ops/signin/google`
 
-Not in this version. `GET` names the provider unwired and the redirect URI a client would be
-registered with; `PUT` and `DELETE` answer `503 box-wide sign-in is not in this version: each org signs in
-with its own identity provider`. The org's own provider is `PUT /v1/org/sso`.
+The OAuth client the operator made at Google, for every org's people ([people.md](people.md), "Continue
+with Google"). `GET` answers `{google: {configured, client_id, redirect_uri}}`, never the secret;
+`redirect_uri` is the one to register with the client at Google
+(`https://<PINECALL_DOMAIN>/v1/login/google/callback`). `PUT {client_id, client_secret}` keeps it,
+the secret sealed with the vault, and the button shows on every page; `DELETE` forgets it, `404`
+when there was none. The consent screen asks for `openid email profile` only. An org's own
+provider is `PUT /v1/org/sso`.

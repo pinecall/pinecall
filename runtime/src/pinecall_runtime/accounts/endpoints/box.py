@@ -1,12 +1,11 @@
-"""The box's own: the mailbox it sends through, box-wide sign-in, and the brand its pages and emails carry."""
+"""The box's own: the mailbox it sends through, its Google client, and the brand its pages and emails carry."""
 
 from fastapi import APIRouter
-from fastapi.responses import RedirectResponse
 
 from pinecall_runtime.accounts import schemas
 from pinecall_runtime.accounts.auth import BrandDep, OutboxDep, PublicUrl, TheOperator
-from pinecall_runtime.accounts.service import emails, mail
-from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable
+from pinecall_runtime.accounts.service import emails, google, mail
+from pinecall_runtime.exceptions import Conflict, NotFound
 from pinecall_runtime.kit.handles import TheHandles
 from pinecall_runtime.platform import service as platform
 from pinecall_runtime.postgres import Session
@@ -15,9 +14,6 @@ router = APIRouter()
 
 NOTHING_STORED = "this box has no stored mail server: what it sends through, if anything, is PINECALL_SMTP_URL"
 NOTHING_TO_TEST = "this box has no mail server: set one at PUT /v1/ops/mail, or set PINECALL_SMTP_URL"
-# Box-wide sign-in is not in this version: its endpoints stand, say so, and name the URI to register.
-NO_BOX_WIDE = "box-wide sign-in is not in this version: each org signs in with its own identity provider"
-GOOGLE_CALLBACK = "/v1/login/google/callback"
 
 
 # ── the box's mailbox ──
@@ -64,39 +60,36 @@ async def send_box_test_email(
     return schemas.TestEmailSent(sent=error is None, error=error)
 
 
-# ── sign-in across orgs ──
+# ── Google, for every org's people ──
 
 
-@router.get("/v1/ops/signin")
-async def get_box_signin(_actor: TheOperator, base: PublicUrl) -> schemas.BoxSignIn:
-    """Every provider the box could offer every org's people: none wired in this version."""
-    return schemas.BoxSignIn(
-        google=schemas.BoxProvider(configured=False, client_id=None, redirect_uri=f"{base}{GOOGLE_CALLBACK}")
+def _google_row(client_id: str | None, base: str) -> schemas.BoxProvider:
+    return schemas.BoxProvider(
+        configured=client_id is not None, client_id=client_id, redirect_uri=f"{base}{google.CALLBACK}"
     )
 
 
+@router.get("/v1/ops/signin")
+async def get_box_signin(_actor: TheOperator, base: PublicUrl, session: Session) -> schemas.BoxSignIn:
+    """Every provider the box offers every org's people, and the URI each registers; never a secret."""
+    return schemas.BoxSignIn(google=_google_row(await google.client_id_of(session), base))
+
+
 @router.put("/v1/ops/signin/google")
-async def put_google_signin(_body: schemas.PutSignIn, _actor: TheOperator) -> schemas.BoxProvider:
-    """Refused: box-wide Google sign-in is not in this version."""
-    raise ServiceUnavailable(NO_BOX_WIDE)
+async def put_google_signin(
+    body: schemas.PutSignIn, _actor: TheOperator, handles: TheHandles, base: PublicUrl, session: Session
+) -> schemas.BoxProvider:
+    """Keep the OAuth client the operator made at Google: "Continue with Google" shows on every page."""
+    client = google.GoogleClient(client_id=body.client_id, client_secret=body.client_secret)
+    await google.put_client(session, handles.vault, client)
+    return _google_row(client.client_id.strip(), base)
 
 
 @router.delete("/v1/ops/signin/google", status_code=204)
-async def delete_google_signin(_actor: TheOperator) -> None:
-    """Refused: box-wide Google sign-in is not in this version."""
-    raise ServiceUnavailable(NO_BOX_WIDE)
-
-
-@router.get("/v1/login/google")
-async def google_sign_in() -> RedirectResponse:
-    """Box-wide "Continue with Google", which this version does not have."""
-    raise ServiceUnavailable(NO_BOX_WIDE)
-
-
-@router.get(GOOGLE_CALLBACK)
-async def google_callback() -> RedirectResponse:
-    """Box-wide Google's callback, which this version does not have."""
-    raise ServiceUnavailable(NO_BOX_WIDE)
+async def delete_google_signin(_actor: TheOperator, session: Session) -> None:
+    """Forget the client: the button goes from every page."""
+    if not await google.delete_client(session):
+        raise NotFound("this box keeps no Google client")
 
 
 # ── the brand ──

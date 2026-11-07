@@ -9,7 +9,7 @@ from pinecall_runtime.accounts.auth import (
     BrandDep,
     OutboxDep,
 )
-from pinecall_runtime.accounts.service import orgs
+from pinecall_runtime.accounts.service import google, orgs
 from pinecall_runtime.kit.handles import handles_of
 from pinecall_runtime.postgres import Session
 
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/.well-known/pinecall")
-async def gateway_info(request: Request, outbox_: OutboxDep, brand: BrandDep) -> schemas.GatewayInfo:
+async def gateway_info(request: Request, outbox_: OutboxDep, brand: BrandDep, session: Session) -> schemas.GatewayInfo:
     """What this gateway is and how it signs people in, before anybody holds a key."""
     settings = handles_of(request).settings
     return schemas.GatewayInfo(
@@ -26,7 +26,7 @@ async def gateway_info(request: Request, outbox_: OutboxDep, brand: BrandDep) ->
         min_password=settings.min_password,
         mail=await outbox_.mailbox_for(None) is not None,
         brand=schemas.BrandRow(name=brand.name, logo_url=brand.logo_url, accent=brand.accent),
-        google=False,
+        google=await google.client_id_of(session) is not None,
         turnstile=settings.turnstile_site_key,
     )
 

@@ -7,6 +7,7 @@ import re
 import secrets
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 import httpx
 import jwt
@@ -43,6 +44,11 @@ REQUIRED_CLAIMS = ["iss", "aud", "exp", "iat", "sub"]
 TIMEOUT_S = 5.0
 TXT_PREFIX = "pinecall-verify="
 
+# A provider whose id_tokens name it in another spelling too: Google writes `iss` as
+# `https://accounts.google.com` or as `accounts.google.com`, both its own (OpenID Connect at Google,
+# "Validate an ID token").
+ALSO_ISSUED_AS = {"https://accounts.google.com": ("accounts.google.com",)}
+
 # No query or fragment: it is compared with every id_token's `iss` as a string.
 AN_ISSUER = re.compile(r"^https://[^\s?#]+[^/\s?#]$")
 A_DOMAIN = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
@@ -53,6 +59,25 @@ class NoProvider(NotFound):
 
     def __init__(self, org: str) -> None:
         super().__init__(f"org {org} signs in with no identity provider")
+
+
+class OidcClient(Protocol):
+    """What a sign-in at an OpenID provider needs of its client: an org's provider, or the platform's Google."""
+
+    @property
+    def issuer(self) -> str:
+        """The provider, as its id_tokens name it."""
+        ...
+
+    @property
+    def client_id(self) -> str:
+        """This gateway, as the provider knows it."""
+        ...
+
+    @property
+    def client_secret(self) -> str:
+        """What proves the code exchange is this gateway's."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,25 +279,25 @@ async def discover(http: httpx.AsyncClient, issuer: str) -> Endpoints:
     )
 
 
-def authorization_url(endpoints: Endpoints, provider: Provider, begun: Handshake) -> str:
+def authorization_url(endpoints: Endpoints, client: OidcClient, begun: Handshake, *, prompt: str | None = None) -> str:
     """Where the browser goes to sign in, with the state and the PKCE challenge."""
     challenge = base64.urlsafe_b64encode(hashlib.sha256(begun.verifier.encode()).digest()).decode().rstrip("=")
-    params = httpx.QueryParams(
-        {
-            "response_type": "code",
-            "client_id": provider.client_id,
-            "redirect_uri": begun.redirect_uri,
-            "scope": SCOPE,
-            "state": begun.state,
-            "nonce": begun.nonce,
-            "code_challenge": challenge,
-            "code_challenge_method": "S256",
-        }
-    )
-    return str(httpx.URL(endpoints.authorization_endpoint).copy_merge_params(params))
+    asked = {
+        "response_type": "code",
+        "client_id": client.client_id,
+        "redirect_uri": begun.redirect_uri,
+        "scope": SCOPE,
+        "state": begun.state,
+        "nonce": begun.nonce,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    if prompt is not None:
+        asked["prompt"] = prompt
+    return str(httpx.URL(endpoints.authorization_endpoint).copy_merge_params(httpx.QueryParams(asked)))
 
 
-async def claims_for_code(http: httpx.AsyncClient, provider: Provider, begun: Handshake, code: str) -> Claims:
+async def claims_for_code(http: httpx.AsyncClient, provider: OidcClient, begun: Handshake, code: str) -> Claims:
     """The person the provider signed in, their address verified, from the code it returned."""
     endpoints = await discover(http, provider.issuer)
     id_token = await _exchange(http, endpoints, provider, begun, code)
@@ -368,7 +393,7 @@ def _endpoint(found: str, issuer: str, field: str) -> str:
 
 
 async def _exchange(
-    http: httpx.AsyncClient, endpoints: Endpoints, provider: Provider, begun: Handshake, code: str
+    http: httpx.AsyncClient, endpoints: Endpoints, provider: OidcClient, begun: Handshake, code: str
 ) -> str:
     form = {
         "grant_type": "authorization_code",
@@ -408,7 +433,7 @@ async def _claims(http: httpx.AsyncClient, endpoints: Endpoints, id_token: str, 
             key=key,
             algorithms=ALGORITHMS,
             audience=client_id,
-            issuer=endpoints.issuer,
+            issuer=(endpoints.issuer, *ALSO_ISSUED_AS.get(endpoints.issuer, ())),
             options={"require": REQUIRED_CLAIMS},
         )
         data = _IdToken.model_validate(decoded)

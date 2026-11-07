@@ -203,8 +203,8 @@ async def accept_link(session: AsyncSession, token: str, password: str, shortest
     return await _activate(members, member, spent, None)
 
 
-async def seat_founder(session: AsyncSession, token: str, hashed: str) -> Member | None:
-    """Spend a sign-up's link and seat the org's first admin with the password the sign-up proved."""
+async def seat_founder(session: AsyncSession, token: str, hashed: str | None) -> Member | None:
+    """Spend a sign-up's link and seat the org's first admin, with the password the sign-up proved if it has one."""
     members = MemberRepository(session)
     spent = await InvitationRepository(session).spend(fingerprint(token))
     if spent is None:

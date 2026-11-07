@@ -16,8 +16,6 @@ STREAMS = frozenset({"/v1/events", "/v1/ops/events"})
 # Closed on a box without the credentials they need, and saying so with 503: a test box has neither.
 CLOSED_HERE = {
     "/v1/whatsapp/webhook": "no Meta app",
-    "/v1/login/google": "no box-wide sign-in",
-    "/v1/login/google/callback": "no box-wide sign-in",
 }
 # A read that takes longer than this is reported as hanging, which is a failure of its own.
 WITHIN_S = 5.0

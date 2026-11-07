@@ -1,23 +1,29 @@
-/** Sign-up: the org and its admin, then six digits mailed — shown only where the gateway opens sign-ups. */
+/** Sign-up: Google, or the org and its admin then six digits mailed — shown only where the gateway opens sign-ups. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { GatewayError } from "@pinecall/core/api";
+import { type Signed } from "@pinecall/core/login";
 import { signUp } from "@pinecall/core/signup";
 import { discovered, type Discovered } from "@pinecall/core/the-floor";
 import { DEVICE } from "../../lib/device";
 import { inTheWorld, WORLD, WORLD_BASE } from "../../lib/mode";
+import { ContinueWithGoogle } from "./google-button";
+import { NamedByGoogle } from "./google-signup";
 import { useTurnstile } from "./turnstile";
 import { WayIn } from "./way-in";
 
 /** Where the mailed code is typed, under this world's base; the address rides the query. */
 export const VERIFY = "/signup/verify";
 
+// Google's callback sends a newcomer here with a one-use token, and a terminal's word when one waits.
+const GOOGLE = "google";
+
 /**
  * Every self-hosted runtime serves this page, so whether it takes sign-ups is the gateway's word
  * (`/.well-known/pinecall`), never the page's: closed, the page says so and the door refuses anyway.
  */
-export function SignUp({ base }: { base: string }): ReactNode {
+export function SignUp({ base, onMade }: { base: string; onMade: (signed: Signed) => void }): ReactNode {
   const [floor, setFloor] = useState<Discovered | null>(null);
   useEffect(() => {
     let gone = false;
@@ -43,6 +49,8 @@ export function SignUp({ base }: { base: string }): ReactNode {
       />
     );
   }
+  const token = new URLSearchParams(window.location.search).get(GOOGLE);
+  if (token !== null) return <NamedByGoogle base={base} token={token} onMade={onMade} />;
   return <TheForm base={base} floor={floor} />;
 }
 
@@ -80,10 +88,21 @@ function TheForm({ base, floor }: { base: string; floor: Discovered }): ReactNod
       }
     >
       <form onSubmit={(event) => void submit(event)}>
+        {floor.google === true && <ContinueWithGoogle base={base} />}
+
         <label className="login-label" htmlFor="signup-name">
           Company
         </label>
-        <input id="signup-name" className="login-input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="organization" maxLength={120} autoFocus required />
+        <input
+          id="signup-name"
+          className="login-input"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          autoComplete="organization"
+          maxLength={120}
+          autoFocus={floor.google !== true}
+          required
+        />
 
         <label className="login-label" htmlFor="signup-person">
           Your name

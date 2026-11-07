@@ -109,7 +109,18 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
 
   if (key === null) {
     const page = pageOf(window.location.pathname);
-    if (SIGNUP.test(page)) return <SignUp base={API_BASE} />;
+    if (SIGNUP.test(page)) {
+      // A new org opens in the sandbox; a terminal waiting on a Google sign-up gets its card, which is production's.
+      const waiting = new URLSearchParams(window.location.search).get("c");
+      return (
+        <SignUp
+          base={API_BASE}
+          onMade={(proof) => {
+            void keepKey(proof.key).then(() => window.location.assign(waiting === null ? inTheWorld("sandbox", "/") : `/cli?${new URLSearchParams({ c: waiting }).toString()}`));
+          }}
+        />
+      );
+    }
     if (VERIFYING.test(page)) {
       // A new org opens in the sandbox, whichever world's page the code was typed on.
       return (

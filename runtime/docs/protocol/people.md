@@ -27,9 +27,8 @@ as `turnstile`; the gateway verifies it with Cloudflare for that door, on this p
 refuses `403 the captcha was not passed` without it, as it does when Cloudflare does not answer.
 `null`, and no door asks for one. A password never carries one: a phone, a terminal and a console
 served from somewhere else type passwords too, and none can draw Cloudflare's widget, so the
-password doors stand on the throttle below instead. Platform-wide "Continue
-with Google" is not in this version: `google` is always `false`, and `GET /v1/login/google` and
-its callback answer `503`.
+password doors stand on the throttle below instead. `google` is whether the platform keeps a
+Google client ([the-box.md](the-box.md)): the page draws "Continue with Google" where it is true.
 
 ## Who a key is — `GET /v1/whoami`
 
@@ -212,6 +211,29 @@ keeps the key and opens the sandbox on it. A code lives
 15 minutes and six tries; a wrong, burned or expired code is `400` in its words, and an address
 nobody signed up with reads as a wrong code. `POST /v1/signup/resend {email, turnstile}` mails a new code
 and kills the first; `202 {}` whoever asks.
+
+## Continue with Google — `/v1/login/google`, `/v1/signup/google`
+
+Where the operator keeps a Google client, `GET /v1/login/google?pairing=` is `302` to Google with
+a state, a nonce and a PKCE challenge, asking which of the person's Google accounts; none kept is
+`404`. The callback exchanges the code and checks the id_token as an org's provider's is checked
+(the issuer, the audience, the nonce), and refuses an address Google has not verified. Then:
+
+- **the address is a member somewhere**: it signs in to the oldest org it took, else the oldest it
+  was invited to — seated, Google having proved the address — passing over an org that signs in
+  only with its own provider; `302` to `/?login=<code>`, or `/cli?c=<word>&login=<code>` when a
+  terminal waits. A password the person also has stays theirs: either way in opens the same account;
+- **nobody knows it, and sign-ups are open**: `302` to `/signup?google=<token>` (and `&c=<word>`
+  for a terminal), a one-use token that lives ten minutes. `GET /v1/signup/google/{token}` reads
+  `{email, person}` spending nothing; `POST /v1/signup/google {token, name, org?, device}` makes the
+  org as a mailed code's sign-up does — `201`, the same shape — with no password and no code: the
+  admin signs in through Google, or chooses a password with a reset. A slug taken is `409` and keeps
+  the token, to pick another; an address let in elsewhere since is `409`; a dead token `404`;
+- **sign-ups are shut**: `302` to `/?refused=<why>`, as every refusal at the callback is; a closed
+  Google page is "the sign-in with Google was not finished".
+
+No password and no Turnstile token at either: Google vouched for the address, and the token was
+minted by the callback. Both count against the place's sign-in throttle.
 
 ## The org's provider — `/v1/org/sso`, `/v1/login/sso`
 

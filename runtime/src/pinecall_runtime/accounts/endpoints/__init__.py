@@ -1,9 +1,10 @@
-"""The accounts router: identity, sign-in, pairings, invitations, members, keys, sign-up, SSO, mail, the operator's."""
+"""The accounts router: identity, sign-in, Google, pairings, invitations, members, keys, sign-up, SSO, mail, ops."""
 
 from fastapi import APIRouter
 
 from pinecall_runtime.accounts.endpoints import (
     box,
+    google,
     identity,
     invitations,
     keys,
@@ -17,5 +18,5 @@ from pinecall_runtime.accounts.endpoints import (
 )
 
 router = APIRouter()
-for family in (identity, signin, pairings, invitations, members, keys, signup, sso, mail, ops, box):
+for family in (identity, signin, google, pairings, invitations, members, keys, signup, sso, mail, ops, box):
     router.include_router(family.router)

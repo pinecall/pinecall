@@ -1,4 +1,4 @@
-/** Sign-up: an org made from a mailed code, where the gateway opens them (`/.well-known/pinecall` says). */
+/** Sign-up: an org made from a mailed code, or for somebody Google vouched for, where the gateway opens them. */
 
 import { z } from "zod";
 
@@ -23,13 +23,28 @@ export async function signUp(base: string, asked: SignUpAsked, device: string, t
   return CodeMailedSchema.parse(await answered(await knock(base, "/v1/signup", { ...asked, device, turnstile })));
 }
 
-// POST /v1/signup/verify: the key shape, plus the org's slug (and a login code this page never needs).
+// POST /v1/signup/verify and /v1/signup/google: the key shape, plus the org's slug (and a login
+// code this page never needs).
 const OrgMadeSchema = SignedSchema.extend({ slug: z.string() });
 export type OrgMade = z.infer<typeof OrgMadeSchema>;
 
 /** The mailed code back: the org made, and a key of this tab's own in it. */
 export async function verifySignUp(base: string, email: string, code: string, device: string): Promise<OrgMade & Signed> {
   return OrgMadeSchema.parse(await answered(await knock(base, "/v1/signup/verify", { email, code, device })));
+}
+
+// GET /v1/signup/google/{token}: whom Google vouched for and nobody knows yet.
+const GoogleNewcomerSchema = z.object({ email: z.string(), person: z.string() });
+export type GoogleNewcomer = z.infer<typeof GoogleNewcomerSchema>;
+
+/** Whom the `?google=` token on the sign-up page stands for, spending nothing. */
+export async function googleNewcomer(base: string, token: string): Promise<GoogleNewcomer> {
+  return GoogleNewcomerSchema.parse(await answered(await fetch(gatewayUrl(base, `/v1/signup/google/${encodeURIComponent(token)}`))));
+}
+
+/** The workspace named: the org made for the address Google vouched for — no password, no code. */
+export async function signUpWithGoogle(base: string, token: string, name: string, device: string): Promise<OrgMade & Signed> {
+  return OrgMadeSchema.parse(await answered(await knock(base, "/v1/signup/google", { token, name, device })));
 }
 
 /** A new code for a sign-up still waiting; the gateway answers alike whoever asks. */

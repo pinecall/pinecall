@@ -67,17 +67,15 @@ async def finish_sso(
     if begun is None:
         raise ValidationError("no sign-in answers to that: it was finished already, it expired, or it never started")
     if error is not None:
-        return _refused(f"the sign-in was refused at the provider: {error}")
+        return refused_on_the_console(f"the sign-in was refused at the provider: {error}")
     if not code:
-        return _refused("the provider sent no authorization code back")
+        return refused_on_the_console("the provider sent no authorization code back")
     try:
         member = await sso.seat_from_callback(session, handles_of(request).vault, handles_of(request).http, begun, code)
     except PinecallError as refusal:
-        return _refused(str(refusal))
+        return refused_on_the_console(str(refusal))
     login, _ = await sign_ins_.codes.mint(signin.holder_of_member(member))
-    if begun.pairing is None:
-        return RedirectResponse(f"{THE_CONSOLE}?{httpx.QueryParams({'login': login})}", FOUND)
-    return RedirectResponse(f"{THE_CARD}?{httpx.QueryParams({'c': begun.pairing, 'login': login})}", FOUND)
+    return signed_in_on_the_console(login, begun.pairing)
 
 
 @router.post("/v1/login/sso/discover")
@@ -146,5 +144,13 @@ async def drop_sso(actor: TeamKey, session: Session) -> None:
         raise NotFound("this org signs in with no identity provider")
 
 
-def _refused(sentence: str) -> RedirectResponse:
+def signed_in_on_the_console(login: str, pairing: str | None) -> RedirectResponse:
+    """302 to the console with a login code, or to the terminal's card when a terminal waits."""
+    if pairing is None:
+        return RedirectResponse(f"{THE_CONSOLE}?{httpx.QueryParams({'login': login})}", FOUND)
+    return RedirectResponse(f"{THE_CARD}?{httpx.QueryParams({'c': pairing, 'login': login})}", FOUND)
+
+
+def refused_on_the_console(sentence: str) -> RedirectResponse:
+    """302 to the console's sign-in, which says why."""
     return RedirectResponse(f"{THE_CONSOLE}?{httpx.QueryParams({'refused': sentence})}", FOUND)
