@@ -9,6 +9,8 @@
   --login-accent: #9184d9;
   --login-a300: #d2cefd;
   --login-line: rgba(233, 233, 237, 0.1);
+  /* What keeps a line legible on the clouds: a tight dark edge and a wide night halo. */
+  --login-on-sky: 0 1px 2px rgba(19, 20, 31, 0.9), 0 0 18px rgba(19, 20, 31, 0.95), 0 0 36px rgba(19, 20, 31, 0.7);
   --login-field: rgba(9, 10, 18, 0.55);
   position: relative;
   overflow: hidden;
@@ -308,10 +310,17 @@ select.login-workspace-input {
   font-size: 14px;
   line-height: 1.9;
   color: var(--login-text);
-  text-shadow: 0 1px 12px rgba(19, 20, 31, 0.9);
+  text-shadow: var(--login-on-sky);
 }
 
-.login-aside a,
+.login-aside a {
+  color: #fff;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(210, 206, 253, 0.6);
+  text-underline-offset: 3px;
+}
+
 .login-note a {
   color: var(--login-a300);
 }
@@ -324,14 +333,14 @@ select.login-workspace-input {
 
 .login-foot {
   margin: 28px 0 0;
-  color: var(--login-quiet);
+  color: var(--login-text);
   font-size: 12.5px;
-  text-shadow: 0 1px 12px rgba(19, 20, 31, 0.9);
+  text-shadow: var(--login-on-sky);
 }
 
 .login-command {
-  color: var(--login-text);
-  font-weight: 500;
+  color: #fff;
+  font-weight: 600;
 }
 
 .login-or {

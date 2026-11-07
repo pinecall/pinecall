@@ -1,17 +1,18 @@
 /** Observability: the window at a glance and day by day — latency, success, duration, endings, judges, tools, cost — every agent's or the one in view. */
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
-import { useInsights, useWindowDays, windowSaid, WindowPicker } from "../../lib/insights";
-import { useSeries, type SeriesDay } from "../../lib/series";
+import { useInsights, useWindowDays, windowSaid, WindowPicker, type WindowDays } from "../../lib/insights";
+import { measured, useSeries, type SeriesDay } from "../../lib/series";
 import { useSlowTurns } from "../../lib/slow";
 import { useTools } from "../../lib/tools";
-import { Card, CardHead, Empty, Icon, Page, PageHead, Stat, Stats, TableHead } from "../../ui";
+import { Card, CardHead, Icon, Page, PageHead, Stat, Stats, TableHead } from "../../ui";
 import { useMonitors } from "../monitors";
 import { Bars, type Stack } from "./bars";
 import { Lines, type Line } from "./lines";
 import { LiveEvents } from "./live-events";
+import { NothingYet } from "./nothing-yet";
 import { ProvidersCard } from "./providers-card";
 import { SlowTurns } from "./slow-turns";
 import { TimeToAnswer } from "./time-to-answer";
@@ -67,11 +68,25 @@ function change(now: number, before: number): { text: string; tone: "up" | "down
   return { text: moved === 0 ? "steady" : `${moved > 0 ? "+" : "−"}${Math.abs(moved)}%`, tone: moved === 0 ? "flat" : moved > 0 ? "up" : "down" };
 }
 
-/** Every number is the gateway's count over whole UTC days; a day nobody called is a gap, not a zero. */
+/**
+ * Every number is the gateway's count over whole UTC days; a day nobody called is a gap, not a zero.
+ * Unless a window was picked, the page opens on the week, and on the month when the week holds
+ * nothing it draws; a window with nothing in it draws one card saying so, never a page of empty ones.
+ */
 export function Observability(): ReactNode {
   const agent = useParams()["agent"] ?? "";
   const asked = agent === "" ? undefined : agent;
-  const [range, pickRange] = useWindowDays(7);
+  const [inUrl, pickInUrl, pickedInUrl] = useWindowDays(7);
+  // A window picked by hand stays, the week too: the URL forgets the week, being its default.
+  const [byHand, setByHand] = useState(false);
+  // The agent whose quiet week sent the page to the month.
+  const [widenedFor, setWidenedFor] = useState<string | null>(null);
+  const picked = pickedInUrl || byHand;
+  const range: WindowDays = picked ? inUrl : widenedFor === agent ? 30 : 7;
+  const pickRange = (days: WindowDays): void => {
+    setByHand(true);
+    pickInUrl(days);
+  };
   const answered = useSeries({ agent: asked, days: range });
   const earlier = useSeries({ agent: asked, days: range, day: utcDay(Date.now() / 1000 - range * 86400) });
   const insights = useInsights({ agent: asked, days: range });
@@ -85,6 +100,13 @@ export function Observability(): ReactNode {
   const now = useMemo(() => totalsOf(rows), [rows]);
   const before = useMemo(() => totalsOf(earlier?.days === range ? earlier.series : []), [earlier, range]);
   const said = `vs the ${range} d before`;
+  const loaded = series !== null;
+  const quiet = loaded && !measured(rows);
+  useEffect(() => {
+    if (!picked && range === 7 && quiet) setWidenedFor(agent);
+  }, [picked, range, quiet, agent]);
+  // Until the window is known, the page draws its head alone rather than cards it may take back.
+  const deciding = !loaded || (!picked && range === 7 && quiet);
 
   const latency: Line[] = useMemo(
     () => [
@@ -169,110 +191,118 @@ export function Observability(): ReactNode {
           </>
         }
       />
-      {answered?.days === range && (
-        <TimeToAnswer now={answered} before={earlier?.days === range ? earlier : null} tools={toolStats?.tools ?? []} monitors={monitors} agent={agent} range={range} />
-      )}
-      {/* These three are a newer runtime's: a box without them draws the page as it was. */}
-      {(toolStats !== null || vendors.length > 0) && (
-        <div className="obs-pair">
-          {toolStats !== null && <ToolsCard tools={toolStats?.tools ?? []} agent={agent} />}
-          {vendors.length > 0 && <ProvidersCard vendors={vendors} monitors={monitors} agent={agent} />}
-        </div>
-      )}
-      <div className="obs-pair">
-        {slow !== null && <SlowTurns turns={slow?.turns ?? []} agent={agent} />}
-        <LiveEvents />
-      </div>
-      <h2 className="obs-section">Day by day</h2>
-      <Stats min={170}>
-        <Stat size="big" label="Calls" value={now.calls} delta={moved?.text ?? said} tone={moved?.tone ?? "flat"} />
-        <Stat
-          size="big"
-          label="Success rate"
-          value={heldNow === null ? "—" : percent(heldNow)}
-          delta={points === null ? (now.judged === 0 ? "nothing judged" : said) : points === 0 ? "steady" : `${points > 0 ? "+" : "−"}${Math.abs(points)} pts`}
-          tone={points === null || points === 0 ? "flat" : points > 0 ? "up" : "down"}
-        />
-        <Stat
-          size="big"
-          label="Time to first token"
-          value={now.ttft === null ? "—" : seconds(now.ttft)}
-          delta={faster === null ? said : Math.abs(faster) < 0.05 ? "steady" : `${faster > 0 ? "−" : "+"}${Math.abs(faster).toFixed(2)}s`}
-          tone={faster === null || Math.abs(faster) < 0.05 ? "flat" : faster > 0 ? "up" : "down"}
-        />
-        <Stat size="big" label="Mean length" value={now.length === null ? "—" : seconds(now.length)} delta={before.length === null ? said : `${seconds(before.length)} before`} tone="flat" />
-        <Stat size="big" label="Spend" value={dollars(now.spend)} delta={before.spend === 0 ? said : `${dollars(before.spend)} before`} tone="flat" />
-      </Stats>
-      {series !== null && rows.every((day) => day.calls === 0) && <Empty>No call in {windowSaid(range)}. The charts fill in as calls come.</Empty>}
-      <div className="obs-grid">
-        <Card pad>
-          <CardHead title="Latency, end to end" meta="from the caller's last word to the agent's first" />
-          <Lines days={days} lines={latency} says={seconds} label="End-to-end latency a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Latency by stage, median" meta="transcription, first token, first audio" />
-          <Lines days={days} lines={stages} says={seconds} label="Median latency by stage a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Latency by stage, p95" meta="the slow tail" />
-          <Lines days={days} lines={tails} says={seconds} label="p95 latency by stage a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Success rate by judge" meta="the share of verdicts each judge held" />
-          <Lines days={days} lines={judges} says={percent} label="Held rate by judge a day" ceiling={1} />
-        </Card>
-        <Card pad>
-          <CardHead title="How calls ended" meta="a day at a time, by reason" />
-          <Bars stacks={endings.stacks} keys={endings.keys} label="Call endings a day" said={reasonSaid} />
-        </Card>
-        <Card pad>
-          <CardHead title="Duration" meta="the mean length of the calls that ended" />
-          <Lines days={days} lines={duration} says={seconds} label="Mean call length a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Calls" meta="and how many a person took over" />
-          <Lines days={days} lines={calls} says={count} label="Calls a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Tools" meta="runs, and the ones that answered an error" />
-          <Lines days={days} lines={tools} says={count} label="Tool runs and failures a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Spend" meta="every vendor, in US dollars" />
-          <Lines days={days} lines={spend} says={dollars} label="Spend a day" />
-        </Card>
-        <Card pad>
-          <CardHead title="Failure modes" meta="the judges that said no, most often first" />
-          {failures.length === 0 ? (
-            <p className="obs-quiet">No judge said no in {windowSaid(range)}.</p>
-          ) : (
-            <div className="obs-endings">
-              {failures.map(([name, one]) => (
-                <div key={name} className="obs-ending">
-                  <span className="ui-fixed">{name}</span>
-                  <span className="obs-ending-count">
-                    {one.broken} of {one.judged} · {percent(one.broken / one.judged)}
-                  </span>
-                </div>
-              ))}
+      {deciding ? null : quiet ? (
+        <>
+          <NothingYet range={range} agent={agent} calls={now.calls} onWiden={range === 30 ? null : () => pickRange(30)} />
+          <LiveEvents />
+        </>
+      ) : (
+        <>
+          {answered?.days === range && (
+            <TimeToAnswer now={answered} before={earlier?.days === range ? earlier : null} tools={toolStats?.tools ?? []} monitors={monitors} agent={agent} range={range} />
+          )}
+          {/* These three are a newer runtime's: a box without them draws the page as it was. */}
+          {(toolStats !== null || vendors.length > 0) && (
+            <div className="obs-pair">
+              {toolStats !== null && <ToolsCard tools={toolStats?.tools ?? []} agent={agent} />}
+              {vendors.length > 0 && <ProvidersCard vendors={vendors} monitors={monitors} agent={agent} />}
             </div>
           )}
-        </Card>
-      </div>
-      {agent === "" && byAgent.length > 0 && (
-        <Card>
-          <CardHead title="By agent" meta={windowSaid(range)} />
-          <TableHead columns={BY_AGENT} labels={["Agent", "Calls", "Success rate", "Spend", "Per minute"]} />
-          {byAgent.map((one) => (
-            <div key={one.slug} className="ui-table-row" style={{ gridTemplateColumns: BY_AGENT }}>
-              <span className="ui-cell-strong ui-clip">{one.slug}</span>
-              <span className="ui-cell-ink">{one.calls}</span>
-              <span className="ui-cell-ink">{one.score === null ? "—" : percent(one.score)}</span>
-              <span className="ui-cell-ink">{dollars(one.spend.llm_usd + one.spend.stt_usd + one.spend.tts_usd + one.spend.phone_usd + one.spend.platform_usd)}</span>
-              <span className="ui-cell-faint">{one.spend.per_minute_usd === null ? "—" : `$${one.spend.per_minute_usd.toFixed(3)}`}</span>
-            </div>
-          ))}
-        </Card>
+          <div className="obs-pair">
+            {slow !== null && <SlowTurns turns={slow?.turns ?? []} agent={agent} />}
+            <LiveEvents />
+          </div>
+          <h2 className="obs-section">Day by day</h2>
+          <Stats min={170}>
+            <Stat size="big" label="Calls" value={now.calls} delta={moved?.text ?? said} tone={moved?.tone ?? "flat"} />
+            <Stat
+              size="big"
+              label="Success rate"
+              value={heldNow === null ? "—" : percent(heldNow)}
+              delta={points === null ? (now.judged === 0 ? "nothing judged" : said) : points === 0 ? "steady" : `${points > 0 ? "+" : "−"}${Math.abs(points)} pts`}
+              tone={points === null || points === 0 ? "flat" : points > 0 ? "up" : "down"}
+            />
+            <Stat
+              size="big"
+              label="Time to first token"
+              value={now.ttft === null ? "—" : seconds(now.ttft)}
+              delta={faster === null ? said : Math.abs(faster) < 0.05 ? "steady" : `${faster > 0 ? "−" : "+"}${Math.abs(faster).toFixed(2)}s`}
+              tone={faster === null || Math.abs(faster) < 0.05 ? "flat" : faster > 0 ? "up" : "down"}
+            />
+            <Stat size="big" label="Mean length" value={now.length === null ? "—" : seconds(now.length)} delta={before.length === null ? said : `${seconds(before.length)} before`} tone="flat" />
+            <Stat size="big" label="Spend" value={dollars(now.spend)} delta={before.spend === 0 ? said : `${dollars(before.spend)} before`} tone="flat" />
+          </Stats>
+          <div className="obs-grid">
+            <Card pad>
+              <CardHead title="Latency, end to end" meta="from the caller's last word to the agent's first" />
+              <Lines days={days} lines={latency} says={seconds} label="End-to-end latency a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Latency by stage, median" meta="transcription, first token, first audio" />
+              <Lines days={days} lines={stages} says={seconds} label="Median latency by stage a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Latency by stage, p95" meta="the slow tail" />
+              <Lines days={days} lines={tails} says={seconds} label="p95 latency by stage a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Success rate by judge" meta="the share of verdicts each judge held" />
+              <Lines days={days} lines={judges} says={percent} label="Held rate by judge a day" ceiling={1} />
+            </Card>
+            <Card pad>
+              <CardHead title="How calls ended" meta="a day at a time, by reason" />
+              <Bars stacks={endings.stacks} keys={endings.keys} label="Call endings a day" said={reasonSaid} />
+            </Card>
+            <Card pad>
+              <CardHead title="Duration" meta="the mean length of the calls that ended" />
+              <Lines days={days} lines={duration} says={seconds} label="Mean call length a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Calls" meta="and how many a person took over" />
+              <Lines days={days} lines={calls} says={count} label="Calls a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Tools" meta="runs, and the ones that answered an error" />
+              <Lines days={days} lines={tools} says={count} label="Tool runs and failures a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Spend" meta="every vendor, in US dollars" />
+              <Lines days={days} lines={spend} says={dollars} label="Spend a day" />
+            </Card>
+            <Card pad>
+              <CardHead title="Failure modes" meta="the judges that said no, most often first" />
+              {failures.length === 0 ? (
+                <p className="obs-quiet">No judge said no in {windowSaid(range)}.</p>
+              ) : (
+                <div className="obs-endings">
+                  {failures.map(([name, one]) => (
+                    <div key={name} className="obs-ending">
+                      <span className="ui-fixed">{name}</span>
+                      <span className="obs-ending-count">
+                        {one.broken} of {one.judged} · {percent(one.broken / one.judged)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+          {agent === "" && byAgent.length > 0 && (
+            <Card>
+              <CardHead title="By agent" meta={windowSaid(range)} />
+              <TableHead columns={BY_AGENT} labels={["Agent", "Calls", "Success rate", "Spend", "Per minute"]} />
+              {byAgent.map((one) => (
+                <div key={one.slug} className="ui-table-row" style={{ gridTemplateColumns: BY_AGENT }}>
+                  <span className="ui-cell-strong ui-clip">{one.slug}</span>
+                  <span className="ui-cell-ink">{one.calls}</span>
+                  <span className="ui-cell-ink">{one.score === null ? "—" : percent(one.score)}</span>
+                  <span className="ui-cell-ink">{dollars(one.spend.llm_usd + one.spend.stt_usd + one.spend.tts_usd + one.spend.phone_usd + one.spend.platform_usd)}</span>
+                  <span className="ui-cell-faint">{one.spend.per_minute_usd === null ? "—" : `$${one.spend.per_minute_usd.toFixed(3)}`}</span>
+                </div>
+              ))}
+            </Card>
+          )}
+        </>
       )}
     </Page>
   );

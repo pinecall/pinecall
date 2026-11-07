@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import { z } from "zod";
 
-import { seriesOf } from "../src/lib/series";
+import { measured, seriesOf } from "../src/lib/series";
 
 // runtime wire/rest/usage.py: Series, as the door answers it.
 const A_DAY = {
@@ -27,4 +27,13 @@ test("a day is its calls, endings, cost, latencies, judges and tools, and a rena
   expect(series.series[0]?.stages[0]?.p95_s).toBe(1.6);
   expect(series.series[0]?.judges[0]?.held).toBe(2);
   expect(() => seriesOf({ day: "2026-10-09", days: 7, agent: null, series: [{ ...A_DAY, tools_failed: undefined }] })).toThrow(z.ZodError);
+});
+
+test("a window measures something once a turn is timed, a tool ran or a judge spoke, and calls that never reached a turn do not", () => {
+  const silent = { ...A_DAY, e2e_median_s: null, e2e_p95_s: null, stages: [], judges: [{ name: "grounded", held: 0, judged: 0 }], tools_ran: 0, tools_failed: 0 };
+  expect(measured([silent])).toBe(false);
+  expect(measured([])).toBe(false);
+  expect(measured([silent, { ...silent, e2e_median_s: 1.1 }])).toBe(true);
+  expect(measured([{ ...silent, tools_ran: 1 }])).toBe(true);
+  expect(measured([{ ...silent, judges: [{ name: "grounded", held: 0, judged: 1 }] }])).toBe(true);
 });

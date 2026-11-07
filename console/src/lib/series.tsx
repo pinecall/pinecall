@@ -1,6 +1,6 @@
 /** Series over whole UTC days (GET /v1/insights/series): what the Observability screen draws, read like the insights. */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { z } from "zod";
 
 import { GatewayError, read } from "@pinecall/core/api";
@@ -42,18 +42,30 @@ export function seriesOf(answered: unknown): Series {
   return SeriesSchema.parse(answered);
 }
 
+/** Whether a window holds anything the screen draws: a timed turn, a tool that ran or a judge's verdict — calls that never reached a turn are not. */
+export function measured(days: readonly SeriesDay[]): boolean {
+  return days.some((day) => day.e2e_median_s !== null || day.tools_ran > 0 || day.judges.some((judge) => judge.judged > 0));
+}
+
 /** Read the series on open and when the feed says a call moved it; null until loaded, or when the gateway refuses with 403/404. */
 export function useSeries({ day, days = 7, agent }: Asked = {}): Series | null {
   const credentials = useCredentials();
   const [series, setSeries] = useState<Series | null>(null);
+  // The window last asked for: an answer to an earlier one that lands after it is dropped, or a
+  // screen that widened from the week to the month would wait on the month forever.
+  const latest = useRef("");
 
   useFed(
     () => {
       const params = { days, ...(day === undefined ? {} : { day }), ...(agent === undefined ? {} : { agent }) };
+      const asked = JSON.stringify(params);
+      latest.current = asked;
       read(credentials, "/v1/insights/series", params).then(
-        (answered) => setSeries(seriesOf(answered)),
+        (answered) => {
+          if (latest.current === asked) setSeries(seriesOf(answered));
+        },
         (refused: unknown) => {
-          if (refused instanceof GatewayError && [403, 404].includes(refused.status)) setSeries(null);
+          if (latest.current === asked && refused instanceof GatewayError && [403, 404].includes(refused.status)) setSeries(null);
         },
       );
     },
