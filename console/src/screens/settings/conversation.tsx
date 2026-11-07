@@ -114,7 +114,7 @@ export function ConversationSection({
                   <div className="set-field">
                     <Label>Silence that ends a turn</Label>
                     <Select value={typed.endpointing_ms} aria-label="Silence that ends a turn" onValueChange={(value) => change("endpointing_ms", value)}>
-                      <SelectItem value="">Default · 1 s</SelectItem>
+                      <SelectItem value="">Default · 0.7 s</SelectItem>
                       {listed(SILENCES, typed.endpointing_ms).map((ms) => (
                         <SelectItem key={ms} value={ms}>
                           {Number(ms) / 1000} s
