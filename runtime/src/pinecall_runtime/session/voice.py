@@ -34,6 +34,11 @@ SMART_TURN: providers.TurnModel = "smart-turn-v3"
 MIN_SPEECH_S = 0.25
 # livekit's own longest wait for a detector that is unsure the caller is done.
 MAX_SILENCE_S = 3.0
+# The least silence before the detector is asked, where the agent sets none. livekit's 0.3 s (0.5
+# for its own detector) closed the turn inside a caller's sentence: on 2026-11-07 the pauses between
+# "Yes, please." and "Go ahead and book it." ran 0.35 to 0.5 s, and at 500 ms four lines of five were
+# cut in two, the phone number among them; 800 ms cut none and the answer felt late.
+SILENCE_S = 0.7
 
 
 def voice_session(
@@ -78,8 +83,8 @@ def _turn_detection(ears: providers.Running, turn: Turn | None) -> wire.TurnDete
 
 
 # The agent's endpointing, in seconds, for the detector the session stacks on ears that leave the turn open.
-def _min_silence(turn: Turn | None) -> float | None:
-    return None if turn is None or turn.endpointing_ms is None else turn.endpointing_ms / 1000
+def _min_silence(turn: Turn | None) -> float:
+    return SILENCE_S if turn is None or turn.endpointing_ms is None else turn.endpointing_ms / 1000
 
 
 # A realtime model hears the caller, takes the turn and answers in its own voice: the session has no
@@ -167,8 +172,8 @@ def _spoken_turns(config: AgentConfig, ears: providers.Running) -> TurnHandlingO
         "preemptive_generation": {"enabled": False},
         "interruption": interruption,
     }
-    silence = _min_silence(config.turn)
-    if not ears.ends_the_turn and silence is not None:
+    if not ears.ends_the_turn:
+        silence = _min_silence(config.turn)
         # The most it waits when the detector is unsure stays livekit's, unless the least is longer.
         handling["endpointing"] = {"min_delay": silence, "max_delay": max(silence, MAX_SILENCE_S)}
     return handling

@@ -1317,7 +1317,7 @@ async def test_a_spoken_call_says_who_ends_the_callers_turn_right_after_it_start
     written = await kinds(store, call)
     assert written.index("turn.detection") == written.index("call.started") + 1
     said = next(entry.data for entry in await store.whole(call) if entry.type == "turn.detection")
-    assert said == {"by": "smart-turn", "model": "smart-turn-v3", "min_silence_s": None}
+    assert said == {"by": "smart-turn", "model": "smart-turn-v3", "min_silence_s": 0.7}
 
 
 # ── the line ──

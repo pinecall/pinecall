@@ -1490,7 +1490,8 @@ options run on your own key alone, as every stage's do. `clear judge` goes back 
 the silence a caller is left in before the turn is called finished: ears that decide the turn
 themselves (Flux) take it as their end-of-turn timeout, and on ears that leave it open it is the
 least silence before the detector on the worker (`--end-of-turn livekit` or `smart-turn`) is asked
-whether the caller is done, so a caller who pauses between sentences is not spoken over; and
+whether the caller is done, 700 ms unless set, so a caller who pauses between sentences is not
+spoken over (lower answers sooner and cuts more sentences in two; higher the other way); and
 `--min-interruption-words` how many words it takes to stop the agent mid-sentence; a sound that
 stops it and brings no words within a second is not an interruption, and the agent goes on where
 it paused. The other two

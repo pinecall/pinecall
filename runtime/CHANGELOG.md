@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Ears that leave the turn open wait 700 ms of silence before the detector is asked, unless the agent
+  sets `endpointing_ms`.** livekit's own 0.3 s on Smart Turn and 0.5 s on its detector closed the turn at
+  the pauses inside a caller's sentence: at 500 ms four lines of five were cut in two, a phone number
+  among them, and the agent answered the half. `turn.detection` says the 0.7 too.
 - **A reply stopped by a sound that brings no words goes on where it paused.** A caller's noise, or the
   end of a phone number the ears had already closed, stopped the reply as it was being written, and
   with no resume it was never said: the agent sat silent for 33 s until the caller spoke again. A

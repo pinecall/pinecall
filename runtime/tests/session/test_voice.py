@@ -17,6 +17,7 @@ from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest
 from pinecall_runtime.session.hearing import FALSE_INTERRUPTION_TIMEOUT_S, MIN_WORDS, keyterms
 from pinecall_runtime.session.listener import is_spoken
+from pinecall_runtime.session.voice import SILENCE_S
 from pinecall_runtime.wire import events as wire
 from pinecall_runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
@@ -131,10 +132,13 @@ async def test_the_agents_endpointing_is_the_least_silence_the_detector_waits_on
     deciding = spoken_call(box, patient, ends_the_turn=True)
     assert (deciding.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == 0.5
     assert deciding.turn == wire.TurnDetection(by="stt", model=ACME)
-    # Smart Turn streams, and livekit waits its tighter 0.3 s on a streaming detector when nothing is set.
+    # 2026-11-07: an agent that sets none waits the platform's 0.7 s, under either detector: livekit's
+    # 0.3 s on Smart Turn and 0.5 s on its own cut a caller's sentence at its pauses.
     unset = spoken_call(box, NOBODY, turn_model="smart-turn-v3")
-    assert (unset.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == 0.3
-    assert unset.turn == wire.TurnDetection(by="smart-turn", model="smart-turn-v3")
+    assert (unset.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == SILENCE_S == 0.7
+    assert unset.turn == wire.TurnDetection(by="smart-turn", model="smart-turn-v3", min_silence_s=0.7)
+    livekits = spoken_call(box, NOBODY)
+    assert (livekits.live.options.turn_handling.get("endpointing") or {}).get("min_delay") == 0.7
 
 
 @needs_the_database

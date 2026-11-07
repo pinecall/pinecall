@@ -250,7 +250,7 @@ Who says the caller's turn is over on this call, written once as a spoken call o
 |---|---|---|---|
 | `by` | `"stt" | "livekit" | "smart-turn"` | yes | Who decides the turn is over. |
 | `model` | `string` | yes | The ears' model when they decide it; else the detector's checkpoint (`v1-mini`, `smart-turn-v3`). |
-| `min_silence_s` | `number` | no | The least silence, in seconds, before the detector is asked whether the caller is done: the agent's `endpointing_ms`. Absent where the ears decide it, or where none is set and livekit's own half second holds. |
+| `min_silence_s` | `number` | no | The least silence, in seconds, before the detector is asked whether the caller is done: the agent's `endpointing_ms`, else the platform's 0.7. Absent where the ears decide it. |
 
 ### `turn.user`
 

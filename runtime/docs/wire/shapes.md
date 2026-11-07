@@ -374,7 +374,7 @@ How the session decides that the caller has finished, and when the caller may in
 | field | type | required | meaning |
 |---|---|---|---|
 | `min_interruption_words` | `integer` | no | How many words the caller must say before the agent stops talking. Guards against 'mm-hm'. |
-| `endpointing_ms` | `integer` | no | How long a silence, in milliseconds, before the caller's turn is called over: the end-of-turn timeout of ears that decide it themselves (Deepgram Flux), else the least silence before the detector the session stacks on them is asked. |
+| `endpointing_ms` | `integer` | no | How long a silence, in milliseconds, before the caller's turn is called over: the end-of-turn timeout of ears that decide it themselves (Deepgram Flux), else the least silence before the detector the session stacks on them is asked (700 when unset). |
 | `eot_threshold` | `number` | no | How sure a recogniser that decides the end of the turn itself must be before it ends one, 0.5 to 0.9. Low is an agent that answers half a sentence; Deepgram measures a fifth of the turns ending early at its own default of 0.7. |
 | `eager_eot_threshold` | `number` | no | The lower confidence at which such a recogniser says the turn MIGHT be over, 0.3 to 0.9 and never above eot_threshold, so the model may start on an answer that is thrown away if the caller carries on. Absent means it never guesses. |
 | `min_interruption_ms` | `integer` | no | How long, in milliseconds, the caller must speak over the agent before it stops talking, judged by the local voice activity detector alongside min_interruption_words. Absent is livekit's own half second. |
