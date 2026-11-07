@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A password is never behind the captcha; the login throttle got two budgets.** Turnstile gated
+  `/v1/login` and `/v1/login/orgs` since 2026-10-21, and nothing but the console's page on the
+  platform's own name can draw Cloudflare's widget: the supervisors' phone app could not sign in,
+  nor a console served from a developer's machine, nor a browser that blocks `challenges.cloudflare.com`.
+  Turnstile stays on the doors that cost the box something — a sign-up, its resend, a forgotten
+  password — and a password stands on the throttle: the five tries a minute per address from one
+  place as before, and now twenty a minute from one place across every address and twenty at one
+  address from wherever, the same `429` sentence whichever count it was. `SignIn` and `SignInOrgs`
+  take no `turnstile`; the console's login draws no widget.
 - **The console says when the world refuses, and where the org buys more.** A strip over every screen
   while a monthly quota is used up — minutes, messages, tokens, spend, evals or simulations, as used of its
   limit, what that refuses and when it starts again — or production is closed to the org, with **Upgrade**

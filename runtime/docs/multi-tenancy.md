@@ -126,8 +126,10 @@ bodies and their refusals are [protocol/people.md](protocol/people.md).
   a newborn org.
 - A forgotten password is a one-use link by mail, and the answer is the same whoever asks.
 - Where the operator sets Cloudflare Turnstile (`PINECALL_TURNSTILE_SITE_KEY` and its secret), a
-  password, a sign-up, its code sent again and a forgotten password each carry a token the
-  console's widget solved for that door; without one the gateway refuses `403`.
+  sign-up, its code sent again and a forgotten password each carry a token the console's widget
+  solved for that door; without one the gateway refuses `403`. A password never does — a phone or a
+  terminal types one too — and stands on the login throttle alone: five tries a minute per address
+  from one place, twenty per place and twenty per address.
 
 ## Secrets
 

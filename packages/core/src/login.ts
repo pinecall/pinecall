@@ -34,16 +34,13 @@ export async function aLoginCode(credentials: Credentials): Promise<string> {
 }
 
 // The token Turnstile's widget yielded, where the gateway names a site key (the-floor.ts); one use.
+// A sign-up, its resend and a forgotten password carry one; a password never does, since a phone
+// or a terminal types one too and neither can draw the widget — the gateway throttles those instead.
 export type TurnstileToken = string | null;
 
 /** Sign in with email and password; `org` picks one when the person has several. */
-export async function loginWithPassword(
-  base: string,
-  who: { org?: string; email: string; password: string },
-  device: string,
-  turnstile: TurnstileToken = null,
-): Promise<Signed> {
-  return login(base, { ...who, org: who.org === undefined || who.org === "" ? null : who.org, device, turnstile });
+export async function loginWithPassword(base: string, who: { org?: string; email: string; password: string }, device: string): Promise<Signed> {
+  return login(base, { ...who, org: who.org === undefined || who.org === "" ? null : who.org, device });
 }
 
 // GET /v1/login/orgs; `here` marks the org this key opens.
@@ -88,16 +85,11 @@ export type Opens = z.infer<typeof OpensSchema>["orgs"][number];
  * Orgs these credentials open, for the sign-in org picker. Mints no key; shares the login throttle.
  * Null when the gateway lacks the door.
  */
-export async function orgsForPassword(
-  base: string,
-  email: string,
-  password: string,
-  turnstile: TurnstileToken = null,
-): Promise<Opens[] | null> {
+export async function orgsForPassword(base: string, email: string, password: string): Promise<Opens[] | null> {
   const answer = await fetch(gatewayUrl(base, "/v1/login/orgs"), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password, turnstile }),
+    body: JSON.stringify({ email, password }),
   });
   if (answer.status === 404 || answer.status === 405) return null;
   return OpensSchema.parse(await answered(answer)).orgs;

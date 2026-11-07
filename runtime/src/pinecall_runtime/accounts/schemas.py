@@ -246,13 +246,14 @@ class GatewayInfo(Row):
     mail: bool
     brand: BrandRow
     google: bool
-    # Turnstile's site key where the operator set one: the page draws the widget, and every
-    # password, sign-up and reset carries its token. None, and no door asks for one.
+    # Turnstile's site key where the operator set one: the page draws the widget, and a sign-up, its
+    # resend and a forgotten password carry its token. None, and no door asks for one.
     turnstile: str | None
 
 
-# The token Turnstile's widget yields, carried by every request a stranger makes that costs
-# something: a password tried, a letter mailed. Ignored where the box has no Turnstile.
+# The token Turnstile's widget yields, carried by every request a stranger makes that costs the box
+# something: an account kept, a letter mailed. Never a password, which a phone or a terminal types too
+# (attempts.py throttles those). Ignored where the box has no Turnstile.
 type TurnstileToken = str | None
 
 
@@ -267,7 +268,6 @@ class SignIn(Schema):
     password: str | None = None
     code: str | None = None
     device: str | None = None
-    turnstile: TurnstileToken = None
 
 
 class SignInOrgs(Schema):
@@ -275,7 +275,6 @@ class SignInOrgs(Schema):
 
     email: str
     password: str
-    turnstile: TurnstileToken = None
 
 
 class SignInOrgRow(Row):

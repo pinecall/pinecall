@@ -22,10 +22,12 @@ No key. What a sign-in page reads first:
 says whether the platform itself can post a letter (an org's own mailbox is not counted), so the page
 knows whether "Forgot your password?" can promise one; `brand` is the platform's. `turnstile` is
 Cloudflare Turnstile's site key where the operator set one (`PINECALL_TURNSTILE_SITE_KEY`): the page
-draws the widget and every password, sign-up, resend and reset below carries the token it yields as
-`turnstile`; the gateway verifies it with Cloudflare for that door, on this platform's name, and
+draws the widget and a sign-up, its resend and a forgotten password below carry the token it yields
+as `turnstile`; the gateway verifies it with Cloudflare for that door, on this platform's name, and
 refuses `403 the captcha was not passed` without it, as it does when Cloudflare does not answer.
-`null`, and no door asks for one. Platform-wide "Continue
+`null`, and no door asks for one. A password never carries one: a phone, a terminal and a console
+served from somewhere else type passwords too, and none can draw Cloudflare's widget, so the
+password doors stand on the throttle below instead. Platform-wide "Continue
 with Google" is not in this version: `google` is always `false`, and `GET /v1/login/google` and
 its callback answer `503`.
 
@@ -63,11 +65,13 @@ more: `403` a member disabled, `403` an org that signs in with its provider only
 key in the org's list, so it is revoked on its own.
 
 Every address is five tries a minute from one place, whatever the password: the sixth is
-`429 too many attempts for …: try again in a minute`. The same count holds `POST /v1/login/orgs`,
-`POST /v1/login/reset` and `POST /v1/login/sso/discover`. Behind the platform's own Caddy the place is
-the person's address. Where the platform has Turnstile, a password (here and at `/v1/login/orgs`)
-is checked with Cloudflare before it is counted, and refused `403` without a token; a code never
-is, being one use and minted by a page already signed in.
+`429 too many attempts for …: try again in a minute`. A password is also twenty tries a minute from
+one place across every address, and twenty at one address from wherever — a list of addresses tried
+from one machine, or one address tried from many, meets the same sentence as a person who mistyped —
+and the sentence never says which count it was. The same counts hold `POST /v1/login/orgs`; the
+five a minute alone hold `POST /v1/login/reset` and `POST /v1/login/sso/discover`. Behind the
+platform's own Caddy the place is the person's address. A code is never counted, being one use and
+minted by a page already signed in, and no password door asks for a Turnstile token.
 
 A code gives a copy of the key that minted it: the same org, environment, scopes and person, dying when
 it dies, labelled `console` unless `device` says. A code is spent once and lives five minutes;

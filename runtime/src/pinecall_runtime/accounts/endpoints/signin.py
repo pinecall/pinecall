@@ -29,9 +29,7 @@ ONE_OR_THE_OTHER = "log in with org, email and password, or with a code: one of 
 
 
 @router.post("/v1/login")
-async def sign_in(
-    body: schemas.SignIn, client: Client, session: Session, sign_ins_: SignInsDep, turnstile_: TurnstileDep
-) -> schemas.KeyIssued:
+async def sign_in(body: schemas.SignIn, client: Client, session: Session, sign_ins_: SignInsDep) -> schemas.KeyIssued:
     """A key for a person and a device, from a password, or from a one-time code."""
     if body.code is not None:
         if body.org is not None or body.email is not None or body.password is not None:
@@ -42,9 +40,9 @@ async def sign_in(
         return schemas.KeyIssued.minted(signed.key, signed.secret)
     if body.email is None or body.password is None:
         raise ValidationError(ONE_OR_THE_OTHER)
-    # A code is one use and minted by a signed-in page or a terminal; a password is what a stranger tries.
-    await turnstile_.check(body.turnstile, "login", client)
-    await sign_ins_.attempts.check(f"{client} {body.org or '*'}/{body.email}", body.email)
+    # A code is one use and minted by a signed-in page or a terminal; a password is what a stranger
+    # tries, and what a phone or a terminal types too, so no captcha stands here: the throttle does.
+    await sign_ins_.passwords.check(client, body.email, body.org)
     asking = signin.PasswordSignIn(body.email, body.password, body.org, body.device)
     signed = await signin.sign_in_with_password(session, asking)
     return schemas.KeyIssued.minted(signed.key, signed.secret)
@@ -52,11 +50,10 @@ async def sign_in(
 
 @router.post("/v1/login/orgs")
 async def sign_in_orgs(
-    body: schemas.SignInOrgs, client: Client, session: Session, sign_ins_: SignInsDep, turnstile_: TurnstileDep
+    body: schemas.SignInOrgs, client: Client, session: Session, sign_ins_: SignInsDep
 ) -> schemas.SignInOrgList:
     """The orgs an address and a password open, minting nothing."""
-    await turnstile_.check(body.turnstile, "login", client)
-    await sign_ins_.attempts.check(f"{client} */{body.email}", body.email)
+    await sign_ins_.passwords.check(client, body.email)
     opened = await signin.orgs_a_password_opens(session, body.email, body.password)
     if not opened:
         raise signin.NobodyAnswers()

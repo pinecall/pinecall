@@ -15,7 +15,7 @@ SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 LONGEST_TOKEN = 2048
 # Each door sends its own action and Cloudflare answers it back, so a token solved for one door
 # does not open another (Cloudflare: 32 characters of letters, digits, `_` and `-`).
-type Action = Literal["login", "signup", "signup_resend", "password_reset"]
+type Action = Literal["signup", "signup_resend", "password_reset"]
 REFUSED = "the captcha was not passed: complete it and try again"
 
 

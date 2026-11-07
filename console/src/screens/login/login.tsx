@@ -7,7 +7,6 @@ import { discovered, type Discovered } from "@pinecall/core/the-floor";
 import { gatewayHasSso, googleUrl, loginWithPassword, orgsForPassword, ssoOrgsFor, ssoUrl, type Opens, type Signed, type SsoOrg } from "@pinecall/core/login";
 import { DEVICE } from "../../lib/device";
 import { inTheWorld, WORLD } from "../../lib/mode";
-import { useTurnstile } from "./turnstile";
 import { WayIn } from "./way-in";
 
 /**
@@ -24,8 +23,6 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
   const [refused, setRefused] = useState<string | null>(() => new URLSearchParams(window.location.search).get("refused"));
   const [forgot, setForgot] = useState(false);
   const [floor, setFloor] = useState<Discovered | null>(null);
-  // Where the gateway has Turnstile, a password goes with a token; the picker's lookup spends one too.
-  const captcha = useTurnstile(floor?.turnstile, "login");
   // Asked on password blur, not per keystroke: the door shares the login throttle.
   const [opens, setOpens] = useState<Opens[] | null>(null);
   const [known, setKnown] = useState(true);
@@ -40,7 +37,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     void gatewayHasSso(base).then((has) => {
       if (!gone) setHasSso(has);
     });
-    // Google, a sign-up and the captcha are shown only when the gateway advertises them.
+    // Google and a sign-up are shown only when the gateway advertises them.
     void discovered(base).then((said) => {
       if (!gone) setFloor(said);
     });
@@ -72,11 +69,10 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
 
   const askOrgs = async (): Promise<void> => {
     const pair = `${email.trim()}\n${password}`;
-    // The widget still solving: the lookup waits for a later blur, and the sign-in itself still works.
-    if (email.trim() === "" || password === "" || pair === asked.current || !captcha.ready) return;
+    if (email.trim() === "" || password === "" || pair === asked.current) return;
     asked.current = pair;
     try {
-      const listed = await orgsForPassword(base, email.trim(), password, captcha.spend());
+      const listed = await orgsForPassword(base, email.trim(), password);
       if (listed === null) {
         setKnown(false);
         return;
@@ -95,7 +91,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
     setBusy(true);
     setRefused(null);
     try {
-      onSigned(await loginWithPassword(base, { org: org.trim(), email: email.trim(), password }, DEVICE, captcha.spend()));
+      onSigned(await loginWithPassword(base, { org: org.trim(), email: email.trim(), password }, DEVICE));
     } catch (failed) {
       setRefused(failed instanceof GatewayError ? failed.message : String(failed));
     } finally {
@@ -195,9 +191,7 @@ export function Login({ base, onSigned }: { base: string; onSigned: (signed: Sig
           )
         )}
 
-        {captcha.widget}
-
-        <button className="login-go" type="submit" disabled={busy || !captcha.ready}>
+        <button className="login-go" type="submit" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
 

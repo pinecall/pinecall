@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 // Each door sends its own action, and the gateway holds Cloudflare's answer to it (accounts/service/turnstile.py).
-export type Action = "login" | "signup" | "signup_resend" | "password_reset";
+export type Action = "signup" | "signup_resend" | "password_reset";
 
 const SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 

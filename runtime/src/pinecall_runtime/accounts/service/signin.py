@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from pinecall_runtime.accounts.models import ApiKey, Member
 from pinecall_runtime.accounts.repository import ApiKeyRepository, MemberRepository, SsoRepository
 from pinecall_runtime.accounts.service import emails, members, orgs
-from pinecall_runtime.accounts.service.attempts import SIGN_IN_TRIES, AttemptThrottle
+from pinecall_runtime.accounts.service.attempts import SIGN_IN_TRIES, AttemptThrottle, PasswordThrottle
 from pinecall_runtime.accounts.service.keys import KEY_SCOPES, Issue, issue_key, issue_person_key
 from pinecall_runtime.accounts.service.mail import Outbox
 from pinecall_runtime.accounts.service.one_time import OneTimeSecrets
@@ -153,6 +153,7 @@ class SignIns:
         self.signups = OneTimeSecrets(*SIGNUP, TypeAdapter(PendingSignUp), sessions, vault)
         self.handshakes = OneTimeSecrets(*HANDSHAKE, TypeAdapter(Handshake), sessions, vault)
         self.attempts = AttemptThrottle(sessions, SIGN_IN_TRIES)
+        self.passwords = PasswordThrottle(sessions)
 
 
 # ── passwords ──

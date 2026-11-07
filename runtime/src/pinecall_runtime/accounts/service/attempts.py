@@ -11,6 +11,11 @@ from pinecall_runtime.kit.time import epoch
 WINDOW_S = 60.0
 # Every attempt counts, not only the misses: counting misses would say which guess was right.
 SIGN_IN_TRIES = 5
+# A password is also so many a minute from one place whatever the address, and at one address from
+# wherever: a list of addresses tried from one machine, or one address tried from a list of
+# machines, meets the same minute's wait as a person who mistyped five times.
+PASSWORD_TRIES_A_PLACE = 20
+PASSWORD_TRIES_AN_ADDRESS = 20
 
 
 class TooManyAttempts(TooManyRequests):
@@ -41,3 +46,18 @@ class AttemptThrottle:
         """TooManyAttempts past the window's tries."""
         if not await self.is_allowed(name):
             raise TooManyAttempts(what)
+
+
+class PasswordThrottle:
+    """A password tried: five a minute per address from one place, and a budget per place and per address."""
+
+    def __init__(self, sessions: async_sessionmaker[AsyncSession], clock: Callable[[], float] = epoch) -> None:
+        self.each = AttemptThrottle(sessions, SIGN_IN_TRIES, clock)
+        self.a_place = AttemptThrottle(sessions, PASSWORD_TRIES_A_PLACE, clock)
+        self.an_address = AttemptThrottle(sessions, PASSWORD_TRIES_AN_ADDRESS, clock)
+
+    async def check(self, client: str, email: str, org: str | None = None) -> None:
+        """TooManyAttempts once any of the three counts is past its tries; the sentence is the same whichever."""
+        await self.each.check(f"{client} {org or '*'}/{email}", email)
+        await self.a_place.check(f"place {client}", email)
+        await self.an_address.check(f"address {email}", email)
