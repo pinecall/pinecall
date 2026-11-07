@@ -1,10 +1,10 @@
-/** Corner pop-ups for new calls and handoff requests, linking to the live call. */
+/** Corner pop-ups for new calls and handoff requests from real callers, linking to the live call; a simulation never pops. */
 
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 
-import { elapsed, wantsAPerson, whoOn } from "@pinecall/core/calls";
+import { elapsed, isSimulated, wantsAPerson, whoOn } from "@pinecall/core/calls";
 import { useOrg } from "../lib/org";
 import { webVisitor } from "../lib/format";
 import { isOurs } from "../lib/ours";
@@ -44,12 +44,13 @@ export function Ringing(): ReactNode {
       return;
     }
     const seen = known.current;
+    // A model playing a caller is a test somebody started, not a caller to answer: it never pops.
+    const real = live.filter((line) => !isSimulated(line));
     // Skip calls this tab started (Talk, Chat, widget preview).
-    const arrived = live.filter((line) => !seen.has(line.call) && !isOurs(line.call));
+    const arrived = real.filter((line) => !seen.has(line.call) && !isOurs(line.call));
     live.forEach((line) => seen.add(line.call));
-    arrived.forEach((line) => seen.add(line.call));
     // Asks for a person pop even on calls that are not new.
-    const wanted = live.filter((line) => wantsAPerson(line) && !asking.current.has(line.call));
+    const wanted = real.filter((line) => wantsAPerson(line) && !asking.current.has(line.call));
     wanted.forEach((line) => asking.current.add(line.call));
     live.filter((line) => !wantsAPerson(line)).forEach((line) => asking.current.delete(line.call));
     setNotices((shown) => {

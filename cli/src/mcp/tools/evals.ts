@@ -167,6 +167,8 @@ export const simulate = tool({
     background_noise: z.number().optional().describe("spoken calls: dB under the caller of what plays behind them"),
     ambience: z.enum(service.AMBIENCES).optional().describe("spoken calls: what plays behind the caller; the persona's own when left out"),
     packet_loss: z.number().min(0).max(1).optional().describe("spoken calls: the share of the caller's packets lost, 0 to 1"),
+    pause_s: z.number().min(0).max(10).optional().describe("spoken calls: seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once"),
+    goal: z.string().optional().describe("what the caller phones about this run, in the first person, over the persona's goal; given, a caller of Pinecall's library is not briefed on the agent"),
     llm: z.string().optional().describe("the model that plays the caller this run (vendor/model); the persona's when left out"),
     tts: z.string().optional().describe("the vendor the caller's voice is read by this run; the persona's when left out"),
     caller_voice: z.string().optional().describe("the caller's voice this run, one of that vendor's (`voices`)"),
@@ -178,7 +180,7 @@ export const simulate = tool({
     wait_s: WAIT,
   },
   manual:
-    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (every judge held, then the fastest reply, then the cheapest), each row naming its call. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
+    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. One of Pinecall's personas is briefed first: the gateway gives it the one concrete thing it phones this agent about, in the agent's own terms, keeping its manner; `goal` says it yourself, for any persona, and nobody is briefed. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (every judge held, then the fastest reply, then the cheapest), each row naming its call. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
   handler: async (args, ctx) => {
     const reached = await ctx.session.reach(ctx, args.agent);
     const going = ctx.session.simulations.get(reached.slug);
@@ -201,6 +203,8 @@ export const simulate = tool({
       backgroundNoise: args.background_noise,
       ambience: args.ambience,
       packetLoss: args.packet_loss,
+      pauseS: args.pause_s,
+      goal: args.goal,
     });
     const against = args.against ?? [];
     if (against.length > 1) {

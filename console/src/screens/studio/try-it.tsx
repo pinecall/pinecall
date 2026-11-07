@@ -3,11 +3,14 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { asking, type TestValues } from "../../lib/test-values";
-import { TestValuesPanel } from "../settings";
+import { PersonaEditor } from "../personas";
+import { type Persona } from "../personas/door";
+import { usePersonas } from "../personas/use-personas";
 import { Icon, Segmented } from "../../ui";
 import { useRoom } from "../talk";
 import { fromRoom, Messages, type Message } from "./messages";
 import { Played, Pretend, usePlaying } from "./pretend";
+import { ScenarioCard } from "./scenario";
 import "./try-it.css";
 
 type How = "type" | "talk";
@@ -33,11 +36,12 @@ const HOWS: readonly { value: How; label: ReactNode }[] = [
   },
 ];
 
-export function TryIt({ agent, release, values, onValues, onReset }: { agent: string; release: number; values: TestValues | null; onValues: (values: TestValues | null) => void; onReset: () => void }): ReactNode {
+export function TryIt({ agent, release, values, onReset }: { agent: string; release: number; values: TestValues | null; onReset: () => void }): ReactNode {
   const room = useRoom(agent, values);
-  // Another voice or model for this chat alone, picked in the same panel the Playground opens.
-  const [tuning, setTuning] = useState(false);
-  const { playing, play, stop } = usePlaying(agent);
+  const { playing, pick: pickCaller, again, cancel, play, playNow, stop } = usePlaying(agent);
+  // The callers to pretend to be, and one being written here: saved, it is played at once.
+  const { personas, setPersonas } = usePersonas(agent);
+  const [writing, setWriting] = useState(false);
   const [how, setHow] = useState<How>("type");
   const [over, setOver] = useState(false);
   const [text, setText] = useState("");
@@ -100,17 +104,35 @@ export function TryIt({ agent, release, values, onValues, onReset }: { agent: st
           <span className="sto-chat-under">Answers with release {release}{asking(values) ? " · on test values" : ""}</span>
         </span>
         <Segmented options={HOWS} value={how} onChange={pick} />
-        <button type="button" className={asking(values) ? "sto-icon-button sto-icon-button-on" : "sto-icon-button"} title={asking(values) ? "On test values: another voice or model for this chat" : "Try another voice or model in this chat"} aria-label="Voice and models for this chat" onClick={() => setTuning((was) => !was)}>
-          <Icon name="sliders" size={15} />
-        </button>
         <button type="button" className="sto-icon-button" title="Start over" aria-label="Start over" onClick={() => void startOver()}>
           <Icon name="undo" size={15} />
         </button>
       </div>
-      {tuning && <TestValuesPanel agent={agent} values={values} onApply={onValues} onClose={() => setTuning(false)} />}
-      <Pretend agent={agent} playing={playing} onPlay={(persona) => void play(persona)} disabled={inside} />
+      <Pretend personas={personas ?? []} playing={playing} onPlay={(persona) => void pickCaller(persona)} onNew={() => setWriting(true)} disabled={inside}>
+        {playing.scenario !== null && <ScenarioCard agent={agent} scenario={playing.scenario} voice={how === "talk"} onCall={(goal) => void play(goal, how === "talk")} onAgain={() => void again()} onCancel={cancel} />}
+      </Pretend>
+      {writing && (
+        <div className="sto-modal" role="dialog" aria-modal aria-label="New caller">
+          <div className="sto-modal-card">
+            <button type="button" className="sto-icon-button sto-modal-close" aria-label="Close" onClick={() => setWriting(false)}>
+              <Icon name="cross" size={16} />
+            </button>
+            <PersonaEditor
+              owners={[agent]}
+              was={undefined}
+              onSaved={(read: Persona[], written) => {
+                setPersonas(read);
+                setWriting(false);
+                const made = read.find((one) => one.name === written.name);
+                if (made !== undefined) void playNow(made, how === "talk");
+              }}
+              onCancel={() => setWriting(false)}
+            />
+          </div>
+        </div>
+      )}
       {playing.call !== null ? (
-        <Played call={playing.call} onOver={setOver} />
+        <Played call={playing.call} goal={playing.goal} spoken={playing.voice} onOver={setOver} onStop={stop} />
       ) : (
         <Messages
           messages={shown}

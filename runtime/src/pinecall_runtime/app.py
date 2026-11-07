@@ -147,6 +147,8 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
     # The agents built in Studio, held by this gateway on its own app socket.
     holder = studio.Holder(serving, threads, http)
     await _started(stack, holder)
+    # What a Studio agent says of itself, for a caller briefed on it or callers written for it before its first call.
+    serving.describers.add(studio.StudioAgents())
     key_cache = keys.KeyCache(sessions, signal)
     await _started(stack, key_cache)
     # Pushed after the wiring, so the calls stop before the logs and the engine close under them.

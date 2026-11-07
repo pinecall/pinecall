@@ -28,6 +28,7 @@ from pinecall_runtime.calls.service.codes import Codes
 from pinecall_runtime.calls.service.counters import VendorCounters
 from pinecall_runtime.calls.service.days import Kept as DaysKept
 from pinecall_runtime.calls.service.days import examine_days, keep_days
+from pinecall_runtime.calls.service.describers import Describer, Describers
 from pinecall_runtime.calls.service.dialing import PlacedCall, Placement, place_call
 from pinecall_runtime.calls.service.drift import rebuild as rebuild_drift
 from pinecall_runtime.calls.service.kills import kill_agent
@@ -76,6 +77,8 @@ __all__ = [
     "Codes",
     "Contact",
     "DaysKept",
+    "Describer",
+    "Describers",
     "Filter",
     "Handoffs",
     "Inbox",

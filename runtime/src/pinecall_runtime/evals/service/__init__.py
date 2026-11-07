@@ -21,6 +21,13 @@ from pinecall_runtime.evals.service.runs import (
     new_run,
     put_run,
 )
+from pinecall_runtime.evals.service.scenarios import (
+    as_scenario,
+    brief_of_agent,
+    briefed,
+    is_the_librarys,
+    says_anything,
+)
 from pinecall_runtime.evals.service.simulations import (
     AT_ONCE,
     Placed,
@@ -52,6 +59,9 @@ __all__ = [
     "Spending",
     "TooManyAtOnce",
     "admit_simulation",
+    "as_scenario",
+    "brief_of_agent",
+    "briefed",
     "caller_model",
     "caller_voice",
     "calling_as",
@@ -65,6 +75,7 @@ __all__ = [
     "improvise_line",
     "in_the_order_placed",
     "irreversible_tools",
+    "is_the_librarys",
     "latency_of",
     "line_of",
     "list_runs",
@@ -74,6 +85,7 @@ __all__ = [
     "put_run",
     "ranked",
     "replay",
+    "says_anything",
     "spoken_call",
     "start_suite",
     "written_call",

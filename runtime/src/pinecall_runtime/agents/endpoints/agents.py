@@ -20,7 +20,7 @@ from pinecall_runtime.agents.auth import (
     sees_every_scope,
 )
 from pinecall_runtime.agents.declaration import AgentConfig, Greeting, Modality
-from pinecall_runtime.agents.service import declarations, hold_audio, settings, widgets
+from pinecall_runtime.agents.service import declarations, hold_audio, kinds, settings, widgets
 from pinecall_runtime.agents.service.registry import AgentRegistry, Registration, named_holder
 from pinecall_runtime.agents.service.settings import Picked, SetByTheClass
 from pinecall_runtime.agents.service.widgets import Clip, Look
@@ -186,7 +186,7 @@ async def list_agents(actor: CallsKey, request: Request, session: Session) -> sc
                 slug=registration.slug,
                 channels=sorted(answering.get(registration.slug, set()) | ON_THE_WEB),
                 holder=await named_holder(session, registration.scope),
-                kind=registration.kind,
+                kind=kinds.kind_of(registration.sdk),
             )
         )
     return schemas.AgentList(agents=listed)

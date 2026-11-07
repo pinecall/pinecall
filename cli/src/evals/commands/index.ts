@@ -61,6 +61,8 @@ export function register(program: Command, ctx: Context): void {
     .option("--background-noise <dB>")
     .option("--ambience <what>")
     .option("--packet-loss <share>")
+    .option("--pause <seconds>", "silence before each of the caller's lines, over the persona's; 0 answers at once")
+    .option("--goal <text>", "what the caller phones about this run, in the first person, over the persona's goal and the briefing")
     .option("--llm <vendor/model>", "the model that plays the caller this run; the persona's when unsaid")
     .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
     .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
@@ -79,6 +81,8 @@ export function register(program: Command, ctx: Context): void {
         backgroundNoise: numberOf("--background-noise", flags.backgroundNoise),
         ambience: flags.ambience,
         packetLoss: numberOf("--packet-loss", flags.packetLoss),
+        pauseS: numberOf("--pause", flags.pause),
+        goal: flags.goal,
         llm: flags.llm,
         tts: flags.tts,
         callerVoice: flags.callerVoice,

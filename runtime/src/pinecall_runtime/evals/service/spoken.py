@@ -157,14 +157,19 @@ def murmur_of(line: Line) -> str:
 
 
 def line_of(
-    behavior: judging.CallerBehavior, interferer_db: float | None, packet_loss: float, ambience: str | None = None
+    behavior: judging.CallerBehavior,
+    interferer_db: float | None,
+    packet_loss: float,
+    ambience: str | None = None,
+    *,
+    pause_s: float | None = None,
 ) -> Line:
-    """The line a caller acting so is on: the noise the request names, else the persona's own."""
+    """The line a caller acting so is on: the noise and the pause the request names, else the persona's own."""
     return Line(
         interferer_db=behavior.interferer_db if interferer_db is None else interferer_db,
         packet_loss=packet_loss or behavior.packet_loss,
         interrupts=behavior.interrupts,
-        pause_s=behavior.pause_s,
+        pause_s=behavior.pause_s if pause_s is None else pause_s,
         backchannels=behavior.backchannels,
         speed=behavior.speed,
         ambience=behavior.ambience if ambience is None else ambience,

@@ -1,4 +1,4 @@
-/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded — and on the right the agent to try, with the way to deploy it under it. */
+/** Studio in the sandbox: the agent's definition in tabs on the left — saved, downloaded, the voice and models its chat is tried with — and on the right the agent to try, with the way to deploy it under it. */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -6,12 +6,13 @@ import { useSearchParams } from "react-router";
 import { GatewayError, saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { dayAndTime } from "../../lib/format";
-import type { TestValues } from "../../lib/test-values";
+import { asking, type TestValues } from "../../lib/test-values";
 import { Button, Icon, Page, Refused, Tabs } from "../../ui";
 import { readSecrets } from "../secrets";
 import { Collection } from "./collect";
 import { deployStudioAgent, readCode, readStudioAgent, saveStudioAgent, type Definition, type StudioAgent } from "./door";
 import { changed } from "./draft";
+import { TestValuesTab } from "../settings";
 import { Head } from "./head";
 import { GreetingTab } from "./greeting";
 import { Instructions } from "./instructions";
@@ -21,8 +22,8 @@ import { TryIt } from "./try-it";
 
 const CONFLICT = 409;
 
-/** The four tabs of the definition. */
-type Tab = "instructions" | "greeting" | "tools" | "collect";
+/** The four tabs of the definition, and the voice and models the room beside is tried with. */
+type Tab = "instructions" | "greeting" | "tools" | "collect" | "voice";
 
 /** What the editor is doing, so one button at a time says so. */
 type Busy = "saving" | "deploying" | "downloading" | "reloading" | null;
@@ -133,6 +134,7 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
     { tab: "greeting" as const, name: "Greeting", icon: <Icon name="chat" size={15} /> },
     { tab: "tools" as const, name: "Tools", icon: <Icon name="plug" size={15} />, mark: draft.tools.length === 0 ? undefined : <span className="sto-tab-mark">{draft.tools.length}</span> },
     { tab: "collect" as const, name: "Data collection", icon: <Icon name="clipboard" size={15} />, mark: draft.collect === null || draft.collect === undefined ? undefined : <span className="sto-tab-mark">On</span> },
+    { tab: "voice" as const, name: "Voice & models", icon: <Icon name="sliders" size={15} />, mark: asking(tried) ? <span className="sto-tab-mark">Trying</span> : undefined },
   ];
   const asked = params.get("tab");
   const tab: Tab = tabs.some((one) => one.tab === asked) ? (asked as Tab) : "instructions";
@@ -168,9 +170,15 @@ export function Editor({ initial }: { initial: StudioAgent }): ReactNode {
           {tab === "greeting" && <GreetingTab greeting={draft.greeting} onChange={(greeting) => edit({ greeting })} />}
           {tab === "tools" && <Tools agent={name} definition={draft} secrets={secrets} onChange={(tools) => edit({ tools })} />}
           {tab === "collect" && <Collection collect={draft.collect} secrets={secrets} onChange={(collect) => edit({ collect })} />}
+          {tab === "voice" && (
+            <div className="sto-panel">
+              <p className="sto-blurb">Try another voice or model in the chat on the right. Only that chat changes: {name}&apos;s saved settings are in Configure.</p>
+              <TestValuesTab agent={name} values={tried} onApply={setTried} />
+            </div>
+          )}
         </Page>
       </div>
-      <TryIt key={round} agent={name} release={read.release} values={tried} onValues={setTried} onReset={() => setRound((was) => was + 1)} />
+      <TryIt key={round} agent={name} release={read.release} values={tried} onReset={() => setRound((was) => was + 1)} />
     </div>
   );
 }

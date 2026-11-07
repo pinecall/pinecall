@@ -10,7 +10,7 @@ from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import Reader, TheServing, reading
 from pinecall_runtime.enums import KeyScope
-from pinecall_runtime.evals import schemas
+from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey
 from pinecall_runtime.evals.endpoints.reading import (
     asked_by,
@@ -21,7 +21,7 @@ from pinecall_runtime.evals.endpoints.reading import (
 from pinecall_runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
 from pinecall_runtime.judging import schemas as judged
 from pinecall_runtime.judging import service as judging
-from pinecall_runtime.kit.auth import Actor, Scope
+from pinecall_runtime.kit.auth import Actor
 from pinecall_runtime.kit.handles import TheHandles
 from pinecall_runtime.kit.time import epoch
 from pinecall_runtime.postgres import Session
@@ -95,6 +95,20 @@ async def generate_personas(
         evals=spent.evals,
         cost_usd=spent.judge_cost_usd or 0.0,
     )
+
+
+# What `pinecall simulate` plays is improvised on its side: it asks here, once, for the caller as the
+# gateway would brief it — a library caller given what it phones this agent about; any other as it is.
+@router.post("/v1/agents/{slug}/personas/{name}/brief")
+async def brief_persona(
+    slug: KnownAgent, name: str, actor: EvalsKey, serving: TheServing, session: Session
+) -> judged.CallerPersona:
+    """The persona as a simulation plays it: Pinecall's briefed on this agent (one eval), the agent's own as written."""
+    roster = await declared_personas_of(session, serving, actor.scope, slug)
+    persona = await judging.persona_named(session, actor.org, slug, name, roster)
+    if persona is None:
+        raise NotFound(judging.NO_SUCH_PERSONA.format(name=name, agent=slug))
+    return await service.briefed(session, serving, actor.scope, slug, service.calling_as(persona))
 
 
 # A model or a vendor this box lacks, or that nobody keyed, is refused when written, not on the call that
@@ -204,13 +218,7 @@ def _played_by(run: calls.PersonaRun) -> dict[str, str | None] | None:
 async def _brief_of(
     session: Session, serving: calls.Serving, actor: Actor, slug: str, body: judged.GeneratePersonas
 ) -> judging.Brief:
-    scope: Scope = actor.scope
-    registration = serving.registry.serving(scope, slug, None)
-    declared = None if registration is None else registration.config
-    newest = await calls.find_calls(session, scope, calls.ListFilters(agent=slug), limit=1)
-    prompt = ""
-    if newest.calls:
-        prompt = await calls.prompt_of(session, scope.org, await serving.logs.store.whole(newest.calls[0]))
+    read = await service.brief_of_agent(session, serving, actor.scope, slug)
     call = ""
     if body.from_call is not None:
         entries, read_as = await readable(session, serving, actor, body.from_call)
@@ -221,14 +229,4 @@ async def _brief_of(
         if found is None:
             raise NotFound(judging.NO_SUCH_PERSONA.format(name=body.template, agent=slug))
         template = found.persona
-    tools: tuple[str, ...] = ()
-    if declared is not None:
-        tools = tuple(f"{tool.name}: {tool.description}" for tool in declared.tools)
-    return judging.Brief(
-        prompt=prompt,
-        tools=tools,
-        knowledge="" if declared is None or declared.knowledge is None else declared.knowledge,
-        about=body.about,
-        call=call,
-        template=template,
-    )
+    return replace(read, about=body.about, call=call, template=template)

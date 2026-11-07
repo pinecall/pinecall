@@ -6,6 +6,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- `pinecall simulate` briefs one of Pinecall's personas before it plays it: the gateway gives the
+  caller the one concrete thing it phones this agent about (`POST …/personas/{name}/brief`), and the
+  caller's manner stays; the terminal prints what it calls about before the first line. `--goal <text>`
+  (the MCP tool's `goal`) says what the caller phones about yourself, for any persona, and nobody is
+  briefed. `--pause <seconds>` (and the MCP `simulate` tool's `pause_s`) sets the silence before each of
+  the caller's lines on a spoken call, over the persona's own.
+
 - **`--against` takes `end_of_turn=`** (`stt`, `livekit`, `smart-turn`), so a comparison can put the same ears under
   each detector; the table names it (`end of turn livekit`).
 - **A comparison's row that ended in error says so.** A call whose ears failed before the caller spoke was judged on its

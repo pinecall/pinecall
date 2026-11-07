@@ -9,6 +9,7 @@ from pinecall_runtime.studio.service.agents import (
     save_agent,
     try_tool,
 )
+from pinecall_runtime.studio.service.briefing import StudioAgents, brief_of_definition
 from pinecall_runtime.studio.service.definition import declaration, identity, parsed, tool_specs, tools_block, view
 from pinecall_runtime.studio.service.export import class_of, project_of
 from pinecall_runtime.studio.service.fetch import Answer, Request, request_of, send
@@ -21,7 +22,9 @@ __all__ = [
     "Holder",
     "ReleaseMoved",
     "Request",
+    "StudioAgents",
     "StudioSocket",
+    "brief_of_definition",
     "changed",
     "class_of",
     "create_agent",

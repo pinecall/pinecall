@@ -18,6 +18,7 @@
     "./feed": "./src/feed.ts",
     "./seat": "./src/seat.ts",
     "./use-listen": "./src/use-listen.ts",
+    "./transcripts": "./src/transcripts.ts",
     "./use-room-open": "./src/use-room-open.ts",
     "./use-supervise": "./src/use-supervise.ts",
     "./verbs": "./src/verbs.ts",

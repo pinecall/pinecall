@@ -750,13 +750,18 @@ names a version of the corner the run plays on.
 
 ```
 pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
-                  [--background-noise dB] [--ambience cafe] [--packet-loss 0.05]
-                  [--llm vendor/model] [--tts vendor] [--caller-voice id]
+                  [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--pause 0]
+                  [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
                   [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--agent <name>] [--file agent.tsx]
 ```
 
 A model in the gateway plays the caller — every turn improvised from the persona's goal, its style
-and its own facts, with no script. The agent is whoever holds it — your `pinecall start`, a
+and its own facts, with no script. One of Pinecall's personas is briefed first: the gateway gives it
+the one concrete thing it phones this agent about, in the agent's own terms, and keeps its manner
+(`POST …/personas/{name}/brief`, one eval), and prints what it calls about before the first line; a
+persona written for the agent is played as written. `--goal` says what the caller phones about
+yourself, in the first person, for any persona: nobody is briefed, and the manner, the facts and what
+it expects stay the persona's. `--pause` is the silence before each of the caller's lines on a spoken call, over the persona's own. The agent is whoever holds it — your `pinecall start`, a
 colleague's, production's with `--prod`; nothing is started here — this terminal prints the
 conversation, the gateway holds the provider keys.
 

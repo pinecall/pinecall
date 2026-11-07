@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -22,6 +22,7 @@ from pinecall_runtime.calls.schemas import LookupRequest
 from pinecall_runtime.calls.service import openings
 from pinecall_runtime.calls.service.codes import Codes
 from pinecall_runtime.calls.service.counters import VendorCounters
+from pinecall_runtime.calls.service.describers import Describers
 from pinecall_runtime.calls.service.live import Live, Served
 from pinecall_runtime.calls.service.tool_calls import ToolCalls
 from pinecall_runtime.enums import Direction, KeyScope, Opener
@@ -64,6 +65,8 @@ class Serving:
     # The fleet as this gateway hears it, and the dispatcher that sends a call into a room.
     roster: fleet.Roster
     offering: fleet.Offering
+    # Who says what an agent does with no call to read: the domains above that hold definitions, wired at start.
+    describers: Describers = field(default_factory=Describers)
 
     @property
     def now(self) -> datetime:

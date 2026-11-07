@@ -260,6 +260,8 @@ def test_the_line_is_the_requests_noise_or_else_the_personas_and_carries_how_it_
         0.4,
         1.5,
     )
+    # A preview wants a caller that answers at once: the request's pause stands over the persona's.
+    assert line_of(behavior, None, 0.0, pause_s=0.0).pause_s == 0.0
     assert (own.backchannels, own.speed, own.ambience) == (0.3, 0.8, "office")
     named = line_of(behavior, 20.0, 0.1, "street")
     assert (named.interferer_db, named.packet_loss, named.interrupts) == (20.0, 0.1, 0.4)

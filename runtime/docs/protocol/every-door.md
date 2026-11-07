@@ -54,6 +54,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `DELETE` | `/v1/agents/{slug}/personas/{name}` | evals | Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's or while the class declares its personas. |
 | `PUT` | `/v1/agents/{slug}/personas/{name}` | evals | Write one of the agent's callers whole, or rename one from `was`; or switch one of Pinecall's; 409 while the class declares its personas. |
 | `POST` | `/v1/agents/{slug}/personas/generate` | evals | Callers written for the agent from its prompt, tools, knowledge, a call or a template; saved nowhere. |
+| `POST` | `/v1/agents/{slug}/personas/{name}/brief` | evals | The persona as a simulation plays it: Pinecall's briefed on this agent (what it phones about, one eval), the agent's own as written. |
 | `GET` | `/v1/agents/{slug}/personas/{name}/runs` | evals | The calls the persona made to the agent in the key's environment and scope, newest first. |
 | `GET` | `/v1/personas` | evals | Every agent's callers, by agent and then by name; each row says whose. |
 | `POST` | `/v1/simulations` | evals | Put one of the agent's personas on it, written or spoken, against whoever holds it; the call's id at once. |

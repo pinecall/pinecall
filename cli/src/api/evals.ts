@@ -133,6 +133,8 @@ export interface VoiceCallRequest {
   interferer_db?: number;
   packet_loss?: number;
   ambience?: string;
+  /** Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once. */
+  pause_s?: number;
   state?: Record<string, unknown>;
 }
 
@@ -180,6 +182,11 @@ export function getRun(gw: GatewayClient, id: string): Promise<EvalRun> {
 }
 
 /** The simulated caller's next line, asked of the runtime, which holds the provider keys. */
+/** `POST /v1/agents/{slug}/personas/{name}/brief`: the persona as a simulation plays it — Pinecall's briefed on this agent, the agent's own as written. */
+export function briefPersona(gw: GatewayClient, agent: string, name: string): Promise<CallerPersona> {
+  return gw.post<CallerPersona>(`/v1/agents/${seg(agent)}/personas/${seg(name)}/brief`, {});
+}
+
 export function nextCallerLine(gw: GatewayClient, body: { persona: CallerPersona; heard: Spoken[]; turns_left: number }): Promise<NextLine> {
   return gw.post<NextLine>("/v1/evals/caller", body);
 }
@@ -218,7 +225,10 @@ export interface SimulationRequest {
   interferer_db?: number;
   packet_loss?: number;
   ambience?: string;
+  pause_s?: number;
   played_by?: { llm?: string; tts?: string; voice?: string };
+  /** What the caller phones about this run, over the persona's goal; given, a caller of the library is not briefed. */
+  scenario?: { goal: string; facts?: Record<string, string> };
   against?: AgentValues;
 }
 

@@ -1,4 +1,4 @@
-/** Listen to a live call through a hidden, receive-only LiveKit seat. */
+/** Listen to a live call through a hidden, receive-only LiveKit seat, and read its two voices as the room says them. */
 
 import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GatewayError } from "./api";
 import { useCredentials } from "./credentials";
 import { seatIn } from "./seat";
+import { followTranscripts, upsert, type Said } from "./transcripts";
 
 /** `off`: not in the room; `muted`: joined but silent; `on`: audible; `over`: the call ended, no seat is left. */
 export type Listening = "off" | "joining" | "muted" | "on" | "failed" | "over";
@@ -17,6 +18,8 @@ const IS_OVER = 409;
 export interface Ear {
   listening: Listening;
   error: string | null;
+  /** What was said since the ear joined, segment by segment as the room says it: the karaoke. */
+  lines: Said[];
   /** Join the room muted. */
   join: () => Promise<void>;
   /** Mute or unmute without leaving. */
@@ -34,6 +37,7 @@ export function useListen(call: string): Ear {
   const credentials = useCredentials();
   const [listening, setListening] = useState<Listening>("off");
   const [error, setError] = useState<string | null>(null);
+  const [lines, setLines] = useState<Said[]>([]);
   const room = useRef<Room | null>(null);
   const speakers = useRef<HTMLMediaElement[]>([]);
   // Read by tracks that subscribe after an unmute: the agent's track can arrive seconds after the
@@ -47,6 +51,7 @@ export function useListen(call: string): Ear {
       const seat = await seatIn(credentials, call, "listen");
       const joined = new Room();
       room.current = joined;
+      followTranscripts(joined, (line) => setLines((known) => upsert(known, line)));
       // Attached to the document: detached media elements are subject to autoplay blocking.
       joined.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
         if (track.kind !== Track.Kind.Audio) return;
@@ -90,5 +95,5 @@ export function useListen(call: string): Ear {
     };
   }, []);
 
-  return { listening, error, join, hear, leave };
+  return { listening, error, lines, join, hear, leave };
 }

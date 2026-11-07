@@ -40,8 +40,6 @@
   gap: 5px;
 }
 
-.sto-icon-button-on { color: var(--accent-ink); background: var(--accent-soft); }
-
 .sto-icon-button {
   display: inline-flex;
   align-items: center;
@@ -64,8 +62,10 @@
 .sto-pretend {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 16px 10px;
+  gap: 8px;
+  padding: 4px 16px 14px;
+  border-bottom: 1px solid var(--line-3);
+  margin-bottom: 6px;
 }
 
 .sto-pretend-label {
@@ -341,3 +341,43 @@
     border-top: 1px solid var(--line-3);
   }
 }
+
+/* + New caller: a chip like the others, quieter. */
+.sto-chip-new { color: var(--ink-4); box-shadow: inset 0 0 0 1px var(--line-2); }
+.sto-chip-new:hover { color: var(--ink); }
+
+/* A caller written without leaving the page: the Personas form in a dialog over the screen. */
+.sto-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgb(0 0 0 / 0.45); }
+.sto-modal-card { position: relative; width: min(820px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; border-radius: 16px; background: var(--ground); box-shadow: var(--shadow-pop); }
+.sto-modal-close { position: absolute; top: 14px; right: 14px; }
+
+/* A caller being played: heard when spoken, and stopped from here. */
+.sto-played { display: flex; align-items: center; gap: 10px; padding: 6px 16px 10px; font-size: 12.5px; color: var(--ink-3); }
+.sto-played-ear { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; }
+.sto-played-said { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sto-ear-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--line-hover); }
+.sto-ear-dot-on { background: var(--green-dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-dot) 25%, transparent); }
+.sto-ear-mute { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--accent-ink); cursor: pointer; }
+
+/* What the caller is about to phone about, read — and edited — before the call. */
+.sto-scenario { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding: 10px 12px 12px; border-radius: 12px; background: var(--ground-4); }
+.sto-scenario-top { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.sto-scenario-label { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-5); }
+.sto-scenario-tag { overflow: hidden; font-size: 12px; color: var(--accent-ink); white-space: nowrap; text-overflow: ellipsis; }
+.sto-scenario-tag-off { color: var(--ink-5); }
+.sto-scenario-gap { flex: 1; }
+.sto-scenario-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-5); cursor: pointer; }
+.sto-scenario-icon:hover:not(:disabled) { background: var(--ground); color: var(--ink); }
+.sto-scenario-icon:disabled { opacity: 0.4; cursor: default; }
+.sto-scenario-goal { field-sizing: content; width: 100%; min-height: 2lh; max-height: 8lh; margin: 0 -6px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; line-height: 1.45; resize: none; box-sizing: content-box; }
+.sto-scenario-goal:hover { background: var(--ground); }
+.sto-scenario-goal:focus { outline: none; background: var(--ground); box-shadow: inset 0 0 0 1px var(--line-control); }
+.sto-scenario-reading { display: flex; flex-direction: column; gap: 7px; padding: 6px 0; }
+.sto-scenario-reading span { height: 9px; border-radius: 4px; background: var(--ground); animation: sto-reading 1.2s ease-in-out infinite; }
+.sto-scenario-reading span:last-child { width: 62%; animation-delay: 0.15s; }
+@keyframes sto-reading { 50% { opacity: 0.4; } }
+.sto-scenario-facts { display: flex; flex-wrap: wrap; gap: 4px; }
+.sto-fact { display: inline-flex; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--ground); font-size: 11.5px; color: var(--ink-3); }
+.sto-fact-name { color: var(--ink-5); }
+.sto-scenario-foot { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.sto-scenario-hint { min-width: 0; font-size: 11.5px; color: var(--ink-5); }

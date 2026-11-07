@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from pinecall_runtime.judging.schemas import CallerPersona, JudgeScore
+from pinecall_runtime.judging.service import specs
 from pinecall_runtime.kit.schemas import Row, Schema
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
@@ -211,6 +212,8 @@ class PlaceVoiceCallRequest(Schema):
     interferer_db: float | None = Field(default=None, ge=0, le=60)
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
+    # Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once.
+    pause_s: float | None = Field(default=None, ge=0, le=specs.LONGEST_PAUSE_S)
     # The state the agent opens the call in: the persona's, as `pinecall simulate` reads it.
     state: JsonObject = Field(default_factory=dict[str, Json])
 
@@ -236,6 +239,13 @@ class PlayedBy(Schema):
     voice: str | None = None
 
 
+class Scenario(Schema):
+    """What the caller phones about this run: a goal in the first person, and the facts that goal needs."""
+
+    goal: str = Field(min_length=1, max_length=4000)
+    facts: dict[str, str] = Field(default_factory=dict[str, str])
+
+
 class SimulationWants(Schema):
     """What a simulation is placed with: the agent, one of its personas, a written or spoken line, who plays it."""
 
@@ -250,8 +260,14 @@ class SimulationWants(Schema):
     interferer_db: float | None = Field(default=None, ge=0, le=60)
     packet_loss: float = Field(default=0.0, ge=0, le=1)
     ambience: Ambience | None = None
+    # Spoken alone: seconds of silence before each of the caller's lines, over the persona's own; 0 for
+    # a caller that answers at once, as a preview wants.
+    pause_s: float | None = Field(default=None, ge=0, le=specs.LONGEST_PAUSE_S)
     # The model, the voice's vendor and the voice this run alone is played on.
     played_by: PlayedBy | None = None
+    # What the caller phones about this run, over the persona's goal: what `/brief` wrote and a person
+    # read, or edited, before the call. Given, a caller of the library is not briefed again.
+    scenario: Scenario | None = None
 
 
 class SimulationRequest(SimulationWants):

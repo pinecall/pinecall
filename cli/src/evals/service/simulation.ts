@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { Entry } from "../../api/calls.js";
 import * as calls from "../../api/calls.js";
 import type { Persona } from "../../api/cases.js";
+import { isPinecalls } from "./personas.js";
 import * as api from "../../api/evals.js";
 import { Chat } from "../../calls/service/chat.js";
 import type { Context } from "../../context.js";
@@ -18,6 +19,7 @@ import { AMBIENCES, allEntries, mediansOf, ONLY_ON_A_LINE, spoilsTheLine, type M
 export const TURNS = 15;
 const A_TURNS = "--turns is how many turns the caller gets, 1 to 40";
 const A_LOSS = "--packet-loss is a share of the caller's packets: a number from 0 to 1, such as 0.05";
+const A_PAUSE = "--pause is seconds of silence before each of the caller's lines, 0 to 10";
 
 // Background TV at 15 dB below the caller: measured to leak into `turn.user`.
 const DEFAULT_NOISE_DB = 15;
@@ -36,6 +38,10 @@ export const SimulateInput = z.object({
   backgroundNoise: z.number().optional(),
   ambience: z.enum(AMBIENCES, { error: `--ambience takes ${AMBIENCES.join(", ")}` }).optional(),
   packetLoss: z.number().min(0, A_LOSS).max(1, A_LOSS).optional(),
+  // Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once.
+  pauseS: z.number().min(0, A_PAUSE).max(10, A_PAUSE).optional(),
+  // What the caller phones about this run, in the first person, over the persona's goal: given, nobody is briefed.
+  goal: z.string().min(1).optional(),
   // Who plays the caller this run, over the persona's own: vendor/model, a voice's vendor, a voice id.
   llm: z.string().min(1).optional(),
   tts: z.string().min(1).optional(),
@@ -49,6 +55,8 @@ export interface SimulationListeners {
   onEntry?: (entry: Entry) => void;
   /** The call has an id. */
   onOpened?: (call: string) => void;
+  /** The caller knows what it phones about: the goal as it plays it, briefed or given. */
+  onBriefed?: (goal: string) => void;
 }
 
 /** A finished simulation: its call, the turns, the latency medians, and the score when judged. */
@@ -89,6 +97,15 @@ function why(score: CallScore): string {
   return score.not_judged ?? "no judge held or broke, the rest classified the call or did not apply";
 }
 
+/** The caller with what it phones about: the goal the run gives it; else one of Pinecall's library briefed by the gateway on this agent, one written for the agent as it is. */
+export async function phoningAbout(ctx: Context, agent: string, persona: Persona, input: Pick<SimulateInput, "goal">): Promise<Persona> {
+  if (input.goal !== undefined) return { ...persona, goal: input.goal };
+  if (!isPinecalls(persona)) return persona;
+  const told = await api.briefPersona(ctx.gateway(), agent, persona.name);
+  const facts = told.facts === undefined ? persona.facts : Object.fromEntries(Object.entries(told.facts).map(([name, value]) => [name, String(value)]));
+  return { ...persona, goal: told.goal, facts };
+}
+
 /** The persona as this run plays it: the run's model and voice over its own; another voice vendor drops its voice. */
 export function playedBy(persona: Persona, input: Pick<SimulateInput, "llm" | "tts" | "callerVoice">): Persona {
   const voice = input.callerVoice ?? (input.tts === undefined ? persona.voice : null);
@@ -122,7 +139,8 @@ export function callerOf(persona: Persona): api.CallerPersona {
  * app in its socket; a spoken one reaches whoever takes unclaimed calls, held by the runtime.
  */
 export async function simulate(ctx: Context, reached: Reached, written: Persona, input: SimulateInput, listeners: SimulationListeners = {}): Promise<Simulated> {
-  const persona = playedBy(written, input);
+  const persona = playedBy(await phoningAbout(ctx, reached.slug, written, input), input);
+  listeners.onBriefed?.(persona.goal);
   if (!input.voice && spoilsTheLine(input)) throw new UsageError(ONLY_ON_A_LINE);
   const heard = new Heard(listeners);
   const placed = input.voice ? await outLoud(ctx, reached.slug, persona, input, heard, listeners) : await inWriting(ctx, reached, persona, input, heard);
@@ -177,6 +195,7 @@ async function outLoud(ctx: Context, agent: string, persona: Persona, input: Sim
     persona: callerOf(persona),
     turns: input.turns,
     ...degraded,
+    ...(input.pauseS === undefined ? {} : { pause_s: input.pauseS }),
     ...(Object.keys(persona.state).length === 0 ? {} : { state: persona.state }),
   });
   // The id is said only after the first entry, so a refused call is never announced.

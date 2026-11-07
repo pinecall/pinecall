@@ -1,24 +1,12 @@
 /** What the Chat screen draws: the two voices as the room says them — the caller's settled into the log's turns — each tool the model ran as one card, and the log's marks between them. */
 
 import { type Entry } from "@pinecall/core/wire/envelope";
+import type { Said } from "@pinecall/core/transcripts";
 
 import { supervisorMark } from "../../lib/supervisor-mark";
 
-/** Who a line belongs to. The agent is a participant of kind AGENT; everyone else is the caller. */
-export type Speaker = "user" | "agent";
-
-/** One segment of speech: grey while `final` is false, solid once the trailer settles it. */
-export interface Said {
-  kind: "said";
-  id: string;
-  speaker: Speaker;
-  text: string;
-  final: boolean;
-  /** Written rather than spoken, and not on the log yet: drawn dimmed until its turn.user lands. */
-  pending?: boolean;
-  /** The log has closed the caller's turn this line stands for: its words are the turn's own. */
-  landed?: boolean;
-}
+export type { Said, Speaker } from "@pinecall/core/transcripts";
+export { SEGMENT_ID, TRANSCRIPTION_FINAL, TRANSCRIPTION_TOPIC, upsert } from "@pinecall/core/transcripts";
 
 /** One thing the log said between two sentences: an error, or a supervisor stepping in. */
 export interface Mark {
@@ -45,13 +33,6 @@ export interface ToolRun {
 
 export type Line = Said | Mark | ToolRun;
 
-// Both sides of the conversation arrive from the room on this topic, as livekit-agents publishes
-// them: the caller's transcript as one whole stream per STT update, the agent's as one stream per
-// sentence written in deltas at the pace the voice is synthesised. That pace is the karaoke.
-export const TRANSCRIPTION_TOPIC = "lk.transcription";
-export const SEGMENT_ID = "lk.segment_id";
-export const TRANSCRIPTION_FINAL = "lk.transcription_final";
-
 // What a person TYPES reaches the same session on this topic: livekit-agents' text input, read
 // from the participant the session is pinned to — the caller, which is this tab. The agent answers
 // it out loud, in the same call, as it answers a spoken turn.
@@ -63,15 +44,6 @@ export const CHAT_TOPIC = "lk.chat";
 export const A_BEAT_MS = 1500;
 
 const BROKE = "✗";
-
-/** Add or replace one line by id, keeping first-arrival order — a transcript is never reordered. */
-export function upsert(lines: Line[], line: Line): Line[] {
-  const at = lines.findIndex((row) => row.id === line.id);
-  if (at === -1) return [...lines, line];
-  const next = lines.slice();
-  next[at] = line;
-  return next;
-}
 
 /** The words of a line, keeping the spaces, so the renderer can animate each arrival once. */
 export function words(text: string): string[] {

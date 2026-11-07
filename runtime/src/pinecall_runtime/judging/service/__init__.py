@@ -61,7 +61,7 @@ from pinecall_runtime.judging.service.catalog import (
     played_on,
 )
 from pinecall_runtime.judging.service.declared import check_declared
-from pinecall_runtime.judging.service.generating import Brief, write_personas
+from pinecall_runtime.judging.service.generating import Brief, write_personas, write_scenario
 from pinecall_runtime.judging.service.goldens import golden_judges, golden_lookup
 from pinecall_runtime.judging.service.groups import (
     A_GROUP,
@@ -246,4 +246,5 @@ __all__ = [
     "write_judge",
     "write_library_persona",
     "write_personas",
+    "write_scenario",
 ]

@@ -59,7 +59,9 @@ function wanted(agent: string, persona: Persona, input: SimulateInput): Omit<api
       ? {}
       : { interferer_db: input.backgroundNoise ?? 0, packet_loss: input.packetLoss ?? 0, ...(input.ambience === undefined ? {} : { ambience: input.ambience }) };
   const played = ranOn(input);
-  return { agent, persona: persona.name, voice: input.voice, turns: input.turns, ...degraded, ...(played === undefined ? {} : { played_by: played }) };
+  // The gateway plays and briefs the caller; a goal given is the scenario it phones about instead.
+  const scenario = input.goal === undefined ? {} : { scenario: { goal: input.goal } };
+  return { agent, persona: persona.name, voice: input.voice, turns: input.turns, ...degraded, ...(played === undefined ? {} : { played_by: played }), ...scenario };
 }
 
 /**

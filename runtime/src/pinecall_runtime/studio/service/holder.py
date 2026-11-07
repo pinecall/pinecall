@@ -10,7 +10,7 @@ from typing import Any, cast
 
 import httpx
 
-from pinecall_runtime.agents.service.registry import BUILT_IN_STUDIO
+from pinecall_runtime.agents.service import kinds
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.enums import Env, KeyScope
 from pinecall_runtime.exceptions import ServiceUnavailable
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Said on the signal as `org|env` whenever an org's Studio agents changed: every gateway holds them again.
 CHANNEL = "studio"
 # What the socket says of itself: the console lists it as the process holding the agent.
-SDK = BUILT_IN_STUDIO
+SDK = kinds.BUILT_IN_STUDIO
 HOST = "pinecall-studio"
 KEY_PREFIX = "studio:"
 LISTEN_RETRY_S = 1.0

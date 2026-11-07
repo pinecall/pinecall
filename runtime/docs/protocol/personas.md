@@ -20,7 +20,7 @@ nobody keyed `503` (the sentence a persona written for it is refused with, so a 
 120 a minute at most (`429` past them), `heard` holds 80 turns, and a turn, the `goal` and the
 `style` 4000 characters each (`422` past them).
 
-`POST /v1/evals/voice` `{call, agent, persona, turns, interferer_db?, packet_loss?, state?}` places
+`POST /v1/evals/voice` `{call, agent, persona, turns, interferer_db?, packet_loss?, ambience?, pause_s?, state?}` places
 a spoken call: the agent is dispatched into the room named `call` with the persona, its rule and
 `state` (the object the agent opens the call in, on its `call.started`; absent, the class's own) on
 the dispatch, the caller joins and speaks in a voice the agent does not use (the persona's own unless it is the
@@ -38,7 +38,7 @@ rates, and whether it hung up because the call had spent the providers row's
 one said. A model or a voice the rates do not price costs nothing here, as on a call.
 
 `POST /v1/simulations` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?, ambience?,
-played_by?, against?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
+pause_s?, played_by?, against?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
 calls it, so whatever holds it answers — a process deployed, on a server of the org's, or a
 developer's `pinecall start`. Spoken (`voice`, the default) it is the call above; written, it is
 the chat the widget has, each line the persona's model improvises said once the agent's whole
@@ -53,7 +53,8 @@ acts as its `behavior` says: it talks over that share of the agent's answers (`i
 1) some way into them, as a person cutting in does, so the agent's barge-in is what is tested; it
 murmurs an "mm-hmm" in its language into that share of them (`backchannels`, 0 to 1) a few
 seconds in, keeping its turn, so an agent that stops for a listener's noise is found out; it
-leaves `pause_s` of silence before each line, then speaks it as its voice's vendor sends it, piece
+leaves `pause_s` of silence before each line (the request's `pause_s`, 0 to 10, stands over the
+persona's: a preview asks for 0), then speaks it as its voice's vendor sends it, piece
 by piece, never held until whole, at `speed` times the vendor's tempo (0.5 to 2, the pitch kept);
 and the line carries its noise and loss unless the request names its own — `interferer_db` under
 the caller of the `ambience` it names: a `television` (a voice read in the caller's own), a `cafe`
@@ -65,6 +66,26 @@ line in the world — ten at most, on every gateway together, `429` with `Retry-
 eleventh ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
 call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any call.
+**A caller of the library is briefed before it phones.** Pinecall's personas are written for every
+business, so played as written they phone with nothing to say. When one is put on an agent — here,
+by `pinecall simulate`, or from Studio — the gateway gives it the one concrete thing it calls about,
+in the agent's own terms: the judge model reads what Generate reads and the caller's manner, and
+writes its `goal`, adding a fact only where the goal needs one; its style, its behavior and what it
+expects stay. What it reads of the agent: an agent built in Studio is its definition — its
+instructions, how it opens, its tools — so it is read before anybody has called it; an agent of a class
+writes its prompt per call, so it is the prompt its newest call ran on, its tools and what it knows.
+It is one eval on the judge's key, as a generated caller is (`evals.spent` on the agent's log); a class
+agent nobody has called yet, with no tools, is nothing to brief on, and the caller phones as written, as
+it does when the judge model is down. `POST /v1/agents/{slug}/personas/{name}/brief` is that briefing
+on its own, the `CallerPersona` answered: what the console shows before the call, and what
+`pinecall simulate` asks once before it plays the caller itself. A persona written for the agent is
+never rewritten.
+
+`scenario` `{goal, facts?}` is what the caller phones about this run, said by the one placing it: the
+`goal` in the first person, the `facts` over the persona's own. It is how a briefing a person read — or
+edited — is the one the call plays: the caller is not briefed again, whoever it is. Left out, a caller
+of the library is briefed as above and one written for the agent phones about its own goal.
+
 `played_by` `{llm?, tts?, voice?}` plays the caller on another model, voice vendor or voice for this
 run alone, over the persona's own; each unsaid stays the persona's, and a `tts` with no `voice`
 drops the persona's voice for one of that vendor's the agent does not have. A model, a vendor or a

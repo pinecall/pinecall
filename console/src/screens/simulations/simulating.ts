@@ -19,8 +19,12 @@ export interface Wanted {
   packet_loss?: number;
   /** Spoken alone: what plays behind the caller at that level; the persona's own when left out. */
   ambience?: "television" | "cafe" | "office" | "street";
+  /** Spoken alone: seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once. */
+  pause_s?: number;
   /** Who plays the caller this run, over the persona's own; each unsaid stays the persona's. */
   played_by?: { llm?: string; tts?: string; voice?: string };
+  /** What the caller phones about this run, over the persona's goal: a briefing read, or edited, before the call; given, nobody is briefed again. */
+  scenario?: { goal: string; facts?: Record<string, string> };
 }
 
 /** What a run names of who plays its callers: only the words chosen, or nothing at all. */

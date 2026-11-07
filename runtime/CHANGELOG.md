@@ -8,6 +8,18 @@
   card and every model picker named the retired model as the default. `runs` now takes the model in
   the order a call does — the row's for that vendor, then the default's where the default is that
   vendor, then the plugin's — so the default the console shows is the one that answers.
+- **A caller of Pinecall's library is briefed on the agent before it phones.** Its goal was written
+  for every business ("help with what this business offers"), so it phoned with nothing to say. A
+  simulation now gives it the one concrete thing it calls about, in the agent's own terms — the judge
+  model reads what Generate reads and the caller's manner, one eval — and keeps its style, its
+  behavior and what it expects; `POST /v1/agents/{slug}/personas/{name}/brief` is the briefing on its
+  own, for `pinecall simulate`. An agent built in Studio is read off its definition — its instructions,
+  how it opens, its tools — so a caller is briefed on it, and Generate writes callers for it, before its
+  first call; a class agent is read off the prompt its newest call ran on. `POST /v1/simulations` takes
+  `scenario` `{goal, facts?}`, what the caller phones about this run: the console shows the briefing
+  before the call and plays the one a person read or edited, briefing nobody twice. A simulation also
+  takes `pause_s`, over the persona's pause: Studio's preview asks for 0, so a slow caller does not
+  wait 2.5 s to answer where nobody is testing patience.
 - **The agents list says what each agent is.** `GET /v1/agents` rows carry `kind`: `class` for an
   agent an app of the org holds, `studio` for a definition the gateway holds for Studio. The console
   draws Studio, and writes goldens, personas and judges, for the second alone: a class owns its own.

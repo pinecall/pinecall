@@ -12,6 +12,8 @@ import {
   type ProposedPersona,
 } from "@pinecall/core/wire/rest-evals";
 
+import { z } from "zod";
+
 import { drop, post, put, read, type Credentials } from "@pinecall/core/api";
 import { dev } from "../../lib/dev";
 
@@ -75,6 +77,15 @@ export async function generatePersonas(
   asking: { about?: string; template?: string },
 ): Promise<GeneratedPersonas> {
   return GeneratedPersonasSchema.parse(await post(credentials, `${door(agent)}/generate`, asking));
+}
+
+// The answer is the runtime's CallerPersona; what a person reads before the call is its goal and its facts.
+const BriefedSchema = z.object({ goal: z.string(), facts: z.record(z.string(), z.unknown()).default({}) });
+
+/** What a caller phones about: the persona as a simulation plays it (`POST …/personas/{name}/brief`) — Pinecall's briefed on the agent, one eval; the agent's own as written. */
+export async function briefPersona(credentials: Credentials, agent: string, name: string): Promise<{ goal: string; facts: Record<string, string> }> {
+  const told = BriefedSchema.parse(await post(credentials, `${door(agent, name)}/brief`, {}));
+  return { goal: told.goal, facts: Object.fromEntries(Object.entries(told.facts).map(([fact, value]) => [fact, typeof value === "string" ? value : JSON.stringify(value)])) };
 }
 
 /** Delete a persona; resolves to the updated list. */

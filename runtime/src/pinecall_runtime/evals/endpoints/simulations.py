@@ -132,13 +132,21 @@ async def _placed(
     if registration is None:
         raise registry.NoApp(body.agent)
     call = calls.new_call_id()
+    # The caller phones about what the body says; else a caller of the library is briefed on this agent
+    # before it phones: what it calls about, in the agent's terms.
     caller = service.calling_as(persona)
+    if body.scenario is not None:
+        caller = service.as_scenario(caller, body.scenario.goal, body.scenario.facts)
+    else:
+        caller = await service.briefed(session, serving, scope, body.agent, caller)
     # The place on the line is taken before anything is awaited, and given back if what follows
     # refuses the call: a burst of requests can never all pass the count together.
     simulations.admit(call, scope)
     try:
         await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice, waits=True)
-        line = service.line_of(caller.behavior, body.interferer_db, body.packet_loss, body.ambience)
+        line = service.line_of(
+            caller.behavior, body.interferer_db, body.packet_loss, body.ambience, pause_s=body.pause_s
+        )
         placed = service.Placed(
             call,
             body.agent,
@@ -196,7 +204,9 @@ async def place_voice_call(
     async with simulations.admitted(body.call, scope):
         await service.admit_simulation(session, serving, scope, body.agent, persona, voice=True)
         await service.claim_new_call(session, serving, body.call, body.agent, scope)
-        line = service.line_of(persona.behavior, body.interferer_db, body.packet_loss, body.ambience)
+        line = service.line_of(
+            persona.behavior, body.interferer_db, body.packet_loss, body.ambience, pause_s=body.pause_s
+        )
         placed = service.Placed(body.call, body.agent, persona, body.turns, line, dict(body.state))
         # The request's writes are done: the call is played with no connection of the pool held for it.
         await session.commit()

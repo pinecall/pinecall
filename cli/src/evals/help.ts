@@ -29,7 +29,9 @@ and its own facts — there is no script. The agent is whoever holds it — your
 colleague's, production's with --prod; nothing is started here. The call lands in the log like
 any other. --background-noise, --ambience and --packet-loss are spoken runs only. --llm, --tts and
 --caller-voice play the caller on another model or voice for this run alone; the persona keeps its
-own. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts
+own. One of Pinecall's personas is briefed first: the gateway gives it the one concrete thing it
+phones this agent about, in the agent's own terms, and keeps its manner; --goal says it yourself,
+for any persona, and nobody is briefed. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts
 as one simulation, and what its caller cost is kept with the call. --against runs THE AGENT on
 other values for this run alone — stt=, llm=, tts=, voice=, language=, temperature=, joined by
 commas, as the console's test room does; said twice or more, every configuration is placed at

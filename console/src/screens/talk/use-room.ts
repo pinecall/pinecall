@@ -1,12 +1,13 @@
 /** The Talk screen's room: a visit token from the gateway — a voice call or a written chat — and what is said as it is said. */
 
 import { type Entry } from "@pinecall/core/wire/envelope";
-import { ParticipantKind, RemoteAudioTrack, Room, RoomEvent, Track, type Participant, type RemoteParticipant, type RemoteTrack, type TextStreamReader } from "livekit-client";
+import { ParticipantKind, RemoteAudioTrack, Room, RoomEvent, Track, type Participant, type RemoteParticipant, type RemoteTrack } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { post } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
+import { followTranscripts } from "@pinecall/core/transcripts";
 import { ours } from "../../lib/ours";
 import { asking, type TestValues } from "../../lib/test-values";
 import { earOn, type Ear } from "./ear";
@@ -16,9 +17,6 @@ import {
   joined,
   landed,
   markOf,
-  SEGMENT_ID,
-  TRANSCRIPTION_FINAL,
-  TRANSCRIPTION_TOPIC,
   upsert,
   type Line,
   type Said,
@@ -249,9 +247,7 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
       const joined = new Room();
       room.current = joined;
       // Registered before the room is joined: a handler registered after connect misses the first words.
-      joined.registerTextStreamHandler(TRANSCRIPTION_TOPIC, (reader, from) => {
-        void spoken(joined, reader, from.identity, said);
-      });
+      followTranscripts(joined, said);
       // A chat hears the room only for its text: no voice is attached, whatever arrives.
       if (joining === "talk") {
         joined.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication, participant: RemoteParticipant) => {
@@ -345,26 +341,6 @@ export function useRoom(agent: string, values: TestValues | null = null): Talkin
   const level = useCallback((): number => voice.current?.level() ?? 0, []);
 
   return { phase, mode, call, lines, error, since, muted, speaking, level, open, close, toggleMic, write, hold, heard };
-}
-
-// One segment from its first delta to the trailer that settles it. A segment's line is the text
-// of the most recent stream carrying its id: the caller's final replaces the interim, the agent's
-// single stream grows word by word. `attributes` tells the truth about `final` only after the
-// iteration ends — during the loop it always says "false".
-async function spoken(
-  room: Room,
-  reader: TextStreamReader,
-  identity: string,
-  said: (line: Said) => void,
-): Promise<void> {
-  const id = reader.info.attributes?.[SEGMENT_ID] ?? reader.info.id;
-  const speaker: Speaker = room.remoteParticipants.get(identity)?.kind === ParticipantKind.AGENT ? "agent" : "user";
-  let text = "";
-  for await (const chunk of reader) {
-    text += chunk;
-    said({ kind: "said", id, speaker, text, final: false });
-  }
-  said({ kind: "said", id, speaker, text, final: reader.info.attributes?.[TRANSCRIPTION_FINAL] === "true" });
 }
 
 // The agent's voice arrives as a subscribed audio track; attaching it is what plays it. The
