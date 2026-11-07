@@ -171,6 +171,7 @@ export function Settings(): ReactNode {
                 models={report?.models ?? {}}
                 runs={report?.runs ?? {}}
                 realtime={report?.realtime ?? {}}
+                voiceDefaults={report?.voice_defaults ?? {}}
                 bases={bases}
                 fixed={new Set(answer.fixed)}
                 running={report === null ? null : { hears: report.hears, decides: report.decides, speaks: report.speaks, talks: report.talks ?? null }}

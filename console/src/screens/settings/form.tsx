@@ -44,6 +44,7 @@ export function SettingsForm({
   models,
   runs,
   realtime,
+  voiceDefaults,
   bases,
   fixed,
   running,
@@ -70,6 +71,8 @@ export function SettingsForm({
   runs: Readonly<Record<string, string>>;
   /** By vendor, the models that hear and speak themselves: one picked runs the voice calls alone. */
   realtime: Readonly<Record<string, readonly string[]>>;
+  /** By "<vendor>/<language>", the voice a call speaks when none is picked. */
+  voiceDefaults: Readonly<Record<string, string>>;
   /** Bases in this world for the Bases section; null while loading. */
   bases: readonly KnowledgeBase[] | null;
   /** The settings the agent's class declares itself, by the declaration's names: shown, never edited. */
@@ -132,7 +135,7 @@ export function SettingsForm({
         <Tabs label="Settings" tabs={sectionsFor(wordsOnly)} on={section} onPick={onPickSection} />
       </div>
       {section === "pipeline" && (
-        <Pipeline typed={typed} change={change} knob={knob} plug={plug} providers={providers} defaults={defaults} models={models} runsOn={runs} realtime={realtime} fixed={fixed} running={stages} language={language} own={own} step={step} onStep={onPickStep} />
+        <Pipeline typed={typed} change={change} knob={knob} plug={plug} providers={providers} defaults={defaults} models={models} runsOn={runs} realtime={realtime} voiceDefaults={voiceDefaults} fixed={fixed} running={stages} language={language} own={own} step={step} onStep={onPickStep} />
       )}
       {section === "conversation" && <ConversationSection typed={typed} wordsOnly={wordsOnly} fixed={fixed} change={change} />}
       {section === "memory" && (fixed.has("memory") ? <ClassOnly title="Memory" label="What it remembers and never keeps" /> : <MemorySection typed={typed} change={change} />)}

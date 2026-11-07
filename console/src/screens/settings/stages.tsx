@@ -24,6 +24,7 @@ export function StageSection({
   onChange,
   fixed,
   unset,
+  unsetRuns,
   own,
   children,
   advanced,
@@ -40,8 +41,10 @@ export function StageSection({
   onChange: (knob: Knob) => void;
   /** Set when the agent's class declares this stage: what it runs, read-only. */
   fixed?: { value: string | null } | undefined;
-  /** What no vendor picked means, where it is not the runtime's default; no model is listed until one is. */
+  /** What no vendor picked means, where it is not the runtime's default; no model is listed until one is, unless `unsetRuns` says which vendor runs then. */
   unset?: string | undefined;
+  /** The vendor that runs when none is picked, where `unset` names one: its models are offered under it. */
+  unsetRuns?: string | undefined;
   /** The vendors this org runs on its own key; every other is lent by the runtime. */
   own: ReadonlySet<string>;
   children?: ReactNode;
@@ -65,14 +68,14 @@ export function StageSection({
   // set from the terminal that has no key still shows, said so, rather than a list that quietly
   // reads as "nothing chosen".
   const ready = doing(providers, modality).filter((one) => one.ready);
-  const runtimeDefault = defaults[modality] ?? "";
+  const runtimeDefault = unsetRuns ?? defaults[modality] ?? "";
   const vendor = knob.vendor === "" ? runtimeDefault : knob.vendor;
   const listed = ready.some((one) => one.name === knob.vendor) ? ready : knob.vendor === "" ? ready : [{ name: knob.vendor, ready: false } as Provider, ...ready];
   const known = models[`${modality}/${vendor}`] ?? [];
   const runsOn = runs[`${modality}/${vendor}`];
   const options = known.includes(knob.model) || knob.model === "" ? known : [knob.model, ...known];
-  const whose = (one: Provider): string => (!one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "lent by the runtime");
-  const showsModel = unset === undefined || knob.vendor !== "";
+  const whose = (one: Provider): string => (!one.ready ? NOT_HERE : own.has(one.name) ? "your key" : "included");
+  const showsModel = unset === undefined || unsetRuns !== undefined || knob.vendor !== "";
   return (
     <section className="set-section">
       <div className="set-section-head">
@@ -83,7 +86,7 @@ export function StageSection({
         <div className="set-field">
           <Label>Vendor</Label>
           <Select value={knob.vendor} aria-label={`${title}: vendor`} onValueChange={(value) => onChange({ vendor: value, model: "" })}>
-            <SelectItem value="">{unset ?? (runtimeDefault === "" ? "Runtime default" : `Runtime default · ${brandOf(runtimeDefault)}`)}</SelectItem>
+            <SelectItem value="">{unset ?? (runtimeDefault === "" ? "Pinecall's default" : `Pinecall's default · ${brandOf(runtimeDefault)}`)}</SelectItem>
             {listed.map((one) => (
               <SelectItem key={one.name} value={one.name}>
                 {brandOf(one.name)} · {whose(one)}
@@ -106,8 +109,8 @@ export function StageSection({
         )}
       </div>
       <p className="set-help">
-        Only vendors this box has a key for; add one in Providers.
-        {showsModel && (known.length === 0 ? ` ${brandOf(vendor)} runs its own default model; none is listed to pick.` : " The default is what runs when none is picked.")}
+        Only the providers you can use are listed; add your own in Providers.
+        {showsModel && known.length === 0 && ` ${brandOf(vendor)} runs its own default model; there is none to pick.`}
       </p>
       {children}
       {advanced !== undefined && advanced !== null && advanced !== false && <Advanced>{advanced}</Advanced>}
@@ -123,6 +126,7 @@ export function VoiceField({
   language,
   opening,
   voice,
+  unpicked = null,
   onChange,
 }: {
   /** The vendor that speaks, or null while the report that says which is still being asked for. */
@@ -132,13 +136,15 @@ export function VoiceField({
   language: string | null;
   opening: string;
   voice: string;
+  /** The voice a call speaks when none is picked, where the providers row names one. */
+  unpicked?: string | null | undefined;
   onChange: (voice: string) => void;
 }): ReactNode {
   // Which vendors list their voices is the catalogue row's word (voices_listed), never a list
   // kept here: the picker that mounted for the wrong vendor while the report was on its way asked
   // the gateway for a list nobody was going to read.
   if (vendor === null) return <VoiceNote>Asking the gateway which vendor speaks…</VoiceNote>;
-  if (named(providers, vendor)?.voices_listed === true) return <VoicePicker vendor={vendor} model={model} language={language} opening={opening} voice={voice} onChange={onChange} />;
+  if (named(providers, vendor)?.voices_listed === true) return <VoicePicker vendor={vendor} model={model} language={language} opening={opening} voice={voice} unpicked={unpicked} onChange={onChange} />;
   return (
     <div className="set-row">
       <div className="set-field">

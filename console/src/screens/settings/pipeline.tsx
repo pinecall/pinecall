@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import type { Provider } from "../../lib/catalogue";
 import { Icon, Switch, type IconName } from "../../ui";
 import { LanguageField } from "./language";
+import { unpickedVoice } from "./voice-picker";
 import { EndOfTurnField, FixedByTheClass, PluginFields, TemperatureField } from "./plugin";
 import { RealtimeSection } from "./realtime";
 import { StageSection, VoiceField } from "./stages";
@@ -40,6 +41,8 @@ export interface PipelineProps {
   /** By "<modality>/<vendor>", the model a call runs when none is picked, where the runtime knows it. */
   runsOn: Readonly<Record<string, string>>;
   realtime: Readonly<Record<string, readonly string[]>>;
+  /** By "<vendor>/<language>", the voice a call speaks when none is picked. */
+  voiceDefaults: Readonly<Record<string, string>>;
   fixed: ReadonlySet<string>;
   running: Running | null;
   /** The agent's language for listing voices; null when undeclared. */
@@ -58,9 +61,11 @@ function runs(picked: Knob, modality: "stt" | "llm" | "tts", defaults: PipelineP
 }
 
 export function Pipeline(props: PipelineProps): ReactNode {
-  const { typed, change, knob, plug, providers, defaults, models, runsOn, realtime, fixed, running, language, own, step, onStep } = props;
+  const { typed, change, knob, plug, providers, defaults, models, runsOn, realtime, voiceDefaults, fixed, running, language, own, step, onStep } = props;
   const [realtimeOn, setRealtimeOn] = useState(typed.realtime.vendor !== "");
   const speaking = typed.tts.vendor === "" ? (defaults["tts"] ?? null) : typed.tts.vendor;
+  // The voice a call speaks when none is picked: the row's for the vendor and the language the form says.
+  const unpicked = unpickedVoice(voiceDefaults, speaking, typed.language === "" ? language : typed.language);
   const vendorOf = (picked: string, fallback: string | undefined): string => (picked === "" ? (fallback ?? "the vendor") : picked);
 
   const said = (at: Step): { value: string; under: string } => {
@@ -70,7 +75,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
     const fromClass = classes[at];
     const picked = at === "hears" ? typed.stt : at === "decides" ? typed.llm : at === "speaks" ? typed.tts : typed.judge;
     const value = fromClass !== undefined ? (fromClass === null || fromClass === "" ? "set by the class" : fromClass) : at === "judged" && picked.vendor === "" ? "the org's choice" : runs(picked, tile.modality, defaults, runsOn);
-    const under = { hears: typed.language === "" ? "language not set" : `language ${typed.language}`, decides: typed.temperature === "" ? "default temperature" : `temperature ${typed.temperature}`, speaks: typed.voice === "" ? "the model's own voice" : `as ${typed.voice}`, judged: "at hang-up" }[at];
+    const under = { hears: typed.language === "" ? "language not set" : `language ${typed.language}`, decides: typed.temperature === "" ? "default temperature" : `temperature ${typed.temperature}`, speaks: typed.voice !== "" ? `as ${typed.voice}` : unpicked === null ? "the model's own voice" : `as ${unpicked}, the default`, judged: "at hang-up" }[at];
     return { value, under };
   };
 
@@ -188,14 +193,14 @@ export function Pipeline(props: PipelineProps): ReactNode {
           fixed={fixed.has("voice") ? { value: running?.speaks ?? null } : undefined}
           advanced={!fixed.has("voice") && <PluginFields modality="tts" vendor={vendorOf(typed.tts.vendor, defaults["tts"])} plugin={typed.plugins.tts} onChange={plug("tts")} />}
         >
-          {!fixed.has("voice") && <VoiceField vendor={speaking} providers={providers} model={typed.tts.model === "" ? null : typed.tts.model} language={language} opening={typed.say} voice={typed.voice} onChange={(picked) => change("voice", picked)} />}
+          {!fixed.has("voice") && <VoiceField vendor={speaking} providers={providers} model={typed.tts.model === "" ? null : typed.tts.model} language={language} opening={typed.say} voice={typed.voice} unpicked={unpicked} onChange={(picked) => change("voice", picked)} />}
         </StageSection>
       )}
       {step === "judged" && (
         <StageSection
           modality="llm"
           title="Judge"
-          blurb="The model this agent's calls are judged on at hang-up. Unset, the org's choice in Quality ▸ Judges, else Pinecall's. On your org's own key — a model on your own server among them, through base_url — its evals are not billed."
+          blurb="The model that reviews each call when it ends. Left as is, it is your org's choice in Quality ▸ Judges. Pick one on your own key and its reviews are not billed."
           knob={typed.judge}
           providers={providers}
           defaults={defaults}
@@ -203,7 +208,7 @@ export function Pipeline(props: PipelineProps): ReactNode {
           runs={runsOn}
           own={own}
           onChange={knob("judge")}
-          unset="The org's choice, else Pinecall's"
+          unset="Same as the org (Quality ▸ Judges)"
           fixed={fixed.has("judge") ? { value: null } : undefined}
           advanced={!fixed.has("judge") && typed.judge.vendor !== "" && <PluginFields modality="judge" vendor={typed.judge.vendor} plugin={typed.plugins.judge} onChange={plug("judge")} />}
         />

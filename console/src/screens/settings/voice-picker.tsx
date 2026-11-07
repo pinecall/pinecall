@@ -6,6 +6,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { Button, Icon, Input, Label, Segmented, Select, SelectItem } from "../../ui";
 import { VoiceById } from "./voice-by-id";
+import { brandOf } from "../../lib/catalogue";
 import { heard, readVoices, type Heard, type ListedVoice } from "./voice-doors";
 
 type Gender = "any" | "feminine" | "masculine";
@@ -44,12 +45,19 @@ export function narrowed(voices: readonly ListedVoice[], country: string, gender
   );
 }
 
+/** The voice a call speaks on this vendor when none is picked: the providers row's for the language, else none named. */
+export function unpickedVoice(defaults: Readonly<Record<string, string>>, vendor: string | null, language: string | null): string | null {
+  if (vendor === null || language === null) return null;
+  return defaults[`${vendor}/${language.split("-")[0]?.toLowerCase() ?? ""}`] ?? null;
+}
+
 export function VoicePicker({
   vendor,
   model,
   language,
   opening,
   voice,
+  unpicked,
   onChange,
 }: {
   vendor: string;
@@ -59,6 +67,8 @@ export function VoicePicker({
   /** The agent's own opening, which is what each voice says when it has one. */
   opening: string;
   voice: string;
+  /** The voice a call speaks when none is picked, where the providers row names one; undefined where the picker is that default itself (the operator's row). */
+  unpicked?: string | null | undefined;
   onChange: (voice: string) => void;
 }): ReactNode {
   const credentials = useCredentials();
@@ -119,7 +129,9 @@ export function VoicePicker({
   // ElevenLabs' curated names carry no gender, so a picker over them offers no gender to pick.
   const gendered = useMemo(() => (voices ?? []).some((one) => one.gender !== ""), [voices]);
   const shown = useMemo(() => narrowed(voices ?? [], country, gendered ? gender : "any", words), [voices, country, gendered, gender, words]);
-  const inUse = voices?.find((one) => one.id === voice);
+  // What a caller hears: the voice picked, else the row's default for the language, else the model's own.
+  const speaking = voice !== "" ? voice : (unpicked ?? null);
+  const inUse = voices?.find((one) => one.id === speaking);
 
   const play = async (id: string): Promise<void> => {
     player.current?.pause();
@@ -171,13 +183,24 @@ export function VoicePicker({
   return (
     <div className="set-voices">
       <div className="set-voices-now">
-        <Label>Voice</Label>
-        <span className="set-voices-in-use">
-          {voice === "" ? `${vendor}'s own default` : inUse !== undefined ? `${inUse.name}${inUse.country === "" ? "" : ` · ${countryName(inUse.country)}`}` : `${voice}, by its id`}
+        <span className="set-voices-icon" aria-hidden>
+          <Icon name="speaker" size={16} />
         </span>
+        <span className="set-voices-said">
+          <span className="set-voices-label">Speaking as</span>
+          <span className="set-voices-in-use">
+            {speaking === null ? `${brandOf(vendor)}'s own voice` : inUse !== undefined ? inUse.name : speaking}
+            {voice === "" && <span className="set-voices-default">{speaking === null ? "nothing picked" : "the default"}</span>}
+          </span>
+        </span>
+        {voice !== "" && unpicked !== undefined && (
+          <Button size="sm" onClick={() => onChange("")}>
+            Back to the default
+          </Button>
+        )}
       </div>
       <div className="set-voices-filters">
-        <Input value={words} placeholder="Search by name or manner" aria-label="Search voices" onChange={(event) => setWords(event.target.value)} />
+        <Input value={words} placeholder="Search voices" aria-label="Search voices" onChange={(event) => setWords(event.target.value)} />
         {countries.length > 1 && (
           <Select value={country} aria-label="Country" onValueChange={(value) => setCountry(value)}>
             <SelectItem value="">Every country</SelectItem>
@@ -191,15 +214,15 @@ export function VoicePicker({
         {gendered && <Segmented options={GENDERS} value={gender} onChange={setGender} />}
       </div>
       <div className="set-voices-line">
-        <Label>What each voice says</Label>
-        <Input value={text} placeholder="One line in the agent's language, unless you write one" aria-label="What each voice says" onChange={(event) => setText(event.target.value)} />
+        <Label>Try them with your own words</Label>
+        <Input value={text} placeholder="Leave it empty to hear a line in the agent's language" aria-label="What each voice says" onChange={(event) => setText(event.target.value)} />
       </div>
       {refused !== null && <p className="set-help set-voices-refused">{refused}</p>}
       {voices === null && refused === null && <p className="set-help">Asking {vendor} for its voices…</p>}
       {voices !== null && (
         <ul className="set-voices-list" aria-label="Voices">
           {shown.map((one) => (
-            <li key={one.id} className={one.id === voice ? "set-voice on" : "set-voice"}>
+            <li key={one.id} className={one.id === speaking ? "set-voice on" : "set-voice"}>
               <button
                 type="button"
                 className="set-voice-play"
@@ -215,8 +238,11 @@ export function VoicePicker({
                 <span className="set-voice-about">{[one.gender === "feminine" ? "female" : one.gender === "masculine" ? "male" : "", one.country === "" ? "" : countryName(one.country), one.accent].filter((word) => word !== "").join(" · ")}</span>
               </span>
               <span className="set-voice-wait">{waitOf(one.id)}</span>
-              {one.id === voice ? (
-                <span className="set-voice-chosen">In use</span>
+              {one.id === speaking ? (
+                <span className="set-voice-chosen">
+                  <Icon name="tick" size={12} />
+                  {voice === "" ? "Default" : "In use"}
+                </span>
               ) : (
                 <Button size="xs" onClick={() => onChange(one.id)}>
                   Use
@@ -227,10 +253,8 @@ export function VoicePicker({
           {shown.length === 0 && <li className="set-help">No voice matches.</li>}
         </ul>
       )}
-      <VoiceById vendor={vendor} model={model} language={language} opening={said} voice={voice} onChange={onChange} label="A voice not in this list — your own, a clone — by its id" />
-      <p className="set-help">
-        Each voice says the line above — or one line in the agent's language when it is empty — with {model ?? `${vendor}'s default model`}, on your org's key for {vendor} or the box's: what a caller would hear. The number is the wait from the words to the first audio over the vendor's stream; a call keeps that connection warm, so its own wait sits a little under. Nothing changes until you save.
-      </p>
+      <VoiceById vendor={vendor} model={model} language={language} opening={said} voice={voice} onChange={onChange} label="Or a voice by its id — your own, or a clone" />
+      <p className="set-help">Press play to hear each voice as a caller would; the number is how long it took to start talking. Nothing changes until you save.</p>
     </div>
   );
 }
