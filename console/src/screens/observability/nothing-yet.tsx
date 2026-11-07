@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { windowSaid, type WindowDays } from "../../lib/insights";
 import { rowAt, whoseIs } from "../../lib/harness";
-import { Button, ButtonLink, Card, Icon } from "../../ui";
+import { Button, ButtonLink, Icon, Nothing } from "../../ui";
 
 // A sketch of the chart the page will draw, so the empty page says what is coming rather than looking broken.
 const GHOST = "M0 70 C 40 66, 60 40, 100 46 S 160 72, 200 58 S 270 24, 320 34 S 380 52, 420 40";
@@ -15,29 +15,31 @@ const PARTS = [
   { key: "speaks", width: 28 },
 ] as const;
 
+function Sketch(): ReactNode {
+  return (
+    <>
+      <svg className="obs-none-art" viewBox="0 0 420 90" preserveAspectRatio="none">
+        <line className="obs-none-rule" x1="0" x2="420" y1="22" y2="22" />
+        <line className="obs-none-rule" x1="0" x2="420" y1="52" y2="52" />
+        <line className="obs-none-rule" x1="0" x2="420" y1="82" y2="82" />
+        <path className="obs-none-line" d={GHOST} />
+      </svg>
+      <div className="obs-none-bar">
+        {PARTS.map((part) => (
+          <span key={part.key} className={`obs-split-part obs-part-${part.key}`} style={{ width: `${part.width}%` }} />
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function NothingYet({ range, agent, calls, onWiden }: { range: WindowDays; agent: string; calls: number; onWiden: (() => void) | null }): ReactNode {
   return (
-    <Card pad>
-      <div className="obs-none">
-        <div className="obs-none-art" aria-hidden>
-          <svg viewBox="0 0 420 90" preserveAspectRatio="none">
-            <line className="obs-none-rule" x1="0" x2="420" y1="22" y2="22" />
-            <line className="obs-none-rule" x1="0" x2="420" y1="52" y2="52" />
-            <line className="obs-none-rule" x1="0" x2="420" y1="82" y2="82" />
-            <path className="obs-none-line" d={GHOST} />
-          </svg>
-          <div className="obs-none-bar">
-            {PARTS.map((part) => (
-              <span key={part.key} className={`obs-split-part obs-part-${part.key}`} style={{ width: `${part.width}%` }} />
-            ))}
-          </div>
-        </div>
-        <h2 className="obs-none-title">Nothing to observe in {windowSaid(range)}</h2>
-        <p className="obs-none-words">
-          This page fills in as {whoseIs(agent)} {agent === "" ? "answer" : "answers"} calls: how long a caller waits for the first word and where that time goes, how calls end, what the judges hold, which tools fail and what it all costs.
-          {calls > 0 && ` ${calls === 1 ? "One call came in" : `${calls} calls came in`}, but none got as far as a turn.`}
-        </p>
-        <div className="obs-none-actions">
+    <Nothing
+      art={<Sketch />}
+      title={`Nothing to observe in ${windowSaid(range)}`}
+      actions={
+        <>
           {onWiden !== null ? (
             <Button kind="primary" onClick={onWiden}>
               See the last 30 days
@@ -52,8 +54,11 @@ export function NothingYet({ range, agent, calls, onWiden }: { range: WindowDays
             <Icon name="list" size={14} />
             Open calls
           </ButtonLink>
-        </div>
-      </div>
-    </Card>
+        </>
+      }
+    >
+      This page fills in as {whoseIs(agent)} {agent === "" ? "answer" : "answers"} calls: how long a caller waits for the first word and where that time goes, how calls end, what the judges hold, which tools fail and what it all costs.
+      {calls > 0 && ` ${calls === 1 ? "One call came in" : `${calls} calls came in`}, but none got as far as a turn.`}
+    </Nothing>
   );
 }

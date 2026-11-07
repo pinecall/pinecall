@@ -1,6 +1,6 @@
 /** Insights over whole UTC days (GET /v1/insights), and the window a screen reads them over, kept in its URL. */
 
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { z } from "zod";
 
@@ -105,6 +105,48 @@ export function useWindowDays(fallback: WindowDays = 1): [WindowDays, (days: Win
     setSearch(next, { replace: true });
   };
   return [picked ?? fallback, pick, picked !== undefined];
+}
+
+/** The window a screen that opens on the week reads by, and how to pick another. */
+export interface OpeningWindow {
+  days: WindowDays;
+  pick: (days: WindowDays) => void;
+  /** A window was picked, in the URL or by hand: the screen never moves off it on its own. */
+  picked: boolean;
+  /** Move to the month, for this agent, the week having held nothing. */
+  widen: () => void;
+}
+
+/**
+ * The window a screen opens on: the one picked — in the URL, or by hand, the week too, which the
+ * URL forgets being the default — else the week, and the month once `useWidenedWhenQuiet` says the
+ * week held nothing for the agent in view.
+ */
+export function useOpeningWindow(agent: string): OpeningWindow {
+  const [inUrl, pickInUrl, pickedInUrl] = useWindowDays(7);
+  const [byHand, setByHand] = useState(false);
+  // The agent whose quiet week sent the screen to the month.
+  const [widenedFor, setWidenedFor] = useState<string | null>(null);
+  const picked = pickedInUrl || byHand;
+  const widen = useCallback(() => setWidenedFor(agent), [agent]);
+  const pick = (chosen: WindowDays): void => {
+    setByHand(true);
+    pickInUrl(chosen);
+  };
+  return { days: picked ? inUrl : widenedFor === agent ? 30 : 7, pick, picked, widen };
+}
+
+/**
+ * Widen an unpicked week that holds nothing to the month, and say whether the window is still
+ * being decided: `quiet` is whether the window read holds nothing, null until it is read. Until
+ * it is known the screen draws its head alone, rather than cards it may take back.
+ */
+export function useWidenedWhenQuiet({ days, picked, widen }: OpeningWindow, quiet: boolean | null): boolean {
+  const opening = !picked && days === 7;
+  useEffect(() => {
+    if (opening && quiet === true) widen();
+  }, [opening, quiet, widen]);
+  return quiet === null || (opening && quiet);
 }
 
 /** How a window is said in a sentence: "today", "the last 7 days". */

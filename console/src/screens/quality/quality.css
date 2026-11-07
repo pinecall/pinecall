@@ -780,3 +780,13 @@
   }
 }
 
+
+/* ── nothing judged: the ring and its days, faded by the ui kit's Nothing card ── */
+.qly-none-art { display: flex; align-items: flex-end; justify-content: center; gap: 28px; height: 90px; }
+.qly-none-ring { width: 84px; height: 84px; transform: rotate(-90deg); }
+.qly-none-track, .qly-none-fill { fill: none; stroke-width: 3.5; }
+.qly-none-track { stroke: light-dark(#ececf1, #2a2c3a); }
+.qly-none-fill { stroke: var(--accent); stroke-linecap: round; }
+.qly-none-days { display: flex; align-items: flex-end; gap: 6px; height: 64px; }
+.qly-none-day { width: 14px; border-radius: 4px; background: var(--accent); opacity: 0.45; }
+.qly-none-day-now { opacity: 1; }

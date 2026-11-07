@@ -5,7 +5,7 @@ import { useParams } from "react-router";
 
 import { utcDay } from "../../lib/format";
 import { rowAt } from "../../lib/harness";
-import { useInsights, useWindowDays, WindowPicker } from "../../lib/insights";
+import { useInsights, useOpeningWindow, useWidenedWhenQuiet, WindowPicker } from "../../lib/insights";
 import { useOrg } from "../../lib/org";
 import { useScores } from "../../lib/use-scores";
 import { Page, PageHead } from "../../ui";
@@ -13,6 +13,7 @@ import { useCases } from "../cases";
 import { useSuites } from "../evals";
 import { fixable, Fixes } from "./fixes";
 import { Count, Kept } from "./kept";
+import { NothingJudged } from "./nothing-judged";
 import { BrokeIt, Rules, rulesOf } from "./rules";
 import { useJudges } from "./use-judges";
 import "./quality.css";
@@ -22,11 +23,14 @@ import "./quality.css";
  * window's numbers are the gateway's count (`/v1/insights`); the fixes are the case groups whose
  * diagnosis names a change; each rule's rate and the calls it broke are read off the newest
  * judged calls the page follows, one log each — the window counts every call, the rules what was read.
+ * Unless a window was picked, the page opens on the week, and on the month when the week judged
+ * nothing; a window with no verdict draws one card saying so — and why, when no judge is on.
  */
 export function Quality(): ReactNode {
   const agent = useParams()["agent"] ?? "";
   const asked = agent === "" ? undefined : agent;
-  const [days, pickDays] = useWindowDays(7);
+  const opening = useOpeningWindow(agent);
+  const { days, pick: pickDays } = opening;
   const counted = useInsights({ agent: asked, days });
   const before = useInsights({ agent: asked, day: utcDay(Date.now() / 1000 - days * 86400), days });
   const { lines } = useOrg();
@@ -44,32 +48,40 @@ export function Quality(): ReactNode {
   const broke = counted === null ? null : counted.judged - counted.passed;
   const held = suites.reduce((all, suite) => all + suite.held, 0);
   const cells = suites.reduce((all, suite) => all + suite.cells, 0);
+  const quiet = counted?.days === days ? counted.judged === 0 : null;
+  const deciding = useWidenedWhenQuiet(opening, quiet);
 
   return (
     <Page>
       <PageHead title="Quality" lede="Judges read every call and check it against your rules." actions={<WindowPicker days={days} onPick={pickDays} />} />
 
-      <div className="qly-top">
-        <Kept counted={counted?.days === days ? counted : null} before={before?.days === days ? before : null} days={days} />
-        <div className="qly-counts">
-          <Count label="Calls that broke" value={broke === null ? "—" : String(broke)} tone={broke !== null && broke > 0 ? "red" : undefined} sub="a rule" to={`${rowAt(agent, "calls")}?status=broke`} />
-          <Count label="Fixes ready" value={cases.groups === null ? "—" : String(fixes.length)} sub={fixes.length === 0 ? "nothing diagnosed waits" : "one click each"} to={rowAt(agent, "cases")} />
-          <Count
-            label="Goldens"
-            value={cells === 0 ? "—" : `${held}/${cells}`}
-            tone={cells === 0 ? undefined : held === cells ? "green" : "amber"}
-            sub={cells === 0 ? "no run yet" : "held last run"}
-            to={agent === "" ? undefined : `/a/${encodeURIComponent(agent)}/goldens`}
-          />
-        </div>
-      </div>
+      {deciding ? null : quiet ? (
+        <NothingJudged days={days} agent={agent} judging={judges === null ? null : judges.some((judge) => judge.on)} onWiden={days === 30 ? null : () => pickDays(30)} />
+      ) : (
+        <>
+          <div className="qly-top">
+            <Kept counted={counted?.days === days ? counted : null} before={before?.days === days ? before : null} days={days} />
+            <div className="qly-counts">
+              <Count label="Calls that broke" value={broke === null ? "—" : String(broke)} tone={broke !== null && broke > 0 ? "red" : undefined} sub="a rule" to={`${rowAt(agent, "calls")}?status=broke`} />
+              <Count label="Fixes ready" value={cases.groups === null ? "—" : String(fixes.length)} sub={fixes.length === 0 ? "nothing diagnosed waits" : "one click each"} to={rowAt(agent, "cases")} />
+              <Count
+                label="Goldens"
+                value={cells === 0 ? "—" : `${held}/${cells}`}
+                tone={cells === 0 ? undefined : held === cells ? "green" : "amber"}
+                sub={cells === 0 ? "no run yet" : "held last run"}
+                to={agent === "" ? undefined : `/a/${encodeURIComponent(agent)}/goldens`}
+              />
+            </div>
+          </div>
 
-      <Fixes groups={fixes} agent={agent} />
+          <Fixes groups={fixes} agent={agent} />
 
-      <div className="qly-pair">
-        <Rules rules={rules} picked={rule?.name ?? null} onPick={setPicked} agent={agent} />
-        <BrokeIt rule={rule} scored={scored} cases={cases.listed?.cases ?? []} agent={agent} />
-      </div>
+          <div className="qly-pair">
+            <Rules rules={rules} picked={rule?.name ?? null} onPick={setPicked} agent={agent} />
+            <BrokeIt rule={rule} scored={scored} cases={cases.listed?.cases ?? []} agent={agent} />
+          </div>
+        </>
+      )}
     </Page>
   );
 }

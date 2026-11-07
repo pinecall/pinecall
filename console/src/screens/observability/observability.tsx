@@ -1,9 +1,9 @@
 /** Observability: the window at a glance and day by day — latency, success, duration, endings, judges, tools, cost — every agent's or the one in view. */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
-import { useInsights, useWindowDays, windowSaid, WindowPicker, type WindowDays } from "../../lib/insights";
+import { useInsights, useOpeningWindow, useWidenedWhenQuiet, windowSaid, WindowPicker } from "../../lib/insights";
 import { measured, useSeries, type SeriesDay } from "../../lib/series";
 import { useSlowTurns } from "../../lib/slow";
 import { useTools } from "../../lib/tools";
@@ -76,17 +76,8 @@ function change(now: number, before: number): { text: string; tone: "up" | "down
 export function Observability(): ReactNode {
   const agent = useParams()["agent"] ?? "";
   const asked = agent === "" ? undefined : agent;
-  const [inUrl, pickInUrl, pickedInUrl] = useWindowDays(7);
-  // A window picked by hand stays, the week too: the URL forgets the week, being its default.
-  const [byHand, setByHand] = useState(false);
-  // The agent whose quiet week sent the page to the month.
-  const [widenedFor, setWidenedFor] = useState<string | null>(null);
-  const picked = pickedInUrl || byHand;
-  const range: WindowDays = picked ? inUrl : widenedFor === agent ? 30 : 7;
-  const pickRange = (days: WindowDays): void => {
-    setByHand(true);
-    pickInUrl(days);
-  };
+  const opening = useOpeningWindow(agent);
+  const { days: range, pick: pickRange } = opening;
   const answered = useSeries({ agent: asked, days: range });
   const earlier = useSeries({ agent: asked, days: range, day: utcDay(Date.now() / 1000 - range * 86400) });
   const insights = useInsights({ agent: asked, days: range });
@@ -100,13 +91,8 @@ export function Observability(): ReactNode {
   const now = useMemo(() => totalsOf(rows), [rows]);
   const before = useMemo(() => totalsOf(earlier?.days === range ? earlier.series : []), [earlier, range]);
   const said = `vs the ${range} d before`;
-  const loaded = series !== null;
-  const quiet = loaded && !measured(rows);
-  useEffect(() => {
-    if (!picked && range === 7 && quiet) setWidenedFor(agent);
-  }, [picked, range, quiet, agent]);
-  // Until the window is known, the page draws its head alone rather than cards it may take back.
-  const deciding = !loaded || (!picked && range === 7 && quiet);
+  const quiet = series === null ? null : !measured(rows);
+  const deciding = useWidenedWhenQuiet(opening, quiet);
 
   const latency: Line[] = useMemo(
     () => [
