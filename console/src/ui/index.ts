@@ -12,6 +12,7 @@ export type { IconName } from "./icon";
 export { Avatar, Bar, Dot, Pill, Tag, tintAt, tintOf } from "./marks";
 export { initialsOf } from "@pinecall/core/initials";
 export type { AvatarSize, Tint, Tone } from "./marks";
+export { Command } from "./command";
 export { Nothing } from "./nothing";
 export { Page, PageHead } from "./page";
 export { Stat, Stats } from "./stat";

@@ -43,13 +43,13 @@ export function Processes({ held, stops }: { held: HeldAgent[]; stops: boolean }
     }
   };
 
-  if (apps === null && refused === null) return null;
+  // No process is a nothing the agents' list already says; the card is for the machines there are.
+  if ((apps === null || apps.length === 0) && refused === null) return null;
   return (
     <Card>
-      <CardHead title="Processes" meta="the machines holding these agents — a stop closes one, and it exits instead of dialling back" />
+      <CardHead title="Processes" meta="where your agents run — Stop shuts one down for good" />
       <Refused>{refused}</Refused>
       <div className="ui-card-list">
-        {apps?.length === 0 && <div className="agents-none">No process is connected.</div>}
         {apps?.map((app) => <Row key={app.app} app={app} stop={stops ? stop : undefined} />)}
       </div>
     </Card>

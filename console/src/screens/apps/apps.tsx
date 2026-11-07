@@ -7,16 +7,15 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { PlanWall, productionClosed, useProductionLimits } from "../../lib/plan";
 import { useWorld } from "../../lib/world";
-import { Card, Empty, Page, PageHead, Pill, Refused, TableHead, Tag, TextAction } from "../../ui";
+import { Card, Page, PageHead, Pill, Refused, TableHead, Tag, TextAction } from "../../ui";
 import { readHosted, readServed, removeApp, startApp, stopApp, type Hosted } from "./door";
 import { firstLine, hours, servedByApp, stateOf } from "./fold";
 import { LogsPanel } from "./logs";
+import { NothingDeployed } from "./nothing-deployed";
 import { ReleasesPanel } from "./releases";
 import "./apps.css";
 
 const COLUMNS = "minmax(0,1fr) minmax(0,1.2fr) minmax(0,0.9fr) 96px 250px";
-
-const CLI_DOCS = "https://docs.pinecall.io/cli/overview";
 
 /** What is open under the list: one app's logs or its releases. */
 type Opened = { name: string; what: "logs" | "releases" } | null;
@@ -91,42 +90,32 @@ export function Apps(): ReactNode {
       <PageHead
         title="Apps"
         ledeWidth={660}
-        lede={`The agents this box runs for the org in ${world}, each from the sources a release uploaded. A release is never edited: a rollback sends an earlier one's sources again, as the next.`}
+        lede={`The agents Pinecall runs for you in ${world}. Every deploy is a new release, and you can roll back to any earlier one.`}
       />
 
       <Refused>{refused}</Refused>
 
       {world === "production" && production !== null && productionClosed(production) && <PlanWall limits={production} doing="Hosting an app for your customers" />}
 
-      <Card>
-        {apps !== null && apps.length === 0 ? (
-          <Empty>
-            No app is hosted in {world} yet. One is put here from a terminal, in the project's folder:{" "}
-            <span className="ui-fixed">{world === "production" ? "pinecall deploy --prod" : "pinecall deploy"}</span> — with{" "}
-            <span className="ui-fixed">--prod</span> it goes to production, without it to the sandbox. See{" "}
-            <a href={CLI_DOCS} target="_blank" rel="noreferrer">
-              the CLI
-            </a>
-            .
-          </Empty>
-        ) : (
-          <>
-            <TableHead columns={COLUMNS} labels={["App", "State", "Made by", "This month>", ""]} />
-            {(apps ?? []).map((app) => (
-              <Row
-                key={app.name}
-                app={app}
-                seconds={served.get(app.name) ?? 0}
-                opened={opened?.name === app.name ? opened.what : null}
-                open={open}
-                stop={stop}
-                start={(name) => void act(() => startApp(credentials, name))}
-                remove={remove}
-              />
-            ))}
-          </>
-        )}
-      </Card>
+      {apps !== null && apps.length === 0 ? (
+        <NothingDeployed world={world} />
+      ) : (
+        <Card>
+          <TableHead columns={COLUMNS} labels={["App", "State", "Made by", "This month>", ""]} />
+          {(apps ?? []).map((app) => (
+            <Row
+              key={app.name}
+              app={app}
+              seconds={served.get(app.name) ?? 0}
+              opened={opened?.name === app.name ? opened.what : null}
+              open={open}
+              stop={stop}
+              start={(name) => void act(() => startApp(credentials, name))}
+              remove={remove}
+            />
+          ))}
+        </Card>
+      )}
 
       {opened !== null && opened.what === "logs" && <LogsPanel key={opened.name} name={opened.name} close={() => setOpened(null)} />}
       {opened !== null && opened.what === "releases" && openApp !== undefined && (

@@ -49,3 +49,11 @@
   font-size: 13px;
   color: var(--ink-4);
 }
+
+/* Nothing deployed: the sketch of the releases to come. */
+.apps-none-art { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.apps-none-row { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border: 1px solid var(--line-2); border-radius: 10px; }
+.apps-none-number { width: 22px; font: 600 12px var(--face-fixed); color: var(--ink-5); }
+.apps-none-note { height: 8px; border-radius: 4px; background: var(--ink-6); }
+.apps-none-pill { width: 52px; height: 16px; margin-left: auto; border-radius: 8px; background: var(--line-2); }
+.apps-none-serving { background: var(--green-dot); opacity: 0.7; }

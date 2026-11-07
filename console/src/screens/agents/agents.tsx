@@ -36,6 +36,7 @@ import {
   tintAt,
 } from "../../ui";
 import { readTokens, type Listed } from "../tokens/door";
+import { NothingRunning } from "./nothing-running";
 import { Processes } from "./processes";
 import { NewAgent } from "../studio";
 import { readAvailable, readNumbers, type Answering } from "../numbers/door";
@@ -110,12 +111,14 @@ export function Agents(): ReactNode {
   // An agent built in Studio is made in the sandbox, by a key that may run the org's apps.
   const canMake = WORLD === "sandbox" && scopes !== null && scopes.includes("app");
   const [making, setMaking] = useState(false);
+  // No agent of the org is up, nor routed to: one card says what comes here and how, in place of empty lists.
+  const nothing = agentsLoaded && agentsError === null && known.size === 0 && held.length === 0;
 
   return (
     <Page>
       <PageHead
         title="Agents"
-        lede="Which agents this gateway is holding right now — the list changes the moment a socket connects."
+        lede={WORLD === "sandbox" ? "Your agents, live: each one shows up here the moment it starts." : "The agents answering your customers, live: each one shows up here the moment it goes up."}
         actions={
           canIssue ? (
             <ButtonLink to="/tokens" size="base">
@@ -131,98 +134,103 @@ export function Agents(): ReactNode {
 
       {making && <NewAgent onCancel={() => setMaking(false)} />}
 
-      <Stats min={170}>
-        <Stat label="Agents up" value={agents.length} of={`of ${known.size}`} />
-        {accounts.numbers !== null ? (
-          <Stat label="Numbers ringing" value={accounts.numbers.filter((one) => one.route.number !== null).length} of={accounts.free === null ? undefined : `· ${accounts.free} free`} />
-        ) : (
-          <Stat label="Calls live" value={live.length} />
-        )}
-        {accounts.keys !== null ? (
-          <Stat label="Active tokens" value={activeKeys.length} of={`· ${accounts.keys.length - activeKeys.length} revoked`} />
-        ) : (
-          <Stat label="Calls today" value={ofToday.length} />
-        )}
-        {accounts.catalogue !== null && <Stat label="Providers ready" value={ready.length} of={`of ${accounts.catalogue.providers.length}`} />}
-      </Stats>
-
-      <Card>
-        <CardHead
-          title="Agents"
-          meta="the list changes the moment a socket connects"
-          action={
-            <span className="agents-watching">
-              <Dot tone={connection === "live" ? "green" : undefined} small />
-              {connection === "live" ? "watching" : connection}
-            </span>
-          }
-        >
-          {theTeams && (
-            <div className="agents-corners">
-              <Chips options={CORNERS.map((one) => ({ value: one, label: one }))} value={corners} onChange={setCorners} />
-            </div>
-          )}
-        </CardHead>
-        <Refused>{agentsError}</Refused>
-        {agentsLoaded && rows.length === 0 && (
-          <Empty>
-            {corners === "everything" ? (
-              WORLD === "sandbox" ? (
-                <>
-                  Nothing of yours is running. <span className="ui-fixed">pinecall start</span> in a project puts its agents here.
-                </>
-              ) : (
-                <>
-                  Nothing is running in production: <span className="ui-fixed">pinecall start --prod</span> on your server holds it, on a server token.
-                </>
-              )
+      {nothing ? (
+        !making && <NothingRunning world={WORLD} onMake={canMake ? () => setMaking(true) : null} />
+      ) : (
+        <>
+          <Stats min={170}>
+            <Stat label="Agents running" value={agents.length} of={`of ${known.size}`} />
+            {accounts.numbers !== null ? (
+              <Stat label="Numbers ringing" value={accounts.numbers.filter((one) => one.route.number !== null).length} of={accounts.free === null ? undefined : `· ${accounts.free} free`} />
             ) : (
-              <>Nothing here is {corners}.</>
+              <Stat label="Calls now" value={live.length} />
             )}
-          </Empty>
-        )}
-        {rows.length > 0 && <TableHead columns={COLUMNS} padding="9px 16px" labels={["Agent", "Doors", "Numbers", "Today>", "Score>"]} />}
-        {rows.map((one, index) => {
-          const onCalls = live.filter((line) => line.agent === one.slug).length;
-          const last = lines.find((line) => line.agent === one.slug);
-          const numbers = numbersOf(one.slug);
-          return (
-            <TableRow key={`${one.slug}/${one.holder?.holder ?? ""}`} columns={COLUMNS} padding="13px 16px" to={`/a/${one.slug}/overview`}>
-              <div className="agents-name">
-                <Avatar name={one.slug} letters={one.slug.slice(0, 1).toUpperCase()} tint={tintAt(index)} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="ui-cell-strong ui-clip">{one.slug}</div>
-                  {onCalls > 0 ? (
-                    <div className="agents-live">
-                      <Dot tone="green" small />
-                      {onCalls === 1 ? "1 call live" : `${onCalls} calls live`}
-                    </div>
-                  ) : (
-                    <div className="agents-idle">
-                      {theTeams ? `${whoseCorner(one)} · ` : ""}idle{last === undefined ? "" : ` · last call ${ago(last.started_at)}`}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="ui-tags">
-                {one.channels.map((channel) => (
-                  <Tag key={channel}>{channel}</Tag>
-                ))}
-              </div>
-              <span className="agents-numbers ui-clip">{numbers.length === 0 ? "—" : numbers.join(", ")}</span>
-              <span className="agents-figure">{insights?.agents.find((row) => row.slug === one.slug)?.calls ?? ofToday.filter((line) => line.agent === one.slug).length}</span>
-              <Score share={insights?.agents.find((row) => row.slug === one.slug)?.score ?? null} />
-            </TableRow>
-          );
-        })}
-        {rows.length > 0 && (
-          <CardFoot>
-            <span>{rows.length > 1 ? "Every agent writes the same log — open one to read its turns." : "Open the agent to read its turns."}</span>
-          </CardFoot>
-        )}
-      </Card>
+            {accounts.keys !== null ? (
+              <Stat label="API keys" value={activeKeys.length} of={activeKeys.length === accounts.keys.length ? undefined : `· ${accounts.keys.length - activeKeys.length} revoked`} />
+            ) : (
+              <Stat label="Calls today" value={ofToday.length} />
+            )}
+            {accounts.catalogue !== null && <Stat label="Providers ready" value={ready.length} />}
+          </Stats>
 
-      <Processes held={held} stops={scopes !== null && scopes.includes("app")} />
+          <Card>
+            <CardHead
+              title="Agents"
+              action={
+                <span className="agents-watching">
+                  <Dot tone={connection === "live" ? "green" : undefined} small />
+                  {connection === "live" ? "live" : connection}
+                </span>
+              }
+            >
+              {theTeams && (
+                <div className="agents-corners">
+                  <Chips options={CORNERS.map((one) => ({ value: one, label: one }))} value={corners} onChange={setCorners} />
+                </div>
+              )}
+            </CardHead>
+            <Refused>{agentsError}</Refused>
+            {agentsLoaded && rows.length === 0 && (
+              <Empty>
+                {corners === "everything" ? (
+                  WORLD === "sandbox" ? (
+                    <>
+                      Nothing of yours is running. <span className="ui-fixed">pinecall start</span> in a project puts its agents here.
+                    </>
+                  ) : (
+                    <>
+                      Nothing is running in production: <span className="ui-fixed">pinecall start --prod</span> on your server holds it, on a server token.
+                    </>
+                  )
+                ) : (
+                  <>Nothing here is {corners}.</>
+                )}
+              </Empty>
+            )}
+            {rows.length > 0 && <TableHead columns={COLUMNS} padding="9px 16px" labels={["Agent", "Doors", "Numbers", "Today>", "Score>"]} />}
+            {rows.map((one, index) => {
+              const onCalls = live.filter((line) => line.agent === one.slug).length;
+              const last = lines.find((line) => line.agent === one.slug);
+              const numbers = numbersOf(one.slug);
+              return (
+                <TableRow key={`${one.slug}/${one.holder?.holder ?? ""}`} columns={COLUMNS} padding="13px 16px" to={`/a/${one.slug}/overview`}>
+                  <div className="agents-name">
+                    <Avatar name={one.slug} letters={one.slug.slice(0, 1).toUpperCase()} tint={tintAt(index)} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="ui-cell-strong ui-clip">{one.slug}</div>
+                      {onCalls > 0 ? (
+                        <div className="agents-live">
+                          <Dot tone="green" small />
+                          {onCalls === 1 ? "1 call live" : `${onCalls} calls live`}
+                        </div>
+                      ) : (
+                        <div className="agents-idle">
+                          {theTeams ? `${whoseCorner(one)} · ` : ""}idle{last === undefined ? "" : ` · last call ${ago(last.started_at)}`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ui-tags">
+                    {one.channels.map((channel) => (
+                      <Tag key={channel}>{channel}</Tag>
+                    ))}
+                  </div>
+                  <span className="agents-numbers ui-clip">{numbers.length === 0 ? "—" : numbers.join(", ")}</span>
+                  <span className="agents-figure">{insights?.agents.find((row) => row.slug === one.slug)?.calls ?? ofToday.filter((line) => line.agent === one.slug).length}</span>
+                  <Score share={insights?.agents.find((row) => row.slug === one.slug)?.score ?? null} />
+                </TableRow>
+              );
+            })}
+            {rows.length > 0 && (
+              <CardFoot>
+                <span>{rows.length > 1 ? "Every agent writes the same log — open one to read its turns." : "Open the agent to read its turns."}</span>
+              </CardFoot>
+            )}
+          </Card>
+
+          <Processes held={held} stops={scopes !== null && scopes.includes("app")} />
+        </>
+      )}
 
       {(accounts.keys !== null || accounts.catalogue !== null) && (
         <div className="agents-split">
@@ -238,14 +246,14 @@ function TokensInUse({ tokens }: { tokens: Listed[] }): ReactNode {
   const shown = [...tokens].sort((a, b) => Number(a.revoked_at !== null) - Number(b.revoked_at !== null)).slice(0, 4);
   return (
     <Card>
-      <CardHead title="API keys in use" action={<CardAction to="/tokens">Manage</CardAction>} />
+      <CardHead title="API keys" action={<CardAction to="/tokens">Manage</CardAction>} />
       <div className="ui-card-list">
         {shown.length === 0 && <div className="agents-none">No token has been made yet.</div>}
         {shown.map((key) => (
           <Item
             key={key.fingerprint}
             name={key.label ?? key.fingerprint}
-            sub={key.kind === "person" ? `${key.name ?? "a person"} · their own` : `the org's · ${key.env ?? ""}${key.created_by === null ? "" : ` · made by ${key.created_by}`}`}
+            sub={key.kind === "person" ? `${key.name ?? "a person"} · personal` : `the org's · ${key.env ?? ""}${key.created_by === null ? "" : ` · made by ${key.created_by}`}`}
             end={key.revoked_at === null ? <Pill tone="green">active</Pill> : <Pill tone="muted">revoked</Pill>}
           />
         ))}
@@ -268,8 +276,8 @@ function ProvidersInUse({ catalogue, brought }: { catalogue: Catalogue; brought:
     <Card>
       <CardHead
         title="Providers"
-        meta={`${ready.length} ready · ${catalogue.providers.length - ready.length} need a key`}
-        action={<CardAction to="/providers">Bring one</CardAction>}
+        meta={`${ready.length} ready · ${catalogue.providers.length - ready.length} more you can connect`}
+        action={<CardAction to="/providers">Add your own</CardAction>}
       />
       <div className="ui-card-list">
         {ranked.slice(0, 4).map((one) => (
@@ -277,7 +285,7 @@ function ProvidersInUse({ catalogue, brought }: { catalogue: Catalogue; brought:
             key={one.name}
             name={one.name.charAt(0).toUpperCase() + one.name.slice(1)}
             sub={providerLine(one, catalogue)}
-            end={brought.includes(one.name) ? <Pill tone="green">ready</Pill> : <Pill tone="amber">box key</Pill>}
+            end={brought.includes(one.name) ? <Pill tone="green">ready</Pill> : <Pill tone="muted">included</Pill>}
           />
         ))}
       </div>
@@ -292,11 +300,11 @@ function Score({ share }: { share: number | null }): ReactNode {
   return <span className={`agents-figure ${tone}`}>{Math.round(share * 100)}%</span>;
 }
 
-const JOB: Record<string, string> = { llm: "decides", stt: "hears", tts: "speaks" };
+const JOB: Record<string, string> = { llm: "thinks", stt: "listens", tts: "speaks" };
 
 /** Vendor subtitle: the jobs it is default for, else its description. */
 function providerLine(one: Catalogue["providers"][number], catalogue: Catalogue): string {
   const defaultFor = one.does.filter((job) => (catalogue.defaults[job] ?? "").split("/")[0] === one.name);
-  if (defaultFor.length > 0) return `${defaultFor.map((job) => JOB[job]).join(", ")} · the default`;
+  if (defaultFor.length > 0) return `${defaultFor.map((job) => JOB[job]).join(", ")} · default`;
   return `${one.does.map((job) => JOB[job]).join(", ")} · ${one.note}`;
 }
