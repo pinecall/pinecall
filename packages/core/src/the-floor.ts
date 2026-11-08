@@ -14,6 +14,8 @@ const DiscoveredSchema = z.looseObject({
   mail: z.boolean().optional(),
   /** Google sign-in is configured. */
   google: z.boolean().optional(),
+  /** Whose this gateway is: what its sign-in carries, the operator's to set. */
+  brand: z.object({ name: z.string(), logo_url: z.string().nullable(), accent: z.string() }).optional(),
   /** Cloudflare Turnstile's site key: the page draws the widget and a sign-up, its resend and a forgotten password carry its token; a password never does. */
   turnstile: z.string().nullish(),
 });

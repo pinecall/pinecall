@@ -1,0 +1,104 @@
+/* Configure: stage cards with their pencils, a list of the rest, and the dialog every edit opens in. */
+
+.cfg { display: flex; flex-direction: column; gap: 12px; }
+.cfg-corner { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.cfg-readonly { display: inline-flex; align-self: flex-end; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 7px; background: var(--panel); color: var(--quiet); font-size: 12.5px; font-weight: 500; }
+.cfg-talks { margin-top: 12px; }
+.cfg-refused { font-size: 13px; color: var(--bad); }
+
+.cfg-title { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+.cfg-parts-flush { margin-top: 0; }
+
+.cfg-measures { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 56px; }
+.cfg-measure { display: flex; flex-direction: column; min-width: 0; }
+.cfg-figure { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cfg-figure .dash-quiet { font-weight: 400; letter-spacing: 0; }
+.cfg-road { display: flex; gap: 4px; margin-top: 18px; }
+.cfg-step { display: flex; flex: 1 1 0; flex-direction: column; gap: 2px; min-width: 84px; font-size: 13px; }
+.cfg-step-rail { position: relative; height: 2px; margin-bottom: 9px; border-radius: 1px; background: var(--tone); }
+.cfg-step-rail::before { content: ""; position: absolute; top: -3px; left: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
+.cfg-step-name { font-weight: 500; }
+.cfg-road-ends { display: flex; justify-content: space-between; margin-top: 10px; }
+.cfg-tone-accent { --tone: var(--accent); }
+.cfg-tone-blue { --tone: var(--blue); }
+.cfg-tone-pink { --tone: var(--pink); }
+.cfg-tone-warn { --tone: var(--warn); }
+.cfg-tone-good { --tone: var(--good); }
+.cfg-ring-row { display: flex; align-items: center; gap: 20px; margin-top: 6px; }
+.cfg-ring { flex: none; width: 76px; height: 76px; border-radius: 50%; mask: radial-gradient(circle, transparent 27px, #000 28px); }
+.cfg-ring-words { flex: 1; min-width: 0; }
+.cfg-ring-words .cfg-figure { margin-top: 0; }
+.cfg-legend { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 0; font-size: 12.5px; }
+.cfg-legend > div { display: flex; justify-content: space-between; gap: 12px; }
+.cfg-legend dt { display: flex; align-items: center; gap: 6px; color: var(--quiet); }
+.cfg-legend dd { margin: 0; font-variant-numeric: tabular-nums; }
+.cfg-swatch { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+
+.dash-switch.cfg-openings { display: grid; grid-auto-columns: minmax(136px, 1fr); grid-auto-flow: column; gap: 6px; width: fit-content; padding: 0; background: transparent; }
+.dash-switch.cfg-openings button { height: 30px; padding: 0 12px; border-radius: 7px; background: var(--raised); font-size: 13px; transition: background 0.15s, color 0.15s; }
+.dash-switch.cfg-openings button:disabled { cursor: default; }
+.dash-switch.cfg-openings button:disabled:not(.dash-switch-on) { opacity: 0.6; }
+.dash-switch.cfg-openings .dash-switch-on { background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink); }
+.cfg-greeting { margin-top: 12px; }
+.cfg-prompt-end { display: flex; align-items: center; gap: 12px; }
+.cfg-prompt { display: block; width: 100%; min-height: 360px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--ground); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+.cfg-prompt:focus { border-color: var(--accent); outline: none; }
+.cfg-prompt:read-only, .cfg-area:read-only { background: transparent; color: var(--quiet); cursor: default; }
+.cfg-prompt:read-only:focus, .cfg-area:read-only:focus { border-color: var(--line); }
+
+
+.cfg-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cfg-stage { display: flex; flex-direction: column; min-width: 0; padding: 14px 16px 0; overflow: hidden; border-radius: 10px; background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--tone) 11%, transparent), transparent 62%), var(--panel); }
+.dash-card .cfg-stage { background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--tone) 11%, transparent), transparent 62%), var(--raised); }
+.cfg-stage-top { display: flex; align-items: center; gap: 9px; min-height: 28px; }
+.cfg-stage-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }
+.cfg-stage-kind { flex: 1; min-width: 0; font-size: 13px; color: var(--quiet); }
+.cfg-stage .cfg-pencil { border: 0; }
+.cfg-stage .cfg-pencil:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.cfg-stage-title { margin-top: 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.018em; }
+.cfg-stage > .dash-quiet { margin-top: 2px; }
+.cfg-stage-facts { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 12px; margin: 14px -16px 0; padding: 11px 16px 12px; border-top: 1px solid color-mix(in srgb, var(--ink) 7%, transparent); }
+.cfg-stage-facts dt { font-size: 12px; color: var(--quiet); }
+.cfg-stage-facts dd { margin: 2px 0 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.cfg-pencil { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; }
+.cfg-pencil:hover { background: var(--ground); color: var(--ink); }
+.cfg-locked { padding: 1px 7px; border-radius: 4px; background: var(--ground); color: var(--quiet); font-size: 11.5px; white-space: nowrap; }
+
+.cfg-rows { display: flex; flex-direction: column; margin: -2px -8px; }
+.cfg-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 40px; padding: 4px 8px; border-radius: 6px; font-size: 13.5px; }
+.cfg-row:hover { background: var(--raised); }
+.cfg-row-name { color: var(--quiet); }
+
+.cfg-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 24px 60px rgb(0 0 0 / 0.55); }
+.cfg-dialog-wide { width: min(600px, calc(100vw - 32px)); }
+.cfg-dialog::backdrop { background: rgb(0 0 0 / 0.55); }
+.cfg-dialog form { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.cfg-dialog-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.cfg-dialog-body { display: flex; flex-direction: column; gap: 12px; }
+.cfg-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; }
+.cfg-save { height: 28px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--solid); color: var(--on-solid); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cfg-save:disabled { opacity: 0.6; cursor: default; }
+
+.cfg-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--quiet); }
+.cfg-input { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--ground); color: var(--ink); font: inherit; font-size: 13.5px; }
+.cfg-input:focus { border-color: var(--accent); outline: none; }
+.cfg-input:disabled { opacity: 0.55; }
+.cfg-area { height: auto; padding: 8px 10px; line-height: 1.45; resize: vertical; }
+
+.cfg-voices { display: flex; flex-direction: column; gap: 1px; max-height: 280px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+.cfg-voices-note { padding: 8px 4px; }
+.cfg-voice { display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 2px; border-radius: 6px; }
+.cfg-voice:hover { background: var(--raised); }
+.cfg-voice-on, .cfg-voice-on:hover { background: var(--accent-soft); }
+.cfg-voice-pick { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 5px 8px; border: 0; background: transparent; font-size: 13px; color: var(--ink); text-align: left; cursor: pointer; }
+
+@media (max-width: 1100px) {
+  .cfg-measures { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .cfg-stages { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .dash-switch.cfg-openings { grid-auto-flow: row; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+  .cfg-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .cfg-row-value { grid-column: 1 / -1; grid-row: 2; }
+}

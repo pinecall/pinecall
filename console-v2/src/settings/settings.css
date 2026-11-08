@@ -1,0 +1,26 @@
+/* Settings: a form on the sheet, and the sign-in drawn as it will look. */
+
+.set-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.set-lede { margin-top: 2px; color: var(--quiet); }
+.set-pair { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 340px); gap: 56px; margin-top: 20px; }
+.set-form { display: flex; flex-direction: column; gap: 16px; }
+.set-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; }
+.set-input { width: 100%; height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--raised); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 400; }
+.set-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.set-help { font-size: 12.5px; font-weight: 400; color: var(--quiet); }
+.set-colour { display: flex; gap: 8px; }
+.set-swatch { flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.set-foot { display: flex; align-items: center; gap: 12px; }
+.set-save { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--solid); color: var(--on-solid); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.set-save:disabled { opacity: 0.6; cursor: default; }
+.set-saved { font-size: 13px; color: var(--good); }
+.set-refused { font-size: 13px; color: var(--bad); }
+
+.set-preview.login { display: flex; flex-direction: column; gap: 10px; align-self: start; min-height: 0; padding: 22px; border-radius: 12px; }
+.set-preview-title { margin-top: 12px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.set-preview-field { height: 32px; border-radius: 7px; background: var(--raised); }
+.set-preview-go { display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 7px; background: var(--login-accent); color: var(--login-on-accent); font-size: 13px; font-weight: 600; }
+
+@media (max-width: 860px) {
+  .set-pair { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+}
