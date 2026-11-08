@@ -1,4 +1,4 @@
-/** A Studio agent's goldens, as Test ▸ Goldens draws them: the conversations it must hold — written here by hand, or a call kept and approved — and Run, which plays them against the agent the gateway holds, each verdict under it. */
+/** A Studio agent's goldens, as Evaluate ▸ Goldens draws them: the conversations it must hold — written here by hand, or a call kept and approved — and Run, which plays them against the agent the gateway holds, each verdict under it. */
 
 import { useState, type ReactNode } from "react";
 
@@ -49,8 +49,8 @@ export function StudioGoldens({ agent }: { agent: string }): ReactNode {
   const results = run === null || run.matrix === null ? [] : resultsOf(run.matrix);
   return (
     <Section
-      title="Goldens"
-      meta="conversations written down, and what the agent must do in each"
+      title="Kept by the gateway"
+      meta="a Studio agent has no folder: written here, or a call approved in Cases"
       action={
         <>
           <Button size="sm" disabled={writing} onClick={() => setWriting(true)}>

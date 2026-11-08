@@ -1,4 +1,4 @@
-/** Test's Cases: the calls a judge broke on, waiting for a person, and the ones kept for the nightly. */
+/** Cases, a row of Evaluate: the calls a judge broke on, waiting for a person, and the ones kept for the nightly. */
 
 export { CaseList } from "./case-list";
 export { Cases } from "./cases";

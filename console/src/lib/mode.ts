@@ -54,14 +54,14 @@ export function theBoxsOwnName(): string {
 }
 
 /** The sidebar's icons, by name (ui/icon.tsx). */
-export type ScreenIcon = "home" | "grid" | "activity" | "list" | "chart" | "phone" | "key" | "plug" | "users" | "building" | "server" | "route" | "sliders" | "check" | "memory" | "words" | "book" | "headphones" | "persona" | "bell" | "chat" | "flask" | "bot" | "scale" | "shield" | "card";
+export type ScreenIcon = "home" | "grid" | "activity" | "list" | "chart" | "phone" | "key" | "plug" | "users" | "building" | "server" | "route" | "sliders" | "check" | "memory" | "words" | "book" | "headphones" | "persona" | "bell" | "chat" | "flask" | "bot" | "scale" | "shield" | "card" | "golden";
 
 /**
  * Where a row sits in the sidebar. Unmarked rows are what is LOOKED AT — Overview, Calls, Quality —
  * and read the same with every agent in view or one. `build` is what makes one agent, drawn only
  * while one is in view; `harness` is how an agent is put to the test and watched — simulations,
- * the callers they play, the real calls a judge broke on, the judges and the monitors — drawn
- * whoever is in view; `workspace` is
+ * the callers they play, the real calls a judge broke on, the judges and the monitors, and with one
+ * agent in view its overview of them all and its goldens first — drawn whoever is in view; `workspace` is
  * the org's own, drawn at the sidebar's foot whatever is; `yours` is the person's, not the org's,
  * reached from their own name at the very foot.
  */
@@ -71,7 +71,7 @@ export type ScreenGroup = "build" | "harness" | "workspace" | "yours";
  * One screen: where it is, what it is called, which console has it, and where it sits. A screen
  * with no `under` is a ROW of the sidebar; one that names another screen is a TAB of that row,
  * reached through the tab bar drawn over the row's screens and never from the sidebar. A row that
- * is only a place for its tabs (`Test`, `Knowledge`, the org's `Settings`) opens on its first tab.
+ * is only a place for its tabs (`Knowledge`, the org's `Settings`) opens on its first tab.
  */
 export interface Screen {
   /** The key the scopes table gates it by (@pinecall/core/scopes). */
@@ -112,8 +112,8 @@ const THE_WORKSHOPS = ["sandbox"] as const;
 // a section of its own: these are the org's, at the root, and the agent's below are the same
 // screens under `/a/<slug>`. Agents lists them all, with the apps the box runs for the org and the
 // secrets those start with: what is running, and how. Knowledge is every base and every fact of
-// the world, the same row and tabs an agent has with only its own. The harness is the same five
-// rows in both tables; with every agent in view each lists every agent's — every simulated call,
+// the world, the same row and tabs an agent has with only its own. The harness's five rows are in
+// both tables (an agent's has its overview and its goldens before them); with every agent in view each lists every agent's — every simulated call,
 // every caller, every case, the org's judges and monitors — and a row opens what it lists under
 // its own agent.
 // What runs the org — numbers, people, the bill, its data and its rights, and Settings, what is set
@@ -180,10 +180,10 @@ export const BOX_SCREENS: readonly Screen[] = [
 // each the org's screen with only its calls — then what builds it. Studio is an agent built with no
 // code, its definition a form beside the agent to talk to. Playground is the gateway's
 // room, by voice or in writing, and Dev chat — a written call to the class in a developer's own
-// directory — is its second tab in the workshop. Test is what happens before a change ships: the
-// goldens and their runs, with an overview of the whole harness first. The harness is its own
-// rows: a caller put on it live, the callers written for it, the real calls a judge broke on
-// waiting for a person, the judges its real calls are held to, and the monitors over them.
+// directory — is its second tab in the workshop. The harness is its own rows: an overview of all
+// its stations first, the goldens a change must not break, a caller put on it live, the callers
+// written for it, the real calls a judge broke on waiting for a person, the judges its real calls
+// are held to, and the monitors over them.
 // Knowledge is what it searches and what it learned. Configure is what it runs on; the pipeline
 // that results and its lexicon are a row each, beside it.
 export const AGENT_SCREENS: readonly Screen[] = [
@@ -194,14 +194,14 @@ export const AGENT_SCREENS: readonly Screen[] = [
   { key: "studio", path: "studio", name: "Studio", in: BOTH, icon: "bot", group: "build", only: "studio" },
   { key: "talk", path: "playground", name: "Playground", tab: "Chat", in: BOTH, icon: "chat", group: "build" },
   { key: "devchat", path: "dev-chat", name: "Dev chat", in: THE_WORKSHOPS, under: "talk" },
-  { key: "test", path: "test", name: "Test", tab: "Overview", in: BOTH, icon: "flask", group: "build" },
-  { key: "evals", path: "goldens", name: "Goldens", in: BOTH, under: "test" },
   { key: "knowledge", path: "knowledge", name: "Knowledge", in: BOTH, icon: "book", opensOn: "first-tab", group: "build" },
   { key: "docs", path: "docs", name: "Docs", in: BOTH, under: "knowledge" },
   { key: "memory", path: "memory", name: "Memory", in: BOTH, under: "knowledge" },
   { key: "settings", path: "configure", name: "Configure", in: BOTH, icon: "sliders", group: "build" },
   { key: "pipeline", path: "pipeline", name: "Pipeline", in: BOTH, icon: "activity", group: "build" },
   { key: "lexicon", path: "lexicon", name: "Lexicon", in: BOTH, icon: "words", group: "build" },
+  { key: "test", path: "test", name: "Harness", in: BOTH, icon: "flask", group: "harness" },
+  { key: "evals", path: "goldens", name: "Goldens", in: BOTH, icon: "golden", group: "harness" },
   { key: "simulations", path: "simulations", name: "Simulations", in: BOTH, icon: "headphones", group: "harness" },
   { key: "personas", path: "personas", name: "Personas", in: BOTH, icon: "persona", group: "harness" },
   // A real call a judge broke on waits here for a person.

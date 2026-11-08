@@ -19,7 +19,7 @@ import { useJudges } from "./use-judges";
 import "./quality.css";
 
 /**
- * Quality is about calls that happened; whether a change is safe before it ships is Test's. The
+ * Quality is about calls that happened; whether a change is safe before it ships is Goldens'. The
  * window's numbers are the gateway's count (`/v1/insights`); the fixes are the case groups whose
  * diagnosis names a change; each rule's rate and the calls it broke are read off the newest
  * judged calls the page follows, one log each — the window counts every call, the rules what was read.

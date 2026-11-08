@@ -110,7 +110,7 @@ describe("the sandbox's console", () => {
   });
 
   it("has every screen of an agent, Dev chat among them", () => {
-    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Studio", "Playground", "Dev chat", "Test", "Goldens", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
+    expect(names(AGENT_SCREENS, "sandbox")).toEqual(["Overview", "Calls", "Quality", "Studio", "Playground", "Dev chat", "Knowledge", "Docs", "Memory", "Configure", "Pipeline", "Lexicon", "Harness", "Goldens", "Simulations", "Personas", "Cases", "Judges", "Monitors"]);
   });
 });
 
@@ -118,7 +118,7 @@ describe("the sandbox's console", () => {
 describe("an agent's screens", () => {
   it("are the org's three rows looked at, then what builds the agent, and never a word the workspace says", () => {
     expect(looked(AGENT_SCREENS, "production")).toEqual(["Overview", "Calls", "Quality"]);
-    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
+    expect(rowsOf(AGENT_SCREENS, "production").filter((screen) => screen.group === "build").map((screen) => screen.name)).toEqual(["Studio", "Playground", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
   });
 
   it("draw Studio for an agent built in Studio alone: a class has no definition to edit", () => {
@@ -126,8 +126,8 @@ describe("an agent's screens", () => {
       drawn(rowsOf(AGENT_SCREENS, "sandbox"), false, kind)
         .filter((screen) => screen.group === "build")
         .map((screen) => screen.name);
-    expect(build("studio")).toEqual(["Studio", "Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
-    expect(build("class")).toEqual(["Playground", "Test", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
+    expect(build("studio")).toEqual(["Studio", "Playground", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
+    expect(build("class")).toEqual(["Playground", "Knowledge", "Configure", "Pipeline", "Lexicon"]);
     // Not said yet (the list still being read): a class, until it says otherwise.
     expect(build(null)).toEqual(build("class"));
     const words = rowsOf(AGENT_SCREENS, "production").map((screen) => screen.name);
@@ -145,13 +145,14 @@ describe("an agent's screens", () => {
     expect(screenAt("/lexicon")).toBeUndefined();
   });
 
-  it("keeps under Test what comes before a change ships: its overview and its goldens", () => {
-    expect(tabs(AGENT_SCREENS, "test", "production")).toEqual(["Test", "Goldens"]);
+  it("gives the harness's overview and its goldens a row each, with no tabs", () => {
+    expect(tabs(AGENT_SCREENS, "test", "production")).toEqual(["Harness"]);
+    expect(tabs(AGENT_SCREENS, "evals", "production")).toEqual(["Goldens"]);
     expect(tabs(AGENT_SCREENS, "quality", "production")).toEqual(["Quality"]);
   });
 
-  it("has the org's harness rows, its own: simulations, its callers, its cases, its judges and its monitors", () => {
-    expect(harness(AGENT_SCREENS, "production")).toEqual(harness(ORG_SCREENS, "production"));
+  it("has the org's harness rows, its own, after its overview of them and its goldens", () => {
+    expect(harness(AGENT_SCREENS, "production")).toEqual(["Harness", "Goldens", ...harness(ORG_SCREENS, "production")]);
     expect(screenAt("/a/clinica-norte/simulations/call_9f")?.key).toBe("simulations");
   });
 
@@ -160,7 +161,7 @@ describe("an agent's screens", () => {
     expect(screenAt("/settings")?.key).toBe("org-settings");
     expect(screenAt("/a/clinica-norte/personas/el-que-cancela")?.key).toBe("personas");
     const goldens = screenAt("/a/clinica-norte/goldens");
-    expect(goldens === undefined ? undefined : rowOf(AGENT_SCREENS, goldens).name).toBe("Test");
+    expect(goldens === undefined ? undefined : rowOf(AGENT_SCREENS, goldens).name).toBe("Goldens");
   });
 });
 

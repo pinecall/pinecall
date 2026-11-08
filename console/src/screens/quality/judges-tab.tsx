@@ -1,4 +1,4 @@
-/** Judges, a tab of Test: the model the org's calls are judged on, every judge a call meets at hang-up, how each has held, and the form a new one is written in. */
+/** Judges, a tab of Quality: the model the org's calls are judged on, every judge a call meets at hang-up, how each has held, and the form a new one is written in. */
 
 import { useMemo, type ReactNode } from "react";
 import { useParams } from "react-router";

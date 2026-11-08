@@ -161,7 +161,7 @@ const AGENT_GONE: readonly { path: string; to: string }[] = [
   { path: "sessions/:call", to: "/calls/:call" },
   { path: "conversations", to: "/a/:agent/calls" },
   // An agent's screens before its rows were the org's own words: the Inbox is Calls, Chat is the
-  // Playground, Settings is Configure, the goldens are Test's; its judges are a tab of Quality at the same path.
+  // Playground, Settings is Configure, the goldens a row of Evaluate; its judges are a tab of Quality at the same path.
   { path: "inbox", to: "/a/:agent/calls" },
   { path: "inbox/:call", to: "/a/:agent/calls/:call" },
   { path: "talk", to: "/a/:agent/playground" },

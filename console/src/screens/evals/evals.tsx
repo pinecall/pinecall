@@ -1,4 +1,4 @@
-/** Goldens, a tab of Test: the agent's goldens as transcripts, where each stands in the newest run, and every run — is a change safe to ship? */
+/** Goldens, a row of Evaluate: the agent's goldens as transcripts, where each stands in the newest run, and every run — is a change safe to ship? */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
@@ -111,7 +111,7 @@ function ClassEvals({ agent }: { agent: string }): ReactNode {
 
   return (
     <Page width={1060} tight>
-      <PageHead title="Goldens" lede="Scripted conversations, replayed before a change ships." />
+      <PageHead title="Goldens" lede="Conversations written down, and what the agent must do in each: played against it before a change ships." />
 
       <Stats min={150}>
         <Stat size="small" label="Goldens" value={names.length === 0 ? "—" : names.length} />
@@ -125,7 +125,8 @@ function ClassEvals({ agent }: { agent: string }): ReactNode {
 
       <Card>
         <CardHead
-          title="Goldens"
+          title="In the agent's folder"
+          meta="its test files, read by pinecall start · edit them there"
           action={
             suites ? (
               goldens.length > 0 && (

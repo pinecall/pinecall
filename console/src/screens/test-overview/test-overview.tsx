@@ -1,4 +1,4 @@
-/** Test's overview: the harness an agent goes through before a change ships and after — each station with its number, and the latest runs. */
+/** Harness: the harness an agent goes through before a change ships and after — each station with its number, and the latest runs. */
 
 import type { ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -62,7 +62,7 @@ export function TestOverview(): ReactNode {
   return (
     <Page tight>
       <PageHead
-        title="Test"
+        title="Harness"
         ledeWidth={660}
         lede={`Everything ${agent} is held to, before a change ships and after: who calls it, what every call must do, what a change must not break, and the numbers that must not slip.`}
       />
@@ -77,7 +77,7 @@ export function TestOverview(): ReactNode {
         </div>
       </Stats>
       <Card pad>
-        <CardHead title="The harness" meta="six stations, each a tab · a change goes left to right, a broken call comes back round" />
+        <CardHead title="The six stations" meta="each a row of Evaluate · a change goes left to right, a broken call comes back round" />
         <ol className="tov-stations">
           {stations.map((station, at) => (
             <li key={station.name} className="tov-station">

@@ -1,4 +1,4 @@
-/** Test's Goldens: the agent's goldens and their runs, every agent's newest suite for the screens that only report it, cases played as a run, and a golden drawn as a transcript. */
+/** Goldens, a row of Evaluate: the agent's goldens and their runs, every agent's newest suite for the screens that only report it, cases played as a run, and a golden drawn as a transcript. */
 
 export { Evals } from "./evals";
 export { useSuites, type Suite } from "./suites";
