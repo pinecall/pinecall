@@ -99,8 +99,8 @@ Every parameter, and a real call of each: [The agent's settings](mcp/settings.md
 
 | tool | actions | what it does |
 |---|---|---|
-| `agent` | `show` · `set` · `clear` · `history` · `diff` · `rollback` · `knowledge` | the agent's settings — voice, models, language, greeting, turn-taking, recording, memory policy — each change a version, checked as `pinecall agent set` checks it; `knowledge` reads or writes what it knows by heart |
-| `lexicon` | `show` · `add` · `hear` · `rm` · `history` | how the voice says a word, and the words the ears must catch |
+| `agent` | `show` · `set` · `clear` · `history` · `diff` · `rollback` · `knowledge` | the agent's settings — voice, models, language, greeting, turn-taking, recording, memory policy — each change a version, checked as `pinecall agent set` checks it; `knowledge` reads or writes what it knows by heart. A write is refused naming an app written as code, which its code alone sets |
+| `lexicon` | `show` · `add` · `hear` · `rm` · `history` | how the voice says a word, and the words the ears must catch; a write is refused naming an app written as code |
 | `voices` | — | a vendor's voices in a language, the id first |
 | `voice_sample` | — | a line said by the gateway in a voice, saved as a WAV under `.pinecall/voices/`, with its timings |
 
@@ -160,8 +160,8 @@ Every parameter, and a real call of each: [Knowledge and memory](mcp/knowledge-a
 
 | tool | actions | what it does |
 |---|---|---|
-| `docs` | `push` · `pull` · `list` · `eval` · `attach` · `detach` · `attached` | the folder as a checkout of the base: `push` writes its files into the base and keeps the base's others (the folder's `README.md` never sent), `pull` writes the base back into the folder, file by file; attached to the agent, held to `goldens/docs.json`; `list` and `attached` are the org's and name no agent |
-| `memory` | `show` · `policy` · `eval` | what the agent kept about a caller (naming no agent), what it keeps and never keeps (`policy` with neither list reads them), and `goldens/memory.json` |
+| `docs` | `push` · `pull` · `list` · `eval` · `attach` · `detach` · `attached` | the folder as a checkout of the base: `push` writes its files into the base and keeps the base's others (the folder's `README.md` never sent), `pull` writes the base back into the folder, file by file; attached to the agent, held to `goldens/docs.json`; `list` and `attached` are the org's and name no agent. `attach` and `detach` are refused naming an app written as code |
+| `memory` | `show` · `policy` · `eval` | what the agent kept about a caller (naming no agent), what it keeps and never keeps (`policy` with neither list reads them), and `goldens/memory.json`; writing `policy` is refused naming an app written as code |
 | `remember` | — | the extraction cases under `agents/<agent>/test/memory/`, run on the model and policy of the agent, held here or wherever it is held |
 
 ### An agent with no code

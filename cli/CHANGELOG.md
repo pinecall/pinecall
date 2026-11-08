@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **An app written as code is set by its code and nothing else.** `agent set`, `clear`, `rollback`, `push` and `knowledge edit`,
+  `lexicon add`, `hear` and `rm`, `pipeline melody upload`, `default`, `off` and `after`, `docs attach` and `detach`, a `memory policy`
+  with a list, `cases apply` and the MCP tools over them are refused with one sentence naming the app, in the sandbox and in production.
+  A Studio agent is written as before; reading stays.
+
 - `pinecall simulate` briefs one of Pinecall's personas before it plays it: the gateway gives the
   caller the one concrete thing it phones this agent about (`POST …/personas/{name}/brief`), and the
   caller's manner stays; the terminal prints what it calls about before the first line. `--goal <text>`

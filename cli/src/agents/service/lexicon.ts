@@ -8,6 +8,7 @@ import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
 import { rowToStartFrom, versionGuarded } from "./corners.js";
+import { mustNotBeCode } from "./ownership.js";
 import { agentNamed, WriteOptions } from "./settings.js";
 
 export type { LexiconAnswer, LexiconHistory, LexiconRow } from "@pinecall/agents/wire";
@@ -63,6 +64,7 @@ export async function lexiconHistory(ctx: Context, agent: string | undefined, te
 // once overwrite each other, or a person's first one is refused.
 async function changed(ctx: Context, options: WriteOptions, change: (words: Words) => Words): Promise<LexiconAnswer> {
   const name = agentNamed(ctx, options.agent);
+  await mustNotBeCode(ctx, name);
   const gw = ctx.gateway();
   const standing = await api.getLexicon(gw, name);
   const row = rowToStartFrom(standing, options.team);

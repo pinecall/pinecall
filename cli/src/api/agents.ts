@@ -85,6 +85,16 @@ export interface VoiceSaid {
 const settingsOf = (agent: string): string => `/v1/agents/${seg(agent)}/settings`;
 const lexiconOf = (agent: string): string => `/v1/agents/${seg(agent)}/lexicon`;
 
+/** A row of `GET /v1/agents`: an agent held right now, and whether a class or a Studio definition holds it. */
+export interface HeldAgent {
+  slug: string;
+  kind?: "class" | "studio";
+}
+
+export async function listHeld(gw: GatewayClient): Promise<HeldAgent[]> {
+  return (await gw.get<{ agents: HeldAgent[] }>("/v1/agents")).agents;
+}
+
 export function getSettings(gw: GatewayClient, agent: string): Promise<TuningAnswer> {
   return gw.get<TuningAnswer>(settingsOf(agent));
 }

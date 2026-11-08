@@ -8,6 +8,7 @@ import { z } from "zod";
 import * as api from "../../api/agents.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
+import { mustNotBeCode } from "./ownership.js";
 import { agentNamed } from "./settings.js";
 
 export type { HoldMelody } from "../../api/agents.js";
@@ -34,14 +35,20 @@ export async function uploadMelody(ctx: Context, agent: string | undefined, file
     throw new UsageError(`no file at ${path}`);
   }
   if (size > LARGEST_UPLOAD) throw new UsageError(`${file} is over 20 MB: a melody loops, so a short one does`);
-  return api.uploadMelody(ctx.gateway(), agentNamed(ctx, agent), readFileSync(path), basename(path));
+  const name = agentNamed(ctx, agent);
+  await mustNotBeCode(ctx, name);
+  return api.uploadMelody(ctx.gateway(), name, readFileSync(path), basename(path));
 }
 
 /** The runtime's melody back, or nothing at all; an uploaded file is forgotten either way, the wait kept. */
 export async function chooseMelody(ctx: Context, agent: string | undefined, played: "default" | "off"): Promise<api.HoldMelody> {
-  return api.chooseMelody(ctx.gateway(), agentNamed(ctx, agent), played);
+  const name = agentNamed(ctx, agent);
+  await mustNotBeCode(ctx, name);
+  return api.chooseMelody(ctx.gateway(), name, played);
 }
 
 export async function waitBeforeMelody(ctx: Context, agent: string | undefined, after: AfterInput): Promise<api.HoldMelody> {
-  return api.waitBeforeMelody(ctx.gateway(), agentNamed(ctx, agent), after === "default" ? null : after);
+  const name = agentNamed(ctx, agent);
+  await mustNotBeCode(ctx, name);
+  return api.waitBeforeMelody(ctx.gateway(), name, after === "default" ? null : after);
 }

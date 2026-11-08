@@ -1,9 +1,9 @@
 /** Memory against the gateway: one contact read and forgotten, the policy written whole in a corner, the recall golden scored. */
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import * as service from "../../../src/knowledge/service/memory.js";
-import { answer } from "../../support/gateway.js";
+import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { SETTINGS } from "../../support/fixtures.js";
 import { folder, project } from "../../support/project.js";
@@ -24,6 +24,8 @@ describe("a contact", () => {
 });
 
 describe("the policy", () => {
+  beforeEach(() => studioAgents("front-desk", "sales"));
+
   it("with no list typed is read, from any folder with --agent", async () => {
     const sent = answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const { ctx } = testContext({ cwd: folder() });

@@ -21,7 +21,7 @@ export const docs = tool({
     team: z.boolean().optional().describe("`attach` and `detach`: in the team's settings instead of your own"),
   },
   manual:
-    "The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.",
+    "The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. An app written as code is set by its code, so `attach` and `detach` are refused naming it; they are for an agent built in Studio. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.",
   handler: async (args, ctx) => {
     if (args.action === "list") return await service.listBases(ctx);
     if (args.action === "attached") return { attached: render.attachments(await service.listAttached(ctx)) };
@@ -53,7 +53,7 @@ export const memory = tool({
     k: z.number().int().min(1).max(50).optional().describe("`eval`: how many facts a turn recalls"),
   },
   manual:
-    "`memory policy` says what the agent keeps about a caller (`remember`) and never keeps (`forget`); with neither it reads them, and with no policy the agent remembers nothing. `show` reads what it kept about one caller, and names no agent; `eval` scores `agents/<agent>/test/goldens/memory.json`. Forgetting a caller is never a tool: `pinecall memory forget` in a terminal.",
+    "`memory policy` says what the agent keeps about a caller (`remember`) and never keeps (`forget`); with neither it reads them, and with no policy the agent remembers nothing. `show` reads what it kept about one caller, and names no agent; `eval` scores `agents/<agent>/test/goldens/memory.json`. An app written as code is set by its code, so writing `policy` is refused naming it; it is for an agent built in Studio. Forgetting a caller is never a tool: `pinecall memory forget` in a terminal.",
   handler: async (args, ctx) => {
     if (args.action === "show") {
       if (args.contact === undefined) throw new ToolRefused("show takes the caller: a number or a contact id");

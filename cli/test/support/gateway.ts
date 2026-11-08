@@ -102,3 +102,9 @@ async function sentOf(request: Request): Promise<Sent> {
     type: request.headers.get("content-type"),
   };
 }
+
+/** The two lists an agent's kind is read from: these agents are Studio's, and nothing else is hosted or held. */
+export function studioAgents(...names: string[]): void {
+  answer("get", "/v1/hosted", { apps: names.map((name) => ({ name, kind: "studio", release: 1, live_release: 1, failed_why: null, stopped: false, created_by: "m_1", created_at: 0 })) });
+  answer("get", "/v1/agents", { agents: [] });
+}

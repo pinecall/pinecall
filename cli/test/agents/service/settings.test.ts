@@ -3,17 +3,19 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import * as service from "../../../src/agents/service/index.js";
 import { NO_LANGUAGE } from "../../../src/agents/service/settings.js";
 import { PinecallError, UsageError } from "../../../src/errors.js";
-import { answer } from "../../support/gateway.js";
+import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { SETTINGS, tuningRow } from "../../support/fixtures.js";
 import { folder } from "../../support/project.js";
 
 const WRITE = { team: false };
+
+beforeEach(() => studioAgents("front-desk", "sales"));
 
 describe("set", () => {
   it("writes only what it moved into a person's empty corner: the rest keeps following the team's", async () => {

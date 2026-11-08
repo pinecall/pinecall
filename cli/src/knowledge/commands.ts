@@ -26,7 +26,8 @@ attach says an agent reads a base — in your own corner, or the team's with --t
 production with --prod — with how a turn reads it: --k chunks, --mode (retrieved: the platform
 searches before the turn; tool: the model decides when), --min-score. It is one field of the
 agent's settings (\`pinecall agent\`), written as the next version. detach takes it out;
-attached prints which agents read which base in the env asked.
+attached prints which agents read which base in the env asked. An app written as code is set by
+its code alone: attach and detach are refused naming it, and they are for an agent built in Studio.
 
 eval asks the base every question of a golden — agents/<name>/test/goldens/docs.json, a JSON list of
 {asks, expects}, where expects is the heading path the answer should carry — and prints
@@ -63,7 +64,9 @@ is read or written: each question's facts go to a scratch contact and are delete
 
 policy is what the agent keeps about a caller and what it never does — the org's to say, set in
 the env beside the agent's other settings (\`pinecall agent\`), and a supervisor's or a
-manager's key opens it. With nothing typed it prints the policy of the three corners.
+manager's key opens it. With nothing typed it prints the policy of the three corners. An app
+written as code is set by its code alone: writing a policy is refused naming it, and it is for an
+agent built in Studio.
 
 Examples
   $ pinecall memory policy --team --remember alergias --remember "médico habitual" --forget pagos

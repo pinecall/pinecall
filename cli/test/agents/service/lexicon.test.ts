@@ -1,16 +1,18 @@
 /** The lexicon against the gateway: a word said or heard added to the whole row read, guarded like the settings. */
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import * as render from "../../../src/agents/render.js";
 import * as service from "../../../src/agents/service/index.js";
-import { answer } from "../../support/gateway.js";
+import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { lexiconRow } from "../../support/fixtures.js";
 
 const LEXICON = { world: "sandbox" as const, yours: null, team: lexiconRow("", 2, [{ word: "Vidal", spoken: "bee-DAHL" }], ["Norte"]), production: null, fixed: [] };
 
 describe("the lexicon", () => {
+  beforeEach(() => studioAgents("front-desk"));
+
   it("a word said joins the team's words, guarded by the person's empty corner", async () => {
     answer("get", "/v1/agents/:slug/lexicon", LEXICON);
     const sent = answer("put", "/v1/agents/:slug/lexicon", LEXICON);

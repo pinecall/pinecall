@@ -3,6 +3,7 @@
 export { cornerName, cornerRead, cornerWritten, holdsACorner, readSettings, rowToStartFrom, versionGuarded, writeCorner, type Change, type CornerWritten, type TuningAnswer, type TuningBody, type TuningRow } from "./corners.js";
 export { AfterInput, chooseMelody, showMelody, uploadMelody, waitBeforeMelody, type HoldMelody } from "./melody.js";
 export { listWalks, playWalk, type WalkListed, type WalkPlayed } from "./walks.js";
+export { mustNotBeCode, SET_IN_ITS_CODE } from "./ownership.js";
 export { hearWords, lexiconHistory, removeWords, sayWord, SayWordInput, showLexicon, WordsInput, type LexiconAnswer, type LexiconHistory, type LexiconRow, type Words } from "./lexicon.js";
 export {
   countTools,

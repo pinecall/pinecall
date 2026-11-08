@@ -31,8 +31,10 @@ replace those lists whole. --llm-builds names a class of the vendor's plugin, an
 key=value one of its keyword arguments; --stt-…, --tts-… and --judge-… are the same for the ears,
 the voice and the judge model. Those run only on your org's own key, as --realtime-option does.
 
-A field the class declares itself (@voice, @llm, @realtime, @stt, a static field) says \`class\` in
-every corner: the class wins, and a set or clear of it is refused naming the class.
+An app written as code is set by its code and nothing else, in the sandbox and in production: every
+write here (set, clear, rollback, push, knowledge edit) is refused naming it, and reading stays. These
+writes are for an agent built in Studio. What a class declares (@voice, @llm, @realtime, @stt, a
+static field) says \`class\` in every corner.
 
 knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it
 prints the corner's text; \`edit\` opens it in $EDITOR and saves what you wrote as the next
@@ -60,7 +62,8 @@ the web alike, from the next call; a written call plays none.
 default is the runtime's own melody, off is silence, upload sends a file of yours (the gateway
 converts it once, to Ogg Opus). after sets the wait in seconds, 2.5 when you set none; choosing
 what plays keeps the wait. One choice per agent per environment, whoever holds the agent:
---prod sets production's.
+--prod sets production's. An app written as code declares its melody in its class, and upload,
+default, off and after are refused naming it; they are for an agent built in Studio.
 
 Examples
   $ pinecall pipeline melody
@@ -70,7 +73,8 @@ Examples
 `;
 
 const LEXICON = `
-The lexicon is the agent's says and hears, which the class never sets. add says how a word is
+The lexicon is the agent's says and hears. An app written as code declares them in its class and a
+write here is refused naming it; these writes are for an agent built in Studio. add says how a word is
 spoken; hear names the words the ears must know; rm takes words out of both. Whole and
 versioned like the settings: the corner is yours (--team: the org's own).
 
@@ -156,6 +160,8 @@ export function register(program: Command, ctx: Context): void {
     .option("--team")
     .option("--note <note>")
     .action(async (flags) => {
+      // Said before the editor opens: nobody writes a page to be told it cannot be kept.
+      await service.mustNotBeCode(ctx, service.agentNamed(ctx, flags.agent));
       const before = await service.readKnowledge(ctx, flags.agent, flags.team === true);
       const text = await editInEditor(before.knowledge ?? "", ctx.processEnv);
       if (text === (before.knowledge ?? "")) {

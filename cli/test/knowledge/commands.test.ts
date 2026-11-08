@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { answer, refuse } from "../support/gateway.js";
+import { answer, refuse, studioAgents } from "../support/gateway.js";
 import { SETTINGS } from "../support/fixtures.js";
 import { project } from "../support/project.js";
 import { run } from "../support/run.js";
@@ -65,6 +65,7 @@ describe("pinecall docs", () => {
   });
 
   it("attach says which corner and version it landed in", async () => {
+    studioAgents("front-desk");
     answer("get", "/v1/knowledge", { bases: [{ base: "front-desk", chunks: 9, model: "acme-embed", pushed_at: 0 }] });
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     answer("put", "/v1/agents/:slug/settings", { ...SETTINGS, yours: { holder: "mem_ana", version: 1, author: "ana", note: null, set_at: 0, config: {} } });

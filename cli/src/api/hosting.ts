@@ -17,7 +17,10 @@ function appPath(name: string): string {
   return `/v1/hosted/${seg(name)}`;
 }
 
-export async function listApps(gw: GatewayClient): Promise<HostedApp[]> {
+/** A row of `GET /v1/hosted`, with what the wire's type does not name: whether the app is code or a Studio definition. */
+export type HostedRow = HostedApp & { kind?: "code" | "studio" };
+
+export async function listApps(gw: GatewayClient): Promise<HostedRow[]> {
   return (await gw.get<HostedAppList>("/v1/hosted")).apps;
 }
 

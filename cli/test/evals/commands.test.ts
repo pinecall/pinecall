@@ -3,7 +3,7 @@
 import { http, HttpResponse } from "msw/http";
 import { describe, expect, it } from "vitest";
 
-import { answer, GATEWAY, refuse, server, stream } from "../support/gateway.js";
+import { answer, GATEWAY, refuse, server, stream, studioAgents } from "../support/gateway.js";
 import { A_CASE, A_PERSONA, aRun } from "../support/fixtures.js";
 import { folder, project, write } from "../support/project.js";
 import { run, runJson } from "../support/run.js";
@@ -128,6 +128,8 @@ describe("a request the gateway's state contradicts", () => {
   it("is exit 2 in the gateway's own sentence — eval, runs promote and cases apply cannot run, and measured nothing", async () => {
     refuse("post", "/v1/evals/replay/:call", 409, "call_1 is still going: check it once it has ended");
     refuse("get", "/v1/calls/:call/golden", 409, "call_1 is still going: promote it once it has ended");
+    answer("get", "/v1/evals/groups/:id", { group: { id: "grp_1", agent: "front-desk" }, cases: [] });
+    studioAgents("front-desk");
     refuse("post", "/v1/evals/groups/:id/apply", 409, "grp_1 proposes code, and only a setting is applied here");
     for (const [argv, sentence] of [
       [["eval", "call_1"], "call_1 is still going: check it once it has ended"],

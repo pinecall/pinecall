@@ -68,7 +68,8 @@ and an expect that says what must not happen again. A person reads it, reproduce
 
 A case kept at hang-up joins its agent's GROUP for the judge that broke it (grp_…): propose asks
 the judge model for the cause and the smallest fix; apply writes a proposed SETTING as a new
-version of your settings; persona keeps a caller like the group's; approve and dismiss decide a
+version of your settings (an agent built in Studio's: an app written as code is refused, naming
+it, since its code sets it); persona keeps a caller like the group's; approve and dismiss decide a
 whole group. pull writes a case's golden into the repository; keep makes a finished call a case.
 
 add keeps a golden written by hand as an approved case, by its name — the file's, or --name — so the

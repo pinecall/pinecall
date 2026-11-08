@@ -1,11 +1,13 @@
 /** `pinecall agent | lexicon | pipeline | voices` as typed: the corners as a table, flags into one version, the words, the stages. */
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { answer, refuse } from "../support/gateway.js";
+import { answer, refuse, studioAgents } from "../support/gateway.js";
 import { lexiconRow, SETTINGS, tuningRow } from "../support/fixtures.js";
 import { folder } from "../support/project.js";
 import { run, runJson } from "../support/run.js";
+
+beforeEach(() => studioAgents("front-desk", "sales"));
 
 describe("pinecall agent", () => {
   it("alone prints the corners side by side: the team's value under yours when yours is empty", async () => {

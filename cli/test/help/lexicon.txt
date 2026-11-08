@@ -16,7 +16,8 @@ Commands:
                              why
   help [command]             display help for command
 
-The lexicon is the agent's says and hears, which the class never sets. add says how a word is
+The lexicon is the agent's says and hears. An app written as code declares them in its class and a
+write here is refused naming it; these writes are for an agent built in Studio. add says how a word is
 spoken; hear names the words the ears must know; rm takes words out of both. Whole and
 versioned like the settings: the corner is yours (--team: the org's own).
 

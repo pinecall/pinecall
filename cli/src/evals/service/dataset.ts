@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import { mustNotBeCode } from "../../agents/service/index.js";
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
@@ -151,8 +152,9 @@ export async function proposeFix(ctx: Context, id: string): Promise<api.CaseGrou
   return api.proposeGroup(ctx.gateway(), id);
 }
 
-/** A proposed setting written as a new version of the key's corner. */
+/** A proposed setting written as a new version of the key's corner; never a code app's. */
 export async function applyFix(ctx: Context, id: string): Promise<Record<string, unknown>> {
+  await mustNotBeCode(ctx, (await api.getGroup(ctx.gateway(), id)).group.agent);
   return api.applyGroup(ctx.gateway(), id);
 }
 

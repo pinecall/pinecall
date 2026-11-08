@@ -3,11 +3,11 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import * as service from "../../../src/agents/service/melody.js";
 import { UsageError } from "../../../src/errors.js";
-import { answer } from "../../support/gateway.js";
+import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { folder } from "../../support/project.js";
 
@@ -15,6 +15,8 @@ const DOOR = "/v1/agents/:slug/pipeline/hold-audio";
 const RUNTIMES = { played: "default", sha256: null, seconds: null, name: null, after_s: 2.5 };
 
 describe("melody", () => {
+  beforeEach(() => studioAgents("front-desk"));
+
   it("reads what plays and after how long, for the project's agent", async () => {
     const sent = answer("get", DOOR, RUNTIMES);
     const { ctx } = testContext();

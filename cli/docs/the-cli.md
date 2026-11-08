@@ -216,13 +216,13 @@ whose `static slug` says another is refused when it is served, naming both: rena
 
 **The business is not in the repository.** What the agent knows by heart — hours, prices, what
 needs an authorisation — is one field of its settings, per environment and corner, written in the
-console's Configure ▸ Knowledge or with [`pinecall agent knowledge edit`](#agent-knowledge), and
+console's Configure ▸ Knowledge (the terminal's [`pinecall agent knowledge edit`](#agent-knowledge) is an agent built in Studio's), and
 read whole into the prompt on every call. Nor are the documents a turn searches: they are a base,
 written in the console's Knowledge ▸ Docs, and a local `agents/<name>/docs/` is only what `docs push` sends
 when no directory is named. A class
-may still declare its voice, its model, its opening or its memory policy: what it declares wins over
-the settings until it is taken out
-([writing-an-agent.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/writing-an-agent.md)).
+declares its voice, its model, its opening or its memory policy
+([writing-an-agent.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/writing-an-agent.md)),
+and the CLI writes none of them for it: an app written as code is set by its code ([`agent`](#agent)).
 
 At the root, every verb that reads a class acts on **every agent**, each against its own folders,
 or on the one `--agent <name>` names — by its folder's name, which is its slug (`sales`):
@@ -742,9 +742,10 @@ agents it needs `--agent`, as paths, `--watch` and `--case` do.
 
 **Whose settings a run plays on is the key's.** From a laptop, a person's key runs on **your
 corner** of the sandbox ([`agent`](#agent)); in CI, a sandbox server token runs on **the
-team's**. So a settings fix that is only in your corner is green at your desk and red in CI,
-until `pinecall agent push --team` (or `agent set … --team`) gives it to the team. `--version`
-names a version of the corner the run plays on.
+team's**. An app written as code has nothing in either: it runs on its code. For an agent built in
+Studio a deploy writes the team's corner, so a settings fix that is only in your corner is green at
+your desk and red in CI until it is deployed (or `agent set … --team` gives it to the team).
+`--version` names a version of the corner the run plays on.
 
 ## `simulate`
 
@@ -1184,8 +1185,8 @@ are one thing to read. `pinecall cases groups` lists them, the pending first: th
 calls and how many were simulated, the cause, the fix proposed, and the group's id (`grp_…`), which
 every group verb takes. `propose <group>` asks the judge model to read the group's newest calls with
 the lines each verdict cites, the prompt, the settings and the tools, and to name the cause and the
-smallest fix — a **setting** (`apply <group>` writes it as a new version of your settings; replay it
-with `pinecall test --case`), **code** (the tool or prompt block and what it must do: your
+smallest fix — a **setting** (`apply <group>` writes it as a new version of your settings, refused
+for an app written as code, naming it, since its code sets it; replay it with `pinecall test --case`), **code** (the tool or prompt block and what it must do: your
 assistant makes it, through `pinecall mcp`'s `cases` tool), or **knowledge**; one eval, none on your
 own judge key. `persona <group>` keeps a caller like the group's as the agent's own. `approve` and
 `dismiss` with a group's id decide every case in it at once; `--judge-was-wrong` then needs no
@@ -1388,6 +1389,13 @@ pinecall agent pull [--team] · push <file> [--team]
                                         … and any of them with --prod, in production
 ```
 
+**An app written as code is set by its code and nothing else**, in the sandbox and in production. Every write of
+one agent's settings — `agent set`, `clear`, `rollback`, `push`, `knowledge edit`, `lexicon add`, `hear` and `rm`, `pipeline
+melody upload`, `default`, `off` and `after`, `docs attach` and `detach`, a `memory policy` with a list, `cases apply` — and
+the MCP tools over them are refused with exit 2 and one sentence naming the app: `clinica-norte is set in its code: change it there
+and deploy`. Reading stays, and these writes are for an agent built in Studio. An agent neither `GET /v1/hosted` nor `GET /v1/agents`
+names — a class that is not connected now — counts as code. Pushing documents to a base is the org's and stays.
+
 A version says what moved, so a write that changes nothing writes none: `set` with no field, or
 with the values the corner holds, and `clear` of a field your corner does not set are refused with
 exit 2 before anything travels. **A write puts only what it moved in your corner**: the gateway
@@ -1395,8 +1403,7 @@ builds a call field by field from the nearest corner that sets each, so the fiel
 touched keep following the team's. `set` and `clear` print what moved — the corner and its new
 version, then `field before → after`, one a line — never the whole table. `clear` takes fields out
 of your corner by the flag that set each (`--language`), so the team's hold again for them; a whole
-corner is `clear --all`, never a `clear` that forgot to name a field. A field the class declares is
-refused by `clear` as it is by `set`, with the same `409` naming the class.
+corner is `clear --all`, never a `clear` that forgot to name a field.
 
 Alone, the table prints a row per field some corner sets or the class declares, then the version
 each written corner stands at — a corner nobody wrote is left out — and counts the rest on the hint
@@ -1601,7 +1608,7 @@ again, so a process kept that way is stopped where it is supervised. An app on t
 **Git, for whoever wants it.** `pinecall agent pull > pinecall/clinica-norte.json` writes the corner's
 own row as a file — the fields it sets, not what it reads from the team's; `pinecall agent push pinecall/clinica-norte.json --team` sends it back as the next
 version, with no version check — it is what CI applies, and `push … --prod` is what a release
-applies to production. A corner that set nothing has nothing to pull: `pull` says so on stderr,
+applies to production, for an agent built in Studio (`pull` reads any agent; `push` is refused for an app written as code). A corner that set nothing has nothing to pull: `pull` says so on stderr,
 prints nothing and exits 1, so `pull > file` in a script fails rather than keeping an empty file. A
 `push` of what the corner already holds writes nothing and exits 2.
 
@@ -1617,7 +1624,7 @@ hours, prices, what needs an authorisation, what to say when asked for the docto
 is one field of the settings, versioned like the rest, and the runtime reads it **whole** into
 the prompt's static `knowledge` block on every call — so it is read once and cached, and never
 searched. Alone, the verb prints the corner's text; `edit` opens it in `$VISUAL` or `$EDITOR`,
-the way `git commit` does (`$VISUAL` wins over `$EDITOR`), and what you leave is the next version. An unchanged file writes
+the way `git commit` does (`$VISUAL` wins over `$EDITOR`), and what you leave is the next version; for an app written as code it is refused before the editor opens. An unchanged file writes
 nothing; an empty one takes the field out. It needs a terminal: piped, it is refused with exit 2
 rather than left waiting on an editor nobody can type at. The console's Configure ▸ Knowledge is the same
 textarea, and a **supervisor's or a manager's key opens it** (`words`) — the person who knows
@@ -1690,7 +1697,7 @@ lexicon · sandbox · ana@clinica.test's corner
   v3 · ana@clinica.test · 2026-10-09 12:18   said 1 · heard 1
 ```
 
-An agent's words: its `says` and `hears`, which the class never sets. A word is said its way where it
+An agent's words: its `says` and `hears`. An app written as code declares them in its class, and every write here is refused naming it; these verbs are for an agent built in Studio. A word is said its way where it
 stands as a word: `CLI` in "el CLI," but never inside "cliente"; a form of several words ("Dr. Lee") is
 found across them, and the case never matters. The agent is the one of
 this directory, or the one `--agent` names by its slug, as [`agent`](#agent) names it. Whole and
@@ -1766,7 +1773,7 @@ the web alike, from the next call; a written call plays none.
 gateway converts once; a file it cannot read is refused in a sentence. `after` sets the wait in
 seconds, from 0 to 30, and `after default` gives back the runtime's 2.5. Choosing what plays keeps
 the wait, and setting the wait keeps what plays. There is one choice per agent per environment,
-whoever holds the agent: `--prod` sets production's. The console's Pipeline screen shows the same.
+whoever holds the agent: `--prod` sets production's. The console's Pipeline screen shows the same. An app written as code declares its melody in its class, and `upload`, `default`, `off` and `after` are refused naming it.
 
 ## `supervise`
 
@@ -2439,7 +2446,7 @@ before the turn and hands the model what it found; `tool`: the model decides whe
 `--min-score`. A base attached twice is replaced, not doubled. `detach` takes it out, and taking
 the last one out leaves an empty list rather than no field at all: this corner reads no base, and
 the agent does not fall back to the team's. `attached` prints which agents read which base in the
-environment asked.
+environment asked. For an app written as code, set by its code, `attach` and `detach` are refused naming it.
 
 ```console
 $ pinecall docs attach clinica-norte --k 4
@@ -2502,7 +2509,7 @@ prints how many facts went. With nobody at a terminal — a script, CI — it er
 `--yes`, and exits 2 without it (`data erase` asks for `--yes` even at a terminal); `--yes` also skips the question.
 
 `policy` alone prints what the agent remembers and forgets, corner by corner; with flags it writes
-yours (`--team` the team's). Each category is its own flag — `--remember allergies --remember
+yours (`--team` the team's); for an app written as code, a write is refused naming it. Each category is its own flag — `--remember allergies --remember
 'preferred name'` — and the policy written replaces the one before it. To take yours out so the
 team's holds again: `pinecall agent clear memory`.
 
@@ -2641,7 +2648,12 @@ An answer that repeats a secret back is shown with `***` in its place.
 
 The sandbox's agents unless `--prod`. `deploy` is asked from the sandbox and lands in production: it
 takes a person's key that may act there, and the secrets the definition names must be set in
-production too.
+production too. **A deploy carries the settings with the release**: the deployer's sandbox settings
+— their own corner over the team's — are written to production and to the team's corner, knob by
+knob, so what was tried is what runs and what a colleague starts from. A knob the sandbox leaves
+unset keeps production's value, the lexicon's words are merged the same way, and a version is
+written only where something moved. A changed stage is tried on production's keys first, so a
+vendor's refusal refuses the deploy whole: no release and no settings land.
 
 | | |
 |---|---|
@@ -2650,7 +2662,7 @@ production too.
 | `pinecall studio pull <name> [--out <file>]` | the newest release written to a file, the release beside the definition |
 | `pinecall studio push <name> [--file <file>] [--note <why>]` | the file saved as the next release, over the release it was pulled at |
 | `pinecall studio try <name> <tool> [key=value …]` | the saved tool's request sent once, as a call would send it, and its status, time and body printed; a value that reads as a number or as `true`/`false` is sent as one, anything else as text |
-| `pinecall studio deploy <name> [--release <n>] [--note <why>]` | the sandbox's release — its newest unless `--release` — kept as production's next, answering from its next call |
+| `pinecall studio deploy <name> [--release <n>] [--note <why>]` | the sandbox's release — its newest unless `--release` — kept as production's next, answering from its next call, with the deployer's sandbox settings and lexicon carried to production and the team's corner |
 | `pinecall studio code <name> [--out <dir>]` | the agent as a TypeScript project of the framework's — the class `pinecall deploy` would run — saved as `<name>.zip`, or with `--out` its files written into that folder (under `<name>/`), none over a file already there |
 
 ## `secrets`
@@ -2857,7 +2869,7 @@ code can call — over HTTP, in any language, with the same key.
 | `cases` | `GET /v1/evals/cases?agent=&status=` (a case is found by its name there), `PATCH`·`DELETE /v1/evals/cases/{id}`, `POST /v1/evals/cases`; `add` is `PUT /v1/agents/{slug}/cases/{name}`, one per golden; the groups are `GET /v1/evals/groups?agent=`, `GET`·`PATCH /v1/evals/groups/{id}`, `POST …/{id}/propose` · `…/apply` · `…/persona` |
 | `runs drift` | `GET /v1/agents/{slug}/sessions` — a held-rate is counted off the verdicts the calls already carry, so it asks the sessions endpoint and no evals endpoint at all |
 | `eval` | `POST /v1/evals/replay/{call}` |
-| `agent` | `GET`·`PUT /v1/agents/{slug}/settings`, `GET …/settings/history`, `GET …/settings/diff`, `POST …/settings/rollback`; `list` and `stop` are `GET /v1/apps` and `POST /v1/apps/{app}/stop` |
+| `agent` | `GET`·`PUT /v1/agents/{slug}/settings`, `GET …/settings/history`, `GET …/settings/diff`, `POST …/settings/rollback`; `list` and `stop` are `GET /v1/apps` and `POST /v1/apps/{app}/stop`; a write first reads `GET /v1/hosted` and `GET /v1/agents` to tell a Studio agent from an app written as code |
 | `agent knowledge` · `lexicon` · `memory policy` · `docs attach` · `detach` | `GET`·`PUT /v1/agents/{slug}/settings` · `GET`·`PUT /v1/agents/{slug}/lexicon`, `GET …/history` |
 | `kill` | `POST /v1/agents/{slug}/kill` |
 | `pipeline` | `GET /v1/agents/{slug}/pipeline`; `melody` is `GET`·`PUT /v1/agents/{slug}/pipeline/hold-audio`, `PUT …/hold-audio/played` and `…/hold-audio/after` |

@@ -1,10 +1,10 @@
 /** The documents an agent searches: a folder of Markdown pushed as a base, a golden scored at the k a turn reads, a base attached in a corner. */
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { PinecallError, UsageError } from "../../../src/errors.js";
 import * as service from "../../../src/knowledge/service/docs.js";
-import { answer } from "../../support/gateway.js";
+import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
 import { SETTINGS, tuningRow } from "../../support/fixtures.js";
 import { folder, project, write } from "../../support/project.js";
@@ -121,6 +121,8 @@ describe("eval", () => {
 });
 
 describe("attach and detach", () => {
+  beforeEach(() => studioAgents("front-desk"));
+
   it("attach refuses a base the env has not, before anything is written", async () => {
     answer("get", "/v1/knowledge", { bases: [] });
     const { ctx } = testContext();

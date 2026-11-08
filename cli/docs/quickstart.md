@@ -282,13 +282,12 @@ answer comes from your file, and nothing in your code changed.
 
 ```bash
 pinecall voices --language en      # the voices, with their ids
-pinecall agent set --voice <id>
-pinecall agent                     # every setting: voice, models, language, greeting…
+pinecall agent                     # what it runs on: voice, models, language, greeting…
 ```
 
-The voice, the models, the language and what it knows by heart are **settings** of the agent, not
-code: changing one needs no deploy. `pinecall console` opens the same settings in the browser,
-with every call the agent has had.
+The voice, the models, the language and what it knows by heart are the class's: `@voice("<vendor>", "<id>")`
+on it, and the next `pinecall start` or deploy runs on it. An app written as code is set by its code
+and nothing else. `pinecall console` shows the same, read-only, with every call the agent has had.
 
 ### Go live
 
