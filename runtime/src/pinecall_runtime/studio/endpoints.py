@@ -88,7 +88,7 @@ async def deploy_studio_agent(
     if actor.person is None or not actor.person.opens_production:
         raise Forbidden(NOT_IN_PRODUCTION)
     deployed = await service.deploy_agent(
-        session, actor.org, actor.env, name, release=body.release, by=_asked_by(actor), note=body.note
+        session, handles.vault, actor, name, release=body.release, by=_asked_by(actor), note=body.note
     )
     await session.commit()
     service.changed(handles.signal, actor.org, Env.production)

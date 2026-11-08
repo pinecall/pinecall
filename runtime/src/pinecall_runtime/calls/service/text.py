@@ -1,14 +1,14 @@
 """Written calls on the gateway: opened on the socket that holds the agent, or taken up again."""
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.agents.declaration import AgentConfig, Versions
-from pinecall_runtime.agents.service import registry, settings
+from pinecall_runtime.agents.service import kinds, registry, settings
 from pinecall_runtime.calls.context import CallContext, Contact, Route
 from pinecall_runtime.calls.repository.heads import Claim, HeadRepository
 from pinecall_runtime.calls.schemas import LookupRequest, SealCallRequest
@@ -44,6 +44,16 @@ class TextSetup:
     model: providers.Running
     # A golden's facts, which recall answers instead of the contact's memory; None on a real call.
     recalled: tuple[str, ...] | None = None
+
+
+# A Studio agent is held once, by the org, and a person's written call reaches that socket by falling
+# through to it. The socket stays the org's; the call is the person's, tuned at their level and claimed
+# in their scope, as their voice call is. A scope names a holder only for a person, in the sandbox.
+def written_for(registration: registry.Registration, scope: Scope) -> registry.Registration:
+    """The registration a written call opened in the scope runs on; a class's stays as it is held."""
+    if scope.holder and kinds.kind_of(registration.sdk) == "studio":
+        return replace(registration, scope=scope)
+    return registration
 
 
 async def open_text(

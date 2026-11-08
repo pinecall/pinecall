@@ -7,11 +7,16 @@ from typing import Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pinecall_runtime.accounts.service import keys
+from pinecall_runtime.agents.declaration import AgentConfig, Lexicon
+from pinecall_runtime.agents.service import declared, settings
 from pinecall_runtime.billing import service as billing
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import Conflict, NotFound, ValidationError
 from pinecall_runtime.hosting import service as hosting
+from pinecall_runtime.kit.auth import Actor, Scope
 from pinecall_runtime.kit.crypto import Vault
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.studio.schemas import Definition, StudioAgent, TryResponse
 from pinecall_runtime.studio.service import definition as defined
 from pinecall_runtime.studio.service import fetch
@@ -30,6 +35,7 @@ HELD_BY_CODE = "{name} is held by an app of yours already: a slug is one agent, 
 TAKEN = "{name} is the name of a hosted app already: give this agent another name"
 NO_TOOL = "this agent has no tool called {name}"
 DEPLOYS_FROM_THE_SANDBOX = "an agent is deployed from the sandbox: ask with the sandbox, and it lands in production"
+DEPLOYED = "deployed from the sandbox's release {release}"
 
 
 class ReleaseMoved(Conflict):
@@ -117,11 +123,13 @@ async def save_agent(
 
 
 # Production's own secrets are what it is checked against: a key named in the sandbox may be
-# missing there, and the deploy is refused before a call finds out.
+# missing there, and the deploy is refused before a call finds out. Its settings go first, so what
+# a vendor refuses leaves nothing kept: release and settings land in one transaction or not at all.
 async def deploy_agent(
-    session: AsyncSession, org: str, env: Env, name: str, *, release: int | None, by: str, note: str
+    session: AsyncSession, vault: Vault, actor: Actor, name: str, *, release: int | None, by: str, note: str
 ) -> StudioAgent:
-    """The sandbox's release, its newest unless named, kept as production's next."""
+    """The sandbox's release, its newest unless named, kept as production's next, the deployer's settings with it."""
+    org, env = actor.org, actor.env
     if env is not Env.sandbox:
         raise ValidationError(DEPLOYS_FROM_THE_SANDBOX)
     sandbox = hosting.App(org=org, env=Env.sandbox, name=name)
@@ -136,7 +144,9 @@ async def deploy_agent(
         await _open(session, production, by=by)
     elif kind != hosting.STUDIO:
         raise Conflict(TAKEN.format(name=name))
-    shown = note or f"deployed from the sandbox's release {release or standing.release}"
+    deployed = release or standing.release
+    await _carry_settings(session, vault, actor, name, chosen, deployed)
+    shown = note or DEPLOYED.format(release=deployed)
     await _keep(session, production, chosen, by=by, note=shown)
     return await read_agent(session, org, Env.production, name)
 
@@ -162,6 +172,40 @@ async def try_tool(
     request = fetch.request_of(tool, arguments, values)
     answer = await fetch.send(http, request, name=tool.name, timeout_s=tool.timeout_s, resolver=resolver)
     return TryResponse(status=answer.status, body=answer.body, error=answer.error, duration_ms=answer.duration_ms)
+
+
+# The deployer's settings, their level over the team's, become production's and the team's. Only a
+# knob they set moves: one they leave unset keeps the value it has there, and one the definition
+# declares is its own, so it is not carried. An empty sandbox writes no version and clears nothing.
+async def _carry_settings(
+    session: AsyncSession, vault: Vault, actor: Actor, name: str, chosen: Definition, release: int
+) -> None:
+    theirs = await settings.current_settings(session, keys.scope_of_request(actor), name)
+    declaration = declared.with_app_fields(AgentConfig(slug=name), defined.declaration(chosen), first=True)
+    carried = {
+        knob: value
+        for knob, value in settings.dump_tuning(theirs.tuning).items()
+        if settings.DECLARED_AS.get(knob, knob) not in declaration.fixed
+    }
+    written = settings.Written(author=actor.name, note=DEPLOYED.format(release=release))
+    for where in (Scope(actor.org, Env.production), Scope(actor.org, Env.sandbox)):
+        standing = await settings.current_settings(session, where, name)
+        if carried:
+            wanted = settings.parse_tuning({**settings.dump_tuning(standing.tuning), **carried})
+            keyring = await providers.keys_of(session, vault, where)
+            await settings.write_tuning(
+                session, where, name, wanted, written, actor=actor, declared=declaration, vault_keyring=keyring
+            )
+        await _carry_lexicon(session, where, name, standing.lexicon, theirs.lexicon, written)
+
+
+# A word is the lexicon's knob: one the sandbox says or hears is carried, one only the target has stays.
+async def _carry_lexicon(
+    session: AsyncSession, where: Scope, name: str, there: Lexicon, theirs: Lexicon, written: settings.Written
+) -> None:
+    wanted = Lexicon(said={**there.said, **theirs.said}, heard=tuple(dict.fromkeys((*there.heard, *theirs.heard))))
+    if wanted != there:
+        await settings.put_lexicon(session, where, name, wanted, written)
 
 
 async def _open(session: AsyncSession, app: hosting.App, *, by: str) -> None:

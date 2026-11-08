@@ -55,7 +55,7 @@ from pinecall_runtime.calls.service.seal import drift_folded, judge_call, judge_
 from pinecall_runtime.calls.service.serving import Serving, claim_code, known_here
 from pinecall_runtime.calls.service.socket import AppSocket
 from pinecall_runtime.calls.service.stranded import stranded
-from pinecall_runtime.calls.service.text import TextSetup, open_text, open_text_as
+from pinecall_runtime.calls.service.text import TextSetup, open_text, open_text_as, written_for
 from pinecall_runtime.calls.service.threads import Threads
 from pinecall_runtime.calls.service.traceback import traceback_of
 from pinecall_runtime.calls.service.usage import keep_agent_values, keep_caller_cost, keep_caller_played, simulating
@@ -157,4 +157,5 @@ __all__ = [
     "stranded",
     "traceback_of",
     "unanswered_tools",
+    "written_for",
 ]

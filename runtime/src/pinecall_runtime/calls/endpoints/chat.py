@@ -17,7 +17,7 @@ from pinecall_runtime.calls.auth import serving_of
 from pinecall_runtime.calls.context import CallContext, Contact, Route, new_call_id
 from pinecall_runtime.calls.fanout import Subscription
 from pinecall_runtime.calls.service.serving import Serving
-from pinecall_runtime.calls.service.text import open_text, resume_text, tokens_of
+from pinecall_runtime.calls.service.text import open_text, resume_text, tokens_of, written_for
 from pinecall_runtime.calls.service.usage import keep_caller_played
 from pinecall_runtime.enums import Channel, Direction, KeyScope
 from pinecall_runtime.evals import service as evals
@@ -116,7 +116,7 @@ def _chatting(websocket: WebSocket, serving: Serving) -> tuple[Registration, str
     registration = serving.registry.serving(actor.scope, slug, app)
     if registration is None:
         raise NotFound(_why_not(serving, actor.scope, slug, app))
-    return registration, websocket.query_params.get("call")
+    return written_for(registration, actor.scope), websocket.query_params.get("call")
 
 
 # A web caller is a visitor id; the org's own key may name who it is (`?contact=`) and which of

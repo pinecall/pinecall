@@ -87,6 +87,29 @@ save reaches the calls already open: the socket sends again the blocks that chan
 production a call keeps the definition it opened on while it runs on that gateway, and a deploy
 answers from the next call; a call handed to another gateway is rebuilt on the newest release.
 
+## Written calls in the sandbox
+
+A person's written call (`WS /v1/chat`, a written simulation, a run of goldens) reaches the org's
+socket like anyone's, and is still theirs: tuned at their own corner over the team's, claimed in
+their scope, as their voice call is. Production's calls, the sandbox's server tokens and the calls
+nobody opened by hand (WhatsApp, a phone ring) stay the org's. An app written as a class is untouched.
+
+## What a deploy carries
+
+A deploy writes the shared settings. The deployer's sandbox settings, their own corner over the
+team's, go to production's settings and to the sandbox's team corner as one new version on each,
+noted with the release and written under the deployer's name; a key with no person carries the
+team's, and a corner where nothing changes gets no version.
+
+Only what those settings set moves anything: a knob the sandbox leaves unset keeps the value
+production (or the team) has, and an empty sandbox clears nothing. A knob the definition declares
+stays out, as it would be refused anywhere else. The lexicon goes the same way, word by word: a word
+only production has stays there, so a word removed in the sandbox is removed in production by hand.
+
+The new values are checked as any setting is, against production's own keys for production's and the
+sandbox's for the team's: a stage that changes is tried on its vendor before it is kept. A refusal
+is the deploy's: the release and both versions land in one transaction or not at all.
+
 ## The endpoints
 
 | endpoint | what |
@@ -95,7 +118,7 @@ answers from the next call; a call handed to another gateway is rebuilt on the n
 | `POST /v1/studio/agents` | `{name, definition?, note?}` → `StudioAgent`. Made in the env asked, counted against `hosted_apps` (`429` past it); `409` for a name a hosted app has or an app of the org holds; a starting definition when none is given |
 | `GET /v1/studio/agents/{name}` | `StudioAgent`: `{name, env, release, definition, author, note, saved_at, stopped}`; `404` for none, `400` for a code app's name |
 | `PUT /v1/studio/agents/{name}` | `{definition, based_on, note?}` → the next release, `based_on` the release read (`null` takes any); `409` naming the newest when someone saved meanwhile. A definition equal to the newest keeps no release |
-| `POST /v1/studio/agents/{name}/deploy` | `{release?, note?}`, asked in the sandbox → production's next release, the sandbox's newest unless named; made in production when it is the first (counted there). A person's key that may act in production alone, else `403` |
+| `POST /v1/studio/agents/{name}/deploy` | `{release?, note?}`, asked in the sandbox → production's next release, the sandbox's newest unless named; made in production when it is the first (counted there), and the deployer's sandbox settings with it ([below](#what-a-deploy-carries)). A person's key that may act in production alone, else `403` |
 | `POST /v1/studio/agents/{name}/try` | `{tool, arguments, definition?}` → `{status, body, error, duration_ms}`: one tool's request sent once as a call would send it, of the definition given (the editor's, unsaved) or the saved one |
 | `GET /v1/studio/agents/{name}/code` | `application/zip`: the agent as a TypeScript project of the framework's — `package.json`, `tsconfig.json`, `agents/<name>/agent.tsx` (the instructions, the greeting, a method per tool, data collection), `AGENTS.md` for a coding assistant, a README. `pinecall deploy` runs it as it is; once it answers, remove the Studio agent, since a slug is one agent |
 

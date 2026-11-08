@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **A person's written call to a Studio agent runs on their settings.** Sandbox `WS /v1/chat`, written
+  simulations and goldens reached the org's socket and took the org's corner, while their voice call
+  took their own: now the socket stays the org's and the call is tuned and claimed in their scope.
+  Server keys, production, WhatsApp and a phone ring are the org's as before, and an app written as a
+  class is untouched.
+- **Deploying a Studio agent shares the deployer's settings.** `POST /v1/studio/agents/{name}/deploy`
+  writes their sandbox settings (their corner over the team's) as one version to production's and to
+  the sandbox's team corner, noted with the release, under the deployer's name. Only what those
+  settings set moves anything: a knob unset in the sandbox keeps its value there and an empty sandbox
+  writes no version. The lexicon goes the same way, word by word. The release and both versions land
+  in one transaction, and a vendor refusing a changed stage on the target's keys refuses the deploy.
 - **The model a vendor runs when none is picked is the one a call runs.** `GET /v1/providers` and the
   pipeline report said `runs: {"llm/google": "gemini-2.5-flash"}`, the Google plugin's own, while a call
   on Google with no model ran the platform default's `gemini-3.5-flash-lite`: the console's Configure

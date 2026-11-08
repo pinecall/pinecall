@@ -162,7 +162,7 @@ async def _placed(
             await service.claim_new_call(session, serving, placed.call, body.agent, scope)
             simulations.play(placed.call, scope, _spoken(serving, scope, placed))
         else:
-            running = await service.written_call(session, serving, registration, placed)
+            running = await service.written_call(session, serving, calls.written_for(registration, scope), placed)
             simulations.play(placed.call, scope, _written(serving, running, placed))
     except BaseException:
         simulations.release(call)

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Path, Query
 
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.agents.service import registry
+from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.evals import schemas, service
 from pinecall_runtime.evals.auth import EvalsKey, TheRunner
@@ -23,7 +24,9 @@ async def start_suite(
     registration = serving.registry.serving(actor.scope, body.agent, body.app)
     if registration is None:
         raise registry.NoApp(body.agent)
-    return await service.start_suite(session, serving, runner, body, actor.scope, registration)
+    return await service.start_suite(
+        session, serving, runner, body, actor.scope, calls.written_for(registration, actor.scope)
+    )
 
 
 @router.get("/v1/evals/runs", response_model_exclude_unset=True)
