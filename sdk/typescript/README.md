@@ -80,16 +80,16 @@ whoever holds it — your `start`, a colleague's, or production's with `--prod`.
 
 Other useful verbs: `pinecall prompt --state <file>` prints the exact prompt a state produces
 (`--channel web --medium text` for the one a written chat gets);
-`pinecall docs push` uploads a knowledge base and `pinecall docs attach <base>` gives it to the
-agent; `pinecall deploy` runs the project on Pinecall instead of your own server, with
+`pinecall docs push` uploads `agents/<name>/docs/` as a knowledge base, the one the class's
+`static docs` has the agent search; `pinecall deploy` runs the project on Pinecall instead of your own server, with
 `pinecall secrets` for what it is started with ([Deploy to Pinecall](https://docs.pinecall.io/guides/deploy/)). Every verb runs against the sandbox unless `--prod` is given. The CLI reads `PINECALL_KEY`
 and `PINECALL_URL` from the environment or the project's `.env`. Full reference:
 [docs/the-cli.md](https://github.com/pinecall/pinecall/blob/main/cli/docs/the-cli.md).
 
 A project holds one or more agents: `agents/<name>/agent.tsx`, their tests in
 `agents/<name>/test/` (goldens, memory), and their own judges and callers as code in `agents/<name>/harness.ts`. Voice, model, language, greeting, knowledge and the documents an agent searches
-are per-world settings (`pinecall agent set --language es`), unless the class declares them
-itself — `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `static` fields — and then the class wins. Running in production on your own server:
+are the class's — `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `static` fields: an app written as
+code is set by its code and nothing else, and the console shows what it runs on, read-only. Running in production on your own server:
 [Run it on your own server](https://docs.pinecall.io/guides/own-server/).
 
 ## Development

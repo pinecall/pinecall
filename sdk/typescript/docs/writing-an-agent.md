@@ -33,11 +33,13 @@ call and no view renders it.
 
 ### The environment: the settings', or the class's
 
-Everything the agent **runs on** is its settings': set per world, versioned, with who set it and
-why, and changed without a deploy — by `pinecall agent set`, the console's Configure screen, or the
-verb the table names. The class may declare any of it instead, and **what the class declares wins**:
-the settings of that field are not read for the agent, the console shows it locked, "set by the
-class", and a set of it is refused naming the class. Take it out of the class to set it again.
+Everything the agent **runs on** — the voice, the models, the language, the greeting, what it knows
+by heart, what it remembers — is the class's. **An app written as code is set by its code and nothing
+else**: the console's Setup shows what it runs on, read-only, and `pinecall agent set` and every other
+verb that writes one agent's settings refuses an app, naming it. Change the class and deploy. A stage
+the class leaves out runs on the org's default vendor for it and that vendor's default model; a field
+left out reads as the runtime's default. The settings those verbs write belong to an agent built in
+Studio, which has no code.
 
 ```tsx
 @voice("cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", { model: "sonic-2" })
@@ -77,33 +79,32 @@ own voice, while the `@llm` keeps answering the written ones; `pinecall provider
 vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
 such a model is refused at registration. A realtime model that says given words itself (xAI's Grok does) is the call's only voice: the recording notice, a greeting given as words and a confirmation's read-back are said by it, in its own voice; one that cannot leaves them to the agent's voice, and the call then has two. A vendor that is not installed, or does not do the stage, is refused at registration. A decorator
 fixes the whole stage: with `@llm` in the class, `--temperature`, `--llm-builds` and `--llm-option`
-are refused too. The settings take the same knobs for a class that leaves the stage to them
-(`pinecall agent set --temperature 0.3 --llm-builds responses.LLM --llm-option use_websocket=true`). The rest are `static` fields: an instance field is the call's state, so one of these
+are refused too. A class that leaves the stage out runs it on the org's default vendor and that vendor's default model. The rest are `static` fields: an instance field is the call's state, so one of these
 declared there is refused when the class loads.
 
-| field | what it is | on the class | or in the settings |
-|---|---|---|---|
-| `voice` | the voice: its vendor and the vendor's id | `@voice("<vendor>", "<id>")` | `pinecall agent set --voice` |
-| `llm` | the model that answers, and its temperature | `@llm("<vendor>/<model>", { temperature })` | `pinecall agent set --llm` |
-| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `@realtime("<vendor>/<model>", { options })` | `pinecall agent set --realtime` |
-| `stt` | the ears, and who ends the caller's turn | `@stt("<vendor>/<model>", { endOfTurn })` | `pinecall agent set --stt` · `--end-of-turn` |
-| `judge` | the model its calls are judged on | `@judge("<vendor>/<model>", { options })` | `pinecall agent set --judge` |
-| `language` | the language the call is in | `static language = "es"` | `pinecall agent set --language` |
-| `greeting` | how the call opens: the words, or the model's own | `static greeting = "…"` · `improvise` · `improvise("…")` | `pinecall agent set --greeting '…'` · `--greeting improvise` · `--greeting improvise:'…'` |
-| `hangup` | whether the model may end the call itself, and when, in your words | `static hangup = "…"` · `true` | `pinecall agent set --hangup '…'` · `--hangup any` |
-| `turn` | when the caller has finished, and may interrupt | `static turn = { endpointingMs: 300 }` | `pinecall agent set` |
-| `says` | how a word the voice would misread is said | `static says = [{ word, spoken }]` | `pinecall lexicon add <word> --say '…'` |
-| `hears` | the words the ears must know: names, brands, the doctor's surname | `static hears = ["…"]` | `pinecall lexicon hear <word> …` |
-| `memory` | what to remember about a caller across calls, and what never to | `static memory = { remember: […], forget: […] }` | `pinecall memory policy --remember '…' --forget '…'` |
-| `record` | whether the call is recorded | `static record = false` | `pinecall agent set --record on\|off` |
-| `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` | `pinecall agent set --max-duration 20` |
-| `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` | `pinecall agent set --llm-timeout 8` |
-| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` | `pinecall agent knowledge edit` |
-| `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` | `pinecall docs push`, then `pinecall docs attach <base>` |
-| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` | `pinecall pipeline melody upload\|after\|off` |
-| `widget` | how the widget presents the agent | `static widget = { title, tagline, greeting, accent, autostart, theme }` | the agent's **Widget** screen |
-| `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …], own: [offersNextSlot] })` | `pinecall judges on\|off\|add` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …], own: [hurried] })` | `pinecall personas on\|off\|add` |
+| field | what it is | on the class |
+|---|---|---|
+| `voice` | the voice: its vendor and the vendor's id | `@voice("<vendor>", "<id>")` |
+| `llm` | the model that answers, and its temperature | `@llm("<vendor>/<model>", { temperature })` |
+| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `@realtime("<vendor>/<model>", { options })` |
+| `stt` | the ears, and who ends the caller's turn | `@stt("<vendor>/<model>", { endOfTurn })` |
+| `judge` | the model its calls are judged on | `@judge("<vendor>/<model>", { options })` |
+| `language` | the language the call is in | `static language = "es"` |
+| `greeting` | how the call opens: the words, or the model's own | `static greeting = "…"` · `improvise` · `improvise("…")` |
+| `hangup` | whether the model may end the call itself, and when, in your words | `static hangup = "…"` · `true` |
+| `turn` | when the caller has finished, and may interrupt | `static turn = { endpointingMs: 300 }` |
+| `says` | how a word the voice would misread is said | `static says = [{ word, spoken }]` |
+| `hears` | the words the ears must know: names, brands, the doctor's surname | `static hears = ["…"]` |
+| `memory` | what to remember about a caller across calls, and what never to | `static memory = { remember: […], forget: […] }` |
+| `record` | whether the call is recorded | `static record = false` |
+| `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` |
+| `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` |
+| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` |
+| `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` |
+| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` |
+| `widget` | how the widget presents the agent | `static widget = { title, tagline, greeting, accent, autostart, theme }` |
+| `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …], own: [offersNextSlot] })` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …], own: [hurried] })` |
 
 **The judges and the callers are the class's the same way, and they are code.** `judges({ on, own })`
 names which of Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's own

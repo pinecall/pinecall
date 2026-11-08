@@ -209,22 +209,24 @@ a view, never in a snapshot, and assigning one does not go through the change re
 | `channelRules` | whether the `identity` block ends in `<channel>` (`views/built-in-rules.ts`): on unless the class sets it `false` |
 | `phone`, `whatsapp`, `web` | **nothing.** A door is a row the org keeps (`pinecall numbers import`), never a field: `agent.register` sends `routes: []`. The three names stay on `CONFIG_FIELDS` so an old class's `phone` is still kept out of the state rather than becoming an authored change |
 
-**The class is code; the world is environment.** Everything else an agent runs on is not the
-class's to say: it varies between the sandbox and production, it is the org's to change without a
-deploy, and it is kept **per world, per corner, versioned** in the agent's settings on the gateway
-(the runtime's `docs/protocol/settings-api.md`). A class that still carries one of these fields is
-refused at load, before a prompt is printed or a gateway is knocked at, with the verb that sets it
-(`runtime/environment.ts`):
+**The class is code, and so is its environment.** An app written as code is set by its code and
+nothing else: the voice, the models, the language, the greeting, what it knows by heart, what it
+remembers and the bases it searches are declared on the class — `@voice`, `@llm`, `@realtime`,
+`@stt`, `@judge` and `static` fields (`runtime/environment.ts`) — and travel with each deploy. The
+gateway keeps them as the agent's settings, per world and versioned, and the console shows them
+read-only; a settings write of an app is refused naming it. An **instance** field of one of these
+names is refused at load, before a prompt is printed or a gateway is knocked at: an instance field is
+the call's state, never the environment (`refuseTheEnvironment`):
 
-| field | is now | set by |
-|---|---|---|
-| `voice`, `llm`, `stt` | the settings' vendors and models | `pinecall agent set --voice · --llm · --stt`, or the Settings tab |
-| `language` | the settings' `language`, the tag the voice and the ears are set to; the prompt's own rules are English either way | `pinecall agent set --language <tag>` |
-| `greeting`, `hangup` | how the call opens and whether the model may end it | `pinecall agent set --greeting · --reply · --hangup` |
-| `says`, `hears` | the agent's lexicon | `pinecall lexicon add <word> --say`, `pinecall lexicon hear` |
-| `memory` | what is remembered about a caller and what never is | `pinecall memory policy --remember · --forget` |
-| `knowledge` | **what the agent knows by heart**: Markdown, read whole into the `knowledge` block on every call | `pinecall agent knowledge edit`, or the Settings tab's Knowledge — never a file in the repository |
-| `docs` | **the bases the agent searches** — the RAG — as the settings' `bases`, each with `k`, a mode and a score | the base written in Settings ▸ Docs (or started with `pinecall docs push` from a local `agents/<name>/docs/`), then `pinecall docs attach <base>`, or the Settings tab's Bases |
+| field | is |
+|---|---|
+| `voice`, `llm`, `realtime`, `stt`, `judge` | the vendors and models each stage runs on; left out, the org's default vendor and its default model |
+| `language` | the tag the voice and the ears are set to; the prompt's own rules are English either way |
+| `greeting`, `hangup` | how the call opens and whether the model may end it |
+| `says`, `hears` | the agent's lexicon |
+| `memory` | what is remembered about a caller and what never is |
+| `knowledge` | **what the agent knows by heart**: a page of Markdown beside the class, read whole into the `knowledge` block on every call |
+| `docs` | **the base the agent searches** — the RAG — with its `k`, a mode and a score; `agents/<name>/docs/` is pushed into it when the agent registers |
 
 Knowledge and bases are two things and never one: what the agent knows by heart is a page the
 org writes and the model reads entire; a base is a folder of documents chunked and embedded, of

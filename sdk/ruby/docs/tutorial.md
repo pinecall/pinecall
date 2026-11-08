@@ -145,17 +145,15 @@ your method answers, and no code of yours ever crosses the socket.
 
 ## 4. Knowledge: a page the agent knows by heart
 
-The voice, the model, the opening and everything else the agent runs on are the agent's settings,
-set per world with the Node CLI's `pinecall agent set` or the console's Configure screen — unless
-the class declares one itself (`voice`, `llm`, `knowledge`, …), and then **the class wins**: the
-setting is not read, and the console shows it "set by the class"
+The voice, the model, the opening and everything else the agent runs on are the class's: declared
+on it (`voice`, `llm`, `knowledge`, …), changed there and deployed. An app written as code is set by its
+code and nothing else; the console's Setup shows what it runs on, read-only
 ([writing-an-agent.md](writing-an-agent.md)).
 
-What the agent knows by heart — hours, prices, what needs an authorisation — is one of those: a page
-of Markdown in the agent's settings, written in the console's Configure screen, or with the Node
-CLI's `pinecall agent knowledge edit`. This class does not declare it, so `pinecall prompt` prints the
-second block empty; the gateway writes the page into it, whole, once per call, in the cached prefix:
-the model has it in every turn and you pay for it once. The provider caches the static blocks one by one, which is why rewriting the tool list
+What the agent knows by heart — hours, prices, what needs an authorisation — is a page of Markdown
+beside the class, `agents/clinica-norte/knowledge.md`, declared on it: `knowledge path: "knowledge.md"`.
+The gateway writes the page into the prompt's second block, whole, once per call, in the cached
+prefix: the model has it in every turn and you pay for it once. The provider caches the static blocks one by one, which is why rewriting the tool list
 leaves identity and knowledge read from cache.
 
 Use this for what is small, stable and always relevant. Seventeen thousand characters is fine. A
@@ -164,9 +162,9 @@ folder of a hundred documents is not, and that is the next step.
 ## 5. The knowledge base: what it looks up per turn
 
 Put your Markdown under `agents/clinica-norte/docs/`, one file per subject, with headings, and push it.
-With no arguments the verb reads that folder and pushes it under the agent's slug. Attaching the base
-to the agent, with its `k` and `min_score`, is a setting — `pinecall docs attach clinica-norte --k 4`
-— or the class's `docs base: "…", k: 4`.
+With no arguments the verb reads that folder and pushes it under the agent's slug. The agent searches it
+when the class declares the base, with its `k` and `min_score`: `docs base: "clinica-norte", k: 4`; declared,
+the folder is also pushed when the agent registers, so the verb is for an edit in between.
 
 ```bash
 pinecall docs push
@@ -198,12 +196,11 @@ pinecall docs drop clinica-norte
 
 ## 6. Memory: what it keeps between calls
 
-```bash
-pinecall memory policy --remember "how they like to be addressed" "allergies" "their usual doctor" --forget "payments"
+```ruby
+memory remember: ["how they like to be addressed", "allergies", "their usual doctor"], forget: ["payments"]
 ```
 
-The policy is a setting, set with the CLI or the console, or the class's `memory remember: […],
-forget: […]`, which wins over it. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
+The policy is the class's. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
 `forget` is what is never written whatever the model heard.
 
 **Reading, on a turn.** A `recall` runs beside the `search`, on the same path and budget. It answers

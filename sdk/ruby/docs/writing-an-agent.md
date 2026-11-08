@@ -42,13 +42,13 @@ agent can be talked to from a page. A class that still writes `phone "+34…"`, 
 
 ### The environment: the settings', or the class's
 
-Everything the agent **runs on** is its settings': set per world and per corner, versioned, with who
-set it and why, and changed without a deploy — by `pinecall agent set`, the console's Configure
-screen, or the verb the table names. Those verbs belong to the one Node CLI (`pinecall` on npm);
-this gem ships no executable. The class may declare any of them instead, as a class macro, and
-**what the class declares wins**: the settings of that field are not read for the agent, the console
-shows it locked, "set by the class", and a `pinecall agent set` of it is refused naming the class.
-Take the macro out and deploy, and the settings apply again.
+Everything the agent **runs on** — the voice, the models, the language, the greeting, what it knows
+by heart, what it remembers — is the class's. **An app written as code is set by its code and nothing
+else**: the console's Setup shows what it runs on, read-only, and `pinecall agent set` and every other
+verb that writes one agent's settings refuses an app, naming it. Change the class and deploy. A stage
+the class leaves out runs on the org's default vendor for it and that vendor's default model; a field
+left out reads as the runtime's default. The settings those verbs write belong to an agent built in
+Studio, which has no code.
 
 ```ruby
 # Recepción de Clínica Norte: da, cambia y cancela turnos.
@@ -93,29 +93,29 @@ On a key of your org's own for that vendor — a local model's server among them
 `options: { base_url: "…" }` — its evals are never billed; on a key Pinecall lends they are. The
 judge is asked for a forced tool call, so a local model must call tools.
 
-| field | what it is | on the class | or in the settings |
-|---|---|---|---|
-| `voice` | the voice: its vendor and the vendor's id | `voice "<vendor>", "<id>", model: "…"` | `pinecall agent set --voice` |
-| `llm` | the model that answers, and its temperature | `llm "<vendor>/<model>", temperature: 0.3` | `pinecall agent set --llm` |
-| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `realtime "<vendor>/<model>", options: { … }` | `pinecall agent set --realtime` |
-| `stt` | the ears, and who ends the caller's turn | `stt "<vendor>/<model>", end_of_turn: :smart_turn` | `pinecall agent set --stt` · `--end-of-turn` |
-| `judge` | the model the calls are judged on; on your own key its evals are not billed | `judge "<vendor>/<model>", options: { base_url: "…" }` | the settings' `judge`, `judge_builds`, `judge_options` |
-| `language` | the language the call is in | `language "es"` | `pinecall agent set --language` |
-| `greeting` | how the call opens: the words, or the model's own | `greeting "…"` · `greeting :improvise` · `greeting improvise("…")` | `pinecall agent set --greeting '…'` · `--greeting improvise` · `--greeting improvise:'…'` |
-| `hangup` | whether the model may end the call itself, and when, in your words | `hangup "…"` · `hangup true` | `pinecall agent set --hangup '…'` · `--hangup any` |
-| `turn` | when the caller has finished, and may interrupt | `turn endpointing_ms: 300` | `pinecall agent set --endpointing-ms` |
-| `says` | how a word the voice would misread is said | `says [{ word: "DKV", spoken: "de ka uve" }]` | `pinecall lexicon add <word> --say '…'` |
-| `hears` | the words the ears must know: names, brands, the doctor's surname | `hears "Vidal", "Sanitas"` | `pinecall lexicon hear <word> …` |
-| `memory` | what to remember about a caller across calls, and what never to | `memory remember: […], forget: […]` | `pinecall memory policy --remember '…' --forget '…'` |
-| `record` | whether the call is recorded | `record false` | `pinecall agent set --record on\|off` |
-| `max_duration` | the longest a voice call runs, in minutes, or `:off` | `max_duration 20` | `pinecall agent set --max-duration 20` |
-| `llm_timeout` | how long a turn waits for the model's first word, in seconds | `llm_timeout 8` | `pinecall agent set --llm-timeout 8` |
-| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge path: "knowledge.md", text: File.read(…)` | `pinecall agent knowledge edit` |
-| `docs` | the base the agent searches per turn, and how many chunks a turn reads; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs base: "clinica-norte", k: 4` | `pinecall docs push`, then `pinecall docs attach <base>` |
-| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold file: "hold.mp3", after_s: 1.5` · `hold :off` | `pinecall pipeline melody upload\|after\|off` |
-| `widget` | how the widget presents the agent | `widget title: "…", tagline: "…", accent: "#0f766e", theme: "auto"` | the agent's **Widget** screen |
-| `judges` | which of Pinecall's judges its calls meet, and its own | `judges on: %w[consent grounded], own: [OFFERS_NEXT_SLOT]` | `pinecall judges on\|off\|add` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `personas on: %w[in-a-hurry], own: [HURRIED]` | `pinecall personas on\|off\|add` |
+| field | what it is | on the class |
+|---|---|---|
+| `voice` | the voice: its vendor and the vendor's id | `voice "<vendor>", "<id>", model: "…"` |
+| `llm` | the model that answers, and its temperature | `llm "<vendor>/<model>", temperature: 0.3` |
+| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `realtime "<vendor>/<model>", options: { … }` |
+| `stt` | the ears, and who ends the caller's turn | `stt "<vendor>/<model>", end_of_turn: :smart_turn` |
+| `judge` | the model the calls are judged on; on your own key its evals are not billed | `judge "<vendor>/<model>", options: { base_url: "…" }` |
+| `language` | the language the call is in | `language "es"` |
+| `greeting` | how the call opens: the words, or the model's own | `greeting "…"` · `greeting :improvise` · `greeting improvise("…")` |
+| `hangup` | whether the model may end the call itself, and when, in your words | `hangup "…"` · `hangup true` |
+| `turn` | when the caller has finished, and may interrupt | `turn endpointing_ms: 300` |
+| `says` | how a word the voice would misread is said | `says [{ word: "DKV", spoken: "de ka uve" }]` |
+| `hears` | the words the ears must know: names, brands, the doctor's surname | `hears "Vidal", "Sanitas"` |
+| `memory` | what to remember about a caller across calls, and what never to | `memory remember: […], forget: […]` |
+| `record` | whether the call is recorded | `record false` |
+| `max_duration` | the longest a voice call runs, in minutes, or `:off` | `max_duration 20` |
+| `llm_timeout` | how long a turn waits for the model's first word, in seconds | `llm_timeout 8` |
+| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge path: "knowledge.md", text: File.read(…)` |
+| `docs` | the base the agent searches per turn, and how many chunks a turn reads; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs base: "clinica-norte", k: 4` |
+| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold file: "hold.mp3", after_s: 1.5` · `hold :off` |
+| `widget` | how the widget presents the agent | `widget title: "…", tagline: "…", accent: "#0f766e", theme: "auto"` |
+| `judges` | which of Pinecall's judges its calls meet, and its own | `judges on: %w[consent grounded], own: [OFFERS_NEXT_SLOT]` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | `personas on: %w[in-a-hurry], own: [HURRIED]` |
 
 Called with no argument, each macro reads what the class (or its parent) declared.
 
