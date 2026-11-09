@@ -65,7 +65,7 @@ async def test_the_caller_is_pinned_before_livekit_links_a_seat_and_a_written_ca
     assert options.close_on_disconnect is True
 
 
-def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_not() -> None:
+async def test_a_call_on_a_realtime_model_is_spoken_without_ears_and_a_written_one_is_not() -> None:
     voice = AcmeTTS(speech_key="k")
     assert is_spoken(AgentSession(llm=TalkerRealtime(api_key="k"), tts=voice), (voice,))
     assert not is_spoken(AgentSession(llm=AcmeLLM(api_key="k")), ())

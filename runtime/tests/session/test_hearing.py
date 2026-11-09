@@ -19,12 +19,12 @@ from tests.session.test_session import (
 
 
 @needs_the_database
-async def test_interruptions_are_judged_locally_and_a_cut_sentence_is_never_said_twice(
+async def test_interruptions_are_judged_locally_and_a_reply_a_sound_stopped_goes_on_where_it_paused(
     box: Box,
 ) -> None:
     options = spoken_call(box, NOBODY).live.options
     assert options.interruption.get("mode") == "vad"
-    assert options.interruption.get("resume_false_interruption") is False
+    assert options.interruption.get("resume_false_interruption") is True
     assert options.interruption.get("false_interruption_timeout") == 1.0
     assert options.preemptive_generation.get("enabled") is False
 

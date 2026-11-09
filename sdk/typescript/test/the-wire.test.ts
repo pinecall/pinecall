@@ -124,6 +124,7 @@ const IGNORED: Record<string, string> = {
   "vendor.failed": THE_GATEWAYS,
   "vendor.switched": THE_GATEWAYS,
   "org.quiet": THE_GATEWAYS,
+  "turn.detection": THE_GATEWAYS,
   "log.caught_up": THE_LOGS,
   "log.gap": THE_LOGS,
   "pong": "the answer to ping, which keeps the socket warm",

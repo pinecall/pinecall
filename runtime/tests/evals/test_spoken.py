@@ -238,14 +238,14 @@ def leg_on(line: Line, interferer: bytes = b"", voice: bytes = b"") -> tuple[Cal
     return leg, source
 
 
-def test_a_clean_line_with_nobody_speaking_carries_silence() -> None:
+async def test_a_clean_line_with_nobody_speaking_carries_silence() -> None:
     leg, _ = leg_on(Line())
     assert leg.next_frame() == SILENCE
 
 
 # The fault this replaced: the noise was mixed into each spoken line, so a caller that said nothing
 # was on a line of digital silence, and the agent never answered over the room it was tested against.
-def test_the_room_is_heard_while_the_caller_says_nothing() -> None:
+async def test_the_room_is_heard_while_the_caller_says_nothing() -> None:
     television = tone_of(SAMPLE_RATE, 6000, period=31)
     leg, _ = leg_on(Line(interferer_db=15.0), television)
     quiet = b"".join(leg.next_frame() for _ in range(A_SECOND_IN_FRAMES))
@@ -253,7 +253,7 @@ def test_the_room_is_heard_while_the_caller_says_nothing() -> None:
     assert abs(under - 15.0) < WITHIN_THE_ROUNDING_DB
 
 
-def test_the_room_goes_on_from_frame_to_frame_rather_than_restarting_at_each() -> None:
+async def test_the_room_goes_on_from_frame_to_frame_rather_than_restarting_at_each() -> None:
     television = tone_of(3_000, 2000, period=300)
     leg, _ = leg_on(Line(interferer_db=0.0), television)
     heard = b"".join(leg.next_frame() for _ in range(20))
@@ -261,7 +261,7 @@ def test_the_room_goes_on_from_frame_to_frame_rather_than_restarting_at_each() -
     assert heard == behind(LOST * (len(heard) // 2), television, 0, gain)
 
 
-def test_the_room_keeps_its_level_when_the_caller_speaks_and_when_it_stops() -> None:
+async def test_the_room_keeps_its_level_when_the_caller_speaks_and_when_it_stops() -> None:
     television = tone_of(SAMPLE_RATE, 6000, period=31)
     voice = frames_of(tone_of(SAMPLE_RATE, int(A_VOICE_RMS * math.sqrt(2)), period=97), SAMPLE_RATE)
     leg, _ = leg_on(Line(interferer_db=15.0), television)
@@ -273,7 +273,7 @@ def test_the_room_keeps_its_level_when_the_caller_speaks_and_when_it_stops() -> 
     assert abs(20 * math.log10(after / before)) < WITHIN_THE_ROUNDING_DB
 
 
-def test_a_lost_packet_is_the_silence_a_jitter_buffer_plays_whoever_was_speaking() -> None:
+async def test_a_lost_packet_is_the_silence_a_jitter_buffer_plays_whoever_was_speaking() -> None:
     television = tone_of(SAMPLE_RATE, 6000, period=31)
     leg, _ = leg_on(Line(interferer_db=15.0, packet_loss=0.5), television)
     frames = [leg.next_frame() for _ in range(A_SECOND_IN_FRAMES)]
