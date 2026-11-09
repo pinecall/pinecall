@@ -188,6 +188,16 @@ export class Agent {
   static maxDuration?: number | "off";
   /** How long a turn waits for the model's first word, in seconds. */
   static llmTimeout?: number;
+  /** Seconds of the caller saying nothing before a voice call ends, 5 to 3600. */
+  static silenceTimeout?: number;
+  /** What it says when the caller goes quiet: `{ says: ["Are you there?"], afterS: 7.5, times: 3 }`. */
+  static idle?: Declared["idle"];
+  /** On a call it placed, the words left on a machine, or `true` to hang up on one and leave nothing. */
+  static voicemail?: string | true;
+  /** Who takes over the ears when the vendor fails, `vendor` or `vendor/model`, in order. */
+  static sttFallbacks?: Declared["sttFallbacks"];
+  /** Who takes over the voice when the vendor fails, `vendor` or `vendor/model`, in order. */
+  static ttsFallbacks?: Declared["ttsFallbacks"];
   /** The judges the class owns: `judges({ on: ["consent", …], own: [ownJudge({…})] })`. */
   static judges?: Declared["judges"];
   /** The personas the class owns: `personas({ on: ["in-a-hurry", …], own: [ownPersona({…})] })`. */

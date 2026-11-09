@@ -1,7 +1,7 @@
 """The declaration under the settings: the org's knobs laid over what the class declared, and a model named."""
 
 import dataclasses
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from pinecall_runtime.agents.declaration import AgentConfig, Lexicon, Modality, Model, Tuning, Voice
 from pinecall_runtime.exceptions import ValidationError
@@ -49,11 +49,15 @@ def apply_tuning(
             declared.max_duration_s if tuning.max_duration_s is None else tuning.max_duration_s,
         ),
         llm_timeout_s=kept("llm_timeout_s", declared.llm_timeout_s, tuning.llm_timeout_s),
-        silence_timeout_s=tuning.silence_timeout_s,
-        idle=tuning.idle,
-        voicemail=tuning.voicemail,
-        stt_fallbacks=_taking_over(tuning.stt_fallbacks, "stt", defaults),
-        tts_fallbacks=_taking_over(tuning.tts_fallbacks, "tts", defaults),
+        silence_timeout_s=kept("silence_timeout_s", declared.silence_timeout_s, tuning.silence_timeout_s),
+        idle=kept("idle", declared.idle, tuning.idle),
+        voicemail=kept("voicemail", declared.voicemail, tuning.voicemail),
+        stt_fallbacks=kept(
+            "stt_fallbacks", declared.stt_fallbacks, _taking_over(tuning.stt_fallbacks, "stt", defaults)
+        ),
+        tts_fallbacks=kept(
+            "tts_fallbacks", declared.tts_fallbacks, _taking_over(tuning.tts_fallbacks, "tts", defaults)
+        ),
         knowledge=kept("knowledge", declared.knowledge, tuning.knowledge),
         bases=kept("docs", declared.bases, tuning.bases or ()),
         says=kept("says", declared.says, dict(lexicon.said)),
@@ -90,6 +94,14 @@ def realtime_from_wire(wanted: ModelConfig | None) -> Model | None:
         raise ValidationError(REALTIME_TAKES)
     return _realtime_checked(
         Model(provider=wanted.provider.lower(), model=wanted.model, options=dict(wanted.options or {}))
+    )
+
+
+def fallbacks_from_wire(words: Sequence[str] | None, modality: Modality) -> tuple[Model, ...]:
+    """The vendors a class names to take over a stage, `vendor` or `vendor/model`, each checked for the stage."""
+    named = (word.strip().partition(SEPARATOR) for word in words or ())
+    return tuple(
+        Model(provider=providers.vendor_doing(vendor.lower(), modality), model=model) for vendor, _, model in named
     )
 
 

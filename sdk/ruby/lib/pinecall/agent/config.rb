@@ -14,14 +14,16 @@ module Pinecall
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
       ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
-                       personas widget].freeze
+                       personas widget idle voicemail stt_fallbacks tts_fallbacks].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
-      AS_KEYWORDS = %i[turn knowledge docs memory judges personas widget].freeze
+      AS_KEYWORDS = %i[turn knowledge docs memory judges personas widget idle].freeze
 
       NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
       NOT_A_DURATION = "max_duration is the longest a voice call runs: 1 to 60 minutes, or :off for no limit"
+      NOT_A_SILENCE = "silence_timeout is how long a caller's silence ends the call: whole seconds, 5 to 3600"
+      NOT_A_MACHINE = "voicemail is the words left on a machine, or true to hang up and leave nothing"
       NOT_A_TIMEOUT = "llm_timeout is how long a turn waits for the model's first word, in seconds, above 0"
       LONGEST_MINUTES = 60
 
@@ -170,6 +172,31 @@ module Pinecall
           raise DeclarationRefused, NOT_A_TIMEOUT unless seconds.is_a?(Numeric) && seconds.positive?
 
           environment[:llm_timeout_s] = seconds.to_f
+        end
+
+        # How long a caller's silence ends a voice call: `silence_timeout 30` (seconds).
+        def silence_timeout(seconds = NOTHING)
+          return environment[:silence_timeout_s] if seconds.equal?(NOTHING)
+          raise DeclarationRefused, NOT_A_SILENCE unless seconds.is_a?(Integer) && seconds.between?(5, 3600)
+
+          environment[:silence_timeout_s] = seconds
+        end
+
+        # On a call it placed: `voicemail "Call us back"` leaves the words, `voicemail true` leaves nothing.
+        def voicemail(given = NOTHING)
+          return environment[:voicemail] if given.equal?(NOTHING)
+          raise DeclarationRefused, NOT_A_MACHINE unless given == true || (given.is_a?(String) && !given.strip.empty?)
+
+          environment[:voicemail] = given == true ? {} : { message: given }
+        end
+
+        # Who takes over when the vendor fails, in order: `tts_fallbacks "cartesia", "elevenlabs/flash"`.
+        %i[stt_fallbacks tts_fallbacks].each do |field|
+          define_method(field) do |*vendors|
+            return environment[field] if vendors.empty?
+
+            environment[field] = vendors.flatten
+          end
         end
 
         # The words the ears must know: `hears "Vidal", "Sanitas"`.

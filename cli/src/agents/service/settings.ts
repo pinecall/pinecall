@@ -45,6 +45,7 @@ export const DECLARED_AS: Partial<Record<Field, string>> = {
   realtime: "realtime", "realtime-options": "realtime",
   judge: "judge", "judge-builds": "judge", "judge-options": "judge",
   language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record", knowledge: "knowledge", bases: "docs",
+  "silence-timeout": "silence_timeout_s", idle: "idle", voicemail: "voicemail", "stt-fallbacks": "stt_fallbacks", "tts-fallbacks": "tts_fallbacks",
 };
 
 export const END_OF_TURN = ["stt", "livekit", "smart-turn"] as const;

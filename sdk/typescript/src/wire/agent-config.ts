@@ -232,6 +232,18 @@ export const WidgetLookSchema = z.strictObject({
 
 export type WidgetLook = z.infer<typeof WidgetLookSchema>;
 
+/** What the agent says when the caller has gone quiet. */
+export const IdleConfigSchema = z.strictObject({
+  says: z.array(z.string()),
+  after_s: z.number().optional(),
+  times: z.int().optional(),
+});
+
+/** Lets the model tell a machine from a person on a call it placed, and what it leaves there. */
+export const VoicemailConfigSchema = z.strictObject({
+  message: z.string().nullish(),
+});
+
 export const AgentConfigSchema = z.strictObject({
   prompt: z.array(PromptBlockSpecSchema).nullish(),
   language: z.string().nullish(),
@@ -254,6 +266,13 @@ export const AgentConfigSchema = z.strictObject({
   /** The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word. */
   max_duration_s: z.int().nullish(),
   llm_timeout_s: z.number().nullish(),
+  /** Seconds of a caller saying nothing before the call ends; what it says first; a machine on a call it placed. */
+  silence_timeout_s: z.int().nullish(),
+  idle: IdleConfigSchema.nullish(),
+  voicemail: VoicemailConfigSchema.nullish(),
+  /** The vendors that take over a stage, `vendor` or `vendor/model`, in order. */
+  stt_fallbacks: z.array(z.string()).nullish(),
+  tts_fallbacks: z.array(z.string()).nullish(),
   tools: z.array(ToolSpecSchema).nullish(),
   uses_knowledge: z.boolean().nullish(),
   state_fields: z.array(StateFieldSpecSchema).nullish(),

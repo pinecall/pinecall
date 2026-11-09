@@ -455,6 +455,24 @@ Whether the model may end the call itself. Declaring this is what puts livekit's
 |---|---|---|---|
 | `when` | `string` | no | When the agent should end the call, in the tenant's own words and their own language. It is appended to the tool's description, which already says to end it when the caller is clearly done and never when the intent is unclear. Empty, the model hangs up whenever it judges the call done (an SDK's `hangup = true`). |
 
+### `IdleConfig`
+
+What the agent says when the caller has gone quiet, in turn, and only while the agent is the one waiting.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `says` | `string[]` | yes | The lines, said in order. At least one, none blank. |
+| `after_s` | `number` | no | Seconds of the caller's silence before each, 5 to 60. |
+| `times` | `integer` | no | How many at most, 1 to 10; the count starts over when the caller speaks. |
+
+### `VoicemailConfig`
+
+Lets the model tell a machine from a person on a call the agent placed. It leaves the message, when there is one, and the call ends.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `message` | `string` | no | The words left on the machine. Left out, the call just ends. |
+
 ### `MemoryConfig`
 
 What memory keeps about a contact across calls, and what it must never keep. Both lists are in the tenant's own words.
@@ -601,6 +619,11 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `record` | `boolean` | no | Whether this agent's calls keep their audio; the platform records the whole room, so what is kept is what everybody on the call heard. Declared, it wins over the settings'. |
 | `max_duration_s` | `integer` | no | The longest a voice call of this agent runs, in seconds: 0 for no limit, else 60 to 3600; a minute before, the agent is told to wrap up. Declared, it wins over the settings' `max_duration_s`. |
 | `llm_timeout_s` | `number` | no | How long a turn waits for the model's first word before livekit's retries, in seconds, above 0. Declared, it wins over the settings' `llm_timeout_s`. |
+| `silence_timeout_s` | `integer` | no | Seconds of the caller saying nothing before a voice call ends, 5 to 3600. Declared, it wins over the settings'. |
+| `idle` | `IdleConfig` | no | What the agent says when the caller goes quiet. Declared, it wins over the settings'. |
+| `voicemail` | `VoicemailConfig` | no | On a call the agent placed, what it does when a machine answers. Declared, it wins over the settings'. |
+| `stt_fallbacks` | `string[]` | no | Who takes over the ears when the vendor fails, `vendor` or `vendor/model`, in order. Declared, it wins over the settings'. |
+| `tts_fallbacks` | `string[]` | no | Who takes over the voice when the vendor fails, `vendor` or `vendor/model`, in order. Declared, it wins over the settings'. |
 | `tools` | `ToolSpec[]` | no | Every tool the agent may ever see. Which ones are visible now is tools.set. |
 | `uses_knowledge` | `boolean` | no | Whether the class searches the knowledge base itself (this.knowledge.search). An environment with no base attached to the agent refuses the registration, so a tool that would find nothing is refused at boot and not on a call. Sent as null, it is false. |
 | `state_fields` | `StateFieldSpec[]` | no | Who may see each field of the app's state. A field not listed is tenant: seen by the tenant's readers, never by the public. |

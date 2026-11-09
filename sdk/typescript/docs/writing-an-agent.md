@@ -99,6 +99,10 @@ declared there is refused when the class loads.
 | `record` | whether the call is recorded | `static record = false` |
 | `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` |
 | `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` |
+| `silenceTimeout` | seconds of the caller saying nothing before a voice call ends, 5 to 3600 | `static silenceTimeout = 30` |
+| `idle` | what it says when the caller goes quiet | `static idle = { says: ["Are you there?"], afterS: 7.5, times: 3 }` |
+| `voicemail` | on a call it placed, the words left on a machine, or `true` to leave nothing | `static voicemail = "Please call us back."` |
+| `sttFallbacks` · `ttsFallbacks` | who takes over when the vendor fails, in order | `static ttsFallbacks = ["cartesia"]` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` |
 | `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` |
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` |

@@ -24,13 +24,19 @@ export const ENVIRONMENT = [
   "judges",
   "personas",
   "widget",
+  "idle",
+  "voicemail",
+  "sttFallbacks",
+  "ttsFallbacks",
 ] as const;
 
-type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number] | "maxDurationS" | "llmTimeoutS">;
+type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number] | "maxDurationS" | "llmTimeoutS" | "silenceTimeoutS">;
 
 // Said in minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts both in seconds.
-const CLOCKS = ["maxDuration", "llmTimeout"] as const;
+const CLOCKS = ["maxDuration", "llmTimeout", "silenceTimeout"] as const;
 const NOT_A_DURATION = "maxDuration is the longest a voice call runs: 1 to 60 minutes, or \"off\" for no limit";
+const NOT_A_SILENCE = "silenceTimeout is how long a caller's silence ends the call: whole seconds, 5 to 3600";
+const NOT_A_MACHINE = "voicemail is the words left on a machine, or true to hang up on one and leave nothing";
 const NOT_A_TIMEOUT = "llmTimeout is how long a turn waits for the model's first word, in seconds, above 0";
 
 const NOT_AN_OPENING = "a greeting is the words, as a string, or improvise for the model's own: improvise(\"…\") gives it an instruction";
@@ -61,6 +67,8 @@ export function environmentOf(ctor: Function): Environment {
   if (environment["hangup"] !== undefined) environment["hangup"] = hangupOf(environment["hangup"] as Ending);
   if (declared["maxDuration"] !== undefined) environment["maxDurationS"] = secondsOf(declared["maxDuration"]);
   if (declared["llmTimeout"] !== undefined) environment["llmTimeoutS"] = timeoutOf(declared["llmTimeout"]);
+  if (declared["silenceTimeout"] !== undefined) environment["silenceTimeoutS"] = silenceOf(declared["silenceTimeout"]);
+  if (environment["voicemail"] !== undefined) environment["voicemail"] = voicemailOf(environment["voicemail"]);
   return environment as Environment;
 }
 
@@ -69,6 +77,18 @@ function secondsOf(given: unknown): number {
   if (given === "off") return 0;
   if (typeof given !== "number" || !Number.isInteger(given) || given < 1 || given > 60) throw new DeclarationRefused(NOT_A_DURATION);
   return given * 60;
+}
+
+function silenceOf(given: unknown): number {
+  if (typeof given !== "number" || !Number.isInteger(given) || given < 5 || given > 3600) throw new DeclarationRefused(NOT_A_SILENCE);
+  return given;
+}
+
+/** A machine as the wire says it: the words to leave, or none. */
+function voicemailOf(given: unknown): Environment["voicemail"] {
+  if (given === true) return {};
+  if (typeof given === "string" && given.trim() !== "") return { message: given };
+  throw new DeclarationRefused(NOT_A_MACHINE);
 }
 
 function timeoutOf(given: unknown): number {

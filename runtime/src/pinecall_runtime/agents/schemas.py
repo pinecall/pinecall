@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field
 
-from pinecall_runtime.agents.declaration import IDLE_AFTER_S, IDLE_TIMES, Modality
+from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.agents.models import HoldAudio as HoldAudioRow
 from pinecall_runtime.enums import Channel, Env, HoldPlayed
 from pinecall_runtime.kit.schemas import Schema
@@ -16,10 +16,12 @@ from pinecall_runtime.wire.parts import (
     GreetingConfig,
     HangupConfig,
     HoldConfig,
+    IdleConfig,
     MemoryConfig,
     ModelConfig,
     Pronunciation,
     TurnConfig,
+    VoicemailConfig,
     WidgetTheme,
 )
 
@@ -27,20 +29,6 @@ from pinecall_runtime.wire.parts import (
 
 
 # Every field is optional: one left out is not set, and the runtime's own default stands for it.
-class IdleConfig(WireModel):
-    """What the agent says when the caller has gone quiet."""
-
-    says: list[str]
-    after_s: float = IDLE_AFTER_S
-    times: int = IDLE_TIMES
-
-
-class VoicemailConfig(WireModel):
-    """Lets the model tell a machine from a person on a call it placed, and what it leaves there."""
-
-    message: str | None = None
-
-
 class SettingsBody(WireModel):
     """An agent's settings as the org set them, per env and per scope."""
 

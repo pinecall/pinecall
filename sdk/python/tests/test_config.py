@@ -73,6 +73,30 @@ def test_the_longest_call_and_the_models_timeout_are_sent_in_seconds_and_held_to
         environment_of(type("Never", (Agent,), {"llm_timeout": 0, "__doc__": "x"}))
 
 
+def test_the_quiet_a_machine_and_the_fallbacks_are_sent_in_the_wires_shape() -> None:
+    attentive = type(
+        "Attentive",
+        (Agent,),
+        {
+            "__doc__": "x",
+            "silence_timeout": 30,
+            "idle": {"says": ["Are you there?"]},
+            "voicemail": "Call us back",
+            "stt_fallbacks": ["deepgram"],
+            "tts_fallbacks": ["cartesia/sonic-3"],
+        },
+    )
+    sent = config_of(attentive).model_dump(exclude_none=True)
+    assert sent["silence_timeout_s"] == 30
+    assert sent["idle"]["says"] == ["Are you there?"]
+    assert sent["voicemail"] == {"message": "Call us back"}
+    assert (sent["stt_fallbacks"], sent["tts_fallbacks"]) == (["deepgram"], ["cartesia/sonic-3"])
+    silent = type("Silent", (Agent,), {"__doc__": "x", "voicemail": True})
+    assert environment_of(silent)["voicemail"] == {}
+    with pytest.raises(DeclarationRefused, match="5 to 3600"):
+        environment_of(type("Rushed", (Agent,), {"__doc__": "x", "silence_timeout": 4}))
+
+
 def test_what_the_class_declares_of_its_environment_is_sent_in_the_wires_shape() -> None:
     sent = config_of(Fijada).model_dump(exclude_none=True)
 

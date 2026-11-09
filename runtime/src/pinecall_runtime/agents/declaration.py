@@ -10,6 +10,8 @@ from typing import Any, Literal
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping, parse_slug
 from pinecall_runtime.wire.parts import (
+    IDLE_AFTER_S,
+    IDLE_TIMES,
     DocsMode,
     EndOfTurn,
     EventSource,
@@ -47,8 +49,6 @@ SHORTEST_SILENCE_S = 5
 LONGEST_SILENCE_S = 3600
 SHORTEST_IDLE_S = 5.0
 LONGEST_IDLE_S = 60.0
-IDLE_AFTER_S = 7.5
-IDLE_TIMES = 3
 MOST_IDLE_TIMES = 10
 NOT_A_TIMEOUT = "llm_timeout_s is a positive number of seconds"
 
@@ -311,8 +311,8 @@ class Tuning:
                 raise ValidationError(BLANK.format(field=name))
         if self.max_duration_s is not None:
             check_call_limit(self.max_duration_s)
-        if self.silence_timeout_s is not None and not SHORTEST_SILENCE_S <= self.silence_timeout_s <= LONGEST_SILENCE_S:
-            raise ValidationError(f"silence_timeout_s is {SHORTEST_SILENCE_S} to {LONGEST_SILENCE_S} seconds")
+        if self.silence_timeout_s is not None:
+            check_silence(self.silence_timeout_s)
         if any(not word.strip() for word in (*(self.stt_fallbacks or ()), *(self.tts_fallbacks or ()))):
             raise ValidationError(BLANK.format(field="fallback"))
         if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
@@ -417,6 +417,8 @@ class AgentConfig:
             raise ValidationError(f"agent {self.slug}: prompt block names repeat: {sorted(repeated)}")
         check_pronunciations(self.says, f"agent {self.slug}")
         check_call_limit(self.max_duration_s)
+        if self.silence_timeout_s is not None:
+            check_silence(self.silence_timeout_s)
         if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
             raise ValidationError(NOT_A_TIMEOUT)
         for event, sources in self.events.items():
@@ -440,6 +442,12 @@ class AgentConfig:
 def block_hash(text: str) -> str:
     """A block of the prompt as the log names it: the sha256 of its text."""
     return sha256(text.encode()).hexdigest()
+
+
+def check_silence(seconds: int) -> None:
+    """ValidationError unless a silence timeout is within what a call may be set to bear."""
+    if not SHORTEST_SILENCE_S <= seconds <= LONGEST_SILENCE_S:
+        raise ValidationError(f"silence_timeout_s is {SHORTEST_SILENCE_S} to {LONGEST_SILENCE_S} seconds")
 
 
 def check_call_limit(seconds: int) -> None:

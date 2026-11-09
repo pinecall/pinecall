@@ -4,6 +4,8 @@
 
 ## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
 
+- **A class declares the quiet, a machine and its fallbacks.** `silence_timeout_s`, `idle`, `voicemail`,
+  `stt_fallbacks` and `tts_fallbacks` are fields of `AgentConfig`; declared, each wins over the settings'.
 - **A comparison says which model did the task.** Each row of `GET /v1/simulations/compare/{id}` carries
   `goal`, the verdict of the judge that holds the call to what its caller `expects` (null until scored,
   and for a caller that expects nothing), and `judges`, every judge that answered with its reason: a

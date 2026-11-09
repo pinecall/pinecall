@@ -137,6 +137,20 @@ class WidgetLook(WireModel):
 
 
 # Every field is optional so a configure can change one thing.
+class IdleConfig(WireModel):
+    """What the agent says when the caller has gone quiet."""
+
+    says: list[str]
+    after_s: float = 7.5
+    times: int = 3
+
+
+class VoicemailConfig(WireModel):
+    """Lets the model tell a machine from a person on a call it placed, and what it leaves there."""
+
+    message: str | None = None
+
+
 class AgentConfig(WireModel):
     """What an app declares about its agent."""
 
@@ -160,6 +174,13 @@ class AgentConfig(WireModel):
     # The longest a voice call runs, in seconds (0: no limit); how long a turn waits for the model.
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None
+    # A caller's silence ends the call after these seconds; what it says first; a machine.
+    silence_timeout_s: int | None = None
+    idle: IdleConfig | None = None
+    voicemail: VoicemailConfig | None = None
+    # The vendors that take over a stage, `vendor` or `vendor/model`, in order.
+    stt_fallbacks: list[str] | None = None
+    tts_fallbacks: list[str] | None = None
     tools: list[ToolSpec] | None = None
     uses_knowledge: bool = False
     state_fields: list[StateFieldSpec] | None = None

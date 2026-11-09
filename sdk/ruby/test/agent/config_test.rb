@@ -43,6 +43,27 @@ class ConfigTest < Minitest::Test
     llm_timeout 8
   end
 
+  # Recepción que no se queda muda: lo que dice si callan, y lo que deja en una máquina.
+  class Atenta < Pinecall::Agent
+    silence_timeout 30
+    idle says: ["¿Sigue ahí?"], after_s: 7.5, times: 2
+    voicemail "Llámenos"
+    tts_fallbacks "cartesia/sonic-3"
+  end
+
+  def test_the_quiet_a_machine_and_the_fallbacks_are_sent_in_the_wires_shape
+    sent = Atenta.wire_config(tools: [])
+
+    assert_equal 30, sent[:silence_timeout_s]
+    assert_equal ["¿Sigue ahí?"], sent[:idle][:says]
+    assert_equal({ message: "Llámenos" }, sent[:voicemail])
+    assert_equal ["cartesia/sonic-3"], sent[:tts_fallbacks]
+    assert_empty Class.new(Pinecall::Agent) { voicemail true }.voicemail
+    error = assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { silence_timeout 4 } }
+    assert_includes error.message, "5 to 3600"
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
   def test_the_longest_call_and_the_models_timeout_are_sent_in_seconds_and_held_to_their_bands
     sent = Acotada.wire_config(tools: [])
 

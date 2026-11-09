@@ -164,6 +164,9 @@ it("sends the longest call in seconds and the model's timeout, and refuses a dur
   expect(environmentOf(Acotada)).toEqual({ maxDurationS: 1200, llmTimeoutS: 8 });
   expect(environmentOf(class extends ClinicaNorte { static override maxDuration = "off" as const; })).toEqual({ maxDurationS: 0 });
   expect(() => environmentOf(class extends ClinicaNorte { static override maxDuration = 90; })).toThrow("1 to 60 minutes");
+  expect(environmentOf(class extends ClinicaNorte { static override silenceTimeout = 30; static override voicemail = "Call us back" as const; })).toMatchObject({ silenceTimeoutS: 30, voicemail: { message: "Call us back" } });
+  expect(environmentOf(class extends ClinicaNorte { static override voicemail = true as const; })).toMatchObject({ voicemail: {} });
+  expect(() => environmentOf(class extends ClinicaNorte { static override silenceTimeout = 4; })).toThrow("5 to 3600");
   expect(() => environmentOf(class extends ClinicaNorte { static override llmTimeout = 0; })).toThrow("above 0");
   mount(Acotada, { pc, source: SOURCE, file: FILE, slug: "acotada" });
   await pc.connect();

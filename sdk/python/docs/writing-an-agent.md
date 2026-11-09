@@ -110,6 +110,10 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `record` | whether the call is recorded | `record = False` |
 | `max_duration` | the longest a voice call runs, in minutes, or `"off"` | `max_duration = 20` |
 | `llm_timeout` | how long a turn waits for the model's first word, in seconds | `llm_timeout = 8` |
+| `silence_timeout` | seconds of the caller saying nothing before a voice call ends, 5 to 3600 | `silence_timeout = 30` |
+| `idle` | what it says when the caller goes quiet | `idle: ClassVar = {"says": ["Are you there?"], "after_s": 7.5, "times": 3}` |
+| `voicemail` | on a call it placed, the words left on a machine, or `True` to leave nothing | `voicemail = "Please call us back."` |
+| `stt_fallbacks` · `tts_fallbacks` | who takes over when the vendor fails, in order | `tts_fallbacks: ClassVar = ["cartesia"]` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `@knowledge(path="knowledge.md", text=…)` |
 | `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs: ClassVar = {"base": "clinica-norte", "k": 4}` |
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold = {"file": "hold.mp3", "after_s": 1.5}` · `"off"` |

@@ -84,7 +84,16 @@ module Pinecall
           min_interruption_words: { kind: :int },
           endpointing_ms: { kind: :int },
           eot_threshold: { kind: :float },
-          eager_eot_threshold: { kind: :float }
+          eager_eot_threshold: { kind: :float },
+          min_interruption_ms: { kind: :int }
+        }.freeze,
+        "IdleConfig" => {
+          says: { kind: :list, required: true, items: { kind: :str } },
+          after_s: { kind: :float },
+          times: { kind: :int }
+        }.freeze,
+        "VoicemailConfig" => {
+          message: { kind: :str }
         }.freeze,
         "Pronunciation" => {
           word: { kind: :str, required: true },

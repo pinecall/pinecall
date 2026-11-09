@@ -30,6 +30,10 @@ ENVIRONMENT: tuple[str, ...] = (
     "judges",
     "personas",
     "widget",
+    "idle",
+    "voicemail",
+    "stt_fallbacks",
+    "tts_fallbacks",
 )
 
 # The ones a decorator declares: the models, the voice, and `knowledge`, which as an attribute
@@ -49,14 +53,20 @@ DECORATED: Mapping[str, str] = {
 KNOWLEDGE = "_pinecall_knowledge"
 
 # Minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts seconds.
-CLOCKS = ("max_duration", "llm_timeout", "hold")
+CLOCKS = ("max_duration", "llm_timeout", "silence_timeout", "hold")
 NOT_A_DURATION = (
     'max_duration is the longest a voice call runs: 1 to 60 minutes, or "off" for no limit'
 )
+NOT_A_SILENCE = (
+    "silence_timeout is how long a caller's silence ends the call: whole seconds, 5 to 3600"
+)
+NOT_A_MACHINE = "voicemail is the words left on a machine, or True to hang up and leave nothing"
 NOT_A_TIMEOUT = (
     "llm_timeout is how long a turn waits for the model's first word, in seconds, above 0"
 )
 LONGEST_MINUTES = 60
+SHORTEST_SILENCE_S = 5
+LONGEST_SILENCE_S = 3600
 
 _Class = TypeVar("_Class", bound=type)
 
@@ -95,7 +105,33 @@ def environment_of(cls: type) -> dict[str, object]:
         if isinstance(timeout, bool) or not isinstance(timeout, int | float) or timeout <= 0:
             raise DeclarationRefused(NOT_A_TIMEOUT)
         declared["llm_timeout_s"] = float(timeout)
+    _the_quiet(cls, declared)
     return declared
+
+
+def _the_quiet(cls: type, declared: dict[str, object]) -> None:
+    silence: object = getattr(cls, "silence_timeout", None)
+    if silence is not None:
+        declared["silence_timeout_s"] = _silence_of(silence)
+    if "voicemail" in declared:
+        declared["voicemail"] = _voicemail_of(declared["voicemail"])
+
+
+def _silence_of(given: object) -> int:
+    if isinstance(given, bool) or not isinstance(given, int):
+        raise DeclarationRefused(NOT_A_SILENCE)
+    if not SHORTEST_SILENCE_S <= given <= LONGEST_SILENCE_S:
+        raise DeclarationRefused(NOT_A_SILENCE)
+    return given
+
+
+# A machine as the wire says it: the words to leave, or none.
+def _voicemail_of(given: object) -> dict[str, str]:
+    if given is True:
+        return {}
+    if isinstance(given, str) and given.strip():
+        return {"message": given}
+    raise DeclarationRefused(NOT_A_MACHINE)
 
 
 # The longest call as the wire counts it: minutes into seconds, "off" into 0.

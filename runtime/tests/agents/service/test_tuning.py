@@ -6,7 +6,7 @@ from collections.abc import Callable
 import pytest
 
 from pinecall_runtime.agents.declaration import AgentConfig, Idle, Lexicon, Modality, Model, Tuning, Voicemail
-from pinecall_runtime.agents.service.tuning import apply_tuning
+from pinecall_runtime.agents.service.tuning import apply_tuning, fallbacks_from_wire
 from pinecall_runtime.exceptions import ValidationError
 from tests.fakes import talker
 from tests.fakes.acme import ACME
@@ -87,3 +87,27 @@ def test_a_vendor_alone_names_no_model_to_think_with() -> None:
 def test_the_quiet_a_machine_and_the_fallbacks_refuse_what_no_call_could_run(wrong: Callable[[], object]) -> None:
     with pytest.raises(ValidationError):
         wrong()
+
+
+def test_what_the_class_declares_of_the_quiet_wins_over_the_settings_and_what_it_leaves_is_the_settings() -> None:
+    fixed = AgentConfig(slug="a", silence_timeout_s=20, fixed=frozenset({"silence_timeout_s"}))
+    assert apply_tuning(fixed, Tuning(silence_timeout_s=60), Lexicon(), defaults=DEFAULTS).silence_timeout_s == 20
+    assert (
+        apply_tuning(
+            AgentConfig(slug="a"), Tuning(silence_timeout_s=60), Lexicon(), defaults=DEFAULTS
+        ).silence_timeout_s
+        == 60
+    )
+
+
+def test_a_class_is_held_to_the_silence_a_setting_is() -> None:
+    with pytest.raises(ValidationError, match="5 to 3600"):
+        AgentConfig(slug="a", silence_timeout_s=1)
+
+
+def test_a_classs_fallbacks_are_read_as_a_vendor_and_its_model() -> None:
+    assert fallbacks_from_wire([ACME, f"{ACME}/one"], "llm") == (
+        Model(provider=ACME, model=""),
+        Model(provider=ACME, model="one"),
+    )
+    assert fallbacks_from_wire(None, "llm") == ()

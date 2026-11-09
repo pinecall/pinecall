@@ -169,7 +169,8 @@ def _ticking(monkeypatch: pytest.MonkeyPatch, at: Callable[[int], None] = lambda
         at(len(ticks))
         await real(0)
 
-    monkeypatch.setattr(clock.asyncio, "sleep", passes)
+    # This module's asyncio alone: anything else on the loop sleeps as it always does.
+    monkeypatch.setattr(clock, "asyncio", SimpleNamespace(sleep=passes))
     return ticks
 
 

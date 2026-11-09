@@ -12,13 +12,15 @@ from pinecall_runtime.agents.declaration import (
     Docs,
     Greeting,
     Hangup,
+    Idle,
     MemoryPolicy,
     PromptBlock,
     ToolSpec,
     Turn,
     Voice,
+    Voicemail,
 )
-from pinecall_runtime.agents.service.tuning import model_from_wire, realtime_from_wire
+from pinecall_runtime.agents.service.tuning import fallbacks_from_wire, model_from_wire, realtime_from_wire
 from pinecall_runtime.agents.service.widgets import check_hold, check_look
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers import service as providers
@@ -120,6 +122,8 @@ def _undeclared(field: str) -> object:
 # its value there. A setting not sent is converted too and never used.
 def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
     memory = declaration.memory
+    idle = declaration.idle
+    voicemail = declaration.voicemail
     return {
         "language": ("language", declaration.language),
         "voice": ("voice", _voice_of(declaration.voice)),
@@ -141,6 +145,11 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
         "record": ("record", declaration.record),
         "max_duration_s": ("max_duration_s", declaration.max_duration_s),
         "llm_timeout_s": ("llm_timeout_s", declaration.llm_timeout_s),
+        "silence_timeout_s": ("silence_timeout_s", declaration.silence_timeout_s),
+        "idle": ("idle", None if idle is None else Idle(tuple(idle.says), idle.after_s, idle.times)),
+        "voicemail": ("voicemail", None if voicemail is None else Voicemail(voicemail.message)),
+        "stt_fallbacks": ("stt_fallbacks", fallbacks_from_wire(declaration.stt_fallbacks, "stt")),
+        "tts_fallbacks": ("tts_fallbacks", fallbacks_from_wire(declaration.tts_fallbacks, "tts")),
         "judges": ("judges", declaration.judges),
         "personas": ("personas", declaration.personas),
         "hold": ("hold", check_hold(declaration.hold)),

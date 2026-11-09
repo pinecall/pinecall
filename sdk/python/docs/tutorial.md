@@ -190,7 +190,10 @@ A push replaces the base whole, so push again after every edit. `pinecall docs l
 ## 6. Memory: what it keeps between calls
 
 ```python
-memory: ClassVar = {"remember": ["how they like to be addressed", "allergies", "their usual doctor"], "forget": ["payments"]}
+memory: ClassVar = {
+    "remember": ["how they like to be addressed", "allergies", "their usual doctor"],
+    "forget": ["payments"],
+}
 ```
 
 The policy is the class's. `remember` is the vocabulary, **in your own words**, of
