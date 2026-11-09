@@ -58,7 +58,7 @@ persona's: a preview asks for 0), then speaks it as its voice's vendor sends it,
 by piece, never held until whole, at `speed` times the vendor's tempo (0.5 to 2, the pitch kept);
 and the line carries its noise and loss unless the request names its own — `interferer_db` under
 the caller of the `ambience` it names: a `television` (a voice read in the caller's own), a `cafe`
-(chatter over a room), an `office` (a hum), a `street` (traffic swelling and fading), each the
+(eight tables talking at once over a room, none of them to be followed), an `office` (a hum), a `street` (traffic swelling and fading), each the
 same sound every run. The ambience is the room's, not the voice's: it plays from the moment the
 caller joins until it hangs up, under the agent's answers and through every silence, so the agent
 speaks over the television and ends a turn against the street; it sits `interferer_db` under how

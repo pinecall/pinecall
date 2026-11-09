@@ -6,7 +6,17 @@ from itertools import pairwise
 import numpy as np
 import pytest
 
-from pinecall_runtime.evals.service.ambience import AMBIENCES, RATE, SECONDS, SEED, hummed, pink, sound_of, swelled
+from pinecall_runtime.evals.service.ambience import (
+    AMBIENCES,
+    RATE,
+    SECONDS,
+    SEED,
+    babbled,
+    hummed,
+    pink,
+    sound_of,
+    swelled,
+)
 
 A_SECOND = RATE
 
@@ -47,6 +57,27 @@ def test_a_cafe_carries_the_chatter_over_its_room() -> None:
     room = sound_of("cafe", b"")
     chatter = np.clip(pink(RATE, SEED) * 2, -32768, 32767).astype(np.int16).tobytes()
     assert sound_of("cafe", chatter) != room
+
+
+# The fault: a café was one voice over a room, and an agent transcribed it as the caller.
+def test_a_cafes_chatter_is_many_tables_at_once_and_never_the_one_voice_alone() -> None:
+    seconds = np.arange(RATE * 2) / RATE
+    # A voice that speaks half the time: a word, a gap, a word.
+    voice = np.sin(2 * np.pi * 220 * seconds) * (np.sin(2 * np.pi * 2 * seconds) > 0) * 8000
+    alone = np.take(voice, np.arange(RATE * SECONDS), mode="wrap")
+    tables = babbled(voice, RATE * SECONDS)
+    hundredths = RATE // 100
+
+    def silent_share(samples: np.ndarray) -> float:
+        windows = samples[: samples.size // hundredths * hundredths].reshape(-1, hundredths)
+        levels = np.sqrt(np.mean(windows * windows, axis=1))
+        return int(np.count_nonzero(levels < float(levels.max()) / 20)) / levels.size
+
+    # One voice leaves its gaps silent; a room of tables fills them.
+    assert silent_share(alone) > 0.4
+    assert silent_share(tables) < 0.05
+    both = np.corrcoef(alone, tables)[0, 1]
+    assert abs(both) < 0.5
 
 
 def pcm_of(samples: np.ndarray) -> bytes:

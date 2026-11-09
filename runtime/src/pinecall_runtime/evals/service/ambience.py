@@ -25,6 +25,16 @@ SWELLS_PER_S = 0.15
 QUIETEST_SWELL = 0.35
 # A café is chatter over pink noise, the chatter a little louder than the room.
 CHATTER_OVER_ROOM = 1.4
+# The tables of a café: this many people talking at once, so that none of them can be followed.
+TABLES = 8
+# Each table speaks at a pace and pitch of its own, from this much of the voice's to that much.
+SLOWEST_TABLE = 0.8
+FASTEST_TABLE = 1.3
+# Each table starts this much of the chatter after the one before: never two saying the same word.
+A_TABLE_STARTS_AFTER = 0.618
+# A table further away is this much quieter, three distances in all.
+DISTANCES = 3
+FURTHER_BY = 0.5
 
 AMBIENCES = ("television", "cafe", "office", "street")
 # The ambiences that are a voice: they need the chatter synthesized before they are made.
@@ -41,14 +51,30 @@ def sound_of(ambience: str, chatter: bytes) -> bytes:
         room = pink(samples, SEED)
         voice = np.frombuffer(chatter, dtype=np.int16).astype(np.float64)
         if voice.size:
-            looped = np.take(voice, np.arange(samples), mode="wrap")
-            room = room + leveled(looped) * CHATTER_OVER_ROOM
+            room = room + babbled(voice, samples) * CHATTER_OVER_ROOM
         return as_pcm(room)
     if ambience == "office":
         return as_pcm(hummed(pink(samples, SEED)))
     if ambience == "street":
         return as_pcm(swelled(brown(samples, SEED)))
     raise ValueError(NOT_AN_AMBIENCE.format(ambience=ambience, allowed=", ".join(AMBIENCES)))
+
+
+# One voice read at one table is a second caller, not a café: on 2026-11-09 the first call placed
+# with the room heard the whole call had its agent transcribe the café's one voice, word for word,
+# as the caller, and answer twice in three minutes. The same voice at eight paces and pitches, each
+# from another place in what it reads, is the murmur of a room.
+def babbled(voice: np.ndarray, samples: int) -> np.ndarray:
+    """The voice as a café's tables: several of it at once, each at its own pace, start and distance."""
+    read = np.arange(voice.size, dtype=np.float64)
+    at = np.arange(samples, dtype=np.float64)
+    total = np.zeros(samples, dtype=np.float64)
+    for table in range(TABLES):
+        pace = SLOWEST_TABLE + (FASTEST_TABLE - SLOWEST_TABLE) * table / (TABLES - 1)
+        starts = table * A_TABLE_STARTS_AFTER * voice.size
+        heard = np.interp(at * pace + starts, read, voice, period=voice.size)
+        total += heard / (1.0 + FURTHER_BY * (table % DISTANCES))
+    return leveled(total)
 
 
 # A hash of the sample's index, so the noise is a function and not a generator's state: the same

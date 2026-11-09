@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A café is a room of tables, not a second caller.** The `cafe` ambience was one voice read over
+  pink noise: with the room heard the whole call, an agent transcribed it word for word as the caller
+  and answered twice in three minutes. It is that voice at eight paces and pitches at once, each from
+  another place in what it reads, at three distances: a murmur. A `television` stays the one voice
+  that competes with the caller.
 - **A noisy line is noisy the whole call.** A simulated caller's ambience was mixed into each line it
   spoke, at a level that followed each piece of its voice, and between two lines its track was digital
   silence: the agent never spoke over the television it was tested against, and never ended a turn
