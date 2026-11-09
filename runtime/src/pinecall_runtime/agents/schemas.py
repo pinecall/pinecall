@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field
 
-from pinecall_runtime.agents.declaration import Modality
+from pinecall_runtime.agents.declaration import IDLE_AFTER_S, IDLE_TIMES, Modality
 from pinecall_runtime.agents.models import HoldAudio as HoldAudioRow
 from pinecall_runtime.enums import Channel, Env, HoldPlayed
 from pinecall_runtime.kit.schemas import Schema
@@ -27,6 +27,20 @@ from pinecall_runtime.wire.parts import (
 
 
 # Every field is optional: one left out is not set, and the runtime's own default stands for it.
+class IdleConfig(WireModel):
+    """What the agent says when the caller has gone quiet."""
+
+    says: list[str]
+    after_s: float = IDLE_AFTER_S
+    times: int = IDLE_TIMES
+
+
+class VoicemailConfig(WireModel):
+    """Lets the model tell a machine from a person on a call it placed, and what it leaves there."""
+
+    message: str | None = None
+
+
 class SettingsBody(WireModel):
     """An agent's settings as the org set them, per env and per scope."""
 
@@ -62,6 +76,13 @@ class SettingsBody(WireModel):
     judge_options: dict[str, Any] | None = None
     knowledge: str | None = None
     bases: list[DocsConfig] | None = None
+    # Seconds of a caller saying nothing before the call ends; unset never ends it for that.
+    silence_timeout_s: int | None = None
+    idle: IdleConfig | None = None
+    voicemail: VoicemailConfig | None = None
+    # The vendors that take over a stage, `vendor` or `vendor/model`, in order: over the row's own.
+    stt_fallbacks: list[str] | None = None
+    tts_fallbacks: list[str] | None = None
 
 
 class SettingsRow(WireModel):

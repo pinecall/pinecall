@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall agent set` and the MCP's `agent` take what the console's Advanced tab sets:** `--silence-timeout`,
+  `--idle-say` with `--idle-after` and `--idle-times`, `--voicemail`, `--stt-fallback`, `--tts-fallback`,
+  `--min-interruption-ms` and `--llm-timeout`; `pinecall agent clear` takes them out.
 - **A Studio tool's file and the MCP's `studio` take what the console's Tools tab writes:** a param's
   `enum`, the `fixed` fields every request carries, and `delayed` (with `delayed_after_s`) and `failed`
   beside `announce`. A file pulled before pushes as it did.

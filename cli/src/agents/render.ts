@@ -98,6 +98,7 @@ export function shown(config: TuningBody, field: Field): string | undefined {
     if (turn.min_interruption_words !== undefined && turn.min_interruption_words !== null) said.push(`interrupt at ${turn.min_interruption_words} words`);
     if (turn.eot_threshold !== undefined && turn.eot_threshold !== null) said.push(`sure at ${turn.eot_threshold}`);
     if (turn.eager_eot_threshold !== undefined && turn.eager_eot_threshold !== null) said.push(`guesses at ${turn.eager_eot_threshold}`);
+    if (turn.min_interruption_ms !== undefined && turn.min_interruption_ms !== null) said.push(`interrupt after ${turn.min_interruption_ms} ms`);
     return said.join(" · ");
   }
   if (field === "memory") {
@@ -114,6 +115,24 @@ export function shown(config: TuningBody, field: Field): string | undefined {
   if (field === "max-duration") {
     const seconds = config.max_duration_s ?? undefined;
     return seconds === undefined ? undefined : seconds === 0 ? "no limit" : `${seconds / 60} min`;
+  }
+  if (field === "silence-timeout" || field === "llm-timeout") {
+    const seconds = config[WIRE[field] as "silence_timeout_s"] ?? undefined;
+    return seconds === undefined ? undefined : `${seconds} s`;
+  }
+  if (field === "idle") {
+    const idle = config.idle ?? undefined;
+    if (idle === undefined) return undefined;
+    return `${idle.says.length} line${idle.says.length === 1 ? "" : "s"}${idle.after_s === undefined ? "" : ` · after ${idle.after_s} s`}${idle.times === undefined ? "" : ` · ${idle.times} times`}`;
+  }
+  if (field === "voicemail") {
+    const voicemail = config.voicemail ?? undefined;
+    if (voicemail === undefined) return undefined;
+    return voicemail.message === undefined || voicemail.message === null ? "hangs up on a machine" : `leaves "${voicemail.message}"`;
+  }
+  if (field === "stt-fallbacks" || field === "tts-fallbacks") {
+    const vendors = config[WIRE[field] as "stt_fallbacks"] ?? undefined;
+    return vendors === undefined || vendors.length === 0 ? undefined : vendors.join(" · ");
   }
   if (field === "temperature") {
     const temperature = config.temperature ?? undefined;

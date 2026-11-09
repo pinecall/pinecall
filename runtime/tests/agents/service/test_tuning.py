@@ -1,9 +1,11 @@
 """The settings' realtime model is laid over the declaration beside its llm: named `vendor/model` or a
 vendor alone, with its options, and never in the llm's place; a class's own wins over it."""
 
+from collections.abc import Callable
+
 import pytest
 
-from pinecall_runtime.agents.declaration import AgentConfig, Lexicon, Modality, Model, Tuning
+from pinecall_runtime.agents.declaration import AgentConfig, Idle, Lexicon, Modality, Model, Tuning, Voicemail
 from pinecall_runtime.agents.service.tuning import apply_tuning
 from pinecall_runtime.exceptions import ValidationError
 from tests.fakes import talker
@@ -68,3 +70,20 @@ def test_a_vendor_alone_names_no_model_to_think_with() -> None:
     """`--llm acme` is refused naming the form: a model is named, the ears and a voice have a default."""
     with pytest.raises(ValidationError, match=r"acme alone names no model: name it, `--llm acme/<model>`"):
         _tuned(Tuning(llm=ACME), AgentConfig(slug="kala"))
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        lambda: Idle(says=()),
+        lambda: Idle(says=("  ",)),
+        lambda: Idle(says=("Hello?",), after_s=4.0),
+        lambda: Idle(says=("Hello?",), times=11),
+        lambda: Voicemail(message=" "),
+        lambda: Tuning(silence_timeout_s=4),
+        lambda: Tuning(tts_fallbacks=("",)),
+    ],
+)
+def test_the_quiet_a_machine_and_the_fallbacks_refuse_what_no_call_could_run(wrong: Callable[[], object]) -> None:
+    with pytest.raises(ValidationError):
+        wrong()

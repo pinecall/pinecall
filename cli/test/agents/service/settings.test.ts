@@ -75,12 +75,28 @@ describe("the fields as the wire takes them", () => {
     expect(service.fieldsOf({ "max-duration": "off" }, {}).max_duration_s).toBe(0);
   });
 
+  it("the quiet, a machine and the fallbacks are written under their wire names", () => {
+    expect(service.fieldsOf({ "silence-timeout": 30, "llm-timeout": 8, "min-interruption-ms": 300 }, {})).toEqual({ silence_timeout_s: 30, llm_timeout_s: 8, turn: { min_interruption_ms: 300 } });
+    expect(service.fieldsOf({ voicemail: "Call us back" }, {}).voicemail).toEqual({ message: "Call us back" });
+    expect(service.fieldsOf({ voicemail: "silent" }, {}).voicemail).toEqual({});
+    expect(service.fieldsOf({ "stt-fallback": ["deepgram"], "tts-fallback": ["cartesia/sonic-3"] }, {})).toEqual({ stt_fallbacks: ["deepgram"], tts_fallbacks: ["cartesia/sonic-3"] });
+  });
+
+  it("an idle knob keeps the lines that stand, and needs some to stand on", () => {
+    expect(service.fieldsOf({ "idle-after": 10 }, { idle: { says: ["Hello?"], times: 2 } }).idle).toEqual({ says: ["Hello?"], times: 2, after_s: 10 });
+    expect(() => service.fieldsOf({ "idle-times": 2 }, {})).toThrow("--idle-say");
+  });
+
   it("memory's lists keep the one not named", () => {
     expect(service.fieldsOf({ forget: ["card numbers"] }, standing).memory).toEqual({ remember: ["the caller's name"], forget: ["card numbers"] });
   });
 
   it("refuses what no call could run with, before anything is read", () => {
     expect(() => service.SettingsInput.parse({ "max-duration": 61 })).toThrow();
+    expect(() => service.SettingsInput.parse({ "silence-timeout": 4 })).toThrow();
+    expect(() => service.SettingsInput.parse({ "idle-after": 61 })).toThrow();
+    expect(() => service.SettingsInput.parse({ "idle-times": 11 })).toThrow();
+    expect(() => service.SettingsInput.parse({ voicemail: " " })).toThrow();
     expect(() => service.SettingsInput.parse({ "eot-threshold": 1.5 })).toThrow();
     expect(() => service.SettingsInput.parse({ language: " " })).toThrow(NO_LANGUAGE);
     expect(() => service.SettingsInput.parse({ "end-of-turn": "vad" })).toThrow();

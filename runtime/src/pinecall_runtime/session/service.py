@@ -1,7 +1,7 @@
 """What the gateway and the worker use of a session: one call on LiveKit, spoken or written, and its pieces."""
 
 from pinecall_runtime.session.call import Call, Lookup, Platform, RunTool, Seal, ToolUse
-from pinecall_runtime.session.clock import end_when_quiet, keep_time
+from pinecall_runtime.session.clock import end_when_quiet, keep_time, watch_the_quiet
 from pinecall_runtime.session.hold import HoldMusic
 from pinecall_runtime.session.room import CallRoom, ClaimCode
 from pinecall_runtime.session.session import Session
@@ -48,4 +48,5 @@ __all__ = [
     "taken_up",
     "text_session",
     "voice_session",
+    "watch_the_quiet",
 ]

@@ -3,7 +3,7 @@
 import dataclasses
 import logging
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,8 +123,8 @@ def build_pipeline(config: AgentConfig, catalog: Catalog, keys: Keyring) -> Pipe
     """The stages an agent runs: its vendors or the defaults, each with its key and options."""
     language = primary_language(config.language)
     llm = thinking_of(config, catalog, keys)
-    stt = stage_on_its_key("stt", config.stt, catalog, keys)
-    tts = stage_on_its_key("tts", config.voice, catalog, keys)
+    stt = _backed_by(stage_on_its_key("stt", config.stt, catalog, keys), "stt", config.stt_fallbacks, catalog, keys)
+    tts = _backed_by(stage_on_its_key("tts", config.voice, catalog, keys), "tts", config.tts_fallbacks, catalog, keys)
     heard = dict.fromkeys(item for item in (language, *catalog.hints) if item)
     voice = config.voice.voice_id if config.voice else None
     ears = (dataclasses.replace(item, language=language, hints=tuple(heard)) for item in (stt, *stt.fallbacks))
@@ -173,13 +173,7 @@ def stage_on_its_key(modality: Modality, declared: Model | Voice | None, catalog
         return _as_declared(modality, chosen, declared)
     default = catalog.defaults[modality]
     chosen = _on_its_key(modality, default.vendor, default.model, catalog, keys)
-    backups: list[Running] = []
-    for fallback in default.fallbacks:
-        try:
-            backups.append(_on_its_key(modality, fallback.vendor, fallback.model, catalog, keys))
-        except (ServiceUnavailable, Forbidden):
-            logger.info("%s fallback %s has no key this org may run it on", modality, fallback.vendor)
-    return _over(chosen, *backups)
+    return _over(chosen, *_with_a_key(modality, ((one.vendor, one.model) for one in default.fallbacks), catalog, keys))
 
 
 def vendor_on(modality: Modality, vendor: str, credentials: Credentials, catalog: Catalog) -> Running:
@@ -433,6 +427,25 @@ def _on_its_key(modality: Modality, vendor: str, named: str | None, catalog: Cat
 def _the_defaults(catalog: Catalog, modality: Modality, vendor: str) -> str | None:
     default = catalog.defaults[modality]
     return default.model if default.vendor == vendor else None
+
+
+def _with_a_key(
+    modality: Modality, named: Iterable[tuple[str, str | None]], catalog: Catalog, keys: Keyring
+) -> list[Running]:
+    backups: list[Running] = []
+    for vendor, model in named:
+        try:
+            backups.append(_on_its_key(modality, vendor, model, catalog, keys))
+        except (ServiceUnavailable, Forbidden):
+            logger.info("%s fallback %s has no key this org may run it on", modality, vendor)
+    return backups
+
+
+# The agent's own fallbacks take the place of the ones its stage came with; none leaves those.
+def _backed_by(chosen: Running, modality: Modality, named: Sequence[Model], catalog: Catalog, keys: Keyring) -> Running:
+    if not named:
+        return chosen
+    return _over(chosen, *_with_a_key(modality, ((one.provider, one.model or None) for one in named), catalog, keys))
 
 
 def _over(primary: Running, *fallbacks: Running) -> Running:

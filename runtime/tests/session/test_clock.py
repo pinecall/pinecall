@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
 
@@ -10,6 +11,7 @@ from livekit.agents import llm
 from livekit.agents.voice.events import ConversationItemAddedEvent
 
 import pinecall_runtime.session.clock as clock
+from pinecall_runtime.agents.declaration import Idle
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.session.clock import CLOSING
 from pinecall_runtime.session.session import Session
@@ -127,3 +129,86 @@ async def test_a_warning_that_cannot_be_given_is_said_and_the_limit_still_holds(
     await clock.keep_time(cast(Session, session), 1, exhausted=None)
     assert ended == [("timeout", "platform")]
     assert "warning the agent that its time is nearly up failed on call_1" in caplog.text
+
+
+# ── the quiet ──
+
+
+def _a_quiet_line(**over: object) -> SimpleNamespace:
+    said: list[str] = []
+    ended: list[tuple[str, str]] = []
+
+    def say(line: str, *, allow_interruptions: bool) -> None:
+        assert allow_interruptions
+        said.append(line)
+
+    def hang_up(reason: str, by: str) -> None:
+        ended.append((reason, by))
+
+    return SimpleNamespace(
+        said=said,
+        ended=ended,
+        live=SimpleNamespace(agent_state="listening", user_state="listening", say=say),
+        on_hold=False,
+        last_heard=0.0,
+        call=SimpleNamespace(
+            a_person_has_the_line=False, waiting_for_a_person=False, context=SimpleNamespace(call="c")
+        ),
+        hang_up=hang_up,
+        **over,
+    )
+
+
+def _ticking(monkeypatch: pytest.MonkeyPatch, at: Callable[[int], None] = lambda _tick: None) -> list[int]:
+    """Each of the clock's looks passes at once, and `at` sees which look it is."""
+    real = asyncio.sleep
+    ticks: list[int] = []
+
+    async def passes(_seconds: float) -> None:
+        ticks.append(len(ticks))
+        at(len(ticks))
+        await real(0)
+
+    monkeypatch.setattr(clock.asyncio, "sleep", passes)
+    return ticks
+
+
+async def test_idle_lines_are_said_in_turn_up_to_their_times_and_the_silence_ends_the_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    line = _a_quiet_line()
+    _ticking(monkeypatch)
+    await clock.watch_the_quiet(cast(Session, line), Idle(says=("Are you there?", "Hello?"), after_s=5.0, times=3), 30)
+    assert line.said == ["Are you there?", "Hello?", "Are you there?"]
+    assert line.ended == [("timeout", "platform")]
+
+
+async def test_a_call_with_neither_set_is_never_watched(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = _ticking(monkeypatch)
+    await clock.watch_the_quiet(cast(Session, _a_quiet_line()), None, None)
+    assert ticks == []
+
+
+async def test_whatever_the_caller_says_starts_the_silence_over(monkeypatch: pytest.MonkeyPatch) -> None:
+    line = _a_quiet_line()
+
+    def speaks_at_ten(tick: int) -> None:
+        if tick == 10:
+            line.last_heard = 1.0
+
+    ticks = _ticking(monkeypatch, speaks_at_ten)
+    await clock.watch_the_quiet(cast(Session, line), None, 5)
+    assert len(ticks) == 10 + 19  # the look that hears them counts as the first quiet one
+
+
+async def test_the_hold_is_not_the_callers_silence(monkeypatch: pytest.MonkeyPatch) -> None:
+    line = _a_quiet_line()
+    line.on_hold = True
+
+    def given_back_at_forty(tick: int) -> None:
+        if tick == 40:
+            line.on_hold = False
+
+    ticks = _ticking(monkeypatch, given_back_at_forty)
+    await clock.watch_the_quiet(cast(Session, line), None, 5)
+    assert len(ticks) == 40 + 19  # the look that finds the line given back counts as the first

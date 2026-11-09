@@ -168,7 +168,10 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     # A chat in a room is the one call with no ceiling: it ends after ten quiet minutes instead.
     quiet = typed and not route.channel.has_a_number
     silence = asyncio.create_task(session.end_when_quiet(running, A_CHAT_WAITS_S if quiet else 0))
-    ctx.add_shutdown_callback(_let_go(ctx, running, room, widget, timer, silence))
+    idle = asyncio.create_task(
+        session.watch_the_quiet(running, None if typed else config.idle, None if typed else config.silence_timeout_s)
+    )
+    ctx.add_shutdown_callback(_let_go(ctx, running, room, widget, timer, silence, idle))
 
 
 def context_of(

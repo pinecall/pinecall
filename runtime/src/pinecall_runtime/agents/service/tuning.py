@@ -49,6 +49,11 @@ def apply_tuning(
             declared.max_duration_s if tuning.max_duration_s is None else tuning.max_duration_s,
         ),
         llm_timeout_s=kept("llm_timeout_s", declared.llm_timeout_s, tuning.llm_timeout_s),
+        silence_timeout_s=tuning.silence_timeout_s,
+        idle=tuning.idle,
+        voicemail=tuning.voicemail,
+        stt_fallbacks=_taking_over(tuning.stt_fallbacks, "stt", defaults),
+        tts_fallbacks=_taking_over(tuning.tts_fallbacks, "tts", defaults),
         knowledge=kept("knowledge", declared.knowledge, tuning.knowledge),
         bases=kept("docs", declared.bases, tuning.bases or ()),
         says=kept("says", declared.says, dict(lexicon.said)),
@@ -104,6 +109,13 @@ def model_named(text: str | None, modality: Modality, *, in_use: str) -> Model |
 
 
 # ── private ──
+
+
+def _taking_over(
+    named: tuple[str, ...] | None, modality: Modality, defaults: Mapping[Modality, str]
+) -> tuple[Model, ...]:
+    found = (model_named(word, modality, in_use=defaults[modality]) for word in named or ())
+    return tuple(model for model in found if model is not None)
 
 
 def _voice(declared: AgentConfig, tuning: Tuning, defaults: Mapping[Modality, str]) -> Voice | None:

@@ -5,19 +5,20 @@ import json
 import locale
 from collections.abc import Callable
 from datetime import date
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
 from livekit.agents import RunContext, llm
 from livekit.agents.llm._provider_format import google as gemini_format
 
-from pinecall_runtime.agents.declaration import AgentConfig, Docs, MemoryPolicy, ToolSpec
+from pinecall_runtime.agents.declaration import AgentConfig, Docs, MemoryPolicy, ToolSpec, Voicemail
 from pinecall_runtime.calls.context import Contact
 from pinecall_runtime.calls.logs import Log
 from pinecall_runtime.calls.repository.entries import EntryRepository
 from pinecall_runtime.calls.service.tool_calls import Answered, Called, ToolCalls
 from pinecall_runtime.calls.store import Store
-from pinecall_runtime.enums import Channel
+from pinecall_runtime.enums import Channel, Direction
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest, llm_of
@@ -27,6 +28,8 @@ from pinecall_runtime.session.prompt import Blocks, request
 from pinecall_runtime.session.tools import (
     INJECTED_SIGNATURE,
     SAY_PARAMETER,
+    VOICEMAIL_TOOL,
+    Toolbox,
     as_livekit_tools,
     date_pair,
     opening,
@@ -169,6 +172,21 @@ def test_recall_is_declared_only_when_the_class_declares_memory_and_search_for_b
     assert platform_tools(AgentConfig(slug="a")) == ()
     assert platform_tools(AgentConfig(slug="a", memory=MemoryPolicy())) == (RECALL,)
     assert platform_tools(AgentConfig(slug="a", bases=(Docs(base="b"),))) == (SEARCH,)
+
+
+def _names_offered(config: AgentConfig, direction: Direction) -> list[str]:
+    call = SimpleNamespace(config=config, context=SimpleNamespace(direction=direction))
+    box = Toolbox.__new__(Toolbox)
+    box.call = cast(Call, call)
+    box.lookups = cast(Lookups, SimpleNamespace())
+    return [tool.id for tool in box.declared() if isinstance(tool, llm.Tool)]
+
+
+def test_voicemail_is_offered_on_a_call_the_agent_placed_and_only_when_it_is_set() -> None:
+    wanted = AgentConfig(slug="a", voicemail=Voicemail(message="Call us back"))
+    assert _names_offered(wanted, Direction.outbound) == [VOICEMAIL_TOOL.name]
+    assert _names_offered(wanted, Direction.inbound) == []
+    assert _names_offered(AgentConfig(slug="a"), Direction.outbound) == []
 
 
 def test_the_descriptions_say_the_results_are_data_and_never_instructions() -> None:

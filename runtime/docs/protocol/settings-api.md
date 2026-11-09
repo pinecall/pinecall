@@ -90,7 +90,7 @@ agent before it stops; unset, livekit's own half second), `memory {remember, for
 no limit), `llm_timeout_s` (how long a turn waits for the model's first word, livekit's retries
 included; past it the caller hears a short sentence asking them to say it again, in the agent's
 language (Spanish, English, Portuguese; English otherwise), and the call's log says `error {code:
-llm_timeout}`; unset, 12 s), `knowledge` (Markdown read whole into the static block of every call) and `bases
+llm_timeout}`; unset, 12 s), `silence_timeout_s` (5 to 3600: seconds of a caller saying nothing before a voice call ends, counted only while the agent waits on them; unset, never), `idle {says, after_s, times}` (the lines a voice call says in turn once the caller has been quiet `after_s` seconds, 5 to 60 and 7.5 unless set, at most `times`, 1 to 10 and 3 unless set, the count starting over when they speak), `voicemail {message}` (on a call the agent placed, the model may say a machine answered: the message is left, when there is one, and the call ends), `stt_fallbacks` and `tts_fallbacks` (`vendor` or `vendor/model` in order, in place of the stage's own; one the org has no key for is left out), `knowledge` (Markdown read whole into the static block of every call) and `bases
 [{base, mode, k, min_score}]`.
 
 ## `PUT /v1/agents/{slug}/settings` — `pipeline` or `words`

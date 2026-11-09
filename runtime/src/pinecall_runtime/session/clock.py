@@ -3,6 +3,7 @@
 import asyncio
 import time
 
+from pinecall_runtime.agents.declaration import Idle
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.session.session import Session
 from pinecall_runtime.wire.events import CreditsExhausted
@@ -13,6 +14,8 @@ CLOSING = (
     "The call reaches its time limit in about a minute. Bring it to a close now: answer what is "
     "pending in a sentence, tell the caller the call has to end soon, and say goodbye."
 )
+# How often a call looks at whether its line has gone quiet.
+LOOK_EVERY_S = 0.25
 
 
 # The limit holds while a supervisor has the line; only the warning is skipped, since a
@@ -47,3 +50,43 @@ async def end_when_quiet(session: Session, quiet_s: float) -> None:
             session.hang_up("timeout", "platform")
             return
         await asyncio.sleep(left)
+
+
+def _waiting_for_the_caller(session: Session) -> bool:
+    # A tool running, a reply being written, the hold, a person on the line: the caller is not the one keeping quiet.
+    return (
+        session.live.agent_state == "listening"
+        and session.live.user_state != "speaking"
+        and not session.on_hold
+        and not session.call.a_person_has_the_line
+        and not session.call.waiting_for_a_person
+    )
+
+
+# Only the time the agent is waiting on the caller counts, so an idle line's own length is not silence;
+# whatever the caller says starts both counts over.
+async def watch_the_quiet(session: Session, idle: Idle | None, silence_s: int | None) -> None:
+    """Say the idle lines while the caller is quiet, and end the call at its silence timeout; neither set, nothing."""
+    if idle is None and silence_s is None:
+        return
+    heard = session.last_heard
+    said = 0
+    since_line = 0.0
+    quiet = 0.0
+    while True:
+        await asyncio.sleep(LOOK_EVERY_S)
+        if session.last_heard != heard:
+            heard, said, since_line, quiet = session.last_heard, 0, 0.0, 0.0
+        if not _waiting_for_the_caller(session):
+            since_line = 0.0
+            continue
+        since_line += LOOK_EVERY_S
+        quiet += LOOK_EVERY_S
+        if silence_s is not None and quiet >= silence_s:
+            session.hang_up("timeout", "platform")
+            return
+        if idle is not None and said < idle.times and since_line >= idle.after_s:
+            with survived("saying an idle line", session.call.context.call):
+                session.live.say(idle.says[said % len(idle.says)], allow_interruptions=True)
+            said += 1
+            since_line = 0.0

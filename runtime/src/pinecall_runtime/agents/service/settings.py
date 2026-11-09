@@ -38,34 +38,9 @@ HISTORY_LIMIT = 20
 
 # A `words` key (a supervisor's) sets the opening's words, what is remembered and the lexicon; the
 # rest is the pipeline's.
-PIPELINE_ONLY = (
-    "voice",
-    "tts",
-    "tts_model",
-    "stt",
-    "llm",
-    "temperature",
-    "end_of_turn",
-    "llm_builds",
-    "llm_options",
-    "realtime",
-    "realtime_options",
-    "stt_builds",
-    "stt_options",
-    "tts_builds",
-    "tts_options",
-    "judge",
-    "judge_builds",
-    "judge_options",
-    "language",
-    "hangup",
-    "turn",
-    "bases",
-    "record",
-    "max_duration_s",
-    "llm_timeout_s",
-)
+WORDS_KNOBS = ("greeting", "memory", "knowledge")
 TUNING_KNOBS = tuple(field.name for field in dataclasses.fields(Tuning))
+PIPELINE_ONLY = tuple(knob for knob in TUNING_KNOBS if knob not in WORDS_KNOBS)
 # Every knob's name in the declaration, where the two differ.
 DECLARED_AS = {
     "tts": "voice",
@@ -85,9 +60,9 @@ DECLARED_AS = {
 }
 # A set that changes a stage's knobs has the stage tried before it is kept.
 STAGE_KNOBS: dict[Modality, tuple[str, ...]] = {
-    "tts": ("voice", "tts", "tts_model", "tts_builds", "tts_options", "language"),
+    "tts": ("voice", "tts", "tts_model", "tts_builds", "tts_options", "tts_fallbacks", "language"),
     "llm": ("llm", "temperature", "llm_builds", "llm_options"),
-    "stt": ("stt", "stt_builds", "stt_options", "end_of_turn", "turn", "language"),
+    "stt": ("stt", "stt_builds", "stt_options", "end_of_turn", "turn", "stt_fallbacks", "language"),
 }
 REALTIME_KNOBS = ("realtime", "realtime_options")
 JUDGE_KNOBS = ("judge", "judge_builds", "judge_options")

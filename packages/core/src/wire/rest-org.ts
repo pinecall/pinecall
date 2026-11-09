@@ -175,6 +175,17 @@ export const TuningBodySchema = z.strictObject({
   max_duration_s: z.int().nullish(),
   knowledge: z.string().nullish(),
   bases: z.array(DocsConfigSchema).nullish(),
+  /** How long a turn waits for the model's first word, in seconds. */
+  llm_timeout_s: z.number().nullish(),
+  /** Seconds of a caller saying nothing before the call ends, 5 to 3600. */
+  silence_timeout_s: z.int().nullish(),
+  /** What the agent says when the caller has gone quiet: its lines, after how many seconds (5 to 60), how many times (1 to 10). */
+  idle: z.strictObject({ says: z.array(z.string()), after_s: z.number().optional(), times: z.int().optional() }).nullish(),
+  /** Lets the model tell a machine from a person on a call it placed, and what it leaves there. */
+  voicemail: z.strictObject({ message: z.string().nullish() }).nullish(),
+  /** The vendors that take over a stage, `vendor` or `vendor/model`, in order: over the row's own. */
+  stt_fallbacks: z.array(z.string()).nullish(),
+  tts_fallbacks: z.array(z.string()).nullish(),
 });
 
 export type TuningBody = z.infer<typeof TuningBodySchema>;

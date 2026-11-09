@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An agent may be set to bear silence, leave a voicemail, and name its own fallbacks.** `silence_timeout_s`
+  ends a voice call after that long of the caller saying nothing; `idle {says, after_s, times}` says lines
+  first; `voicemail {message}` lets the model tell a machine from a person on a call the agent placed;
+  `stt_fallbacks` and `tts_fallbacks` take the place of the stage's own. All unset unless an org sets them.
 - **A café is a room of tables, not a second caller.** The `cafe` ambience was one voice read over
   pink noise: with the room heard the whole call, an agent transcribed it word for word as the caller
   and answered twice in three minutes. It is that voice at eight paces and pitches at once, each from

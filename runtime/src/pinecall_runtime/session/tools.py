@@ -14,6 +14,7 @@ from livekit.agents.llm import FunctionCall, FunctionCallOutput
 from livekit.agents.voice import AgentSession
 
 from pinecall_runtime.agents.declaration import SAY, ToolSpec
+from pinecall_runtime.enums import Direction
 from pinecall_runtime.exceptions import PinecallError
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.session.call import Call, ToolUse
@@ -39,6 +40,16 @@ type Waiting = Callable[[], AbstractAsyncContextManager[None]]
 REFUSED = "refused"
 NOT_AVAILABLE = "{name} is not available now"
 END_CALL = "end_call"
+VOICEMAIL_TOOL = ToolSpec(
+    name="voicemail_reached",
+    description=(
+        "Call this only when a machine answered: an answering machine or a voicemail greeting asking "
+        "for a message, never a person. Say nothing yourself: the message, if the agent has one, is "
+        "left for you and the call ends."
+    ),
+    parameters={"type": "object", "properties": {}},
+    quiet=True,
+)
 # The goodbye comes in the same turn as the call to end: a reply generated after it says odd
 # things, so nothing is generated.
 SAY_GOODBYE_FIRST = (
@@ -81,6 +92,7 @@ class Toolbox:
         ending: Ending,
         waiting: Waiting,
         hung_up_by_the_model: Callable[[], None],
+        leave: Callable[[], None],
     ) -> None:
         """The tools of a call nobody has spoken on yet."""
         self.call = call
@@ -92,6 +104,7 @@ class Toolbox:
         self.ending = ending
         self.waiting = waiting
         self.hung_up_by_the_model = hung_up_by_the_model
+        self.leave = leave
 
     def declared(self) -> list[llm.Tool | llm.Toolset]:
         """The app's tools, the platform's lookups, and end_call when the agent may hang up."""
@@ -100,6 +113,9 @@ class Toolbox:
             *as_livekit_tools(config.tools, self._run_app_tool),
             *as_livekit_tools(platform_tools(config), self._run_lookup),
         ]
+        # A call somebody placed to a person is the one a machine answers instead.
+        if config.voicemail is not None and self.call.context.direction is Direction.outbound:
+            tools.extend(as_livekit_tools([VOICEMAIL_TOOL], self._reached_voicemail))
         if config.hangup is not None:
             tools.append(
                 EndCallTool(
@@ -184,6 +200,18 @@ class Toolbox:
     async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)
         return await self.lookups.called(use, context.speech_handle.id)
+
+    # Never reaches the app, so the tool is written down here, as end_call is.
+    async def _reached_voicemail(self, use: ToolUse, context: RunContext[None]) -> str | llm.ToolResult:
+        called = ToolCall(call_id=use.call_id, name=use.name, arguments={}, speech_id=context.speech_handle.id)
+        await self.call.writing.write("tool.call", called)
+        await self.call.writing.write("tool.result", ToolResult(call_id=use.call_id, name=use.name))
+        await context.wait_for_playout()
+        voicemail = self.call.config.voicemail
+        if voicemail is not None and voicemail.message is not None:
+            await self.live.say(voicemail.message, allow_interruptions=False)
+        self.leave()
+        raise StopResponse
 
     # end_call closes the session as livekit's own initiative, which reads as a drain: the reason
     # is written down first, and the tool with it, since it never reaches the app.

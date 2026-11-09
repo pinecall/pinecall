@@ -106,6 +106,7 @@ class Session:
             ending=self._ending,
             waiting=self._music,
             hung_up_by_the_model=self._hung_up_by_the_model,
+            leave=lambda: self.hang_up("agent_hung_up", "agent"),
         )
         self.agent = CallAgent(live, self.blocks, lookups, toolbox.declared(), self._music)
         self.started_at = time.time()

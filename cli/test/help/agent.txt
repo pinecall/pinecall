@@ -99,12 +99,18 @@ Options:
   --language <value>
   --greeting <value>
   --hangup <value>
+  --voicemail <value>
   --temperature <n>
   --endpointing-ms <n>
   --min-interruption-words <n>
   --eot-threshold <n>
   --eager-eot-threshold <n>
   --max-duration <n>
+  --min-interruption-ms <n>
+  --silence-timeout <n>
+  --idle-after <n>
+  --idle-times <n>
+  --llm-timeout <n>
   --greeting-interruptible <on|off>
   --record <on|off>
   --end-of-turn <who>                who says the caller's turn is over: stt
@@ -117,6 +123,9 @@ Options:
   --judge-option <key=value...>
   --remember <phrase...>
   --forget <phrase...>
+  --idle-say <line...>
+  --stt-fallback <vendor...>
+  --tts-fallback <vendor...>
   -h, --help                         display help for command
 
 $ pinecall agent clear --help
@@ -154,6 +163,12 @@ Options:
   --memory
   --record
   --max-duration
+  --silence-timeout
+  --idle
+  --voicemail
+  --stt-fallbacks
+  --tts-fallbacks
+  --llm-timeout
   --knowledge
   --bases
   -h, --help          display help for command

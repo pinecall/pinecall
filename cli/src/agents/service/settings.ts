@@ -19,7 +19,8 @@ export const FIELDS = [
   "llm", "temperature", "llm-builds", "llm-options",
   "realtime", "realtime-options",
   "judge", "judge-builds", "judge-options",
-  "language", "greeting", "hangup", "turn", "memory", "record", "max-duration", "knowledge", "bases",
+  "language", "greeting", "hangup", "turn", "memory", "record", "max-duration",
+  "silence-timeout", "idle", "voicemail", "stt-fallbacks", "tts-fallbacks", "llm-timeout", "knowledge", "bases",
 ] as const;
 export type Field = (typeof FIELDS)[number];
 
@@ -32,6 +33,8 @@ export const WIRE: Record<Field, keyof TuningBody> = {
   judge: "judge", "judge-builds": "judge_builds", "judge-options": "judge_options",
   language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record",
   "max-duration": "max_duration_s", knowledge: "knowledge", bases: "bases",
+  "silence-timeout": "silence_timeout_s", idle: "idle", voicemail: "voicemail",
+  "stt-fallbacks": "stt_fallbacks", "tts-fallbacks": "tts_fallbacks", "llm-timeout": "llm_timeout_s",
 };
 
 /** What the class calls the setting a field is part of: a field it declares is fixed, and set by it. */
@@ -57,6 +60,12 @@ const fraction = z.number().gt(0, A_THRESHOLD).max(1, A_THRESHOLD);
 const ON_OR_OFF = (flag: string): { error: string } => ({ error: `${flag} takes on or off` });
 const A_COUNT = (flag: string, of: string): string => `${flag} is a whole number of ${of}, 0 or more`;
 const A_DURATION = `--max-duration is minutes, 1 to ${LONGEST_MINUTES}, or off`;
+const A_SILENCE = "--silence-timeout is whole seconds, 5 to 3600";
+const AN_IDLE_WAIT = "--idle-after is seconds, 5 to 60";
+const IDLE_TIMES = "--idle-times is a whole number, 1 to 10";
+const A_MODEL_WAIT = "--llm-timeout is seconds, above 0";
+// `silent`: the machine is hung up on, with nothing left on it.
+const SILENT = "silent";
 
 /** What `set` takes, under the CLI's own flag names, so the terminal and the MCP turn either into a version. */
 export const SettingsInput = z
@@ -87,6 +96,15 @@ export const SettingsInput = z
     "min-interruption-words": z.number().int(A_COUNT("--min-interruption-words", "words")).min(0, A_COUNT("--min-interruption-words", "words")),
     "eot-threshold": fraction,
     "eager-eot-threshold": fraction,
+    "min-interruption-ms": z.number().int(A_COUNT("--min-interruption-ms", "milliseconds")).min(0, A_COUNT("--min-interruption-ms", "milliseconds")),
+    "silence-timeout": z.number().int(A_SILENCE).min(5, A_SILENCE).max(3600, A_SILENCE),
+    "idle-say": z.array(z.string().trim().min(1, "--idle-say is words the caller hears, not blank")).min(1),
+    "idle-after": z.number().min(5, AN_IDLE_WAIT).max(60, AN_IDLE_WAIT),
+    "idle-times": z.number().int(IDLE_TIMES).min(1, IDLE_TIMES).max(10, IDLE_TIMES),
+    voicemail: z.string().trim().min(1, `--voicemail is the words left on the machine, or ${SILENT}`),
+    "stt-fallback": z.array(z.string().trim().min(1)).min(1),
+    "tts-fallback": z.array(z.string().trim().min(1)).min(1),
+    "llm-timeout": z.number().gt(0, A_MODEL_WAIT),
     record: z.enum(["on", "off"], ON_OR_OFF("--record")),
     "max-duration": z.union([z.number().int(A_DURATION).min(1, A_DURATION).max(LONGEST_MINUTES, A_DURATION), z.literal("off")], { error: A_DURATION }),
     remember: z.array(z.string()),
@@ -235,6 +253,16 @@ function withModelsNamed(input: SettingsInput): SettingsInput {
   return checked;
 }
 
+// The lines, the wait and the count are one setting: naming one keeps the others that stand.
+function idleOf(input: SettingsInput, standing: TuningBody): TuningBody["idle"] | undefined {
+  const after = input["idle-after"];
+  const times = input["idle-times"];
+  if (input["idle-say"] === undefined && after === undefined && times === undefined) return undefined;
+  const says = input["idle-say"] ?? standing.idle?.says;
+  if (says === undefined) throw new UsageError("--idle-after and --idle-times need the lines first: --idle-say '…'");
+  return { ...(standing.idle ?? {}), says, ...(after === undefined ? {} : { after_s: after }), ...(times === undefined ? {} : { times }) };
+}
+
 /** The fields this input sets, under wire names, merged over the current row where nested. */
 export function fieldsOf(input: SettingsInput, standing: TuningBody): Partial<TuningBody> {
   const wanted: Partial<TuningBody> = {};
@@ -257,16 +285,25 @@ export function fieldsOf(input: SettingsInput, standing: TuningBody): Partial<Tu
   const words = input["min-interruption-words"];
   const sure = input["eot-threshold"];
   const eager = input["eager-eot-threshold"];
-  if ([endpointing, words, sure, eager].some((one) => one !== undefined)) {
+  const interrupting = input["min-interruption-ms"];
+  if ([endpointing, words, sure, eager, interrupting].some((one) => one !== undefined)) {
     wanted.turn = { ...(standing.turn ?? {}) };
     if (endpointing !== undefined) wanted.turn.endpointing_ms = endpointing;
     if (words !== undefined) wanted.turn.min_interruption_words = words;
     if (sure !== undefined) wanted.turn.eot_threshold = sure;
     if (eager !== undefined) wanted.turn.eager_eot_threshold = eager;
+    if (interrupting !== undefined) wanted.turn.min_interruption_ms = interrupting;
   }
   if (input.record !== undefined) wanted.record = input.record === "on";
   // Minutes, or `off`; sent as seconds, with 0 meaning no limit.
   if (input["max-duration"] !== undefined) wanted.max_duration_s = input["max-duration"] === "off" ? 0 : input["max-duration"] * 60;
+  if (input["silence-timeout"] !== undefined) wanted.silence_timeout_s = input["silence-timeout"];
+  if (input["llm-timeout"] !== undefined) wanted.llm_timeout_s = input["llm-timeout"];
+  if (input["stt-fallback"] !== undefined) wanted.stt_fallbacks = input["stt-fallback"];
+  if (input["tts-fallback"] !== undefined) wanted.tts_fallbacks = input["tts-fallback"];
+  if (input.voicemail !== undefined) wanted.voicemail = input.voicemail === SILENT ? {} : { message: input.voicemail };
+  const idle = idleOf(input, standing);
+  if (idle !== undefined) wanted.idle = idle;
   if (input.remember !== undefined || input.forget !== undefined) {
     wanted.memory = { remember: input.remember ?? standing.memory?.remember ?? [], forget: input.forget ?? standing.memory?.forget ?? [] };
   }

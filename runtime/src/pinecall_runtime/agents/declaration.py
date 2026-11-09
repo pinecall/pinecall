@@ -42,6 +42,14 @@ DELAYED_AFTER_S = 5.0
 TURN_BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
 # The argument the platform adds to every tool: the line the model says as the tool runs.
 SAY = "say"
+# The quiet an agent may be set to bear: a silence timeout ends the call, an idle line asks first.
+SHORTEST_SILENCE_S = 5
+LONGEST_SILENCE_S = 3600
+SHORTEST_IDLE_S = 5.0
+LONGEST_IDLE_S = 60.0
+IDLE_AFTER_S = 7.5
+IDLE_TIMES = 3
+MOST_IDLE_TIMES = 10
 NOT_A_TIMEOUT = "llm_timeout_s is a positive number of seconds"
 
 # Unset knobs are None, never "": an empty string reaches the vendor as a value (an empty voice once
@@ -123,6 +131,34 @@ class Hangup:
     """Lets the model end the call, with instructions on when."""
 
     when: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Idle:
+    """What the agent says when the caller has gone quiet: its lines, after how long, how many times."""
+
+    says: tuple[str, ...]
+    after_s: float = IDLE_AFTER_S
+    times: int = IDLE_TIMES
+
+    def __post_init__(self) -> None:
+        if not self.says or any(not line.strip() for line in self.says):
+            raise ValidationError("idle lines are words the caller hears: at least one, none blank")
+        if not SHORTEST_IDLE_S <= self.after_s <= LONGEST_IDLE_S:
+            raise ValidationError(f"idle after_s is {SHORTEST_IDLE_S:g} to {LONGEST_IDLE_S:g} seconds")
+        if not 1 <= self.times <= MOST_IDLE_TIMES:
+            raise ValidationError(f"idle times is 1 to {MOST_IDLE_TIMES}")
+
+
+@dataclass(frozen=True, slots=True)
+class Voicemail:
+    """Lets the model tell a machine from a person on a call it placed; with no message it just hangs up."""
+
+    message: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.message is not None and not self.message.strip():
+            raise ValidationError(BLANK.format(field="voicemail message"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,6 +282,13 @@ class Tuning:
     llm_timeout_s: float | None = None
     knowledge: str | None = None
     bases: tuple[Docs, ...] | None = None
+    # Seconds of a caller saying nothing before the call ends; unset never ends it for that.
+    silence_timeout_s: int | None = None
+    idle: Idle | None = None
+    voicemail: Voicemail | None = None
+    # The vendors that take over a stage, `vendor` or `vendor/model`, in order: over the row's own.
+    stt_fallbacks: tuple[str, ...] | None = None
+    tts_fallbacks: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -268,6 +311,10 @@ class Tuning:
                 raise ValidationError(BLANK.format(field=name))
         if self.max_duration_s is not None:
             check_call_limit(self.max_duration_s)
+        if self.silence_timeout_s is not None and not SHORTEST_SILENCE_S <= self.silence_timeout_s <= LONGEST_SILENCE_S:
+            raise ValidationError(f"silence_timeout_s is {SHORTEST_SILENCE_S} to {LONGEST_SILENCE_S} seconds")
+        if any(not word.strip() for word in (*(self.stt_fallbacks or ()), *(self.tts_fallbacks or ()))):
+            raise ValidationError(BLANK.format(field="fallback"))
         if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
             raise ValidationError(NOT_A_TIMEOUT)
         if self.temperature is not None and self.temperature < 0:
@@ -342,6 +389,11 @@ class AgentConfig:
     record: bool = True
     max_duration_s: int = LONGEST_VOICE_CALL_S
     llm_timeout_s: float | None = None
+    silence_timeout_s: int | None = None
+    idle: Idle | None = None
+    voicemail: Voicemail | None = None
+    stt_fallbacks: tuple[Model, ...] = ()
+    tts_fallbacks: tuple[Model, ...] = ()
     tools: tuple[ToolSpec, ...] = ()
     state_fields: Mapping[str, Visibility] = field(default_factory=dict[str, Visibility])
     view: str | None = None

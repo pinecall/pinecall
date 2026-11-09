@@ -1376,13 +1376,16 @@ pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--
                    [--greeting '…' | --greeting improvise[:'…']] [--greeting-interruptible on|off]
                    [--hangup '…' | --hangup any] [--end-of-turn stt|livekit|smart-turn] [--endpointing-ms n] [--min-interruption-words n]
                    [--eot-threshold 0.5-0.9] [--eager-eot-threshold 0.3-0.9] [--record on|off]
-                   [--max-duration 1-60|off]
+                   [--max-duration 1-60|off] [--min-interruption-ms n] [--llm-timeout s]
+                   [--silence-timeout 5-3600] [--idle-say '…' …] [--idle-after 5-60] [--idle-times 1-10]
+                   [--voicemail '…' | --voicemail silent] [--stt-fallback vendor …] [--tts-fallback vendor …]
                    [--remember '…' …] [--forget '…' …] [--team] [--note '…']
 pinecall agent knowledge [--team] · knowledge edit [--team] [--note '…']
 pinecall agent clear [--voice] [--tts] [--tts-model] [--stt] [--end-of-turn] [--llm] [--temperature] [--llm-builds] [--llm-options]
                      [--realtime] [--realtime-options] [--stt-builds] [--stt-options] [--tts-builds] [--tts-options]
                      [--judge] [--judge-builds] [--judge-options] [--language] [--greeting] [--hangup] [--turn] [--memory]
-                     [--record] [--max-duration] [--knowledge] [--bases] [--team]
+                     [--record] [--max-duration] [--silence-timeout] [--idle] [--voicemail] [--stt-fallbacks]
+                     [--tts-fallbacks] [--llm-timeout] [--knowledge] [--bases] [--team]
 pinecall agent clear --all [--team]
 pinecall agent history [--team] · diff [--against team|production] [--team] · rollback <version> [--team]
 pinecall agent pull [--team] · push <file> [--team]
@@ -1548,6 +1551,28 @@ call ends after the sentence being said — `timeout` by the `platform` in the c
 no limit. It holds on the phone and on the widget's voice, never on a written conversation, and a
 supervisor on the line does not stop the clock. `pinecall agent clear max-duration` gives it back
 to the corner below.
+
+**`--silence-timeout 5-3600` ends a voice call after that many seconds of the caller saying nothing**,
+`timeout` by the `platform` in the call's log. Only the time the agent is waiting on them counts: never
+while it speaks, a tool runs, the call is on hold or a person has the line. Unset, silence alone never
+ends a call.
+
+**`--idle-say '…'` is what the agent says when the caller has gone quiet**, repeated for several lines,
+said in turn; it replaces the list whole. `--idle-after` is the seconds before each, 7.5 unless set, and
+`--idle-times` how many at most, 3 unless set; the count starts over when the caller speaks. `pinecall
+agent clear idle` takes all three out.
+
+**`--voicemail '…'` lets the model tell a machine from a person on a call the agent placed**: it leaves
+those words and the call ends, `agent_hung_up` by the `agent` in the log. `--voicemail silent` hangs up
+leaving nothing. It is the model that decides, from what it hears; inbound calls never get it.
+
+**`--stt-fallback` and `--tts-fallback` name who takes over when the stage's vendor fails**, `vendor` or
+`vendor/model`, repeated in order, in place of Pinecall's own for the stage. A vendor your org has no key
+for is left out, and one that takes over the voice speaks the voice Pinecall has for the language.
+
+**`--min-interruption-ms` is how long the caller must speak over the agent before it stops**, half a
+second unless set. **`--llm-timeout` is how long a turn waits for the model's first word**, 12 s unless
+set, before the caller is asked to say it again.
 
 **`--language <tag>` is the language the agent's calls are in** — `en`, `es`, `pt-BR` — and what
 the voice, the ears and the turn-taking are set to; unset anywhere, each vendor keeps its own

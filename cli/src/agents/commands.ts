@@ -124,12 +124,13 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .action(async (flags) => ctx.io.result(await service.showSettings(ctx, flags.agent), render.settings));
   const set = agent.command("set").description("write the fields named as the next version of a corner").option("--agent <slug>").option("--team", "the org's own corner").option("--note <note>");
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup"]) set.option(`--${flag} <value>`);
-  for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "max-duration"]) set.option(`--${flag} <n>`);
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "voicemail"]) set.option(`--${flag} <value>`);
+  for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "max-duration", "min-interruption-ms", "silence-timeout", "idle-after", "idle-times", "llm-timeout"]) set.option(`--${flag} <n>`);
   for (const flag of ["greeting-interruptible", "record"]) set.option(`--${flag} <on|off>`);
   set.option("--end-of-turn <who>", END_OF_TURN_HELP);
   for (const stage of ["llm", "realtime", "stt", "tts", "judge"]) set.option(`--${stage}-option <key=value...>`);
   set.option("--remember <phrase...>").option("--forget <phrase...>");
+  set.option("--idle-say <line...>").option("--stt-fallback <vendor...>").option("--tts-fallback <vendor...>");
   set.action(async (flags) => {
     const named = settingsOf(flags as Record<string, unknown>);
     if (Object.keys(named).length === 0) throw new UsageError("nothing to set: name a field (--voice, --llm, --greeting, …); `pinecall agent clear` takes one out");
@@ -335,10 +336,10 @@ const END_OF_TURN_HELP = "who says the caller's turn is over: stt (the ears them
 function settingsOf(flags: Record<string, unknown>): Record<string, unknown> {
   const named: Record<string, unknown> = {};
   const text = (flag: string): string | undefined => flags[camel(flag)] as string | undefined;
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "greeting-interruptible", "record", "end-of-turn"]) {
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "voicemail", "greeting-interruptible", "record", "end-of-turn"]) {
     if (text(flag) !== undefined) named[flag] = text(flag);
   }
-  for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold"]) {
+  for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "min-interruption-ms", "silence-timeout", "idle-after", "idle-times", "llm-timeout"]) {
     const value = numberOf(`--${flag}`, text(flag));
     if (value !== undefined) named[flag] = value;
   }
@@ -350,6 +351,9 @@ function settingsOf(flags: Record<string, unknown>): Record<string, unknown> {
   }
   if (flags["remember"] !== undefined) named["remember"] = flags["remember"];
   if (flags["forget"] !== undefined) named["forget"] = flags["forget"];
+  for (const flag of ["idle-say", "stt-fallback", "tts-fallback"]) {
+    if (flags[camel(flag)] !== undefined) named[flag] = flags[camel(flag)];
+  }
   return named;
 }
 

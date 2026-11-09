@@ -92,3 +92,12 @@ def test_a_test_room_that_sets_the_temperature_alone_runs_the_defaults_model() -
     config = AgentConfig(slug="front", llm=thinking)
     pipeline = keyring.build_pipeline(config, _tuned(), Keyring(box={acme.ACME: "box-key"}))
     assert (pipeline.llm.model, pipeline.llm.options["temperature"]) == (acme.MODEL, 0.2)
+
+
+def test_an_agents_own_fallbacks_take_the_place_of_the_stages_and_one_with_no_key_is_left_out() -> None:
+    keys = Keyring(box={acme.ACME: "box-key"})
+    chosen = stage_on_its_key("llm", Model(provider=acme.ACME, model=acme.MODEL), _tuned(), keys)
+    named = (Model(provider=acme.ACME, model=acme.MODEL),)
+    assert keyring._backed_by(chosen, "llm", (), _tuned(), keys) is chosen
+    assert [one.vendor for one in keyring._backed_by(chosen, "llm", named, _tuned(), keys).fallbacks] == [acme.ACME]
+    assert keyring._backed_by(chosen, "llm", named, _tuned(), Keyring()).fallbacks == ()

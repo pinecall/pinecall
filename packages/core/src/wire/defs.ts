@@ -240,6 +240,7 @@ export const TurnConfigSchema = z.strictObject({
   endpointing_ms: z.int().nullish(),
   eot_threshold: z.number().nullish(),
   eager_eot_threshold: z.number().nullish(),
+  min_interruption_ms: z.int().nullish(),
 });
 
 /** How the voice says one word it would otherwise get wrong: a proper name, a brand, a street. */
