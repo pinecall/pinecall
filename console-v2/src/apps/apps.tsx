@@ -9,6 +9,7 @@ import { readMembers } from "@pinecall/core/members";
 import { Configure } from "../configure/configure";
 import { ReadOnlyNote, readOnlyFor } from "../configure/corner";
 import { KnowledgeTab } from "../configure/knowledge";
+import { StudioTools } from "../configure/tools";
 import { useOrg } from "../lib/org";
 import { WORLD } from "../lib/world";
 import { Icon, type IconName } from "../shell/icons";
@@ -67,6 +68,7 @@ const AGENTS: Kind = {
     { path: "", name: "Overview", icon: "dashboard" },
     { path: "configure", name: "Configure", icon: "settings" },
     { path: "knowledge", name: "Knowledge", icon: "knowledge" },
+    { path: "tools", name: "Tools", icon: "tools" },
   ],
   base: "/agents",
   title: "Agents",
@@ -231,11 +233,12 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
           {open !== undefined && (
             <>
               <Tabs name={open.name} base={base} tabs={tabs}>
-                {readOnlyFor(kind) && (tab === "setup" || tab === "configure" || tab === "knowledge") && <ReadOnlyNote kind={kind} />}
+                {readOnlyFor(kind) && (tab === "setup" || tab === "configure" || tab === "knowledge" || tab === "tools") && <ReadOnlyNote kind={kind} />}
               </Tabs>
               <div className="app-main">
                 {kind === "studio" && tab === "configure" && <Configure key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
                 {kind === "studio" && tab === "knowledge" && <KnowledgeTab key={open.name} agent={open.name} kind={kind} />}
+                {kind === "studio" && tab === "tools" && <StudioTools key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
                 {kind === "code" && tab === "setup" && <Setup key={open.name} agent={open.name} />}
                 {kind === "code" && tab === "releases" && <ReleasesTab key={open.name} app={open} names={names} onChanged={reread} />}
                 {!tabs.some((one) => one.path === tab && one.path !== "") && <AppOverview key={open.name} app={open} kind={kind} served={served.get(open.name) ?? 0} names={names} onChanged={reread} />}

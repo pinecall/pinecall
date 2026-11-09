@@ -227,6 +227,7 @@ async def pipeline_report(
         providers=listed.providers,
         defaults=listed.defaults,
         models=listed.models,
+        choices=listed.choices,
         runs=listed.runs,
         realtime=listed.realtime,
         voice_defaults=dict(catalog.voices),

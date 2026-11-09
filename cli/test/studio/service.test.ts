@@ -16,7 +16,22 @@ import { zipOf } from "../support/zip.js";
 const DEFINITION = {
   instructions: "You answer the phone for Clínica Norte.",
   greeting: { say: "Clínica Norte, good morning.", reply: null },
-  tools: [{ name: "find_slot", description: "free slots on a day", method: "GET", url: "https://api.clinica.test/slots", headers: [], params: [{ name: "day", type: "string", description: "the day", required: true }], announce: null, timeout_s: 10 }],
+  tools: [
+    {
+      name: "find_slot",
+      description: "free slots on a day",
+      method: "GET",
+      url: "https://api.clinica.test/slots",
+      headers: [],
+      params: [{ name: "day", type: "string", description: "the day", required: true, enum: null }],
+      fixed: [{ name: "source", value: "phone" }],
+      announce: null,
+      delayed: "Still looking.",
+      delayed_after_s: 5,
+      failed: null,
+      timeout_s: 10,
+    },
+  ],
   collect: null,
 };
 const AN_AGENT = { name: "front-desk", env: "sandbox", release: 3, definition: DEFINITION, author: "ana@clinica.test", note: "", saved_at: 1_792_150_000, stopped: false };

@@ -26,6 +26,12 @@ const ParamInput = z.strictObject({
   type: PARAM_TYPE.optional().describe("string when left out"),
   description: z.string().optional().describe("what the model fills it with"),
   required: z.boolean().optional().describe("true when left out"),
+  enum: z.array(z.string()).nullable().optional().describe("the values it may take, a closed list the model is told; a string's alone"),
+});
+
+const FixedFieldInput = z.strictObject({
+  name: z.string().describe("letters, digits and underscores; never one of the params"),
+  value: z.union([z.string(), z.number(), z.boolean()]).describe("what it carries; a string may name the call's values, `{{call.from}}`, never a secret"),
 });
 
 const HttpToolInput = z.strictObject({
@@ -35,7 +41,11 @@ const HttpToolInput = z.strictObject({
   url: z.string().describe("the request's https URL; a param named in it as `{name}` fills the path"),
   headers: z.array(HeaderInput).optional(),
   params: z.array(ParamInput).optional().describe("the arguments the model fills: a path's `{name}`, else the query of a GET or the JSON body"),
-  announce: z.string().nullable().optional().describe("what the agent says while the request runs"),
+  fixed: z.array(FixedFieldInput).optional().describe("fields every request carries beside the model's, set here and never by the model, over an argument of the same name"),
+  announce: z.string().nullable().optional().describe("what the agent says as the request starts"),
+  delayed: z.string().nullable().optional().describe("what the agent says once the request has run `delayed_after_s` seconds with no answer"),
+  delayed_after_s: z.number().optional().describe("when `delayed` is said, in seconds from the start; 5 when left out, 30 at most"),
+  failed: z.string().nullable().optional().describe("what the agent says when the request failed, before the model reads why"),
   timeout_s: z.number().optional().describe("how long the request may take, in seconds; 10 when left out, 30 at most"),
 });
 

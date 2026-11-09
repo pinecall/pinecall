@@ -34,6 +34,11 @@ def clinic(**changes: object) -> Definition:
     return Definition.model_validate(raw)
 
 
+def a_tool(**changes: object) -> dict[str, object]:
+    """A tool with a header's secret, the way a definition holds one, with these fields changed."""
+    return {"name": "a", "description": "x", "url": "https://a.example.com", **changes}
+
+
 def test_a_definition_whose_secrets_the_env_holds_is_accepted() -> None:
     """Every name once, https throughout, the secret set: nothing to say."""
     defined.check(clinic(), {"AGENDA_KEY"}, Env.sandbox)
@@ -53,17 +58,22 @@ def test_a_definition_whose_secrets_the_env_holds_is_accepted() -> None:
             {"tools": [{"name": "a", "description": "x", "url": "https://a.example.com/?k={{secrets.AGENDA_KEY}}"}]},
             "outside a header",
         ),
+        (
+            {"tools": [a_tool(params=[{"name": "n", "type": "integer", "enum": ["1", "2"]}])]},
+            "a closed list is a string's",
+        ),
+        ({"tools": [a_tool(fixed=[{"name": "k", "value": 1}, {"name": "k", "value": 2}])]}, "two fixed fields"),
+        (
+            {"tools": [a_tool(params=[{"name": "k"}], fixed=[{"name": "k", "value": "x"}])]},
+            "a parameter the model fills and a field fixed here",
+        ),
+        ({"collect": {"fields": [{"name": "n", "type": "boolean", "enum": ["yes"]}]}}, "data collection: n lists"),
     ],
 )
 def test_a_definition_no_call_could_run_is_refused_with_a_sentence(changes: dict[str, object], said: str) -> None:
-    """A reserved name, a URL off TLS, a name twice, an undeclared path parameter, a secret in a URL."""
+    """A reserved name, a URL off TLS, a name twice, a path param undeclared, a secret in a URL, a list on a number."""
     with pytest.raises(ValidationError, match=said.replace("{", r"\{").replace("}", r"\}")):
         defined.check(clinic(**changes), {"AGENDA_KEY"}, Env.sandbox)
-
-
-def a_tool(**changes: object) -> dict[str, object]:
-    """A tool with a header's secret, the way a definition holds one, with these fields changed."""
-    return {"name": "a", "description": "x", "url": "https://a.example.com", **changes}
 
 
 @pytest.mark.parametrize(
@@ -74,6 +84,8 @@ def a_tool(**changes: object) -> dict[str, object]:
         ({"tools": [a_tool(description="Needs {{ secrets.AGENDA_KEY }}")]}, "`tools.a.description`"),
         ({"tools": [a_tool(announce="One moment, {{secrets.AGENDA_KEY}}")]}, "`tools.a.announce`"),
         ({"tools": [a_tool(url="https://a.example.com/?k={{secrets.AGENDA_KEY}}")]}, "`tools.a.url`"),
+        ({"tools": [a_tool(fixed=[{"name": "k", "value": "{{secrets.AGENDA_KEY}}"}])]}, "`tools.a.fixed.k.value`"),
+        ({"tools": [a_tool(failed="Sorry, {{secrets.AGENDA_KEY}}")]}, "`tools.a.failed`"),
         (
             {"tools": [a_tool(params=[{"name": "p", "description": "the {{secrets.AGENDA_KEY}}"}])]},
             "`tools.a.params.p.description`",
@@ -122,6 +134,27 @@ def test_the_declaration_carries_the_greeting_the_tools_the_fields_and_the_hang_
     assert tools["collect"].parameters["required"] == []
     assert [field.name for field in declared.state_fields or []] == ["name", "reason"]
     assert declared.hangup is not None
+
+
+def test_a_parameters_values_reach_the_model_and_the_tools_lines_the_declaration() -> None:
+    """`enum` is the schema's closed list; announce, delayed and failed travel on the spec with their moment."""
+    talkative = a_tool(
+        params=[{"name": "site", "enum": ["centro", "norte"]}],
+        announce="One moment.",
+        delayed="Still looking.",
+        delayed_after_s=3,
+        failed="The agenda is down.",
+    )
+    (spec,) = defined.tool_specs(clinic(tools=[talkative], collect=None))
+    assert spec.parameters["properties"]["site"] == {"type": "string", "enum": ["centro", "norte"]}
+    assert (spec.announce, spec.delayed, spec.delayed_after_s, spec.failed) == (
+        "One moment.",
+        "Still looking.",
+        3,
+        "The agenda is down.",
+    )
+    asked = defined.view(clinic(collect={"fields": [{"name": "size", "enum": ["S", "M"]}]}), {})
+    assert "- size (string, required, one of: S, M)" in asked
 
 
 def test_the_identity_fills_the_calls_values_and_leaves_an_unknown_one_empty() -> None:

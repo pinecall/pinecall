@@ -39,6 +39,20 @@ def test_a_get_puts_the_path_parameter_in_the_path_and_the_rest_in_the_query() -
     assert built.headers == {"Authorization": "Bearer s3cret"}
 
 
+def test_the_fixed_fields_travel_with_every_request_over_the_models_and_name_the_calls_values() -> None:
+    """`source` the model tried to set is the definition's; `from` is the caller; a number stays a number."""
+    fixed = [
+        {"name": "source", "value": "phone"},
+        {"name": "from", "value": "{{call.from}}"},
+        {"name": "max", "value": 3},
+    ]
+    tool = HttpTool.model_validate({**lookup().model_dump(), "fixed": fixed})
+    built = fetch.request_of(tool, {"doctor": "vidal", "day": "2026-10-21", "source": "model"}, VALUES)
+    assert built.query == {"day": "2026-10-21", "source": "phone", "from": "+1555", "max": 3}
+    posted = fetch.request_of(HttpTool.model_validate({**tool.model_dump(), "method": "POST"}), {"doctor": "v"}, VALUES)
+    assert posted.body == {"source": "phone", "from": "+1555", "max": 3}
+
+
 def test_a_post_sends_the_rest_as_its_json_body() -> None:
     """A write carries its arguments as JSON, never in the URL."""
     built = fetch.request_of(lookup("POST"), {"doctor": "vidal", "day": "2026-10-21", "late": True}, VALUES)

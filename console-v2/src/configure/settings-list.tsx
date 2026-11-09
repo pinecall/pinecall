@@ -7,7 +7,7 @@ import type { LexiconBody, Report, TuningBody } from "./door";
 import { JudgeEditor, Locked, Pencil } from "./stages";
 
 export type Save = (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => Promise<boolean>;
-type Editing = "language" | "think" | "judge" | "hangup" | "call" | "lexicon";
+type Editing = "language" | "judge" | "hangup" | "call" | "lexicon";
 
 const lines = (text: string): string[] =>
   text
@@ -43,10 +43,11 @@ interface Props {
   onSave: Save;
   onSaveLexicon: (lexicon: LexiconBody) => Promise<boolean>;
   onOpened: () => void;
+  onKept: () => Promise<void>;
 }
 
 export function SettingsList(props: Props): ReactNode {
-  const { readOnly, report, config, fixed, lexicon, lexiconFixed, saving, refused, onSave, onSaveLexicon, onOpened } = props;
+  const { readOnly, report, config, fixed, lexicon, lexiconFixed, saving, refused, onSave, onSaveLexicon, onOpened, onKept } = props;
   const [editing, setEditing] = useState<Editing | null>(null);
   const open = (what: Editing): void => {
     onOpened();
@@ -71,25 +72,13 @@ export function SettingsList(props: Props): ReactNode {
       </div>
       <div className="cfg-rows">
         <Row readOnly={readOnly} name="Language" value={config.language ?? report.speaks.language ?? "Each vendor's default"} locked={fixed.has("language")} onEdit={() => open("language")} />
-        <Row readOnly={readOnly} name="Temperature" value={config.temperature == null ? "The vendor's default" : String(config.temperature)} locked={fixed.has("llm")} onEdit={() => open("think")} />
         <Row readOnly={readOnly} name="Judge model" value={config.judge ?? "The organization's choice"} locked={fixed.has("judge")} onEdit={() => open("judge")} />
         <Row readOnly={readOnly} name="Hang up" value={hangup} locked={fixed.has("hangup")} onEdit={() => open("hangup")} />
         <Row readOnly={readOnly} name="Recording and length" value={`${record}, ${longest}`} locked={fixed.has("record") && fixed.has("max_duration_s")} onEdit={() => open("call")} />
         <Row readOnly={readOnly} name="Lexicon" value={lexicon === null ? "—" : `${plural(lexicon.said.length, "pronunciation")}, ${plural(lexicon.heard.length, "word")} to hear`} locked={lexiconLocked} onEdit={() => open("lexicon")} />
       </div>
       {editing === "language" && <TextEditor title="Language" label="A language tag: en, es, pt-BR" initial={config.language ?? ""} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
-      {editing === "think" && (
-        <TextEditor
-          title="Temperature"
-          label="How freely the model picks its words, in its vendor's range. Empty is the vendor's default."
-          initial={config.temperature == null ? "" : String(config.temperature)}
-          saving={saving}
-          refused={refused}
-          onClose={close}
-          onSave={(text) => (text === "" ? save({}, ["temperature"]) : save({ temperature: Number(text) }))}
-        />
-      )}
-      {editing === "judge" && <JudgeEditor report={report} config={config} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} />}
+      {editing === "judge" && <JudgeEditor report={report} config={config} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
       {editing === "hangup" && <HangupEditor config={config} saving={saving} refused={refused} onClose={close} onSave={save} />}
       {editing === "call" && <CallEditor config={config} fixed={fixed} saving={saving} refused={refused} onClose={close} onSave={save} />}
       {editing === "lexicon" && lexicon !== null && <LexiconEditor lexicon={lexicon} fixed={lexiconFixed} saving={saving} refused={refused} onClose={close} onSave={(next) => void onSaveLexicon(next).then((done) => done && close())} />}

@@ -8,7 +8,7 @@ from pinecall_runtime.agents.declaration import Modality
 from pinecall_runtime.agents.models import HoldAudio as HoldAudioRow
 from pinecall_runtime.enums import Channel, Env, HoldPlayed
 from pinecall_runtime.kit.schemas import Schema
-from pinecall_runtime.providers.schemas import ProviderRow
+from pinecall_runtime.providers.schemas import ModelChoice, ProviderRow
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.parts import (
     DocsConfig,
@@ -422,6 +422,9 @@ class PipelineReport(WireModel):
     providers: list[ProviderRow]
     defaults: dict[Modality, str]
     models: dict[str, list[str]]
+    # By stage and vendor, every model the row offers with its name, price and whether this org may run it,
+    # the recommended first, as GET /v1/providers lists them.
+    choices: dict[str, list[ModelChoice]] = Field(default_factory=dict[str, list[ModelChoice]])
     # By stage and vendor, the model a call runs when none is picked, as GET /v1/providers says it.
     runs: dict[str, str]
     # By vendor, the models that hear and speak themselves, as GET /v1/providers lists them.

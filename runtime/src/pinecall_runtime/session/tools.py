@@ -1,9 +1,10 @@
 """A call's tools as livekit runs them: the app's, the platform's lookups, end_call, and the date."""
 
+import asyncio
 import json
 import re
-from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
-from contextlib import AbstractAsyncContextManager
+from collections.abc import Awaitable, Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager, contextmanager
 from datetime import date
 from typing import cast
 
@@ -25,6 +26,8 @@ from pinecall_runtime.wire.parts import StateCauseTool, ToolResult
 type Run = Callable[[ToolUse, RunContext[None]], Awaitable[str | llm.ToolResult]]
 # Says a line as a tool starts, unless the agent spoke since the caller did.
 type Announce = Callable[[str | None], None]
+# Says a line while a tool still runs, whatever was said before: the wait has grown long.
+type Interject = Callable[[str], None]
 # Whether the agent has said words since the caller last spoke.
 type Spoke = Callable[[], bool]
 # Whether the call is ending: a tool hung it up, or the model did.
@@ -73,6 +76,7 @@ class Toolbox:
         lookups: Lookups,
         *,
         announce: Announce,
+        interject: Interject,
         spoke: Spoke,
         ending: Ending,
         waiting: Waiting,
@@ -83,6 +87,7 @@ class Toolbox:
         self.live = live
         self.lookups = lookups
         self.announce = announce
+        self.interject = interject
         self.spoke = spoke
         self.ending = ending
         self.waiting = waiting
@@ -132,15 +137,18 @@ class Toolbox:
         self.call.cause = cause
         try:
             async with self.waiting():
-                result = await self.call.platform.tool(use, context.speech_handle.id)
+                with self._reminding(spec):
+                    result = await self.call.platform.tool(use, context.speech_handle.id)
         # The gateway's refusal (the app gone, a guard) is the model's to read, in its own turn.
         except PinecallError as refused:
+            await self._say_it_failed(spec)
             raise ToolError(str(refused)) from refused
         finally:
             if self.call.cause == cause:
                 self.call.cause = None
         text = result_text(result)
         if result.error is not None:
+            await self._say_it_failed(spec)
             raise ToolError(text)
         if spec.confirm:
             await self.live.say(read_back(spec.confirm, use.arguments, result))
@@ -150,6 +158,28 @@ class Toolbox:
         if spec.quiet or self.ending():
             return llm.ToolResult(text, reply_required=not self.spoke())
         return text
+
+    # The tool's line for a wait grown long, said once at its moment while the tool still runs.
+    @contextmanager
+    def _reminding(self, spec: ToolSpec) -> Generator[None]:
+        if spec.delayed is None:
+            yield
+            return
+        reminder = asyncio.get_running_loop().call_later(spec.delayed_after_s, self._remind, spec.delayed)
+        try:
+            yield
+        finally:
+            reminder.cancel()
+
+    def _remind(self, line: str) -> None:
+        if not self.call.a_person_has_the_line:
+            self.interject(line)
+
+    # The tool's line for a failure, said and awaited before the model reads why, as a receipt is:
+    # in the history the reply is built from, or the model says it again in its own words.
+    async def _say_it_failed(self, spec: ToolSpec) -> None:
+        if spec.failed and not self.call.a_person_has_the_line:
+            await self.live.say(spec.failed)
 
     async def _run_lookup(self, use: ToolUse, context: RunContext[None]) -> str:
         self.announce(use.say)

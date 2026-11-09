@@ -17,7 +17,10 @@ from pinecall_runtime.providers.schemas import (
     Availability,
     Catalog,
     Catalogue,
+    ModelChoice,
+    ModelPrice,
     ProviderRow,
+    Rate,
     Standing,
 )
 from pinecall_runtime.providers.service import plugins
@@ -29,6 +32,7 @@ from pinecall_runtime.providers.service.plugins import (
     Vendor,
     primary_language,
 )
+from pinecall_runtime.providers.service.prices import rate_of
 from pinecall_runtime.providers.service.stages import takes_a_key
 from pinecall_runtime.wire.parts import EndOfTurn
 
@@ -284,6 +288,7 @@ def catalogue_of(catalog: Catalog, keys: Keyring) -> Catalogue:
         defaults=catalog.default_vendors,
         voices=[],
         models=_models_offered(catalog, keys),
+        choices=_choices_of(catalog, keys),
         runs=runs_of(catalog, plugins.installed()),
         realtime={vendor.name: list(vendor.realtime) for vendor in plugins.installed().values() if vendor.realtime},
     )
@@ -321,6 +326,38 @@ def _models_offered(catalog: Catalog, keys: Keyring) -> dict[str, list[str]]:
         if listed:
             offered[named] = listed
     return offered
+
+
+# Every model the row offers of each vendor and stage, the recommended first and then the one that runs
+# first and the rest in the row's order, each saying whether this org may run it: on its own key any, on the
+# box's what is lent; a picker draws the others greyed, for the org to bring its key.
+def _choices_of(catalog: Catalog, keys: Keyring) -> dict[str, list[ModelChoice]]:
+    choices: dict[str, list[ModelChoice]] = {}
+    runs = runs_of(catalog, plugins.installed())
+    for named in sorted({*catalog.models, *catalog.offered}):
+        vendor = named.partition(SEPARATOR)[2]
+        first = [runs[named]] if named in runs else []
+        listed = list(dict.fromkeys([*first, *catalog.offered.get(named, ())]))
+        leads = [model for model in catalog.recommended.get(named, ()) if model in listed]
+        ordered = [*leads, *(model for model in listed if model not in leads)]
+        if ordered:
+            choices[named] = [_choice(catalog, keys, vendor, model, model in leads) for model in ordered]
+    return choices
+
+
+def _choice(catalog: Catalog, keys: Keyring, vendor: str, model: str, recommended: bool) -> ModelChoice:
+    rate = rate_of(catalog.rates, model)
+    return ModelChoice(
+        model=model,
+        name=catalog.names.get(f"{vendor}{SEPARATOR}{model}", model),
+        recommended=recommended,
+        available=vendor in keys.own or (vendor in keys.box and is_lent(keys.lends, vendor, model)),
+        price=None if rate is None else _price(rate),
+    )
+
+
+def _price(rate: Rate) -> ModelPrice:
+    return ModelPrice.model_validate(rate.model_dump(include=set(ModelPrice.model_fields)))
 
 
 # A plugin lists its voices when its TTS class has a `list_voices`; nothing is built to ask.

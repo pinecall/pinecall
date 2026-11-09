@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query, Request, Response, WebSocket, WebSocketDis
 
 from pinecall_runtime.accounts.service import orgs
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
-from pinecall_runtime.agents.declaration import Model, Voice
+from pinecall_runtime.agents.declaration import Modality, Model, Voice
 from pinecall_runtime.exceptions import (
     NotFound,
     PayloadTooLarge,
@@ -31,6 +31,7 @@ from pinecall_runtime.providers.schemas import (
     Catalogue,
     DictationTokenResponse,
     ListedVoice,
+    PluginOptions,
     ProviderKeyRequest,
     Stage,
     TranscriptionResponse,
@@ -45,6 +46,7 @@ from pinecall_runtime.providers.service import (
     keyring,
     machine,
     notes,
+    options,
     plugins,
     stages,
     trials,
@@ -72,6 +74,15 @@ async def catalogue(actor: ProvidersKey, request: Request, session: Session) -> 
     configured = await catalog.get_catalog(session)
     keys = await keyring.keys_of(session, _vault(request), actor.scope)
     return keyring.catalogue_of(configured, keys)
+
+
+# Read off the plugin's constructor, so a console draws a form a plugin changes with its version.
+@router.get("/v1/providers/{vendor}/options")
+async def plugin_options(
+    _actor: ProvidersKey, vendor: str, modality: Modality, builds: Annotated[str | None, Query()] = None
+) -> PluginOptions:
+    """What the vendor's plugin takes for a stage, beside the knobs the settings set: the arguments a form can draw."""
+    return options.options_of(modality, plugins.vendor_doing(plugins.installed_vendor(vendor), modality), builds)
 
 
 # Vendor names only, never a key or a prefix of one.

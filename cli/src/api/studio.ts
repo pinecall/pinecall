@@ -12,12 +12,19 @@ export interface Header {
   value: string;
 }
 
-/** One argument the model fills: a path's `{name}`, else the query of a GET or the JSON body. */
+/** One argument the model fills: a path's `{name}`, else the query of a GET or the JSON body; `enum` the values a string may take. */
 export interface Param {
   name: string;
   type: ParamType;
   description: string;
   required: boolean;
+  enum?: string[] | null;
+}
+
+/** A field the request always carries, set in the definition and never by the model; a string may name the call's values. */
+export interface FixedField {
+  name: string;
+  value: string | number | boolean;
 }
 
 /** A request to the business's own API the model may make, its answer what the model reads. */
@@ -28,17 +35,16 @@ export interface HttpTool {
   url: string;
   headers: Header[];
   params: Param[];
+  fixed: FixedField[];
   announce?: string | null;
+  delayed?: string | null;
+  delayed_after_s: number;
+  failed?: string | null;
   timeout_s: number;
 }
 
 /** One thing to collect from the caller. */
-export interface CollectedField {
-  name: string;
-  type: ParamType;
-  description: string;
-  required: boolean;
-}
+export type CollectedField = Param;
 
 /** Data collection: the fields the agent gathers, the call ended once the required ones are in. */
 export interface Collect {
@@ -90,9 +96,9 @@ export interface TryResult {
 /** A part of a definition as a request sends it: what the gateway defaults may be left out. */
 type Draft<T, Defaulted extends keyof T> = Omit<T, Defaulted> & { [K in Defaulted]?: T[K] | undefined };
 
-export type ParamDraft = Draft<Param, "type" | "description" | "required">;
-export type HttpToolDraft = Draft<Omit<HttpTool, "params">, "method" | "headers" | "announce" | "timeout_s"> & { params?: ParamDraft[] | undefined };
-export type CollectDraft = Draft<Omit<Collect, "fields">, "end_when_done" | "closing" | "send_to" | "headers"> & { fields: Draft<CollectedField, "type" | "description" | "required">[] };
+export type ParamDraft = Draft<Param, "type" | "description" | "required" | "enum">;
+export type HttpToolDraft = Draft<Omit<HttpTool, "params">, "method" | "headers" | "fixed" | "announce" | "delayed" | "delayed_after_s" | "failed" | "timeout_s"> & { params?: ParamDraft[] | undefined };
+export type CollectDraft = Draft<Omit<Collect, "fields">, "end_when_done" | "closing" | "send_to" | "headers"> & { fields: ParamDraft[] };
 
 /** A definition as a request sends it. */
 export interface DefinitionDraft {

@@ -232,7 +232,7 @@ def build_voice(running: Running) -> Speaking:
 def default_voice(running: Running) -> str | None:
     """The voice the stage's plugin speaks with when it is handed none."""
     try:
-        declared = inspect.signature(_class_of("tts", running)).parameters
+        declared = inspect.signature(class_of("tts", running)).parameters
     except (TypeError, ValueError):
         return None
     named = next((declared[name] for name in THE_VOICE if name in declared), None)
@@ -335,7 +335,7 @@ def _turn_knobs(turn: Turn | None) -> dict[str, object]:
 def _refuse_untaken(modality: Modality, running: Running, knobs: list[str]) -> None:
     if not knobs:
         return
-    accepts = _parameters(_class_of(modality, running))
+    accepts = _parameters(class_of(modality, running))
     untaken = [
         knob
         for knob in knobs
@@ -349,7 +349,8 @@ def _refuse_untaken(modality: Modality, running: Running, knobs: list[str]) -> N
 
 
 # A class may sit in a module of the plugin: `responses.LLM` is its `responses` module's LLM.
-def _class_of(modality: Modality, running: Running) -> type:
+def class_of(modality: Modality, running: Running) -> type:
+    """The plugin's class for the stage: the one `builds` names, else where the plugin keeps it."""
     module = plugin(running.vendor)
     name = running.builds or class_path(module, modality) or CLASS_OF[modality]
     made: object = module
@@ -363,7 +364,7 @@ def _class_of(modality: Modality, running: Running) -> type:
 def _built[T](
     modality: Modality, base: type[T], running: Running, knobs: Mapping[str, object], hear: tuple[str, ...] = ()
 ) -> T:
-    made = _class_of(modality, running)
+    made = class_of(modality, running)
     named = running.builds or made.__name__
     if not issubclass(made, base):
         raise ValidationError(f"{running.vendor} exports no {CLASS_OF[modality]} named {named!r}")

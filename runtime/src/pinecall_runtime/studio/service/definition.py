@@ -2,7 +2,7 @@
 
 import json
 import re
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from typing import Any, cast
 from urllib.parse import urlsplit
 
@@ -12,7 +12,7 @@ from pydantic import ValidationError as PydanticValidationError
 from pinecall_runtime.enums import Env
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.session import service as session
-from pinecall_runtime.studio.schemas import CollectedField, Definition, Header, HttpTool, ParamType
+from pinecall_runtime.studio.schemas import Definition, Header, HttpTool, Param, ParamType
 from pinecall_runtime.studio.service import rules
 from pinecall_runtime.wire.parts import (
     AgentConfig,
@@ -44,6 +44,9 @@ NO_SUCH_SECRET = "{where} names the secret {name}, which {env} has none of: set 
 SECRET_OUTSIDE = "{where} names {{{{secrets.{name}}}}} outside a header: a secret travels in a header alone"
 PATH_PARAM_UNDECLARED = "tool {tool}: its URL names {{{param}}}, which is none of its parameters"
 TWO_PARAMS = "tool {tool}: two parameters are called {name}"
+TWO_FIXED = "tool {tool}: two fixed fields are called {name}"
+FIXED_AND_PARAM = "tool {tool}: {name} is a parameter the model fills and a field fixed here: one or the other"
+VALUES_OF_A_STRING = "{where}: {name} lists the values it may take, which a {type} cannot: a closed list is a string's"
 TWO_FIELDS = "data collection: two fields are called {name}"
 
 
@@ -80,6 +83,7 @@ def check(definition: Definition, secrets: Collection[str], env: Env) -> None:
         if field.name in fields:
             raise ValidationError(TWO_FIELDS.format(name=field.name))
         fields.add(field.name)
+        _check_values(field, "data collection")
     if collect.send_to is not None:
         _check_url("data collection", collect.send_to)
     for header in collect.headers:
@@ -109,6 +113,9 @@ def tool_specs(definition: Definition) -> list[ToolSpec]:
             parameters=_schema(tool.params),
             side_effect="read" if tool.method == "GET" else "write",
             announce=tool.announce,
+            delayed=tool.delayed,
+            delayed_after_s=tool.delayed_after_s,
+            failed=tool.failed,
             timeout_s=tool.timeout_s,
         )
         for tool in definition.tools
@@ -188,17 +195,22 @@ def rendered(text: str, values: Mapping[str, Any]) -> str:
     return A_PLACEHOLDER.sub(filled, text)
 
 
-def _schema(params: list[Any]) -> dict[str, Any]:
+def _schema(params: Sequence[Param]) -> dict[str, Any]:
     properties = {
-        param.name: {"type": JSON_TYPE[param.type], **({"description": param.description} if param.description else {})}
+        param.name: {
+            "type": JSON_TYPE[param.type],
+            **({"description": param.description} if param.description else {}),
+            **({"enum": param.enum} if param.enum else {}),
+        }
         for param in params
     }
     return {"type": "object", "properties": properties, "required": [param.name for param in params if param.required]}
 
 
-def _wanted(field: CollectedField) -> str:
+def _wanted(field: Param) -> str:
     about = f": {field.description}" if field.description else ""
-    return f"- {field.name} ({field.type}{', required' if field.required else ', optional'}){about}"
+    values = f", one of: {', '.join(field.enum)}" if field.enum else ""
+    return f"- {field.name} ({field.type}{', required' if field.required else ', optional'}{values}){about}"
 
 
 def _check_tool(tool: HttpTool, secrets: Collection[str], env: Env) -> None:
@@ -209,11 +221,24 @@ def _check_tool(tool: HttpTool, secrets: Collection[str], env: Env) -> None:
         if param.name in params:
             raise ValidationError(TWO_PARAMS.format(tool=tool.name, name=param.name))
         params.add(param.name)
+        _check_values(param, where)
+    fixed: set[str] = set()
+    for item in tool.fixed:
+        if item.name in fixed:
+            raise ValidationError(TWO_FIXED.format(tool=tool.name, name=item.name))
+        if item.name in params:
+            raise ValidationError(FIXED_AND_PARAM.format(tool=tool.name, name=item.name))
+        fixed.add(item.name)
     for named in A_PATH_PARAM.findall(A_PLACEHOLDER.sub("", tool.url)):
         if named not in params:
             raise ValidationError(PATH_PARAM_UNDECLARED.format(tool=tool.name, param=named))
     for header in tool.headers:
         _check_secrets_are_set(f"{where}'s header {header.name}", header.value, secrets, env)
+
+
+def _check_values(param: Param, where: str) -> None:
+    if param.enum is not None and param.type != "string":
+        raise ValidationError(VALUES_OF_A_STRING.format(where=where, name=param.name, type=param.type))
 
 
 def _check_url(where: str, url: str) -> None:

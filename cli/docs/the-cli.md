@@ -2629,7 +2629,11 @@ front-desk: in production as release 1, answering from its next call
 An agent built in the console's Studio is no class and no project: one **definition** — its
 instructions, its greeting (`say` the words, or `reply` for an opening of the model's own), the
 HTTP requests it may make as tools, and the data it collects from the caller, posted where you say
-when the call ends — kept by the gateway, which holds the agent itself. Nothing is started to talk
+when the call ends — kept by the gateway, which holds the agent itself. A tool is its `method` and
+`url`, the `params` the model fills (a string may list the values it takes, `enum`), the `fixed`
+fields every request carries that the model never fills, its `headers`, and three lines the agent
+says: `announce` as the request starts, `delayed` once it has run `delayed_after_s` seconds, `failed`
+when it failed, before the model reads why. Nothing is started to talk
 to it: `pinecall chat front-desk` reaches it in the sandbox like any agent. It is a hosted app as
 [`deploy`](#deploy) uploads one, so `pinecall deploy list` shows it beside the others, counted against
 the same quota, and `deploy stop`, `start`, `rm` and `rollback` take it by name. Every save is a

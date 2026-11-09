@@ -6,7 +6,7 @@ import re
 import zipfile
 from typing import Any
 
-from pinecall_runtime.studio.schemas import Definition, Header, HttpTool, ParamType
+from pinecall_runtime.studio.schemas import Definition, Header, HttpTool, Param, ParamType, Scalar
 from pinecall_runtime.studio.service.definition import A_PLACEHOLDER, COLLECT
 
 TS_TYPE: dict[ParamType, str] = {"string": "string", "number": "number", "integer": "number", "boolean": "boolean"}
@@ -111,13 +111,14 @@ def _in_the_class(placeholder: str) -> str | None:
 
 def _method(http_tool: HttpTool) -> list[str]:
     ordered = sorted(http_tool.params, key=lambda param: not param.required)
-    signature = ", ".join(f"{param.name}{'' if param.required else '?'}: {TS_TYPE[param.type]}" for param in ordered)
+    signature = ", ".join(f"{param.name}{'' if param.required else '?'}: {_ts_type(param)}" for param in ordered)
     options: list[str] = []
     if http_tool.announce:
         options.append(f"announce: {json.dumps(http_tool.announce, ensure_ascii=False)}")
     options.append(f"timeout: {http_tool.timeout_s:g}")
     path_params = set(re.findall(r"\{([A-Za-z][A-Za-z0-9_]*)\}", A_PLACEHOLDER.sub("", http_tool.url)))
     rest = [param.name for param in http_tool.params if param.name not in path_params]
+    rest += [f"{item.name}: {_literal(item.value)}" for item in http_tool.fixed]
     url = _template(http_tool.url, paths=True)
     carried = "query" if http_tool.method in ("GET", "DELETE") else "body"
     params_doc = [f"   * @param {param.name} {param.description}".rstrip() for param in http_tool.params]
@@ -126,6 +127,7 @@ def _method(http_tool: HttpTool) -> list[str]:
         *_wrapped(http_tool.description, "   * "),
         *params_doc,
         "   */",
+        *_lines_the_class_has_no_option_for(http_tool),
         f"  @tool({{ {', '.join(options)} }})",
         f"  async {http_tool.name}({signature}): Promise<unknown> {{",
         f"    return http({json.dumps(http_tool.method)}, {url}, {{",
@@ -135,6 +137,31 @@ def _method(http_tool: HttpTool) -> list[str]:
         "    });",
         "  }",
     ]
+
+
+# A closed list of values is the union of them: the model is offered the same words the class accepts.
+def _ts_type(param: Param) -> str:
+    if not param.enum:
+        return TS_TYPE[param.type]
+    return " | ".join(json.dumps(value, ensure_ascii=False) for value in param.enum)
+
+
+# A fixed field as the class writes it: a string is a template (it may name the call's values), the rest JSON.
+def _literal(value: Scalar) -> str:
+    return _template(value) if isinstance(value, str) else json.dumps(value)
+
+
+# The framework's @tool announces a start alone: what Studio said on a long wait or a failure is kept
+# as a comment, so whoever edits the class knows what the caller used to hear.
+def _lines_the_class_has_no_option_for(http_tool: HttpTool) -> list[str]:
+    said: list[str] = []
+    if http_tool.delayed:
+        said.append(f"after {http_tool.delayed_after_s:g}s: {json.dumps(http_tool.delayed, ensure_ascii=False)}")
+    if http_tool.failed:
+        said.append(f"when it failed: {json.dumps(http_tool.failed, ensure_ascii=False)}")
+    if not said:
+        return []
+    return [f"  // Studio said {', and '.join(said)}; the framework has no such option: the model says what it reads."]
 
 
 def _collect_method(definition: Definition) -> list[str]:

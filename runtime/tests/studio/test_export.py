@@ -3,6 +3,7 @@
 import io
 import zipfile
 
+from pinecall_runtime.studio.schemas import FixedField, Param
 from pinecall_runtime.studio.service import export
 from tests.studio.test_definition import clinic
 
@@ -20,6 +21,22 @@ def test_the_class_declares_the_greeting_a_method_per_tool_and_data_collection()
     assert "override async onEnd()" in written
     # The instructions name the call's number, so they are the view, rendered for each call.
     assert '${this.call.from ?? ""}' in written
+
+
+def test_a_closed_list_is_a_union_the_fixed_fields_are_literals_and_the_other_lines_a_comment() -> None:
+    """`site` takes the two words; `source` and the caller travel in the query; what the class cannot say is said."""
+    talkative = clinic(collect=None)
+    talkative.tools[0].params.append(Param(name="site", required=False, enum=["centro", "norte"]))
+    talkative.tools[0].fixed = [
+        FixedField(name="source", value="phone"),
+        FixedField(name="from", value="{{call.from}}"),
+    ]
+    talkative.tools[0].delayed = "Still looking."
+    talkative.tools[0].failed = "The agenda is down."
+    written = export.class_of("clinica-norte", 3, talkative)
+    assert 'async findPatient(phone: string, site?: "centro" | "norte"): Promise<unknown> {' in written
+    assert 'query: { site, source: `phone`, from: `${this.call.from ?? ""}` },' in written
+    assert '// Studio said after 5s: "Still looking.", and when it failed: "The agenda is down."; the' in written
 
 
 def test_instructions_that_name_nothing_are_the_classs_docstring() -> None:

@@ -70,7 +70,6 @@
 .cfg-row-name { color: var(--quiet); }
 
 .cfg-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 24px 60px rgb(0 0 0 / 0.55); }
-.cfg-dialog-wide { width: min(600px, calc(100vw - 32px)); }
 .cfg-dialog::backdrop { background: rgb(0 0 0 / 0.55); }
 .cfg-dialog form { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
 .cfg-dialog-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
@@ -85,12 +84,7 @@
 .cfg-input:disabled { opacity: 0.55; }
 .cfg-area { height: auto; padding: 8px 10px; line-height: 1.45; resize: vertical; }
 
-.cfg-voices { display: flex; flex-direction: column; gap: 1px; max-height: 280px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
 .cfg-voices-note { padding: 8px 4px; }
-.cfg-voice { display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 2px; border-radius: 6px; }
-.cfg-voice:hover { background: var(--raised); }
-.cfg-voice-on, .cfg-voice-on:hover { background: var(--accent-soft); }
-.cfg-voice-pick { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 5px 8px; border: 0; background: transparent; font-size: 13px; color: var(--ink); text-align: left; cursor: pointer; }
 
 @media (max-width: 1100px) {
   .cfg-measures { grid-template-columns: minmax(0, 1fr); gap: 24px; }
@@ -101,4 +95,58 @@
   .dash-switch.cfg-openings { grid-auto-flow: row; grid-auto-columns: minmax(0, 1fr); width: 100%; }
   .cfg-row { grid-template-columns: minmax(0, 1fr) auto; }
   .cfg-row-value { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* The stage dialogs: vendor and model as two lists, the voices with a play, a knob or two, the vendor's options folded under. */
+.cfg-dialog-wide { width: min(760px, calc(100vw - 32px)); }
+.cfg-dialog-wide form { max-height: calc(100vh - 48px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+.pick-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; }
+.pick-column { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; font-size: 12.5px; font-weight: 500; color: var(--quiet); }
+.pick-tools { display: flex; gap: 6px; }
+.pick-filter.cfg-input { width: 150px; height: 26px; font-size: 12px; }
+.pick-list { display: flex; flex-direction: column; gap: 1px; max-height: 220px; padding: 3px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--ground); scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+.pick-voices { max-height: 260px; }
+.pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font-size: 13px; text-align: left; cursor: pointer; }
+.pick:hover { background: var(--raised); }
+.pick-on, .pick-on:hover { background: var(--accent-soft); }
+.pick-words { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.pick-off { opacity: 0.5; cursor: default; }
+.pick-off:hover { background: transparent; }
+.pick-badge { flex: none; padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.pick-badge-quiet { background: var(--raised); color: var(--quiet); }
+.pick-stat { font-family: var(--mono); font-size: 11.5px; }
+.pick-play { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--raised); color: var(--ink); }
+.pick-play:hover { background: var(--accent); color: var(--on-solid); }
+.pick-playing { background: var(--accent); color: var(--on-solid); }
+.pick-key { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; font-size: 12.5px; }
+.pick-key-row { display: flex; gap: 6px; }
+.pick-key-row .cfg-input { flex: 1; min-width: 0; height: 30px; }
+
+.knob { display: flex; flex-direction: column; gap: 8px; }
+.knob-number.cfg-input { width: 96px; height: 28px; }
+.knob-range { flex: 1; min-width: 0; accent-color: var(--accent); }
+.knob-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.knob-choices .pick { border: 1px solid var(--line); }
+.knob-choices .pick-on { border-color: transparent; }
+
+.opt { border-top: 1px solid var(--line); }
+.opt-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 0; color: var(--ink); }
+.opt-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+.opt-count { padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11.5px; font-weight: 500; }
+.opt-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+.opt-group { display: flex; flex-direction: column; gap: 4px; }
+.opt-group-name { padding: 6px 0 2px; font-size: 12px; font-weight: 600; color: var(--quiet); text-transform: uppercase; letter-spacing: 0.04em; }
+.opt-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; align-items: center; min-height: 36px; padding: 2px 6px; border-radius: 6px; }
+.opt-row:hover { background: var(--raised); }
+.opt-row-set .opt-row-name::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+.opt-row-name { font-size: 13px; }
+.opt-slide { display: flex; align-items: center; gap: 10px; }
+.opt-mono { font-family: var(--mono); font-size: 12.5px; }
+.opt-bad.cfg-input { border-color: var(--bad); }
+.opt-raw { display: flex; flex-direction: column; gap: 8px; }
+.opt-raw-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+@media (max-width: 760px) {
+  .pick-pair, .knob-choices, .opt-row { grid-template-columns: minmax(0, 1fr); }
 }

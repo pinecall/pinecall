@@ -7,6 +7,7 @@ from typing import Any
 from pinecall_runtime.agents.declaration import (
     DEFAULT_LAYOUT,
     DEFAULT_TOOL_TIMEOUT_S,
+    DELAYED_AFTER_S,
     AgentConfig,
     Docs,
     Greeting,
@@ -56,6 +57,9 @@ def with_app_fields(current: AgentConfig, declaration: Declaration, *, first: bo
                 pii=frozenset(tool.pii or ()),
                 confirm=tool.confirm,
                 announce=tool.announce,
+                delayed=tool.delayed,
+                delayed_after_s=DELAYED_AFTER_S if tool.delayed_after_s is None else tool.delayed_after_s,
+                failed=tool.failed,
                 timeout_s=DEFAULT_TOOL_TIMEOUT_S if tool.timeout_s is None else tool.timeout_s,
                 quiet=bool(tool.quiet),
             )

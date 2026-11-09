@@ -144,6 +144,9 @@ class ToolSpec(WireModel):
     side_effect: SideEffect = "read"
     confirm: str | None = None
     announce: str | None = None
+    delayed: str | None = None
+    delayed_after_s: float | None = None
+    failed: str | None = None
     pii: list[str] | None = None
     timeout_s: float | None = None
     # A move on the caller's screen, such as a pointer: it runs as the model calls it, while the

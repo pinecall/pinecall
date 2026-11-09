@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **A picker sees every model, the recommended first.** `GET /v1/providers` and the pipeline report
+  answer `choices`: by stage and vendor, every model the row offers with the vendor's name for it,
+  whether this org may run it (its own key, or lent by the platform) and its price from the row's
+  rates, the recommended leading. The models file takes a `recommended` column (`yes`) after its six;
+  the shipped one marks the current streaming models of each vendor. `models` stays what the org may
+  run, alone.
+- **A vendor's plugin says what it takes.** `GET /v1/providers/{vendor}/options?modality=` reads the
+  plugin's constructor and answers each argument a form can draw — its kind (`text`, `number`,
+  `integer`, `boolean`, `choice`, `list`, `json`), its choices where the plugin names them, its default,
+  and the options object it sits in where the plugin takes one — leaving out the key, the model, the
+  voice, the language and the temperature, which the settings set. The console's stage dialogs draw
+  `stt_options`, `llm_options` and `tts_options` from it.
+- **A Studio tool says more, and carries what the model never fills.** A parameter may list the
+  values it takes (`enum`, a string's), the tool may carry `fixed` fields with every request — set in
+  the definition, never by the model, a string naming the call's values — and beside `announce` it
+  has `delayed` (said once the request has run `delayed_after_s` seconds, 5 unless said) and `failed`
+  (said when it failed, before the model reads why). The wire's `ToolSpec` takes the three lines for
+  any app, and the worker says them. A release saved before reads as it did.
+
 - **A person's written call to a Studio agent runs on their settings.** Sandbox `WS /v1/chat`, written
   simulations and goldens reached the org's socket and took the org's corner, while their voice call
   took their own: now the socket stays the org's and the call is tuned and claimed in their scope.

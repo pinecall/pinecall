@@ -25,8 +25,15 @@ and remove work on it by name. Every endpoint here takes a key that opens `app`.
     "method": "GET",
     "url": "https://agenda.example.com/patients/{phone}",
     "headers": [{"name": "Authorization", "value": "Bearer {{secrets.AGENDA_KEY}}"}],
-    "params": [{"name": "phone", "type": "string", "description": "the caller's number", "required": true}],
+    "params": [
+      {"name": "phone", "type": "string", "description": "the caller's number", "required": true},
+      {"name": "site", "type": "string", "description": "the clinic", "required": false, "enum": ["centro", "norte"]}
+    ],
+    "fixed": [{"name": "source", "value": "phone"}],
     "announce": "Let me look you up.",
+    "delayed": "Still looking, one moment.",
+    "delayed_after_s": 5,
+    "failed": "I could not reach the agenda just now.",
     "timeout_s": 10
   }],
   "collect": {
@@ -43,12 +50,14 @@ and remove work on it by name. Every endpoint here takes a key that opens `app`.
 |---|---|
 | `instructions` | the `identity` block, with each `{{…}}` filled once when the call starts: `call.from`, `call.to`, `call.today`, `call.channel`, `call.direction`, `caller.name` (and the contact's other fields), `metadata.<key>` (the state the call was opened with). One that names nothing is left empty |
 | `greeting` | the declaration's greeting: `say` the words, or `reply` with the model opening on that instruction. Declared, it wins over the settings' |
-| `tools` | each an HTTP request the model may make; `{param}` in the URL is filled from the model's argument, encoded; the other arguments are the query of a `GET` or `DELETE` and the JSON body otherwise; `{{secrets.NAME}}` names one of the org's secrets in the env, in a header alone. What the API answers is what the model reads (JSON when it is JSON); a status past 2xx is an error the model reads with the body |
+| `tools` | each an HTTP request the model may make; `{param}` in the URL is filled from the model's argument, encoded; the other arguments are the query of a `GET` or `DELETE` and the JSON body otherwise; a parameter's `enum` is the closed list of values a string may take, as the model is told it; the `fixed` fields travel with every request, set here and never by the model (a string may name the call's values, `{{call.from}}`), over an argument of the same name; `{{secrets.NAME}}` names one of the org's secrets in the env, in a header alone. `announce` is said as the request starts, `delayed` once it has run `delayed_after_s` seconds (5 unless said) with no answer, `failed` when it failed, before the model reads why. What the API answers is what the model reads (JSON when it is JSON); a status past 2xx is an error the model reads with the body |
 | `collect` | data collection: a `collect` tool whose arguments are the fields, all optional; each value given is kept in the call's state and the `view` block says what is in, what is missing, and, once every required field is, the `closing`. With `end_when_done` the model may end the call then. With `send_to`, the fields, the caller, the reason the call ended and its transcript are posted there as JSON when the call ends |
 
 **Refused when it is saved**, with a sentence, never on a call: two tools of one name, a tool
 called as one of the platform's own (`collect`, `end_call`, `current_date`, `recall`, `search`,
-`say`), a URL that is not `https://`, a `{param}` in a URL that is none of the tool's parameters, a
+`say`), a URL that is not `https://`, a `{param}` in a URL that is none of the tool's parameters,
+two parameters or two fixed fields of one name, a fixed field named as a parameter, a list of
+values on a parameter that is no string, a
 secret named anywhere but a header's value (the instructions, a greeting, a description, a URL: every
 string of the definition is read, with one sentence saying which), and a secret the env has none of. A
 deploy checks production's own secrets: one set in the sandbox alone is said before production answers

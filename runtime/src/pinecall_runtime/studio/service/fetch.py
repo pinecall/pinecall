@@ -11,7 +11,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from pinecall_runtime.kit.dns import Address, all_public, is_local_name, resolve
-from pinecall_runtime.studio.schemas import Header, HttpTool
+from pinecall_runtime.studio.schemas import Header, HttpTool, Scalar
 from pinecall_runtime.studio.service.definition import A_PATH_PARAM, A_PLACEHOLDER, SECRETS, rendered
 
 # What the model reads of an answer: past this it is cut, and the model is told so.
@@ -53,13 +53,16 @@ class Request:
 
 
 def request_of(tool: HttpTool, arguments: Mapping[str, Any], values: Mapping[str, Any]) -> Request:
-    """The tool's request with the model's arguments: the path's own first, the rest the query or the body."""
-    url = rendered(tool.url, {key: value for key, value in values.items() if key != "secrets"})
+    """The tool's request with the model's arguments: the path's own first, the rest and the fixed fields after."""
+    plain = {key: value for key, value in values.items() if key != SECRETS}
+    url = rendered(tool.url, plain)
     in_the_path = set(A_PATH_PARAM.findall(url))
     url = A_PATH_PARAM.sub(lambda found: quote(str(arguments.get(found.group(1), "")), safe=""), url)
     rest = {name: value for name, value in arguments.items() if name not in in_the_path and value is not None}
     declared = {param.name for param in tool.params}
     rest = {name: value for name, value in rest.items() if name in declared}
+    # The fixed fields go over the model's: what the definition set is never the model's to change.
+    rest |= {item.name: _fixed(item.value, plain) for item in tool.fixed}
     headers = _headers(tool.headers, values)
     hidden = _secrets_in(tool.headers, values)
     if tool.method == "GET" or tool.method == "DELETE":
@@ -101,6 +104,10 @@ async def send(
     body = _body(answered, request.secrets)
     error = None if answered.is_success else REFUSED.format(tool=name, status=answered.status_code)
     return Answer(answered.status_code, body, error, _since(started))
+
+
+def _fixed(value: Scalar, values: Mapping[str, Any]) -> Any:
+    return rendered(value, values) if isinstance(value, str) else value
 
 
 def _headers(headers: list[Header], values: Mapping[str, Any]) -> dict[str, str]:

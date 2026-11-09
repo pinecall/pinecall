@@ -1,14 +1,17 @@
 """Studio's shapes: an agent's definition, built in the console, and what its doors read and answer."""
 
 from datetime import datetime
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
+from pinecall_runtime.agents.declaration import DELAYED_AFTER_S
 from pinecall_runtime.enums import Env
 
 type ParamType = Literal["string", "number", "integer", "boolean"]
 type Method = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
+# What a fixed field carries: a string (which may name the call's values), a number or a flag.
+type Scalar = Annotated[str, Field(max_length=2000)] | int | float | bool
 
 A_NAME = r"^[A-Za-z][A-Za-z0-9_]*$"
 # A tool waits this long unless it says, and never longer than the ceiling: a turn is waiting.
@@ -17,7 +20,10 @@ LONGEST_TOOL_S = 30.0
 MOST_TOOLS = 24
 MOST_PARAMS = 16
 MOST_FIELDS = 24
+# A closed list of values past this is a lookup, not a parameter.
+MOST_VALUES = 50
 LONGEST_INSTRUCTIONS = 20_000
+LONGEST_LINE = 300
 
 
 class Shape(BaseModel):
@@ -40,6 +46,17 @@ class Param(Shape):
     type: ParamType = "string"
     description: str = Field(default="", max_length=500)
     required: bool = True
+    # The values it may take, as the model is told them: a closed list, a string's alone.
+    enum: list[Annotated[str, Field(min_length=1, max_length=100)]] | None = Field(
+        default=None, min_length=1, max_length=MOST_VALUES
+    )
+
+
+class FixedField(Shape):
+    """A field the request always carries, set here and never by the model (`source: "phone"`), over the model's."""
+
+    name: str = Field(max_length=64, pattern=A_NAME)
+    value: Scalar
 
 
 class HttpTool(Shape):
@@ -51,17 +68,17 @@ class HttpTool(Shape):
     url: str = Field(min_length=8, max_length=2000)
     headers: list[Header] = Field(default_factory=list[Header], max_length=16)
     params: list[Param] = Field(default_factory=list[Param], max_length=MOST_PARAMS)
-    announce: str | None = Field(default=None, max_length=300)
+    fixed: list[FixedField] = Field(default_factory=list[FixedField], max_length=MOST_PARAMS)
+    # What the agent says as the request starts, when it has grown long, and when it failed.
+    announce: str | None = Field(default=None, max_length=LONGEST_LINE)
+    delayed: str | None = Field(default=None, max_length=LONGEST_LINE)
+    delayed_after_s: float = Field(default=DELAYED_AFTER_S, gt=0, le=LONGEST_TOOL_S)
+    failed: str | None = Field(default=None, max_length=LONGEST_LINE)
     timeout_s: float = Field(default=TOOL_TIMEOUT_S, gt=0, le=LONGEST_TOOL_S)
 
 
-class CollectedField(Shape):
-    """One thing to collect from the caller: its name, its type and what it is."""
-
-    name: str = Field(max_length=64, pattern=A_NAME)
-    type: ParamType = "string"
-    description: str = Field(default="", max_length=500)
-    required: bool = True
+class CollectedField(Param):
+    """One thing to collect from the caller: its name, its type, what it is, and the values it may take."""
 
 
 class Collect(Shape):

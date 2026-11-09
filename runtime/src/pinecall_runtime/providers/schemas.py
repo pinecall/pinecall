@@ -140,6 +140,10 @@ class Catalog(Schema):
     hints: tuple[str, ...] = ()
     # A model's price, by the longest prefix of its id: dated snapshots price by family.
     rates: dict[str, Rate] = Field(default_factory=dict[str, Rate])
+    # `cartesia/sonic-3.6`: the name the vendor gives a model where it is not the id; the models file's.
+    names: dict[str, str] = Field(default_factory=dict[str, str])
+    # `tts/cartesia`: the models a picker leads with for a vendor and stage, in order; the models file's.
+    recommended: dict[str, tuple[str, ...]] = Field(default_factory=dict[str, tuple[str, ...]])
     judge: Judge | None = None
     # Absent: a simulated caller spends what its turns ask, as before the row named one.
     caller: Caller | None = None
@@ -174,6 +178,53 @@ class ProviderRow(WireModel):
     broken: str | None
 
 
+type OptionKind = Literal["text", "number", "integer", "boolean", "choice", "list", "json"]
+
+
+class PluginOption(WireModel):
+    """One keyword argument a vendor's plugin takes for a stage, as a form draws it."""
+
+    name: str
+    # The options object it sits in, where the plugin takes one (`params`, `voice_settings`); else null.
+    inside: str | None = None
+    kind: OptionKind
+    # A closed list the plugin names; with `open`, any other text is taken too.
+    choices: list[str] = Field(default_factory=list[str])
+    open: bool = False
+    default: Any = None
+    required: bool = False
+
+
+class PluginOptions(WireModel):
+    """GET /v1/providers/{vendor}/options: what the vendor's plugin takes for a stage, the settings' knobs left out."""
+
+    vendor: str
+    modality: Modality
+    builds: str
+    options: list[PluginOption]
+
+
+class ModelPrice(WireModel):
+    """What a model costs in US dollars, as the row's rates say: per million tokens, per character, second or minute."""
+
+    input: float | None = None
+    output: float | None = None
+    characters: float | None = None
+    audio_seconds: float | None = None
+    minutes: float | None = None
+
+
+class ModelChoice(WireModel):
+    """One model a picker offers of a vendor for a stage: its name, whether this org may run it, its price."""
+
+    model: str
+    name: str
+    recommended: bool = False
+    # On the org's own key, or lent by the platform; false where only a key of the org's own would run it.
+    available: bool
+    price: ModelPrice | None = None
+
+
 class Catalogue(WireModel):
     """GET /v1/providers: every vendor installed, the defaults per stage, the models named."""
 
@@ -182,6 +233,9 @@ class Catalogue(WireModel):
     # The picker reads GET /v1/voices; no names are curated in code.
     voices: list[str]
     models: dict[str, list[str]]
+    # `stt/deepgram`: every model the row offers of a vendor for a stage, the recommended first, each saying
+    # whether this org may run it; `models` is the ones it may, alone.
+    choices: dict[str, list[ModelChoice]] = Field(default_factory=dict[str, list[ModelChoice]])
     # `stt/deepgram`: the model a call runs when none is picked — the row's, else the plugin's own where
     # it says one — and the first of `models`; a vendor absent here decides inside its plugin.
     runs: dict[str, str]

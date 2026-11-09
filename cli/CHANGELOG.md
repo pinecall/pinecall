@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A Studio tool's file and the MCP's `studio` take what the console's Tools tab writes:** a param's
+  `enum`, the `fixed` fields every request carries, and `delayed` (with `delayed_after_s`) and `failed`
+  beside `announce`. A file pulled before pushes as it did.
+
 - **An app written as code is set by its code and nothing else.** `agent set`, `clear`, `rollback`, `push` and `knowledge edit`,
   `lexicon add`, `hear` and `rm`, `pipeline melody upload`, `default`, `off` and `after`, `docs attach` and `detach`, a `memory policy`
   with a list, `cases apply` and the MCP tools over them are refused with one sentence naming the app, in the sandbox and in production.

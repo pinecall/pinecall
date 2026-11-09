@@ -48,7 +48,7 @@ from pinecall_runtime.providers.service.machine import (
     where_is_key,
 )
 from pinecall_runtime.providers.service.notes import TRANSCRIPTIONS_A_MINUTE
-from pinecall_runtime.providers.service.offered import OfferedChange, offered_changed, offered_from_csv
+from pinecall_runtime.providers.service.offered import ModelsFile, OfferedChange, models_from_csv, offered_changed
 from pinecall_runtime.providers.service.plugins import (
     NOT_REALTIME,
     Credentials,
@@ -110,6 +110,7 @@ __all__ = [
     "Keyring",
     "ListedVoice",
     "Machine",
+    "ModelsFile",
     "OfferedChange",
     "Pipeline",
     "Rate",
@@ -155,8 +156,8 @@ __all__ = [
     "listed_in_catalog",
     "llm_of",
     "longest_prefix",
+    "models_from_csv",
     "offered_changed",
-    "offered_from_csv",
     "ollama_models",
     "own_vendors",
     "parse_lending",

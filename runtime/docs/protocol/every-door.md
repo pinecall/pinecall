@@ -321,6 +321,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `DELETE` | `/v1/telemetry` | providers | Forget the org's collector; its calls' traces stay on the platform from the next one. |
 | `PUT` | `/v1/telemetry` | providers | Keep the org's collector; its calls' traces go there from the next one. |
 | `GET` | `/v1/providers` | providers | Every vendor this build runs and how this org may run it, the defaults, the models named. |
+| `GET` | `/v1/providers/{vendor}/options` | providers | What the vendor's plugin takes for a stage (`?modality=`, `?builds=` for another class of it), read off its constructor: each argument a form can draw, its kind, its choices and its default; the knobs the settings set are left out. |
 | `GET` | `/v1/providers/advice` | providers | What this host advises the org to run, stage by stage — an open model it serves, a vendor it lends, the org's own key, or one to bring — and, for the box's operator where the row's model servers are on this host, the machine. |
 | `GET` | `/v1/routes` | app · fleet | The routes of a scope; for the fleet's key and a number, the route that number rings. |
 | `GET` | `/v1/runner/apps/{org}/{name}/environment` | runner | What the app's process is started with: the org's secrets, its token, the gateway. |

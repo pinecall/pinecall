@@ -35,6 +35,8 @@ NO_LIMIT = 0
 LONGEST_TOOL_S = 300
 # What a tool is given to answer when it declares no timeout_s.
 DEFAULT_TOOL_TIMEOUT_S = 30.0
+# When a tool that has a line for a long wait says it, unless it names its own moment.
+DELAYED_AFTER_S = 5.0
 # The ears that take these knobs take them only inside these bands and refuse the connection
 # outside one, so the call runs deaf: a setting and a declaration are held to them alike.
 TURN_BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
@@ -134,6 +136,10 @@ class ToolSpec:
     pii: frozenset[str] = frozenset()
     confirm: str | None = None
     announce: str | None = None
+    # Said when the wait has grown long, and when the tool failed, before the model reads why.
+    delayed: str | None = None
+    delayed_after_s: float = DELAYED_AFTER_S
+    failed: str | None = None
     preview: int | None = None
     timeout_s: float = DEFAULT_TOOL_TIMEOUT_S
     # Runs as the model calls it, its words still playing, and asks for no answer (wire/parts.py).
@@ -148,8 +154,11 @@ class ToolSpec:
             raise ValidationError(f"tool {self.name}: parameters are a JSON Schema of type object")
         if self.side_effect == "irreversible" and not self.confirm:
             raise ValidationError(f"tool {self.name}: an irreversible tool needs a confirm template to read back")
-        if self.announce is not None and not self.announce.strip():
-            raise ValidationError(f"tool {self.name}: an announcement is words the caller hears, or none")
+        for what, line in (("announcement", self.announce), ("delayed", self.delayed), ("failed", self.failed)):
+            if line is not None and not line.strip():
+                raise ValidationError(f"tool {self.name}: {what} is words the caller hears, or none")
+        if not 0 < self.delayed_after_s <= LONGEST_TOOL_S:
+            raise ValidationError(f"tool {self.name}: delayed_after_s is seconds above 0, {LONGEST_TOOL_S} at most")
         if SAY in self.parameter_names:
             raise ValidationError(f"tool {self.name}: {SAY!r} is the platform's argument, never a tool's own")
         if unknown := self.pii - self.parameter_names:

@@ -117,17 +117,28 @@ async def providers_prices(
 @verb
 async def providers_models(
     ctx: typer.Context,
-    file: Annotated[Path, typer.Argument(help="A CSV: vendor,stage,model,name,as_of,source.")],
+    file: Annotated[
+        Path,
+        typer.Argument(help="A CSV: vendor,stage,model,name,as_of,source, and recommended (yes) after them or not."),
+    ],
     apply: Annotated[bool, typer.Option("--apply", help="Write them into the box's row.")] = False,
 ) -> int:
     """What a models file changes in what the box offers of each vendor, and with --apply, the models written."""
     context = context_of(ctx)
-    written = providers.offered_from_csv(file.read_text(encoding="utf-8"))
+    read = providers.models_from_csv(file.read_text(encoding="utf-8"))
     async with context.sessions.begin() as session:
         catalog = await providers.get_catalog(session)
-        change = providers.offered_changed(catalog.offered, written)
+        change = providers.offered_changed(catalog.offered, read.offered)
         if apply:
-            await providers.put_catalog(session, catalog.model_copy(update={"offered": {**catalog.offered, **written}}))
+            written = {
+                "offered": {**catalog.offered, **read.offered},
+                "names": {**catalog.names, **read.names},
+                "recommended": {
+                    **{named: leads for named, leads in catalog.recommended.items() if named not in read.offered},
+                    **read.recommended,
+                },
+            }
+            await providers.put_catalog(session, catalog.model_copy(update=written))
     if context.out.as_json:
         context.out.data({"change": change, "written": apply})
         return OK

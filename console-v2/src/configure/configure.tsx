@@ -86,7 +86,7 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
   const lexiconCorner = lexicon === null ? null : cornerOf(lexicon, team).inEffect;
   const greetingLocked = answer.fixed.includes("greeting");
   const readOnly = readOnlyFor(kind);
-  const stagesProps = { readOnly, report, config, fixed: new Set(answer.fixed), saving, refused, onSave: save, onOpened: () => setRefused(null) };
+  const stagesProps = { readOnly, report, config, fixed: new Set(answer.fixed), saving, refused, onSave: save, onOpened: () => setRefused(null), onKept: readAll };
 
   return (
     <div className="cfg">

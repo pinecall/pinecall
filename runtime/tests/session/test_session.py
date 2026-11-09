@@ -114,6 +114,16 @@ LOOK = ToolSpec(
     announce="Un momento, miro la agenda.",
 )
 LOOKING = AgentConfig(slug="clinica-norte", tools=(LOOK,))
+TALKATIVE = ToolSpec(
+    "look",
+    "Look at the agenda for a day.",
+    {"type": "object", "properties": {"day": {"type": "string"}}},
+    announce="Un momento, miro la agenda.",
+    delayed="Sigo buscando, un segundo.",
+    delayed_after_s=0.05,
+    failed="No pude consultar la agenda ahora mismo.",
+)
+TALKING = AgentConfig(slug="clinica-norte", tools=(TALKATIVE,))
 POINT = ToolSpec(
     "point",
     "Point at an element of the caller's page.",
@@ -467,6 +477,58 @@ async def test_a_tool_is_announced_as_it_starts_when_the_model_called_it_in_sile
     await text.end_text(session, "caller_hung_up", "caller")
     agent = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
     assert agent == ["Un momento, miro la agenda.", "El lunes hay hueco a las nueve."]
+
+
+@needs_the_database
+async def test_a_tool_that_runs_long_says_its_delayed_line_at_its_moment(box: Box, store: Store, call: str) -> None:
+    """Announced at the start, the wait's line after `delayed_after_s`, then the model's answer."""
+    answering = box.tool
+
+    async def slowly(use: ToolUse, speech: str | None) -> ToolResult:
+        await asyncio.sleep(0.2)
+        return await answering(use, speech)
+
+    session = a_session(
+        box, TALKING, [{"name": "look", "arguments": {"day": "lunes"}, "call_id": "t1"}], ["El lunes hay hueco."]
+    )
+    session.call.platform = Platform(append_many=box.log.append_many, tool=slowly, lookup=box.lookup, seal=box.seal)
+    await session.start()
+    await text.hear_text(session, "¿qué hay el lunes?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    agent = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert agent == ["Un momento, miro la agenda.", "Sigo buscando, un segundo.", "El lunes hay hueco."]
+
+
+@needs_the_database
+async def test_a_quick_tool_never_says_its_delayed_line(box: Box, store: Store, call: str) -> None:
+    """The reminder is cancelled with the answer: nothing of the wait is said."""
+    session = a_session(
+        box, TALKING, [{"name": "look", "arguments": {"day": "lunes"}, "call_id": "t1"}], ["El lunes hay hueco."]
+    )
+    await session.start()
+    await text.hear_text(session, "¿qué hay el lunes?")
+    await asyncio.sleep(0.1)
+    await text.end_text(session, "caller_hung_up", "caller")
+    agent = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert agent == ["Un momento, miro la agenda.", "El lunes hay hueco."]
+
+
+@needs_the_database
+async def test_a_tool_that_failed_says_its_failed_line_before_the_model_answers(
+    box: Box, store: Store, call: str
+) -> None:
+    """The app's error is the model's to read, after the caller heard the tool's own line for it."""
+    box.answers["look"] = ToolResult(call_id="t1", name="look", error="the agenda did not answer")
+    session = a_session(
+        box, TALKING, [{"name": "look", "arguments": {"day": "lunes"}, "call_id": "t1"}], ["Disculpe, reintento."]
+    )
+    await session.start()
+    await text.hear_text(session, "¿qué hay el lunes?")
+    await text.end_text(session, "caller_hung_up", "caller")
+    agent = [entry.data["text"] for entry in await store.whole(call) if entry.type == "turn.agent"]
+    assert agent == ["Un momento, miro la agenda.", "No pude consultar la agenda ahora mismo.", "Disculpe, reintento."]
+    read = [getattr(item, "output", None) for item in model_of(session).requests[-1].items]
+    assert "the agenda did not answer" in read
 
 
 @needs_the_database

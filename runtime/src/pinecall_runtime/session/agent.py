@@ -77,9 +77,13 @@ class CallAgent(Agent):
     def announce(self, line: str | None) -> None:
         """Say this line as a tool starts, unless the agent has spoken since the caller did."""
         if line and not self.said_this_turn:
-            self.saying.append((self.live.say(line), line))
-            self.said_this_turn = True
-            self.said.say(line)
+            self.interject(line)
+
+    def interject(self, line: str) -> None:
+        """Say this line now, whatever was said since the caller spoke: a wait that has grown long."""
+        self.saying.append((self.live.say(line), line))
+        self.said_this_turn = True
+        self.said.say(line)
 
     # Lookups and dynamic blocks go into this request only, so the cached prefix (instructions
     # and history) stays the same bytes from turn to turn. The wait for the first token plays the

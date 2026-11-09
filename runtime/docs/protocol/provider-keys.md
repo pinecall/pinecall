@@ -26,12 +26,29 @@ names one; a vendor absent decides inside its plugin. `models` is, by stage and 
 (`pinecall-runtime providers models <file> --apply` writes them from voicedex's file; `setup` writes the
 ones the package ships), kept to what the platform lends the org where it lends by model (`vendor/model`
 in the org's quota: those alone, and a vendor lent so is `offered`); on the org's own key, every one.
-`realtime` is, by vendor,
+`choices` is, by stage and vendor, **every** model the row offers, the recommended first (the models
+file marks them) and then the one that runs first and the rest in the row's order, each as
+`{model, name, recommended, available, price}`: `name` is the vendor's where the file gives one,
+`available` whether this org may run it (its own key, or lent by the platform; false is the picker's
+greyed row, for the org to bring its key), `price` the row's rate for it by the longest prefix of its
+id (`input` and `output` per million tokens, `characters`, `audio_seconds`, `minutes`), null where the
+row prices it nowhere. `realtime` is, by vendor,
 the models that hear and speak themselves, as the vendor's plugin names them (the `Literal` its
 realtime class types its `model` as, else the `RealtimeModels` it lists): named as an agent's
 `realtime` — `xai/grok-voice-3.0`, in the settings or in `@realtime` — a voice call runs on that model
 alone, with no ears and no voice of its own, while a written call keeps the agent's `llm`
 ([settings-api.md](settings-api.md)).
+
+`GET /v1/providers/{vendor}/options?modality=stt|llm|tts` is what the vendor's plugin takes for that
+stage, read off its constructor (`?builds=` names another class of it, as the settings' `*_builds`
+does): `{vendor, modality, builds, options: [{name, inside, kind, choices, open, default, required}]}`.
+`kind` is `text`, `number`, `integer`, `boolean`, `choice` (the `choices` the plugin names; `open`
+when any other text is taken too), `list` or `json`; `default` is the plugin's own, null where it has
+none; `inside` names the options object the argument sits in where the plugin takes one (Soniox's
+`params`), else null. The key, the model, the voice, the language and its hints, and the temperature
+are left out: the settings set them. What a console writes from it is the settings' `stt_options`,
+`llm_options` or `tts_options` ([settings-api.md](settings-api.md)), which run on the org's own key
+for the vendor alone.
 
 ## Where the abstraction is, and where it stops
 

@@ -101,6 +101,7 @@ class Session:
             live,
             lookups,
             announce=self._announce,
+            interject=self._interject,
             spoke=self._spoke,
             ending=self._ending,
             waiting=self._music,
@@ -420,6 +421,9 @@ class Session:
 
     def _announce(self, line: str | None) -> None:
         self.agent.announce(line)
+
+    def _interject(self, line: str) -> None:
+        self.agent.interject(line)
 
     def _spoke(self) -> bool:
         return self.agent.said_this_turn

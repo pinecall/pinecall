@@ -82,7 +82,7 @@ def _built(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> dic
     def the_class(_modality: Modality, _running: Running) -> type:
         return made
 
-    monkeypatch.setattr(stages, "_class_of", the_class)
+    monkeypatch.setattr(stages, "class_of", the_class)
     ears = stages.stt_of(running, None, HEAR)
     assert isinstance(ears, _Ears)
     return ears.given
@@ -164,7 +164,7 @@ def _spoken(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> di
     def the_class(_modality: Modality, _running: Running) -> type:
         return made
 
-    monkeypatch.setattr(stages, "_class_of", the_class)
+    monkeypatch.setattr(stages, "class_of", the_class)
     voice = stages.tts_of(running)
     assert isinstance(voice, _Voice)
     return voice.given
@@ -189,7 +189,7 @@ def test_a_voice_is_not_refused_by_a_tts_with_no_voice_argument(monkeypatch: pyt
     def the_class(_modality: Modality, _running: Running) -> type:
         return VoiceIsTheModel
 
-    monkeypatch.setattr(stages, "_class_of", the_class)
+    monkeypatch.setattr(stages, "class_of", the_class)
     stages._refuse_untaken("tts", Running(vendor="v", credentials="k"), ["voice"])  # pyright: ignore[reportPrivateUsage]
 
 
@@ -209,7 +209,7 @@ def test_the_silence_is_the_detectors_on_ears_that_leave_the_turn_open_and_the_e
     def the_class(_modality: Modality, _running: Running) -> type:
         return NoTerms
 
-    monkeypatch.setattr(stages, "_class_of", the_class)
+    monkeypatch.setattr(stages, "class_of", the_class)
     patient = Tuning(turn=Turn(endpointing_ms=800))
     voice = Running(vendor="v", credentials="k")
     stages.refuse_untaken_knobs(Running(vendor="v", credentials="k"), voice, patient)
