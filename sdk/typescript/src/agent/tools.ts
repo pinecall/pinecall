@@ -25,6 +25,11 @@ export interface ToolOptions<T = unknown> {
   confirm?: string;
   /** What the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself. */
   announce?: string;
+  /** What the agent says when the wait has grown long, `delayedAfter` seconds in (5 unless set). */
+  delayed?: string;
+  delayedAfter?: number;
+  /** What the agent says when the tool failed, before the model reads why. */
+  failed?: string;
   /** Number of rows of a list result shown to the model; the full result is kept. */
   preview?: number;
   /** Parameter names holding personal data, masked in the log. */
@@ -132,6 +137,9 @@ function specFor(ctor: Function, declared: Declared): ToolSpec {
   };
   if (options.confirm !== undefined) spec.confirm = options.confirm;
   if (options.announce !== undefined) spec.announce = options.announce;
+  if (options.delayed !== undefined) spec.delayed = options.delayed;
+  if (options.delayedAfter !== undefined) spec.delayed_after_s = options.delayedAfter;
+  if (options.failed !== undefined) spec.failed = options.failed;
   if (options.pii !== undefined) spec.pii = [...options.pii];
   if (options.timeout !== undefined) spec.timeout_s = options.timeout;
   if (options.quiet === true) spec.quiet = true;

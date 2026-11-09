@@ -24,6 +24,9 @@ class ToolOptions(TypedDict, total=False):
     when: Callable[[Any], object]
     confirm: str
     announce: str
+    delayed: str
+    delayed_after: float
+    failed: str
     preview: int
     pii: Sequence[str]
     timeout: float
@@ -110,6 +113,9 @@ def declaring(
     said: dict[str, object] = {
         "confirm": options.get("confirm"),
         "announce": options.get("announce"),
+        "delayed": options.get("delayed"),
+        "delayed_after_s": options.get("delayed_after"),
+        "failed": options.get("failed"),
         "pii": None if pii is None else tuple(pii),
         "timeout": options.get("timeout"),
     }

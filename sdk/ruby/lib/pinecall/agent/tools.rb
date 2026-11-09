@@ -18,12 +18,17 @@ module Pinecall
         # @param stage [Symbol, Array<Symbol>] shorthand for a `when` on the stage field
         # @param confirm [String] read-back spoken before running; marks the tool irreversible
         # @param announce [String] what the agent says as the tool starts, when its turn said nothing
+        # @param delayed [String] what the agent says when the wait has grown long
+        # @param delayed_after [Numeric] seconds before it says it, 5 unless set
+        # @param failed [String] what the agent says when the tool failed, before the model reads why
         # @param preview [Integer] rows of a list result the model sees
         # @param pii [Array<Symbol>] parameters with personal data, masked in the log
         # @param timeout [Numeric] seconds the platform waits for the method
         # @param params [Hash{Symbol=>Object}] parameter types, e.g. `{ day: String, how_many: Integer }`
         def tool(**options)
-          unknown = options.keys - %i[when stage confirm announce preview pii timeout params doc]
+          unknown = options.keys - %i[
+            when stage confirm announce delayed delayed_after failed preview pii timeout params doc
+          ]
           raise DeclarationRefused, "tool takes no #{unknown.join(", ")}" unless unknown.empty?
 
           @pending_tool = options

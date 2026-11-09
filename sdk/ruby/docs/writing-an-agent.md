@@ -219,6 +219,7 @@ tool; the signature is the schema it fills.
 | `when:` | a question asked of the state, on every change: `-> { slots.any? }` or `->(s) { s.slots.any? }` |
 | `confirm:` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
+| `delayed:` | what the agent says when the wait has grown long, 5 seconds in unless `delayed_after:` says otherwise; `failed:`, what it says when the tool failed, before the model reads why |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |
 | `pii:` | parameters that carry personal data: masked in the call's log by declaration, and by value wherever the agent writes them down, as in what `pinecall start` prints |
 | `timeout:` | how long the platform waits for this method, in seconds |

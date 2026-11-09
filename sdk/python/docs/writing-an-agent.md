@@ -233,6 +233,7 @@ pydantic model a nested object, `"3"` for an `int` is `3`. A parameter with no a
 | `when=` | a question asked of the agent on every change: `when=lambda self: bool(self.slots)` |
 | `confirm=` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce=` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
+| `delayed=` | what the agent says when the wait has grown long, 5 seconds in unless `delayed_after=` says otherwise; `failed=`, what it says when the tool failed, before the model reads why |
 | `preview=` | how many rows of a list the *model* sees. The state keeps every row |
 | `pii=` | the parameters that carry personal data: the log masks their values wherever the agent wrote them down (`state.changed`, `tool.result` and a line you log too), and `pinecall start` prints the log's version. A callback's number is what the callback is for, so `callback.requested` keeps it in the clear |
 | `timeout=` | how many seconds the platform waits for this method |

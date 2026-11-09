@@ -53,6 +53,10 @@ def _type_of(default: object) -> type:
     return type(default) if isinstance(default, bool | int | float | str) else str
 
 
+# What a tool says and masks, passed on as it was declared.
+LINES = ("confirm", "announce", "delayed", "delayed_after_s", "failed", "pii")
+
+
 def spec_of(
     name: str, method: Callable[..., object], arguments: type[BaseModel], said: Mapping[str, object]
 ) -> ToolSpec:
@@ -81,7 +85,7 @@ def spec_of(
         "parameters": parameters,
         "side_effect": "irreversible" if said.get("confirm") else "read",
     }
-    spec |= {key: said[key] for key in ("confirm", "announce", "pii") if said.get(key) is not None}
+    spec |= {key: said[key] for key in LINES if said.get(key) is not None}
     if said.get("timeout") is not None:
         spec["timeout_s"] = said["timeout"]
     try:

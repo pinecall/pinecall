@@ -1,7 +1,7 @@
 // Tool registry: specs sent on the wire and current visibility.
 import { describe, expect, it } from "vitest";
 
-import { seal, toolNamed, visibleTools } from "../../src/index.js";
+import { Agent, seal, tool, toolNamed, visibleTools } from "../../src/index.js";
 import ClinicaNorte from "./clinica-norte.js";
 
 function clinica(): ClinicaNorte {
@@ -52,6 +52,18 @@ describe("the spec the wire carries", () => {
     const agent = clinica();
     expect(toolNamed(agent, "transfer")?.spec.side_effect).toBe("read");
     expect(toolNamed(agent, "findPatient")?.spec.side_effect).toBe("read");
+  });
+
+  it("carries the lines for a long wait and a failure, and none when it declared none", () => {
+    class Patient extends Agent {
+      @tool({ delayed: "Sigo mirando.", delayedAfter: 3, failed: "No pude verlo." })
+      look(): string {
+        return "ok";
+      }
+    }
+    const spec = toolNamed(new Patient(), "look")?.spec;
+    expect([spec?.delayed, spec?.delayed_after_s, spec?.failed]).toEqual(["Sigo mirando.", 3, "No pude verlo."]);
+    expect(toolNamed(clinica(), "book")?.spec.delayed).toBeUndefined();
   });
 
   it("carries the announcement the tool declared, and none when it declared none", () => {

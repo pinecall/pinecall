@@ -125,6 +125,9 @@ class ToolSpec(WireModel):
     side_effect: Literal["read", "write", "irreversible"] = "read"
     confirm: str | None = None
     announce: str | None = None
+    delayed: str | None = None
+    delayed_after_s: float | None = None
+    failed: str | None = None
     pii: list[str] | None = None
     timeout_s: float | None = None
 

@@ -201,3 +201,21 @@ def test_a_tool_named_like_the_agents_own_method_is_refused() -> None:
 def test_an_option_tool_does_not_take_is_refused_by_name() -> None:
     with pytest.raises(DeclarationRefused, match="@tool takes no retries"):
         tool(retries=3)  # pyright: ignore[reportCallIssue]
+
+
+class Patient(Agent):
+    """Mira y avisa."""
+
+    @tool(delayed="Sigo mirando.", delayed_after=3.0, failed="No pude verlo.")
+    def look(self) -> str:
+        """Mira."""
+        return "ok"
+
+
+def test_the_lines_for_a_long_wait_and_a_failure_travel_as_the_wire_carries_them() -> None:
+    spec = spec_of(Patient(), "look")
+    assert (spec.delayed, spec.delayed_after_s, spec.failed) == (
+        "Sigo mirando.",
+        3.0,
+        "No pude verlo.",
+    )

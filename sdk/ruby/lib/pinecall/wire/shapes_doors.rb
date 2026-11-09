@@ -13,6 +13,9 @@ module Pinecall
           side_effect: { kind: :enum, values: %w[read write irreversible], default: "read" },
           confirm: { kind: :str },
           announce: { kind: :str },
+          delayed: { kind: :str },
+          delayed_after_s: { kind: :float },
+          failed: { kind: :str },
           pii: { kind: :list, items: { kind: :str } },
           timeout_s: { kind: :float }
         }.freeze,
