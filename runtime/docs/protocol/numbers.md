@@ -74,10 +74,11 @@ Two ways to hook a number, both through this endpoint:
 One org holds a number: importing a number another org holds is `409`, and the sentence names
 neither the org nor its trunk.
 
-`GET /v1/carriers/catalog` is `{carriers: [{kind, name, how, networks}], sells}`: the carriers this
+`GET /v1/carriers/catalog` is `{carriers: [{kind, name, how, networks}], sells, sip_domain}`: the carriers this
 operator admits, `automatic` for one the platform drives through its API (Twilio), `guided` for one
 whose portal the org types the address above into; `sells` says whether `POST /v1/numbers/buy`
-has an account to buy on.
+has an account to buy on; `sip_domain` is the SIP name of the key's environment, the one a portal or a PBX
+sends calls to on port 5060 (`sip:+59829000000@<sip_domain>:5060`), null on a deployment that has none.
 
 ```
 $ curl -X POST https://cloud.pinecall.io/v1/numbers -H "authorization: Bearer $PINECALL_KEY" \

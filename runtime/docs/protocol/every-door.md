@@ -124,7 +124,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/carrier/outbound` | numbers | Whether the org can place a call, one sentence per thing missing, and its guards. |
 | `POST` | `/v1/carrier/outbound` | numbers | Make an account dialable: Twilio's termination and a credential; a peer needs nothing. |
 | `GET` | `/v1/carriers` | numbers | Every account of the org, oldest first. |
-| `GET` | `/v1/carriers/catalog` | numbers | The carriers this deployment admits, each automatic (its API) or guided (SIP terms), and whether the platform sells numbers. |
+| `GET` | `/v1/carriers/catalog` | numbers | The carriers this deployment admits, each automatic (its API) or guided (SIP terms), whether the platform sells numbers, and the SIP name a carrier sends the environment's calls to. |
 | `WS` | `/v1/chat` | talk | One text call: {text} frames in, every entry of the call out. |
 | `POST` | `/v1/codes` | talk | Four digits for a caller to key, the number to call, and a token that asks after them. |
 | `GET` | `/v1/codes/{code}` | — | How the code stands; with ?wait=1, held up to 25 s for a call to key it; with the code's own token alone, a key is `403`. |

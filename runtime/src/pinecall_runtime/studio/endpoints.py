@@ -39,6 +39,7 @@ async def make_studio_agent(
     body: schemas.NewAgentRequest, actor: AppKey, serving: TheServing, handles: TheHandles, session: Session
 ) -> schemas.StudioAgent:
     """Make an agent in Studio: a hosted app the gateway holds, its first release the definition."""
+    owner = await serving.logs.store.owner(body.name)
     made = await service.create_agent(
         session,
         actor.org,
@@ -46,6 +47,7 @@ async def make_studio_agent(
         body.name,
         body.definition or FIRST,
         held=serving.registry.is_held(actor.org, body.name),
+        another_orgs=owner is not None and owner != actor.org,
         by=_asked_by(actor),
         note=body.note,
     )

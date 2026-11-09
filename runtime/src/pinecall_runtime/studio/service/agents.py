@@ -33,6 +33,7 @@ NOT_STUDIO = "{name} is code, not a Studio agent: `pinecall deploy` uploads it, 
 NO_AGENT = "there is no Studio agent called {name} in {env}"
 HELD_BY_CODE = "{name} is held by an app of yours already: a slug is one agent, so give this one another name"
 TAKEN = "{name} is the name of a hosted app already: give this agent another name"
+ANOTHER_ORGS = "{name} is another organization's agent already: a name is one org's, so give this agent another"
 NO_TOOL = "this agent has no tool called {name}"
 DEPLOYS_FROM_THE_SANDBOX = "an agent is deployed from the sandbox: ask with the sandbox, and it lands in production"
 DEPLOYED = "deployed from the sandbox's release {release}"
@@ -87,12 +88,24 @@ async def secret_names(session: AsyncSession, org: str, env: Env) -> set[str]:
 
 # A Studio agent is a hosted app: the org's quota of them counts it, the first release makes it.
 async def create_agent(
-    session: AsyncSession, org: str, env: Env, name: str, definition: Definition, *, held: bool, by: str, note: str
+    session: AsyncSession,
+    org: str,
+    env: Env,
+    name: str,
+    definition: Definition,
+    *,
+    held: bool,
+    another_orgs: bool,
+    by: str,
+    note: str,
 ) -> StudioAgent:
-    """Make the agent and keep its first release; refused for a name an app of the org has."""
+    """Make the agent and keep its first release; refused for a name an app of the org has, or another org's agent."""
     app = hosting.App(org=org, env=env, name=hosting.checked_name(name))
     if await hosting.kind_of(session, app) is not None:
         raise Conflict(TAKEN.format(name=name))
+    # Made all the same, the holder could never register it: it would be hosted and answer nothing.
+    if another_orgs:
+        raise Conflict(ANOTHER_ORGS.format(name=name))
     if held:
         raise Conflict(HELD_BY_CODE.format(name=name))
     defined.check(definition, await secret_names(session, org, env), env)

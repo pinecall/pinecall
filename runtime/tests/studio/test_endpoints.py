@@ -7,10 +7,11 @@ from collections.abc import AsyncIterator
 
 import httpx
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from pinecall_runtime.kit.dns import Address
 from pinecall_runtime.studio.service.holder import Holder
-from tests.conftest import Gateway, Tenant, needs_the_services
+from tests.conftest import Gateway, Tenant, make_tenant, needs_the_services
 from tests.studio.test_definition import clinic
 
 pytestmark = needs_the_services
@@ -67,6 +68,20 @@ async def test_an_agent_is_made_read_and_saved_over_the_release_it_was_read_at(
     assert stale.status_code == 409 and "release 2" in stale.json()["detail"]
     listed = await gateway.http.get("/v1/studio/agents", headers=tenant.person)
     assert [item["name"] for item in listed.json()["agents"]] == [agent]
+
+
+async def test_a_name_another_orgs_agent_has_is_refused_and_nothing_is_kept(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """A slug is one org's: made all the same, the holder could never register it, and it would answer nothing."""
+    theirs = await make_tenant(sessions)
+    await gateway.app.state.serving.logs.store.claim(None, agent, theirs.org)
+    refused = await gateway.http.post("/v1/studio/agents", json=body(agent), headers=tenant.person)
+    assert refused.status_code == 409 and "another organization's agent" in refused.json()["detail"]
+    apps = (await gateway.http.get("/v1/hosted", headers=tenant.person)).json()["apps"]
+    assert agent not in [app["name"] for app in apps], "the refusal kept a hosted app"
+    made = await gateway.http.post("/v1/studio/agents", json=body(agent), headers=theirs.person)
+    assert made.status_code == 200, "the org the name belongs to makes it"
 
 
 async def test_a_studio_agent_is_a_hosted_app_of_the_studio_kind(gateway: Gateway, tenant: Tenant, agent: str) -> None:

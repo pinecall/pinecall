@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Studio refuses a name another organization's agent has.** `POST /v1/studio/agents` answered 200 for it and
+  kept a hosted app the gateway could never register (a slug is one org's): it was listed, and answered nothing.
+  It is now `409`, in a sentence that says to choose another name.
+
+- **The carriers' catalog says where a carrier sends a call:** `sip_domain` on `GET /v1/carriers/catalog`, the SIP
+  name of the key's environment, so a console can show the address a portal or a PBX is pointed at.
+
 ## 0.11.30 — an app is written whole in its class (2026-11-09)
 
 - **A class declares its monitors:** `monitors` on `AgentConfig`, each a number of the agent's calls and its line. They are

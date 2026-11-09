@@ -66,8 +66,8 @@ async def list_carriers(actor: NumbersKey, handles: TheHandles, session: Session
 # What Add a number offers beside the org's own accounts: Twilio drives its own numbers; a
 # guided carrier is SIP terms, a number pasted into its portal.
 @router.get("/v1/carriers/catalog")
-async def list_carrier_catalog(_actor: NumbersKey, handles: TheHandles, session: Session) -> schemas.CarrierCatalog:
-    """The carriers this box admits, each automatic or guided, and whether the box sells numbers."""
+async def list_carrier_catalog(actor: NumbersKey, handles: TheHandles, session: Session) -> schemas.CarrierCatalog:
+    """The carriers this box admits, automatic or guided, whether it sells numbers, and where a carrier sends a call."""
     admitted = await catalog.admitted_kinds(session)
     try:
         await accounts.box_twilio(session, handles.vault)
@@ -86,6 +86,7 @@ async def list_carrier_catalog(_actor: NumbersKey, handles: TheHandles, session:
             if carrier.kind in admitted
         ],
         sells=sells,
+        sip_domain=handles.settings.sip_domain_of(actor.env),
     )
 
 

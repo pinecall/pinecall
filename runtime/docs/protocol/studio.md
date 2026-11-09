@@ -124,7 +124,7 @@ is the deploy's: the release and both versions land in one transaction or not at
 | endpoint | what |
 |---|---|
 | `GET /v1/studio/agents` | `{agents: [StudioAgent]}`, by name, each its newest release |
-| `POST /v1/studio/agents` | `{name, definition?, note?}` → `StudioAgent`. Made in the env asked, counted against `hosted_apps` (`429` past it); `409` for a name a hosted app has or an app of the org holds; a starting definition when none is given |
+| `POST /v1/studio/agents` | `{name, definition?, note?}` → `StudioAgent`. Made in the env asked, counted against `hosted_apps` (`429` past it); `409` for a name a hosted app has, an app of the org holds, or another org's agent has (a slug is one org's); a starting definition when none is given |
 | `GET /v1/studio/agents/{name}` | `StudioAgent`: `{name, env, release, definition, author, note, saved_at, stopped}`; `404` for none, `400` for a code app's name |
 | `PUT /v1/studio/agents/{name}` | `{definition, based_on, note?}` → the next release, `based_on` the release read (`null` takes any); `409` naming the newest when someone saved meanwhile. A definition equal to the newest keeps no release |
 | `POST /v1/studio/agents/{name}/deploy` | `{release?, note?}`, asked in the sandbox → production's next release, the sandbox's newest unless named; made in production when it is the first (counted there), and the deployer's sandbox settings with it ([below](#what-a-deploy-carries)). A person's key that may act in production alone, else `403` |

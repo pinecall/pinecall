@@ -275,10 +275,12 @@ class CatalogCarrier(WireModel):
 
 
 class CarrierCatalog(WireModel):
-    """GET /v1/carriers/catalog: the carriers this box admits, and whether it sells numbers."""
+    """GET /v1/carriers/catalog: the carriers admitted, whether numbers are sold, where a carrier sends a call."""
 
     carriers: list[CatalogCarrier]
     sells: bool
+    # The name a carrier or a PBX sends the key's environment's calls to, on port 5060; null where there is none.
+    sip_domain: str | None = None
 
 
 class CarrierList(WireModel):

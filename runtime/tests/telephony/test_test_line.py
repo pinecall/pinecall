@@ -39,6 +39,14 @@ def sandbox_route(tenant: Tenant, number: str, env: Env = Env.sandbox, agent: st
     return RouteRow(org=tenant.org, agent=agent, channel=Channel.phone, number=number, env=env, managed=False)
 
 
+@needs_the_services
+async def test_the_carriers_catalog_says_the_sip_name_of_the_keys_environment(gateway: Gateway, tenant: Tenant) -> None:
+    """A portal or a PBX is pointed at it, so the console has to be able to say it."""
+    said = await gateway.http.get("/v1/carriers/catalog", headers=tenant.person)
+    assert said.status_code == 200, said.text
+    assert said.json()["sip_domain"] == gateway.app.state.serving.handles.settings.sip_domain_of(Env.sandbox)
+
+
 @needs_the_database
 async def test_the_test_line_is_one_of_the_boxs_own_sandbox_numbers_and_none_forgets_it(
     sessions: async_sessionmaker[AsyncSession], tenant: Tenant
