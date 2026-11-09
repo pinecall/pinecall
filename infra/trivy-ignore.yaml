@@ -43,4 +43,4 @@ misconfigurations:
     statement: >-
       The Kubernetes API is reached by IAM alone until authorized networks are chosen: a list
       that forgets the place the operator works from locks them out.
-    expired_at: 2026-11-07
+    expired_at: 2026-12-07
