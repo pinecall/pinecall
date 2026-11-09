@@ -51,17 +51,18 @@ class ConfigTest < Minitest::Test
     tts_fallbacks "cartesia/sonic-3"
   end
 
-  def test_the_monitors_a_class_declares_are_sent_as_the_wire_carries_them
-    slow = { name: "slow", metric: "e2e_median_s", above: true, threshold: 2.0 }
-    sent = Class.new(Pinecall::Agent) { monitors [slow] }.wire_config(tools: [])
+  SLOW = { name: "slow", metric: "e2e_median_s", above: true, threshold: 2.0 }.freeze
 
-    assert_equal [slow], sent[:monitors]
-    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  # Recepción que vigila sus números y busca en dos bases.
+  class Vigilada < Pinecall::Agent
+    monitors [SLOW]
+    bases [{ base: "faq" }, { base: "prices", k: 2 }]
   end
 
-  def test_several_bases_are_sent_as_the_wire_carries_them
-    sent = Class.new(Pinecall::Agent) { bases [{ base: "faq" }, { base: "prices", k: 2 }] }.wire_config(tools: [])
+  def test_the_monitors_and_the_bases_a_class_declares_are_sent_as_the_wire_carries_them
+    sent = Vigilada.wire_config(tools: [])
 
+    assert_equal [SLOW], sent[:monitors]
     assert_equal %w[faq prices], sent[:bases].map { |one| one[:base] }
     Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
   end

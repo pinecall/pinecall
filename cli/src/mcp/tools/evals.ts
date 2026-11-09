@@ -208,8 +208,8 @@ export const simulate = tool({
       goal: args.goal,
       repeats: args.repeats,
     });
-    const asked = args.against ?? [];
-    const against = asked.length === 0 && input.repeats > 1 ? [{}] : asked;
+    const named = args.against ?? [];
+    const against = named.length === 0 && input.repeats > 1 ? [{}] : named;
     if (against.length > 1 || input.repeats > 1) {
       let placed: (started: unknown) => void = () => undefined;
       const begun = new Promise<unknown>((known) => (placed = known));

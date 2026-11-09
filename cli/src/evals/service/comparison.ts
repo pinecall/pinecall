@@ -101,19 +101,19 @@ export async function compare(ctx: Context, agent: string, written: Persona, inp
   // Nothing placed and nothing waiting, there is no table to read: the gateway's reasons are the answer.
   if (started.calls.length === 0 && (started.waiting ?? 0) === 0) throw new UsageError(nonePlaced(started.refused));
   await Promise.all(started.calls.map((one) => followUntilEnded(ctx, one.call)));
-  const asked = (): Promise<api.Comparison> => api.getComparison(ctx.gateway(), started.comparison);
+  const readTable = (): Promise<api.Comparison> => api.getComparison(ctx.gateway(), started.comparison);
   const again = (): Promise<void> => new Promise((wake) => setTimeout(wake, WAITING_ASKED_EVERY_MS));
-  let table = await asked();
+  let table = await readTable();
   // The calls past the org's calls at once wait their turn in the gateway, which places each as the
   // ones before it end: the table says how many still wait, and whether their gateway left them.
   while (stillPlacing(table) || ((table.waiting ?? 0) === 0 && (started.waiting ?? 0) > 0 && table.rows.some((row) => row.ended_at === null))) {
     await again();
-    table = await asked();
+    table = await readTable();
   }
   const deadline = Date.now() + JUDGED_WITHIN_MS;
   while (Date.now() < deadline && table.rows.some((row) => row.ended_at === null || row.score === null)) {
     await new Promise((wake) => setTimeout(wake, ASKED_EVERY_MS));
-    table = await asked();
+    table = await readTable();
   }
   return { comparison: started.comparison, refused: table.refused ?? started.refused, table };
 }

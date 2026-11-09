@@ -59,7 +59,7 @@ export default class ClinicaNorte extends Agent {
   }
 
   /** Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla. */
-  @tool({ when: (s) => !s.identified, pii: ["name", "phone"] })
+  @tool({ when: (s) => !s.identified, pii: ["name", "phone"], delayed: "Sigo buscando.", delayedAfter: 3, failed: "No pude buscarlo." })
   async findPatient(name: string, phone: string): Promise<Patient | null> {
     const found = await agenda.byPhone(phone);
     this.patient = found?.name === name ? found : undefined;
