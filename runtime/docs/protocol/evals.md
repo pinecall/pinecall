@@ -100,7 +100,7 @@ One run per agent at a time: a second is `409` naming the run in flight.
 
 `voice: true` says each golden out loud through the environment's fleet: the room is dispatched, the
 caller's lines are spoken (under `interferer_db` of the `ambience` named — a television unless
-said; dB under the caller, 0 to 60 — and `packet_loss`, 0 to 1, when set), the room is deleted, and the call is judged once its worker sealed it. The worker builds the
+said; dB under the caller, 0 to 60, playing the whole call and not under its lines alone — and `packet_loss`, 0 to 1, when set), the room is deleted, and the call is judged once its worker sealed it. The worker builds the
 session from the declaration, so a spoken run refuses `models` and a golden that pins `today`; it
 has no test run to assert steps on, so it refuses a golden with an `event` turn or a `then`, and
 judges the final `expect` alone. With every seat of the environment's fleet taken the run stops before its first

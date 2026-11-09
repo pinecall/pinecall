@@ -59,7 +59,12 @@ by piece, never held until whole, at `speed` times the vendor's tempo (0.5 to 2,
 and the line carries its noise and loss unless the request names its own — `interferer_db` under
 the caller of the `ambience` it names: a `television` (a voice read in the caller's own), a `cafe`
 (chatter over a room), an `office` (a hum), a `street` (traffic swelling and fading), each the
-same sound every run. What can be refused is refused before the answer: a persona neither the agent
+same sound every run. The ambience is the room's, not the voice's: it plays from the moment the
+caller joins until it hangs up, under the agent's answers and through every silence, so the agent
+speaks over the television and ends a turn against the street; it sits `interferer_db` under how
+loud the caller speaks over the call (its frames that carry speech, a vendor's usual level before
+its first word) and keeps that level whether the caller is speaking or not, and `packet_loss` is
+lost off the whole line, the silences too. What can be refused is refused before the answer: a persona neither the agent
 nor Pinecall has by that name, or nobody holding the agent in the key's world and scope, `404`; the
 org's limits as on a call, `simulations` among them (`429`, with `credits.exhausted` on the agent's log, and the call is never opened nor counted), a caller whose model, or whose voice when spoken, is on a vendor nobody keyed (`503`), and the org's simulated calls already on the
 line in the world — ten at most, on every gateway together, `429` with `Retry-After` for the

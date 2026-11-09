@@ -1,8 +1,10 @@
 """A persona on a real line: the caller's leg in the room, its lines spoken, the noise on it."""
 
 import asyncio
+import math
 import random as randomness
-from collections.abc import AsyncIterable, AsyncIterator, Mapping, Sequence
+from collections import deque
+from collections.abc import AsyncIterable, AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from typing import Never
 
@@ -27,11 +29,21 @@ LOUDEST = 32767
 QUIETEST = -32768
 # A lost packet is the silence a jitter buffer plays in its place.
 LOST = b"\x00\x00"
-# A television 15 dB under the caller was already transcribed as the caller.
-UNDER_THE_CALLER_DB = 15.0
 # Every line is resampled to this rate, so the caller's track opens before any audio exists.
 SAMPLE_RATE = 48_000
 CHANNELS = 1
+# What the caller's track carries while the caller says nothing.
+SILENCE = LOST * (SAMPLE_RATE * FRAME_MS // 1000)
+# How much of the line the room is given ahead of time: measured, a source paces what it is handed
+# at the clock's rate once it holds this much, so the caller's word waits this long at most behind
+# the room's noise. A second of it, the source's default, was a second of delay on every line.
+AHEAD_MS = 100
+# Where a vendor's voice sits, -20 dBFS: how loud a caller is taken to speak before its first word.
+A_VOICE_RMS = 3277.0
+# That guess weighs as half a second of speech, so a first syllable does not move the room's noise.
+A_GUESS_WEIGHS_FRAMES = 50
+# A frame under this is the gap between two words: it says nothing of how loud the caller speaks.
+A_GAP_RMS = 100.0
 # How far into the agent's answer a caller that interrupts starts talking, in seconds.
 CUT_IN_AFTER_S = (0.8, 2.5)
 # How far into the agent's answer a caller murmurs its "mm-hmm", in seconds: after a clause.
@@ -91,6 +103,11 @@ class SpokenLine:
     notice: bool = False
 
 
+# The room behind a caller does not stop when the caller does: the track carries it from the moment
+# the caller joins until it hangs up, under the agent's answers and through every silence, which is
+# where a noisy line breaks an agent (a television taken for a caller cutting in, a turn that never
+# ends). Until 2026-11-09 the noise was mixed into each spoken line alone, at a level that followed
+# each piece of the voice, and between two lines the track was digital silence.
 class CallerLeg:
     """The caller's leg of a spoken call: its track in the room, its voice, the line's noise."""
 
@@ -100,8 +117,17 @@ class CallerLeg:
         self.voice = voice
         self.logs = logs
         self.interferer = interferer
-        self.source = rtc.AudioSource(SAMPLE_RATE, CHANNELS)
+        # The interferer's own level, taken once: it is seconds long and asked for a hundred times a second.
+        self.loudness = rms_of(interferer)
+        self.level = SpokenLevel()
+        self.source = rtc.AudioSource(SAMPLE_RATE, CHANNELS, queue_size_ms=AHEAD_MS)
         self.track = rtc.LocalAudioTrack.create_audio_track(judging.A_SIMULATED_CALLER, self.source)
+        # The frames of the caller's voice not yet on the line, and whether there are none.
+        self.waiting: deque[bytes] = deque()
+        self.silent = asyncio.Event()
+        # The samples the line has carried: where the interferer goes on from.
+        self.carried = 0
+        self.carrying: asyncio.Future[None] | None = None
         # When the caller began its last line, by the log's clock: its answer comes after it.
         self.said_at = logs.store.clock()
         # Set once the caller decided to talk over the answer: its next line is said with no pause.
@@ -122,11 +148,59 @@ class CallerLeg:
         """Say one listener's word into the room while the agent speaks, keeping the turn."""
         await self._speak(word)
 
+    def open(self) -> None:
+        """Start carrying the line: from here the track is never without a frame."""
+        self.carrying = asyncio.ensure_future(self._carry())
+        # A line that broke leaves nobody waiting on it: the one speaking is woken and told.
+        self.carrying.add_done_callback(lambda _: self.silent.set())
+
+    async def close(self) -> None:
+        """Stop carrying the line."""
+        if self.carrying is not None:
+            self.carrying.cancel()
+            await asyncio.gather(self.carrying, return_exceptions=True)
+
+    # The source paces the frames it is handed: this loop runs at the clock's rate, AHEAD_MS ahead.
+    async def _carry(self) -> None:
+        while True:
+            frame = self.next_frame()
+            await self.source.capture_frame(rtc.AudioFrame(frame, SAMPLE_RATE, CHANNELS, len(frame) // 2))
+
+    # The interferer sits under how loud the caller speaks over the call, never under each piece of
+    # its voice: a room does not get louder with the person in it.
+    def next_frame(self) -> bytes:
+        """The next 10 ms of the line: the caller's voice or its silence, the room behind it, or a lost packet."""
+        line = self.spoken.line
+        frame = SILENCE
+        if self.waiting:
+            frame = self.waiting.popleft()
+            self.level.hear(frame)
+        else:
+            self.silent.set()
+        if line.interferer_db is not None and self.loudness > 0:
+            gain = self.level.rms / self.loudness * 10 ** (-line.interferer_db / 20)
+            frame = behind(frame, self.interferer, self.carried, gain)
+        self.carried += len(frame) // 2
+        if line.packet_loss > 0 and line.dice.random() < line.packet_loss:
+            return LOST * (len(frame) // 2)
+        return frame
+
+    # The voice is handed to the line as it arrives and the line says it at the clock's rate: a line
+    # is said once the last of its frames has left.
     async def _speak(self, text: str) -> None:
         async with self.voice.synthesize(text) as stream:
             pieces = at_tempo(resampled(piece.frame async for piece in stream), self.spoken.line)
-            async for frame in on_the_line(pieces, self.spoken.line, self.interferer):
-                await self.source.capture_frame(rtc.AudioFrame(frame, SAMPLE_RATE, CHANNELS, len(frame) // 2))
+            async for frame in in_frames(pieces):
+                self.silent.clear()
+                self.waiting.append(frame)
+        # A line that broke before the last frame was handed to it will never say it.
+        self._still_carried()
+        await self.silent.wait()
+        self._still_carried()
+
+    def _still_carried(self) -> None:
+        if self.carrying is not None and self.carrying.done():
+            self.carrying.result()
 
     # Cut in some way into the answer, as a person does: never at its first word. A caller that cuts in
     # asks for its line the moment the agent begins — what it talks over, it has not heard — and says
@@ -219,26 +293,36 @@ def rms_of(pcm: bytes) -> float:
     return float(np.sqrt(np.mean(samples * samples)))
 
 
-# The interferer loops, so a short one covers a long line; `start` is the sample it goes on
-# from, so a line mixed piece by piece hears one television, not one restarted at every piece.
-def mix_interferer(caller: bytes, interferer: bytes, db_under: float = UNDER_THE_CALLER_DB, start: int = 0) -> bytes:
-    """The interferer mixed under the caller's voice, `db_under` quieter."""
-    if not interferer or not caller:
-        return caller
-    loudness = rms_of(interferer)
-    gain = 0.0 if loudness == 0 else rms_of(caller) / loudness * 10 ** (-db_under / 20)
-    voice = np.frombuffer(caller, dtype=np.int16).astype(np.int64)
-    television = np.frombuffer(interferer, dtype=np.int16)
-    noise = np.take(television, np.arange(start, start + voice.size), mode="wrap")
-    mixed = voice + (noise * gain).astype(np.int64)
+# Averaged in power over the frames that carry speech, as an active speech level is: the gaps
+# between words, and the silence between lines, do not make a caller quieter.
+@dataclass(slots=True)
+class SpokenLevel:
+    """How loud the caller speaks: the level of its frames that carry speech, over the call so far."""
+
+    power: float = A_VOICE_RMS * A_VOICE_RMS * A_GUESS_WEIGHS_FRAMES
+    frames: int = A_GUESS_WEIGHS_FRAMES
+
+    def hear(self, frame: bytes) -> None:
+        """Count one frame of the caller's voice, when it is speech."""
+        level = rms_of(frame)
+        if level >= A_GAP_RMS:
+            self.power += level * level
+            self.frames += 1
+
+    @property
+    def rms(self) -> float:
+        """The level, as the level of 16-bit audio."""
+        return math.sqrt(self.power / self.frames)
+
+
+# The interferer loops, so a few seconds of it last a call; `start` is the sample it goes on from,
+# so the line hears one television from its first frame to its last.
+def behind(frame: bytes, interferer: bytes, start: int, gain: float) -> bytes:
+    """The frame with the interferer behind it, from sample `start` of it on, multiplied by `gain`."""
+    voice = np.frombuffer(frame, dtype=np.int16).astype(np.int64)
+    room = np.take(np.frombuffer(interferer, dtype=np.int16), np.arange(start, start + voice.size), mode="wrap")
+    mixed = voice + (room * gain).astype(np.int64)
     return np.clip(mixed, QUIETEST, LOUDEST).astype(np.int16).tobytes()
-
-
-def drop_packets(frames: Sequence[bytes], line: Line) -> list[bytes]:
-    """The frames with the line's share of them lost."""
-    if line.packet_loss <= 0:
-        return list(frames)
-    return [LOST * (len(frame) // 2) if line.dice.random() < line.packet_loss else frame for frame in frames]
 
 
 # One resampler for the whole line: each piece leaves a few samples in it for the next.
@@ -259,23 +343,18 @@ async def resampled(frames: AsyncIterable[rtc.AudioFrame]) -> AsyncIterator[byte
 
 
 # A piece ends where the vendor cut it, not on a frame: the rest waits for the next piece, and
-# only the line's end is padded. The interferer's level follows each piece of the voice.
-async def on_the_line(pieces: AsyncIterable[bytes], line: Line, interferer: bytes) -> AsyncIterator[bytes]:
-    """The audio as the line carries it, in frames: the interferer under it, its packets lost."""
-    size = (SAMPLE_RATE * FRAME_MS // 1000) * 2
+# only the line's end is padded.
+async def in_frames(pieces: AsyncIterable[bytes]) -> AsyncIterator[bytes]:
+    """The audio in the room's frames, as the pieces arrive."""
+    size = len(SILENCE)
     rest = b""
-    heard = 0
     async for piece in pieces:
-        carried = piece
-        if line.interferer_db is not None:
-            carried = mix_interferer(piece, interferer, line.interferer_db, start=heard)
-        heard += len(carried) // 2
-        whole = rest + carried
+        whole = rest + piece
         cut = len(whole) - len(whole) % size
-        for frame in drop_packets(frames_of(whole[:cut], SAMPLE_RATE), line):
+        for frame in frames_of(whole[:cut], SAMPLE_RATE):
             yield frame
         rest = whole[cut:]
-    for frame in drop_packets(frames_of(rest, SAMPLE_RATE), line):
+    for frame in frames_of(rest, SAMPLE_RATE):
         yield frame
 
 
@@ -303,13 +382,15 @@ async def run_spoken(spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs
             if spoken.line.ambience in ambiences.VOICED:
                 chatter = await synthesized(voice, A_TELEVISION)
             interferer = ambiences.sound_of(spoken.line.ambience, chatter)
+        leg = CallerLeg(spoken, voice, logs, interferer)
         await room.connect(spoken.url, spoken.token)
         try:
-            leg = CallerLeg(spoken, voice, logs, interferer)
             # Published before the agent arrives: audio pushed before a subscription is lost.
             await room.local_participant.publish_track(
                 leg.track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
             )
+            # The room behind the caller is heard from here: the agent greets a line that already has it.
+            leg.open()
             await _until_the_agent_is_here(room, spoken.call)
             said_count = await speak_turns(spoken.turns, next_line, leg.say, leg.line_answered)
             # Waited again, whole: hanging up at once would cut the agent's last answer.
@@ -319,6 +400,7 @@ async def run_spoken(spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs
             await room.local_participant.publish_data(b"{}", reliable=True, topic=session.HANGUP)
             return said_count
         finally:
+            await leg.close()
             await room.disconnect()
 
 

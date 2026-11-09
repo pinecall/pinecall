@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A noisy line is noisy the whole call.** A simulated caller's ambience was mixed into each line it
+  spoke, at a level that followed each piece of its voice, and between two lines its track was digital
+  silence: the agent never spoke over the television it was tested against, and never ended a turn
+  against the street. The caller's track now carries the room from the moment it joins until it hangs
+  up, `interferer_db` under how loud the caller speaks over the call, at one level whether it speaks
+  or not; `packet_loss` is lost off the whole line. The request and the persona are unchanged; a noisy
+  run made before is not comparable with one made now.
 - **A picker sees every model, the recommended first.** `GET /v1/providers` and the pipeline report
   answer `choices`: by stage and vendor, every model the row offers with the vendor's name for it,
   whether this org may run it (its own key, or lent by the platform) and its price from the row's
