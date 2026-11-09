@@ -4,8 +4,11 @@ from collections.abc import Iterable, Sequence
 from statistics import median
 
 from pinecall_runtime.calls import service as calls
-from pinecall_runtime.evals.schemas import ComparisonRow, Latency, SessionScore
+from pinecall_runtime.evals.schemas import ComparisonRow, Latency, RowVerdict, SessionScore
 from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.parts import ScoreVerdict
+from pinecall_runtime.wire.scores import CallScore
+from pinecall_runtime.wire.state import AgentTurn
 
 # How many voices and models one comparison puts the agent under: each is a simulation placed at once.
 COMPARED_AT_MOST = 10
@@ -16,12 +19,18 @@ COMPARISON_PREFIX = "cmp_"
 NO_SUCH_COMPARISON = "no comparison {comparison} in this key's org and env"
 # The turn measures a row carries, each its median over the call (calls/latencies.py).
 MEASURES = ("e2e_latency", "llm_node_ttft", "tts_node_ttfb", "transcription_delay", "end_of_turn_delay")
+# The judge that holds a call to what its caller expected of the agent: a comparison's task is done by it.
+THE_GOAL = "expected-outcome"
+SCORED = "call.score"
 
 
 async def compared_row(serving: calls.Serving, run: calls.PersonaRun) -> ComparisonRow:
     """One call of the comparison as its row: what the agent ran on, how it went, its cost, its latencies."""
     facts = calls.facts_of(run.facts)
-    entries = await serving.logs.store.whole(facts.call)
+    entries = list(await serving.logs.store.whole(facts.call))
+    judges = verdicts_of(entries)
+    replies = [turn for turn in calls.reduce(entries).turns if isinstance(turn, AgentTurn)]
+    answered = [turn.metrics.e2e_latency for turn in replies if turn.metrics.e2e_latency is not None]
     score = None
     if facts.judged is not None and facts.passed is not None:
         score = SessionScore(held=facts.held or 0, judged=facts.judged, passed=facts.passed, reason=facts.reason)
@@ -38,8 +47,32 @@ async def compared_row(serving: calls.Serving, run: calls.PersonaRun) -> Compari
             "cost_usd": facts.cost_usd,
             "latency": latency_of(entries).model_dump(),
             "why": why_it_never_began(entries),
+            "goal": goal_of(judges),
+            "judges": [judge.model_dump() for judge in judges],
+            "replies": len(replies),
+            "slowest_reply": max(answered, default=None),
+            "cut_off": len([turn for turn in replies if turn.interrupted]),
         }
     )
+
+
+# A judge that was deferred or skipped never answered: it is no verdict on the call.
+def verdicts_of(entries: Iterable[Entry]) -> list[RowVerdict]:
+    """What each judge answered on the call, from its score; none before it is scored."""
+    scored = [entry for entry in entries if entry.type == SCORED]
+    if not scored:
+        return []
+    answered = CallScore.model_validate(scored[-1].data).judges
+    return [
+        RowVerdict(name=judge.name, verdict=judge.verdict, reason=judge.reason)
+        for judge in answered
+        if judge.verdict not in ("deferred", "skipped")
+    ]
+
+
+def goal_of(judges: Sequence[RowVerdict]) -> ScoreVerdict | None:
+    """Whether the caller got what it expected, as its judge answered; None when that judge said nothing."""
+    return next((judge.verdict for judge in judges if judge.name == THE_GOAL), None)
 
 
 def why_it_never_began(entries: Iterable[Entry]) -> str | None:
@@ -58,11 +91,20 @@ def latency_of(entries: Iterable[Entry]) -> Latency:
     return Latency(**{name: median(samples[name]) if name in samples else None for name in MEASURES})
 
 
-# The best is the one a person would pick first: every judge held, then the most that held, then the
-# fastest reply, then the cheapest. A call still on the line is last: nothing of it is known yet.
 def in_the_order_placed(rows: Sequence[ComparisonRow]) -> list[str]:
     """The comparison's callers, each once, in the order their calls were placed."""
     return list(dict.fromkeys(row.persona for row in sorted(rows, key=lambda row: row.started_at)))
+
+
+# The best is the one a person would pick first: the caller got what it expected, then every judge
+# held, then the most that held, then the fastest reply, then the cheapest. A caller that expects
+# nothing has no goal to be judged on: its call is done when every judge held. A call still on the
+# line is last: nothing of it is known yet.
+def is_done(row: ComparisonRow) -> bool:
+    """Whether the call did its caller's task: its goal held, or, with no goal judged, every judge did."""
+    if row.goal is not None:
+        return row.goal == "held"
+    return row.score is not None and row.score.passed
 
 
 # Each caller's rows together, the callers in the order placed, so a table reads one caller at a time.
@@ -70,12 +112,12 @@ def ranked(rows: Sequence[ComparisonRow]) -> list[ComparisonRow]:
     """The rows best first, caller by caller."""
     order = {persona: at for at, persona in enumerate(in_the_order_placed(rows))}
 
-    def key(row: ComparisonRow) -> tuple[int, bool, bool, float, float, float]:
+    def key(row: ComparisonRow) -> tuple[int, bool, bool, bool, float, float, float]:
         judged = row.score is not None and row.score.judged > 0
         passed = row.score is not None and row.score.passed
         share = row.score.held / row.score.judged if judged and row.score is not None else 0.0
         e2e = row.latency.e2e_latency if row.latency.e2e_latency is not None else float("inf")
         cost = row.cost_usd if row.cost_usd is not None else float("inf")
-        return (order[row.persona], row.ended_at is None, not passed, -share, e2e, cost)
+        return (order[row.persona], row.ended_at is None, not is_done(row), not passed, -share, e2e, cost)
 
     return sorted(rows, key=key)

@@ -112,11 +112,18 @@ against, why}]}` — what started, and what was refused in the gateway's words (
 the org's limits), the ones that started going on. The callers do not change; the agent does.
 `GET /v1/simulations/compare/{comparison}` reads the table: `{comparison, agent, persona, personas,
 voice, rows: [{call, persona, against, started_at, ended_at, turns, end_reason, score, cost_usd,
-latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay, end_of_turn_delay}}]}`
+latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay, end_of_turn_delay}, why,
+goal, judges: [{name, verdict, reason}], replies, slowest_reply, cut_off}]}`
 (`persona` the first caller, `personas` every one in the order placed), each measure the median over
-the call's turns in seconds (null while no turn reported it), the rows caller by caller and each
-caller's best first — every judge held, then the most held, then the fastest reply, then the
-cheapest, a call still on the line last — and `404` for an id of nobody's in this key's org and env.
+the call's turns in seconds (null while no turn reported it). A caller is a task: `goal` is whether it
+got what it `expects` of the agent, the `expected-outcome` judge's verdict (`held`, `broken`, `na`;
+null until the call is scored, and for a caller that expects nothing), and `judges` is every judge
+that answered, the goal's among them, so a call that booked the appointment and broke another judge
+reads as both. `replies` counts the agent's answers, `slowest_reply` is the longest of them end to end
+in seconds, and `cut_off` how many the caller talked over. The rows come caller by caller and each
+caller's best first — its goal held (every judge, for a caller with no goal judged), then every
+judge held, then the most held, then the fastest reply, then the cheapest, a call still on the line
+last — and `404` for an id of nobody's in this key's org and env.
 `GET /v1/simulations?comparison=` pages the same calls as runs.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`

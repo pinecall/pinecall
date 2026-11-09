@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A comparison says which model did the task.** Each row of `GET /v1/simulations/compare/{id}` carries
+  `goal`, the verdict of the judge that holds the call to what its caller `expects` (null until scored,
+  and for a caller that expects nothing), and `judges`, every judge that answered with its reason: a
+  call that got the booking done and broke another judge is no longer one "not passed". It also carries
+  `replies`, `slowest_reply` and `cut_off` (the agent's answers the caller talked over). The rows are
+  ranked by the goal first, then every judge, the most held, the fastest reply, the cheapest.
 - **An agent may be set to bear silence, leave a voicemail, and name its own fallbacks.** `silence_timeout_s`
   ends a voice call after that long of the caller saying nothing; `idle {says, after_s, times}` says lines
   first; `voicemail {message}` lets the model tell a machine from a person on a call the agent placed;

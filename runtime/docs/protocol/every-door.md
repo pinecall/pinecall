@@ -60,7 +60,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/simulations` | evals | Put one of the agent's personas on it, written or spoken, against whoever holds it; the call's id at once. |
 | `GET` | `/v1/simulations` | evals | Every simulated call in the key's environment and scope, or the agents named's (`?agent=`, once or more), whichever persona, newest first; one comparison's with `?comparison=`. |
 | `POST` | `/v1/simulations/compare` | evals | Each persona against the agent under each voice and models named, placed together; what started and what not. |
-| `GET` | `/v1/simulations/compare/{comparison}` | evals | The comparison's calls, each caller's best first: every judge held, then the fastest reply, then the cheapest. |
+| `GET` | `/v1/simulations/compare/{comparison}` | evals | The comparison's calls, each caller's best first: its goal held, every judge, the fastest, the cheapest. |
 | `GET` | `/v1/agents/{slug}/pipeline` | pipeline | The agent's three stages, the catalogue, and the latencies of its last calls. |
 | `GET` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip. |
 | `PUT` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | A file of the org's as the agent's melody, from the next call on. |

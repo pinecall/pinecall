@@ -275,6 +275,13 @@ export interface ComparisonRow {
   cost_usd: number | null;
   latency: Latency;
   why: string | null;
+  /** Whether the caller got what it expected of the agent; null until scored, and for a caller that expects nothing. */
+  goal?: string | null;
+  /** Each judge that answered. */
+  judges?: { name: string; verdict: string; reason: string }[];
+  replies?: number;
+  slowest_reply?: number | null;
+  cut_off?: number;
 }
 
 /** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first. */

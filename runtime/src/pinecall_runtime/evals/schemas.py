@@ -342,6 +342,14 @@ class Latency(Row):
     end_of_turn_delay: float | None
 
 
+class RowVerdict(Row):
+    """One judge's answer on one call of a comparison: its name, what it said, and why."""
+
+    name: str
+    verdict: ScoreVerdict
+    reason: str
+
+
 class ComparisonRow(Row):
     """One call of a comparison: the caller, what the agent ran on, how it went, what it cost, how fast it was."""
 
@@ -358,6 +366,15 @@ class ComparisonRow(Row):
     # Why the call ended before it began — a vendor that refused its stage — from the log's `error`;
     # None for a call that ran.
     why: str | None
+    # Whether the caller got what it expected of the agent, as the judge of its expectations answered;
+    # None until the call is scored, and for a caller that expects nothing.
+    goal: ScoreVerdict | None = None
+    # Each judge's answer, in the order the panel asked them; empty until the call is scored.
+    judges: list[RowVerdict] = Field(default_factory=list[RowVerdict])
+    # The agent's replies, the slowest of them end to end in seconds, and how many the caller cut off.
+    replies: int = 0
+    slowest_reply: float | None = None
+    cut_off: int = 0
 
 
 class Comparison(Row):

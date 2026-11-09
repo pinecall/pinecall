@@ -1,7 +1,7 @@
 /** The evals doors a page reads: personas, their runs, the voices a caller speaks with, an agent's judges, the org's cases. */
 
 import { z } from "zod";
-import { EndReasonSchema } from "./defs.js";
+import { EndReasonSchema, ScoreVerdictSchema } from "./defs.js";
 import { JudgmentSchema } from "./events.js";
 import { GoldenSchema } from "./rest-goldens.js";
 import { SessionScoreSchema } from "./rest.js";
@@ -219,6 +219,14 @@ export const ComparisonRowSchema = z.strictObject({
   latency: LatencySchema,
   /** Why the call ended before it began, from its log's error; null for a call that ran. */
   why: z.string().nullable(),
+  /** Whether the caller got what it expected of the agent, as the judge of its expectations answered; null until scored, and for a caller that expects nothing. */
+  goal: ScoreVerdictSchema.nullable().default(null),
+  /** Each judge that answered, in the order the panel asked them; empty until the call is scored. */
+  judges: z.array(z.strictObject({ name: z.string(), verdict: ScoreVerdictSchema, reason: z.string() })).default([]),
+  /** The agent's replies, the slowest of them end to end in seconds, and how many the caller cut off. */
+  replies: z.int().default(0),
+  slowest_reply: z.number().nullable().default(null),
+  cut_off: z.int().default(0),
 });
 
 export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;
