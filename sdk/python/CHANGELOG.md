@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
+
 - **Docs: an app is set by its code.** The CLI and the console no longer write a code agent's settings, so the guides declare the voice, the knowledge, the base it searches and the memory policy on the class.
 - **The wire reads `turn.detection`**: who ends the caller's turn on a spoken call (the ears, livekit's detector or
   Smart Turn), its model, and the least silence it waits. Written once after `call.started`.

@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.29] — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
+
 - **`pinecall agent set` and the MCP's `agent` take what the console's Advanced tab sets:** `--silence-timeout`,
   `--idle-say` with `--idle-after` and `--idle-times`, `--voicemail`, `--stt-fallback`, `--tts-fallback`,
   `--min-interruption-ms` and `--llm-timeout`; `pinecall agent clear` takes them out.

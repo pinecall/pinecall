@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
+
 - **A comparison says which model did the task.** Each row of `GET /v1/simulations/compare/{id}` carries
   `goal`, the verdict of the judge that holds the call to what its caller `expects` (null until scored,
   and for a caller that expects nothing), and `judges`, every judge that answered with its reason: a
