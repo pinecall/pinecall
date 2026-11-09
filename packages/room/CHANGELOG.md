@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
+
+- Released with the runtime, the CLI and the SDKs.
+
 ## 0.11.28 — credits.exhausted carries the calls holding the seats (2026-11-05)
 
 - **`credits.exhausted` carries `calls`**: the calls holding the org's seats when the calls-at-once limit refused;

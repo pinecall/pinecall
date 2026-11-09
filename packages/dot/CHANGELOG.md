@@ -4,6 +4,10 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
+
+- Released with the runtime, the CLI and the SDKs.
+
 ## 0.11.28 — released with the CLI's output and the simulation's comparison (2026-11-05)
 
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
