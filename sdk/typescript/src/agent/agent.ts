@@ -188,9 +188,8 @@ export class Agent {
   static maxDuration?: number | "off";
   /** How long a turn waits for the model's first word, in seconds. */
   static llmTimeout?: number;
-  /** Seconds of the caller saying nothing before a voice call ends, 5 to 3600. */
+  /** When the caller goes quiet: seconds before a voice call ends (5 to 3600), and `{ says: […], afterS, times }` said first. */
   static silenceTimeout?: number;
-  /** What it says when the caller goes quiet: `{ says: ["Are you there?"], afterS: 7.5, times: 3 }`. */
   static idle?: Declared["idle"];
   /** On a call it placed, the words left on a machine, or `true` to hang up on one and leave nothing. */
   static voicemail?: string | true;
