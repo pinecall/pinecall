@@ -1,5 +1,0 @@
-/* The hold melody's card: the settings piece on a card, its buttons beside its name. */
-
-.cfg-melody .ui-setting-icon { background: var(--raised); }
-.cfg-melody-actions { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.cfg-melody-player { width: 100%; height: 36px; }
