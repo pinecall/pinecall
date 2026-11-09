@@ -7,6 +7,7 @@ import { useOrg } from "../lib/org";
 import { inWorld, pageHere, WORLD, type World } from "../lib/world";
 import { NoProduction } from "../login";
 import { BrandMark, useBrand, wornBy } from "../login/way-in";
+import { SIDE_SLOT } from "../ui/side-panel";
 import { Icon } from "./icons";
 import { Me } from "./me";
 import { MENU, OPERATOR_MENU, rowOfPage } from "./menu";
@@ -119,6 +120,7 @@ export function Shell({ onLeave }: { onLeave: () => void }): ReactNode {
           <Outlet />
         </div>
       </div>
+      <aside id={SIDE_SLOT} className="sh-aside" />
     </div>
   );
 }

@@ -2,12 +2,14 @@
 
 import { useState, type ReactNode } from "react";
 
+import { Field } from "../ui/setting";
+import { Select } from "../ui/select";
 import { EditDialog } from "./dialog";
 import type { LexiconBody, Report, TuningBody } from "./door";
 import { JudgeEditor, Locked, Pencil } from "./stages";
 
 export type Save = (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => Promise<boolean>;
-type Editing = "language" | "judge" | "hangup" | "call" | "lexicon";
+type Editing = "language" | "judge" | "hangup" | "lexicon";
 
 const lines = (text: string): string[] =>
   text
@@ -61,8 +63,6 @@ export function SettingsList(props: Props): ReactNode {
   };
 
   const hangup = config.hangup == null ? "Never: the caller hangs up" : config.hangup.when == null || config.hangup.when === "" ? "When it judges the call is over" : `When ${config.hangup.when}`;
-  const record = config.record == null ? "Default recording" : config.record ? "Keeps the audio" : "Keeps no audio";
-  const longest = config.max_duration_s == null ? "default length" : config.max_duration_s === 0 ? "no time limit" : `up to ${config.max_duration_s / 60} min`;
   const lexiconLocked = lexiconFixed.has("says") && lexiconFixed.has("hears");
 
   return (
@@ -74,13 +74,11 @@ export function SettingsList(props: Props): ReactNode {
         <Row readOnly={readOnly} name="Language" value={config.language ?? report.speaks.language ?? "Each vendor's default"} locked={fixed.has("language")} onEdit={() => open("language")} />
         <Row readOnly={readOnly} name="Judge model" value={config.judge ?? "The organization's choice"} locked={fixed.has("judge")} onEdit={() => open("judge")} />
         <Row readOnly={readOnly} name="Hang up" value={hangup} locked={fixed.has("hangup")} onEdit={() => open("hangup")} />
-        <Row readOnly={readOnly} name="Recording and length" value={`${record}, ${longest}`} locked={fixed.has("record") && fixed.has("max_duration_s")} onEdit={() => open("call")} />
         <Row readOnly={readOnly} name="Lexicon" value={lexicon === null ? "—" : `${plural(lexicon.said.length, "pronunciation")}, ${plural(lexicon.heard.length, "word")} to hear`} locked={lexiconLocked} onEdit={() => open("lexicon")} />
       </div>
       {editing === "language" && <TextEditor title="Language" label="A language tag: en, es, pt-BR" initial={config.language ?? ""} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
       {editing === "judge" && <JudgeEditor report={report} config={config} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
       {editing === "hangup" && <HangupEditor config={config} saving={saving} refused={refused} onClose={close} onSave={save} />}
-      {editing === "call" && <CallEditor config={config} fixed={fixed} saving={saving} refused={refused} onClose={close} onSave={save} />}
       {editing === "lexicon" && lexicon !== null && <LexiconEditor lexicon={lexicon} fixed={lexiconFixed} saving={saving} refused={refused} onClose={close} onSave={(next) => void onSaveLexicon(next).then((done) => done && close())} />}
     </section>
   );
@@ -114,54 +112,24 @@ function HangupEditor({ config, saving, refused, onClose, onSave }: Editor & { c
   };
   return (
     <EditDialog title="Hang up" saving={saving} refused={refused} onClose={onClose} onSave={save}>
-      <label className="cfg-field">
-        May the agent end the call?
-        <select className="cfg-input" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
-          <option value="never">Never: the caller hangs up</option>
-          <option value="any">When it judges the call is over</option>
-          <option value="when">Only when…</option>
-        </select>
-      </label>
+      <Field label="May the agent end the call?">
+        <Select
+          items={[
+            { value: "never", label: "Never: the caller hangs up" },
+            { value: "any", label: "When it judges the call is over" },
+            { value: "when", label: "Only when…" },
+          ]}
+          value={mode}
+          label="May the agent end the call?"
+          onChange={(picked) => setMode(picked as typeof mode)}
+        />
+      </Field>
       {mode === "when" && (
         <label className="cfg-field">
           When
           <input className="cfg-input" value={text} placeholder="the caller has their appointment" onChange={(event) => setText(event.target.value)} />
         </label>
       )}
-    </EditDialog>
-  );
-}
-
-function CallEditor({ config, fixed, saving, refused, onClose, onSave }: Editor & { config: TuningBody; fixed: ReadonlySet<string>; onSave: Save }): ReactNode {
-  const [record, setRecord] = useState(config.record == null ? "" : config.record ? "on" : "off");
-  const [minutes, setMinutes] = useState(config.max_duration_s == null ? "" : String(config.max_duration_s / 60));
-  const save = (): void => {
-    const changed: Partial<TuningBody> = {};
-    const drop: (keyof TuningBody)[] = [];
-    if (!fixed.has("record")) {
-      if (record === "") drop.push("record");
-      else changed.record = record === "on";
-    }
-    if (!fixed.has("max_duration_s")) {
-      if (minutes.trim() === "") drop.push("max_duration_s");
-      else changed.max_duration_s = Math.round(Number(minutes) * 60);
-    }
-    void onSave(changed, drop);
-  };
-  return (
-    <EditDialog title="Recording and length" saving={saving} refused={refused} onClose={onClose} onSave={save}>
-      <label className="cfg-field">
-        Recording
-        <select className="cfg-input" value={record} disabled={fixed.has("record")} onChange={(event) => setRecord(event.target.value)}>
-          <option value="">Default</option>
-          <option value="on">Keep the audio</option>
-          <option value="off">Keep none</option>
-        </select>
-      </label>
-      <label className="cfg-field">
-        Longest voice call, in minutes. 0 is no limit.
-        <input className="cfg-input" value={minutes} inputMode="decimal" placeholder="Default" disabled={fixed.has("max_duration_s")} onChange={(event) => setMinutes(event.target.value)} />
-      </label>
     </EditDialog>
   );
 }

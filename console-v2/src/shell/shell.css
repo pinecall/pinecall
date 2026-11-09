@@ -1,6 +1,6 @@
 /* The frame: a quiet sidebar with its groups in mono, a hairline, and the header a page may wear. */
 
-.sh-frame { display: flex; height: 100vh; background: var(--ground); }
+.sh-frame { display: flex; height: 100vh; overflow-x: clip; background: var(--ground); }
 
 .sh-side { display: flex; flex: 0 0 248px; flex-direction: column; gap: 8px; min-height: 0; padding: 12px 10px 8px; border-right: 1px solid var(--line); }
 .sh-logo { flex: none; height: 47px; margin-top: -12px; padding: 0 8px; }
@@ -80,6 +80,9 @@
 .sh-notices:disabled { opacity: 0.6; cursor: default; }
 
 .sh-body { flex: 1; padding: 20px 24px 32px; }
+/* The right column: empty until a side panel fills it, then a column of its own beside the page. */
+.sh-aside { position: relative; display: flex; flex: none; min-height: 0; }
+.sh-aside:empty { display: none; }
 .sh-notyet { color: var(--quiet); }
 
 .sh-frame-folded .sh-side { flex-basis: 56px; padding-inline: 8px; }

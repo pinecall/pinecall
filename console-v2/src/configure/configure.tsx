@@ -8,6 +8,7 @@ import { useInsights } from "../lib/insights";
 import { readLexicon, readReport, readSettings, setLexicon, setSettings, type LexiconAnswer, type LexiconBody, type Report, type TuningAnswer, type TuningBody } from "./door";
 import { cornerOf, readOnlyFor } from "./corner";
 import { MeasuresCard, measuringOf } from "./measures-card";
+import { Melody } from "./melody";
 import { AppGreeting, StudioBrief } from "./prompt";
 import { SettingsList } from "./settings-list";
 import { Stages } from "./stages";
@@ -105,6 +106,7 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
           onSave={(greeting) => (greeting == null ? save({}, ["greeting"]) : save({ greeting: { say: greeting.say, reply: greeting.reply, allow_interruptions: config.greeting?.allow_interruptions } }))}
         />
       )}
+      <Melody key={agent} agent={agent} readOnly={readOnly} />
       <SettingsList {...stagesProps} lexicon={lexiconCorner?.lexicon ?? (lexicon === null ? null : NO_WORDS)} lexiconFixed={new Set(lexicon?.fixed ?? [])} onSaveLexicon={saveLexicon} />
     </div>
   );

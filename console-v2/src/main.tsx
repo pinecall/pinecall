@@ -11,12 +11,14 @@ import { chooseTheme, chosenTheme, wearTheChosenTheme } from "@pinecall/core/the
 import { AgentsPage, AppsPage } from "./apps/apps";
 import { Dashboard } from "./dashboard/dashboard";
 import { CallsPage } from "./dashboard/recent";
+import { KnowledgePage } from "./knowledge/knowledge";
 import { API_BASE, DEVICE, forgetKey, keepKey, keptKey } from "./lib/key";
 import { forgetThisBrowser } from "./lib/notifier";
 import { OrgProvider } from "./lib/org";
 import { inWorld, pageHere, WORLD, WORLD_BASE } from "./lib/world";
 import { Accept, Login, SignUp, Verify, VERIFY } from "./login";
 import { Settings } from "./settings/settings";
+import { SimulationsPage } from "./simulations/simulations";
 import { PageHead } from "./shell/page-head";
 import { NotYet, Shell } from "./shell/shell";
 import "./base.css";
@@ -53,7 +55,7 @@ async function theKeyToStartWith(): Promise<string | null> {
   return keptKey();
 }
 
-const PAGES = ["knowledge", "numbers", "goldens", "simulations", "personas", "cases", "judges", "quality", "observability", "monitors", "team", "usage", "billing", "privacy", "notifications", "box/orgs", "box/fleet", "box/carriers", "box/routes", "box/traceback", "box/usage", "box/settings"];
+const PAGES = ["numbers", "goldens", "personas", "cases", "judges", "quality", "observability", "monitors", "team", "usage", "billing", "privacy", "notifications", "box/orgs", "box/fleet", "box/carriers", "box/routes", "box/traceback", "box/usage", "box/settings"];
 
 function Console({ startingWith }: { startingWith: string | null }): ReactNode {
   const [key, setKey] = useState(startingWith);
@@ -74,7 +76,7 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
           {
             path: "/",
             element: <Shell onLeave={leave} />,
-            children: [{ index: true, element: <Dashboard /> }, ...PAGES.map((path) => ({ path, element: <NotYet /> })), { path: "apps", element: <AppsPage /> }, { path: "apps/:app", element: <AppsPage /> }, { path: "apps/:app/:tab", element: <AppsPage /> }, { path: "agents", element: <AgentsPage /> }, { path: "agents/:app", element: <AgentsPage /> }, { path: "agents/:app/:tab", element: <AgentsPage /> }, { path: "calls", element: <><PageHead /><CallsPage /></> }, { path: "settings", element: <><PageHead /><Settings /></> }, { path: "*", element: <Navigate to="/" replace /> }],
+            children: [{ index: true, element: <Dashboard /> }, ...PAGES.map((path) => ({ path, element: <NotYet /> })), { path: "apps", element: <AppsPage /> }, { path: "apps/:app", element: <AppsPage /> }, { path: "apps/:app/:tab", element: <AppsPage /> }, { path: "agents", element: <AgentsPage /> }, { path: "agents/:app", element: <AgentsPage /> }, { path: "agents/:app/:tab", element: <AgentsPage /> }, { path: "knowledge", element: <KnowledgePage /> }, { path: "knowledge/memory", element: <KnowledgePage memory /> }, { path: "knowledge/bases/:base", element: <KnowledgePage /> }, { path: "simulations", element: <SimulationsPage /> }, { path: "simulations/:call", element: <SimulationsPage /> }, { path: "simulations/compare/:comparison", element: <SimulationsPage /> }, { path: "calls", element: <><PageHead /><CallsPage /></> }, { path: "settings", element: <><PageHead /><Settings /></> }, { path: "*", element: <Navigate to="/" replace /> }],
           },
         ],
         { basename: WORLD_BASE },

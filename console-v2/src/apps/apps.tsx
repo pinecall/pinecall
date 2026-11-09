@@ -6,6 +6,7 @@ import { Navigate, NavLink, useNavigate, useParams } from "react-router";
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { readMembers } from "@pinecall/core/members";
+import { AdvancedTab } from "../advanced/advanced";
 import { Configure } from "../configure/configure";
 import { ReadOnlyNote, readOnlyFor } from "../configure/corner";
 import { KnowledgeTab } from "../configure/knowledge";
@@ -23,6 +24,7 @@ import { LogsCard } from "./logs";
 import { Releases } from "./releases";
 import { Secrets } from "./secrets";
 import { Setup } from "./setup";
+import { TalkButton, TalkPanel } from "../talk/talk-panel";
 import "../dashboard/dashboard.css";
 import "./apps.css";
 
@@ -69,6 +71,7 @@ const AGENTS: Kind = {
     { path: "configure", name: "Configure", icon: "settings" },
     { path: "knowledge", name: "Knowledge", icon: "knowledge" },
     { path: "tools", name: "Tools", icon: "tools" },
+    { path: "advanced", name: "Advanced", icon: "gauge" },
   ],
   base: "/agents",
   title: "Agents",
@@ -94,7 +97,7 @@ function Row({ app, base }: { app: App; base: string }): ReactNode {
   );
 }
 
-function More({ children }: { children: ReactNode }): ReactNode {
+export function More({ children }: { children: ReactNode }): ReactNode {
   const [open, setOpen] = useState(false);
   const held = useAway(open, useCallback(() => setOpen(false), []));
   return (
@@ -180,6 +183,8 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
   const [refused, setRefused] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [names, setNames] = useState<ReadonlyMap<string, string>>(new Map());
+  const [talking, setTalking] = useState(false);
+  const stopTalking = useCallback(() => setTalking(false), []);
 
   const reread = useCallback((): void => {
     readHosted(credentials).then(setHosted, (failed: unknown) => {
@@ -211,7 +216,15 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
 
   return (
     <>
-      <PageHead open={open?.name}>{open !== undefined && <Actions key={open.name} app={open} onChanged={reread} onRemoved={leave} />}</PageHead>
+      <PageHead open={open?.name}>
+        {open !== undefined && (
+          <>
+            <TalkButton open={talking} onClick={() => setTalking(!talking)} />
+            <Actions key={open.name} app={open} onChanged={reread} onRemoved={leave} />
+          </>
+        )}
+      </PageHead>
+      {open !== undefined && talking && <TalkPanel agent={open.name} onClose={stopTalking} />}
       <div className="app-layout">
         <aside className="app-list" aria-label={title}>
           <div className="app-list-head">
@@ -233,12 +246,13 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
           {open !== undefined && (
             <>
               <Tabs name={open.name} base={base} tabs={tabs}>
-                {readOnlyFor(kind) && (tab === "setup" || tab === "configure" || tab === "knowledge" || tab === "tools") && <ReadOnlyNote kind={kind} />}
+                {readOnlyFor(kind) && (tab === "setup" || tab === "configure" || tab === "knowledge" || tab === "tools" || tab === "advanced") && <ReadOnlyNote kind={kind} />}
               </Tabs>
               <div className="app-main">
                 {kind === "studio" && tab === "configure" && <Configure key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
                 {kind === "studio" && tab === "knowledge" && <KnowledgeTab key={open.name} agent={open.name} kind={kind} />}
                 {kind === "studio" && tab === "tools" && <StudioTools key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
+                {kind === "studio" && tab === "advanced" && <AdvancedTab key={open.name} agent={open.name} kind={kind} />}
                 {kind === "code" && tab === "setup" && <Setup key={open.name} agent={open.name} />}
                 {kind === "code" && tab === "releases" && <ReleasesTab key={open.name} app={open} names={names} onChanged={reread} />}
                 {!tabs.some((one) => one.path === tab && one.path !== "") && <AppOverview key={open.name} app={open} kind={kind} served={served.get(open.name) ?? 0} names={names} onChanged={reread} />}

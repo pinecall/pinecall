@@ -1,35 +1,43 @@
-/** The one dialog every edit of Configure opens in: what is changed, Save and Cancel. */
+/** The one panel every edit of Configure opens in: what is changed, Save and Cancel. */
 
-import { useEffect, useRef, type FormEvent, type ReactNode } from "react";
+import { useId, type FormEvent, type ReactNode } from "react";
 
-export function EditDialog({ title, saving, refused, wide = false, onSave, onClose, children }: { title: string; saving: boolean; refused: string | null; wide?: boolean; onSave: () => void; onClose: () => void; children: ReactNode }): ReactNode {
-  const held = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    held.current?.showModal();
-  }, []);
+import type { IconName } from "../shell/icons";
+import { SidePanel } from "../ui/side-panel";
+
+export function EditDialog({ title, icon, about, saving, refused, onSave, onClose, children }: { title: string; icon?: IconName | undefined; about?: ReactNode; saving: boolean; refused: string | null; onSave: () => void; onClose: () => void; children: ReactNode }): ReactNode {
+  const form = useId();
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     onSave();
   };
   return (
-    <dialog ref={held} className={wide ? "cfg-dialog cfg-dialog-wide" : "cfg-dialog"} onClose={onClose}>
-      <form onSubmit={submit}>
-        <h2 className="cfg-dialog-title">{title}</h2>
-        <div className="cfg-dialog-body">{children}</div>
-        {refused !== null && (
-          <p className="cfg-refused" role="alert">
-            {refused}
-          </p>
-        )}
-        <div className="cfg-dialog-foot">
-          <button type="button" className="app-button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="cfg-save" disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
+    <SidePanel
+      title={title}
+      icon={icon}
+      about={about}
+      onClose={onClose}
+      footer={
+        <>
+          {refused !== null && (
+            <p className="cfg-refused" role="alert">
+              {refused}
+            </p>
+          )}
+          <div className="cfg-dialog-foot">
+            <button type="button" className="app-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" form={form} className="cfg-save" disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      }
+    >
+      <form id={form} className="cfg-dialog-body" onSubmit={submit}>
+        {children}
       </form>
-    </dialog>
+    </SidePanel>
   );
 }

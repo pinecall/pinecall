@@ -1,0 +1,85 @@
+/* The console's own components: the side panel, the select, the pieces of a settings form. */
+
+.ui-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-quiet { color: var(--quiet); }
+
+/* The side panel: a column of the frame, the page beside it still in use. */
+.ui-panel { display: flex; flex: none; flex-direction: column; width: min(var(--ui-panel-width), 100vw); height: 100%; min-height: 0; border-left: 1px solid var(--line); background: var(--ground); color: var(--ink); animation: ui-panel-dock 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+.ui-panel-loose { position: fixed; z-index: 30; inset: 0 0 0 auto; height: 100dvh; box-shadow: -24px 0 60px rgb(0 0 0 / 0.35); }
+/* Docked, it slides in from the edge while the page gives way at the same pace: the negative margin is the room it does not take yet. */
+@keyframes ui-panel-dock { from { margin-right: calc(-1 * min(var(--ui-panel-width), 100vw)); } to { margin-right: 0; } }
+@keyframes ui-panel-in { from { transform: translateX(100%); } }
+.ui-panel-loose { animation-name: ui-panel-in; }
+@media (prefers-reduced-motion: reduce) { .ui-panel { animation: none; } }
+/* A panel opened over another covers it: the one under keeps its place and goes on with what it was doing, a call for one. */
+@media (min-width: 1181px) { .ui-panel ~ .ui-panel { position: absolute; z-index: 1; inset: 0 0 0 auto; animation-name: ui-panel-in; } }
+/* No room for two columns: it lies over the page's right side. */
+@media (max-width: 1180px) { .ui-panel { animation-name: ui-panel-in; position: fixed; z-index: 30; inset: 0 0 0 auto; height: 100dvh; box-shadow: -24px 0 60px rgb(0 0 0 / 0.4); } }
+
+.ui-panel-head { display: flex; flex: none; align-items: center; gap: 10px; height: 48px; padding: 0 14px 0 20px; border-bottom: 1px solid var(--line); }
+.ui-panel-icon { display: inline-flex; color: var(--accent); }
+.ui-panel-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.005em; }
+.ui-panel-close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--quiet); cursor: pointer; }
+.ui-panel-close:hover { background: var(--raised); color: var(--ink); }
+.ui-panel-body { display: flex; flex: 1; flex-direction: column; gap: 22px; min-height: 0; padding: 20px 20px 28px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+.ui-panel-flush { gap: 0; padding: 0; overflow: hidden; }
+.ui-panel-about { color: var(--quiet); font-size: 13.5px; line-height: 1.55; }
+.ui-panel-foot { display: flex; flex: none; flex-direction: column; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--line); }
+/* Inside a panel a field is filled, not outlined. */
+.ui-panel .cfg-input { height: 38px; border-color: transparent; background: var(--panel); }
+.ui-panel .cfg-input:focus { border-color: var(--accent); }
+.ui-panel .ui-select-trigger { background: transparent; }
+
+/* The select. */
+.ui-select { position: relative; min-width: 0; }
+.ui-select-trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--ground); color: var(--ink); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; transition: border-color 0.12s; }
+.ui-select-trigger:hover:not(:disabled) { border-color: var(--quiet); }
+.ui-select-trigger:focus-visible, .ui-select-trigger[aria-expanded="true"] { border-color: var(--accent); outline: none; }
+.ui-select-trigger:disabled { opacity: 0.55; cursor: default; }
+.ui-select-words { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-select-detail { color: var(--quiet); font-size: 12px; }
+.ui-select-chevron { display: inline-flex; flex: none; color: var(--quiet); }
+.ui-select-menu { position: fixed; z-index: 40; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--raised); box-shadow: 0 18px 44px rgb(0 0 0 / 0.5); animation: ui-menu-in 0.1s ease-out; outline: none; }
+@keyframes ui-menu-in { from { opacity: 0; transform: translateY(-3px); } }
+.ui-select-search { display: flex; flex: none; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--quiet); }
+.ui-select-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13px; outline: none; }
+.ui-select-rows { flex: 1; min-height: 0; padding: 4px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.ui-select-group { padding: 8px 8px 4px; color: var(--quiet); font-size: 11.5px; font-weight: 500; }
+.ui-select-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 8px; border-radius: 7px; font-size: 13.5px; cursor: pointer; }
+.ui-select-active { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.ui-select-off { opacity: 0.45; cursor: default; }
+.ui-select-off.ui-select-active { background: transparent; }
+.ui-select-trailing { display: inline-flex; flex: none; }
+.ui-select-check { display: inline-flex; flex: none; color: var(--accent); }
+.ui-select-none { padding: 12px 8px; color: var(--quiet); font-size: 13px; }
+
+/* The pieces of a settings form. */
+.ui-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.ui-field-label { font-size: 15px; font-weight: 500; }
+.ui-setting { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; }
+.ui-setting-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9px; background: var(--panel); color: var(--ink); }
+.ui-setting-main { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.ui-setting-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.ui-setting-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-setting-title { font-size: 15px; font-weight: 500; }
+.ui-setting-about { color: var(--quiet); font-size: 13px; line-height: 1.45; }
+.ui-toggle { position: relative; flex: none; width: 36px; height: 21px; padding: 0; border: 0; border-radius: 11px; background: var(--raised); cursor: pointer; transition: background 0.14s; }
+.ui-toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); transition: transform 0.14s; }
+.ui-toggle-on { background: var(--accent); }
+.ui-toggle-on::after { background: var(--on-solid); transform: translateX(15px); }
+.ui-toggle:disabled { opacity: 0.5; cursor: default; }
+.ui-slider { display: flex; align-items: flex-start; gap: 12px; }
+.ui-slider-track { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; padding-top: 7px; }
+.ui-slider-track input { width: 100%; margin: 0; accent-color: var(--accent); }
+.ui-slider-ends { display: flex; justify-content: space-between; color: var(--quiet); font-size: 12px; }
+.ui-slider-number.cfg-input { flex: none; width: 84px; font-family: var(--mono); font-size: 12.5px; }
+.ui-badge { flex: none; padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.ui-badge-quiet { background: var(--ground); color: var(--quiet); }
+.ui-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: var(--raised); color: var(--ink); font-size: 12px; font-weight: 600; }
+.ui-select-menu .ui-mark { background: var(--ground); }
+
+/* A bar that folds what is under it. */
+.ui-fold { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+.ui-fold:hover { border-color: var(--quiet); }
+.ui-fold span { display: inline-flex; color: var(--quiet); transition: transform 0.14s; }
+.ui-fold[aria-expanded="true"] span { transform: rotate(180deg); }

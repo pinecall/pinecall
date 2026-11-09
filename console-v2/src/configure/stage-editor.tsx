@@ -1,21 +1,36 @@
-/** The dialog a stage is changed in: the vendor and the model as lists, the voice with a Listen, the stage's own knobs, and the vendor's options under them. */
+/** The panel a stage is changed in: the provider and the model as rich selects, the voice with a Listen, the stage's own settings and the vendor's. */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
+import type { IconName } from "../shell/icons";
+import { Select, type SelectItem } from "../ui/select";
+import { Badge, Field, Mark, Setting, Slider } from "../ui/setting";
 import { EditDialog } from "./dialog";
 import { keepProviderKey, readVoices, sampleOf, type ListedVoice, type ModelChoice, type Provider, type Report, type TuningBody } from "./door";
 import { OptionsForm, type Options } from "./options-form";
 import { brandOf, type Modality } from "./vendors";
 
-const TITLES: Record<Modality, string> = { stt: "Transcriber", llm: "Model", tts: "Voice" };
-const ENDS_THE_TURN: readonly { value: "" | "stt" | "livekit" | "smart-turn"; name: string; about: string }[] = [
-  { value: "", name: "Default", about: "What the vendor's ears do best." },
-  { value: "stt", name: "The ears", about: "The transcriber says when the caller is done." },
-  { value: "smart-turn", name: "Smart Turn", about: "A local model listens for the end of the turn." },
-  { value: "livekit", name: "LiveKit", about: "LiveKit's own detector." },
+const PANELS: Record<Modality, { title: string; icon: IconName; about: string }> = {
+  stt: { title: "Transcriber Settings", icon: "ear", about: "Configure what turns the caller's voice into text, and when a turn is over." },
+  llm: { title: "Model Settings", icon: "brain", about: "Configure the LLM that powers your assistant's intelligence, reasoning and conversation." },
+  tts: { title: "Voice Settings", icon: "speaker", about: "Configure the voice your assistant speaks with." },
+};
+const ENDS_THE_TURN: readonly SelectItem[] = [
+  { value: "", label: "Default", detail: "What the vendor's ears do best." },
+  { value: "stt", label: "The ears", detail: "The transcriber says when the caller is done." },
+  { value: "smart-turn", label: "Smart Turn", detail: "A local model listens for the end of the turn." },
+  { value: "livekit", label: "LiveKit", detail: "LiveKit's own detector." },
 ];
+// Whose key a vendor would run on for this org, in the order the list shows them.
+const WHOSE: Record<string, { rank: number; word: string; group: string }> = {
+  yours: { rank: 0, word: "Your key", group: "Your keys" },
+  offered: { rank: 1, word: "Pinecall's key", group: "Lent by Pinecall" },
+  "bring your own": { rank: 2, word: "Bring your key", group: "Needs your key" },
+  broken: { rank: 3, word: "Broken", group: "Broken" },
+};
+const whose = (provider: Provider): { rank: number; word: string; group: string } => WHOSE[provider.availability ?? ""] ?? WHOSE["bring your own"]!;
 
 export function wordOf(vendor: string, model: string): string | undefined {
   if (vendor === "") return model === "" ? undefined : model;
@@ -29,49 +44,28 @@ export function splitWord(word: string | null | undefined, providers: readonly P
   return providers.some((one) => one.name === word) ? { vendor: word, model: "" } : { vendor: "", model: word };
 }
 
-function Choice({ on, off = false, title, under, right, hint, onPick }: { on: boolean; off?: boolean; title: string; under?: ReactNode; right?: ReactNode; hint?: string | undefined; onPick: () => void }): ReactNode {
-  return (
-    <button type="button" role="option" aria-selected={on} aria-disabled={off} title={hint} className={on ? "pick pick-on" : off ? "pick pick-off" : "pick"} onClick={off ? undefined : onPick}>
-      <span className="pick-words">
-        <span className="dash-clip">{title}</span>
-        {under !== undefined && under !== "" && <span className="dash-quiet dash-clip">{under}</span>}
-      </span>
-      {right}
-    </button>
-  );
-}
-
-/** `0.3` → "0.30", `2.5` → "2.50", `0.0001` → "0.0001": dollars with no more digits than they need. */
+/** `0.3` → "0.30", `2` → "2", `0.0078` → "0.0078": dollars as a price list writes them. */
 function dollars(value: number): string {
-  if (value >= 1) return value.toFixed(2).replace(/\.?0+$/, "");
-  return value.toFixed(value >= 0.01 ? 2 : 4).replace(/0+$/, "").replace(/\.$/, "");
+  if (value < 0.01) return String(Number(value.toPrecision(2)));
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 /** What a model costs, in a few words: a thinking model per million tokens, ears and a voice per minute or per million characters. */
-export function priceOf(price: ModelChoice["price"], modality: Modality): string | null {
+function priceOf(price: ModelChoice["price"], modality: Modality): string | null {
   if (price === null || price === undefined) return null;
-  if (modality === "llm" && price.input != null && price.output != null) return `$${dollars(price.input)} in · $${dollars(price.output)} out /1M tok`;
+  if (modality === "llm" && price.input != null && price.output != null) return `$${dollars(price.input)} in · $${dollars(price.output)} out /1M tokens`;
   if (price.audio_seconds != null) return `$${dollars(price.audio_seconds * 60)}/min`;
   if (price.minutes != null) return `$${dollars(price.minutes)}/min`;
   if (price.characters != null) return `$${dollars(price.characters * 1_000_000)}/1M chars`;
-  if (price.input != null) return `$${dollars(price.input)}/1M tok`;
+  if (price.input != null) return `$${dollars(price.input)}/1M tokens`;
   return null;
 }
 
-/** Recommended first, then the rest the org may run, then the ones only its own key would run, each in the order they came. */
-export function arranged(choices: readonly ModelChoice[]): ModelChoice[] {
-  const rank = (one: ModelChoice): number => (one.recommended ? 0 : one.available ? 1 : 2);
+/** The one that runs unpicked first, then the recommended, then the rest the org may run, then the ones only its own key would run. */
+function arranged(choices: readonly ModelChoice[], runs: string | undefined): ModelChoice[] {
+  const rank = (one: ModelChoice): number => (one.model === runs ? 0 : one.recommended ? 1 : one.available ? 2 : 3);
   return [...choices].sort((a, b) => rank(a) - rank(b));
 }
-
-// Whose key a vendor would run on for this org, in the order the list shows them.
-const WHOSE: Record<string, { rank: number; word: string }> = {
-  yours: { rank: 0, word: "Your key" },
-  offered: { rank: 1, word: "Pinecall's key" },
-  "bring your own": { rank: 2, word: "Bring your key" },
-  broken: { rank: 3, word: "Broken" },
-};
-const whose = (provider: Provider): { rank: number; word: string } => WHOSE[provider.availability ?? ""] ?? WHOSE["bring your own"]!;
 
 /** The org's own key for the vendor picked, typed once: kept when the vendor takes it, and the list re-read so the vendor shows as yours. */
 function KeyField({ provider, onKept }: { provider: Provider; onKept: () => Promise<void> }): ReactNode {
@@ -97,7 +91,7 @@ function KeyField({ provider, onKept }: { provider: Provider; onKept: () => Prom
   };
   return (
     <div className="pick-key">
-      <span className="dash-quiet">{provider.availability === "offered" ? `Runs on Pinecall's ${brand} key. Yours runs it on your account and opens ${brand}'s own options.` : `Pinecall does not lend ${brand}: it runs on your key alone.`}</span>
+      <span className="opt-note">{provider.availability === "offered" ? `Runs on Pinecall's ${brand} key. Yours runs it on your account and opens every model and setting.` : `Pinecall does not lend ${brand}: it runs on your key alone.`}</span>
       <span className="pick-key-row">
         <input
           className="cfg-input"
@@ -125,72 +119,65 @@ function KeyField({ provider, onKept }: { provider: Provider; onKept: () => Prom
   );
 }
 
-/** Vendor and model, every vendor this runtime has for the stage as two lists side by side, with the key field under one that is not yet the org's. */
+/** The provider and the model: every vendor this runtime has for the stage, the key field under one that is not yet the org's, its models the recommended first. */
 export function VendorModel({ report, modality, vendor, model, unset, onVendor, onModel, onKept }: { report: Report; modality: Modality; vendor: string; model: string; unset?: string; onVendor: (vendor: string) => void; onModel: (model: string) => void; onKept: () => Promise<void> }): ReactNode {
-  const offered = report.providers.filter((one) => one.does.includes(modality)).sort((a, b) => whose(a).rank - whose(b).rank || a.name.localeCompare(b.name));
+  const offered = report.providers.filter((one) => one.does.includes(modality)).sort((a, b) => whose(a).rank - whose(b).rank || brandOf(a.name).localeCompare(brandOf(b.name)));
   const fallback = report.defaults[modality] ?? "";
   const running = vendor === "" ? fallback : vendor;
+  const brand = brandOf(running);
   const picked = vendor === "" ? undefined : offered.find((one) => one.name === vendor);
+  const runs = report.runs[`${modality}/${running}`];
   // A runtime that answers no `choices` names the models the org may run alone, each as itself.
   const listed = report.choices[`${modality}/${running}`] ?? (report.models[`${modality}/${running}`] ?? []).map((one) => ({ model: one, name: one, recommended: false, available: true, price: null }));
   const known = model === "" || listed.some((one) => one.model === model) ? listed : [{ model, name: model, recommended: false, available: true, price: null }, ...listed];
-  const models = arranged(known);
-  const runs = report.runs[`${modality}/${running}`];
-  const brand = brandOf(running);
-  const [filter, setFilter] = useState("");
-  const typed = filter.trim().toLowerCase();
-  const shownModels = models.filter((one) => `${one.model} ${one.name}`.toLowerCase().includes(typed));
+
+  const vendors: SelectItem[] = [
+    { value: "", label: unset ?? "Pinecall's default", detail: unset === undefined && fallback !== "" ? brandOf(fallback) : undefined, leading: fallback === "" ? undefined : <Mark letter={brandOf(fallback).charAt(0)} /> },
+    ...offered.map((one) => ({ value: one.name, label: brandOf(one.name), detail: whose(one).word, group: whose(one).group, keywords: one.name, leading: <Mark letter={brandOf(one.name).charAt(0)} />, disabled: one.availability === "broken", hint: one.broken ?? undefined })),
+  ];
+  const mark = <Mark letter={brand.charAt(0)} />;
+  const models: SelectItem[] = arranged(known, runs).map((one) => {
+    const isDefault = one.model === runs;
+    const price = priceOf(one.price, modality);
+    return {
+      // The row that runs unpicked is the default: picking it leaves the model unpinned.
+      value: isDefault ? "" : one.model,
+      label: one.name,
+      detail: [one.name === one.model ? null : one.model, price].filter((part) => part !== null).join(" · "),
+      leading: mark,
+      group: one.recommended ? "Recommended" : isDefault ? "Default" : one.available ? "Other models" : "Needs your key",
+      keywords: one.model,
+      disabled: !one.available,
+      hint: one.available ? undefined : `Pinecall does not lend ${brand}'s ${one.name}: add your ${brand} key to run it.`,
+      tags: isDefault ? <Badge quiet>Default</Badge> : undefined,
+    };
+  });
+  if (runs === undefined || !known.some((one) => one.model === runs)) models.unshift({ value: "", label: runs ?? `${brand}'s default`, detail: "Default", leading: mark });
+
   return (
-    <div className="pick-pair">
-      <div className="pick-column">
-        <span className="pick-head">Vendor</span>
-        <div className="pick-list" role="listbox" aria-label="Vendor">
-          <Choice on={vendor === ""} title={unset ?? "Pinecall's default"} under={unset === undefined && fallback !== "" ? brandOf(fallback) : undefined} onPick={() => onVendor("")} />
-          {offered.map((one) => (
-            <Choice key={one.name} on={vendor === one.name} title={brandOf(one.name)} under={whose(one).word} onPick={() => onVendor(one.name)} />
-          ))}
-        </div>
+    <>
+      <Field label="Provider">
+        <Select items={vendors} value={vendor} label="Provider" searchPlaceholder="Search providers" onChange={onVendor} />
         {picked !== undefined && picked.availability !== "yours" && <KeyField key={picked.name} provider={picked} onKept={onKept} />}
-      </div>
-      <div className="pick-column">
-        <span className="pick-head">
-          Model
-          {models.length > 8 && <input className="cfg-input pick-filter" aria-label="Search models" placeholder="Search" value={filter} onChange={(event) => setFilter(event.target.value)} />}
-        </span>
-        <div className="pick-list" role="listbox" aria-label="Model">
-          <Choice on={model === ""} title={runs === undefined ? `${brand}'s default` : (listed.find((one) => one.model === runs)?.name ?? runs)} under={runs === undefined ? undefined : "Default"} onPick={() => onModel("")} />
-          {shownModels.map((one) => {
-            const price = priceOf(one.price, modality);
-            return (
-              <Choice
-                key={one.model}
-                on={model === one.model}
-                off={!one.available}
-                title={one.name}
-                under={
-                  <>
-                    {one.name !== one.model && <span className="opt-mono">{one.model}</span>}
-                    {one.name !== one.model && price !== null && " · "}
-                    {price !== null && <span className="pick-stat">{price}</span>}
-                  </>
-                }
-                right={one.recommended ? <span className="pick-badge">Recommended</span> : one.available ? undefined : <span className="pick-badge pick-badge-quiet">Your key</span>}
-                hint={one.available ? undefined : `Pinecall does not lend ${brand}'s ${one.name}: add your ${brand} key to run it.`}
-                onPick={() => onModel(one.model)}
-              />
-            );
-          })}
-          {models.length === 0 && <p className="dash-quiet cfg-voices-note">{brand} names its models inside its plugin.</p>}
-        </div>
-      </div>
-    </div>
+      </Field>
+      <Field label="Model">
+        <Select items={models} value={model === runs ? "" : model} label="Model" placeholder={`${brand}'s default`} searchPlaceholder="Search models" onChange={onModel} />
+      </Field>
+    </>
   );
 }
 
-function VoiceList({ vendor, model, language, voice, onVoice }: { vendor: string; model: string; language: string | null; voice: string; onVoice: (voice: string) => void }): ReactNode {
+function PlayIcon({ playing }: { playing: boolean }): ReactNode {
+  return (
+    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      {playing ? <path d="M6 5h4v14H6zM14 5h4v14h-4z" /> : <path d="M7 4v16l13-8z" />}
+    </svg>
+  );
+}
+
+function VoicePicker({ vendor, model, language, voice, onVoice }: { vendor: string; model: string; language: string | null; voice: string; onVoice: (voice: string) => void }): ReactNode {
   const credentials = useCredentials();
   const [voices, setVoices] = useState<ListedVoice[] | null>(null);
-  const [filter, setFilter] = useState("");
   const [gender, setGender] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -225,98 +212,38 @@ function VoiceList({ vendor, model, language, voice, onVoice }: { vendor: string
     }
   };
 
-  const genders = [...new Set((voices ?? []).map((one) => one.gender).filter((one) => one !== ""))];
-  const typed = filter.trim().toLowerCase();
-  const shown = (voices ?? []).filter((one) => (gender === "" || one.gender === gender) && `${one.name} ${one.description} ${one.accent}`.toLowerCase().includes(typed)).slice(0, 80);
+  const all = voices ?? [];
+  const genders = [...new Set(all.map((one) => one.gender).filter((one) => one !== ""))];
+  const items: SelectItem[] = [
+    { value: "", label: `${brandOf(vendor)}'s default` },
+    // The voice in use stays listed whatever the filter, or the select would lose its name.
+    ...all.filter((one) => gender === "" || one.gender === gender || one.id === voice).map((one) => ({
+      value: one.id,
+      label: one.name,
+      detail: [one.description, one.language, one.gender, one.accent].filter((part) => part !== "").join(" · "),
+      keywords: `${one.description} ${one.accent} ${one.language} ${one.gender}`,
+      trailing: (
+        <button type="button" className={playing === one.id ? "pick-play pick-playing" : "pick-play"} aria-label={`Listen to ${one.name}`} onClick={() => playing === null && void listen(one.id)}>
+          <PlayIcon playing={playing === one.id} />
+        </button>
+      ),
+    })),
+  ];
+  if (voice !== "" && voices !== null && !all.some((one) => one.id === voice)) items.splice(1, 0, { value: voice, label: voice });
+  const filters = genders.length > 1 && (
+    <div className="pick-chips">
+      {["", ...genders].map((one) => (
+        <button key={one} type="button" className={gender === one ? "pick-chip pick-chip-on" : "pick-chip"} onClick={() => setGender(one)}>
+          {one === "" ? "Any" : one.charAt(0).toUpperCase() + one.slice(1)}
+        </button>
+      ))}
+    </div>
+  );
   return (
-    <div className="pick-column">
-      <span className="pick-head">
-        Voice
-        <span className="pick-tools">
-          {genders.length > 1 && (
-            <select className="cfg-input pick-filter" aria-label="Gender" value={gender} onChange={(event) => setGender(event.target.value)}>
-              <option value="">Any</option>
-              {genders.map((one) => (
-                <option key={one} value={one}>
-                  {one}
-                </option>
-              ))}
-            </select>
-          )}
-          <input className="cfg-input pick-filter" aria-label="Search voices" placeholder="Search voices" value={filter} onChange={(event) => setFilter(event.target.value)} />
-        </span>
-      </span>
+    <Field label="Voice">
+      <Select items={items} value={voice} label="Voice" placeholder={voices === null ? "Reading the voices…" : "Choose a voice"} searchable searchPlaceholder="Search voices" head={filters} limit={120} onChange={onVoice} />
       {refused !== null && <p className="cfg-refused">{refused}</p>}
-      <div className="pick-list pick-voices" role="listbox" aria-label="Voice">
-        <Choice on={voice === ""} title={`${brandOf(vendor)}'s default`} onPick={() => onVoice("")} />
-        {voices === null && <p className="dash-quiet cfg-voices-note">Reading the voices…</p>}
-        {voices !== null && shown.length === 0 && <p className="dash-quiet cfg-voices-note">No voice by that name.</p>}
-        {shown.map((one) => (
-          <Choice
-            key={one.id}
-            on={one.id === voice}
-            title={one.name}
-            under={[one.description, one.language, one.gender, one.accent].filter((part) => part !== "").join(" · ")}
-            right={
-              <span
-                role="button"
-                tabIndex={0}
-                className={playing === one.id ? "pick-play pick-playing" : "pick-play"}
-                aria-label={`Listen to ${one.name}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (playing === null) void listen(one.id);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (playing === null) void listen(one.id);
-                  }
-                }}
-              >
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  {playing === one.id ? <path d="M6 5h4v14H6zM14 5h4v14h-4z" /> : <path d="M7 4v16l13-8z" />}
-                </svg>
-              </span>
-            }
-            onPick={() => onVoice(one.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Temperature({ value, onChange }: { value: string; onChange: (value: string) => void }): ReactNode {
-  return (
-    <div className={value === "" ? "opt-row" : "opt-row opt-row-set"}>
-      <span className="opt-row-name">
-        <span className="opt-mono">temperature</span>
-      </span>
-      <span className="opt-slide">
-        <input type="range" className="knob-range" min={0} max={2} step={0.05} aria-label="Temperature slider" value={value === "" ? 1 : Number(value)} onChange={(event) => onChange(event.target.value)} />
-        <input className="cfg-input knob-number" type="number" min={0} max={2} step={0.1} aria-label="Temperature" placeholder="Default" value={value} onChange={(event) => onChange(event.target.value)} />
-      </span>
-    </div>
-  );
-}
-
-function EndOfTurn({ value, onChange }: { value: string; onChange: (value: string) => void }): ReactNode {
-  return (
-    <div className="knob">
-      <span className="pick-head">Who ends the caller's turn</span>
-      <div className="knob-choices" role="radiogroup" aria-label="End of turn">
-        {ENDS_THE_TURN.map((one) => (
-          <button key={one.value} type="button" role="radio" aria-checked={value === one.value} className={value === one.value ? "pick pick-on" : "pick"} onClick={() => onChange(one.value)}>
-            <span className="pick-words">
-              <span>{one.name}</span>
-              <span className="dash-quiet">{one.about}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
+    </Field>
   );
 }
 
@@ -325,7 +252,7 @@ function optionsOf(config: TuningBody, modality: Modality): Options {
   return held === null || held === undefined ? {} : { ...held };
 }
 
-/** Changing one stage: its vendor and model, its own knobs, the vendor's options; the rest of the corner's settings go back as they were. */
+/** Changing one stage: its vendor and model, its own settings, the vendor's; the rest of the corner's settings go back as they were. */
 export function StageEditor({ modality, report, config, saving, refused, onSave, onClose, onKept }: { modality: Modality; report: Report; config: TuningBody; saving: boolean; refused: string | null; onSave: (changed: Partial<TuningBody>, drop: readonly (keyof TuningBody)[]) => void; onClose: () => void; onKept: () => Promise<void> }): ReactNode {
   const first = splitWord(config[modality], report.providers);
   const [vendor, setVendor] = useState(first.vendor);
@@ -362,8 +289,15 @@ export function StageEditor({ modality, report, config, saving, refused, onSave,
     onSave(changed, dropped);
   };
 
+  const lead =
+    modality === "llm" ? (
+      <Setting icon="thermometer" title="Temperature" about="Controls randomness. Lower values are more deterministic, higher values more creative.">
+        <Slider value={temperature} label="Temperature" min={0} max={2} step={0.05} rest={1} ends={["Precise", "Creative"]} onChange={setTemperature} />
+      </Setting>
+    ) : null;
+
   return (
-    <EditDialog title={TITLES[modality]} saving={saving} refused={refused} wide onSave={save} onClose={onClose}>
+    <EditDialog {...PANELS[modality]} saving={saving} refused={refused} onSave={save} onClose={onClose}>
       <VendorModel
         report={report}
         modality={modality}
@@ -380,15 +314,18 @@ export function StageEditor({ modality, report, config, saving, refused, onSave,
       />
       {modality === "tts" &&
         (lists ? (
-          <VoiceList vendor={running} model={model} language={report.speaks.language} voice={voice} onVoice={setVoice} />
+          <VoicePicker vendor={running} model={model} language={report.speaks.language} voice={voice} onVoice={setVoice} />
         ) : (
-          <label className="cfg-field">
-            Voice id
-            <input className="cfg-input" value={voice} spellCheck={false} placeholder={`${brandOf(running)}'s own default`} onChange={(event) => setVoice(event.target.value)} />
-          </label>
+          <Field label="Voice id">
+            <input className="cfg-input" aria-label="Voice id" value={voice} spellCheck={false} placeholder={`${brandOf(running)}'s own default`} onChange={(event) => setVoice(event.target.value)} />
+          </Field>
         ))}
-      {modality === "stt" && <EndOfTurn value={endOfTurn} onChange={setEndOfTurn} />}
-      {running !== "" && <OptionsForm modality={modality} vendor={running} ownKey={ownKey} options={options} lead={modality === "llm" ? <Temperature value={temperature} onChange={setTemperature} /> : null} onChange={setOptions} />}
+      {modality === "stt" && (
+        <Setting icon="clock" title="End of turn" about="Who decides the caller is done speaking.">
+          <Select items={ENDS_THE_TURN} value={endOfTurn} label="End of turn" searchable={false} onChange={setEndOfTurn} />
+        </Setting>
+      )}
+      {running !== "" && <OptionsForm modality={modality} vendor={running} ownKey={ownKey} options={options} lead={lead} onChange={setOptions} />}
     </EditDialog>
   );
 }
@@ -400,9 +337,10 @@ export function JudgeEditor({ report, config, saving, refused, onSave, onClose, 
   return (
     <EditDialog
       title="Judge model"
+      icon="judges"
+      about="The model that grades this agent's calls."
       saving={saving}
       refused={refused}
-      wide
       onSave={() => {
         const word = wordOf(vendor, model);
         if (word === undefined) onSave({}, ["judge"]);

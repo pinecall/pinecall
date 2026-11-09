@@ -38,9 +38,9 @@ export function Pencil({ label, onClick }: { label: string; onClick: () => void 
   );
 }
 
-function StageCard({ readOnly, eyebrow, icon, tone = "accent", title, under, facts, locked, onEdit }: { readOnly: boolean; eyebrow: string; icon: IconName; tone?: "accent" | "blue" | "pink"; title: string; under: string; facts: readonly { name: string; value: string }[]; locked: boolean; onEdit: () => void }): ReactNode {
+function StageCard({ readOnly, active, eyebrow, icon, tone = "accent", title, under, facts, locked, onEdit }: { readOnly: boolean; active: boolean; eyebrow: string; icon: IconName; tone?: "accent" | "blue" | "pink"; title: string; under: string; facts: readonly { name: string; value: string }[]; locked: boolean; onEdit: () => void }): ReactNode {
   return (
-    <div className={`cfg-stage cfg-tone-${tone}`}>
+    <div className={`cfg-stage cfg-tone-${tone}${active ? " cfg-stage-on" : ""}`}>
       <div className="cfg-stage-top">
         <span className="cfg-stage-mark" aria-hidden="true">
           <Icon name={icon} size={15} />
@@ -97,6 +97,7 @@ export function Stages({ readOnly, report, config, fixed, measured, saving, refu
       <div className="cfg-stages">
         <StageCard
           readOnly={readOnly}
+          active={editing === "stt"}
           eyebrow="Transcriber"
           icon="ear"
           tone="accent"
@@ -112,6 +113,7 @@ export function Stages({ readOnly, report, config, fixed, measured, saving, refu
         />
         <StageCard
           readOnly={readOnly}
+          active={editing === "llm"}
           eyebrow="Model"
           icon="brain"
           tone="blue"
@@ -127,6 +129,7 @@ export function Stages({ readOnly, report, config, fixed, measured, saving, refu
         />
         <StageCard
           readOnly={readOnly}
+          active={editing === "tts"}
           eyebrow="Voice"
           icon="speaker"
           tone="pink"
@@ -143,6 +146,7 @@ export function Stages({ readOnly, report, config, fixed, measured, saving, refu
       </div>
       {editing !== null && (
         <StageEditor
+          key={editing}
           modality={editing}
           report={report}
           config={config}

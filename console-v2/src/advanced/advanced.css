@@ -1,0 +1,18 @@
+/* Advanced: Configure's cards holding the settings pieces, in as many columns as the width leaves, and one Save at the foot. */
+
+.adv { display: flex; flex-direction: column; gap: 12px; }
+.adv-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+.adv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 22px 36px; }
+.adv-stack { display: flex; flex-direction: column; gap: 10px; }
+.adv .ui-setting-icon { background: var(--raised); }
+.adv-org-row { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); }
+
+.adv-fallback { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 5px 6px 5px 10px; border-radius: 9px; background: var(--raised); }
+.adv-fallback .ui-mark { background: var(--ground); }
+.adv-fallback-at { flex: none; width: 10px; font-variant-numeric: tabular-nums; }
+.adv-fallback-name { flex: 1; min-width: 0; font-size: 13.5px; }
+.adv-fallback-drop { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; }
+.adv-fallback-drop:hover { background: var(--ground); color: var(--ink); }
+
+.adv-bar { position: sticky; z-index: 4; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-radius: 10px; background: var(--raised); box-shadow: 0 14px 36px rgb(0 0 0 / 0.4); }
+.adv-bar-said { flex: 1; min-width: 180px; }
