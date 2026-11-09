@@ -17,6 +17,10 @@ class OrgQuotas(Schema):
     limits: dict[QuotaName, int | None] = Field(default_factory=dict[QuotaName, int | None])
     budget_usd: int | None = None
     lends: list[str] | None = None
+    # How the org's simulations are shaped; null is the platform's own. Read here, written by
+    # `PUT …/simulating`: a quotas body leaves them as they stand.
+    simulations_at_once: int | None = None
+    comparison_calls: int | None = None
 
     @classmethod
     def of(cls, quotas: Quotas) -> Self:
@@ -25,7 +29,17 @@ class OrgQuotas(Schema):
             limits=dict(quotas.limits),
             budget_usd=quotas.budget_usd,
             lends=None if quotas.lends is None else sorted(quotas.lends),
+            simulations_at_once=quotas.simulations_at_once,
+            comparison_calls=quotas.comparison_calls,
         )
+
+
+class PutSimulatingRequest(Schema):
+    """PUT /v1/ops/orgs/{named}/simulating: which env, and its simulations' shape; null is the platform's own."""
+
+    env: Env
+    simulations_at_once: int | None = Field(default=None, ge=0, le=200)
+    comparison_calls: int | None = Field(default=None, ge=0, le=500)
 
 
 class PutQuotasRequest(Schema):

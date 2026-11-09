@@ -1,19 +1,42 @@
 """A comparison: a persona or more against the agent under several voices and models, its calls read side by side."""
 
-from collections.abc import Iterable, Sequence
+import asyncio
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from dataclasses import dataclass, field
 from statistics import median
+from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
-from pinecall_runtime.evals.schemas import ComparisonRow, Latency, RowVerdict, SessionScore
+from pinecall_runtime.evals.repository import ComparisonRepository
+from pinecall_runtime.evals.schemas import ComparedRefusal, ComparisonRow, Latency, RowVerdict, SessionScore
+from pinecall_runtime.evals.service.simulations import TooManyAtOnce
+from pinecall_runtime.exceptions import PinecallError
+from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.parts import ScoreVerdict
 from pinecall_runtime.wire.scores import CallScore
 from pinecall_runtime.wire.state import AgentTurn
 
-# How many voices and models one comparison puts the agent under: each is a simulation placed at once.
-COMPARED_AT_MOST = 10
+# The calls one comparison places for an org nobody gave another number (its quotas' `comparison_calls`).
+COMPARED_AT_MOST = billing.COMPARISON_CALLS
 TOO_MANY_COMPARED = (
-    "a comparison places 10 calls at most: {personas} callers against {configs} configurations is one call per pair"
+    "a comparison of this org places {most} calls at most: {personas} callers against {configs} "
+    "configurations, {repeats} times each, is {calls}"
+)
+# The most rows a comparison's table reads: past any org's `comparison_calls`.
+ROWS_READ_AT_MOST = 500
+# A call that waits for a place on the line asks again this often, and the comparison says it is
+# still being placed this often: one that has not said so for three of them was left by its gateway.
+A_PLACE_IS_ASKED_EVERY_S = 2.0
+STILL_PLACING_EVERY_S = 20.0
+LEFT_AFTER_S = 3 * STILL_PLACING_EVERY_S
+# A comparison whose calls never get a place stops asking: the org's line is held by something else.
+PLACING_GIVES_UP_AFTER_S = 45 * 60.0
+NEVER_GOT_A_PLACE = (
+    "no place on the line in {minutes:.0f} minutes: the org's simulated calls never went under its most at once"
 )
 COMPARISON_PREFIX = "cmp_"
 NO_SUCH_COMPARISON = "no comparison {comparison} in this key's org and env"
@@ -52,6 +75,7 @@ async def compared_row(serving: calls.Serving, run: calls.PersonaRun) -> Compari
             "replies": len(replies),
             "slowest_reply": max(answered, default=None),
             "cut_off": len([turn for turn in replies if turn.interrupted]),
+            "hearing": facts.hearing,
         }
     )
 
@@ -121,3 +145,137 @@ def ranked(rows: Sequence[ComparisonRow]) -> list[ComparisonRow]:
         return (order[row.persona], row.ended_at is None, not is_done(row), not passed, -share, e2e, cost)
 
     return sorted(rows, key=key)
+
+
+# ── a comparison placed in turns ──
+
+
+@dataclass(frozen=True, slots=True)
+class Pair:
+    """One call a comparison is to place: the caller, and the agent's values it rings under."""
+
+    persona: str
+    against: dict[str, Any]
+
+
+@dataclass
+class Plan:
+    """A comparison as it was asked for, and how its placing stands."""
+
+    comparison: str
+    agent: str
+    scope: Scope
+    voice: bool
+    personas: list[str]
+    against: list[dict[str, Any]]
+    repeats: int
+    started_at: float
+    waiting: int = 0
+    refused: list[ComparedRefusal] = field(default_factory=list[ComparedRefusal])
+    heard_at: float = 0.0
+
+    @property
+    def planned(self) -> int:
+        """Every call the comparison was to place."""
+        return len(self.personas) * len(self.against) * self.repeats
+
+    def pairs(self) -> list[Pair]:
+        """Every call to place, a round of every caller under every setup, then the next round."""
+        once = [Pair(persona, values) for persona in self.personas for values in self.against]
+        return once * self.repeats
+
+    def document(self) -> dict[str, Any]:
+        """The plan as its row keeps it."""
+        return {
+            "voice": self.voice,
+            "personas": self.personas,
+            "against": self.against,
+            "repeats": self.repeats,
+            "waiting": self.waiting,
+            "refused": [one.model_dump() for one in self.refused],
+            "heard_at": self.heard_at,
+        }
+
+
+async def keep_plan(session: AsyncSession, plan: Plan) -> None:
+    """Write the comparison's plan, whole."""
+    await ComparisonRepository(session).put(
+        id=plan.comparison,
+        org=plan.scope.org,
+        env=plan.scope.env,
+        agent=plan.agent,
+        started_at=plan.started_at,
+        document=plan.document(),
+    )
+
+
+async def plan_of(session: AsyncSession, scope: Scope, comparison: str) -> Plan | None:
+    """The comparison as it was asked for; None for one made before plans were kept, and for nobody's."""
+    row = await ComparisonRepository(session).get(scope.org, scope.env, comparison)
+    if row is None:
+        return None
+    kept = row.document
+    refused: list[dict[str, Any]] = list(kept.get("refused") or [])
+    return Plan(
+        comparison=row.id,
+        agent=row.agent,
+        scope=scope,
+        voice=bool(kept.get("voice")),
+        personas=list(kept.get("personas") or []),
+        against=list(kept.get("against") or []),
+        repeats=int(kept.get("repeats") or 1),
+        started_at=row.started_at,
+        waiting=int(kept.get("waiting") or 0),
+        refused=[ComparedRefusal.model_validate(one) for one in refused],
+        heard_at=float(kept.get("heard_at") or 0.0),
+    )
+
+
+def was_left(plan: Plan, now: float) -> bool:
+    """Whether calls still wait and the gateway placing them stopped saying so: they never will be placed."""
+    return plan.waiting > 0 and now - plan.heard_at > LEFT_AFTER_S
+
+
+# A place on the line is the org's own ceiling, so it is waited for; anything else that refuses a
+# call (a vendor nobody keyed, the month's simulations used up) would refuse it again a second later.
+type Place = Callable[[Pair], Awaitable[object]]
+type Said = Callable[[], Awaitable[None]]
+
+
+async def place_waiting(
+    plan: Plan,
+    waiting: Sequence[Pair],
+    place: Place,
+    said: Said,
+    *,
+    clock: Callable[[], float],
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> None:
+    """Place each call that waits as a place on the line frees, saying how the placing stands as it goes."""
+    began = clock()
+    left = list(waiting)
+    while left:
+        pair = left[0]
+        try:
+            await place(pair)
+        except TooManyAtOnce:
+            waited = clock() - began
+            if waited >= PLACING_GIVES_UP_AFTER_S:
+                why = NEVER_GOT_A_PLACE.format(minutes=waited / 60)
+                plan.refused += [ComparedRefusal(persona=one.persona, against=one.against, why=why) for one in left]
+                left = []
+            elif clock() - plan.heard_at >= STILL_PLACING_EVERY_S:
+                plan.heard_at = clock()
+                await said()
+            if left:
+                await sleep(A_PLACE_IS_ASKED_EVERY_S)
+            continue
+        except PinecallError as why:
+            plan.refused.append(ComparedRefusal(persona=pair.persona, against=pair.against, why=str(why)))
+        left.pop(0)
+        plan.waiting = len(left)
+        plan.heard_at = clock()
+        await said()
+    plan.waiting = 0
+    plan.heard_at = clock()
+    await said()

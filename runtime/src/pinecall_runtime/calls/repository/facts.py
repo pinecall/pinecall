@@ -201,6 +201,14 @@ class FactsRepository(Repository[CallFact]):
         )
         await self.session.execute(statement)
 
+    async def keep_hearing(self, call: str, hearing: Mapping[str, Any]) -> None:
+        """Keep how the call's simulated caller was heard with its facts."""
+        statement = insert(CallFact).values(call=call, hearing=dict(hearing))
+        statement = statement.on_conflict_do_update(
+            index_elements=[CallFact.call], set_={"hearing": statement.excluded.hearing}
+        )
+        await self.session.execute(statement)
+
     async def keep_against(
         self, call: str, against: Mapping[str, Any] | None, comparison: str | None, persona: str | None = None
     ) -> None:

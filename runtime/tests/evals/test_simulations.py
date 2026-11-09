@@ -335,3 +335,18 @@ async def test_a_comparison_places_each_persona_against_the_agent_under_each_val
     many = {**body, "more_personas": ["a", "b", "c", "d", "e"]}
     too_many = await gateway.http.post("/v1/simulations/compare", json=many, headers=tenant.person)
     assert too_many.status_code == 400 and "10 calls at most" in too_many.text
+
+
+# ── an org's own ceiling ──
+
+
+async def test_an_org_given_more_places_at_once_takes_them_and_no_more() -> None:
+    """The ceiling is the org's own when it has one: its quotas' calls at once, not the platform's ten."""
+    simulations = Simulations()
+    for n in range(AT_ONCE + 2):
+        simulations.admit(f"call_{n}", ACME, AT_ONCE + 2)
+    with pytest.raises(TooManyAtOnce):
+        simulations.admit("one_more", ACME, AT_ONCE + 2)
+    with pytest.raises(TooManyAtOnce):
+        simulations.admit("anothers", OTHER, 0)
+    assert simulations.on_the_line(ACME.org, ACME.env) == AT_ONCE + 2

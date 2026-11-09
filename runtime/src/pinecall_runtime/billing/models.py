@@ -29,6 +29,10 @@ class Quota(Model):
     hosted_apps: Mapped[int | None] = mapped_column(Integer)
     evals: Mapped[int | None] = mapped_column(Integer)
     simulations: Mapped[int | None] = mapped_column(Integer)
+    # How simulations are shaped, not how many a month: the calls a simulated caller may be on at
+    # once, and the calls one comparison may place. NULL is the platform's own.
+    simulations_at_once: Mapped[int | None] = mapped_column(Integer)
+    comparison_calls: Mapped[int | None] = mapped_column(Integer)
     # Whole US dollars a calendar month, both envs together.
     budget_usd: Mapped[int | None] = mapped_column(Integer)
     # Box vendor keys the org may use: NULL all, empty none, else `vendor` or `vendor/model`.

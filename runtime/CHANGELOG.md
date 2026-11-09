@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **A simulated call says how it was heard.** A simulation knows what its caller said and when, which
+  no real call does: at hang-up the agent's log is measured against it and kept with the call
+  (`call_facts.hearing`, migration 000021), and every run's row and every row of a comparison carries
+  `hearing`: the caller's lines never answered, the replies cut off with nobody speaking (the room's
+  doing) or by a murmur alone, the turns heard that nobody said, the lines the agent talked over, the
+  seconds from the caller's last word to the agent's first, and the word error rate of what it heard.
+  A café transcribed as the caller, with every judge holding, is what these show.
+- **A comparison repeats, and one larger than the org's line runs whole.** `POST /v1/simulations/compare`
+  takes `repeats` (1 to 10): each caller rings under each configuration that many times, a round of
+  every pair before the next. Its calls past the org's simulated calls at once are no longer refused:
+  they wait their turn and the gateway places each as the ones before it end; the answer says how many
+  `waiting`, and `GET /v1/simulations/compare/{id}` carries `against`, `repeats`, `planned`, `waiting`,
+  `refused` and `abandoned` (the gateway placing them was restarted). A comparison is a row of its own
+  now (`comparisons`, migration 000020), so its board names every cell before its call exists.
+- **How an org's simulations are shaped is the org's own.** The ten simulated calls on the line at once
+  and the ten calls a comparison places were the platform's numbers for every org. Each is a column of
+  the org's quotas now (`simulations_at_once`, `comparison_calls`, migration 000019), unset meaning the
+  platform's ten: `pinecall-runtime orgs simulating <org> --env … [--at-once n] [--comparison-calls n]`
+  and `PUT /v1/ops/orgs/{org}/simulating` set them, writing the org's quotas leaves them standing, and
+  `GET /v1/simulations/limits` reads them with any key that runs evals.
 ## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
 
 - **A class declares the quiet, a machine and its fallbacks.** `silence_timeout_s`, `idle`, `voicemail`,

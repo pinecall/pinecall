@@ -17,6 +17,11 @@ from pinecall_runtime.postgres import unbounded
 from pinecall_runtime.wire.parts import QuotaName
 
 ADMISSION = "admission"
+# What an org nobody gave more is held to. A simulation takes a seat of the fleet beside the real
+# callers and a share of the gateway that plays its caller: ten are ~2.5 vCPU of a worker's machine.
+SIMULATIONS_AT_ONCE = 10
+# The calls one comparison places, every caller against every setup as many times as asked.
+COMPARISON_CALLS = 10
 QUOTA_NAMES: tuple[QuotaName, ...] = (
     "minutes",
     "messages",
@@ -54,11 +59,27 @@ class Quotas:
     budget_usd: int | None = None
     # Box vendor keys the org may use: None all, empty none, else `vendor` or `vendor/model`.
     lends: frozenset[str] | None = None
+    # How the org's simulations are shaped: None is the platform's own, never no limit, since each
+    # one on the line is a seat of the fleet somebody else's call would take.
+    simulations_at_once: int | None = None
+    comparison_calls: int | None = None
 
     def __post_init__(self) -> None:
-        for name, limit in self.limits.items():
+        named: list[tuple[str, int | None]] = list(self.limits.items())
+        named += [("simulations_at_once", self.simulations_at_once), ("comparison_calls", self.comparison_calls)]
+        for name, limit in named:
             if limit is not None and limit < 0:
                 raise ValidationError(f"a quota is a count, and {name} cannot be {limit}")
+
+    @property
+    def simulating_at_most(self) -> int:
+        """The simulated calls the org may have on the line at once in the env."""
+        return SIMULATIONS_AT_ONCE if self.simulations_at_once is None else self.simulations_at_once
+
+    @property
+    def compared_at_most(self) -> int:
+        """The calls one comparison of the org may place."""
+        return COMPARISON_CALLS if self.comparison_calls is None else self.comparison_calls
 
     @property
     def limits(self) -> Mapping[QuotaName, int | None]:
@@ -170,6 +191,8 @@ async def get_quotas(session: AsyncSession, org: str, env: Env) -> Quotas:
     return Quotas(
         **{name: getattr(row, name) for name in QUOTA_NAMES},
         lends=None if row.lends is None else frozenset(row.lends),
+        simulations_at_once=row.simulations_at_once,
+        comparison_calls=row.comparison_calls,
     )
 
 
@@ -177,7 +200,8 @@ async def set_quotas(session: AsyncSession, org: str, env: Env, quotas: Quotas) 
     """Replace the org's limits in the env, whole."""
     lends = None if quotas.lends is None else sorted(quotas.lends)
     limits = cast(Mapping[str, Any], quotas.limits)
-    await QuotaRepository(session).put(org, env, **limits, lends=lends)
+    shaped = {"simulations_at_once": quotas.simulations_at_once, "comparison_calls": quotas.comparison_calls}
+    await QuotaRepository(session).put(org, env, **limits, lends=lends, **shaped)
 
 
 async def get_admission(session: AsyncSession) -> Admission:

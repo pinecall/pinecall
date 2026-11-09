@@ -170,6 +170,27 @@ export const AgentValuesSchema = z.strictObject({
 
 export type AgentValues = z.infer<typeof AgentValuesSchema>;
 
+/** How a simulated spoken call was heard, measured against what its caller really said and when. */
+export const HearingSchema = z.strictObject({
+  /** The lines the caller said, and how many the agent never answered before the next. */
+  lines: z.int(),
+  unanswered: z.int(),
+  /** The agent's replies cut off with nobody of the caller's speaking, and those cut off by a murmur alone. */
+  cut_by_the_room: z.int(),
+  cut_by_a_murmur: z.int(),
+  /** The turns the agent heard while the caller was saying no line: the room, taken for the caller. */
+  phantom_turns: z.int(),
+  /** The caller's lines the agent began a reply in the middle of. */
+  talked_over: z.int(),
+  /** From the caller's last word to the agent's first, in seconds: the median, and the one nine in ten are under. */
+  reply_s: z.number().nullable(),
+  slow_reply_s: z.number().nullable(),
+  /** The share of the caller's words the agent got wrong; past 1 when it heard words nobody said. */
+  word_error_rate: z.number().nullable(),
+});
+
+export type Hearing = z.infer<typeof HearingSchema>;
+
 export const PersonaRunSchema = z.strictObject({
   call: z.string(),
   agent: z.string(),
@@ -190,6 +211,8 @@ export const PersonaRunSchema = z.strictObject({
   against: AgentValuesSchema.nullable(),
   /** The comparison this call was placed in, with the others of the same persona; null for a run of its own. */
   comparison: z.string().nullable(),
+  /** How a spoken call was heard, against what its caller really said; null for a written one, and until the simulation ends. */
+  hearing: HearingSchema.nullable().default(null),
 });
 
 export type PersonaRun = z.infer<typeof PersonaRunSchema>;
@@ -227,6 +250,8 @@ export const ComparisonRowSchema = z.strictObject({
   replies: z.int().default(0),
   slowest_reply: z.number().nullable().default(null),
   cut_off: z.int().default(0),
+  /** How the call was heard, against what its caller really said; null for a written one, and until the simulation ends. */
+  hearing: HearingSchema.nullable().default(null),
 });
 
 export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;
@@ -244,6 +269,15 @@ export const ComparisonSchema = z.strictObject({
   personas: z.array(z.string()),
   voice: z.boolean(),
   rows: z.array(ComparisonRowSchema),
+  /** What was asked for: each configuration in the order named, and how many times each caller rings under each; empty and one for a comparison made before they were kept. */
+  against: z.array(AgentValuesSchema).default([]),
+  repeats: z.int().default(1),
+  /** Every call it was to place, the ones still waiting for a place on the line, and what was refused. */
+  planned: z.int().default(0),
+  waiting: z.int().default(0),
+  refused: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, why: z.string() })).default([]),
+  /** The gateway placing the ones that wait was restarted: they never will be placed. */
+  abandoned: z.boolean().default(false),
 });
 
 export type Comparison = z.infer<typeof ComparisonSchema>;
@@ -254,6 +288,8 @@ export const ComparisonStartedSchema = z.strictObject({
   voice: z.boolean(),
   calls: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, call: z.string() })),
   refused: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, why: z.string() })),
+  /** The calls that wait for a place on the line: the gateway places each as the ones before it end. */
+  waiting: z.int().default(0),
 });
 
 export type ComparisonStarted = z.infer<typeof ComparisonStartedSchema>;

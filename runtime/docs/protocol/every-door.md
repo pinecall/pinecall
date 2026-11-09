@@ -59,8 +59,9 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/personas` | evals | Every agent's callers, by agent and then by name; each row says whose. |
 | `POST` | `/v1/simulations` | evals | Put one of the agent's personas on it, written or spoken, against whoever holds it; the call's id at once. |
 | `GET` | `/v1/simulations` | evals | Every simulated call in the key's environment and scope, or the agents named's (`?agent=`, once or more), whichever persona, newest first; one comparison's with `?comparison=`. |
-| `POST` | `/v1/simulations/compare` | evals | Each persona against the agent under each voice and models named, placed together; what started and what not. |
+| `POST` | `/v1/simulations/compare` | evals | Each persona against the agent under each voice and models named, as many times as asked; what started. |
 | `GET` | `/v1/simulations/compare/{comparison}` | evals | The comparison's calls, each caller's best first: its goal held, every judge, the fastest, the cheapest. |
+| `GET` | `/v1/simulations/limits` | evals | How the key's org may shape its simulations in the environment: the calls at once, and the calls a comparison places. |
 | `GET` | `/v1/agents/{slug}/pipeline` | pipeline | The agent's three stages, the catalogue, and the latencies of its last calls. |
 | `GET` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip. |
 | `PUT` | `/v1/agents/{slug}/pipeline/hold-audio` | pipeline | A file of the org's as the agent's melody, from the next call on. |
@@ -278,6 +279,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `DELETE` | `/v1/ops/orgs/{named}/provider-keys/{vendor}` | operator | The org's credentials for a vendor taken back; its calls run on the platform's next. |
 | `PUT` | `/v1/ops/orgs/{named}/provider-keys/{vendor}` | operator | The org's own credentials for a vendor, set for it; its calls run on them next. |
 | `PUT` | `/v1/ops/orgs/{named}/quotas` | operator | The org's limits in one environment, replaced whole; they bite the next call and register. |
+| `PUT` | `/v1/ops/orgs/{named}/simulating` | operator | How the org's simulations are shaped in one environment: the calls at once, and the calls a comparison places. |
 | `GET` | `/v1/ops/orgs/{named}/sso` | operator | Which provider the org signs in with, never its secret. |
 | `PUT` | `/v1/ops/orgs/{named}/sso/required` | operator | Whether a password may still open the org beside its provider. |
 | `GET` | `/v1/ops/provider-keys` | operator | The vendors the platform holds a key for, never the key. |

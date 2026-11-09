@@ -22,7 +22,7 @@ from pinecall_runtime.calls import service as calls
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.evals.schemas import NextLineRequest, PlayedBy
-from pinecall_runtime.evals.service import playing, spoken
+from pinecall_runtime.evals.service import hearing, playing, spoken
 from pinecall_runtime.evals.service.callers import Spending, heard_in, improvise_line
 from pinecall_runtime.evals.service.players import caller_model, caller_stage, caller_voice, named, voice_vendor
 from pinecall_runtime.evals.service.seats import seat_waited_for
@@ -51,15 +51,17 @@ NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a 
 # Longer than any run, so the caller's token never ends a call first.
 A_CALL_MAY_LAST_S = 15 * 60.0
 BROKE = "simulated call %s broke"
+PLACING_BROKE = "a comparison's placing broke"
 THE_CALLERS_MODEL = "the caller's model"
 
-# The calls a simulated caller may be on at once, per org and env, on every gateway of the box.
+# The calls a simulated caller may be on at once, per org and env, on every gateway of the box,
+# for an org nobody gave another number (its quotas' `simulations_at_once`).
 # A simulation takes a seat of the fleet beside the real callers and a share of the gateway that
 # plays its caller: ten placed in one burst on 2026-10-21 saturated production's two core workers
 # and sent five callers to the overflow, before the scaled workers existed; ten are ~2.5 vCPU of a
 # scaled worker's machine, and a simulation with no seat is refused at once, so the fleet's seats,
 # not this line, are what holds a burst. Three until 2026-11-04.
-AT_ONCE = 10
+AT_ONCE = billing.SIMULATIONS_AT_ONCE
 # The channel each gateway says its simulated calls on, and how often; a change is said at once.
 SIMULATING_CHANNEL = "simulating"
 SIMULATING_EVERY_S = 1.0
@@ -125,6 +127,8 @@ class Simulations:
     def __init__(self, signal: Signal | None = None) -> None:
         """Nothing playing; the other gateways' counts heard on the signal."""
         self.playing: dict[str, Playing] = {}
+        # The comparisons this process is still placing the calls of: each waits for places on the line.
+        self.placing: set[asyncio.Task[None]] = set()
         self.counted = SharedState(signal or LocalSignal(), SIMULATING_CHANNEL, _SIMULATING, {}, lambda: None)
         self.counted.every_s = SIMULATING_EVERY_S
         self.counted.gathered = self._playing_here
@@ -133,10 +137,10 @@ class Simulations:
         """Hear the other gateways' counts, and say this one's."""
         await self.counted.start()
 
-    def admit(self, call: str, scope: Scope) -> None:
-        """Give the call its place on the line now, or refuse it: the org has AT_ONCE there already."""
+    def admit(self, call: str, scope: Scope, at_most: int = AT_ONCE) -> None:
+        """Give the call its place on the line now, or refuse it: the org has its `at_most` there already."""
         playing = self.on_the_line(scope.org, scope.env)
-        if playing >= AT_ONCE:
+        if playing >= at_most:
             raise TooManyAtOnce(scope.env, playing)
         self.playing[call] = Playing(scope, None)
         self._say()
@@ -158,10 +162,23 @@ class Simulations:
         self._say()
         task.add_done_callback(lambda done: self._ended(call, done))
 
+    # The request's context goes with the task, as a call's does: the calls are placed as the org that asked.
+    def place_later(self, placing: Coroutine[object, object, None]) -> None:
+        """Go on placing a comparison's calls after its request was answered; a break is logged, never lost."""
+        task = asyncio.create_task(placing)
+        self.placing.add(task)
+
+        def done(ended: asyncio.Task[None]) -> None:
+            self.placing.discard(ended)
+            if not ended.cancelled() and ended.exception() is not None:
+                logger.error(PLACING_BROKE, exc_info=ended.exception())
+
+        task.add_done_callback(done)
+
     @asynccontextmanager
-    async def admitted(self, call: str, scope: Scope) -> AsyncGenerator[None]:
+    async def admitted(self, call: str, scope: Scope, at_most: int = AT_ONCE) -> AsyncGenerator[None]:
         """The call's place on the line for the block, which plays it: admitted first, let go after."""
-        self.admit(call, scope)
+        self.admit(call, scope, at_most)
         try:
             yield
         finally:
@@ -175,7 +192,7 @@ class Simulations:
 
     async def stop(self) -> None:
         """Stop every call still playing: each one's caller hangs up as its task is cancelled."""
-        playing = [one.task for one in self.playing.values() if one.task is not None]
+        playing = [one.task for one in self.playing.values() if one.task is not None] + list(self.placing)
         for task in playing:
             task.cancel()
         await asyncio.gather(*playing, return_exceptions=True)
@@ -295,6 +312,7 @@ async def on_the_line(
     speech: tts.TTS[Never],
     line: spoken.SpokenLine,
     next_line: NextLine,
+    said: list[hearing.Said] | None = None,
 ) -> int:
     """Offer the agent the room, put the caller on it, and play its lines; the lines said."""
     env = dispatch.env or Env.sandbox
@@ -305,12 +323,12 @@ async def on_the_line(
     joined = dataclasses.replace(line, url=serving.handles.settings.livekit_url_of(env), token=token)
     try:
         await serving.offering.offer(line.call, the_fleet, dispatch)
-        said = await spoken.run_spoken(joined, speech, serving.logs, next_line)
+        lines = await spoken.run_spoken(joined, speech, serving.logs, next_line, said)
     except (TimeoutError, rtc.ConnectError) as broke:
         raise ServiceUnavailable(NO_LINE.format(broke=broke)) from broke
     else:
         await _hung_up(serving, line.call)
-        return said
+        return lines
     finally:
         await fleet.close_room(serving.handles.servers[env], line.call)
 
@@ -377,12 +395,25 @@ async def spoken_call(serving: calls.Serving, scope: Scope, placed: Placed) -> t
         # The caller murmurs in the language it speaks: the line learns it here, with the voice.
         localised = dataclasses.replace(placed.line, language=running.language)
         line = spoken.SpokenLine("", "", placed.call, placed.turns, localised, notice=notice)
+        said: list[hearing.Said] = []
         try:
-            turns = await on_the_line(serving, dispatch, speech, line, improvising(serving, placed.call, caller))
+            next_line = improvising(serving, placed.call, caller)
+            turns = await on_the_line(serving, dispatch, speech, line, next_line, said)
         finally:
             await speech.aclose()
             await _kept(serving, placed.call, spending)
+            await _heard(serving, placed.call, said)
     return turns, spending
+
+
+# Only a simulation knows what its caller really said and when: how the agent heard it is measured
+# against that once the caller has hung up, and kept with the call's facts.
+async def _heard(serving: calls.Serving, call: str, said: list[hearing.Said]) -> None:
+    if not said:
+        return
+    measured = hearing.measured(await serving.logs.store.whole(call), said)
+    async with serving.handles.sessions.begin() as session_:
+        await calls.keep_caller_heard(session_, call, measured.model_dump())
 
 
 # The agent says the org's recording notice before its greeting: a caller that did not expect it would

@@ -300,6 +300,9 @@ class ComparisonRequest(SimulationWants):
     against: list[AgentValues] = Field(min_length=1, max_length=10)
     # More callers beside `persona`, each against every configuration as it is: one call per pair.
     more_personas: list[str] = Field(default_factory=list[str], max_length=9)
+    # How many times each caller rings the agent under each configuration: one call tells whether a
+    # model can do a task, several how often it does.
+    repeats: int = Field(default=1, ge=1, le=10)
 
     @property
     def personas(self) -> list[str]:
@@ -330,6 +333,8 @@ class ComparisonStarted(Row):
     voice: bool
     calls: list[ComparedCall]
     refused: list[ComparedRefusal]
+    # The calls that wait for a place on the line: placed by the gateway as the ones before them end.
+    waiting: int = 0
 
 
 class Latency(Row):
@@ -340,6 +345,28 @@ class Latency(Row):
     tts_node_ttfb: float | None
     transcription_delay: float | None
     end_of_turn_delay: float | None
+
+
+# Measured against what the simulated caller really said and when, which only a simulation knows.
+class Hearing(Row):
+    """How a simulated spoken call was heard: what the agent missed, invented, talked over and got wrong."""
+
+    # The lines the caller said, and how many of them the agent never answered before the next.
+    lines: int
+    unanswered: int
+    # The agent's replies cut off with nobody of the caller's speaking (the room did it), and those cut
+    # off by a listener's murmur alone.
+    cut_by_the_room: int
+    cut_by_a_murmur: int
+    # The turns the agent heard while the caller was saying no line: the room, taken for the caller.
+    phantom_turns: int
+    # The caller's lines the agent began a reply in the middle of, the caller not having cut in.
+    talked_over: int
+    # From the caller's last word to the agent's first: the median, and the one nine in ten are under.
+    reply_s: float | None
+    slow_reply_s: float | None
+    # The share of the caller's words the agent got wrong; past 1 when it heard words nobody said.
+    word_error_rate: float | None
 
 
 class RowVerdict(Row):
@@ -375,6 +402,9 @@ class ComparisonRow(Row):
     replies: int = 0
     slowest_reply: float | None = None
     cut_off: int = 0
+    # How the call was heard, against what its caller really said; None for a written call, and
+    # until the simulation ends.
+    hearing: Hearing | None = None
 
 
 class Comparison(Row):
@@ -387,6 +417,26 @@ class Comparison(Row):
     personas: list[str]
     voice: bool
     rows: list[ComparisonRow]
+    # What was asked for: the agent's values of each column in the order named, and how many times
+    # each caller rings under each. Empty and one for a comparison made before they were kept.
+    against: list[dict[str, Any]] = Field(default_factory=list[dict[str, Any]])
+    repeats: int = 1
+    # Every call it was to place, the ones still waiting for a place on the line, and what was refused.
+    planned: int = 0
+    waiting: int = 0
+    refused: list[ComparedRefusal] = Field(default_factory=list[ComparedRefusal])
+    # The gateway placing the ones that wait stopped before it placed them all: they never will be.
+    abandoned: bool = False
+
+
+class SimulationLimits(Row):
+    """GET /v1/simulations/limits: how the key's org may shape its simulations in the env."""
+
+    # The simulated calls it may have on the line at once, and how many are on it now.
+    at_once: int
+    on_the_line: int
+    # The calls one comparison may place: callers times setups times repeats.
+    comparison_calls: int
 
 
 class PersonaRunRow(Row):
@@ -411,6 +461,9 @@ class PersonaRunRow(Row):
     # call that ran the settings, placed on its own.
     against: dict[str, Any] | None = None
     comparison: str | None = None
+    # How a spoken call was heard, against what its caller really said; None for a written one, and
+    # until the simulation ends.
+    hearing: Hearing | None = None
 
 
 class PersonaRunList(Row):

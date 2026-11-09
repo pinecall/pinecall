@@ -204,6 +204,7 @@ def _run_row(run: calls.PersonaRun) -> schemas.PersonaRunRow:
             "caller_cost_usd": run.facts.caller_cost_usd,
             "against": facts.against,
             "comparison": facts.comparison,
+            "hearing": facts.hearing,
         }
     )
 

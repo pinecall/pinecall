@@ -1,4 +1,4 @@
-"""The eval runs, each a document written whole as it goes, and the lease a run holds its agent by."""
+"""The eval runs and the comparisons, each a document written whole, and the lease a run holds its agent by."""
 
 from collections.abc import Sequence
 from datetime import timedelta
@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as upsert
 
 from pinecall_runtime.enums import Env
-from pinecall_runtime.evals.models import EvalRun, RunLease
+from pinecall_runtime.evals.models import Comparison, EvalRun, RunLease
 from pinecall_runtime.kit.repository import Repository
 
 
@@ -88,3 +88,25 @@ class RunLeaseRepository(Repository[RunLease]):
     async def release(self, agent: str, run: str) -> None:
         """Let the agent go, if this run still holds it."""
         await self.changed(delete(RunLease).where(RunLease.agent == agent, RunLease.run == run))
+
+
+class ComparisonRepository(Repository[Comparison]):
+    """One row per comparison, its document what was asked for and how its placing stands."""
+
+    model = Comparison
+
+    async def put(
+        self, *, id: str, org: str, env: Env, agent: str, started_at: float, document: dict[str, Any]
+    ) -> None:
+        """Write the comparison whole, in its org and env; the same id again replaces its document."""
+        statement = upsert(Comparison).values(
+            id=id, org=org, env=env, agent=agent, started_at=started_at, document=document
+        )
+        replaced = {"document": statement.excluded.document}
+        await self.session.execute(statement.on_conflict_do_update(index_elements=["id"], set_=replaced))
+
+    async def get(self, org: str, env: Env, comparison: str) -> Comparison | None:
+        """One comparison of the org in the env; None for any other's."""
+        return await self.one_or_none(
+            self.statement().where(Comparison.id == comparison, Comparison.org == org, Comparison.env == env)
+        )

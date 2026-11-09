@@ -154,6 +154,8 @@ class CallFacts:
     # in, kept when the simulation is placed. None for a call that ran the settings, placed on its own.
     against: dict[str, Any] | None = None
     comparison: str | None = None
+    # Not a fold either: how a simulated spoken call was heard, kept when the simulation ends.
+    hearing: dict[str, Any] | None = None
     # Not a fold either: the state's line, written at the seal (`line_of`), None while the call is live.
     line: JsonObject | None = None
 

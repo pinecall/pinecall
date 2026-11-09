@@ -1,5 +1,7 @@
 """The billing endpoints: what an org may use and has used, what a new org is given, an org's quotas."""
 
+import dataclasses
+
 from fastapi import APIRouter
 
 from pinecall_runtime.accounts.service import members, orgs
@@ -84,5 +86,27 @@ async def put_quotas(
     )
     with box_wide():
         org = await orgs.get_org(session, named)
+        # A plan's book writes the month's quotas: how the org's simulations are shaped stands.
+        standing = await service.get_quotas(session, org.id, body.env)
+        quotas = dataclasses.replace(
+            quotas, simulations_at_once=standing.simulations_at_once, comparison_calls=standing.comparison_calls
+        )
+        await service.set_quotas(session, org.id, body.env, quotas)
+    return schemas.OrgQuotas.of(quotas)
+
+
+# Not a month's count but a shape: a ceiling on the fleet's seats the org's simulated callers take at
+# once, and on what one comparison places. The org's quotas and lends are kept.
+@router.put("/v1/ops/orgs/{named}/simulating")
+async def put_simulating(
+    named: str, body: schemas.PutSimulatingRequest, _actor: TheOperator, session: Session
+) -> schemas.OrgQuotas:
+    """How the org's simulations are shaped in one env: the calls at once, and the calls a comparison places."""
+    with box_wide():
+        org = await orgs.get_org(session, named)
+        standing = await service.get_quotas(session, org.id, body.env)
+        quotas = dataclasses.replace(
+            standing, simulations_at_once=body.simulations_at_once, comparison_calls=body.comparison_calls
+        )
         await service.set_quotas(session, org.id, body.env, quotas)
     return schemas.OrgQuotas.of(quotas)

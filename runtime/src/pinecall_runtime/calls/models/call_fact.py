@@ -64,6 +64,9 @@ class CallFact(Model):
     # that ran the settings as they are, and for one placed on its own.
     against: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     comparison: Mapped[str | None] = mapped_column(Text)
+    # How a simulated spoken call was heard, measured against what its caller really said and when
+    # (evals' `Hearing`): kept when the simulation ends. NULL for any other call.
+    hearing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # What a list shows of the call, as its state said at the seal (`facts.line_of`): a list reads
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.

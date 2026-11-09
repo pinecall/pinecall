@@ -56,15 +56,30 @@ in both environments.
   claims no call, opens none and counts nothing. One that opens weighs on the limit from the
   moment its call begins, and is added to the month's usage when its call is summed up. A run that
   reaches the limit stops where it is. A simulated call never counts minutes, and neither does a call an eval run
-  opened. Besides the month's count, **an org has at most ten simulated calls on the line at
-  once in each environment**, on every gateway of the platform together: a simulation takes a
+  opened. Besides the month's count, **an org has a most of simulated calls on the line at
+  once in each environment**, ten unless it was given another (`simulations_at_once`, below), on every
+  gateway of the platform together: a simulation takes a
   seat of the fleet beside the real callers and a share of the gateway that plays its caller — ten
   are ~2.5 vCPU of a worker machine (`scaling.md`), nothing for a scaled worker, and the fleet's
   seats, not this line, are what a burst waits on: a simulation with no seat is refused at once.
-  The eleventh is refused `429` with `Retry-After` (`the org has 10 simulated calls on the line in
+  The one past it is refused `429` with `Retry-After` (`the org has 10 simulated calls on the line in
   sandbox, the most at once: wait for one to end`), counted from the moment a simulation is
   placed until its caller hangs up; the console's Simulations starts what it can and says so. A
+  comparison is the one thing that waits instead: its calls past the most at once are placed by the
+  gateway as the ones before them end ([protocol/personas.md](protocol/personas.md)). A
   simulated call the worker opens is a call like any other to `concurrent_calls`.
+
+**How an org's simulations are shaped** is two numbers beside its quotas, per environment, that are
+not a month's count: `simulations_at_once`, the simulated calls it may have on the line at once, and
+`comparison_calls`, the calls one comparison may place (callers × configurations × repeats). Each
+unset is the platform's own, ten, never no limit, since every simulated call on the line is a seat
+of the fleet a real caller would take. The operator sets them (`pinecall-runtime orgs simulating <org>
+--env sandbox --at-once 20 --comparison-calls 60`, or `PUT /v1/ops/orgs/{org}/simulating {env,
+simulations_at_once, comparison_calls}`, one left out or null going back to the platform's own);
+writing the org's quotas leaves them as they stand, so a plan's book that rewrites the month's limits
+never resets them. The org reads its own with any key that runs evals (`GET /v1/simulations/limits` →
+`{at_once, on_the_line, comparison_calls}`), and `GET /v1/ops/orgs/{org}` carries both in each
+environment's quotas. What a new org is given (`admission`, below) may name them too.
 
 A refusal is a `429` whose sentence names the quota, what was used and the limit
 (`the org has used 30 of its 30 minutes in the sandbox`), and `credits.exhausted` lands in the

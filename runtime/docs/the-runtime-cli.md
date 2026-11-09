@@ -246,6 +246,7 @@ orgs quota <org> --env production|sandbox [--minutes n] [--messages n] [--agents
            [--memory-facts n] [--knowledge-chunks n] [--numbers n] [--seats n] [--llm-tokens n]
            [--hosted-apps n] [--evals n] [--simulations n] [--budget-usd n]
 orgs lends <org> --env production|sandbox <vendor[/model],…|all|none>
+orgs simulating <org> --env production|sandbox [--at-once n] [--comparison-calls n]   # one left out is the platform's own
 orgs dialling <org> [--dial-anywhere | --no-dial-anywhere] [--per-minute n] [--per-day n] [--max-duration-s n]
 orgs sso <org> [--off]
 orgs provider-key set|rm|list <org> <vendor>        # set reads the key from stdin

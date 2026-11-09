@@ -244,3 +244,21 @@ async def test_a_written_call_refused_for_the_orgs_seats_is_said_on_the_agents_l
     # Kept too: the refusal rolled its own transaction back, and the alert was written in another.
     listed = (await gateway.http.get("/v1/alerts", headers=tenant.person)).json()["alerts"]
     assert [(one["kind"], one["agent"]) for one in listed] == [("credits.exhausted", agent)]
+
+
+# How simulations are shaped is not a month's count: nobody having set it is the platform's own
+# number, never no limit, since each simulated call on the line is a seat of the fleet.
+def test_an_org_nobody_gave_more_simulates_at_the_platforms_own_numbers() -> None:
+    """Unset, the calls at once and the calls a comparison places are the platform's; set, the org's."""
+    unset = billing.Quotas()
+    assert unset.simulating_at_most == billing.SIMULATIONS_AT_ONCE
+    assert unset.compared_at_most == billing.COMPARISON_CALLS
+    given = billing.Quotas(simulations_at_once=25, comparison_calls=60)
+    assert (given.simulating_at_most, given.compared_at_most) == (25, 60)
+    assert billing.Quotas(simulations_at_once=0).simulating_at_most == 0
+
+
+def test_a_negative_shape_is_refused_as_a_negative_quota_is() -> None:
+    """The calls at once and the calls a comparison places are counts too."""
+    with pytest.raises(ValidationError):
+        billing.Quotas(comparison_calls=-1)

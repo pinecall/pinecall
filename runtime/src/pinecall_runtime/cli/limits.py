@@ -1,4 +1,4 @@
-"""`orgs quota|lends|dialling|sso`: an org's limits, what the box lends it, its dial guards, its identity provider."""
+"""`orgs quota|lends|simulating|dialling|sso`: an org's limits, lends, simulations' shape, dial guards, provider."""
 
 import dataclasses
 from collections.abc import Callable
@@ -42,7 +42,7 @@ async def orgs_quota(
     simulations: Limit = None,
     budget_usd: Limit = None,
 ) -> int:
-    """The org's limits in one env, replaced whole; what the box lends it is kept."""
+    """The org's limits in one env, replaced whole; what the box lends it and its simulations' shape are kept."""
     context = context_of(ctx)
     async with context.sessions.begin() as session:
         found = await orgs.get_org(session, org)
@@ -62,7 +62,25 @@ async def orgs_quota(
             simulations=simulations,
             budget_usd=budget_usd,
             lends=current.lends,
+            simulations_at_once=current.simulations_at_once,
+            comparison_calls=current.comparison_calls,
         )
+        await billing.set_quotas(session, found.id, env, quotas)
+    context.out.data(billing_schemas.OrgQuotas.of(quotas))
+    return OK
+
+
+# A shape, not a month's count: left out, each is the platform's own again.
+@verb
+async def orgs_simulating(
+    ctx: typer.Context, org: str, env: EnvOption, at_once: Limit = None, comparison_calls: Limit = None
+) -> int:
+    """How the org's simulations are shaped in one env; its limits and what the box lends it are kept."""
+    context = context_of(ctx)
+    async with context.sessions.begin() as session:
+        found = await orgs.get_org(session, org)
+        current = await billing.get_quotas(session, found.id, env)
+        quotas = dataclasses.replace(current, simulations_at_once=at_once, comparison_calls=comparison_calls)
         await billing.set_quotas(session, found.id, env, quotas)
     context.out.data(billing_schemas.OrgQuotas.of(quotas))
     return OK
@@ -143,6 +161,7 @@ async def orgs_sso(ctx: typer.Context, org: str, off: Annotated[bool, typer.Opti
 VERBS: dict[str, Callable[..., None]] = {
     "quota": orgs_quota,
     "lends": orgs_lends,
+    "simulating": orgs_simulating,
     "dialling": orgs_dialling,
     "sso": orgs_sso,
 }

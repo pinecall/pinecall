@@ -399,3 +399,7 @@ async def test_a_caller_that_cuts_in_asks_for_its_line_as_the_agent_begins_and_s
     assert asked == [True]
     await asyncio.wait_for(leg.say("wait, the Tuesday one"), 1.0)
     assert said == ["wait, the Tuesday one"]
+    # What it said is kept with when, and that it meant to talk over the agent: the hearing is measured against it.
+    [kept] = leg.spoke
+    assert (kept.kind, kept.text, kept.cut_in) == ("line", "wait, the Tuesday one", True)
+    assert kept.began_at <= kept.ended_at

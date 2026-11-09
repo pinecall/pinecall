@@ -1,5 +1,6 @@
 """The simulation endpoints: a persona put on the agent, the caller's next line, a spoken call placed."""
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import APIRouter
@@ -7,6 +8,7 @@ from fastapi import APIRouter
 from pinecall_runtime.accounts.service import keys
 from pinecall_runtime.accounts.service.attempts import AttemptThrottle
 from pinecall_runtime.agents.service import registry, settings
+from pinecall_runtime.billing import service as billing
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.auth import TheServing
 from pinecall_runtime.enums import KeyScope
@@ -47,35 +49,90 @@ async def simulate(
 
 
 # Each call is placed as `POST /v1/simulations` places one, under one id they share: every caller
-# against every configuration. One refused (a vendor nobody keyed, the org's limits) is said beside
-# the ones that started, which go on.
+# against every configuration, as many times as asked. The ones the org's line has room for are
+# placed before the answer; the rest wait their turn and are placed by this gateway as the ones
+# before them end, the comparison's row saying how many still wait. One refused (a vendor nobody
+# keyed, the org's limits) is said beside the ones that started, which go on.
 @router.post("/v1/simulations/compare")
 async def compare(
     body: schemas.ComparisonRequest, actor: EvalsKey, serving: TheServing, simulations: TheSimulations, session: Session
 ) -> schemas.ComparisonStarted:
-    """Each persona against the agent under each voice and models named, placed together; what started and what not."""
+    """Each persona against the agent under each voice and models named, as many times as asked; what started."""
     personas = body.personas
-    pairs = len(personas) * len(body.against)
-    if pairs > service.COMPARED_AT_MOST:
-        raise ValidationError(service.TOO_MANY_COMPARED.format(personas=len(personas), configs=len(body.against)))
-    comparison = random_id(service.COMPARISON_PREFIX, 6)
-    started: list[schemas.ComparedCall] = []
-    refused: list[schemas.ComparedRefusal] = []
-    for persona in personas:
-        wants = schemas.SimulationWants.model_validate(
-            {**body.model_dump(exclude={"against", "more_personas"}), "persona": persona}
+    quotas = await billing.get_quotas(session, actor.org, actor.env)
+    asked = len(personas) * len(body.against) * body.repeats
+    if asked > quotas.compared_at_most:
+        said = service.TOO_MANY_COMPARED.format(
+            most=quotas.compared_at_most,
+            personas=len(personas),
+            configs=len(body.against),
+            repeats=body.repeats,
+            calls=asked,
         )
-        for values in body.against:
-            against = _agent_values(actor, values)
-            try:
-                placed = await _placed(
-                    session, serving, simulations, actor, wants, against=against, comparison=comparison
-                )
-            except PinecallError as why:
-                refused.append(schemas.ComparedRefusal(persona=persona, against=against, why=str(why)))
-                continue
-            started.append(schemas.ComparedCall(persona=persona, against=against, call=placed.call))
-    return schemas.ComparisonStarted(comparison=comparison, voice=body.voice, calls=started, refused=refused)
+        raise ValidationError(said)
+    # Every configuration is checked before anything is placed: one the key may not name refuses the whole.
+    against = [_agent_values(actor, values) for values in body.against]
+    plan = service.Plan(
+        comparison=random_id(service.COMPARISON_PREFIX, 6),
+        agent=body.agent,
+        scope=actor.scope,
+        voice=body.voice,
+        personas=personas,
+        against=[dict(values) for values in against],
+        repeats=body.repeats,
+        started_at=serving.logs.store.clock(),
+    )
+    wants = body.model_dump(exclude={"against", "more_personas", "repeats"})
+
+    async def place(pair: service.Pair, within: Session) -> schemas.SimulationStarted:
+        one = schemas.SimulationWants.model_validate({**wants, "persona": pair.persona})
+        return await _placed(
+            within, serving, simulations, actor, one, against=dict(pair.against), comparison=plan.comparison
+        )
+
+    started: list[schemas.ComparedCall] = []
+    waiting: list[service.Pair] = []
+    for pair in plan.pairs():
+        # Once one waits for a place, every one after it waits behind it: the order asked for is kept.
+        if waiting:
+            waiting.append(pair)
+            continue
+        try:
+            placed = await place(pair, session)
+        except service.TooManyAtOnce:
+            waiting.append(pair)
+            continue
+        except PinecallError as why:
+            plan.refused.append(schemas.ComparedRefusal(persona=pair.persona, against=pair.against, why=str(why)))
+            continue
+        started.append(schemas.ComparedCall(persona=pair.persona, against=pair.against, call=placed.call))
+    plan.waiting = len(waiting)
+    plan.heard_at = serving.logs.store.clock()
+    await service.keep_plan(session, plan)
+    if waiting:
+        simulations.place_later(_placed_in_turn(serving, plan, waiting, place))
+    return schemas.ComparisonStarted(
+        comparison=plan.comparison, voice=body.voice, calls=started, refused=plan.refused, waiting=len(waiting)
+    )
+
+
+# Played after the endpoint answered: each call is placed in a transaction of its own, and the plan's
+# row is rewritten as each one is, so the board reads how many still wait from any gateway.
+async def _placed_in_turn(
+    serving: calls.Serving,
+    plan: service.Plan,
+    waiting: list[service.Pair],
+    place: Callable[[service.Pair, Session], Awaitable[schemas.SimulationStarted]],
+) -> None:
+    async def placed(pair: service.Pair) -> None:
+        async with serving.handles.sessions.begin() as within:
+            await place(pair, within)
+
+    async def said() -> None:
+        async with serving.handles.sessions.begin() as within:
+            await service.keep_plan(within, plan)
+
+    await service.place_waiting(plan, waiting, placed, said, clock=serving.logs.store.clock)
 
 
 @router.get("/v1/simulations/compare/{comparison}")
@@ -84,19 +141,39 @@ async def read_comparison(
 ) -> schemas.Comparison:
     """The comparison's calls, each caller's best first: its goal held, every judge, the fastest, the cheapest."""
     wanted = calls.PersonaRunFilters(comparison=comparison, holders=calls.copies_listed(actor))
-    found = await calls.runs_of_persona(session, actor.scope, wanted, limit=service.COMPARED_AT_MOST)
-    if not found.runs:
+    found = await calls.runs_of_persona(session, actor.scope, wanted, limit=service.ROWS_READ_AT_MOST)
+    plan = await service.plan_of(session, actor.scope, comparison)
+    if not found.runs and plan is None:
         raise NotFound(service.NO_SUCH_COMPARISON.format(comparison=comparison))
     rows = [await service.compared_row(serving, run) for run in found.runs]
-    first = calls.facts_of(found.runs[0].facts)
-    personas = service.in_the_order_placed(rows)
+    # What was asked for names the callers before any of them has a call; one made before plans were
+    # kept is what its calls say.
+    personas = service.in_the_order_placed(rows) if plan is None else plan.personas
+    spoken = calls.facts_of(found.runs[0].facts).spoken if plan is None else plan.voice
     return schemas.Comparison(
         comparison=comparison,
-        agent=found.runs[0].agent,
+        agent=found.runs[0].agent if plan is None else plan.agent,
         persona=personas[0],
         personas=personas,
-        voice=first.spoken,
+        voice=spoken,
         rows=service.ranked(rows),
+        against=[] if plan is None else plan.against,
+        repeats=1 if plan is None else plan.repeats,
+        planned=len(rows) if plan is None else plan.planned,
+        waiting=0 if plan is None else plan.waiting,
+        refused=[] if plan is None else plan.refused,
+        abandoned=plan is not None and service.was_left(plan, serving.logs.store.clock()),
+    )
+
+
+@router.get("/v1/simulations/limits")
+async def simulation_limits(actor: EvalsKey, simulations: TheSimulations, session: Session) -> schemas.SimulationLimits:
+    """How the key's org may shape its simulations in the env: the calls at once, and the calls a comparison places."""
+    quotas = await billing.get_quotas(session, actor.org, actor.env)
+    return schemas.SimulationLimits(
+        at_once=quotas.simulating_at_most,
+        on_the_line=simulations.on_the_line(actor.org, actor.env),
+        comparison_calls=quotas.compared_at_most,
     )
 
 
@@ -141,7 +218,8 @@ async def _placed(
         caller = await service.briefed(session, serving, scope, body.agent, caller)
     # The place on the line is taken before anything is awaited, and given back if what follows
     # refuses the call: a burst of requests can never all pass the count together.
-    simulations.admit(call, scope)
+    quotas = await billing.get_quotas(session, scope.org, scope.env)
+    simulations.admit(call, scope, quotas.simulating_at_most)
     try:
         await service.admit_simulation(session, serving, scope, body.agent, caller, voice=body.voice, waits=True)
         line = service.line_of(
@@ -201,7 +279,8 @@ async def place_voice_call(
     # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
     if serving.registry.serving(scope, body.agent, None) is None:
         raise registry.NoApp(body.agent)
-    async with simulations.admitted(body.call, scope):
+    quotas = await billing.get_quotas(session, scope.org, scope.env)
+    async with simulations.admitted(body.call, scope, quotas.simulating_at_most):
         await service.admit_simulation(session, serving, scope, body.agent, persona, voice=True)
         await service.claim_new_call(session, serving, body.call, body.agent, scope)
         line = service.line_of(

@@ -15,6 +15,7 @@ from livekit.agents.utils import http_context
 
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.evals.service import ambience as ambiences
+from pinecall_runtime.evals.service.hearing import Said
 from pinecall_runtime.evals.service.tempo import Stretcher
 from pinecall_runtime.evals.service.turns import A_BEAT_S, Landed, NextLine, answered, speak_turns, speaking
 from pinecall_runtime.fleet import service as fleet
@@ -128,6 +129,8 @@ class CallerLeg:
         # The samples the line has carried: where the interferer goes on from.
         self.carried = 0
         self.carrying: asyncio.Future[None] | None = None
+        # What the caller said and when, by the log's clock: what the agent's hearing is measured against.
+        self.spoke: list[Said] = []
         # When the caller began its last line, by the log's clock: its answer comes after it.
         self.said_at = logs.store.clock()
         # Set once the caller decided to talk over the answer: its next line is said with no pause.
@@ -137,16 +140,20 @@ class CallerLeg:
     # waited for its last word before its first was seconds late on every turn.
     async def say(self, line: str) -> None:
         """Speak one line into the room, after the caller's pause (none when cutting in), through the line's noise."""
-        if not self.cutting_in:
+        cut_in = self.cutting_in
+        if not cut_in:
             await asyncio.sleep(self.spoken.line.pause_s)
         self.cutting_in = False
         self.said_at = self.logs.store.clock()
         await self._speak(line)
+        self.spoke.append(Said("line", line, self.said_at, self.logs.store.clock(), cut_in=cut_in))
 
     # A murmur rides the agent's answer: it moves no clock, so the answer is still waited for whole.
     async def murmur(self, word: str) -> None:
         """Say one listener's word into the room while the agent speaks, keeping the turn."""
+        began = self.logs.store.clock()
         await self._speak(word)
+        self.spoke.append(Said("murmur", word, began, self.logs.store.clock()))
 
     def open(self) -> None:
         """Start carrying the line: from here the track is never without a frame."""
@@ -372,8 +379,10 @@ def pick_caller_voice(
 
 
 # Deleting the room is the endpoint's: it ends the agent's job, which seals the log.
-async def run_spoken(spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs, next_line: NextLine) -> int:
-    """Join the room as the caller, say the lines as the agent answers, and hang up."""
+async def run_spoken(
+    spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs, next_line: NextLine, said: list[Said] | None = None
+) -> int:
+    """Join the room as the caller, say the lines as the agent answers, and hang up; what it said lands in `said`."""
     room = rtc.Room()
     async with http_context.open():
         interferer = b""
@@ -401,6 +410,8 @@ async def run_spoken(spoken: SpokenLine, voice: tts.TTS[Never], logs: calls.Logs
             return said_count
         finally:
             await leg.close()
+            if said is not None:
+                said.extend(leg.spoke)
             await room.disconnect()
 
 

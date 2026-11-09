@@ -1,23 +1,35 @@
 """A comparison's rows: a call's latency medians read off its log, and the rows ranked best first."""
 
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from pinecall_runtime.evals.schemas import ComparisonRow, Latency, RowVerdict, SessionScore
+from pinecall_runtime.enums import Env
+from pinecall_runtime.evals.schemas import ComparedRefusal, ComparisonRow, Latency, RowVerdict, SessionScore
 from pinecall_runtime.evals.service.comparisons import (
+    LEFT_AFTER_S,
+    PLACING_GIVES_UP_AFTER_S,
+    Pair,
+    Plan,
     goal_of,
     in_the_order_placed,
     is_done,
     latency_of,
+    place_waiting,
     ranked,
     verdicts_of,
+    was_left,
     why_it_never_began,
 )
+from pinecall_runtime.evals.service.simulations import TooManyAtOnce
+from pinecall_runtime.exceptions import ServiceUnavailable
+from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.parts import ScoreVerdict
 
+ACME = Scope("org_acme", Env.sandbox)
 GOLDEN = Path(__file__).resolve().parents[1] / "wire" / "golden" / "call-log.json"
 _ENTRIES: TypeAdapter[list[Entry]] = TypeAdapter(list[Entry])
 
@@ -155,3 +167,123 @@ def test_a_call_that_did_its_task_ranks_over_one_that_held_more_judges_and_did_n
     assert is_done(a_row("no-goal-held", score=held)) is True
     assert is_done(a_row("no-goal-broke", score=mostly)) is False
     assert is_done(a_row("goal-na", score=held, goal="na")) is False
+
+
+# ── a comparison placed in turns ──
+
+
+def a_plan(*, repeats: int = 1, waiting: int = 0, heard_at: float = 0.0) -> Plan:
+    """A comparison of two callers under two setups, each once, unless said."""
+    return Plan(
+        comparison="cmp_1",
+        agent="front-desk",
+        scope=ACME,
+        voice=True,
+        personas=["books", "cancels"],
+        against=[{}, {"llm": "acme/quick"}],
+        repeats=repeats,
+        started_at=0.0,
+        waiting=waiting,
+        heard_at=heard_at,
+    )
+
+
+@dataclass
+class Line:
+    """An org's line with so many places: a call placed takes one, and `ends` gives places back."""
+
+    places: int
+    placed: list[Pair] = field(default_factory=list[Pair])
+    now: float = 0.0
+    said: int = 0
+    unkeyed: str | None = None
+
+    async def place(self, pair: Pair) -> None:
+        if pair.persona == self.unkeyed:
+            raise ServiceUnavailable("nobody keyed the caller's vendor")
+        if self.places == 0:
+            raise TooManyAtOnce(Env.sandbox, len(self.placed))
+        self.places -= 1
+        self.placed.append(pair)
+
+    async def say(self) -> None:
+        self.said += 1
+
+    def clock(self) -> float:
+        return self.now
+
+
+def test_a_comparison_plans_a_round_of_every_caller_under_every_setup_then_the_next_round() -> None:
+    """Repeats are rounds, so a comparison cut short has every cell once before any has it twice."""
+    plan = a_plan(repeats=2)
+    assert plan.planned == 8
+    pairs = plan.pairs()
+    assert pairs[:4] == pairs[4:]
+    assert [(pair.persona, pair.against) for pair in pairs[:4]] == [
+        ("books", {}),
+        ("books", {"llm": "acme/quick"}),
+        ("cancels", {}),
+        ("cancels", {"llm": "acme/quick"}),
+    ]
+
+
+# The fault this is for: a comparison placed every call at once, so one larger than the org's
+# ceiling had its last calls refused and never placed.
+async def test_the_calls_that_wait_are_placed_as_places_on_the_line_free() -> None:
+    """A call with no place waits and asks again; each one placed is said, and none is left waiting."""
+    plan = a_plan(repeats=2)
+    waiting = plan.pairs()[2:]
+    plan.waiting = len(waiting)
+    line = Line(places=1)
+
+    async def a_call_ends(_: float) -> None:
+        line.now += 2.0
+        line.places += 1
+
+    await place_waiting(plan, waiting, line.place, line.say, clock=line.clock, sleep=a_call_ends)
+    assert line.placed == waiting
+    assert (plan.waiting, plan.refused) == (0, [])
+    assert line.said >= len(waiting)
+
+
+async def test_a_call_refused_for_another_reason_is_said_and_the_ones_behind_it_go_on() -> None:
+    """Only a place on the line is waited for: a vendor nobody keyed refuses that call once, in its words."""
+    plan = a_plan()
+    line = Line(places=10, unkeyed="books")
+    await place_waiting(plan, plan.pairs(), line.place, line.say, clock=line.clock)
+    assert [pair.persona for pair in line.placed] == ["cancels", "cancels"]
+    assert [(one.persona, one.why) for one in plan.refused] == [("books", "nobody keyed the caller's vendor")] * 2
+    assert plan.waiting == 0
+
+
+async def test_a_line_that_never_frees_is_given_up_on_and_every_call_left_says_why() -> None:
+    """Past the longest a comparison waits, what is left is refused rather than asked for forever."""
+    plan = a_plan()
+    line = Line(places=0)
+
+    async def nothing_ends(_: float) -> None:
+        line.now += PLACING_GIVES_UP_AFTER_S / 3
+
+    await place_waiting(plan, plan.pairs(), line.place, line.say, clock=line.clock, sleep=nothing_ends)
+    assert line.placed == []
+    assert len(plan.refused) == plan.planned
+    assert "no place on the line" in plan.refused[0].why
+    assert plan.waiting == 0
+
+
+def test_a_comparison_whose_gateway_stopped_saying_it_places_was_left() -> None:
+    """Calls that wait with nobody placing them never will be: the board says so instead of waiting."""
+    plan = a_plan(waiting=3, heard_at=100.0)
+    assert was_left(plan, 100.0 + LEFT_AFTER_S - 1) is False
+    assert was_left(plan, 100.0 + LEFT_AFTER_S + 1) is True
+    assert was_left(a_plan(waiting=0, heard_at=100.0), 10_000.0) is False
+
+
+def test_a_plan_is_kept_as_what_was_asked_and_how_its_placing_stands() -> None:
+    """The row's document names the callers, the setups, the repeats, what waits and what was refused."""
+    plan = a_plan(repeats=3, waiting=4, heard_at=7.0)
+    plan.refused.append(ComparedRefusal(persona="books", against={}, why="the org has used 10 of its 10 simulations"))
+    kept = plan.document()
+    assert (kept["personas"], kept["against"], kept["repeats"]) == (plan.personas, plan.against, 3)
+    assert (kept["waiting"], kept["heard_at"]) == (4, 7.0)
+    assert kept["refused"] == [{"persona": "books", "against": {}, "why": "the org has used 10 of its 10 simulations"}]

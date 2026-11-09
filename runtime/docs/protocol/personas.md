@@ -103,13 +103,19 @@ voice or model for this call alone, over its settings, as the console's test roo
 key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nobody keyed is refused as
 the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
 
-`POST /v1/simulations/compare` `{agent, persona, more_personas?, voice?, turns?, interferer_db?,
+`POST /v1/simulations/compare` `{agent, persona, more_personas?, repeats?, voice?, turns?, interferer_db?,
 packet_loss?, ambience?, played_by?, against: [{…}, …]}` puts each caller — `persona`, then each of
-`more_personas` — against the agent under each of the values named, one to ten: one call per caller and
-values, ten calls at most (`400` past that, before anything is placed), every call placed at once under
-one id. The answer is `{comparison, voice, calls: [{persona, against, call}], refused: [{persona,
-against, why}]}` — what started, and what was refused in the gateway's words (a vendor nobody keyed,
-the org's limits), the ones that started going on. The callers do not change; the agent does.
+`more_personas` — against the agent under each of the values named, one to ten, `repeats` times each
+(1 to 10, once unless said): one call per caller, values and repeat, a round of every pair before the
+next round, under one id. One call tells whether a model can do a task; several tell how often it
+does. The most calls one comparison places is the org's `comparison_calls`, ten unless the operator
+gave it another ([limits.md](../limits.md)): past it the request is `400` before anything is placed,
+its sentence naming the number, as is a configuration the key may not name. The calls the org's line
+has room for are placed before the answer; the rest **wait their turn**, and the gateway that took
+the request places each as the ones before it end, so a comparison larger than the org's calls at
+once runs whole. The answer is `{comparison, voice, calls: [{persona, against, call}], refused:
+[{persona, against, why}], waiting}` — what started, what was refused in the gateway's words (a
+vendor nobody keyed, the org's limits), and how many wait. The callers do not change; the agent does.
 `GET /v1/simulations/compare/{comparison}` reads the table: `{comparison, agent, persona, personas,
 voice, rows: [{call, persona, against, started_at, ended_at, turns, end_reason, score, cost_usd,
 latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay, end_of_turn_delay}, why,
@@ -120,10 +126,26 @@ got what it `expects` of the agent, the `expected-outcome` judge's verdict (`hel
 null until the call is scored, and for a caller that expects nothing), and `judges` is every judge
 that answered, the goal's among them, so a call that booked the appointment and broke another judge
 reads as both. `replies` counts the agent's answers, `slowest_reply` is the longest of them end to end
-in seconds, and `cut_off` how many the caller talked over. The rows come caller by caller and each
+in seconds, and `cut_off` how many the caller talked over. `hearing` is how a spoken call was heard,
+measured against what its simulated caller really said and when, which only a simulation knows
+(null for a written call, and until the caller hangs up): `{lines, unanswered, cut_by_the_room,
+cut_by_a_murmur, phantom_turns, talked_over, reply_s, slow_reply_s, word_error_rate}` — the caller's
+lines and how many the agent never answered before the next; the agent's replies cut off with nobody
+of the caller's on the line (the room did it) and those a listener's murmur alone cut off; the turns
+the agent heard while the caller was saying no line; the lines it began a reply in the middle of;
+the seconds from the caller's last word to the agent's first (the median, and the one nine in ten
+are under); and the share of the caller's words it got wrong, past 1 when it transcribed a room
+nobody spoke in. A judge reads the transcript alone, so a call may hold every judge and still have
+been heard badly: these are what says so. Every run's row (`GET /v1/simulations`) carries the same. The rows come caller by caller and each
 caller's best first — its goal held (every judge, for a caller with no goal judged), then every
 judge held, then the most held, then the fastest reply, then the cheapest, a call still on the line
-last — and `404` for an id of nobody's in this key's org and env.
+last. The table also says what was asked for, so a call not placed yet has its place on it:
+`against` (each configuration, in the order named), `repeats`, `planned` (every call it was to
+place), `waiting` (those still without a place on the line), `refused` (each call that could not be
+placed, and why, the ones refused after the answer among them) and `abandoned`, true when calls still
+wait and the gateway placing them stopped (it was restarted): those are never placed, and the board
+says so rather than waiting. A call that waits more than forty-five minutes for a place is refused
+with that sentence. A comparison made before these were kept reads `against: []`, `repeats: 1` — and `404` for an id of nobody's in this key's org and env.
 `GET /v1/simulations?comparison=` pages the same calls as runs.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`

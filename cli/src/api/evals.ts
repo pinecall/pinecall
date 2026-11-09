@@ -243,6 +243,8 @@ export interface ComparisonRequest extends Omit<SimulationRequest, "against"> {
   against: AgentValues[];
   /** More callers beside `persona`, each against every configuration as it is. */
   more_personas?: string[];
+  /** How many times each caller rings under each configuration: once unless said, ten at most. */
+  repeats?: number;
 }
 
 /** What a comparison placed, and what it could not. */
@@ -251,6 +253,8 @@ export interface ComparisonStarted {
   voice: boolean;
   calls: { persona: string; against: AgentValues; call: string }[];
   refused: { persona: string; against: AgentValues; why: string }[];
+  /** The calls that wait for a place on the line: the gateway places each as the ones before it end. */
+  waiting?: number;
 }
 
 /** A turn's measures over one call, each its median in seconds; one no turn reported is null. */
@@ -282,6 +286,8 @@ export interface ComparisonRow {
   replies?: number;
   slowest_reply?: number | null;
   cut_off?: number;
+  /** How a spoken call was heard, against what its simulated caller really said. */
+  hearing?: Record<string, number | null> | null;
 }
 
 /** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first. */
