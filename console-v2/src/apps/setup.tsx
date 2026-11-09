@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { AdvancedTab } from "../advanced/advanced";
 import { Configure } from "../configure/configure";
 import { KnowledgeTab } from "../configure/knowledge";
 
@@ -14,6 +15,7 @@ export function Setup({ agent }: { agent: string }): ReactNode {
       <section className="dash-card" aria-label="Knowledge">
         <KnowledgeTab agent={agent} kind="code" />
       </section>
+      <AdvancedTab agent={agent} kind="code" />
     </div>
   );
 }

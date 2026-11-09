@@ -72,7 +72,8 @@
 .ui-slider-track { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; padding-top: 7px; }
 .ui-slider-track input { width: 100%; margin: 0; accent-color: var(--accent); }
 .ui-slider-ends { display: flex; justify-content: space-between; color: var(--quiet); font-size: 12px; }
-.ui-slider-number.cfg-input { flex: none; width: 84px; font-family: var(--mono); font-size: 12.5px; }
+.ui-slider-number.cfg-input { flex: none; width: 92px; font-family: var(--mono); font-size: 12.5px; appearance: textfield; }
+.ui-slider-number.cfg-input::-webkit-inner-spin-button, .ui-slider-number.cfg-input::-webkit-outer-spin-button { margin: 0; appearance: none; }
 .ui-badge { flex: none; padding: 1px 7px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11px; font-weight: 500; white-space: nowrap; }
 .ui-badge-quiet { background: var(--ground); color: var(--quiet); }
 .ui-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: var(--raised); color: var(--ink); font-size: 12px; font-weight: 600; }

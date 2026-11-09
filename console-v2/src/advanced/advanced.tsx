@@ -9,7 +9,7 @@ import { readReport, readSettings, setSettings, type Report, type TuningAnswer, 
 import { Locked } from "../configure/stages";
 import { Select } from "../ui/select";
 import { Field, Setting, Slider, Toggle } from "../ui/setting";
-import { readPolicy, readWebhook, type Policy, type Webhook } from "./door";
+import { readPolicy, readRunsOn, readWebhook, type Policy, type Webhook } from "./door";
 import { bodyOf, draftOf, type Draft } from "./draft";
 import { Fallbacks } from "./fallbacks";
 import "../dashboard/dashboard.css";
@@ -85,11 +85,15 @@ export function AdvancedTab({ agent, kind }: { agent: string; kind: "code" | "st
   const [refused, setRefused] = useState<string | null>(null);
   const [away, setAway] = useState<string | null>(null);
 
+  // An app is set in its class: the tab shows what its calls run on, and nothing here writes.
+  const [runsOn, setRunsOn] = useState<TuningBody | null>(null);
+
   const load = useCallback(async (): Promise<void> => {
-    const settings = await readSettings(credentials, agent);
+    const [settings, ran] = await Promise.all([readSettings(credentials, agent), kind === "code" ? readRunsOn(credentials, agent) : Promise.resolve(null)]);
     setAnswer(settings);
-    setDraft(draftOf(cornerOf(settings, false).inEffect?.config ?? {}));
-  }, [credentials, agent]);
+    setRunsOn(ran);
+    setDraft(draftOf(ran ?? cornerOf(settings, false).inEffect?.config ?? {}));
+  }, [credentials, agent, kind]);
 
   useEffect(() => {
     load().catch((failed: unknown) => setAway(saidBy(failed)));
@@ -103,7 +107,7 @@ export function AdvancedTab({ agent, kind }: { agent: string; kind: "code" | "st
   if (answer === null || draft === null) return <p className="dash-quiet">Reading how it is set…</p>;
 
   const corner = cornerOf(answer, false);
-  const config: TuningBody = corner.inEffect?.config ?? {};
+  const config: TuningBody = runsOn ?? corner.inEffect?.config ?? {};
   const fixed = new Set(answer.fixed);
   const readOnly = readOnlyFor(kind);
   const was = draftOf(config);
