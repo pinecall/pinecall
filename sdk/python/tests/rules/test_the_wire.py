@@ -112,6 +112,7 @@ IGNORED: dict[str, str] = {
             "vendor.failed",
             "vendor.switched",
             "org.quiet",
+            "turn.detection",
         ),
         THE_GATEWAYS,
     ),

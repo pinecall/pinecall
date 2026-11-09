@@ -100,7 +100,8 @@ async def test_the_agent_is_told_a_minute_before_a_limit_of_two_minutes_or_more(
 
     session = a_session(box, NOBODY, ["cerramos"])
     await session.start()
-    monkeypatch.setattr(asyncio, "sleep", counted)
+    # This module's asyncio alone: anything else on the loop sleeps as it always does.
+    monkeypatch.setattr(clock, "asyncio", SimpleNamespace(sleep=counted))
     await clock.keep_time(session, 300, exhausted=None)
     monkeypatch.undo()
     await session.close()

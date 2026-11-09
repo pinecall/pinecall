@@ -194,9 +194,8 @@ export class Agent {
   static idle?: Declared["idle"];
   /** On a call it placed, the words left on a machine, or `true` to hang up on one and leave nothing. */
   static voicemail?: string | true;
-  /** Who takes over the ears when the vendor fails, `vendor` or `vendor/model`, in order. */
+  /** Who takes over the ears, and the voice, when the vendor fails: `vendor` or `vendor/model`, in order. */
   static sttFallbacks?: Declared["sttFallbacks"];
-  /** Who takes over the voice when the vendor fails, `vendor` or `vendor/model`, in order. */
   static ttsFallbacks?: Declared["ttsFallbacks"];
   /** The judges the class owns: `judges({ on: ["consent", …], own: [ownJudge({…})] })`. */
   static judges?: Declared["judges"];
