@@ -321,6 +321,26 @@ export function verdictOf(row: ComparisonRow): string {
   return `${row.score.passed ? HELD : BROKEN} ${String(row.score.held)}/${String(row.score.judged)}`;
 }
 
+// A caller's task is its goal: done when the judge of what it expected held; a caller that expects
+// nothing is done when every judge held.
+function didIt(row: ComparisonRow): boolean | null {
+  if (row.ended_at === null || row.why !== null) return null;
+  if (row.goal !== undefined && row.goal !== null) return row.goal === "held";
+  return row.score === null ? null : row.score.passed;
+}
+
+/** A repeated comparison by configuration: how many of its runs did the caller's task, of the ones judged. */
+function howOften(rows: readonly ComparisonRow[]): string[] {
+  const runs = new Map<string, (boolean | null)[]>();
+  for (const row of rows) runs.set(against(row.against), [...(runs.get(against(row.against)) ?? []), didIt(row)]);
+  const lines = ["how often each did the caller's task"];
+  for (const [named, did] of runs) {
+    const judged = did.filter((one) => one !== null);
+    lines.push(`  ${named}: ${String(judged.filter((one) => one).length)} of ${String(judged.length)} runs`);
+  }
+  return lines;
+}
+
 /** A comparison: the persona against the agent, one row per configuration best first, what was not placed, and how to read a call whole. */
 export function comparison(done: Compared): string[] {
   const found = done.table;
@@ -342,8 +362,10 @@ export function comparison(done: Compared): string[] {
       ]),
     ),
   );
+  if ((found.repeats ?? 1) > 1) lines.push(...howOften(found.rows));
   for (const row of found.rows) if (row.why !== null) lines.push(`never started, ${against(row.against)}: ${row.why}`);
   for (const one of done.refused) lines.push(`not placed, ${against(one.against)}: ${one.why}`);
+  if (found.abandoned === true) lines.push(`${String(found.waiting ?? 0)} never placed: the gateway placing them was restarted — run it again for those`);
   lines.push(formatHint("pinecall sessions <call> reads one whole"));
   return lines;
 }

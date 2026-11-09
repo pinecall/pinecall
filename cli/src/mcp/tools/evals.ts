@@ -177,10 +177,11 @@ export const simulate = tool({
       .max(10)
       .optional()
       .describe("the agent on these values for this run alone — {stt, llm, tts, voice, language, temperature}, each `vendor/model` — the sandbox's, with a key that edits the pipeline; two or more are a comparison: every configuration placed at once against the same caller, answered as a table best first"),
+    repeats: z.number().int().min(1).max(10).optional().describe("how many times the caller rings under each configuration; more than once is a comparison, with or without `against`, answered with how often each did the caller's task"),
     wait_s: WAIT,
   },
   manual:
-    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. One of Pinecall's personas is briefed first: the gateway gives it the one concrete thing it phones this agent about, in the agent's own terms, keeping its manner; `goal` says it yourself, for any persona, and nobody is briefed. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (every judge held, then the fastest reply, then the cheapest), each row naming its call. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
+    "`simulate run` runs one call a model improvises as the persona — its goal, its manner, its facts, no script — against the agent: the copy `start` holds when it holds it in the env asked, else whoever holds it there, with nothing started. It answers the conversation and every judge's verdict: the platform's own, the persona's rule for hanging up satisfied, and your own judges. A call of fifteen turns outlasts `wait_s`: then it answers the transcript so far, and `simulate wait` picks it up. One simulation per agent at a time. `llm`, `tts` and `caller_voice` play the caller on another model or voice for this run alone; the persona keeps its own. One of Pinecall's personas is briefed first: the gateway gives it the one concrete thing it phones this agent about, in the agent's own terms, keeping its manner; `goal` says it yourself, for any persona, and nobody is briefed. `against` runs the agent on other values for this run alone, as the console's test room does; two or more configurations are a comparison — every call placed at once against the same caller, judged as each ends, and answered as a table best first (the caller's goal held, then every judge, then the fastest reply, then the cheapest), each row naming its call, its `goal` (whether the caller got what it `expects`), every judge's verdict and, when spoken, its `hearing` (lines never answered, replies the room cut off, turns nobody said, the word error rate). `repeats` rings the caller that many times under each configuration, with or without `against`: one call tells whether the agent can do a task, several how often it does. A comparison larger than the org's simulated calls at once runs whole, the calls past it waiting their turn; `simulate wait` follows it. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts as one simulation, and what its caller cost is kept with the call.",
   handler: async (args, ctx) => {
     const reached = await ctx.session.reach(ctx, args.agent);
     const going = ctx.session.simulations.get(reached.slug);
@@ -205,9 +206,11 @@ export const simulate = tool({
       packetLoss: args.packet_loss,
       pauseS: args.pause_s,
       goal: args.goal,
+      repeats: args.repeats,
     });
-    const against = args.against ?? [];
-    if (against.length > 1) {
+    const asked = args.against ?? [];
+    const against = asked.length === 0 && input.repeats > 1 ? [{}] : asked;
+    if (against.length > 1 || input.repeats > 1) {
       let placed: (started: unknown) => void = () => undefined;
       const begun = new Promise<unknown>((known) => (placed = known));
       const pending = service.compare(ctx, reached.slug, persona, input, against, (started) => placed(started)).then((done) => ({ comparison: done.comparison, refused: done.refused, rows: done.table.rows, env: ctx.env }));

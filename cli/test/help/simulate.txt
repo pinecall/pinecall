@@ -30,6 +30,9 @@ Options:
   --against <values>       the agent on these for this run: stt=, llm=, tts=,
                            voice=, language=, temperature=, end_of_turn=; again
                            for another, compared
+  --repeats <n>            how many times the caller rings under each
+                           configuration, 1 to 10: more than once is a
+                           comparison, read as how often each got it done
   --agent <name>
   --file <agent.tsx>
   -h, --help               display help for command
@@ -46,10 +49,14 @@ as one simulation, and what its caller cost is kept with the call. --against run
 other values for this run alone — stt=, llm=, tts=, voice=, language=, temperature=, joined by
 commas, as the console's test room does; said twice or more, every configuration is placed at
 once against the same caller and the table reads them best first: the judges, then the reply time,
-then the cost. In the sandbox only, with a key that edits the pipeline.
+then the cost. In the sandbox only, with a key that edits the pipeline. --repeats rings the caller
+that many times under each configuration, 1 to 10, with or without --against: one call tells whether
+the agent can do it, several how often it does, and the table ends with that count. A comparison
+larger than the org's simulated calls at once runs whole: the calls past it wait their turn.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2
   $ pinecall simulate --persona hurried --voice --tts google --caller-voice Puck
   $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
+  $ pinecall simulate --persona books-a-visit --judge --repeats 5
 

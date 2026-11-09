@@ -20,6 +20,7 @@ export const TURNS = 15;
 const A_TURNS = "--turns is how many turns the caller gets, 1 to 40";
 const A_LOSS = "--packet-loss is a share of the caller's packets: a number from 0 to 1, such as 0.05";
 const A_PAUSE = "--pause is seconds of silence before each of the caller's lines, 0 to 10";
+const A_REPEAT = "--repeats is how many times the caller rings under each configuration, 1 to 10";
 
 // Background TV at 15 dB below the caller: measured to leak into `turn.user`.
 const DEFAULT_NOISE_DB = 15;
@@ -46,6 +47,8 @@ export const SimulateInput = z.object({
   llm: z.string().min(1).optional(),
   tts: z.string().min(1).optional(),
   callerVoice: z.string().min(1).optional(),
+  // How many times the caller rings under each configuration: once tells whether the agent can do it, more how often it does.
+  repeats: z.number().int(A_REPEAT).min(1, A_REPEAT).max(10, A_REPEAT).default(1),
 });
 export type SimulateInput = z.infer<typeof SimulateInput>;
 

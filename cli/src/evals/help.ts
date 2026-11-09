@@ -36,13 +36,17 @@ as one simulation, and what its caller cost is kept with the call. --against run
 other values for this run alone — stt=, llm=, tts=, voice=, language=, temperature=, joined by
 commas, as the console's test room does; said twice or more, every configuration is placed at
 once against the same caller and the table reads them best first: the judges, then the reply time,
-then the cost. In the sandbox only, with a key that edits the pipeline.
+then the cost. In the sandbox only, with a key that edits the pipeline. --repeats rings the caller
+that many times under each configuration, 1 to 10, with or without --against: one call tells whether
+the agent can do it, several how often it does, and the table ends with that count. A comparison
+larger than the org's simulated calls at once runs whole: the calls past it wait their turn.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2
   $ pinecall simulate --persona hurried --voice --tts google --caller-voice Puck
   $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b \
       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
+  $ pinecall simulate --persona books-a-visit --judge --repeats 5
 `,
   eval: `
 One finished call rebuilt from its log and answered by the runtime's six CODE checks — consent,
@@ -68,8 +72,8 @@ and an expect that says what must not happen again. A person reads it, reproduce
 
 A case kept at hang-up joins its agent's GROUP for the judge that broke it (grp_…): propose asks
 the judge model for the cause and the smallest fix; apply writes a proposed SETTING as a new
-version of your settings (an agent built in Studio's: an app written as code is refused, naming
-it, since its code sets it); persona keeps a caller like the group's; approve and dismiss decide a
+version of your settings (on an app written as code, in the sandbox and for what its class does
+not declare; in production it is refused, naming it); persona keeps a caller like the group's; approve and dismiss decide a
 whole group. pull writes a case's golden into the repository; keep makes a finished call a case.
 
 add keeps a golden written by hand as an approved case, by its name — the file's, or --name — so the

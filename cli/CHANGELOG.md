@@ -6,6 +6,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`simulate --repeats n` says how often, not only whether:** the caller rings n times (1 to 10) under each
+  configuration, with or without `--against`, and the table ends with how many runs of each did the caller's task
+  (its `expected-outcome` judge held). A comparison larger than the org's simulated calls at once runs whole: the
+  calls past it wait their turn in the gateway, the first line says how many, and the verb follows them to the
+  end. The MCP's `simulate` takes `repeats` too, and each row it answers carries `goal`, `judges` and `hearing`.
+- **An app written as code is open field by field in the sandbox:** `agent set` and every write beside it, and the
+  MCP tools over them, go through for what its class does not declare, and the gateway refuses what it declares
+  naming the field. In production an app is still refused, naming it.
 ## [0.11.29] — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
 
 - **`pinecall agent set` and the MCP's `agent` take what the console's Advanced tab sets:** `--silence-timeout`,

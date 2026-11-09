@@ -173,7 +173,8 @@ export async function compareAtTheTerminal(ctx: Context, agent: string, input: s
   const persona = await service.getPersona(ctx, agent, input.persona);
   ctx.io.print(`${persona.name} · ${input.goal ?? persona.goal}`);
   const done = await service.compare(ctx, agent, persona, input, against, (started) => {
-    ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
+    const waiting = (started.waiting ?? 0) === 0 ? "" : ` · ${String(started.waiting)} waiting their turn`;
+    ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${waiting}${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
   });
   ctx.io.result(done, render.comparison);
   return done;

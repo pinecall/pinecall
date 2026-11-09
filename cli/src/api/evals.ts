@@ -290,8 +290,17 @@ export interface ComparisonRow {
   hearing?: Record<string, number | null> | null;
 }
 
-/** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first. */
+/** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first; and, from a gateway that keeps them, what was asked for and how its placing stands. */
 export interface Comparison {
+  /** How many times each caller rings under each configuration. */
+  repeats?: number;
+  /** Every call it was to place, and the ones still waiting for a place on the line. */
+  planned?: number;
+  waiting?: number;
+  /** What could not be placed, the ones refused after the answer among them. */
+  refused?: { persona: string; against: AgentValues; why: string }[];
+  /** The gateway placing the ones that wait was restarted: they never will be placed. */
+  abandoned?: boolean;
   comparison: string;
   agent: string;
   /** The first caller; `personas` is every one, in the order placed. */

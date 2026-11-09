@@ -67,6 +67,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
     .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
     .option("--against <values>", "the agent on these for this run: stt=, llm=, tts=, voice=, language=, temperature=, end_of_turn=; again for another, compared", repeated)
+    .option("--repeats <n>", "how many times the caller rings under each configuration, 1 to 10: more than once is a comparison, read as how often each got it done")
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)
@@ -86,12 +87,14 @@ export function register(program: Command, ctx: Context): void {
         llm: flags.llm,
         tts: flags.tts,
         callerVoice: flags.callerVoice,
+        repeats: numberOf("--repeats", flags.repeats),
       });
       const agent = ctx.agent("simulate", { file: flags.file, agent: flags.agent }).name;
       const against = (flags.against ?? []).map(service.parseAgainst);
-      if (against.length > 1) {
+      // Several configurations, or one rung several times, are several calls: placed together, read as one table.
+      if (against.length > 1 || input.repeats > 1) {
         if (listen) throw new UsageError("--listen plays one call: a comparison runs several at once");
-        await compareAtTheTerminal(ctx, agent, input, against);
+        await compareAtTheTerminal(ctx, agent, input, against.length === 0 ? [{}] : against);
         return;
       }
       service.requireHeld(await simulateAtTheTerminal(ctx, agent, input, listen, against[0]));

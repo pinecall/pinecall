@@ -753,7 +753,8 @@ your desk and red in CI until it is deployed (or `agent set … --team` gives it
 pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--pause 0]
                   [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
-                  [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--agent <name>] [--file agent.tsx]
+                  [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--repeats n (1, 1 to 10)]
+                  [--agent <name>] [--file agent.tsx]
 ```
 
 A model in the gateway plays the caller — every turn improvised from the persona's goal, its style
@@ -814,10 +815,10 @@ feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` 
 it ran on. In the sandbox only, with a key that edits the pipeline (`403` otherwise); a knob the test
 room does not have is refused. The gateway plays the caller then, written or spoken, and this
 terminal follows the call's log. Said **twice or more, it is a comparison**: the same caller against
-every configuration, every call placed at once (`pinecall limits` holds ten simulations on the line
-per org), judged as each one ends, and printed as one table best first — every judge held, then the
-most held, then the fastest reply, then the cheapest — one row per configuration with its judges,
-its reply, model, voice and hearing medians, its cost, its length and its call:
+every configuration, placed together, judged as each one ends, and printed as one table best first —
+the caller's goal held, then every judge, then the most held, then the fastest reply, then the
+cheapest — one row per call with its judges, its reply, model, voice and hearing medians, its cost,
+its length and its call:
 
 ```console
 $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b \
@@ -831,6 +832,22 @@ hurried against receptionist · 3 calls · best first
 3  thinks google/gemini-3.5-flash-lite                      broke 6/7 1.31 s   620 ms  170 ms  0 ms    $0.0074  39 s    call_…
   → pinecall sessions <call> reads one whole
 ```
+
+`--repeats n` rings the caller that many times under each configuration, 1 to 10, with or without
+`--against`: `pinecall simulate --persona books-a-visit --judge --repeats 5` puts the same caller to
+the agent five times as it stands. One call tells whether the agent can do a task; several tell how
+often it does, and the table ends with that count, by configuration (`llm=…: 4 of 5 runs`). A caller
+is a task: its run is done when the judge of what it `expects` held (`expected-outcome`), or, for a
+caller that expects nothing, when every judge did. A comparison places a round of every
+configuration before the next round, and one larger than the org's simulated calls at once runs
+whole: the calls past it **wait their turn**, the first line saying how many (`12 calls placed · 8
+waiting their turn`), and the gateway places each as the ones before it end. How many calls the org
+may have on the line at once, and how many one comparison may place, are the org's own — ten each
+unless the operator gave it more; a comparison past the second is refused before anything is placed,
+its sentence naming the number. Each row's JSON (`--json`) carries what the table has no column for:
+`goal`, every judge's verdict in `judges`, and for a spoken call `hearing` — the caller's lines the
+agent never answered, its replies the room cut off, the turns it heard that nobody said, and the
+word error rate of what it heard, measured against what the simulated caller really said.
 
 A configuration the gateway refuses (a vendor nobody keyed, the org's limits) is said under the
 table, `not placed`, and the others go on; `--listen` is one call, so a comparison refuses it. The

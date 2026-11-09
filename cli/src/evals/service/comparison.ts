@@ -29,6 +29,8 @@ const A_PAIR = `--against takes knob=value pairs joined by commas — ${AGAINST_
 // How long the table is asked for after every call ended: the judges answer after the hang-up.
 const JUDGED_WITHIN_MS = 90_000;
 const ASKED_EVERY_MS = 1500;
+// A call that waits its turn waits for another to end: the table is asked this often meanwhile.
+const WAITING_ASKED_EVERY_MS = 5000;
 
 /** `llm=groq/openai/gpt-oss-120b,tts=deepgram` as the gateway takes it; a knob it does not know is refused. */
 export function parseAgainst(word: string): AgentValuesInput {
@@ -93,18 +95,32 @@ export async function simulateAgainst(ctx: Context, agent: string, written: Pers
  */
 export async function compare(ctx: Context, agent: string, written: Persona, input: SimulateInput, against: readonly api.AgentValues[], onPlaced?: (started: api.ComparisonStarted) => void): Promise<Compared> {
   const persona = playedBy(written, input);
-  const started = await api.startComparison(ctx.gateway(), { ...wanted(agent, persona, input), against: [...against] });
+  const repeated = input.repeats > 1 ? { repeats: input.repeats } : {};
+  const started = await api.startComparison(ctx.gateway(), { ...wanted(agent, persona, input), against: [...against], ...repeated });
   onPlaced?.(started);
-  // Nothing placed, there is no table to read: the gateway's reasons are the answer.
-  if (started.calls.length === 0) throw new UsageError(nonePlaced(started.refused));
+  // Nothing placed and nothing waiting, there is no table to read: the gateway's reasons are the answer.
+  if (started.calls.length === 0 && (started.waiting ?? 0) === 0) throw new UsageError(nonePlaced(started.refused));
   await Promise.all(started.calls.map((one) => followUntilEnded(ctx, one.call)));
+  const asked = (): Promise<api.Comparison> => api.getComparison(ctx.gateway(), started.comparison);
+  const again = (): Promise<void> => new Promise((wake) => setTimeout(wake, WAITING_ASKED_EVERY_MS));
+  let table = await asked();
+  // The calls past the org's calls at once wait their turn in the gateway, which places each as the
+  // ones before it end: the table says how many still wait, and whether their gateway left them.
+  while (stillPlacing(table) || ((table.waiting ?? 0) === 0 && (started.waiting ?? 0) > 0 && table.rows.some((row) => row.ended_at === null))) {
+    await again();
+    table = await asked();
+  }
   const deadline = Date.now() + JUDGED_WITHIN_MS;
-  let table = await api.getComparison(ctx.gateway(), started.comparison);
   while (Date.now() < deadline && table.rows.some((row) => row.ended_at === null || row.score === null)) {
     await new Promise((wake) => setTimeout(wake, ASKED_EVERY_MS));
-    table = await api.getComparison(ctx.gateway(), started.comparison);
+    table = await asked();
   }
-  return { comparison: started.comparison, refused: started.refused, table };
+  return { comparison: started.comparison, refused: table.refused ?? started.refused, table };
+}
+
+/** Whether calls of the comparison still wait for a place on the line, with a gateway placing them. */
+function stillPlacing(table: api.Comparison): boolean {
+  return (table.waiting ?? 0) > 0 && table.abandoned !== true;
 }
 
 // One reason said once, with how many rows it refused, so nine rows refused alike read as one line.
