@@ -219,3 +219,17 @@ def test_the_lines_for_a_long_wait_and_a_failure_travel_as_the_wire_carries_them
         3.0,
         "No pude verlo.",
     )
+
+
+class Pointing(Agent):
+    """Señala."""
+
+    @tool(quiet=True)
+    def point(self) -> str:
+        """Señala."""
+        return "ok"
+
+
+def test_a_quiet_tool_says_so_on_the_wire_and_any_other_says_nothing_of_it() -> None:
+    assert spec_of(Pointing(), "point").quiet is True
+    assert spec_of(Patient(), "look").quiet is None

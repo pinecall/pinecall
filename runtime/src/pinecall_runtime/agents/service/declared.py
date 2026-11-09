@@ -1,7 +1,7 @@
 """What an app declares of its agent, laid over the config held: the fields it sends, the settings it fixes."""
 
 import dataclasses
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pinecall_runtime.agents.declaration import (
@@ -24,6 +24,7 @@ from pinecall_runtime.agents.service.tuning import fallbacks_from_wire, model_fr
 from pinecall_runtime.agents.service.widgets import check_hold, check_look
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.providers import service as providers
+from pinecall_runtime.wire.declared import MonitorDeclared
 from pinecall_runtime.wire.parts import AgentConfig as Declaration
 from pinecall_runtime.wire.parts import GreetingConfig, VoiceConfig
 
@@ -96,11 +97,11 @@ def _settings_fixed(current: AgentConfig, declaration: Declaration, *, first: bo
     converted = _settings_of(declaration)
     changed: dict[str, Any] = {}
     fixed = set(current.fixed)
-    sent = declaration.model_fields_set & converted.keys()
+    sent = _sent(declaration) & converted.keys()
     let_go = (fixed - sent) if first else set[str]()
     for name in sorted(sent | let_go):
         field, value = converted[name]
-        if name in let_go or getattr(declaration, name) is None:
+        if name in let_go or _said(declaration, name) is None:
             # The class lets go of it: the field holds no value of its own, and the org's settings fill it.
             fixed.discard(name)
             changed[field] = _undeclared(field)
@@ -109,6 +110,29 @@ def _settings_fixed(current: AgentConfig, declaration: Declaration, *, first: bo
         changed[field] = value
     changed["fixed"] = frozenset(fixed)
     return changed
+
+
+# `bases` is `docs` said for several: one setting, however the class says it.
+def _sent(declaration: Declaration) -> set[str]:
+    return {"docs" if name == "bases" else name for name in declaration.model_fields_set}
+
+
+def _said(declaration: Declaration, name: str) -> object:
+    return getattr(declaration, name) if name != "docs" or declaration.bases is None else declaration.bases
+
+
+def _bases_of(declaration: Declaration) -> tuple[Docs, ...]:
+    if declaration.docs is not None and declaration.bases is not None:
+        raise ValidationError("docs is one base and bases is several: declare one of them")
+    wanted = declaration.bases if declaration.bases is not None else [declaration.docs] if declaration.docs else []
+    return tuple(Docs(**one.model_dump()) for one in wanted)
+
+
+def _watched(monitors: Sequence[MonitorDeclared]) -> tuple[MonitorDeclared, ...]:
+    names = [one.name for one in monitors]
+    if repeated := sorted({name for name in names if names.count(name) > 1}):
+        raise ValidationError(f"monitor names repeat: {repeated}")
+    return tuple(monitors)
 
 
 def _undeclared(field: str) -> object:
@@ -137,7 +161,7 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
         "says": ("says", {item.word: item.spoken for item in declaration.says or ()}),
         "hears": ("hears", tuple(declaration.hears or ())),
         "knowledge": ("knowledge", None if declaration.knowledge is None else declaration.knowledge.text),
-        "docs": ("bases", () if declaration.docs is None else (Docs(**declaration.docs.model_dump()),)),
+        "docs": ("bases", _bases_of(declaration)),
         "memory": (
             "memory",
             None if memory is None else MemoryPolicy(remember=tuple(memory.remember), forget=tuple(memory.forget)),
@@ -154,6 +178,7 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
         "personas": ("personas", declaration.personas),
         "hold": ("hold", check_hold(declaration.hold)),
         "widget": ("widget", check_look(declaration.widget)),
+        "monitors": ("monitors", None if declaration.monitors is None else _watched(declaration.monitors)),
     }
 
 

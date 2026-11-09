@@ -14,7 +14,7 @@ module Pinecall
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
       ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
-                       personas widget idle voicemail stt_fallbacks tts_fallbacks].freeze
+                       personas widget idle voicemail stt_fallbacks tts_fallbacks bases monitors].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
       AS_KEYWORDS = %i[turn knowledge docs memory judges personas widget idle].freeze
@@ -142,8 +142,8 @@ module Pinecall
           environment[:hangup] = Config.hangup_of(ending)
         end
 
-        # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`.
-        %i[language says record].each do |field|
+        # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`, `bases [{ base: "faq" }, { base: "prices" }]`.
+        %i[language says record bases monitors].each do |field|
           define_method(field) do |value = NOTHING|
             return environment[field] if value.equal?(NOTHING)
 

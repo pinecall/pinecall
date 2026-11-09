@@ -40,6 +40,7 @@ module Pinecall
           spec[:delayed] = options[:delayed] if options[:delayed]
           spec[:delayed_after_s] = options[:delayed_after].to_f if options[:delayed_after]
           spec[:failed] = options[:failed] if options[:failed]
+          spec[:quiet] = true if options[:quiet]
           spec[:pii] = pii!(options, spec) if options[:pii]
           spec[:timeout_s] = options[:timeout].to_f if options[:timeout]
           Wire::Validate.call!("ToolSpec", spec, where: "tool #{name}")

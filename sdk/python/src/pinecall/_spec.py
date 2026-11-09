@@ -54,7 +54,7 @@ def _type_of(default: object) -> type:
 
 
 # What a tool says and masks, passed on as it was declared.
-LINES = ("confirm", "announce", "delayed", "delayed_after_s", "failed", "pii")
+LINES = ("confirm", "announce", "delayed", "delayed_after_s", "failed", "quiet", "pii")
 
 
 def spec_of(

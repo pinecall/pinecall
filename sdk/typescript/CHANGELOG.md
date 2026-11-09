@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A class declares its monitors:** `monitors`, each a number of its calls and the line it fires across.
+
+- **A class may declare several knowledge bases:** `bases`, in place of `docs`.
+
 - **A tool says more:** `@tool` says `delayed` (with `delayedAfter`) and `failed`, as a Studio tool does.
 
 ## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)

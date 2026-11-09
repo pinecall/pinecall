@@ -286,8 +286,8 @@ pinecall agent                     # what it runs on: voice, models, language, g
 ```
 
 The voice, the models, the language and what it knows by heart are the class's: `@voice("<vendor>", "<id>")`
-on it, and the next `pinecall start` or deploy runs on it. An app written as code is set by its code
-and nothing else. `pinecall console` shows the same, read-only, with every call the agent has had.
+on it, and the next `pinecall start` or deploy runs on it. What the class declares is the class's alone; what it
+leaves open can be set in the sandbox. `pinecall console` shows the same, with every call the agent has had.
 
 ### Go live
 

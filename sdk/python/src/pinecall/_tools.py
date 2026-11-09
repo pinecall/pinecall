@@ -27,6 +27,7 @@ class ToolOptions(TypedDict, total=False):
     delayed: str
     delayed_after: float
     failed: str
+    quiet: bool
     preview: int
     pii: Sequence[str]
     timeout: float
@@ -116,6 +117,7 @@ def declaring(
         "delayed": options.get("delayed"),
         "delayed_after_s": options.get("delayed_after"),
         "failed": options.get("failed"),
+        "quiet": True if options.get("quiet") else None,
         "pii": None if pii is None else tuple(pii),
         "timeout": options.get("timeout"),
     }

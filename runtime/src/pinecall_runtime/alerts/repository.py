@@ -26,6 +26,12 @@ class MonitorRepository(Repository[Monitor]):
         )
         return await self.all(statement)
 
+    async def by_id(self, org: str, env: Env, monitor_id: str) -> Monitor | None:
+        """The env's monitor by its id, or None."""
+        return await self.one_or_none(
+            self.statement().where(Monitor.org == org, Monitor.env == env, Monitor.id == monitor_id)
+        )
+
     async def drop(self, org: str, env: Env, monitor_id: str) -> bool:
         """Forget a monitor of the env; whether it was there."""
         statement = delete(Monitor).where(Monitor.org == org, Monitor.env == env, Monitor.id == monitor_id)

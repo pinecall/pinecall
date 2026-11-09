@@ -1,5 +1,7 @@
 """What a class declares of its environment, as the wire carries it: settings, judges, look."""
 
+from typing import Literal
+
 from pydantic import Field
 
 from pinecall.wire._names import EventSource, JsonObject
@@ -151,6 +153,24 @@ class VoicemailConfig(WireModel):
     message: str | None = None
 
 
+class MonitorDeclared(WireModel):
+    """One number of the agent's calls the class watches: it fires when it crosses the line."""
+
+    name: str
+    metric: Literal[
+        "e2e_median_s",
+        "llm_median_s",
+        "held_rate",
+        "escalated_rate",
+        "tool_failure_rate",
+        "spend_usd",
+        "calls",
+    ]
+    above: bool
+    threshold: float
+    window_days: Literal[1, 7, 30] = 7
+
+
 class AgentConfig(WireModel):
     """What an app declares about its agent."""
 
@@ -168,6 +188,8 @@ class AgentConfig(WireModel):
     hears: list[str] | None = None
     knowledge: KnowledgeFile | None = None
     docs: DocsConfig | None = None
+    # Several bases, in place of `docs`.
+    bases: list[DocsConfig] | None = None
     memory: MemoryConfig | None = None
     hangup: HangupConfig | None = None
     record: bool = True
@@ -187,6 +209,8 @@ class AgentConfig(WireModel):
     view: ViewSpec | None = None
     events: list[EventSpec] | None = None
     # Declared, the class owns the agent's judges and its personas: no door writes either.
+    # The numbers of its calls the class watches.
+    monitors: list[MonitorDeclared] | None = None
     judges: JudgesDeclared | None = None
     personas: PersonasDeclared | None = None
     # Declared, the class owns the hold melody and the widget's look.

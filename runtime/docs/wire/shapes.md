@@ -473,6 +473,18 @@ Lets the model tell a machine from a person on a call the agent placed. It leave
 |---|---|---|---|
 | `message` | `string` | no | The words left on the machine. Left out, the call just ends. |
 
+### `MonitorDeclared`
+
+One number of the agent's calls the class watches, on `AgentConfig.monitors`. It fires, once a day, on the agent's log and the org's webhook, when the number crosses the line over the window. The class keeps it: no door takes it out.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `name` | `string` | yes | What the monitor is called; one name once per class. |
+| `metric` | `MonitorMetric` | yes | The number watched. |
+| `above` | `boolean` | yes | True fires past the threshold, false under it. |
+| `threshold` | `number` | yes | The line; a share between 0 and 1 for a rate. |
+| `window_days` | `integer` | no | The window the number is read over: 1, 7 or 30 days. |
+
 ### `MemoryConfig`
 
 What memory keeps about a contact across calls, and what it must never keep. Both lists are in the tenant's own words.
@@ -614,6 +626,7 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `hears` | `string[]` | no | Words the ears listen for. Declared, it wins over the agent's lexicon's. |
 | `knowledge` | `KnowledgeFile` | no | The knowledge entry of the prompt. Declared, it wins over the settings'. |
 | `docs` | `DocsConfig` | no | The base the agent searches. Declared, it wins over the settings' bases. |
+| `bases` | `DocsConfig[]` | no | Several bases the agent searches, in place of `docs`, never beside it. Declared, they win over the settings' bases. |
 | `memory` | `MemoryConfig` | no | What the agent remembers of a caller and forgets. Declared, it wins over the settings'. |
 | `hangup` | `HangupConfig` | no | When the agent hangs up by itself. Declared, it wins over the settings'. |
 | `record` | `boolean` | no | Whether this agent's calls keep their audio; the platform records the whole room, so what is kept is what everybody on the call heard. Declared, it wins over the settings'. |
@@ -632,5 +645,6 @@ What an app declares about its agent: the prompt's layout, the language, the too
 | `judges` | `JudgesDeclared` | no | The judges the class owns: which of Pinecall's its calls meet, and its own, each code beside the class. Declared, it wins over the console's and `pinecall judges`, which refuse it naming the class. Absent, the org writes the agent's judges as rows. |
 | `hold` | `HoldConfig` | no | The hold melody the class owns: its file by hash, the wait, or silence. Declared, the pipeline's hold doors refuse a write naming the class. |
 | `widget` | `WidgetLook` | no | How the widget presents the agent, owned by the class. Declared, `PUT …/widget` refuses naming the class. |
+| `monitors` | `MonitorDeclared[]` | no | The numbers of its calls the class watches. Declared, the class keeps them: made, changed and dropped by name as it says them. |
 | `personas` | `PersonasDeclared` | no | The personas the class owns: which of Pinecall's its runs play, and its own, each code beside the class. Declared, it wins over the console's and `pinecall personas`. Absent, the org writes them as rows. |
 

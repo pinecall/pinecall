@@ -222,7 +222,7 @@ written in the console's Knowledge ▸ Docs, and a local `agents/<name>/docs/` i
 when no directory is named. A class
 declares its voice, its model, its opening or its memory policy
 ([writing-an-agent.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/writing-an-agent.md)),
-and the CLI writes none of them for it: an app written as code is set by its code ([`agent`](#agent)).
+and what it declares the CLI cannot write: [`agent`](#agent) says what stays open.
 
 At the root, every verb that reads a class acts on **every agent**, each against its own folders,
 or on the one `--agent <name>` names — by its folder's name, which is its slug (`sales`):
@@ -1409,12 +1409,13 @@ pinecall agent pull [--team] · push <file> [--team]
                                         … and any of them with --prod, in production
 ```
 
-**An app written as code is set by its code and nothing else**, in the sandbox and in production. Every write of
-one agent's settings — `agent set`, `clear`, `rollback`, `push`, `knowledge edit`, `lexicon add`, `hear` and `rm`, `pipeline
-melody upload`, `default`, `off` and `after`, `docs attach` and `detach`, a `memory policy` with a list, `cases apply` — and
-the MCP tools over them are refused with exit 2 and one sentence naming the app: `clinica-norte is set in its code: change it there
-and deploy`. Reading stays, and these writes are for an agent built in Studio. An agent neither `GET /v1/hosted` nor `GET /v1/agents`
-names — a class that is not connected now — counts as code. Pushing documents to a base is the org's and stays.
+**An app written as code is open field by field in the sandbox.** Whatever its class does not declare can be written
+here, and what it declares is refused by the gateway naming the field. **In production an app runs what it deployed**:
+every write of one agent's settings — `agent set`, `clear`, `rollback`, `push`, `knowledge edit`, `lexicon add`, `hear` and
+`rm`, `pipeline melody upload`, `default`, `off` and `after`, `docs attach` and `detach`, a `memory policy` with a list,
+`cases apply` — and the MCP tools over them are refused with exit 2 and one sentence naming the app: `clinica-norte is set in
+its code: change it there and deploy`. Reading stays. An agent neither `GET /v1/hosted` nor `GET /v1/agents` names — a class
+that is not connected now — counts as code. Pushing documents to a base is the org's and stays.
 
 A version says what moved, so a write that changes nothing writes none: `set` with no field, or
 with the values the corner holds, and `clear` of a field your corner does not set are refused with

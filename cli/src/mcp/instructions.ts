@@ -11,7 +11,7 @@ the agent while it is written, reloaded on every save → \`chat\` talks to it, 
 goldens, \`simulate\` plays a caller, \`remember\` runs its memory cases — on the copy \`start\` holds,
 or with nothing held on whoever holds it: a terminal, a colleague, production's own process →
 \`calls\` lists what happened and \`call\` reads one call's log whole → \`agent\`, \`voices\`,
-\`lexicon\`, \`docs\` and \`memory\` tune an agent built in Studio (an app written as code is set by its code) → \`deploy\` runs it on Pinecall → \`supervise\` watches a
+\`lexicon\`, \`docs\` and \`memory\` tune an agent (an app written as code, in the sandbox, in whatever its class does not declare) → \`deploy\` runs it on Pinecall → \`supervise\` watches a
 live call and moves on it → \`console_url\` opens the console for the person.
 \`studio\` is the way to an agent with no class: \`new\` → \`save\` its instructions, tools and data
 collection → \`try\` each tool → \`chat\` with it by name → \`deploy\` it.

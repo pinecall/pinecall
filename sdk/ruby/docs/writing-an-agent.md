@@ -116,6 +116,8 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `stt_fallbacks` · `tts_fallbacks` | who takes over when the vendor fails, in order | `tts_fallbacks "cartesia"` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge path: "knowledge.md", text: File.read(…)` |
 | `docs` | the base the agent searches per turn, and how many chunks a turn reads; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs base: "clinica-norte", k: 4` |
+| `bases` | several bases, in place of `docs`; each pushed on its own (`pinecall docs push --base`) | `bases [{ base: "faq" }, { base: "prices", k: 2 }]` |
+| `monitors` | numbers of its calls it watches: each fires, once a day, on the agent's log and your webhook when it crosses its line | `monitors [{ name: "slow", metric: "e2e_median_s", above: true, threshold: 2 }]` |
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold file: "hold.mp3", after_s: 1.5` · `hold :off` |
 | `widget` | how the widget presents the agent | `widget title: "…", tagline: "…", accent: "#0f766e", theme: "auto"` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges on: %w[consent grounded], own: [OFFERS_NEXT_SLOT]` |
@@ -220,6 +222,7 @@ tool; the signature is the schema it fills.
 | `confirm:` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `delayed:` | what the agent says when the wait has grown long, 5 seconds in unless `delayed_after:` says otherwise; `failed:`, what it says when the tool failed, before the model reads why |
+| `quiet: true` | a move on the caller's screen, such as a pointer: it runs as the model calls it, while its words still play, and asks for no answer |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |
 | `pii:` | parameters that carry personal data: masked in the call's log by declaration, and by value wherever the agent writes them down, as in what `pinecall start` prints |
 | `timeout:` | how long the platform waits for this method, in seconds |

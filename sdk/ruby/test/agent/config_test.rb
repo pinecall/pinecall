@@ -51,6 +51,21 @@ class ConfigTest < Minitest::Test
     tts_fallbacks "cartesia/sonic-3"
   end
 
+  def test_the_monitors_a_class_declares_are_sent_as_the_wire_carries_them
+    slow = { name: "slow", metric: "e2e_median_s", above: true, threshold: 2.0 }
+    sent = Class.new(Pinecall::Agent) { monitors [slow] }.wire_config(tools: [])
+
+    assert_equal [slow], sent[:monitors]
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
+  def test_several_bases_are_sent_as_the_wire_carries_them
+    sent = Class.new(Pinecall::Agent) { bases [{ base: "faq" }, { base: "prices", k: 2 }] }.wire_config(tools: [])
+
+    assert_equal %w[faq prices], sent[:bases].map { |one| one[:base] }
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+  end
+
   def test_the_quiet_a_machine_and_the_fallbacks_are_sent_in_the_wires_shape
     sent = Atenta.wire_config(tools: [])
 

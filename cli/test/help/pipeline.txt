@@ -41,8 +41,8 @@ the web alike, from the next call; a written call plays none.
 default is the runtime's own melody, off is silence, upload sends a file of yours (the gateway
 converts it once, to Ogg Opus). after sets the wait in seconds, 2.5 when you set none; choosing
 what plays keeps the wait. One choice per agent per environment, whoever holds the agent:
---prod sets production's. An app written as code declares its melody in its class, and upload,
-default, off and after are refused naming it; they are for an agent built in Studio.
+--prod sets production's. On an app written as code they work in the sandbox unless its class
+declares its melody, and in production upload, default, off and after are refused naming it.
 
 Examples
   $ pinecall pipeline melody

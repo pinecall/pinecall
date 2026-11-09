@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A class declares its monitors:** `monitors` on `AgentConfig`, each a number of the agent's calls and its line. They are
+  kept as rows by name at the seal of each of its calls, and `DELETE /v1/monitors/{id}` refuses one, naming the class.
+
+- **A class may declare several knowledge bases:** `bases` on `AgentConfig`, in place of `docs`; one setting, whichever it says.
+
 - **A simulated call says how it was heard.** A simulation knows what its caller said and when, which
   no real call does: at hang-up the agent's log is measured against it and kept with the call
   (`call_facts.hearing`, migration 000021), and every run's row and every row of a comparison carries

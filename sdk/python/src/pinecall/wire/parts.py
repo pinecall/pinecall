@@ -129,6 +129,8 @@ class ToolSpec(WireModel):
     delayed_after_s: float | None = None
     failed: str | None = None
     pii: list[str] | None = None
+    # A move on the caller's screen: it runs as the model calls it and asks for no answer.
+    quiet: bool | None = None
     timeout_s: float | None = None
 
 

@@ -7,11 +7,10 @@ from pydantic import Field, field_serializer, model_validator
 
 from pinecall_runtime.enums import Env, MonitorMetric
 from pinecall_runtime.kit.schemas import Row, Schema
+from pinecall_runtime.wire.declared import A_SHARE, RATES
 
 # A monitor's number is read over one of these many days, today included.
 type WindowDays = Literal[1, 7, 30]
-A_RATE = frozenset({MonitorMetric.held_rate, MonitorMetric.escalated_rate, MonitorMetric.tool_failure_rate})
-A_SHARE = "{metric} is a share between 0 and 1, not {said}"
 
 
 class MonitorRequest(Schema):
@@ -26,7 +25,7 @@ class MonitorRequest(Schema):
 
     @model_validator(mode="after")
     def _a_share(self) -> Self:
-        if self.metric in A_RATE and not 0 <= self.threshold <= 1:
+        if self.metric in RATES and not 0 <= self.threshold <= 1:
             raise ValueError(A_SHARE.format(metric=self.metric, said=self.threshold))
         return self
 

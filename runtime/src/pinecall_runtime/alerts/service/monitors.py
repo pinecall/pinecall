@@ -12,14 +12,18 @@ from pinecall_runtime.alerts.repository import MonitorRepository
 from pinecall_runtime.alerts.schemas import MonitorRequest
 from pinecall_runtime.alerts.service.delivery import Alerting, raise_alert
 from pinecall_runtime.enums import MonitorMetric
-from pinecall_runtime.exceptions import NotFound
+from pinecall_runtime.exceptions import Conflict, NotFound
 from pinecall_runtime.kit.auth import THE_ORGS_OWN, Scope
 from pinecall_runtime.kit.crypto import random_id
 from pinecall_runtime.kit.time import day_of
+from pinecall_runtime.wire.declared import MonitorDeclared
 from pinecall_runtime.wire.events import MonitorFired
 
 NO_SUCH_MONITOR = "no monitor {id} in this env: `pinecall monitors` lists them"
 LLM = "llm"
+# Who set a monitor its agent's class declares: the class keeps it, so no door takes it out.
+THE_CLASS = "class"
+ITS_CLASS_WATCHES = "{name} is declared by the class of {agent}: take it out of the class, and the next call drops it"
 
 
 # The series is calls' read model, above alerts: the seal hands the function that reads it, and
@@ -138,8 +142,56 @@ async def create_monitor(session: AsyncSession, scope: Scope, wanted: MonitorReq
 
 async def delete_monitor(session: AsyncSession, scope: Scope, monitor_id: str) -> None:
     """Stop watching; NotFound when the env has no such monitor."""
-    if not await MonitorRepository(session).drop(scope.org, scope.env, monitor_id):
+    repository = MonitorRepository(session)
+    found = await repository.by_id(scope.org, scope.env, monitor_id)
+    if found is None:
         raise NotFound(NO_SUCH_MONITOR.format(id=monitor_id))
+    if found.created_by == THE_CLASS:
+        raise Conflict(ITS_CLASS_WATCHES.format(name=found.name, agent=found.agent))
+    await repository.drop(scope.org, scope.env, monitor_id)
+
+
+# A monitor keeps the day it last fired, so the class's are rows too: made, changed and dropped by
+# name as the class says them, at the seal of each of the agent's calls, before they are read.
+async def keep_declared(
+    session: AsyncSession, scope: Scope, agent: str, declared: Sequence[MonitorDeclared] | None
+) -> None:
+    """The agent's class's monitors as its declaration has them now; None leaves every row alone."""
+    if declared is None:
+        return
+    repository = MonitorRepository(session)
+    kept = {
+        row.name: row
+        for row in await repository.of_env(scope.org, scope.env)
+        if row.agent == agent and row.created_by == THE_CLASS
+    }
+    for wanted in declared:
+        row = kept.pop(wanted.name, None)
+        if row is None:
+            await repository.add(
+                Monitor(
+                    id=random_id("mon_", 6),
+                    org=scope.org,
+                    env=scope.env,
+                    agent=agent,
+                    name=wanted.name,
+                    metric=wanted.metric,
+                    above=wanted.above,
+                    threshold=wanted.threshold,
+                    window_days=wanted.window_days,
+                    created_by=THE_CLASS,
+                )
+            )
+            continue
+        row.metric, row.above, row.threshold, row.window_days = (
+            wanted.metric,
+            wanted.above,
+            wanted.threshold,
+            wanted.window_days,
+        )
+    for gone in kept.values():
+        await repository.drop(scope.org, scope.env, gone.id)
+    await session.flush()
 
 
 # ── read at every seal ──
@@ -149,9 +201,17 @@ async def delete_monitor(session: AsyncSession, scope: Scope, monitor_id: str) -
 # what the series count). Each fires once a day, on the sealed call's agent's log, with the value
 # that crossed.
 async def check_monitors(
-    session: AsyncSession, alerting: Alerting, scope: Scope, agent: str, *, series: Series, at: float
+    session: AsyncSession,
+    alerting: Alerting,
+    scope: Scope,
+    agent: str,
+    *,
+    series: Series,
+    at: float,
+    declared: Sequence[MonitorDeclared] | None = None,
 ) -> None:
     """Say, once a day per monitor, that a number of the env crossed its line."""
+    await keep_declared(session, scope, agent, declared)
     env_wide = dataclasses.replace(scope, holder=THE_ORGS_OWN)
     day = day_of(at)
     repository = MonitorRepository(session)

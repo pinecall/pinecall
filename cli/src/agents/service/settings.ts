@@ -9,7 +9,7 @@ import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
 import { readJsonFile } from "../../kit/json-file.js";
 import * as providers from "../../providers/service.js";
-import { mustNotBeCode } from "./ownership.js";
+import { mustNotBeCodeInProduction } from "./ownership.js";
 import { cornerName, type CornerWritten, cornerWritten, readSettings, rowToStartFrom, sameSettings, type TuningAnswer, type TuningBody, writeCorner } from "./corners.js";
 
 /** Settings fields in display order, as typed on the command line. */
@@ -177,7 +177,7 @@ export async function settingsDiff(ctx: Context, agent: string | undefined, agai
 export async function rollbackSettings(ctx: Context, version: number, options: WriteOptions): Promise<{ agent: string; answer: TuningAnswer }> {
   if (!Number.isInteger(version) || version < 1) throw new UsageError("rollback takes the version to bring back: `pinecall agent history` lists them");
   const name = agentNamed(ctx, options.agent);
-  await mustNotBeCode(ctx, name);
+  await mustNotBeCodeInProduction(ctx, name);
   return { agent: name, answer: await api.rollbackSettings(ctx.gateway(), name, version, options.team) };
 }
 
@@ -196,7 +196,7 @@ export async function pushSettings(ctx: Context, file: string, options: WriteOpt
   const name = agentNamed(ctx, options.agent);
   const read = readJsonFile<Partial<Pulled>>("the settings file", file);
   const config = read.config ?? (read as TuningBody);
-  await mustNotBeCode(ctx, name);
+  await mustNotBeCodeInProduction(ctx, name);
   const gw = ctx.gateway();
   const standing = await readSettings(ctx, name);
   const before = cornerWritten(standing, options.team, gw)?.config ?? {};

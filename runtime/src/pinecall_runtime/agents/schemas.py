@@ -10,18 +10,17 @@ from pinecall_runtime.enums import Channel, Env, HoldPlayed
 from pinecall_runtime.kit.schemas import Schema
 from pinecall_runtime.providers.schemas import ModelChoice, ProviderRow
 from pinecall_runtime.wire.base import WireModel
+from pinecall_runtime.wire.declared import IdleConfig, VoicemailConfig
 from pinecall_runtime.wire.parts import (
     DocsConfig,
     EndOfTurn,
     GreetingConfig,
     HangupConfig,
     HoldConfig,
-    IdleConfig,
     MemoryConfig,
     ModelConfig,
     Pronunciation,
     TurnConfig,
-    VoicemailConfig,
     WidgetTheme,
 )
 

@@ -7,6 +7,7 @@ from pydantic import AliasChoices, Field
 from pinecall_runtime.enums import Channel, JudgeAnswer, JudgeRunsWhen
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
+from pinecall_runtime.wire.declared import IdleConfig, MonitorDeclared, VoicemailConfig
 
 type DevVerb = Literal[
     "chat.roster",
@@ -432,25 +433,6 @@ class WidgetLook(WireModel):
     theme: WidgetTheme | None = None
 
 
-# What an idle line waits and how many are said, when the agent does not say.
-IDLE_AFTER_S = 7.5
-IDLE_TIMES = 3
-
-
-class IdleConfig(WireModel):
-    """What the agent says when the caller has gone quiet."""
-
-    says: list[str]
-    after_s: float = IDLE_AFTER_S
-    times: int = IDLE_TIMES
-
-
-class VoicemailConfig(WireModel):
-    """Lets the model tell a machine from a person on a call it placed, and what it leaves there."""
-
-    message: str | None = None
-
-
 class AgentConfig(WireModel):
     """What an app declares about its agent; every field optional so a configure changes one thing."""
 
@@ -468,6 +450,8 @@ class AgentConfig(WireModel):
     hears: list[str] | None = None
     knowledge: KnowledgeFile | None = None
     docs: DocsConfig | None = None
+    # Several bases: `docs` said for more than one, and never beside it.
+    bases: list[DocsConfig] | None = None
     memory: MemoryConfig | None = None
     hangup: HangupConfig | None = None
     # Sent as null, a setting is the org's settings' again; `uses_knowledge` null is false.
@@ -493,3 +477,5 @@ class AgentConfig(WireModel):
     # Declared, the class owns the hold melody and the widget's look: the pipeline and widget doors refuse a write.
     hold: HoldConfig | None = None
     widget: WidgetLook | None = None
+    # The numbers of its calls the class watches: its monitors, kept as it declares them.
+    monitors: list[MonitorDeclared] | None = None

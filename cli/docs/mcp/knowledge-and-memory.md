@@ -7,7 +7,7 @@ tool's own schema, as the assistant sees it — and one real call, answered by P
 
 The documents the agent searches: a folder pushed into a base and pulled back from it, attached to the agent, held to its golden; the org's bases and who reads them.
 
-The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. An app written as code is set by its code, so `attach` and `detach` are refused naming it; they are for an agent built in Studio. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.
+The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes its Markdown into the base by path and keeps the base's other files, so a document added in the console survives (a `README.md` at the folder's root is never sent: it describes the folder); push again after every edit. `pull` writes the base back into the folder, file by file — written, unchanged, or the folder's own and kept — so what was added in the console reaches the repository. `attach` makes the agent search the base before every turn; `eval` scores the questions in `agents/<agent>/test/goldens/docs.json` against it (recall@k, nDCG@10, by code). `list` and `attached` are the org's, and name no agent. On an app written as code `attach` and `detach` work in the sandbox unless its class declares its bases, and are refused naming it in production. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -79,7 +79,7 @@ The folder `agents/<agent>/docs/` is a checkout of the base. `docs push` writes 
 
 What the agent remembers about a caller, what it is told to keep and never keep, and the recall golden held against it.
 
-`memory policy` says what the agent keeps about a caller (`remember`) and never keeps (`forget`); with neither it reads them, and with no policy the agent remembers nothing. `show` reads what it kept about one caller, and names no agent; `eval` scores `agents/<agent>/test/goldens/memory.json`. An app written as code is set by its code, so writing `policy` is refused naming it; it is for an agent built in Studio. Forgetting a caller is never a tool: `pinecall memory forget` in a terminal.
+`memory policy` says what the agent keeps about a caller (`remember`) and never keeps (`forget`); with neither it reads them, and with no policy the agent remembers nothing. `show` reads what it kept about one caller, and names no agent; `eval` scores `agents/<agent>/test/goldens/memory.json`. On an app written as code writing `policy` works in the sandbox unless its class declares its memory, and is refused naming it in production. Forgetting a caller is never a tool: `pinecall memory forget` in a terminal.
 
 | parameter | takes | | what it is |
 |---|---|---|---|

@@ -9,9 +9,8 @@ from typing import Any, Literal
 
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping, parse_slug
+from pinecall_runtime.wire.declared import IDLE_AFTER_S, IDLE_TIMES, MonitorDeclared
 from pinecall_runtime.wire.parts import (
-    IDLE_AFTER_S,
-    IDLE_TIMES,
     DocsMode,
     EndOfTurn,
     EventSource,
@@ -404,6 +403,8 @@ class AgentConfig:
     # The hold melody and the widget's look the class owns, as the wire carried them; None: the org sets them.
     hold: HoldConfig | None = None
     widget: WidgetLook | None = None
+    # The numbers the class watches, as the wire carried them; None: the org's monitors alone.
+    monitors: tuple[MonitorDeclared, ...] | None = None
     # The settings the class itself declares, by their wire names: each wins over the org's.
     fixed: frozenset[str] = frozenset()
 

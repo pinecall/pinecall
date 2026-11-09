@@ -15,16 +15,16 @@ from pydantic.fields import FieldInfo
 
 from pinecall_runtime import enums
 from pinecall_runtime.agents import declaration
-from pinecall_runtime.wire import base, commands, events, metrics, parts, room, scores, state
+from pinecall_runtime.wire import base, commands, declared, events, metrics, parts, room, scores, state
 
 RUNTIME = Path(__file__).resolve().parents[2]
 PAGES = RUNTIME / "docs" / "wire"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 # Where a name on a page is looked for, in this order: the wire first, then what it is made of.
-MODULES = (base, parts, state, metrics, room, commands, events, scores, enums, declaration)
+MODULES = (base, parts, declared, state, metrics, room, commands, events, scores, enums, declaration)
 # The shapes every event and command stands on; the pages hold a section per name.
-SHAPE_MODULES = (base, parts, state, metrics)
+SHAPE_MODULES = (base, parts, declared, state, metrics)
 # The metrics page is one table of every block; the other pages hold a section per name.
 METRICS_PAGE = "metrics.md"
 

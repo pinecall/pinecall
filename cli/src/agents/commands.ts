@@ -31,9 +31,9 @@ replace those lists whole. --llm-builds names a class of the vendor's plugin, an
 key=value one of its keyword arguments; --stt-…, --tts-… and --judge-… are the same for the ears,
 the voice and the judge model. Those run only on your org's own key, as --realtime-option does.
 
-An app written as code is set by its code and nothing else, in the sandbox and in production: every
-write here (set, clear, rollback, push, knowledge edit) is refused naming it, and reading stays. These
-writes are for an agent built in Studio. What a class declares (@voice, @llm, @realtime, @stt, a
+On an app written as code, in the sandbox, these write whatever its class does not declare; what it
+declares is refused naming the field. In production an app runs what it deployed, so every write here
+(set, clear, rollback, push, knowledge edit) is refused naming it, and reading stays. What a class declares (@voice, @llm, @realtime, @stt, a
 static field) says \`class\` in every corner.
 
 knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it
@@ -62,8 +62,8 @@ the web alike, from the next call; a written call plays none.
 default is the runtime's own melody, off is silence, upload sends a file of yours (the gateway
 converts it once, to Ogg Opus). after sets the wait in seconds, 2.5 when you set none; choosing
 what plays keeps the wait. One choice per agent per environment, whoever holds the agent:
---prod sets production's. An app written as code declares its melody in its class, and upload,
-default, off and after are refused naming it; they are for an agent built in Studio.
+--prod sets production's. On an app written as code they work in the sandbox unless its class
+declares its melody, and in production upload, default, off and after are refused naming it.
 
 Examples
   $ pinecall pipeline melody
@@ -73,8 +73,8 @@ Examples
 `;
 
 const LEXICON = `
-The lexicon is the agent's says and hears. An app written as code declares them in its class and a
-write here is refused naming it; these writes are for an agent built in Studio. add says how a word is
+The lexicon is the agent's says and hears. On an app written as code a write here works in the sandbox
+unless its class declares them, and is refused naming it in production. add says how a word is
 spoken; hear names the words the ears must know; rm takes words out of both. Whole and
 versioned like the settings: the corner is yours (--team: the org's own).
 
@@ -162,7 +162,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--note <note>")
     .action(async (flags) => {
       // Said before the editor opens: nobody writes a page to be told it cannot be kept.
-      await service.mustNotBeCode(ctx, service.agentNamed(ctx, flags.agent));
+      await service.mustNotBeCodeInProduction(ctx, service.agentNamed(ctx, flags.agent));
       const before = await service.readKnowledge(ctx, flags.agent, flags.team === true);
       const text = await editInEditor(before.knowledge ?? "", ctx.processEnv);
       if (text === (before.knowledge ?? "")) {

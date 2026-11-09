@@ -143,7 +143,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `agents/service/index.ts` | 49 | Agents: what the org set over the class, per corner and versioned; the lexicon; the pipeline; the processes; the voices. |
 | `agents/service/lexicon.ts` | 85 | An agent's lexicon: how the voice says a word and what the ears must know, whole and versioned like the settings. |
 | `agents/service/melody.ts` | 54 | The hold melody: what a caller hears while a tool runs or the model is slow — the runtime's, none, or a file of the org's — and after how long. |
-| `agents/service/ownership.ts` | 45 | Who sets an agent: a Studio agent is set here, an app written as code by its code and nothing else. |
+| `agents/service/ownership.ts` | 47 | Who may write an agent: in production an app runs what it deployed; in the sandbox the gateway refuses what its class declares, field by field. |
 | `agents/service/running.ts` | 122 | What an agent runs with: its pipeline as the next call would be built, the processes holding the org's agents, and a vendor's voices. |
 | `agents/service/settings.ts` | 274 | An agent's settings: the fields, set and cleared as the next version of a corner, their versions, and a corner as a file. |
 

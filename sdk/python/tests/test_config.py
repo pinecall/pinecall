@@ -97,6 +97,23 @@ def test_the_quiet_a_machine_and_the_fallbacks_are_sent_in_the_wires_shape() -> 
         environment_of(type("Rushed", (Agent,), {"__doc__": "x", "silence_timeout": 4}))
 
 
+def test_the_monitors_a_class_declares_are_sent_as_the_wire_carries_them() -> None:
+    slow = {"name": "slow", "metric": "e2e_median_s", "above": True, "threshold": 2.0}
+    watching = type("Watching", (Agent,), {"__doc__": "x", "monitors": [slow]})
+    sent = config_of(watching).model_dump(exclude_none=True)
+    assert sent["monitors"] == [{**slow, "window_days": 7}]
+
+
+def test_several_bases_are_sent_as_the_wire_carries_them() -> None:
+    several = type(
+        "Several",
+        (Agent,),
+        {"__doc__": "x", "bases": [{"base": "faq"}, {"base": "prices", "k": 2}]},
+    )
+    sent = config_of(several).model_dump(exclude_none=True)
+    assert [one["base"] for one in sent["bases"]] == ["faq", "prices"]
+
+
 def test_what_the_class_declares_of_its_environment_is_sent_in_the_wires_shape() -> None:
     sent = config_of(Fijada).model_dump(exclude_none=True)
 

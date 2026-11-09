@@ -95,6 +95,14 @@ module Pinecall
         "VoicemailConfig" => {
           message: { kind: :str }
         }.freeze,
+        "MonitorDeclared" => {
+          name: { kind: :str, required: true },
+          metric: { kind: :enum, required: true,
+                    values: %w[e2e_median_s llm_median_s held_rate escalated_rate tool_failure_rate spend_usd calls] },
+          above: { kind: :bool, required: true },
+          threshold: { kind: :float, required: true },
+          window_days: { kind: :int }
+        }.freeze,
         "Pronunciation" => {
           word: { kind: :str, required: true },
           spoken: { kind: :str, required: true }

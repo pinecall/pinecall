@@ -178,8 +178,10 @@ export class Agent {
   static hears?: Declared["hears"];
   /** Markdown read whole into every call: `{ path, text }`. */
   static knowledge?: Declared["knowledge"];
-  /** The knowledge base searched: `{ base: "clinica", k: 4 }`. */
+  /** The knowledge base searched: `{ base: "clinica", k: 4 }`; `bases` for several, in place of it. */
   static docs?: Declared["docs"];
+  static bases?: Declared["bases"];
+  static monitors?: Declared["monitors"];
   /** What memory keeps of a contact and never keeps: `{ remember: […], forget: […] }`. */
   static memory?: Declared["memory"];
   /** Whether the calls keep their audio. */
@@ -188,12 +190,10 @@ export class Agent {
   static maxDuration?: number | "off";
   /** How long a turn waits for the model's first word, in seconds. */
   static llmTimeout?: number;
-  /** When the caller goes quiet: seconds before a voice call ends (5 to 3600), and `{ says: […], afterS, times }` said first. */
+  /** The caller quiet: seconds before a voice call ends (5 to 3600), `{ says: […], afterS, times }` said first; on a call it placed, the words left on a machine, or `true` for none. */
   static silenceTimeout?: number;
   static idle?: Declared["idle"];
-  /** On a call it placed, the words left on a machine, or `true` to hang up on one and leave nothing. */
   static voicemail?: string | true;
-  /** Who takes over the ears, and the voice, when the vendor fails: `vendor` or `vendor/model`, in order. */
   static sttFallbacks?: Declared["sttFallbacks"];
   static ttsFallbacks?: Declared["ttsFallbacks"];
   /** The judges the class owns: `judges({ on: ["consent", …], own: [ownJudge({…})] })`. */

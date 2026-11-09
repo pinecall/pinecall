@@ -16,6 +16,7 @@ module Pinecall
           delayed: { kind: :str },
           delayed_after_s: { kind: :float },
           failed: { kind: :str },
+          quiet: { kind: :bool },
           pii: { kind: :list, items: { kind: :str } },
           timeout_s: { kind: :float }
         }.freeze,
@@ -33,6 +34,7 @@ module Pinecall
           hears: { kind: :list, items: { kind: :str } },
           knowledge: { kind: :ref, ref: "KnowledgeFile" },
           docs: { kind: :ref, ref: "DocsConfig" },
+          bases: { kind: :list, items: { kind: :ref, ref: "DocsConfig" } },
           memory: { kind: :ref, ref: "MemoryConfig" },
           hangup: { kind: :ref, ref: "HangupConfig" },
           record: { kind: :bool, default: true },
@@ -48,6 +50,7 @@ module Pinecall
           state_fields: { kind: :list, items: { kind: :ref, ref: "StateFieldSpec" } },
           view: { kind: :ref, ref: "ViewSpec" },
           events: { kind: :list, items: { kind: :ref, ref: "EventSpec" } },
+          monitors: { kind: :list, items: { kind: :ref, ref: "MonitorDeclared" } },
           judges: { kind: :ref, ref: "JudgesDeclared" },
           personas: { kind: :ref, ref: "PersonasDeclared" },
           hold: { kind: :ref, ref: "HoldConfig" },

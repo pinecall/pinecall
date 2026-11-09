@@ -43,7 +43,7 @@ describe("the refusal", () => {
   it("is one sentence naming the app, exit 2, and nothing is read or written", async () => {
     hostedAs("code");
     const written = writesCaught();
-    const { ctx } = testContext();
+    const { ctx } = testContext({ env: "production" });
     const failed = await service.setSettings(ctx, { temperature: 0.3 }, WRITE).catch((error: unknown) => error);
     expect(failed).toBeInstanceOf(UsageError);
     expect((failed as UsageError).exit).toBe(2);
@@ -51,9 +51,13 @@ describe("the refusal", () => {
     expect(written()).toEqual([]);
   });
 
-  it.each<Env>(["sandbox", "production"])("holds in %s", async (env) => {
+  it("holds in production, and in the sandbox the write goes to the gateway, which refuses what the class declares", async () => {
     hostedAs("code");
-    await expect(service.setSettings(testContext({ env }).ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
+    answer("get", "/v1/agents/:slug/settings", SETTINGS);
+    const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
+    await service.setSettings(testContext({ env: "sandbox" }).ctx, { temperature: 0.3 }, WRITE);
+    expect(sent).toHaveLength(1);
+    await expect(service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
   });
 });
 
@@ -65,7 +69,7 @@ describe("every write of a code app", () => {
     answer("get", "/v1/knowledge", { bases: [{ base: "faq", chunks: 1, model: "m", pushed_at: 0 }] });
     answer("get", "/v1/evals/groups/:id", { group: { id: "grp_1", agent: "front-desk" }, cases: [] });
     const applied = answer("post", "/v1/evals/groups/:id/apply", SETTINGS);
-    const { ctx } = testContext();
+    const { ctx } = testContext({ env: "production" });
     const file = join(folder(), "pulled.json");
     writeFileSync(file, JSON.stringify({ config: { temperature: 0.3 } }));
     const melody = join(folder(), "espera.mp3");
@@ -91,7 +95,7 @@ describe("every write of a code app", () => {
 
   it("the MCP tools say the same sentence", async () => {
     hostedAs("code");
-    const context = Object.assign(testContext().ctx, { session: {} as ToolContext["session"] });
+    const context = Object.assign(testContext({ env: "production" }).ctx, { session: {} as ToolContext["session"] });
     await expect(agent.call({ action: "set", settings: { temperature: 0.3 } }, context)).rejects.toThrow(SENTENCE);
     await expect(lexicon.call({ action: "add", word: "Ruiz", say: "roo-EETH" }, context)).rejects.toThrow(SENTENCE);
     await expect(docs.call({ action: "detach", base: "faq" }, context)).rejects.toThrow(SENTENCE);
@@ -101,7 +105,7 @@ describe("every write of a code app", () => {
   it("reading stays", async () => {
     hostedAs("code");
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
-    const { ctx } = testContext();
+    const { ctx } = testContext({ env: "production" });
     await expect(service.showSettings(ctx, undefined)).resolves.toMatchObject({ agent: "front-desk" });
   });
 });
@@ -111,14 +115,14 @@ describe("how an agent is told apart", () => {
     studioAgents("front-desk");
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
-    await service.setSettings(testContext().ctx, { temperature: 0.3 }, WRITE);
+    await service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE);
     expect(sent).toHaveLength(1);
   });
 
   it("a class held now and hosted nowhere is code", async () => {
     answer("get", "/v1/hosted", { apps: [] });
     answer("get", "/v1/agents", { agents: [{ slug: "front-desk", channels: [], kind: "class" }] });
-    await expect(service.setSettings(testContext().ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
+    await expect(service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
   });
 
   it("a key that may not read the box's list still writes a Studio agent held now", async () => {
@@ -126,13 +130,13 @@ describe("how an agent is told apart", () => {
     answer("get", "/v1/agents", { agents: [{ slug: "front-desk", channels: [], kind: "studio" }] });
     answer("get", "/v1/agents/:slug/settings", SETTINGS);
     const sent = answer("put", "/v1/agents/:slug/settings", SETTINGS);
-    await service.setSettings(testContext().ctx, { temperature: 0.3 }, WRITE);
+    await service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE);
     expect(sent).toHaveLength(1);
   });
 
   it("an agent no list names counts as code", async () => {
     nothingListed();
-    await expect(service.setSettings(testContext().ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
+    await expect(service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow(SENTENCE);
   });
 
   it("in production, a Studio agent the sandbox alone has is written; a code app the sandbox has stays refused", async () => {
@@ -151,6 +155,6 @@ describe("how an agent is told apart", () => {
   it("a gateway that fails says so, rather than an agent's kind", async () => {
     refuse("get", "/v1/hosted", 500, "no database");
     answer("get", "/v1/agents", { agents: [] });
-    await expect(service.setSettings(testContext().ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow("no database");
+    await expect(service.setSettings(testContext({ env: "production" }).ctx, { temperature: 0.3 }, WRITE)).rejects.toThrow("no database");
   });
 });

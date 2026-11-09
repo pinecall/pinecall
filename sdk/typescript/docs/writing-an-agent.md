@@ -105,6 +105,8 @@ declared there is refused when the class loads.
 | `sttFallbacks` · `ttsFallbacks` | who takes over when the vendor fails, in order | `static ttsFallbacks = ["cartesia"]` |
 | `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` |
 | `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` |
+| `bases` | several bases, in place of `docs`; each pushed on its own (`pinecall docs push --base`) | `static bases = [{ base: "faq" }, { base: "prices", k: 2 }]` |
+| `monitors` | numbers of its calls it watches: each fires, once a day, on the agent's log and your webhook when it crosses its line | `static monitors = [{ name: "slow", metric: "e2e_median_s", above: true, threshold: 2 }]` |
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` |
 | `widget` | how the widget presents the agent | `static widget = { title, tagline, greeting, accent, autostart, theme }` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …], own: [offersNextSlot] })` |
@@ -210,7 +212,7 @@ the model sends is checked against it before the method runs.
 | `confirm` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
 | `announce` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `delayed` | what the agent says when the wait has grown long, 5 seconds in unless `delayedAfter` says otherwise; `failed`, what it says when the tool failed, before the model reads why |
-| `quiet` | a move on the caller's screen, such as a pointer (TypeScript only for now): it runs as the model calls it, while the words of that answer still play, and the model is asked for no answer of its own. Without it, every tool's result is a turn the model answers |
+| `quiet` | a move on the caller's screen, such as a pointer: it runs as the model calls it, while the words of that answer still play, and the model is asked for no answer of its own. Without it, every tool's result is a turn the model answers |
 | `preview` | how many items of a list the *model* sees. The state keeps every one |
 | `pii` | the parameters that carry personal data: the log masks their values wherever the agent wrote them down (`state.changed`, `tool.result` and a line you log too), and `pinecall start` prints the log's version. A callback's number is what the callback is for, so `callback.requested` keeps it in the clear |
 | `timeout` | how many seconds the platform waits for this method: 30 unless set, 300 at most |

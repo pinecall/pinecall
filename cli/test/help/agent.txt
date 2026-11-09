@@ -45,9 +45,9 @@ replace those lists whole. --llm-builds names a class of the vendor's plugin, an
 key=value one of its keyword arguments; --stt-…, --tts-… and --judge-… are the same for the ears,
 the voice and the judge model. Those run only on your org's own key, as --realtime-option does.
 
-An app written as code is set by its code and nothing else, in the sandbox and in production: every
-write here (set, clear, rollback, push, knowledge edit) is refused naming it, and reading stays. These
-writes are for an agent built in Studio. What a class declares (@voice, @llm, @realtime, @stt, a
+On an app written as code, in the sandbox, these write whatever its class does not declare; what it
+declares is refused naming the field. In production an app runs what it deployed, so every write here
+(set, clear, rollback, push, knowledge edit) is refused naming it, and reading stays. What a class declares (@voice, @llm, @realtime, @stt, a
 static field) says `class` in every corner.
 
 knowledge is what the agent knows by heart, in Markdown, read whole on every call. Alone it

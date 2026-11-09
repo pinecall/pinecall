@@ -244,6 +244,15 @@ export const VoicemailConfigSchema = z.strictObject({
   message: z.string().nullish(),
 });
 
+/** One number of the agent's calls the class watches: it fires, once a day, when it crosses the line. */
+export const MonitorDeclaredSchema = z.strictObject({
+  name: z.string(),
+  metric: z.enum(["e2e_median_s", "llm_median_s", "held_rate", "escalated_rate", "tool_failure_rate", "spend_usd", "calls"]),
+  above: z.boolean(),
+  threshold: z.number(),
+  window_days: z.union([z.literal(1), z.literal(7), z.literal(30)]).optional(),
+});
+
 export const AgentConfigSchema = z.strictObject({
   prompt: z.array(PromptBlockSpecSchema).nullish(),
   language: z.string().nullish(),
@@ -260,6 +269,8 @@ export const AgentConfigSchema = z.strictObject({
   hears: z.array(z.string()).nullish(),
   knowledge: KnowledgeFileSchema.nullish(),
   docs: DocsConfigSchema.nullish(),
+  /** Several bases, in place of `docs`. */
+  bases: z.array(DocsConfigSchema).nullish(),
   memory: MemoryConfigSchema.nullish(),
   hangup: HangupConfigSchema.nullish(),
   record: z.boolean().nullish(),
@@ -279,6 +290,8 @@ export const AgentConfigSchema = z.strictObject({
   view: ViewSpecSchema.nullish(),
   events: z.array(EventSpecSchema).nullish(),
   /** Declared, the class owns the agent's judges and its personas: no door writes either. */
+  /** The numbers of its calls the class watches. */
+  monitors: z.array(MonitorDeclaredSchema).nullish(),
   judges: JudgesDeclaredSchema.nullish(),
   personas: PersonasDeclaredSchema.nullish(),
   /** Declared, the class owns the hold melody and the widget's look: the pipeline and widget doors refuse a write. */

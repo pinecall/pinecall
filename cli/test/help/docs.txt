@@ -40,8 +40,8 @@ attach says an agent reads a base — in your own corner, or the team's with --t
 production with --prod — with how a turn reads it: --k chunks, --mode (retrieved: the platform
 searches before the turn; tool: the model decides when), --min-score. It is one field of the
 agent's settings (`pinecall agent`), written as the next version. detach takes it out;
-attached prints which agents read which base in the env asked. An app written as code is set by
-its code alone: attach and detach are refused naming it, and they are for an agent built in Studio.
+attached prints which agents read which base in the env asked. On an app written as code attach and
+detach work in the sandbox unless its class declares its bases, and are refused naming it in production.
 
 eval asks the base every question of a golden — agents/<name>/test/goldens/docs.json, a JSON list of
 {asks, expects}, where expects is the heading path the answer should carry — and prints

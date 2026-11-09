@@ -124,7 +124,13 @@ async def seal(serving: Serving, served: Served, sealing: SealCallRequest, *, le
                     at=at,
                 )
                 await alerts.check_monitors(
-                    session, serving, served.scope, served.agent, series=usage.series_window, at=at
+                    session,
+                    serving,
+                    served.scope,
+                    served.agent,
+                    series=usage.series_window,
+                    at=at,
+                    declared=served.config.monitors,
                 )
         finally:
             serving.logs.forget(served.call)

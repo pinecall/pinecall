@@ -1,4 +1,4 @@
-/** Who sets an agent: a Studio agent is set here, an app written as code by its code and nothing else. */
+/** Who may write an agent: in production an app runs what it deployed; in the sandbox the gateway refuses what its class declares, field by field. */
 
 import * as agents from "../../api/agents.js";
 import { GatewayClient } from "../../api/client.js";
@@ -14,8 +14,10 @@ const NAMED_BY_NO_LIST: Kind = "code";
 export const SET_IN_ITS_CODE = (agent: string): string => `${agent} is set in its code: change it there and deploy`;
 
 /** Every write of one agent's settings, lexicon, melody, bases or memory rules passes here first. */
-export async function mustNotBeCode(ctx: Context, agent: string): Promise<void> {
-  const kind = (await kindOf(ctx.gateway(), agent)) ?? NAMED_BY_NO_LIST;
+export async function mustNotBeCodeInProduction(ctx: Context, agent: string): Promise<void> {
+  const gateway = ctx.gateway();
+  if (gateway.env !== "production") return;
+  const kind = (await kindOf(gateway, agent)) ?? NAMED_BY_NO_LIST;
   if (kind === "code") throw new UsageError(SET_IN_ITS_CODE(agent));
 }
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A class declares its monitors:** `monitors`, each a number of its calls and the line it fires across.
+
+- **A tool may be `quiet`:** a move on the caller's screen that runs as the model calls it and asks for no answer, as in TypeScript.
+
+- **A class may declare several knowledge bases:** `bases`, in place of `docs`.
+
 - **A tool says more:** `@tool` says `delayed=` (with `delayed_after=`) and `failed=`, as a Studio tool does.
 
 ## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)

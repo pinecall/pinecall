@@ -6,7 +6,7 @@ import * as api from "../../api/agents.js";
 import type { GatewayClient } from "../../api/client.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
-import { mustNotBeCode } from "./ownership.js";
+import { mustNotBeCodeInProduction } from "./ownership.js";
 
 export type { TuningAnswer, TuningBody, TuningRow } from "@pinecall/agents/wire";
 
@@ -93,7 +93,7 @@ export function cornerName(answer: { world: string }, team: boolean, gw: Gateway
  * that writes nothing.
  */
 export async function writeCorner(ctx: Context, agent: string, team: boolean, change: Change, note: string | null, before?: (row: TuningRow | null) => void): Promise<CornerWritten> {
-  await mustNotBeCode(ctx, agent);
+  await mustNotBeCodeInProduction(ctx, agent);
   const gw = ctx.gateway();
   const standing = await api.getSettings(gw, agent);
   const read = rowToStartFrom(standing, team);
