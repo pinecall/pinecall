@@ -29,6 +29,7 @@ os.environ.setdefault("LIVEKIT_API_SECRET", "a-suite-only-livekit-secret-0123456
 
 from pinecall_runtime.accounts.service import keys, members, orgs
 from pinecall_runtime.app import create_app
+from pinecall_runtime.calls import tasks as calls_tasks
 from pinecall_runtime.calls.store import Store
 from pinecall_runtime.config import load_settings
 from pinecall_runtime.enums import Env, KeyScope, Role
@@ -181,17 +182,28 @@ async def gateway(engine: AsyncEngine) -> AsyncIterator[Gateway]:
         pytest.skip("Redis")
     app = create_app()
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
-    serving = asyncio.create_task(server.serve())
-    while not server.started:
-        if serving.done():
-            serving.result()
-        await asyncio.sleep(0.01)
-    port = server.servers[0].sockets[0].getsockname()[1]
-    url = f"http://127.0.0.1:{port}"
-    async with httpx.AsyncClient(base_url=url, timeout=10.0) as http:
-        yield Gateway(url, http, app)
-    server.should_exit = True
-    await serving
+    # A test's store stamps its entries with a clock that starts at 1 (`ticking`), and every worker
+    # shares the database: this gateway's reaper, which reads the real clock, took those calls for
+    # ones quiet since 1970 and sealed them under the test that was playing them. A golden's call
+    # ended `timeout` by `platform`, or refused its own `call.ended`, in one run of two, a different
+    # test each time (2026-11-09). The reaper is tested on its own (tests/calls/service/test_reaper.py).
+    with pytest.MonkeyPatch.context() as patched:
+        patched.setattr(calls_tasks, "reap", _reaps_nothing)
+        serving = asyncio.create_task(server.serve())
+        while not server.started:
+            if serving.done():
+                serving.result()
+            await asyncio.sleep(0.01)
+        port = server.servers[0].sockets[0].getsockname()[1]
+        url = f"http://127.0.0.1:{port}"
+        async with httpx.AsyncClient(base_url=url, timeout=10.0) as http:
+            yield Gateway(url, http, app)
+        server.should_exit = True
+        await serving
+
+
+async def _reaps_nothing(_serving: object, _now: float) -> list[str]:
+    return []
 
 
 async def received(socket: ClientConnection, kind: str) -> JsonObject:
