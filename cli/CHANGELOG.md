@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.30] — an app is written whole in its class (2026-11-09)
+
 - **`simulate --repeats n` says how often, not only whether:** the caller rings n times (1 to 10) under each
   configuration, with or without `--against`, and the table ends with how many runs of each did the caller's task
   (its `expected-outcome` judge held). A comparison larger than the org's simulated calls at once runs whole: the

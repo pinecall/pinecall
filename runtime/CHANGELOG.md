@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.30 — an app is written whole in its class (2026-11-09)
+
 - **A class declares its monitors:** `monitors` on `AgentConfig`, each a number of the agent's calls and its line. They are
   kept as rows by name at the seal of each of its calls, and `DELETE /v1/monitors/{id}` refuses one, naming the class.
 

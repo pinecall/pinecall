@@ -6,6 +6,8 @@ maintainer's call.
 
 ## [Unreleased]
 
+## [0.11.30] — an app is written whole in its class (2026-11-09)
+
 - **A class declares its monitors:** `monitors`, each a number of its calls and the line it fires across.
 
 - **A tool may be `quiet`:** a move on the caller's screen that runs as the model calls it and asks for no answer, as in TypeScript.
