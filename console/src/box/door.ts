@@ -1,4 +1,4 @@
-/** The operator's doors for orgs: every org of the box, one as it stands, and how its simulations are shaped. */
+/** The operator's doors for orgs: every org of the box, one as it stands, its monthly limits, and how its simulations are shaped. */
 
 import { z } from "zod";
 
@@ -40,6 +40,11 @@ export async function readOrgs(credentials: Credentials): Promise<Org[]> {
 
 export async function readOrg(credentials: Credentials, named: string): Promise<OneOrg> {
   return OneOrgSchema.parse(await read(credentials, at(named)));
+}
+
+/** The org's limits in one world, replaced whole: a limit null or left out is no limit, and `lends` null lends every key the platform holds. How its simulations are shaped is kept. */
+export async function saveQuotas(credentials: Credentials, named: string, world: World, quotas: { limits: Record<string, number | null>; budget_usd: number | null; lends: string[] | null }): Promise<WorldQuotas> {
+  return WorldQuotasSchema.parse(await put(credentials, `${at(named)}/quotas`, { env: world, quotas }));
 }
 
 /** How the org's simulations are shaped in one world; null is the platform's own. Its monthly limits and lends are kept. */

@@ -9,6 +9,7 @@ import { brandOf } from "../configure/vendors";
 import { count } from "../lib/format";
 import { useMove } from "../numbers/parts";
 import { Mark } from "../ui/setting";
+import { ABOUT, LimitFields, typedLimit } from "./limit-fields";
 import { limitOf, QUOTAS, readAdmission, readHeldVendors, saveAdmission, SHAPES, WORLDS, type Admission, type Newborn, type Quota, type Shape, type World } from "./settings-door";
 import { LendsPanel, lendSaid, modeOf } from "./settings-lends";
 import { Effect, Refusal, Section, useDoor } from "./settings-parts";
@@ -16,24 +17,6 @@ import { Effect, Refusal, Section, useDoor } from "./settings-parts";
 type Whose = "first" | "later";
 
 const WORLD_NAMES: Record<World, string> = { sandbox: "Sandbox", production: "Production" };
-
-const ABOUT: Record<Quota | Shape, { name: string; about: string; unit: string }> = {
-  minutes: { name: "Call minutes", about: "Minutes of spoken calls, each month.", unit: "a month" },
-  messages: { name: "Chat messages", about: "Written turns, each month.", unit: "a month" },
-  llm_tokens: { name: "Model tokens", about: "What its agents read and write, each month.", unit: "a month" },
-  concurrent_calls: { name: "Calls at once", about: "Calls on the line at the same moment.", unit: "at once" },
-  agents: { name: "Agents", about: "How many agents it may have.", unit: "" },
-  numbers: { name: "Phone numbers", about: "Numbers bought through this deployment.", unit: "" },
-  seats: { name: "People", about: "Members, invited or active.", unit: "" },
-  hosted_apps: { name: "Hosted apps", about: "Apps and Studio agents this deployment runs for it.", unit: "" },
-  memory_facts: { name: "Remembered facts", about: "What its agents remember about callers.", unit: "" },
-  knowledge_chunks: { name: "Knowledge", about: "Pieces of text indexed from its documents.", unit: "pieces" },
-  evals: { name: "Evaluations", about: "Judge verdicts on this deployment's keys, each month.", unit: "a month" },
-  simulations: { name: "Simulated calls", about: "Test calls played by a pretend caller, each month.", unit: "a month" },
-  budget_usd: { name: "Spend cap", about: "Dollars a month, both environments together.", unit: "USD a month" },
-  simulations_at_once: { name: "Simulated calls at once", about: "Pretend callers on the line together.", unit: "at once" },
-  comparison_calls: { name: "Calls in one comparison", about: "The most one comparison may place.", unit: "" },
-};
 
 function limitSaid(name: Quota | Shape, value: number | null, shape: boolean): string {
   if (value === null) return shape ? "The usual, 10" : "Unlimited";
@@ -43,26 +26,19 @@ function limitSaid(name: Quota | Shape, value: number | null, shape: boolean): s
 
 /** The environment's row with its limits typed again: an empty field is null, which is no limit. */
 function withLimits(standing: Newborn | undefined, typed: Record<string, string>): Newborn {
-  const limits = Object.fromEntries([...QUOTAS, ...SHAPES].map((name) => [name, typed[name] === undefined || typed[name] === "" ? null : Number(typed[name])]));
+  const limits = Object.fromEntries([...QUOTAS, ...SHAPES].map((name) => [name, typedLimit(typed[name])]));
   return { ...(standing ?? {}), ...limits };
 }
 
 function LimitsPanel({ whom, standing, saving, refused, onSave, onClose }: { whom: string; standing: Newborn | undefined; saving: boolean; refused: string | null; onSave: (row: Newborn) => void; onClose: () => void }): ReactNode {
   const [typed, setTyped] = useState<Record<string, string>>(() => Object.fromEntries([...QUOTAS, ...SHAPES].map((name) => [name, limitOf(standing, name)?.toString() ?? ""])));
-  const field = (name: Quota | Shape, placeholder: string): ReactNode => (
-    <label key={name} className="bxs-limit">
-      <span className="bxs-limit-name">{ABOUT[name].name}</span>
-      <input className="cfg-input" inputMode="numeric" aria-label={ABOUT[name].name} placeholder={placeholder} value={typed[name] ?? ""} onChange={(event) => setTyped({ ...typed, [name]: event.target.value.replace(/[^0-9]/g, "") })} />
-      <span className="dash-quiet">{ABOUT[name].about}</span>
-    </label>
-  );
   return (
     <EditDialog title="Limits" icon="gauge" about={`What ${whom} may use.`} saving={saving} refused={refused} onSave={() => onSave(withLimits(standing, typed))} onClose={onClose}>
       <Effect>Organizations made from now on start with these. The ones that exist keep their limits: change those on each organization.</Effect>
       <p className="dash-quiet">Leave a field empty for no limit. Type 0 to switch that thing off.</p>
-      <div className="bxs-limits">{QUOTAS.map((name) => field(name, "Unlimited"))}</div>
+      <LimitFields names={QUOTAS} typed={typed} placeholder="Unlimited" onType={setTyped} />
       <span className="tst-divide">Simulations</span>
-      <div className="bxs-limits">{SHAPES.map((name) => field(name, "10, the usual"))}</div>
+      <LimitFields names={SHAPES} typed={typed} placeholder="10, the usual" onType={setTyped} />
     </EditDialog>
   );
 }

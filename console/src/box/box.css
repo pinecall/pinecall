@@ -18,6 +18,7 @@
 .box-save:disabled { opacity: 0.5; cursor: default; }
 .box-save:not(:disabled) { border-color: var(--accent); background: var(--accent); color: var(--on-solid); }
 
+.box-limit-edits { display: inline-flex; gap: 8px; }
 .box-limit { display: grid; grid-template-columns: minmax(0, 1fr) 120px 120px; align-items: center; gap: 12px; padding: 7px 8px; font-size: 13px; }
 
 @media (max-width: 760px) {

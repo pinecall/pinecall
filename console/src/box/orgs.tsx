@@ -1,4 +1,4 @@
-/** Organizations, the operator's: every org of the box in a list, and the one open with how its simulations are shaped, to change, and its monthly limits, to read. */
+/** Organizations, the operator's: every org of the box in a list, and the one open with how its simulations are shaped, to change, and its monthly limits, each environment's to change. */
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Navigate, NavLink, useParams } from "react-router";
@@ -9,6 +9,8 @@ import { count } from "../lib/format";
 import { useOrg } from "../lib/org";
 import { PageHead } from "../shell/page-head";
 import { readOrg, readOrgs, saveShape, USUAL, WORLDS, type OneOrg, type Org, type Shape, type World, type WorldQuotas } from "./door";
+import { ABOUT } from "./limit-fields";
+import { OrgLimitsPanel } from "./org-limits";
 import "../dashboard/dashboard.css";
 import "../apps/apps.css";
 import "../configure/configure.css";
@@ -104,6 +106,7 @@ function limitSaid(value: number | null | undefined): string {
 
 function OrgView({ org, onChanged }: { org: OneOrg; onChanged: () => Promise<void> }): ReactNode {
   const named = [...new Set(WORLDS.flatMap((world) => Object.keys(org.quotas[world]?.limits ?? {})))];
+  const [editing, setEditing] = useState<World | null>(null);
   return (
     <div className="app-main">
       <section className="dash-card" aria-label="How it stands">
@@ -146,7 +149,13 @@ function OrgView({ org, onChanged }: { org: OneOrg; onChanged: () => Promise<voi
       <section className="dash-card" aria-label="Monthly limits">
         <div className="dash-card-top">
           <span className="dash-eyebrow">Monthly limits</span>
-          <code className="app-command">pinecall-runtime orgs quota {org.slug} --env sandbox …</code>
+          <span className="box-limit-edits">
+            {WORLDS.map((world) => (
+              <button key={world} type="button" className="app-button" onClick={() => setEditing(world)}>
+                Edit {WORLD_NAMES[world].toLowerCase()}
+              </button>
+            ))}
+          </span>
         </div>
         <div className="dash-rows">
           <div className="box-limit dash-row-head">
@@ -159,7 +168,7 @@ function OrgView({ org, onChanged }: { org: OneOrg; onChanged: () => Promise<voi
           </div>
           {named.map((limit) => (
             <div key={limit} className="box-limit dash-row">
-              <span className="dash-first">{limit.replace(/_/g, " ")}</span>
+              <span className="dash-first">{(ABOUT as Record<string, { name: string } | undefined>)[limit]?.name ?? limit.replace(/_/g, " ")}</span>
               {WORLDS.map((world) => {
                 const value = org.quotas[world]?.limits[limit];
                 return (
@@ -172,6 +181,7 @@ function OrgView({ org, onChanged }: { org: OneOrg; onChanged: () => Promise<voi
           ))}
         </div>
       </section>
+      {editing !== null && <OrgLimitsPanel key={editing} org={org} world={editing} worldName={WORLD_NAMES[editing]} onSaved={onChanged} onClose={() => setEditing(null)} />}
     </div>
   );
 }

@@ -112,6 +112,11 @@ limits, which is what a self-hosted platform runs.
 }
 ```
 
+An org that already exists keeps what it has. The operator changes its limits in one environment,
+the whole set at once, in the console's Organizations page, with `pinecall-runtime orgs quota <org>
+--env <env>`, or with `PUT /v1/ops/orgs/{named}/quotas`; the keys it is lent and how its simulations
+are shaped stand.
+
 ## Whose vendor keys a call runs on
 
 An org's own key for a vendor runs any model of that vendor, whatever the runtime lends:
