@@ -31,7 +31,7 @@ export function TalkButton({ open, onClick }: { open: boolean; onClick: () => vo
 /** The panel. The room is keyed by the agent, so another agent opens a new conversation; closing the panel hangs up. Escape does not close it, for it would end a call. */
 export function TalkPanel({ agent, onClose }: { agent: string; onClose: () => void }): ReactNode {
   return (
-    <SidePanel title={`Talk to ${agent}`} icon="chat" flush closesOnEscape={false} onClose={onClose}>
+    <SidePanel title={`Talk to ${agent}`} icon="chat" width={432} flush closesOnEscape={false} onClose={onClose}>
       <Stage key={agent} agent={agent} />
     </SidePanel>
   );

@@ -5,7 +5,7 @@ import { ParticipantKind, RemoteAudioTrack, Room, RoomEvent, Track, type Partici
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
-import { post, saidBy } from "@pinecall/core/api";
+import { doorUrl, post, saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { followTranscripts } from "@pinecall/core/transcripts";
 import { earOn, type Ear } from "./ear";
@@ -83,6 +83,7 @@ export function useRoom(agent: string): Talking {
   const [speaking, setSpeaking] = useState<Speaking>(QUIET);
   const [held, setHeld] = useState<string | null>(null);
   const room = useRef<Room | null>(null);
+  const hangUp = useRef<(() => void) | null>(null);
   // The agent's voice, as an ear on its track: what the orb's level is read from.
   const voice = useRef<Ear | null>(null);
   const seen = useRef(new Set<string>());
@@ -242,6 +243,10 @@ export function useRoom(agent: string): Talking {
     };
     try {
       const minted = MintedSchema.parse(await post(credentials, "/v1/tokens", { agent, scope: joining }));
+      // Said at the gateway before the seat leaves the room, with the call's own token: left unsaid, the call waits
+      // five minutes for a caller who is not coming back. `keepalive`, so a closing tab still completes it.
+      const door = doorUrl(credentials, `/v1/calls/${encodeURIComponent(minted.call)}/hangup`, { token: minted.participant_token });
+      hangUp.current = () => void fetch(door, { method: "POST", keepalive: true }).catch(() => undefined);
       const joined = new Room();
       room.current = joined;
       // Registered before the room is joined: a handler registered after connect misses the first words.
@@ -309,6 +314,8 @@ export function useRoom(agent: string): Talking {
   );
 
   const close = useCallback(async (): Promise<void> => {
+    hangUp.current?.();
+    hangUp.current = null;
     await room.current?.disconnect();
   }, []);
 
@@ -323,6 +330,8 @@ export function useRoom(agent: string): Talking {
   useEffect(() => {
     return () => {
       voice.current?.stop();
+      hangUp.current?.();
+      hangUp.current = null;
       void room.current?.disconnect();
     };
   }, []);
