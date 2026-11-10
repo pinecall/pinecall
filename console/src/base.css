@@ -1,0 +1,46 @@
+/* The console's palette and page basics: one ground, filled cards on it, two inks, every pair at 4.5:1 or better. */
+
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+:root {
+  --ground: light-dark(#f4f4f7, #0e0f15);
+  --panel: light-dark(#ffffff, #1a1b24);
+  --raised: light-dark(#ececf1, #262733);
+  --line: light-dark(#e1e2e9, #24252f);
+  --ink: light-dark(#14151c, #f1f1f5);
+  --quiet: light-dark(#5a5c6c, #a3a5b4);
+  --accent: light-dark(#4f3bd9, #a99dff);
+  --accent-ink: light-dark(#4230c4, #cdc6ff);
+  --accent-soft: light-dark(#e9e6fd, rgb(169 157 255 / 0.18));
+  --good: light-dark(#0b7a4f, #3ddc9f);
+  --warn: light-dark(#8f5606, #f6b93e);
+  --warn-soft: light-dark(#fbeed3, rgb(246 185 62 / 0.15));
+  --bad: light-dark(#b42318, #ff7a70);
+  --blue: light-dark(#1f6fd6, #62b0ff);
+  --pink: light-dark(#b8327f, #f47ec4);
+  --solid: light-dark(#12131c, #f2f3f9);
+  --on-solid: light-dark(#ffffff, #090a12);
+  --face: Geist, system-ui, -apple-system, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--face);
+  font-size: 13.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 0; }

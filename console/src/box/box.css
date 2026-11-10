@@ -1,0 +1,37 @@
+/* The operator's pages: the list and the one open are Apps' own; a form is a world's row of fields with its Save at the end. */
+
+.box-id { font-family: var(--mono); font-size: 12px; }
+.box-holding { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0; }
+
+.box-worlds { display: flex; flex-direction: column; }
+.box-world { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.box-world:first-child { padding-top: 0; border-top: 0; }
+.box-world:last-child { padding-bottom: 0; }
+.box-world-name { padding-top: 2px; font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; }
+.box-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.box-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.box-field-title { font-size: 13px; font-weight: 500; }
+.box-field .cfg-input { max-width: 260px; }
+.box-end { display: flex; grid-column: 2; align-items: center; justify-content: flex-end; gap: 12px; min-height: 30px; }
+.box-said { font-size: 13px; }
+.box-save { height: 30px; border-radius: 7px; }
+.box-save:disabled { opacity: 0.5; cursor: default; }
+.box-save:not(:disabled) { border-color: var(--accent); background: var(--accent); color: var(--on-solid); }
+
+.box-limit { display: grid; grid-template-columns: minmax(0, 1fr) 120px 120px; align-items: center; gap: 12px; padding: 7px 8px; font-size: 13px; }
+
+@media (max-width: 760px) {
+  .box-world { grid-template-columns: minmax(0, 1fr); }
+  .box-end { grid-column: 1; }
+  .box-fields, .box-holding { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The list: the person's own organizations, then every other one, each with its initial. */
+.box-group { display: flex; flex-direction: column; gap: 2px; }
+.box-group + .box-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.box-group-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 10px 6px; color: var(--quiet); font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.box-group-label span { font-variant-numeric: tabular-nums; }
+.app-row.box-org { flex-direction: row; align-items: center; gap: 10px; }
+.box-org-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--raised); color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.app-row-on .box-org-mark { background: var(--accent); color: var(--on-solid); }
+.box-org-words { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }

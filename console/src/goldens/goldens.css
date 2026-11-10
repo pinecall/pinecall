@@ -1,0 +1,79 @@
+/* Goldens: the dashboard's filled cards, one per agent; fluid rows that give up their measures before their names as the side panel takes width. */
+
+.gd { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.gd-quiet { padding: 6px 8px; }
+.gd-refused { padding: 0 8px 6px; color: var(--bad); font-size: 13px; overflow-wrap: anywhere; }
+
+/* The headline: the count and its bar, then how the last runs went; the counts take a row of their own when squeezed. */
+.gd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
+.gd-hero-main { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: 0; }
+.gd-figure { font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.gd-counts { display: flex; flex: 3 1 380px; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.gd-count { flex: 1 1 120px; min-width: 0; }
+.gd-count .dash-eyebrow { white-space: nowrap; }
+
+.gd-bar { display: flex; flex: none; gap: 2px; width: 84px; height: 5px; }
+.gd-bar i { min-width: 5px; border-radius: 3px; }
+.gd-bar-wide { width: 100%; max-width: 320px; height: 6px; margin-top: 8px; }
+.gd-bar-held { background: var(--good); }
+.gd-bar-broke { background: var(--bad); }
+.gd-bar-none { background: color-mix(in srgb, var(--ink) 16%, transparent); }
+
+/* The tools of the list. */
+.gd-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.gd-search { display: flex; flex: 1 1 200px; align-items: center; gap: 8px; min-width: 0; max-width: 420px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--quiet); }
+.gd-search:focus-within { border-color: var(--accent); }
+.gd-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13px; outline: none; }
+
+/* An agent: its name and how its goldens stand, then a row each. */
+.gd-group { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px 8px; container-type: inline-size; }
+.gd-group-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; padding: 0 8px 8px; }
+.gd-group-name { flex: 1 1 140px; min-width: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.gd-stands { display: inline-flex; flex: none; align-items: center; gap: 10px; color: var(--quiet); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gd-group-acts { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gd-action { display: inline-flex; flex: none; align-items: center; gap: 6px; }
+
+.gd-row { display: flex; align-items: center; min-width: 0; border-radius: 8px; }
+.gd-row:hover { background: var(--raised); }
+.gd-row-on, .gd-row-on:hover { background: var(--accent-soft); }
+.gd-row-main { display: flex; flex: 1 1 0; align-items: center; gap: 12px; min-width: 0; padding: 8px; }
+.gd-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); }
+.gd-row-words { display: flex; flex: 1 1 0; flex-direction: column; gap: 2px; min-width: 0; }
+.gd-row-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13.5px; font-weight: 500; }
+.gd-tag { flex: none; white-space: nowrap; }
+.gd-row-under { color: var(--quiet); font-size: 12.5px; }
+.gd-row-when { flex: none; color: var(--quiet); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.gd-status { display: inline-flex; flex: none; align-items: center; gap: 7px; color: var(--quiet); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.gd-status::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--quiet) 60%, transparent); }
+.gd-status-words { min-width: 56px; }
+.gd-status-held { color: var(--good); }
+.gd-status-held::before { background: var(--good); }
+.gd-status-broke { color: var(--bad); }
+.gd-status-broke::before { background: var(--bad); }
+.gd-status-playing { color: var(--accent-ink); }
+.gd-status-playing::before { background: var(--accent); animation: gd-pulse 0.9s ease-in-out infinite alternate; }
+@keyframes gd-pulse { to { opacity: 0.3; } }
+
+.gd-row-acts { display: flex; flex: none; justify-content: flex-end; width: 34px; padding-right: 8px; }
+.gd-run { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; }
+.gd-run:hover:not(:disabled) { background: var(--panel); color: var(--ink); }
+.gd-run:disabled { opacity: 0.5; cursor: default; }
+
+/* Squeezed, a row drops its measures first and keeps its name. */
+@container (max-width: 560px) {
+  .gd-row-when, .gd-stands .gd-bar { display: none; }
+}
+@container (max-width: 440px) {
+  .gd-status-words, .gd-stands, .gd-tag { display: none; }
+}
+@container (max-width: 340px) {
+  .gd-mark, .gd-row-under { display: none; }
+}
+
+.gd-none { max-width: 620px; padding: 20px; }
+.gd-none-words { font-size: 13.5px; line-height: 1.55; }
+.gd-none-words a { color: var(--accent-ink); }
+.gd-none-words a:hover { text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) { .gd-status-playing::before { animation: none; } }

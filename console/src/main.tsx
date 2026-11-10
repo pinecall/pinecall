@@ -1,41 +1,56 @@
-/** Console entry point: resolves the session key (or login/invitation) and mounts the router. */
+/** Boots the console: the key this browser keeps, the sign-in when there is none, and the pages. */
 
 import { StrictMode, useCallback, useMemo, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider } from "react-router";
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from "react-router";
 
 import { onUnauthorized } from "@pinecall/core/api";
-import { followTheSystemTheme } from "@pinecall/core/theme";
-import { API_BASE } from "./lib/base";
-import { DEVICE } from "./lib/device";
 import { CredentialsProvider } from "@pinecall/core/credentials";
-import { loginToOrg, loginWithCode, type Signed } from "@pinecall/core/login";
+import { loginWithCode } from "@pinecall/core/login";
+import { chooseTheme, chosenTheme, wearTheChosenTheme } from "@pinecall/core/theme";
+import { AgentsPage, AppsPage } from "./apps/apps";
+import { markNewborn } from "./apps/first-agent";
+import { OrgsPage } from "./box/orgs";
+import { CasesPage } from "./cases/cases";
+import { Dashboard } from "./dashboard/dashboard";
+import { GoldensPage } from "./goldens/goldens";
+import { JudgesPage } from "./judges/judges";
+import { CallsPage } from "./calls/calls";
+import { KnowledgePage } from "./knowledge/knowledge";
+import { ObservabilityPage } from "./observability/observability";
+import { API_BASE, DEVICE, forgetKey, keepKey, keptKey } from "./lib/key";
 import { forgetThisBrowser } from "./lib/notifier";
-import { LeavingProvider } from "./lib/leaving";
-import { inTheWorld, pageOf, WORLD, WORLD_BASE } from "./lib/mode";
-import { forgetKey, keepCorner, keepKey, keptCorner, keptKey } from "./lib/session-key";
-import { WhoamiProvider } from "./lib/whoami";
-import { WorldProvider } from "./lib/world";
-import { router } from "./router";
-import { Accept, Login, SignUp, Verify, VERIFY } from "./screens/login";
-import "./ui/ui.css";
+import { OrgProvider } from "./lib/org";
+import { inWorld, pageHere, WORLD, WORLD_BASE } from "./lib/world";
+import { Accept, Login, SignUp, Verify, VERIFY } from "./login";
+import { MonitorsPage } from "./monitors/monitors";
+import { BillingPage } from "./billing/billing";
+import { CarriersPage } from "./box/carriers";
+import { FleetPage } from "./box/fleet";
+import { RoutesPage } from "./box/routes";
+import { BoxSettingsPage } from "./box/settings";
+import { TracebackPage } from "./box/traceback";
+import { BoxUsagePage } from "./box/usage";
+import { NotificationsPage } from "./notifications/notifications";
+import { NumbersPage } from "./numbers/numbers";
+import { PrivacyPage } from "./privacy/privacy";
+import { PersonasPage } from "./personas/personas";
+import { QualityPage } from "./quality/quality";
+import { Settings } from "./settings/settings";
+import { TeamPage } from "./team/team";
+import { UsagePage } from "./usage/usage";
+import { SimulationsPage } from "./simulations/simulations";
+import { PageHead } from "./shell/page-head";
+import { NotYet, Shell } from "./shell/shell";
+import "./base.css";
 
-const root = document.getElementById("root");
-if (root === null) {
-  throw new Error("index.html has no #root for the console to mount in");
-}
+// Dark until a person picks otherwise: it is a tool people sit in front of all day.
+wearTheChosenTheme();
+if (chosenTheme() === "auto") chooseTheme("dark");
 
-// CSS already follows the system theme; this only matters after a manual theme toggle.
-followTheSystemTheme();
-
-// One-use login code printed by `pinecall console`/`pinecall start`. Removed from the URL before
-// render so reloads, bookmarks and screenshots never carry it.
+// A one-use code in the address (`pinecall console`), taken off it before anything is drawn.
 const LOGIN = "login";
-
-// Invitation token stays in the URL until accepted so the card survives a reload.
 const INVITATIONS = /^\/invitations\/([^/]+)\/?$/;
-
-// The sign-up and its mailed code, under either world's base; the gateway says whether they open.
 const SIGNUP = /^\/signup\/?$/;
 const VERIFYING = new RegExp(`^${VERIFY}/?$`);
 
@@ -44,7 +59,6 @@ function theInvitationInTheAddress(): string | null {
   return found === null ? null : decodeURIComponent(found[1] ?? "");
 }
 
-/** The starting key: redeemed from `?login=`, else the stored one, else null. */
 async function theKeyToStartWith(): Promise<string | null> {
   const address = new URL(window.location.href);
   const code = address.searchParams.get(LOGIN);
@@ -56,82 +70,60 @@ async function theKeyToStartWith(): Promise<string | null> {
       await keepKey(signed.key);
       return signed.key;
     } catch {
-      // Spent or expired: fall through to the login screen without saying why.
+      // Spent or expired: the sign-in asks.
     }
   }
   return keptKey();
 }
 
-/** The app when there is a key, else the login; a dead key falls back to login. */
+const PAGES: readonly string[] = [];
+
+// The address the CLI opens an agent at (`pinecall console`, `pinecall start`): the agent's page.
+function TheAgentNamed(): ReactNode {
+  const { app = "" } = useParams();
+  return <Navigate to={`/agents/${encodeURIComponent(app)}`} replace />;
+}
+
 function Console({ startingWith }: { startingWith: string | null }): ReactNode {
-  const [key, setKey] = useState<string | null>(startingWith);
-  // Corners exist only in the sandbox.
-  const [corner, setCorner] = useState<string | null>(() => (WORLD === "sandbox" ? keptCorner() : null));
-  const lookInto = useCallback((other: string | null): void => {
-    keepCorner(other);
-    setCorner(other);
-  }, []);
-  // A key the gateway no longer takes is forgotten, and the login asks again.
-  onUnauthorized(() => {
-    void forgetKey().then(() => setKey(null));
-  });
-
-  // Org switch: exchange the key for one in the target org (POST /v1/login/org) and reload at the
-  // root, since the current URL belongs to the old org. `landing` is the router's path, so it is
-  // placed in this world before the browser is sent there.
-  const moveTo = useCallback(
-    async (org: string, landing = "/"): Promise<void> => {
-      if (key === null) return;
-      const signed = await loginToOrg({ base: API_BASE, key }, org);
-      keepCorner(null);
-      await keepKey(signed.key);
-      window.location.assign(inTheWorld(WORLD, landing));
-    },
-    [key],
-  );
-  const worlds = useMemo(() => ({ world: WORLD, moveTo, corner, lookInto }), [moveTo, corner, lookInto]);
-  // Every request carries its world; the gateway gates production per person (auth/world.py).
-  const credentials = useMemo(() => ({ base: API_BASE, key: key ?? "", corner, world: WORLD }), [key, corner]);
-
+  const [key, setKey] = useState(startingWith);
   const leave = useCallback((): void => {
-    // Unregister push while the key still exists.
+    // Unregister this browser's push while the key still exists.
     if (key !== null) void forgetThisBrowser({ base: API_BASE, key });
     void forgetKey();
-    keepCorner(null);
-    setCorner(null);
     setKey(null);
   }, [key]);
+  // A key the gateway no longer takes is forgotten, and the sign-in asks again.
+  onUnauthorized(leave);
 
-  const signed = (proof: Signed): void => {
-    void keepKey(proof.key);
-    setKey(proof.key);
-  };
+  const credentials = useMemo(() => ({ base: API_BASE, key: key ?? "", world: WORLD }), [key]);
+  const router = useMemo(
+    () =>
+      createBrowserRouter(
+        [
+          {
+            path: "/",
+            element: <Shell onLeave={leave} />,
+            children: [{ index: true, element: <Dashboard /> }, ...PAGES.map((path) => ({ path, element: <NotYet /> })), { path: "apps", element: <AppsPage /> }, { path: "apps/:app", element: <AppsPage /> }, { path: "apps/:app/:tab", element: <AppsPage /> }, { path: "agents", element: <AgentsPage /> }, { path: "agents/:app", element: <AgentsPage /> }, { path: "agents/:app/:tab", element: <AgentsPage /> }, { path: "monitors", element: <MonitorsPage /> }, { path: "team", element: <TeamPage /> }, { path: "usage", element: <UsagePage /> }, { path: "billing", element: <BillingPage /> }, { path: "privacy", element: <PrivacyPage /> }, { path: "box/fleet", element: <FleetPage /> }, { path: "box/carriers", element: <CarriersPage /> }, { path: "box/routes", element: <RoutesPage /> }, { path: "box/traceback", element: <TracebackPage /> }, { path: "box/usage", element: <BoxUsagePage /> }, { path: "box/settings", element: <BoxSettingsPage /> }, { path: "notifications", element: <NotificationsPage /> }, { path: "numbers", element: <NumbersPage /> }, { path: "numbers/:number", element: <NumbersPage /> }, { path: "observability", element: <ObservabilityPage /> }, { path: "knowledge", element: <KnowledgePage /> }, { path: "knowledge/memory", element: <KnowledgePage memory /> }, { path: "knowledge/bases/:base", element: <KnowledgePage /> }, { path: "box/orgs", element: <OrgsPage /> }, { path: "box/orgs/:org", element: <OrgsPage /> }, { path: "personas", element: <PersonasPage /> }, { path: "simulations", element: <SimulationsPage /> }, { path: "simulations/:call", element: <SimulationsPage /> }, { path: "simulations/compare/:comparison", element: <SimulationsPage /> }, { path: "quality", element: <QualityPage /> }, { path: "goldens", element: <GoldensPage /> }, { path: "goldens/:agent/:golden", element: <GoldensPage /> },{ path: "judges", element: <JudgesPage /> }, { path: "cases", element: <CasesPage /> }, { path: "calls", element: <CallsPage /> }, { path: "calls/:call", element: <CallsPage /> },{ path: "settings", element: <><PageHead /><Settings /></> }, { path: "a/:app", element: <TheAgentNamed /> }, { path: "a/:app/*", element: <TheAgentNamed /> }, { path: "settings/alerts", element: <Navigate to="/monitors" replace /> }, { path: "*", element: <Navigate to="/" replace /> }],
+          },
+        ],
+        { basename: WORLD_BASE },
+      ),
+    [leave],
+  );
 
   if (key === null) {
-    const page = pageOf(window.location.pathname);
-    if (SIGNUP.test(page)) {
-      // A new org opens in the sandbox; a terminal waiting on a Google sign-up gets its card, which is production's.
-      const waiting = new URLSearchParams(window.location.search).get("c");
-      return (
-        <SignUp
-          base={API_BASE}
-          onMade={(proof) => {
-            void keepKey(proof.key).then(() => window.location.assign(waiting === null ? inTheWorld("sandbox", "/") : `/cli?${new URLSearchParams({ c: waiting }).toString()}`));
-          }}
-        />
-      );
-    }
-    if (VERIFYING.test(page)) {
-      // A new org opens in the sandbox, whichever world's page the code was typed on.
-      return (
-        <Verify
-          base={API_BASE}
-          onSigned={(proof) => {
-            void keepKey(proof.key).then(() => window.location.assign(inTheWorld("sandbox", "/")));
-          }}
-        />
-      );
-    }
+    const signed = (proof: { key: string }): void => {
+      void keepKey(proof.key);
+      setKey(proof.key);
+    };
+    // A new org opens in the sandbox, whichever world's page it was made on.
+    const toTheSandbox = (proof: { key: string }): void => {
+      markNewborn();
+      void keepKey(proof.key).then(() => window.location.assign(inWorld("sandbox", "/")));
+    };
+    const page = pageHere();
+    if (SIGNUP.test(page)) return <SignUp base={API_BASE} onMade={toTheSandbox} />;
+    if (VERIFYING.test(page)) return <Verify base={API_BASE} onSigned={toTheSandbox} />;
     const token = theInvitationInTheAddress();
     if (token !== null) {
       return (
@@ -139,7 +131,6 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
           base={API_BASE}
           token={token}
           onSigned={(proof) => {
-            // Drop the spent token from the URL: the page lands on this world's home.
             window.history.replaceState(null, "", WORLD_BASE);
             signed(proof);
           }}
@@ -150,19 +141,19 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
   }
   return (
     <CredentialsProvider value={credentials}>
-      <WhoamiProvider>
-        <WorldProvider value={worlds}>
-          <LeavingProvider value={leave}>
-            <RouterProvider router={router} />
-          </LeavingProvider>
-        </WorldProvider>
-      </WhoamiProvider>
+      <OrgProvider>
+        <RouterProvider router={router} />
+      </OrgProvider>
     </CredentialsProvider>
   );
 }
 
+const root = document.getElementById("root");
+if (root === null) throw new Error("the page has no #root");
+const mount = root;
+
 void theKeyToStartWith().then((start) => {
-  createRoot(root).render(
+  createRoot(mount).render(
     <StrictMode>
       <Console startingWith={start} />
     </StrictMode>,

@@ -7,8 +7,8 @@ sandbox, a switch at the top, one sign-in.
 
 - **Production** manages the org: deployed agents, calls, phone numbers, API tokens, vendor keys,
   team and usage.
-- **Sandbox** is for development: your copies of the agents, live calls, Dev chat, test suites,
-  phone testing.
+- **Sandbox** is for development: your copies of the agents, live calls, the Talk panel, tests,
+  the test line.
 
 `pinecall console` (the CLI, [pinecall/cli](https://github.com/pinecall/pinecall/tree/main/cli))
 opens it signed in.
@@ -17,7 +17,7 @@ opens it signed in.
 
 ```bash
 pnpm install    # from the repository's root: every TypeScript package, one lockfile
-pnpm check      # build, lint and test
+pnpm check      # build and lint
 ```
 
 What the page stands on — the gateway client, the key, the call's state, the palette — is
@@ -41,5 +41,5 @@ pinecall/
     └── room/        the caller's side of a call, for a page's own UI
 ```
 
-Every screen, and whether the sandbox, production or both have it: `src/lib/mode.ts`; the
-screens explained for a team: [The console](https://docs.pinecall.io/guides/console/).
+Every row of the menu: `src/shell/menu.ts`; the screens explained for a team:
+[The console](https://docs.pinecall.io/guides/console/).

@@ -4,7 +4,6 @@
 packages:
   - cli
   - console
-  - console-v2
   - sdk/typescript
   - packages/*
   - examples/typescript/*

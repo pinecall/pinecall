@@ -1,0 +1,49 @@
+/* Usage: the sections are the Test tab's and the cards the dashboard's; here, the meters, the totals and the shares. */
+
+.usg-page { display: flex; flex-direction: column; gap: 12px; }
+.usg-stack { display: flex; flex-direction: column; gap: 12px; }
+.usg-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.usg-tone-good { --tone: var(--good); }
+.usg-tone-accent { --tone: var(--accent); }
+
+/* The totals: a few big numbers on one card. */
+.usg-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 24px; padding: 20px; }
+.usg-total { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.usg-total .dash-big { margin-top: 6px; }
+.usg-chart { padding: 16px 20px 20px; }
+
+/* A quota as a tile: its name, what is used of it, the bar when it has a limit, and what it counts. */
+.usg-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 10px; }
+.usg-meter { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--ground); }
+.usg-meter-name { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--quiet); font-size: 12.5px; }
+.usg-meter-name svg { flex: none; }
+.usg-meter-value { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* A row that opens nothing. */
+.usg-still { cursor: default; }
+
+/* A row's right side: the number, and under it the thin bar. */
+.usg-side { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 7px; width: 150px; }
+.usg-value { font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.usg-value-warn { color: var(--warn); }
+.usg-value-bad { color: var(--bad); }
+.usg-of { margin-left: 6px; color: var(--quiet); font-size: 12.5px; font-weight: 400; }
+.usg-bar { width: 100%; height: 4px; }
+.usg-bar i { min-width: 0; }
+.usg-fill { background: var(--tone); }
+.usg-fill-warn { background: var(--warn); }
+.usg-fill-bad { background: var(--bad); }
+.usg-full { color: var(--bad); }
+
+/* A call's id, and the line under a section while the feed is read. */
+.usg-id { font-family: var(--mono); font-size: 12px; }
+.usg-more { align-self: flex-start; }
+
+@media (max-width: 1080px) {
+  .usg-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .usg-side { width: 110px; }
+  .usg-totals { gap: 16px; }
+}

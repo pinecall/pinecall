@@ -1,0 +1,130 @@
+/* Numbers: the open number's cards, the forms that add one, the test line, and an agent's channels. */
+
+.num-hint { color: var(--quiet); font-size: 12.5px; line-height: 1.5; }
+/* A panel sets its fields' height; a text area keeps the rows it was given. */
+.ui-panel .cfg-input.cfg-area.new-agent-area { height: auto; min-height: 150px; padding: 10px 12px; line-height: 1.5; }
+.num-link { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--accent-ink); font-size: 12.5px; cursor: pointer; }
+.num-link:hover:not(:disabled) { text-decoration: underline; }
+.num-add { display: inline-flex; flex: none; align-items: center; gap: 6px; }
+.num-list-add { margin-left: auto; }
+.num-list-add .app-button { height: 24px; padding: 0 9px; }
+
+/* How a number rings, in a dot and a few words. */
+.num-rings { display: inline-flex; flex: none; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.num-rings::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.num-rings-good { color: var(--good); }
+.num-rings-warn { color: var(--warn); }
+.num-rings-bad { color: var(--bad); }
+
+/* One number open. */
+.num-open { display: flex; flex-direction: column; gap: 12px; max-width: 880px; }
+.num-card { display: flex; flex-direction: column; }
+.num-card-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.num-big { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.num-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 20px; margin: 16px 0 0; }
+.num-facts dt { color: var(--quiet); font-size: 12px; }
+.num-facts dd { margin: 3px 0 0; font-size: 13.5px; overflow-wrap: anywhere; }
+.num-agent { color: var(--accent-ink); font-weight: 500; }
+.num-agent:hover { text-decoration: underline; }
+.num-changes { display: flex; flex-direction: column; }
+.num-change { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 0; border-top: 1px solid var(--line); }
+.num-change:first-child { padding-top: 0; border-top: 0; }
+.num-change:last-child { padding-bottom: 0; }
+.num-change-words { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
+.num-change-title { font-size: 13.5px; font-weight: 500; }
+.num-change .ui-select { flex: none; width: 220px; }
+.num-change .app-button { height: 30px; border-radius: 7px; }
+
+.num-out { gap: 12px; max-width: 880px; }
+.num-out-says { color: var(--quiet); font-size: 13px; line-height: 1.55; }
+.num-out-missing { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 18px; color: var(--quiet); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* A number's path: four steps down a line. */
+.num-path { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.num-path-step { position: relative; display: flex; gap: 12px; padding-bottom: 14px; }
+.num-path-step:last-child { padding-bottom: 0; }
+.num-path-step:not(:last-child)::before { content: ""; position: absolute; top: 14px; bottom: -2px; left: 4px; width: 1px; background: var(--line); }
+.num-path-dot { position: relative; flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--good); }
+.num-path-waiting .num-path-dot { background: var(--warn); }
+.num-path-broken .num-path-dot { background: var(--bad); }
+.num-path-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; line-height: 1.5; }
+.num-path-name { font-size: 13.5px; font-weight: 500; }
+.num-path-says { color: var(--quiet); overflow-wrap: anywhere; }
+.num-path-fix { color: var(--ink); overflow-wrap: anywhere; }
+
+/* Add a number: the ways, a form, the plan, what was made. */
+.num-ways { display: flex; flex-direction: column; gap: 8px; }
+.num-way { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; text-align: left; cursor: pointer; transition: border-color 0.12s, background 0.12s; }
+.num-way:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.num-way > svg { flex: none; color: var(--quiet); transform: rotate(-90deg); }
+.num-way-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 9px; background: var(--panel); color: var(--accent); }
+.num-way-words { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.num-way-name { font-size: 14px; font-weight: 500; }
+.num-way-says { color: var(--quiet); font-size: 12.5px; line-height: 1.45; }
+.num-back { margin-bottom: -8px; }
+.num-form { display: flex; flex-direction: column; gap: 22px; }
+.num-owned { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 9px; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+.num-owned > p { padding: 12px; }
+.num-owned-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; }
+.num-owned-row + .num-owned-row { border-top: 1px solid var(--line); }
+.num-owned-row:hover { background: var(--panel); }
+.num-owned-row input { margin: 0; accent-color: var(--accent); }
+.num-owned-taken { color: var(--quiet); cursor: default; }
+.num-owned-taken:hover { background: transparent; }
+.num-owned-number { flex: none; font-variant-numeric: tabular-nums; }
+.num-owned-name { flex: 1; min-width: 0; color: var(--quiet); font-size: 12.5px; text-align: right; }
+.num-plan { display: flex; flex-direction: column; gap: 14px; }
+.num-plan-title { font-size: 13.5px; font-weight: 500; }
+.num-steps { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--panel); color: var(--quiet); font-size: 12.5px; line-height: 1.5; list-style: none; overflow-wrap: anywhere; }
+.num-steps b { margin-right: 4px; color: var(--ink); font-weight: 500; }
+.num-added { display: flex; align-items: center; gap: 8px; color: var(--good); font-size: 14px; font-weight: 500; }
+.num-setup { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--panel); font-size: 13px; }
+.num-setup dt { color: var(--quiet); }
+.num-setup dd { margin: 0; }
+.num-copy { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.num-copy code { overflow: hidden; font-family: var(--mono); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.num-copy .app-button { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; }
+
+/* The test line: one row. */
+.num-test { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 48px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--ground); font-size: 13.5px; }
+.num-test-title { flex: none; width: 170px; font-weight: 500; }
+.num-test-from { flex: 1; min-width: 0; color: var(--quiet); font-size: 12.5px; }
+.num-test .num-link { align-self: center; flex: none; color: var(--quiet); }
+.num-test .num-link:hover:not(:disabled) { color: var(--ink); }
+.num-test .num-copy code { color: var(--ink); font-size: 13px; }
+.num-test .app-button { height: 28px; }
+.num-test .ui-select { flex: none; width: 200px; }
+.num-test-form { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 240px; }
+.num-test-form .cfg-input { flex: 1; min-width: 0; height: 30px; }
+.num-test-refused { flex-basis: 100%; }
+/* On its own, outside a channel's panel, it is a card; in the wizard, a row among the ways. */
+.app-main > .num-test { max-width: 880px; padding: 7px 16px; border-radius: 10px; background: var(--panel); }
+.num-ways > .num-test { padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.num-ways .num-test-title { width: auto; }
+.tst-x { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; }
+.tst-x:hover { background: var(--raised); color: var(--ink); }
+
+/* An agent's channels: a panel a channel, in its colour. */
+.num-channels { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
+.num-tone-blue { --tone: var(--blue); }
+.num-tone-green { --tone: var(--good); }
+.num-section { display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 12px; background: var(--panel); }
+.num-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.num-section-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 9px; background: var(--ground); color: var(--ink); }
+.num-section-words { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.num-section-title { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+.num-section-about { color: var(--quiet); font-size: 13px; line-height: 1.45; }
+.num-section-head .cfg-save { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.num-section-head .cfg-save:hover { border-color: var(--quiet); background: var(--raised); }
+.num-row { display: flex; align-items: center; gap: 16px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--ground); font-size: 13.5px; }
+.num-row:hover { border-color: color-mix(in srgb, var(--quiet) 45%, var(--line)); }
+.num-row-number { flex: none; width: 170px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.num-row-through { flex: 1; min-width: 0; color: var(--quiet); font-size: 12.5px; }
+.num-row-when { flex: none; color: var(--quiet); font-size: 12px; }
+.num-none { padding: 6px 2px; }
+
+@media (max-width: 760px) {
+  .num-change { flex-direction: column; align-items: stretch; }
+  .num-test-title { width: auto; }
+  .num-row-through, .num-row-when { display: none; }
+}

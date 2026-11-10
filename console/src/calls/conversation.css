@@ -1,0 +1,116 @@
+/* The four ways a call is read, and the tape under them: filled bubbles, mono rows, bars on one axis. */
+
+.calls-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
+
+/* A line a judge cites, lit for a moment when its citation is followed. */
+.calls-lit { border-radius: 10px; animation: calls-lit 1.8s ease-out; }
+@keyframes calls-lit { 0%, 45% { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); } 100% { background: transparent; box-shadow: 0 0 0 6px transparent; } }
+
+.calls-chat { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 0 auto; padding: 20px 24px 28px; }
+.calls-chat-nothing { padding: 32px 24px; text-align: center; }
+.calls-rule { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--quiet); text-transform: uppercase; }
+.calls-rule::before, .calls-rule::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.calls-chat-note { align-self: center; max-width: 90%; padding: 3px 12px; border-radius: 12px; background: var(--raised); color: var(--quiet); font-size: 12.5px; text-align: center; }
+
+.calls-said { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; max-width: 86%; }
+.calls-said-caller { align-self: flex-end; align-items: flex-end; }
+.calls-said-tool { align-self: stretch; max-width: 100%; }
+.calls-line { display: flex; max-width: 100%; }
+.calls-line-caller { align-self: flex-end; justify-content: flex-end; }
+.calls-bubble { padding: 8px 14px; border-radius: 14px; background: var(--panel); font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.calls-bubble-caller { background: var(--accent-soft); }
+.calls-bubble-broken { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transparent); }
+.calls-bubble-unsettled { opacity: 0.72; }
+.calls-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; background: currentColor; vertical-align: text-bottom; animation: calls-caret 1s steps(2) infinite; }
+@keyframes calls-caret { 50% { opacity: 0; } }
+
+.calls-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px; color: var(--quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.calls-seek { padding: 0; border: 0; border-bottom: 1px dotted color-mix(in srgb, var(--quiet) 55%, transparent); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.calls-seek:hover { border-bottom-color: var(--accent); color: var(--accent-ink); }
+
+.calls-tool { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: 32px; padding: 0 10px; border-radius: 8px; background: var(--panel); color: var(--quiet); font-size: 12px; }
+.calls-tool svg { flex: none; }
+.calls-tool-broken { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 45%, transparent); }
+.calls-tool-name { flex: none; max-width: 50%; overflow: hidden; color: var(--ink); font-family: var(--mono); font-size: 12px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.calls-tool-said { flex: 1; min-width: 0; }
+.calls-tool-took { flex: none; font-variant-numeric: tabular-nums; }
+
+/* The Transcript and the Log. */
+.calls-log { display: flex; flex-direction: column; gap: 1px; padding: 12px 16px 24px; }
+.calls-log-row { border-radius: 6px; }
+.calls-log-row[open] { background: var(--panel); }
+.calls-log-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 5px 8px; border-radius: 6px; font-size: 13px; line-height: 1.5; list-style: none; }
+summary.calls-log-line { cursor: pointer; }
+summary.calls-log-line:hover { background: var(--panel); }
+summary.calls-log-line::-webkit-details-marker { display: none; }
+.calls-log-seq { flex: none; width: 34px; color: var(--quiet); font-family: var(--mono); font-size: 11.5px; text-align: right; }
+.calls-kind { flex: none; width: 74px; overflow: hidden; color: var(--quiet); font-family: var(--mono); font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+.calls-kind-tool { color: var(--accent-ink); }
+.calls-kind-state { color: var(--blue); }
+.calls-kind-confirm, .calls-kind-handing, .calls-kind-supervisor { color: var(--warn); }
+.calls-kind-event { color: var(--pink); }
+.calls-kind-lookup { color: var(--good); }
+.calls-log-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.calls-log-turn { font-size: 13.5px; }
+.calls-log-who { margin-right: 8px; color: var(--blue); font-size: 12px; font-weight: 500; }
+.calls-log-who-agent { color: var(--accent-ink); }
+.calls-log-note { margin-left: 10px; color: var(--quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.calls-log-more { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 12px 18px; }
+.calls-block-name { margin: 0 0 4px; font-family: var(--mono); font-size: 11.5px; font-weight: 400; color: var(--quiet); }
+.calls-readings { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.calls-reading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; font-family: var(--mono); font-size: 12px; line-height: 1.55; }
+.calls-reading-name { flex: 0 1 auto; min-width: 60px; color: var(--quiet); }
+.calls-reading-value { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; text-align: right; white-space: pre-wrap; font-variant-numeric: tabular-nums; }
+.calls-data { max-height: 220px; margin: 0; padding: 8px 10px; overflow: auto; border-radius: 6px; background: var(--raised); font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.calls-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; color: var(--quiet); font-family: var(--mono); font-size: 12px; list-style: none; }
+.calls-broken { border-radius: 6px; background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.calls-broken-by { display: flex; flex-direction: column; gap: 3px; padding: 0 12px 8px 18px; color: var(--bad); font-size: 12.5px; }
+.calls-broken-by b { font-weight: 600; }
+.calls-saying .calls-log-line { color: var(--quiet); }
+.calls-word-now { color: var(--ink); }
+
+@container (max-width: 520px) {
+  .calls-log-seq { display: none; }
+  .calls-kind { width: 58px; }
+  .calls-chat { padding-inline: 12px; }
+  .calls-said { max-width: 94%; }
+}
+
+/* The Trace: a long call scrolls sideways, the names stay. */
+.calls-trace { padding: 12px 16px 24px; overflow-x: auto; }
+.calls-trace-sheet { --trace-name: 130px; display: flex; flex-direction: column; gap: 10px; width: max-content; min-width: 100%; }
+.calls-trace-line { display: flex; align-items: center; min-height: 20px; }
+.calls-trace-name { position: sticky; z-index: 1; left: 0; flex: none; width: var(--trace-name); padding-right: 10px; background: var(--ground); color: var(--quiet); font-family: var(--mono); font-size: 11.5px; }
+.calls-trace-lane { position: relative; flex: 1 0 auto; width: var(--trace-width); height: 20px; }
+.calls-trace-axis { position: sticky; z-index: 2; top: 0; background: var(--ground); }
+.calls-trace-mark { position: absolute; top: 2px; color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.calls-trace-exchange { display: flex; flex-direction: column; gap: 1px; }
+/* Its width comes from the sheet, never the other way round: a long sentence must not widen the axis. */
+.calls-trace-said { position: sticky; left: 0; width: 0; min-width: min(100%, 560px); padding-bottom: 3px; font-size: 13px; }
+.calls-trace-bar { position: absolute; top: 4px; height: 12px; padding: 0; border: 0; border-radius: 3px; cursor: pointer; }
+.calls-trace-caller { background: var(--blue); }
+.calls-trace-eou { background: var(--quiet); }
+.calls-trace-llm { background: var(--accent); }
+.calls-trace-tool { background: var(--warn); }
+.calls-trace-voice { background: var(--pink); }
+.calls-trace-agent { background: var(--good); }
+.calls-trace-cut { opacity: 0.5; }
+.calls-trace-picked .calls-trace-bar { box-shadow: 0 0 0 2px var(--ink); }
+.calls-trace-tick { position: absolute; top: 2px; width: 2px; height: 16px; background: var(--ink); pointer-events: none; }
+.calls-trace-took { position: absolute; top: 2px; color: var(--quiet); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
+
+@container (max-width: 520px) {
+  .calls-trace-sheet { --trace-name: 84px; }
+}
+
+/* The recording, pinned under whichever reading is open. */
+.calls-tape { display: flex; flex: none; align-items: center; gap: 10px; padding: 8px 24px; border-top: 1px solid var(--line); }
+.calls-tape-note { margin: 0; }
+.calls-tape-play { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: var(--solid); color: var(--on-solid); cursor: pointer; }
+.calls-tape-time { flex: none; color: var(--quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+.calls-tape-bar { flex: 1; min-width: 40px; margin: 0; accent-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .calls-lit, .calls-caret { animation: none; }
+  .calls-lit { background: var(--accent-soft); }
+}

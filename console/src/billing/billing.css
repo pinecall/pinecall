@@ -1,0 +1,27 @@
+/* Billing: the month's spend and where it heads beside the way to pay, the spend by day and by part; the limits under it are Usage's meters. */
+
+.bil-page { display: flex; flex-direction: column; gap: 12px; }
+.bil-lead { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.bil-card { --tone: var(--accent); display: flex; flex-direction: column; gap: 20px; padding: 20px; }
+.bil-spent { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bil-line { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; }
+.bil-big { font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.bil-big-warn { color: var(--warn); }
+.bil-big-bad { color: var(--bad); }
+.bil-budget { display: flex; margin-top: 12px; }
+.bil-budget .usg-bar { height: 6px; }
+.bil-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+.bil-pay { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px; }
+.bil-fill { flex: 1; }
+.bil-manage { height: 34px; padding: 0 18px; border-radius: 8px; font-size: 13px; }
+.bil-none { margin: 0; color: var(--quiet); font-size: 13.5px; line-height: 1.5; }
+.bil-part { min-width: 64px; text-align: right; }
+
+@media (max-width: 1080px) {
+  .bil-lead { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .bil-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

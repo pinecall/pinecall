@@ -1,0 +1,61 @@
+/* The details beside a call: the desk on a filled card, the judges and models in rows, the numbers in filled tiles, on the panel's ground. */
+
+.calls-part { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.calls-part-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.calls-outcome { font-size: 13.5px; line-height: 1.55; overflow-wrap: anywhere; }
+
+.calls-link { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--quiet); font-size: 12.5px; cursor: pointer; }
+.calls-link:hover:not(:disabled) { color: var(--ink); }
+.calls-link:disabled { cursor: default; }
+.calls-link-bad:hover:not(:disabled) { color: var(--bad); }
+.calls-solid { flex: none; height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--solid); color: var(--on-solid); font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.calls-solid:disabled { opacity: 0.5; cursor: default; }
+.ui-panel .app-button:disabled { opacity: 0.5; cursor: default; }
+
+.calls-desk { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.calls-desk-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.calls-desk-field { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.calls-desk-field .app-input { flex: 1; min-width: 0; }
+.calls-asked { display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border-radius: 8px; background: var(--warn-soft); font-size: 13px; }
+.calls-asked-why b { font-weight: 600; }
+
+.calls-judges { display: flex; flex-direction: column; gap: 6px; }
+.calls-judge { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; font-size: 13px; }
+.calls-judge-icon { display: inline-flex; flex: none; }
+.calls-judge-name { flex: 1 1 0; min-width: 0; font-weight: 500; }
+.calls-judge-said { flex: none; max-width: 50%; overflow: hidden; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+.calls-judge-why { flex: 1 0 100%; padding-left: 22px; color: var(--quiet); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.calls-cite { margin-left: 6px; padding: 0 5px; border: 0; border-radius: 4px; background: var(--accent-soft); color: var(--accent-ink); font-family: var(--mono); font-size: 11.5px; cursor: pointer; }
+.calls-cite:hover { background: var(--accent); color: var(--on-solid); }
+.calls-mood-bad { color: var(--bad); }
+.calls-mood-good { color: var(--good); }
+.calls-mood-accent { color: var(--accent-ink); }
+.calls-mood-quiet { color: var(--quiet); }
+
+.calls-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.calls-tile { display: flex; flex-direction: column; min-width: 0; padding: 11px 12px; border-radius: 9px; background: var(--panel); font-size: 12.5px; }
+.calls-tile-value { margin-top: 3px; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+.calls-tile-sub { margin-top: 1px; color: var(--quiet); font-size: 12px; }
+
+.calls-models { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.calls-model { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; font-size: 13px; }
+.calls-model-name { min-width: 0; font-family: var(--mono); font-size: 12.5px; }
+
+.calls-others { display: flex; flex-direction: column; gap: 2px; margin: 0 -8px; }
+.calls-other { display: flex; flex-direction: column; min-width: 0; padding: 6px 8px; border-radius: 7px; font-size: 13px; }
+.calls-other:hover { background: var(--panel); }
+.calls-other-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.calls-other-top > :first-child { flex: none; font-weight: 500; }
+
+.calls-proofs { display: flex; flex-direction: column; gap: 8px; }
+.calls-proof { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 9px; background: var(--panel); font-size: 13px; }
+
+.calls-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.calls-written { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.calls-path { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.calls-erase { display: flex; flex-direction: column; gap: 8px; }
+
+.calls-step { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.calls-step-head { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.calls-step-name { font-size: 14px; font-weight: 600; }
+.calls-step-said { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }

@@ -1,0 +1,24 @@
+/* Box usage: the sections are the Test tab's, the cards the dashboard's and the shares Usage's; here, the two switches, the sentence that leads and the totals. */
+
+.bxu-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.bxu-tools .dash-switch { flex: none; }
+
+/* What leads: one sentence of who used the most, then the numbers. */
+.bxu-lead { display: flex; flex-direction: column; gap: 20px; padding: 20px; border-radius: 12px; }
+.bxu-says { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bxu-says-title { font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+.bxu-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.bxu-total { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bxu-total .dash-big { margin-top: 6px; }
+.bxu-chart { padding: 16px 20px 20px; border-radius: 12px; }
+
+/* An organization's row: a link to its page, its share drawn in the one colour the page has. */
+.bxu-orgs { --tone: var(--accent); }
+.bxu-row { color: inherit; text-decoration: none; }
+.bxu-still { cursor: default; }
+.bxu-idle .tst-row-words, .bxu-idle .tst-mark { opacity: 0.6; }
+.bxu-more { align-self: flex-start; }
+
+@media (max-width: 760px) {
+  .bxu-totals { gap: 16px; }
+}

@@ -1,0 +1,48 @@
+/* The operator's telephony pages (Carriers, Routes, Traceback): sections and rows are Test's own; here, only what those three add. */
+
+.tel-calm { padding: 6px 2px; font-size: 13.5px; }
+
+/* A row that holds buttons beside its words, as Settings' do. */
+.tel-row { gap: 14px; padding: 12px 14px; }
+.tel-row .tst-row-main { gap: 14px; padding: 0; }
+.tel-row .app-button { flex: none; height: 28px; }
+.tel-row .tst-row-under { line-height: 1.5; }
+.tel-status { width: 118px; }
+.tel-go { display: inline-flex; align-items: center; }
+.tel-why { color: var(--warn); }
+.tel-id .num-copy code { color: var(--quiet); font-size: 11.5px; }
+
+.tel-mono { font-family: var(--mono); font-size: 12.5px; }
+.tel-org { color: var(--accent-ink); font-weight: 500; }
+.tel-org:hover { text-decoration: underline; }
+.tel-note { padding: 6px 2px 0; line-height: 1.5; }
+
+/* A carrier's networks, in its panel. */
+.tel-nets { display: flex; flex-wrap: wrap; gap: 6px; }
+.tel-nets .tel-mono { padding: 3px 8px; border-radius: 6px; background: var(--panel); font-size: 12px; }
+
+/* What it takes for the cloud's firewall to follow the list. */
+.tel-apply { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.tel-apply-title { font-size: 13.5px; font-weight: 500; }
+.tel-apply .num-copy { display: flex; }
+.tel-apply .num-copy code { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 7px; background: var(--ground); }
+
+/* The tools over a list: a search, a pick, a switch. */
+.tel-tools { margin-bottom: 4px; }
+.tel-pick { flex: none; width: 220px; }
+.tel-pick .ui-select-trigger { min-height: 30px; padding: 4px 10px; border-radius: 7px; font-size: 13px; }
+
+/* Traceback: the search, its answer, its limits. */
+.tel-look { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tel-look-number { flex: 1; min-width: 220px; height: 38px; font-size: 14.5px; }
+.tel-look .tel-pick .ui-select-trigger { min-height: 38px; }
+.tst-list .cfg-save.tel-look-go { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 38px; padding: 0 16px; border-radius: 9px; font-size: 13.5px; }
+.tel-answer { display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 12px; }
+.tel-answer-number { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.tel-answer-line { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.tel-rules { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0 2px 0 20px; color: var(--quiet); font-size: 13px; line-height: 1.55; }
+
+@media (max-width: 760px) {
+  .tel-row { flex-wrap: wrap; }
+  .tel-pick { width: 100%; }
+}

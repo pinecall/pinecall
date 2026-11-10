@@ -1,0 +1,144 @@
+/* Observability: the dashboard's filled cards, Configure's stage colours, and rows that keep the name and drop measures as the side panel takes the page's width. */
+
+.ob { display: flex; flex-direction: column; gap: 12px; min-width: 0; container-type: inline-size; }
+.ob-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 12px; align-items: stretch; }
+.ob-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; align-items: stretch; }
+.ob-card { container-type: inline-size; }
+.ob-card-top { flex-wrap: wrap; gap: 6px 12px; }
+.ob-card-top > .dash-eyebrow { flex: none; }
+.ob-card-top > .dash-quiet { min-width: 0; }
+.ob-section { margin: 10px 2px 0; }
+.ob-clip { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ob-break { overflow-wrap: anywhere; }
+.ob-mono { font-family: var(--mono); font-size: 12.5px; }
+
+.ob-tone-accent { --tone: var(--accent); }
+.ob-tone-blue { --tone: var(--blue); }
+.ob-tone-pink { --tone: var(--pink); }
+.ob-tone-warn { --tone: var(--warn); }
+.ob-tone-good { --tone: var(--good); }
+.ob-tone-quiet { --tone: var(--quiet); }
+.ob-swatch { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--tone); }
+
+/* The page head's own controls. */
+.ob-pick { flex: 0 1 180px; min-width: 120px; }
+.ob-pick .ui-select-trigger { min-height: 30px; padding: 3px 10px; border-radius: 7px; }
+.ob-head-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; border-radius: 7px; }
+.ob-head-button-on, .ob-head-button-on:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+
+/* An empty window: one card, one sentence. */
+.ob-none { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.ob-none p { flex: 1 1 320px; min-width: 0; color: var(--quiet); }
+.ob-none .cfg-save { flex: none; }
+
+/* The hero: four figures in one card, wrapping two by two and then one by one. */
+.ob-hero { display: flex; flex-wrap: wrap; gap: 20px 32px; }
+.ob-figure { display: flex; flex: 1 1 190px; flex-direction: column; gap: 2px; min-width: 0; font-size: 12.5px; }
+.ob-figure-value { margin-top: 6px; }
+.ob-figure-moved { font-weight: 500; }
+
+/* Time to answer: the figure, the road of stages, the days. */
+.ob-answer-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 20px; }
+.ob-answer-words { display: flex; flex: 1 1 280px; flex-direction: column; min-width: 0; }
+.ob-answer-figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ob-answer-figure .dash-quiet { font-weight: 400; letter-spacing: 0; }
+.ob-road { display: flex; flex-direction: column; gap: 8px; margin: 20px 0 26px; }
+.ob-road-ends { display: flex; justify-content: space-between; }
+.ob-road-bar { display: flex; gap: 2px; height: 8px; overflow: hidden; border-radius: 4px; }
+.ob-road-bar span { flex-basis: 0; min-width: 4px; background: var(--tone); }
+.ob-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; margin-top: 6px; }
+.ob-step { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px 14px; border-radius: 8px; background: var(--raised); font-size: 12.5px; }
+.ob-step-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.ob-step-share { margin-left: auto; font-weight: 400; font-variant-numeric: tabular-nums; }
+.ob-step-took { margin-top: 2px; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+
+/* The graphs: the dashboard's plot, shorter, with room for a time on its scale. */
+.ob-chart .dash-plot { height: 150px; margin-left: 52px; }
+.ob-chart .dash-days { margin-left: 52px; }
+.ob-chart .dash-grid-label { left: -52px; width: 44px; white-space: nowrap; }
+.ob-keys { margin: 10px 0 0 52px; gap: 6px 14px; }
+.ob-reading { gap: 2px; }
+.ob-reading-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--quiet); }
+.ob-reading-row b { margin-left: auto; padding-left: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ob-mark { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--warn); pointer-events: none; }
+.ob-mark span { position: absolute; right: 0; bottom: 3px; padding: 0 5px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); font-size: 11.5px; white-space: nowrap; }
+.ob-mark-under span { top: 4px; bottom: auto; }
+.ob-stack { display: flex; flex-direction: column-reverse; gap: 1px; width: min(58%, 30px); overflow: hidden; border-radius: 4px 4px 0 0; opacity: 0.85; }
+.ob-stack-read { opacity: 1; }
+.ob-stack span { flex-basis: 0; min-height: 2px; }
+
+/* Rows: the name takes what is left, the measures are fixed and go first when squeezed. */
+.ob-row { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 6px 8px; font-size: 13px; }
+.ob-row-main { display: flex; flex: 1 1 0; flex-direction: column; gap: 1px; min-width: 0; }
+.ob-row-name { font-weight: 500; }
+.ob-row-under { max-width: 100%; font-size: 12.5px; color: var(--quiet); }
+a.ob-row-link { color: var(--bad); }
+a.ob-row-link:hover { text-decoration: underline; }
+.ob-row-on, .ob-row-on:hover { background: var(--accent-soft); }
+.ob-num { flex: none; min-width: 58px; text-align: right; white-space: nowrap; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ob-flag { flex: none; padding: 0 6px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); font-size: 11.5px; font-weight: 500; }
+.ob-share { flex: 0 1 120px; min-width: 40px; height: 4px; overflow: hidden; border-radius: 2px; background: var(--raised); }
+.dash-row:hover .ob-share { background: var(--ground); }
+.ob-share span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+
+/* A slow turn: a row that is a button, and its detail in the side panel. */
+.ob-slow { width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.ob-slow-bar { display: flex; flex: 0 1 140px; min-width: 48px; }
+.ob-slow-took { font-size: 13px; font-weight: 600; }
+.ob-bar { display: flex; gap: 2px; width: 100%; height: 6px; overflow: hidden; border-radius: 3px; }
+.ob-bar span { flex-basis: 0; min-width: 3px; background: var(--tone); }
+.ob-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px 16px; margin: 0; }
+.ob-facts-wide { grid-template-columns: minmax(0, 1fr); }
+.ob-facts > div { min-width: 0; }
+.ob-facts dt { font-size: 12px; color: var(--quiet); }
+.ob-facts dd { margin: 2px 0 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.ob-detail { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 10px; background: var(--panel); }
+.ob-detail .ob-bar { height: 8px; border-radius: 4px; }
+.ob-detail-parts { display: flex; flex-direction: column; gap: 8px; }
+.ob-detail-part { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.ob-detail-name { flex: 1 1 0; }
+.ob-open-call { display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 8px; background: var(--solid); color: var(--on-solid); font-size: 13px; font-weight: 600; }
+
+/* Live events. */
+.ob-live-controls { display: flex; flex: none; align-items: center; gap: 6px; }
+.ob-live-dot { animation: ob-pulse 1.6s ease-in-out infinite; }
+@keyframes ob-pulse { 50% { opacity: 0.35; } }
+.ob-live-row { min-height: 30px; padding-block: 4px; }
+.ob-live-time { flex: none; font-family: var(--mono); font-size: 11.5px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+.ob-live-said { flex: none; font-weight: 500; white-space: nowrap; }
+.ob-live-accent { color: var(--accent-ink); }
+.ob-live-detail { flex: 1 1 0; font-size: 12.5px; }
+
+/* Spend: the ring of what it went to, beside the days. */
+.ob-spend { display: flex; flex-wrap: wrap; gap: 20px 40px; }
+.ob-spend-ring { flex: 0 1 auto; min-width: 0; }
+.ob-spend-days { display: flex; flex: 1 1 360px; flex-direction: column; min-width: 0; }
+.ob-spend-days .dash-plot { height: 150px; }
+
+/* Where the traces go. */
+.ob-tel-now { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px; border-radius: 10px; background: var(--panel); }
+.ob-tel-now .ob-facts { width: 100%; }
+.ob-tel-kind { align-self: flex-start; }
+.ob-tel-form { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ob-tel-header { display: flex; flex-wrap: wrap; gap: 8px; }
+.ob-tel-header .cfg-input { flex: 1 1 150px; width: auto; min-width: 0; }
+.ob-tel-more { align-self: flex-start; }
+.ob-tel-text { display: flex; align-items: flex-start; gap: 12px; }
+.ob-tel-text-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; }
+.ob-tel-save { align-self: flex-start; height: 34px; padding: 0 16px; border-radius: 8px; font-size: 13px; }
+
+/* Squeezed: the measures go, the least telling first; the name never does. */
+@container (max-width: 520px) {
+  .ob-num-took, .ob-share, .ob-slow-bar { display: none; }
+  .ob-card-top > .dash-quiet { display: none; }
+}
+
+@container (max-width: 400px) {
+  .ob-num-runs, .ob-live-time { display: none; }
+  .ob-chart .dash-plot, .ob-chart .dash-days, .ob-keys { margin-left: 44px; }
+  .ob-chart .dash-grid-label { left: -44px; width: 38px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-live-dot { animation: none; }
+}

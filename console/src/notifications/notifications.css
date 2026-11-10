@@ -1,0 +1,10 @@
+/* Notifications: the sections are the Test tab's; here, what is theirs alone. */
+
+.ntf { max-width: 860px; }
+.ntf .tst-list:first-of-type .tst-head { margin-bottom: 0; }
+.ntf-status { width: auto; }
+.ntf-row { gap: 14px; padding: 12px 14px; }
+.ntf-row .tst-row-name { font-weight: 500; }
+.ntf-row .app-button { flex: none; height: 28px; }
+.ntf-more { align-self: flex-start; margin-top: 4px; }
+.ntf-tested { padding: 10px 14px; border-radius: 10px; background: var(--ground); color: var(--quiet); font-size: 13px; }

@@ -1,0 +1,156 @@
+/* An agent's Test tab: the tools of the list, a section for each kind of test in its own colour, and what its panels draw. */
+
+.tst { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
+.tst-link { color: var(--accent-ink); font-size: 12.5px; }
+.tst-link:hover { text-decoration: underline; }
+.tst-action { display: inline-flex; flex: none; align-items: center; gap: 6px; }
+.tst-hint { color: var(--quiet); font-size: 12.5px; }
+/* A panel sets its fields' height; a text area keeps the rows it was given. */
+.ui-panel .cfg-input.cfg-area { height: auto; min-height: 112px; padding: 10px 12px; line-height: 1.5; }
+.tst-words { font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The tools of the list. */
+.tst-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tst-count { margin-left: 6px; color: var(--quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.tst-search { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 160px; height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--quiet); }
+.tst-search:focus-within { border-color: var(--accent); }
+.tst-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13px; outline: none; }
+.tst-tools .app-button { height: 30px; border-radius: 7px; }
+.tst-new { position: relative; }
+.tst-new-menu { position: absolute; z-index: 20; top: 36px; right: 0; display: flex; flex-direction: column; gap: 1px; width: 290px; padding: 5px; border-radius: 11px; background: var(--raised); box-shadow: 0 18px 44px rgb(0 0 0 / 0.5); animation: ui-menu-in 0.1s ease-out; }
+.tst-new-menu button { display: flex; align-items: flex-start; gap: 10px; padding: 8px 9px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; }
+.tst-new-menu button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.tst-new-menu svg { flex: none; margin-top: 2px; color: var(--quiet); }
+.tst-new-menu span { display: flex; flex-direction: column; gap: 1px; }
+.tst-new-menu b { font-size: 13.5px; font-weight: 500; }
+.tst-new-menu small { color: var(--quiet); font-size: 12px; }
+
+/* A section: a panel of its own, its colour on the head and on each row's mark. */
+.tst-tone-gold { --tone: var(--warn); }
+.tst-tone-blue { --tone: var(--blue); }
+.tst-list { display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 12px; background: var(--panel); }
+/* A section's head: its name, a line under it, and what it does at the right. No colour: the rows carry the state. */
+.tst-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.tst-head-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 9px; background: var(--ground); color: var(--ink); }
+.tst-head-words { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.tst-head-title { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+.tst-head-about { color: var(--quiet); font-size: 13px; line-height: 1.45; }
+.tst-head-stands { display: inline-flex; flex: none; align-items: center; gap: 10px; color: var(--quiet); font-size: 12.5px; white-space: nowrap; }
+/* The head's action is an outlined button, whatever it was written as. */
+.tst-head .app-button, .tst-head .cfg-save { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font-size: 13.5px; font-weight: 500; cursor: pointer; }
+.tst-head .app-button:hover:not(:disabled), .tst-head .cfg-save:hover:not(:disabled) { border-color: var(--quiet); background: var(--raised); }
+.tst-head .cfg-save:disabled { opacity: 0.5; cursor: default; }
+.tst-bar { display: flex; gap: 2px; width: 84px; height: 5px; }
+.tst-bar i { min-width: 5px; border-radius: 3px; transition: flex-grow 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.tst-bar-held { background: var(--good); }
+.tst-bar-broke { background: var(--bad); }
+.tst-bar-none { background: color-mix(in srgb, var(--ink) 16%, transparent); }
+
+/* A row: its mark, what it is, when, how it stood. */
+.tst-row { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--ground); transition: border-color 0.1s; }
+.tst-row:hover { border-color: color-mix(in srgb, var(--quiet) 45%, var(--line)); }
+.tst-row-on, .tst-row-on:hover { border-color: var(--accent); }
+.tst-row-main { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; padding: 12px 14px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.tst-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--panel); color: var(--quiet); font-size: 12px; font-weight: 600; }
+.tst-mark-round { border-radius: 50%; }
+.tst-row-words { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.tst-row-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13.5px; font-weight: 500; }
+.tst-tag { flex: none; color: var(--quiet); font-size: 12px; font-weight: 400; }
+.tst-row-under { color: var(--quiet); font-size: 12.5px; }
+.tst-row-when { flex: none; color: var(--quiet); font-size: 12px; white-space: nowrap; }
+.tst-status { display: inline-flex; flex: none; align-items: center; gap: 7px; width: 100px; color: var(--quiet); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.tst-status::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.tst-status-held { color: var(--good); }
+.tst-status-held::before { background: var(--good); }
+.tst-status-broke { color: var(--bad); }
+.tst-status-broke::before { background: var(--bad); }
+.tst-status-waiting { color: var(--warn); }
+.tst-status-waiting::before { background: var(--warn); }
+.tst-status-playing { color: var(--accent-ink); }
+.tst-status-playing::before { background: var(--accent); animation: tst-pulse 0.9s ease-in-out infinite alternate; }
+@keyframes tst-pulse { to { opacity: 0.3; } }
+.tst-row-acts { display: flex; flex: none; justify-content: flex-end; gap: 4px; width: 66px; padding-right: 8px; }
+.tst-run { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; opacity: 0; }
+.tst-row:hover .tst-run, .tst-row-on .tst-run, .tst-run:focus-visible { opacity: 1; }
+.tst-run:hover:not(:disabled) { background: var(--panel); color: var(--ink); }
+.tst-run:disabled { cursor: default; }
+/* The first click has asked: the icon fills, stays visible, and its tooltip stays open until the second click or a moment passes. */
+.tst-run-asking, .tst-run-asking:hover:not(:disabled) { background: var(--accent); color: var(--on-solid); opacity: 1; }
+
+/* The page's own tooltip, held from the control's right edge. */
+.tst [data-tip] { position: relative; }
+.tst [data-tip]:hover::after, .tst-run-asking[data-tip]::after { content: attr(data-tip); position: absolute; z-index: 15; right: 0; bottom: calc(100% + 7px); padding: 5px 9px; border-radius: 7px; background: var(--solid); color: var(--on-solid); font-size: 11.5px; font-weight: 500; line-height: 1.3; white-space: nowrap; pointer-events: none; }
+@media (hover: none) { .tst-run { opacity: 1; } }
+.tst-none { padding: 6px 2px; }
+
+/* What hangs under a section: the calls waiting, Pinecall's library. */
+.tst-foot, .tst-shelf { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 12px 2px 0; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--quiet); font-size: 13px; text-align: left; cursor: pointer; }
+.tst-foot:hover, .tst-shelf:hover { color: var(--ink); }
+.tst-foot-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+.tst-foot-go { margin-left: auto; color: var(--warn); font-weight: 500; }
+.tst-shelf svg { transform: rotate(-90deg); transition: transform 0.14s; }
+.tst-shelf[aria-expanded="true"] svg { transform: none; }
+
+/* In a panel: how it stood the last time. */
+.tst-last { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--panel); color: var(--quiet); font-size: 13px; box-shadow: inset 3px 0 0 var(--raised); }
+.tst-last-held { box-shadow: inset 3px 0 0 var(--good); }
+.tst-last-broke { box-shadow: inset 3px 0 0 var(--bad); }
+.tst-last-playing { box-shadow: inset 3px 0 0 var(--accent); }
+.tst-last-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tst-last-top b { color: var(--ink); font-size: 14px; font-weight: 500; }
+.tst-last-held .tst-last-top b { color: var(--good); }
+.tst-last-broke .tst-last-top b { color: var(--bad); }
+.tst-last-why { color: var(--ink); line-height: 1.5; }
+.tst-reasons { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; color: var(--ink); line-height: 1.5; list-style: none; }
+.tst-reasons b { margin-right: 6px; font-weight: 500; }
+
+/* What the caller says, numbered; what must hold; what a caller knows. */
+.tst-script { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; counter-reset: said; list-style: none; }
+.tst-script li { display: flex; gap: 10px; padding: 8px 12px; border-radius: 10px; background: var(--panel); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; counter-increment: said; }
+.tst-script li::before { content: counter(said); flex: none; color: var(--quiet); font-family: var(--mono); font-size: 12px; line-height: 20px; }
+.tst-script-turn { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; }
+.tst-script .tst-demand { color: var(--quiet); font-size: 13px; }
+
+/* A golden's turns in its form: a card a line, its steps indented under it. */
+.tst-turns { display: flex; flex-direction: column; gap: 10px; }
+.tst-turn { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.tst-turn-event { color: var(--quiet); font-size: 13px; }
+.tst-turn-says { display: flex; align-items: center; gap: 8px; }
+.tst-turn-number { flex: none; width: 18px; color: var(--quiet); font-family: var(--mono); font-size: 12px; text-align: center; }
+.tst-x { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; }
+.tst-x:hover { background: var(--raised); color: var(--ink); }
+.tst-step { display: flex; flex-direction: column; gap: 6px; margin-left: 26px; padding: 8px 8px 8px 12px; border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.tst-step-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tst-step-name { font-size: 13px; font-weight: 500; }
+.tst-step-order { margin-right: 6px; color: var(--accent-ink); font-family: var(--mono); font-size: 11.5px; font-weight: 400; }
+.tst-adds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: 26px; color: var(--quiet); font-size: 12.5px; }
+.tst-adds button { height: 24px; padding: 0 9px; border: 1px dashed var(--line); border-radius: 12px; background: transparent; color: var(--quiet); font-size: 12px; cursor: pointer; }
+.tst-adds button:hover { border-style: solid; border-color: var(--accent); color: var(--accent-ink); }
+.tst-add-line { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; }
+.tst-divide { padding-top: 6px; border-top: 1px solid var(--line); color: var(--quiet); font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+.tst-demands { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.tst-demand { position: relative; padding-left: 20px; font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.tst-demand::before { content: "·"; position: absolute; left: 6px; color: var(--quiet); }
+.tst-demand-must::before { content: "✓"; left: 2px; color: var(--good); }
+.tst-demand-never::before { content: "✕"; left: 2px; color: var(--bad); }
+.tst-facts { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--panel); font-size: 13px; }
+.tst-facts div { display: flex; gap: 12px; }
+.tst-facts dt { flex: none; width: 120px; color: var(--quiet); overflow-wrap: anywhere; }
+.tst-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.tst-fact-rows { display: flex; flex-direction: column; gap: 6px; }
+.tst-fact-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 6px; }
+
+/* The conversation a golden had. */
+.tst-heard { display: flex; flex-direction: column; gap: 8px; }
+.tst-heard-line { max-width: 90%; font-size: 13.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.tst-heard-caller { align-self: flex-end; padding: 7px 12px; border-radius: 14px; background: var(--panel); }
+.tst-heard-tool { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: var(--panel); color: var(--good); font-family: var(--mono); font-size: 12px; }
+.tst-heard-tool-bad { color: var(--bad); }
+
+/* A caller a model proposed. */
+.tst-proposed { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--panel); }
+.tst-proposed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tst-proposed-name { font-size: 14px; font-weight: 500; }
+
+@media (max-width: 760px) { .tst-row-when, .tst-head-stands { display: none; } }
+@media (prefers-reduced-motion: reduce) { .tst-status-playing::before, .tst-new-menu { animation: none; } }

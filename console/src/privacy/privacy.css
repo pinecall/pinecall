@@ -1,0 +1,57 @@
+/* Privacy: the sections are the Test tab's; here, the tabs, the rules' rows, and what its panels draw. */
+
+.prv-page { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
+.prv-tabs { align-self: flex-start; }
+.prv-tabs button { height: 30px; padding: 0 14px; }
+.prv-tone-green { --tone: var(--good); }
+.prv-tone-red { --tone: var(--bad); }
+.prv-tone-pink { --tone: var(--pink); }
+.prv-tone-accent { --tone: var(--accent); }
+
+/* The rules: a setting a row, its icon in the section's colour. */
+.prv-settings { display: flex; flex-direction: column; gap: 26px; padding: 14px 8px 12px; }
+.prv-settings .ui-setting-icon { background: color-mix(in srgb, var(--tone) 13%, transparent); color: var(--tone); }
+.prv-amount { display: flex; flex: none; align-items: center; gap: 10px; }
+.prv-amount .cfg-input { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+.prv-unit { flex: none; min-width: 74px; color: var(--quiet); font-size: 13px; }
+.prv-hours { display: flex; align-items: center; gap: 10px; max-width: 420px; color: var(--quiet); font-size: 13px; }
+.prv-hours .ui-select { flex: 1; }
+.prv-opening { align-self: flex-start; }
+.prv-opening button { height: 30px; padding: 0 14px; }
+.prv-said { padding: 10px 12px; border-radius: 10px; background: var(--ground); font-size: 13.5px; line-height: 1.5; }
+.prv-warn { color: var(--warn); font-size: 13px; line-height: 1.5; }
+.prv-save { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 0 4px; }
+.prv-save .dash-quiet { margin-right: auto; }
+.prv-save .cfg-save, .prv-save .app-button { height: 30px; border-radius: 7px; }
+
+/* A section's one line of asking: a field and its button. */
+.prv-ask { display: flex; align-items: center; gap: 8px; padding: 4px 8px 6px; }
+.prv-ask .cfg-input { flex: 1; min-width: 0; max-width: 420px; }
+.prv-ask .cfg-input.prv-mono, .prv-mono { font-family: var(--mono); font-size: 13px; }
+.prv-ask .cfg-save, .prv-ask .app-button { flex: none; height: 34px; border-radius: 7px; }
+.prv-ask .ui-select { flex: 0 1 220px; margin-left: auto; }
+.prv-row-end { display: flex; flex: none; align-items: center; gap: 8px; padding-right: 8px; }
+.prv-row-end .app-button { height: 30px; border-radius: 7px; }
+.prv-row-plain { cursor: default; }
+.prv-pages { display: flex; gap: 16px; }
+.prv-who { flex: none; width: 190px; color: var(--quiet); font-size: 12.5px; text-align: right; }
+.prv-row-when { width: 76px; text-align: right; }
+
+/* In a panel: a number's history, what an erasure takes, the lines an import refused. */
+.prv-history { display: flex; flex-direction: column; gap: 4px; }
+.prv-history-row { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 8px; background: var(--panel); font-size: 13px; }
+.prv-history-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.prv-history-top b { font-weight: 500; }
+.prv-history-words { line-height: 1.5; overflow-wrap: anywhere; }
+.prv-goes { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--panel); font-size: 13.5px; line-height: 1.5; list-style: none; box-shadow: inset 3px 0 0 var(--bad); }
+.prv-stays { color: var(--quiet); font-size: 13px; line-height: 1.5; }
+.prv-refused-lines { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; color: var(--ink); font-family: var(--mono); font-size: 12.5px; list-style: none; overflow-wrap: anywhere; }
+.prv-kinds { align-self: flex-start; }
+.prv-good { color: var(--good); font-size: 13px; }
+.ui-panel .prv-foot-wide { justify-content: space-between; }
+
+@media (max-width: 760px) {
+  .prv-who { display: none; }
+  .prv-ask { flex-wrap: wrap; }
+  .prv-ask .ui-select { flex: 1 1 100%; margin-left: 0; }
+}

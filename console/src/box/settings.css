@@ -1,0 +1,46 @@
+/* Box settings: its tabs, a row's value and actions, the "A new organization gets…" chooser, and what its panels draw. */
+
+.bxs { max-width: 1040px; }
+.bxs-tabs { align-self: flex-start; }
+.bxs-calm { padding: 24px 4px; font-size: 13.5px; }
+
+/* A row: the words, a value or a status, then what it does. */
+.bxs-row { gap: 14px; padding: 12px 14px; }
+.bxs-row .app-button { flex: none; height: 28px; }
+.bxs-status { width: 130px; }
+.bxs-acts { display: flex; flex: none; justify-content: flex-end; gap: 6px; }
+.bxs-code { font-family: var(--mono); font-size: 12.5px; font-weight: 400; }
+.bxs-value { flex: none; font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bxs-value-free { color: var(--quiet); font-weight: 400; }
+.bxs-value-off { color: var(--warn); }
+
+/* Admission: the sentence the page finishes, and the two choices that finish it. */
+.bxs-choose { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 4px; }
+.bxs-says { margin-right: 4px; font-size: 18px; font-weight: 500; letter-spacing: -0.015em; }
+.bxs-lede { max-width: 720px; padding: 0 2px; font-size: 13px; line-height: 1.55; }
+.bxs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px; }
+
+/* In a panel. */
+.bxs-effect { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 10px; background: var(--panel); font-size: 13px; line-height: 1.5; box-shadow: inset 3px 0 0 var(--warn); }
+.bxs-effect b { color: var(--warn); font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase; }
+.bxs-warn { color: var(--warn); font-size: 12.5px; line-height: 1.45; }
+.bxs-good { color: var(--good); font-size: 13px; }
+.bxs-limits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 14px; }
+.bxs-limit { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bxs-limit-name { font-size: 13.5px; font-weight: 500; }
+.bxs-pair { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px; }
+.bxs-ticks { display: flex; flex-direction: column; }
+.bxs-tick { display: flex; align-items: center; gap: 10px; min-height: 40px; border-top: 1px solid var(--line); }
+.bxs-ticks .bxs-tick:first-child { border-top: 0; }
+.bxs-tick-name { flex: 1; min-width: 0; overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.bxs-order { flex: none; width: 18px; color: var(--quiet); font-family: var(--mono); font-size: 12px; text-align: center; }
+.bxs-add { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; align-items: center; gap: 6px; }
+.bxs-add .app-button { height: 34px; }
+.bxs-start { align-self: flex-start; }
+.bxs-nest { display: flex; flex-direction: column; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.ui-panel .cfg-input.cfg-area.bxs-json { min-height: 360px; font-family: var(--mono); font-size: 12px; white-space: pre; }
+
+@media (max-width: 760px) {
+  .bxs-limits { grid-template-columns: minmax(0, 1fr); }
+  .bxs-acts { flex-direction: column; }
+}

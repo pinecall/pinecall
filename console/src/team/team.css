@@ -1,0 +1,37 @@
+/* Team: the sections are the Test tab's; here, what is theirs alone. */
+
+.team-tone-blue { --tone: var(--blue); }
+.team-tone-pink { --tone: var(--pink); }
+
+/* A person's row: the role and where they may act, in columns of their own before the status. */
+.team-cell { flex: none; width: 116px; color: var(--quiet); font-size: 12.5px; white-space: nowrap; }
+.team-cell-role { color: var(--ink); font-weight: 500; }
+.team-cell-on { color: var(--ink); }
+.team-status { width: auto; min-width: 100px; }
+
+/* The redirect URI, under the provider. */
+.team-redirect { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 12px 8px 0; border-top: 1px solid var(--line); color: var(--quiet); font-size: 12.5px; }
+.team-redirect > span:first-child { flex: none; }
+.team-redirect .num-copy { flex: 1; justify-content: space-between; }
+
+/* In a panel: what a role opens, which agents, the moves on a person. */
+.team-opens { color: var(--quiet); font-size: 12.5px; line-height: 1.5; }
+.team-which { align-self: flex-start; }
+.ui-panel .team-which button { height: 30px; padding: 0 14px; }
+.team-agents { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.team-agent { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 15px; background: transparent; color: var(--quiet); font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
+.team-agent:hover { border-color: var(--quiet); color: var(--ink); }
+.team-agent-on, .team-agent-on:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.team-moves { display: flex; flex-wrap: wrap; gap: 8px; }
+.team-moves .app-button { height: 30px; border-radius: 7px; }
+
+/* A link shown its one time; a domain's record to publish. */
+.team-link, .team-proof { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--panel); color: var(--quiet); font-size: 13px; line-height: 1.5; }
+.team-link { box-shadow: inset 3px 0 0 var(--good); }
+.team-link b, .team-proof b { color: var(--ink); font-weight: 500; }
+.team-link b { font-size: 14px; }
+.team-proof { box-shadow: inset 3px 0 0 var(--warn); }
+.team-link .num-copy, .team-proof .num-copy { display: flex; justify-content: space-between; }
+.team-link .num-copy code, .team-proof .num-copy code { color: var(--ink); }
+
+@media (max-width: 760px) { .team-cell { display: none; } }

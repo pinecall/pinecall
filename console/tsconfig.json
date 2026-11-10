@@ -1,7 +1,4 @@
 {
-  // One program, one config: a browser page, checked against the browser it runs in. There is no
-  // second target here — nothing in this repo is compiled by tsc, and vite is what builds the
-  // bundle. `noEmit` says exactly that.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -19,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "vite.config.ts"]
 }

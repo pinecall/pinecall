@@ -1,114 +1,90 @@
-/** Org context shared by all screens: calls, agents, orgs, insights, operator flag, and this world's limits. */
+/** What every page of the console reads: who is signed in, their orgs, the agents held, and the calls. */
 
-import { type SessionLine } from "@pinecall/core/wire/rest";
-import { type HeldAgent, type Limits } from "@pinecall/core/wire/rest-org";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { readHeldAgents } from "@pinecall/core/agents";
 import { useCredentials } from "@pinecall/core/credentials";
-import { bySlug, meIn } from "./corners";
-import { useInsights, type Insights } from "./insights";
-import { useLimits } from "./limits";
-import type { AgentKind } from "./mode";
 import { orgsOf, type OrgOf } from "@pinecall/core/login";
-import { useOperator } from "./operator";
-import type { Connection } from "@pinecall/core/stream";
 import { useFloor } from "@pinecall/core/use-floor";
-import { useHeldAgents } from "./use-held-agents";
-import { useWhoami } from "./whoami";
-
-// One page of the sessions door; a single subscription feeds the sidebar, home and floor.
-const ROWS = 200;
+import { whoami, type Whose } from "@pinecall/core/whoami";
+import { type SessionLine } from "@pinecall/core/wire/rest";
+import { type HeldAgent } from "@pinecall/core/wire/rest-org";
+import { readHosted, type Hosted } from "../apps/door";
+import { useOperator } from "./operator";
 
 export interface Org {
-  /** Calls, newest first, and the live subset. */
+  whose: Whose | null;
+  orgs: OrgOf[] | null;
+  /** One row per agent, newest list first. */
+  agents: HeldAgent[];
+  agentsRead: boolean;
+  /** The names built in Studio, running or stopped: everything else is an app. */
+  studio: ReadonlySet<string>;
+  /** What the box hosts for the org; null until read, and for a key that may not read it. */
+  hosted: readonly Hosted[] | null;
   lines: SessionLine[];
   live: SessionLine[];
-  connection: Connection;
-  floorError: string | null;
-  /** Every held copy, and one per slug preferring the reader's own. */
-  held: HeldAgent[];
-  agents: HeldAgent[];
-  agentsLoaded: boolean;
-  agentsError: string | null;
-  /** The person's orgs; null for a key without a person, or while loading. */
-  orgs: OrgOf[] | null;
-  /** The key's org, from `orgs`. */
-  here: OrgOf | null;
-  insights: Insights | null;
-  /** Whether the person is a box operator; null while loading. */
+  /** Whether the person runs the box; null while asking. */
   operator: boolean | null;
-  /** The reader's own member id, whose sandbox copy is theirs; null for a key without a person. */
-  me: string | null;
-  /** This world's limits and where the org buys more; null until read, or on a gateway without the door. */
-  limits: Limits | null;
 }
 
 const Held = createContext<Org | null>(null);
 
+// A key that may see every corner gets one row per copy: the list names an agent once.
+function oncePerSlug(held: readonly HeldAgent[]): HeldAgent[] {
+  return [...new Map(held.map((one) => [one.slug, one])).values()];
+}
+
 export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
   const credentials = useCredentials();
-  const whose = useWhoami();
-  const floor = useFloor(ROWS);
-  const insights = useInsights();
+  const floor = useFloor(50);
   const operator = useOperator();
-  const held = useHeldAgents(floor.agentsChanged);
-  const limits = useLimits();
+  const [whose, setWhose] = useState<Whose | null>(null);
   const [orgs, setOrgs] = useState<OrgOf[] | null>(null);
+  const [agents, setAgents] = useState<HeldAgent[]>([]);
+  const [agentsRead, setAgentsRead] = useState(false);
+  const [hosted, setHosted] = useState<readonly Hosted[] | null>(null);
 
   useEffect(() => {
     let gone = false;
-    orgsOf(credentials).then(
-      (listed) => {
-        if (!gone) setOrgs(listed);
-      },
-      () => {
-        if (!gone) setOrgs(null);
-      },
-    );
+    whoami(credentials).then((said) => !gone && setWhose(said), () => undefined);
+    orgsOf(credentials).then((said) => !gone && setOrgs(said), () => undefined);
     return () => {
       gone = true;
     };
   }, [credentials]);
 
-  const me = meIn(whose);
-  const value = useMemo<Org>(
-    () => ({
-      lines: floor.lines,
-      live: floor.lines.filter((line) => line.live),
-      connection: floor.connection,
-      floorError: floor.error,
-      held: held.agents,
-      agents: bySlug(held.agents, me),
-      agentsLoaded: held.loaded,
-      agentsError: held.error,
-      orgs,
-      here: orgs?.find((one) => one.here) ?? null,
-      insights,
-      operator,
-      me: me ?? null,
-      limits,
-    }),
-    [floor.lines, floor.connection, floor.error, held.agents, held.loaded, held.error, orgs, me, insights, operator, limits],
-  );
+  useEffect(() => {
+    let gone = false;
+    readHeldAgents(credentials).then(
+      (said) => {
+        if (gone) return;
+        setAgents(oncePerSlug(said));
+        setAgentsRead(true);
+      },
+      () => !gone && setAgentsRead(true),
+    );
+    return () => {
+      gone = true;
+    };
+  }, [credentials, floor.agentsChanged]);
+
+  // A key that may not read what is hosted still knows the Studio agents that are running.
+  useEffect(() => {
+    let gone = false;
+    readHosted(credentials).then((said) => !gone && setHosted(said), () => undefined);
+    return () => {
+      gone = true;
+    };
+  }, [credentials, floor.agentsChanged]);
+
+  const studio = useMemo(() => new Set([...(hosted ?? []).filter((one) => one.kind === "studio").map((one) => one.name), ...agents.filter((one) => one.kind === "studio").map((one) => one.slug)]), [hosted, agents]);
+  const value = useMemo<Org>(() => ({ whose, orgs, agents, agentsRead, studio, hosted, lines: floor.lines, live: floor.lines.filter((line) => line.live), operator }), [whose, orgs, agents, agentsRead, studio, hosted, floor.lines, operator]);
   return <Held value={value}>{children}</Held>;
-}
-
-/** The shared org; throws outside the shell. */
-/** What the agent in view is, off the org's list; null with no agent in view or one the list does not hold (a class, until it says). */
-export function useAgentKind(agent: string): AgentKind | null {
-  const { agents } = useOrg();
-  if (agent === "") return null;
-  return agents.find((one) => one.slug === agent)?.kind ?? null;
-}
-
-/** Every held agent's kind, by slug: whom a caller or a golden may be written for. */
-export function useAgentKinds(): ReadonlyMap<string, AgentKind> {
-  const { agents } = useOrg();
-  return new Map(agents.map((one) => [one.slug, one.kind]));
 }
 
 export function useOrg(): Org {
   const held = useContext(Held);
-  if (held === null) throw new Error("a screen was mounted outside the shell's org");
+  if (held === null) throw new Error("this page was mounted outside the console");
   return held;
 }

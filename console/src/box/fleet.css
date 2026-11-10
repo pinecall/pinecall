@@ -1,0 +1,40 @@
+/* Fleet: the sections are the Test tab's and the card the dashboard's; here, the verdict that leads, the totals, and a worker's row. */
+
+/* The verdict: a dot and a sentence, then what to act on, then the numbers. */
+.flt-lead { display: flex; flex-direction: column; gap: 20px; padding: 20px; border-radius: 12px; }
+.flt-verdict { display: flex; align-items: center; gap: 14px; }
+.flt-dot { flex: none; width: 10px; height: 10px; margin: 0 13px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 5px color-mix(in srgb, var(--good) 16%, transparent); }
+.flt-lead-warn .flt-dot { background: var(--warn); box-shadow: 0 0 0 5px color-mix(in srgb, var(--warn) 16%, transparent); }
+.flt-lead-bad .flt-dot { background: var(--bad); box-shadow: 0 0 0 5px color-mix(in srgb, var(--bad) 16%, transparent); }
+.flt-verdict-words { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.flt-verdict-title { font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+
+.flt-issues { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flt-issue { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--ground); font-size: 13.5px; line-height: 1.45; }
+.flt-issue::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+.flt-issue-bad::before { background: var(--bad); }
+.flt-issue-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.flt-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.flt-total { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.flt-total .dash-big { margin-top: 6px; }
+
+/* A worker's row: its name as the machine says it, how full it is, when it last spoke, how it stands. */
+.flt-name { font-family: var(--mono); font-size: 12.5px; }
+.flt-bar { flex: none; width: 96px; height: 4px; }
+.flt-bar i { min-width: 0; }
+.flt-fill { background: var(--good); }
+.flt-fill-full { background: var(--warn); }
+.flt-when { width: 112px; text-align: right; }
+.flt-status { width: 118px; }
+.flt-gone .tst-row-words, .flt-gone .tst-mark { opacity: 0.55; }
+
+/* In the panel: what a move does, said before it is made. */
+.flt-says { margin: 0; color: var(--quiet); font-size: 13.5px; line-height: 1.55; }
+.flt-points { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; }
+
+@media (max-width: 760px) {
+  .flt-bar, .flt-when { display: none; }
+  .flt-totals { gap: 16px; }
+  .flt-issue { flex-wrap: wrap; }
+}

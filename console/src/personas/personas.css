@@ -1,0 +1,63 @@
+/* Personas: the list and the one open are Apps' own; here only the shelves in the list and what one persona adds. */
+
+/* With a form docked, the page needs the column the list takes. */
+@media (min-width: 1181px) and (max-width: 1500px) {
+  .sh-frame:has(.sh-aside:not(:empty)) .ps-layout .app-list { display: none; }
+}
+
+.ps-layout .ui-agent-pick { flex: none; }
+.ps-layout .app-list .ui-select-trigger { min-height: 32px; padding: 3px 10px; border-radius: 7px; background: transparent; }
+.ps-list-moves { display: inline-flex; gap: 4px; margin-left: auto; }
+.ps-small { height: 24px; padding: 0 9px; }
+.ps-shelf { padding: 10px 10px 4px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--quiet); text-transform: uppercase; }
+.ps-shelf:first-child { padding-top: 2px; }
+
+.ps-item { flex-direction: row; align-items: center; gap: 10px; }
+.ps-item-words { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+
+.ps-against { flex: 0 1 180px; min-width: 120px; }
+.ps-against .ui-select-trigger { min-height: 30px; padding: 3px 10px; border-radius: 7px; }
+.ps-simulate { display: inline-flex; flex: none; align-items: center; height: 30px; border-radius: 7px; }
+
+.ps-view { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* Who it is: the pebble, the name, a line about it, and its marks. */
+.ps-hero { display: flex; align-items: center; gap: 20px; padding: 22px 24px; }
+.ps-hero .app-avatar { flex: none; }
+.ps-hero-words { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 0; }
+.ps-name { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.ps-who { max-width: 760px; color: var(--quiet); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.ps-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+
+/* A card each, two to a row while they fit; one left alone takes the row. */
+.ps-parts { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.ps-part { display: flex; flex: 1 1 360px; flex-direction: column; gap: 14px; min-width: 0; padding: 18px 20px 20px; }
+.ps-words { font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* What it wants, said like a line on the call. */
+.ps-said { width: fit-content; max-width: 100%; padding: 13px 16px; border-radius: 14px 14px 14px 4px; background: var(--accent-soft); font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.ps-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ps-chip { padding: 3px 10px; border-radius: 999px; background: var(--raised); color: var(--quiet); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.ps-expects { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ps-expects li { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 12px 14px; border-radius: 10px; background: var(--raised); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.ps-tick { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+
+.ps-pairs { display: flex; flex-direction: column; margin: 0; font-size: 13.5px; }
+.ps-pairs div { display: flex; gap: 16px; padding: 9px 0; border-top: 1px solid var(--line); }
+.ps-pairs div:first-child { padding-top: 0; border-top: 0; }
+.ps-pairs div:last-child { padding-bottom: 0; }
+.ps-pairs dt { flex: 0 0 38%; min-width: 0; color: var(--quiet); overflow-wrap: anywhere; }
+.ps-pairs dt::first-letter { text-transform: uppercase; }
+.ps-pairs dd { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+
+.ps-calls { display: flex; flex-direction: column; margin: -4px -8px -6px; }
+.ps-call { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+.ps-call:hover { background: var(--raised); }
+.ps-call-said { flex: 1; min-width: 0; }
+.ps-call-agent { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; max-width: 40%; }
+
+@media (max-width: 640px) {
+  .ps-hero { flex-direction: column; align-items: flex-start; padding: 18px; }
+}
