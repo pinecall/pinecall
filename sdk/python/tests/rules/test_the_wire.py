@@ -111,6 +111,7 @@ IGNORED: dict[str, str] = {
             "spend.unusual",
             "vendor.failed",
             "vendor.switched",
+            "stage.changed",
             "org.quiet",
             "turn.detection",
         ),

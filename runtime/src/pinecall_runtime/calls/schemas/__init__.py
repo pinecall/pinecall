@@ -173,6 +173,12 @@ class HangupResponse(WireModel):
     call: str
 
 
+class RestageResponse(WireModel):
+    """The call was told to take its stages anew; `stage.changed` on its log says each one that did."""
+
+    call: str
+
+
 class OpenCallRequest(WireModel):
     """What a worker opens a call with, and says again to a gateway that forgot it."""
 

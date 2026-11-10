@@ -60,6 +60,14 @@ it("reads turn.detection: who ends the caller's turn, and the least silence it w
   expect(eventOf(decodeEntry(entry("turn.detection", { by: "stt", model: "flux-general-multi" }))).type).toBe("turn.detection");
 });
 
+it("reads stage.changed: a stage the settings changed, applied unless it is the ears", () => {
+  const voice = eventOf(decodeEntry(entry("stage.changed", { stage: "tts", vendor: "cartesia", model: "sonic-3", voice: "vera" })));
+  expect(voice.type).toBe("stage.changed");
+  expect(voice.data).toMatchObject({ applied: true });
+  const ears = { stage: "stt", vendor: "deepgram", model: "flux-general-multi", applied: false };
+  expect(eventOf(decodeEntry(entry("stage.changed", ears))).data).toMatchObject({ applied: false });
+});
+
 it("reads spend.unusual and vendor.switched", () => {
   const spend = { org: "org_1", day: "2026-10-01", today_usd: 31.5, usual_usd: 9.2, multiple: 3.4 };
   expect(eventOf(decodeEntry(entry("spend.unusual", spend))).type).toBe("spend.unusual");

@@ -37,6 +37,7 @@ CallsKey = Annotated[Actor, Depends(Authenticator(KeyScope.calls))]
 TeamKey = Annotated[Actor, Depends(Authenticator(KeyScope.team))]
 UsageKey = Annotated[Actor, Depends(Authenticator(KeyScope.usage))]
 SuperviseKey = Annotated[Actor, Depends(Authenticator(KeyScope.supervise))]
+PipelineKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline))]
 AppKey = Annotated[Actor, Depends(Authenticator(KeyScope.app))]
 TheOperator = Annotated[Actor, Depends(the_operator)]
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A live call takes the model and the voice its settings name now.** `POST /v1/calls/{call}/stages`, with a
+  key that holds `pipeline`: the call's worker reads its stages again and rebuilds the ones that differ, livekit
+  handing the call to an agent on the new ones once the reply being said is over. Each stage that differs is a
+  `stage.changed` on the call's log. The ears stay the call's own (`applied` false), and so does a realtime
+  model: those run on the next call. Nobody asking, a call keeps what it opened on, as every call did.
+
 - **Studio refuses a name another organization's agent has.** `POST /v1/studio/agents` answered 200 for it and
   kept a hosted app the gateway could never register (a slug is one org's): it was listed, and answered nothing.
   It is now `409`, in a sentence that says to choose another name.

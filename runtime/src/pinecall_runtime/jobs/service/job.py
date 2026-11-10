@@ -56,6 +56,8 @@ NO_AGENT_NAMED = "no_agent_named"
 AGENT_NOT_RUNNING = "agent_not_running"
 TEST_LINE_UNAVAILABLE = "unavailable"
 SESSION_FAILED = "session_failed"
+# The call's stages read again from the gateway and taken by its session (session/stages.py).
+type Restage = Callable[[], Awaitable[None]]
 
 
 async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings) -> None:
@@ -98,12 +100,14 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     typed = dispatch.scope == WRITTEN_SCOPE
     audio = _recording_path(config, settings, context.call, typed=typed)
     pipeline = pipeline_of(keys)
+    # Every vendor the call ran on the box's key, the ones a stage taken anew brought too.
+    lent = pipeline.lent
     spans = _route_spans(ctx.proc, telemetry_of(keys), context)
 
     # The session closed its recorder before it seals: the seal points at a whole file.
     async def seal(usage: list[ModelUsage], outcome: str) -> None:
         recording = await _keep_recording(audio, partial(store_recording, settings, gateway, route.org, context.call))
-        sealing = calls.SealCallRequest(usage=usage, outcome=outcome, recording=recording, lent=pipeline.lent)
+        sealing = calls.SealCallRequest(usage=usage, outcome=outcome, recording=recording, lent=lent)
         await gateway.sealed(context.call, sealing)
 
     platform = _platform_of(gateway, context.call, config, seal, measures_path(settings))
@@ -124,6 +128,13 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     # the callbacks at once, together): the app answers `call.ended` with the lines its end hook
     # logs and with call.done, and the seal waits for them.
     following: list[asyncio.Task[None]] = []
+
+    # Read as the call was opened: the same scope, the same canary, the same tuning under test.
+    async def restage() -> None:
+        now = pipeline_of(await gateway.stages(route.agent, scope, call=context.call, test=dispatch.tuning))
+        wanted: dict[session.Stage, providers.Running] = {"llm": now.llm, "stt": now.stt, "tts": now.tts}
+        await session.take_stages(running, wanted, alone=now.realtime is not None)
+        lent.extend(vendor for vendor in now.lent if vendor not in lent)
 
     async def close(_reason: str) -> None:
         await running.close()
@@ -161,7 +172,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     room.watch()
     room.when_the_caller_is_gone(caller_gone)
     logger.info(ANSWERED_IN, time.monotonic() - began)
-    following.append(asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone)))
+    following.append(asyncio.create_task(_follow_commands(gateway, running, context.call, caller_gone, restage)))
     timer = asyncio.create_task(
         session.keep_time(running, _limit_of(config, opened, route, typed=typed), exhausted=None)
     )
@@ -225,18 +236,24 @@ def telemetry_of(keys: agents.PipelineKeys) -> compliance.Telemetry | None:
 
 
 # The refusal is the call's own entry, written by its writer like any other.
-async def follow_command(running: session.Session, command: Command, caller_gone: Callable[[], None]) -> None:
-    """One command on the call's stream: the caller's own hang-up, or one of the app's."""
+async def follow_command(
+    running: session.Session, command: Command, caller_gone: Callable[[], None], restage: Restage
+) -> None:
+    """One command on the call's stream: the caller's own hang-up, its stages taken anew, or one of the app's."""
     if command.type == calls.CALLER_HUNG_UP:
         caller_gone()
         return
-    await apply_command(running, command)
+    await apply_command(running, command, restage if command.type == calls.STAGES_CHANGED else None)
 
 
-async def apply_command(running: session.Session, command: Command) -> None:
-    """Apply one of the app's commands; a refusal is an `error` entry on the call."""
+# A stage its vendor refuses is refused here too: the call goes on with the ones it had.
+async def apply_command(running: session.Session, command: Command, restage: Restage | None = None) -> None:
+    """Apply one of the app's commands, or take the stages anew; a refusal is an `error` entry on the call."""
     try:
-        await running.apply(command_of(command))
+        if restage is not None:
+            await restage()
+        else:
+            await running.apply(command_of(command))
     except PinecallError as refused:
         error = ErrorEvent(code="refused", message=str(refused), command=command.type, id=command.id, recoverable=True)
         running.call.writing.write("error", error)
@@ -403,14 +420,14 @@ def _carried_history(opened: calls.OpenCallResponse) -> llm.ChatContext | None:
 
 # A stream that ends means the gateway went away: it is opened again; a 4xx ends it.
 async def _follow_commands(
-    gateway: GatewayClient, running: session.Session, call: str, caller_gone: Callable[[], None]
+    gateway: GatewayClient, running: session.Session, call: str, caller_gone: Callable[[], None], restage: Restage
 ) -> None:
     # A command the session could not apply is said with its call and the next is heard: a follower
     # that ended on one would leave the call deaf to its hang-up and to a supervisor's end.
     async def listen() -> None:
         async for command in gateway.commands(call):
             with survived("a command of the app", call):
-                await follow_command(running, command, caller_gone)
+                await follow_command(running, command, caller_gone, restage)
 
     await again(listen, None, f"the commands of {call}")
 

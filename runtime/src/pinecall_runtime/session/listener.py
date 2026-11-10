@@ -3,6 +3,7 @@
 import asyncio
 import time
 from collections.abc import Callable, Iterable, Mapping
+from typing import Literal
 
 from livekit.agents import (
     AgentStateChangedEvent,
@@ -40,6 +41,8 @@ from pinecall_runtime.wire.base import WireModel
 type Adapter = llm.FallbackAdapter | stt.FallbackAdapter | tts.FallbackAdapter
 # What a session built and measures: the model, and on a voice call the ears and the voice.
 type Built = providers.Thinking | providers.Ears | providers.Speaking
+# The stages a call knows it runs on, to tell when its agent's settings name another (session/stages.py).
+type Stage = Literal["llm", "stt", "tts"]
 
 # Errors of the request itself; 408, 429 and 5xx are transient and livekit retries them.
 FOREVER = frozenset({400, 401, 402, 403, 404, 422})
@@ -104,6 +107,13 @@ class Listener:
         """Hear the session's events and its components' metrics."""
         for name in LISTENED:
             self.live.on(name, self.heard)  # pyright: ignore[reportUnknownMemberType]
+        self.measure(components)
+
+    # A stage rebuilt in the middle of a call is measured from then on, and the one it replaced no more.
+    def measure(self, components: Iterable[Built]) -> None:
+        """Hear these components' metrics, and no other's."""
+        for component in self.components:
+            component.off("metrics_collected", self._measured)  # pyright: ignore[reportUnknownMemberType]
         self.components = tuple(components)
         for component in self.components:
             component.on("metrics_collected", self._measured)  # pyright: ignore[reportUnknownMemberType]

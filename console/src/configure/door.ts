@@ -107,8 +107,20 @@ export async function readSettings(credentials: Credentials, agent: string): Pro
   return TuningAnswerSchema.parse(await read(credentials, settingsOf(agent)));
 }
 
+const SETTINGS_SAVED = "pinecall:settings-saved";
+
+/** Saved, and said to the page: a call open on that agent takes them without hanging up (talk/stages.ts). */
 export async function setSettings(credentials: Credentials, agent: string, body: { config: TuningBody; if_version: number | null; note: string | null; team: boolean }): Promise<TuningAnswer> {
-  return TuningAnswerSchema.parse(await put(credentials, settingsOf(agent), body));
+  const kept = TuningAnswerSchema.parse(await put(credentials, settingsOf(agent), body));
+  window.dispatchEvent(new CustomEvent(SETTINGS_SAVED, { detail: agent }));
+  return kept;
+}
+
+/** Hear each save of an agent's settings made on this page; returns the unsubscribe function. */
+export function onSettingsSaved(heard: (agent: string) => void): () => void {
+  const listener = (event: Event): void => heard((event as CustomEvent<string>).detail);
+  window.addEventListener(SETTINGS_SAVED, listener);
+  return () => window.removeEventListener(SETTINGS_SAVED, listener);
 }
 
 export async function readReport(credentials: Credentials, agent: string): Promise<Report> {

@@ -3,14 +3,15 @@
 import asyncio
 import contextlib
 import re
-from collections.abc import AsyncIterable, AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping, Sequence
 from typing import override
 
 from livekit import rtc
 from livekit.agents import llm, stt
-from livekit.agents.types import NOT_GIVEN, TimedString
+from livekit.agents.types import NOT_GIVEN, NotGivenOr, TimedString
 from livekit.agents.voice import Agent, AgentSession, ModelSettings, SpeechHandle
 
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session.hearing import loops
 from pinecall_runtime.session.listener import transcript_of
 from pinecall_runtime.session.lookups import Lookups
@@ -23,6 +24,8 @@ type Heard = AsyncIterator[stt.SpeechEvent]
 type Declared = list[llm.Tool | llm.Toolset]
 type Thought = AsyncIterator[llm.ChatChunk | str]
 type Words = AsyncIterator[str | TimedString]
+# The history an agent takes over from the one before it, read when asked: the conversation as it stands then.
+type Carried = Callable[[], llm.ChatContext]
 
 LLM_TIMEOUT = "llm_timeout"
 MODEL_SILENT = "the model said nothing within {seconds:g}s, so the caller was asked to say it again"
@@ -41,12 +44,26 @@ MODEL_LATE = {
 class CallAgent(Agent):
     """livekit's Agent reading the call's prompt blocks, lookups and tools."""
 
+    # A model or a voice given here is this agent's own, over the session's: how a stage rebuilt in the
+    # middle of a call takes over, livekit handing the call from the agent before to this one.
     def __init__(
-        self, live: AgentSession[None], blocks: Blocks, lookups: Lookups, declared: Declared, waiting: Waiting
+        self,
+        live: AgentSession[None],
+        blocks: Blocks,
+        lookups: Lookups,
+        declared: Declared,
+        waiting: Waiting,
+        *,
+        thinking: NotGivenOr[providers.Thinking] = NOT_GIVEN,
+        voice: NotGivenOr[providers.Speaking] = NOT_GIVEN,
+        carried: Carried | None = None,
     ) -> None:
         """The agent with the static blocks as its instructions and every tool of the call."""
-        super().__init__(instructions=blocks.instructions, tools=declared)  # pyright: ignore[reportUnknownMemberType]
+        history = NOT_GIVEN if carried is None else carried()
+        super().__init__(instructions=blocks.instructions, tools=declared, llm=thinking, tts=voice, chat_ctx=history)  # pyright: ignore[reportUnknownMemberType]
         self.live = live
+        self.thinking, self.voice = thinking, voice
+        self.carried = carried
         self.call = lookups.call
         self.blocks = blocks
         self.lookups = lookups
@@ -74,6 +91,32 @@ class CallAgent(Agent):
             self.call.writing.write("error", skipped)
 
     # Said while the tool runs, not awaited; a turn that spoke has announced the tool itself.
+    # livekit starts this agent once the one before it has said its last reply: what was said after the
+    # hand-over was asked for is on that agent's history only then, and is read here.
+    @override
+    async def on_enter(self) -> None:
+        """Take the history the agent before this one ended on."""
+        if self.carried is not None:
+            await self.update_chat_ctx(self.carried(), exclude_invalid_function_calls=False)
+
+    # The turn's own memory goes with it: a line said before the hand-over is not said again after.
+    def succeeded_by(
+        self, carried: "Carried", thinking: providers.Thinking | None, voice: providers.Speaking | None
+    ) -> "CallAgent":
+        """The same agent on a new model or a new voice, each kept where none is given, the history carried on."""
+        heir = CallAgent(
+            self.live,
+            self.blocks,
+            self.lookups,
+            list(self.tools),
+            self.waiting,
+            thinking=self.thinking if thinking is None else thinking,
+            voice=self.voice if voice is None else voice,
+            carried=carried,
+        )
+        heir.said_this_turn, heir.said, heir.saying = self.said_this_turn, self.said, self.saying
+        return heir
+
     def announce(self, line: str | None) -> None:
         """Say this line as a tool starts, unless the agent has spoken since the caller did."""
         if line and not self.said_this_turn:

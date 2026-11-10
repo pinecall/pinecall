@@ -161,6 +161,16 @@ class VendorFailed(WireModel):
     errors: int
 
 
+class StageChanged(WireModel):
+    """A stage of this live call as its settings name it now; the ears wait for the next call."""
+
+    stage: Literal["llm", "stt", "tts"]
+    vendor: str
+    model: str | None = None
+    voice: str | None = None
+    applied: bool = True
+
+
 class VendorSwitched(WireModel):
     """A stage's vendor failed or came back; `serving` is the vendor the stage runs on now."""
 

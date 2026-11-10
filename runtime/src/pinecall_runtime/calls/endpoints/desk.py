@@ -1,9 +1,16 @@
-"""The supervisor's desk: listening in, taking a seat, and the verbs sent to a live call."""
+"""The supervisor's desk: listening in, taking a seat, the verbs sent to a live call, and its stages taken anew."""
 
 from fastapi import APIRouter
 
 from pinecall_runtime.calls import schemas
-from pinecall_runtime.calls.auth import CallReaderDep, SuperviseKey, TheServing, check_readable
+from pinecall_runtime.calls.auth import (
+    CallReaderDep,
+    PipelineKey,
+    Reader,
+    SuperviseKey,
+    TheServing,
+    check_readable,
+)
 from pinecall_runtime.calls.service import desk
 from pinecall_runtime.enums import KeyScope, ReadKind
 from pinecall_runtime.exceptions import Forbidden
@@ -41,3 +48,13 @@ async def queue_verb(
         check_scopes(reader.actor, (KeyScope.supervise,))
     await check_readable(session, serving, reader, call)
     return await desk.send_verb(serving, call, verb, desk.supervisor_of(reader.actor, reader.visit))
+
+
+# Asked by whoever changed the settings and is on the call, for that call alone, on the scope that
+# writes the vendors: a call nobody asks for keeps the model and the voice it opened on until it ends.
+@router.post("/v1/calls/{call}/stages", status_code=202)
+async def restage(call: str, actor: PipelineKey, serving: TheServing, session: Session) -> schemas.RestageResponse:
+    """The live call takes its model and its voice as its agent's settings name them now; its log says what changed."""
+    await check_readable(session, serving, Reader(actor=actor), call)
+    await desk.restage(serving, call)
+    return schemas.RestageResponse(call=call)

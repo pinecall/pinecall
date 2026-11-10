@@ -284,6 +284,18 @@ Words from the caller as the recognizer hears them. Interim while final is false
 | `language` | `string` | no | The language heard, as a BCP 47 tag. |
 | `confidence` | `number` | no | The recognizer's confidence, 0 to 1, when it reports one. |
 
+### `stage.changed`
+
+The agent's settings name another vendor, model or voice for a stage of this live call, asked for at `POST /v1/calls/{call}/stages` ([pipeline-api.md](../protocol/pipeline-api.md)). One entry per stage that differs from what the call runs. The model and the voice are rebuilt: the reply being said ends on the stage it began on, and the next turn runs on this one. The ears are built once a call, so theirs is said with `applied` false and runs on the next call.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `stage` | `"llm" | "stt" | "tts"` | yes | The stage the settings changed: the model, the ears, or the voice. |
+| `vendor` | `string` | yes | The vendor the settings name, as the catalog names it. |
+| `model` | `string | null` | no | Its model; null where the settings name none and the plugin runs its default. |
+| `voice` | `string | null` | no | The voice it speaks with; null on the other stages. |
+| `applied` | `boolean` | no | Whether the call runs on it from its next turn: true for the model and the voice, false for the ears. Absent reads true. |
+
 ### `vendor.switched`
 
 A stage's vendor failed or came back; serving is the vendor the stage runs on now. Written only for a stage the providers row gives fallbacks, when livekit's fallback adapter marks one of its vendors down or back up. The vendors are named as livekit's plugins name them, as in the metrics blocks, whose `metadata` also says which vendor served each request.

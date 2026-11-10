@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a
+  live call. The model and the voice run from its next turn; the ears wait for the next call (`applied` false).
+
 ## 0.11.30 — an app is written whole in its class (2026-11-09)
 
 - **A class declares its monitors:** `monitors`, each a number of its calls and the line it fires across.

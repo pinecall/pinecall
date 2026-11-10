@@ -1,11 +1,11 @@
-"""The supervisor's desk: listening in, taking a seat, and the verbs sent to a live call."""
+"""The supervisor's desk: listening in, taking a seat, the verbs sent to a live call, and its stages taken anew."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pinecall_runtime.accounts.service import keys, tokens
 from pinecall_runtime.calls.repository.heads import HeadRepository
 from pinecall_runtime.calls.schemas import SeatResponse, VerbResponse
-from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, SUPERVISOR_VERB, send_command
+from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, STAGES_CHANGED, SUPERVISOR_VERB, send_command
 from pinecall_runtime.calls.service.serving import NO_SUCH_CALL, Serving
 from pinecall_runtime.compliance import service as compliance
 from pinecall_runtime.enums import ReadKind
@@ -72,6 +72,19 @@ async def caller_hung_up(serving: Serving, call: str) -> None:
     if await serving.logs.store.is_sealed(call):
         raise Conflict(IS_OVER.format(call=call))
     said = Command(type=CALLER_HUNG_UP, agent=state.agent, call=call, data={})
+    if not await send_command(serving.handles.signal, said):
+        raise NotFound(NO_SUCH_CALL.format(call=call))
+
+
+# Only a call a worker runs follows it: a written call the gateway runs itself keeps the model it opened on.
+async def restage(serving: Serving, call: str) -> None:
+    """The live call takes its model and its voice as its agent's settings name them now."""
+    state = await serving.logs.reading(call).snapshot()
+    if state.seq == 0:
+        raise NotFound(NO_SUCH_CALL.format(call=call))
+    if await serving.logs.store.is_sealed(call):
+        raise Conflict(IS_OVER.format(call=call))
+    said = Command(type=STAGES_CHANGED, agent=state.agent, call=call, data={})
     if not await send_command(serving.handles.signal, said):
         raise NotFound(NO_SUCH_CALL.format(call=call))
 

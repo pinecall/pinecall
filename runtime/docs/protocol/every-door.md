@@ -114,6 +114,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/calls/{call}/sealed` | app · fleet | Price the call, write its summary and score, and seal its log. |
 | `GET` | `/v1/calls/{call}/prompt` | calls | Every block of prompt the call was told, in order, each with its words when kept. |
 | `GET` | `/v1/calls/{call}/settings` | calls | The exact settings and lexicon a call was built on. |
+| `POST` | `/v1/calls/{call}/stages` | pipeline | The live call takes its model and its voice as its agent's settings name them now; its log says what changed. |
 | `GET` | `/v1/calls/{call}/state` | calls · fleet | The call's folded state as this reader may see it, and the seq a stream resumes from. |
 | `POST` | `/v1/calls/{call}/supervise` | supervise | A seat that speaks in one live call; its token also sends the verbs. |
 | `POST` | `/v1/calls/{call}/tools` | app · fleet | Run a worker's tool call through the app that holds its agent, and answer its result. |

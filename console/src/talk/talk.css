@@ -1,7 +1,7 @@
 /* Talking to an agent in the side panel: a thin bar, the conversation, the box, and the numbers once it is over. */
 
 .talk-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; border-radius: 7px; }
-.talk-button-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.talk-button-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-ink); }
 .talk-button-on:hover { background: var(--accent-soft); }
 
 .talk-stage { position: relative; display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
@@ -98,6 +98,7 @@
 /* A supervisor stepping in, or an error: a quiet pill in the middle of the thread. */
 .talk-note-wrap { display: flex; justify-content: center; }
 .talk-note { padding: 4px 12px; border-radius: 99px; background: var(--panel); color: var(--quiet); font-size: 12px; }
+.talk-note-change { background: var(--accent-soft); color: var(--accent-ink); }
 .talk-note-supervisor { background: var(--warn-soft); color: var(--warn); }
 .talk-note-error { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
 
@@ -114,7 +115,8 @@
 .talk-dock { flex: none; padding: 8px 16px 16px; }
 .talk-composer { display: flex; align-items: center; gap: 8px; height: 50px; padding: 0 7px 0 18px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); }
 .talk-composer:focus-within { border-color: var(--quiet); }
-.talk-write { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+.talk-write { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; }
+.talk-write:focus-visible { outline: none; }
 .talk-write::placeholder { color: var(--quiet); }
 .talk-send, .talk-voice, .talk-hangup { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; cursor: pointer; }
 .talk-send { background: var(--ink); color: var(--ground); }

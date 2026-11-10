@@ -66,12 +66,14 @@ def voice_session(
         stt_context_options=context_of(call.config, ears),
         max_tool_steps=tool_steps or TOOL_STEPS,
     )
-    return Session(
+    opened = Session(
         live,
         (thinking, ears, voice),
         Lookups(call, call.platform.lookup, lookup_budget_ms or VOICE_LOOKUP_MS),
         turn=_turn_detection(stages.stt, call.config.turn),
     )
+    opened.running = {"llm": stages.llm, "stt": stages.stt, "tts": stages.tts}
+    return opened
 
 
 # Said on the log as the call opens, so a transcript says who ended each caller's turn and on what silence.

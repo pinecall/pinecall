@@ -206,6 +206,15 @@ export const SpendUnusualSchema = z.strictObject({
   multiple: z.number(),
 });
 
+/** The agent's settings name another vendor, model or voice for a stage of this live call; `applied` false for the ears, which wait for the next call. */
+export const StageChangedSchema = z.strictObject({
+  stage: z.enum(["llm", "stt", "tts"]),
+  vendor: z.string(),
+  model: z.string().nullable().optional(),
+  voice: z.string().nullable().optional(),
+  applied: z.boolean().default(true),
+});
+
 /** A stage's vendor failed or came back; `serving` is the vendor the stage runs on now. */
 export const VendorSwitchedSchema = z.strictObject({
   stage: z.enum(["llm", "stt", "tts"]),

@@ -102,6 +102,7 @@ class ConformanceTest < Minitest::Test
     "vendor.failed" => THE_GATEWAYS,
     "turn.detection" => THE_GATEWAYS,
     "vendor.switched" => THE_GATEWAYS,
+    "stage.changed" => THE_GATEWAYS,
     "org.quiet" => THE_GATEWAYS,
     "custom" => "an app's own entry, read back by whoever wrote it",
     "docs.sources" => THE_GATEWAYS,

@@ -123,6 +123,7 @@ const IGNORED: Record<string, string> = {
   "spend.unusual": THE_GATEWAYS,
   "vendor.failed": THE_GATEWAYS,
   "vendor.switched": THE_GATEWAYS,
+  "stage.changed": THE_GATEWAYS,
   "org.quiet": THE_GATEWAYS,
   "turn.detection": THE_GATEWAYS,
   "log.caught_up": THE_LOGS,

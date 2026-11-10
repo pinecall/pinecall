@@ -3,8 +3,10 @@
 from pinecall_runtime.session.call import Call, Lookup, Platform, RunTool, Seal, ToolUse
 from pinecall_runtime.session.clock import end_when_quiet, keep_time, watch_the_quiet
 from pinecall_runtime.session.hold import HoldMusic
+from pinecall_runtime.session.listener import Stage
 from pinecall_runtime.session.room import CallRoom, ClaimCode
 from pinecall_runtime.session.session import Session
+from pinecall_runtime.session.stages import take_stages
 from pinecall_runtime.session.text import (
     TakenUp,
     end_text,
@@ -33,6 +35,7 @@ __all__ = [
     "RunTool",
     "Seal",
     "Session",
+    "Stage",
     "TakenUp",
     "ToolUse",
     "Widget",
@@ -45,6 +48,7 @@ __all__ = [
     "resume_text",
     "run_text",
     "smart_turn",
+    "take_stages",
     "taken_up",
     "text_session",
     "voice_session",

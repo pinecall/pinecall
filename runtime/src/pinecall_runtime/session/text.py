@@ -44,7 +44,9 @@ def text_session(
         turn_handling={"turn_detection": "manual", "preemptive_generation": {"enabled": False}},
         max_tool_steps=tool_steps or TOOL_STEPS,
     )
-    return Session(live, (model,), Lookups(call, call.platform.lookup, lookup_budget_ms or TEXT_LOOKUP_MS))
+    opened = Session(live, (model,), Lookups(call, call.platform.lookup, lookup_budget_ms or TEXT_LOOKUP_MS))
+    opened.running = {"llm": thinking}
+    return opened
 
 
 # livekit's generate_reply never runs the end-of-turn hook, so the lookups of a written turn run

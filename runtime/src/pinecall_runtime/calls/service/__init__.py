@@ -48,7 +48,7 @@ from pinecall_runtime.calls.service.lists import (
     sealed_among,
 )
 from pinecall_runtime.calls.service.live import Live, Served, declare_for_the_call
-from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, send_command
+from pinecall_runtime.calls.service.peers import CALLER_HUNG_UP, STAGES_CHANGED, send_command
 from pinecall_runtime.calls.service.refold import A_SAMPLE, differing, heads_behind
 from pinecall_runtime.calls.service.refold import rebuild as refold_facts
 from pinecall_runtime.calls.service.seal import drift_folded, judge_call, judge_of, panel_for, prompt_of
@@ -71,6 +71,7 @@ __all__ = [
     "A_SAMPLE",
     "CALLER_HUNG_UP",
     "SEALED_FILE",
+    "STAGES_CHANGED",
     "AppSocket",
     "AppendEntriesRefused",
     "AppendEntriesRequest",

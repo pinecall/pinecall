@@ -8,7 +8,7 @@ from livekit.agents import JobContext
 
 from pinecall_runtime.agents.schemas import PipelineKeys, RunningStage
 from pinecall_runtime.calls.context import Route
-from pinecall_runtime.calls.service import CALLER_HUNG_UP
+from pinecall_runtime.calls.service import CALLER_HUNG_UP, STAGES_CHANGED
 from pinecall_runtime.enums import Channel, Env
 from pinecall_runtime.exceptions import GatewayUnavailable, ValidationError
 from pinecall_runtime.jobs.service.client import GatewayClient
@@ -33,8 +33,24 @@ async def test_the_callers_hang_up_on_the_stream_is_the_caller_gone_and_no_comma
     """The gateway's own word on the stream ends the call as the caller's; the session is never asked to apply it."""
     gone: list[str] = []
     said = Command(type=CALLER_HUNG_UP, agent="clinica-norte", call="call_1", id=None, data={})
-    await follow_command(cast(session.Session, object()), said, lambda: gone.append("caller"))
+    await follow_command(cast(session.Session, object()), said, lambda: gone.append("caller"), _never)
     assert gone == ["caller"]
+
+
+async def _never() -> None:
+    raise AssertionError("the stages were taken anew, and nobody asked")
+
+
+async def test_the_gateways_word_that_the_stages_changed_takes_them_anew_and_no_command_of_the_apps() -> None:
+    """The gateway's own word again: the session is handed its stages and is never asked to apply a command."""
+    taken: list[str] = []
+
+    async def restage() -> None:
+        taken.append("stages")
+
+    said = Command(type=STAGES_CHANGED, agent="clinica-norte", call="call_1", id=None, data={})
+    await follow_command(cast(session.Session, object()), said, lambda: taken.append("caller"), restage)
+    assert taken == ["stages"]
 
 
 def test_an_answer_with_no_realtime_model_builds_none() -> None:
@@ -83,7 +99,11 @@ async def test_a_command_the_session_breaks_on_is_said_with_its_call_and_the_nex
 ) -> None:
     gone: list[str] = []
     await _follow_commands(
-        cast(GatewayClient, Streaming()), cast(session.Session, Breaking()), "call_1", lambda: gone.append("caller")
+        cast(GatewayClient, Streaming()),
+        cast(session.Session, Breaking()),
+        "call_1",
+        lambda: gone.append("caller"),
+        _never,
     )
     assert gone == ["caller"]
     assert "a command of the app failed on call_1" in caplog.text

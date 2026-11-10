@@ -19,6 +19,9 @@ SUPERVISOR_VERB = "supervisor.verb"
 # The caller's own hang-up, said at the gateway's door: whatever runs the call ends it at once. Not
 # an app's command: the gateway's alone, so no app can hang up in the caller's name.
 CALLER_HUNG_UP = "caller.hung_up"
+# The call takes its model and its voice anew, as its agent's settings name them now. The gateway's alone, as
+# the hang-up is: the worker reads the stages from the gateway on its own key, so no key rides a command.
+STAGES_CHANGED = "stages.changed"
 # Each app socket's inbox, listened to by the gateway holding it while it is open.
 APP_CHANNEL = "app:{app}"
 # Where a dev.request's answer goes back to the gateway that asked it.

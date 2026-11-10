@@ -11,6 +11,7 @@ import { Icon } from "../shell/icons";
 import { SidePanel } from "../ui/side-panel";
 import { Composer, Conversation } from "./lines";
 import { Orb } from "./orb";
+import { useSettingsFollowed } from "./stages";
 import { CallSummary, type Followed } from "./summary";
 import { useRoom, type Talking } from "./use-room";
 import "./talk.css";
@@ -44,6 +45,7 @@ export function TalkPanel({ agent, onClose }: { agent: string; onClose: () => vo
  */
 function Stage({ agent }: { agent: string }): ReactNode {
   const live = useRoom(agent);
+  useSettingsFollowed(agent, live.call, live.phase === "live");
   const [followed, setFollowed] = useState<Followed | null>(null);
   // What the log said of an earlier call is not this one's.
   const log = followed !== null && followed.call === live.call ? followed : null;

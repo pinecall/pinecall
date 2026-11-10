@@ -612,6 +612,20 @@ class VendorSwitched(WireModel):
     serving_model: str
 
 
+class StageChanged(WireModel):
+    """The agent's settings name another vendor, model or voice for a stage of this live call."""
+
+    stage: Literal["llm", "stt", "tts"]
+    vendor: str
+    # None where the settings name none and the plugin runs its own default.
+    model: str | None = None
+    # The voice it speaks with; None on the other stages.
+    voice: str | None = None
+    # Whether the call runs on it from its next turn. False for the ears, built once a call with the turn
+    # they end: what the settings name for them runs on the next call.
+    applied: bool = True
+
+
 class VendorFailed(WireModel):
     """A vendor failed the call: the org's alert, once a call, on the agent's log at the seal."""
 
@@ -690,6 +704,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "room.sent": RoomSent,
     "run.changed": RunChanged,
     "spend.unusual": SpendUnusual,
+    "stage.changed": StageChanged,
     "state.changed": StateChanged,
     "supervisor.ended": SupervisorEnded,
     "supervisor.released": SupervisorReleased,

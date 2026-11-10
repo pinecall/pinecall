@@ -17,6 +17,7 @@ from pinecall_runtime.calls.service.peers import (
     APP_CHANNEL,
     CALLER_HUNG_UP,
     COMMANDS_CHANNEL,
+    STAGES_CHANGED,
     SUPERVISOR_VERB,
     Elsewhere,
     Owners,
@@ -28,7 +29,7 @@ from pinecall_runtime.calls.service.peers import (
 from pinecall_runtime.calls.service.pump import Send, pump
 from pinecall_runtime.calls.service.tool_calls import ToolCalls
 from pinecall_runtime.enums import Env, Opener
-from pinecall_runtime.exceptions import PinecallError, ServiceUnavailable, ValidationError
+from pinecall_runtime.exceptions import Conflict, PinecallError, ServiceUnavailable, ValidationError
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.kit.shared_state import SharedState
@@ -50,6 +51,7 @@ _RUNNING: TypeAdapter[dict[str, list[str]]] = TypeAdapter(dict[str, list[str]])
 FIRST_SEEN_IDLE_S = 600.0
 # How a refused command is answered, as the socket names it (calls/service/socket.py).
 REFUSED = "refused"
+RUN_BY_THE_GATEWAY = "a written call the gateway runs keeps the model it opened on: its settings run on the next one"
 BAD_SHAPE = "bad_shape"
 
 
@@ -357,6 +359,8 @@ class Live:
             elif command.type == CALLER_HUNG_UP:
                 if served.running.ended is None:
                     served.running.hang_up("caller_hung_up", "caller")
+            elif command.type == STAGES_CHANGED:
+                raise Conflict(RUN_BY_THE_GATEWAY)
             else:
                 model = command_of(command)
                 declare_for_the_call(served, model)

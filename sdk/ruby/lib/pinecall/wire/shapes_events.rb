@@ -384,6 +384,13 @@ module Pinecall
           transcript_confidence: { kind: :float },
           metrics: { kind: :ref, ref: "UserTurnMetrics", required: true }
         }.freeze,
+        "StageChanged" => {
+          stage: { kind: :enum, values: %w[llm stt tts], required: true },
+          vendor: { kind: :str, required: true },
+          model: { kind: :str },
+          voice: { kind: :str },
+          applied: { kind: :bool }
+        }.freeze,
         "TurnDetection" => {
           by: { kind: :enum, values: %w[stt livekit smart-turn], required: true },
           model: { kind: :str, required: true },

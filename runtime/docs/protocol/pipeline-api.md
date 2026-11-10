@@ -45,6 +45,29 @@ goes dead. When no app holds the agent the stages come from a bare declaration a
 Changing any of it is the agent's **settings** ([settings-api.md](settings-api.md)), applied on the
 next call; this endpoint reads.
 
+## A live call on the settings as they are now: `POST /v1/calls/{call}/stages`
+
+A call keeps the stages it opened on until it ends. This door is how one call takes the **model** and
+the **voice** its agent's settings name now, without hanging up: whoever changed the settings while on
+the call asks it for that call, with a key that holds `pipeline`. `202` and `{"call": ...}` once the
+call's worker was told; `404` for a call no worker runs, `409` for one that is over.
+
+The worker reads the stages again as it did when the call opened (the same scope, the same canary, a
+tuning under test) and rebuilds the ones that differ. The reply being said ends in the voice it began
+in; the next turn runs on the new stage, with the whole conversation behind it. Each stage that differs is
+one [`stage.changed`](../wire/events-call.md) on the call's log, and a call whose settings name what it
+already runs writes nothing.
+
+**The ears are not rebuilt.** They are built once a call, with the turn they end: a new transcriber is
+said on the log too, `applied` false, and runs on the next call.
+
+What it refuses, said as an `error` entry on the call (`refused`), the call going on as it was:
+
+- **a call on one model that hears and speaks**, and settings that now name one.
+- **a stage its vendor refuses** (a key it does not take, a voice it does not have).
+
+A written call the gateway runs itself (the chat door, WhatsApp) keeps its model: `refused`, the same way.
+
 ## The hold melody — `GET` · `PUT /v1/agents/{slug}/pipeline/hold-audio`
 
 What a caller hears while a tool runs, while the model has not said its first word, and while the

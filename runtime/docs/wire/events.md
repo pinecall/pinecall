@@ -64,6 +64,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `prompt.changed` | call | no | [events-app.md](events-app.md) | A block of the prompt was rewritten. |
 | `room.opened` | call | no | [events-room.md](events-room.md) | The LiveKit room exists and the call lives in it. |
 | `room.sent` | call | yes | [events-room.md](events-room.md) | The agent pushed a payload to a browser in the room, on the tenant's room.send. |
+| `stage.changed` | call | no | [events-call.md](events-call.md) | The agent's settings name another vendor, model or voice for a stage of the live call: rebuilt, or for the ears said and left for the next call. |
 | `state.changed` | call | no | [events-app.md](events-app.md) | The app's declared state changed. |
 | `supervisor.ended` | call | no | [events-control.md](events-control.md) | A supervisor hung up the call. |
 | `supervisor.released` | call | no | [events-control.md](events-control.md) | The supervisor gave the line back; the agent resumes with the history intact. |

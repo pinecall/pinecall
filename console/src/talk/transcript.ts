@@ -3,16 +3,17 @@
 import { type Entry } from "@pinecall/core/wire/envelope";
 import type { Said } from "@pinecall/core/transcripts";
 
+import { stageSaid } from "./stages";
 import { supervisorMark } from "./supervisor-mark";
 
 export type { Said, Speaker } from "@pinecall/core/transcripts";
 export { SEGMENT_ID, TRANSCRIPTION_FINAL, TRANSCRIPTION_TOPIC, upsert } from "@pinecall/core/transcripts";
 
-/** One thing the log said between two sentences: an error, or a supervisor stepping in. */
+/** One thing the log said between two sentences: an error, a supervisor stepping in, or a stage of the call changed. */
 export interface Mark {
   kind: "mark";
   id: string;
-  tone: "error" | "supervisor";
+  tone: "error" | "supervisor" | "change";
   text: string;
 }
 
@@ -107,6 +108,10 @@ export function markOf(entry: Entry): Mark | ToolRun | null {
     }
     case "error":
       return { kind: "mark", id: `mark-${entry.seq}`, tone: "error", text: `${BROKE} ${String(data["message"])}` };
+    case "stage.changed": {
+      const said = stageSaid(data);
+      return said === null ? null : { kind: "mark", id: `mark-${entry.seq}`, tone: "change", text: said };
+    }
     default:
       return null;
   }

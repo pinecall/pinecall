@@ -13,11 +13,12 @@ from pinecall_runtime.agents.declaration import block_hash
 from pinecall_runtime.enums import Channel, Medium
 from pinecall_runtime.exceptions import Forbidden, ValidationError
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.providers import service as providers
 from pinecall_runtime.session import echo, prompt, recording
 from pinecall_runtime.session.agent import CallAgent
 from pinecall_runtime.session.hearing import keyterms
 from pinecall_runtime.session.hold import HoldMusic, hear_again, silence
-from pinecall_runtime.session.listener import Built, Listener, is_spoken
+from pinecall_runtime.session.listener import Built, Listener, Stage, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
 from pinecall_runtime.session.started import started
@@ -91,6 +92,8 @@ class Session:
         self.call = lookups.call
         self.live = live
         self.built = built
+        # The stages as the call runs them now, read when its settings change (session/stages.py).
+        self.running: dict[Stage, providers.Running] = {}
         self.lookups = lookups
         # Who ends the caller's turn on a spoken call, said on the log as it opens; a written call has none.
         self.turn = turn

@@ -283,10 +283,14 @@ def date_pair(today: date) -> tuple[FunctionCall, FunctionCallOutput]:
 
 def opening(today: date, built: Sequence[object]) -> list[llm.ChatItem]:
     """A call's history opens with the clock's pair, behind a user turn when Gemini reads it."""
-    pair: list[llm.ChatItem] = list(date_pair(today))
+    return [*asked_first(built), *date_pair(today)]
+
+
+def asked_first(built: Sequence[object]) -> list[llm.ChatItem]:
+    """The user turn a history opens with when Gemini reads it; nothing for any other model."""
     if not any(_reads_like_gemini(component) for component in built):
-        return pair
-    return [llm.ChatMessage(role="user", content=[GEMINI_OPENING]), *pair]
+        return []
+    return [llm.ChatMessage(role="user", content=[GEMINI_OPENING])]
 
 
 async def _nothing_after(_: llm.Toolset.ToolCompletedEvent) -> None:
