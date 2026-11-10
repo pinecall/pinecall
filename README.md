@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://docs.pinecall.io/start/quickstart/">
-    <img src=".github/assets/banner-0fd64741.svg" alt="Pinecall: voice and chat agents, written as a class" width="100%">
+    <img src=".github/assets/banner-6f1ad65d.svg" alt="Pinecall: the harness for voice AI — voice agents and voice apps, from Studio, code, the CLI or MCP" width="100%">
   </a>
 </p>
 
@@ -12,26 +12,72 @@
 </p>
 
 <p align="center">
-  <a href="https://docs.pinecall.io/start/quickstart/"><b>Quickstart</b></a> ·
+  <a href="https://cloud.pinecall.io/sandbox/"><b>Open the console</b></a> ·
+  <a href="https://docs.pinecall.io/start/quickstart/">Quickstart</a> ·
   <a href="https://docs.pinecall.io">Docs</a> ·
+  <a href="https://docs.pinecall.io/guides/studio/">Studio</a> ·
   <a href="https://docs.pinecall.io/cli/overview/">CLI</a> ·
-  <a href="https://docs.pinecall.io/self-hosting/overview/">Self-hosting</a> ·
-  <a href="https://docs.pinecall.io/api/gateway/">Gateway API</a> ·
-  <a href="https://cloud.pinecall.io/sandbox/">Console</a>
+  <a href="https://docs.pinecall.io/mcp/overview/">MCP</a> ·
+  <a href="https://docs.pinecall.io/self-hosting/overview/">Self-hosting</a>
 </p>
 
 <br>
 
-**Pinecall runs voice and chat agents that you write as a class.** The class's fields are the
-call's state, its `@tool` methods are what the model may do, and its docstrings and `render()` are
-the prompt. Everything else is Pinecall's job: the phone line, the browser call, WhatsApp, speech
-in and out, turn-taking, memory, retrieval, judges at hang-up, the console and the bill.
+**Pinecall is the open-source harness for voice AI.** Build a voice agent in a form, write a voice
+app in code, or ask your coding assistant to do it. Put it on a phone number, a web page or
+WhatsApp, test it before it goes live, and read every call it takes.
 
-This repository holds all of it: the runtime that runs the calls, the console it serves, the SDKs
-an agent is written with, and the CLI that drives them. Every package is released together, at one
-version, by one tag.
+Pinecall takes care of the phone line, speech in and out, turn-taking, memory, retrieval, judges at
+hang-up, the console and the bill. This repository holds all of it, and you can run it on your own
+machine or use Pinecall Cloud.
 
-## ▸ The agent is a class
+<p align="center">
+  <a href="https://cloud.pinecall.io/sandbox/"><img src=".github/assets/console-9790ca04.jpg" alt="The Pinecall console: a dental clinic's agents, the calls live now, what the judges held, and the week's numbers" width="100%"></a>
+</p>
+
+## ▸ Four ways in, one platform
+
+| | you work in | best when |
+|---|---|---|
+| **[Agent Studio](#-agent-studio-no-code)** | the console: a form and a live chat | the agent is instructions, a few API calls and some data to collect |
+| **[A voice app](#-a-voice-app-all-the-code-you-want)** | your editor, in TypeScript, Python or Ruby | it has logic of its own: stages, state, tools in your code |
+| **[The CLI](#-the-cli-the-whole-platform-from-a-terminal)** | a terminal or a CI job | you want it scripted: tests, deploys, numbers, settings |
+| **[MCP](#-mcp-let-your-assistant-build-it)** | Claude Code, Codex, Cursor and others | you would rather say what you want and watch it get built |
+
+They are not separate products. Every agent, however it was made, runs on the same runtime, takes
+the same calls, is tested the same way and shows up in the same console. A Studio agent can leave
+the form whenever it outgrows it: `pinecall studio code` turns it into a TypeScript project.
+
+## ▸ Agent Studio: no code
+
+Open the [sandbox's Agents](https://cloud.pinecall.io/sandbox/agents), press **New**, and you are
+talking to your agent a minute later. There is nothing to install and nothing to host.
+
+- **Instructions**, with the call's own values filled in: `{{call.from}}`, `{{caller.name}}`, `{{call.today}}`.
+- **A greeting**: a set line, an instruction the model opens with, or the caller speaks first.
+- **Tools**: HTTP requests to your API that the model may make, each one tried from the page. A
+  secret is named as `{{secrets.AGENDA_KEY}}`, never written in the form.
+- **Data collection**: fields gathered from the caller and posted where you say when the call ends.
+- **A voice, a knowledge base, a phone number**, in tabs of the same page, with **Talk** always one
+  click away, as a chat or as a call.
+
+Every save is a numbered release. The sandbox is where you build; **Deploy** copies a release to
+production, where your callers reach it. The same agent can be driven from a terminal:
+
+```console
+$ pinecall studio new front-desk
+$ pinecall studio pull front-desk            # the definition, as a file you can review
+$ pinecall studio push front-desk --note "books the visit"
+$ pinecall chat front-desk                   # nothing to start: Pinecall holds it
+$ pinecall studio deploy front-desk
+```
+
+[Studio, field by field](https://docs.pinecall.io/guides/studio/)
+
+## ▸ A voice app: all the code you want
+
+A voice app is code in your repository. Its agent is a class: the class's fields are the call's state, its `@tool` methods are what the model may do, and its
+docstrings and `render()` are the prompt.
 
 ```tsx
 import { Agent, tool, type Stages } from "@pinecall/agents";
@@ -113,13 +159,97 @@ end
 </details>
 
 The voice, the model, the greeting, the words it must pronounce and the documents it searches are
-not in the class. They are settings of the agent, per environment and versioned, set with
-`pinecall agent set` or in the console.
+not in the class. They are settings of the agent, per environment and versioned, so someone who
+does not write code can tune them in the console.
 
-## ▸ From an empty folder to a phone call
+From an empty folder to a call:
 
-The runtime is open source. Run it on your own machine, with no account, or use Pinecall Cloud.
-The agent is the same either way.
+```console
+$ npm i -g pinecall
+$ pinecall login                              # or run the runtime yourself, below
+$ pinecall new acme --agent front-desk        # --python or --ruby for the other SDKs
+$ cd acme && npm install
+$ pinecall chat                               # a written call against your class, here
+$ pinecall test                               # the goldens, judged by a model
+$ pinecall start                              # hold the agent: the console's calls reach your process
+$ pinecall deploy up                          # run it on the runtime, without your laptop
+```
+
+## ▸ The CLI: the whole platform from a terminal
+
+One `pinecall`, the same for every language. What the console can do, a script can do.
+
+| stage | verbs |
+|---|---|
+| start | `login` · `new` · `generate` · `whoami` |
+| hold and talk | `start` · `chat` · `prompt` · `console` · `supervise` |
+| Agent Studio | `studio new` · `pull` · `push` · `try` · `deploy` · `code` |
+| the agent's settings | `agent` · `lexicon` · `voices` · `pipeline` · `providers` |
+| testing | `test` · `simulate` · `eval` · `runs` · `cases` · `personas` · `judges` · `judging` |
+| knowledge and memory | `docs` · `memory` · `remember` |
+| the phone | `numbers` · `carriers` · `line` · `callbacks` |
+| production | `deploy` · `secrets` · `sessions` · `monitors` · `webhook` · `telemetry` · `limits` · `data` |
+| assistants | `mcp` · `mcp install` |
+
+`pinecall <verb> --help` explains each one with examples, and the
+[CLI reference](https://docs.pinecall.io/cli/overview/) has a page per verb.
+
+## ▸ MCP: let your assistant build it
+
+`pinecall mcp` is the same CLI as an [MCP](https://modelcontextprotocol.io) server. One command adds
+it to Claude Code, Claude Desktop, Codex, Cursor, Windsurf, Antigravity and Gemini CLI:
+
+```console
+$ npm i -g pinecall
+$ pinecall mcp install
+```
+
+Then ask for what you want. Your assistant has the whole journey as tools: make a project, write the
+agent, hold it while it changes, chat with it, run its goldens, play a caller against it, read a
+call, buy a number, and deploy.
+
+> *"Make me a front-desk agent for a dental clinic that takes messages, test it with an impatient
+> caller, and tell me what went wrong."*
+
+Every tool acts in the sandbox unless it is asked for production, and your org's switch still
+decides whether it may. No tool takes or returns a key. What cannot be undone (erasing data, dropping
+a number, removing a deployed app) is not a tool at all: those stay commands a person types.
+
+[The MCP server](https://docs.pinecall.io/mcp/overview/)
+
+## ▸ The console
+
+Every org gets one page with both worlds in it: a **sandbox**, where nothing reaches a real caller,
+and **production**. It is where a team that does not write code lives.
+
+| | |
+|---|---|
+| **Build** | Agents and Apps, each with its configuration, knowledge, tools, channels and tests. Numbers, with a test line to try one before buying |
+| **Observe** | Calls live and past, each with its transcript, tools, latency and cost. Quality, Observability, and Monitors with alerts per agent |
+| **Harness** | Goldens, Simulations, Personas, Judges, and Cases: a call that broke, kept until it is fixed |
+| **Manage** | Team, Usage, Billing, Privacy, Settings |
+| **Talk** | A side panel on every page: chat with the agent, or call it from the browser |
+
+A supervisor can listen to a live call, whisper to the agent, take the line and hand it back.
+
+[A tour of the console](https://docs.pinecall.io/guides/console/)
+
+## ▸ Test it like software
+
+| ring | what runs | how |
+|---|---|---|
+| `0` | the class as plain code: tools, state, the prompt, no network | `npm test` |
+| `1` | goldens: a conversation the model must hold, judged turn by turn | `pinecall test`, or the agent's Test tab |
+| `2` | a persona calls the agent over a real line, scored at hang-up | `pinecall simulate --voice`, or Simulations |
+| `3` | one real call re-checked: latency, errors, consent, talk share | `pinecall eval <call>` |
+| `4` | every finished call, judged at hang-up: the verdict is an entry in its log | nothing to run |
+
+A broken call becomes a **case**: kept, fixed, then approved or dismissed. Judges, monitors and
+alerts watch production.
+
+## ▸ Your machine or Pinecall Cloud
+
+The runtime is open source, and the agent is the same either way.
 
 <table>
 <tr><th>on your machine</th><th>on Pinecall Cloud</th></tr>
@@ -130,8 +260,8 @@ $ uv tool install "pinecall-runtime[voice]"
 $ pinecall-runtime setup
 ```
 
-Reads your machine and runs the stack that fits it — Enter to use it, or change a stage — and asks
-your email and a password for the console. This machine is then signed in to it: no `login`.
+Reads your machine and runs the stack that fits it, and asks your email and a password for the
+console. No account, and no `login`.
 [On your machine](https://docs.pinecall.io/self-hosting/laptop/)
 
 </td><td>
@@ -140,23 +270,11 @@ your email and a password for the console. This machine is then signed in to it:
 $ pinecall login
 ```
 
-`login` signs this machine in through the browser, once; every project then runs in the org its
-`pinecall.json` names. Your org gets a sandbox, where nothing reaches a real caller, and production.
+Signs this machine in through the browser, once. Or
+[open the console](https://cloud.pinecall.io/sandbox/) and start in Studio, with nothing installed.
 
 </td></tr>
 </table>
-
-Then, in either case:
-
-```console
-$ npm i -g pinecall
-$ pinecall new acme --agent front-desk        # --python or --ruby for the other SDKs
-$ cd acme && npm install
-$ pinecall chat                               # a written call against your class, here
-$ pinecall test                               # the goldens, judged by a model
-$ pinecall start                              # hold the agent: the console's calls reach your process
-$ pinecall deploy up                          # run it on the runtime, without your laptop
-```
 
 ## ▸ How a call moves
 
@@ -170,55 +288,32 @@ $ pinecall deploy up                          # run it on the runtime, without y
 1. **A caller comes in** by a carrier, the browser widget, a written chat or WhatsApp.
 2. **A worker takes the call.** It runs LiveKit's `AgentSession`, with speech-to-text, the model
    and text-to-speech built from the org's providers.
-3. **The gateway asks your class to act.** When the model calls a tool, the gateway sends
-   `tool.call` down your process's app socket, and your method's answer comes back as
-   `tool.result`.
+3. **The agent acts.** A class's tool runs in your own process, asked over its app socket. A Studio
+   tool is an HTTP request the gateway makes to your API.
 4. **Everything is an entry in the call's log.** Turns, tool calls, latencies, costs and scores are
-   appended, never rewritten. The console, the CLI, the bill and the judges all read that log.
+   appended, never rewritten. The console, the CLI, the MCP server, the bill and the judges all read
+   that log.
 
-The runtime is one Python package shaped like a Rails app. Each domain has its models, schemas,
-repository, service and endpoints, in a fixed bottom-up order that a test enforces. The
-[architecture page](https://docs.pinecall.io/self-hosting/architecture/) walks every folder.
+The runtime is one Python package shaped like a Rails app.
+[The architecture page](https://docs.pinecall.io/self-hosting/architecture/) walks every folder.
 
 ## ▸ Many orgs, one runtime
 
 One runtime serves many businesses, and each one is an **org**: its own people and roles, keys,
-numbers and carriers, vendor keys, quotas, usage and data. Each org writes its own agents as
-classes, in its own repository, and each agent is a folder with its tests beside it.
+numbers and carriers, vendor keys, quotas, usage and data.
 
-- **Your code never runs inside the runtime.** The worker runs the speech pipeline; the class runs
-  in the org's own process, or in a gVisor-sandboxed pod of its own when the runtime hosts it, and the gateway asks it
-  to act over its app socket. One shared fleet of workers serves every org, and no two orgs' code
-  share a process.
-- **The database holds the line.** Every request is scoped to its key's org, and Postgres
-  row-level security shows each connection that org's rows alone, a query that forgot its `WHERE`
-  included.
-- **Two environments per org.** The sandbox and production share the gateway and the database,
-  never the workers: each has its own fleet. In the sandbox every person gets a copy of the agents
-  of their own.
-- **Settings live per org, per environment, versioned.** The voice, the model, the greeting, the
-  lexicon, what the agent knows and remembers, its numbers and its routes. Quotas say what an org
-  may use, and an org may bring its own vendor keys.
+- **Your code never runs inside the runtime.** A class runs in the org's own process, or in a
+  gVisor-sandboxed pod of its own when the runtime hosts it. No two orgs' code share a process.
+- **The database holds the line.** Every request is scoped to its key's org, and Postgres row-level
+  security shows each connection that org's rows alone, a query that forgot its `WHERE` included.
+- **Two environments per org.** The sandbox and production share the gateway and the database, never
+  the workers. In the sandbox every person gets a copy of the agents of their own.
+- **Settings live per org, per environment, versioned.** Quotas say what an org may use, and an org
+  may bring its own vendor keys.
 
-Pinecall stands on LiveKit: its media server, its SIP bridge and its Agents framework, whose
-`AgentSession` runs every call. In that framework the agent's code runs inside the worker. Pinecall
-adds the platform around it: the orgs, the people and their keys, the agent's code kept in the
-tenant's process, the settings, the log, the judges, the console and the bill.
-[Orgs, keys and the two environments](https://docs.pinecall.io/self-hosting/multi-tenancy/) has
-the whole model.
-
-## ▸ Test it like software
-
-| ring | what runs | command |
-|---|---|---|
-| `0` | the class as plain code: tools, state, the prompt, no network | `npm test` |
-| `1` | goldens: a conversation the model must hold, judged turn by turn | `pinecall test` |
-| `2` | a persona calls the agent over a real line, scored at hang-up | `pinecall simulate --voice` |
-| `3` | one real call re-checked: latency, errors, consent, talk share | `pinecall eval <call>` |
-| `4` | every finished call, judged at hang-up: the verdict is an entry in its log | nothing to run |
-
-A broken call becomes a **case**: kept, fixed, then approved or dismissed (`pinecall cases`).
-Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monitors`).
+Pinecall stands on LiveKit: its media server, its SIP bridge and its Agents framework. It adds the
+platform around them. [Orgs, keys and the two environments](https://docs.pinecall.io/self-hosting/multi-tenancy/)
+has the whole model.
 
 ## ▸ What is inside
 
@@ -226,7 +321,7 @@ Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monit
 |---|---|---|
 | [`runtime/`](runtime) | the gateway that answers every door of the API, and the worker that runs the calls on LiveKit | [`pinecall-runtime`](https://pypi.org/project/pinecall-runtime/) · PyPI |
 | [`cli/`](cli) | the `pinecall` CLI and its MCP server, the same for every language | [`pinecall`](https://www.npmjs.com/package/pinecall) · npm |
-| [`console/`](console) | the page the gateway serves, both environments in it | inside `pinecall-runtime` |
+| [`console/`](console) | the page the gateway serves, both environments in it, Agent Studio included | inside `pinecall-runtime` |
 | [`widget/`](widget) | one agent as one button on any page | inside `pinecall-runtime` |
 | [`sdk/typescript/`](sdk/typescript) | the TypeScript framework an agent is written in | [`@pinecall/agents`](https://www.npmjs.com/package/@pinecall/agents) · npm |
 | [`sdk/python/`](sdk/python) | the Python SDK | [`pinecall`](https://pypi.org/project/pinecall/) · PyPI |
@@ -237,28 +332,7 @@ Judges, monitors and alerts watch production (`pinecall judges`, `pinecall monit
 | [`examples/`](examples) | Clínica Norte, the one example agent, in each language, and Brightside, the dot tutor's | read and copied, never published |
 | [`infra/`](infra) | the charts, the images and the Terraform a runtime is deployed with | `make deploy` from `runtime/` |
 
-Each folder's `README.md` says what it is and how to use it.
-
-<details>
-<summary><b>Every CLI verb</b></summary>
-
-| stage | verbs |
-|---|---|
-| start | `login` · `new` · `generate` · `whoami` |
-| hold and talk | `start` · `chat` · `prompt` · `console` · `supervise` |
-| the agent's settings | `agent` · `lexicon` · `voices` · `pipeline` · `providers` |
-| testing | `test` · `simulate` · `eval` · `runs` · `cases` · `personas` · `judges` · `judging` |
-| knowledge and memory | `docs` · `memory` · `remember` |
-| the phone | `numbers` · `carriers` · `line` · `callbacks` |
-| production | `deploy` · `secrets` · `sessions` · `monitors` · `webhook` · `telemetry` · `limits` · `data` |
-| assistants | `mcp`: the CLI as an MCP server, and `mcp install` for every assistant on the machine |
-
-`pinecall <verb> --help` explains each one, and the
-[CLI reference](https://docs.pinecall.io/cli/overview/) has a page per verb.
-
-</details>
-
-## ▸ Working on it
+## ▸ Contributing
 
 ```console
 $ git clone https://github.com/pinecall/pinecall && cd pinecall
@@ -266,21 +340,9 @@ $ pnpm install          # every TypeScript package, one workspace and one lockfi
 $ cd runtime && uv sync # each Python package is a project of its own, with its own uv.lock
 ```
 
-The TypeScript packages share the root's workspace (`pnpm-workspace.yaml`). `runtime/` and
-`sdk/python/` both ship the module `pinecall`, so they are never one environment: each keeps its
-own `uv.lock`. `sdk/ruby/` has its Gemfile. Each package's own check is what CI runs for it
-(`.github/workflows/check.yml`), only when its folder changed.
-
-## ▸ Releasing
-
-Every published package carries the same version. `scripts/version` prints it, or says which
-package disagrees; `scripts/version X.Y.Z` writes it into all seven. A `v*` tag publishes them all
-(`.github/workflows/release.yml`), each registry by Trusted Publishing, and a GitHub Release whose
-notes are each package's `CHANGELOG.md` section for that version.
-
-## ▸ Security
-
-Report a vulnerability as [SECURITY.md](SECURITY.md) says.
+Each package's own check is what CI runs for it, only when its folder changed. Every published
+package carries the same version, and a `v*` tag publishes them all. Report a vulnerability as
+[SECURITY.md](SECURITY.md) says.
 
 <br>
 
