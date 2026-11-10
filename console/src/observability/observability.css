@@ -24,7 +24,7 @@
 .ob-pick { flex: 0 1 180px; min-width: 120px; }
 .ob-pick .ui-select-trigger { min-height: 30px; padding: 3px 10px; border-radius: 7px; }
 .ob-head-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; border-radius: 7px; }
-.ob-head-button-on, .ob-head-button-on:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.ob-head-button-on, .ob-head-button-on:hover { border-color: transparent; background: var(--accent-soft); color: var(--accent-ink); }
 
 /* An empty window: one card, one sentence. */
 .ob-none { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }

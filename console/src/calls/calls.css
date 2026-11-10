@@ -12,7 +12,7 @@
 .calls-grow { flex: 1; }
 
 .calls-toggle { display: inline-flex; align-items: center; gap: 6px; height: 30px; border-radius: 7px; }
-.calls-toggle-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.calls-toggle-on { border-color: transparent; background: var(--accent-soft); color: var(--accent-ink); }
 .calls-toggle-on:hover { background: var(--accent-soft); }
 
 /* One line, whatever the counts: the chips never wrap, and a row too long for the list scrolls with no bar. */

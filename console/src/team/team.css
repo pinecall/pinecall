@@ -21,7 +21,7 @@
 .team-agents { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
 .team-agent { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 15px; background: transparent; color: var(--quiet); font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
 .team-agent:hover { border-color: var(--quiet); color: var(--ink); }
-.team-agent-on, .team-agent-on:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.team-agent-on, .team-agent-on:hover { border-color: transparent; background: var(--accent-soft); color: var(--accent-ink); }
 .team-moves { display: flex; flex-wrap: wrap; gap: 8px; }
 .team-moves .app-button { height: 30px; border-radius: 7px; }
 

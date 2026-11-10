@@ -22,7 +22,7 @@ button.sim-tab { border-inline: 0; background: transparent; font: inherit; font-
 .sim-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
 .sim-tile { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; background: var(--raised); text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
 .sim-tile:hover { border-color: var(--line); }
-.sim-tile-on, .sim-tile-on:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+.sim-tile-on, .sim-tile-on:hover { border-color: transparent; background: var(--accent-soft); }
 .sim-face { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--ground); color: var(--quiet); font-size: 11.5px; font-weight: 600; }
 .sim-tile-on .sim-face { background: var(--accent); color: var(--on-solid); }
 .sim-tile-on .sim-face svg { stroke-width: 3; }
@@ -34,7 +34,7 @@ button.sim-tab { border-inline: 0; background: transparent; font: inherit; font-
 .sim-ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .sim-way { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 12px; border: 1px solid transparent; border-radius: 10px; background: var(--raised); text-align: left; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
 .sim-way:hover { border-color: var(--line); }
-.sim-way-on, .sim-way-on:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+.sim-way-on, .sim-way-on:hover { border-color: transparent; background: var(--accent-soft); }
 .sim-way-icon { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--ground); color: var(--quiet); }
 .sim-way-on .sim-way-icon { background: var(--accent); color: var(--on-solid); }
 .sim-way-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -46,7 +46,7 @@ button.sim-tab { border-inline: 0; background: transparent; font: inherit; font-
 .sim-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
 .sim-room { display: flex; flex-direction: column; gap: 1px; padding: 7px 12px; border: 1px solid transparent; border-radius: 8px; background: var(--ground); text-align: left; cursor: pointer; }
 .sim-room:hover { border-color: var(--line); }
-.sim-room-on, .sim-room-on:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+.sim-room-on, .sim-room-on:hover { border-color: transparent; background: var(--accent-soft); }
 .sim-room-title { font-size: 13px; font-weight: 500; }
 .sim-room-about { color: var(--quiet); font-size: 12px; }
 .sim-level { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 260px); gap: 14px; align-items: center; }
@@ -141,7 +141,7 @@ button.sim-tab { border-inline: 0; background: transparent; font: inherit; font-
 .sim-heard-bad dd { color: var(--bad); }
 .sim-ear { color: var(--quiet); font-size: 12.5px; }
 .sim-ear-failed { color: var(--bad); }
-.sim-ear-on { border-color: color-mix(in srgb, var(--good) 55%, transparent); color: var(--good); }
+.sim-ear-on { border-color: transparent; background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
 
 /* A comparison's board: the models ranked in cards, then every task against every model. */
 .cmp { display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
