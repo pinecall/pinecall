@@ -50,7 +50,7 @@
 .cfg-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cfg-stage { display: flex; flex-direction: column; min-width: 0; padding: 14px 16px 0; overflow: hidden; border-radius: 10px; background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--tone) 11%, transparent), transparent 62%), var(--panel); }
 .dash-card .cfg-stage { background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--tone) 11%, transparent), transparent 62%), var(--raised); }
-.cfg-stage-on { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 55%, transparent); }
+.cfg-stage.cfg-stage-on { background-image: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--tone) 28%, transparent), transparent 72%); }
 .sh-frame:has(.sh-aside:not(:empty)) .cfg-stages { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .cfg-stage-top { display: flex; align-items: center; gap: 9px; min-height: 28px; }
 .cfg-stage-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }

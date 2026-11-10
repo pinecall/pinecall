@@ -33,11 +33,11 @@
 
 .app-open { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .app-open-note { padding: 18px 24px; }
-.app-tabs { position: sticky; z-index: 5; top: var(--head); display: flex; flex: none; gap: 22px; padding: 0 24px; background: var(--ground); border-bottom: 1px solid var(--line); }
-.app-tab { display: flex; align-items: center; gap: 7px; height: 42px; margin-bottom: -1px; padding: 0 2px; border-block: 2px solid transparent; color: var(--quiet); font-size: 13.5px; font-weight: 500; }
+.app-tabs { position: sticky; z-index: 5; top: var(--head); display: flex; flex: none; align-items: center; gap: 4px; height: 44px; padding: 0 14px; background: var(--ground); border-bottom: 1px solid var(--line); }
+.app-tab { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 0; border-radius: 7px; color: var(--quiet); font-size: 13.5px; font-weight: 500; }
 .app-tab:hover { color: var(--ink); }
 .app-tabs .cfg-readonly { margin-left: auto; align-self: center; }
-.app-tab-on, .app-tab-on:hover { border-bottom-color: var(--accent); color: var(--ink); }
+.app-tabs .app-tab-on, .app-tabs .app-tab-on:hover { background: var(--accent-soft); color: var(--accent-ink); }
 .app-main { display: flex; flex: 1; flex-direction: column; gap: 12px; min-width: 0; padding: 16px 24px 32px; }
 .app-panel { display: flex; flex-direction: column; gap: 12px; }
 .app-setup { display: flex; flex-direction: column; gap: 12px; }
