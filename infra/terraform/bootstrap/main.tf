@@ -1,14 +1,5 @@
 # The bucket every other root module keeps its state in, made once with local state: the bucket
 # outlives the state that made it (terraform.tfstate here is gitignored and may be lost).
-terraform {
-  required_version = ">= 1.5"
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 6.0"
-    }
-  }
-}
 
 provider "google" {
   project = var.project

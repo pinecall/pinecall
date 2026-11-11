@@ -2,18 +2,6 @@
 # Cloud Build builds them as (`make image`). Each cluster (cluster/, once per ENV) is made beside
 # these.
 
-terraform {
-  required_version = ">= 1.5"
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 6.0"
-    }
-  }
-  # bucket and prefix: the operator's project.backend.hcl (`terraform init -backend-config=…`).
-  backend "gcs" {}
-}
-
 provider "google" {
   project = var.project
   region  = var.region
