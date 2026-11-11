@@ -10,6 +10,8 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 - **A project may have a voice app, `app.ts`**: `voiceApp("brightside")`, `app.line(number, { answers, greeting })`
   for the agent that answers a number and the words the call opens with, and `app.silence({ after, say })` for
   what every agent of the app says to a caller who went quiet. `pinecall start` serves the agents with it.
+- **A line chooses who answers**: `answers` may be a function that returns the agent of the team for each
+  call, with `fallback` for when it returns nothing, throws or takes more than a second.
 - **An app has rules**: `app.rule("…")` is read into the prompt of every agent of the app, and adds a judge
   that asks of each call whether the rule was kept.
 - **A line has a team**: `app.line(number, { answers, team: [Billing] })`. Each teammate says what it takes

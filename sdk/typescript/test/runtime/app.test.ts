@@ -65,6 +65,21 @@ describe("a line's team", () => {
   });
 });
 
+describe("a line that chooses", () => {
+  it("is bound to its fallback and hands its function to the mount of that agent", () => {
+    const choose = (): typeof Takes => Takes;
+    const app = voiceApp("brightside").line("+14155550134", { answers: choose, fallback: FrontDesk, team: [Takes] });
+    expect(app.lines[0]?.answers).toBe(FrontDesk);
+    expect(app.choosing(FrontDesk)).toBe(choose);
+    expect(app.choosing(Takes)).toBeUndefined();
+  });
+
+  it("is refused without a fallback, or without a team to choose among", () => {
+    expect(() => voiceApp("brightside").line("+14155550134", { answers: () => Takes, team: [Takes] })).toThrow(/names its fallback/);
+    expect(() => voiceApp("brightside").line("+14155550134", { answers: () => Takes, fallback: FrontDesk })).toThrow(/names none/);
+  });
+});
+
 describe("a rule", () => {
   it("is every agent's, with a judge that asks of each call whether it was kept", () => {
     const app = voiceApp("brightside").line("+14155550134", FrontDesk).rule("Never quote a price that is not in the price list.");

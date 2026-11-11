@@ -12,7 +12,6 @@ import { hookAuthor, withToolCall } from "../agent/authors.js";
 import { visibilityOf } from "../agent/visibility.js";
 import { CallWorld, type Searching } from "../call/call.js";
 import { describe } from "../agent/docstrings.js";
-import type { Serve } from "../agent/served.js";
 import { searchesKnowledge } from "../agent/searching.js";
 import { runHook } from "../agent/lifecycle.js";
 import { restore, snapshot, type LastCall, type Snapshot } from "../agent/state.js";
@@ -24,10 +23,10 @@ import { callLine, dataOf, hookCall } from "./call-line.js";
 import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
 import { harnessOf } from "../agent/harness.js";
-import { pushDeclaredDocs } from "./declared-docs.js";
-import { holdConfigOf, uploadDeclaredHold } from "./declared-hold.js";
+import { holdConfigOf } from "./declared-hold.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
-import { mateNamed, MOST_PASSES, PASSED, teamTools, transfersOf, type Team } from "./handoff.js";
+import { answeredBy, mateNamed, MOST_PASSES, PASSED, ROUTED, teamTools, transfersOf, type Answering, type Team } from "./handoff.js";
+import { served } from "./once-served.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
 
@@ -52,6 +51,8 @@ export interface MountOptions {
   team?: Team;
   /** The rules the agent's voice app gives every agent of it, read into its prompt. */
   rules?: readonly string[];
+  /** Its line's `answers`, when the line chooses who of the team serves each call. */
+  answers?: Answering;
 }
 
 /** A mounted agent: its registered SDK agent and the instances serving live calls. */
@@ -139,7 +140,7 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
  */
 export function mount(
   ctor: Ctor,
-  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {}, team, rules = [] }: MountOptions,
+  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {}, team, rules = [], answers }: MountOptions,
 ): Mounted {
   if (source !== undefined) describe(ctor, source, file);
   setAppRules(ctor, rules);
@@ -157,7 +158,7 @@ export function mount(
     if (call !== null) {
       const send: Send = (type, id, data) => agent.command(type, id, data);
       const searching: Searching = (query, k) => pc.search(call.id, query, k);
-      void start(ctor, live, call, send, searching, last, started.state ?? undefined, team);
+      void start(ctor, live, call, send, searching, last, started.state ?? undefined, team, answers);
     }
   });
   // A call handed over mid-conversation. If already served here (the gateway restarted), keep the
@@ -179,28 +180,6 @@ export function mount(
   });
   served(ctor, pc, name, report, file);
   return { slug: name, agent, options, instanceOf: (id) => live.get(id)?.agent };
-}
-
-// Once the agent is registered, after every connect: what the class publishes for pages is kept by
-// the gateway and asked again at no cost, so a reconnect runs it again rather than track what changed.
-// The documents a class declares as its base are pushed once per process, before its onServe.
-function served(ctor: Ctor, pc: Pinecall, slug: string, report: ((line: string) => void) | undefined, file: string | undefined): void {
-  const serve: Serve = {
-    slug,
-    record: (texts) => pc.recordLines(slug, texts),
-    publish: (name, document) => pc.publish(slug, name, document),
-    say: (line) => report?.(line),
-  };
-  const declared = ctor as unknown as typeof Agent;
-  const onServe = declared.onServe.bind(ctor);
-  let pushed = false;
-  pc.onConnected(() => {
-    const docs = pushed ? Promise.resolve() : pushDeclaredDocs(pc, declared, file, report).then(() => uploadDeclaredHold(pc, declared, file, slug, report));
-    pushed = true;
-    docs
-      .then(() => onServe(serve))
-      .catch((failed: unknown) => pc.onError(failed instanceof Error ? failed : new Error(String(failed))));
-  });
 }
 
 // An unserved call means the line hung up: tell the model instead of throwing in the process.
@@ -232,8 +211,12 @@ async function start(
   last?: LastCall,
   openedIn?: Snapshot,
   team?: Team,
+  answers?: Answering,
 ): Promise<void> {
-  const link = serve(ctor, live, call, send, searching, last, team);
+  // The line chooses while the caller hears its greeting; a choice it could not make is said on the log.
+  const first = answers === undefined || team === undefined ? { agent: ctor } : await answeredBy(answers, callLine(call), ctor, team);
+  if (first.agent !== ctor || first.why !== undefined) call.log(ROUTED, { to: team?.get(first.agent) ?? "", ...(first.why === undefined ? {} : { why: first.why }) });
+  const link = serve(first.agent, live, call, send, searching, last, team);
   await hooked(call, "onCall", runHook(link.agent, "onCall", hookCall(call)));
   const author = hookAuthor("onCall");
   const wrote = changes(link.agent).some((change) => change.author === author);

@@ -4,6 +4,7 @@ import type { ToolSpec } from "../wire/defs.js";
 
 import type { Agent } from "../agent/agent.js";
 import { DeclarationRefused } from "../agent/tools.js";
+import type { CallLine } from "../call/call.js";
 
 type Ctor = new () => Agent;
 
@@ -16,7 +17,37 @@ export const MOST_PASSES = 3;
 /** The custom entry a pass leaves on its call. */
 export const PASSED = "handoff";
 
+/** The custom entry a call leaves when its line's `answers` chose who serves it, or could not. */
+export const ROUTED = "routed";
+
+/** How long a line's `answers` has to choose: the caller is hearing the greeting meanwhile. */
+export const ANSWERED_WITHIN_MS = 1000;
+
+/** A line's `answers` as a function: the agent of the team that serves this call, or nothing for the one it is bound to. */
+export type Answering = (call: CallLine) => Ctor | undefined | Promise<Ctor | undefined>;
+
 const TRANSFER = "transfer_to_";
+const LATE = Symbol("late");
+
+/**
+ * Who serves a call whose line chooses: what `answers` returned when it is of the team and came in
+ * time, else `bound`, the agent the number is pointed at, with why. It never throws: a call is answered.
+ */
+export async function answeredBy(answers: Answering, line: CallLine, bound: Ctor, team: Team): Promise<{ agent: Ctor; why?: string }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<typeof LATE>((resolve) => (timer = setTimeout(() => resolve(LATE), ANSWERED_WITHIN_MS)));
+  try {
+    const chosen = await Promise.race([Promise.resolve().then(() => answers(line)), late]);
+    if (chosen === LATE) return { agent: bound, why: `answers took more than ${ANSWERED_WITHIN_MS} ms` };
+    if (chosen === undefined || chosen === bound) return { agent: bound };
+    if (!team.has(chosen)) return { agent: bound, why: `answers chose ${String((chosen as Function).name)}, which is not of the line's team` };
+    return { agent: chosen };
+  } catch (failed) {
+    return { agent: bound, why: `answers threw: ${failed instanceof Error ? failed.message : String(failed)}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** What a class says it takes, in the words a model reads to choose it; undefined when it takes no passes. */
 export function takenBy(ctor: Function): string | undefined {

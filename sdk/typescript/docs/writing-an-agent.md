@@ -356,6 +356,30 @@ Two things to know. The agents of a team give each tool a name of its own, or th
 when it loads. And the call keeps the voice and the models of the agent that answered it: the gateway
 still knows the call by that agent, which is also where it is listed and judged.
 
+### A line that chooses who answers
+
+`answers` may be a function. It runs as the call comes in, while the caller hears the greeting, and
+returns the agent of the team that serves this call:
+
+```ts
+app.line("+1 415 555 0134", {
+  greeting: "Brightside Dental. How can I help?",
+  answers: async (call) => {
+    if (clinic.isClosed(call.today)) {
+      return AfterHours;
+    }
+    return FrontDesk;
+  },
+  fallback: FrontDesk,
+  team: [AfterHours, Billing],
+});
+```
+
+`fallback` is the agent the number is pointed at. It answers when the function returns nothing,
+throws, takes more than a second, or names an agent that is not of the line's team; then the call's
+log has a `routed` line saying why. The function is handed the call as a hook is: `id`, `contact`,
+`from`, `to`, `channel`, `today`, and what the call was opened with.
+
 The number stays your org's: `pinecall numbers` points it at the agent. A line whose number the
 gateway does not route to its agent is said once in the terminal, and the agent serves its other
 calls all the same. An agent that answers two lines opens both with the same greeting, or with none.

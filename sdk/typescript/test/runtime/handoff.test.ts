@@ -11,7 +11,7 @@ import { DeclarationRefused } from "../../src/agent/tools.js";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 import { mount } from "../../src/runtime/connect.js";
-import { mateNamed, MOST_PASSES, teamTools, transfersOf, type Team } from "../../src/runtime/handoff.js";
+import { answeredBy, mateNamed, MOST_PASSES, teamTools, transfersOf, type Team } from "../../src/runtime/handoff.js";
 
 import Billing from "./team/billing.js";
 import FrontDesk from "./team/front-desk.js";
@@ -46,6 +46,42 @@ describe("the transfers a team's agent is offered", () => {
   it("are refused when two members declare a tool of one name", () => {
     const clash: Team = new Map<new () => Agent, string>([[Billing, "billing"], [Twice, "twice"]]);
     expect(() => teamTools(clash)).toThrow(DeclarationRefused);
+  });
+});
+
+describe("a line that chooses who answers", () => {
+  const line = { id: "CA_1", contact: "+34600000001" };
+
+  it("is served by the agent of the team its function names, and by the one it is bound to when it names nobody", async () => {
+    expect(await answeredBy(() => Billing, line, FrontDesk, TEAM)).toEqual({ agent: Billing });
+    expect(await answeredBy(async () => undefined, line, FrontDesk, TEAM)).toEqual({ agent: FrontDesk });
+  });
+
+  it("falls back, saying why, when the function throws, is late or names an agent of no team", async () => {
+    const threw = await answeredBy(() => { throw new Error("the agenda is down"); }, line, FrontDesk, TEAM);
+    expect(threw).toEqual({ agent: FrontDesk, why: "answers threw: the agenda is down" });
+    const stranger = await answeredBy(() => Twice, line, FrontDesk, TEAM);
+    expect(stranger.agent).toBe(FrontDesk);
+    expect(stranger.why).toContain("not of the line's team");
+    const late = await answeredBy(() => new Promise<undefined>(() => {}), line, FrontDesk, TEAM);
+    expect(late.why).toContain("took more than");
+  });
+});
+
+describe("a call a line routed", () => {
+  it("opens on the agent its function chose, with a line on the log", async () => {
+    const gateway = await FakeGateway.start({ apiKey: KEY });
+    const pc = new Pinecall({ url: gateway.url, apiKey: KEY });
+    pc.onErrors(() => {});
+    mount(FrontDesk, { pc, slug: "front-desk", team: TEAM, answers: () => Billing });
+    await pc.connect();
+    gateway.emit("front-desk", CALL, "call.started", { channel: "phone", direction: "inbound", from: "+34600000001", to: "+34910000000", caller: null, started_at: Date.now() / 1000 });
+    for (let turn = 0; turn < 40; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
+    const tools = gateway.commandsOf("tools.set").at(-1)?.data["tools"] as { name: string }[];
+    expect(tools.map((spec) => spec.name).sort()).toEqual(["balance", "transfer_to_front_desk"]);
+    expect(gateway.commandsOf("call.log").map((command) => command.data)).toContainEqual(expect.objectContaining({ name: "routed", data: { to: "billing" } }));
+    pc.close();
+    await gateway.close();
   });
 });
 

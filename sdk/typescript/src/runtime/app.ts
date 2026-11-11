@@ -1,17 +1,20 @@
 /** A voice app: the numbers a project answers at, the agent that answers each, and what every agent of it shares. */
 
-import type { Agent } from "../agent/agent.js";
+import { Agent } from "../agent/agent.js";
 import { harnessOf, judges } from "../agent/harness.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
 
-import { takenBy } from "./handoff.js";
+import { takenBy, type Answering } from "./handoff.js";
 
 type Ctor = new () => Agent;
 
 /** A line as it is written: the agent that answers it, and the words the call opens with. */
 export interface LineOptions {
-  answers: Ctor;
+  /** The agent that answers, or a function that picks one of the team for each call. */
+  answers: Ctor | Answering;
+  /** With a function: the agent the number is pointed at, which answers when the function picks nobody, fails or is late. */
+  fallback?: Ctor;
   /** Said as written when the call comes in, before any model runs. */
   greeting?: string;
   /** The agents the call may pass to: each says what it takes with `static takes`. */
@@ -24,6 +27,8 @@ export interface Line {
   answers: Ctor;
   greeting?: string;
   team: Ctor[];
+  /** The line's `answers` when it is a function. */
+  chooses?: Answering;
 }
 
 /** What every agent of the app says to a caller who went quiet. */
@@ -77,21 +82,25 @@ export class VoiceApp {
     if (this.#lines.some((line) => line.number === dialled)) throw new DeclarationRefused(`${dialled} is a line of ${this.name} already`);
     const options: LineOptions = typeof answered === "function" ? { answers: answered } : answered;
     if (typeof options?.answers !== "function") throw new DeclarationRefused(NOT_AN_AGENT);
+    const chooses = isAnAgent(options.answers) ? undefined : (options.answers as Answering);
+    const bound = chooses === undefined ? (options.answers as Ctor) : options.fallback;
+    if (bound === undefined || !isAnAgent(bound)) throw new DeclarationRefused(`${dialled}: a line whose answers is a function names its fallback, the agent the number is pointed at`);
     const greeting = options.greeting;
     if (greeting !== undefined && (typeof greeting !== "string" || greeting.trim() === "")) {
       throw new DeclarationRefused(`the greeting of ${dialled} is the words the call opens with`);
     }
     // The gateway opens a call on its agent's declaration, which does not know the line yet.
-    const other = this.#lines.find((line) => line.answers === options.answers && line.greeting !== greeting);
+    const other = this.#lines.find((line) => line.answers === bound && line.greeting !== greeting);
     if (other !== undefined) {
-      throw new DeclarationRefused(`${options.answers.name} answers ${other.number} and ${dialled}: both lines open with the same greeting, or with none`);
+      throw new DeclarationRefused(`${bound.name} answers ${other.number} and ${dialled}: both lines open with the same greeting, or with none`);
     }
     const team = options.team ?? [];
     if (!Array.isArray(team) || team.some((mate) => typeof mate !== "function")) throw new DeclarationRefused(`the team of ${dialled} is a list of agent classes`);
     for (const mate of team) {
       if (takenBy(mate) === undefined) throw new DeclarationRefused(`${mate.name} is of the team of ${dialled} and says nothing of what it takes: static takes = "…"`);
     }
-    this.#lines.push({ number: dialled, answers: options.answers, team, ...(greeting === undefined ? {} : { greeting }) });
+    if (chooses !== undefined && team.length === 0) throw new DeclarationRefused(`${dialled}: a function answers with one of the line's team, and this line names none`);
+    this.#lines.push({ number: dialled, answers: bound, team, ...(greeting === undefined ? {} : { greeting }), ...(chooses === undefined ? {} : { chooses }) });
     return this;
   }
 
@@ -127,6 +136,11 @@ export class VoiceApp {
   /** Every agent class the app names, once each. */
   agents(): Ctor[] {
     return [...new Set(this.#lines.flatMap((line) => [line.answers, ...line.team]))];
+  }
+
+  /** The function that picks who serves each call of the line `ctor` is bound to; undefined when the line names its agent. */
+  choosing(ctor: Ctor): Answering | undefined {
+    return this.#lines.find((line) => line.answers === ctor && line.chooses !== undefined)?.chooses;
   }
 
   /** The agents a call of `ctor` may pass between, itself first; empty for an agent of no team. */
@@ -169,6 +183,11 @@ export class VoiceApp {
     }
     return added;
   }
+}
+
+// A class and a function are both functions: an agent is one whose instances are Agents.
+function isAnAgent(given: unknown): given is Ctor {
+  return typeof given === "function" && (given as { prototype?: unknown }).prototype instanceof Agent;
 }
 
 function twice(ctor: Ctor, field: string, appSays: string, app: string): string {
