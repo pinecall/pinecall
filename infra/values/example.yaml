@@ -1,7 +1,10 @@
 # An operator's values for charts/edge, charts/postgres and charts/pinecall, on Google Cloud as
 # terraform/cluster makes it: copy it into your own OPS directory as
 # values/<env>.yaml (infra/README.md, "Your own values") and replace every example. CI renders the
-# charts with it and scans what they release. The image's tag is the commit `make deploy` gives.
+# charts with it and scans what they release. With the Terraform of this repository, what it made
+# (the names, the secret store, the ingress, the backups, the ranges, the addresses) is written
+# by `make values` into values/<env>.terraform.json and this file keeps the decisions alone. The
+# image's repository, tag and digest are given by `make deploy`.
 domain: voice.example.com
 secrets:
   provider:

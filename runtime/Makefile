@@ -138,7 +138,10 @@ TAG      ?= $(shell git rev-parse --short HEAD)
 # What the registry holds for TAG, by its digest: a tag can be pushed again, a digest cannot, so a
 # release names both and a pod pulls the digest.
 DIGEST    = $$(gcloud artifacts docker images describe $(REGISTRY)/runtime:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
-image:            ## the runtime's container image, TAG=<commit>, built from that commit and checked by Cloud Build
+# The image a release runs, named whole by what built it: the registry `make image` pushed to, the
+# commit, the digest. No values file repeats the registry.
+IMAGE     = --set image.repository=$(REGISTRY)/runtime --set image.tag=$(TAG) --set image.digest=$(DIGEST)
+image:           ## the runtime's container image, TAG=<commit>, built from that commit and checked by Cloud Build
 	git -C .. archive --format=tar.gz -o runtime/.image.tar.gz '$(TAG)^{commit}'
 	gcloud builds submit .image.tar.gz --config $(INFRA)/images/runtime/cloudbuild.yaml \
 	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/runtime:$(TAG) \
@@ -175,7 +178,7 @@ diff:             ## ENV=… TAG=<commit>: what releasing each chart would chang
 	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
 	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge $(CHART_VALUES)
 	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES)
-	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) --set image.tag=$(TAG) --set image.digest=$(DIGEST)
+	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) $(IMAGE)
 
 edge:             ## ENV=…: charts/edge released: the front door, its routes and certificates
 	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge $(CHART_VALUES) --rollback-on-failure --timeout 10m
@@ -203,7 +206,7 @@ deploy-guards:
 # The name the live suite knocks at is asked of the cluster, which is where it is served.
 deploy: deploy-guards  ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
 	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
-	  --set image.tag=$(TAG) --set image.digest=$(DIGEST) --rollback-on-failure --timeout 20m
+	  $(IMAGE) --rollback-on-failure --timeout 20m
 	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
 	  uv run pytest -q tests/live
 
@@ -223,7 +226,8 @@ fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that m
 	running=$$1; pinned=$$2; \
 	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
 	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
-	$(HELM) upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) --set image.tag=$$running \
+	$(HELM) upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
+	  --set image.repository=$(REGISTRY)/runtime --set image.tag=$$running \
 	  $${pinned:+--set image.digest=$$pinned} --rollback-on-failure --timeout 10m
 
 # The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
@@ -234,7 +238,7 @@ hosting:          ## ENV=…: charts/hosting released on the hosting cluster at 
 	  --project $(PROJECT) >/dev/null
 	helm upgrade --install pinecall-hosting $(INFRA)/charts/hosting --kube-context $(HOSTING) \
 	  --namespace pinecall-runner --create-namespace \
-	  -f $(OPS)/values/hosting-$(ENV).yaml --set image.tag=$(TAG) --set image.digest=$(DIGEST) \
+	  -f $(OPS)/values/hosting-$(ENV).yaml $(IMAGE) \
 	  --wait --timeout 15m
 
 # A box's database into the cluster's Postgres, once, at its cutover (and its rehearsal on
