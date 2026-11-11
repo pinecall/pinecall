@@ -67,7 +67,9 @@ app.on("visit.booked", remindVisit);
 1. The call comes in and the caller hears the greeting.
 2. `FrontDesk.onCall` looks the calling number up and puts the patient in `this.call.shared`.
 3. The caller asks for a time: the model calls `freeSlots`, offers two, reads one back, and calls `book`
-   after a yes. `book` refuses a time the agenda did not give, so the model cannot invent one.
+   after a yes. `book` refuses a time the agenda did not give, so the model cannot invent one. On a call
+   with no number (the chat, the web) `book` stops to ask for one, `await this.ask(GetPhone)`, and books
+   once the caller gave it.
 4. The caller asks about a charge instead: the model calls `transfer_to_billing`, a tool nobody wrote.
    It exists because `Billing` says `static takes = "a question about a charge, …"`.
 5. From there the call is `Billing`'s: its instructions, its tools, and its `onCall`, which reads the
@@ -101,6 +103,6 @@ chat work all the same.
   the clinic's name for that. Rename the folders to hold them in an org where the names are taken.
 
 - The agents of one team give each tool a name of its own: the app is refused when it loads otherwise.
-- A call keeps the voice and the models of the agent that answered it, and it is listed and judged
-  under that agent.
+- A spoken call passed to billing takes billing's model and voice from its next sentence. It stays
+  listed and judged under the agent that answered.
 - A call is passed three times at most.

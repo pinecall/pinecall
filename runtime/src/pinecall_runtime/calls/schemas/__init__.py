@@ -173,6 +173,12 @@ class HangupResponse(WireModel):
     call: str
 
 
+class RestageRequest(WireModel):
+    """POST /v1/calls/{call}/stages: with `agent`, the call takes that agent's stages from here on, not its own's."""
+
+    agent: str | None = Field(default=None, min_length=1, max_length=120)
+
+
 class RestageResponse(WireModel):
     """The call was told to take its stages anew; `stage.changed` on its log says each one that did."""
 

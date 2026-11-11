@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A call passed to a teammate takes its model and its voice.** `POST /v1/calls/{call}/stages` takes
+  `{"agent": "<slug>"}`: the call's worker reads that agent's stages from then on, and each stage that
+  differs is a `stage.changed` on its log. A key that holds `app` may ask it, for an agent somebody holds.
+
 - **An app's events and flows are kept by the gateway.** `POST /v1/apps/{app}/events` keeps an event until
   the app's process hears it; a flow's run is a journal of steps (`sleep`, `wait`, `call`, `run`, `emit`) the
   gateway keeps with what wakes it: a time, an event, the end of the call it placed. `POST /v1/apps/{app}/work`

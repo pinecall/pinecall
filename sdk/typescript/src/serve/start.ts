@@ -6,7 +6,7 @@ import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.j
 
 import type { VoiceApp } from "../runtime/app.js";
 import { mount, type Mounted } from "../runtime/connect.js";
-import { entryHeard, work, type Working } from "../runtime/flow-loop.js";
+import { entryHeard, passHeard, work, type Working } from "../runtime/flow-loop.js";
 import { drainLine, askedToLeave, drainedUnlessSignalledAgain } from "./leaving.js";
 import { eventLine, personLine } from "./lines.js";
 import { Masking } from "./masking.js";
@@ -54,6 +54,7 @@ export async function start(argv: string[], io: Io): Promise<number> {
     pc.onEntries((entry) => {
       void app.heard(entry, (name, error) => working.report(`the handler of ${name} threw: ${error.message}`));
       void entryHeard(working, entry);
+      void passHeard(working, entry);
     });
   }
   said(pc, io, values.events === true, masking);

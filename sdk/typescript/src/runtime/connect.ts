@@ -19,6 +19,7 @@ import { toolNamed } from "../agent/tools.js";
 import { viewOf } from "../agent/view.js";
 import { PROMPT_BLOCKS } from "../views/layout.js";
 import { promptOf } from "../views/render.js";
+import { Asking, givingTools, tasksOn } from "./asking.js";
 import { callLine, dataOf, hookCall } from "./call-line.js";
 import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
@@ -92,6 +93,8 @@ interface Live {
   transfers: ToolSpec[];
   passes: number;
   team: Team | undefined;
+  /** What a tool of this call stopped to ask the caller for. */
+  asking: Asking;
 }
 
 /** The slug an agent registers under: its `static slug`, or its class name in kebab-case. */
@@ -147,7 +150,8 @@ export function mount(
   const name = slug ?? slugOf(ctor);
   const live = new Map<string, Live>();
   const probe = new ctor();
-  const tools: Tool[] = (team === undefined ? probe.tools() : teamTools(team)).map((spec) => ({
+  const own = team === undefined ? probe.tools() : teamTools(team);
+  const tools: Tool[] = [...own, ...givingTools(tasksOn(ctor, team), own.map((spec) => spec.name))].map((spec) => ({
     ...(spec as unknown as Camel<ToolSpec>),
     run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
@@ -192,11 +196,13 @@ async function call_(
 ): Promise<unknown> {
   const serving = live.get(call.id);
   if (serving === undefined) throw new ToolFailed(`${name}: this call is no longer being served`);
+  // A tool that stopped to ask leaves one tool open, and the one that gives the answer opens the rest again.
+  if (serving.asking.gives(name)) return serving.asking.given(name, args).finally(() => live.has(call.id) && sync(serving, call));
   const declaration = toolNamed(serving.agent, name);
   const mate = declaration === undefined && serving.team !== undefined ? mateNamed(name, serving.team) : undefined;
   if (mate !== undefined) return serving.serving.call.handoff(mate, args);
   if (declaration === undefined) throw new ToolFailed(`${name}: this agent declares no such tool`);
-  return withToolCall(callId, () => runTool(serving.agent, declaration, args));
+  return withToolCall(callId, () => serving.asking.run(name, () => runTool(serving.agent, declaration, args))).finally(() => live.has(call.id) && sync(serving, call));
 }
 
 // Subscribe to changes only after the first sync, so onCall's writes go out as one prompt. The
@@ -260,7 +266,8 @@ function serve(
   const serving: Serving = { agent, ctor, call: world, warned: new Set<string>(), queue: Promise.resolve() };
   // Before the hooks run, so a line logged in onCall lands; stopped after onEnd.
   const unlog = onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data)));
-  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving, transfers: team === undefined ? [] : transfersOf(ctor, team), passes: 0, team };
+  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving, transfers: team === undefined ? [] : transfersOf(ctor, team), passes: 0, team, asking: new Asking(tasksOn(ctor, team)) };
+  world.askedBy((asked) => link.asking.ask(asked));
   if (team !== undefined) world.passedBy((to, data) => pass(link, call, team, to as Ctor, data));
   live.set(call.id, link);
   return link;
@@ -331,6 +338,7 @@ async function end(live: Map<string, Live>, call: SdkCall): Promise<void> {
   if (link === undefined) return;
   live.delete(call.id);
   for (const stop of link.stop) stop();
+  link.asking.abandon();
   await hooked(call, "onEnd", runHook(link.agent, "onEnd", hookCall(call)));
   link.unlog();
   setCall(link.agent, null);
@@ -370,7 +378,8 @@ function show(serving: Live, call: SdkCall): void {
     serving.sent.blocks.set(block.name, block.text);
     call.setPrompt(block.name, block.text);
   }
-  const visible = [...serving.agent.visibleTools(), ...serving.transfers];
+  const asked = serving.asking.open;
+  const visible = asked === undefined ? [...serving.agent.visibleTools(), ...serving.transfers] : [asked];
   const key = JSON.stringify(visible);
   if (key !== serving.sent.tools) {
     serving.sent.tools = key;

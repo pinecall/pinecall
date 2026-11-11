@@ -7,6 +7,11 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A call passed to a teammate takes that agent's model and voice**, from its next sentence, when it is
+  spoken. It kept the first agent's until now.
+- **A tool may stop to ask the caller for something**: `const email = await this.ask(GetEmail)` inside a
+  tool, with `static tasks = [GetEmail]` on the class. `GetEmail`, `GetPhone` and `GetName` come with the
+  package; `task({ name, asks, fields, check })` makes one of your own.
 - **A voice app has flows, which outlive a call**: `flow("remind-visit", async (visit, step) => { … })` with
   `step.sleep`, `step.sleepUntil`, `step.call`, `step.waitFor`, `step.run` and `step.emit`, started by
   `app.on("visit.booked", remindVisit)` and cancelled with `.cancelOn(event, when)`. The function runs in your

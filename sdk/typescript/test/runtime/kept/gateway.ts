@@ -13,6 +13,8 @@ export class KeptApp {
   readonly asked: string[] = [];
   /** A call step answered at once, as a dial a guard refused is. */
   refuses: unknown;
+  /** What a call told to take another agent's stages is answered. */
+  staged = 202;
   /** When set, every write of a step fails with it. */
   down: string | undefined;
 
@@ -37,10 +39,14 @@ export class KeptApp {
   /** What `fetch` is replaced with. */
   readonly fetch = async (url: string | URL, init: RequestInit = {}): Promise<Response> => {
     const { pathname, searchParams } = new URL(String(url));
+    if (pathname.endsWith("/stages")) {
+      this.asked.push(`${init.method} ${pathname} ${String(init.body)}`);
+      return new Response(JSON.stringify({ call: "CA_1" }), { status: this.staged });
+    }
     const path = pathname.replace("/v1/apps/brightside", "");
     const body = typeof init.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : {};
     this.asked.push(`${init.method} ${path}`);
-    const answer = (status: number, value: unknown): Response => new Response(value === undefined ? "" : JSON.stringify(value), { status });
+    const answer = (status: number, value: unknown): Response => new Response(value === undefined ? null : JSON.stringify(value), { status });
     const parts = path.split("/").filter(Boolean);
     if (path === "/work") {
       const owed = this.events.filter((event) => !this.heard.includes(event.id));

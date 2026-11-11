@@ -1,6 +1,6 @@
 // The front desk of Brightside Dental: it answers the clinic's line, books visits, and passes a charge to billing.
 
-import { Agent, judges, personas, tool, type Call } from "@pinecall/agents";
+import { Agent, GetPhone, judges, personas, tool, type Call } from "@pinecall/agents";
 
 import { clinic, type Slot } from "../../lib/clinic.js";
 import Billing from "../brightside-billing/agent.js";
@@ -18,6 +18,7 @@ export default class FrontDesk extends Agent {
   static takes = "booking, moving or asking about a visit";
   static judges = judges({ on: ["grounded", "promises"], own: [offersARealTime] });
   static personas = personas({ own: [hurried] });
+  static tasks = [GetPhone];
 
   /** The times last read from the agenda: the only ones the agent may offer. */
   slots: Slot[] = [];
@@ -39,12 +40,14 @@ export default class FrontDesk extends Agent {
 
   /** Book one of the times freeSlots returned, once the caller said yes to it. */
   @tool()
-  book(day: string, time: string, name: string) {
+  async book(day: string, time: string, name: string) {
     if (!this.slots.some((slot) => slot.day === day && slot.time === time)) return "That time did not come from the agenda. Call freeSlots for that day first.";
+    // The reminder calls the number the patient called from. One who wrote has none: the tool stops to ask for it.
+    const phone = this.call.contact.startsWith("+") ? this.call.contact : await this.ask(GetPhone);
     const visit = clinic.book(day, time, name);
     if (visit === undefined) return "That time was just taken. Call freeSlots again and offer another.";
     // A line on the call's log, which the app hears by its name: it starts the visit's reminder (app.ts).
-    this.log("visit.booked", { ...visit, phone: this.call.contact });
+    this.log("visit.booked", { ...visit, phone });
     return visit;
   }
 

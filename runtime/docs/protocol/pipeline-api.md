@@ -58,6 +58,11 @@ in; the next turn runs on the new stage, with the whole conversation behind it. 
 one [`stage.changed`](../wire/events-call.md) on the call's log, and a call whose settings name what it
 already runs writes nothing.
 
+**A call passed to a teammate.** With a body `{"agent": "<slug>"}` the call takes the stages of that
+agent instead, and keeps reading them from then on: it is how an app that passes a call from one of its
+agents to another gives it the second one's model and voice. A key that holds `app` may ask this, and
+only this; the agent named is one somebody is holding in the key's environment, or `404`.
+
 **The ears are not rebuilt.** They are built once a call, with the turn they end: a new transcriber is
 said on the log too, `applied` false, and runs on the next call.
 

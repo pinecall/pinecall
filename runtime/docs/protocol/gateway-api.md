@@ -242,7 +242,7 @@ call: listening is hidden and silent; supervising publishes a microphone and sen
 `POST /v1/calls/{call}/verbs` takes one verb, `say`, `whisper`, `takeover`, `release`, `transfer`
 or `end`, with the `supervise` seat or a key that opens `supervise` and `calls` (or `fleet`) as the bearer, and answers `202`; each lands in the log as
 its own `supervisor.*` entry. A call with no room is steered the same way, less `transfer`.
-`POST /v1/calls/{call}/stages` (`pipeline`) has one live call take the model and the voice its agent's
+`POST /v1/calls/{call}/stages` (`pipeline`; `app` with `{agent}`, for a call passed to a teammate) has one live call take the model and the voice its agent's
 settings name now ([pipeline-api.md](pipeline-api.md)); a call nobody asks for keeps what it opened on.
 Where a ring lands, a developer's own phone and the agent's line: `PUT`·`DELETE /v1/line/from`
 (`{number, agent?}`: a call from the phone reaches the person's copy of that agent, or of the one the org holds,

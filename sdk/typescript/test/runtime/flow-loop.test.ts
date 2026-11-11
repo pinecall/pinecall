@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
 import { voiceApp } from "../../src/runtime/app.js";
-import { entryHeard, workedOnce, type Working } from "../../src/runtime/flow-loop.js";
+import { entryHeard, passHeard, workedOnce, type Working } from "../../src/runtime/flow-loop.js";
 import { flow } from "../../src/runtime/flows.js";
 
 import { KeptApp } from "./kept/gateway.js";
@@ -97,6 +97,32 @@ describe("the work an app is owed", () => {
 
     expect(kept.runs.get("run_9")!.status).toBe("ready");
     expect(said).toEqual(["run run_9 is of the flow gone, which this app does not have"]);
+  });
+});
+
+describe("a pass heard on a call's log", () => {
+  const app = (): ReturnType<typeof voiceApp> => voiceApp("brightside").line("+14155550134", FrontDesk);
+
+  it("has the call take the teammate's model and voice", async () => {
+    await passHeard(workingWith(app()), logged(20, "handoff", { from: "brightside-front-desk", to: "brightside-billing" }));
+
+    expect(kept.asked).toEqual(['POST /v1/calls/call_1/stages {"agent":"brightside-billing"}']);
+    expect(said).toEqual([]);
+  });
+
+  it("says nothing of a written call, which no worker runs, and says a refusal", async () => {
+    kept.staged = 404;
+    await passHeard(workingWith(app()), logged(20, "handoff", { to: "brightside-billing" }));
+    expect(said).toEqual([]);
+
+    kept.staged = 403;
+    await passHeard(workingWith(app()), logged(21, "handoff", { to: "brightside-billing" }));
+    expect(said).toEqual(["call_1 keeps the voice it had after its pass to brightside-billing: the gateway answered 403"]);
+  });
+
+  it("asks nothing for any other line", async () => {
+    await passHeard(workingWith(app()), logged(20, "visit.booked", { to: "brightside-billing" }));
+    expect(kept.asked).toEqual([]);
   });
 });
 

@@ -38,6 +38,8 @@ TeamKey = Annotated[Actor, Depends(Authenticator(KeyScope.team))]
 UsageKey = Annotated[Actor, Depends(Authenticator(KeyScope.usage))]
 SuperviseKey = Annotated[Actor, Depends(Authenticator(KeyScope.supervise))]
 PipelineKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline))]
+# An app passes a call it serves to a teammate, whose stages the call takes; the settings are the pipeline key's.
+StagesKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline, KeyScope.app))]
 AppKey = Annotated[Actor, Depends(Authenticator(KeyScope.app))]
 TheOperator = Annotated[Actor, Depends(the_operator)]
 

@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import (
     CallReaderDep,
-    PipelineKey,
     Reader,
+    StagesKey,
     SuperviseKey,
     TheServing,
     check_readable,
@@ -52,9 +52,16 @@ async def queue_verb(
 
 # Asked by whoever changed the settings and is on the call, for that call alone, on the scope that
 # writes the vendors: a call nobody asks for keeps the model and the voice it opened on until it ends.
+# With `agent`, asked by the app that passed the call to a teammate it holds too.
 @router.post("/v1/calls/{call}/stages", status_code=202)
-async def restage(call: str, actor: PipelineKey, serving: TheServing, session: Session) -> schemas.RestageResponse:
-    """The live call takes its model and its voice as its agent's settings name them now; its log says what changed."""
+async def restage(
+    call: str, actor: StagesKey, serving: TheServing, session: Session, body: schemas.RestageRequest | None = None
+) -> schemas.RestageResponse:
+    """The live call takes the model and the voice its agent's settings name now, or those of the agent it names."""
+    passed_to = None if body is None else body.agent
+    # A key that serves apps passes a call to a teammate; taking the settings anew is the pipeline key's.
+    if passed_to is None:
+        check_scopes(actor, (KeyScope.pipeline,))
     await check_readable(session, serving, Reader(actor=actor), call)
-    await desk.restage(serving, call)
+    await desk.restage(serving, actor, call, passed_to)
     return schemas.RestageResponse(call=call)

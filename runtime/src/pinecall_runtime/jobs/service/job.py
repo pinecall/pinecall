@@ -59,7 +59,7 @@ AGENT_NOT_RUNNING = "agent_not_running"
 TEST_LINE_UNAVAILABLE = "unavailable"
 SESSION_FAILED = "session_failed"
 # The call's stages read again from the gateway and taken by its session (session/stages.py).
-type Restage = Callable[[], Awaitable[None]]
+type Restage = Callable[[str | None], Awaitable[None]]
 
 
 async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings) -> None:
@@ -132,9 +132,14 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
     # logs and with call.done, and the seal waits for them.
     following: list[asyncio.Task[None]] = []
 
-    # Read as the call was opened: the same scope, the same canary, the same tuning under test.
-    async def restage() -> None:
-        now = pipeline_of(await gateway.stages(route.agent, scope, call=context.call, test=dispatch.tuning))
+    # Read as the call was opened: the same scope, the same canary, the same tuning under test. A call
+    # passed to a teammate reads that agent's stages from then on.
+    staged_as = route.agent
+
+    async def restage(passed_to: str | None) -> None:
+        nonlocal staged_as
+        staged_as = passed_to or staged_as
+        now = pipeline_of(await gateway.stages(staged_as, scope, call=context.call, test=dispatch.tuning))
         wanted: dict[session.Stage, providers.Running] = {"llm": now.llm, "stt": now.stt, "tts": now.tts}
         await session.take_stages(running, wanted, alone=now.realtime is not None)
         lent.extend(vendor for vendor in now.lent if vendor not in lent)
@@ -265,7 +270,7 @@ async def apply_command(running: session.Session, command: Command, restage: Res
     """Apply one of the app's commands, or take the stages anew; a refusal is an `error` entry on the call."""
     try:
         if restage is not None:
-            await restage()
+            await restage(command.data.get("agent"))
         else:
             await running.apply(command_of(command))
     except PinecallError as refused:

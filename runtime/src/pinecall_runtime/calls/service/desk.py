@@ -16,6 +16,7 @@ from pinecall_runtime.wire.commands import SupervisorVerb, Verb
 from pinecall_runtime.wire.parts import Supervisor
 
 IS_OVER = "call {call} is over: read its log or its recording instead"
+NOT_HELD = "nobody holds {agent} here: a call takes the stages of an agent an app is serving"
 
 
 # A seat hears the call live: it is recorded as a read of the call, once it is handed out.
@@ -77,14 +78,16 @@ async def caller_hung_up(serving: Serving, call: str) -> None:
 
 
 # Only a call a worker runs follows it: a written call the gateway runs itself keeps the model it opened on.
-async def restage(serving: Serving, call: str) -> None:
-    """The live call takes its model and its voice as its agent's settings name them now."""
+async def restage(serving: Serving, actor: Actor, call: str, passed_to: str | None = None) -> None:
+    """The live call takes its model and its voice as its agent's settings name them now, or as `passed_to`'s do."""
+    if passed_to is not None and serving.registry.serving(actor.scope, passed_to, None) is None:
+        raise NotFound(NOT_HELD.format(agent=passed_to))
     state = await serving.logs.reading(call).snapshot()
     if state.seq == 0:
         raise NotFound(NO_SUCH_CALL.format(call=call))
     if await serving.logs.store.is_sealed(call):
         raise Conflict(IS_OVER.format(call=call))
-    said = Command(type=STAGES_CHANGED, agent=state.agent, call=call, data={})
+    said = Command(type=STAGES_CHANGED, agent=state.agent, call=call, data={"agent": passed_to} if passed_to else {})
     if not await send_command(serving.handles.signal, said):
         raise NotFound(NO_SUCH_CALL.format(call=call))
 

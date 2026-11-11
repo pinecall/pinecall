@@ -3,6 +3,7 @@
 // Circular with tools.ts; safe because both sides only call across at runtime (hoisted functions).
 import { currentAuthor, UnauthoredWrite } from "./authors.js";
 import { docOf, toolsOf, visibleToolsOf, type ToolSpec } from "./tools.js";
+import type { Task } from "./tasks.js";
 import type { Child } from "../views/jsx-runtime.js";
 import type { AgentConfig } from "../wire/agent-config.js";
 import type { Camel } from "../wire/codec.js";
@@ -259,11 +260,7 @@ export class Agent {
   /** The snapshot this contact's last call left. Requires `mount(Class, { pc, last })`. */
   last(contact: string): Promise<Snapshot | null> {
     const source = internalsOf(this).last;
-    if (source === null) {
-      return Promise.reject(
-        new Error("last(contact) needs a store: mount the agent with { last } to give it one"),
-      );
-    }
+    if (source === null) return Promise.reject(new Error("last(contact) needs a store: mount the agent with { last } to give it one"));
     return source(contact);
   }
 
@@ -283,10 +280,7 @@ export class Agent {
   get call(): CallWorld {
     const serving = internalsOf(this).call;
     if (serving === null) {
-      throw new Error(
-        "this.call is only there while a call is being served: the bridge sets it at start(), " +
-          "and a test that renders gives one with setCall(agent, new CallWorld(line, () => {}))",
-      );
+      throw new Error("this.call is only there while a call is being served: the bridge sets it at start(), and a test that renders gives one with setCall(agent, new CallWorld(line, () => {}))");
     }
     return serving;
   }
@@ -299,6 +293,11 @@ export class Agent {
   /** Make the model speak now, guided by instructions the caller does not hear. Resolves like `say`. */
   reply(instructions: string, options: { allowInterruptions?: boolean } = {}): Promise<boolean> {
     return this.call.reply(instructions, options);
+  }
+
+  /** Ask the caller for one of the class's `static tasks` from inside a tool, and wait for it: `await this.ask(GetEmail)`. */
+  ask<T>(asked: Task<T>): Promise<T> {
+    return this.call.ask(asked);
   }
 
   /** Subscribe in-process to state changes or events. Returns an unsubscribe function. */

@@ -245,6 +245,54 @@ error, and the model reads it. Throw a sentence a model can use — "Tuesday has
 never a stack trace. And ask the model for a word, not a record: `book(slot: string)`, looked up
 among the slots it was offered, is safer than `book(slot: Slot)`.
 
+### A tool that asks: tasks
+
+```ts
+import { Agent, GetEmail, tool } from "@pinecall/agents";
+
+export default class FrontDesk extends Agent {
+  static tasks = [GetEmail];
+
+  /** Book a time, once the caller said yes to it. */
+  @tool()
+  async book(slot: string) {
+    const email = await this.ask(GetEmail);
+    return clinic.book(slot, email);
+  }
+}
+```
+
+A task is one thing a tool needs from the caller before it can finish. `await this.ask(GetEmail)`
+stops the tool there: the model is told what is missing and how to ask for it, asks the caller,
+and gives the answer with a tool of the task's own (`give_email`), the only tool open meanwhile.
+The task checks what it was given, and one that does not pass is asked for again. Then your tool
+goes on from the `await` with the value, and what it returns is what the model reads, as
+`{ finished: "book", result }`. A tool may
+ask more than once, one question at a time.
+
+Three come with the package: `GetEmail` (an address, lowercased), `GetPhone` (the digits, with the
+`+` of a country code) and `GetName` (`{ first, last }`). One of your own is `task`:
+
+```ts
+import { task } from "@pinecall/agents";
+
+export const GetPlate = task({
+  name: "plate",
+  asks: "the plate of the car",
+  how: "Read it back letter by letter.",
+  fields: { plate: "The plate, letters and digits, no spaces." },
+  check: ({ plate }) => {
+    if (!/^[A-Z0-9]{5,8}$/i.test(plate)) throw new Error(`"${plate}" is not a plate. Ask for it again.`);
+    return plate.toUpperCase();
+  },
+});
+```
+
+`fields` is what the model gives, each a string with what it is; `check` returns what your tool is
+handed, and what it throws is told to the model. A class names the tasks its tools ask for in
+`static tasks`: each one's tool is declared with the agent, and `this.ask` of one that is not named
+is refused. A call that ends with a question open rejects the `await`, so the tool does not go on.
+
 ## The hooks
 
 ```tsx
@@ -447,8 +495,13 @@ and the pass is a `handoff` line on its log. A call is passed three times at mos
 refused and the agent answers itself.
 
 Two things to know. The agents of a team give each tool a name of its own, or the app is refused
-when it loads. And the call keeps the voice and the models of the agent that answered it: the gateway
-still knows the call by that agent, which is also where it is listed and judged.
+when it loads. And the gateway still knows the call by the agent that answered it, which is where it is
+listed and judged.
+
+A spoken call takes the model and the voice of the agent it was passed to: `static llm` and
+`static voice` of that class, or what its settings say. The sentence being said ends in the voice it
+began in, and the next one is the teammate's; each stage that changed is a `stage.changed` on the
+call's log. The ears stay the first agent's for the whole call. A written call keeps the model it opened on.
 
 ### A line that chooses who answers
 

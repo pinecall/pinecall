@@ -39,7 +39,7 @@ async def test_the_callers_hang_up_on_the_stream_is_the_caller_gone_and_no_comma
     assert gone == ["caller"]
 
 
-async def _never() -> None:
+async def _never(_passed_to: str | None) -> None:
     raise AssertionError("the stages were taken anew, and nobody asked")
 
 
@@ -47,12 +47,15 @@ async def test_the_gateways_word_that_the_stages_changed_takes_them_anew_and_no_
     """The gateway's own word again: the session is handed its stages and is never asked to apply a command."""
     taken: list[str] = []
 
-    async def restage() -> None:
-        taken.append("stages")
+    async def restage(passed_to: str | None) -> None:
+        taken.append(f"stages of {passed_to or 'its own agent'}")
 
     said = Command(type=STAGES_CHANGED, agent="clinica-norte", call="call_1", id=None, data={})
     await follow_command(cast(session.Session, object()), said, lambda: taken.append("caller"), restage)
-    assert taken == ["stages"]
+    # A call passed to a teammate takes that agent's stages.
+    passed = Command(type=STAGES_CHANGED, agent="clinica-norte", call="call_1", id=None, data={"agent": "billing"})
+    await follow_command(cast(session.Session, object()), passed, lambda: taken.append("caller"), restage)
+    assert taken == ["stages of its own agent", "stages of billing"]
 
 
 def test_an_answer_with_no_realtime_model_builds_none() -> None:

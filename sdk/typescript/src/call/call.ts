@@ -4,6 +4,7 @@ import type { Camel } from "../wire/codec.js";
 import type { Contact, Direction, Medium } from "../wire/defs.js";
 
 import type { Call as HookCall } from "../agent/lifecycle.js";
+import type { Task } from "../agent/tasks.js";
 import { History } from "./history.js";
 import { ParticipantHandle, Room, type Commander, type ParticipantKind } from "./room.js";
 
@@ -59,6 +60,7 @@ export type Searching = (query: string, k?: number) => Promise<Found[]>;
 /** Error for `search()` on a call with no gateway (an offline prompt, a test). */
 export const NO_GATEWAY_TO_SEARCH = "this call cannot search: no gateway is serving it";
 
+const NO_ASKING = "this call cannot ask: a task is asked for on a call an agent is serving";
 const NO_TEAM = "this call has no team to pass it to: its app's line names one with `team`";
 
 /** How the bridge passes a call to another agent of its team; what it answers is what the model reads. */
@@ -106,6 +108,7 @@ export class CallWorld implements HookCall {
   /** What the agent before this one passed along with the call; undefined for the agent that answered. */
   handed?: Record<string, unknown>;
   #passing: Passing | null = null;
+  #asking: ((asked: Task<unknown>) => Promise<unknown>) | null = null;
 
   // say/reply settle on the next turn.agent: commands are fire-and-forget, so that entry is the only ack.
   #speaking: ((spoken: boolean) => void)[] = [];
@@ -141,6 +144,17 @@ export class CallWorld implements HookCall {
   handoff(to: new () => object, data: Record<string, unknown> = {}): Promise<string> {
     if (this.#passing === null) return Promise.reject(new Error(NO_TEAM));
     return this.#passing(to, data);
+  }
+
+  /** Ask the caller for a task from inside a tool: `this.ask(GetEmail)` on the agent. */
+  ask<T>(asked: Task<T>): Promise<T> {
+    if (this.#asking === null) return Promise.reject(new Error(NO_ASKING));
+    return this.#asking(asked as Task<unknown>) as Promise<T>;
+  }
+
+  /** The bridge's: how this call asks. */
+  askedBy(asking: (asked: Task<unknown>) => Promise<unknown>): void {
+    this.#asking = asking;
   }
 
   /** The bridge's: how this call is passed. */

@@ -22,7 +22,7 @@ app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 // before the visit the reminder calls the patient, and once more two hours later when nobody answered.
 export const remindVisit = flow("remind-visit", async (booked, step) => {
   const visit = booked as unknown as Visit & { phone: string };
-  // A visit booked in writing has no number to call.
+  // A number given with no country code is not one the reminder can call.
   if (!visit.phone.startsWith("+")) return;
   await step.sleepUntil(startsAt(visit), { before: "24h" });
   const reminder = {
