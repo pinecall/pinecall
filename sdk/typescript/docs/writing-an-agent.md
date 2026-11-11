@@ -41,6 +41,24 @@ the class leaves out runs on the org's default vendor for it and that vendor's d
 left out reads as the runtime's default. The settings those verbs write belong to an agent built in
 Studio, which has no code.
 
+The stages are named in short, each a `static` like the rest of what the class declares:
+
+```tsx
+export default class FrontDesk extends Agent {
+  static stt = "deepgram/flux";
+  static llm = "google/gemini-3.5-flash-lite";
+  static voice = "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02";
+  static judges = judges({ on: ["consent", "grounded"] });
+  static timezone = "America/Los_Angeles";
+}
+```
+
+A model is `"vendor/model"` or a vendor alone, and a voice is `"vendor/voice"`, the vendor and its own id
+for the voice. A stage that takes options is written with them: `static llm = { model:
+"openai/gpt-5.4-mini", temperature: 0.3 }`, `static stt = { model: "soniox/stt-rt-v3", endOfTurn:
+"smart-turn" }`, `static voice = { voice: "cartesia/<id>", model: "sonic-2" }`. The decorators below say
+the same thing above the class, and a class uses one of the two spellings for a stage, never both:
+
 ```tsx
 @voice("cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", { model: "sonic-2" })
 @llm("openai/gpt-5.4-mini", { temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true } })

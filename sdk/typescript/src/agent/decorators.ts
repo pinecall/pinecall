@@ -2,6 +2,7 @@
 
 import { withAuthorAsync } from "./authors.js";
 import { lowerStage } from "./stages.js";
+import { modelOf } from "./stage-names.js";
 import { DeclarationRefused, register, type ToolOptions } from "./tools.js";
 import type { Child } from "../views/jsx-runtime.js";
 import type { EndOfTurn } from "../wire/agent-config.js";
@@ -119,13 +120,6 @@ export function judge(model: string, more: Plugin = {}) {
   return function decorate(ctor: Function): void {
     declare(ctor, "judge", { ...modelOf(model), ...more });
   };
-}
-
-// The model id keeps every slash after the vendor's: `livekit/openai/gpt-5-mini`.
-function modelOf(named: string): { provider: string; model: string } {
-  const slash = named.indexOf("/");
-  if (slash < 0) return { provider: named, model: "" };
-  return { provider: named.slice(0, slash), model: named.slice(slash + 1) };
 }
 
 // Refuse both spellings on one class, as @render does: one of them would be silently dead.

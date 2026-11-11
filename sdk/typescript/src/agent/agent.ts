@@ -160,13 +160,13 @@ export class Agent {
   /** The language the agent speaks and expects, a BCP 47 tag: `"es"`, `"pt-BR"`. */
   static language?: Declared["language"];
   static timezone?: Declared["timezone"];
-  static voice?: Declared["voice"];
-  static llm?: Declared["llm"];
+  static voice?: Declared["voice"] | string | (Record<string, unknown> & { voice: string });
+  static llm?: Declared["llm"] | string | (Record<string, unknown> & { model: string });
   /** The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`. */
-  static realtime?: Declared["realtime"];
-  static stt?: Declared["stt"];
+  static realtime?: Declared["realtime"] | string | (Record<string, unknown> & { model: string });
+  static stt?: Declared["stt"] | string | (Record<string, unknown> & { model: string });
   /** The model the agent's calls are judged on. */
-  static judge?: Declared["judge"];
+  static judge?: Declared["judge"] | string | (Record<string, unknown> & { model: string });
   /** How a call opens: the words, as a string, or `improvise` for the model's own. */
   static greeting?: Opening;
   /** When the model may end the call: in your words, or `true` whenever it judges it done. */

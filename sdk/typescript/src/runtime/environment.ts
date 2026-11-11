@@ -1,6 +1,7 @@
 /** What a class declares of its environment: `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and its static fields. */
 
 import { improvise, type Ending, type Opening } from "../agent/opening.js";
+import { stageOf, voiceOf } from "../agent/stage-names.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
 
@@ -35,6 +36,9 @@ export const ENVIRONMENT = [
 
 type Environment = Pick<AgentOptions, (typeof ENVIRONMENT)[number] | "maxDurationS" | "llmTimeoutS" | "silenceTimeoutS">;
 
+// The stages a class names by their model: `"vendor/model"`, alone or with the stage's options.
+const STAGES = ["llm", "realtime", "stt", "judge"] as const;
+
 // Said in minutes and seconds on the class, as `pinecall agent set` takes them; the wire counts both in seconds.
 const CLOCKS = ["maxDuration", "llmTimeout", "silenceTimeout"] as const;
 const NOT_A_DURATION = "maxDuration is the longest a voice call runs: 1 to 60 minutes, or \"off\" for no limit";
@@ -66,6 +70,8 @@ export function environmentOf(ctor: Function): Environment {
   for (const field of ENVIRONMENT) {
     if (declared[field] !== undefined) environment[field] = declared[field];
   }
+  for (const stage of STAGES) if (environment[stage] !== undefined && environment[stage] !== null) environment[stage] = stageOf(stage, environment[stage]);
+  if (environment["voice"] !== undefined && environment["voice"] !== null) environment["voice"] = voiceOf(environment["voice"]);
   if (environment["greeting"] !== undefined) environment["greeting"] = greetingOf(environment["greeting"] as Opening);
   if (environment["hangup"] !== undefined) environment["hangup"] = hangupOf(environment["hangup"] as Ending);
   if (declared["maxDuration"] !== undefined) environment["maxDurationS"] = secondsOf(declared["maxDuration"]);

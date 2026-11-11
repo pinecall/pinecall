@@ -12,6 +12,9 @@ import { hurried, offersARealTime } from "./harness.js";
  * Read the day and the time back and wait for a yes before you book.
  */
 export default class FrontDesk extends Agent {
+  static stt = "deepgram";
+  static llm = "google/gemini-3.5-flash-lite";
+  static voice = "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02";
   static takes = "booking, moving or asking about a visit";
   static judges = judges({ on: ["grounded", "promises"], own: [offersARealTime] });
   static personas = personas({ own: [hurried] });
