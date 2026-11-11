@@ -52,6 +52,8 @@ elevenlabs,tts,eleven_flash_v2_5,Eleven Flash v2.5,2026-10-19,https://api.eleven
 elevenlabs,tts,eleven_turbo_v2_5,Eleven Turbo v2.5,2026-10-19,https://api.elevenlabs.io/v1/models,
 elevenlabs,tts,eleven_turbo_v2,Eleven Turbo v2,2026-10-19,https://api.elevenlabs.io/v1/models,
 elevenlabs,tts,eleven_flash_v2,Eleven Flash v2,2026-10-19,https://api.elevenlabs.io/v1/models,
+elevenlabs,stt,scribe_v3,scribe_v3,2026-11-11,https://elevenlabs.io/pricing/api,
+elevenlabs,stt,scribe_v3_live,scribe_v3_live,2026-11-11,https://elevenlabs.io/pricing/api,
 elevenlabs,stt,scribe_v2,scribe_v2,2026-10-19,https://elevenlabs.io/pricing/api,
 elevenlabs,stt,scribe_v2_realtime,scribe_v2_realtime,2026-10-19,https://elevenlabs.io/pricing/api,yes
 google,llm,gemini-4-argon,gemini-4-argon,2026-10-19,https://ai.google.dev/gemini-api/docs/pricing.md.txt,

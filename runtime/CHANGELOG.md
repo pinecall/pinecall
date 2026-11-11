@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **ElevenLabs' Scribe v3 is in the lists:** `scribe_v3` and `scribe_v3_live` among what a picker offers of
+  `elevenlabs` for `stt`, each with its list price. `scribe_v3` hears a call today. `scribe_v3_live` ends one
+  at its first words until livekit's plugin streams it: the plugin opens the realtime socket for
+  `scribe_v2_realtime` alone, and ElevenLabs refuses the id at the door it is sent to instead.
+
 - **A live call takes the model and the voice its settings name now.** `POST /v1/calls/{call}/stages`, with a
   key that holds `pipeline`: the call's worker reads its stages again and rebuilds the ones that differ, livekit
   handing the call to an agent on the new ones once the reply being said is over. Each stage that differs is a
