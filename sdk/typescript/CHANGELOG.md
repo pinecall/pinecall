@@ -9,7 +9,7 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 - **An agent draws the caller's page**: `screen()` returns parts of the class's own (`part<Props>("agenda")`),
   sent in the call's state as the public field `screen` whenever it changes. `this.call.asking` says what a
-  tool stopped to ask for, a page gives it with the event `task.give`, and `this.show(<Part />)` puts a part
+  tool stopped to ask for, a page gives it with the event `task.give`, and `this.call.show(<Part />)` puts a part
   over the screen at once.
 - **A call passed to a teammate takes that agent's model and voice**, from its next sentence, when it is
   spoken. It kept the first agent's until now.

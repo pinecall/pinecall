@@ -162,7 +162,7 @@ export class CallWorld implements HookCall {
     return this.#asked();
   }
 
-  /** Put a part on the caller's page over the screen; null takes it away. `this.show(…)` on the agent. */
+  /** Put a part on the caller's page over the screen; `this.call.show(<Map at={clinic} />)`, and null takes it away. */
   show(shown: unknown): void {
     this.shown = shown;
     this.#showing();

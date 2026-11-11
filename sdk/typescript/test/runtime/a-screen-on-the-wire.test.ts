@@ -99,10 +99,8 @@ it("puts what the agent shows over the screen, at once", async () => {
   expect(screen()).toEqual([{ part: "banner", props: { text: "Closed on Friday" }, children: [] }]);
 });
 
-it("declares neither for a class that draws no screen", async () => {
-  mount(Books, { pc, slug: "books" });
-  await settled();
-  const config = commands("agent.configure").at(-1)?.["config"] as { state_fields?: unknown; events?: unknown };
-  expect(JSON.stringify(config.state_fields ?? [])).not.toContain("screen");
-  expect(JSON.stringify(config.events ?? [])).not.toContain("task.give");
+it("declares neither for a class that draws no screen", () => {
+  const { options } = mount(Books, { pc, slug: "books" });
+  expect(JSON.stringify(options.stateFields ?? [])).not.toContain("screen");
+  expect(JSON.stringify(options.events ?? [])).not.toContain("task.give");
 });

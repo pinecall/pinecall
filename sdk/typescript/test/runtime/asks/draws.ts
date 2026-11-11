@@ -33,7 +33,7 @@ export default class Draws extends Agent {
   /** Say something over the screen. */
   @tool()
   announce(text: string) {
-    this.show(Banner({ text }));
+    this.call.show(Banner({ text }));
     return "shown";
   }
 

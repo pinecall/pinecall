@@ -296,11 +296,6 @@ export class Agent {
     return this.call.ask(asked);
   }
 
-  /** Put a part on the caller's page over the screen, now: `this.show(<Map at={clinic} />)`. `this.show(null)` takes it away. */
-  show(shown: Child): void {
-    this.call.show(shown);
-  }
-
   /** Subscribe in-process to state changes or events. Returns an unsubscribe function. */
   on(type: "state", listener: ChangeListener): () => void;
   on(type: "event", listener: EventListener): () => void;

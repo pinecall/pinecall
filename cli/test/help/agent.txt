@@ -97,6 +97,7 @@ Options:
   --judge <value>
   --judge-builds <value>
   --language <value>
+  --timezone <value>
   --greeting <value>
   --hangup <value>
   --voicemail <value>
@@ -157,6 +158,7 @@ Options:
   --judge-builds
   --judge-options
   --language
+  --timezone
   --greeting
   --hangup
   --turn

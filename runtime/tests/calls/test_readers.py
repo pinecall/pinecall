@@ -2,6 +2,7 @@
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.readers import Declaring, project_entry
+from pinecall_runtime.kit.text import JsonObject
 from pinecall_runtime.wire.base import Entry
 
 
@@ -33,7 +34,7 @@ async def test_a_stream_begun_before_its_call_opened_reads_what_is_public_once_i
         return next(answers)
 
     declaring = Declaring(None, late)
-    data = {"state": {"screen": [], "plan": "pro"}, "changed": ["screen"]}
+    data: JsonObject = {"state": {"screen": [], "plan": "pro"}, "changed": ["screen"]}
     changed = Entry(seq=9, ts=1.0, call="call_1", agent="pip", type="state.changed", ephemeral=False, data=data)
     before = project_entry(changed, "public", await declaring.now())
     after = project_entry(changed, "public", await declaring.now())

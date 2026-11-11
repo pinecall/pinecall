@@ -602,7 +602,7 @@ export default class FrontDesk extends Agent {
 | `part<Props>(name)` | a part: a tag of your own, also callable as a function (`Agenda({ slots })`) in a `.ts` file. The name is lowercase letters, digits and dashes; the page maps it to a component of its own. What it is given must be plain data: it crosses to a browser as JSON |
 | `screen()` | what the page shows now. Parts nest, a component that is no part is called, and nothing is sent while the screen is the one already sent |
 | `this.call.asking` | what a tool stopped to ask for (`{ task, asks, fields, refused? }`), so the screen can draw the question as a form; undefined when nothing is asked |
-| `this.show(<Map />)` | puts a part over the screen now, from a tool or a hook; `this.show(null)` takes it away |
+| `this.call.show(<Map />)` | puts a part over the screen now, from a tool or a hook; `this.call.show(null)` takes it away |
 
 The agent says what is on the screen and the page says how it looks: a part carries no markup and no
 style. The screen travels in the call's state as the field `screen`, public to that call's own page and
