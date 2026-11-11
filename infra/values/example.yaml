@@ -1,9 +1,9 @@
 # An operator's values for charts/edge, charts/postgres and charts/pinecall, on Google Cloud as
 # terraform/cluster makes it: copy it into your own OPS directory as
-# values/<env>.yaml (infra/README.md, "Your own values") and replace every example. CI renders the
+# values/<cluster>.yaml (infra/README.md, "Your own values") and replace every example. CI renders the
 # charts with it and scans what they release. With the Terraform of this repository, what it made
 # (the names, the secret store, the ingress, the backups, the ranges, the addresses) is written
-# by `make values` into values/<env>.terraform.json and this file keeps the decisions alone. The
+# by `make values` into values/<cluster>.terraform.json and this file keeps the decisions alone. The
 # image's repository, tag and digest are given by `make deploy`.
 domain: voice.example.com
 secrets:
@@ -45,18 +45,20 @@ cluster: production
 monitoring:
   collector: gmp
   namespace: gmp-system
-# modules/kubeip's output; unset, kubeip is not installed and media.addresses are not given.
+# modules/kubeip's output; unset, kubeip is not installed and no env's mediaAddress is given.
 kubeip:
   identity: example-production-kubeip@my-project.iam.gserviceaccount.com
-sipDomains:
-  production: sip.example.com
-  sandbox: sip.sandbox.example.com
+# Each env's SIP name (the cluster's `sip_names`) and its media address (modules/edge's
+# media_addresses).
+envs:
+  production:
+    sipDomain: sip.example.com
+    mediaAddress: 203.0.113.10
+  sandbox:
+    sipDomain: sip.sandbox.example.com
+    mediaAddress: 203.0.113.11
 media:
-  # modules/edge's media_addresses.
-  addresses:
-    production: 203.0.113.10
-    sandbox: 203.0.113.11
-  # the cluster's `ranges` (<env>.tfvars).
+  # the cluster's `ranges` (<cluster>.tfvars).
   nodeNetwork: 10.120.0.0/22
 gateway:
   podNetwork: 10.121.0.0/16

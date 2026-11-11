@@ -1,5 +1,5 @@
 # What the project holds for every cluster in it: the registry the images live in and the identity
-# Cloud Build builds them as (`make image`). Each cluster (cluster/, once per ENV) is made beside
+# Cloud Build builds them as (`make image`). Each cluster (cluster/, once per CLUSTER) is made beside
 # these.
 #
 # The registry and the builds' identity were modules of one caller each until 2026-11-12; they are

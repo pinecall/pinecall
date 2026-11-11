@@ -8,10 +8,9 @@ made by hand and nothing is built on a laptop.
 | path | what |
 |---|---|
 | `terraform/bootstrap` | the bucket every other root module keeps its state in, made once with local state |
-| `terraform/project` | what every cluster of the project shares: the images' registry and the identity Cloud Build builds them as |
-| `terraform/cluster` | one cluster, the same code for every one: `ENV` names it and picks its variables and its state. `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it, are two files of values |
-| `terraform/modules/gke` | a cluster: zonal, Workload Identity; a core pool both environments share, and for each environment a media node and a workers pool from 0 that the cluster autoscaler sizes alone ("A pool a world" below) |
-| `terraform/modules/registry` · `build` | where images live, and the identity Cloud Build builds them as (`terraform/project`) |
+| `terraform/project` | what every cluster of the project shares, each in a file of its own: the images' registry (`registry.tf`) and the identity Cloud Build builds them as (`build.tf`) |
+| `terraform/cluster` | one cluster, the same code for every one: `CLUSTER` names it and picks its variables and its state. `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it, are two files of values |
+| `terraform/modules/gke` | a cluster: zonal, Workload Identity; a core pool both environments share, and for each environment a media node and a workers pool from 0 that the cluster autoscaler sizes alone ("A pool an environment" below) |
 | `terraform/modules/secrets` | the runtime's secrets, drawn once into Secret Manager, and the identity External Secrets reads them as |
 | `terraform/modules/addons` | CloudNativePG with its Barman Cloud plugin and cert-manager, External Secrets and KEDA, each its pinned chart |
 | `terraform/modules/backups` | the bucket Postgres's WAL and base backups go to, and the identity that writes them, which touches it alone |
@@ -45,12 +44,12 @@ repository's checkout; a private repository is the place for it). The Makefile r
 
 | `OPS/` | what |
 |---|---|
-| `<env>.mk` | `PROJECT = <the Google Cloud project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<env>` |
-| `values/<env>.terraform.json` | what Terraform made, as the charts read it: the names, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses. Written by `make values ENV=<env>` from the cluster root's `chart_values` output after an apply, never typed |
-| `values/<env>.yaml` | the decisions, read after it and winning where both speak: the registry's images, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
-| `values/hosting-<env>.yaml` | `charts/hosting`'s (`infra/values/hosting-example.yaml`) |
-| `terraform/<env>.tfvars` | the root's variables: the project, the DNS zone, the names, the SIP names, the ranges, services of your own, the secrets you put, who alerts mail |
-| `terraform/<env>.backend.hcl` | the state bucket and prefix (`bucket = "…"`, `prefix = "cluster/<env>"`), given to `make tf-init` |
+| `<cluster>.mk` | `PROJECT = <the Google Cloud project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<cluster>` |
+| `values/<cluster>.terraform.json` | what Terraform made, as the charts read it: the names, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses. Written by `make values CLUSTER=<cluster>` from the cluster root's `chart_values` output after an apply, never typed |
+| `values/<cluster>.yaml` | the decisions, read after it and winning where both speak: the registry's images, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
+| `values/hosting-<cluster>.yaml` | `charts/hosting`'s (`infra/values/hosting-example.yaml`) |
+| `terraform/<cluster>.tfvars` | the root's variables: the project, the DNS zone, the names, the SIP names, the ranges, services of your own, the secrets you put, who alerts mail |
+| `terraform/<cluster>.backend.hcl` | the state bucket and prefix (`bucket = "…"`, `prefix = "cluster/<cluster>"`), given to `make tf-init` |
 | `terraform/bootstrap.tfvars` · `project.tfvars` · `project.backend.hcl` | the same for the two roots made once |
 
 The charts never guess a provider: the secret store is the values' `secrets.provider` (on GKE with
@@ -67,23 +66,23 @@ With gcloud signed in on the project, and the zone of the names on Route 53 (`~/
 ```console
 $ terraform -chdir=infra/terraform/bootstrap init && terraform -chdir=infra/terraform/bootstrap apply -var-file=$OPS/terraform/bootstrap.tfvars   # once
 $ terraform -chdir=infra/terraform/project init -backend-config=$OPS/terraform/project.backend.hcl && terraform -chdir=infra/terraform/project plan -var-file=$OPS/terraform/project.tfvars -out=plan && terraform -chdir=infra/terraform/project apply plan   # once
-$ make tf-init ENV=<env>
-$ make tf-fence ENV=<env>           # the networks the gateway approved for SIP, into the operator's own directory
-$ make tf-plan ENV=<env>            # read it; the plan is saved, unless it removes something nobody asked to remove
-$ make tf-apply ENV=<env>           # exactly the plan read, which is then deleted
-$ make values ENV=<env>             # what Terraform made, into the values the charts read; read its diff
-$ gcloud container clusters get-credentials pinecall-<env> --zone <zone>
+$ make tf-init CLUSTER=<cluster>
+$ make tf-fence CLUSTER=<cluster>   # the networks the gateway approved for SIP, into the operator's own directory
+$ make tf-plan CLUSTER=<cluster>    # read it; the plan is saved, unless it removes something nobody asked to remove
+$ make tf-apply CLUSTER=<cluster>   # exactly the plan read, which is then deleted
+$ make values CLUSTER=<cluster>     # what Terraform made, into the values the charts read; read its diff
+$ gcloud container clusters get-credentials pinecall-<cluster> --zone <zone>
 $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.yaml \
     --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
     --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0"
-$ make edge ENV=<env>               # the front door: charts/edge, when it or its values change
-$ make postgres ENV=<env>           # Postgres: charts/postgres, when it or its values change (it may restart the instance)
+$ make edge CLUSTER=<cluster>       # the front door: charts/edge, when it or its values change
+$ make postgres CLUSTER=<cluster>   # Postgres: charts/postgres, when it or its values change (it may restart the instance)
 $ make image                        # the runtime at this commit
-$ make diff ENV=<env>               # what releasing each chart would change, nothing touched
-$ make deploy ENV=<env>             # the runtime at that image (charts/pinecall alone), then the live suite
-$ make rollback ENV=<env>           # the runtime back to the release before this one
-$ make fleet ENV=<env> WORLD=sandbox MIN=1   # that world keeps one scaled worker warm (MIN=0 lets it go), no new image
-$ make suite ENV=<env>              # every suite inside the cluster
+$ make diff CLUSTER=<cluster>       # what releasing each chart would change, nothing touched
+$ make deploy CLUSTER=<cluster>     # the runtime at that image (charts/pinecall alone), then the live suite
+$ make rollback CLUSTER=<cluster>   # the runtime back to the release before this one
+$ make fleet CLUSTER=<cluster> ENV=sandbox MIN=1   # that env keeps one scaled worker warm (MIN=0 lets it go), no new image
+$ make suite CLUSTER=<cluster>      # every suite inside the cluster
 ```
 
 `make image` sends Cloud Build one commit's tree (`git archive` of `TAG`) and nothing of the
@@ -109,7 +108,7 @@ environment's fleet key once at install, waits for every workload, and knocks at
 which it asks of the cluster. When the upgrade fails or is cut, Helm goes back to the release that
 ran, by itself (`--rollback-on-failure`).
 
-**Going back.** `make rollback ENV=<env>` returns charts/pinecall to the release before this one
+**Going back.** `make rollback CLUSTER=<cluster>` returns charts/pinecall to the release before this one
 (`REV=<n>` names another; the target prints the last five). It brings back the image and the
 chart's objects, never the database: a migration is written so the release before it still runs on
 its schema (a column is added in one release and read in the next, dropped only after no release
@@ -167,12 +166,12 @@ from the console's Box or the same `kubectl exec`.
 
 Both environments share the core pool (`terraform/modules/gke`, `core`): the gateways, Postgres, Redis
 and Pinecall's services. Each environment has the rest of a call to itself, so a sandbox call never
-shares a machine with a production call: a **media pool** of one node (`media-<world>`,
+shares a machine with a production call: a **media pool** of one node (`media-<env>`,
 `media_type`; production's an e2-standard-4, the sandbox's an e2-standard-2) with the environment's own
-LiveKit, its livekit-sip and its core workers, and a **workers pool** from 0 (`workers-<world>`,
+LiveKit, its livekit-sip and its core workers, and a **workers pool** from 0 (`workers-<env>`,
 `workers_max`: 10 nodes for production, 3 for the sandbox) for its scaled workers — from one node
-where the chart's `workers.scaled.<world>.min` keeps a scaled worker warm, as the sandbox's is for a
-burst of simulations that cannot wait for a node (`make fleet ENV=<env> WORLD=<world> MIN=<n>` writes
+where the chart's `envs.<env>.workers.scaled.min` keeps a scaled worker warm, as the sandbox's is for a
+burst of simulations that cannot wait for a node (`make fleet CLUSTER=<cluster> ENV=<env> MIN=<n>` writes
 that line and releases the chart at the image that runs, in about a minute; `MOST=<n>` moves the
 ceiling of pods with it; the runtime's `docs/scaling.md`, "Keeping workers warm", has what each
 costs). Each pool is
@@ -180,7 +179,7 @@ tainted with its name, so nothing of another environment lands there. A sandbox 
 sandbox's node and its pool to its own ceiling, and nothing else.
 
 LiveKit gives a room to a node by load and knows no pool, so each environment is a LiveKit cluster of its
-own (`pinecall-livekit-<world>`), with SIP on it, the two talking through a Redis of their own
+own (`pinecall-livekit-<env>`), with SIP on it, the two talking through a Redis of their own
 on the environment's media node (Redis's pub/sub is one per server, whatever its database: a LiveKit
 sharing one with the other environment's answered that environment's SIP and refused its numbers); the gateway reaches both (`LIVEKIT_URL`, `LIVEKIT_SANDBOX_URL`) and each tells its webhook
 the environment (`?world=`). A browser reaches production's at `wss://<name>` and the sandbox's at
@@ -190,10 +189,10 @@ LiveKit with the prefix taken off.
 ## SIP's address
 
 Google's HTTPS load balancer, the name, carries no UDP: a carrier sends an environment's calls to the
-environment's SIP name (`sipDomains` in the values, `PINECALL_SIP_DOMAIN`, `PINECALL_SANDBOX_SIP_DOMAIN`),
+environment's SIP name (`envs.<env>.sipDomain` in the values, `PINECALL_SIP_DOMAIN`, `PINECALL_SANDBOX_SIP_DOMAIN`),
 which Route 53 points at the environment's media address (`terraform/modules/edge`, `media_addresses`).
 kubeip (the chart, as the identity `terraform/modules/kubeip` made) gives each environment's media node
-its address, found by its label (`pinecall-media=<cluster>-<world>`), and gives it again to a node
+its address, found by its label (`pinecall-media=<cluster>-<env>`), and gives it again to a node
 that replaces it; the environment's LiveKit and SIP announce it (`node_ip`, `nat_1_to_1_ip`). A Twilio
 trunk made before the SIP name moved is sent on once, by `pinecall-runtime sip repoint`.
 
@@ -223,7 +222,7 @@ store's key, made by hand, and `turnstile-secret` is Cloudflare Turnstile's, whe
 its site key (`turnstile.siteKey`). The environment's `given_secrets` lists them.
 
 ```console
-$ <the value> | gcloud secrets versions add pinecall-<env>-<name> --data-file=-
+$ <the value> | gcloud secrets versions add pinecall-<cluster>-<name> --data-file=-
 ```
 
 A recording moves to the object store `store` names in the environment's values (endpoint, region,
@@ -242,20 +241,20 @@ database, its gateways or its calls. Off, the runtime serves everything but host
 |---|---|
 | each app | one pod in `pinecall-apps`, under GKE Sandbox's gVisor (`runtimeClassName: gvisor`): installed by its first container from its runner's sources, run by its second, read-only, as a user that is not root, with no service account token |
 | the fence | `charts/hosting`'s network policy: an app's pod reaches the internet and its runner's sources, nothing private (no pod, node or network address), and nothing reaches it |
-| each environment's runner | a pod of `pinecall-runner` (`pinecall-runtime runner start`), knocking the platform at its public name with its environment's runner key, read off Secret Manager by the one identity that may (`pinecall-<env>-runner`); in `pinecall-apps` it may create, read, replace and delete the apps' pods and secrets and read their logs, nothing else |
+| each environment's runner | a pod of `pinecall-runner` (`pinecall-runtime runner start`), knocking the platform at its public name with its environment's runner key, read off Secret Manager by the one identity that may (`pinecall-<cluster>-runner`); in `pinecall-apps` it may create, read, replace and delete the apps' pods and secrets and read their logs, nothing else |
 
 The two runner keys are minted by the platform and put once, piped, never printed:
 
 ```console
 $ kubectl --context <the box's> exec deploy/pinecall-gateway -- pinecall-runtime keys runner production \
-    | gcloud secrets versions add pinecall-<env>-runner-key-production --data-file=-
-$ make hosting ENV=<env> TAG=<commit>       # the runners, the namespace and its fence
+    | gcloud secrets versions add pinecall-<cluster>-runner-key-production --data-file=-
+$ make hosting CLUSTER=<cluster> TAG=<commit>       # the runners, the namespace and its fence
 ```
 
 An app's pod runs `appImage`. Node's own image installs a TypeScript project; a Python project is
 installed with uv onto the CPython 3.13 of `images/app` (with the system's certificate roots, which
 CPython reads and Node's slim image lacks), built once into the registry under a new tag each change and named in
-`$OPS/values/hosting-<env>.yaml` — on Node's image a Python release fails its install and says so:
+`$OPS/values/hosting-<cluster>.yaml` — on Node's image a Python release fails its install and says so:
 
 ```console
 $ gcloud builds submit infra/images/app --config infra/images/cloudbuild.yaml \
@@ -268,7 +267,7 @@ $ gcloud builds submit infra/images/app --config infra/images/cloudbuild.yaml \
 Before 2026-10-04 the runtime also ran on a single machine, a "box", and production moved from one
 into this cluster that day. That install is gone: nothing here makes a deployment or runs on one. What is
 left is the one-time migration that moved its database, kept for an operator who still holds one:
-`make restore-from-box ENV=<env> BOX=<ssh alias>` (refused for `ENV=production`) empties the cluster's schema, makes its two
+`make restore-from-box CLUSTER=<cluster> BOX=<ssh alias>` (refused for `CLUSTER=production`) empties the cluster's schema, makes its two
 extensions again, and restores the platform's schema `public` and its rows into it as the database's
 owner, the dump streamed from the platform into the Postgres pod and deleted there. The platform's runtime is
 stopped first, and the runtime's chart is installed after, so its fleets' keys are minted in the
@@ -316,7 +315,7 @@ Drilled on staging on 2026-10-04: a base backup in 9 s, the restore ready in 106
 
 The alerts are written once, as a Prometheus rule file: `charts/pinecall/alerts.yaml`. Who
 collects the metrics and evaluates the rules is the environment's `monitoring.collector` in
-values file (`OPS/values/<env>.yaml`), which both charts read and neither guesses (unset, the release fails):
+values file (`OPS/values/<cluster>.yaml`), which both charts read and neither guesses (unset, the release fails):
 
 | `monitoring.collector` | collects | evaluates and tells |
 |---|---|---|

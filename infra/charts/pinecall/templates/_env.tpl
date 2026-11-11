@@ -28,21 +28,21 @@
 {{- end }}
 - name: PINECALL_GATEWAY_URL
   value: http://pinecall-gateway:8080
-{{- with .Values.sipDomains }}{{ if .production }}
+{{- with .Values.envs }}{{ if .production.sipDomain }}
 - name: PINECALL_SIP_DOMAIN
-  value: {{ .production | quote }}
+  value: {{ .production.sipDomain | quote }}
 - name: PINECALL_SANDBOX_SIP_DOMAIN
-  value: {{ required "sipDomains.sandbox" .sandbox | quote }}
+  value: {{ required "envs.sandbox.sipDomain" .sandbox.sipDomain | quote }}
 {{- end }}{{ end }}
 {{ include "pinecall.recordingsEnv" . }}
 {{- end -}}
 
-{{/* A worker of a world: its LiveKit and the pair it joins it with, its fleet, its seats, its key,
+{{/* A worker of an env: its LiveKit and the pair it joins it with, its fleet, its seats, its key,
      the gateway it knocks at, its health port, and where recordings are. No database, no vault, no
      operator's key: a worker asks the gateway for what a call needs. */}}
 {{- define "pinecall.workerEnv" -}}
 - name: LIVEKIT_URL
-  value: ws://pinecall-livekit-{{ .world }}:7880
+  value: ws://pinecall-livekit-{{ .env }}:7880
 - name: LIVEKIT_API_KEY
   valueFrom: { secretKeyRef: { name: pinecall, key: LIVEKIT_API_KEY } }
 - name: LIVEKIT_API_SECRET
@@ -50,11 +50,11 @@
 - name: PINECALL_GATEWAY_URL
   value: http://pinecall-gateway:8080
 - name: PINECALL_FLEET
-  value: {{ index .root.Values.fleets .world | quote }}
+  value: {{ (index .root.Values.envs .env).fleet | quote }}
 - name: PINECALL_MAX_JOBS
   value: {{ .seats | quote }}
 - name: PINECALL_WORKER_KEY
-  valueFrom: { secretKeyRef: { name: pinecall-fleet-keys, key: {{ .world }} } }
+  valueFrom: { secretKeyRef: { name: pinecall-fleet-keys, key: {{ .env }} } }
 - name: PINECALL_WORKER_HTTP_HOST
   value: 0.0.0.0
 - name: PINECALL_WORKER_HTTP_PORT
@@ -89,7 +89,7 @@
 {{- end }}{{ end }}
 {{- end -}}
 
-{{/* What reaches both worlds' LiveKits (the gateways, the jobs): production's and the sandbox's. */}}
+{{/* What reaches both envs' LiveKits (the gateways, the jobs): production's and the sandbox's. */}}
 {{- define "pinecall.livekits" -}}
 - name: LIVEKIT_URL
   value: ws://pinecall-livekit-production:7880

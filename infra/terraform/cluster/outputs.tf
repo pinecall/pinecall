@@ -71,10 +71,15 @@ output "lab_generator" {
 output "chart_values" {
   description = "The charts' values that are facts of this cluster: its names, its addresses, its ranges, its identities."
   value = {
-    cluster      = var.name
-    domain       = var.names[0]
-    pages        = var.pages
-    sipDomains   = var.sip_names
+    cluster = var.name
+    domain  = var.names[0]
+    pages   = var.pages
+    # Each env's SIP name and the media address it is reached at (modules/edge makes an address
+    # for every SIP name).
+    envs = {
+      for env, address in module.edge.media_addresses :
+      env => { sipDomain = var.sip_names[env], mediaAddress = address }
+    }
     storageClass = "standard-rwo"
     secrets = {
       prefix = module.secrets.secret_prefix
@@ -112,10 +117,7 @@ output "chart_values" {
     # Google's Managed Prometheus collects; modules/alerts makes the alerts in Cloud Monitoring.
     monitoring = { collector = "gmp", namespace = "gmp-system" }
     kubeip     = { identity = module.kubeip.service_account }
-    media = {
-      addresses   = module.edge.media_addresses
-      nodeNetwork = var.ranges.nodes
-    }
+    media      = { nodeNetwork = var.ranges.nodes }
     gateway = {
       podNetwork = var.ranges.pods
       # Google's load balancer ends every X-Forwarded-For with its own address: believed beside

@@ -1,15 +1,15 @@
-# Each world's LiveKit and its SIP talk through a Redis of their own, on the world's media node:
+# Each env's LiveKit and its SIP talk through a Redis of their own, on the env's media node:
 # Redis's pub/sub is one per server, whatever database a client picks, so a LiveKit sharing one
-# with the other world's would answer that world's SIP (and refuse its numbers). LiveKit keeps the
-# world's SIP trunks and dispatch rules in it, so it is written to a disk that outlives the node:
+# with the other env's would answer that env's SIP (and refuse its numbers). LiveKit keeps the
+# env's SIP trunks and dispatch rules in it, so it is written to a disk that outlives the node:
 # a media node replaced comes back with its numbers. Its label is not the core Redis's: that
 # Service selects by `app: pinecall-redis`, and would hand the gateways' connections to these too.
-{{- range $world, $fleet := .Values.fleets }}
+{{- range $env, $_ := .Values.envs }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pinecall-redis-{{ $world }}
+  name: pinecall-redis-{{ $env }}
 spec:
   accessModes: [ReadWriteOnce]
   {{- with $.Values.storageClass }}
@@ -20,15 +20,15 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pinecall-redis-{{ $world }}
+  name: pinecall-redis-{{ $env }}
 spec:
   replicas: 1
   strategy: { type: Recreate }
-  selector: { matchLabels: { app: pinecall-media-redis, world: {{ $world }} } }
+  selector: { matchLabels: { app: pinecall-media-redis, world: {{ $env }} } }
   template:
-    metadata: { labels: { app: pinecall-media-redis, world: {{ $world }} } }
+    metadata: { labels: { app: pinecall-media-redis, world: {{ $env }} } }
     spec:
-      {{- include "pinecall.onMedia" $world | nindent 6 }}
+      {{- include "pinecall.onMedia" $env | nindent 6 }}
       # The image's own user, and the disk made its (fsGroup: a disk written as root before is
       # given to it at mount); its config file is written to an emptyDir, the rest is read-only.
       {{- include "pinecall.podSecurityAs" 999 | nindent 6 }}
@@ -51,14 +51,14 @@ spec:
             requests: { cpu: 50m, memory: 64Mi }
       volumes:
         - name: data
-          persistentVolumeClaim: { claimName: pinecall-redis-{{ $world }} }
+          persistentVolumeClaim: { claimName: pinecall-redis-{{ $env }} }
         - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: pinecall-redis-{{ $world }}
+  name: pinecall-redis-{{ $env }}
 spec:
-  selector: { app: pinecall-media-redis, world: {{ $world }} }
+  selector: { app: pinecall-media-redis, world: {{ $env }} }
   ports: [{ port: 6379 }]
 {{- end }}

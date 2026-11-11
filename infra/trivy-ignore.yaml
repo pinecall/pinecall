@@ -23,11 +23,11 @@ misconfigurations:
       - manifests/suite.yaml
     statement: >-
       The suite's Job writes its caches beside the checkout, and runs on a cluster that is not
-      production's alone (`make suite` refuses ENV=production).
+      production's alone (`make suite` refuses CLUSTER=production).
   - id: KSV-0118
     paths:
       - manifests/suite.yaml
-    statement: The suite's Job, never on production's cluster (`make suite` refuses ENV=production).
+    statement: The suite's Job, never on production's cluster (`make suite` refuses CLUSTER=production).
   - id: DS-0002
     paths:
       - images/suite/Containerfile

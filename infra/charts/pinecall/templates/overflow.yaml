@@ -19,7 +19,7 @@ spec:
           args: ["worker", "overflow"]
           {{- include "pinecall.containerSecurity" . | nindent 10 }}
           env:
-            {{- include "pinecall.workerEnv" (dict "root" . "world" "production" "seats" 1) | nindent 12 }}
+            {{- include "pinecall.workerEnv" (dict "root" . "env" "production" "seats" 1) | nindent 12 }}
             {{- with .Values.overflow.says }}
             - name: PINECALL_OVERFLOW_SAYS
               value: {{ . | quote }}

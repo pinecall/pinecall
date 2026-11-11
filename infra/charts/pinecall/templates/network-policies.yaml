@@ -4,7 +4,7 @@
 # a policy that forgot a client would cut it the day enforcement comes on.
 #
 # The gateways' Redis: the gateways alone (a worker holds no PINECALL_REDIS_URL, rule 24). The
-# worlds' own Redis are LiveKit's and SIP's, on the node's network, and are left as they are.
+# envs' own Redis are LiveKit's and SIP's, on the node's network, and are left as they are.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

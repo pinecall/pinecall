@@ -1,4 +1,4 @@
-# A worker knocks on the gateway with its world's fleet key, minted in the database by the runtime
+# A worker knocks on the gateway with its env's fleet key, minted in the database by the runtime
 # itself; the Job writes them into a Secret once, at install, before any worker starts, and it
 # may create that Secret and nothing else.
 apiVersion: v1

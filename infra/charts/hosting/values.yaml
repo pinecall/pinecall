@@ -10,7 +10,7 @@ image:
 # Required.
 gatewayUrl: ""
 project: ""
-# modules/secrets' prefix: each world's runner key is <prefix>runner-key-<world>.
+# modules/secrets' prefix: each env's runner key is <prefix>runner-key-<env>.
 secretPrefix: ""
 # modules/hosting's runner identity, the one that reads those keys and nothing else.
 serviceAccount: ""
@@ -19,9 +19,10 @@ serviceAccount: ""
 appImage: docker.io/library/node:24-slim
 runtimeClass: gvisor
 appsNamespace: pinecall-apps
-# A world's runner serves its releases' sources at a fixed address of the services range
+# An env's runner serves its releases' sources at a fixed address of the services range
 # (modules/hosting, services_range): an app's pod resolves nothing of the cluster's (public
-# resolvers only), so it reaches it by address. Required.
-worlds:
+# resolvers only), so it reaches it by address. Required. (The runner's label is still `world`:
+# charts/pinecall/values.yaml, `envs`, says why.)
+envs:
   production: { address: "" }
   sandbox: { address: "" }

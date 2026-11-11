@@ -209,8 +209,8 @@ In a cluster the fence is the cloud's firewall (`infra/terraform/modules/edge`):
 `pinecall-<world>-sip-deny` (600) denies everyone else's 5060, ending a flow the allow no longer
 covers. The networks it admits are the fence's `networks`, each checked again (none wider than a
 `/16` from the catalog or a `/24` from an org); a network the operator approves reaches the rule
-when the operator writes the list for Terraform and applies it: `make tf-fence ENV=<env>` writes it
-from the running gateway into `terraform/<env>.fence.tfvars.json` of the operator's own directory
+when the operator writes the list for Terraform and applies it: `make tf-fence CLUSTER=<cluster>` writes it
+from the running gateway into `terraform/<cluster>.fence.tfvars.json` of the operator's own directory
 (the orgs' addresses: versioned there, never in this repository), its diff is read, then
 `make tf-plan` and `make tf-apply`; until then it is closed in the cloud. A plan with no such file
 fails: the variable has no default, so a checkout that lacks the list cannot plan the rule away. The gateway never touches the firewall.

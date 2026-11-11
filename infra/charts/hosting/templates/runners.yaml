@@ -1,4 +1,4 @@
-# A runner per world: it asks the box which apps its world wants, starts and stops their pods in
+# A runner per env: it asks the box which apps its env wants, starts and stops their pods in
 # the apps' namespace, and serves their releases' sources to them. Its key is read off Secret
 # Manager by the identity modules/hosting made, mounted as a file, never in a value here.
 apiVersion: v1
@@ -31,30 +31,30 @@ metadata:
 roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: runner }
 subjects:
   - { kind: ServiceAccount, name: runner, namespace: {{ .Release.Namespace }} }
-{{- range $world, $runner := .Values.worlds }}
+{{- range $env, $runner := .Values.envs }}
 ---
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
-  name: runner-key-{{ $world }}
+  name: runner-key-{{ $env }}
 spec:
   provider: gke
   parameters:
     secrets: |
-      - resourceName: "projects/{{ required "project" $.Values.project }}/secrets/{{ required "secretPrefix" $.Values.secretPrefix }}runner-key-{{ $world }}/versions/latest"
+      - resourceName: "projects/{{ required "project" $.Values.project }}/secrets/{{ required "secretPrefix" $.Values.secretPrefix }}runner-key-{{ $env }}/versions/latest"
         path: "key"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: runner-{{ $world }}
+  name: runner-{{ $env }}
 spec:
   replicas: 1
   # One runner a world at a time: two would start every app twice.
   strategy: { type: Recreate }
-  selector: { matchLabels: { app: runner, world: {{ $world }} } }
+  selector: { matchLabels: { app: runner, world: {{ $env }} } }
   template:
-    metadata: { labels: { app: runner, world: {{ $world }} } }
+    metadata: { labels: { app: runner, world: {{ $env }} } }
     spec:
       serviceAccountName: runner
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
@@ -67,7 +67,7 @@ spec:
             - { name: PINECALL_RUNNER_IMAGE, value: {{ $.Values.appImage | quote }} }
             - { name: PINECALL_RUNNER_RUNTIME_CLASS, value: {{ $.Values.runtimeClass | quote }} }
             - { name: PINECALL_RUNNER_NAMESPACE, value: {{ $.Values.appsNamespace | quote }} }
-            - { name: PINECALL_RUNNER_SOURCES_URL, value: "http://{{ required (printf "worlds.%s.address" $world) $runner.address }}:8080" }
+            - { name: PINECALL_RUNNER_SOURCES_URL, value: "http://{{ required (printf "envs.%s.address" $env) $runner.address }}:8080" }
             - { name: PINECALL_RUNNER_LISTEN, value: 0.0.0.0 }
             - { name: PINECALL_RUNNER_PORT, value: "8080" }
           ports: [{ name: sources, containerPort: 8080 }]
@@ -88,14 +88,14 @@ spec:
           csi:
             driver: secrets-store-gke.csi.k8s.io
             readOnly: true
-            volumeAttributes: { secretProviderClass: runner-key-{{ $world }} }
+            volumeAttributes: { secretProviderClass: runner-key-{{ $env }} }
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: runner-{{ $world }}
+  name: runner-{{ $env }}
 spec:
   clusterIP: {{ $runner.address }}
-  selector: { app: runner, world: {{ $world }} }
+  selector: { app: runner, world: {{ $env }} }
   ports: [{ name: sources, port: 8080, targetPort: 8080 }]
 {{- end }}

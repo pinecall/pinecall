@@ -12,35 +12,35 @@ REDIS_PORT ?= 56379
 LOCAL_REDIS = redis://127.0.0.1:$(REDIS_PORT)/1
 T        ?= tests
 
-# A world's cluster: one Terraform root for every cluster ($(INFRA)/terraform/cluster), told which
-# one by ENV (its name, its variables, its state, its own data directory), and the operator's
+# The cluster both envs run on: one Terraform root for every cluster ($(INFRA)/terraform/cluster), told
+# which one by CLUSTER (its name, its variables, its state, its own data directory), and the operator's
 # own of it, which no public tree holds: OPS (PINECALL_OPS, else ../../ops, beside the
-# repository's checkout) has <ENV>.mk (PROJECT, and REGION, ZONE or CONTEXT where they are not
-# these), values/<ENV>.yaml ($(INFRA)/values/example.yaml is one), values/<ENV>.terraform.json
-# (written by `make values`) and terraform/<ENV>.tfvars and
-# <ENV>.backend.hcl. Google's credentials are the gcloud
+# repository's checkout) has <CLUSTER>.mk (PROJECT, and REGION, ZONE or CONTEXT where they are not
+# these), values/<CLUSTER>.yaml ($(INFRA)/values/example.yaml is one), values/<CLUSTER>.terraform.json
+# (written by `make values`) and terraform/<CLUSTER>.tfvars and
+# <CLUSTER>.backend.hcl. Google's credentials are the gcloud
 # login's, handed over as a short-lived token in the environment, never printed.
-ENV      ?= staging
+CLUSTER  ?= staging
 OPS      ?= $(abspath $(or $(PINECALL_OPS),../../ops))
 # The repository's infra/: the charts, the images, the Terraform, beside this package.
 INFRA    ?= ../infra
--include $(OPS)/$(ENV).mk
-VALUES    = $(OPS)/values/$(ENV).yaml
+-include $(OPS)/$(CLUSTER).mk
+VALUES    = $(OPS)/values/$(CLUSTER).yaml
 # What Terraform made, as the charts read it (`make values`); the operator's own file, read after
 # it, holds decisions alone and wins where both speak.
-TF_VALUES = $(OPS)/values/$(ENV).terraform.json
+TF_VALUES = $(OPS)/values/$(CLUSTER).terraform.json
 CHART_VALUES = -f $(TF_VALUES) -f $(VALUES)
 REGION   ?= us-central1
 ZONE     ?= $(REGION)-c
-CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(ENV)
+CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(CLUSTER)
 TF_ROOT   = $(abspath $(INFRA)/terraform/cluster)
 # Each cluster keeps its own data directory: the one root is initialised against two states.
-TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(ENV) terraform -chdir=$(TF_ROOT)
-TF_PLAN   = $(TF_ROOT)/$(ENV).plan
+TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(CLUSTER) terraform -chdir=$(TF_ROOT)
+TF_PLAN   = $(TF_ROOT)/$(CLUSTER).plan
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
 TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/terraform/cluster
 
-check:            ## ruff (lint, format), pyright and mypy strict, alembic check, the suites with no database; terraform's form
+check:           ## ruff (lint, format), pyright and mypy strict, alembic check, the suites with no database; terraform's form
 	uv run ruff check . && uv run ruff format --check .
 	uv run pyright && uv run mypy src
 	uv run pytest -q -n auto tests/conventions tests/wire
@@ -55,39 +55,49 @@ tf-check:         ## every root module formatted and valid, with no backend reac
 	  TF_DATA_DIR=$$data terraform -chdir=$$root validate -no-color >/dev/null || exit 1; \
 	done
 
-tf-init:          ## ENV=staging: the root module's providers and its state in the bucket
-	$(TF_AUTH) $(TF) init -input=false -backend-config=$(OPS)/terraform/$(ENV).backend.hcl
+# ENV is an org's env (production or sandbox) and `make fleet` alone takes one. Until 2026-11-12 it
+# named the cluster, so a target of a cluster that is given ENV, on the command line or by the
+# environment, refuses: obeyed, it would act on the default cluster, whatever ENV said.
+OF_A_CLUSTER = tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback hosting restore-from-box logs
+$(OF_A_CLUSTER): cluster-not-env
+cluster-not-env:
+ifneq ($(filter command environment,$(origin ENV)),)
+	$(error make $(MAKECMDGOALS): the cluster is CLUSTER= since 2026-11-12, and ENV= is an org's env, which `make fleet` alone takes)
+endif
+
+tf-init:          ## CLUSTER=staging: the root module's providers and its state in the bucket
+	$(TF_AUTH) $(TF) init -input=false -backend-config=$(OPS)/terraform/$(CLUSTER).backend.hcl
 
 # The networks the gateway approved for SIP, where the plan reads them: a versioned file of the
 # operator's own, so a checkout never lacks it and a change to it is read as a diff before a plan.
 # Written whole or not at all: a gateway that does not answer leaves the file as it was.
-tf-fence:         ## ENV=…: the fence's networks, from the running gateway into ops/terraform/<env>.fence.tfvars.json
-	@fence=$(OPS)/terraform/$(ENV).fence.tfvars.json; \
+tf-fence:         ## CLUSTER=…: the fence's networks, from the running gateway into ops/terraform/<cluster>.fence.tfvars.json
+	@fence=$(OPS)/terraform/$(CLUSTER).fence.tfvars.json; \
 	kubectl --context $(CONTEXT) exec deploy/pinecall-gateway -- pinecall-runtime fence export > $$fence.new && \
 	  mv $$fence.new $$fence || { rm -f $$fence.new; echo "tf-fence: the gateway did not answer; $$fence is unchanged" >&2; exit 1; }
-	@git -C $(OPS) --no-pager diff --stat -- terraform/$(ENV).fence.tfvars.json
+	@git -C $(OPS) --no-pager diff --stat -- terraform/$(CLUSTER).fence.tfvars.json
 
 # Saved, so what is applied is exactly what was read. A plan that deletes or replaces anything is
 # not kept unless that was asked for (REMOVES=yes): a plan that removes what nobody asked to remove
 # means an input is missing, and the thing to do is find it, never to apply around it.
-tf-plan:          ## ENV=… [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
-	$(TF_AUTH) $(TF) plan -input=false -var name=$(ENV) -var-file=$(OPS)/terraform/$(ENV).tfvars \
-	  -var-file=$(OPS)/terraform/$(ENV).fence.tfvars.json -out=$(TF_PLAN)
+tf-plan:          ## CLUSTER=… [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
+	$(TF_AUTH) $(TF) plan -input=false -var name=$(CLUSTER) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
+	  -var-file=$(OPS)/terraform/$(CLUSTER).fence.tfvars.json -out=$(TF_PLAN)
 	@$(TF) show -json $(TF_PLAN) | scripts/plan-removals || [ "$(REMOVES)" = yes ] || \
 	  { rm -f $(TF_PLAN); echo "tf-plan: this plan removes the above and was not kept. An input is missing, or the removal is meant: REMOVES=yes" >&2; exit 2; }
 
 # The plan holds the state it was made from, the drawn secrets in clear among it: gone once applied.
-tf-apply:         ## ENV=…: the saved plan applied, after it was read, and then deleted
+tf-apply:         ## CLUSTER=…: the saved plan applied, after it was read, and then deleted
 	$(TF_AUTH) $(TF) apply -input=false $(TF_PLAN); status=$$?; rm -f $(TF_PLAN); exit $$status
 
 # The cluster's names, addresses, ranges and identities, from Terraform's state into the values the
 # charts read: nothing Terraform made is typed again by hand. Run after an apply; the file is the
 # operator's and versioned there, so what changed is read as a diff. Written whole or not at all.
-values:           ## ENV=…: what Terraform made, as the charts' values, into ops/values/<env>.terraform.json
+values:           ## CLUSTER=…: what Terraform made, as the charts' values, into ops/values/<cluster>.terraform.json
 	@$(TF_AUTH) $(TF) output -json chart_values | python3 -m json.tool --sort-keys > $(TF_VALUES).new && \
 	  [ -s $(TF_VALUES).new ] && mv $(TF_VALUES).new $(TF_VALUES) || \
-	  { rm -f $(TF_VALUES).new; echo "make values: the state has no chart_values; make tf-apply ENV=$(ENV) first" >&2; exit 1; }
-	@git -C $(OPS) --no-pager diff --stat -- values/$(ENV).terraform.json
+	  { rm -f $(TF_VALUES).new; echo "make values: the state has no chart_values; make tf-apply CLUSTER=$(CLUSTER) first" >&2; exit 1; }
+	@git -C $(OPS) --no-pager diff --stat -- values/$(CLUSTER).terraform.json
 
 # The runtime whole on this laptop (`pinecall-runtime local`): Postgres, Redis and LiveKit in docker, the
 # gateway and a worker from the checkout, on the settings `make local` wrote to .local/env.
@@ -150,8 +160,8 @@ image:           ## the runtime's container image, TAG=<commit>, built from that
 # Every suite inside the cluster, against its Postgres (CloudNativePG, the application user, no
 # superuser) and a Redis made for the run: the checkout's files as they are now, built
 # by Cloud Build like the runtime's image; the Job's log is the result.
-suite:            ## ENV=…: every suite as a Job on the cluster, TAG=<commit>; its log printed
-ifeq ($(ENV),production)
+suite:            ## CLUSTER=…: every suite as a Job on the cluster, TAG=<commit>; its log printed
+ifeq ($(CLUSTER),production)
 	$(error make suite runs every suite against the cluster's own Postgres: never production's)
 endif
 	rm -rf .suite && mkdir .suite
@@ -173,18 +183,18 @@ endif
 HELM      = helm --kube-context $(CONTEXT)
 CHARTS    = $(INFRA)/charts
 
-diff:             ## ENV=… TAG=<commit>: what releasing each chart would change, nothing touched (needs the helm-diff plugin)
+diff:             ## CLUSTER=… TAG=<commit>: what releasing each chart would change, nothing touched (needs the helm-diff plugin)
 	@$(HELM) plugin list | grep -q '^diff' || \
 	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
 	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge $(CHART_VALUES)
 	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES)
 	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) $(IMAGE)
 
-edge:             ## ENV=…: charts/edge released: the front door, its routes and certificates
+edge:             ## CLUSTER=…: charts/edge released: the front door, its routes and certificates
 	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge $(CHART_VALUES) --rollback-on-failure --timeout 10m
 
 # A change to the instance's spec restarts the only instance: in a window, its diff read first.
-postgres:         ## ENV=…: charts/postgres released, and waited for until the database is ready
+postgres:         ## CLUSTER=…: charts/postgres released, and waited for until the database is ready
 	$(HELM) upgrade --install pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES) --rollback-on-failure --timeout 10m
 	kubectl --context $(CONTEXT) wait cluster/pinecall-postgres --for=condition=Ready --timeout=600s
 
@@ -199,46 +209,46 @@ deploy-guards:
 	  { echo "make deploy: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
 	@standing=$$($(HELM) status pinecall -o json 2>/dev/null | python3 -c 'import json, sys; print(json.load(sys.stdin)["info"]["status"])' 2>/dev/null); \
 	  case "$$standing" in pending-*) \
-	    echo "make deploy: the release is $$standing, left by a deploy that was cut; make rollback ENV=$(ENV) first" >&2; exit 2;; esac
+	    echo "make deploy: the release is $$standing, left by a deploy that was cut; make rollback CLUSTER=$(CLUSTER) first" >&2; exit 2;; esac
 
 # Helm goes back to the release that ran, by itself, when the upgrade fails or is cut. The migrations
 # it ran are not undone: a revision is written so the release before it still runs on its schema.
 # The name the live suite knocks at is asked of the cluster, which is where it is served.
-deploy: deploy-guards  ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
+deploy: deploy-guards  ## CLUSTER=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
 	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
 	  $(IMAGE) --rollback-on-failure --timeout 20m
 	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
 	  uv run pytest -q tests/live
 
-rollback:         ## ENV=… [REV=<n>]: charts/pinecall back to the release before this one, or to revision REV
+rollback:         ## CLUSTER=… [REV=<n>]: charts/pinecall back to the release before this one, or to revision REV
 	$(HELM) history pinecall --max 5
 	$(HELM) rollback pinecall $(REV) --wait --timeout 20m
 
-# How many scaled workers a world keeps warm (32 seats and an e2-standard-8 each, ~US$195 a month),
-# changed in one line: the values' `workers.scaled.<WORLD>` written, and committed where OPS is a
+# How many scaled workers an env keeps warm (32 seats and an e2-standard-8 each, ~US$195 a month),
+# changed in one line: the values' `envs.<ENV>.workers.scaled` written, and committed where OPS is a
 # git repository (scripts/fleet), then charts/pinecall released again at the image that runs. No image and no
 # code go out, so the chart here must be the one that image's commit released.
-fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that many scaled workers kept warm, at the image that runs
-	@[ -n "$(WORLD)" ] && [ -n "$(MIN)" ] || { echo "make fleet: WORLD=sandbox|production MIN=<n>, and MOST=<n> for the ceiling" >&2; exit 2; }
-	scripts/fleet $(VALUES) $(WORLD) $(MIN) $(MOST)
+fleet:            ## CLUSTER=… ENV=sandbox|production MIN=<n> [MOST=<n>]: that many scaled workers kept warm, at the image that runs
+	@[ -n "$(ENV)" ] && [ -n "$(MIN)" ] || { echo "make fleet: ENV=sandbox|production MIN=<n>, and MOST=<n> for the ceiling" >&2; exit 2; }
+	scripts/fleet $(VALUES) $(ENV) $(MIN) $(MOST)
 	@set -- $$(helm get values pinecall --kube-context $(CONTEXT) -o json \
 	  | python3 -c 'import json, sys; image = json.load(sys.stdin)["image"]; print(image["tag"], image.get("digest", ""))'); \
 	running=$$1; pinned=$$2; \
 	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
-	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
+	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy CLUSTER=$(CLUSTER)" >&2; exit 2; }; \
 	$(HELM) upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
 	  --set image.repository=$(REGISTRY)/runtime --set image.tag=$$running \
 	  $${pinned:+--set image.digest=$$pinned} --rollback-on-failure --timeout 10m
 
-# The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
+# The hosting cluster (modules/hosting, when the cluster has one): the runners of both envs,
 # at TAG=<commit>, the same image as the runtime's. Its context is the regional Autopilot cluster's.
-HOSTING   = gke_$(PROJECT)_$(REGION)_pinecall-$(ENV)-hosting
-hosting:          ## ENV=…: charts/hosting released on the hosting cluster at TAG=<commit>
-	gcloud container clusters get-credentials pinecall-$(ENV)-hosting --region $(REGION) \
+HOSTING   = gke_$(PROJECT)_$(REGION)_pinecall-$(CLUSTER)-hosting
+hosting:          ## CLUSTER=…: charts/hosting released on the hosting cluster at TAG=<commit>
+	gcloud container clusters get-credentials pinecall-$(CLUSTER)-hosting --region $(REGION) \
 	  --project $(PROJECT) >/dev/null
 	helm upgrade --install pinecall-hosting $(INFRA)/charts/hosting --kube-context $(HOSTING) \
 	  --namespace pinecall-runner --create-namespace \
-	  -f $(OPS)/values/hosting-$(ENV).yaml $(IMAGE) \
+	  -f $(OPS)/values/hosting-$(CLUSTER).yaml $(IMAGE) \
 	  --wait --timeout 15m
 
 # A box's database into the cluster's Postgres, once, at its cutover (and its rehearsal on
@@ -250,8 +260,8 @@ hosting:          ## ENV=…: charts/hosting released on the hosting cluster at 
 BOX      ?=
 PG        = kubectl --context $(CONTEXT) exec -i pinecall-postgres-1 -c postgres --
 DUMP      = /var/lib/postgresql/data/box.dump
-restore-from-box: ## ENV=…: the box's database restored into the cluster's Postgres (BOX=<ssh alias>)
-ifeq ($(ENV),production)
+restore-from-box: ## CLUSTER=…: the box's database restored into the cluster's Postgres (BOX=<ssh alias>)
+ifeq ($(CLUSTER),production)
 	$(error make restore-from-box empties the cluster's schema first: never on production)
 endif
 	@[ -n "$(BOX)" ] || { echo "make restore-from-box: BOX=<the box's ssh alias>" >&2; exit 2; }
@@ -265,8 +275,8 @@ endif
 	  status=$$?; rm -f $(DUMP) $(DUMP).list; exit $$status'
 	$(PG) psql -d pinecall -At -c 'select count(*) from call_log' -c 'select count(*) from schema_migrations'
 
-logs:             ## ENV=…: the gateways' and the workers' logs of the last hour
+logs:             ## CLUSTER=…: the gateways' and the workers' logs of the last hour
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs
+.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs cluster-not-env

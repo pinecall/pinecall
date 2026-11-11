@@ -1,4 +1,4 @@
-# One release per world-pair: production and sandbox share a cluster, one gateway and one database.
+# One release per pair of envs: production and sandbox share a cluster, one gateway and one database.
 
 # The registry's runtime image (the operator's values). The tag is the commit `make deploy` gives,
 # and the digest (`sha256:…`) is what the registry holds for it, which `make deploy` asks: with it a
@@ -8,16 +8,44 @@ image:
   tag: ""
   digest: ""
 
-# The one name both worlds are served at (PINECALL_DOMAIN): the world of a request is its key's
+# The one name both envs are served at (PINECALL_DOMAIN): the env of a request is its key's
 # or its header's, never the name's.
 domain: ""
 # The domain the apps' own pages are served under, one label each (`<app>--<org>.<pages>`): a wildcard
 # name and certificate of terraform/modules/edge (`pages`). Empty, no app has a page.
 pages: ""
 
-fleets:
-  production: pinecall
-  sandbox: pinecall-sandbox
+# The two envs of every org, and what each one's part of the cluster is told. Their pods are still
+# labelled `world: <env>`, the word these charts used until 2026-11-12 (charts/hosting's runners
+# too): a Deployment's selector cannot be changed, only the Deployment made again, LiveKit's and
+# SIP's included, which cuts the calls in progress.
+envs:
+  production:
+    # The fleet the env's workers join (PINECALL_FLEET).
+    fleet: pinecall
+    # The name a carrier sends the env's calls to (PINECALL_SIP_DOMAIN, ..._SANDBOX_SIP_DOMAIN):
+    # the env's media address, since the box's name is Google's HTTPS load balancer, which carries
+    # no SIP. Unset, the box's name.
+    sipDomain: ""
+    # The env's media address (terraform/modules/edge, media_addresses): kubeip gives it to the
+    # env's media node by the address's label (pinecall-media=<cluster>-<env>), and the env's
+    # LiveKit and SIP announce it. Unset, they announce the node's ephemeral address.
+    mediaAddress: ""
+    # The env's workers on its media node (`core`), and the ones KEDA scales on its own workers
+    # pool from `min` on the gateway's own number (GET /v1/fleet/wanted); `most` is the pool's
+    # ceiling (terraform/modules/gke, workers_max), and `min` how many are kept warm whatever the
+    # calls — one is a node of the pool always up, for a burst that cannot wait the minute or two
+    # a node takes.
+    workers:
+      core: { replicas: 2, seats: 2 }
+      scaled: { seats: 32, most: 10, min: 0 }
+  sandbox:
+    fleet: pinecall-sandbox
+    sipDomain: ""
+    mediaAddress: ""
+    workers:
+      core: { replicas: 2, seats: 1 }
+      scaled: { seats: 32, most: 3, min: 0 }
 
 # The cloud's secret store, synced by External Secrets Operator: `provider` is its
 # ClusterSecretStore's provider block as External Secrets takes it, whichever cloud
@@ -32,7 +60,7 @@ secrets:
   prefix: ""
   refresh: 1h
 
-# The class of the disks this chart claims (each world's media Redis); unset, the cluster's default.
+# The class of the disks this chart claims (each env's media Redis); unset, the cluster's default.
 storageClass: ""
 
 # CloudNativePG's application secret of the cluster's Postgres (charts/postgres).
@@ -54,12 +82,6 @@ media:
   # cluster's virtual interfaces too (the pods' bridge, the DNS cache's address) and takes its port
   # on these alone. Required.
   nodeNetwork: ""
-  # Each world's media address (terraform/modules/edge, media_addresses): kubeip gives it to the
-  # world's media node by the address's label (pinecall-media=<cluster>-<world>), and the world's
-  # LiveKit and SIP announce it. Unset, they announce the node's ephemeral address.
-  addresses:
-    production: ""
-    sandbox: ""
 
 gateway:
   replicas: 2
@@ -74,18 +96,6 @@ gateway:
   # The cluster's pods (terraform/modules/gke, pods_range): /metrics answers them (a forwarded
   # request never). Required.
   podNetwork: ""
-
-# Each world's workers on its media node, and the ones KEDA scales on its own workers pool from
-# `min` on the gateway's own number (GET /v1/fleet/wanted); `most` is the pool's ceiling
-# (terraform/modules/gke, workers_max), and `min` how many are kept warm whatever the calls — one
-# is a node of the pool always up, for a burst that cannot wait the minute or two a node takes.
-workers:
-  core:
-    production: { replicas: 2, seats: 2 }
-    sandbox: { replicas: 2, seats: 1 }
-  scaled:
-    production: { seats: 32, most: 10, min: 0 }
-    sandbox: { seats: 32, most: 3, min: 0 }
 
 # staging or production: the cluster this release is (modules/edge labels its addresses by it).
 cluster: ""
@@ -103,15 +113,8 @@ monitoring:
 kubeip:
   identity: ""
 
-# The names a carrier sends each world's calls to (PINECALL_SIP_DOMAIN, ..._SANDBOX_SIP_DOMAIN):
-# each world's media address, since the box's name is Google's HTTPS load balancer, which carries
-# no SIP. Unset, the box's name.
-sipDomains:
-  production: ""
-  sandbox: ""
-
 # The object store a finished recording moves to (docs/the-environment.md): unset, recordings stay
-# on the pod's disk and go with it. Its key is the world's `s3-access-key-id` and
+# on the pod's disk and go with it. Its key is the env's `s3-access-key-id` and
 # `s3-secret-access-key` in Secret Manager, put by the operator (terraform/modules/secrets, `given`).
 store:
   endpoint: ""

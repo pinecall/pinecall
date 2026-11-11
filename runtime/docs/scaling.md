@@ -97,7 +97,7 @@ the 0.7 line) at 42 % of the machine. **A call costs ~0.24 vCPU**, so a worker m
 That is a machine of workers alone. On a machine that also runs other services everything
 shares the cores: each environment's media node runs its LiveKit and SIP beside two core workers,
 of two seats in production (an e2-standard-4) and of one in the sandbox (an e2-standard-2)
-(`workers.core` in the chart's values), sized from the platform measured whole:
+(`envs.<env>.workers.core` in the chart's values), sized from the platform measured whole:
 
 **A deployment, measured whole.** On 2026-10-01, on a deployment of production's machine type (4 vCPU:
 Postgres, LiveKit, SIP, the room's recorder of the time (egress), two gateways and one worker on
@@ -378,7 +378,7 @@ once; down is one pod every five minutes, never sooner than ten minutes after th
 each pod let go drains its calls first (KEDA's `ScaledObject`, `charts/pinecall/templates/
 workers.yaml`). A pod with no node to go to waits for the cluster autoscaler, which makes a node of
 the pool for it and removes a node once it is empty; nothing else sizes the pool, and its ceiling
-is Terraform's (`workers_max`). The ceiling of the pods is `workers.scaled.<world>.most` in the
+is Terraform's (`workers_max`). The ceiling of the pods is `envs.<env>.workers.scaled.most` in the
 chart's values, and their floor `min`: a scaled worker kept warm whatever the calls, so a burst
 finds its 32 seats at once instead of waiting the minute or two its node takes (the sandbox's is
 1 since 2026-11-04, for ten simulations placed together; [Keeping workers warm](#keeping-workers-warm)
@@ -419,30 +419,30 @@ first empty node at 23:30 and marked the second at 23:38, the workers pool back 
 
 ## Keeping workers warm
 
-Each world's scaled workers are one line of the chart's values, `workers.scaled.<world>`:
+Each env's scaled workers are one line of the chart's values, `envs.<env>.workers.scaled`:
 
 | key | what it is | what it costs |
 |---|---|---|
-| `min` | scaled workers kept up whatever the calls | one node of the world's workers pool each, always on: an e2-standard-8, about US$195 a month on demand |
+| `min` | scaled workers kept up whatever the calls | one node of the env's workers pool each, always on: an e2-standard-8, about US$195 a month on demand |
 | `most` | how many the fleet may grow to | nothing until the calls ask for them |
 | `seats` | calls one scaled worker takes at once | — |
 
 `make fleet` (the runtime's Makefile) changes that line and nothing else:
 
 ```
-make fleet ENV=production WORLD=sandbox MIN=1          # one warm worker of 32 seats
-make fleet ENV=production WORLD=sandbox MIN=0          # back to none: the fleet grows from the core alone
-make fleet ENV=production WORLD=production MIN=2 MOST=5
+make fleet CLUSTER=production ENV=sandbox MIN=1          # one warm worker of 32 seats
+make fleet CLUSTER=production ENV=sandbox MIN=0          # back to none: the fleet grows from the core alone
+make fleet CLUSTER=production ENV=production MIN=2 MOST=5
 ```
 
-It writes the line in the operator's values (`$(OPS)/values/<ENV>.yaml`), commits it there when
+It writes the line in the operator's values (`$(OPS)/values/<CLUSTER>.yaml`), commits it there when
 `$(OPS)` is a git repository, and releases `charts/pinecall` again at the image tag the release
 runs, read from Helm: no image is built and no code goes out. When the chart in this checkout
 differs from that image's commit it refuses and names `make image && make deploy`, since a chart
 the running image was not built with is a deploy, not a change of size. A value already written is
 released again all the same, and nothing moves.
 
-Measured on production on 2026-11-05, `WORLD=sandbox MIN=1` (already 1): 72 s from the command to
+Measured on production on 2026-11-05, `ENV=sandbox MIN=1` (already 1): 72 s from the command to
 Helm's revision, the ScaledObject at `min=1 max=3`, the warm worker and every other pod kept as
 they ran. A higher `MIN` starts its pods at once and each waits the minute or two its node takes;
 a lower one lets them go as a lower call count would, one every five minutes, never sooner than ten
@@ -462,7 +462,7 @@ expected and nothing is wrong.
 ```
 
 At 32 seats a scaled worker and 60 % busy, that is about 35 of them at the peak: for such a
-load, `workers.scaled.production.most: 35` in the chart's values and production's `workers_max` 35 in Terraform.
+load, `envs.production.workers.scaled.most: 35` in the chart's values and production's `workers_max` 35 in Terraform.
 The chart ships `most: 10` for production and `3` for the sandbox, and Terraform the same ceilings.
 
 The control plane, measured on 2026-10-01 with `pinecall-runtime load` from a machine of its own

@@ -1,21 +1,21 @@
-# Each world's LiveKit on its media node's own network (LiveKit's requirement: WebRTC needs the
+# Each env's LiveKit on its media node's own network (LiveKit's requirement: WebRTC needs the
 # node's address and ports, and it supports no private cluster), one at a time: two would contend
-# for the same ports, so a new one comes up only once the old one is gone. A world's rooms never
+# for the same ports, so a new one comes up only once the old one is gone. An env's rooms never
 # reach the other's machine. Its config, which holds the API pair and Redis's password, is a
 # Secret (secrets.yaml).
-{{- range $world, $fleet := .Values.fleets }}
+{{- range $env, $_ := .Values.envs }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pinecall-livekit-{{ $world }}
+  name: pinecall-livekit-{{ $env }}
 spec:
   replicas: 1
   strategy: { type: Recreate }
-  selector: { matchLabels: { app: pinecall-livekit, world: {{ $world }} } }
+  selector: { matchLabels: { app: pinecall-livekit, world: {{ $env }} } }
   template:
     metadata:
-      labels: { app: pinecall-livekit, world: {{ $world }} }
+      labels: { app: pinecall-livekit, world: {{ $env }} }
       # One instance holds every call of its world, so a release never restarts it on its own: its
       # config, the Secret External Secrets writes, is read at start and applied by `kubectl
       # rollout restart` at an hour with no call; a new image is the same (on staging, 2026-10-03,
@@ -24,7 +24,7 @@ spec:
       hostNetwork: true
       # On the node's network, the cluster's names still resolve: the gateway's Service, Redis's.
       dnsPolicy: ClusterFirstWithHostNet
-      {{- include "pinecall.onMedia" $world | nindent 6 }}
+      {{- include "pinecall.onMedia" $env | nindent 6 }}
       terminationGracePeriodSeconds: 600
       # Its ports are all above 1024, so no capability; it writes no file.
       {{- include "pinecall.podSecurityAs" 10001 | nindent 6 }}
@@ -47,15 +47,15 @@ spec:
         - name: config
           secret:
             secretName: pinecall-media
-            items: [{ key: livekit-{{ $world }}.yaml, path: livekit.yaml }]
+            items: [{ key: livekit-{{ $env }}.yaml, path: livekit.yaml }]
 ---
-# Signalling inside the cluster (the gateways, SIP, the world's workers) and, through the Gateway,
+# Signalling inside the cluster (the gateways, SIP, the env's workers) and, through the Gateway,
 # from outside: production's at /rtc and the rest, the sandbox's under /sandbox (charts/edge).
 apiVersion: v1
 kind: Service
 metadata:
-  name: pinecall-livekit-{{ $world }}
+  name: pinecall-livekit-{{ $env }}
 spec:
-  selector: { app: pinecall-livekit, world: {{ $world }} }
+  selector: { app: pinecall-livekit, world: {{ $env }} }
   ports: [{ name: http, port: 7880, targetPort: 7880 }]
 {{- end }}

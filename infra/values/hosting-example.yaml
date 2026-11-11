@@ -1,5 +1,5 @@
 # An operator's values for charts/hosting (modules/hosting, the cluster root's `hosting`
-# output): copy it into your OPS directory as values/hosting-<env>.yaml and replace every example.
+# output): copy it into your OPS directory as values/hosting-<cluster>.yaml and replace every example.
 project: my-project
 secretPrefix: example-production-
 serviceAccount: example-production-runner@my-project.iam.gserviceaccount.com
@@ -7,6 +7,6 @@ gatewayUrl: https://voice.example.com
 image:
   repository: us-central1-docker.pkg.dev/my-project/pinecall/runtime
 # Fixed addresses of the hosting cluster's services range (hosting_ranges.services).
-worlds:
+envs:
   production: { address: 10.132.15.200 }
   sandbox: { address: 10.132.15.201 }

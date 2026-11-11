@@ -2,7 +2,7 @@
 
 variable "name" {
   type        = string
-  description = "The cluster's name, carried by everything made for it (pinecall-<name>). `make` gives it as ENV, which also picks the variables and the state, so the three cannot disagree."
+  description = "The cluster's name, carried by everything made for it (pinecall-<name>). `make` gives it as CLUSTER, which also picks the variables and the state, so the three cannot disagree."
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{1,20}$", var.name))
@@ -133,7 +133,7 @@ variable "hosting" {
 }
 
 # The hosting cluster's, apart from the cluster's (modules/hosting); its runners take fixed
-# addresses of `services` (charts/hosting, worlds).
+# addresses of `services` (charts/hosting, envs).
 variable "hosting_ranges" {
   type        = object({ nodes = string, pods = string, services = string })
   description = "The hosting cluster's private ranges, each a CIDR; asked for when `hosting` is on."

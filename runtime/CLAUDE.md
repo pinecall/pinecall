@@ -17,12 +17,12 @@ make check                        ruff (lint and format), pyright strict, mypy, 
 make test [T=tests/calls]         every suite on a local Postgres and Redis (colima; `make db`)
 uv run alembic check              the models are the schema (empty diff)
 make image                        the runtime's image at this commit
-make diff ENV=<env>               what releasing each chart would change, nothing touched
-make deploy ENV=<env>             charts/pinecall released at that image (guarded, rolled back if it fails), then the live suite
-make edge|postgres ENV=<env>      the front door's chart, Postgres's chart: released when they change
-make rollback ENV=<env>           charts/pinecall back to the release before this one
-make fleet ENV=<env> WORLD=<world> MIN=<n>   that world keeps n scaled workers warm, at the image that runs
-make logs ENV=<env>               the gateways' and the workers' logs of the last hour
+make diff CLUSTER=<cluster>       what releasing each chart would change, nothing touched
+make deploy CLUSTER=<cluster>     charts/pinecall released at that image (guarded, rolled back if it fails), then the live suite
+make edge|postgres CLUSTER=<cluster>  the front door's chart, Postgres's chart: released when they change
+make rollback CLUSTER=<cluster>   charts/pinecall back to the release before this one
+make fleet CLUSTER=<cluster> ENV=<env> MIN=<n>   that env keeps n scaled workers warm, at the image that runs
+make logs CLUSTER=<cluster>       the gateways' and the workers' logs of the last hour
 ```
 
 No suite runs on the laptop (`~/.claude/CLAUDE.md`): `~/pinecall-v2/tools/remote-test [pytest args]`

@@ -5,7 +5,7 @@
 {{ required "image.repository" .Values.image.repository }}:{{ required "image.tag: the commit the runtime image was built from" .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}
 {{- end -}}
 
-{{/* A world's media node: its pool's selector and the toleration of its taint (modules/gke). */}}
+{{/* An env's media node: its pool's selector and the toleration of its taint (modules/gke). */}}
 {{- define "pinecall.onMedia" -}}
 nodeSelector: { pinecall.io/pool: media-{{ . }} }
 tolerations:

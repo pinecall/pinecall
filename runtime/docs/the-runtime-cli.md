@@ -335,8 +335,8 @@ fence export
 
 The networks 5060 opens to, Twilio's first, then the carriers the operator admits and the
 addresses he approved ([telephony.md](telephony.md), "The fence, twice"), as Terraform reads them:
-`{"sip_sources": [...]}`. `make tf-fence ENV=<env>` runs it on the gateway and writes
-`terraform/<env>.fence.tfvars.json` in the operator's own directory (the orgs' addresses: versioned
+`{"sip_sources": [...]}`. `make tf-fence CLUSTER=<cluster>` runs it on the gateway and writes
+`terraform/<cluster>.fence.tfvars.json` in the operator's own directory (the orgs' addresses: versioned
 there, never in this repository); `make tf-plan` reads that file and refuses to plan without it,
 and `make tf-apply` brings the cloud's firewall level with the platform.
 
@@ -392,7 +392,7 @@ PINECALL_GATEWAY_URL=https://<staging's sandbox name> PINECALL_WORKER_KEY=<its s
   --calls 500 --ramp 60 --minutes 5
 ```
 
-It runs against **a cluster made for it** (staging, `make deploy ENV=staging`), never
+It runs against **a cluster made for it** (staging, `make deploy CLUSTER=staging`), never
 production's: the calls are real calls of the org, logged, counted against its quotas and
 sealed. The org is one made for the run, with its sandbox quotas (`orgs quota --env sandbox`)
 above the run and its hang-up judging off (`PUT /v1/org/judging`), or every seal asks the platform's

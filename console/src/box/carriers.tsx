@@ -10,8 +10,8 @@ import { CarrierPanel, NumbersAccountSection, TestLineSection } from "./carriers
 import { admitCarrier, answerAsk, readAsks, readCarriers, type Ask, type CatalogCarrier } from "./telephony-door";
 import { Head, OperatorPage, OrgLink, useDoor } from "./telephony-parts";
 
-const EXPORT = "make tf-fence ENV=<env>";
-const APPLY = "make tf-plan ENV=<env> && make tf-apply ENV=<env>";
+const EXPORT = "make tf-fence CLUSTER=<cluster>";
+const APPLY = "make tf-plan CLUSTER=<cluster> && make tf-apply CLUSTER=<cluster>";
 
 const many = (count: number, one: string, more: string): string => `${count} ${count === 1 ? one : more}`;
 
