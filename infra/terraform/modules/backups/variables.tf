@@ -18,3 +18,8 @@ variable "postgres_service_accounts" {
   description = "The Kubernetes service accounts that act as the backups' identity: namespace/name."
   default     = ["default/pinecall-postgres", "default/pinecall-postgres-restore"]
 }
+
+variable "workload_pool" {
+  type        = string
+  description = "The cluster's workload identity pool (modules/gke): where its ServiceAccounts are named."
+}

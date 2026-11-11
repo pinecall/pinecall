@@ -17,5 +17,5 @@ resource "google_project_iam_member" "messaging" {
 resource "google_service_account_iam_member" "notify" {
   service_account_id = google_service_account.notify.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${var.kubernetes_service_account}]"
+  member             = "serviceAccount:${var.workload_pool}[${var.kubernetes_service_account}]"
 }

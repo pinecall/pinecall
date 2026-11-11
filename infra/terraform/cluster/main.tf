@@ -1,11 +1,13 @@
 # One cluster of Pinecall: both worlds at one name. Which cluster it is, is its variables: `make`
-# gives `name` (ENV), and every name, address, range and account of the operator who runs it comes
+# gives `name` (CLUSTER), and every name, address, range and account of the operator who runs it comes
 # from their own <name>.tfvars, with the state in their own bucket (<name>.backend.hcl), both outside
 # this tree (OPS). Production and a staging made for a proof are the same code.
 
 locals {
+  # An org's two envs, each with its own media node, workers and runner.
+  envs = ["production", "sandbox"]
   # Each world's runner key, minted by the gateway (`keys runner`) and put by the operator.
-  runner_keys = var.hosting ? ["runner-key-production", "runner-key-sandbox"] : []
+  runner_keys = var.hosting ? [for env in local.envs : "runner-key-${env}"] : []
 }
 
 module "gke" {
@@ -34,15 +36,16 @@ module "edge" {
   pages          = var.pages
   # The fence's networks (ops/terraform/<name>.fence.tfvars.json, `make tf-fence`), and the lab's
   # generator while it stands.
+  media_tag   = module.gke.media_tag
   sip_sources = concat(var.sip_sources, [for lab in module.lab : "${lab.public_address}/32"])
 }
 
 module "secrets" {
-  source     = "../modules/secrets"
-  project    = var.project
-  name       = var.name
-  given      = concat(var.given_secrets, local.runner_keys)
-  depends_on = [module.gke]
+  source        = "../modules/secrets"
+  project       = var.project
+  name          = var.name
+  workload_pool = module.gke.workload_pool
+  given         = concat(var.given_secrets, local.runner_keys)
 }
 
 # After the cluster and its pools: a chart waits for its pods, which need a node to run on.
@@ -53,16 +56,18 @@ module "addons" {
 }
 
 module "backups" {
-  source  = "../modules/backups"
-  project = var.project
-  name    = var.name
-  region  = var.region
+  source        = "../modules/backups"
+  workload_pool = module.gke.workload_pool
+  project       = var.project
+  name          = var.name
+  region        = var.region
 }
 
 module "kubeip" {
-  source  = "../modules/kubeip"
-  project = var.project
-  name    = var.name
+  source        = "../modules/kubeip"
+  workload_pool = module.gke.workload_pool
+  project       = var.project
+  name          = var.name
 }
 
 module "alerts" {
@@ -85,6 +90,7 @@ module "notify" {
   project          = var.project
   name             = var.name
   firebase_project = var.firebase_project
+  workload_pool    = module.gke.workload_pool
 }
 
 module "hosting" {
@@ -96,7 +102,7 @@ module "hosting" {
   nodes_range    = var.hosting_ranges.nodes
   pods_range     = var.hosting_ranges.pods
   services_range = var.hosting_ranges.services
-  runner_keys    = { for world in ["production", "sandbox"] : world => module.secrets.ids["runner-key-${world}"] }
+  runner_keys    = { for env in local.envs : env => module.secrets.ids["runner-key-${env}"] }
 }
 
 module "lab" {

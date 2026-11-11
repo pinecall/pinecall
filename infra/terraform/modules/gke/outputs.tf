@@ -19,3 +19,13 @@ output "endpoint" {
 output "ca_certificate" {
   value = google_container_cluster.this.master_auth[0].cluster_ca_certificate
 }
+
+# The pool a Kubernetes ServiceAccount is named in when it acts as a Google identity. Read from
+# the cluster, so whoever binds one waits for the cluster by needing this, not by being told to.
+output "workload_pool" {
+  value = google_container_cluster.this.workload_identity_config[0].workload_pool
+}
+
+output "media_tag" {
+  value = local.media_tag
+}

@@ -33,5 +33,5 @@ resource "google_project_iam_member" "kubeip" {
 resource "google_service_account_iam_member" "kubeip" {
   service_account_id = google_service_account.kubeip.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${var.kubernetes_service_account}]"
+  member             = "serviceAccount:${var.workload_pool}[${var.kubernetes_service_account}]"
 }

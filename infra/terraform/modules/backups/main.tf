@@ -44,7 +44,7 @@ resource "google_service_account_iam_member" "postgres_identity" {
   for_each           = toset(var.postgres_service_accounts)
   service_account_id = google_service_account.postgres.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${each.value}]"
+  member             = "serviceAccount:${var.workload_pool}[${each.value}]"
 }
 
 # The live identity's binding, from before the drill's was beside it: renamed, never unbound.

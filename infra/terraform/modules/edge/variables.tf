@@ -10,7 +10,6 @@ variable "network" {
 variable "media_tag" {
   type        = string
   description = "The network tag of the worlds' media pools (modules/gke)."
-  default     = "pinecall-gke-media"
 }
 
 variable "rtp_ports" {

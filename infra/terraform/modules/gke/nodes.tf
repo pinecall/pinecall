@@ -60,7 +60,7 @@ resource "google_container_node_pool" "media" {
     service_account = google_service_account.nodes.email
     oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
     labels          = { "pinecall.io/pool" = "media-${each.key}" }
-    tags            = ["pinecall-gke-${var.name}", "pinecall-gke-media"]
+    tags            = ["pinecall-gke-${var.name}", local.media_tag]
     taint {
       key    = "pinecall.io/pool"
       value  = "media-${each.key}"
@@ -114,4 +114,9 @@ resource "google_container_node_pool" "workers" {
     auto_repair  = true
     auto_upgrade = true
   }
+}
+
+locals {
+  # The network tag of every media node: the firewall's rules for media and SIP name it (modules/edge).
+  media_tag = "pinecall-gke-media"
 }

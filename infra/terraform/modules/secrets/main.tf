@@ -85,7 +85,7 @@ resource "google_secret_manager_secret_iam_member" "sync" {
 resource "google_service_account_iam_member" "sync" {
   service_account_id = google_service_account.sync.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${local.reader.namespace}/${local.reader.name}]"
+  member             = "serviceAccount:${var.workload_pool}[${local.reader.namespace}/${local.reader.name}]"
 }
 
 locals {
