@@ -255,8 +255,7 @@ variable "rtp_ports" {
 
 variable "sip_sources" {
   type        = list(string)
-  description = "The networks 5060 opens to: the carriers' signalling edges (and, in staging, the lab's generator)."
-  default     = []
+  description = "The networks 5060 opens to: the carriers' signalling edges (and, in staging, the lab's generator). Empty opens it to nobody."
 }
 
 variable "zone" {

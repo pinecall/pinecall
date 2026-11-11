@@ -63,7 +63,7 @@ module "edge" {
   point_services = var.point_services
   region         = var.region
   pages          = var.pages
-  # The fence's networks (sip_sources.auto.tfvars.json, `pinecall-runtime fence export`).
+  # The fence's networks (ops/terraform/production.fence.tfvars.json, `make tf-fence`).
   sip_sources = var.sip_sources
 }
 
@@ -157,11 +157,18 @@ variable "given_secrets" {
   default = ["vault-key", "ops-key"]
 }
 
-# Written by `pinecall-runtime fence export` into sip_sources.auto.tfvars.json: the orgs'
-# addresses, never committed. Unset, 5060 opens to nobody.
+# The networks the orgs' carriers call from, as the gateway approved them: written by `make tf-fence`
+# into ops/terraform/<env>.fence.tfvars.json, a file that is versioned there and read before a plan.
+# No default, on purpose: with one, a checkout that lacked the file planned the firewall's removal and
+# 5060 closed to every carrier (2026-10-21). A plan with no file fails; an env with no carrier says `[]`.
 variable "sip_sources" {
-  type    = list(string)
-  default = []
+  type        = list(string)
+  description = "The networks 5060 opens to, each a CIDR; an empty list opens it to nobody."
+
+  validation {
+    condition     = alltrue([for source in var.sip_sources : can(cidrnetmask(source)) || can(cidrhost(source, 0))])
+    error_message = "Each of sip_sources is a network in CIDR form (203.0.113.0/24, 2001:db8::/32)."
+  }
 }
 
 # Helm reaches the cluster as the gcloud login, by a token Terraform reads, never a stored file.

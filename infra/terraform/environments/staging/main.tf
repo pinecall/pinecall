@@ -59,7 +59,7 @@ module "edge" {
   sip_names = var.sip_names
   region    = var.region
   pages     = var.pages
-  # The fence's networks (sip_sources.auto.tfvars.json, `pinecall-runtime fence export`), and the
+  # The fence's networks (ops/terraform/staging.fence.tfvars.json, `make tf-fence`), and the
   # lab's generator while it stands.
   sip_sources = concat(var.sip_sources, [for lab in module.lab : "${lab.public_address}/32"])
 }
@@ -85,11 +85,18 @@ variable "sip_names" {
   description = "Each world's SIP name, at the world's media address: a carrier's alone (PINECALL_SIP_DOMAIN, PINECALL_SANDBOX_SIP_DOMAIN)."
 }
 
-# Written by `pinecall-runtime fence export` into sip_sources.auto.tfvars.json: the orgs'
-# addresses, never committed. Unset, 5060 opens to nobody.
+# The networks the orgs' carriers call from, as the gateway approved them: written by `make tf-fence`
+# into ops/terraform/<env>.fence.tfvars.json, a file that is versioned there and read before a plan.
+# No default, on purpose: with one, a checkout that lacked the file planned the firewall's removal and
+# 5060 closed to every carrier (2026-10-21). A plan with no file fails; an env with no carrier says `[]`.
 variable "sip_sources" {
-  type    = list(string)
-  default = []
+  type        = list(string)
+  description = "The networks 5060 opens to, each a CIDR; an empty list opens it to nobody."
+
+  validation {
+    condition     = alltrue([for source in var.sip_sources : can(cidrnetmask(source)) || can(cidrhost(source, 0))])
+    error_message = "Each of sip_sources is a network in CIDR form (203.0.113.0/24, 2001:db8::/32)."
+  }
 }
 
 # The voice lab beside the cluster, for a proof with calls (infra/lab): `-var lab=true`.

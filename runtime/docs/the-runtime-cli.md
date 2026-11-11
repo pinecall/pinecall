@@ -335,9 +335,10 @@ fence export
 
 The networks 5060 opens to, Twilio's first, then the carriers the operator admits and the
 addresses he approved ([telephony.md](telephony.md), "The fence, twice"), as Terraform reads them:
-`{"sip_sources": [...]}`. Written to
-`infra/terraform/environments/<env>/sip_sources.auto.tfvars.json` (the orgs' addresses, never
-committed), `make tf-plan` and `make tf-apply` bring the cloud's firewall level with the platform.
+`{"sip_sources": [...]}`. `make tf-fence ENV=<env>` runs it on the gateway and writes
+`terraform/<env>.fence.tfvars.json` in the operator's own directory (the orgs' addresses: versioned
+there, never in this repository); `make tf-plan` reads that file and refuses to plan without it,
+and `make tf-apply` brings the cloud's firewall level with the platform.
 
 ## `sip`
 

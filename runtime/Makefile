@@ -49,9 +49,19 @@ tf-check:         ## every root module formatted and valid, with no backend reac
 tf-init:          ## ENV=staging: the root module's providers and its state in the bucket
 	$(TF_AUTH) $(TF) init -input=false -backend-config=$(OPS)/terraform/$(ENV).backend.hcl
 
+# The networks the gateway approved for SIP, where the plan reads them: a versioned file of the
+# operator's own, so a checkout never lacks it and a change to it is read as a diff before a plan.
+# Written whole or not at all: a gateway that does not answer leaves the file as it was.
+tf-fence:         ## ENV=…: the fence's networks, from the running gateway into ops/terraform/<env>.fence.tfvars.json
+	@fence=$(OPS)/terraform/$(ENV).fence.tfvars.json; \
+	kubectl --context $(CONTEXT) exec deploy/pinecall-gateway -- pinecall-runtime fence export > $$fence.new && \
+	  mv $$fence.new $$fence || { rm -f $$fence.new; echo "tf-fence: the gateway did not answer; $$fence is unchanged" >&2; exit 1; }
+	@git -C $(OPS) --no-pager diff --stat -- terraform/$(ENV).fence.tfvars.json
+
 # Saved, so what is applied is exactly what was read.
 tf-plan:          ## ENV=…: what an apply would change, saved as its plan; "No changes." is the norm
-	$(TF_AUTH) $(TF) plan -input=false -var-file=$(OPS)/terraform/$(ENV).tfvars -out=plan
+	$(TF_AUTH) $(TF) plan -input=false -var-file=$(OPS)/terraform/$(ENV).tfvars \
+	  -var-file=$(OPS)/terraform/$(ENV).fence.tfvars.json -out=plan
 
 tf-apply:         ## ENV=…: the saved plan applied, after it was read
 	$(TF_AUTH) $(TF) apply -input=false plan
@@ -202,4 +212,4 @@ logs:             ## ENV=…: the gateways' and the workers' logs of the last ho
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-plan tf-apply image suite deploy fleet restore-from-box logs
+.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply image suite deploy fleet restore-from-box logs
