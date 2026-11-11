@@ -1,8 +1,9 @@
-"""The SQLAlchemy base every model declares on, the naming convention, and the column types."""
+"""The SQLAlchemy base every model declares on, the naming, the column types, and what a table keeps and for whom."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, override
+from typing import Any, ClassVar, override
 
 from pgvector.sqlalchemy import HALFVEC
 from sqlalchemy import TIMESTAMP, Dialect, MetaData, String, Text
@@ -29,11 +30,31 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+# What a table is to whoever must forget, hand over or re-seal what the box keeps. Each model says it of
+# itself, in the one file its author opens; nothing else names the table, so a new table cannot be left out:
+# a test fails on a model that says nothing. A row goes with its org by the foreign key's cascade; what goes
+# with one call, one agent or one contact is found by the column named here.
+@dataclass(frozen=True, slots=True)
+class Kept:
+    """What a table keeps: the columns that name whose a row is, what an export carries, and why a row stays."""
+
+    # The column that names the call a row came from (`call`, `source_call`, `log`), the agent, the contact.
+    call: str | None = None
+    agent: str | None = None
+    contact: str | None = None
+    # The columns an org's export carries; none, and `not_exported` says why.
+    exported: tuple[str, ...] = ()
+    not_exported: str = ""
+    # Why an erasure leaves the row, for a table that names an org, a call, an agent or a contact and stays.
+    outlives: str = ""
+
+
 class Model(DeclarativeBase):
     """Base of every table."""
 
     __abstract__ = True
     metadata = NAMING
+    __kept__: ClassVar[Kept]
 
     type_annotation_map = {
         dict[str, Any]: JSONB,
@@ -63,6 +84,14 @@ class StringEnum[E: StrEnum](TypeDecorator[E]):
     def process_result_value(self, value: str | None, dialect: Dialect) -> E | None:
         """The column's text to the enum."""
         return None if value is None else self.enum(value)
+
+
+# The same text column to the database (`alembic check` sees no change); the type is the declaration.
+class Sealed(TypeDecorator[str]):
+    """A column the vault seals: its text is ciphertext, re-sealed when the vault's key is rotated."""
+
+    impl = Text
+    cache_ok = True
 
 
 class Vector(HALFVEC):
