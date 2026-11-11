@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from runtime.billing import endpoints as billing
+from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 
 
@@ -12,4 +13,5 @@ def mount(app: FastAPI) -> None:
     """Mount every domain's router on the app."""
     app.include_router(platform.router)
     app.include_router(billing.router)
+    app.include_router(mail.router)
     app.include_router(platform.pages_router)

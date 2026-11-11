@@ -68,4 +68,5 @@ def test_what_the_vault_seals_is_typed_as_sealed(modules: dict[str, Module]) -> 
 
 
 def _goes_with_its_org(column: Column[Any]) -> bool:
-    return any(key.column.table.name == "orgs" and key.ondelete == "CASCADE" for key in column.foreign_keys)
+    # By the key's own words, not its resolved column: the org's table may be a domain not imported here.
+    return any(key.target_fullname == "orgs.id" and key.ondelete == "CASCADE" for key in column.foreign_keys)

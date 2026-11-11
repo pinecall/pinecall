@@ -22,6 +22,8 @@ from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling
 from runtime.livekit import open_servers
+from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
+from runtime.mail.service.outbox import Outbox
 from runtime.postgres import STATEMENT_TIMEOUT_MS, busy, create_engine, session_maker
 from runtime.redis import open_signal
 
@@ -32,6 +34,7 @@ logger = logging.getLogger(__name__)
 TOO_SLOW = "the database took more than {took:g} s to answer; try again"
 QUERY_CANCELED = "57014"
 INTERNAL = "the gateway failed to answer this request"
+NO_BOX_MAIL = "PINECALL_SMTP_URL does not read (%s): the box sends no email of its own"
 
 # Capacitor's WebView origins: iOS serves from capacitor://localhost, Android from https://localhost.
 THE_APPS_WEBVIEWS = ("capacitor://localhost", "https://localhost")
@@ -59,6 +62,7 @@ class State(TypedDict):
     handles: Handles
     closing: asyncio.Event
     loops: Loops
+    outbox: Outbox
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -69,7 +73,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         handles = await _connections(load_settings(), stack)
         loops = Loops()
         stack.push_async_callback(loops.stop)
-        yield State(handles=handles, closing=app.state.closing, loops=loops)
+        outbox = Outbox(handles.sessions, handles.vault, _box_mailbox(handles.settings))
+        stack.push_async_callback(outbox.drain)
+        yield State(handles=handles, closing=app.state.closing, loops=loops, outbox=outbox)
 
 
 async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
@@ -81,6 +87,16 @@ async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
     servers = await stack.enter_async_context(open_servers(settings))
     signal = await stack.enter_async_context(open_signal(settings))
     return Handles(settings, vault, http, servers, signal, engine, session_maker(engine))
+
+
+# A box without mail still starts: its emails are not sent, and /.well-known says so.
+def _box_mailbox(settings: Settings) -> Mailbox | None:
+    url = None if settings.smtp_url is None else settings.smtp_url.get_secret_value()
+    try:
+        return read_environment_mailbox(url, settings.mail_from)
+    except PinecallError as unreadable:
+        logger.warning(NO_BOX_MAIL, unreadable)
+        return None
 
 
 # Set from the signal handler, through the loop: streams never end on their own, and a stop would
