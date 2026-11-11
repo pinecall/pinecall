@@ -46,7 +46,8 @@ repository's checkout; a private repository is the place for it). The Makefile r
 | `OPS/` | what |
 |---|---|
 | `<env>.mk` | `PROJECT = <the Google Cloud project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<env>` |
-| `values/<env>.yaml` | every chart's values (`infra/values/example.yaml`, filled in): the name, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses Terraform made, the registry's images |
+| `values/<env>.terraform.json` | what Terraform made, as the charts read it: the names, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses. Written by `make values ENV=<env>` from the cluster root's `chart_values` output after an apply, never typed |
+| `values/<env>.yaml` | the decisions, read after it and winning where both speak: the registry's images, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
 | `values/hosting-<env>.yaml` | `charts/hosting`'s (`infra/values/hosting-example.yaml`) |
 | `terraform/<env>.tfvars` | the root's variables: the project, the DNS zone, the names, the SIP names, the ranges, services of your own, the secrets you put, who alerts mail |
 | `terraform/<env>.backend.hcl` | the state bucket and prefix (`bucket = "…"`, `prefix = "cluster/<env>"`), given to `make tf-init` |
@@ -70,6 +71,7 @@ $ make tf-init ENV=<env>
 $ make tf-fence ENV=<env>           # the networks the gateway approved for SIP, into the operator's own directory
 $ make tf-plan ENV=<env>            # read it; the plan is saved, unless it removes something nobody asked to remove
 $ make tf-apply ENV=<env>           # exactly the plan read, which is then deleted
+$ make values ENV=<env>             # what Terraform made, into the values the charts read; read its diff
 $ gcloud container clusters get-credentials pinecall-<env> --zone <zone>
 $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.yaml \
     --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \

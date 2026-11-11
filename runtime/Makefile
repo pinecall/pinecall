@@ -16,7 +16,8 @@ T        ?= tests
 # one by ENV (its name, its variables, its state, its own data directory), and the operator's
 # own of it, which no public tree holds: OPS (PINECALL_OPS, else ../../ops, beside the
 # repository's checkout) has <ENV>.mk (PROJECT, and REGION, ZONE or CONTEXT where they are not
-# these), values/<ENV>.yaml ($(INFRA)/values/example.yaml is one) and terraform/<ENV>.tfvars and
+# these), values/<ENV>.yaml ($(INFRA)/values/example.yaml is one), values/<ENV>.terraform.json
+# (written by `make values`) and terraform/<ENV>.tfvars and
 # <ENV>.backend.hcl. Google's credentials are the gcloud
 # login's, handed over as a short-lived token in the environment, never printed.
 ENV      ?= staging
@@ -25,6 +26,10 @@ OPS      ?= $(abspath $(or $(PINECALL_OPS),../../ops))
 INFRA    ?= ../infra
 -include $(OPS)/$(ENV).mk
 VALUES    = $(OPS)/values/$(ENV).yaml
+# What Terraform made, as the charts read it (`make values`); the operator's own file, read after
+# it, holds decisions alone and wins where both speak.
+TF_VALUES = $(OPS)/values/$(ENV).terraform.json
+CHART_VALUES = -f $(TF_VALUES) -f $(VALUES)
 REGION   ?= us-central1
 ZONE     ?= $(REGION)-c
 CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(ENV)
@@ -74,6 +79,15 @@ tf-plan:          ## ENV=… [REMOVES=yes]: what an apply would change, saved as
 # The plan holds the state it was made from, the drawn secrets in clear among it: gone once applied.
 tf-apply:         ## ENV=…: the saved plan applied, after it was read, and then deleted
 	$(TF_AUTH) $(TF) apply -input=false $(TF_PLAN); status=$$?; rm -f $(TF_PLAN); exit $$status
+
+# The cluster's names, addresses, ranges and identities, from Terraform's state into the values the
+# charts read: nothing Terraform made is typed again by hand. Run after an apply; the file is the
+# operator's and versioned there, so what changed is read as a diff. Written whole or not at all.
+values:           ## ENV=…: what Terraform made, as the charts' values, into ops/values/<env>.terraform.json
+	@$(TF_AUTH) $(TF) output -json chart_values | python3 -m json.tool --sort-keys > $(TF_VALUES).new && \
+	  [ -s $(TF_VALUES).new ] && mv $(TF_VALUES).new $(TF_VALUES) || \
+	  { rm -f $(TF_VALUES).new; echo "make values: the state has no chart_values; make tf-apply ENV=$(ENV) first" >&2; exit 1; }
+	@git -C $(OPS) --no-pager diff --stat -- values/$(ENV).terraform.json
 
 # The runtime whole on this laptop (`pinecall-runtime local`): Postgres, Redis and LiveKit in docker, the
 # gateway and a worker from the checkout, on the settings `make local` wrote to .local/env.
@@ -159,16 +173,16 @@ CHARTS    = $(INFRA)/charts
 diff:             ## ENV=… TAG=<commit>: what releasing each chart would change, nothing touched (needs the helm-diff plugin)
 	@$(HELM) plugin list | grep -q '^diff' || \
 	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
-	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge -f $(VALUES)
-	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres -f $(VALUES)
-	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG) --set image.digest=$(DIGEST)
+	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge $(CHART_VALUES)
+	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES)
+	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) --set image.tag=$(TAG) --set image.digest=$(DIGEST)
 
 edge:             ## ENV=…: charts/edge released: the front door, its routes and certificates
-	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge -f $(VALUES) --rollback-on-failure --timeout 10m
+	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge $(CHART_VALUES) --rollback-on-failure --timeout 10m
 
 # A change to the instance's spec restarts the only instance: in a window, its diff read first.
 postgres:         ## ENV=…: charts/postgres released, and waited for until the database is ready
-	$(HELM) upgrade --install pinecall-postgres $(CHARTS)/postgres -f $(VALUES) --rollback-on-failure --timeout 10m
+	$(HELM) upgrade --install pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES) --rollback-on-failure --timeout 10m
 	kubectl --context $(CONTEXT) wait cluster/pinecall-postgres --for=condition=Ready --timeout=600s
 
 # What a deploy must find true before it touches the cluster, each refusal saying what to do:
@@ -188,7 +202,7 @@ deploy-guards:
 # it ran are not undone: a revision is written so the release before it still runs on its schema.
 # The name the live suite knocks at is asked of the cluster, which is where it is served.
 deploy: deploy-guards  ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
-	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall -f $(VALUES) \
+	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
 	  --set image.tag=$(TAG) --set image.digest=$(DIGEST) --rollback-on-failure --timeout 20m
 	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
 	  uv run pytest -q tests/live
@@ -209,7 +223,7 @@ fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that m
 	running=$$1; pinned=$$2; \
 	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
 	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
-	$(HELM) upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$$running \
+	$(HELM) upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) --set image.tag=$$running \
 	  $${pinned:+--set image.digest=$$pinned} --rollback-on-failure --timeout 10m
 
 # The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
@@ -251,4 +265,4 @@ logs:             ## ENV=…: the gateways' and the workers' logs of the last ho
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs
+.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs

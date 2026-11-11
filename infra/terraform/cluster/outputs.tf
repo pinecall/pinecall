@@ -64,3 +64,63 @@ output "lab_generator" {
   description = "The lab's call generator while it stands: its name and its two addresses."
   value       = [for lab in module.lab : { name = lab.name, internal = lab.internal_address, public = lab.public_address }]
 }
+
+# What Terraform made, in the words the charts read (infra/charts, values.yaml): `make values`
+# writes it beside the operator's own values, which then hold decisions alone. Until 2026-11-12
+# each of these was typed again by hand into that file, and one had drifted.
+output "chart_values" {
+  description = "The charts' values that are facts of this cluster: its names, its addresses, its ranges, its identities."
+  value = {
+    cluster      = var.name
+    domain       = var.names[0]
+    pages        = var.pages
+    sipDomains   = var.sip_names
+    storageClass = "standard-rwo"
+    secrets = {
+      prefix = module.secrets.secret_prefix
+      provider = {
+        gcpsm = {
+          projectID = var.project
+          # The store's own identity: a token of External Secrets' ServiceAccount, exchanged with
+          # Google directly, never the node's metadata server (which a new node offers seconds
+          # after the pod).
+          auth = {
+            workloadIdentity = {
+              clusterProjectID  = var.project
+              clusterLocation   = module.gke.location
+              clusterName       = module.gke.cluster
+              serviceAccountRef = module.secrets.reader
+            }
+          }
+        }
+      }
+    }
+    # Google's HTTPS load balancer, the global address and Certificate Manager's map (modules/edge).
+    ingress = {
+      className   = "gke-l7-global-external-managed"
+      annotations = { "networking.gke.io/certmap" = module.edge.certificate_map }
+      addresses   = [{ type = "NamedAddress", value = module.edge.ingress_address_name }]
+      gkePolicies = true
+    }
+    postgres = {
+      backups = {
+        destination               = "gs://${module.backups.bucket}/postgres"
+        credentials               = { googleCredentials = { gkeEnvironment = true } }
+        serviceAccountAnnotations = { "iam.gke.io/gcp-service-account" = module.backups.service_account }
+      }
+    }
+    # Google's Managed Prometheus collects; modules/alerts makes the alerts in Cloud Monitoring.
+    monitoring = { collector = "gmp", namespace = "gmp-system" }
+    kubeip     = { identity = module.kubeip.service_account }
+    media = {
+      addresses   = module.edge.media_addresses
+      nodeNetwork = var.ranges.nodes
+    }
+    gateway = {
+      podNetwork = var.ranges.pods
+      # Google's load balancer ends every X-Forwarded-For with its own address: believed beside
+      # Google's two ranges, the caller's is the one before it.
+      trustedProxies = "35.191.0.0/16,130.211.0.0/22,${module.edge.ingress_address}/32"
+    }
+  }
+}
