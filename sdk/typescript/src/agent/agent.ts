@@ -155,9 +155,8 @@ export class Agent {
   /** Field visibility as a map, as an alternative to `@state`. */
   static visibility?: Record<string, Visibility>;
 
-  // The environment the class may declare: each one declared wins over the agent's settings, and
-  // the console shows it set by the class. `voice`, `llm`, `realtime`, `stt` and `judge` are what
-  // @voice, @llm, @realtime, @stt and @judge set.
+  // The environment the class may declare: each one declared wins over the agent's settings, and the console
+  // shows it set by the class. `voice`, `llm`, `realtime`, `stt` and `judge` are what the decorators of those names set.
   /** The language the agent speaks and expects, a BCP 47 tag: `"es"`, `"pt-BR"`. */
   static language?: Declared["language"];
   static timezone?: Declared["timezone"];

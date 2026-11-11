@@ -9,22 +9,24 @@ import { Agent, changes, onChange, onLog, recalled, seal, setCall, setLast } fro
 import { eventsOf } from "../agent/accepts.js";
 import { hookAuthor, withToolCall } from "../agent/authors.js";
 import { visibilityOf } from "../agent/visibility.js";
-import { CallWorld, type CallLine, type Searching } from "../call/call.js";
+import { CallWorld, type Searching } from "../call/call.js";
 import { describe } from "../agent/docstrings.js";
 import type { Serve } from "../agent/served.js";
 import { searchesKnowledge } from "../agent/searching.js";
-import { runHook, type Call as HookCall } from "../agent/lifecycle.js";
+import { runHook } from "../agent/lifecycle.js";
 import { restore, snapshot, type LastCall, type Snapshot } from "../agent/state.js";
 import { toolNamed } from "../agent/tools.js";
 import { viewOf } from "../agent/view.js";
 import { PROMPT_BLOCKS } from "../views/layout.js";
 import { promptOf } from "../views/render.js";
+import { callLine, dataOf, hookCall } from "./call-line.js";
 import { causeOf } from "./cause.js";
 import { inOrder, type Serving } from "./dispatch.js";
 import { harnessOf } from "../agent/harness.js";
 import { pushDeclaredDocs } from "./declared-docs.js";
 import { holdConfigOf, uploadDeclaredHold } from "./declared-hold.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
+import { mateNamed, MOST_PASSES, PASSED, teamTools, transfersOf, type Team } from "./handoff.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
 
@@ -45,6 +47,8 @@ export interface MountOptions {
   report?: (line: string) => void;
   /** What the agent's voice app adds to its declaration: the greeting of its line, what it says to a silence. */
   declares?: Partial<AgentOptions>;
+  /** The agents a call of this one may pass between, itself among them, each with its slug. */
+  team?: Team;
 }
 
 /** A mounted agent: its registered SDK agent and the instances serving live calls. */
@@ -80,6 +84,10 @@ interface Live {
   /** The log line forwarder, which outlives `onEnd` so a line logged there lands. */
   unlog: () => void;
   serving: Serving;
+  /** The tools that offer this call to the agent's teammates, and how many times it was passed. */
+  transfers: ToolSpec[];
+  passes: number;
+  team: Team | undefined;
 }
 
 /** The slug an agent registers under: its `static slug`, or its class name in kebab-case. */
@@ -128,13 +136,13 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
  */
 export function mount(
   ctor: Ctor,
-  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {} }: MountOptions,
+  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {}, team }: MountOptions,
 ): Mounted {
   if (source !== undefined) describe(ctor, source, file);
   const name = slug ?? slugOf(ctor);
   const live = new Map<string, Live>();
   const probe = new ctor();
-  const tools: Tool[] = probe.tools().map((spec) => ({
+  const tools: Tool[] = (team === undefined ? probe.tools() : teamTools(team)).map((spec) => ({
     ...(spec as unknown as Camel<ToolSpec>),
     run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
@@ -145,7 +153,7 @@ export function mount(
     if (call !== null) {
       const send: Send = (type, id, data) => agent.command(type, id, data);
       const searching: Searching = (query, k) => pc.search(call.id, query, k);
-      void start(ctor, live, call, send, searching, last, started.state ?? undefined);
+      void start(ctor, live, call, send, searching, last, started.state ?? undefined, team);
     }
   });
   // A call handed over mid-conversation. If already served here (the gateway restarted), keep the
@@ -160,7 +168,7 @@ export function mount(
     }
     const send: Send = (type, id, data) => agent.command(type, id, data);
     const searching: Searching = (query, k) => pc.search(call.id, query, k);
-    adopt(ctor, live, call, attached.state as Snapshot, send, searching, last);
+    adopt(ctor, live, call, attached.state as Snapshot, send, searching, last, team);
   });
   agent.on("call.ended", (_payload, call) => {
     if (call !== null) void end(live, call);
@@ -202,6 +210,8 @@ async function call_(
   const serving = live.get(call.id);
   if (serving === undefined) throw new ToolFailed(`${name}: this call is no longer being served`);
   const declaration = toolNamed(serving.agent, name);
+  const mate = declaration === undefined && serving.team !== undefined ? mateNamed(name, serving.team) : undefined;
+  if (mate !== undefined) return serving.serving.call.handoff(mate, args);
   if (declaration === undefined) throw new ToolFailed(`${name}: this agent declares no such tool`);
   return withToolCall(callId, () => runTool(serving.agent, declaration, args));
 }
@@ -217,8 +227,9 @@ async function start(
   searching: Searching,
   last?: LastCall,
   openedIn?: Snapshot,
+  team?: Team,
 ): Promise<void> {
-  const link = serve(ctor, live, call, send, searching, last);
+  const link = serve(ctor, live, call, send, searching, last, team);
   await hooked(call, "onCall", runHook(link.agent, "onCall", hookCall(call)));
   const author = hookAuthor("onCall");
   const wrote = changes(link.agent).some((change) => change.author === author);
@@ -238,8 +249,9 @@ function adopt(
   send: Send,
   searching: Searching,
   last?: LastCall,
+  team?: Team,
 ): void {
-  const link = serve(ctor, live, call, send, searching, last);
+  const link = serve(ctor, live, call, send, searching, last, team);
   restore(link.agent, state);
   sync(link, call);
   follow(link, call);
@@ -252,6 +264,7 @@ function serve(
   send: Send,
   searching: Searching,
   last?: LastCall,
+  team?: Team,
 ): Live {
   const agent = seal(new ctor());
   if (last !== undefined) setLast(agent, last);
@@ -260,9 +273,32 @@ function serve(
   const serving: Serving = { agent, ctor, call: world, warned: new Set<string>(), queue: Promise.resolve() };
   // Before the hooks run, so a line logged in onCall lands; stopped after onEnd.
   const unlog = onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data)));
-  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving };
+  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving, transfers: team === undefined ? [] : transfersOf(ctor, team), passes: 0, team };
+  if (team !== undefined) world.passedBy((to, data) => pass(link, call, team, to as Ctor, data));
   live.set(call.id, link);
   return link;
+}
+
+// One agent of a team takes the call from another: the instance, its listeners and its tools change, and the
+// call itself stays, with what its agents share. The blocks already sent are compared, so only the ones that differ go.
+async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Record<string, unknown>): Promise<string> {
+  const slug = team.get(to);
+  if (slug === undefined) throw new ToolFailed(`${to.name} is not of this call's team`);
+  if (link.passes >= MOST_PASSES) throw new ToolFailed(`this call was passed ${MOST_PASSES} times already: answer the caller yourself`);
+  for (const stop of link.stop.splice(0)) stop();
+  link.unlog();
+  setCall(link.agent, null);
+  call.log(PASSED, { from: team.get(link.serving.ctor as Ctor) ?? "", to: slug, ...data });
+  const agent = seal(new to());
+  link.serving.call.handed = data;
+  setCall(agent, link.serving.call);
+  Object.assign(link.serving, { agent, ctor: to });
+  Object.assign(link, { agent, passes: link.passes + 1, transfers: transfersOf(to, team), unlog: onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data))) });
+  await hooked(call, "onCall", runHook(agent, "onCall", hookCall(call)));
+  call.setState(snapshot(agent));
+  sync(link, call);
+  follow(link, call);
+  return `The call is ${slug}'s now: go on as ${slug}, without saying it was passed.`;
 }
 
 function follow(link: Live, call: SdkCall): void {
@@ -347,36 +383,10 @@ function show(serving: Live, call: SdkCall): void {
     serving.sent.blocks.set(block.name, block.text);
     call.setPrompt(block.name, block.text);
   }
-  const visible = serving.agent.visibleTools();
+  const visible = [...serving.agent.visibleTools(), ...serving.transfers];
   const key = JSON.stringify(visible);
   if (key !== serving.sent.tools) {
     serving.sent.tools = key;
     call.setTools(visible as unknown as Camel<ToolSpec>[]);
   }
-}
-
-function hookCall(call: SdkCall): HookCall {
-  const hook: HookCall = { id: call.id, contact: call.contact?.id ?? call.from ?? "" };
-  if (call.from !== null) hook.from = call.from;
-  if (call.channel !== null) hook.channel = call.channel;
-  if (call.medium !== null) hook.medium = call.medium;
-  return hook;
-}
-
-// Adds what hookCall lacks: without it `this.call.today` or `this.call.to` is undefined.
-function callLine(call: SdkCall): CallLine {
-  const line: CallLine = { ...hookCall(call), today: call.today, claimed: call.claimed, metadata: call.metadata };
-  if (call.to !== null) line.to = call.to;
-  if (call.direction !== null) line.direction = call.direction;
-  if (call.contact !== null) line.caller = call.contact;
-  return line;
-}
-
-// call.log requires an object, so wrap other values under `value`.
-function dataOf(data: unknown): Record<string, unknown> {
-  if (data === undefined) return {};
-  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
-    return data as Record<string, unknown>;
-  }
-  return { value: data };
 }

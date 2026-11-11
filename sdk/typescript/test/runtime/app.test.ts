@@ -8,6 +8,9 @@ import { isVoiceApp, voiceApp } from "../../src/runtime/app.js";
 
 class FrontDesk extends Agent {}
 class Billing extends Agent {}
+class Takes extends Agent {
+  static takes = "a question about a charge";
+}
 class Greets extends Agent {
   static override greeting = "Hello.";
 }
@@ -15,7 +18,7 @@ class Greets extends Agent {
 describe("a line", () => {
   it("is a number and the agent that answers it, the number kept as the gateway writes it", () => {
     const app = voiceApp("brightside").line("+1 (415) 555-0134", FrontDesk);
-    expect(app.lines).toEqual([{ number: "+14155550134", answers: FrontDesk }]);
+    expect(app.lines).toEqual([{ number: "+14155550134", answers: FrontDesk, team: [] }]);
     expect(app.numbersOf(FrontDesk)).toEqual(["+14155550134"]);
     expect(app.agents()).toEqual([FrontDesk]);
   });
@@ -41,6 +44,20 @@ describe("a line", () => {
   it("is refused a greeting when the class declares its own", () => {
     const app = voiceApp("brightside").line("+14155550134", { answers: Greets, greeting: "Brightside Dental." });
     expect(() => app.declares(Greets)).toThrow(/keep one of the two/);
+  });
+});
+
+describe("a line's team", () => {
+  it("is the agents its call may pass between, the one that answers first", () => {
+    const app = voiceApp("brightside").line("+14155550134", { answers: FrontDesk, team: [Takes] });
+    expect(app.teamOf(FrontDesk)).toEqual([FrontDesk, Takes]);
+    expect(app.teamOf(Takes)).toEqual([FrontDesk, Takes]);
+    expect(app.agents()).toEqual([FrontDesk, Takes]);
+    expect(app.teamOf(Billing)).toEqual([]);
+  });
+
+  it("is refused a member that says nothing of what it takes", () => {
+    expect(() => voiceApp("brightside").line("+14155550134", { answers: FrontDesk, team: [Billing] })).toThrow(/says nothing of what it takes/);
   });
 });
 

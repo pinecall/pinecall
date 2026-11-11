@@ -45,7 +45,8 @@ export async function start(argv: string[], io: Io): Promise<number> {
   const loaded: Loaded[] = [];
   for (const one of served) loaded.push(await loadServed(one.file, one.slug));
   const app = values.app === undefined ? undefined : appOf(await loadApp(values.app), served, loaded);
-  served.forEach((one, at) => masking.set(one.slug, new Masking(held(pc, one, loaded[at]!, app, values.console === true, io).options)));
+  const slugs = new Map(loaded.map((one, at) => [one.ctor, served[at]!.slug]));
+  served.forEach((one, at) => masking.set(one.slug, new Masking(held(pc, one, loaded[at]!, app, slugs, values.console === true, io).options)));
   said(pc, io, values.events === true, masking);
   try {
     await pc.connect();
@@ -80,10 +81,12 @@ function clientFrom(env: Io["env"]): Pinecall {
 }
 
 // A console's own process takes only the calls that name it; the class draws the panel.
-function held(pc: Pinecall, one: Served, loaded: Loaded, app: VoiceApp | undefined, console: boolean, io: Io): Mounted {
+function held(pc: Pinecall, one: Served, loaded: Loaded, app: VoiceApp | undefined, slugs: Map<Loaded["ctor"], string>, console: boolean, io: Io): Mounted {
   const report = (line: string): void => void io.err.write(`${one.slug}  ${line}\n`);
   const declares = app?.declares(loaded.ctor) ?? {};
-  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report, declares });
+  const mates = app?.teamOf(loaded.ctor) ?? [];
+  const team = mates.length === 0 ? undefined : new Map(mates.map((mate) => [mate, slugs.get(mate)!]));
+  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report, declares, ...(team === undefined ? {} : { team }) });
   if (app !== undefined) pointed(mounted, app.numbersOf(loaded.ctor), report);
   const viewing = viewingFrom(loaded.ctor, one.slug);
   mounted.agent.onDev(async (verb, data) => {

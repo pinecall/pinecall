@@ -304,6 +304,45 @@ as written, by the agent, before any model runs: it is that agent's `greeting`, 
 and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
 one from the app too is refused when the app loads, naming both, since a call runs on one of them.
 
+### A team: the call passed from one agent to another
+
+A line may name a team, the agents its call can pass to. Each says what it takes, in the words a
+model reads to choose it:
+
+```ts
+// agents/billing/agent.tsx
+/** You handle charges, invoices and refunds for Brightside Dental. */
+export default class Billing extends Agent {
+  static takes = "a question about a charge, an invoice or a refund";
+}
+```
+
+```ts
+app.line("+1 415 555 0134", { answers: FrontDesk, greeting: "Brightside Dental. How can I help?", team: [Billing] });
+```
+
+The agent on the call is offered one tool per teammate, `transfer_to_billing`, and the model calls it
+when the caller asks for that; a caller who only says hello is passed to nobody. A tool can pass the
+call itself, with what the next agent should know:
+
+```ts
+/** The caller disputes a charge and names the invoice. */
+@tool()
+disputeCharge(invoice: string) {
+  return this.call.handoff(Billing, { invoice });
+}
+```
+
+From the pass on, the call is the teammate's: its instructions, its tools, its state, and its `onCall`,
+where `this.call.handed` is what it was handed. `this.call.shared` is an object the agents of one call
+share: what the first one wrote there, the next one reads. The conversation so far stays with the call,
+and the pass is a `handoff` line on its log. A call is passed three times at most; the fourth is
+refused and the agent answers itself.
+
+Two things to know. The agents of a team give each tool a name of its own, or the app is refused
+when it loads. And the call keeps the voice and the models of the agent that answered it: the gateway
+still knows the call by that agent, which is also where it is listed and judged.
+
 The number stays your org's: `pinecall numbers` points it at the agent. A line whose number the
 gateway does not route to its agent is said once in the terminal, and the agent serves its other
 calls all the same. An agent that answers two lines opens both with the same greeting, or with none.

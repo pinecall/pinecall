@@ -4,6 +4,8 @@ import type { Agent } from "../agent/agent.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
 
+import { takenBy } from "./handoff.js";
+
 type Ctor = new () => Agent;
 
 /** A line as it is written: the agent that answers it, and the words the call opens with. */
@@ -11,6 +13,8 @@ export interface LineOptions {
   answers: Ctor;
   /** Said as written when the call comes in, before any model runs. */
   greeting?: string;
+  /** The agents the call may pass to: each says what it takes with `static takes`. */
+  team?: Ctor[];
 }
 
 /** One number of the app and who answers it. */
@@ -18,6 +22,7 @@ export interface Line {
   number: string;
   answers: Ctor;
   greeting?: string;
+  team: Ctor[];
 }
 
 /** What every agent of the app says to a caller who went quiet. */
@@ -79,7 +84,12 @@ export class VoiceApp {
     if (other !== undefined) {
       throw new DeclarationRefused(`${options.answers.name} answers ${other.number} and ${dialled}: both lines open with the same greeting, or with none`);
     }
-    this.#lines.push({ number: dialled, answers: options.answers, ...(greeting === undefined ? {} : { greeting }) });
+    const team = options.team ?? [];
+    if (!Array.isArray(team) || team.some((mate) => typeof mate !== "function")) throw new DeclarationRefused(`the team of ${dialled} is a list of agent classes`);
+    for (const mate of team) {
+      if (takenBy(mate) === undefined) throw new DeclarationRefused(`${mate.name} is of the team of ${dialled} and says nothing of what it takes: static takes = "…"`);
+    }
+    this.#lines.push({ number: dialled, answers: options.answers, team, ...(greeting === undefined ? {} : { greeting }) });
     return this;
   }
 
@@ -99,7 +109,13 @@ export class VoiceApp {
 
   /** Every agent class the app names, once each. */
   agents(): Ctor[] {
-    return [...new Set(this.#lines.map((line) => line.answers))];
+    return [...new Set(this.#lines.flatMap((line) => [line.answers, ...line.team]))];
+  }
+
+  /** The agents a call of `ctor` may pass between, itself first; empty for an agent of no team. */
+  teamOf(ctor: Ctor): Ctor[] {
+    const lines = this.#lines.filter((line) => line.team.length > 0 && (line.answers === ctor || line.team.includes(ctor)));
+    return [...new Set(lines.flatMap((line) => [line.answers, ...line.team]))];
   }
 
   /** The numbers `ctor` answers. */

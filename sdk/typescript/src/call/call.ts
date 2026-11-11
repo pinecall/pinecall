@@ -59,6 +59,11 @@ export type Searching = (query: string, k?: number) => Promise<Found[]>;
 /** Error for `search()` on a call with no gateway (an offline prompt, a test). */
 export const NO_GATEWAY_TO_SEARCH = "this call cannot search: no gateway is serving it";
 
+const NO_TEAM = "this call has no team to pass it to: its app's line names one with `team`";
+
+/** How the bridge passes a call to another agent of its team; what it answers is what the model reads. */
+export type Passing = (to: new () => object, data: Record<string, unknown>) => Promise<string>;
+
 /** Line facts the call needs beyond what the room's entries carry. */
 export interface CallLine extends HookCall {
   to?: string;
@@ -94,6 +99,11 @@ export class CallWorld implements HookCall {
   claimed: string | null = null;
   readonly room: Room;
   readonly history = new History();
+  /** What the agents of one call share: it outlives a pass between them and ends with the call. */
+  readonly shared: Record<string, unknown> = {};
+  /** What the agent before this one passed along with the call; undefined for the agent that answered. */
+  handed?: Record<string, unknown>;
+  #passing: Passing | null = null;
 
   // say/reply settle on the next turn.agent: commands are fire-and-forget, so that entry is the only ack.
   #speaking: ((spoken: boolean) => void)[] = [];
@@ -121,6 +131,17 @@ export class CallWorld implements HookCall {
     if (line.today !== undefined) this.today = line.today;
     if (line.claimed !== undefined) this.claimed = line.claimed;
     this.room = new Room(out);
+  }
+
+  /** Pass the call to another agent of its team, with what it should know: `this.call.handoff(Billing, { invoice })`. */
+  handoff(to: new () => object, data: Record<string, unknown> = {}): Promise<string> {
+    if (this.#passing === null) return Promise.reject(new Error(NO_TEAM));
+    return this.#passing(to, data);
+  }
+
+  /** The bridge's: how this call is passed. */
+  passedBy(passing: Passing): void {
+    this.#passing = passing;
   }
 
   /** A handle to one participant, e.g. `call.participant(id).mute()`. */
