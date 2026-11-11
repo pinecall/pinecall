@@ -1,4 +1,4 @@
-# An operator's values for charts/hosting (modules/hosting, environments/production's `hosting`
+# An operator's values for charts/hosting (modules/hosting, the cluster root's `hosting`
 # output): copy it into your OPS directory as values/hosting-<env>.yaml and replace every example.
 project: my-project
 secretPrefix: example-production-

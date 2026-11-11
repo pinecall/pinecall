@@ -1,6 +1,6 @@
 # What the project holds for every cluster in it: the registry the images live in and the identity
-# Cloud Build builds them as (`make image`). The world-pairs (environments/) each make a cluster of
-# their own beside these.
+# Cloud Build builds them as (`make image`). Each cluster (cluster/, once per ENV) is made beside
+# these.
 
 terraform {
   required_version = ">= 1.5"

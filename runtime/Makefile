@@ -12,7 +12,8 @@ REDIS_PORT ?= 56379
 LOCAL_REDIS = redis://127.0.0.1:$(REDIS_PORT)/1
 T        ?= tests
 
-# A world's cluster: its Terraform root ($(INFRA)/terraform/environments/<ENV>), and the operator's
+# A world's cluster: one Terraform root for every cluster ($(INFRA)/terraform/cluster), told which
+# one by ENV (its name, its variables, its state, its own data directory), and the operator's
 # own of it, which no public tree holds: OPS (PINECALL_OPS, else ../../ops, beside the
 # repository's checkout) has <ENV>.mk (PROJECT, and REGION, ZONE or CONTEXT where they are not
 # these), values/<ENV>.yaml ($(INFRA)/values/example.yaml is one) and terraform/<ENV>.tfvars and
@@ -27,10 +28,12 @@ VALUES    = $(OPS)/values/$(ENV).yaml
 REGION   ?= us-central1
 ZONE     ?= $(REGION)-c
 CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(ENV)
-TF        = terraform -chdir=$(INFRA)/terraform/environments/$(ENV)
-TF_PLAN   = $(INFRA)/terraform/environments/$(ENV)/plan
+TF_ROOT   = $(abspath $(INFRA)/terraform/cluster)
+# Each cluster keeps its own data directory: the one root is initialised against two states.
+TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(ENV) terraform -chdir=$(TF_ROOT)
+TF_PLAN   = $(TF_ROOT)/$(ENV).plan
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
-TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(wildcard $(INFRA)/terraform/environments/*)
+TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/terraform/cluster
 
 check:            ## ruff (lint, format), pyright and mypy strict, alembic check, the suites with no database; terraform's form
 	uv run ruff check . && uv run ruff format --check .
@@ -63,14 +66,14 @@ tf-fence:         ## ENV=…: the fence's networks, from the running gateway int
 # not kept unless that was asked for (REMOVES=yes): a plan that removes what nobody asked to remove
 # means an input is missing, and the thing to do is find it, never to apply around it.
 tf-plan:          ## ENV=… [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
-	$(TF_AUTH) $(TF) plan -input=false -var-file=$(OPS)/terraform/$(ENV).tfvars \
-	  -var-file=$(OPS)/terraform/$(ENV).fence.tfvars.json -out=plan
-	@$(TF) show -json plan | scripts/plan-removals || [ "$(REMOVES)" = yes ] || \
+	$(TF_AUTH) $(TF) plan -input=false -var name=$(ENV) -var-file=$(OPS)/terraform/$(ENV).tfvars \
+	  -var-file=$(OPS)/terraform/$(ENV).fence.tfvars.json -out=$(TF_PLAN)
+	@$(TF) show -json $(TF_PLAN) | scripts/plan-removals || [ "$(REMOVES)" = yes ] || \
 	  { rm -f $(TF_PLAN); echo "tf-plan: this plan removes the above and was not kept. An input is missing, or the removal is meant: REMOVES=yes" >&2; exit 2; }
 
 # The plan holds the state it was made from, the drawn secrets in clear among it: gone once applied.
 tf-apply:         ## ENV=…: the saved plan applied, after it was read, and then deleted
-	$(TF_AUTH) $(TF) apply -input=false plan; status=$$?; rm -f $(TF_PLAN); exit $$status
+	$(TF_AUTH) $(TF) apply -input=false $(TF_PLAN); status=$$?; rm -f $(TF_PLAN); exit $$status
 
 # The runtime whole on this laptop (`pinecall-runtime local`): Postgres, Redis and LiveKit in docker, the
 # gateway and a worker from the checkout, on the settings `make local` wrote to .local/env.

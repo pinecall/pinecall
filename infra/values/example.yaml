@@ -1,5 +1,5 @@
 # An operator's values for charts/edge, charts/postgres and charts/pinecall, on Google Cloud as
-# terraform/environments/production makes it: copy it into your own OPS directory as
+# terraform/cluster makes it: copy it into your own OPS directory as
 # values/<env>.yaml (infra/README.md, "Your own values") and replace every example. CI renders the
 # charts with it and scans what they release. The image's tag is the commit `make deploy` gives.
 domain: voice.example.com
@@ -53,7 +53,7 @@ media:
   addresses:
     production: 203.0.113.10
     sandbox: 203.0.113.11
-  # environments/<env>'s `ranges`.
+  # the cluster's `ranges` (<env>.tfvars).
   nodeNetwork: 10.120.0.0/22
 gateway:
   podNetwork: 10.121.0.0/16

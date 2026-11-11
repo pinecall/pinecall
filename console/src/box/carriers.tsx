@@ -10,8 +10,8 @@ import { CarrierPanel, NumbersAccountSection, TestLineSection } from "./carriers
 import { admitCarrier, answerAsk, readAsks, readCarriers, type Ask, type CatalogCarrier } from "./telephony-door";
 import { Head, OperatorPage, OrgLink, useDoor } from "./telephony-parts";
 
-const EXPORT = "pinecall-runtime fence export > infra/terraform/environments/<env>/sip_sources.auto.tfvars.json";
-const APPLY = "make tf-plan && make tf-apply";
+const EXPORT = "make tf-fence ENV=<env>";
+const APPLY = "make tf-plan ENV=<env> && make tf-apply ENV=<env>";
 
 const many = (count: number, one: string, more: string): string => `${count} ${count === 1 ? one : more}`;
 

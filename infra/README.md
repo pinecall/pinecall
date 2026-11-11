@@ -9,7 +9,7 @@ made by hand and nothing is built on a laptop.
 |---|---|
 | `terraform/bootstrap` | the bucket every other root module keeps its state in, made once with local state |
 | `terraform/project` | what every cluster of the project shares: the images' registry and the identity Cloud Build builds them as |
-| `terraform/environments/<world-pair>` | one cluster each: `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it |
+| `terraform/cluster` | one cluster, the same code for every one: `ENV` names it and picks its variables and its state. `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it, are two files of values |
 | `terraform/modules/gke` | a cluster: zonal, Workload Identity; a core pool both environments share, and for each environment a media node and a workers pool from 0 that the cluster autoscaler sizes alone ("A pool a world" below) |
 | `terraform/modules/registry` · `build` | where images live, and the identity Cloud Build builds them as (`terraform/project`) |
 | `terraform/modules/secrets` | the runtime's secrets, drawn once into Secret Manager, and the identity External Secrets reads them as |
@@ -351,7 +351,8 @@ then Terraform:
 ```console
 $ for r in pinecall pinecall-edge pinecall-postgres; do helm --kube-context <staging> uninstall $r --wait; done
 $ gcloud storage rm -r "gs://pinecall-staging-postgres-<project number>/**"
-$ terraform -chdir=infra/terraform/environments/staging plan -destroy -var-file=$OPS/terraform/staging.tfvars -var lab=true -out=plan && terraform -chdir=infra/terraform/environments/staging apply plan
+$ cd infra/terraform/cluster && export TF_DATA_DIR=$PWD/.terraform/staging
+$ terraform plan -destroy -var name=staging -var-file=$OPS/terraform/staging.tfvars -var-file=$OPS/terraform/staging.fence.tfvars.json -var lab=true -out=staging.plan && terraform apply staging.plan
 ```
 
 ## Proven

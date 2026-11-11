@@ -6,4 +6,4 @@ node_modules/
 *.tfstate.*
 crash.log
 # A saved plan (`make tf-plan`): what `make tf-apply` applies, never committed.
-infra/terraform/**/plan
+infra/terraform/**/*.plan
