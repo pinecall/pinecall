@@ -339,8 +339,64 @@ The name is an entry of the call's log by its type (`call.started`, `call.ended`
 for a pass and `routed` for a line's choice), or a line an agent logs by its own name:
 `this.log("visit.booked", visit)` in a tool is what the first handler above hears. The handler is
 told the call (`id`, `agent`) and what the entry carries. One that throws is said in the terminal,
-and the others run. The handlers run in the process that serves the agents: what happens while it is
-down is not heard later.
+and the others run. The handlers run in the process that serves the agents: an entry of a call logged
+while it is down is not heard later. What has to outlive the process is a flow.
+
+### A flow: what outlives a call
+
+```ts
+import { flow } from "@pinecall/agents";
+
+const remindVisit = flow("remind-visit", async (visit, step) => {
+  await step.sleepUntil(String(visit.at), { before: "24h" });
+  let called = await step.call(String(visit.phone), Reminder, {
+    instruction: `Remind ${visit.patient} of the visit tomorrow at ${visit.time}.`,
+  });
+  if (!called.answered) {
+    await step.sleep("2h");
+    called = await step.call(String(visit.phone), Reminder);
+  }
+  await step.run(() => db.visits.update(visit.id, { reminded: called.answered }));
+}).cancelOn("visit.cancelled", (gone, visit) => gone.id === visit.id);
+
+app.on("visit.booked", remindVisit);
+```
+
+A flow is a name and a function of what started it and its steps. `app.on(name, flow)` starts a run
+of it on every entry of that name, with what the entry carries as its input, once per entry however
+many processes hear it. The function runs in the process that serves the agents; the gateway keeps
+the run: a journal of its steps, and the time, the event or the call that wakes it. So a run
+outlives a deploy, a crash and a night with nothing running: when a process of the app is up, the
+gateway hands it the runs that are ready.
+
+| step | what it does |
+|---|---|
+| `step.sleep("2h")` | the run sleeps: a number and `s`, `m`, `h` or `d` |
+| `step.sleepUntil(at, { before })` | until a time, a `Date` or an ISO string, or that long before it |
+| `step.call(to, Agent, { state, metadata, greeting, instruction, from })` | the agent calls the number, as `pinecall dial` does, and the step answers how the call ended: `{ answered, reason, call }`. A dial the org's guards refused answers at once with `{ answered: false, refused, message }` |
+| `step.waitFor(event, { match, within })` | the run waits for an event sent to the app whose data has what `match` names; it answers the event's data, or `null` once `within` passed |
+| `step.run(() => …)` | runs your own code once and keeps what it returned |
+| `step.emit(name, data)` | sends an event to the app |
+
+Each time a run is woken its function is called again from the top, and every step already in the
+journal answers what it came to without doing it again. Two rules follow. What must happen once
+goes inside `step.run`: a write to your database, a text message, anything outside the steps runs
+again on every wake. And the function reaches its steps in the same order every time: a run whose
+function asks for another step than its journal holds is failed, saying which.
+
+`cancelOn(event, when)` cancels the runs still waiting when an entry or an event of that name comes
+and `when(event, input)` is true for the run's input. A call a run placed is not ended by it.
+
+An event is sent to the app with `step.emit`, or by your own backend with
+`POST /v1/apps/{app}/events` and the project's key: `{ "name": "lab.ready", "data": { … } }`. The
+gateway keeps it until a process of the app heard it, so one sent while nothing runs is heard when
+something does. It reaches `app.on(name, handler)`, starts the flows of that name and wakes a
+`waitFor`. A line an agent logs starts a flow and cancels one, and wakes no `waitFor`.
+
+A step is written within a minute of the run being handed out: a `step.run` that takes longer may
+be run by another process of the app too. A function that throws fails its run, with what it
+threw; the terminal says so. A run sleeps or waits 90 days at most, an org has 10000 runs waiting at
+most, and what starts a run or rides an event is 16 KB of JSON at most: an id and a few facts.
 
 ### A rule every agent keeps
 

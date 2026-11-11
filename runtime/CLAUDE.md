@@ -33,7 +33,7 @@ it grows), in a fixed bottom-up order a domain never imports against:
 
 ```
 platform · billing · accounts · compliance · providers · agents · knowledge · channels
-· fleet · telephony · session · judging · alerts · calls · evals · hosting · studio · retention · jobs
+· fleet · telephony · session · judging · alerts · calls · flows · evals · hosting · studio · retention · jobs
 ```
 
 Below every domain: `kit/` (the toolkit, no business noun), `wire/` (the protocol the SDKs

@@ -37,6 +37,7 @@ from pinecall_runtime.exceptions import (
 )
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.fleet.tasks import sweep_offers, watch_roster
+from pinecall_runtime.flows.tasks import wake_forever
 from pinecall_runtime.kit.auth import ENV_HEADER, HOLDER_HEADER, ActorMiddleware
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import Handles
@@ -163,6 +164,7 @@ async def _wire(settings: Settings, stack: AsyncExitStack) -> dict[str, Any]:
         "sweep": box_task(sweep_offers(offering)),
         "roster": box_task(watch_roster(roster)),
         "newborns": box_task(alerts.watch_newborns_forever(serving, FactsRepository)),
+        "flows": box_task(wake_forever(handles)),
     }
     # After the start, so a slow SFU never keeps the gateway from answering; again until whole.
     trunks = box_task(telephony.rebuilt_until_whole(handles))

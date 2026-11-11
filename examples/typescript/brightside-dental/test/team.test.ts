@@ -75,10 +75,9 @@ it("opens the front desk's tools and the transfer to billing, and declares every
   expect(declared).toEqual(expect.arrayContaining(["askRefund", "listInvoices", "transfer_to_front_desk"]));
 });
 
-it("hears a visit an agent booked, and a call that ended", async () => {
-  await app.heard({ type: "custom", call: CALL, agent: SLUG, data: { name: "visit.booked", data: { id: "v-9" } } });
+it("starts the visit's reminder when an agent booked one, and hears a call that ended", async () => {
+  expect(app.startedBy("visit.booked").map((flow) => flow.name)).toEqual(["remind-visit"]);
   await app.heard({ type: "call.ended", call: CALL, agent: SLUG, data: { reason: "caller_hung_up" } });
-  expect(clinic.reminders).toContain("v-9");
   expect(clinic.callsKept.at(-1)).toEqual({ call: CALL, agent: SLUG, reason: "caller_hung_up" });
 });
 

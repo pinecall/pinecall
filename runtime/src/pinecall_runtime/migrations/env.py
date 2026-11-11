@@ -19,6 +19,7 @@ from pinecall_runtime.compliance import models as compliance_models
 from pinecall_runtime.config import load_settings
 from pinecall_runtime.evals import models as evals_models
 from pinecall_runtime.fleet import models as fleet_models
+from pinecall_runtime.flows import models as flows_models
 from pinecall_runtime.hosting import models as hosting_models
 from pinecall_runtime.judging import models as judging_models
 from pinecall_runtime.kit.db import Model
@@ -38,6 +39,7 @@ TABLES = (
     compliance_models,
     evals_models,
     fleet_models,
+    flows_models,
     hosting_models,
     judging_models,
     knowledge_models,

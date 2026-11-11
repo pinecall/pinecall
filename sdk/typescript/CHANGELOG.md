@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **A voice app has flows, which outlive a call**: `flow("remind-visit", async (visit, step) => { … })` with
+  `step.sleep`, `step.sleepUntil`, `step.call`, `step.waitFor`, `step.run` and `step.emit`, started by
+  `app.on("visit.booked", remindVisit)` and cancelled with `.cancelOn(event, when)`. The function runs in your
+  process; the gateway keeps each run's journal and wakes it, so a run outlives a deploy.
 - **A project may have a voice app, `app.ts`**: `voiceApp("brightside")`, `app.line(number, { answers, greeting })`
   for the agent that answers a number and the words the call opens with, and `app.silence({ after, say })` for
   what every agent of the app says to a caller who went quiet. `pinecall start` serves the agents with it.

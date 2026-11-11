@@ -1,12 +1,12 @@
 # Brightside Dental: a voice app
 
 A dental clinic's phone line, written as a voice app: one `app.ts` that says who answers the number,
-two agents the call passes between, and the clinic they share. It is the example to read for an app
+two agents the call passes between, a flow that calls the patient back the day before, and the clinic they share. It is the example to read for an app
 of more than one agent. [Clínica Norte](../clinica-norte/README.md) is the example for one agent in depth.
 
 ```text
 brightside-dental/
-  app.ts                          the line, who answers it, the team, the timezone, the silence
+  app.ts                          the line, who answers it, the team, the timezone, the silence, the reminder's flow
   agents/
     brightside-front-desk/
       agent.ts                    answers the line: reads the agenda, books, passes a charge on
@@ -15,6 +15,8 @@ brightside-dental/
       test/goldens/               three written calls a model must get right
     brightside-billing/
       agent.ts                    takes the call the front desk passes: invoices, refund requests
+    brightside-reminder/
+      agent.ts                    calls a patient the day before a visit, for the flow
   lib/clinic.ts                   the agenda, the patients and the ledger (a stand-in, in memory)
   test/team.test.ts               the pass between the two agents, on the wire
 ```
@@ -33,9 +35,20 @@ app.line("+1 415 555 0134", {
 app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 
-app.on("visit.booked", (_call, visit) => {
-  clinic.reminders.push(String(visit["id"]));
-});
+const remindVisit = flow("remind-visit", async (booked, step) => {
+  const visit = booked as unknown as Visit & { phone: string };
+  if (!visit.phone.startsWith("+")) return;
+  await step.sleepUntil(startsAt(visit), { before: "24h" });
+  const reminder = { state: { visit: visit.id }, instruction: `Remind ${visit.patient} of the visit …` };
+  let called = await step.call(visit.phone, Reminder, reminder);
+  if (!called.answered && called.refused === undefined) {
+    await step.sleep("2h");
+    called = await step.call(visit.phone, Reminder, reminder);
+  }
+  await step.run(() => void clinic.reminded.push({ visit: visit.id, answered: called.answered }));
+}).cancelOn("visit.cancelled", (gone, visit) => gone["id"] === visit["id"]);
+
+app.on("visit.booked", remindVisit);
 ```
 
 | line | what it does |
@@ -45,7 +58,8 @@ app.on("visit.booked", (_call, visit) => {
 | `answers` | the agent on the call when it starts |
 | `team` | the agents the call may pass to; each says what it takes with `static takes` |
 | `rule` | read into the prompt of both agents, and a judge asks of every call whether it was kept |
-| `on` | what an agent logs by name (`visit.booked`) and what happens to a call (`call.ended`) reach the app |
+| `on` | what an agent logs by name (`visit.booked`) and what happens to a call (`call.ended`) reach the app: a function hears it, a flow is started by it |
+| `flow` | what outlives the call: the gateway keeps where the run stands and wakes it, so the reminder is made a day later whatever was deployed meanwhile |
 | `silence` | what any agent of the app says to a caller who went quiet |
 
 ## How a call goes
@@ -61,6 +75,11 @@ app.on("visit.booked", (_call, visit) => {
    promises one.
 
 A caller who only says "Hello?" is passed to nobody: the front desk answers.
+
+6. `book` logs `visit.booked`, which starts a run of `remind-visit`. It sleeps until a day before the
+   visit, then `Reminder` calls the patient with what the call is for and the visit as its state. Nobody
+   answers: it tries once more two hours later. The patient cancels on that call: `Reminder` logs
+   `visit.cancelled`, and a reminder still waiting for that visit is cancelled.
 
 ## Run it
 

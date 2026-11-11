@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **An app's events and flows are kept by the gateway.** `POST /v1/apps/{app}/events` keeps an event until
+  the app's process hears it; a flow's run is a journal of steps (`sleep`, `wait`, `call`, `run`, `emit`) the
+  gateway keeps with what wakes it: a time, an event, the end of the call it placed. `POST /v1/apps/{app}/work`
+  is the long poll an app's process takes both from. The function runs in the app's process:
+  [docs/protocol/flows.md](docs/protocol/flows.md).
+
 - **A dial carries what its call opens with.** `POST /v1/agents/{slug}/dial` takes `state`, the state the
   agent's call opens in, and `metadata`, what its `call.started` carries: 8192 bytes of JSON each at most;
   `greeting`, the words this call opens with over the agent's own; and `instruction`, what the call is for,

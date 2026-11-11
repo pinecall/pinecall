@@ -88,7 +88,16 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `PUT` | `/v1/agents/{slug}/widget` | pipeline | Replace how the widget looks, whole; a null field is the widget's own default. |
 | `GET` | `/v1/apps` | calls | The app sockets of the org in the environment this key may see, oldest first. |
 | `WS` | `/v1/apps` | app | An app holds its agents here, answers their tools, and sends their calls' commands. |
+| `POST` | `/v1/apps/{app}/events` | app | Send an event to the app: kept until its process hears it, and it wakes a run waiting for one like it. |
+| `POST` | `/v1/apps/{app}/events/{event_id}/heard` | app | The app's process handled the event. |
+| `GET` | `/v1/apps/{app}/runs` | app · calls | The app's runs, newest first; of one flow, or in one status, when named. |
+| `POST` | `/v1/apps/{app}/runs` | app | Start a flow with an input; the same key is the same run. |
+| `GET` | `/v1/apps/{app}/runs/{run}` | app · calls | One run with its journal. |
+| `POST` | `/v1/apps/{app}/runs/{run}/cancel` | app | Stop a run where it stands. |
+| `POST` | `/v1/apps/{app}/runs/{run}/end` | app | The flow returned, or threw: the run is over. |
+| `POST` | `/v1/apps/{app}/runs/{run}/steps` | app | Write the run's next step: a sleep, a wait, a call, or what a step the process ran came to. |
 | `POST` | `/v1/apps/{app}/stop` | app | Tell the app it was stopped, and close its socket. |
+| `POST` | `/v1/apps/{app}/work` | app | What the app's process is owed, waited for up to `wait_s`: unheard events, and the runs ready to go on. |
 | `POST` | `/v1/agents/{slug}/kill` | team and app (an admin) | Let go of the agent in every app that holds it in the env, whoever's; the apps keep their other agents, and nothing is erased. |
 | `GET` | `/v1/alerts` | providers | The org's alerts in the key's environment, newest first (`?limit=`, 200 at most, `?before=`): kept 90 days whether or not they were mailed or posted. |
 | `GET` | `/v1/callbacks` | calls | The org's callbacks in the key's environment, oldest first, a page at a time. |

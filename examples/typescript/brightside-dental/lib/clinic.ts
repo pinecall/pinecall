@@ -42,6 +42,18 @@ const INVOICES: Invoice[] = [
 const HOURS = ["09:30", "11:00", "15:30"];
 const DENTISTS = ["Dr. Lin", "Dr. Okafor"];
 
+/** The zone of the clinic's clock. */
+export const ZONE = "America/Los_Angeles";
+
+/** The instant a time of the agenda starts: its day and hour are on the clinic's clock. */
+export function startsAt(slot: Pick<Slot, "day" | "time">): Date {
+  const read = new Date(`${slot.day}T${slot.time}:00Z`);
+  // What the clinic's clock shows at that instant says how far it is from UTC on that day.
+  const there = new Date(read.toLocaleString("en-US", { timeZone: ZONE }));
+  const utc = new Date(read.toLocaleString("en-US", { timeZone: "UTC" }));
+  return new Date(read.getTime() + utc.getTime() - there.getTime());
+}
+
 /** The clinic opens Monday to Friday, 9:00 to 18:00, on its own clock. */
 export const OPENS = 9;
 export const CLOSES = 18;
@@ -49,8 +61,9 @@ export const CLOSES = 18;
 export class Clinic {
   readonly visits: Visit[] = [];
   readonly refundsAsked: { invoice: string; reason: string }[] = [];
-  /** The visits whose reminder is owed, and every call that ended: what the app writes down. */
-  readonly reminders: string[] = [];
+  /** The visits a patient confirmed, the reminders that were made, and every call that ended. */
+  readonly confirmed = new Set<string>();
+  readonly reminded: { visit: string; answered: boolean }[] = [];
   readonly callsKept: { call: string; agent: string; reason: string }[] = [];
 
   /** The patient a phone number belongs to. */
@@ -75,6 +88,17 @@ export class Clinic {
     const visit: Visit = { ...slot, id: `v-${this.visits.length + 1}`, patient };
     this.visits.push(visit);
     return visit;
+  }
+
+  /** The patient said they are coming. */
+  confirm(visit: string): void {
+    this.confirmed.add(visit);
+  }
+
+  /** The visit is off and its time is open again. */
+  cancel(visit: string): void {
+    const at = this.visits.findIndex((kept) => kept.id === visit);
+    if (at !== -1) this.visits.splice(at, 1);
   }
 
   /** A patient's invoices, the newest last. */

@@ -6,6 +6,7 @@ import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.j
 
 import type { VoiceApp } from "../runtime/app.js";
 import { mount, type Mounted } from "../runtime/connect.js";
+import { entryHeard, work, type Working } from "../runtime/flow-loop.js";
 import { drainLine, askedToLeave, drainedUnlessSignalledAgain } from "./leaving.js";
 import { eventLine, personLine } from "./lines.js";
 import { Masking } from "./masking.js";
@@ -48,18 +49,37 @@ export async function start(argv: string[], io: Io): Promise<number> {
   const slugs = new Map(loaded.map((one, at) => [one.ctor, served[at]!.slug]));
   served.forEach((one, at) => masking.set(one.slug, new Masking(held(pc, one, loaded[at]!, app, slugs, values.console === true, io).options)));
   // What the app's agents log and what happens to their calls reaches the app's own handlers.
-  if (app !== undefined) pc.onEntries((entry) => void app.heard(entry, (name, error) => void io.err.write(`${app.name}  the handler of ${name} threw: ${error.message}\n`)));
+  const working = app === undefined ? undefined : workingOf(app, pc, slugs, io);
+  if (app !== undefined && working !== undefined) {
+    pc.onEntries((entry) => {
+      void app.heard(entry, (name, error) => working.report(`the handler of ${name} threw: ${error.message}`));
+      void entryHeard(working, entry);
+    });
+  }
   said(pc, io, values.events === true, masking);
+  let stop: (() => void) | undefined;
   try {
     await pc.connect();
+    // The gateway is asked for work only by an app that has flows: the rest keep the socket alone.
+    if (working !== undefined && working.app.flows().length > 0) stop = work(working);
     if ((await askedToLeave(pc, io)) !== "stopped") {
       const drained = await drainedUnlessSignalledAgain(pc, io);
       if (drained !== undefined) io.err.write(`${drainLine(drained)}\n`);
     }
     return 0;
   } finally {
+    stop?.();
     pc.close();
   }
+}
+
+function workingOf(app: VoiceApp, pc: Pinecall, slugs: Map<Loaded["ctor"], string>, io: Io): Working {
+  return {
+    app,
+    door: { url: pc.url, apiKey: pc.apiKey, env: pc.env, app: app.name },
+    slugOf: (agent) => slugs.get(agent),
+    report: (line) => void io.err.write(`${app.name}  ${line}\n`),
+  };
 }
 
 /** Every `--file` with the `--slug` at its place. */

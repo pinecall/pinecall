@@ -24,6 +24,7 @@ DOMAINS = (
     "judging",
     "alerts",
     "calls",
+    "flows",
     "evals",
     "hosting",
     "studio",

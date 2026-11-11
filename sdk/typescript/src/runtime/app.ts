@@ -5,6 +5,7 @@ import { harnessOf, judges } from "../agent/harness.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
 
+import { isFlow, type Flow } from "./flows.js";
 import { takenBy, type Answering } from "./handoff.js";
 
 type Ctor = new () => Agent;
@@ -78,6 +79,7 @@ const NOT_A_ZONE = "a voice app's timezone is an IANA zone, like America/Los_Ang
 const NOT_A_NAME = "a voice app's name is lowercase letters, digits and dashes, like its project's folder";
 const NOT_A_NUMBER = "a line is a phone number with its country code, like +1 415 555 0134";
 const NOT_AN_AGENT = "a line is answered by an agent class: app.line(number, FrontDesk)";
+const NOT_HEARD = "app.on takes the name of an entry and the function that hears it, or the flow it starts";
 const NOT_A_SILENCE = "silence is { after, say }: after in seconds (8, or \"8s\"), say the words to a caller who went quiet";
 
 /** A voice app. `line` and `silence` return the app, so they chain. */
@@ -89,6 +91,7 @@ export class VoiceApp {
   #silence: AgentOptions["idle"] | undefined;
   readonly #rules: string[] = [];
   readonly #hearing = new Map<string, Hearing[]>();
+  readonly #starting = new Map<string, Flow[]>();
 
   constructor(name: string, options: AppOptions = {}) {
     if (typeof name !== "string" || !A_NAME.test(name)) throw new DeclarationRefused(NOT_A_NAME);
@@ -139,19 +142,41 @@ export class VoiceApp {
   /**
    * Run `handler` on every entry of that name on a call of the app's agents: an entry of the call's
    * log by its type (`"call.ended"`, `"call.score"`), or a line an agent logs by its name
-   * (`this.log("visit.booked", visit)` reaches `app.on("visit.booked", …)`).
+   * (`this.log("visit.booked", visit)` reaches `app.on("visit.booked", …)`), or an event sent to the
+   * app. With a flow in place of the function, the entry starts a run of it, once, with what it carries.
    */
-  on(name: string, handler: Hearing): this {
-    if (typeof name !== "string" || name.trim() === "" || typeof handler !== "function") throw new DeclarationRefused("app.on takes the name of an entry and the function that hears it");
+  on(name: string, handler: Hearing | Flow): this {
+    if (typeof name !== "string" || name.trim() === "") throw new DeclarationRefused(NOT_HEARD);
+    if (isFlow(handler)) {
+      const other = this.flows().find((flow) => flow.name === handler.name && flow !== handler);
+      if (other !== undefined) throw new DeclarationRefused(`two flows of ${this.name} are named ${handler.name}: a run is kept by its flow's name`);
+      this.#starting.set(name, [...(this.#starting.get(name) ?? []), handler]);
+      return this;
+    }
+    if (typeof handler !== "function") throw new DeclarationRefused(NOT_HEARD);
     this.#hearing.set(name, [...(this.#hearing.get(name) ?? []), handler]);
     return this;
   }
 
+  /** Every flow the app starts, once each. */
+  flows(): Flow[] {
+    return [...new Set([...this.#starting.values()].flat())];
+  }
+
+  /** The flows an entry of that name starts. */
+  startedBy(name: string): readonly Flow[] {
+    return this.#starting.get(name) ?? [];
+  }
+
+  /** The name an entry is heard by and what it carries: a line an agent logs is heard by its own name. */
+  named(entry: Logged): { name: string; data: Record<string, unknown> } {
+    if (entry.type !== A_LOGGED_LINE) return { name: entry.type, data: entry.data };
+    return { name: String(entry.data["name"] ?? ""), data: (entry.data["data"] as Record<string, unknown> | undefined) ?? {} };
+  }
+
   /** Hand one entry to whoever asked for its name, in the order they asked; a handler that throws is told to `failed` and the rest run. */
   async heard(entry: Logged, failed: (name: string, error: Error) => void = () => {}): Promise<void> {
-    const logged = entry.type === A_LOGGED_LINE;
-    const name = logged ? String(entry.data["name"] ?? "") : entry.type;
-    const data = logged ? ((entry.data["data"] as Record<string, unknown> | undefined) ?? {}) : entry.data;
+    const { name, data } = this.named(entry);
     for (const handler of this.#hearing.get(name) ?? []) {
       try {
         await handler({ id: entry.call, agent: entry.agent }, data);

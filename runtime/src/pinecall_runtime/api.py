@@ -11,6 +11,7 @@ from pinecall_runtime.channels import endpoints as channels
 from pinecall_runtime.compliance import endpoints as compliance
 from pinecall_runtime.evals import endpoints as evals
 from pinecall_runtime.fleet import endpoints as fleet
+from pinecall_runtime.flows import endpoints as flows
 from pinecall_runtime.hosting import endpoints as hosting
 from pinecall_runtime.knowledge import endpoints as knowledge
 from pinecall_runtime.platform import endpoints as platform
@@ -32,6 +33,7 @@ DOMAINS = (
     telephony,
     alerts,
     calls,
+    flows,
     evals,
     hosting,
     studio,

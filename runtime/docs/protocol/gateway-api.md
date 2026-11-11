@@ -263,6 +263,8 @@ An agent the platform runs itself, from sources the org uploads, and the org's s
 
 The goldens, the replay and the judges, the simulated callers: [evals.md](evals.md).
 
+What an app does around its calls, the events it is owed and its flows' runs: [flows.md](flows.md).
+
 ## 7. The org
 
 People, keys, sign-in, sign-up, the org's provider and mailbox: [people.md](people.md). Numbers

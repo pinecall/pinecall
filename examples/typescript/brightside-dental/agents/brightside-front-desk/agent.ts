@@ -43,8 +43,8 @@ export default class FrontDesk extends Agent {
     if (!this.slots.some((slot) => slot.day === day && slot.time === time)) return "That time did not come from the agenda. Call freeSlots for that day first.";
     const visit = clinic.book(day, time, name);
     if (visit === undefined) return "That time was just taken. Call freeSlots again and offer another.";
-    // A line on the call's log, which the app hears by its name (app.ts).
-    this.log("visit.booked", visit);
+    // A line on the call's log, which the app hears by its name: it starts the visit's reminder (app.ts).
+    this.log("visit.booked", { ...visit, phone: this.call.contact });
     return visit;
   }
 
