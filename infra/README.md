@@ -139,7 +139,7 @@ user (`pinecall.podSecurityAs`): Redis as the image's 999 with its config file o
 each environment's disk made its own, LiveKit and SIP as 10001 (every port they take is above 1024, so
 no capability), kubeip as its 1001, and the fleets' keys Job as the runtime's user with kubectl's
 home on an emptyDir.
-Two NetworkPolicies (`templates/policies.yaml`) name who reaches each store: the gateways' Redis
+Two NetworkPolicies (`templates/network-policies.yaml`) name who reaches each store: the gateways' Redis
 the gateways alone; Postgres the gateways, the pods labelled `pinecall.io/reaches-postgres` (the
 migrations, the fleets' keys, the retention, a suite's Job), its own instances and CloudNativePG's
 namespace. They are enforced only on a cluster whose dataplane enforces network policies (GKE's

@@ -1,0 +1,27 @@
+# GKE's own policies for each Service behind the Gateway (values.yaml, `ingress.gkePolicies`):
+# how long a socket may live on it, and the check that says its pods answer.
+{{- if .Values.ingress.gkePolicies }}
+{{- range $service, $port := dict "pinecall-gateway" 8080 "pinecall-livekit-production" 7880 "pinecall-livekit-sandbox" 7880 }}
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: {{ $service }}
+spec:
+  default:
+    timeoutSec: 3600
+    connectionDraining: { drainingTimeoutSec: 60 }
+  targetRef: { group: "", kind: Service, name: {{ $service }} }
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ $service }}
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck: { port: {{ $port }}, requestPath: / }
+  targetRef: { group: "", kind: Service, name: {{ $service }} }
+{{- end }}
+{{- end }}

@@ -1,0 +1,30 @@
+# Where Postgres's WAL and its nightly base backup go (the Barman Cloud plugin), and when.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: pinecall-postgres
+spec:
+  retentionPolicy: {{ .Values.postgres.backups.retention | quote }}
+  configuration:
+    destinationPath: {{ required "postgres.backups.destination" .Values.postgres.backups.destination | quote }}
+    {{- if not .Values.postgres.backups.credentials }}
+    {{- fail "postgres.backups.credentials: the ObjectStore's credentials block (googleCredentials, s3Credentials, azureCredentials)" }}
+    {{- end }}
+    {{- toYaml .Values.postgres.backups.credentials | nindent 4 }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pinecall-postgres
+spec:
+  schedule: {{ .Values.postgres.backups.schedule | quote }}
+  # No first backup at install: it would run before the plugin is in the Postgres pod, and fail.
+  # A database restored or written to for the first time is backed up by hand (infra/README.md).
+  backupOwnerReference: self
+  cluster:
+    name: pinecall-postgres
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+    parameters:
+      barmanObjectName: pinecall-postgres

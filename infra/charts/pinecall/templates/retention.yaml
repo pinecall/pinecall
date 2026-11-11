@@ -1,0 +1,27 @@
+# The nightly retention: what each org's policy says is too old, erased.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pinecall-retention
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata: { labels: { pinecall.io/reaches-postgres: "true" } }
+        spec:
+          restartPolicy: Never
+          nodeSelector: { pinecall.io/pool: core }
+          {{- include "pinecall.podSecurity" . | nindent 10 }}
+          containers:
+            - name: retention
+              image: {{ include "pinecall.image" . }}
+              args: ["retention", "run"]
+              {{- include "pinecall.containerSecurity" . | nindent 14 }}
+              env:
+                {{- include "pinecall.retentionEnv" . | nindent 16 }}
+              volumeMounts:
+                {{- include "pinecall.scratchMounts" . | nindent 16 }}
+          volumes:
+            {{- include "pinecall.scratchVolumes" . | nindent 12 }}

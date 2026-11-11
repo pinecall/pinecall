@@ -1,0 +1,45 @@
+# The routes of the one name.
+# LiveKit's signalling paths go to production's LiveKit, the same paths under /sandbox to the
+# sandbox's with the prefix taken off, everything else to the gateways; a socket lives up to an
+# hour on any of them (an app's, a room's). A browser's paths alone: LiveKit's API (/twirp) and its
+# workers' registration (/agent) are reached inside the cluster by the gateways and the workers
+# (LIVEKIT_URL), and from the internet they would answer anyone who held the API pair.
+{{- $paths := list "/rtc" "/validate" }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pinecall
+spec:
+  parentRefs: [{ name: pinecall, sectionName: https }]
+  hostnames:
+    - {{ required "domain" .Values.domain | quote }}
+  rules:
+    - matches:
+        {{- range $paths }}
+        - path: { type: PathPrefix, value: {{ . }} }
+        {{- end }}
+      backendRefs: [{ name: pinecall-livekit-production, port: 7880 }]
+    {{- range $paths }}
+    - matches: [{ path: { type: PathPrefix, value: /sandbox{{ . }} } }]
+      filters:
+        - type: URLRewrite
+          urlRewrite: { path: { type: ReplacePrefixMatch, replacePrefixMatch: {{ . }} } }
+      backendRefs: [{ name: pinecall-livekit-sandbox, port: 7880 }]
+    {{- end }}
+    - matches: [{ path: { type: PathPrefix, value: / } }]
+      backendRefs: [{ name: pinecall-gateway, port: 8080 }]
+{{- with .Values.pages }}
+---
+# The apps' own pages, each at one label under the pages' domain: the gateways alone answer them.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pinecall-pages
+spec:
+  parentRefs: [{ name: pinecall, sectionName: https }]
+  hostnames:
+    - {{ printf "*.%s" . | quote }}
+  rules:
+    - matches: [{ path: { type: PathPrefix, value: / } }]
+      backendRefs: [{ name: pinecall-gateway, port: 8080 }]
+{{- end }}
