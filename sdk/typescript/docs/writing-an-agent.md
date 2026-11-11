@@ -304,6 +304,18 @@ as written, by the agent, before any model runs: it is that agent's `greeting`, 
 and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
 one from the app too is refused when the app loads, naming both, since a call runs on one of them.
 
+### A rule every agent keeps
+
+```ts
+app.rule("Never quote a price that is not in the price list.");
+```
+
+A rule is read into the prompt of every agent of the app, and a judge asks of each call whether it
+was kept: the call's score says so, as it does for the judges a class declares. The judges are named
+`app-rule-1`, `app-rule-2`, in the order the rules are written. An agent's declared judges are its
+whole list, so an app with rules owns the list of each of its agents: name the ones of Pinecall's you
+want beside them in the class, `static judges = judges({ on: ["grounded"] })`.
+
 ### A team: the call passed from one agent to another
 
 A line may name a team, the agents its call can pass to. Each says what it takes, in the words a

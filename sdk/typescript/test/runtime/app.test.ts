@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
+import { judges, ownJudge } from "../../src/agent/harness.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { isVoiceApp, voiceApp } from "../../src/runtime/app.js";
 
@@ -10,6 +11,9 @@ class FrontDesk extends Agent {}
 class Billing extends Agent {}
 class Takes extends Agent {
   static takes = "a question about a charge";
+}
+class Judged extends Agent {
+  static override judges = judges({ on: ["grounded"], own: [ownJudge({ name: "offers-a-time", asks: "Did the agent offer a time?" })] });
 }
 class Greets extends Agent {
   static override greeting = "Hello.";
@@ -58,6 +62,25 @@ describe("a line's team", () => {
 
   it("is refused a member that says nothing of what it takes", () => {
     expect(() => voiceApp("brightside").line("+14155550134", { answers: FrontDesk, team: [Billing] })).toThrow(/says nothing of what it takes/);
+  });
+});
+
+describe("a rule", () => {
+  it("is every agent's, with a judge that asks of each call whether it was kept", () => {
+    const app = voiceApp("brightside").line("+14155550134", FrontDesk).rule("Never quote a price that is not in the price list.");
+    expect(app.rules).toEqual(["Never quote a price that is not in the price list."]);
+    expect(app.declares(FrontDesk).judges).toEqual({
+      on: [],
+      own: [expect.objectContaining({ name: "app-rule-1", question: expect.stringContaining("Never quote a price") })],
+    });
+    expect(app.declares(Billing)).toEqual({});
+  });
+
+  it("keeps the judges the class declares beside its own", () => {
+    const app = voiceApp("brightside").line("+14155550134", Judged).rule("Read a time back before booking it.");
+    const declared = app.declares(Judged).judges;
+    expect(declared?.on).toEqual(["grounded"]);
+    expect(declared?.own?.map((judge) => judge.name)).toEqual(["offers-a-time", "app-rule-1"]);
   });
 });
 

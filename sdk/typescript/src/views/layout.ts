@@ -3,6 +3,7 @@
 import { type PromptBlockSpec } from "../wire/defs.js";
 
 import { changes, internalsOf, type Agent } from "../agent/agent.js";
+import { appRulesOf } from "../agent/app-rules.js";
 import { docOf, toolsOf } from "../agent/tools.js";
 import { tagged } from "./components.js";
 import { channelRulesFor, PROTOCOLS, RULES } from "./built-in-rules.js";
@@ -42,7 +43,7 @@ export function layout(agent: Agent): Blocks {
 
 /** Class docstring, built-in rules and protocols, and the channel's. Reads no state. */
 function identityBlock(agent: Agent): string {
-  return paragraphs([docOf(agent) ?? "", tagged("rules", RULES), tagged("protocols", PROTOCOLS), channelBlock(agent)]);
+  return paragraphs([docOf(agent) ?? "", tagged("rules", RULES), tagged("app_rules", appRulesOf(agent)), tagged("protocols", PROTOCOLS), channelBlock(agent)]);
 }
 
 // Static because a call never changes its channel or medium. With no call (an offline prompt), a

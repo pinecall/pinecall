@@ -30,6 +30,7 @@ app.line("+1 415 555 0134", {
   team: [Billing],
 });
 
+app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 ```
 
@@ -39,6 +40,7 @@ app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 | `greeting` | said as written the moment the call comes in, before any model runs |
 | `answers` | the agent on the call when it starts |
 | `team` | the agents the call may pass to; each says what it takes with `static takes` |
+| `rule` | read into the prompt of both agents, and a judge asks of every call whether it was kept |
 | `silence` | what any agent of the app says to a caller who went quiet |
 
 ## How a call goes

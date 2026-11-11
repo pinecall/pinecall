@@ -1,6 +1,7 @@
 /** A voice app: the numbers a project answers at, the agent that answers each, and what every agent of it shares. */
 
 import type { Agent } from "../agent/agent.js";
+import { harnessOf, judges } from "../agent/harness.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
 
@@ -60,6 +61,7 @@ export class VoiceApp {
   readonly timezone: string | undefined;
   readonly #lines: Line[] = [];
   #silence: AgentOptions["idle"] | undefined;
+  readonly #rules: string[] = [];
 
   constructor(name: string, options: AppOptions = {}) {
     if (typeof name !== "string" || !A_NAME.test(name)) throw new DeclarationRefused(NOT_A_NAME);
@@ -91,6 +93,21 @@ export class VoiceApp {
     }
     this.#lines.push({ number: dialled, answers: options.answers, team, ...(greeting === undefined ? {} : { greeting }) });
     return this;
+  }
+
+  /**
+   * A rule every agent of the app keeps: it is read into each one's prompt, and a judge asks of every
+   * call whether it was kept. `app.rule("Never quote a price that is not in the price list.")`
+   */
+  rule(rule: string): this {
+    if (typeof rule !== "string" || rule.trim() === "") throw new DeclarationRefused("a rule is a sentence every agent of the app keeps");
+    this.#rules.push(rule.trim());
+    return this;
+  }
+
+  /** The app's rules, in the order they were written. */
+  get rules(): readonly string[] {
+    return this.#rules;
   }
 
   /** What every agent of the app says to a caller who went quiet, and after how long. */
@@ -139,6 +156,12 @@ export class VoiceApp {
     if (this.timezone !== undefined && ofTheApp) {
       if (own["timezone"] !== undefined) throw new DeclarationRefused(twice(ctor, "timezone", "its own timezone", this.name));
       added.timezone = this.timezone;
+    }
+    if (this.#rules.length > 0 && ofTheApp) {
+      // The class's own judges stay, and each rule adds one: a declared list is the agent's whole list.
+      const own = harnessOf(ctor).judges ?? { on: [], own: [] };
+      const asked = this.#rules.map((rule, at) => ({ name: `app-rule-${at + 1}`, question: `Did the agent keep this rule through the whole call: "${rule}"?` }));
+      added.judges = judges({ on: own.on ?? [], own: [...(own.own ?? []), ...asked] });
     }
     if (this.#silence !== undefined && ofTheApp) {
       if (own["idle"] !== undefined) throw new DeclarationRefused(twice(ctor, "idle", "app.silence", this.name));

@@ -6,6 +6,7 @@ import { type CommandType } from "../wire/registry.js";
 import type { Agent as SdkAgent, AgentOptions, Call as SdkCall, Pinecall, Tool } from "../client/index.js";
 
 import { Agent, changes, onChange, onLog, recalled, seal, setCall, setLast } from "../agent/agent.js";
+import { setAppRules } from "../agent/app-rules.js";
 import { eventsOf } from "../agent/accepts.js";
 import { hookAuthor, withToolCall } from "../agent/authors.js";
 import { visibilityOf } from "../agent/visibility.js";
@@ -49,6 +50,8 @@ export interface MountOptions {
   declares?: Partial<AgentOptions>;
   /** The agents a call of this one may pass between, itself among them, each with its slug. */
   team?: Team;
+  /** The rules the agent's voice app gives every agent of it, read into its prompt. */
+  rules?: readonly string[];
 }
 
 /** A mounted agent: its registered SDK agent and the instances serving live calls. */
@@ -136,9 +139,10 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
  */
 export function mount(
   ctor: Ctor,
-  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {}, team }: MountOptions,
+  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {}, team, rules = [] }: MountOptions,
 ): Mounted {
   if (source !== undefined) describe(ctor, source, file);
+  setAppRules(ctor, rules);
   const name = slug ?? slugOf(ctor);
   const live = new Map<string, Live>();
   const probe = new ctor();

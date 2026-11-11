@@ -13,6 +13,7 @@ app.line("+1 415 555 0134", {
   team: [Billing],
 });
 
+app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 
 export default app;

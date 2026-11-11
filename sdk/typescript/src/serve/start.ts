@@ -86,7 +86,7 @@ function held(pc: Pinecall, one: Served, loaded: Loaded, app: VoiceApp | undefin
   const declares = app?.declares(loaded.ctor) ?? {};
   const mates = app?.teamOf(loaded.ctor) ?? [];
   const team = mates.length === 0 ? undefined : new Map(mates.map((mate) => [mate, slugs.get(mate)!]));
-  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report, declares, ...(team === undefined ? {} : { team }) });
+  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report, declares, rules: app?.agents().includes(loaded.ctor) ? app.rules : [], ...(team === undefined ? {} : { team }) });
   if (app !== undefined) pointed(mounted, app.numbersOf(loaded.ctor), report);
   const viewing = viewingFrom(loaded.ctor, one.slug);
   mounted.agent.onDev(async (verb, data) => {
