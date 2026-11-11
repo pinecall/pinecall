@@ -18,9 +18,9 @@ export async function makeStudioAgent(credentials: Credentials, name: string, de
   await post(credentials, "/v1/studio/agents", definition === undefined ? { name } : { name, definition });
 }
 
-/** The language the agent hears and speaks and the voice it speaks in, kept as the team's settings; each left out stays the vendor's own. */
-export async function setSound(credentials: Credentials, agent: string, sound: { language: string; voice: string }): Promise<void> {
-  const config = { ...(sound.language === "" ? {} : { language: sound.language }), ...(sound.voice === "" ? {} : { voice: sound.voice }) };
+/** The language the agent hears and speaks, the voice it speaks in and the zone its clock is read in, kept as the team's settings; each left out stays unset. */
+export async function setSound(credentials: Credentials, agent: string, sound: { language: string; voice: string; timezone: string }): Promise<void> {
+  const config = { ...(sound.language === "" ? {} : { language: sound.language }), ...(sound.voice === "" ? {} : { voice: sound.voice }), ...(sound.timezone === "" ? {} : { timezone: sound.timezone }) };
   await setSettings(credentials, agent, { config, if_version: null, note: "Chosen when the agent was made", team: true });
 }
 

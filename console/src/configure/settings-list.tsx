@@ -5,11 +5,12 @@ import { useState, type ReactNode } from "react";
 import { Field } from "../ui/setting";
 import { Select } from "../ui/select";
 import { EditDialog } from "./dialog";
+import { ZoneEditor } from "./zone-editor";
 import type { LexiconBody, Report, TuningBody } from "./door";
 import { JudgeEditor, Locked, Pencil } from "./stages";
 
 export type Save = (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => Promise<boolean>;
-type Editing = "language" | "judge" | "hangup" | "lexicon";
+type Editing = "language" | "timezone" | "judge" | "hangup" | "lexicon";
 
 const lines = (text: string): string[] =>
   text
@@ -72,11 +73,13 @@ export function SettingsList(props: Props): ReactNode {
       </div>
       <div className="cfg-rows">
         <Row readOnly={readOnly} name="Language" value={config.language ?? report.speaks.language ?? "Each vendor's default"} locked={fixed.has("language")} onEdit={() => open("language")} />
+        <Row readOnly={readOnly} name="Time zone" value={config.timezone ?? (fixed.has("timezone") ? "The class's own" : "None: the agent is told no hour")} locked={fixed.has("timezone")} onEdit={() => open("timezone")} />
         <Row readOnly={readOnly} name="Judge model" value={config.judge ?? "The organization's choice"} locked={fixed.has("judge")} onEdit={() => open("judge")} />
         <Row readOnly={readOnly} name="Hang up" value={hangup} locked={fixed.has("hangup")} onEdit={() => open("hangup")} />
         <Row readOnly={readOnly} name="Lexicon" value={lexicon === null ? "—" : `${plural(lexicon.said.length, "pronunciation")}, ${plural(lexicon.heard.length, "word")} to hear`} locked={lexiconLocked} onEdit={() => open("lexicon")} />
       </div>
       {editing === "language" && <TextEditor title="Language" label="A language tag: en, es, pt-BR" initial={config.language ?? ""} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
+      {editing === "timezone" && <ZoneEditor initial={config.timezone ?? ""} saving={saving} refused={refused} onClose={close} onSave={(zone) => (zone === "" ? save({}, ["timezone"]) : save({ timezone: zone }))} />}
       {editing === "judge" && <JudgeEditor report={report} config={config} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
       {editing === "hangup" && <HangupEditor config={config} saving={saving} refused={refused} onClose={close} onSave={save} />}
       {editing === "lexicon" && lexicon !== null && <LexiconEditor lexicon={lexicon} fixed={lexiconFixed} saving={saving} refused={refused} onClose={close} onSave={(next) => void onSaveLexicon(next).then((done) => done && close())} />}

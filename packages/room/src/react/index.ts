@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+export { Screen, type Parts, type ScreenProps } from "./screen.js";
+
 import { litAt, room, sayingOf, type Lit, type RoomOptions, type RoomState, type RoomStore, type Store } from "../index.js";
 
 /** The store's state, re-rendering when it changes. Any store of this package. */
@@ -12,7 +14,7 @@ export function useStore<T>(store: Store<T>): T {
 }
 
 /** What `useRoom` hands a component: the state, and the verbs to change it. */
-export type RoomHandle = RoomState & Pick<RoomStore, "start" | "send" | "callMe" | "byPhone" | "leave" | "playSound">;
+export type RoomHandle = RoomState & Pick<RoomStore, "start" | "send" | "event" | "callMe" | "byPhone" | "leave" | "playSound">;
 
 /**
  * One room for as long as the component is mounted, closed when it unmounts. The options are read
@@ -40,8 +42,8 @@ export function useRoom(options: RoomOptions): RoomHandle {
     };
   }, [store]);
   const state = useStore(store);
-  const { start, send, callMe, byPhone, leave, playSound } = store;
-  return { ...state, start, send, callMe, byPhone, leave, playSound };
+  const { start, send, event, callMe, byPhone, leave, playSound } = store;
+  return { ...state, start, send, event, callMe, byPhone, leave, playSound };
 }
 
 /**

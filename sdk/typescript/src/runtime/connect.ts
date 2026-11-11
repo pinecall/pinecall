@@ -30,6 +30,7 @@ import { answeredBy, mateNamed, MOST_PASSES, PASSED, ROUTED, teamTools, transfer
 import { served } from "./once-served.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
+import { givenByPage, redrawn, screenDeclared, screens, stateWith, unscreened, type Screened } from "./screened.js";
 
 /** Options for `mount()`. */
 export interface MountOptions {
@@ -95,6 +96,7 @@ interface Live {
   team: Team | undefined;
   /** What a tool of this call stopped to ask the caller for. */
   asking: Asking;
+  screened: Screened;
 }
 
 /** The slug an agent registers under: its `static slug`, or its class name in kebab-case. */
@@ -155,7 +157,8 @@ export function mount(
     ...(spec as unknown as Camel<ToolSpec>),
     run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
-  const options = { ...optionsFor(ctor, tools, probe, file, source), ...declares, takesUnclaimed, saysDone: true };
+  const declared = optionsFor(ctor, tools, probe, file, source);
+  const options = { ...(screens(ctor, team) ? screenDeclared(declared, tasksOn(ctor, team).length > 0) : declared), ...declares, takesUnclaimed, saysDone: true };
   const agent = pc.agent(name, options);
 
   agent.on("call.started", (started, call) => {
@@ -227,7 +230,7 @@ async function start(
   const author = hookAuthor("onCall");
   const wrote = changes(link.agent).some((change) => change.author === author);
   if (openedIn !== undefined) link.agent.startIn(openedIn);
-  call.setState(snapshot(link.agent), undefined, wrote ? causeOf(author, link.serving.call) : undefined);
+  call.setState(stateWith(link.agent, link.screened), undefined, wrote ? causeOf(author, link.serving.call) : undefined);
   sync(link, call);
   follow(link, call);
 }
@@ -245,7 +248,7 @@ function adopt(
   team?: Team,
 ): void {
   const link = serve(ctor, live, call, send, searching, last, team);
-  restore(link.agent, state);
+  restore(link.agent, unscreened(state));
   sync(link, call);
   follow(link, call);
 }
@@ -266,8 +269,9 @@ function serve(
   const serving: Serving = { agent, ctor, call: world, warned: new Set<string>(), queue: Promise.resolve() };
   // Before the hooks run, so a line logged in onCall lands; stopped after onEnd.
   const unlog = onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data)));
-  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving, transfers: team === undefined ? [] : transfersOf(ctor, team), passes: 0, team, asking: new Asking(tasksOn(ctor, team)) };
-  world.askedBy((asked) => link.asking.ask(asked));
+  const link: Live = { agent, sent: { blocks: new Map() }, stop: [], unlog, serving, transfers: team === undefined ? [] : transfersOf(ctor, team), passes: 0, team, asking: new Asking(tasksOn(ctor, team)), screened: {} };
+  world.askedBy((asked) => link.asking.ask(asked), () => link.asking.asked);
+  world.shownBy(() => live.get(call.id) === link && sync(link, call));
   if (team !== undefined) world.passedBy((to, data) => pass(link, call, team, to as Ctor, data));
   live.set(call.id, link);
   return link;
@@ -289,7 +293,7 @@ async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Recor
   Object.assign(link.serving, { agent, ctor: to });
   Object.assign(link, { agent, passes: link.passes + 1, transfers: transfersOf(to, team), unlog: onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data))) });
   await hooked(call, "onCall", runHook(agent, "onCall", hookCall(call)));
-  call.setState(snapshot(agent));
+  call.setState(stateWith(agent, link.screened));
   sync(link, call);
   follow(link, call);
   return `The call is ${slug}'s now: go on as ${slug}, without saying it was passed.`;
@@ -300,12 +304,12 @@ function follow(link: Live, call: SdkCall): void {
   const world = serving.call;
   link.stop.push(
     onChange(agent, (change) => {
-      call.setState(snapshot(agent), [change.field], causeOf(change.author, world));
+      call.setState(stateWith(agent, link.screened), [change.field], causeOf(change.author, world));
       sync(link, call);
     }),
     call.onAny((event) => {
       world.take(event.type, event.data as Record<string, unknown>, Date.now());
-      if (event.type === "event.received") void received(serving, call, event.data, event.seq ?? 0);
+      if (event.type === "event.received") void received(link, call, event.data, event.seq ?? 0);
       // Recalled memory is not state, so re-render explicitly; then the hook reads what memory did.
       if (event.type === "memory.ops") {
         recalled(agent, wordsRecalled(event.data));
@@ -321,9 +325,11 @@ function follow(link: Live, call: SdkCall): void {
   );
 }
 
-async function received(serving: Serving, call: SdkCall, data: unknown, seq: number): Promise<void> {
+async function received(link: Live, call: SdkCall, data: unknown, seq: number): Promise<void> {
   const fact = data as { name: string; data: Record<string, unknown>; source: "app" | "participant"; identity?: string };
-  const dispatched = inOrder(serving, {
+  // A page that answers a task is the bridge's to hear, never the class's: the form it filled is drawn again either way.
+  if (await givenByPage(link.serving, link.asking, fact.name, fact.source, fact.data)) return sync(link, call);
+  const dispatched = inOrder(link.serving, {
     name: fact.name,
     data: fact.data,
     source: fact.source,
@@ -385,4 +391,5 @@ function show(serving: Live, call: SdkCall): void {
     serving.sent.tools = key;
     call.setTools(visible as unknown as Camel<ToolSpec>[]);
   }
+  if (redrawn(serving.agent, serving.screened)) call.setState(stateWith(serving.agent, serving.screened), ["screen"]);
 }

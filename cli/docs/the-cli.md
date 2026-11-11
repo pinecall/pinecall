@@ -1387,6 +1387,7 @@ outside 1 to 500 or an `--after` that is not a seq is refused here with **exit 2
 pinecall agent [--agent <slug>] [--json]
 pinecall agent list · stop <app>
 pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--temperature n] [--language en|es|pt-BR…]
+                   [--timezone America/Montevideo|Europe/Madrid…]
                    [--llm-builds Class] [--llm-option key=value …] [--stt-builds Class] [--stt-option key=value …]
                    [--realtime vendor/model] [--realtime-option key=value …]
                    [--tts-builds Class] [--tts-option key=value …]
@@ -1401,7 +1402,7 @@ pinecall agent set [--voice x] [--tts x] [--tts-model x] [--stt x] [--llm x] [--
 pinecall agent knowledge [--team] · knowledge edit [--team] [--note '…']
 pinecall agent clear [--voice] [--tts] [--tts-model] [--stt] [--end-of-turn] [--llm] [--temperature] [--llm-builds] [--llm-options]
                      [--realtime] [--realtime-options] [--stt-builds] [--stt-options] [--tts-builds] [--tts-options]
-                     [--judge] [--judge-builds] [--judge-options] [--language] [--greeting] [--hangup] [--turn] [--memory]
+                     [--judge] [--judge-builds] [--judge-options] [--language] [--timezone] [--greeting] [--hangup] [--turn] [--memory]
                      [--record] [--max-duration] [--silence-timeout] [--idle] [--voicemail] [--stt-fallbacks]
                      [--tts-fallbacks] [--llm-timeout] [--knowledge] [--bases] [--team]
 pinecall agent clear --all [--team]
@@ -1563,6 +1564,11 @@ decides for the copies built there; a corner that says nothing falls through to 
 an agent nobody has told keeps its audio. What is kept is the whole room — the caller, the agent,
 the hold music, and a supervisor who took the line — served back by the console's session screen
 and by `pinecall sessions`. `pinecall agent clear record` gives the answer back to the corner below.
+
+**`--timezone <zone>` is the clock the agent's calls open on**, an IANA zone such as
+`America/Montevideo`: the model is told the day, the weekday and the hour there. Unset, it is told the
+gateway's day and no hour, so it cannot say what time it is. A class that declares its own
+(`static timezone`, or its app's) keeps it, and the flag is refused.
 
 **`--max-duration 1-60|off` is the longest a voice call of this agent runs**, in minutes; unset
 anywhere it is ten. A minute before it the agent is told to close and say goodbye, and at it the

@@ -34,6 +34,7 @@ def apply_tuning(
         declared,
         greeting=kept("greeting", declared.greeting, tuning.greeting),
         language=kept("language", declared.language, declared.language if tuning.language is None else tuning.language),
+        timezone=kept("timezone", declared.timezone, declared.timezone if tuning.timezone is None else tuning.timezone),
         voice=kept("voice", declared.voice, _voice(declared, tuning, defaults)),
         stt=kept("stt", declared.stt, _ears(declared, tuning, defaults)),
         llm=kept("llm", declared.llm, _thinking(declared, tuning, defaults)),

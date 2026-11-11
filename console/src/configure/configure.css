@@ -106,3 +106,5 @@
 .pick-key { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; font-size: 12.5px; }
 .pick-key-row { display: flex; gap: 6px; }
 .pick-key-row .cfg-input { flex: 1; min-width: 0; height: 30px; }
+.cfg-zone-here { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--quiet); font-size: 12.5px; cursor: pointer; }
+.cfg-zone-here:hover { color: var(--ink); }

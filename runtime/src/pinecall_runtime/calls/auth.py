@@ -150,6 +150,13 @@ async def check_readable(session: AsyncSession, serving: Serving, reader: Reader
     return opened.config if opened is not None else serving.registry.declared(kept.agent)
 
 
+async def declared_at_opening(serving: Serving, call: str) -> AgentConfig | None:
+    """What the call opened declaring, read on a session of its own: for a stream that began before the call did."""
+    async with serving.handles.sessions.begin() as session:
+        opened = await opening_of(session, call)
+    return None if opened is None else opened.config
+
+
 # A person's read and a server's are written down, by the person or the key; a visitor reads
 # its own call and the fleet the call it serves, neither of which is an access to record.
 async def record_read(session: AsyncSession, reader: Reader, call: str, what: ReadKind) -> None:

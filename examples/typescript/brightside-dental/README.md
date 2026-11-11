@@ -9,15 +9,17 @@ brightside-dental/
   app.ts                          the line, who answers it, the team, the timezone, the silence, the reminder's flow
   agents/
     brightside-front-desk/
-      agent.ts                    answers the line: reads the agenda, books, passes a charge on
+      agent.tsx                   answers the line: reads the agenda, books, passes a charge on
       harness.ts                  its own judge and its own test caller
       test/agent.test.ts          the class as a class
       test/goldens/               three written calls a model must get right
     brightside-billing/
-      agent.ts                    takes the call the front desk passes: invoices, refund requests
+      agent.tsx                   takes the call the front desk passes: invoices, refund requests
     brightside-reminder/
       agent.ts                    calls a patient the day before a visit, for the flow
   lib/clinic.ts                   the agenda, the patients and the ledger (a stand-in, in memory)
+  lib/screen.ts                   the parts the agents put on a caller's page
+  ui/                             that page: React, `@pinecall/room`, and a dev server that mints its tickets
   test/team.test.ts               the pass between the two agents, on the wire
 ```
 
@@ -82,6 +84,36 @@ A caller who only says "Hello?" is passed to nobody: the front desk answers.
    visit, then `Reminder` calls the patient with what the call is for and the visit as its state. Nobody
    answers: it tries once more two hours later. The patient cancels on that call: `Reminder` logs
    `visit.cancelled`, and a reminder still waiting for that visit is cancelled.
+
+## The page that follows the call
+
+`ui/` is a page a caller talks to the line from, and it is drawn by the agents. Each agent has a
+`screen()` beside its tools, returning parts (`lib/screen.ts`) from the same state the model reads:
+
+```tsx
+override screen() {
+  const asked = this.call.asking;
+  return (
+    <Stage desk="front">
+      {asked !== undefined ? <Form {...asked} /> : this.visit !== null ? <Ticket visit={this.visit} … /> : <Agenda slots={this.slots} picked={this.picked} />}
+    </Stage>
+  );
+}
+```
+
+The page maps each part to a component of its own (`ui/src/parts.tsx`) and draws whatever the call's log
+says is on the screen: the agenda once the model read it, a form when `book` stops to ask for a phone
+number, the ticket once booked, and billing's invoices in billing's colours once the call is passed. A
+tap on a time is the event `slot.picked`, which the front desk declares and answers by reading the time
+back; the form gives the phone number with `task.give`, in the model's place.
+
+```bash
+pinecall start                    # the agents, held
+pnpm ui                           # the page on http://localhost:5184, with its /api/token
+```
+
+The page's server is `ui/vite.config.ts`: one route that mints a ticket with the key `pinecall link`
+wrote to `.env`, which never reaches the browser.
 
 ## Run it
 

@@ -12,7 +12,7 @@ that change it. The package has three entry points, and each one is for a differ
 | import | where it runs | what it gives you |
 |---|---|---|
 | `@pinecall/room` | the page | `room()`, the store of one conversation, `rowsOf`, `knownBy`, `brief` to draw it, and the karaoke of what is being said |
-| `@pinecall/room/react` | the page, in React | `useRoom()`, `useStore()` and `useKaraoke()` |
+| `@pinecall/room/react` | the page, in React | `useRoom()`, `useStore()`, `useKaraoke()` and `<Screen>` |
 | `@pinecall/room/server` | your server | `mint()`, `dial()`, `expect()` and `GatewayRefused`: the only code that touches the key |
 
 A conversation has two parts, and they are not the same thing. **The participant** is the page's
@@ -353,7 +353,7 @@ the plan they chose (`call.event("plan.chosen", { plan: "pro" })`). The agent's 
 runs when its class accepts that name from a participant, and the runtime drops any other; a state
 field the hook writes is in the view at the next turn, and the hook may `reply()` at once. Anybody
 can send what a browser sends, so keep `data` to values the view reads, never words the model obeys.
-What the agent puts on the screen with `call.send("pinecall.ui", data)` reaches `onUi(data)`.
+What the agent puts on the screen with `call.send("pinecall.ui", data)` reaches `onUi(data)`; the screen its `screen()` draws is read with `screenOf(state.log)` and drawn with `<Screen>`: [docs/the-screen.md](docs/the-screen.md).
 
 ## Sound and the browser's permission
 

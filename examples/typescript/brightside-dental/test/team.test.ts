@@ -20,7 +20,7 @@ const ANA = "+14155550142";
 
 // Each class is handed its source, as `pinecall start` hands it: the tools' descriptions and types are read from it.
 for (const [ctor, folder] of [[FrontDesk, "brightside-front-desk"], [Billing, "brightside-billing"]] as const) {
-  const file = fileURLToPath(new URL(`../agents/${folder}/agent.ts`, import.meta.url));
+  const file = fileURLToPath(new URL(`../agents/${folder}/agent.tsx`, import.meta.url));
   describeClass(ctor, readFileSync(file, "utf8"), file);
 }
 

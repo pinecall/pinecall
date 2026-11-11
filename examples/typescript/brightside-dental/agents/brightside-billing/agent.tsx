@@ -3,6 +3,7 @@
 import { Agent, tool, type Call } from "@pinecall/agents";
 
 import { clinic, type Invoice } from "../../lib/clinic.js";
+import { Invoices, Stage } from "../../lib/screen.js";
 
 /**
  * You are the billing desk of Brightside Dental. You explain charges and take refund requests.
@@ -13,6 +14,8 @@ export default class Billing extends Agent {
 
   /** The invoices of the patient on the call, found as the call arrives. */
   invoices: Invoice[] = [];
+  /** The invoice a refund was asked for on this call. */
+  refundAsked = "";
 
   override onCall(_call: Call) {
     const patient = this.call.shared["patient"] as { id: string } | undefined;
@@ -31,6 +34,17 @@ export default class Billing extends Agent {
   askRefund(invoice: string, reason: string) {
     if (clinic.invoice(invoice) === undefined) return `There is no invoice ${invoice}. Read the ids back from listInvoices.`;
     clinic.askRefund(invoice, reason);
+    this.refundAsked = invoice;
     return "Written down. Tell the caller the office will call back within one business day, and promise nothing else.";
+  }
+
+  // The page changes desk with the call: the invoices, the one the front desk passed it with, the refund asked for.
+  override screen() {
+    const about = this.call.handed?.["invoice"];
+    return (
+      <Stage desk="billing">
+        <Invoices invoices={this.invoices} about={typeof about === "string" ? about : undefined} refundAsked={this.refundAsked} />
+      </Stage>
+    );
   }
 }

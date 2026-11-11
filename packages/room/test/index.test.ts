@@ -7,14 +7,14 @@ import * as react from "../src/react/index.js";
 import * as server from "../src/server/index.js";
 
 describe("the public surfaces", () => {
-  it("@pinecall/room is the room, the rows and the karaoke", () => {
+  it("@pinecall/room is the room, the rows, the screen and the karaoke", () => {
     expect(Object.keys(page).sort()).toEqual([
-      "brief", "joined", "knownBy", "litAt", "room", "rowsOf", "sayingOf", "soundedBy",
+      "TASK_GIVE", "brief", "joined", "knownBy", "litAt", "room", "rowsOf", "sayingOf", "screenOf", "soundedBy",
     ]);
   });
 
-  it("@pinecall/room/react is three hooks", () => {
-    expect(Object.keys(react).sort()).toEqual(["useKaraoke", "useRoom", "useStore"]);
+  it("@pinecall/room/react is three hooks and the screen", () => {
+    expect(Object.keys(react).sort()).toEqual(["Screen", "useKaraoke", "useRoom", "useStore"]);
   });
 
   it("@pinecall/room/server is the three calls a key makes, and the refusal", () => {

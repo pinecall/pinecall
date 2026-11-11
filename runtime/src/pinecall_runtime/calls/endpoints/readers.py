@@ -19,10 +19,11 @@ from pinecall_runtime.calls.auth import (
     ReaderDep,
     TheServing,
     check_readable,
+    declared_at_opening,
     record_read,
 )
 from pinecall_runtime.calls.fanout import EVERYTHING, Filter
-from pinecall_runtime.calls.readers import parse_filter, project_entry, project_state
+from pinecall_runtime.calls.readers import Declaring, parse_filter, project_entry, project_state
 from pinecall_runtime.calls.service import lists
 from pinecall_runtime.enums import ReadKind
 from pinecall_runtime.exceptions import Forbidden, NotFound
@@ -61,8 +62,9 @@ async def stream_events(
         return Response(status_code=204)
     if sse.wants_sse(request):
         entries = serving.logs.stream(call, after=cursor, only=only)
+        declaring = Declaring(config, lambda: declared_at_opening(serving, call))
         return sse.streamed(
-            sse.paced(_projected(entries, reader, config, ends=True), closing=request.app.state.closing)
+            sse.paced(_projected(entries, reader, declaring, ends=True), closing=request.app.state.closing)
         )
     read = await store.since(call, after=cursor, limit=query.limit)
     return _page(read, only, reader, config, live=not over)
@@ -89,7 +91,7 @@ async def stream_agent_events(
     if sse.wants_sse(request):
         entries = serving.logs.agent(slug).stream(after=cursor, only=only)
         return sse.streamed(
-            sse.paced(_projected(entries, reader, config, ends=False), closing=request.app.state.closing)
+            sse.paced(_projected(entries, reader, Declaring(config), ends=False), closing=request.app.state.closing)
         )
     read = await serving.logs.store.since(f"@{slug}", after=cursor, limit=query.limit)
     return _page(read, only, reader, config, live=True)
@@ -151,7 +153,7 @@ async def stream_org_events(
     only = parse_filter(types, durable=False, strict=True)
     feed = await serving.logs.feed_reader(reader.actor.org, reader.actor.env)
     return sse.streamed(
-        sse.paced(_projected(feed, reader, None, ends=False, only=only), closing=request.app.state.closing)
+        sse.paced(_projected(feed, reader, Declaring(None), ends=False, only=only), closing=request.app.state.closing)
     )
 
 
@@ -166,13 +168,13 @@ def _page(
 
 
 async def _projected(
-    entries: AsyncIterator[Entry], reader: Reader, config: AgentConfig | None, *, ends: bool, only: Filter = EVERYTHING
+    entries: AsyncIterator[Entry], reader: Reader, declaring: Declaring, *, ends: bool, only: Filter = EVERYTHING
 ) -> AsyncIterator[str]:
     yield f"retry: {RETRY_MS}\n\n"
     async for entry in entries:
         if not only.passes(entry):
             continue
-        data = project_entry(entry, reader.projection, config, reader.viewer)
+        data = project_entry(entry, reader.projection, await declaring.now(), reader.viewer)
         if data is not None:
             yield sse.frame(json.dumps(data, separators=(",", ":")), event=entry.type, id_=str(entry.seq))
         if ends and entry.type == TERMINAL_EVENT:

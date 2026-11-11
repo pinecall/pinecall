@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import * as service from "../../../src/agents/service/index.js";
-import { NO_LANGUAGE } from "../../../src/agents/service/settings.js";
+import { NO_LANGUAGE, NO_ZONE } from "../../../src/agents/service/settings.js";
 import { PinecallError, UsageError } from "../../../src/errors.js";
 import { answer, studioAgents } from "../../support/gateway.js";
 import { testContext } from "../../support/context.js";
@@ -99,6 +99,7 @@ describe("the fields as the wire takes them", () => {
     expect(() => service.SettingsInput.parse({ voicemail: " " })).toThrow();
     expect(() => service.SettingsInput.parse({ "eot-threshold": 1.5 })).toThrow();
     expect(() => service.SettingsInput.parse({ language: " " })).toThrow(NO_LANGUAGE);
+    expect(() => service.SettingsInput.parse({ timezone: " " })).toThrow(NO_ZONE);
     expect(() => service.SettingsInput.parse({ "end-of-turn": "vad" })).toThrow();
   });
 });

@@ -66,6 +66,18 @@ def test_the_classs_longest_call_and_timeout_win_over_the_settings_and_the_setti
     assert (loose.max_duration_s, loose.llm_timeout_s) == (300, 4.0)
 
 
+def test_the_settings_zone_is_the_agents_unless_its_class_declares_one() -> None:
+    assert _tuned(Tuning(timezone="America/Montevideo"), AgentConfig(slug="kala")).timezone == "America/Montevideo"
+    declared = AgentConfig(slug="kala", timezone="Europe/Madrid", fixed=frozenset({"timezone"}))
+    assert _tuned(Tuning(timezone="America/Montevideo"), declared).timezone == "Europe/Madrid"
+    assert _tuned(Tuning(), AgentConfig(slug="kala", timezone="Europe/Madrid")).timezone == "Europe/Madrid"
+
+
+def test_a_zone_that_is_no_zone_is_refused() -> None:
+    with pytest.raises(ValidationError, match="is not an IANA time zone"):
+        Tuning(timezone="Montevideo/Uruguay")
+
+
 def test_a_vendor_alone_names_no_model_to_think_with() -> None:
     """`--llm acme` is refused naming the form: a model is named, the ears and a voice have a default."""
     with pytest.raises(ValidationError, match=r"acme alone names no model: name it, `--llm acme/<model>`"):

@@ -563,6 +563,58 @@ the day the call opened — `history`, `room` and `claimed`.
 There is no LiveKit here and no escape hatch to it: a need the room cannot express is a new
 command with a name.
 
+## The caller's page: `screen()`
+
+A caller on a page of yours sees more than a transcript: the agent draws their screen. `screen()` is
+`render()` for the page: it reads the same state and returns parts, and it is drawn again whenever the
+state moves, a tool ends or a task is asked for.
+
+```tsx
+import { Agent, part, tool } from "@pinecall/agents";
+
+const Agenda = part<{ slots: Slot[]; picked: string }>("agenda");
+const Form = part<Asked>("form");
+const Ticket = part<{ visit: Visit }>("ticket");
+
+export default class FrontDesk extends Agent {
+  static events = { "slot.picked": { from: ["participant" as const] } };
+
+  slots: Slot[] = [];
+  picked = "";
+  visit: Visit | null = null;
+
+  override onEvent(_name: string, tapped: Record<string, unknown>) {
+    this.picked = `${tapped["day"]} ${tapped["time"]}`;
+    void this.reply(`The caller tapped ${this.picked} on their screen. Read it back and ask for their yes.`);
+  }
+
+  override screen() {
+    const asked = this.call.asking;
+    if (asked !== undefined) return <Form {...asked} />;
+    if (this.visit !== null) return <Ticket visit={this.visit} />;
+    return <Agenda slots={this.slots} picked={this.picked} />;
+  }
+}
+```
+
+| | |
+|---|---|
+| `part<Props>(name)` | a part: a tag of your own, also callable as a function (`Agenda({ slots })`) in a `.ts` file. The name is lowercase letters, digits and dashes; the page maps it to a component of its own. What it is given must be plain data: it crosses to a browser as JSON |
+| `screen()` | what the page shows now. Parts nest, a component that is no part is called, and nothing is sent while the screen is the one already sent |
+| `this.call.asking` | what a tool stopped to ask for (`{ task, asks, fields, refused? }`), so the screen can draw the question as a form; undefined when nothing is asked |
+| `this.show(<Map />)` | puts a part over the screen now, from a tool or a hook; `this.show(null)` takes it away |
+
+The agent says what is on the screen and the page says how it looks: a part carries no markup and no
+style. The screen travels in the call's state as the field `screen`, public to that call's own page and
+to nobody else's, so a page that follows a phone call draws it too. `@pinecall/room` reads it with
+`screenOf(state.log)` and draws it with `<Screen>`.
+
+What the caller does on the page reaches the class as an event it declares from `participant`
+(`static events`), in `onEvent`. One event is the package's own: a page that shows a task's form gives the
+answer with `task.give` (`{ task: "phone", given: { number: "+14155550142" } }`), in the model's place.
+The task's `check` reads it as it reads the model's; the tool that asked goes on, and the model is told how
+it ended so it can say so. A value the check refuses comes back on `this.call.asking.refused`.
+
 ## The panel beside a conversation: `@view`
 
 The console draws a pane beside every thread in **Calls**. A class that declares a view has its own

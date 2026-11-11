@@ -65,5 +65,9 @@ told. The reduced state a public reader gets keeps `seq`, `status`, `user_state`
 (the public fields), `room` (identity, kind, name, joined_at, speaking), `confirms` (phrase,
 status), `transfer`, `held` and the viewer's own `events`.
 
+What is public of a call is what the call opened declaring. A page follows its call from the mint, before
+the call has opened: such a stream reads the declaration once the call has one, so the public fields reach
+it from the first `state.changed`.
+
 No third projection, no per-field opt-in beyond the three visibilities an agent declares on its
 state fields (`public`, `tenant`, `pii`), no masking of transcripts.

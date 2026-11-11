@@ -82,7 +82,7 @@ one that cannot keeps the `tts` for those lines alone), `judge`,
 the org's choice at `PUT /v1/org/judging` and the platform's; on a key of the org's own, a local
 model's server among them through `judge_options` `{"base_url": …}`, its evals are never billed —
 [evals.md](evals.md)), `language` (a tag, `en` or
-`pt-BR`, given to the ears and the voice; unset, each vendor's own default), `greeting` (`{say}` or
+`pt-BR`, given to the ears and the voice; unset, each vendor's own default), `timezone` (an IANA zone, `America/Montevideo`: every call opens told the day, the weekday and the hour there, and its `call.started` carries `today` in it; unset, the day is the gateway's and the model is told no hour), `greeting` (`{say}` or
 `{reply}`, an empty reply the model opening on its prompt alone, and `allow_interruptions`, false
 unless set), `hangup {when}`, `turn {min_interruption_words, endpointing_ms, eot_threshold,
 eager_eot_threshold, min_interruption_ms}` (the last is how long the caller must speak over the

@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall agent set --timezone <zone>`**: the IANA zone whose day and hour the agent's calls open on, for an
+  agent whose class declares none. `agent clear --timezone` takes it out, and the MCP's `agent` tool sets it too.
+
 - **`pinecall dial <agent> <number>`**: the agent calls a number, with `--state`, `--metadata`, `--greeting` and
   `--instruction` for what its call opens with. The MCP has the same as its `dial` tool.
 

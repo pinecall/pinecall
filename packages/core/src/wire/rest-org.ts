@@ -148,6 +148,8 @@ export const TuningBodySchema = z.strictObject({
   stt: z.string().nullish(),
   /** A language tag (`en`, `es`, `pt-BR`); unset pins none, and each vendor runs its own default. */
   language: z.string().nullish(),
+  /** The IANA zone (`America/Montevideo`) whose day and hour the agent's calls open on; unset, the gateway's day and no hour. */
+  timezone: z.string().nullish(),
   llm: z.string().nullish(),
   /** The model's temperature, in its vendor's range. */
   temperature: z.number().nullish(),

@@ -4,6 +4,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { ToolSpec } from "../wire/defs.js";
 
+import type { Asked } from "../agent/screen.js";
 import { askingFor, givenWith, givingTool, tasksOf, type Task } from "../agent/tasks.js";
 import { DeclarationRefused } from "../agent/tools.js";
 
@@ -47,12 +48,38 @@ export function givingTools(tasks: readonly Task<unknown>[], taken: readonly str
  */
 export class Asking {
   #waiting: Waiting | undefined;
+  #refused: string | undefined;
 
   constructor(private readonly tasks: readonly Task<unknown>[]) {}
 
   /** The one tool open while something is asked for; undefined when nothing is. */
   get open(): ToolSpec | undefined {
     return this.#waiting === undefined ? undefined : givingTool(this.#waiting.task);
+  }
+
+  /** What is asked for now, for a screen that draws it as a form. */
+  get asked(): Asked | undefined {
+    const asked = this.#waiting?.task;
+    if (asked === undefined) return undefined;
+    return { task: asked.name, asks: asked.asks, fields: { ...asked.fields }, ...(this.#refused === undefined ? {} : { refused: this.#refused }) };
+  }
+
+  /**
+   * The caller's page gave the answer, in the model's place: the waiting tool goes on. Answers what the
+   * model is to be told, or undefined when the page gave a task nobody asked for or one its check refused.
+   */
+  async givenByPage(task: unknown, given: unknown): Promise<string | undefined> {
+    const waiting = this.#waiting;
+    if (waiting === undefined || waiting.task.name !== task || typeof given !== "object" || given === null) return undefined;
+    try {
+      const ended = await this.given(givenWith(waiting.task), given as Record<string, unknown>);
+      if (typeof ended === "string") return `The caller gave ${waiting.task.asks} on their screen. ${ended}`;
+      return `The caller gave ${waiting.task.asks} on their screen, and ${waiting.frame.tool} is done with this result: ${JSON.stringify((ended as { result: unknown }).result)}. Tell them how it went.`;
+    } catch (refused) {
+      if (!(refused instanceof ToolFailed)) throw refused;
+      this.#refused = refused.message;
+      return undefined;
+    }
   }
 
   /** Whether a tool of that name gives one of the call's tasks. */
@@ -93,6 +120,7 @@ export class Asking {
       throw new ToolFailed(refused instanceof Error ? refused.message : String(refused));
     }
     this.#waiting = undefined;
+    this.#refused = undefined;
     const stopped = this.#stops(waiting.frame);
     waiting.give(value);
     // Said as the first tool's result, by its name: read bare, the model takes it for the answer's own and calls the first tool again.

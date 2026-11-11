@@ -37,6 +37,7 @@ class SettingsBody(WireModel):
     stt: str | None = None
     llm: str | None = None
     language: str | None = None
+    timezone: str | None = None
     greeting: GreetingConfig | None = None
     hangup: HangupConfig | None = None
     turn: TurnConfig | None = None

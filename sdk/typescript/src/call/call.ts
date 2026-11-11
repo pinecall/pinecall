@@ -4,6 +4,7 @@ import type { Camel } from "../wire/codec.js";
 import type { Contact, Direction, Medium } from "../wire/defs.js";
 
 import type { Call as HookCall } from "../agent/lifecycle.js";
+import type { Asked } from "../agent/screen.js";
 import type { Task } from "../agent/tasks.js";
 import { History } from "./history.js";
 import { ParticipantHandle, Room, type Commander, type ParticipantKind } from "./room.js";
@@ -109,6 +110,10 @@ export class CallWorld implements HookCall {
   handed?: Record<string, unknown>;
   #passing: Passing | null = null;
   #asking: ((asked: Task<unknown>) => Promise<unknown>) | null = null;
+  #asked: () => Asked | undefined = () => undefined;
+  /** What `show` put over the screen, as the agent gave it: a view's child, rendered by the bridge. */
+  shown: unknown = null;
+  #showing: () => void = () => {};
 
   // say/reply settle on the next turn.agent: commands are fire-and-forget, so that entry is the only ack.
   #speaking: ((spoken: boolean) => void)[] = [];
@@ -152,9 +157,26 @@ export class CallWorld implements HookCall {
     return this.#asking(asked as Task<unknown>) as Promise<T>;
   }
 
-  /** The bridge's: how this call asks. */
-  askedBy(asking: (asked: Task<unknown>) => Promise<unknown>): void {
+  /** What a tool of this call stopped to ask the caller for, for a screen that draws it; undefined when nothing is asked. */
+  get asking(): Asked | undefined {
+    return this.#asked();
+  }
+
+  /** Put a part on the caller's page over the screen; null takes it away. `this.show(…)` on the agent. */
+  show(shown: unknown): void {
+    this.shown = shown;
+    this.#showing();
+  }
+
+  /** The bridge's: how this call asks, and what it is asking for now. */
+  askedBy(asking: (asked: Task<unknown>) => Promise<unknown>, asked: () => Asked | undefined): void {
     this.#asking = asking;
+    this.#asked = asked;
+  }
+
+  /** The bridge's: what draws the page again when something is shown. */
+  shownBy(showing: () => void): void {
+    this.#showing = showing;
   }
 
   /** The bridge's: how this call is passed. */

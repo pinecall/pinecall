@@ -9,7 +9,7 @@ import { CallWorld, describe as describeClass, runHook, runTool, seal, setCall, 
 import { clinic } from "../../../lib/clinic.js";
 import FrontDesk from "../agent.js";
 
-const FILE = fileURLToPath(new URL("../agent.ts", import.meta.url));
+const FILE = fileURLToPath(new URL("../agent.tsx", import.meta.url));
 describeClass(FrontDesk, readFileSync(FILE, "utf8"), FILE);
 
 const A_MONDAY = "2026-11-09";

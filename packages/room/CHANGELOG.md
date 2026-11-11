@@ -6,6 +6,9 @@ maintainer's call.
 
 ## Unreleased
 
+- **The screen an agent draws**: `screenOf(state.log)` reads it, `<Screen screen parts>` (`@pinecall/room/react`)
+  draws it with a component of the page's per part, and `TASK_GIVE` names the event a page answers a task with.
+  `useRoom()` hands out `event`.
 - **`dial()` takes what the call opens with**: `state`, `metadata`, `greeting` and `instruction`.
 
 ## 0.11.30 — an app is written whole in its class (2026-11-09)

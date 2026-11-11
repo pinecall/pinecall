@@ -273,6 +273,8 @@ class Tuning:
     judge_builds: str | None = None
     judge_options: Mapping[str, Any] | None = None
     language: str | None = None
+    # The IANA zone whose day and hour the agent's calls open on; unset, the gateway's day and no hour.
+    timezone: str | None = None
     greeting: Greeting | None = None
     hangup: Hangup | None = None
     turn: Turn | None = None
@@ -304,11 +306,14 @@ class Tuning:
             "judge",
             "judge_builds",
             "language",
+            "timezone",
             "knowledge",
         ):
             value = getattr(self, name)
             if value is not None and not value.strip():
                 raise ValidationError(BLANK.format(field=name))
+        if self.timezone is not None:
+            parse_zone(self.timezone)
         if self.max_duration_s is not None:
             check_call_limit(self.max_duration_s)
         if self.silence_timeout_s is not None:

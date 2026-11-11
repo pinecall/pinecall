@@ -1,0 +1,519 @@
+/* The page's look: two desks, two palettes, and the scene between a header and the voice. */
+
+:root {
+  --bg: #f3ede2;
+  --ink: #15302b;
+  --soft: #5f736d;
+  --accent: #0d7a63;
+  --on-accent: #fffdf8;
+  --card: #fffdf8;
+  --line: rgba(21, 48, 43, 0.14);
+  --display: "Fraunces", Georgia, serif;
+  --text: "Inter", system-ui, sans-serif;
+}
+
+main[data-desk="billing"] {
+  --bg: #13151b;
+  --ink: #f2ecdf;
+  --soft: #9a9485;
+  --accent: #e9a23b;
+  --on-accent: #17130a;
+  --card: #1c2029;
+  --line: rgba(242, 236, 223, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 16px/1.5 var(--text);
+}
+
+main {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--bg);
+  color: var(--ink);
+  transition: background 0.7s ease, color 0.7s ease;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px clamp(16px, 5vw, 48px);
+}
+
+.brand {
+  font: 600 20px var(--display);
+  letter-spacing: -0.01em;
+  margin-right: auto;
+}
+
+.brand em,
+h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.desk {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  animation: rise 0.5s ease both;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 0;
+  background: none;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  padding: 14px 24px;
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.quiet {
+  color: var(--soft);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  padding: 8px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hint {
+  color: var(--soft);
+  font-size: 14px;
+}
+
+.error {
+  color: #c2412d;
+  font-weight: 500;
+}
+
+h1,
+h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(40px, 7vw, 84px);
+  line-height: 1.02;
+}
+
+h2 {
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.05;
+}
+
+/* The door: before a call. */
+.door {
+  grid-row: 2 / 4;
+  align-self: center;
+  padding: 0 clamp(16px, 5vw, 48px) 64px;
+  max-width: 900px;
+}
+
+.lede {
+  font-size: 18px;
+  color: var(--soft);
+  max-width: 52ch;
+  margin: 24px 0 32px;
+}
+
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.who button {
+  text-align: left;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  min-width: 220px;
+}
+
+.who button[aria-checked="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.who b,
+.who small {
+  display: block;
+}
+
+.who small {
+  color: var(--soft);
+}
+
+.start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The scene: what the agent put on the screen. */
+.scene {
+  align-self: center;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px clamp(16px, 5vw, 48px);
+  animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+.waiting {
+  font: 400 28px var(--display);
+  color: var(--soft);
+}
+
+.welcome ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.welcome li {
+  font: italic 400 20px var(--display);
+  color: var(--soft);
+}
+
+.welcome p {
+  margin: 20px 0 0;
+  color: var(--soft);
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 28px 0 16px;
+}
+
+.slots button {
+  text-align: left;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.slots button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.slots b {
+  display: block;
+  font: 400 34px var(--display);
+}
+
+.slots small {
+  color: var(--soft);
+}
+
+.slots button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.slots button[aria-pressed="true"] small {
+  color: inherit;
+}
+
+.ask label {
+  display: grid;
+  gap: 6px;
+  margin: 24px 0 16px;
+}
+
+.ask label span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+input {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+.ask input {
+  font: 400 26px var(--display);
+}
+
+.ticket {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px -30px rgba(21, 48, 43, 0.45);
+}
+
+.ticket .stub {
+  padding: 28px 28px 22px;
+  border-bottom: 2px dashed var(--line);
+}
+
+.ticket h2 {
+  font-size: clamp(56px, 10vw, 96px);
+}
+
+.ticket .day {
+  margin: 4px 0 0;
+  font: 400 22px var(--display);
+}
+
+.ticket dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 0;
+  padding: 20px 28px;
+}
+
+.ticket dt {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.ticket dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 4px 28px 26px;
+  display: grid;
+  gap: 10px;
+}
+
+.timeline li {
+  position: relative;
+  padding-left: 26px;
+  color: var(--soft);
+}
+
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+}
+
+.timeline li[data-done] {
+  color: var(--ink);
+}
+
+.timeline li[data-done]::before {
+  background: var(--accent);
+}
+
+.invoices ul {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 12px;
+  border-top: 1px solid var(--line);
+}
+
+.invoices li {
+  display: grid;
+  grid-template-columns: 90px 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.invoices li[data-about] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.invoices .id {
+  font-size: 13px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.invoices .what {
+  text-transform: capitalize;
+}
+
+.invoices .amount {
+  font: 400 24px var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+.badge[data-tone="due"],
+.badge[data-tone="asked"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The voice: the orb, what is being said, and a line to write on. */
+footer {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 16px clamp(16px, 5vw, 48px) 28px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.orb {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, white), var(--accent));
+  transform: scale(calc(0.8 + var(--level, 0) * 0.6));
+  transition: transform 0.12s ease, opacity 0.3s ease, filter 0.3s ease;
+  opacity: 0.55;
+}
+
+.orb[data-speaking="agent"] {
+  opacity: 1;
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.orb[data-speaking="user"] {
+  opacity: 1;
+  filter: saturate(0.3);
+}
+
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
+.caption {
+  min-height: 3em;
+  margin: 0;
+  text-align: center;
+  font: 400 20px/1.4 var(--display);
+  max-width: 46ch;
+}
+
+.caption .coming {
+  color: var(--soft);
+  opacity: 0.55;
+}
+
+.caption .yours {
+  color: var(--soft);
+  font-style: italic;
+}
+
+footer form {
+  width: 100%;
+  max-width: 460px;
+}
+
+.ended .over {
+  margin: 0;
+  color: var(--soft);
+}
+
+.said {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-height: 30vh;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.said li[data-role="user"] {
+  color: var(--soft);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

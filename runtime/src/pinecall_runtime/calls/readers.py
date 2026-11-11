@@ -1,7 +1,8 @@
 """What each reader receives: the filter it asked for, and the projection its credential allows."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.calls.fanout import Filter
@@ -14,6 +15,8 @@ from pinecall_runtime.wire.parts import Projection
 from pinecall_runtime.wire.state import AgentTurn, State, Turn
 
 MAX_TYPES = 32
+# How many entries a stream asks at for a declaration it began without, before it reads on with none.
+LATE_TRIES = 8
 
 _A_TYPE_NAME = re.compile(r"^[a-z0-9_.]+$")
 
@@ -53,6 +56,24 @@ PUBLIC_ENVELOPE = ("seq", "ts", "type", "ephemeral")
 PUBLIC_TURN = frozenset({"role", "speech_id", "text", "interrupted"})
 PUBLIC_SEAT = frozenset({"identity", "kind", "name", "joined_at", "speaking"})
 PUBLIC_CONFIRM = frozenset({"phrase", "status"})
+
+
+# A page follows its call from the mint, before the call has opened and declared anything: what is
+# public of it is read once it has, never decided for the whole stream while nothing is declared.
+@dataclass
+class Declaring:
+    """The declaration a stream projects by: the one it began with, else its call's own once it opened."""
+
+    config: AgentConfig | None
+    late: Callable[[], Awaitable[AgentConfig | None]] | None = None
+    tries: int = LATE_TRIES
+
+    async def now(self) -> AgentConfig | None:
+        """The declaration to project the next entry by, asked for again while there is none."""
+        if self.config is None and self.late is not None and self.tries > 0:
+            self.tries -= 1
+            self.config = await self.late()
+        return self.config
 
 
 def parse_filter(types: str | None, *, durable: bool, strict: bool = False) -> Filter:

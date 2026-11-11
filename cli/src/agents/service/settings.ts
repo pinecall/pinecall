@@ -19,7 +19,7 @@ export const FIELDS = [
   "llm", "temperature", "llm-builds", "llm-options",
   "realtime", "realtime-options",
   "judge", "judge-builds", "judge-options",
-  "language", "greeting", "hangup", "turn", "memory", "record", "max-duration",
+  "language", "timezone", "greeting", "hangup", "turn", "memory", "record", "max-duration",
   "silence-timeout", "idle", "voicemail", "stt-fallbacks", "tts-fallbacks", "llm-timeout", "knowledge", "bases",
 ] as const;
 export type Field = (typeof FIELDS)[number];
@@ -31,7 +31,7 @@ export const WIRE: Record<Field, keyof TuningBody> = {
   llm: "llm", temperature: "temperature", "llm-builds": "llm_builds", "llm-options": "llm_options",
   realtime: "realtime", "realtime-options": "realtime_options",
   judge: "judge", "judge-builds": "judge_builds", "judge-options": "judge_options",
-  language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record",
+  language: "language", timezone: "timezone", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record",
   "max-duration": "max_duration_s", knowledge: "knowledge", bases: "bases",
   "silence-timeout": "silence_timeout_s", idle: "idle", voicemail: "voicemail",
   "stt-fallbacks": "stt_fallbacks", "tts-fallbacks": "tts_fallbacks", "llm-timeout": "llm_timeout_s",
@@ -44,7 +44,7 @@ export const DECLARED_AS: Partial<Record<Field, string>> = {
   llm: "llm", temperature: "llm", "llm-builds": "llm", "llm-options": "llm",
   realtime: "realtime", "realtime-options": "realtime",
   judge: "judge", "judge-builds": "judge", "judge-options": "judge",
-  language: "language", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record", knowledge: "knowledge", bases: "docs",
+  language: "language", timezone: "timezone", greeting: "greeting", hangup: "hangup", turn: "turn", memory: "memory", record: "record", knowledge: "knowledge", bases: "docs",
   "silence-timeout": "silence_timeout_s", idle: "idle", voicemail: "voicemail", "stt-fallbacks": "stt_fallbacks", "tts-fallbacks": "tts_fallbacks",
 };
 
@@ -54,6 +54,7 @@ const LONGEST_MINUTES = 60;
 const IMPROVISE = "improvise";
 
 export const NO_LANGUAGE = "--language needs a tag, such as en, es or pt-BR: pinecall agent clear language takes it out";
+export const NO_ZONE = "--timezone needs an IANA zone, such as America/Montevideo or Europe/Madrid: pinecall agent clear --timezone takes it out";
 
 // The checks a flag passes before anything is read or written, in the CLI's words.
 const A_THRESHOLD = "a threshold is a number above 0 and up to 1, such as 0.7";
@@ -89,6 +90,7 @@ export const SettingsInput = z
     "judge-builds": z.string(),
     "judge-options": z.record(z.string(), z.unknown()),
     language: z.string().trim().min(1, NO_LANGUAGE),
+    timezone: z.string().trim().min(1, NO_ZONE),
     greeting: z.string(),
     "greeting-interruptible": z.enum(["on", "off"], ON_OR_OFF("--greeting-interruptible")),
     "end-of-turn": z.enum(END_OF_TURN, { error: `--end-of-turn takes ${END_OF_TURN.join(", ")}` }),
@@ -267,7 +269,7 @@ function idleOf(input: SettingsInput, standing: TuningBody): TuningBody["idle"] 
 /** The fields this input sets, under wire names, merged over the current row where nested. */
 export function fieldsOf(input: SettingsInput, standing: TuningBody): Partial<TuningBody> {
   const wanted: Partial<TuningBody> = {};
-  for (const field of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language"] as const) {
+  for (const field of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "timezone"] as const) {
     const value = input[field];
     if (typeof value === "string") (wanted as Record<string, unknown>)[WIRE[field]] = value;
   }

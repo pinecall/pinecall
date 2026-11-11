@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A page that follows its call from the mint reads the state fields its agent declared public.** A stream of
+  `GET /v1/calls/{call}/events` opened before the call had opened decided what was public with no declaration,
+  for as long as it lasted: every `state.changed` reached the page empty. It reads the call's declaration once
+  the call has opened.
+- **An agent's time zone is a setting**: `timezone` in `PUT /v1/agents/{slug}/settings`, an IANA zone. Every
+  call opens told the day, the weekday and the hour there. A class that declares one still wins.
 - **A call passed to a teammate takes its model and its voice.** `POST /v1/calls/{call}/stages` takes
   `{"agent": "<slug>"}`: the call's worker reads that agent's stages from then on, and each stage that
   differs is a `stage.changed` on its log. A key that holds `app` may ask it, for an agent somebody holds.

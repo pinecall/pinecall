@@ -167,6 +167,8 @@ export const TuningBodySchema = z.strictObject({
   judge_options: z.record(z.string(), z.unknown()).nullish(),
   /** A language tag (`en`, `pt-BR`) the voice and the ears are set to; unset, each vendor's own. */
   language: z.string().nullish(),
+  /** The IANA zone (`America/Montevideo`) whose day and hour the agent's calls open on; unset, the gateway's day and no hour. */
+  timezone: z.string().nullish(),
   greeting: GreetingConfigSchema.nullish(),
   hangup: HangupConfigSchema.nullish(),
   turn: TurnConfigSchema.nullish(),

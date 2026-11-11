@@ -33,6 +33,10 @@ const STARTS: readonly { value: string; label: string; detail: string; instructi
   { value: "blank", label: "Start from nothing", detail: "You write every word", instructions: "", greeting: "" },
 ];
 
+// The zone proposed for a new agent is this browser's: whoever makes it is most often where its callers are.
+const HERE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const ZONES = [{ value: "", label: "None", detail: "The agent is told the day only, and no hour" }, ...Intl.supportedValuesOf("timeZone").map((zone) => ({ value: zone, label: zone }))];
+
 const LANGUAGES = [
   { value: "", label: "Whichever the caller speaks", detail: "Nothing is pinned" },
   { value: "en", label: "English" },
@@ -73,6 +77,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
   const [greeting, setGreeting] = useState(STARTS[0]?.greeting ?? "");
   const [language, setLanguage] = useState("");
   const [voice, setVoice] = useState("");
+  const [timezone, setTimezone] = useState(HERE);
   // What the new agent speaks with, read once it is made: the voices offered are that vendor's.
   const [speaks, setSpeaks] = useState<{ vendor: string; model: string } | null>(null);
   const [sounded, setSounded] = useState(false);
@@ -130,11 +135,11 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
   // Nothing chosen is nothing to keep: the agent runs on each vendor's own.
   const keepSound = async (): Promise<void> => {
     if (made === null) return;
-    if (language === "" && voice === "") return setSounded(true);
+    if (language === "" && voice === "" && timezone === "") return setSounded(true);
     setBusy(true);
     setRefused(null);
     try {
-      await setSound(credentials, made, { language, voice });
+      await setSound(credentials, made, { language, voice, timezone });
       setSounded(true);
     } catch (failed) {
       setRefused(saidBy(failed));
@@ -148,7 +153,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
       <SidePanel
         title="How it sounds"
         icon="speaker"
-        about={`${made} is made. Pick the language it is pinned to and the voice it speaks in, or leave both as they are and change them in Configure.`}
+        about={`${made} is made. Pick the language it is pinned to, the voice it speaks in and the time zone its clock is read in, or skip and change them in Configure.`}
         onClose={() => onOpen(made, false)}
         footer={
           <>
@@ -172,6 +177,9 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
           <Select label="Language" searchable={false} items={LANGUAGES} value={language} onChange={(picked) => (setLanguage(picked), setVoice(""))} />
         </Field>
         <Field label="Voice">{speaks === null ? <p className="dash-quiet">Reading its voices…</p> : <VoicePicker key={language} vendor={speaks.vendor} model={speaks.model} language={language === "" ? null : language} voice={voice} onVoice={setVoice} />}</Field>
+        <Field label="Time zone">
+          <Select label="Time zone" items={ZONES} value={timezone} onChange={setTimezone} />
+        </Field>
       </SidePanel>
     );
   }

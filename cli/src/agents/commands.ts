@@ -124,7 +124,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <slug>")
     .action(async (flags) => ctx.io.result(await service.showSettings(ctx, flags.agent), render.settings));
   const set = agent.command("set").description("write the fields named as the next version of a corner").option("--agent <slug>").option("--team", "the org's own corner").option("--note <note>");
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "voicemail"]) set.option(`--${flag} <value>`);
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "timezone", "greeting", "hangup", "voicemail"]) set.option(`--${flag} <value>`);
   for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "max-duration", "min-interruption-ms", "silence-timeout", "idle-after", "idle-times", "llm-timeout"]) set.option(`--${flag} <n>`);
   for (const flag of ["greeting-interruptible", "record"]) set.option(`--${flag} <on|off>`);
   set.option("--end-of-turn <who>", END_OF_TURN_HELP);
@@ -336,7 +336,7 @@ const END_OF_TURN_HELP = "who says the caller's turn is over: stt (the ears them
 function settingsOf(flags: Record<string, unknown>): Record<string, unknown> {
   const named: Record<string, unknown> = {};
   const text = (flag: string): string | undefined => flags[camel(flag)] as string | undefined;
-  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "greeting", "hangup", "voicemail", "greeting-interruptible", "record", "end-of-turn"]) {
+  for (const flag of ["voice", "tts", "tts-model", "stt", "llm", "llm-builds", "realtime", "stt-builds", "tts-builds", "judge", "judge-builds", "language", "timezone", "greeting", "hangup", "voicemail", "greeting-interruptible", "record", "end-of-turn"]) {
     if (text(flag) !== undefined) named[flag] = text(flag);
   }
   for (const flag of ["temperature", "endpointing-ms", "min-interruption-words", "eot-threshold", "eager-eot-threshold", "min-interruption-ms", "silence-timeout", "idle-after", "idle-times", "llm-timeout"]) {

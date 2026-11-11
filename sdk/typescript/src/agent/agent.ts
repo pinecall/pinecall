@@ -126,10 +126,7 @@ export class Agent {
   /** The class description, as an alternative to a JSDoc comment. */
   static doc?: string;
 
-  /**
-   * `false` leaves the `<channel>` block out of the prompt: how to write for a voice, a website's
-   * chat or WhatsApp. A config field, never state.
-   */
+  /** `false` leaves the `<channel>` block out of the prompt: how to write for a voice, a website's chat or WhatsApp. A config field, never state. */
   declare channelRules?: boolean;
 
   /**
@@ -211,11 +208,13 @@ export class Agent {
     return docOf(this);
   }
 
-  /**
-   * The per-turn part of the prompt, rendered from the current state. It is the dynamic block and
-   * the last thing the model reads. Renders nothing by default.
-   */
+  /** The per-turn part of the prompt, rendered from the current state: the dynamic block, the last thing the model reads. Nothing by default. */
   render(): Child {
+    return null;
+  }
+
+  /** What the caller's page shows now, from the current state, in the class's own parts: `<Agenda slots={this.slots} />`. Nothing by default. */
+  screen(): Child {
     return null;
   }
 
@@ -249,10 +248,7 @@ export class Agent {
     restore(this, state);
   }
 
-  /**
-   * Overwrite only the fields `state` names, keeping the rest. Unlike `restore`, which replaces the
-   * whole state and clears fields the snapshot omits.
-   */
+  /** Overwrite only the fields `state` names, keeping the rest; `restore` replaces the whole state and clears what the snapshot omits. */
   startIn(state: Snapshot): void {
     restore(this, { ...snapshot(this), ...state });
   }
@@ -298,6 +294,11 @@ export class Agent {
   /** Ask the caller for one of the class's `static tasks` from inside a tool, and wait for it: `await this.ask(GetEmail)`. */
   ask<T>(asked: Task<T>): Promise<T> {
     return this.call.ask(asked);
+  }
+
+  /** Put a part on the caller's page over the screen, now: `this.show(<Map at={clinic} />)`. `this.show(null)` takes it away. */
+  show(shown: Child): void {
+    this.call.show(shown);
   }
 
   /** Subscribe in-process to state changes or events. Returns an unsubscribe function. */

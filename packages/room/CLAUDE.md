@@ -36,7 +36,8 @@ package with pnpm.
 - `src/seat/` the LiveKit loader and its minimal type, the seat, the hidden audio sink.
   `seat/join.ts` is the only file naming LiveKit's events; `seat/livekit.ts` the only one naming
   the package
-- `src/rows.ts` the log as one column of rows · `src/karaoke.ts` the reply being said, word by word
+- `src/rows.ts` the log as one column of rows · `src/karaoke.ts` the reply being said, word by word ·
+  `src/screen.ts` the screen the agent drew, read out of its state ([docs/the-screen.md](docs/the-screen.md))
 - `src/react/` the hooks · `src/server/` mint, dial and expect
 - `test/` one file per sentence it proves; `test/seat` and `test/react` mirror their `src/`
   directories and run on happy-dom. `the-tree`, `the-imports` and `index` are the repo's rules
