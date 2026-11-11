@@ -4,27 +4,6 @@
 # policy (charts/postgres) deletes what is older than the window, so the bucket has no lifecycle:
 # a rule of its own could delete a WAL file a kept base backup still needs.
 
-variable "project" {
-  type = string
-}
-
-variable "name" {
-  type        = string
-  description = "The world-pair: staging, production."
-}
-
-variable "region" {
-  type = string
-}
-
-# The Postgres pods' Kubernetes service account, and a restore drill's: a Cluster recovered from
-# the bucket beside the live one, read as the same identity (charts/postgres, README).
-variable "postgres_service_accounts" {
-  type        = list(string)
-  description = "The Kubernetes service accounts that act as the backups' identity: namespace/name."
-  default     = ["default/pinecall-postgres", "default/pinecall-postgres-restore"]
-}
-
 data "google_project" "this" {
   project_id = var.project
 }
@@ -72,12 +51,4 @@ resource "google_service_account_iam_member" "postgres_identity" {
 moved {
   from = google_service_account_iam_member.postgres_identity
   to   = google_service_account_iam_member.postgres_identity["default/pinecall-postgres"]
-}
-
-output "bucket" {
-  value = google_storage_bucket.postgres.name
-}
-
-output "service_account" {
-  value = google_service_account.postgres.email
 }

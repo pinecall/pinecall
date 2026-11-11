@@ -19,11 +19,3 @@ resource "google_storage_bucket_iam_member" "source" {
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.build.email}"
 }
-
-variable "project" {
-  type = string
-}
-
-output "service_account" {
-  value = google_service_account.build.id
-}

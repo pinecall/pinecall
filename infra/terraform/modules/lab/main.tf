@@ -2,25 +2,6 @@
 # on their own wire (infra/lab/fake_vendors.py) and the tenant's agent, on one machine reached
 # through gcloud, made for the proof and destroyed after it (`lab = false`).
 
-variable "zone" {
-  type = string
-}
-
-variable "machine_type" {
-  type    = string
-  default = "e2-standard-8"
-}
-
-variable "pods_range" {
-  type        = string
-  description = "The cluster's pods: the workers reach the fakes from these addresses."
-}
-
-variable "network" {
-  type    = string
-  default = "default"
-}
-
 # Its first boot: SIPp, uv and Node, nothing of Pinecall; infra/lab/generator.sh does the rest.
 locals {
   first_boot = <<-EOT
@@ -80,16 +61,4 @@ resource "google_compute_firewall" "callers" {
     protocol = "udp"
     ports    = ["5060", "6000-6100"]
   }
-}
-
-output "name" {
-  value = google_compute_instance.generator.name
-}
-
-output "internal_address" {
-  value = google_compute_instance.generator.network_interface[0].network_ip
-}
-
-output "public_address" {
-  value = google_compute_instance.generator.network_interface[0].access_config[0].nat_ip
 }

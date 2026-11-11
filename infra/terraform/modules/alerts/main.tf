@@ -4,21 +4,6 @@
 # name as the internet reaches it, an uptime check from Google's regions, which no rule file can
 # say. Mailed by Google to the operator.
 
-variable "name" {
-  type        = string
-  description = "The world-pair: staging, production."
-}
-
-variable "domain" {
-  type        = string
-  description = "The name the cluster is served at (PINECALL_DOMAIN), checked from outside."
-}
-
-variable "emails" {
-  type        = list(string)
-  description = "Who is told."
-}
-
 resource "google_monitoring_notification_channel" "emails" {
   for_each     = toset(var.emails)
   display_name = "Pinecall ${var.name}: ${each.value}"

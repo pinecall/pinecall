@@ -87,31 +87,3 @@ resource "google_service_account_iam_member" "sync" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project}.svc.id.goog[external-secrets/external-secrets]"
 }
-
-variable "project" {
-  type = string
-}
-
-variable "name" {
-  type        = string
-  description = "staging or production: the secrets are pinecall-<name>-*."
-}
-
-variable "given" {
-  type        = list(string)
-  description = "The secrets the operator puts by hand, made here empty: vault-key, s3-secret-access-key."
-  default     = []
-}
-
-output "sync_service_account" {
-  value = google_service_account.sync.email
-}
-
-output "secret_prefix" {
-  value = "pinecall-${var.name}-"
-}
-
-# Each secret's id in Secret Manager, by its name here.
-output "ids" {
-  value = { for name, secret in google_secret_manager_secret.this : name => secret.secret_id }
-}
