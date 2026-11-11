@@ -3,7 +3,7 @@
 import { Agent, judges, personas, tool, type Call } from "@pinecall/agents";
 
 import { clinic, type Slot } from "../../lib/clinic.js";
-import Billing from "../billing/agent.js";
+import Billing from "../brightside-billing/agent.js";
 import { hurried, offersARealTime } from "./harness.js";
 
 /**
@@ -19,9 +19,10 @@ export default class FrontDesk extends Agent {
   /** The times last read from the agenda: the only ones the agent may offer. */
   slots: Slot[] = [];
 
-  // The patient is looked up once, as the call arrives, and shared with whoever takes the call next.
+  // The patient is looked up once, as the call arrives, and shared with whoever takes the call next. `contact`
+  // is who is calling: the number on a phone call, and who a written call says it is (`pinecall chat --as`).
   override onCall(call: Call) {
-    const patient = clinic.patientByPhone(call.from ?? "");
+    const patient = clinic.patientByPhone(call.contact);
     if (patient !== undefined) this.call.shared["patient"] = patient;
   }
 

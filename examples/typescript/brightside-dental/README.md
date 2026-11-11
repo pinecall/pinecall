@@ -8,12 +8,12 @@ of more than one agent. [Clínica Norte](../clinica-norte/README.md) is the exam
 brightside-dental/
   app.ts                          the line, who answers it, the team, the timezone, the silence
   agents/
-    front-desk/
+    brightside-front-desk/
       agent.ts                    answers the line: reads the agenda, books, passes a charge on
       harness.ts                  its own judge and its own test caller
       test/agent.test.ts          the class as a class
       test/goldens/               three written calls a model must get right
-    billing/
+    brightside-billing/
       agent.ts                    takes the call the front desk passes: invoices, refund requests
   lib/clinic.ts                   the agenda, the patients and the ledger (a stand-in, in memory)
   test/team.test.ts               the pass between the two agents, on the wire
@@ -60,16 +60,19 @@ A caller who only says "Hello?" is passed to nobody: the front desk answers.
 ```bash
 pinecall link                     # once: the org, and its key into .env
 pinecall start                    # serves both agents with app.ts, in the sandbox
-pinecall chat --agent front-desk  # talk to the line in writing
+pinecall chat --agent brightside-front-desk  # talk to the line in writing
 pinecall test                     # the goldens, played on the agents you are holding
 pnpm test                         # the unit tests: no network, no key, no model
 ```
 
-Point a number of your org at `front-desk` with `pinecall numbers` to answer it by phone; until then
+Point a number of your org at `brightside-front-desk` with `pinecall numbers` to answer it by phone; until then
 `pinecall start` says once that the line's number is not pointed at the agent, and the web and the
 chat work all the same.
 
 ## What to know
+
+- An agent's slug is its folder's name, and a slug is one org's in the whole gateway: these two carry
+  the clinic's name for that. Rename the folders to hold them in an org where the names are taken.
 
 - The agents of one team give each tool a name of its own: the app is refused when it loads otherwise.
 - A call keeps the voice and the models of the agent that answered it, and it is listed and judged

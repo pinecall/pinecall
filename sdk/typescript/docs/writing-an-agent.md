@@ -321,7 +321,8 @@ export default class Billing extends Agent {
 app.line("+1 415 555 0134", { answers: FrontDesk, greeting: "Brightside Dental. How can I help?", team: [Billing] });
 ```
 
-The agent on the call is offered one tool per teammate, `transfer_to_billing`, and the model calls it
+The agent on the call is offered one tool per teammate, named by its class (`transfer_to_billing` for
+`Billing`), and the model calls it
 when the caller asks for that; a caller who only says hello is passed to nobody. A tool can pass the
 call itself, with what the next agent should know:
 

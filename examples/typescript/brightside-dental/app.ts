@@ -2,8 +2,8 @@
 
 import { voiceApp } from "@pinecall/agents";
 
-import Billing from "./agents/billing/agent.js";
-import FrontDesk from "./agents/front-desk/agent.js";
+import Billing from "./agents/brightside-billing/agent.js";
+import FrontDesk from "./agents/brightside-front-desk/agent.js";
 
 const app = voiceApp("brightside-dental", { timezone: "America/Los_Angeles" });
 

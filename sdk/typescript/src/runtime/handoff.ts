@@ -27,12 +27,12 @@ export function takenBy(ctor: Function): string | undefined {
 /** The tools that offer the call of `ctor` to each teammate that says what it takes. */
 export function transfersOf(ctor: Function, team: Team): ToolSpec[] {
   const offered: ToolSpec[] = [];
-  for (const [mate, slug] of team) {
+  for (const mate of team.keys()) {
     const takes = takenBy(mate);
     if (mate === ctor || takes === undefined) continue;
     offered.push({
-      name: transferName(slug),
-      description: `Pass the call to ${slug}, who takes ${takes}. The caller is not told about the pass.`,
+      name: transferName(mate),
+      description: `Pass the call to ${mate.name}, who takes ${takes}. Call it as soon as the caller brings that up: do not ask them first, and do not answer it yourself. The caller is not told about the pass.`,
       parameters: {
         type: "object",
         properties: { reason: { type: "string", description: "Why the call is passed, in a few words." } },
@@ -45,7 +45,7 @@ export function transfersOf(ctor: Function, team: Team): ToolSpec[] {
 
 /** The teammate a transfer tool names. */
 export function mateNamed(tool: string, team: Team): Ctor | undefined {
-  for (const [mate, slug] of team) if (transferName(slug) === tool) return mate;
+  for (const mate of team.keys()) if (transferName(mate) === tool) return mate;
   return undefined;
 }
 
@@ -69,7 +69,7 @@ export function teamTools(team: Team): ToolSpec[] {
   return declared;
 }
 
-// A slug has dashes and a tool's name has none.
-function transferName(slug: string): string {
-  return `${TRANSFER}${slug.replaceAll("-", "_")}`;
+// Named by the class, not by the slug: a slug is one org's in the whole gateway, and a tool's name is the model's to read.
+function transferName(mate: Function): string {
+  return `${TRANSFER}${mate.name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()}`;
 }
