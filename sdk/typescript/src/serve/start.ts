@@ -4,11 +4,12 @@ import { parseArgs } from "node:util";
 
 import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.js";
 
+import type { VoiceApp } from "../runtime/app.js";
 import { mount, type Mounted } from "../runtime/connect.js";
 import { drainLine, askedToLeave, drainedUnlessSignalledAgain } from "./leaving.js";
 import { eventLine, personLine } from "./lines.js";
 import { Masking } from "./masking.js";
-import { CannotServe, loadServed } from "./load.js";
+import { CannotServe, loadApp, loadServed, type Loaded } from "./load.js";
 import type { Io } from "./io.js";
 import { viewingFrom } from "./viewing.js";
 
@@ -32,6 +33,7 @@ export async function start(argv: string[], io: Io): Promise<number> {
     options: {
       file: { type: "string", multiple: true },
       slug: { type: "string", multiple: true },
+      app: { type: "string" },
       console: { type: "boolean", default: false },
       events: { type: "boolean", default: false },
     },
@@ -39,7 +41,11 @@ export async function start(argv: string[], io: Io): Promise<number> {
   const served = paired(values.file ?? [], values.slug ?? []);
   const pc = clientFrom(io.env);
   const masking = new Map<string, Masking>();
-  for (const one of served) masking.set(one.slug, new Masking((await held(pc, one, values.console === true, io)).options));
+  // Every class is loaded before the app, so the app's file finds the modules it imports already there.
+  const loaded: Loaded[] = [];
+  for (const one of served) loaded.push(await loadServed(one.file, one.slug));
+  const app = values.app === undefined ? undefined : appOf(await loadApp(values.app), served, loaded);
+  served.forEach((one, at) => masking.set(one.slug, new Masking(held(pc, one, loaded[at]!, app, values.console === true, io).options)));
   said(pc, io, values.events === true, masking);
   try {
     await pc.connect();
@@ -74,16 +80,40 @@ function clientFrom(env: Io["env"]): Pinecall {
 }
 
 // A console's own process takes only the calls that name it; the class draws the panel.
-async function held(pc: Pinecall, one: Served, console: boolean, io: Io): Promise<Mounted> {
-  const loaded = await loadServed(one.file, one.slug);
+function held(pc: Pinecall, one: Served, loaded: Loaded, app: VoiceApp | undefined, console: boolean, io: Io): Mounted {
   const report = (line: string): void => void io.err.write(`${one.slug}  ${line}\n`);
-  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report });
+  const declares = app?.declares(loaded.ctor) ?? {};
+  const mounted = mount(loaded.ctor, { pc, source: loaded.source, file: loaded.file, slug: one.slug, takesUnclaimed: !console, report, declares });
+  if (app !== undefined) pointed(mounted, app.numbersOf(loaded.ctor), report);
   const viewing = viewingFrom(loaded.ctor, one.slug);
   mounted.agent.onDev(async (verb, data) => {
     if (verb !== "view.render") throw new DevRefused(404, ONLY_THE_VIEW);
     return { ...(await viewing.render(data)) };
   });
   return mounted;
+}
+
+// An app names classes, and a process serves files: every class the app names is one of the files served.
+function appOf(app: VoiceApp, served: Served[], loaded: Loaded[]): VoiceApp {
+  for (const ctor of app.agents()) {
+    if (loaded.some((one) => one.ctor === ctor)) continue;
+    const files = served.map((one) => one.slug).join(", ");
+    throw new CannotServe(`${app.name} answers a line with ${ctor.name}, and no agent served here is that class (${files}): it is the default export of its agents/<name>/agent file`);
+  }
+  return app;
+}
+
+// A number is the org's row: the app says who answers it, and the gateway says whether it is so. Said once.
+function pointed(mounted: Mounted, numbers: string[], report: (line: string) => void): void {
+  const told = new Set<string>();
+  mounted.agent.on("agent.registered", (registered) => {
+    const answered = new Set(registered.routes.map((route) => route.number));
+    for (const number of numbers) {
+      if (answered.has(number) || told.has(number)) continue;
+      told.add(number);
+      report(`${number} is not pointed at this agent yet: \`pinecall numbers\` shows where it rings`);
+    }
+  });
 }
 
 // Listening starts before connect, so agent.registered is the first line. A lost gateway is one

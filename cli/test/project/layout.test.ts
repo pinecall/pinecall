@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { agentFilesOf, agentsOf, homeOf } from "../../src/project/layout.js";
+import { agentFilesOf, agentsOf, appFileOf, homeOf } from "../../src/project/layout.js";
 import { project, write } from "../support/project.js";
 
 describe("the layout", () => {
@@ -14,6 +14,13 @@ describe("the layout", () => {
     write(root, "agents/sales/agent.py", "");
     write(root, "agents/notes/README.md", "");
     expect(agentFilesOf(root).map((file) => file.slice(root.length + 1))).toEqual(["agents/front-desk/agent.ts", "agents/sales/agent.rb"]);
+  });
+
+  it("finds the project's voice app beside its agents, when it has one", () => {
+    const root = project(["front-desk"]);
+    expect(appFileOf(root)).toBeUndefined();
+    write(root, "app.ts", "");
+    expect(appFileOf(root)).toBe(join(root, "app.ts"));
   });
 
   it("names every path a verb reads, all of them in the agent's own folder", () => {

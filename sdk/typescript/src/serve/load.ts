@@ -9,6 +9,7 @@ import { type Medium } from "../wire/defs.js";
 import { Agent, setCall } from "../agent/agent.js";
 import { describe } from "../agent/docstrings.js";
 import { CallWorld } from "../call/call.js";
+import { isVoiceApp, type VoiceApp } from "../runtime/app.js";
 import { refuseTheEnvironment } from "../runtime/environment.js";
 
 /** Thrown when what was asked cannot be served at all; the entry exits 2 with its sentence. */
@@ -59,6 +60,16 @@ export async function loadServed(file: string, slug: string): Promise<Loaded> {
     throw new CannotServe(`${loaded.file} says its slug is ${declared}, and it is served as ${slug}: the slug is its folder's name`);
   }
   return loaded;
+}
+
+/** Load the project's voice app: the file's default export. */
+export async function loadApp(file: string): Promise<VoiceApp> {
+  const path = resolve(file);
+  if (!existsSync(path)) throw new CannotServe(`no voice app at ${path}`);
+  await useTypeScript();
+  const module_ = (await import(pathToFileURL(path).href)) as { default?: unknown };
+  if (!isVoiceApp(module_.default)) throw new CannotServe(`${path} has no default-exported voice app: export default voiceApp("…")`);
+  return module_.default;
 }
 
 /**

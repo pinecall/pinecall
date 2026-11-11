@@ -41,6 +41,13 @@ describe("what is watched", () => {
     mkdirSync(join(root, "lib"));
     expect(watchedFor(homes)).toEqual([join(root, "agents", "sales"), join(root, "agents", "desk"), join(root, "lib")]);
   });
+
+  it("and the project's voice app, the file alone", () => {
+    const root = mkdtempSync(join(tmpdir(), "watched-"));
+    const homes = [homeOf(join(root, "agents", "desk", "agent.ts"))];
+    writeFileSync(join(root, "app.ts"), "");
+    expect(watchedFor(homes)).toEqual([join(root, "agents", "desk"), join(root, "app.ts")]);
+  });
 });
 
 describe("the releases", () => {

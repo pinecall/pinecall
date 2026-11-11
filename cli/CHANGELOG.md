@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall start` serves a project's voice app**: an `app.ts` at the project's root rides with its agents, and
+  a save of it reloads them.
+
 ## [0.11.30] — an app is written whole in its class (2026-11-09)
 
 - **`simulate --repeats n` says how often, not only whether:** the caller rings n times (1 to 10) under each

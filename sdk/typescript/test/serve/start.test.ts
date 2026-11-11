@@ -20,6 +20,7 @@ const SLUG = "clinica-norte";
 const A_HOST = "support-r3-0a1b2c3d";
 const AGENT = fileURLToPath(new URL("./clinic/agents/clinica-norte/agent.tsx", import.meta.url));
 const DESK = fileURLToPath(new URL("./private/agents/desk/agent.ts", import.meta.url));
+const APP = fileURLToPath(new URL("./clinic/app.ts", import.meta.url));
 
 let gateway: FakeGateway | null = null;
 
@@ -87,6 +88,33 @@ describe("the wire on stdout", () => {
     expect(held.commandsOf("agent.register")[0]).toMatchObject({ agent: SLUG, data: { takes_unclaimed: false } });
     (io.input as PassThrough).end();
     await running;
+  });
+});
+
+describe("the project's voice app", () => {
+  it("adds its line's greeting and its silence to the declaration of the agent that answers", async () => {
+    const { io, running, held } = await serving("--app", APP);
+    expect(held.commandsOf("agent.configure")[0]?.data["config"]).toMatchObject({
+      greeting: { say: "Clínica Norte, buenas." },
+      idle: { says: ["¿Sigue ahí?"], after_s: 8, times: 2 },
+    });
+    (io.input as PassThrough).end();
+    await running;
+  });
+
+  it("says once that a line's number is not pointed at its agent yet", async () => {
+    const { io, running } = await serving("--app", APP);
+    await until(() => io.said().includes("+34910000001 is not pointed at this agent yet"));
+    (io.input as PassThrough).end();
+    await running;
+  });
+
+  it("is refused when it answers a line with a class no agent served here is", async () => {
+    const held = await FakeGateway.start({ apiKey: KEY });
+    gateway = held;
+    const io = anIo({ PINECALL_URL: held.url, PINECALL_KEY: KEY });
+    expect(await main(["start", "--file", DESK, "--slug", "desk", "--app", APP], io)).toBe(2);
+    expect(io.said()).toContain("no agent served here is that class");
   });
 });
 

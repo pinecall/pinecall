@@ -1,10 +1,10 @@
 /** A save reloads the agent: its folder watched, a burst of writes settled into one reload, the next copy answering before the one before drains. */
 
-import { existsSync, type FSWatcher, watch } from "node:fs";
+import { existsSync, type FSWatcher, statSync, watch } from "node:fs";
 import { dirname, extname, join, sep } from "node:path";
 
 import { errorMessage } from "../errors.js";
-import { type AgentHome, SHARED } from "../project/layout.js";
+import { type AgentHome, appFileOf, SHARED } from "../project/layout.js";
 
 // A save is a burst of writes: one reload after it settles.
 export const SETTLES_MS = 300;
@@ -23,19 +23,22 @@ export function isASave(file: string): boolean {
 }
 
 /**
- * What a save of these agents is a save in: each agent's own folder, and the project's `lib/` they
- * share. A script, a note or a pulled settings file elsewhere in the project reloads nothing.
+ * What a save of these agents is a save in: each agent's own folder, the project's `lib/` they
+ * share, and its voice app's file. A script, a note or a pulled settings file elsewhere in the project reloads nothing.
  */
 export function watchedFor(homes: readonly AgentHome[]): string[] {
-  const shared = [...new Set(homes.map((home) => join(home.root, SHARED)))].filter((folder) => existsSync(folder));
-  return [...homes.map((home) => dirname(home.file)), ...shared];
+  const roots = [...new Set(homes.map((home) => home.root))];
+  const shared = roots.map((root) => join(root, SHARED)).filter((folder) => existsSync(folder));
+  const apps = roots.map((root) => appFileOf(root)).filter((file): file is string => file !== undefined);
+  return [...homes.map((home) => dirname(home.file)), ...shared, ...apps];
 }
 
 /** Call `saved` once each burst of saves under the folders settles; the function returned stops watching. */
 export function onSaves(folders: readonly string[], saved: () => void, settlesMs = SETTLES_MS): () => void {
   let timer: NodeJS.Timeout | undefined;
+  // A file is watched as itself: `recursive` is a folder's.
   const watchers: FSWatcher[] = [...new Set(folders)].map((folder) =>
-    watch(folder, { recursive: true }, (_event, file) => {
+    watch(folder, { recursive: statSync(folder).isDirectory() }, (_event, file) => {
       if (file === null || !isASave(String(file))) return;
       clearTimeout(timer);
       timer = setTimeout(saved, settlesMs);

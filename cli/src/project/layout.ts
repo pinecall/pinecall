@@ -81,6 +81,14 @@ export function isDirectory(path: string): boolean {
   return existsSync(path) && statSync(path).isDirectory();
 }
 
+// A project's voice app, beside its agents/: the lines it answers and what its agents share. TypeScript's alone.
+const APP_FILES = ["app.ts", "app.tsx"];
+
+/** The project's voice app file, when it has one. */
+export function appFileOf(root: string): string | undefined {
+  return APP_FILES.map((name) => resolve(root, name)).find((path) => existsSync(path));
+}
+
 /** Agent files of the project at `root`, sorted; folders without an agent file are skipped. */
 export function agentFilesOf(root: string): string[] {
   const folder = resolve(root, PROJECT_AGENTS);

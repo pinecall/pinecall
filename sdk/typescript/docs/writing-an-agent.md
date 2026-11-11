@@ -274,6 +274,35 @@ as it is. `publish` replaces the document under its name; a page reads it at
 what the page would show anyway. `say` writes one line in the terminal of whoever started the agent.
 A throw is reported, and the agent serves its calls all the same.
 
+## The voice app: the project's lines
+
+A project may have an `app.ts` beside `agents/`: its voice app. It says which agent answers each of
+the project's numbers, the words a call on that line opens with, and what every agent of the app
+says to a caller who went quiet. It is optional: an agent alone answers its number as before.
+
+```ts
+// app.ts
+import { voiceApp } from "@pinecall/agents";
+import FrontDesk from "./agents/front-desk/agent";
+
+const app = voiceApp("brightside");
+
+app.line("+1 415 555 0134", { answers: FrontDesk, greeting: "Brightside Dental. How can I help?" });
+app.silence({ after: "8s", say: "Are you still there?", times: 2 });
+
+export default app;
+```
+
+`pinecall start` finds the file at the project's root and serves the agents with it; a save of it
+reloads them. `app.line(number, FrontDesk)` is the short form, with no greeting. The greeting is said
+as written, by the agent, before any model runs: it is that agent's `greeting`, declared by the app,
+and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
+one from the app too is refused when the app loads, naming both, since a call runs on one of them.
+
+The number stays your org's: `pinecall numbers` points it at the agent. A line whose number the
+gateway does not route to its agent is said once in the terminal, and the agent serves its other
+calls all the same. An agent that answers two lines opens both with the same greeting, or with none.
+
 ## The call
 
 Inside a tool, a hook or `render()`, `this.call` is the live call; outside one it throws.

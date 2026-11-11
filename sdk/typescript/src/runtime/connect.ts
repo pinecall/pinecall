@@ -43,6 +43,8 @@ export interface MountOptions {
   takesUnclaimed?: boolean;
   /** Where a line the class says for its person goes (`Serve.say`); a terminal's error stream when served. */
   report?: (line: string) => void;
+  /** What the agent's voice app adds to its declaration: the greeting of its line, what it says to a silence. */
+  declares?: Partial<AgentOptions>;
 }
 
 /** A mounted agent: its registered SDK agent and the instances serving live calls. */
@@ -126,7 +128,7 @@ export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor
  */
 export function mount(
   ctor: Ctor,
-  { pc, source, file, slug, last, takesUnclaimed = true, report }: MountOptions,
+  { pc, source, file, slug, last, takesUnclaimed = true, report, declares = {} }: MountOptions,
 ): Mounted {
   if (source !== undefined) describe(ctor, source, file);
   const name = slug ?? slugOf(ctor);
@@ -136,7 +138,7 @@ export function mount(
     ...(spec as unknown as Camel<ToolSpec>),
     run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
-  const options = { ...optionsFor(ctor, tools, probe, file, source), takesUnclaimed, saysDone: true };
+  const options = { ...optionsFor(ctor, tools, probe, file, source), ...declares, takesUnclaimed, saysDone: true };
   const agent = pc.agent(name, options);
 
   agent.on("call.started", (started, call) => {
