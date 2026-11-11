@@ -5,7 +5,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable, Generator, Iterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, contextmanager
-from datetime import date
+from datetime import date, datetime
 from typing import cast
 
 from livekit.agents import RunContext, StopResponse, ToolError, llm
@@ -17,6 +17,7 @@ from pinecall_runtime.agents.declaration import SAY, ToolSpec
 from pinecall_runtime.enums import Direction
 from pinecall_runtime.exceptions import PinecallError
 from pinecall_runtime.kit.text import Json, JsonObject
+from pinecall_runtime.kit.time import now_in
 from pinecall_runtime.session.call import Call, ToolUse
 from pinecall_runtime.session.lookups import Lookups, platform_tools
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S
@@ -269,9 +270,11 @@ def read_back(template: str, arguments: JsonObject, result: ToolResult) -> str:
     return _A_PLACEHOLDER.sub(lambda found: _read(data, found.group(1), found.group(0)), template)
 
 
-def date_pair(today: date) -> tuple[FunctionCall, FunctionCallOutput]:
-    """The call and the answer that tell the model what day it is, once per call."""
+def date_pair(today: date, clock: datetime | None = None) -> tuple[FunctionCall, FunctionCallOutput]:
+    """The call and the answer that tell the model what day it is, and the time where the agent is, once per call."""
     answered = {"today": today.isoformat(), "weekday": WEEKDAYS[today.weekday()]}
+    if clock is not None:
+        answered |= {"time": clock.strftime("%H:%M"), "timezone": str(clock.tzinfo)}
     return (
         FunctionCall(call_id=CLOCK_CALL_ID, name=CLOCK_TOOL, arguments="{}"),
         # reply_required=False, or a realtime model speaks as soon as it reads the answer.
@@ -281,9 +284,19 @@ def date_pair(today: date) -> tuple[FunctionCall, FunctionCallOutput]:
     )
 
 
-def opening(today: date, built: Sequence[object]) -> list[llm.ChatItem]:
+def opening(today: date, built: Sequence[object], clock: datetime | None = None) -> list[llm.ChatItem]:
     """A call's history opens with the clock's pair, behind a user turn when Gemini reads it."""
-    return [*asked_first(built), *date_pair(today)]
+    return [*asked_first(built), *date_pair(today, clock)]
+
+
+# An agent that declares its zone reads its day and its hour there; a day a golden pinned has no hour.
+def opening_of(call: Call, built: Sequence[object]) -> list[llm.ChatItem]:
+    """A call's opening on its agent's own clock, when the agent declares its zone."""
+    zone, context = call.config.timezone, call.context
+    if zone is None or context.pinned_day is not None:
+        return opening(context.today, built)
+    clock = now_in(zone)
+    return opening(clock.date(), built, clock)
 
 
 def asked_first(built: Sequence[object]) -> list[llm.ChatItem]:

@@ -438,6 +438,7 @@ class AgentConfig(WireModel):
 
     prompt: list[PromptBlockSpec] | None = None
     language: str | None = None
+    timezone: str | None = None
     greeting: GreetingConfig | None = None
     voice: VoiceConfig | None = None
     llm: ModelConfig | None = None

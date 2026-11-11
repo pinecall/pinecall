@@ -160,6 +160,7 @@ export class Agent {
   // @voice, @llm, @realtime, @stt and @judge set.
   /** The language the agent speaks and expects, a BCP 47 tag: `"es"`, `"pt-BR"`. */
   static language?: Declared["language"];
+  static timezone?: Declared["timezone"];
   static voice?: Declared["voice"];
   static llm?: Declared["llm"];
   /** The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`. */

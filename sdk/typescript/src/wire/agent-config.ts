@@ -256,6 +256,8 @@ export const MonitorDeclaredSchema = z.strictObject({
 export const AgentConfigSchema = z.strictObject({
   prompt: z.array(PromptBlockSpecSchema).nullish(),
   language: z.string().nullish(),
+  /** The IANA zone the agent's day and clock are read in; unset, the gateway's own. */
+  timezone: z.string().nullish(),
   greeting: GreetingConfigSchema.nullish(),
   voice: VoiceConfigSchema.nullish(),
   llm: ModelConfigSchema.nullish(),

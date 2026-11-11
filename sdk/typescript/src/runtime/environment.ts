@@ -7,6 +7,7 @@ import type { AgentOptions } from "../client/agent.js";
 /** The settings a class may declare. Whatever it declares wins over the agent's settings. */
 export const ENVIRONMENT = [
   "language",
+  "timezone",
   "voice",
   "llm",
   "realtime",

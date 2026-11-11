@@ -52,6 +52,10 @@ export default class ClinicaNorte extends Agent {
 }
 ```
 
+`static timezone = "America/Los_Angeles"` is the IANA zone the agent's day and clock are read in:
+the model is told the date, the weekday and the hour there as the call opens, and `this.call.today`
+is that day. Left out, the day is the gateway's own and the model is told no hour.
+
 `greeting` is the words, said as written — instant, and no model runs — or the model's own:
 `improvise` opens on the prompt alone, `improvise("Greet them by name if you know it")` with an
 instruction for the opening. The caller cannot cut it short unless it says so:
@@ -285,7 +289,7 @@ says to a caller who went quiet. It is optional: an agent alone answers its numb
 import { voiceApp } from "@pinecall/agents";
 import FrontDesk from "./agents/front-desk/agent";
 
-const app = voiceApp("brightside");
+const app = voiceApp("brightside", { timezone: "America/Los_Angeles" });
 
 app.line("+1 415 555 0134", { answers: FrontDesk, greeting: "Brightside Dental. How can I help?" });
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
@@ -293,7 +297,8 @@ app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 export default app;
 ```
 
-`pinecall start` finds the file at the project's root and serves the agents with it; a save of it
+`timezone` is the zone every agent of the app reads its day and its clock in, the same setting as a
+class's `static timezone`. `pinecall start` finds the file at the project's root and serves the agents with it; a save of it
 reloads them. `app.line(number, FrontDesk)` is the short form, with no greeting. The greeting is said
 as written, by the agent, before any model runs: it is that agent's `greeting`, declared by the app,
 and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets

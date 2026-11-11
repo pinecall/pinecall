@@ -29,6 +29,12 @@ export interface Silence {
   times?: number;
 }
 
+/** What a voice app is made with. */
+export interface AppOptions {
+  /** The IANA zone the app's agents read their day and their clock in: `"America/Los_Angeles"`. */
+  timezone?: string;
+}
+
 // The brand a loader knows an app by: `instanceof` fails across two copies of the package.
 const BRAND = Symbol.for("pinecall.voice-app");
 
@@ -36,6 +42,7 @@ const A_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const A_NUMBER = /^\+[1-9]\d{6,14}$/;
 const SECONDS = /^(\d+)s$/;
 
+const NOT_A_ZONE = "a voice app's timezone is an IANA zone, like America/Los_Angeles or Europe/Madrid";
 const NOT_A_NAME = "a voice app's name is lowercase letters, digits and dashes, like its project's folder";
 const NOT_A_NUMBER = "a line is a phone number with its country code, like +1 415 555 0134";
 const NOT_AN_AGENT = "a line is answered by an agent class: app.line(number, FrontDesk)";
@@ -45,12 +52,15 @@ const NOT_A_SILENCE = "silence is { after, say }: after in seconds (8, or \"8s\"
 export class VoiceApp {
   readonly [BRAND] = true;
   readonly name: string;
+  readonly timezone: string | undefined;
   readonly #lines: Line[] = [];
   #silence: AgentOptions["idle"] | undefined;
 
-  constructor(name: string) {
+  constructor(name: string, options: AppOptions = {}) {
     if (typeof name !== "string" || !A_NAME.test(name)) throw new DeclarationRefused(NOT_A_NAME);
+    if (options.timezone !== undefined && !isAZone(options.timezone)) throw new DeclarationRefused(NOT_A_ZONE);
     this.name = name;
+    this.timezone = options.timezone;
   }
 
   /** Answer `number` with an agent: `app.line(number, FrontDesk)`, or with `{ answers, greeting }`. */
@@ -109,7 +119,12 @@ export class VoiceApp {
       if (own["greeting"] !== undefined) throw new DeclarationRefused(twice(ctor, "greeting", "its line's greeting", this.name));
       added.greeting = { say: greeting };
     }
-    if (this.#silence !== undefined && this.agents().includes(ctor)) {
+    const ofTheApp = this.agents().includes(ctor);
+    if (this.timezone !== undefined && ofTheApp) {
+      if (own["timezone"] !== undefined) throw new DeclarationRefused(twice(ctor, "timezone", "its own timezone", this.name));
+      added.timezone = this.timezone;
+    }
+    if (this.#silence !== undefined && ofTheApp) {
       if (own["idle"] !== undefined) throw new DeclarationRefused(twice(ctor, "idle", "app.silence", this.name));
       added.idle = this.#silence;
     }
@@ -127,9 +142,20 @@ function secondsOf(given: unknown): number | null {
   return found === null ? null : Number(found[1]);
 }
 
-/** A voice app named as its project: `const app = voiceApp("brightside")`. */
-export function voiceApp(name: string): VoiceApp {
-  return new VoiceApp(name);
+// The runtime checks it again; here a typo is refused where it was typed.
+function isAZone(given: unknown): boolean {
+  if (typeof given !== "string" || given.trim() === "") return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: given });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A voice app named as its project: `const app = voiceApp("brightside", { timezone: "America/Los_Angeles" })`. */
+export function voiceApp(name: string, options: AppOptions = {}): VoiceApp {
+  return new VoiceApp(name, options);
 }
 
 /** Whether a module's export is a voice app, of this copy of the package or another. */

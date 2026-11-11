@@ -150,6 +150,7 @@ def _settings_of(declaration: Declaration) -> dict[str, tuple[str, object]]:
     voicemail = declaration.voicemail
     return {
         "language": ("language", declaration.language),
+        "timezone": ("timezone", declaration.timezone),
         "voice": ("voice", _voice_of(declaration.voice)),
         "llm": ("llm", model_from_wire(declaration.llm, "llm")),
         "realtime": ("realtime", realtime_from_wire(declaration.realtime)),

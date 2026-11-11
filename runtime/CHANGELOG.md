@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **An agent declares its timezone.** `timezone` in the declaration, an IANA zone: the call's day is read
+  there instead of in `PINECALL_TIMEZONE`, the model is told the hour and the zone beside the date, and
+  `call.started` carries `today` in it, so the app counts its days as the model does. A day a golden pinned
+  stays that day, with no hour. One that is no zone is refused at registration. Left out, nothing changes.
+
 - **ElevenLabs' Scribe v3 is in the lists:** `scribe_v3` and `scribe_v3_live` among what a picker offers of
   `elevenlabs` for `stt`, each with its list price. `scribe_v3` hears a call today. `scribe_v3_live` ends one
   at its first words until livekit's plugin streams it: the plugin opens the realtime socket for

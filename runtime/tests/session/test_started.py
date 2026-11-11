@@ -1,13 +1,31 @@
 """The call.started entry: who is on the line when the call opens, and what it was opened with."""
 
 from dataclasses import replace
+from datetime import date
+
+import pytest
 
 from pinecall_runtime.calls.context import Contact
 from pinecall_runtime.enums import Channel, Medium
+from pinecall_runtime.session import started as started_module
 from pinecall_runtime.session.started import started
 from tests.session.conftest import THE_CALLER, context_of
 
 AT = 1_790_000_000.0
+
+
+def test_a_call_of_an_agent_that_declares_its_zone_says_its_day_there(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The app reads `today` off the entry instead of its own process's clock."""
+
+    def today_there(zone: str) -> date:
+        return date(2026, 9, 28)
+
+    monkeypatch.setattr(started_module, "today_in", today_there)
+    context = context_of("call_1", Channel.web)
+    assert started(context, AT, None, medium=Medium.text, zone="America/Los_Angeles").dump()["today"] == "2026-09-28"
+    assert "today" not in started(context, AT, None, medium=Medium.text).dump()
+    pinned = replace(context, today=date(2026, 1, 5), pinned_day=date(2026, 1, 5))
+    assert started(pinned, AT, None, medium=Medium.text, zone="America/Los_Angeles").dump()["today"] == "2026-01-05"
 
 
 def test_a_call_opened_with_a_contact_names_it_as_the_caller_and_leaves_the_visitor_id_as_from() -> None:

@@ -4,9 +4,11 @@ import asyncio
 import json
 import locale
 from collections.abc import Callable
-from datetime import date
+from dataclasses import replace
+from datetime import date, datetime
 from types import SimpleNamespace
 from typing import cast
+from zoneinfo import ZoneInfo
 
 import pytest
 from livekit.agents import RunContext, llm
@@ -22,6 +24,7 @@ from pinecall_runtime.enums import Channel, Direction
 from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.providers.service.plugins import Running
 from pinecall_runtime.providers.service.stages import LLMWithRequest, llm_of
+from pinecall_runtime.session import tools
 from pinecall_runtime.session.call import Call, ToolUse
 from pinecall_runtime.session.lookups import RECALL, SEARCH, Lookups, platform_tools
 from pinecall_runtime.session.prompt import Blocks, request
@@ -33,6 +36,7 @@ from pinecall_runtime.session.tools import (
     as_livekit_tools,
     date_pair,
     opening,
+    opening_of,
     read_back,
     result_text,
     signing,
@@ -205,6 +209,42 @@ def test_the_date_is_a_call_and_its_answer_under_one_id_that_asks_for_no_reply()
     assert (called.call_id, answered.call_id, called.name) == ("clock_1", "clock_1", "current_date")
     assert json.loads(answered.output) == {"today": "2026-09-28", "weekday": "monday"}
     assert answered.reply_required is False
+
+
+def test_an_agent_that_declares_its_zone_is_told_the_hour_there_too() -> None:
+    clock = datetime(2026, 9, 28, 14, 5, tzinfo=ZoneInfo("America/Los_Angeles"))
+    answered = json.loads(date_pair(clock.date(), clock)[1].output)
+    assert answered == {"today": "2026-09-28", "weekday": "monday", "time": "14:05", "timezone": "America/Los_Angeles"}
+
+
+def test_a_call_opens_on_its_agents_own_day_and_a_pinned_day_has_no_hour(monkeypatch: pytest.MonkeyPatch) -> None:
+    there = datetime(2026, 9, 28, 20, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
+
+    def now_there(zone: str) -> datetime:
+        return there
+
+    monkeypatch.setattr(tools, "now_in", now_there)
+    context = context_of("call_1", Channel.web)
+    zoned = cast(
+        Call, SimpleNamespace(config=AgentConfig(slug="desk", timezone="America/Los_Angeles"), context=context)
+    )
+    assert _told(zoned) == {
+        "today": "2026-09-28",
+        "weekday": "monday",
+        "time": "20:00",
+        "timezone": "America/Los_Angeles",
+    }
+    pinned = replace(context, today=date(2026, 1, 5), pinned_day=date(2026, 1, 5))
+    golden = cast(Call, SimpleNamespace(config=zoned.config, context=pinned))
+    assert _told(golden) == {"today": "2026-01-05", "weekday": "monday"}
+    unzoned = cast(Call, SimpleNamespace(config=AgentConfig(slug="desk"), context=context))
+    assert "time" not in _told(unzoned)
+
+
+def _told(call: Call) -> JsonObject:
+    answered = opening_of(call, ())[-1]
+    assert isinstance(answered, llm.FunctionCallOutput)
+    return cast(JsonObject, json.loads(answered.output))
 
 
 def test_the_weekday_does_not_depend_on_the_locale_of_the_process() -> None:

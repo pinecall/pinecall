@@ -21,8 +21,8 @@ from pinecall_runtime.session.hold import HoldMusic, hear_again, silence
 from pinecall_runtime.session.listener import Built, Listener, Stage, is_spoken
 from pinecall_runtime.session.lookups import Lookups
 from pinecall_runtime.session.room import CallRoom
-from pinecall_runtime.session.started import started
-from pinecall_runtime.session.tools import Toolbox, opening, signing
+from pinecall_runtime.session.started import started_of
+from pinecall_runtime.session.tools import Toolbox, opening_of, signing
 from pinecall_runtime.session.writing import WRITTEN_WITHIN_S
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire import events as wire
@@ -150,9 +150,7 @@ class Session:
         self.room, self.hold, self.seat = room, hold, seat
         self.call.writing.open()
         medium = Medium.text if room is None else Medium.voice
-        await self.call.writing.write(
-            "call.started", started(self.call.context, self.started_at, worker, medium=medium)
-        )
+        await self.call.writing.write("call.started", started_of(self.call, self.started_at, worker, medium=medium))
         if self.turn is not None:
             await self.call.writing.write("turn.detection", self.turn)
         knowledge = prompt.knowledge_changed(self.blocks)
@@ -470,7 +468,7 @@ class Session:
         if self.room is not None:
             self.recorder = await recording.record(self.live, self.call.recording, self.room.room, self.room.kind_of)
         given = history.copy()
-        given.items[:0] = opening(self.call.context.today, self.built)
+        given.items[:0] = opening_of(self.call, self.built)
         await self.agent.update_chat_ctx(given, exclude_invalid_function_calls=False)
 
     # A note joins the history as livekit appends: copy, add, update. Never a static block,

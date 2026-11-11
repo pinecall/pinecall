@@ -24,9 +24,14 @@ def parse_zone(zone: str) -> ZoneInfo:
         raise ValidationError(f"{zone!r} is not an IANA time zone (Europe/Madrid, America/Montevideo, UTC)") from None
 
 
+def now_in(zone: str) -> datetime:
+    """Now on the clock of a zone."""
+    return datetime.now(UTC).astimezone(parse_zone(zone))
+
+
 def today_in(zone: str) -> date:
     """Today where the caller is, not where the box is."""
-    return datetime.now(UTC).astimezone(parse_zone(zone)).date()
+    return now_in(zone).date()
 
 
 def month_of(ts: float) -> date:

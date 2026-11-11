@@ -5,13 +5,22 @@ from dataclasses import asdict
 from pinecall_runtime.calls.context import CallContext, Contact
 from pinecall_runtime.enums import Direction, Medium
 from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.kit.time import today_in
+from pinecall_runtime.session.call import Call
 from pinecall_runtime.wire import events as wire
 
 
 # The caller is always the far end: on an outbound call that is the `to`. The app cannot read a
 # day a golden pinned off the clock, so the entry says it; the persona and what it expects are
 # frozen here for the facts and its judge.
-def started(context: CallContext, at: float, worker: str | None, *, medium: Medium) -> wire.CallStarted:
+def started_of(call: Call, at: float, worker: str | None, *, medium: Medium) -> wire.CallStarted:
+    """The entry a call opens with, its day read in its agent's own zone when the agent declares one."""
+    return started(call.context, at, worker, medium=medium, zone=call.config.timezone)
+
+
+def started(
+    context: CallContext, at: float, worker: str | None, *, medium: Medium, zone: str | None = None
+) -> wire.CallStarted:
     """The entry a call opens with, parsed as the wire reads it."""
     endpoint = context.route.number or context.route.agent
     from_, to = (endpoint, context.caller) if context.direction is Direction.outbound else (context.caller, endpoint)
@@ -32,8 +41,9 @@ def started(context: CallContext, at: float, worker: str | None, *, medium: Medi
         started["worker"] = worker
     if context.state:
         started["state"] = dict(context.state)
-    if context.pinned_day:
-        started["today"] = context.pinned_day.isoformat()
+    day = context.pinned_day or (today_in(zone) if zone else None)
+    if day is not None:
+        started["today"] = day.isoformat()
     if context.metadata:
         started["metadata"] = dict(context.metadata)
     return wire.CallStarted.parse(started, "call.started")

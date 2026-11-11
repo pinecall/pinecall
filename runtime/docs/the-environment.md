@@ -62,7 +62,7 @@ the bucket are `store` in the chart's values, and the key is the environment's `
 | `PINECALL_APP_ORIGINS` · `PINECALL_MIN_PASSWORD` | origins that may call `/v1` from a browser besides `capacitor://localhost` and `https://localhost`, comma separated and never `*`; how short a password may be (8; `0` is no rule) |
 | `PINECALL_VOICE_LOOKUP_BUDGET_MS` · `PINECALL_TEXT_LOOKUP_BUDGET_MS` · `PINECALL_REMEMBER_BUDGET_S` | how long a turn waits for recall and search, and a hang-up for memory. Unset: the session's own |
 | `PINECALL_MAX_TOOL_STEPS` | how many rounds of tools the model may chain in one answer before it is asked for words with no tool offered. Unset: 10 |
-| `PINECALL_TIMEZONE` | the IANA zone a call's `today` is read in (`Europe/Madrid`); `UTC` unless set. An unknown zone is refused at startup |
+| `PINECALL_TIMEZONE` | the IANA zone a call's `today` is read in (`Europe/Madrid`) for an agent that declares no `timezone` of its own; `UTC` unless set. An unknown zone is refused at startup |
 | `PINECALL_LOG_LEVEL` · `PINECALL_LOG_FORMAT` | `DEBUG` · `INFO` · `WARNING` · `ERROR`; and the gateway's lines, `text` for a terminal or `json` for a journal |
 | `PINECALL_OTLP_ENDPOINT` · `PINECALL_OTLP_HEADERS` · `PINECALL_OTLP_PII` | where the worker sends a call's traces (OTLP over HTTP), the headers each export carries (a credential), and whether a span carries what was said. Unset, nothing reaches the operator; an org's own collector is its `pinecall telemetry`, exported to per call whatever the box says |
 

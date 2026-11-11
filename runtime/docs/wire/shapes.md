@@ -615,6 +615,7 @@ What an app declares about its agent: the prompt's layout, the language, the too
 |---|---|---|---|
 | `prompt` | `PromptBlockSpec[]` | no | The blocks of the prompt in the one order they are sent: every static block, then the history, then every dynamic block. Absent, the layout is the default: identity · knowledge · tools, the history, view. |
 | `language` | `string` | no | The language the agent speaks and expects, as a BCP 47 tag: es-ES, es-UY. Declared, it wins over the settings' language. |
+| `timezone` | `string` | no | The IANA zone the agent's day and clock are read in: America/Los_Angeles, Europe/Madrid. Declared, the model is told the day and the hour there, and `call.started` carries `today` in it; unset, the day is the gateway's. |
 | `greeting` | `GreetingConfig` | no | The opening: words said, or a reply the model writes first. Declared, it wins over the settings'. |
 | `voice` | `VoiceConfig` | no | The voice: its vendor and the vendor's own id for it are both required, and may name the plugin's class and options. Declared, it wins over the settings' voice and TTS. |
 | `llm` | `ModelConfig` | no | The model that answers, and may name the plugin's class and options (the OpenAI Responses WebSocket: `builds` `responses.LLM`, `options` `{"use_websocket": true}`). Declared, it wins over the settings'. |

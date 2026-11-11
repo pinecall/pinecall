@@ -58,6 +58,18 @@ describe("silence", () => {
   });
 });
 
+describe("its timezone", () => {
+  it("is the zone every agent of the app reads its day and its clock in", () => {
+    const app = voiceApp("brightside", { timezone: "America/Los_Angeles" }).line("+14155550134", FrontDesk);
+    expect(app.declares(FrontDesk)).toEqual({ timezone: "America/Los_Angeles" });
+    expect(app.declares(Billing)).toEqual({});
+  });
+
+  it("is refused where it was typed when it is no IANA zone", () => {
+    expect(() => voiceApp("brightside", { timezone: "Pacific Time" })).toThrow(/an IANA zone/);
+  });
+});
+
 describe("a voice app", () => {
   it("is named like its project's folder", () => {
     expect(() => voiceApp("Brightside Dental")).toThrow(/lowercase letters, digits and dashes/);

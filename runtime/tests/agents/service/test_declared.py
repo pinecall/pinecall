@@ -67,6 +67,13 @@ def test_each_field_the_class_sends_becomes_the_configs_and_is_fixed() -> None:
     assert config.fixed == frozenset({"language", "voice", "llm", "greeting", "says", "docs", "memory"})
 
 
+def test_the_zone_a_class_declares_is_the_agents_and_one_that_is_no_zone_is_refused() -> None:
+    config = with_app_fields(NOTHING, Declared(timezone="America/Los_Angeles"))
+    assert (config.timezone, config.fixed) == ("America/Los_Angeles", frozenset({"timezone"}))
+    with pytest.raises(ValidationError, match="is not an IANA time zone"):
+        with_app_fields(NOTHING, Declared(timezone="Pacific"))
+
+
 def test_a_field_sent_empty_goes_back_to_the_settings_and_one_left_out_stays_fixed() -> None:
     """Null gives a setting back to the org; a field the class left out stays as it was fixed."""
     current = AgentConfig(slug="clinica-norte", fixed=frozenset({"voice", "llm"}))

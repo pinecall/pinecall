@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pinecall_runtime.exceptions import ValidationError
 from pinecall_runtime.kit.text import a_mapping, parse_slug
+from pinecall_runtime.kit.time import parse_zone
 from pinecall_runtime.wire.declared import IDLE_AFTER_S, IDLE_TIMES, MonitorDeclared
 from pinecall_runtime.wire.parts import (
     DocsMode,
@@ -371,6 +372,8 @@ class AgentConfig:
     prompt: tuple[PromptBlock, ...] = DEFAULT_LAYOUT
     greeting: Greeting | None = None
     language: str | None = None
+    # The IANA zone the agent's day and clock are read in; unset, the gateway's own.
+    timezone: str | None = None
     voice: Voice | None = None
     llm: Model | None = None
     # A model that hears and speaks itself: a voice call runs on it alone, a written call on `llm`.
@@ -418,6 +421,8 @@ class AgentConfig:
             raise ValidationError(f"agent {self.slug}: prompt block names repeat: {sorted(repeated)}")
         check_pronunciations(self.says, f"agent {self.slug}")
         check_call_limit(self.max_duration_s)
+        if self.timezone is not None:
+            parse_zone(self.timezone)
         if self.silence_timeout_s is not None:
             check_silence(self.silence_timeout_s)
         if self.llm_timeout_s is not None and self.llm_timeout_s <= 0:
