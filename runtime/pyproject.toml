@@ -92,6 +92,11 @@ dev = [
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
+# `src/runtime/` is the package being built beside `pinecall_runtime` (CANON.md): importable in the
+# checkout and on the test box, and in no wheel until the cutover.
+[tool.hatch.build]
+dev-mode-dirs = ["src"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pinecall_runtime"]
 
@@ -173,7 +178,7 @@ unfixable = ["T20"]
 convention = "google"
 
 [tool.ruff.lint.isort]
-known-first-party = ["pinecall_runtime", "tests"]
+known-first-party = ["pinecall_runtime", "runtime", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D1", "ARG", "T20"]
