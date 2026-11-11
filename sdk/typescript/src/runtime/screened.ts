@@ -108,14 +108,16 @@ export async function showing<T>(agent: Agent, screened: Screened, tool: string,
 
 /**
  * A turn of the call went by. One the caller opened, in which no tool showed the scene and the model did
- * not keep it, takes the scene away: the screen follows the conversation. True when the scene moved.
+ * not keep it, takes the scene away: the screen follows the conversation. True when the scene moved. Read
+ * at `agent.waiting`, once every sentence and every tool of the answer is done: a tool's announcement is
+ * a `turn.agent` of its own, written before the tool runs.
  */
 export function turned(type: string, world: CallWorld, screened: Screened): boolean {
   if (type === "turn.user") {
     Object.assign(screened, { byUser: true, kept: false });
     return false;
   }
-  if (type !== "turn.agent" || screened.byUser !== true) return false;
+  if (type !== "agent.waiting" || screened.byUser !== true) return false;
   screened.byUser = false;
   if (screened.kept === true || world.scene === null) return false;
   world.scene = null;

@@ -46,8 +46,10 @@ function shown(): string {
   return screen[0]!.part;
 }
 
+// An answer is over once the agent waits: its turn, then `agent.waiting`, as the runtime writes them.
 async function said(type: "turn.user" | "turn.agent", text: string, speech: string): Promise<void> {
-  gateway.emit(SLUG, CALL, type, { speech_id: speech, text, ...(type === "turn.agent" ? { interrupted: false } : {}) });
+  gateway.emit(SLUG, CALL, type, { speech_id: speech, text, metrics: {}, ...(type === "turn.agent" ? { interrupted: false } : {}) });
+  if (type === "turn.agent") gateway.emit(SLUG, CALL, "agent.waiting", { speech_id: speech, interrupted: false });
   await settled();
 }
 
@@ -87,6 +89,20 @@ it("keeps the scene through a turn in which the model kept it, and takes it away
 
   await called("show_screen", { scene: "none" }, "t3");
   expect(shown()).toBe("hello");
+});
+
+it("keeps the scene through a tool's announcement, said before the tool runs", async () => {
+  await said("turn.user", "What do you have on Tuesday?", "s1");
+  await called("free", {}, "t1");
+  await said("turn.agent", "I have 9:30 or 11.", "s1");
+
+  await said("turn.user", "And on Wednesday?", "s2");
+  gateway.emit(SLUG, CALL, "turn.agent", { speech_id: "s2", text: "Let me check.", interrupted: false, metrics: {} });
+  await settled();
+  expect(shown()).toBe("times");
+  await called("free", {}, "t2");
+  await said("turn.agent", "Wednesday has 9:30.", "s2");
+  expect(shown()).toBe("times");
 });
 
 it("leaves the scene where it is after a turn the caller did not open", async () => {
