@@ -18,6 +18,10 @@ import { PAGE_PORT, servePage } from "./paged.js";
 import { viewingFrom } from "./viewing.js";
 
 /** The console's other verbs are answered by the CLI's companion socket, never by the class. */
+// How long the page's port is asked for while the process before this one drains: a drain is 40 s at most.
+const PORT_TRIES = 90;
+const PORT_TRY_MS = 500;
+
 export const ONLY_THE_VIEW = "this process answers only view.render: the console's other verbs are the CLI's";
 
 const NO_DOOR = "serve start reads PINECALL_URL and PINECALL_KEY from its environment, and one was not set";
@@ -62,10 +66,11 @@ export async function start(argv: string[], io: Io): Promise<number> {
   }
   said(pc, io, values.events === true, masking);
   let stop: (() => void) | undefined;
-  let page: Server | undefined;
+  // Never waited for: the port may be the draining process's for a while, and the calls are served meanwhile.
+  let page: Promise<Server | undefined> | undefined;
   try {
     await pc.connect();
-    if (app !== undefined && values.app !== undefined) page = await pageOf(app, values.app, pc, slugs, io);
+    if (app !== undefined && values.app !== undefined) page = pageOf(app, values.app, pc, slugs, io);
     // The gateway is asked for work only by an app that has flows: the rest keep the socket alone.
     if (working !== undefined && working.app.flows().length > 0) stop = work(working);
     if ((await askedToLeave(pc, io)) !== "stopped") {
@@ -75,7 +80,7 @@ export async function start(argv: string[], io: Io): Promise<number> {
     return 0;
   } finally {
     stop?.();
-    page?.close();
+    void page?.then((serving) => serving?.close());
     pc.close();
   }
 }
@@ -86,13 +91,22 @@ async function pageOf(app: VoiceApp, file: string, pc: Pinecall, slugs: Map<Load
   const agent = paged === undefined ? undefined : slugs.get(paged.answers);
   if (paged === undefined || agent === undefined || io.env["PINECALL_HOST"]) return undefined;
   const port = Number(io.env["PINECALL_PAGE_PORT"] ?? PAGE_PORT);
-  try {
-    const serving = await servePage({ folder: resolve(dirname(file), paged.dir), agent, door: { url: pc.url, apiKey: pc.apiKey, env: pc.env }, port });
-    io.err.write(`${app.name}  its page is at http://localhost:${port}\n`);
-    return serving;
-  } catch (failed) {
-    io.err.write(`${app.name}  its page is not served: ${failed instanceof Error ? failed.message : String(failed)} (PINECALL_PAGE_PORT names another port)\n`);
-    return undefined;
+  const paging = { folder: resolve(dirname(file), paged.dir), agent, door: { url: pc.url, apiKey: pc.apiKey, env: pc.env }, port };
+  // A reload starts this process while the one before it drains, still on the port: it is asked for until that one left.
+  for (let tried = 0; ; tried++) {
+    try {
+      const serving = await servePage(paging);
+      io.err.write(`${app.name}  its page is at http://localhost:${port}\n`);
+      return serving;
+    } catch (failed) {
+      const taken = (failed as NodeJS.ErrnoException).code === "EADDRINUSE";
+      if (taken && tried < PORT_TRIES) {
+        await new Promise((again) => setTimeout(again, PORT_TRY_MS));
+        continue;
+      }
+      io.err.write(`${app.name}  its page is not served: ${failed instanceof Error ? failed.message : String(failed)} (PINECALL_PAGE_PORT names another port)\n`);
+      return undefined;
+    }
   }
 }
 
