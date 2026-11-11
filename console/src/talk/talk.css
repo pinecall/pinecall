@@ -55,6 +55,23 @@
 .talk-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes talk-dot { 0%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 0.9; transform: translateY(-2px); } }
 
+/* The wait, under each reply: its milliseconds, and the stages it went in. */
+.talk-lagbar { --pace: var(--good); }
+.talk-lag-fair { --pace: var(--warn); }
+.talk-lag-slow { --pace: var(--bad); }
+.talk-lagbar { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 5px 10px; width: 100%; max-width: 330px; margin-top: 2px; color: var(--quiet); font-size: 11.5px; font-variant-numeric: tabular-nums; animation: talk-arrive 0.4s ease-out; }
+.talk-lagbar b { color: var(--ink); font-weight: 500; }
+.talk-lagbar-total b { color: var(--pace); }
+.talk-lagbar-track { display: flex; gap: 2px; height: 5px; }
+.talk-lagbar-track i { min-width: 3px; border-radius: 2px; }
+.talk-lagbar-parts { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: 2px 12px; }
+.talk-lagbar-parts span { display: inline-flex; align-items: center; gap: 5px; }
+.talk-lagbar-parts i { width: 7px; height: 7px; border-radius: 2px; }
+.talk-lagbar-hears { background: var(--quiet); }
+.talk-lagbar-thinks { background: var(--accent); }
+.talk-lagbar-speaks { background: color-mix(in srgb, var(--accent) 45%, var(--good)); }
+.talk-lagbar-rest { background: var(--raised); }
+
 /* Every line, card and mark rises into the conversation once, when it first arrives. */
 .talk-reply, .talk-yours, .talk-tool, .talk-note-wrap { animation: talk-rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes talk-rise { from { opacity: 0; transform: translateY(8px) scale(0.98); } }

@@ -1,6 +1,6 @@
 /** Talking to one agent from the side panel, by voice over the microphone or in writing, and reading the call as it happens. */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { elapsed } from "@pinecall/core/calls";
 import { useCall } from "@pinecall/core/use-call";
@@ -9,6 +9,7 @@ import { CallScoreSchema, type CallScore } from "@pinecall/core/wire/events-call
 import { TERMINAL_EVENT } from "@pinecall/core/wire/registry";
 import { Icon } from "../shell/icons";
 import { SidePanel } from "../ui/side-panel";
+import { begunAfter, lagsOf, type Begun } from "./lag";
 import { Composer, Conversation } from "./lines";
 import { Orb } from "./orb";
 import { useSettingsFollowed } from "./stages";
@@ -17,6 +18,11 @@ import { useRoom, type Talking } from "./use-room";
 import "./talk.css";
 
 const GREETING_WAIT_MS = 5000;
+
+/** What the log has said of the call, and beside it the reply in the air, which only this panel draws. */
+interface Logged extends Followed {
+  begun: Begun | null;
+}
 
 /** The header's button: shows and folds the panel, and stays lit while the panel is open. */
 export function TalkButton({ open, onClick }: { open: boolean; onClick: () => void }): ReactNode {
@@ -46,12 +52,13 @@ export function TalkPanel({ agent, onClose }: { agent: string; onClose: () => vo
 function Stage({ agent }: { agent: string }): ReactNode {
   const live = useRoom(agent);
   useSettingsFollowed(agent, live.call, live.phase === "live");
-  const [followed, setFollowed] = useState<Followed | null>(null);
+  const [followed, setFollowed] = useState<Logged | null>(null);
   // What the log said of an earlier call is not this one's.
   const log = followed !== null && followed.call === live.call ? followed : null;
   const over = live.phase === "ended" && live.call !== null;
   const empty = live.lines.length === 0 && (live.phase === "idle" || live.phase === "failed");
   const opening = useOpening(live);
+  const lags = useMemo(() => (log === null ? new Map() : lagsOf(log.state, live.lines, log.begun)), [log, live.lines]);
   return (
     <section className="talk-stage" aria-label={`Chat with ${agent}`}>
       {live.phase !== "idle" && <Bar live={live} log={log} />}
@@ -64,6 +71,7 @@ function Stage({ agent }: { agent: string }): ReactNode {
       ) : (
         <Conversation
           lines={live.lines}
+          lags={lags}
           after={
             <>
               {opening && (
@@ -92,7 +100,7 @@ function Stage({ agent }: { agent: string }): ReactNode {
 }
 
 /** The bar over the conversation: how the call stands, by voice or in writing, and while it is on, the orb. */
-function Bar({ live, log }: { live: Talking; log: Followed | null }): ReactNode {
+function Bar({ live, log }: { live: Talking; log: Logged | null }): ReactNode {
   const now = useNow(live.phase === "live");
   return (
     <header className="talk-bar">
@@ -157,16 +165,19 @@ function Dock({ agent, live }: { agent: string; live: Talking }): ReactNode {
 }
 
 // The log reaches the stage through this: it opens the call's stream, hands each entry to the room
-// for its marks and turns, and lifts what the log has folded to, rendering nothing.
-function Follow({ call, heard, onLog }: { call: string; heard: (entry: Entry) => void; onLog: (log: Followed) => void }): ReactNode {
+// for its marks and turns, and lifts what the log has folded to, rendering nothing. The reply in the
+// air is folded beside the state and lifted with it, so the two never speak of different entries.
+function Follow({ call, heard, onLog }: { call: string; heard: (entry: Entry) => void; onLog: (log: Logged) => void }): ReactNode {
   const [score, setScore] = useState<CallScore | null>(null);
+  const begun = useRef<Begun | null>(null);
   const { state } = useCall(call, {
     onEntry(entry) {
       heard(entry);
+      begun.current = begunAfter(begun.current, entry);
       if (entry.type === TERMINAL_EVENT) setScore(CallScoreSchema.parse(entry.data));
     },
   });
-  useEffect(() => onLog({ call, state, score }), [call, state, score, onLog]);
+  useEffect(() => onLog({ call, state, score, begun: begun.current }), [call, state, score, onLog]);
   return null;
 }
 

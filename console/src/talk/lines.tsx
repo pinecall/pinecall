@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { Icon } from "../shell/icons";
+import { LagBar, type Lag } from "./lag";
 import { shapeOf } from "./tool-shape";
 import { ToolView } from "./tool-view";
 import { words, type Line, type Mark, type Said, type ToolRun } from "./transcript";
@@ -10,15 +11,15 @@ import { words, type Line, type Mark, type Said, type ToolRun } from "./transcri
 // How close to the end counts as reading the end: a person who scrolled up to read is left alone.
 const NEAR_THE_END_PX = 80;
 
-/** Every line so far, and what follows the last one (the card of a call that is over), kept in view while the reader is at the end. */
-export function Conversation({ lines, after }: { lines: Line[]; after?: ReactNode }): ReactNode {
+/** Every line so far, each reply with the wait the session measured for it, and what follows the last one (the card of a call that is over), kept in view while the reader is at the end. */
+export function Conversation({ lines, lags, after }: { lines: Line[]; lags?: ReadonlyMap<string, Lag>; after?: ReactNode }): ReactNode {
   const stream = useRef<HTMLDivElement>(null);
   const following = useRef(true);
 
   useEffect(() => {
     const box = stream.current;
     if (box && following.current) box.scrollTop = box.scrollHeight;
-  }, [lines, after]);
+  }, [lines, lags, after]);
 
   return (
     <div
@@ -31,7 +32,7 @@ export function Conversation({ lines, after }: { lines: Line[]; after?: ReactNod
     >
       <div className="talk-column">
         {lines.map((line) => {
-          if (line.kind === "said") return line.speaker === "user" ? <Yours key={line.id} line={line} /> : <Agents key={line.id} line={line} />;
+          if (line.kind === "said") return line.speaker === "user" ? <Yours key={line.id} line={line} /> : <Agents key={line.id} line={line} lag={lags?.get(line.id)} />;
           if (line.kind === "tool") return <ToolCard key={line.id} run={line} />;
           return <MarkLine key={line.id} mark={line} />;
         })}
@@ -72,12 +73,13 @@ function Copy({ text }: { text: string }): ReactNode {
 
 // The agent's reply is the page's own text, as a chat reads it. While it is being said each word
 // lights as it arrives — the room sends it at the pace the voice says it.
-function Agents({ line }: { line: Said }): ReactNode {
+function Agents({ line, lag }: { line: Said; lag?: Lag | undefined }): ReactNode {
   return (
     <div className="talk-reply">
       <p className="talk-reply-text">
         <Words line={line} />
       </p>
+      {lag !== undefined && <LagBar lag={lag} />}
       {line.final && <Copy text={line.text} />}
     </div>
   );
