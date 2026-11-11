@@ -67,8 +67,9 @@ With gcloud signed in on the project, and the zone of the names on Route 53 (`~/
 $ terraform -chdir=infra/terraform/bootstrap init && terraform -chdir=infra/terraform/bootstrap apply -var-file=$OPS/terraform/bootstrap.tfvars   # once
 $ terraform -chdir=infra/terraform/project init -backend-config=$OPS/terraform/project.backend.hcl && terraform -chdir=infra/terraform/project plan -var-file=$OPS/terraform/project.tfvars -out=plan && terraform -chdir=infra/terraform/project apply plan   # once
 $ make tf-init ENV=<env>
-$ make tf-plan ENV=<env>            # read it; the plan is saved
-$ make tf-apply ENV=<env>           # exactly the plan read
+$ make tf-fence ENV=<env>           # the networks the gateway approved for SIP, into the operator's own directory
+$ make tf-plan ENV=<env>            # read it; the plan is saved, unless it removes something nobody asked to remove
+$ make tf-apply ENV=<env>           # exactly the plan read, which is then deleted
 $ gcloud container clusters get-credentials pinecall-<env> --zone <zone>
 $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.yaml \
     --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \

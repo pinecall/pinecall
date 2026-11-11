@@ -28,6 +28,7 @@ REGION   ?= us-central1
 ZONE     ?= $(REGION)-c
 CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(ENV)
 TF        = terraform -chdir=$(INFRA)/terraform/environments/$(ENV)
+TF_PLAN   = $(INFRA)/terraform/environments/$(ENV)/plan
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
 TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(wildcard $(INFRA)/terraform/environments/*)
 
@@ -58,13 +59,18 @@ tf-fence:         ## ENV=…: the fence's networks, from the running gateway int
 	  mv $$fence.new $$fence || { rm -f $$fence.new; echo "tf-fence: the gateway did not answer; $$fence is unchanged" >&2; exit 1; }
 	@git -C $(OPS) --no-pager diff --stat -- terraform/$(ENV).fence.tfvars.json
 
-# Saved, so what is applied is exactly what was read.
-tf-plan:          ## ENV=…: what an apply would change, saved as its plan; "No changes." is the norm
+# Saved, so what is applied is exactly what was read. A plan that deletes or replaces anything is
+# not kept unless that was asked for (REMOVES=yes): a plan that removes what nobody asked to remove
+# means an input is missing, and the thing to do is find it, never to apply around it.
+tf-plan:          ## ENV=… [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
 	$(TF_AUTH) $(TF) plan -input=false -var-file=$(OPS)/terraform/$(ENV).tfvars \
 	  -var-file=$(OPS)/terraform/$(ENV).fence.tfvars.json -out=plan
+	@$(TF) show -json plan | scripts/plan-removals || [ "$(REMOVES)" = yes ] || \
+	  { rm -f $(TF_PLAN); echo "tf-plan: this plan removes the above and was not kept. An input is missing, or the removal is meant: REMOVES=yes" >&2; exit 2; }
 
-tf-apply:         ## ENV=…: the saved plan applied, after it was read
-	$(TF_AUTH) $(TF) apply -input=false plan
+# The plan holds the state it was made from, the drawn secrets in clear among it: gone once applied.
+tf-apply:         ## ENV=…: the saved plan applied, after it was read, and then deleted
+	$(TF_AUTH) $(TF) apply -input=false plan; status=$$?; rm -f $(TF_PLAN); exit $$status
 
 # The runtime whole on this laptop (`pinecall-runtime local`): Postgres, Redis and LiveKit in docker, the
 # gateway and a worker from the checkout, on the settings `make local` wrote to .local/env.
