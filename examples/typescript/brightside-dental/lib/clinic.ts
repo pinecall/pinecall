@@ -49,6 +49,9 @@ export const CLOSES = 18;
 export class Clinic {
   readonly visits: Visit[] = [];
   readonly refundsAsked: { invoice: string; reason: string }[] = [];
+  /** The visits whose reminder is owed, and every call that ended: what the app writes down. */
+  readonly reminders: string[] = [];
+  readonly callsKept: { call: string; agent: string; reason: string }[] = [];
 
   /** The patient a phone number belongs to. */
   patientByPhone(phone: string): Patient | undefined {

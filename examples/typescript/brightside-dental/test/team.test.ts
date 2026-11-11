@@ -11,6 +11,7 @@ import { FakeGateway } from "@pinecall/agents/client/testing";
 import app from "../app.js";
 import Billing from "../agents/brightside-billing/agent.js";
 import FrontDesk from "../agents/brightside-front-desk/agent.js";
+import { clinic } from "../lib/clinic.js";
 
 const KEY = "pk_test";
 const CALL = "CA_1";
@@ -72,6 +73,13 @@ it("opens the front desk's tools and the transfer to billing, and declares every
   expect(open()).toEqual(["book", "disputeCharge", "freeSlots", "transfer_to_billing"]);
   const declared = (sent("agent.configure")[0]?.["config"] as { tools: { name: string }[] }).tools.map((spec) => spec.name);
   expect(declared).toEqual(expect.arrayContaining(["askRefund", "listInvoices", "transfer_to_front_desk"]));
+});
+
+it("hears a visit an agent booked, and a call that ended", async () => {
+  await app.heard({ type: "custom", call: CALL, agent: SLUG, data: { name: "visit.booked", data: { id: "v-9" } } });
+  await app.heard({ type: "call.ended", call: CALL, agent: SLUG, data: { reason: "caller_hung_up" } });
+  expect(clinic.reminders).toContain("v-9");
+  expect(clinic.callsKept.at(-1)).toEqual({ call: CALL, agent: SLUG, reason: "caller_hung_up" });
 });
 
 it("passes a disputed charge to billing, which already knows the patient and her invoices", async () => {

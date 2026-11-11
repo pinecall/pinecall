@@ -47,6 +47,8 @@ export async function start(argv: string[], io: Io): Promise<number> {
   const app = values.app === undefined ? undefined : appOf(await loadApp(values.app), served, loaded);
   const slugs = new Map(loaded.map((one, at) => [one.ctor, served[at]!.slug]));
   served.forEach((one, at) => masking.set(one.slug, new Masking(held(pc, one, loaded[at]!, app, slugs, values.console === true, io).options)));
+  // What the app's agents log and what happens to their calls reaches the app's own handlers.
+  if (app !== undefined) pc.onEntries((entry) => void app.heard(entry, (name, error) => void io.err.write(`${app.name}  the handler of ${name} threw: ${error.message}\n`)));
   said(pc, io, values.events === true, masking);
   try {
     await pc.connect();

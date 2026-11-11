@@ -32,6 +32,10 @@ app.line("+1 415 555 0134", {
 
 app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
+
+app.on("visit.booked", (_call, visit) => {
+  clinic.reminders.push(String(visit["id"]));
+});
 ```
 
 | line | what it does |
@@ -41,6 +45,7 @@ app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 | `answers` | the agent on the call when it starts |
 | `team` | the agents the call may pass to; each says what it takes with `static takes` |
 | `rule` | read into the prompt of both agents, and a judge asks of every call whether it was kept |
+| `on` | what an agent logs by name (`visit.booked`) and what happens to a call (`call.ended`) reach the app |
 | `silence` | what any agent of the app says to a caller who went quiet |
 
 ## How a call goes

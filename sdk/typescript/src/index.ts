@@ -30,7 +30,7 @@ export { renderToNodes, said, type Panels, type Tone, type ViewNode } from "./vi
 
 export { ToolFailed, runTool } from "./runtime/run-tool.js";
 export * from "./runtime/connect.js";
-export { VoiceApp, voiceApp, type AppOptions, type Line, type LineOptions, type Silence } from "./runtime/app.js";
+export { VoiceApp, voiceApp, type AppOptions, type Heard, type Hearing, type Line, type LineOptions, type Silence } from "./runtime/app.js";
 export type { Answering, Team } from "./runtime/handoff.js";
 export * from "./agent/visibility.js";
 export * from "./agent/accepts.js";

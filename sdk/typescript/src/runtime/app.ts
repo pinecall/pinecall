@@ -40,6 +40,27 @@ export interface Silence {
   times?: number;
 }
 
+/** The call an entry belongs to, as a handler of the app is told it; `id` is null for an entry of no call. */
+export interface Heard {
+  id: string | null;
+  /** The slug the gateway knows the call's agent by. */
+  agent: string;
+}
+
+/** A handler of `app.on`: the call, and what the entry carries. */
+export type Hearing = (call: Heard, data: Record<string, unknown>) => unknown;
+
+/** An entry of a call's log, as much of it as the app reads. */
+interface Logged {
+  type: string;
+  call: string | null;
+  agent: string;
+  data: Record<string, unknown>;
+}
+
+// The type of the entry a line an agent logs is kept as: its own name is inside it.
+const A_LOGGED_LINE = "custom";
+
 /** What a voice app is made with. */
 export interface AppOptions {
   /** The IANA zone the app's agents read their day and their clock in: `"America/Los_Angeles"`. */
@@ -67,6 +88,7 @@ export class VoiceApp {
   readonly #lines: Line[] = [];
   #silence: AgentOptions["idle"] | undefined;
   readonly #rules: string[] = [];
+  readonly #hearing = new Map<string, Hearing[]>();
 
   constructor(name: string, options: AppOptions = {}) {
     if (typeof name !== "string" || !A_NAME.test(name)) throw new DeclarationRefused(NOT_A_NAME);
@@ -112,6 +134,31 @@ export class VoiceApp {
     if (typeof rule !== "string" || rule.trim() === "") throw new DeclarationRefused("a rule is a sentence every agent of the app keeps");
     this.#rules.push(rule.trim());
     return this;
+  }
+
+  /**
+   * Run `handler` on every entry of that name on a call of the app's agents: an entry of the call's
+   * log by its type (`"call.ended"`, `"call.score"`), or a line an agent logs by its name
+   * (`this.log("visit.booked", visit)` reaches `app.on("visit.booked", …)`).
+   */
+  on(name: string, handler: Hearing): this {
+    if (typeof name !== "string" || name.trim() === "" || typeof handler !== "function") throw new DeclarationRefused("app.on takes the name of an entry and the function that hears it");
+    this.#hearing.set(name, [...(this.#hearing.get(name) ?? []), handler]);
+    return this;
+  }
+
+  /** Hand one entry to whoever asked for its name, in the order they asked; a handler that throws is told to `failed` and the rest run. */
+  async heard(entry: Logged, failed: (name: string, error: Error) => void = () => {}): Promise<void> {
+    const logged = entry.type === A_LOGGED_LINE;
+    const name = logged ? String(entry.data["name"] ?? "") : entry.type;
+    const data = logged ? ((entry.data["data"] as Record<string, unknown> | undefined) ?? {}) : entry.data;
+    for (const handler of this.#hearing.get(name) ?? []) {
+      try {
+        await handler({ id: entry.call, agent: entry.agent }, data);
+      } catch (thrown) {
+        failed(name, thrown instanceof Error ? thrown : new Error(String(thrown)));
+      }
+    }
   }
 
   /** The app's rules, in the order they were written. */

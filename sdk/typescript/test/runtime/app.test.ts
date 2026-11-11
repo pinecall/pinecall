@@ -80,6 +80,32 @@ describe("a line that chooses", () => {
   });
 });
 
+describe("what the app hears", () => {
+  const entry = { seq: 1, ts: 0, ephemeral: false, call: "CA_1", agent: "front-desk" };
+
+  it("is an entry of a call by its type, and a line an agent logged by its name", async () => {
+    const heard: unknown[] = [];
+    const app = voiceApp("brightside")
+      .on("call.ended", (call, data) => void heard.push(["ended", call.id, data["reason"]]))
+      .on("visit.booked", (call, data) => void heard.push(["booked", call.agent, data["id"]]));
+    await app.heard({ ...entry, type: "call.ended", data: { reason: "caller_hung_up" } });
+    await app.heard({ ...entry, type: "custom", data: { name: "visit.booked", data: { id: "v-1" } } });
+    await app.heard({ ...entry, type: "turn.user", data: { text: "hello" } });
+    expect(heard).toEqual([["ended", "CA_1", "caller_hung_up"], ["booked", "front-desk", "v-1"]]);
+  });
+
+  it("goes on to the next handler when one throws, and says which", async () => {
+    const failed: string[] = [];
+    let ran = false;
+    const app = voiceApp("brightside")
+      .on("call.ended", () => { throw new Error("the database is down"); })
+      .on("call.ended", () => void (ran = true));
+    await app.heard({ ...entry, type: "call.ended", data: {} }, (name, error) => failed.push(`${name}: ${error.message}`));
+    expect(failed).toEqual(["call.ended: the database is down"]);
+    expect(ran).toBe(true);
+  });
+});
+
 describe("a rule", () => {
   it("is every agent's, with a judge that asks of each call whether it was kept", () => {
     const app = voiceApp("brightside").line("+14155550134", FrontDesk).rule("Never quote a price that is not in the price list.");

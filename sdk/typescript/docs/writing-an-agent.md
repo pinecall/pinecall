@@ -304,6 +304,26 @@ as written, by the agent, before any model runs: it is that agent's `greeting`, 
 and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
 one from the app too is refused when the app loads, naming both, since a call runs on one of them.
 
+### What the app hears
+
+```ts
+app.on("visit.booked", async (call, visit) => {
+  await reminders.schedule(visit);
+});
+
+app.on("call.ended", async (call, ended) => {
+  await db.calls.insert({ call: call.id, agent: call.agent, reason: ended["reason"] });
+});
+```
+
+`app.on(name, handler)` runs the handler on every entry of that name on a call of the app's agents.
+The name is an entry of the call's log by its type (`call.started`, `call.ended`, `call.score`, `handoff`
+for a pass and `routed` for a line's choice), or a line an agent logs by its own name:
+`this.log("visit.booked", visit)` in a tool is what the first handler above hears. The handler is
+told the call (`id`, `agent`) and what the entry carries. One that throws is said in the terminal,
+and the others run. The handlers run in the process that serves the agents: what happens while it is
+down is not heard later.
+
 ### A rule every agent keeps
 
 ```ts
