@@ -86,6 +86,16 @@ class PasswordTooShort(ValidationError):
         super().__init__(f"a password is at least {shortest} characters")
 
 
+class PasswordIsTheirs(Conflict):
+    """A person with an account in another org sets their own password: an admin sends the reset."""
+
+    def __init__(self, email: str) -> None:
+        super().__init__(
+            f"{email} has an account on this box beyond this org, and their one password opens every org "
+            "of theirs: send them a reset, which is mailed to them, instead of typing a password for them"
+        )
+
+
 class TypeTheOneKept(Unauthorized):
     """An invitation seats a person; the password they have is theirs to keep and to type."""
 
@@ -192,9 +202,14 @@ async def accept_link(session: AsyncSession, token: str, password: str, shortest
         kept = await members.password_hash_of(member.email)
     if spent.purpose is InvitationPurpose.reset:
         hashed = await hashed_password(password, shortest)
+        # A reset ends whatever the old password opened: a key minted with it would outlive it otherwise.
+        keys = ApiKeyRepository(session)
         if spent.vouched:
             with box_wide():
                 await members.set_password_everywhere(member.email, hashed)
+                await keys.revoke_of_address(member.email)
+        else:
+            await keys.revoke_of_person(member.id)
         return await _activate(members, member, spent, hashed)
     if kept is None:
         return await _activate(members, member, spent, await hashed_password(password, shortest))
@@ -240,6 +255,21 @@ async def set_password(session: AsyncSession, org: str, member_id: str, password
     await InvitationRepository(session).spend_open_of(member_id)
     await members.update(found, password_hash=hashed, status=MemberStatus.active)
     return found
+
+
+# The person's one password is the newest any of their rows holds (`password_hash_of`), so a
+# password typed in one org would open every other org of theirs: found on 2026-11-11, an admin of
+# any org could sign in as a member of another. An admin types one only for a person of this org alone.
+async def set_password_as_admin(
+    session: AsyncSession, org: str, member_id: str, password: str, shortest: int
+) -> Member:
+    """A password an org's admin types for one of its own people; refused for a person of another org too."""
+    found = await MemberRepository(session).get(org, member_id)
+    if found is None:
+        raise NoSuchMember()
+    if await is_member_elsewhere(session, org, found.email):
+        raise PasswordIsTheirs(found.email)
+    return await set_password(session, org, member_id, password, shortest)
 
 
 async def member_by_email(session: AsyncSession, org: str, email: str) -> Member:

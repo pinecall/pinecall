@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from pinecall_runtime.accounts import schemas
 from pinecall_runtime.accounts.auth import (
+    KeyCacheDep,
     MinPassword,
 )
 from pinecall_runtime.accounts.service import keys, members
@@ -19,12 +20,15 @@ NO_INVITATION = "no open invitation answers to that token: it was used, it expir
 
 @router.post("/v1/invitations/{token}")
 async def accept_invitation(
-    token: str, body: schemas.AcceptInvitation, shortest: MinPassword, session: Session
+    token: str, body: schemas.AcceptInvitation, shortest: MinPassword, session: Session, cache: KeyCacheDep
 ) -> schemas.FirstKey:
     """Type the password: the member is active, and here is their first key."""
     members.check_password(body.password, shortest)
     member = await members.accept_link(session, token, body.password, shortest)
     if member is None:
         raise NotFound(NO_INVITATION)
+    # A reset revoked the keys the old password opened, in every org of the person's.
+    for membership in await members.memberships_of(session, member.email):
+        cache.forget(subject=membership.id)
     key, secret = await keys.issue_person_key(session, member, label=body.device or "invitation")
     return schemas.FirstKey(**schemas.KeyIssued.minted(key, secret).model_dump(), member=schemas.MemberRow.of(member))

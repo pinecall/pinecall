@@ -93,7 +93,10 @@ async def set_member_password(
     member: MemberId, body: schemas.SetPassword, actor: TeamKey, shortest: MinPassword, session: Session
 ) -> schemas.MemberRow:
     """A member's password set by an admin of the org, no link mailed; an invited member becomes active."""
-    changed = await members.set_password(session, actor.org, member, body.password, shortest)
+    found = await members.get_member(session, actor.org, member)
+    # Whoever sets a password can sign in as that person: a key sets only what it could grant.
+    keys.check_may_grant(actor, found.role, production=False)
+    changed = await members.set_password_as_admin(session, actor.org, member, body.password, shortest)
     return schemas.MemberRow.of(changed)
 
 
@@ -103,6 +106,8 @@ async def reset_password(
 ) -> schemas.Invited:
     """A one-time link that sets an active member's password, mailed to them."""
     found = await members.get_member(session, actor.org, member)
+    # The link is handed to the caller when the person is this org's alone: the same rule as setting it.
+    keys.check_may_grant(actor, found.role, production=False)
     elsewhere = await members.is_member_elsewhere(session, actor.org, found.email)
     link = await members.reset_link(session, actor.org, member, vouched=elsewhere)
     if link is None:

@@ -199,6 +199,13 @@ class ApiKeyRepository(Repository[ApiKey]):
         )
         return list((await self.session.execute(statement)).scalars().all())
 
+    async def revoke_of_address(self, email: str) -> None:
+        """Every live key minted for any membership of the address is revoked. Run box-wide by the caller."""
+        theirs = select(Member.id).where(Member.email == email)
+        await self.session.execute(
+            update(ApiKey).where(ApiKey.subject.in_(theirs), ApiKey.revoked_at.is_(None)).values(revoked_at=now())
+        )
+
     async def revoke_of_person(self, member_id: str) -> None:
         """Every live key minted for the member is revoked; the rows stay, the log names them."""
         await self.session.execute(
