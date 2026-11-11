@@ -30,6 +30,17 @@ const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=
 // The action the gateway asks the token to have been solved for.
 const ACTION = "page";
 const NO_CAPTCHA = "the captcha could not be loaded: check the connection, or a blocker, and try again";
+// Cloudflare's codes for a widget asked for on a name it was not made for (110200) or with a key it does not know (1101xx).
+const NOT_THIS_NAME = /^1102/;
+const NOT_THIS_KEY = /^1101/;
+
+/** What Cloudflare's error code means for whoever runs the page; the code itself for one this file does not know. */
+function refusalOf(code: unknown): string {
+  const said = typeof code === "string" || typeof code === "number" ? String(code) : "";
+  if (NOT_THIS_NAME.test(said)) return `the captcha is not set up for ${location.hostname}: add this name to the Turnstile widget's hostnames (Cloudflare ${said})`;
+  if (NOT_THIS_KEY.test(said)) return `the captcha's site key is not one Cloudflare knows (Cloudflare ${said})`;
+  return said === "" ? NO_CAPTCHA : `the captcha failed (Cloudflare ${said}): try again`;
+}
 
 /**
  * The page's side of an app's own page: the ticket and the code are asked of `/pinecall/token` and
@@ -91,7 +102,11 @@ async function solved(sitekey: string): Promise<string> {
         action: ACTION,
         appearance: "interaction-only",
         callback: (token: string) => solve(token),
-        "error-callback": () => refuse(new Error(NO_CAPTCHA)),
+        "error-callback": (code: unknown) => {
+          refuse(new Error(refusalOf(code)));
+          // Told Cloudflare the error is handled: it logs nothing more and does not retry on its own.
+          return true;
+        },
       });
     });
   } finally {
