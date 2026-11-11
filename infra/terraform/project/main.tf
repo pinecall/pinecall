@@ -1,35 +1,26 @@
 # What the project holds for every cluster in it: the registry the images live in and the identity
 # Cloud Build builds them as (`make image`). Each cluster (cluster/, once per ENV) is made beside
 # these.
+#
+# The registry and the builds' identity were modules of one caller each until 2026-11-12; they are
+# this root's own files now, and the state follows by the moves below.
 
-provider "google" {
-  project = var.project
-  region  = var.region
+moved {
+  from = module.registry.google_artifact_registry_repository.images
+  to   = google_artifact_registry_repository.images
 }
 
-variable "project" {
-  type = string
+moved {
+  from = module.build.google_service_account.build
+  to   = google_service_account.build
 }
 
-variable "region" {
-  type    = string
-  default = "us-central1"
+moved {
+  from = module.build.google_project_iam_member.build
+  to   = google_project_iam_member.build
 }
 
-module "registry" {
-  source = "../modules/registry"
-  region = var.region
-}
-
-module "build" {
-  source  = "../modules/build"
-  project = var.project
-}
-
-output "registry" {
-  value = module.registry.url
-}
-
-output "build_service_account" {
-  value = module.build.service_account
+moved {
+  from = module.build.google_storage_bucket_iam_member.source
+  to   = google_storage_bucket_iam_member.source
 }
