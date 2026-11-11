@@ -90,6 +90,51 @@ resource "google_certificate_manager_certificate_map_entry" "services" {
   certificates = [google_certificate_manager_certificate.services[0].id]
 }
 
+# The apps' own pages: every name one label under `pages` (`<app>--<org>.<pages>`), served by the
+# gateways at this front door. One wildcard certificate, proved by the domain's own authorization, and
+# one wildcard record: a new app's page needs neither a certificate nor a record of its own.
+resource "google_certificate_manager_dns_authorization" "pages" {
+  count      = var.pages == "" ? 0 : 1
+  name       = "pinecall-${var.name}-pages"
+  domain     = var.pages
+  depends_on = [google_project_service.certificates]
+}
+
+resource "aws_route53_record" "pages_authorization" {
+  count   = var.pages == "" ? 0 : 1
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = google_certificate_manager_dns_authorization.pages[0].dns_resource_record[0].name
+  type    = google_certificate_manager_dns_authorization.pages[0].dns_resource_record[0].type
+  ttl     = 300
+  records = [google_certificate_manager_dns_authorization.pages[0].dns_resource_record[0].data]
+}
+
+resource "google_certificate_manager_certificate" "pages" {
+  count = var.pages == "" ? 0 : 1
+  name  = "pinecall-${var.name}-pages"
+  managed {
+    domains            = ["*.${var.pages}"]
+    dns_authorizations = [google_certificate_manager_dns_authorization.pages[0].id]
+  }
+}
+
+resource "google_certificate_manager_certificate_map_entry" "pages" {
+  count        = var.pages == "" ? 0 : 1
+  name         = "pinecall-${var.name}-pages"
+  map          = google_certificate_manager_certificate_map.names.name
+  hostname     = "*.${var.pages}"
+  certificates = [google_certificate_manager_certificate.pages[0].id]
+}
+
+resource "aws_route53_record" "pages" {
+  count   = var.pages == "" ? 0 : 1
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = "*.${var.pages}"
+  type    = "A"
+  ttl     = 300
+  records = [google_compute_global_address.ingress.address]
+}
+
 # A world's media address: kubeip (charts/pinecall) gives it to that world's media node by its
 # label, and gives it again to the node that replaces it, so a carrier's trunk and a number's SDP
 # name one address for good.
@@ -246,6 +291,12 @@ variable "point_services" {
 variable "sip_names" {
   type        = map(string)
   description = "Each world's SIP name, a carrier's alone: the world's media address."
+}
+
+variable "pages" {
+  type        = string
+  description = "The domain the apps' own pages are served under, one label each; empty serves none."
+  default     = ""
 }
 
 # A world whose address carriers and the orgs' PBXs already know keeps it: the address reserved

@@ -29,6 +29,11 @@ export const ReleaseSchema = z.strictObject({
   author: z.string(),
   note: z.string(),
   created_at: z.number(),
+  /** The folder of the app's page inside the sources, and the agent its visitors reach; null with no page. */
+  page_dir: z.string().nullish(),
+  page_agent: z.string().nullish(),
+  /** Where the page is served, when the gateway serves pages. */
+  page_url: z.string().nullish(),
 });
 
 export type Release = z.infer<typeof ReleaseSchema>;

@@ -3,6 +3,7 @@
 import asyncio
 import io
 import tarfile
+from dataclasses import replace
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -63,3 +64,64 @@ async def test_a_release_is_said_on_the_feed_once_it_is_stored(
         assert stored == sent.json()["release"]
     finally:
         feed.close()
+
+
+def a_project_with_a_page() -> bytes:
+    """A release whose project built a page into ui/dist."""
+    files = {
+        "package.json": b"{}",
+        "agents/support/agent.ts": b"export default 1",
+        "ui/dist/index.html": b"<!doctype html><title>Support</title>",
+        "ui/dist/assets/app.js": b"console.log(1)",
+    }
+    packed = io.BytesIO()
+    with tarfile.open(fileobj=packed, mode="w:gz") as tar:
+        for path, content in files.items():
+            member = tarfile.TarInfo(path)
+            member.size = len(content)
+            tar.addfile(member, io.BytesIO(content))
+    return packed.getvalue()
+
+
+@needs_the_services
+async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gateways(
+    gateway: Gateway, tenant: Tenant
+) -> None:
+    """The page's files, its routes read as the page, its config, and a ticket asked of the app's own agent."""
+    state = gateway.app.state
+    standing = state.handles
+    state.handles = replace(standing, settings=standing.settings.model_copy(update={"pages_domain": "pages.test"}))
+    try:
+        headers = {**tenant.server, "content-type": "application/gzip"}
+        sent = await gateway.http.post(
+            "/v1/hosted/support/releases",
+            params={"page_dir": "ui/dist", "page_agent": "support"},
+            content=a_project_with_a_page(),
+            headers=headers,
+        )
+        assert sent.status_code == 200, sent.text
+        name = f"support--{tenant.slug}--sandbox.pages.test"
+        assert sent.json()["page_url"] == f"https://{name}/"
+        at_its_name = {"host": name}
+
+        page = await gateway.http.get("/", headers=at_its_name)
+        assert (page.status_code, page.headers["cache-control"]) == (200, "no-store")
+        assert "<title>Support</title>" in page.text
+        asset = await gateway.http.get("/assets/app.js", headers=at_its_name)
+        assert (asset.status_code, asset.text) == (200, "console.log(1)")
+        assert "javascript" in asset.headers["content-type"]
+        assert "<title>Support</title>" in (await gateway.http.get("/visits/3", headers=at_its_name)).text
+        assert (await gateway.http.get("/missing.png", headers=at_its_name)).status_code == 404
+
+        config = await gateway.http.get("/pinecall/config", headers=at_its_name)
+        assert config.json() == {"agent": "support", "turnstile": None}
+        # Nobody holds the agent in this test: the ticket is asked of it, and refused for that alone.
+        ticket = await gateway.http.post("/pinecall/token", json={"scope": "chat"}, headers=at_its_name)
+        assert ticket.status_code == 404, ticket.text
+        assert "support" in ticket.text
+
+        # The same routes asked at the gateway's own name answer nothing: a page is never the console's document.
+        assert (await gateway.http.get(f"/v1/pages/{name}/files/")).status_code == 404
+        assert (await gateway.http.get("/", headers={"host": "nobody--here.pages.test"})).status_code == 404
+    finally:
+        state.handles = standing

@@ -234,14 +234,31 @@ async def open_app(session: AsyncSession, vault: Vault, app: App, *, created_by:
         await keys.revoke_fingerprint(session, fingerprint(secret))
 
 
-async def keep_release(session: AsyncSession, app: App, source: Source, *, author: str, note: str) -> HostedRelease:
+async def keep_release(
+    session: AsyncSession,
+    app: App,
+    source: Source,
+    *,
+    author: str,
+    note: str,
+    page_dir: str | None = None,
+    page_agent: str | None = None,
+) -> HostedRelease:
     """Keep the upload as the next release, the oldest past ten let go; NotFound if not hosted."""
     locked = await HostedAppRepository(session).get_locked(app.org, app.env, app.name)
     if locked is None:
         raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
     releases = ReleaseRepository(session)
     kept = await releases.keep(
-        app.org, app.env, app.name, source=source.data, sha256=source.sha256, author=author, note=note
+        app.org,
+        app.env,
+        app.name,
+        source=source.data,
+        sha256=source.sha256,
+        author=author,
+        note=note,
+        page_dir=page_dir,
+        page_agent=page_agent,
     )
     await releases.prune(app.org, app.env, app.name, newest=kept.release, live=locked.live_release)
     return kept

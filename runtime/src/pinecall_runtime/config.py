@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # the site key the page draws the widget with, the secret the gateway verifies its token with.
     turnstile_site_key: str | None = Field(None, alias="PINECALL_TURNSTILE_SITE_KEY")
     turnstile_secret: SecretStr | None = Field(None, alias="PINECALL_TURNSTILE_SECRET")
+    # The domain an app's own page is served under, one label each (`<app>--<org>.<domain>`); unset, none is.
+    pages_domain: str | None = Field(None, alias="PINECALL_PAGES_DOMAIN")
     approve_hooked: bool = Field(False, alias="PINECALL_APPROVE_HOOKED")
     cloud: bool = Field(False, alias="PINECALL_CLOUD")
     billing_url: str | None = Field(None, alias="PINECALL_BILLING_URL")

@@ -1,4 +1,4 @@
-/** `@pinecall/agents/serve`: the entry the CLI starts an agent with — `start` holds it, `prompt` prints it. */
+/** `@pinecall/agents/serve`: the entry the CLI starts an agent with — `start` holds it, `prompt` prints it, `app` says what its app is. */
 
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { DeclarationRefused } from "../agent/tools.js";
 import { Refused } from "../client/index.js";
 
+import { described } from "./described.js";
 import { processIo, type Io } from "./io.js";
 import { CannotServe } from "./load.js";
 import { prompt } from "./prompt.js";
@@ -13,6 +14,7 @@ import { start } from "./start.js";
 
 const USAGE = `usage: serve start --file <agent.tsx> --slug <slug> [--file … --slug …] [--console] [--events]
        serve prompt --file <agent.tsx> --slug <slug> [--state field=json]… [--channel name] [--medium how] [--show-machine]
+       serve app --app <app.ts> --file <agent.tsx> --slug <slug> [--file … --slug …]
 
   Reads PINECALL_URL, PINECALL_KEY, PINECALL_ENV and PINECALL_HOST from its environment and nothing else.
   start leaves on SIGINT, SIGTERM or the end of its stdin, draining first; a second signal leaves now.`;
@@ -24,6 +26,7 @@ export async function main(argv: string[], io: Io = processIo()): Promise<number
   try {
     if (verb === "start") return await start(rest, io);
     if (verb === "prompt") return await prompt(rest, io);
+    if (verb === "app") return await described(rest, io);
   } catch (failed) {
     if (!(failed instanceof CannotServe) && !(failed instanceof DeclarationRefused) && !(failed instanceof Refused) && !isAFlag(failed)) throw failed;
     io.err.write(`${failed.message}\n`);

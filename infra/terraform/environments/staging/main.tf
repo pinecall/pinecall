@@ -58,9 +58,16 @@ module "edge" {
   names     = var.names
   sip_names = var.sip_names
   region    = var.region
+  pages     = var.pages
   # The fence's networks (sip_sources.auto.tfvars.json, `pinecall-runtime fence export`), and the
   # lab's generator while it stands.
   sip_sources = concat(var.sip_sources, [for lab in module.lab : "${lab.public_address}/32"])
+}
+
+variable "pages" {
+  type        = string
+  description = "The domain the apps' own pages are served under (`<app>--<org>.<pages>`); empty serves none."
+  default     = ""
 }
 
 variable "dns_zone" {

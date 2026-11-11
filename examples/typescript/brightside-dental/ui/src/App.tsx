@@ -1,13 +1,18 @@
 // Brightside's page: one call, drawn from the screen its agents put up. The page changes as the call does.
 
-import { rowsOf, screenOf, type Screen as Drawn } from "@pinecall/room";
+import { hosted, rowsOf, screenOf, type Screen as Drawn } from "@pinecall/room";
 import { Screen, useKaraoke, useRoom } from "@pinecall/room/react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { PageContext, type Page } from "./page.js";
 import { PARTS } from "./parts.js";
 
 type Caller = "ana" | "new";
+
+// The page's tickets: asked of the page's own name, which Pinecall answers for the deployed app and `pinecall start` here.
+const PAGE = hosted();
+// A page has no caller id: a visitor who is a patient is known by the number the clinic has for her.
+const KNOWN: Record<Caller, string | undefined> = { ana: "+14155550142", new: undefined };
 
 const DESKS: Record<string, string> = { front: "Front desk", billing: "Billing" };
 
@@ -20,19 +25,17 @@ function deskOf(screen: Drawn): string {
 
 export function App(): ReactNode {
   const [caller, setCaller] = useState<Caller>("new");
-  const call = useRoom({
-    tokens: async (scope, resume) => {
-      const answer = await fetch("/api/token", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scope, as: caller, resume }) });
-      const body = await answer.json();
-      if (!answer.ok) throw new Error(body.detail ?? `the server answered ${answer.status}`);
-      return body;
-    },
-  });
+  const call = useRoom(PAGE);
   const screen = screenOf(call.log);
   const desk = deskOf(screen);
   const live = call.phase === "live";
   const page = useMemo<Page>(() => ({ live, tell: (name, data) => void call.event(name, data).catch(() => {}) }), [live, call.event]);
   const open = call.phase === "idle" || call.phase === "failed";
+  const known = KNOWN[caller];
+  // Said once per call, as it goes live: the front desk looks the number up and shares the patient with billing.
+  useEffect(() => {
+    if (live && known !== undefined) void call.event("caller.known", { phone: known }).catch(() => {});
+  }, [live, known, call.call, call.event]);
 
   return (
     <main data-desk={desk} data-phase={call.phase}>

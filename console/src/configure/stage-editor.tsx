@@ -1,6 +1,6 @@
 /** The panel a stage is changed in: the provider and the model as rich selects, the voice with a Listen, the stage's own settings and the vendor's. */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
@@ -8,7 +8,8 @@ import type { IconName } from "../shell/icons";
 import { Select, type SelectItem } from "../ui/select";
 import { Badge, Field, Mark, Setting, Slider } from "../ui/setting";
 import { EditDialog } from "./dialog";
-import { keepProviderKey, readVoices, sampleOf, type ListedVoice, type ModelChoice, type Provider, type Report, type TuningBody } from "./door";
+import { keepProviderKey, readVoices, type ListedVoice, type ModelChoice, type Provider, type Report, type TuningBody } from "./door";
+import { ListenButton, useListen } from "./listen";
 import { OptionsForm, type Options } from "./options-form";
 import { brandOf, type Modality } from "./vendors";
 
@@ -167,50 +168,23 @@ export function VendorModel({ report, modality, vendor, model, unset, onVendor, 
   );
 }
 
-function PlayIcon({ playing }: { playing: boolean }): ReactNode {
-  return (
-    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-      {playing ? <path d="M6 5h4v14H6zM14 5h4v14h-4z" /> : <path d="M7 4v16l13-8z" />}
-    </svg>
-  );
-}
-
 export function VoicePicker({ vendor, model, language, voice, onVoice }: { vendor: string; model: string; language: string | null; voice: string; onVoice: (voice: string) => void }): ReactNode {
   const credentials = useCredentials();
   const [voices, setVoices] = useState<ListedVoice[] | null>(null);
   const [gender, setGender] = useState("");
-  const [playing, setPlaying] = useState<string | null>(null);
-  const [refused, setRefused] = useState<string | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const [unread, setUnread] = useState<string | null>(null);
+  const { playing, refused: unheard, listen, stop } = useListen();
+  const refused = unread ?? unheard;
 
   useEffect(() => {
     let gone = false;
     setVoices(null);
-    readVoices(credentials, vendor, language).then((read) => !gone && setVoices(read), (failed: unknown) => !gone && setRefused(saidBy(failed)));
+    readVoices(credentials, vendor, language).then((read) => !gone && setVoices(read), (failed: unknown) => !gone && setUnread(saidBy(failed)));
     return () => {
       gone = true;
-      audio.current?.pause();
+      stop();
     };
   }, [credentials, vendor, language]);
-
-  const listen = async (id: string): Promise<void> => {
-    audio.current?.pause();
-    setPlaying(id);
-    setRefused(null);
-    try {
-      const url = await sampleOf(credentials, { tts: vendor, voice: id, model: model === "" ? null : model, language, text: null });
-      const player = new Audio(url);
-      audio.current = player;
-      player.onended = () => {
-        URL.revokeObjectURL(url);
-        setPlaying(null);
-      };
-      await player.play();
-    } catch (failed) {
-      setPlaying(null);
-      setRefused(saidBy(failed));
-    }
-  };
 
   const all = voices ?? [];
   const genders = [...new Set(all.map((one) => one.gender).filter((one) => one !== ""))];
@@ -222,11 +196,7 @@ export function VoicePicker({ vendor, model, language, voice, onVoice }: { vendo
       label: one.name,
       detail: [one.description, one.language, one.gender, one.accent].filter((part) => part !== "").join(" · "),
       keywords: `${one.description} ${one.accent} ${one.language} ${one.gender}`,
-      trailing: (
-        <button type="button" className={playing === one.id ? "pick-play pick-playing" : "pick-play"} aria-label={`Listen to ${one.name}`} onClick={() => playing === null && void listen(one.id)}>
-          <PlayIcon playing={playing === one.id} />
-        </button>
-      ),
+      trailing: <ListenButton playing={playing === one.id} label={`Listen to ${one.name}`} onClick={() => playing === null && void listen(one.id, { tts: vendor, voice: one.id, model: model === "" ? null : model, language, text: null })} />,
     })),
   ];
   if (voice !== "" && voices !== null && !all.some((one) => one.id === voice)) items.splice(1, 0, { value: voice, label: voice });
@@ -330,7 +300,8 @@ export function StageEditor({ modality, report, config, saving, refused, onSave,
   );
 }
 
-export function JudgeEditor({ report, config, saving, refused, onSave, onClose, onKept }: { report: Report; config: TuningBody; saving: boolean; refused: string | null; onSave: (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => void; onClose: () => void; onKept: () => Promise<void> }): ReactNode {
+/** The judge of one agent; `unset` says what judges it when the agent names none: the organization's model, else Pinecall's. */
+export function JudgeEditor({ report, config, unset, saving, refused, onSave, onClose, onKept }: { report: Report; config: TuningBody; unset: string; saving: boolean; refused: string | null; onSave: (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => void; onClose: () => void; onKept: () => Promise<void> }): ReactNode {
   const first = splitWord(config.judge, report.providers);
   const [vendor, setVendor] = useState(first.vendor);
   const [model, setModel] = useState(first.model);
@@ -353,7 +324,7 @@ export function JudgeEditor({ report, config, saving, refused, onSave, onClose, 
         modality="llm"
         vendor={vendor}
         model={model}
-        unset="The organization's choice"
+        unset={unset}
         onVendor={(next) => {
           setVendor(next);
           setModel("");

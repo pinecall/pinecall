@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An app has a page of its own.** A release may name the folder of its built page and the agent its visitors
+  reach (`page_dir`, `page_agent` on `POST /v1/hosted/{name}/releases`); the gateway serves it at
+  `<app>--<org>.<PINECALL_PAGES_DOMAIN>` from the release that runs, and answers `/pinecall/token` and
+  `/pinecall/code` there itself, after the captcha, so a page needs no server and holds no key.
 - **A page that follows its call from the mint reads the state fields its agent declared public.** A stream of
   `GET /v1/calls/{call}/events` opened before the call had opened decided what was public with no declaration,
   for as long as it lasted: every `state.changed` reached the page empty. It reads the call's declaration once

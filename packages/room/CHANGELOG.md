@@ -6,6 +6,8 @@ maintainer's call.
 
 ## Unreleased
 
+- **`hosted()`**: the `tokens` and `expect` of a page Pinecall serves for an app, asked of the page's own name
+  (`/pinecall/token`, `/pinecall/code`), the captcha solved first where the gateway asks for one.
 - **The screen an agent draws**: `screenOf(state.log)` reads it, `<Screen screen parts>` (`@pinecall/room/react`)
   draws it with a component of the page's per part, and `TASK_GIVE` names the event a page answers a task with.
   `useRoom()` hands out `event`.

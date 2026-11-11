@@ -15,6 +15,10 @@ app.line("+1 415 555 0134", {
   team: [Billing],
 });
 
+// The app's page: built into ui/dist, sent with the release, and served by Pinecall at the app's own name.
+// A visitor of it reaches the front desk, the agent of the first line.
+app.page("ui/dist");
+
 app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 

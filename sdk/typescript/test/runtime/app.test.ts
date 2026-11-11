@@ -161,3 +161,23 @@ describe("a voice app", () => {
     expect(isVoiceApp({ name: "brightside" })).toBe(false);
   });
 });
+
+describe("a page", () => {
+  it("is the folder its build writes, and its visitors reach the agent of the first line", () => {
+    const app = voiceApp("brightside").line("+14155550134", FrontDesk).page("./ui/dist/");
+    expect(app.paged).toEqual({ dir: "ui/dist", answers: FrontDesk });
+  });
+
+  it("names its own agent, who is then one of the app's", () => {
+    const app = voiceApp("brightside").page("ui/dist", { answers: Billing });
+    expect(app.paged?.answers).toBe(Billing);
+    expect(app.agents()).toEqual([Billing]);
+  });
+
+  it("is refused outside the project, with no agent to reach, and twice", () => {
+    expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("../site")).toThrow(DeclarationRefused);
+    expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("/var/www")).toThrow(DeclarationRefused);
+    expect(() => voiceApp("brightside").page("ui/dist")).toThrow(/reach an agent/);
+    expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("ui/dist").page("site")).toThrow(/has its page already/);
+  });
+});

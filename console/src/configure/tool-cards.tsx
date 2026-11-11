@@ -47,7 +47,7 @@ function Toggle({ on, label, disabled, onChange }: { on: boolean; label: string;
   );
 }
 
-function Drop({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }): ReactNode {
+export function Drop({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }): ReactNode {
   return (
     <button type="button" className="kn-drop" aria-label={label} disabled={disabled} onClick={onClick}>
       ×
@@ -55,7 +55,7 @@ function Drop({ label, disabled, onClick }: { label: string; disabled: boolean; 
   );
 }
 
-function More({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }): ReactNode {
+export function More({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }): ReactNode {
   if (disabled) return null;
   return (
     <button type="button" className="tl-more" onClick={onClick}>

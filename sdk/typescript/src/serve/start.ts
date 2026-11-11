@@ -1,5 +1,7 @@
 /** `serve start`: hold the agents named, serve their calls, and leave by draining them. */
 
+import type { Server } from "node:http";
+import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.js";
@@ -12,6 +14,7 @@ import { eventLine, personLine } from "./lines.js";
 import { Masking } from "./masking.js";
 import { CannotServe, loadApp, loadServed, type Loaded } from "./load.js";
 import type { Io } from "./io.js";
+import { PAGE_PORT, servePage } from "./paged.js";
 import { viewingFrom } from "./viewing.js";
 
 /** The console's other verbs are answered by the CLI's companion socket, never by the class. */
@@ -59,8 +62,10 @@ export async function start(argv: string[], io: Io): Promise<number> {
   }
   said(pc, io, values.events === true, masking);
   let stop: (() => void) | undefined;
+  let page: Server | undefined;
   try {
     await pc.connect();
+    if (app !== undefined && values.app !== undefined) page = await pageOf(app, values.app, pc, slugs, io);
     // The gateway is asked for work only by an app that has flows: the rest keep the socket alone.
     if (working !== undefined && working.app.flows().length > 0) stop = work(working);
     if ((await askedToLeave(pc, io)) !== "stopped") {
@@ -70,7 +75,24 @@ export async function start(argv: string[], io: Io): Promise<number> {
     return 0;
   } finally {
     stop?.();
+    page?.close();
     pc.close();
+  }
+}
+
+// A deployed app's page is the platform's to serve; on this machine the process holding the agents serves it.
+async function pageOf(app: VoiceApp, file: string, pc: Pinecall, slugs: Map<Loaded["ctor"], string>, io: Io): Promise<Server | undefined> {
+  const paged = app.paged;
+  const agent = paged === undefined ? undefined : slugs.get(paged.answers);
+  if (paged === undefined || agent === undefined || io.env["PINECALL_HOST"]) return undefined;
+  const port = Number(io.env["PINECALL_PAGE_PORT"] ?? PAGE_PORT);
+  try {
+    const serving = await servePage({ folder: resolve(dirname(file), paged.dir), agent, door: { url: pc.url, apiKey: pc.apiKey, env: pc.env }, port });
+    io.err.write(`${app.name}  its page is at http://localhost:${port}\n`);
+    return serving;
+  } catch (failed) {
+    io.err.write(`${app.name}  its page is not served: ${failed instanceof Error ? failed.message : String(failed)} (PINECALL_PAGE_PORT names another port)\n`);
+    return undefined;
   }
 }
 

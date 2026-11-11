@@ -6,7 +6,8 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { useInsights } from "../lib/insights";
 import { readLexicon, readReport, readSettings, setLexicon, setSettings, type LexiconAnswer, type LexiconBody, type Report, type TuningAnswer, type TuningBody } from "./door";
-import { cornerOf, READ_ONLY } from "./corner";
+import { readJudging, type JudgingSettings } from "../judges/door";
+import { cornerOf, nextRow, READ_ONLY, tunedIn, wholeFrom } from "./corner";
 import { MeasuresCard, measuringOf } from "./measures-card";
 import { Melody } from "./melody";
 import { AppGreeting, StudioBrief } from "./prompt";
@@ -23,6 +24,7 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
   const [report, setReport] = useState<Report | null>(null);
   const [answer, setAnswer] = useState<TuningAnswer | null>(null);
   const [lexicon, setLexiconAnswer] = useState<LexiconAnswer | null>(null);
+  const [judging, setJudging] = useState<JudgingSettings | null>(null);
   // In the sandbox a person tunes their own corner; the team's is the base under it, and the CLI's to move.
   const team = false;
   const [saving, setSaving] = useState(false);
@@ -39,22 +41,23 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
     let gone = false;
     readAll().catch((failed: unknown) => !gone && setAway(saidBy(failed)));
     readLexicon(credentials, agent).then((read) => !gone && setLexiconAnswer(read), () => undefined);
+    // The organization's judge is what judges an agent that names none; a key that cannot read it is told less.
+    readJudging(credentials).then((read) => !gone && setJudging(read), () => undefined);
     return () => {
       gone = true;
     };
   }, [credentials, agent, readAll]);
 
-  const corner = useMemo(() => (answer === null ? null : cornerOf(answer, team)), [answer, team]);
-  const config: TuningBody = corner?.inEffect?.config ?? {};
+  const tuned = useMemo(() => (answer === null ? null : tunedIn(answer, team)), [answer, team]);
+  const config: TuningBody = tuned?.config ?? {};
 
-  // Only what was changed moves: every other setting goes back as the corner had it.
+  // Only what was changed moves: the corner keeps its own knobs, and what it inherits from the team stays inherited.
   const save = async (changed: Partial<TuningBody>, drop: readonly (keyof TuningBody)[] = []): Promise<boolean> => {
+    if (tuned === null) return false;
     setSaving(true);
     setRefused(null);
     try {
-      const next: TuningBody = { ...config, ...changed };
-      for (const field of drop) delete next[field];
-      await setSettings(credentials, agent, { config: next, if_version: corner?.standing?.version ?? null, note: null, team });
+      await setSettings(credentials, agent, { config: nextRow(tuned, changed, drop), if_version: tuned.version, note: null, team });
       await readAll();
       return true;
     } catch (failed) {
@@ -107,7 +110,7 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
         />
       )}
       <Melody key={agent} agent={agent} readOnly={readOnly} />
-      <SettingsList {...stagesProps} lexicon={lexiconCorner?.lexicon ?? (lexicon === null ? null : NO_WORDS)} lexiconFixed={new Set(lexicon?.fixed ?? [])} onSaveLexicon={saveLexicon} />
+      <SettingsList {...stagesProps} answer={answer} lexicon={lexiconCorner?.lexicon ?? (lexicon === null ? null : NO_WORDS)} lexiconFrom={lexicon === null ? "pinecall" : wholeFrom(lexicon)} lexiconFixed={new Set(lexicon?.fixed ?? [])} judging={judging} onSaveLexicon={saveLexicon} />
     </div>
   );
 }

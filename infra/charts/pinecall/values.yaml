@@ -8,6 +8,9 @@ image:
 # The one name both worlds are served at (PINECALL_DOMAIN): the world of a request is its key's
 # or its header's, never the name's.
 domain: ""
+# The domain the apps' own pages are served under, one label each (`<app>--<org>.<pages>`): a wildcard
+# name and certificate of terraform/modules/edge (`pages`). Empty, no app has a page.
+pages: ""
 
 fleets:
   production: pinecall

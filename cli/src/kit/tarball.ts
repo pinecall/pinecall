@@ -32,6 +32,16 @@ export function projectFiles(root: string): string[] {
   return walked(root, root, []).filter((path) => !isLeftOut(path)).sort();
 }
 
+/**
+ * Every file under one folder of the project, relative to the project and sorted: a page's built
+ * folder, which a `.gitignore` names and a release must carry. No `.env` rides along.
+ */
+export function folderFiles(root: string, folder: string): string[] {
+  const from = join(root, folder);
+  if (!existsSync(from)) return [];
+  return walked(root, from, []).filter((path) => !path.split("/").some((part) => A_DOTENV.test(part))).sort();
+}
+
 /** The files as one gzipped ustar archive: plain files, their paths and modes as the project has them. */
 export function tarball(root: string, files: readonly string[]): Buffer {
   const blocks: Buffer[] = [];

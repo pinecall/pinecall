@@ -2628,6 +2628,16 @@ acme-support · release 4 sent · 38 KB · 3b507661b052
   → pinecall deploy logs reads its lines
 ```
 
+A project whose `app.ts` names a page (`app.page("ui/dist")`) is sent with it: the built folder rides
+with the release though a `.gitignore` names it, and the answer says where Pinecall serves it. A page
+that is not built is refused before anything is sent.
+
+```console
+~/brightside-dental $ pinecall deploy up --prod
+brightside-dental · release 5 sent · 212 KB · 9c1e44d07a31
+  → its page: https://brightside-dental--acme.app.pinecall.io/
+```
+
 The platform runs the project for you: the same `pinecall start` you would run on a server
 ([production.md](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/docs/production.md), "(c)"), in a container of its own on Pinecall's machines, with
 nothing to keep up. **The whole guide — preparing a project, secrets, limits, CI, every refusal —

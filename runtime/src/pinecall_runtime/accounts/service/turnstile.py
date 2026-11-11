@@ -15,7 +15,7 @@ SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 LONGEST_TOKEN = 2048
 # Each door sends its own action and Cloudflare answers it back, so a token solved for one door
 # does not open another (Cloudflare: 32 characters of letters, digits, `_` and `-`).
-type Action = Literal["signup", "signup_resend", "password_reset"]
+type Action = Literal["signup", "signup_resend", "password_reset", "page"]
 REFUSED = "the captcha was not passed: complete it and try again"
 
 
@@ -28,8 +28,8 @@ class Turnstile:
     # The box's name where it has one: a token solved on another page is refused.
     hostname: str | None
 
-    async def check(self, token: str | None, action: Action, client: str) -> None:
-        """Refuse unless Cloudflare says the token was solved for this action on this box's page."""
+    async def check(self, token: str | None, action: Action, client: str, on: str | None = None) -> None:
+        """Refuse unless Cloudflare says the token was solved for this action, on the box's page or the one `on` is."""
         if self.secret is None:
             return
         if not token or len(token) > LONGEST_TOKEN:
@@ -47,6 +47,7 @@ class Turnstile:
         if said.get("success") is not True or said.get("action") != action:
             log.warning("turnstile: token refused for %s: %s", action, said.get("error-codes", said.get("action")))
             raise Forbidden(REFUSED)
-        if self.hostname is not None and str(said.get("hostname", "")).lower() != self.hostname:
+        solved_on = on or self.hostname
+        if solved_on is not None and str(said.get("hostname", "")).lower() != solved_on:
             log.warning("turnstile: token for %s solved on %r, not this box", action, said.get("hostname"))
             raise Forbidden(REFUSED)

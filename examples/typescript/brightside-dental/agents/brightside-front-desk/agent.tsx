@@ -20,13 +20,15 @@ export default class FrontDesk extends Agent {
   static judges = judges({ on: ["grounded", "promises"], own: [offersARealTime] });
   static personas = personas({ own: [hurried] });
   static tasks = [GetPhone];
-  // What the caller's page may tell this agent: the time they tapped on its agenda.
-  static events = { "slot.picked": { from: ["participant" as const] } };
+  // What the caller's page may tell this agent: the time they tapped on its agenda, and the number they are known by.
+  static events = { "slot.picked": { from: ["participant" as const] }, "caller.known": { from: ["participant" as const] } };
 
   /** The times last read from the agenda: the only ones the agent may offer. */
   slots: Slot[] = [];
   /** The time the caller tapped on their page, as `day time`. */
   picked = "";
+  /** The number the caller's page said they are known by, when the call itself brought none. */
+  known = "";
   /** The visit this call booked, with the number its reminder calls. */
   visit: (Visit & { phone: string }) | null = null;
 
@@ -52,7 +54,7 @@ export default class FrontDesk extends Agent {
   async book(day: string, time: string, name: string) {
     if (!this.slots.some((slot) => slot.day === day && slot.time === time)) return "That time did not come from the agenda. Call freeSlots for that day first.";
     // The reminder calls the number the patient called from. One who wrote has none: the tool stops to ask for it.
-    const phone = this.call.contact.startsWith("+") ? this.call.contact : await this.ask(GetPhone);
+    const phone = this.call.contact.startsWith("+") ? this.call.contact : this.known !== "" ? this.known : await this.ask(GetPhone);
     const visit = clinic.book(day, time, name);
     if (visit === undefined) return "That time was just taken. Call freeSlots again and offer another.";
     // A line on the call's log, which the app hears by its name: it starts the visit's reminder (app.ts).
@@ -62,11 +64,20 @@ export default class FrontDesk extends Agent {
   }
 
   // A tap on the page's agenda is not a yes: the model reads the time back and books on the caller's word.
-  override onEvent(_name: string, tapped: Record<string, unknown>) {
+  override onEvent(name: string, tapped: Record<string, unknown>) {
+    if (name === "caller.known") return this.knows(String(tapped["phone"] ?? ""));
     const slot = this.slots.find((open) => open.day === tapped["day"] && open.time === tapped["time"]);
     if (slot === undefined) return;
     this.picked = `${slot.day} ${slot.time}`;
     void this.reply(`The caller tapped ${slot.day} at ${slot.time} with ${slot.with} on their screen. Read it back and ask for their yes; book it once they say it.`);
+  }
+
+  // A page has no caller id: it says which patient its visitor is, and the clinic looks the number up as it does a call's.
+  private knows(phone: string): void {
+    const patient = clinic.patientByPhone(phone);
+    if (patient === undefined) return;
+    this.known = patient.phone;
+    this.call.shared["patient"] = patient;
   }
 
   // What the caller's page shows, from the same state the model reads: the form of what a tool asks for,

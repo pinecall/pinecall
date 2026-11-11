@@ -370,6 +370,27 @@ as written, by the agent, before any model runs: it is that agent's `greeting`, 
 and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
 one from the app too is refused when the app loads, naming both, since a call runs on one of them.
 
+### The app's page
+
+```ts
+app.page("ui/dist");
+```
+
+An app may have a page of its own: the folder its build writes, inside the project. `pinecall deploy`
+sends the folder with the release, and Pinecall serves it at the app's own name,
+`https://<app>--<org>.app.pinecall.io` (`--sandbox` after the org in the sandbox). A visitor of it
+reaches the agent of the app's first line, or the one `app.page(dir, { answers: Billing })` names.
+
+The page needs no server and holds no key. It asks its own name for its ticket
+(`POST /pinecall/token`) and for the code a visitor keys from a phone (`POST /pinecall/code`), and
+Pinecall answers both, after a captcha. With `@pinecall/room` that is `room({ ...hosted() })`. While
+you write it, `pinecall start` serves the same folder and the same routes on
+`http://localhost:4747` (`PINECALL_PAGE_PORT` names another port), with your own key and no captcha, so
+a dev server of yours only has to pass `/pinecall` on to it.
+
+A page has no caller id: `call.contact` is empty for its visitors. What the page knows of them it
+says with an event the class declares, as any page does.
+
 ### What the app hears
 
 ```ts

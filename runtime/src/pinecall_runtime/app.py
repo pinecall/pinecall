@@ -38,10 +38,11 @@ from pinecall_runtime.exceptions import (
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.fleet.tasks import sweep_offers, watch_roster
 from pinecall_runtime.flows.tasks import wake_forever
+from pinecall_runtime.hosting.auth import pages_domain
 from pinecall_runtime.kit.auth import ENV_HEADER, HOLDER_HEADER, ActorMiddleware
 from pinecall_runtime.kit.crypto import Vault
 from pinecall_runtime.kit.handles import Handles
-from pinecall_runtime.kit.middleware import AllowedOrigins, BodyCeiling
+from pinecall_runtime.kit.middleware import AllowedOrigins, BodyCeiling, NamesUnder
 from pinecall_runtime.knowledge import service as knowledge
 from pinecall_runtime.livekit import key_pair, open_servers
 from pinecall_runtime.postgres import STATEMENT_TIMEOUT_MS, box_task, busy, create_engine, session_maker
@@ -244,6 +245,7 @@ def create_app() -> FastAPI:
         any_page_says=A_PAGE_HANGS_UP,
     )
     app.add_middleware(BodyCeiling, most=LARGEST_BODY)
+    app.add_middleware(NamesUnder, domain=pages_domain, prefix="/v1/pages", own="/pinecall/", files="/files")
     api.mount(app)
     app.add_exception_handler(PinecallError, answer_refusal)
     app.add_exception_handler(PoolTimeout, answer_busy)

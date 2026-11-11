@@ -20,7 +20,7 @@ export const TEMPLATE_ROOT = fileURLToPath(new URL("../../templates/", import.me
 export const HARNESS_FILES: Record<Language, string> = { typescript: "harness.ts", python: "harness.py", ruby: "harness.rb" };
 
 /** The serve entry's two verbs. */
-export type ServeVerb = "start" | "prompt";
+export type ServeVerb = "start" | "prompt" | "app";
 
 /** The framework a TypeScript agent is written with, as it is installed and imported. */
 export const FRAMEWORK = "@pinecall/agents";

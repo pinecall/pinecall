@@ -1,0 +1,39 @@
+/** The project's voice app as its own framework describes it: asked of the serve entry, never loaded here. */
+
+import { spawn } from "node:child_process";
+import { basename, dirname } from "node:path";
+
+import { UsageError } from "../errors.js";
+
+import { languageOf, serveCommand } from "./language.js";
+
+/** What a project's voice app says of itself. */
+export interface DescribedApp {
+  name: string;
+  /** Its page: the built folder from the project's root, and the slug of the agent a visitor reaches. */
+  page: { dir: string; agent: string } | null;
+}
+
+// A framework that has no `app` verb answers with its usage: such a project has no page to send.
+const USAGE = /^usage:/;
+
+/**
+ * Ask the project's serve entry what its app is: `serve app --app <file> --file … --slug …`. The app
+ * is the project's code, so it runs in the project's own process and framework. Null when the
+ * framework the project pinned describes no app.
+ */
+export async function describedApp(root: string, app: string, agents: readonly string[], processEnv: NodeJS.ProcessEnv): Promise<DescribedApp | null> {
+  const first = agents[0];
+  if (first === undefined) return null;
+  const args = ["--app", app, ...agents.flatMap((file) => ["--file", file, "--slug", basename(dirname(file))])];
+  const [program, ...rest] = serveCommand(languageOf(first), "app", args, { root });
+  const child = spawn(program!, rest, { stdio: ["ignore", "pipe", "pipe"], env: processEnv, cwd: root });
+  let out = "";
+  let err = "";
+  child.stdout.on("data", (chunk: Buffer) => (out += chunk.toString()));
+  child.stderr.on("data", (chunk: Buffer) => (err += chunk.toString()));
+  const code = await new Promise<number>((exited) => child.on("close", (status) => exited(status ?? 1)));
+  if (code !== 0 && USAGE.test(err.trim())) return null;
+  if (code !== 0) throw new UsageError(err.trim() || `the project's app could not be read: its serve entry left with ${code}`);
+  return JSON.parse(out.trim().split("\n").at(-1) ?? "null") as DescribedApp | null;
+}

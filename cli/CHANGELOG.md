@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall deploy` sends the app's page**: a project whose `app.ts` says `app.page("ui/dist")` is uploaded with
+  that built folder, and the answer names where Pinecall serves it. `pinecall start` serves it on this machine.
+
 - **`pinecall agent set --timezone <zone>`**: the IANA zone whose day and hour the agent's calls open on, for an
   agent whose class declares none. `agent clear --timezone` takes it out, and the MCP's `agent` tool sets it too.
 

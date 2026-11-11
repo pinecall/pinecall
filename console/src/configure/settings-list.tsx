@@ -1,31 +1,45 @@
-/** Everything else an agent is set to, a row each: what it is now and the pencil that changes it — none where the class set it. */
+/** Everything else an agent is set to, a row each: what it does, what runs now, whose word that is, and the pencil that changes it — none where the class set it. */
 
 import { useState, type ReactNode } from "react";
 
-import { Field } from "../ui/setting";
-import { Select } from "../ui/select";
-import { EditDialog } from "./dialog";
+import type { JudgingSettings } from "../judges/door";
+import { knobOf, Origin, type From } from "./corner";
+import type { LexiconBody, Report, TuningAnswer, TuningBody } from "./door";
+import { HangupEditor, hangupSaid } from "./hangup-editor";
+import { LanguageEditor, languageName } from "./language-editor";
+import { LexiconEditor } from "./lexicon-editor";
+import { splitWord } from "./stage-editor";
+import { brandOf, JudgeEditor, Pencil, voiceOf } from "./stages";
 import { ZoneEditor } from "./zone-editor";
-import type { LexiconBody, Report, TuningBody } from "./door";
-import { JudgeEditor, Locked, Pencil } from "./stages";
 
 export type Save = (changed: Partial<TuningBody>, drop?: readonly (keyof TuningBody)[]) => Promise<boolean>;
 type Editing = "language" | "timezone" | "judge" | "hangup" | "lexicon";
 
-const lines = (text: string): string[] =>
-  text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
+const IN_THE_CLASS = "Declared in the class";
 
-function Row({ readOnly, name, value, locked, onEdit }: { readOnly: boolean; name: string; value: string; locked: boolean; onEdit: () => void }): ReactNode {
+/** What a row says runs now: the value, and a quieter line under it when the value alone would not explain itself. */
+interface Said {
+  main: string;
+  note?: string | undefined;
+  /** Nobody chose it: said in the quiet colour. */
+  unset?: boolean;
+}
+
+function Row({ name, about, said, from, readOnly, onEdit }: { name: string; about: string; said: Said; from: From; readOnly: boolean; onEdit: () => void }): ReactNode {
   return (
-    <div className="cfg-row">
-      <span className="cfg-row-name">{name}</span>
-      <span className="cfg-row-value dash-clip" title={locked ? undefined : value}>
-        {locked ? <Locked /> : value}
-      </span>
-      {!locked && !readOnly && <Pencil label={`Change ${name.toLowerCase()}`} onClick={onEdit} />}
+    <div className="cfg-set">
+      <div className="cfg-set-words">
+        <span className="cfg-set-name">{name}</span>
+        <span className="cfg-set-about">{about}</span>
+      </div>
+      <div className="cfg-set-said">
+        <span className={said.unset === true ? "cfg-set-main cfg-set-unset dash-clip" : "cfg-set-main dash-clip"} title={said.main}>
+          {said.main}
+        </span>
+        {said.note !== undefined && <span className="cfg-set-note dash-clip">{said.note}</span>}
+      </div>
+      <Origin from={from} />
+      {from !== "class" && !readOnly ? <Pencil label={`Change ${name.toLowerCase()}`} onClick={onEdit} /> : <span />}
     </div>
   );
 }
@@ -34,13 +48,30 @@ function plural(count: number, one: string): string {
   return `${count} ${one}${count === 1 ? "" : "s"}`;
 }
 
+/** A model named `vendor/model`, as a row says it: the model, and whose it is under it. */
+function modelSaid(vendor: string, model: string): Said {
+  return model === "" ? { main: `${brandOf(vendor)}'s default` } : { main: model, note: vendor === "" ? undefined : brandOf(vendor) };
+}
+
+function lexiconSaid(lexicon: LexiconBody): Said {
+  if (lexicon.said.length === 0 && lexicon.heard.length === 0) return { main: "Empty", note: "The voice and the transcriber run as they come", unset: true };
+  const [first, ...rest] = lexicon.said;
+  const shown = first === undefined ? "No pronunciations" : `${first.word} → ${first.spoken}${rest.length === 0 ? "" : `, and ${rest.length} more`}`;
+  return { main: shown, note: lexicon.heard.length === 0 ? "No words to hear" : `${plural(lexicon.heard.length, "word")} to hear` };
+}
+
 interface Props {
   readOnly: boolean;
   report: Report;
+  answer: TuningAnswer;
   config: TuningBody;
   fixed: ReadonlySet<string>;
+  /** The words in effect, whose they are, and which of `says` and `hears` the class declares; null while they are read. */
   lexicon: LexiconBody | null;
+  lexiconFrom: From;
   lexiconFixed: ReadonlySet<string>;
+  /** The organization's own judging, or null where this key cannot read it. */
+  judging: JudgingSettings | null;
   saving: boolean;
   refused: string | null;
   onSave: Save;
@@ -49,8 +80,7 @@ interface Props {
   onKept: () => Promise<void>;
 }
 
-export function SettingsList(props: Props): ReactNode {
-  const { readOnly, report, config, fixed, lexicon, lexiconFixed, saving, refused, onSave, onSaveLexicon, onOpened, onKept } = props;
+export function SettingsList({ readOnly, report, answer, config, fixed, lexicon, lexiconFrom, lexiconFixed, judging, saving, refused, onSave, onSaveLexicon, onOpened, onKept }: Props): ReactNode {
   const [editing, setEditing] = useState<Editing | null>(null);
   const open = (what: Editing): void => {
     onOpened();
@@ -62,102 +92,50 @@ export function SettingsList(props: Props): ReactNode {
     if (done) close();
     return done;
   };
+  // What the class declares is the class's whatever a corner holds; the rest is the nearest corner's, knob by knob.
+  const fromOf = (name: string, from: From): From => (fixed.has(name) ? "class" : from);
+  const ears = brandOf(report.hears.vendor);
+  const voice = brandOf(report.speaks.vendor);
 
-  const hangup = config.hangup == null ? "Never: the caller hangs up" : config.hangup.when == null || config.hangup.when === "" ? "When it judges the call is over" : `When ${config.hangup.when}`;
-  const lexiconLocked = lexiconFixed.has("says") && lexiconFixed.has("hears");
+  const language = knobOf(answer, "language");
+  const tag = language.value ?? report.speaks.language ?? report.hears.language ?? null;
+  const languageSaid: Said = tag === null ? { main: "Not set", note: `${ears} and ${voice} each run their own default`, unset: true } : { main: languageName(tag) ?? tag, note: `${tag}, told to ${ears} and ${voice}` };
+
+  const zone = knobOf(answer, "timezone");
+  const zoneSaid: Said = fixed.has("timezone") ? { main: IN_THE_CLASS } : zone.value === null ? { main: "Not set", note: "The agent is told the day, and no hour", unset: true } : { main: zone.value };
+
+  const judge = knobOf(answer, "judge");
+  const ofTheOrg = judging?.model ?? null;
+  const judgeOff = judging?.on === false ? "Judging at hang-up is off for the organization" : undefined;
+  const theirs = ofTheOrg === null ? "Pinecall's judge" : `The organization's: ${ofTheOrg.model}`;
+  const named = judge.value === null ? null : splitWord(judge.value, report.providers);
+  const judgeSaid: Said = fixed.has("judge") ? { main: IN_THE_CLASS } : named !== null ? modelSaid(named.vendor, named.model) : ofTheOrg !== null ? modelSaid(ofTheOrg.provider, ofTheOrg.model) : { main: "Pinecall's judge", unset: true };
+  const judgeFrom = fromOf("judge", judge.value !== null ? judge.from : ofTheOrg !== null ? "organization" : "pinecall");
+
+  const hangup = knobOf(answer, "hangup");
+  const hangupRow: Said = fixed.has("hangup") ? { main: IN_THE_CLASS } : { main: hangupSaid(hangup.value), note: hangup.value === null ? "Only the caller ends the call" : "It says goodbye, then ends the call", unset: hangup.value === null };
+
+  const picked = voiceOf(report);
+  const speaks = picked === null ? null : { ...report.speaks, voice_id: picked };
+  const wordsLocked = lexiconFixed.has("says") && lexiconFixed.has("hears");
 
   return (
     <section className="dash-card" aria-label="Everything else">
       <div className="dash-card-top">
         <span className="dash-eyebrow">Behaviour</span>
       </div>
-      <div className="cfg-rows">
-        <Row readOnly={readOnly} name="Language" value={config.language ?? report.speaks.language ?? "Each vendor's default"} locked={fixed.has("language")} onEdit={() => open("language")} />
-        <Row readOnly={readOnly} name="Time zone" value={config.timezone ?? (fixed.has("timezone") ? "The class's own" : "None: the agent is told no hour")} locked={fixed.has("timezone")} onEdit={() => open("timezone")} />
-        <Row readOnly={readOnly} name="Judge model" value={config.judge ?? "The organization's choice"} locked={fixed.has("judge")} onEdit={() => open("judge")} />
-        <Row readOnly={readOnly} name="Hang up" value={hangup} locked={fixed.has("hangup")} onEdit={() => open("hangup")} />
-        <Row readOnly={readOnly} name="Lexicon" value={lexicon === null ? "—" : `${plural(lexicon.said.length, "pronunciation")}, ${plural(lexicon.heard.length, "word")} to hear`} locked={lexiconLocked} onEdit={() => open("lexicon")} />
+      <div className="cfg-sets">
+        <Row name="Language" about="What the transcriber expects and the voice speaks." said={languageSaid} from={fromOf("language", language.from)} readOnly={readOnly} onEdit={() => open("language")} />
+        <Row name="Time zone" about="The clock every call opens on." said={zoneSaid} from={fromOf("timezone", zone.from)} readOnly={readOnly} onEdit={() => open("timezone")} />
+        <Row name="Judge model" about="The model that grades this agent's calls." said={{ ...judgeSaid, note: judgeOff ?? judgeSaid.note }} from={judgeFrom} readOnly={readOnly} onEdit={() => open("judge")} />
+        <Row name="Hang up" about="Whether the agent may end the call itself." said={hangupRow} from={fromOf("hangup", hangup.from)} readOnly={readOnly} onEdit={() => open("hangup")} />
+        {lexicon !== null && <Row name="Lexicon" about="Words it must say right, and hear right." said={wordsLocked ? { main: IN_THE_CLASS } : lexiconSaid(lexicon)} from={wordsLocked ? "class" : lexiconFrom} readOnly={readOnly} onEdit={() => open("lexicon")} />}
       </div>
-      {editing === "language" && <TextEditor title="Language" label="A language tag: en, es, pt-BR" initial={config.language ?? ""} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
-      {editing === "timezone" && <ZoneEditor initial={config.timezone ?? ""} saving={saving} refused={refused} onClose={close} onSave={(zone) => (zone === "" ? save({}, ["timezone"]) : save({ timezone: zone }))} />}
-      {editing === "judge" && <JudgeEditor report={report} config={config} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
-      {editing === "hangup" && <HangupEditor config={config} saving={saving} refused={refused} onClose={close} onSave={save} />}
-      {editing === "lexicon" && lexicon !== null && <LexiconEditor lexicon={lexicon} fixed={lexiconFixed} saving={saving} refused={refused} onClose={close} onSave={(next) => void onSaveLexicon(next).then((done) => done && close())} />}
+      {editing === "language" && <LanguageEditor initial={language.value ?? ""} ears={ears} voice={voice} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
+      {editing === "timezone" && <ZoneEditor initial={zone.value ?? ""} saving={saving} refused={refused} onClose={close} onSave={(next) => (next === "" ? save({}, ["timezone"]) : save({ timezone: next }))} />}
+      {editing === "judge" && <JudgeEditor report={report} config={{ ...config, judge: judge.value }} unset={theirs} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
+      {editing === "hangup" && <HangupEditor initial={hangup.value} saving={saving} refused={refused} onClose={close} onSave={(next) => (next === null ? save({}, ["hangup"]) : save({ hangup: next }))} />}
+      {editing === "lexicon" && lexicon !== null && <LexiconEditor lexicon={lexicon} fixed={lexiconFixed} speaks={speaks} saving={saving} refused={refused} onClose={close} onSave={(next) => void onSaveLexicon(next).then((done) => done && close())} />}
     </section>
-  );
-}
-
-interface Editor {
-  saving: boolean;
-  refused: string | null;
-  onClose: () => void;
-}
-
-function TextEditor({ title, label, initial, saving, refused, onClose, onSave }: Editor & { title: string; label: string; initial: string; onSave: (text: string) => Promise<boolean> }): ReactNode {
-  const [text, setText] = useState(initial);
-  return (
-    <EditDialog title={title} saving={saving} refused={refused} onClose={onClose} onSave={() => void onSave(text.trim())}>
-      <label className="cfg-field">
-        {label}
-        <input className="cfg-input" value={text} autoFocus spellCheck={false} onChange={(event) => setText(event.target.value)} />
-      </label>
-    </EditDialog>
-  );
-}
-
-function HangupEditor({ config, saving, refused, onClose, onSave }: Editor & { config: TuningBody; onSave: Save }): ReactNode {
-  const when = config.hangup?.when ?? "";
-  const [mode, setMode] = useState<"never" | "any" | "when">(config.hangup == null ? "never" : when === "" ? "any" : "when");
-  const [text, setText] = useState(when);
-  const save = (): void => {
-    if (mode === "never") void onSave({}, ["hangup"]);
-    else void onSave({ hangup: { when: mode === "when" ? text.trim() : "" } });
-  };
-  return (
-    <EditDialog title="Hang up" saving={saving} refused={refused} onClose={onClose} onSave={save}>
-      <Field label="May the agent end the call?">
-        <Select
-          items={[
-            { value: "never", label: "Never: the caller hangs up" },
-            { value: "any", label: "When it judges the call is over" },
-            { value: "when", label: "Only when…" },
-          ]}
-          value={mode}
-          label="May the agent end the call?"
-          onChange={(picked) => setMode(picked as typeof mode)}
-        />
-      </Field>
-      {mode === "when" && (
-        <label className="cfg-field">
-          When
-          <input className="cfg-input" value={text} placeholder="the caller has their appointment" onChange={(event) => setText(event.target.value)} />
-        </label>
-      )}
-    </EditDialog>
-  );
-}
-
-function LexiconEditor({ lexicon, fixed, saving, refused, onClose, onSave }: Editor & { lexicon: LexiconBody; fixed: ReadonlySet<string>; onSave: (lexicon: LexiconBody) => void }): ReactNode {
-  const [said, setSaid] = useState(lexicon.said.map((one) => `${one.word} = ${one.spoken}`).join("\n"));
-  const [heard, setHeard] = useState(lexicon.heard.join("\n"));
-  const [wrong, setWrong] = useState<string | null>(null);
-  const save = (): void => {
-    const pairs = lines(said).map((line) => line.split("=").map((part) => part.trim()));
-    const bad = pairs.find((pair) => pair.length !== 2 || pair[0] === "" || pair[1] === "");
-    if (bad !== undefined) return setWrong(`Write it as word = how it is said: "${bad.join("=")}"`);
-    setWrong(null);
-    onSave({ said: pairs.map(([word, spoken]) => ({ word: word ?? "", spoken: spoken ?? "" })), heard: lines(heard) });
-  };
-  return (
-    <EditDialog title="Lexicon" saving={saving} refused={wrong ?? refused} onClose={onClose} onSave={save}>
-      <label className="cfg-field">
-        How the voice says a word, one per line: word = how it is said
-        <textarea className="cfg-input cfg-area" rows={5} value={said} disabled={fixed.has("says")} placeholder="Nginx = engine x" onChange={(event) => setSaid(event.target.value)} />
-      </label>
-      <label className="cfg-field">
-        Words the ears must know, one per line
-        <textarea className="cfg-input cfg-area" rows={5} value={heard} disabled={fixed.has("hears")} onChange={(event) => setHeard(event.target.value)} />
-      </label>
-    </EditDialog>
   );
 }

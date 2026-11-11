@@ -1,4 +1,4 @@
-"""ASGI middleware with no business noun: CORS by origins read per request, and a ceiling on bodies."""
+"""ASGI middleware with no business noun: CORS by origins read per request, a ceiling on bodies, names to a prefix."""
 
 import re
 from collections.abc import Callable
@@ -15,6 +15,7 @@ READ_EXPOSED = ("content-range", "accept-ranges", "content-length")
 TOO_LARGE = "the body is over {most} MiB, more than any endpoint takes"
 
 type Origins = Callable[[Scope], tuple[str, ...]]
+type Domain = Callable[[Scope], str | None]
 
 
 # Read per request: the settings are loaded by the lifespan, after the middleware is built.
@@ -120,3 +121,28 @@ class BodyCeiling:
                 await send(message)
 
         await self.app(scope, counting, unless_answered)
+
+
+# The routes under the prefix answer by the name in their path, so they are ordinary routes; this is
+# what puts the name a request came in by into its path.
+class NamesUnder:
+    """A request by a name under `domain` goes to `prefix`/<name>: `own` paths as they are, the rest as files."""
+
+    def __init__(self, app: ASGIApp, *, domain: Domain, prefix: str, own: str, files: str) -> None:
+        """The app it stands in front of."""
+        self.app = app
+        self.domain = domain
+        self.prefix = prefix
+        self.own = own
+        self.files = files
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Pass the request on, its path naming the host it came in by when that is one under the domain."""
+        domain = self.domain(scope) if scope["type"] == "http" else None
+        host = Headers(scope=scope).get("host", "").split(":")[0].lower() if domain else ""
+        if not domain or not host.endswith(f".{domain.lower()}"):
+            await self.app(scope, receive, send)
+            return
+        asked: str = scope["path"]
+        path = f"{self.prefix}/{host}{asked if asked.startswith(self.own) else self.files + asked}"
+        await self.app({**scope, "path": path, "raw_path": path.encode()}, receive, send)

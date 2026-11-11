@@ -228,7 +228,17 @@ class ReleaseRepository(Repository[HostedRelease]):
     model = HostedRelease
 
     async def keep(
-        self, org: str, env: Env, name: str, *, source: bytes, sha256: str, author: str, note: str
+        self,
+        org: str,
+        env: Env,
+        name: str,
+        *,
+        source: bytes,
+        sha256: str,
+        author: str,
+        note: str,
+        page_dir: str | None = None,
+        page_agent: str | None = None,
     ) -> HostedRelease:
         """Keep the upload as the next release; the app's row is locked by the caller."""
         same_app = (HostedRelease.org == org) & (HostedRelease.env == env) & (HostedRelease.name == name)
@@ -245,6 +255,8 @@ class ReleaseRepository(Repository[HostedRelease]):
                 bytes=len(source),
                 author=author,
                 note=note,
+                page_dir=page_dir,
+                page_agent=page_agent,
             )
             .returning(HostedRelease)
         )
@@ -270,6 +282,17 @@ class ReleaseRepository(Repository[HostedRelease]):
             .order_by(HostedRelease.release.desc())
         )
         return await self.all(statement)
+
+    async def paged(self, org: str, env: Env, name: str, live: int | None) -> HostedRelease | None:
+        """The release whose page is served, its sources left on disk: the one that runs, else the newest."""
+        statement = (
+            self.statement()
+            .options(defer(HostedRelease.source))
+            .where(HostedRelease.org == org, HostedRelease.env == env, HostedRelease.name == name)
+            .order_by((HostedRelease.release == live).desc(), HostedRelease.release.desc())
+            .limit(1)
+        )
+        return await self.one_or_none(statement)
 
     async def get(self, org: str, env: Env, name: str, release: int) -> HostedRelease | None:
         """One release, its sources with it."""

@@ -102,6 +102,20 @@ function Voice(): ReactNode {
   );
 }
 
+// Pinecall's own sheet: its night sky with the console laid over it. A deployment with a brand keeps its voice.
+function Sky(): ReactNode {
+  return (
+    <div className="login-art" aria-hidden="true">
+      <img className="login-sky" src="/login-sky-d1fb0146.webp" alt="" />
+      <img className="login-shot" src="/login-shot-2888051c.webp" alt="" />
+    </div>
+  );
+}
+
+function isPinecalls(brand: Brand | null): boolean {
+  return brand === null || (brand.logo_url === null && brand.name === THE_DEFAULT_NAME);
+}
+
 export function WayIn({
   title,
   lede,
@@ -129,9 +143,7 @@ export function WayIn({
           {foot !== undefined && <p className="login-foot">{foot}</p>}
         </div>
       </div>
-      <div className="login-sheet">
-        <Voice />
-      </div>
+      <div className="login-sheet">{isPinecalls(brand) ? <Sky /> : <Voice />}</div>
     </div>
   );
 }

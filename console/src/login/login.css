@@ -18,6 +18,9 @@
 .login-sheet { position: relative; display: flex; align-items: center; margin: 8px 8px 8px 0; overflow: hidden; border-radius: 14px; background: var(--panel); }
 .login-voice { display: flex; align-items: center; gap: 3px; width: 100%; height: 42%; padding: 0 6%; }
 .login-voice span { flex: 1; min-height: 3px; border-radius: 99px; background: var(--login-accent); transform-origin: center; animation: login-talk 2.4s ease-in-out infinite; }
+.login-art { position: absolute; inset: 0; background: #161826; }
+.login-sky { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+.login-shot { position: absolute; top: 34%; left: 9%; width: 84%; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 10px; box-shadow: 0 30px 80px rgb(4 5 14 / 0.7), 0 0 0 6px rgb(255 255 255 / 0.03); }
 @keyframes login-talk { 0%, 100% { transform: scaleY(0.32); opacity: 0.45; } 50% { transform: scaleY(1); opacity: 1; } }
 
 .login-label { display: block; margin: 0 0 6px; font-size: 13px; font-weight: 500; }

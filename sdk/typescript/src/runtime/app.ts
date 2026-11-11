@@ -32,6 +32,13 @@ export interface Line {
   chooses?: Answering;
 }
 
+/** The app's page: the built folder the platform serves at the app's own name, and the agent a visitor of it reaches. */
+export interface Page {
+  /** The folder of the built page, from the project's root: `ui/dist`. Its `index.html` is the page. */
+  dir: string;
+  answers: Ctor;
+}
+
 /** What every agent of the app says to a caller who went quiet. */
 export interface Silence {
   /** How long the caller says nothing: seconds, or `"8s"`. */
@@ -80,6 +87,8 @@ const NOT_A_NAME = "a voice app's name is lowercase letters, digits and dashes, 
 const NOT_A_NUMBER = "a line is a phone number with its country code, like +1 415 555 0134";
 const NOT_AN_AGENT = "a line is answered by an agent class: app.line(number, FrontDesk)";
 const NOT_HEARD = "app.on takes the name of an entry and the function that hears it, or the flow it starts";
+const NOT_A_PAGE = "a page is the folder its build writes, inside the project: app.page(\"ui/dist\")";
+const NO_AGENT_FOR_A_PAGE = "a page's visitors reach an agent: write a line before the page, or name one with app.page(dir, { answers: FrontDesk })";
 const NOT_A_SILENCE = "silence is { after, say }: after in seconds (8, or \"8s\"), say the words to a caller who went quiet";
 
 /** A voice app. `line` and `silence` return the app, so they chain. */
@@ -89,6 +98,7 @@ export class VoiceApp {
   readonly timezone: string | undefined;
   readonly #lines: Line[] = [];
   #silence: AgentOptions["idle"] | undefined;
+  #page: Page | undefined;
   readonly #rules: string[] = [];
   readonly #hearing = new Map<string, Hearing[]>();
   readonly #starting = new Map<string, Flow[]>();
@@ -191,6 +201,26 @@ export class VoiceApp {
     return this.#rules;
   }
 
+  /**
+   * The app's page: `app.page("ui/dist")`. `pinecall deploy` sends the folder with the release and the
+   * platform serves it at the app's own name; a visitor of it reaches the agent of the app's first line,
+   * or the one `answers` names.
+   */
+  page(dir: string, options: { answers?: Ctor } = {}): this {
+    const folder = typeof dir === "string" ? dir.replace(/^\.\//, "").replace(/\/+$/, "") : "";
+    if (folder === "" || folder.startsWith("/") || folder.split("/").includes("..")) throw new DeclarationRefused(NOT_A_PAGE);
+    if (this.#page !== undefined) throw new DeclarationRefused(`${this.name} has its page already, ${this.#page.dir}: an app has one`);
+    const answers = options.answers ?? this.#lines[0]?.answers;
+    if (answers === undefined || !isAnAgent(answers)) throw new DeclarationRefused(NO_AGENT_FOR_A_PAGE);
+    this.#page = { dir: folder, answers };
+    return this;
+  }
+
+  /** The app's page, when it has one. */
+  get paged(): Page | undefined {
+    return this.#page;
+  }
+
   /** What every agent of the app says to a caller who went quiet, and after how long. */
   silence(silence: Silence): this {
     const after = secondsOf(silence?.after);
@@ -207,7 +237,7 @@ export class VoiceApp {
 
   /** Every agent class the app names, once each. */
   agents(): Ctor[] {
-    return [...new Set(this.#lines.flatMap((line) => [line.answers, ...line.team]))];
+    return [...new Set([...this.#lines.flatMap((line) => [line.answers, ...line.team]), ...(this.#page === undefined ? [] : [this.#page.answers])])];
   }
 
   /** The function that picks who serves each call of the line `ctor` is bound to; undefined when the line names its agent. */

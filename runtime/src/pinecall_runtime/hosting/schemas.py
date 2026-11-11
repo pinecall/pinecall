@@ -56,6 +56,11 @@ class ReleaseRow(Row):
     author: str
     note: str
     created_at: datetime
+    # The folder of the app's page inside the sources, and the agent its visitors reach; null with no page.
+    page_dir: str | None = None
+    page_agent: str | None = None
+    # Where the page is served, once the gateway serves pages; null otherwise.
+    page_url: str | None = None
 
     @field_serializer("created_at")
     def _created(self, at: datetime) -> float:
@@ -196,3 +201,27 @@ class AppEnvironment(WireModel):
     model_config = READ_BY_AN_OLDER_RUNNER
 
     environment: dict[str, str]
+
+
+class PageConfig(Schema):
+    """GET /pinecall/config on an app's page: what the page needs before it asks for a ticket."""
+
+    # The agent a visitor reaches.
+    agent: str
+    # The Turnstile site key the page solves before a ticket, or null where the box asks for none.
+    turnstile: str | None
+
+
+class PageTicketRequest(Schema):
+    """POST /pinecall/token on an app's page: a seat in a new call with the page's agent."""
+
+    scope: Literal["talk", "chat"] = "talk"
+    # A `resume_token` the page kept: back into that conversation.
+    resume: str | None = Field(None, max_length=4096)
+    turnstile: str | None = None
+
+
+class PageCodeRequest(Schema):
+    """POST /pinecall/code on an app's page: a code a visitor keys when they call the agent's number."""
+
+    turnstile: str | None = None

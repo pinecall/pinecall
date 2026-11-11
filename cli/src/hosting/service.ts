@@ -7,8 +7,9 @@ import { getMemberNames } from "../accounts/service/index.js";
 import * as api from "../api/hosting.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
-import { projectFiles, tarball } from "../kit/tarball.js";
-import { agentFilesOf } from "../project/layout.js";
+import { folderFiles, projectFiles, tarball } from "../kit/tarball.js";
+import { describedApp } from "../project/app.js";
+import { agentFilesOf, appFileOf } from "../project/layout.js";
 import { languageOf, type Language } from "../project/language.js";
 
 export type { AppLogs, HostedApp, Release } from "../api/hosting.js";
@@ -27,6 +28,7 @@ const SERVED_BY = ["@pinecall/agents"] as const;
 // The languages Pinecall installs: a TypeScript project with npm, a Python one with uv.
 const HOSTED: readonly Language[] = ["typescript", "python"];
 
+export const PAGE_NOT_BUILT = (dir: string): string => `the app's page is ${dir}, and it holds no index.html: build the page, then deploy`;
 export const NOT_A_NAME = (name: string): string => `${name} is no name for an app: lower-case letters and digits joined by dashes — pass --name support`;
 export const NOTHING_TO_SEND = "nothing to send: this folder holds no file a release would carry";
 export const NOT_SERVABLE = (missing: readonly string[]): string =>
@@ -41,6 +43,8 @@ export interface Sent {
   release: number;
   bytes: number;
   sha256: string;
+  /** Where the app's page is served, when it was sent with one and Pinecall serves pages. */
+  page?: string | undefined;
 }
 
 /** How a release stands once it is settled: live, failed or replaced. Null when the wait ran out first. */
@@ -94,8 +98,13 @@ export async function uploadRelease(ctx: Context, name: string, note: string): P
   }
   const files = projectFiles(ctx.cwd);
   if (files.length === 0) throw new UsageError(NOTHING_TO_SEND);
-  const sent = await api.uploadRelease(ctx.gateway(), name, tarball(ctx.cwd, files), note);
-  return { name: sent.name, release: sent.release, bytes: sent.bytes, sha256: sent.sha256 };
+  // The app says whether it has a page; its built folder is one a .gitignore names, and rides with the release.
+  const app = languages[0] === "typescript" ? appFileOf(ctx.cwd) : undefined;
+  const page = app === undefined ? null : ((await describedApp(ctx.cwd, app, agents, ctx.processEnv))?.page ?? null);
+  const built = page === null ? [] : folderFiles(ctx.cwd, page.dir);
+  if (page !== null && !built.includes(`${page.dir}/index.html`)) throw new UsageError(PAGE_NOT_BUILT(page.dir));
+  const sent = await api.uploadRelease(ctx.gateway(), name, tarball(ctx.cwd, [...new Set([...files, ...built])].sort()), note, page);
+  return { name: sent.name, release: sent.release, bytes: sent.bytes, sha256: sent.sha256, page: sent.page_url ?? undefined };
 }
 
 /** Release n's sources kept again as the next release. */

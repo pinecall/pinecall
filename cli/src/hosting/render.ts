@@ -7,7 +7,8 @@ import type { HostedApp, Logs, Release, Sent, Settled } from "./service.js";
 export const NO_APPS = "Pinecall hosts no app for this org here yet: `pinecall deploy` uploads this folder as one";
 
 export function sent(one: Sent): string {
-  return `${one.name} · release ${one.release} sent · ${kilobytes(one.bytes)} · ${one.sha256.slice(0, 12)}`;
+  const sent = `${one.name} · release ${one.release} sent · ${kilobytes(one.bytes)} · ${one.sha256.slice(0, 12)}`;
+  return one.page === undefined ? sent : `${sent}\n${formatHint(`its page: ${one.page}`)}`;
 }
 
 export function rolledBack(one: Sent, from: number): string {

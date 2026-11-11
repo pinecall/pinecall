@@ -75,6 +75,9 @@ class HostedRelease(Model):
     author: Mapped[str] = mapped_column(Text, nullable=False, default="")
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+    # The app's page: the folder of it inside the sources, and the agent its visitors reach.
+    page_dir: Mapped[str | None] = mapped_column(Text)
+    page_agent: Mapped[str | None] = mapped_column(Text)
 
 
 class HostedUsage(Model):

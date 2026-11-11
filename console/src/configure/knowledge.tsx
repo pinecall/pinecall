@@ -7,7 +7,7 @@ import { useCredentials } from "@pinecall/core/credentials";
 import type { DocsConfig } from "@pinecall/core/wire/defs";
 import { type KnowledgeBase, KnowledgeListSchema } from "@pinecall/core/wire/rest-retrieval";
 import { ago } from "../lib/format";
-import { cornerOf, READ_ONLY } from "./corner";
+import { nextRow, READ_ONLY, tunedIn } from "./corner";
 import { readSettings, setSettings, type TuningAnswer, type TuningBody } from "./door";
 import { NewBase } from "./new-base";
 import type { Save } from "./settings-list";
@@ -270,18 +270,16 @@ export function KnowledgeTab({ agent }: { agent: string }): ReactNode {
   if (away !== null) return <p className="cfg-refused">{away}</p>;
   if (answer === null) return <p className="dash-quiet">Reading what it knows…</p>;
 
-  const corner = cornerOf(answer, team);
-  const config: TuningBody = corner.inEffect?.config ?? {};
+  const tuned = tunedIn(answer, team);
+  const config: TuningBody = tuned.config;
 
-  // Only what was changed moves: every other setting goes back as the corner had it.
+  // Only what was changed moves: the corner keeps its own knobs, and what it inherits from the team stays inherited.
   const onSave: Save = async (changed, drop = []) => {
     setSaving(true);
     setSaved(false);
     setRefused(null);
     try {
-      const next: TuningBody = { ...config, ...changed };
-      for (const field of drop) delete next[field];
-      setAnswer(await setSettings(credentials, agent, { config: next, if_version: corner.standing?.version ?? null, note: null, team }));
+      setAnswer(await setSettings(credentials, agent, { config: nextRow(tuned, changed, drop), if_version: tuned.version, note: null, team }));
       setSaved(true);
       return true;
     } catch (failed) {

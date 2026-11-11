@@ -29,11 +29,11 @@ export async function listReleases(gw: GatewayClient, name: string): Promise<Rel
 }
 
 /** `POST /v1/hosted/{name}/releases`: the body is the gzipped tarball itself, never JSON. */
-export function uploadRelease(gw: GatewayClient, name: string, source: Buffer, note: string): Promise<Release> {
+export function uploadRelease(gw: GatewayClient, name: string, source: Buffer, note: string, page?: { dir: string; agent: string } | null): Promise<Release> {
   return gw.request<Release>(`${appPath(name)}/releases`, {
     method: "POST",
     body: source,
-    query: { note: note === "" ? undefined : note.slice(0, NOTE_LENGTH) },
+    query: { note: note === "" ? undefined : note.slice(0, NOTE_LENGTH), page_dir: page?.dir, page_agent: page?.agent },
     headers: { "content-type": "application/gzip" },
   });
 }

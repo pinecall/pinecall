@@ -108,12 +108,17 @@ tap on a time is the event `slot.picked`, which the front desk declares and answ
 back; the form gives the phone number with `task.give`, in the model's place.
 
 ```bash
-pinecall start                    # the agents, held
-pnpm ui                           # the page on http://localhost:5184, with its /api/token
+pnpm ui:build                     # the page, built into ui/dist
+pinecall start                    # the agents, held, and the page on http://localhost:4747
+pnpm ui                           # while you change the page: Vite on http://localhost:5184
+pinecall deploy                   # the app and its page, on Pinecall
 ```
 
-The page's server is `ui/vite.config.ts`: one route that mints a ticket with the key `pinecall link`
-wrote to `.env`, which never reaches the browser.
+`app.ts` names the page (`app.page("ui/dist")`), and the page asks its own name for its tickets
+(`useRoom(hosted())`): `pinecall start` answers them here with your key, and Pinecall answers them for
+the deployed app, at `https://brightside-dental--<org>.app.pinecall.io`. There is no server to write
+and no key in the page. A page has no caller id, so the door's "Ana Lopez" says who she is with the
+event `caller.known`, and the front desk looks her up as it does a caller's number.
 
 ## Run it
 

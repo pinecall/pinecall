@@ -353,7 +353,7 @@ the plan they chose (`call.event("plan.chosen", { plan: "pro" })`). The agent's 
 runs when its class accepts that name from a participant, and the runtime drops any other; a state
 field the hook writes is in the view at the next turn, and the hook may `reply()` at once. Anybody
 can send what a browser sends, so keep `data` to values the view reads, never words the model obeys.
-What the agent puts on the screen with `call.send("pinecall.ui", data)` reaches `onUi(data)`; the screen its `screen()` draws is read with `screenOf(state.log)` and drawn with `<Screen>`: [docs/the-screen.md](docs/the-screen.md).
+What the agent puts on the screen with `call.send("pinecall.ui", data)` reaches `onUi(data)`; the screen its `screen()` draws is read with `screenOf(state.log)` and drawn with `<Screen>`: [docs/the-screen.md](docs/the-screen.md). A page deployed with its app asks Pinecall itself for its tickets, with `hosted()`: [docs/a-hosted-page.md](docs/a-hosted-page.md).
 
 ## Sound and the browser's permission
 

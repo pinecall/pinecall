@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **An app has a page of its own**: `app.page("ui/dist")` names the folder its build writes. `pinecall deploy`
+  sends it and Pinecall serves it at the app's own name, with the ticket routes a page needs; `pinecall start`
+  serves the same on `http://localhost:4747`.
 - **An agent draws the caller's page**: `screen()` returns parts of the class's own (`part<Props>("agenda")`),
   sent in the call's state as the public field `screen` whenever it changes. `this.call.asking` says what a
   tool stopped to ask for, a page gives it with the event `task.give`, and `this.call.show(<Part />)` puts a part

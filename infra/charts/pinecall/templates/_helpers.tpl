@@ -43,6 +43,10 @@
   value: wss://{{ required "domain" .Values.domain }}
 - name: PINECALL_DOMAIN
   value: {{ .Values.domain | quote }}
+{{- with .Values.pages }}
+- name: PINECALL_PAGES_DOMAIN
+  value: {{ . | quote }}
+{{- end }}
 - name: PINECALL_GATEWAY_URL
   value: http://pinecall-gateway:8080
 {{- with .Values.sipDomains }}{{ if .production }}

@@ -64,6 +64,12 @@ function StageCard({ readOnly, active, eyebrow, icon, tone = "accent", title, un
   );
 }
 
+/** The voice the agent's next call speaks with: the one picked, else its language's default on that vendor; null for the vendor's own. */
+export function voiceOf(report: Report): string | null {
+  const { speaks } = report;
+  return speaks.voice_id ?? report.voice_defaults[`${speaks.vendor}/${speaks.language ?? ""}`] ?? null;
+}
+
 function modelOf(report: Report, modality: Modality, stage: Stage): string {
   return stage.model ?? report.runs[`${modality}/${stage.vendor}`] ?? `${brandOf(stage.vendor)}'s default`;
 }
@@ -74,7 +80,7 @@ export function Stages({ readOnly, report, config, fixed, measured, saving, refu
   const [voiceName, setVoiceName] = useState<string | null>(null);
   const { hears, decides, speaks } = report;
   const lists = report.providers.find((one) => one.name === speaks.vendor)?.voices_listed === true;
-  const voice = speaks.voice_id ?? report.voice_defaults[`${speaks.vendor}/${speaks.language ?? ""}`] ?? null;
+  const voice = voiceOf(report);
 
   useEffect(() => {
     let gone = false;

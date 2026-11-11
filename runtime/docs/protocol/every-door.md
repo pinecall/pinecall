@@ -169,11 +169,15 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/hosted/usage` | app | The time the org's apps served here per UTC day, in one month: this one by default. |
 | `GET` | `/v1/hosted/{name}/logs` | app | The last lines of the app's process, and the runner told to send them again; as `text/event-stream`, the lines as each beat brings them. |
 | `GET` | `/v1/hosted/{name}/releases` | app | The app's releases, newest first. |
-| `POST` | `/v1/hosted/{name}/releases` | app | The project's sources as the app's next release. |
+| `POST` | `/v1/hosted/{name}/releases` | app | The project's sources as the app's next release, its page's folder and agent with them when it has one. |
 | `GET` | `/v1/hosted/{name}/releases/{release}/source` | app | The tarball one release was uploaded as. |
 | `POST` | `/v1/hosted/{name}/rollback` | app | An earlier release's sources kept again as the app's next release. |
 | `POST` | `/v1/hosted/{name}/start` | app | Run a stopped app again, its newest release. |
 | `POST` | `/v1/hosted/{name}/stop` | app | Stop running the app: its process drains, and its releases and token stay. |
+| `GET` | `/v1/pages/{host}/files/{path}` | none | One file of an app's page, from the release that runs; a path that names no file is the page itself. |
+| `GET` | `/v1/pages/{host}/pinecall/config` | none | What an app's page needs before it asks for a ticket: its agent, and the captcha's site key. |
+| `POST` | `/v1/pages/{host}/pinecall/code` | none | A code a visitor keys when they call the page's agent, so the page follows that call. |
+| `POST` | `/v1/pages/{host}/pinecall/token` | none | A seat in a new call with the page's agent, for a visitor who passed the captcha. |
 | `GET` | `/v1/studio/agents` | app | The org's Studio agents in this environment, by name, each its newest release. |
 | `POST` | `/v1/studio/agents` | app | Make an agent in Studio: a hosted app the gateway holds, its first release the definition. |
 | `GET` | `/v1/studio/agents/{name}` | app | The agent's newest release and its definition. |

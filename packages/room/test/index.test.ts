@@ -9,7 +9,7 @@ import * as server from "../src/server/index.js";
 describe("the public surfaces", () => {
   it("@pinecall/room is the room, the rows, the screen and the karaoke", () => {
     expect(Object.keys(page).sort()).toEqual([
-      "TASK_GIVE", "brief", "joined", "knownBy", "litAt", "room", "rowsOf", "sayingOf", "screenOf", "soundedBy",
+      "TASK_GIVE", "brief", "hosted", "joined", "knownBy", "litAt", "room", "rowsOf", "sayingOf", "screenOf", "soundedBy",
     ]);
   });
 
