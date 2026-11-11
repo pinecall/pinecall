@@ -52,8 +52,10 @@ def test_a_row_can_be_found_by_whose_it_is(modules: dict[str, Module]) -> None:
             owner = OWNERS.get(column.name)
             if owner is not None and getattr(kept, owner) != column.name:
                 wrong.append(f"{model.__name__}.{column.name}: names a {owner} that `Kept` does not")
-            if column.name == "org" and not _goes_with_its_org(column):
-                wrong.append(f"{model.__name__}.org: no cascade from orgs, and the table does not say it outlives")
+            if column.name == "org" and not _goes_with_its_org(column) and not kept.erased_by:
+                wrong.append(
+                    f"{model.__name__}.org: no cascade from orgs, no verb that erases it, no word that it stays"
+                )
     assert not wrong, "\n".join(wrong)
 
 

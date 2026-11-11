@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from runtime.accounts import endpoints as accounts
 from runtime.billing import endpoints as billing
 from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
@@ -14,4 +15,5 @@ def mount(app: FastAPI) -> None:
     app.include_router(platform.router)
     app.include_router(billing.router)
     app.include_router(mail.router)
+    app.include_router(accounts.router)
     app.include_router(platform.pages_router)

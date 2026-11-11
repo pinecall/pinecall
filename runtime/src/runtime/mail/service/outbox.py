@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.exceptions import Conflict, UpstreamError
+from runtime.kit.commit import run_after_commit
 from runtime.kit.crypto import Vault
 from runtime.kit.tasks import Tasks
 from runtime.mail.service.emails import Email, test_email
@@ -57,14 +58,23 @@ class Outbox:
     async def mailbox_for(self, org: str | None) -> MailboxStatus | None:
         """The org's mailbox, else the box's; with no org, only the box's."""
         async with self.sessions() as session:
-            own = None if org is None else await find_org_mailbox(session, self.vault, org)
-            return own or await find_box_mailbox(session, self.vault, self.box_mailbox)
+            return await self._mailbox_on(session, org)
 
     async def post(self, org: str | None, email: Email) -> bool:
         """Send in the background; False when nothing here can send it."""
         if await self.mailbox_for(org) is None:
             return False
-        self._in_flight.spawn(self._send_and_say(org, email), name=f"email {email.subject}")
+        self._spawn(org, email)
+        return True
+
+    # An email carries a link to a row its request is still writing: it leaves once that row is
+    # committed, and never when the transaction rolls back. The mailbox is looked for on the caller's
+    # session, so a request holds one connection and never waits for a second.
+    async def post_after_commit(self, session: AsyncSession, org: str | None, email: Email) -> bool:
+        """Send in the background once the session's transaction commits; False when nothing here can send it."""
+        if await self._mailbox_on(session, org) is None:
+            return False
+        run_after_commit(session, lambda: self._spawn(org, email))
         return True
 
     async def send(self, org: str | None, email: Email) -> str | None:
@@ -95,6 +105,13 @@ class Outbox:
         """Wait for every email in flight."""
         while len(self._in_flight):
             await asyncio.sleep(0.05)
+
+    async def _mailbox_on(self, session: AsyncSession, org: str | None) -> MailboxStatus | None:
+        own = None if org is None else await find_org_mailbox(session, self.vault, org)
+        return own or await find_box_mailbox(session, self.vault, self.box_mailbox)
+
+    def _spawn(self, org: str | None, email: Email) -> None:
+        self._in_flight.spawn(self._send_and_say(org, email), name=f"email {email.subject}")
 
     async def _send_and_say(self, org: str | None, email: Email) -> None:
         error = await self.send(org, email)

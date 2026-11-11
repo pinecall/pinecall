@@ -15,6 +15,10 @@ from sqlalchemy.exc import TimeoutError as PoolTimeout
 from starlette.types import Scope
 
 from runtime import api
+from runtime.accounts import tasks as accounts_tasks
+from runtime.accounts.auth import resolve_actor
+from runtime.accounts.service.key_cache import KeyCache
+from runtime.auth import ActorMiddleware
 from runtime.config import Settings, load_settings
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
 from runtime.handles import Handles
@@ -63,6 +67,7 @@ class State(TypedDict):
     closing: asyncio.Event
     loops: Loops
     outbox: Outbox
+    key_cache: KeyCache
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -75,7 +80,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         stack.push_async_callback(loops.stop)
         outbox = Outbox(handles.sessions, handles.vault, _box_mailbox(handles.settings))
         stack.push_async_callback(outbox.drain)
-        yield State(handles=handles, closing=app.state.closing, loops=loops, outbox=outbox)
+        key_cache = KeyCache(handles.sessions, handles.signal)
+        loops.start(accounts_tasks.hear_revocations.bind(key_cache, handles.signal))
+        yield State(handles=handles, closing=app.state.closing, loops=loops, outbox=outbox, key_cache=key_cache)
 
 
 async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
@@ -139,6 +146,7 @@ def create_app() -> FastAPI:
     """The gateway's endpoints and its refusals, on a new app."""
     app = FastAPI(title="Pinecall gateway", lifespan=lifespan, docs_url="/v1/docs", redoc_url="/v1/redoc")
     app.state.closing = asyncio.Event()
+    app.add_middleware(ActorMiddleware, resolve=resolve_actor, refuse=answer_refusal)
     app.add_middleware(
         AllowedOrigins,
         prefix=API_PREFIX,

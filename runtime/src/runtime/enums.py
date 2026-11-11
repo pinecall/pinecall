@@ -1,5 +1,6 @@
-"""The enumerations the tables and the API share, each as the database spells it."""
+"""The enumerations the tables and the API share, each as the database spells it, and the scopes a role presets."""
 
+from collections.abc import Mapping
 from enum import StrEnum
 
 
@@ -71,6 +72,50 @@ class KeyScope(StrEnum):
     words = "words"
     fleet = "fleet"
     runner = "runner"
+
+
+# Default scopes: every scope except the box's own two.
+KEY_SCOPES: frozenset[KeyScope] = frozenset(KeyScope) - {KeyScope.fleet, KeyScope.runner}
+# Serving an agent, its calls, room tokens, knowledge pushes and evals; never people or money.
+SERVER_SCOPES: frozenset[KeyScope] = frozenset(
+    {KeyScope.app, KeyScope.calls, KeyScope.talk, KeyScope.knowledge, KeyScope.evals}
+)
+# A role is only a preset of key scopes. Endpoints check scopes, never roles.
+ROLE_SCOPES: Mapping[Role, frozenset[KeyScope]] = {
+    Role.qa: frozenset({KeyScope.calls, KeyScope.evals}),
+    Role.supervisor: frozenset(
+        {KeyScope.calls, KeyScope.evals, KeyScope.supervise, KeyScope.talk, KeyScope.memory, KeyScope.words}
+    ),
+    Role.manager: frozenset(
+        {
+            KeyScope.calls,
+            KeyScope.evals,
+            KeyScope.supervise,
+            KeyScope.talk,
+            KeyScope.memory,
+            KeyScope.numbers,
+            KeyScope.keys,
+            KeyScope.providers,
+            KeyScope.usage,
+            KeyScope.team,
+            KeyScope.words,
+        }
+    ),
+    Role.admin: KEY_SCOPES,
+    Role.developer: frozenset(
+        {
+            KeyScope.app,
+            KeyScope.calls,
+            KeyScope.talk,
+            KeyScope.supervise,
+            KeyScope.pipeline,
+            KeyScope.knowledge,
+            KeyScope.memory,
+            KeyScope.evals,
+            KeyScope.words,
+        }
+    ),
+}
 
 
 class RouteOrigin(StrEnum):
@@ -152,3 +197,29 @@ class MonitorMetric(StrEnum):
     tool_failure_rate = "tool_failure_rate"
     spend_usd = "spend_usd"
     calls = "calls"
+
+
+class MemberStatus(StrEnum):
+    """Whether a member may sign in; a disabled row is kept because the log names it."""
+
+    invited = "invited"
+    active = "active"
+    disabled = "disabled"
+
+
+class ErasureKind(StrEnum):
+    """What an erasure erased."""
+
+    call = "call"
+    contact = "contact"
+    org = "org"
+    agent = "agent"
+
+
+class CaseSource(StrEnum):
+    """Where a case came from."""
+
+    call = "call"
+    simulation = "simulation"
+    # Written by hand, in the console or through the API: no call made it.
+    person = "person"

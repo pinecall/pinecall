@@ -30,6 +30,9 @@ class Person:
     agents: frozenset[str] = frozenset()
     operator: bool = False
     production: bool = False
+    # Whether the address was proven theirs: a key of an unproven address opens the org it was minted
+    # in and no other, so a seat somebody made for an address never reaches what its owner joins later.
+    verified: bool = False
 
     @property
     def opens_production(self) -> bool:

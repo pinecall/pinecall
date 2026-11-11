@@ -1,11 +1,16 @@
 """The pydantic bases: what a body is read as, and how a row is answered."""
 
-from typing import Any, Self
+from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict
 from pydantic import ValidationError as PydanticValidationError
 
 from runtime.exceptions import ValidationError
+from runtime.kit.text import parse_email
+
+# An address is read once, where it enters: trimmed, lowercased, refused when it is not one. Nothing
+# below a body parses an address again, so the same person is never two spellings of one address.
+EmailAddress = Annotated[str, AfterValidator(parse_email)]
 
 
 class Schema(BaseModel):

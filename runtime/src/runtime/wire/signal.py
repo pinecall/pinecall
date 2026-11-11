@@ -53,3 +53,19 @@ class JobReport(BaseModel):
     first_audio_s: float | None = None
     error: bool = False
     ended: str | None = None
+
+
+class Forgotten(BaseModel):
+    """A revocation one gateway tells the others: one key by its fingerprint, or every key of a member."""
+
+    model_config = ConfigDict(frozen=True)
+
+    fingerprint: str | None = None
+    subject: str | None = None
+
+
+class Told(BaseModel):
+    """One message on a shared state's channel: which process told it, and its share whole."""
+
+    sender: str
+    share: object

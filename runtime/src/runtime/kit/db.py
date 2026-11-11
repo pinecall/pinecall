@@ -45,6 +45,8 @@ class Kept:
     # The columns an org's export carries; none, and `not_exported` says why.
     exported: tuple[str, ...] = ()
     not_exported: str = ""
+    # The owner's own verb that erases the rows, where no foreign key can (an org named with no key to it).
+    erased_by: str = ""
     # Why an erasure leaves the row, for a table that names an org, a call, an agent or a contact and stays.
     outlives: str = ""
 

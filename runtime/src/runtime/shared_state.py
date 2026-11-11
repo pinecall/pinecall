@@ -7,12 +7,11 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from uuid import uuid4
 
-from pydantic import BaseModel, TypeAdapter
-
 from runtime.exceptions import ServiceUnavailable
 from runtime.kit.loops import survive
 from runtime.scoping import box_task
 from runtime.signal import Signal
+from runtime.wire.signal import Told
 
 # Each process says its whole share this often, and forgets another's once silent this long.
 TOLD_EVERY_S = 10.0
@@ -20,13 +19,6 @@ SILENT_AT_MOST_S = 30.0
 RETRY_S = 1.0
 # A key set to nobody is kept this long, so an older setting another process still says stays out.
 FORGOTTEN_AFTER_S = 60.0
-
-
-class Told(BaseModel):
-    """One message on a share's channel: which process told it, and its share whole."""
-
-    sender: str
-    share: object
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,23 +44,30 @@ class Heard[T]:
 class SharedState[T]:
     """One share of this process, the others' as last heard, and a callback when either moves."""
 
+    # `load` and `dump` read and write a share as JSON values: the owner gives its wire shape's own
+    # (`Share.model_validate`, `Share.model_dump`). `gathered` is given by an owner whose share changes
+    # too often to put: it is read as it is told.
     def __init__(
         self,
         signal: Signal,
         channel: str,
-        adapter: TypeAdapter[T],
+        *,
+        load: Callable[[object], T],
+        dump: Callable[[T], object],
         empty: T,
         on_change: Callable[[], None],
+        every_s: float = TOLD_EVERY_S,
+        gathered: Callable[[], T] | None = None,
     ) -> None:
         self.signal = signal
         self.channel = channel
         self.id = uuid4().hex
-        self.every_s = TOLD_EVERY_S
+        self.every_s = every_s
         self.mine = empty
-        # Set by an owner whose share changes too often to put: read as it is said.
-        self.gathered: Callable[[], T] | None = None
+        self.gathered = gathered
         self.theirs: dict[str, Heard[T]] = {}
-        self._adapter = adapter
+        self._load = load
+        self._dump = dump
         self._on_change = on_change
         self._tasks: list[asyncio.Task[None]] = []
 
@@ -89,7 +88,7 @@ class SharedState[T]:
 
     def _say(self) -> None:
         mine = self.mine if self.gathered is None else self.gathered()
-        message = Told(sender=self.id, share=self._adapter.dump_python(mine, mode="json"))
+        message = Told(sender=self.id, share=self._dump(mine))
         self.signal.publish(self.channel, message.model_dump_json().encode())
 
     # What one beat or one message raises is said with the channel and the loop goes on: a share that
@@ -130,7 +129,7 @@ class SharedState[T]:
         if message.sender == self.id:
             return
         new = message.sender not in self.theirs
-        share = self._adapter.validate_python(message.share)
+        share = self._load(message.share)
         self.theirs[message.sender] = Heard(share, time.monotonic())
         self._on_change()
         if new:

@@ -44,7 +44,7 @@ Every domain folder holds these and nothing else. A file that would be empty is 
 | `schemas.py` | the pydantic bodies its endpoints read and answer | `kit.schemas`, `enums`, `wire` |
 | `repository.py` | every statement on the domain's tables; returns models, or a typed row for a read model | its `models` and lower domains', `kit.repository`, `scoping` |
 | `service.py` | the rules and the use cases, as functions that take and return values; the domain's errors; the `Protocol`s of what it needs from above | `repository`, `models`, `exceptions`, `kit`, `wire`, lower domains' `service` |
-| `auth.py` | the domain's dependencies: the scopes that open its endpoints, its loaders (a resource loaded and authorised, or the refusal), and the getters of the objects its endpoints are handed | the root `auth`, `handles`, its `service` |
+| `auth.py` | the domain's dependencies: the scopes that open its endpoints, its loaders (a resource loaded and authorised, or the refusal), and the getters of the objects its endpoints are handed | the root `auth`, `handles`, its `service`, and the types its loaders return (its `models`, a typed row of its `repository`) |
 | `endpoints.py` | the router: dependencies → one service call → schema | `auth`, `schemas`, `service` |
 | `tasks.py` | the loops the domain owns, each one pass declared with `@kit.loops.loop` | `service` |
 
