@@ -1,6 +1,6 @@
-{{/* The runtime's image, pinned to the commit it was built from. */}}
+{{/* The runtime's image: the commit it was built from, and the registry's digest of it when one is given. */}}
 {{- define "pinecall.image" -}}
-{{ required "image.repository" .Values.image.repository }}:{{ required "image.tag: the commit the runtime image was built from" .Values.image.tag }}
+{{ required "image.repository" .Values.image.repository }}:{{ required "image.tag: the commit the runtime image was built from" .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}
 {{- end -}}
 
 {{/* Where a recording is kept: the pod's disk, and the object store it moves to when one is named. */}}

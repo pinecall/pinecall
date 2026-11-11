@@ -14,5 +14,5 @@ tests/out/
 .terraform-check/
 .local/
 .lab/
-.image/
+.image.tar.gz
 .suite/

@@ -21,7 +21,7 @@ made by hand and nothing is built on a laptop.
 | `terraform/modules/hosting` | the hosting cluster, optional (`hosting = true`): GKE Autopilot in a VPC of its own, where the orgs' hosted apps run, one gVisor pod each |
 | `terraform/modules/lab` | the voice lab's generator, beside a cluster made for a proof and destroyed after it (`lab = false`) |
 | `terraform/modules/alerts` | the alerts on the gateways' measures, in Cloud Monitoring, and the addresses they are mailed to |
-| `images/pinecall/` | the runtime's image: one for every process, each a `pinecall-runtime` verb (`make image`) |
+| `images/runtime/` | the runtime's image: one for every process, each a `pinecall-runtime` verb (`make image`), built from one commit in three stages |
 | `images/postgres/` | the cluster's Postgres: CloudNativePG's operand image with pg_textsearch on it |
 | `images/suite/` | every suite, run as a Job inside a cluster (`make suite`) |
 | `images/app/` | a hosted app's pod: Node, uv and CPython 3.13, so a TypeScript or a Python project installs and runs (`charts/hosting`'s `appImage`) |
@@ -84,9 +84,13 @@ $ make fleet ENV=<env> WORLD=sandbox MIN=1   # that world keeps one scaled worke
 $ make suite ENV=<env>              # every suite inside the cluster
 ```
 
-`make image` builds only what commits hold: `runtime/`, `console/` and `widget/` clean,
-and `TAG` the checkout's commit; the image installs `uv.lock`'s versions, each checked by its
-hash. Every push and pull request is also scanned (`check.yml`, `supply
+`make image` sends Cloud Build one commit's tree (`git archive` of `TAG`) and nothing of the
+working tree, so an image holds what its commit holds whatever state the checkout is in. The
+image is built there in three stages (`images/runtime/Containerfile`): the console and the widget
+from `pnpm-lock.yaml`, the wheel with those pages inside, and the image itself, which installs
+`uv.lock`'s versions, each checked by its hash. Every base image is named by its digest. A release
+names the image by its tag and by the digest the registry holds for it, which `make deploy` asks,
+so a pod pulls those bytes wherever the tag is moved to. Every push and pull request is also scanned (`check.yml`, `supply
 chain`): the image's locked dependencies against the advisories (pip-audit), every commit for a
 secret (gitleaks), and `infra/` with each chart rendered as production releases it for a
 misconfiguration (trivy, HIGH and CRITICAL). What trivy finds and is let stand is

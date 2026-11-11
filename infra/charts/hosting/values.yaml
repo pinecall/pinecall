@@ -1,10 +1,11 @@
 # The orgs' hosted apps on a GKE Autopilot cluster of their own (terraform/modules/hosting): GKE
 # Sandbox's gVisor runs each app, and Secret Manager's CSI driver hands each runner its key.
-# The runtime's image: the runner is `pinecall-runtime runner start`. The tag is the commit,
-# given by `make hosting`.
+# The runtime's image: the runner is `pinecall-runtime runner start`. The tag is the commit and
+# the digest what the registry holds for it, both given by `make hosting`.
 image:
   repository: ""
   tag: ""
+  digest: ""
 # The box the runners serve, by its public name (https://…): the hosting cluster is not the box's.
 # Required.
 gatewayUrl: ""

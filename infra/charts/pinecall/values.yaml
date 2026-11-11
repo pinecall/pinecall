@@ -1,9 +1,12 @@
 # One release per world-pair: production and sandbox share a cluster, one gateway and one database.
 
-# The registry's runtime image (the operator's values); the tag is the commit `make deploy` gives.
+# The registry's runtime image (the operator's values). The tag is the commit `make deploy` gives,
+# and the digest (`sha256:…`) is what the registry holds for it, which `make deploy` asks: with it a
+# pod pulls those bytes wherever the tag is moved to; without it the tag alone is pulled.
 image:
   repository: ""
   tag: ""
+  digest: ""
 
 # The one name both worlds are served at (PINECALL_DOMAIN): the world of a request is its key's
 # or its header's, never the name's.

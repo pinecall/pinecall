@@ -109,29 +109,23 @@ db:               ## the local Postgres and Redis: colima up, the image built on
 hooks:            ## the pre-commit hook: `make check` when a commit touches runtime/
 	git config core.hooksPath runtime/.githooks
 
-# The runtime's image, built by Cloud Build as the builds' own identity ($(INFRA)/terraform/modules/
-# build), never on the laptop. Its context is the Containerfile and this checkout's wheel alone;
-# its tag is the commit, so a cluster runs exactly what the commit holds: the wheel is built from
-# the working tree with the console and the widget beside it (../console, ../widget), so
-# the three must be the commit, with nothing changed and nothing new in them, and TAG must name
-# that commit.
+# The runtime's image, built whole by Cloud Build as the builds' own identity ($(INFRA)/terraform/
+# modules/build), never on the laptop. Its context is the commit's tree and nothing else (`git
+# archive`): the console, the wheel and the image are built there, in the three stages of
+# $(INFRA)/images/runtime/Containerfile, so what no commit holds cannot be in an image and the
+# working tree may be in any state. Its tag is that commit. Until 2026-11-12 the console and the
+# wheel were built here, from this laptop's node_modules, and two guards stood in for the commit.
 REGISTRY ?= $(REGION)-docker.pkg.dev/$(PROJECT)/pinecall
 BUILDER  ?= projects/$(PROJECT)/serviceAccounts/pinecall-build@$(PROJECT).iam.gserviceaccount.com
 TAG      ?= $(shell git rev-parse --short HEAD)
-image:            ## the runtime's container image, TAG=<commit>, built and checked by Cloud Build
-	@if [ -n "$$(git status --porcelain -- . ../console ../widget)" ]; then \
-	  echo "make image: runtime/, console/ or widget/ has changes no commit holds; commit them or set them aside" >&2; \
-	  exit 2; fi
-	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse --verify --quiet '$(TAG)^{commit}')" ] || \
-	  { echo "make image: TAG=$(TAG) is not this checkout's commit, $$(git rev-parse --short HEAD)" >&2; exit 2; }
-	scripts/console
-	rm -rf dist && uv build --wheel --quiet
-	rm -rf .image && mkdir .image
-	cp $(INFRA)/images/pinecall/Containerfile dist/pinecall_runtime-*.whl .image/
-	uv export --locked --extra voice --no-dev --no-emit-project --quiet -o .image/requirements.txt
-	gcloud builds submit .image --config $(INFRA)/images/pinecall/cloudbuild.yaml \
+# What the registry holds for TAG, by its digest: a tag can be pushed again, a digest cannot, so a
+# release names both and a pod pulls the digest.
+DIGEST    = $$(gcloud artifacts docker images describe $(REGISTRY)/runtime:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
+image:            ## the runtime's container image, TAG=<commit>, built from that commit and checked by Cloud Build
+	git -C .. archive --format=tar.gz -o runtime/.image.tar.gz '$(TAG)^{commit}'
+	gcloud builds submit .image.tar.gz --config $(INFRA)/images/runtime/cloudbuild.yaml \
 	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/runtime:$(TAG) \
-	  --project $(PROJECT) --region $(REGION); status=$$?; rm -rf .image; exit $$status
+	  --project $(PROJECT) --region $(REGION); status=$$?; rm -f .image.tar.gz; exit $$status
 
 # Every suite inside the cluster, against its Postgres (CloudNativePG, the application user, no
 # superuser) and a Redis made for the run: the checkout's files as they are now, built
@@ -164,7 +158,7 @@ diff:             ## ENV=… TAG=<commit>: what releasing each chart would chang
 	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
 	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge -f $(VALUES)
 	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres -f $(VALUES)
-	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG)
+	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG) --set image.digest=$(DIGEST)
 
 edge:             ## ENV=…: charts/edge released: the front door, its routes and certificates
 	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge -f $(VALUES) --rollback-on-failure --timeout 10m
@@ -181,8 +175,7 @@ postgres:         ## ENV=…: charts/postgres released, and waited for until the
 deploy-guards:
 	@[ -z "$$(git status --porcelain -- $(CHARTS))" ] && git diff --quiet '$(TAG)' -- $(CHARTS) || \
 	  { echo "make deploy: infra/charts is not what commit $(TAG) holds; commit it or set it aside" >&2; exit 2; }
-	@gcloud artifacts docker images describe $(REGISTRY)/runtime:$(TAG) --project $(PROJECT) \
-	  --format='value(image_summary.digest)' >/dev/null 2>&1 || \
+	@[ -n "$(DIGEST)" ] || \
 	  { echo "make deploy: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
 	@standing=$$($(HELM) status pinecall -o json 2>/dev/null | python3 -c 'import json, sys; print(json.load(sys.stdin)["info"]["status"])' 2>/dev/null); \
 	  case "$$standing" in pending-*) \
@@ -192,8 +185,8 @@ deploy-guards:
 # it ran are not undone: a revision is written so the release before it still runs on its schema.
 # The name the live suite knocks at is asked of the cluster, which is where it is served.
 deploy: deploy-guards  ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
-	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG) \
-	  --rollback-on-failure --timeout 20m
+	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall -f $(VALUES) \
+	  --set image.tag=$(TAG) --set image.digest=$(DIGEST) --rollback-on-failure --timeout 20m
 	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
 	  uv run pytest -q tests/live
 
@@ -208,12 +201,13 @@ rollback:         ## ENV=… [REV=<n>]: charts/pinecall back to the release befo
 fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that many scaled workers kept warm, at the image that runs
 	@[ -n "$(WORLD)" ] && [ -n "$(MIN)" ] || { echo "make fleet: WORLD=sandbox|production MIN=<n>, and MOST=<n> for the ceiling" >&2; exit 2; }
 	scripts/fleet $(VALUES) $(WORLD) $(MIN) $(MOST)
-	@running=$$(helm get values pinecall --kube-context $(CONTEXT) -o json \
-	  | python3 -c 'import json, sys; print(json.load(sys.stdin)["image"]["tag"])'); \
+	@set -- $$(helm get values pinecall --kube-context $(CONTEXT) -o json \
+	  | python3 -c 'import json, sys; image = json.load(sys.stdin)["image"]; print(image["tag"], image.get("digest", ""))'); \
+	running=$$1; pinned=$$2; \
 	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
 	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
 	$(HELM) upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$$running \
-	  --rollback-on-failure --timeout 10m
+	  $${pinned:+--set image.digest=$$pinned} --rollback-on-failure --timeout 10m
 
 # The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
 # at TAG=<commit>, the same image as the runtime's. Its context is the regional Autopilot cluster's.
@@ -223,7 +217,8 @@ hosting:          ## ENV=…: charts/hosting released on the hosting cluster at 
 	  --project $(PROJECT) >/dev/null
 	helm upgrade --install pinecall-hosting $(INFRA)/charts/hosting --kube-context $(HOSTING) \
 	  --namespace pinecall-runner --create-namespace \
-	  -f $(OPS)/values/hosting-$(ENV).yaml --set image.tag=$(TAG) --wait --timeout 15m
+	  -f $(OPS)/values/hosting-$(ENV).yaml --set image.tag=$(TAG) --set image.digest=$(DIGEST) \
+	  --wait --timeout 15m
 
 # A box's database into the cluster's Postgres, once, at its cutover (and its rehearsal on
 # staging): the box's schema `public` and its rows, dumped on the box and streamed into the
