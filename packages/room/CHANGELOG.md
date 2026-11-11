@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`dial()` takes what the call opens with**: `state`, `metadata`, `greeting` and `instruction`.
+
 ## 0.11.30 — an app is written whole in its class (2026-11-09)
 
 - Released with the runtime, the CLI and the SDKs.

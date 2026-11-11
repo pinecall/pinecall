@@ -6,6 +6,7 @@ from typing import cast
 import pytest
 from livekit.agents import JobContext
 
+from pinecall_runtime.agents.declaration import AgentConfig, Greeting
 from pinecall_runtime.agents.schemas import PipelineKeys, RunningStage
 from pinecall_runtime.calls.context import Route
 from pinecall_runtime.calls.service import CALLER_HUNG_UP, STAGES_CHANGED
@@ -16,6 +17,7 @@ from pinecall_runtime.jobs.service.job import (
     SESSION_FAILED,
     _follow_commands,
     _test_line,
+    dialled_with,
     follow_command,
     pipeline_of,
     session_refused,
@@ -203,3 +205,16 @@ async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_age
     assert route == IN_THE_SANDBOX
     assert (moved.org, moved.agent, moved.holder) == (AT_THE_LINE.org, AT_THE_LINE.agent, AT_THE_LINE.holder)
     assert moved.metadata == {"test_line": why, "test_line_agent": agent}
+
+
+def test_a_dialled_call_opens_on_its_own_words_or_on_what_it_is_for_and_any_other_on_the_agents() -> None:
+    desk = AgentConfig(slug="desk", greeting=Greeting(say="Brightside Dental."))
+    assert dialled_with(desk, Dispatch(greeting="Hi Ana, it is Brightside.")).greeting == Greeting(
+        say="Hi Ana, it is Brightside."
+    )
+    assert dialled_with(desk, Dispatch(instruction="Remind her of her visit.")).greeting == Greeting(
+        reply="Remind her of her visit."
+    )
+    both = Dispatch(greeting="Hi Ana.", instruction="Remind her of her visit.")
+    assert dialled_with(desk, both).greeting == Greeting(say="Hi Ana.")
+    assert dialled_with(desk, Dispatch()) is desk

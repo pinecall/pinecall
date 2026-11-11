@@ -1,5 +1,6 @@
 """The bodies of the telephony endpoints: accounts, numbers, dialling out, a leg, consent, the operator's."""
 
+import json
 from ipaddress import ip_network
 from typing import Annotated, Literal, Self
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from pinecall_runtime.billing.schemas import OrgQuotas
 from pinecall_runtime.enums import Channel, ConsentKind, Env, RouteOrigin
 from pinecall_runtime.kit.schemas import Schema
+from pinecall_runtime.kit.text import Json, JsonObject
 from pinecall_runtime.wire.base import WireModel
 from pinecall_runtime.wire.parts import Projection
 
@@ -169,12 +171,32 @@ class Consent(WireModel):
     evidence: str | None = Field(default=None, max_length=500)
 
 
+# What a dial may carry into its call: a visit, a reason, an id, never a document.
+OPENING_BYTES = 8192
+
+
 class DialRequest(WireModel):
-    """POST /v1/agents/{slug}/dial: the far end, the org's number it is shown, the consent."""
+    """POST /v1/agents/{slug}/dial: the far end, the org's number it is shown, the consent, what the call opens with."""
 
     to: str
     from_: str | None = Field(None, alias="from")
     consent: Consent | None = None
+    # The state the agent's call opens in and what its `call.started` carries, as a web call's token names them.
+    state: JsonObject = Field(default_factory=dict[str, Json])
+    metadata: JsonObject = Field(default_factory=dict[str, Json])
+    # The words this call opens with, over the agent's own greeting; and what this call is for, which
+    # the agent reads for the whole call and, with no greeting given, opens on.
+    greeting: str | None = Field(default=None, min_length=1, max_length=500)
+    instruction: str | None = Field(default=None, min_length=1, max_length=2000)
+
+    # Both ride the room's dispatch, which the media plane keeps small.
+    @field_validator("state", "metadata")
+    @classmethod
+    def _fits_a_dispatch(cls, given: JsonObject) -> JsonObject:
+        if len(json.dumps(given)) > OPENING_BYTES:
+            raise ValueError(f"what a dialled call opens with is {OPENING_BYTES} bytes of JSON at most")
+        return given
+
     # What the log token handed back reads the call through.
     log: Projection = "tenant"
 

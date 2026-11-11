@@ -65,6 +65,31 @@ Examples
   rings in berna@clinica.test · \`pinecall line from <+your-number>\` routes yours, or \`claim\` takes it
 `;
 
+const DIAL = `
+The agent calls the number, from one of its own, and the call opens with what you hand it:
+
+  $ pinecall dial reminder +14155550142 --state '{"visit": "v-812"}'
+  $ pinecall dial reminder +14155550142 --instruction "Remind Ana of her cleaning tomorrow at 9:30 and ask her to confirm."
+
+--greeting is the words the call opens with, over the agent's own greeting. --instruction is what
+the call is for: the agent reads it for the whole call and, with no greeting, opens on it.
+
+Somebody must be holding the agent. Every dial passes the org's guards first (who may be called,
+when, how often); one that is refused rings nobody and says which guard refused it.
+`;
+
+// A flag that takes JSON takes an object: the state a call opens in, what its call.started carries.
+function jsonOf(flag: string, given: string | undefined): Record<string, unknown> | undefined {
+  if (given === undefined) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(given);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+  } catch {
+    // Said below, with the flag's name.
+  }
+  throw new UsageError(`${flag} takes a JSON object, like '{"visit": "v-812"}'`);
+}
+
 const CALLBACKS = `
 Every callback.requested this org's agents wrote — a phone caller the overflow agent answered,
 one the agent's own tool promised a call back, or a web visitor who left a number at the widget
@@ -195,6 +220,22 @@ export function register(program: Command, ctx: Context): void {
     .argument("[agent.tsx]")
     .option("--agent <name>")
     .action(async (file, flags) => ctx.io.result(await service.releaseLine(ctx, { file, agent: flags.agent }), render.released));
+
+  program
+    .command("dial")
+    .description("have an agent call a number, with what its call opens with")
+    .argument("<agent>", "the agent's slug")
+    .argument("<number>", "the number to call, in +E.164")
+    .option("--from <number>", "which of the agent's numbers the far end sees")
+    .option("--state <json>", "the state the agent's call opens in")
+    .option("--metadata <json>", "what the call's call.started carries")
+    .option("--greeting <words>", "the words this call opens with, over the agent's own greeting")
+    .option("--instruction <words>", "what this call is for: the agent reads it for the whole call")
+    .addHelpText("after", DIAL)
+    .action(async (agent, number, flags) => {
+      const input = service.DialInput.parse({ agent, to: number, from: flags.from, state: jsonOf("--state", flags.state), metadata: jsonOf("--metadata", flags.metadata), greeting: flags.greeting, instruction: flags.instruction });
+      ctx.io.result(await service.dialOut(ctx, input), render.dialed);
+    });
 
   program
     .command("callbacks")

@@ -15,7 +15,7 @@ import { runtime } from "./runtime.js";
 import { project } from "./scaffold.js";
 import { docsSearch, getDoc } from "./site.js";
 import { studio } from "./studio.js";
-import { callbacks, carriers, line, numbers } from "./telephony.js";
+import { callbacks, carriers, dial, line, numbers } from "./telephony.js";
 
 /** One stage of the journey and its tools. */
 export interface Stage {
@@ -30,7 +30,7 @@ export const STAGES: readonly Stage[] = [
   { stage: "Holding the agent, and talking to it", page: "holding-and-talking", tools: [start, stop, status, chat, prompt, consoleUrl] },
   { stage: "The agent's settings", page: "settings", tools: [agent, lexicon, voices, voiceSample] },
   { stage: "Calls, and what they run on", page: "calls", tools: [calls, call, pipeline, providers, telemetry, monitors, webhook, alerts, usage] },
-  { stage: "The phone", page: "phone", tools: [line, numbers, carriers, callbacks] },
+  { stage: "The phone", page: "phone", tools: [line, numbers, carriers, dial, callbacks] },
   { stage: "Supervising a live call", page: "supervising", tools: [supervise] },
   { stage: "Testing", page: "testing", tools: [test, runs, cases, simulate, personas, judges, judging, evalTool] },
   { stage: "Knowledge and memory", page: "knowledge-and-memory", tools: [docs, memory, remember] },

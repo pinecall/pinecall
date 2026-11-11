@@ -1,6 +1,7 @@
 """One job, one call: whose it is, what it runs on, the room it runs in, and its end."""
 
 import asyncio
+import dataclasses
 import logging
 import time
 from collections.abc import Awaitable, Callable, Coroutine
@@ -11,6 +12,7 @@ from livekit import api
 from livekit.agents import JobContext, JobProcess, llm
 
 from pinecall_runtime.agents import service as agents
+from pinecall_runtime.agents.declaration import AgentConfig, Greeting
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.calls.context import CallContext, Contact, Route
 from pinecall_runtime.channels import service as channels
@@ -85,6 +87,7 @@ async def answer_job(ctx: JobContext, gateway: GatewayClient, settings: Settings
         gateway.stages(route.agent, scope, call=context.call, test=dispatch.tuning),
         gateway.hold_audio(route.agent, scope),
     )
+    config = dialled_with(config, dispatch)
     opened = await gateway.open(
         calls.OpenCallRequest(
             agent=route.agent,
@@ -206,6 +209,17 @@ def context_of(
         state=dispatch.state,
         continues=dispatch.continues,
     )
+
+
+# A dialled call may bring its own opening: its words over the agent's greeting, or, with none, what
+# the call is for, which the model opens on.
+def dialled_with(config: AgentConfig, dispatch: Dispatch) -> AgentConfig:
+    """The agent's config with the opening its dial asked for."""
+    if dispatch.greeting is not None:
+        return dataclasses.replace(config, greeting=Greeting(say=dispatch.greeting))
+    if dispatch.instruction is not None:
+        return dataclasses.replace(config, greeting=Greeting(reply=dispatch.instruction))
+    return config
 
 
 # The org's sentences said before the greeting: the disclosure, then the notice when it records.

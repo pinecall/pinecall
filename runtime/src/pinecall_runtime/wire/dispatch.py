@@ -50,6 +50,9 @@ class Dispatch(BaseModel):
     expects: list[str] = Field(default_factory=list[str])
     diverted_from: Env | None = None
     state: dict[str, Any] = Field(default_factory=dict[str, Any])
+    # A dialled call's own opening: the words it opens with, and what the call is for.
+    greeting: str | None = None
+    instruction: str | None = None
     worker_gone: bool = False
     entries_written: int = 0
     continues: str | None = None

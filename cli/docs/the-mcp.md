@@ -129,6 +129,7 @@ Every parameter, and a real call of each: [The phone](mcp/phone.md).
 | `line` | `show` · `from` · `forget` · `claim` · `release` | whose process a ring lands in, and the person's own phone |
 | `numbers` | `list` · `available` · `import` · `buy` | the org's numbers; what its carrier accounts own; an import (naming the `account` when the org has several) or a number bought on the deployment's account, each shown as steps first (`dry_run` is the default) |
 | `carriers` | `list` · `show` | the org's carrier accounts; adding one takes secrets, so it is a terminal's |
+| `dial` | — | an agent calls a number, with the state, the greeting and the instruction its call opens with |
 | `callbacks` | — | the people waiting for a call back |
 
 ### Supervising a live call

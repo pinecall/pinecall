@@ -1,0 +1,30 @@
+$ pinecall dial --help
+Usage: pinecall dial [options] <agent> <number>
+
+have an agent call a number, with what its call opens with
+
+Arguments:
+  agent                  the agent's slug
+  number                 the number to call, in +E.164
+
+Options:
+  --from <number>        which of the agent's numbers the far end sees
+  --state <json>         the state the agent's call opens in
+  --metadata <json>      what the call's call.started carries
+  --greeting <words>     the words this call opens with, over the agent's own
+                         greeting
+  --instruction <words>  what this call is for: the agent reads it for the whole
+                         call
+  -h, --help             display help for command
+
+The agent calls the number, from one of its own, and the call opens with what you hand it:
+
+  $ pinecall dial reminder +14155550142 --state '{"visit": "v-812"}'
+  $ pinecall dial reminder +14155550142 --instruction "Remind Ana of her cleaning tomorrow at 9:30 and ask her to confirm."
+
+--greeting is the words the call opens with, over the agent's own greeting. --instruction is what
+the call is for: the agent reads it for the whole call and, with no greeting, opens on it.
+
+Somebody must be holding the agent. Every dial passes the org's guards first (who may be called,
+when, how often); one that is refused rings nobody and says which guard refused it.
+

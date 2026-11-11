@@ -1,4 +1,4 @@
-/** The `line`, `numbers`, `carriers` and `callbacks` tools: the telephony domain, over its service. */
+/** The `line`, `numbers`, `carriers`, `dial` and `callbacks` tools: the telephony domain, over its service. */
 
 import { z } from "zod";
 
@@ -67,6 +67,23 @@ export const carriers = tool({
     if (args.action === "show") return await service.showCarrier(ctx, args.account);
     return { carriers: await service.listCarriers(ctx) };
   },
+});
+
+export const dial = tool({
+  name: "dial",
+  description: "Have an agent call a phone number, with the state its call opens in. The org's dial guards decide: who may be called, when, and how often.",
+  schema: {
+    agent: z.string().min(1).describe("the agent that places the call: its slug"),
+    to: z.string().min(1).describe("the number to call, in +E.164"),
+    from: z.string().optional().describe("which of the agent's own numbers the far end sees; the first when left out"),
+    state: z.record(z.string(), z.unknown()).optional().describe("the state the agent's call opens in"),
+    metadata: z.record(z.string(), z.unknown()).optional().describe("what the call's `call.started` carries"),
+    greeting: z.string().optional().describe("the words this call opens with, over the agent's own greeting"),
+    instruction: z.string().optional().describe("what this call is for: the agent reads it for the whole call and, with no greeting, opens on it"),
+  },
+  manual:
+    "`dial` places a call as the agent and answers before anything rings: the call's id, the number shown and the environment. Somebody must be holding the agent, or the dial is refused. A dial the org's guards refuse (a stranger, quiet hours, no consent, too many) says which guard refused it. `call` reads the call's log afterwards.",
+  handler: async (args, ctx) => await service.dialOut(ctx, service.DialInput.parse(args)),
 });
 
 export const callbacks = tool({

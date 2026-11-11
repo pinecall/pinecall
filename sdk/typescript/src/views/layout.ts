@@ -49,9 +49,11 @@ function identityBlock(agent: Agent): string {
 // Static because a call never changes its channel or medium. With no call (an offline prompt), a
 // phone call's.
 function channelBlock(agent: Agent): string {
-  if (agent.channelRules === false) return "";
   const call = internalsOf(agent).call;
-  return tagged("channel", channelRulesFor(call?.channel, call?.medium ?? "voice"));
+  // What this call is for, said by whoever placed it: it holds for the whole call, like the channel.
+  const purpose = tagged("this_call", call?.instruction ?? "");
+  if (agent.channelRules === false) return purpose;
+  return paragraphs([tagged("channel", channelRulesFor(call?.channel, call?.medium ?? "voice")), purpose]);
 }
 
 // Lists every declared tool, visible or not, so this block stays static. Schemas go on the wire.

@@ -67,6 +67,7 @@ path end to end, with every output under it.
 | [`providers`](#providers) | every vendor this build runs, and the keys this org brought | yes |
 | [`voices`](#voices) | a vendor's voices in a language, and one of them played here before it is chosen | yes |
 | [`walks`](#walks) | a tutor agent's walks, recorded in its voice for a visitor to play with no call; one played here | yes |
+| [`dial`](#dial) | an agent calls a number, with what its call opens with | yes |
 | [`callbacks`](#callbacks) | the numbers people left when every seat was taken | yes |
 | [`data`](#data) | the org's data: erasures and their trail, its policy, consent, the do-not-call list, export | yes |
 | [`deploy`](#deploy) | this project run by the platform itself: uploaded as a release, installed and started there; list, releases, rollback, logs, stop, start, rm | yes |
@@ -2182,6 +2183,26 @@ recorded in; an agent that published none says so. `play` plays one here, named 
 title, a sentence at a time on the first player this machine has, each sentence printed as its
 audio starts; `no walk pricing: there are tour` names the ones there are.
 
+## `dial`
+
+```
+pinecall dial <agent> <number> [--from <number>] [--state <json>] [--metadata <json>] [--greeting <words>] [--instruction <words>]
+```
+
+```console
+$ pinecall dial reminder +14155550142 --instruction "Remind Ana of her cleaning tomorrow at 9:30 and ask her to confirm."
+reminder is calling +14155550142 from +14155550134 · production
+  → pinecall calls show call_5f0c2a9d41c84e1f9d2b7c1a6e3f8b20 follows it
+```
+
+The agent calls the number from one of its own, and the answer comes before anything rings.
+Somebody must be holding the agent. `--state` is the state the agent's call opens in and
+`--metadata` what its `call.started` carries, each a JSON object. `--greeting` is the words the call
+opens with, over the agent's own greeting. `--instruction` is what the call is for: the agent reads
+it for the whole call and, with no greeting given, opens on it. Every dial passes the org's guards
+first (who may be called, when, how often); one that is refused rings nobody, and the refusal names
+the guard.
+
 ## `callbacks`
 
 ```
@@ -2927,6 +2948,7 @@ code can call — over HTTP, in any language, with the same key.
 | `carriers` | `GET /v1/carriers`, `GET`·`PUT`·`DELETE /v1/carrier[?account=]` |
 | `providers` | `GET /v1/providers` · `PUT`·`DELETE`·`GET /v1/provider-keys[/{vendor}]` |
 | `voices` | `GET /v1/voices` · `POST /v1/voices/sample`, and `GET /v1/providers` for the platform's own voice vendor |
+| `dial` | `POST /v1/agents/{slug}/dial` |
 | `callbacks` | `GET /v1/callbacks[?agent=&after=]` |
 | `personas` | `GET /v1/agents/{slug}/personas` · `PUT`·`DELETE /v1/agents/{slug}/personas/{name}` · `POST /v1/agents/{slug}/personas/generate` — and `push` reads the agent's remaining files before sending them |
 | `judges` | `GET /v1/agents/{slug}/judges` · `PUT`·`DELETE /v1/agents/{slug}/judges/{name}` · `POST /v1/agents/{slug}/judges/try`, and the same at `/v1/org/judges` with `--org`; `agreement` is `GET /v1/evals/calibration[?agent=]` |

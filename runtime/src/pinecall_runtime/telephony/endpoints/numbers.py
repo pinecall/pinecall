@@ -295,6 +295,10 @@ async def dial_out(
         at=now(),
         own_phone=serving.registry.phone_of(actor.env, body.to) == who,
         consent=body.consent,
+        state=body.state,
+        metadata=body.metadata,
+        greeting=body.greeting,
+        instruction=body.instruction,
     )
     placed = await calls.place_call(session, serving, placement)
     signer = serving.signer

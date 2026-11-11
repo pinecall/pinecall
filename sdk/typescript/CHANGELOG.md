@@ -10,6 +10,8 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 - **A project may have a voice app, `app.ts`**: `voiceApp("brightside")`, `app.line(number, { answers, greeting })`
   for the agent that answers a number and the words the call opens with, and `app.silence({ after, say })` for
   what every agent of the app says to a caller who went quiet. `pinecall start` serves the agents with it.
+- **A call knows what it is for**: a dial's `instruction` is `this.call.instruction`, and the prompt carries it
+  for the whole call as `<this_call>`.
 - **The stages are statics too**: `static stt = "deepgram/flux"`, `static llm = "google/gemini-3.5-flash-lite"`,
   `static voice = "cartesia/<id>"`, or with options, `static llm = { model: "openai/gpt-5.4-mini", temperature: 0.3 }`.
   `@stt`, `@llm` and `@voice` say the same above the class and stay.

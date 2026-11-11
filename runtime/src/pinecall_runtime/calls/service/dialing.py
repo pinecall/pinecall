@@ -1,7 +1,8 @@
 """A call placed out: the number shown, the account, the guards, the minutes, its log, its dispatch."""
 
 import time
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from livekit import api
@@ -15,6 +16,7 @@ from pinecall_runtime.enums import Channel, Direction
 from pinecall_runtime.exceptions import NotFound, UpstreamError, ValidationError
 from pinecall_runtime.fleet import service as fleet
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.kit.text import Json
 from pinecall_runtime.telephony import service as telephony
 from pinecall_runtime.wire.dispatch import Dialling, Dispatch
 from pinecall_runtime.wire.events import CallDialing, CallEnded
@@ -34,6 +36,16 @@ class Placement:
     # The far end is the asker's own verified phone: a test, held to no caller's hours.
     own_phone: bool = False
     consent: telephony.Consent | None = None
+    # What the call opens with: the agent's state, and what its `call.started` carries.
+    state: Mapping[str, Json] = field(default_factory=dict[str, Json])
+    metadata: Mapping[str, Json] = field(default_factory=dict[str, Json])
+    # This call's own opening words, and what it is for.
+    greeting: str | None = None
+    instruction: str | None = None
+
+
+# The key of a call's metadata that says what the call is for.
+INSTRUCTION = "instruction"
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +104,11 @@ async def place_call(session: AsyncSession, serving: Serving, placement: Placeme
         direction=Direction.outbound,
         caller=placement.to,
         dial=Dialling(trunk=carrier.id, to=placement.to, shown=shown, max_duration_s=guards.max_duration_s),
+        state=dict(placement.state),
+        # The app reads what the call is for off its metadata, where a class finds it for its prompt.
+        metadata=dict(placement.metadata) | ({INSTRUCTION: placement.instruction} if placement.instruction else {}),
+        greeting=placement.greeting,
+        instruction=placement.instruction,
     )
     try:
         await serving.offering.offer(call, fleet.fleet_of(await fleet.fleets(session), scope.env), carried)

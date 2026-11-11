@@ -64,6 +64,13 @@ export interface DialOptions {
   /** Which of the agent's own numbers the far end sees. Unsaid, the first one it answers at. */
   from?: string | undefined;
   log?: LogProjection | undefined;
+  /** The state the agent's call opens in, and what its `call.started` carries: 8192 bytes of JSON each at most. */
+  state?: Record<string, unknown> | undefined;
+  metadata?: Record<string, unknown> | undefined;
+  /** The words this call opens with, over the agent's own greeting. */
+  greeting?: string | undefined;
+  /** What this call is for: the agent reads it for the whole call and, with no greeting, opens on it. */
+  instruction?: string | undefined;
   fetch?: typeof fetch | undefined;
 }
 
@@ -104,9 +111,9 @@ export async function mint(key: string, options: MintOptions): Promise<Minted> {
 
 /** Have the agent call `to`. The key needs the `talk` scope; the number must have reached the org before. */
 export async function dial(key: string, options: DialOptions): Promise<Dialed> {
-  const { url, agent, to, from, log } = options;
+  const { url, agent, to, from, log, state, metadata, greeting, instruction } = options;
   const path = `${bare(url)}/v1/agents/${encodeURIComponent(agent)}/dial`;
-  const body = await post(key, path, { to, from, log }, options.fetch);
+  const body = await post(key, path, { to, from, log, state, metadata, greeting, instruction }, options.fetch);
   if (!isDialed(body)) throw new Error("the gateway answered the dial with a shape this package does not know");
   return body;
 }

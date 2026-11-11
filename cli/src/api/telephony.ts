@@ -201,3 +201,28 @@ function linePath(slug: string): string {
 function dryRunQuery(dryRun: boolean): Query | undefined {
   return dryRun ? { dry_run: true } : undefined;
 }
+
+/** What a dial takes: the far end, the number shown, and what the agent's call opens with. */
+export interface DialBody {
+  to: string;
+  from?: string | undefined;
+  state?: Record<string, unknown> | undefined;
+  metadata?: Record<string, unknown> | undefined;
+  greeting?: string | undefined;
+  instruction?: string | undefined;
+}
+
+/** A call placed, before anything rings. The token that reads its log is the gateway's to hand a page, never printed. */
+export interface Dialed {
+  call: string;
+  agent: string;
+  to: string;
+  from: string;
+  env: Env;
+}
+
+/** `POST /v1/agents/{slug}/dial`: the agent calls a number, past the org's dial guards. */
+export async function dial(gw: GatewayClient, slug: string, body: DialBody): Promise<Dialed> {
+  const placed = await gw.post<Dialed & { log_token?: string }>(`/v1/agents/${seg(slug)}/dial`, body);
+  return { call: placed.call, agent: placed.agent, to: placed.to, from: placed.from, env: placed.env };
+}

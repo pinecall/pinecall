@@ -91,6 +91,8 @@ export class CallWorld implements HookCall {
   readonly caller?: Camel<Contact>;
   /** What the call was opened with and sealed, such as a token's `metadata`; empty when none. */
   readonly metadata: Record<string, unknown>;
+  /** What this call is for, when whoever placed it said so (a dial's `instruction`); the prompt carries it. */
+  readonly instruction?: string;
   /** Spoken (`voice`) or written (`text`). A gateway that does not say gets it from the channel. */
   readonly medium: Medium;
   /** The day this call opened, `YYYY-MM-DD`. */
@@ -127,6 +129,8 @@ export class CallWorld implements HookCall {
     if (line.direction !== undefined) this.direction = line.direction;
     if (line.caller !== undefined) this.caller = line.caller;
     this.metadata = line.metadata ?? {};
+    const instruction = this.metadata["instruction"];
+    if (typeof instruction === "string" && instruction.trim() !== "") this.instruction = instruction;
     this.medium = line.medium ?? (line.channel === "whatsapp" ? "text" : "voice");
     if (line.today !== undefined) this.today = line.today;
     if (line.claimed !== undefined) this.claimed = line.claimed;

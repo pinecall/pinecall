@@ -116,6 +116,41 @@ The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account'
 }
 ```
 
+## `dial`
+
+Have an agent call a phone number, with the state its call opens in. The org's dial guards decide: who may be called, when, and how often.
+
+`dial` places a call as the agent and answers before anything rings: the call's id, the number shown and the environment. Somebody must be holding the agent, or the dial is refused. A dial the org's guards refuse (a stranger, quiet hours, no consent, too many) says which guard refused it. `call` reads the call's log afterwards.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `agent` | text | required | the agent that places the call: its slug |
+| `to` | text | required | the number to call, in +E.164 |
+| `from` | text |  | which of the agent's own numbers the far end sees; the first when left out |
+| `state` | an object |  | the state the agent's call opens in |
+| `metadata` | an object |  | what the call's `call.started` carries |
+| `greeting` | text |  | the words this call opens with, over the agent's own greeting |
+| `instruction` | text |  | what this call is for: the agent reads it for the whole call and, with no greeting, opens on it |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+```json title="called with"
+{
+  "agent": "reminder",
+  "to": "+14155550142",
+  "instruction": "Remind Ana of her cleaning tomorrow at 9:30 and ask her to confirm."
+}
+```
+
+```json title="answered"
+{
+  "call": "call_5f0c2a9d41c84e1f9d2b7c1a6e3f8b20",
+  "agent": "reminder",
+  "to": "+14155550142",
+  "from": "+14155550134",
+  "env": "production"
+}
+```
+
 ## `callbacks`
 
 The callers waiting to be called back, oldest first: who, on which channel, through what (the overflow, the agent's own tool, the widget).

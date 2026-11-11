@@ -2,8 +2,9 @@
 
 import { expect, it } from "vitest";
 
-import { Agent, seal } from "../../src/agent/agent.js";
+import { Agent, seal, setCall } from "../../src/agent/agent.js";
 import { appRulesOf, setAppRules } from "../../src/agent/app-rules.js";
+import { CallWorld } from "../../src/call/call.js";
 import { promptOf } from "../../src/views/render.js";
 
 class OfAnApp extends Agent {}
@@ -27,4 +28,14 @@ it("leave the prompt of an agent of no app as it was", () => {
 it("are taken away by an empty list", () => {
   setAppRules(OfAnApp, []);
   expect(identityOf(seal(new OfAnApp()))).not.toContain("app_rules");
+});
+
+it("is beside what the call is for, when whoever placed it said so", () => {
+  const agent = seal(new OfNoApp());
+  setCall(agent, new CallWorld({ id: "CA_1", contact: "+14155550142", metadata: { instruction: "Remind Ana of her cleaning tomorrow at 9:30." } }, () => undefined));
+  expect(agent.call.instruction).toBe("Remind Ana of her cleaning tomorrow at 9:30.");
+  expect(identityOf(agent)).toContain("<this_call>\nRemind Ana of her cleaning tomorrow at 9:30.\n</this_call>");
+  const plain = seal(new OfNoApp());
+  setCall(plain, new CallWorld({ id: "CA_2", contact: "+14155550142" }, () => undefined));
+  expect(identityOf(plain)).not.toContain("this_call");
 });

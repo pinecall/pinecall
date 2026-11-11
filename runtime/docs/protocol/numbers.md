@@ -164,8 +164,12 @@ dialled at its `outbound_host`.
 `GET /v1/carrier/outbound` is `{ready, kind, from_numbers, steps_missing, guards}`: whether the org
 can place a call, one sentence per thing still missing, and the guards it dials under.
 
-`POST /v1/agents/{slug}/dial {to, from?, log?}` places a call as the agent: `202 {call, agent, to,
-from, env, log_token}` before anything rings. `from` is one of the agent's own numbers in the key's
+`POST /v1/agents/{slug}/dial {to, from?, log?, state?, metadata?, greeting?, instruction?}` places a call as the agent: `202 {call, agent, to,
+from, env, log_token}` before anything rings. `state` is the state the agent's call opens in and `metadata`
+what its `call.started` carries, as a web call's token names them: 8192 bytes of JSON each at most, since
+both ride the room's dispatch. `greeting` (500 characters) is the words this call opens with, over the
+agent's own greeting. `instruction` (2000) is what the call is for: it is the call's `metadata.instruction`,
+which an agent's prompt carries, and with no `greeting` the model opens the call on it. `from` is one of the agent's own numbers in the key's
 environment, the first unsaid; the call is dialled through the account that number lives in, and a
 number the org hooked itself or the platform bought dials through none (`409`). Nobody holding the
 agent is `409`: a phone would ring with no app to serve it. Every dial asked for is one row of the

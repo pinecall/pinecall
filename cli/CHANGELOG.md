@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall dial <agent> <number>`**: the agent calls a number, with `--state`, `--metadata`, `--greeting` and
+  `--instruction` for what its call opens with. The MCP has the same as its `dial` tool.
+
 - **`pinecall start` serves a project's voice app**: an `app.ts` at the project's root rides with its agents, and
   a save of it reloads them.
 

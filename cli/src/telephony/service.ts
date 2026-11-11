@@ -8,7 +8,7 @@ import * as billing from "../billing/service.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 
-export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, NumberPlan, NumberRoute, NumberRow, OwnedNumber, TheLine } from "../api/telephony.js";
+export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, Dialed, NumberPlan, NumberRoute, NumberRow, OwnedNumber, TheLine } from "../api/telephony.js";
 
 // The gateway's sentence when the org holds several accounts and the import named none.
 export const SEVERAL_ACCOUNTS = "name one of them";
@@ -179,6 +179,22 @@ export async function resendCallerNumber(ctx: Context): Promise<void> {
   const gw = ctx.gateway();
   const kept = accounts.readCallerNumber(accounts.homeOf(ctx.processEnv), gw.url);
   if (kept !== undefined) await api.setCallerNumber(gw, kept);
+}
+
+export const DialInput = z.object({
+  agent: z.string().min(1),
+  to: z.string().min(1),
+  from: z.string().min(1).optional(),
+  state: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  greeting: z.string().min(1).optional(),
+  instruction: z.string().min(1).optional(),
+});
+export type DialInput = z.infer<typeof DialInput>;
+
+/** Have the agent call a number: the call it became, before anything rings. */
+export async function dialOut(ctx: Context, input: DialInput): Promise<api.Dialed> {
+  return api.dial(ctx.gateway(), input.agent, { to: input.to, from: input.from, state: input.state, metadata: input.metadata, greeting: input.greeting, instruction: input.instruction });
 }
 
 export async function listCallbacks(ctx: Context, input: ListCallbacksInput): Promise<api.CallbackPage> {

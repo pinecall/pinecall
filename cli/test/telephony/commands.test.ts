@@ -126,6 +126,25 @@ describe("pinecall line", () => {
   });
 });
 
+describe("pinecall dial", () => {
+  const PLACED = { call: "call_9", agent: "reminder", to: "+14155550142", from: "+14155550134", env: "sandbox", log_token: "tok_never_printed" };
+
+  it("places the call with what it opens with, and prints the call to follow, never the token", async () => {
+    const sent = answer("post", "/v1/agents/reminder/dial", PLACED);
+    const ran = await run(["dial", "reminder", "+14155550142", "--state", '{"visit":"v-812"}', "--instruction", "Remind Ana of her visit."]);
+    expect(sent[0]!.body).toEqual({ to: "+14155550142", state: { visit: "v-812" }, instruction: "Remind Ana of her visit." });
+    expect(ran.out).toContain("reminder is calling +14155550142 from +14155550134 · sandbox");
+    expect(ran.out).toContain("pinecall calls show call_9 follows it");
+    expect(ran.out).not.toContain("tok_never_printed");
+  });
+
+  it("refuses a --state that is no JSON object", async () => {
+    const ran = await run(["dial", "reminder", "+14155550142", "--state", "v-812"]);
+    expect(ran.code).toBe(2);
+    expect(ran.err).toContain("--state takes a JSON object");
+  });
+});
+
 describe("pinecall callbacks", () => {
   it("prints the page on stdout, nothing before it, with the cursor to read on", async () => {
     answer("get", "/v1/callbacks", {

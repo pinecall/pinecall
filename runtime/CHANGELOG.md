@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A dial carries what its call opens with.** `POST /v1/agents/{slug}/dial` takes `state`, the state the
+  agent's call opens in, and `metadata`, what its `call.started` carries: 8192 bytes of JSON each at most;
+  `greeting`, the words this call opens with over the agent's own; and `instruction`, what the call is for,
+  which is its `metadata.instruction` and, with no greeting, what the model opens on.
+
 - **An agent declares its timezone.** `timezone` in the declaration, an IANA zone: the call's day is read
   there instead of in `PINECALL_TIMEZONE`, the model is told the hour and the zone beside the date, and
   `call.started` carries `today` in it, so the app counts its days as the model does. A day a golden pinned

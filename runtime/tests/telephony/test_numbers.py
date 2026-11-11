@@ -5,11 +5,13 @@ from dataclasses import replace
 
 import pytest
 from livekit.protocol.sip import CreateSIPInboundTrunkRequest, SIPInboundTrunkInfo
+from pydantic import ValidationError as PydanticValidationError
 
 from pinecall_runtime.channels.models import Route
 from pinecall_runtime.channels.service.routes import RouteWrite, get_route, managed_in, put_route, routes_of_org
 from pinecall_runtime.enums import Channel, Env, NetworkState, RouteOrigin
 from pinecall_runtime.exceptions import Conflict, NotFound, ServiceUnavailable, ValidationError
+from pinecall_runtime.telephony import schemas
 from pinecall_runtime.telephony.schemas import WhatsappAccount
 from pinecall_runtime.telephony.service import accounts, networks, sip
 from pinecall_runtime.telephony.service.fence import TWILIO_SIGNALLING
@@ -383,3 +385,14 @@ async def test_what_the_account_owns_says_which_number_another_org_holds(line: L
     async with line.sessions() as session:
         _, owned = await owned_numbers(session, line.handles, line.scope())
     assert {item.number: item.held_elsewhere for item in owned} == {mine: False, theirs: True}
+
+
+def test_a_dial_carries_what_its_call_opens_with_and_refuses_a_document() -> None:
+    """The state and the metadata ride the room's dispatch: a visit and a reason, never a file."""
+    asked = schemas.DialRequest.model_validate(
+        {"to": "+14155550142", "state": {"visit": "v-812"}, "metadata": {"flow": "r-1"}}
+    )
+    assert (asked.state, asked.metadata) == ({"visit": "v-812"}, {"flow": "r-1"})
+    assert schemas.DialRequest.model_validate({"to": "+14155550142"}).state == {}
+    with pytest.raises(PydanticValidationError, match="bytes of JSON at most"):
+        schemas.DialRequest.model_validate({"to": "+14155550142", "state": {"notes": "x" * schemas.OPENING_BYTES}})

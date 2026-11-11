@@ -443,6 +443,10 @@ this.call.hangup("done");
 await this.knowledge.search("summer opening hours", { k: 3 });   // the chunks, searched for this call
 ```
 
+`this.call.instruction` is what this call is for, when whoever placed it said so: a dial's `instruction`
+(`pinecall dial reminder +1415… --instruction "Remind Ana of her cleaning tomorrow."`). The prompt carries
+it for the whole call, so the class does nothing with it unless it wants to.
+
 `this.call` also carries `id`, `contact`, `from`, `channel`, `medium`, `today` — the day the call
 runs in, which is what "next Tuesday" is counted from: the day a golden pinned when one did, else
 the day the call opened — `history`, `room` and `claimed`.
