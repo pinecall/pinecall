@@ -200,6 +200,8 @@ export class Agent {
   static personas?: Declared["personas"];
   /** The hold melody: a file beside the class and the wait before it (`{ file: "hold.mp3", afterS: 1.5 }`), or `"off"`. */
   static hold?: HoldDeclaration | "off";
+  /** The scenes of the caller's screen, each with what it shows: `{ agenda: "the open times you last read" }`. */
+  static scenes?: Record<string, string>;
   /** How the widget presents the agent: `{ title, tagline, greeting, accent, autostart, theme }`. */
   static widget?: Declared["widget"];
 

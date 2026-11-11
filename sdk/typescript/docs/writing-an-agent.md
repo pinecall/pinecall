@@ -625,6 +625,28 @@ export default class FrontDesk extends Agent {
 | `this.call.asking` | what a tool stopped to ask for (`{ task, asks, fields, refused? }`), so the screen can draw the question as a form; undefined when nothing is asked |
 | `this.call.show(<Map />)` | puts a part over the screen now, from a tool or a hook; `this.call.show(null)` takes it away |
 
+A screen that only reads the state stays on what the state holds: the agenda read three turns ago is
+still there while the caller asks who they are talking to. Scenes make it follow the conversation:
+
+```tsx
+static scenes = { agenda: "the open times you last read", ticket: "the visit booked on this call" };
+
+@tool({ shows: "agenda" })
+freeSlots(day: string) { … }
+
+override screen() {
+  if (this.call.scene === "agenda") return <Agenda slots={this.slots} />;
+  return <Welcome />;
+}
+```
+
+A tool with `shows` puts its scene up once it ran, and `this.call.scene` is the one up now. A turn the
+caller opened in which nothing showed or kept the scene takes it away: the screen goes back to what
+`screen()` draws with no scene. The model is told which scene is up, and is given `show_screen`, a quiet
+tool it calls in the same turn as its words (no wait, no second answer) to keep the scene, put another
+up, or take it away with `none`. A turn the agent opened on its own, such as its answer to a tap, leaves
+the scene where it is.
+
 The agent says what is on the screen and the page says how it looks: a part carries no markup and no
 style. The screen travels in the call's state as the field `screen`, public to that call's own page and
 to nobody else's, so a page that follows a phone call draws it too. `@pinecall/room` reads it with

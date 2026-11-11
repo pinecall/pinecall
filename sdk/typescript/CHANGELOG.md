@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **The screen follows the conversation**: `static scenes` names a screen's scenes, `@tool({ shows: "agenda" })` puts
+  one up, and a turn the caller opened about something else takes it away. The model is told which scene is up
+  and keeps it, or puts another up, with `show_screen`, a quiet tool that adds no wait.
 - **An app has a page of its own**: `app.page("ui/dist")` names the folder its build writes. `pinecall deploy`
   sends it and Pinecall serves it at the app's own name, with the ticket routes a page needs; `pinecall start`
   serves the same on `http://localhost:4747`.

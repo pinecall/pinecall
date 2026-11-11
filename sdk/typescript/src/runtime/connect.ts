@@ -30,7 +30,8 @@ import { answeredBy, mateNamed, MOST_PASSES, PASSED, ROUTED, teamTools, transfer
 import { served } from "./once-served.js";
 import { wordsRecalled } from "./recall.js";
 import { runTool, ToolFailed } from "./run-tool.js";
-import { givenByPage, redrawn, screenDeclared, screens, stateWith, unscreened, type Screened } from "./screened.js";
+import { givenByPage, redrawn, sceneChosen, sceneToolOf, sceneTools, screenDeclared, screens, showing, stateWith, turned, unscreened, type Screened } from "./screened.js";
+import { SHOW_SCREEN } from "../agent/screen.js";
 
 /** Options for `mount()`. */
 export interface MountOptions {
@@ -153,7 +154,8 @@ export function mount(
   const live = new Map<string, Live>();
   const probe = new ctor();
   const own = team === undefined ? probe.tools() : teamTools(team);
-  const tools: Tool[] = [...own, ...givingTools(tasksOn(ctor, team), own.map((spec) => spec.name))].map((spec) => ({
+  const taken = own.map((spec) => spec.name);
+  const tools: Tool[] = [...own, ...givingTools(tasksOn(ctor, team), taken), ...sceneTools(team === undefined ? [ctor] : [...team.keys()], taken)].map((spec) => ({
     ...(spec as unknown as Camel<ToolSpec>),
     run: (args, call, callId) => call_(live, call, spec.name, args, callId),
   }));
@@ -201,11 +203,12 @@ async function call_(
   if (serving === undefined) throw new ToolFailed(`${name}: this call is no longer being served`);
   // A tool that stopped to ask leaves one tool open, and the one that gives the answer opens the rest again.
   if (serving.asking.gives(name)) return serving.asking.given(name, args).finally(() => live.has(call.id) && sync(serving, call));
+  if (name === SHOW_SCREEN) return sceneChosen(serving.serving.call, serving.screened, serving.serving.ctor, args, () => sync(serving, call));
   const declaration = toolNamed(serving.agent, name);
   const mate = declaration === undefined && serving.team !== undefined ? mateNamed(name, serving.team) : undefined;
   if (mate !== undefined) return serving.serving.call.handoff(mate, args);
   if (declaration === undefined) throw new ToolFailed(`${name}: this agent declares no such tool`);
-  return withToolCall(callId, () => serving.asking.run(name, () => runTool(serving.agent, declaration, args))).finally(() => live.has(call.id) && sync(serving, call));
+  return withToolCall(callId, () => serving.asking.run(name, () => showing(serving.agent, serving.screened, name, () => runTool(serving.agent, declaration, args)))).finally(() => live.has(call.id) && sync(serving, call));
 }
 
 // Subscribe to changes only after the first sync, so onCall's writes go out as one prompt. The
@@ -288,7 +291,7 @@ async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Recor
   setCall(link.agent, null);
   call.log(PASSED, { from: team.get(link.serving.ctor as Ctor) ?? "", to: slug, ...data });
   const agent = seal(new to());
-  link.serving.call.handed = data;
+  Object.assign(link.serving.call, { handed: data, scene: null });
   setCall(agent, link.serving.call);
   Object.assign(link.serving, { agent, ctor: to });
   Object.assign(link, { agent, passes: link.passes + 1, transfers: transfersOf(to, team), unlog: onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data))) });
@@ -318,7 +321,7 @@ function follow(link: Live, call: SdkCall): void {
       }
       // Re-render on the user's turn so the view reflects the turn being answered, not the previous
       // one. The gateway holds the LLM request while lookups run (runtime's session/lookups.py).
-      if (event.type === "turn.user") sync(link, call);
+      if (turned(event.type, world, link.screened) || event.type === "turn.user") sync(link, call);
       // A claim changes the view (the caller can now see the page) without moving a field.
       if (event.type === "call.claimed") sync(link, call);
     }),
@@ -385,7 +388,7 @@ function show(serving: Live, call: SdkCall): void {
     call.setPrompt(block.name, block.text);
   }
   const asked = serving.asking.open;
-  const visible = asked === undefined ? [...serving.agent.visibleTools(), ...serving.transfers] : [asked];
+  const visible = asked === undefined ? [...serving.agent.visibleTools(), ...serving.transfers, ...sceneToolOf(serving.serving.ctor)] : [asked];
   const key = JSON.stringify(visible);
   if (key !== serving.sent.tools) {
     serving.sent.tools = key;

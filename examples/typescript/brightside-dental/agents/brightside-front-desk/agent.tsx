@@ -20,6 +20,8 @@ export default class FrontDesk extends Agent {
   static judges = judges({ on: ["grounded", "promises"], own: [offersARealTime] });
   static personas = personas({ own: [hurried] });
   static tasks = [GetPhone];
+  // What the caller's screen can show. A tool that shows one puts it up; a turn about something else takes it away.
+  static scenes = { agenda: "the open times you last read", ticket: "the visit booked on this call" };
   // What the caller's page may tell this agent: the time they tapped on its agenda, and the number they are known by.
   static events = { "slot.picked": { from: ["participant" as const] }, "caller.known": { from: ["participant" as const] } };
 
@@ -40,7 +42,7 @@ export default class FrontDesk extends Agent {
   }
 
   /** The open times of one day. `day` is YYYY-MM-DD, counted from today. */
-  @tool({ announce: "Let me check the agenda." })
+  @tool({ announce: "Let me check the agenda.", shows: "agenda" })
   freeSlots(day: string) {
     this.slots = clinic.free(day);
     this.picked = "";
@@ -50,7 +52,7 @@ export default class FrontDesk extends Agent {
   }
 
   /** Book one of the times freeSlots returned, once the caller said yes to it. */
-  @tool()
+  @tool({ shows: "ticket" })
   async book(day: string, time: string, name: string) {
     if (!this.slots.some((slot) => slot.day === day && slot.time === time)) return "That time did not come from the agenda. Call freeSlots for that day first.";
     // The reminder calls the number the patient called from. One who wrote has none: the tool stops to ask for it.
@@ -80,18 +82,19 @@ export default class FrontDesk extends Agent {
     this.call.shared["patient"] = patient;
   }
 
-  // What the caller's page shows, from the same state the model reads: the form of what a tool asks for,
-  // the visit once booked, the agenda once read. The page draws each part its own way (ui/).
+  // What the caller's page shows: the form of what a tool asks for, else the scene up now (the agenda, the
+  // ticket), else the welcome. The page draws each part its own way (ui/).
   override screen() {
     const asked = this.call.asking;
     const patient = this.call.shared["patient"] as Patient | undefined;
+    const scene = this.call.scene;
     return (
       <Stage desk="front">
         {asked !== undefined ? (
           <Form {...asked} />
-        ) : this.visit !== null ? (
+        ) : scene === "ticket" && this.visit !== null ? (
           <Ticket visit={this.visit} phone={this.visit.phone} remindedAt={new Date(startsAt(this.visit).getTime() - 24 * 3_600_000).toISOString()} />
-        ) : this.slots.length > 0 ? (
+        ) : scene === "agenda" && this.slots.length > 0 ? (
           <Agenda slots={this.slots} picked={this.picked} />
         ) : (
           <Welcome patient={patient?.name} />

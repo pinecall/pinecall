@@ -4,6 +4,7 @@ import { type PromptBlockSpec } from "../wire/defs.js";
 
 import { changes, internalsOf, type Agent } from "../agent/agent.js";
 import { appRulesOf } from "../agent/app-rules.js";
+import { sceneLine, scenesOf } from "../agent/screen.js";
 import { docOf, toolsOf } from "../agent/tools.js";
 import { tagged } from "./components.js";
 import { channelRulesFor, PROTOCOLS, RULES } from "./built-in-rules.js";
@@ -67,7 +68,8 @@ function toolsBlock(agent: Agent): string {
 // Only the tenant's `render()` output. Recalled facts and retrieved chunks reach the model as tool
 // results, never here (runtime docs/security/prompt-injection.md).
 function viewBlock(agent: Agent): string {
-  return renderToText(agent.render());
+  const scene = internalsOf(agent).call?.scene ?? null;
+  return paragraphs([renderToText(agent.render()), tagged("screen", sceneLine(scenesOf(agent.constructor), scene))]);
 }
 
 /** Summaries left by `collapse()`; the runtime owns the actual turns. */

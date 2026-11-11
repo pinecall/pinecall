@@ -2,7 +2,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import { part, screenOf } from "../../src/agent/screen.js";
+import { Agent } from "../../src/agent/agent.js";
+import { part, sceneLine, scenesOf, screenOf, showingTool } from "../../src/agent/screen.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { Fragment, jsx } from "../../src/views/jsx-runtime.js";
 
@@ -38,5 +39,34 @@ describe("a screen", () => {
 
   it("refuses a name a page could not map", () => {
     expect(() => part("Agenda")).toThrow(DeclarationRefused);
+  });
+});
+
+describe("scenes", () => {
+  it("are what the class declares, each with what it shows", () => {
+    class Desk extends Agent {
+      static override scenes = { agenda: "the open times you last read" };
+    }
+    expect(scenesOf(Desk)).toEqual({ agenda: "the open times you last read" });
+    expect(scenesOf(Agent)).toEqual({});
+  });
+
+  it("are refused when one is named none, or says nothing", () => {
+    class Named extends Agent {
+      static override scenes = { none: "nothing" };
+    }
+    class Silent extends Agent {
+      static override scenes = { agenda: " " };
+    }
+    expect(() => scenesOf(Named)).toThrow(DeclarationRefused);
+    expect(() => scenesOf(Silent)).toThrow(DeclarationRefused);
+  });
+
+  it("are moved with a quiet tool, and the model is told which one is up and that it goes away", () => {
+    const scenes = { agenda: "the open times you last read" };
+    expect(showingTool(scenes)).toMatchObject({ name: "show_screen", quiet: true });
+    expect(sceneLine(scenes, "agenda")).toContain("shows agenda (the open times you last read)");
+    expect(sceneLine(scenes, "agenda")).toContain("goes away when you answer about something else");
+    expect(sceneLine({}, null)).toBe("");
   });
 });

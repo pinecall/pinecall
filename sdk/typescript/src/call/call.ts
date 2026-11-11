@@ -111,6 +111,8 @@ export class CallWorld implements HookCall {
   #passing: Passing | null = null;
   #asking: ((asked: Task<unknown>) => Promise<unknown>) | null = null;
   #asked: () => Asked | undefined = () => undefined;
+  /** The scene of the caller's screen now (`static scenes`), or null for none: what a tool with `shows` or the model put up. */
+  scene: string | null = null;
   /** What `show` put over the screen, as the agent gave it: a view's child, rendered by the bridge. */
   shown: unknown = null;
   #showing: () => void = () => {};

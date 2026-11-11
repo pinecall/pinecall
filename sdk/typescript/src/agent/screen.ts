@@ -2,7 +2,9 @@
 
 import { Fragment, jsx, type Child, type Component, type Element, type Props } from "../views/jsx-runtime.js";
 
-import { DeclarationRefused } from "./tools.js";
+import type { ToolSpec } from "../wire/defs.js";
+
+import { DeclarationRefused, toolsOf } from "./tools.js";
 
 /** One part of a screen as the page reads it: its name, what it was given, and what it holds. */
 export interface ScreenNode {
@@ -72,4 +74,54 @@ export function screenOf(child: Child): Screen {
 // What crosses to a browser is JSON: a function or an undefined given to a part is left behind.
 function plain(given: Props): Record<string, unknown> {
   return JSON.parse(JSON.stringify(given)) as Record<string, unknown>;
+}
+
+/** The tool the model moves the caller's screen with, offered to a class that declares `static scenes`. */
+export const SHOW_SCREEN = "show_screen";
+
+/** The scene that takes what a tool put up away: the screen with nothing chosen. */
+export const NO_SCENE = "none";
+
+const A_SCENE = /^[a-z][a-z0-9_-]*$/;
+
+/** The scenes a class declares, checked against its tools' `shows`; empty for a class that declares none. */
+export function scenesOf(ctor: Function): Record<string, string> {
+  const declared = (ctor as { scenes?: unknown }).scenes;
+  if (declared === undefined) return {};
+  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) throw new DeclarationRefused(`${ctor.name}: static scenes names each scene with what it shows: { agenda: "the open times you last read" }`);
+  const scenes = declared as Record<string, unknown>;
+  for (const [name, what] of Object.entries(scenes)) {
+    if (!A_SCENE.test(name) || name === NO_SCENE) throw new DeclarationRefused(`${ctor.name}: a scene is named in lowercase, and not "${NO_SCENE}": "${name}" is not one`);
+    if (typeof what !== "string" || what.trim() === "") throw new DeclarationRefused(`${ctor.name}: the scene ${name} says what it shows, in words`);
+  }
+  return scenes as Record<string, string>;
+}
+
+/** The scene a tool of the class puts up, checked to be one of its scenes. */
+export function shownBy(agent: object, tool: string): string | undefined {
+  const declared = toolsOf(agent).find((one) => one.name === tool);
+  const scene = declared?.options.shows;
+  if (scene === undefined) return undefined;
+  const scenes = scenesOf(agent.constructor);
+  if (!(scene in scenes)) throw new DeclarationRefused(`${agent.constructor.name}.${tool} shows ${scene}, which is none of its static scenes`);
+  return scene;
+}
+
+/** The tool the model moves the screen with: one of the scenes, or `none`. */
+export function showingTool(scenes: Record<string, string>): ToolSpec {
+  const listed = Object.entries(scenes).map(([name, what]) => `${name}: ${what}`).join("; ");
+  return {
+    name: SHOW_SCREEN,
+    description: `Put a scene on the caller's screen, or keep the one there, in the same turn as your words. ${listed}; ${NO_SCENE}: nothing chosen.`,
+    parameters: { type: "object", properties: { scene: { type: "string", enum: [...Object.keys(scenes), NO_SCENE] } }, required: ["scene"] },
+    side_effect: "read",
+    quiet: true,
+  };
+}
+
+/** What the model reads of the screen in this turn; empty for a class with no scenes. */
+export function sceneLine(scenes: Record<string, string>, scene: string | null): string {
+  if (Object.keys(scenes).length === 0) return "";
+  if (scene === null) return `The caller's screen shows no scene. Put one up with ${SHOW_SCREEN} when it helps them.`;
+  return `The caller's screen shows ${scene} (${scenes[scene] ?? scene}). It goes away when you answer about something else; call ${SHOW_SCREEN} to keep it or to show another.`;
 }
