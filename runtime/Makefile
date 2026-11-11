@@ -33,10 +33,22 @@ CHART_VALUES = -f $(TF_VALUES) -f $(VALUES)
 REGION   ?= us-central1
 ZONE     ?= $(REGION)-c
 CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(CLUSTER)
-TF_ROOT   = $(abspath $(INFRA)/terraform/cluster)
-# Each cluster keeps its own data directory: the one root is initialised against two states.
-TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(CLUSTER) terraform -chdir=$(TF_ROOT)
-TF_PLAN   = $(TF_ROOT)/$(CLUSTER).plan
+# Two roots go through the same rails (init, a plan that is saved and refuses to remove, the apply
+# of that plan): a cluster's, and with ROOT=project what every cluster of the project shares. Until
+# 2026-11-12 the project's was planned and applied by a line typed by hand, with no such refusal.
+ROOT     ?= cluster
+ifeq ($(ROOT),project)
+TF_STATE  = project
+TF_VARS   = -var-file=$(OPS)/terraform/project.tfvars
+else
+TF_STATE  = $(CLUSTER)
+TF_VARS   = -var name=$(CLUSTER) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
+	-var-file=$(OPS)/terraform/$(CLUSTER).fence.tfvars.json
+endif
+TF_ROOT   = $(abspath $(INFRA)/terraform/$(ROOT))
+# Each state keeps its own data directory: the cluster's root is initialised against one per cluster.
+TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(TF_STATE) terraform -chdir=$(TF_ROOT)
+TF_PLAN   = $(TF_ROOT)/$(TF_STATE).plan
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
 TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/terraform/cluster
 
@@ -65,8 +77,8 @@ ifneq ($(filter command environment,$(origin ENV)),)
 	$(error make $(MAKECMDGOALS): the cluster is CLUSTER= since 2026-11-12, and ENV= is an org's env, which `make fleet` alone takes)
 endif
 
-tf-init:          ## CLUSTER=staging: the root module's providers and its state in the bucket
-	$(TF_AUTH) $(TF) init -input=false -backend-config=$(OPS)/terraform/$(CLUSTER).backend.hcl
+tf-init:          ## CLUSTER=staging | ROOT=project: the root module's providers and its state in the bucket
+	$(TF_AUTH) $(TF) init -input=false -backend-config=$(OPS)/terraform/$(TF_STATE).backend.hcl
 
 # The networks the gateway approved for SIP, where the plan reads them: a versioned file of the
 # operator's own, so a checkout never lacks it and a change to it is read as a diff before a plan.
@@ -80,14 +92,13 @@ tf-fence:         ## CLUSTER=…: the fence's networks, from the running gateway
 # Saved, so what is applied is exactly what was read. A plan that deletes or replaces anything is
 # not kept unless that was asked for (REMOVES=yes): a plan that removes what nobody asked to remove
 # means an input is missing, and the thing to do is find it, never to apply around it.
-tf-plan:          ## CLUSTER=… [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
-	$(TF_AUTH) $(TF) plan -input=false -var name=$(CLUSTER) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
-	  -var-file=$(OPS)/terraform/$(CLUSTER).fence.tfvars.json -out=$(TF_PLAN)
+tf-plan:          ## CLUSTER=… | ROOT=project [REMOVES=yes]: what an apply would change, saved as its plan; "No changes." is the norm
+	$(TF_AUTH) $(TF) plan -input=false $(TF_VARS) -out=$(TF_PLAN)
 	@$(TF) show -json $(TF_PLAN) | scripts/plan-removals || [ "$(REMOVES)" = yes ] || \
 	  { rm -f $(TF_PLAN); echo "tf-plan: this plan removes the above and was not kept. An input is missing, or the removal is meant: REMOVES=yes" >&2; exit 2; }
 
 # The plan holds the state it was made from, the drawn secrets in clear among it: gone once applied.
-tf-apply:         ## CLUSTER=…: the saved plan applied, after it was read, and then deleted
+tf-apply:         ## CLUSTER=… | ROOT=project: the saved plan applied, after it was read, and then deleted
 	$(TF_AUTH) $(TF) apply -input=false $(TF_PLAN); status=$$?; rm -f $(TF_PLAN); exit $$status
 
 # The cluster's names, addresses, ranges and identities, from Terraform's state into the values the

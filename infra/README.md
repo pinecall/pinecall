@@ -65,7 +65,7 @@ With gcloud signed in on the project, and the zone of the names on Route 53 (`~/
 
 ```console
 $ terraform -chdir=infra/terraform/bootstrap init && terraform -chdir=infra/terraform/bootstrap apply -var-file=$OPS/terraform/bootstrap.tfvars   # once
-$ terraform -chdir=infra/terraform/project init -backend-config=$OPS/terraform/project.backend.hcl && terraform -chdir=infra/terraform/project plan -var-file=$OPS/terraform/project.tfvars -out=plan && terraform -chdir=infra/terraform/project apply plan   # once
+$ make tf-init ROOT=project && make tf-plan ROOT=project && make tf-apply ROOT=project   # once: the registry and the builds' identity, through the same rails as a cluster's
 $ make tf-init CLUSTER=<cluster>
 $ make tf-fence CLUSTER=<cluster>   # the networks the gateway approved for SIP, into the operator's own directory
 $ make tf-plan CLUSTER=<cluster>    # read it; the plan is saved, unless it removes something nobody asked to remove
