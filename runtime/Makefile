@@ -146,19 +146,54 @@ endif
 	kubectl --context $(CONTEXT) wait job/suite --for=condition=complete --timeout=30m; status=$$?; \
 	  kubectl --context $(CONTEXT) logs job/suite | tail -40; exit $$status
 
-# The cluster's front door (charts/edge) and Postgres (charts/postgres), then charts/pinecall at
-# the image of this commit, waiting for every workload; then the live suite against the world's
-# production name.
-DOMAIN    = $(shell awk '/^domain:/{print $$2; exit}' $(VALUES))
-deploy:           ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first)
-	helm upgrade --install pinecall-edge $(INFRA)/charts/edge --kube-context $(CONTEXT) \
-	  -f $(VALUES) --wait --timeout 10m
-	helm upgrade --install pinecall-postgres $(INFRA)/charts/postgres --kube-context $(CONTEXT) \
-	  -f $(VALUES) --wait --timeout 10m
+# Three charts, three releases, three targets. A deploy of the runtime releases charts/pinecall and
+# nothing else: until 2026-11-12 it also released the front door and Postgres from whatever the
+# working tree held, so an edit to charts/postgres restarted the only database on a runtime deploy.
+# `make edge` and `make postgres` are run when those charts or their values change, after `make diff`.
+HELM      = helm --kube-context $(CONTEXT)
+CHARTS    = $(INFRA)/charts
+
+diff:             ## ENV=… TAG=<commit>: what releasing each chart would change, nothing touched (needs the helm-diff plugin)
+	@$(HELM) plugin list | grep -q '^diff' || \
+	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
+	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge -f $(VALUES)
+	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres -f $(VALUES)
+	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG)
+
+edge:             ## ENV=…: charts/edge released: the front door, its routes and certificates
+	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge -f $(VALUES) --rollback-on-failure --timeout 10m
+
+# A change to the instance's spec restarts the only instance: in a window, its diff read first.
+postgres:         ## ENV=…: charts/postgres released, and waited for until the database is ready
+	$(HELM) upgrade --install pinecall-postgres $(CHARTS)/postgres -f $(VALUES) --rollback-on-failure --timeout 10m
 	kubectl --context $(CONTEXT) wait cluster/pinecall-postgres --for=condition=Ready --timeout=600s
-	helm upgrade --install pinecall $(INFRA)/charts/pinecall --kube-context $(CONTEXT) \
-	  -f $(VALUES) --set image.tag=$(TAG) --wait --timeout 20m
-	PINECALL_URL=https://$(DOMAIN) uv run pytest -q tests/live
+
+# What a deploy must find true before it touches the cluster, each refusal saying what to do:
+# the charts are the ones the commit holds (a release is what a commit says, not what a tree has);
+# the image exists (with none the migration's Job sat in ImagePullBackOff for twenty minutes and
+# left the release failed); and no release of the chart is half-way.
+deploy-guards:
+	@[ -z "$$(git status --porcelain -- $(CHARTS))" ] && git diff --quiet '$(TAG)' -- $(CHARTS) || \
+	  { echo "make deploy: infra/charts is not what commit $(TAG) holds; commit it or set it aside" >&2; exit 2; }
+	@gcloud artifacts docker images describe $(REGISTRY)/runtime:$(TAG) --project $(PROJECT) \
+	  --format='value(image_summary.digest)' >/dev/null 2>&1 || \
+	  { echo "make deploy: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
+	@standing=$$($(HELM) status pinecall -o json 2>/dev/null | python3 -c 'import json, sys; print(json.load(sys.stdin)["info"]["status"])' 2>/dev/null); \
+	  case "$$standing" in pending-*) \
+	    echo "make deploy: the release is $$standing, left by a deploy that was cut; make rollback ENV=$(ENV) first" >&2; exit 2;; esac
+
+# Helm goes back to the release that ran, by itself, when the upgrade fails or is cut. The migrations
+# it ran are not undone: a revision is written so the release before it still runs on its schema.
+# The name the live suite knocks at is asked of the cluster, which is where it is served.
+deploy: deploy-guards  ## ENV=staging: charts/pinecall released at TAG=<commit> (make image first), then the live suite
+	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$(TAG) \
+	  --rollback-on-failure --timeout 20m
+	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
+	  uv run pytest -q tests/live
+
+rollback:         ## ENV=… [REV=<n>]: charts/pinecall back to the release before this one, or to revision REV
+	$(HELM) history pinecall --max 5
+	$(HELM) rollback pinecall $(REV) --wait --timeout 20m
 
 # How many scaled workers a world keeps warm (32 seats and an e2-standard-8 each, ~US$195 a month),
 # changed in one line: the values' `workers.scaled.<WORLD>` written, and committed where OPS is a
@@ -171,8 +206,8 @@ fleet:            ## ENV=… WORLD=sandbox|production MIN=<n> [MOST=<n>]: that m
 	  | python3 -c 'import json, sys; print(json.load(sys.stdin)["image"]["tag"])'); \
 	git diff --quiet "$$running" -- $(INFRA)/charts/pinecall || \
 	  { echo "make fleet: charts/pinecall changed since $$running, the image that runs: make image && make deploy ENV=$(ENV)" >&2; exit 2; }; \
-	helm upgrade pinecall $(INFRA)/charts/pinecall --kube-context $(CONTEXT) \
-	  -f $(VALUES) --set image.tag=$$running --wait --timeout 10m
+	$(HELM) upgrade pinecall $(CHARTS)/pinecall -f $(VALUES) --set image.tag=$$running \
+	  --rollback-on-failure --timeout 10m
 
 # The hosting cluster (modules/hosting, when the environment has one): the runners of both worlds,
 # at TAG=<commit>, the same image as the runtime's. Its context is the regional Autopilot cluster's.
@@ -212,4 +247,4 @@ logs:             ## ENV=…: the gateways' and the workers' logs of the last ho
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply image suite deploy fleet restore-from-box logs
+.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs

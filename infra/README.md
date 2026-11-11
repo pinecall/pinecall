@@ -73,8 +73,12 @@ $ gcloud container clusters get-credentials pinecall-<env> --zone <zone>
 $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.yaml \
     --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
     --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0"
+$ make edge ENV=<env>               # the front door: charts/edge, when it or its values change
+$ make postgres ENV=<env>           # Postgres: charts/postgres, when it or its values change (it may restart the instance)
 $ make image                        # the runtime at this commit
-$ make deploy ENV=<env>             # the front door, Postgres, the runtime at that image, the live suite
+$ make diff ENV=<env>               # what releasing each chart would change, nothing touched
+$ make deploy ENV=<env>             # the runtime at that image (charts/pinecall alone), then the live suite
+$ make rollback ENV=<env>           # the runtime back to the release before this one
 $ make fleet ENV=<env> WORLD=sandbox MIN=1   # that world keeps one scaled worker warm (MIN=0 lets it go), no new image
 $ make suite ENV=<env>              # every suite inside the cluster
 ```
@@ -88,8 +92,21 @@ misconfiguration (trivy, HIGH and CRITICAL). What trivy finds and is let stand i
 `infra/trivy-ignore.yaml`, each by its path and with why; the owed ones carry a date, past which
 the check fails again.
 
-`make deploy` runs the migrations before anything new starts (a pre-upgrade hook), mints each
-environment's fleet key once at install, waits for every workload, and knocks at the production name.
+A cluster has three releases and each has its target: `make edge`, `make postgres` and `make deploy`.
+A deploy of the runtime releases charts/pinecall and nothing else, so a change to the front door or to
+Postgres goes out when somebody means it to, after `make diff` showed it. Before it touches the
+cluster `make deploy` checks three things and says what to do when one fails: `infra/charts` is what
+the commit `TAG` holds, the image of `TAG` exists in the registry, and no release of the chart was
+left half-way. It runs the migrations before anything new starts (a pre-upgrade hook), mints each
+environment's fleet key once at install, waits for every workload, and knocks at the production name,
+which it asks of the cluster. When the upgrade fails or is cut, Helm goes back to the release that
+ran, by itself (`--rollback-on-failure`).
+
+**Going back.** `make rollback ENV=<env>` returns charts/pinecall to the release before this one
+(`REV=<n>` names another; the target prints the last five). It brings back the image and the
+chart's objects, never the database: a migration is written so the release before it still runs on
+its schema (a column is added in one release and read in the next, dropped only after no release
+that reads it can come back), which is what makes going back safe.
 The secrets never leave Secret Manager but into the pods' environment, each pod the ones its
 verb reads: the gateway the database, the signal, the vault key, the operator's key, its own
 signing key and the LiveKit pair; a worker and the overflow the LiveKit pair, their fleet key and
@@ -105,7 +122,7 @@ the first time). The owner keeps the migrations, the nightly retention (it makes
 log's days) and the fleets' keys at install. A gateway that reaches the database cannot drop,
 alter or truncate a table. The first release with it needs `make tf-apply` before, for the secret.
 charts/postgres reads Secret Manager through a store of its own (`pinecall-postgres`), so a cluster
-from nothing comes up in the order `make deploy` keeps: the role's secret exists before
+from nothing comes up in the order `make edge`, `make postgres`, `make deploy`: the role's secret exists before
 charts/pinecall's migrations wait for the role, and CloudNativePG watches it (`cnpg.io/reload`),
 so the role is made the moment the secret lands rather than at its next pass.
 
