@@ -1,0 +1,17 @@
+{
+  "today": "2026-11-09",
+  "turns": [
+    {
+      "say": "Do you have anything on Thursday for a cleaning?"
+    }
+  ],
+  "expect": {
+    "tools": [
+      "freeSlots"
+    ],
+    "not_tools": [
+      "book"
+    ],
+    "grounded": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@pinecall/example-brightside-dental",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Brightside Dental: a voice app. One line, a front desk that answers it, a billing agent the call passes to, and the clinic they share",
+  "type": "module",
+  "scripts": {
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pinecall/agents": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  // The compiler's settings come from the preset the package ships; see ../clinica-norte/tsconfig.json.
+  "extends": "@pinecall/agents/tsconfig.tenant.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["app.ts", "agents", "lib", "test"]
+}
