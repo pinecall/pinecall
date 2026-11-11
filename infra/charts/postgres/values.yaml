@@ -24,6 +24,11 @@ postgres:
   image: ""
   instances: 1
   size: 20Gi
+  # What each instance is given: requests equal to limits (`requests: {cpu: "1", memory: 2Gi}` and
+  # the same `limits`), so it is never the pod a full node evicts. Unset, the pod is BestEffort.
+  # Sized from what it uses with room to grow (`kubectl top pod`): on 2026-11-12 production's used
+  # 37m and 484Mi with a 308 MB database. Setting it restarts the instance.
+  resources: {}
   backups:
     # Where the Barman Cloud plugin writes the WAL and the base backups (gs://<bucket>/postgres,
     # s3://<bucket>/postgres, an Azure container), and how it is let in: `credentials` is its

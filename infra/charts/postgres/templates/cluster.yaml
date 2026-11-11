@@ -17,6 +17,13 @@ spec:
   # One instance: a stop waits 15 s for the gateways' pooled sessions, not the default 180, during
   # which no new connection opens (measured on staging, 2026-10-03: three minutes without one).
   smartShutdownTimeout: 15
+  # Requests equal to limits, so the pod is Guaranteed: with none it is BestEffort, the first the
+  # kubelet evicts and the first the kernel kills when its node runs short of memory (2026-11-11).
+  # Setting or changing them restarts the instance: done by the operator, in a window.
+  {{- with .Values.postgres.resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   postgresql:
     shared_preload_libraries:
       - pg_textsearch
