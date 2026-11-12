@@ -1,6 +1,7 @@
 """The providers' rules, one module per noun; what another domain uses is named here, and nothing else."""
 
 from runtime.providers.service.catalog import get_catalog
+from runtime.providers.service.credentials import box_credentials
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
 from runtime.providers.service.pipeline import build_pipeline, stage_on_its_key
 from runtime.providers.service.plugins import (
@@ -23,6 +24,7 @@ __all__ = [
     "Runnable",
     "Telemetry",
     "TimedWord",
+    "box_credentials",
     "build_pipeline",
     "get_catalog",
     "hears_and_speaks",

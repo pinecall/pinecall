@@ -11,6 +11,7 @@ from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 from runtime.providers import endpoints as providers
 from runtime.signin import endpoints as signin
+from runtime.whatsapp import endpoints as whatsapp
 
 
 # A domain's router enters here in the commit that builds the domain. The box's pages go last: their
@@ -25,5 +26,6 @@ def mount(app: FastAPI) -> None:
     app.include_router(compliance.router)
     app.include_router(providers.router)
     app.include_router(agents.router)
+    app.include_router(whatsapp.router)
     app.include_router(fleet.router)
     app.include_router(platform.pages_router)

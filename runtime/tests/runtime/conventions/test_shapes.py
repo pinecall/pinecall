@@ -9,6 +9,7 @@ ALLOWED: dict[str, str] = {
     "kit.schemas": "the bases every body is built on",
     "signin.service.oidc": "the OpenID client parses a provider's discovery, grant and id_token",
     "providers.catalog": "the providers row is a document the box keeps, and this module its one shape",
+    "whatsapp.service": "Meta's client parses Meta's webhook bodies and its Graph answers",
 }
 
 
