@@ -48,7 +48,7 @@ metadata:
 spec:
   secretTargetRef:
     # The world's fleet key, not the operator's: the one number is all KEDA reads.
-    - { parameter: token, name: pinecall-fleet-keys, key: {{ $env }} }
+    - { parameter: token, name: pinecall-fleets, key: {{ $env }} }
 ---
 # The gateway computes how many; KEDA keeps the Deployment at it: up at once, down one at a time,
 # never sooner than ten minutes after the last change, each going only once its calls end; never

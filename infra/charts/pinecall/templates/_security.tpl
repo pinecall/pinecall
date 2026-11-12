@@ -11,8 +11,8 @@ securityContext:
 {{- end -}}
 
 {{/* A pod of a third-party image, as the uid given: the image's own where it names one (Redis's
-     999, kubeip's 1001), the runtime's 10001 where it runs as root by default (LiveKit, SIP,
-     kubectl). Its containers take pinecall.containerSecurity like the runtime's. */}}
+     999, kubeip's 1001), the runtime's 10001 where it runs as root by default (LiveKit,
+     SIP). Its containers take pinecall.containerSecurity like the runtime's. */}}
 {{- define "pinecall.podSecurityAs" -}}
 securityContext:
   runAsNonRoot: true

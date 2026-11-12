@@ -67,7 +67,7 @@ storageClass: ""
 postgres:
   secret: pinecall-postgres-app
   # charts/postgres's role for the gateway: rows, never a table's shape. The migrations grant it
-  # and run as the owner above, with the nightly retention and the fleets' keys at install.
+  # and run as the owner above, with the nightly retention.
   appRole: pinecall_app
   appSecret: pinecall-postgres-runtime
 
@@ -75,7 +75,6 @@ media:
   livekit: docker.io/livekit/livekit-server:v1.13.7@sha256:6fd3b7088874c4d119160dd688798dfec852bc014786d392caad15f6f63912a3
   sip: docker.io/livekit/sip:v1.17.0@sha256:d3c6441eb0918a81ab9e48ba7df6f02c1eebbeace42c963b2c6a6e5418675671
   redis: docker.io/library/redis:8.10.2-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
-  kubectl: registry.k8s.io/kubectl:v1.35.0
   kubeip: docker.io/doitintl/kubeip-agent:2.2.1@sha256:a0e4bc33b2027644bd952042e913453365caf2a69179a06482c1ad2673983749
   rtpPorts: 10000-10199
   # The nodes' subnet (terraform/modules/gke, nodes_range): LiveKit on the node's network sees the

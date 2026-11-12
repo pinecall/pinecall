@@ -14,6 +14,10 @@
   valueFrom: { secretKeyRef: { name: pinecall, key: PINECALL_OPS_KEY } }
 - name: PINECALL_TOKEN_KEY
   valueFrom: { secretKeyRef: { name: pinecall, key: PINECALL_TOKEN_KEY } }
+- name: PINECALL_PRODUCTION_FLEET_KEY
+  valueFrom: { secretKeyRef: { name: pinecall-fleets, key: production } }
+- name: PINECALL_SANDBOX_FLEET_KEY
+  valueFrom: { secretKeyRef: { name: pinecall-fleets, key: sandbox } }
 - name: LIVEKIT_API_KEY
   valueFrom: { secretKeyRef: { name: pinecall, key: LIVEKIT_API_KEY } }
 - name: LIVEKIT_API_SECRET
@@ -54,7 +58,7 @@
 - name: PINECALL_MAX_JOBS
   value: {{ .seats | quote }}
 - name: PINECALL_WORKER_KEY
-  valueFrom: { secretKeyRef: { name: pinecall-fleet-keys, key: {{ .env }} } }
+  valueFrom: { secretKeyRef: { name: pinecall-fleets, key: {{ .env }} } }
 - name: PINECALL_WORKER_HTTP_HOST
   value: 0.0.0.0
 - name: PINECALL_WORKER_HTTP_PORT

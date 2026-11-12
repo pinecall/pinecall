@@ -34,6 +34,14 @@ resource "random_id" "redis" {
   byte_length = 24
 }
 
+# Each env's fleet key (infra-k8s-6): the gateway knows it by its settings, and the env's workers and
+# KEDA knock with it. A cluster whose workers already hold one puts that one instead (`given`): a
+# key drawn anew would be refused to every worker still running on the old one.
+resource "random_id" "fleet" {
+  for_each    = toset(["production", "sandbox"])
+  byte_length = 32
+}
+
 # The password of the gateway's database role (charts/postgres's managed role pinecall_app): it
 # reads and writes rows and changes no table. Letters and digits alone: it rides a URI.
 resource "random_password" "postgres_app" {
@@ -50,6 +58,8 @@ locals {
     "livekit-api-secret"    = random_password.livekit_secret.result
     "redis-password"        = random_id.redis.hex
     "postgres-app-password" = random_password.postgres_app.result
+    "fleet-key-production"  = "pc_fleet_${random_id.fleet["production"].hex}"
+    "fleet-key-sandbox"     = "pc_fleet_${random_id.fleet["sandbox"].hex}"
   }
   values = { for name, value in local.drawn : name => value if !contains(var.given, name) }
   names  = toset(concat(keys(local.values), var.given))

@@ -28,7 +28,7 @@ is built on a laptop.
 | `images/cloudbuild.yaml` | how an image is built: by Cloud Build, as the builds' own identity |
 | `charts/postgres/` | the cluster's Postgres under CloudNativePG: its WAL to a bucket as it is written and a base backup each night (the Barman Cloud plugin), 35 days kept |
 | `manifests/suite.yaml` | the suites' Job, with a Redis made for the run |
-| `charts/pinecall/` | the runtime: two gateways and Redis on the shared core pool; each environment's LiveKit, SIP and a few workers on its media node, and its scaled workers on its own pool (KEDA, on the gateway's own number); the overflow, the migrations, the fleets' keys, the nightly retention |
+| `charts/pinecall/` | the runtime: two gateways and Redis on the shared core pool; each environment's LiveKit, SIP and a few workers on its media node, and its scaled workers on its own pool (KEDA, on the gateway's own number); the overflow, the migrations, the nightly retention |
 | `charts/hosting/` | the hosting cluster's workloads: a runner per environment and the namespace their apps run in, fenced (`make hosting`) |
 | `charts/edge/` | the front endpoint, released apart and first: the Gateway (Google's HTTPS load balancer, the Gateway API) with Certificate Manager's certificate, its routes, the HTTP redirect and the backends' policies; its load balancer takes minutes to make, so a reinstall of the runtime never makes it again |
 | `values/example.yaml` · `hosting-example.yaml` | an operator's values for the charts, every one an example: copied into `OPS` (below) and filled in; CI renders and scans the charts with them |
@@ -104,8 +104,8 @@ A deploy of the runtime releases charts/pinecall and nothing else, so a change t
 Postgres goes out when somebody means it to, after `make diff` showed it. Before it touches the
 cluster `make deploy` checks three things and says what to do when one fails: `infra/charts` is what
 the commit `TAG` holds, the image of `TAG` exists in the registry, and no release of the chart was
-left half-way. It runs the migrations before anything new starts (a pre-upgrade hook), mints each
-environment's fleet key once at install, waits for every workload, and knocks at the production name,
+left half-way. It runs the migrations before anything new starts (a pre-upgrade hook), waits for every
+workload, and knocks at the production name,
 which it asks of the cluster. When the upgrade fails or is cut, Helm goes back to the release that
 ran, by itself (`--rollback-on-failure`).
 
@@ -116,7 +116,8 @@ its schema (a column is added in one release and read in the next, dropped only 
 that reads it can come back), which is what makes going back safe.
 The secrets never leave Secret Manager but into the pods' environment, each pod the ones its
 verb reads: the gateway the database, the signal, the vault key, the operator's key, its own
-signing key and the LiveKit pair; a worker and the overflow the LiveKit pair, their fleet key and
+signing key, the LiveKit pair and both fleets' keys (`pinecall-fleets`, drawn by Terraform); a worker
+and the overflow the LiveKit pair, their fleet's key and
 the recordings store, never the database, the vault, the operator's or the signing key (rule 24 holds the templates to it);
 the retention the database, the vault and the store; the migrations the database. The values
 file holds no secret.
@@ -126,7 +127,7 @@ and changes no table: CloudNativePG makes it from `pinecall-postgres-runtime` (c
 password `postgres-app-password` in Secret Manager), and the migrations, which run as the
 database's owner, grant it each release (`PINECALL_DB_APP_ROLE`, waiting two minutes for the role
 the first time). The owner keeps the migrations, the nightly retention (it makes and drops the
-log's days) and the fleets' keys at install. A gateway that reaches the database cannot drop,
+log's days). A gateway that reaches the database cannot drop,
 alter or truncate a table. The first release with it needs `make tf-apply` before, for the secret.
 charts/postgres reads Secret Manager through a store of its own (`pinecall-postgres`), so a cluster
 from nothing comes up in the order `make edge`, `make postgres`, `make deploy`: the role's secret exists before
@@ -139,11 +140,10 @@ gain, the runtime's syscall filter and a root filesystem it cannot write: what i
 `pinecall.containerSecurity`). The third-party images' pods hold to the same, each as its own
 user (`pinecall.podSecurityAs`): Redis as the image's 999 with its config file on an emptyDir and
 each environment's disk made its own, LiveKit and SIP as 10001 (every port they take is above 1024, so
-no capability), kubeip as its 1001, and the fleets' keys Job as the runtime's user with kubectl's
-home on an emptyDir.
+no capability), and kubeip as its 1001.
 Two NetworkPolicies (`templates/network-policies.yaml`) name who reaches each store: the gateways' Redis
 the gateways alone; Postgres the gateways, the pods labelled `pinecall.io/reaches-postgres` (the
-migrations, the fleets' keys, the retention, a suite's Job), its own instances and CloudNativePG's
+migrations, the retention, a suite's Job), its own instances and CloudNativePG's
 namespace. They are enforced only on a cluster whose dataplane enforces network policies (GKE's
 Dataplane V2), which `modules/gke` does not turn on: on a cluster already made, turning it on makes
 the cluster again.
@@ -271,8 +271,7 @@ left is the one-time migration that moved its database, kept for an operator who
 `make restore-from-box CLUSTER=<cluster> BOX=<ssh alias>` (refused for `CLUSTER=production`) empties the cluster's schema, makes its two
 extensions again, and restores the platform's schema `public` and its rows into it as the database's
 owner, the dump streamed from the platform into the Postgres pod and deleted there. The platform's runtime is
-stopped first, and the runtime's chart is installed after, so its fleets' keys are minted in the
-database it will run on (the install replaces a key secret an earlier install left). Rehearsed on
+stopped first, and the runtime's chart is installed after. Rehearsed on
 staging with a deployment's database of some 43 000 log rows: restored in 43 s, every row and migration
 there, the chart installed on it, the live suite green, the platform's orgs, fleet and carriers served.
 

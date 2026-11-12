@@ -305,14 +305,14 @@ $ pinecall-runtime box test-line set +13617334133
 
 ```
 keys issue [--org <org>] --env production|sandbox [--label "…"] [--scope <scope>]… [--subject <member>] [--name "…"]
-keys list [--org <org>] · keys revoke <fingerprint> · keys fleet production|sandbox
+keys list [--org <org>] · keys revoke <fingerprint>
 keys runner production|sandbox
 ```
 
-`issue` prints the key once; the table keeps the fingerprint. `fleet` mints an environment's fleet key on
-the database and prints it once: in a cluster nobody types it, since the chart's install Job runs
-it for both environments into the secret `pinecall-fleet-keys`, and on a laptop `make local` writes the
-sandbox's into `.local/env`. `runner` mints the key of the environment's runner the same way, put once
+`issue` prints the key once; the table keeps the fingerprint. A fleet's key is no row of the database:
+it is a setting of the gateway (`PINECALL_PRODUCTION_FLEET_KEY`, `PINECALL_SANDBOX_FLEET_KEY`,
+[the-environment.md](the-environment.md)), drawn by Terraform in a cluster and by `setup` on a machine.
+`runner` mints the key of the environment's runner on the database and prints it once, put once
 in Secret Manager for the hosting cluster ([protocol/hosting.md](protocol/hosting.md),
 [../infra/README.md](../../infra/README.md), "Hosting").
 
