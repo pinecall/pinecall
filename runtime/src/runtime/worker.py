@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import signal
 from pathlib import Path
 
 import httpx
@@ -14,6 +13,7 @@ from runtime.fleet import service as fleet
 from runtime.jobs import service as jobs
 from runtime.jobs import tasks as jobs_tasks
 from runtime.kit.loops import Loops
+from runtime.kit.signals import stop_on_a_signal
 from runtime.livekit import key_pair
 from runtime.providers import service as providers
 
@@ -140,7 +140,7 @@ async def run_worker(settings: Settings) -> int:
     beats = jobs.Heartbeats(server, gateway, minute, load, fleet_name=settings.fleet, worker=worker)
     loops = Loops()
     loops.start(jobs_tasks.beat.bind(beats))
-    stopping = _stop_on_a_signal()
+    stopping = stop_on_a_signal()
     running = asyncio.create_task(server.run())
     ready = asyncio.create_task(jobs.announce_ready(beats, settings.notify_socket))
     waits = {running, asyncio.create_task(stopping.wait()), asyncio.create_task(beats.leave.wait())}
@@ -163,7 +163,7 @@ async def run_worker(settings: Settings) -> int:
 async def run_overflow(settings: Settings) -> int:
     """Run the overflow until told to stop: the gateway sends it calls no worker has a place for."""
     server = overflow_server(settings)
-    stopping = _stop_on_a_signal()
+    stopping = stop_on_a_signal()
     running = asyncio.create_task(server.run())
     await asyncio.wait({running, asyncio.create_task(stopping.wait())}, return_when=asyncio.FIRST_COMPLETED)
     await server.aclose()
@@ -192,11 +192,3 @@ def _gateway(settings: Settings) -> jobs.GatewayClient:
 def _get_warmed(proc: JobProcess) -> jobs.Warmed:
     warmed: jobs.Warmed = proc.userdata[WARMED]
     return warmed
-
-
-def _stop_on_a_signal() -> asyncio.Event:
-    stopping = asyncio.Event()
-    loop = asyncio.get_running_loop()
-    for stop in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(stop, stopping.set)
-    return stopping

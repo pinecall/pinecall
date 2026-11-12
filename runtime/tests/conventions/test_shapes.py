@@ -16,6 +16,7 @@ ALLOWED: dict[str, str] = {
     "whatsapp.service": "Meta's client parses Meta's webhook bodies and its Graph answers",
     "knowledge.service.embedder": "the embedder's client parses a vendor's rows and its refusal",
     "telephony.service.twilio": "Twilio's client parses Twilio's answers",
+    "hosts.service.cluster": "the cluster's client parses what Kubernetes lists of a pod",
 }
 
 

@@ -11,9 +11,9 @@ what is now true (`git log --oneline` shows the style).
 ## Where the package stands
 
 The package is being written, bottom up, domain by domain. Built: the foundations, the toolkit, the
-wire, and every domain of the canon's order up to `jobs`: the gateway's side whole, and the worker's
-(`worker.py`). Not built yet: `hosts` (the runner, `runner.py`) and the operator's terminal (`cli/`),
-which is what starts a process. So **nothing runs from this tree yet**: no
+wire, and every domain of the canon's order: the gateway's side, the worker's (`jobs`, `worker.py`)
+and the runner's (`hosts`, `runner.py`). Not built yet: the operator's terminal (`cli/`), which is
+what starts a process. So **nothing runs from this tree yet**: no
 image is built from it, `pinecall-runtime` is no command, and the `local*`, `image` and `deploy`
 targets of the Makefile wait for the processes. The package it replaces, `pinecall_runtime`, left
 the repository on 2026-11-12 (its last commit is `8c76bf0e`); production runs an image built before

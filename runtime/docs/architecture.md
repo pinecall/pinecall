@@ -8,9 +8,10 @@ through them. Every fact of a call is an entry appended to the call's log, and e
 app socket, the console, the fold of its state, the usage feed) reads entries. The media side is
 LiveKit's `AgentSession`, used as is.
 
-The package is being written bottom up. The gateway's domains and the worker's side (`jobs/`,
-`worker.py`) are in the tree; the runner's (`hosts/`, `runner.py`) and the operator's terminal
-(`cli/`) are named here as the canon lays them out and are not in the tree yet.
+The package is being written bottom up. Every domain is in the tree, the worker's side (`jobs/`,
+`worker.py`) and the runner's (`hosts/`, `runner.py`) with the gateway's; the operator's terminal
+(`cli/`), which is what starts a process, is named here as the canon lays it out and is not in the
+tree yet.
 
 ## If you know Rails
 

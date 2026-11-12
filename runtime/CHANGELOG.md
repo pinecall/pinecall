@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A hosted app that keeps exiting is given up on a machine of one's own too.** The runner counts a
+  process's own exits and stops running it again after five in ten minutes; where apps run as this
+  machine's processes (`PINECALL_RUNNER_ENGINE=processes`, what `setup` writes for a laptop) the count was
+  dropped at each start, and a release that exited at once was started again for ever.
+- **A runner that starts after another died stops what it left in one drain.** Each leftover process was
+  waited for in turn, up to 45 seconds apiece; and on Linux a number in a host's `host.pid` is signalled
+  only while it is still that host's process.
 - **A spoken call hears its app again after a deploy.** A worker follows its call's commands on a stream
   the gateway ends when it is told to stop, and it never opened that stream again: from the first deploy
   on, the call was deaf to `state.set`, `prompt.set`, a hang-up, a supervisor and its caller's own hang-up
