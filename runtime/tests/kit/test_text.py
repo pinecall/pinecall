@@ -3,7 +3,7 @@
 import pytest
 
 from runtime.exceptions import ValidationError
-from runtime.kit.text import parse_slug, slug_of
+from runtime.kit.text import estimate_tokens, parse_slug, slug_of
 
 
 @pytest.mark.parametrize(
@@ -32,3 +32,8 @@ def test_a_name_with_no_letters_or_digits_makes_no_slug() -> None:
     """Nothing to call the org by is refused in words, not an empty slug."""
     with pytest.raises(ValidationError, match="letters and digits"):
         slug_of("¡¡¡ ---")
+
+
+def test_a_text_is_estimated_at_its_words_times_one_point_three() -> None:
+    assert estimate_tokens("una dos tres cuatro cinco seis siete ocho nueve diez") == 13
+    assert estimate_tokens("") == 0
