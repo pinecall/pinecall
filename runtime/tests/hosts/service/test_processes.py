@@ -62,6 +62,18 @@ async def _until(found: Callable[[], Awaitable[bool]]) -> None:
     assert await found()
 
 
+def _leads_its_group(pid: int) -> Callable[[], Awaitable[bool]]:
+    """Whether the process leads a group of its own yet, as a host a runner started does."""
+
+    async def leads() -> bool:
+        try:
+            return os.getpgid(pid) == pid
+        except ProcessLookupError:
+            return False
+
+    return leads
+
+
 def _said(hosts: Processes, words: str) -> Callable[[], Awaitable[bool]]:
     """Whether the host's last lines hold the words yet."""
 
@@ -144,6 +156,10 @@ async def test_what_a_runner_that_died_left_is_drained_and_removed_before_anythi
         ["sh", "-c", "setsid sleep 30 >/dev/null 2>&1 & echo $!"], capture_output=True, text=True, check=True
     )
     pid = int(started.stdout)
+    # The shell says the number before `setsid` has run. A host is signalled as its group: swept
+    # before it led one, nothing heard the signal and the sweep waited its whole drain (a loaded
+    # machine, 2026-11-12).
+    await _until(_leads_its_group(pid))
     left = tmp_path / "apps" / HOST
     left.mkdir(parents=True)
     (left / PID).write_text(str(pid))
