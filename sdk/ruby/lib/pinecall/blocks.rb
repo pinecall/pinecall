@@ -74,17 +74,18 @@ module Pinecall
 
     module_function
 
-    def render(agent, resumed: false, remembered: [], line: nil)
+    def render(agent, resumed: false, remembered: [], line: nil, rules: [])
       reading = reading_for(agent, resumed:, remembered:, line:)
       blocks = FRAMEWORK.map do |spec|
-        Block.new(name: spec[:name], region: spec[:region], text: text_of(agent, spec[:name], reading))
+        Block.new(name: spec[:name], region: spec[:region], text: text_of(agent, spec[:name], reading, rules))
       end
       Blocks.new(blocks:, history: history(agent))
     end
 
-    # The class docstring, the framework's rules and protocols, and the channel's. Reads no state.
-    def identity(agent)
-      [agent.doc, tagged("rules", Rules::RULES), tagged("protocols", Rules::PROTOCOLS), channel(agent)]
+    # The class docstring, the framework's and the app's rules, the protocols, the channel's. Reads no state.
+    def identity(agent, rules = [])
+      app_rules = rules.map { |rule| "- #{rule}" }.join("\n")
+      [agent.doc, tagged("rules", Rules::RULES), tagged("app_rules", app_rules), tagged("protocols", Rules::PROTOCOLS), channel(agent)]
         .compact.reject { |part| part.strip.empty? }.join("\n\n")
     end
 
@@ -113,9 +114,12 @@ module Pinecall
     # Marker for a collapsed stretch of the call.
     def collapsed(seq) = "<!-- collapsed: #{JSON.generate({ seq: })} -->"
 
+    # The view, and what the model reads of its caller's screen.
     def view(agent, reading)
       view = agent.class.view
-      view.nil? ? "" : view.render(reading)
+      shown = view.nil? ? "" : view.render(reading)
+      scene = agent.call? ? agent.call.scene : nil
+      [shown, tagged("screen", Screen.scene_line(agent.class.declared_scenes, scene))].reject(&:empty?).join("\n\n")
     end
 
     # The view's scope: state, call context, and remembered facts (queryable, never printed).
@@ -135,9 +139,9 @@ module Pinecall
       sections.map { |header, text| "#{header}\n#{text}".rstrip }.join("\n\n")
     end
 
-    def text_of(agent, called, reading)
+    def text_of(agent, called, reading, rules = [])
       case called
-      when "identity" then identity(agent)
+      when "identity" then identity(agent, rules)
       # Filled by the gateway from the agent's settings (`pinecall agent knowledge edit`).
       when "knowledge" then ""
       when "tools" then tools(agent)

@@ -38,10 +38,59 @@ module Pinecall
       @turns = []
       @waiting = Waiting.new
       @cause = nil
+      @scene = nil
+      @shown = nil
+      @handed = nil
+      @shared = {}
+      @asking = nil
+      @asked = -> {}
+      @showing = -> {}
+      @passing = nil
     end
 
     # The external event being handled, if any (`name` and the entry's `seq`); the cause of the writes it makes.
     attr_accessor :cause
+    # The scene of the caller's screen now (`scenes`), or nil; what the teammate that passed this call handed it.
+    attr_accessor :scene, :handed
+    # What `show` put over the screen; what the agents of one call share, the first one's writes the next one's reads.
+    attr_reader :shown, :shared
+
+    # ── the voice app's verbs ──
+
+    # Pass the call to another agent of its team: `call.handoff(Billing, invoice:)`. Answers what the model is told.
+    def handoff(to, data = {})
+      raise Error, "this call has no team: #{to} cannot take it" if @passing.nil?
+
+      @passing.call(to, data)
+    end
+
+    # Ask the caller for a task from inside a tool; blocks the tool until it is given.
+    def ask(task)
+      raise Error, "#{task.name} is asked for inside a tool of a served call" if @asking.nil?
+
+      @asking.call(task)
+    end
+
+    # What a tool of this call stopped to ask the caller for, or nil.
+    def asking = @asked.call
+
+    # Put a part on the caller's page over the screen: `call.show(Map.(at:))`; nil takes it away.
+    def show(shown)
+      @shown = shown
+      @showing.call
+    end
+
+    # The bridge's: how this call asks, and what it is asking for now.
+    def asked_by(asking, asked)
+      @asking = asking
+      @asked = asked
+    end
+
+    # The bridge's: what draws the page again when something is shown.
+    def shown_by(&showing) = @showing = showing
+
+    # The bridge's: what passes the call to a teammate.
+    def passed_by(&passing) = @passing = passing
 
     # ── commands ─────────────────────────────────────────────────────────────
 

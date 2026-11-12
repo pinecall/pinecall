@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "bridge/screened"
+require_relative "bridge/passing"
+
 module Pinecall
   # Mounts an agent class on a client, with one instance per call. The only module that knows
   # both the agent and the socket.
@@ -19,16 +22,25 @@ module Pinecall
       def serving(call_id) = @live[call_id]&.agent
     end
 
-    # One served call: its instance, what was last sent, and a thread running its jobs in order.
+    # One served call: its instance and class, what was last sent, and a thread running its jobs in order.
     class Live
-      attr_reader :agent, :world, :sent, :stops
+      attr_reader :world, :sent, :stops, :asking, :team, :rules, :last, :screened
       # What memory recalled about this caller in this call: what `remembers?` answers from; and whether
       # the call was handed over mid-conversation, the view's `resumed`.
-      attr_accessor :tools_shown, :remembered, :resumed
+      attr_accessor :agent, :klass, :tools_shown, :remembered, :resumed, :transfers, :passes, :draws
 
-      def initialize(agent, world)
+      def initialize(agent, world, klass: agent.class, asking: Asking.new([]), team: nil, rules: [], last: nil, draws: false)
         @agent = agent
+        @klass = klass
         @world = world
+        @asking = asking
+        @team = team
+        @rules = rules
+        @last = last
+        @draws = draws
+        @transfers = []
+        @passes = 0
+        @screened = Screened::Kept.new
         @sent = {}
         @tools_shown = nil
         @remembered = []
@@ -67,47 +79,71 @@ module Pinecall
     #
     # @param last [Proc] source for `last(contact)`
     # @param takes_unclaimed [Boolean] false for a console, which serves only calls it opens
-    def mount(klass, client:, slug: nil, last: nil, takes_unclaimed: true)
+    # @param declares [Hash] what its voice app adds to its declaration: its line's greeting, a silence
+    # @param team [Hash{Class=>String}] the agents a call of this one may pass between, itself among them
+    # @param rules [Array<String>] the rules its voice app gives every agent of it
+    # @param answers [Proc] its line's lambda that picks who of the team serves each call
+    def mount(klass, client:, slug: nil, last: nil, takes_unclaimed: true, declares: {}, team: nil, rules: [], answers: nil)
       name = slug || klass.slug
       live = {}
-      # Throwaway instance used only to read the class's declarations.
-      probe = klass.new
-      options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:, says_done: true)
+      classes = team.nil? ? [klass] : team.keys
+      own = team.nil? ? klass.declared_tools.values.map(&:spec) : Handoff.team_tools(team)
+      taken = own.map { |spec| spec[:name] }
+      tasks = Asking.tasks_on(klass, team)
+      specs = own + Asking.giving_tools(tasks, taken) + Screened.scene_tools(classes, taken)
+      draws = Screened.screens?(classes)
+      declared = klass.wire_config(tools: tools_for(specs, live))
+      declared = Screened.declared(declared, tasks: tasks.any?) if draws
+      options = declared.merge(declares).merge(takes_unclaimed:, says_done: true)
       agent = client.agent(name, **options)
-      agent.on("call.started") { |started, call| start(klass, live, call, client, last, started[:state]) }
-      agent.on("call.attached") { |_data, call| attached(klass, live, call, client, last) }
+      serve = { client:, last:, tasks:, team:, rules:, draws: }
+      agent.on("call.started") { |started, call| start(klass, live, call, serve, started[:state], answers) }
+      agent.on("call.attached") { |_data, call| attached(klass, live, call, serve) }
       agent.on("call.ended") { |_data, call| finish(live, call) }
       Mounted.new(slug: name, agent:, options:, live:)
     end
 
-    # Tool specs with a `run` routed to the instance serving the calling call.
-    def tools_for(probe, live)
-      probe.tools.map do |spec|
+    # Tool specs with a `run` routed to whatever serves the calling call now.
+    def tools_for(specs, live)
+      specs.map do |spec|
         spec.merge(run: lambda do |arguments, call, call_id|
           serving = live[call.id]
           raise ToolFailed, "#{spec[:name]}: this call is no longer being served" if serving.nil?
 
-          serving.agent.run_tool(spec[:name], arguments, call_id)
+          begin
+            dispatched(serving, spec[:name], arguments, call_id)
+          ensure
+            sync(serving, call) if live[call.id].equal?(serving)
+          end
         end)
       end
+    end
+
+    # A served call of `klass`, its asking and its team wired to its world.
+    def served(klass, live, call, serve)
+      world = world_for(call, serve[:client])
+      asking = Asking.new(serve[:tasks])
+      instance = klass.new.seal
+      serving = Live.new(instance, world, klass:, asking:, team: serve[:team], rules: serve[:rules], last: serve[:last],
+                                          draws: serve[:draws])
+      become(serving, klass, call, instance)
+      world.asked_by(->(task) { asking.ask(task) }, -> { asking.asking })
+      world.shown_by { sync(serving, call) if live[call.id].equal?(serving) }
+      world.passed_by { |to, data| passed(serving, call, to, data) } unless serve[:team].nil?
+      live[call.id] = serving
     end
 
     # A call handed to this process mid-conversation: no `on_call`, the state the gateway kept
     # instead. One served here already (the gateway restarted) keeps its instance, and its whole
     # prompt is sent again, which the gateway may have lost.
-    def attached(klass, live, call, client, last)
+    def attached(klass, live, call, serve)
       held = live[call.id]
       return held.later { resend(held, call) } unless held.nil?
 
-      instance = klass.new.seal
-      instance.reads_last_from(last) unless last.nil?
-      serving = Live.new(instance, world_for(call, client))
+      serving = served(klass, live, call, serve)
       serving.resumed = true
-      instance.serving(serving.world)
-      live[call.id] = serving
       serving.later do
-        forward_log(serving, call)
-        instance.restore(call.state)
+        serving.agent.restore(Screened.unscreened(call.state))
         sync(serving, call)
         listen(serving, call)
       end
@@ -132,18 +168,14 @@ module Pinecall
     # rather than once per field. The state the opener asked for (`call.started.state`) is applied
     # after the hook, which would overwrite it, and before the first render. The log is open from the
     # hook on: a line `on_call` writes is the call's.
-    def start(klass, live, call, client, last, opened_in)
-      instance = klass.new.seal
-      instance.reads_last_from(last) unless last.nil?
-      world = world_for(call, client)
-      instance.serving(world)
-      serving = Live.new(instance, world)
-      live[call.id] = serving
+    def start(klass, live, call, serve, opened_in, answers)
+      serving = served(klass, live, call, serve)
       serving.later do
-        forward_log(serving, call)
-        hooked(serving, call, :on_call, world)
+        routed(serving, call, answers) unless answers.nil? || serving.team.nil?
+        instance = serving.agent
+        hooked(serving, call, :on_call, serving.world)
         instance.start_in(opened_in) unless opened_in.nil?
-        call.set_state(instance.snapshot, *opening(instance))
+        call.set_state(state_of(serving), *opening(instance))
         sync(serving, call)
         listen(serving, call)
       end
@@ -161,12 +193,13 @@ module Pinecall
     def listen(serving, call)
       instance = serving.agent
       serving.stops[:state] = instance.on_change do |change|
-        call.set_state(instance.snapshot, [change.field], cause_of(change, serving))
+        call.set_state(state_of(serving), [change.field], cause_of(change, serving))
         sync(serving, call)
       end
       serving.stops[:entries] = call.on_any do |event|
         serving.world.take(event.type, event.data, Time.now.to_f)
         received(serving, call, event) if event.type == "event.received"
+        sync(serving, call) if Screened.turned(event.type, serving.world, serving.screened)
         rerendered(serving, call, event)
       end
     end
@@ -215,7 +248,9 @@ module Pinecall
     def received(serving, call, event)
       fact = event.data
       name = fact[:name].to_s
-      allowed = agent_class(serving).declared_events[name]
+      return serving.later { given_by_page(serving, call, fact[:data] || {}) } if name == Screen::TASK_GIVE && fact[:source].to_s == "participant"
+
+      allowed = serving.klass.declared_events[name]
       unless allowed&.include?(fact[:source].to_s)
         return warn("pinecall: #{name} from #{fact[:source]} is not declared by this agent")
       end
@@ -237,6 +272,7 @@ module Pinecall
       serving = live.delete(call.id)
       return if serving.nil?
 
+      serving.asking.abandon
       serving.stops.values_at(:state, :entries).compact.each(&:call)
       serving.later do
         hooked(serving, call, :on_end, serving.world)
@@ -253,11 +289,13 @@ module Pinecall
     def sync(serving, call)
       line = { channel: call.channel || "web", from: call.from, claimed: serving.world.claimed }
       begin
-        rendered = Prompt.render(serving.agent, resumed: serving.resumed, remembered: serving.remembered, line:)
-        visible = serving.agent.visible_tools
+        rendered = Prompt.render(serving.agent, resumed: serving.resumed, remembered: serving.remembered, line:, rules: serving.rules)
+        visible = visible_tools(serving)
+        redrawn = serving.draws && Screened.redrawn(serving.agent.screen, serving.world.shown, serving.screened)
       rescue StandardError => e
         return failed_to_render(call, e)
       end
+      call.set_state(state_of(serving), [Screen::SCREEN]) if redrawn
       rendered.blocks.each do |block|
         next if block.text == serving.sent.fetch(block.name, "")
 
@@ -268,6 +306,14 @@ module Pinecall
 
       serving.tools_shown = visible
       call.set_tools(visible)
+    end
+
+    # While a tool waits for an answer only the tool that gives it; else every tool shown now.
+    def visible_tools(serving)
+      asked = serving.asking.open
+      return [asked] unless asked.nil?
+
+      serving.agent.visible_tools + serving.transfers + Screened.scene_tool_of(serving.klass)
     end
 
     # A view that fails fails its call, never the process: the model keeps the view it had, and the log says why.
@@ -303,8 +349,6 @@ module Pinecall
       warn("pinecall: #{call.id} #{hook} raised and the call goes on without it: #{e.message}")
       nil
     end
-
-    def agent_class(serving) = serving.agent.class
 
     # `call.log` data must be an object: a `Data` or a `Struct` is its fields, other values go under `value`.
     def as_object(data)

@@ -11,7 +11,7 @@ module Pinecall
     Served = Data.define(:file, :slug)
 
     # The flags of one verb, as the CLI passes them.
-    Flags = Data.define(:served, :console, :events, :prod, :state, :channel, :medium, :show_machine)
+    Flags = Data.define(:served, :console, :events, :prod, :state, :channel, :medium, :show_machine, :app)
 
     module Loading
       module_function
@@ -19,7 +19,7 @@ module Pinecall
       # `--file` and `--slug` paired by place; the rest by name. A flag nobody declared is refused.
       def parse(argv)
         found = { files: [], slugs: [], console: false, events: false, prod: false, state: {}, channel: "phone", medium: nil,
-                  show_machine: false }
+                  show_machine: false, app: nil }
         words = argv.dup
         until words.empty?
           word = words.shift
@@ -31,6 +31,7 @@ module Pinecall
           when "--console", "--events", "--prod" then found[word.delete_prefix("--").to_sym] = true
           when "--show-machine" then found[:show_machine] = true
           when "--medium" then found[:medium] = value_of(word, words)
+          when "--app" then found[:app] = value_of(word, words)
           else raise CannotServe, "serve has no flag #{word}"
           end
         end
@@ -95,7 +96,7 @@ module Pinecall
 
         Flags.new(served: files.zip(slugs).map { |file, slug| Served.new(file:, slug:) },
                   console: found[:console], events: found[:events], prod: found[:prod], state: found[:state],
-                  channel: found[:channel], medium: found[:medium], show_machine: found[:show_machine])
+                  channel: found[:channel], medium: found[:medium], show_machine: found[:show_machine], app: found[:app])
       end
     end
   end

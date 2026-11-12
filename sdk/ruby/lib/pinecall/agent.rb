@@ -79,6 +79,12 @@ module Pinecall
     # Make the model speak now, guided by instructions the caller does not hear.
     def reply(instructions, **options) = call.reply(instructions, **options)
 
+    # Ask the caller for one of the class's `tasks` from inside a tool; blocks the tool until given.
+    def ask(task) = call.ask(task)
+
+    # What the caller's page shows now: parts (`Agenda.(slots:)`), words, an array of them.
+    def screen = nil
+
     # Append a named entry to the call's log.
     def log(name, data = nil)
       entry = LogEntry.new(seq: next_seq, name: name.to_s, data:, at: Time.now.to_f)

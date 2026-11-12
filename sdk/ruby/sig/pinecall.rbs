@@ -90,6 +90,13 @@ module Pinecall
     def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?, ?end_of_turn: (String | Symbol)?) -> untyped
     def self.judge: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
     def self.language: (?String) -> untyped
+    def self.timezone: (?String) -> untyped
+    def self.takes: (?String) -> String?
+    def self.declared_takes: () -> String?
+    def self.tasks: (*Task) -> Array[Task]
+    def self.declared_tasks: () -> Array[Task]
+    def self.scenes: (**String) -> Hash[String, String]
+    def self.declared_scenes: () -> Hash[String, String]
     def self.says: (?Array[Hash[Symbol, String]]) -> untyped
     def self.record: (?bool) -> untyped
     def self.max_duration: (?(Integer | Symbol)) -> untyped
@@ -129,6 +136,8 @@ module Pinecall
     def self.source_file: () -> String?
 
     def doc: () -> String?
+    def ask: (Task) -> untyped
+    def screen: () -> untyped
     def tools: () -> Array[spec]
     def visible_tools: () -> Array[spec]
     def run_tool: (String | Symbol, ?Hash[Symbol, untyped], ?String?) -> untyped
@@ -191,6 +200,14 @@ module Pinecall
   end
 
   class CallWorld
+    attr_accessor scene: String?
+    attr_accessor handed: Hash[Symbol, untyped]?
+    attr_reader shown: untyped
+    attr_reader shared: Hash[untyped, untyped]
+    def handoff: (Class, ?Hash[Symbol, untyped]) -> String
+    def ask: (Task) -> untyped
+    def asking: () -> Asking::Asked?
+    def show: (untyped) -> untyped
     LANDS_WITHIN_S: Integer
     TRANSFER_WITHIN_S: Integer
     A_MOMENT_S: Integer
@@ -374,8 +391,8 @@ module Pinecall
 
   module Prompt
     FRAMEWORK: Array[block_spec]
-    def self?.render: (Agent, ?resumed: bool, ?remembered: Array[String], ?line: line?) -> Blocks
-    def self?.identity: (Agent) -> String
+    def self?.render: (Agent, ?resumed: bool, ?remembered: Array[String], ?line: line?, ?rules: Array[String]) -> Blocks
+    def self?.identity: (Agent, ?Array[String]) -> String
     def self?.tools: (Agent) -> String
     def self?.history: (Agent) -> String
     def self?.collapsed: (Integer) -> String
@@ -425,7 +442,7 @@ module Pinecall
   end
 
   module Bridge
-    def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?takes_unclaimed: bool) -> Mounted
+    def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?takes_unclaimed: bool, ?declares: Hash[Symbol, untyped], ?team: Hash[Class, String]?, ?rules: Array[String], ?answers: untyped) -> Mounted
 
     class Mounted
       attr_reader slug: String
@@ -476,6 +493,76 @@ module Pinecall
     def self?.channel_rules_for: (String | Symbol, String | Symbol) -> String
   end
 
+  class Task
+    attr_reader name: String
+    attr_reader asks: String
+    attr_reader fields: Hash[String, String]
+    attr_reader check: Proc
+    attr_reader how: String?
+  end
+
+  GetEmail: Task
+  GetPhone: Task
+  GetName: Task
+
+  class Asking
+    class Asked
+      attr_reader task: String
+      attr_reader asks: String
+      attr_reader fields: Hash[String, String]
+      attr_reader refused: String?
+    end
+  end
+
+  module Screen
+    class Shown
+      attr_reader part: String
+      attr_reader props: Hash[Symbol, untyped]
+      attr_reader children: Array[untyped]
+    end
+
+    class Part
+      attr_reader name: String
+      def call: (*untyped, **untyped) -> Shown
+    end
+  end
+
+  class VoiceApp
+    attr_reader name: String
+    attr_reader timezone: String?
+    def line: (String, untyped, ?greeting: String?, ?team: Array[Class], ?fallback: Class?) -> VoiceApp
+    def rule: (String) -> VoiceApp
+    def on: (String | Symbol, ?Flow?) ?{ (untyped, Hash[Symbol, untyped]) -> void } -> VoiceApp
+    def page: (String, ?answers: Class?) -> VoiceApp
+    def silence: (after: (Numeric | String), say: String, ?times: Integer?) -> VoiceApp
+  end
+
+  class Flow
+    attr_reader name: String
+    def cancel_on: (String | Symbol) { (Hash[Symbol, untyped], Hash[Symbol, untyped]) -> bool } -> Flow
+
+    class Called
+      attr_reader answered: bool
+      attr_reader reason: String?
+      attr_reader call: String?
+      attr_reader refused: String?
+      attr_reader message: String?
+    end
+
+    class Step
+      def sleep: (String) -> nil
+      def sleep_until: (Time | String, ?before: String?) -> nil
+      def call: (String, Class, ?state: Hash[Symbol, untyped]?, ?metadata: Hash[Symbol, untyped]?, ?greeting: String?, ?instruction: String?, ?from: String?) -> Called
+      def wait_for: (String, ?match: Hash[Symbol, untyped]?, ?within: String?) -> Hash[Symbol, untyped]?
+      def run: [T] () { () -> T } -> T
+      def emit: (String, ?Hash[Symbol, untyped]) -> nil
+    end
+  end
+
+  def self.voice_app: (String, ?timezone: String?) -> VoiceApp
+  def self.flow: (String) { (Hash[Symbol, untyped], Flow::Step) -> untyped } -> Flow
+  def self.part: (String | Symbol) -> Screen::Part
+  def self.task: (String, asks: String, fields: Hash[Symbol | String, String], ?how: String?) { (Hash[String, String]) -> untyped } -> Task
   def self.own_judge: (**untyped) -> Hash[Symbol, untyped]
   def self.own_persona: (**untyped) -> Hash[Symbol, untyped]
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted

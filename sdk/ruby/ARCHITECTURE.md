@@ -57,6 +57,15 @@ lib/pinecall/
   call_world/room.rb         who is in the room, a seat's two verbs, the turns
   call_world/answers.rb      what a verb waits for and what it gets: a transfer, a supervisor, a search
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
+  bridge/screened.rb         a call's screen as the bridge keeps it: drawn, public, moved by the turns
+  bridge/passing.rb          what a tool call does: a task given, the screen moved, the call passed or routed
+  tasks.rb                   `Pinecall::Task`, `Pinecall.task`, `GetEmail` · `GetPhone` · `GetName`
+  asking.rb                  a tool that stops to ask, on its own thread, and the answer that lets it go on
+  screen.rb                  `Pinecall.part`, the screen a class draws, its scenes and `show_screen`
+  handoff.rb                 a team: `takes`, the transfer tools, who answers a line that chooses
+  voice_app.rb               `Pinecall.voice_app`: lines, rules, silence, `on`, the page, what it adds to each agent
+  flows.rb                   `Pinecall.flow`: a block that outlives a call, its steps against the run's journal
+  flow_loop.rb               the loop an app keeps: events to their handlers and flows, runs a stretch further
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
   serve/loading.rb           its flags, the class in a file, a state field by field
   serve/declared_docs.rb     the `docs/` folder beside a class that declares its base, pushed once the agent registers
@@ -64,6 +73,8 @@ lib/pinecall/
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
   serve/masking.rb           what `--events` prints of an agent's entries: the values it declared `pii`, masked
   serve/viewing.rb           `view.render`, the one console verb an agent's own process answers
+  serve/app.rb               the project's `app.rb`: loaded after its agents, `serve app`, each agent held with it
+  serve/paged.rb             the app's page on this machine: its folder, its config, the visitor's ticket passed on
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
   client/connection.rb       the WS: the key at the door, backoff on the way back, a ping
   client/agent.rb            one agent from the app's side: registration, tool calls, listeners
@@ -71,6 +82,7 @@ lib/pinecall/
   client/listeners.rb        who is listening for what
   client/observe.rb          reading a log: one page, and the stream after it
   client/rest.rb             one JSON request at a REST door, and the refusal as the gateway wrote it
+  client/app_work.rb         the app's doors at the gateway: what it is owed, its runs and steps, a call's stages
   client/endpoints.rb        one base URL, its four doors: the apps' socket, two logs, a call's lookup
   testing.rb                 a gateway that is not there — what ring 0 mounts against
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
@@ -109,6 +121,10 @@ gives that TypeScript does not, or what it takes away.
 | `new Pinecall({ url, apiKey })` reads nothing | `Client.new(url:, api_key:, env:)` reads nothing | The environment is the entry's to read, once; a library that reads it picks the wrong key in a process that runs two. |
 | `pc.drain()`, `pc.onEntries`, `pc.onStopped` | `client.drain`, `client.on_entries`, `client.on_stopped` | The serve contract is the same in both: the wire entry on stdout, a drained leave, a stop said once. |
 | `pc.onConnected`, `agent.onDev` | `client.on_connected`, `agent.on_dev` | The same: after every agent on the socket registered, each time it comes up; a console's ask answered by a block that returns the answer or raises `DevRefused` |
+| `app.ts` default-exports `voiceApp(…)`, importing classes by path | `app.rb` makes `Pinecall.voice_app(…)`, naming the classes the serve entry loaded before it | Ruby's classes are constants the moment their file is loaded: the app needs no import, and the entry takes the one app its loading made. |
+| `flow(name, async (input, step) => …)` and `await step.sleep(…)` | `Pinecall.flow(name) { \|input, step\| … }`, each step a blocking call | A block is Ruby's function, and the flow runs on the loop's own thread, so a step blocks as an HTTP request does. |
+| `await this.ask(GetEmail)` | `ask(Pinecall::GetEmail)`, blocking the tool's thread | The tool runs on its own thread; the question answers its call and the thread waits on a queue for the caller. |
+| `screen()` returns JSX of `part`s | `screen` returns `Part.(…)` calls, words and arrays | No JSX: a part is a callable value, nested by its positional arguments. |
 | `@view(CustomerCard)`, the `@pinecall/agents/panels` tags, JSX rendered to nodes | `panel "Cliente" do \|who\| … end`, the block drawing on a `Panel::Drawing` | Ruby has no JSX: the block calls the catalogue's seven methods (`panel`, `rows`, `row`, `stat`, `table`, `badge`, `text`). The nodes are the same JSON, so the console draws them with the same parts; serve's `start` answers `view.render` with them |
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |

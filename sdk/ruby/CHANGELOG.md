@@ -6,6 +6,14 @@ maintainer's call.
 
 ## [Unreleased]
 
+- **A voice app, as in TypeScript and Python:** `app.rb` makes `Pinecall.voice_app(…)`: lines with a
+  greeting, a team (`takes`) the call passes between, a line that chooses who answers, rules, `silence`,
+  `on` for what the app hears, and a page of its own.
+- **Flows:** `Pinecall.flow("…") { |input, step| … }`, its runs kept by the gateway.
+- **Tasks:** a tool asks the caller with `ask(Pinecall::GetEmail)`; `Pinecall.task(…)` makes one.
+- **The caller's screen:** `screen`, `Pinecall.part`, `scenes`, `tool shows:`, `call.show`.
+- **A class declares its `timezone`.**
+
 - **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a
   live call. The model and the voice run from its next turn; the ears wait for the next call (`applied` false).
 

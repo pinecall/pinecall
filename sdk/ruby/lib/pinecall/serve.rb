@@ -6,6 +6,8 @@ require_relative "serve/declared_hold"
 require_relative "serve/held"
 require_relative "serve/masking"
 require_relative "serve/viewing"
+require_relative "serve/paged"
+require_relative "serve/app"
 
 module Pinecall
   # The entry the one `pinecall` CLI starts a Ruby agent with: `start` holds the agents and serves
@@ -16,8 +18,9 @@ module Pinecall
   # SIGINT, SIGTERM or the end of its stdin, draining first; a second signal leaves now.
   module Serve
     USAGE = <<~USAGE
-      usage: serve start --file <agent.rb> --slug <slug> [--file … --slug …] [--console] [--events] [--prod]
+      usage: serve start --file <agent.rb> --slug <slug> [--file … --slug …] [--app <app.rb>] [--console] [--events] [--prod]
              serve prompt --file <agent.rb> --slug <slug> [--state field=json]… [--channel name] [--show-machine]
+             serve app --app <app.rb> --file <agent.rb> --slug <slug> [--file … --slug …]
     USAGE
 
     NO_DOOR = "serve start reads PINECALL_URL and PINECALL_KEY from its environment, and one was not set"
@@ -32,6 +35,7 @@ module Pinecall
       case verb
       when "start" then start(Loading.parse(rest), out:, err:, env:, input:, signals:)
       when "prompt" then prompt(Loading.parse(rest), out:)
+      when "app" then App.described(Loading.parse(rest), out)
       else err.puts(USAGE) || 2
       end
     # A class refused as it loads is one sentence too, never a backtrace (R F19).
@@ -43,12 +47,16 @@ module Pinecall
     # Hold every agent named until asked to leave; 0 once they drained.
     def start(flags, out:, err:, env:, input:, signals:)
       client = client_from(env, prod: flags.prod)
-      classes = flags.served.map { |served| [served, Loading.load_served(served)] }
+      classes, app = App.loaded(flags)
+      slugs = classes.to_h { |served, klass| [klass, served.slug] }
       mounted = classes.map do |served, klass|
-        held = Pinecall.mount(klass, client:, slug: served.slug, takes_unclaimed: !flags.console)
+        held = App.held(client, klass, served.slug, app, slugs, console: flags.console, err:)
         held.agent.on_dev { |verb, data| Viewing.answer(klass, served.slug, verb, data) }
         held
       end
+      working = app && FlowLoop.new(app, Client::AppWork::Door.new(url: client.url, api_key: client.api_key, env: client.env, app: app.name),
+                                    slug_of: ->(klass) { slugs[klass] }, report: ->(line) { err.puts("#{app.name}  #{line}") })
+      heard(client, working) unless working.nil?
       said(client, out:, err:, events: flags.events, maskings: mounted.to_h { |one| [one.slug, Masking.new(one.options)] })
       held = Held.new(client, mounted, err:)
       asked = signals || trapped
@@ -59,8 +67,26 @@ module Pinecall
         DeclaredDocs.push(client, klass, served.file, err:)
         DeclaredHold.upload(client, klass, served.file, err:)
       end
+      page = app && App.page_of(app, flags.app, client, slugs, env, err)
+      # The gateway is asked for work only by an app that has flows: the rest keep the socket alone.
+      working&.start if app&.flows&.any?
       Thread.new { ended(input, asked) }
       leave(held, asked)
+    ensure
+      working&.stop
+      page&.stop
+    end
+
+    # What an app's agents log and what happens to their calls reaches its handlers and its flows.
+    def heard(client, working)
+      app = working.app
+      client.on_entries do |entry|
+        Thread.new do
+          app.heard(entry.type, entry.call, entry.agent, entry.data, ->(name, error) { warn("#{app.name}  the handler of #{name} raised: #{error.message}") })
+          working.entry_heard(entry)
+          working.pass_heard(entry)
+        end
+      end
     end
 
     # Load the class, open it in the state the pairs name, and print its prompt. No gateway, no key.

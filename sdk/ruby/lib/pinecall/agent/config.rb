@@ -13,7 +13,7 @@ module Pinecall
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
-      ENVIRONMENT = %i[language voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
+      ENVIRONMENT = %i[language timezone voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
                        personas widget idle voicemail stt_fallbacks tts_fallbacks bases monitors].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
@@ -143,7 +143,7 @@ module Pinecall
         end
 
         # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`, `bases [{ base: "faq" }, { base: "prices" }]`.
-        %i[language says record bases monitors].each do |field|
+        %i[language timezone says record bases monitors].each do |field|
           define_method(field) do |value = NOTHING|
             return environment[field] if value.equal?(NOTHING)
 
@@ -216,6 +216,36 @@ module Pinecall
             environment[field] = given
           end
         end
+
+        # What a teammate passes it, as a model reads it: `takes "a question about a bill"`.
+        def takes(what = NOTHING)
+          return declared_takes if what.equal?(NOTHING)
+
+          @takes = what.to_s.strip.empty? ? nil : what.to_s.strip
+        end
+
+        def declared_takes = @takes || (superclass.respond_to?(:declared_takes) ? superclass.declared_takes : nil)
+
+        # The tasks its tools may ask the caller for: `tasks Pinecall::GetEmail, Pinecall::GetPhone`.
+        def tasks(*asked)
+          return declared_tasks if asked.empty?
+
+          wrong = asked.flatten.reject { |one| one.is_a?(Task) }
+          raise DeclarationRefused, "#{self}: tasks is a list of tasks, like tasks Pinecall::GetEmail, Pinecall::GetPhone" unless wrong.empty?
+
+          @tasks = asked.flatten
+        end
+
+        def declared_tasks = @tasks || (superclass.respond_to?(:declared_tasks) ? superclass.declared_tasks : [])
+
+        # The scenes of the caller's screen, each with what it shows: `scenes agenda: "the open times"`.
+        def scenes(**declared)
+          return declared_scenes if declared.empty?
+
+          @scenes = declared.to_h { |name, what| Screen.scene!(self, name, what) }
+        end
+
+        def declared_scenes = @scenes || (superclass.respond_to?(:declared_scenes) ? superclass.declared_scenes : {})
 
         # What the class declares of its environment, including inherited values.
         def environment

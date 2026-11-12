@@ -26,9 +26,10 @@ module Pinecall
         # @param pii [Array<Symbol>] parameters with personal data, masked in the log
         # @param timeout [Numeric] seconds the platform waits for the method
         # @param params [Hash{Symbol=>Object}] parameter types, e.g. `{ day: String, how_many: Integer }`
+        # @param shows [Symbol] the scene of the caller's screen it puts up once it returns (`scenes`)
         def tool(**options)
           unknown = options.keys - %i[
-            when stage confirm announce delayed delayed_after failed quiet preview pii timeout params doc
+            when stage confirm announce delayed delayed_after failed quiet preview pii timeout params doc shows
           ]
           raise DeclarationRefused, "tool takes no #{unknown.join(", ")}" unless unknown.empty?
 
