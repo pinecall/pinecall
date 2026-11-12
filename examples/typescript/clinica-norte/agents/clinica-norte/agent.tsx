@@ -24,10 +24,10 @@ export default class ClinicaNorte extends Agent {
   // Nada de configuración: la voz, el modelo, el idioma (`pinecall agent set --language es`), el
   // saludo, las palabras (`pinecall lexicon`), lo que recuerda (`pinecall memory policy`), lo que
   // se sabe de memoria (Settings ▸ Knowledge) y la base que busca por turno (`pinecall docs push`,
-  // `pinecall docs attach`) son del MUNDO — por mundo, por rincón, versionados — y una clase que
-  // todavía los declara es rechazada al cargar nombrando el verbo. Habla español porque su
-  // docstring y su render() están en español, y su mundo lo dice con --language es. La clase es
-  // el contrato: el estado, las tools y el render().
+  // `pinecall docs attach`) son del mundo. Una clase puede declararlos en `@agent({ … })`, y lo
+  // que declara gana sobre esos ajustes hasta que lo saca; esta no declara ninguno. Habla español
+  // porque su docstring y su render() están en español, y su mundo lo dice con --language es. La
+  // clase es el contrato: el estado, las tools y el render().
 
   // el estado: asignar re-renderiza, escribe state.changed en el log y actualiza la consola
   // la fase es un campo del estado como cualquier otro, y es lo único que mueve las herramientas

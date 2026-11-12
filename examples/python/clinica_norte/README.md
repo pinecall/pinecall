@@ -43,8 +43,8 @@ What the front desk knows by heart — hours, prices, what needs an authorisatio
 repository: it is written in the console, Settings ▸ Knowledge (or `pinecall agent knowledge
 edit`), and the model reads it whole on every call. The voice, the model, the greeting, the
 language, what memory keeps (`pinecall memory policy`) and the base it searches per turn
-(`pinecall docs attach clinica-norte --k 4`) are the world's, not the class's, and a class that
-still declares one is refused on import.
+(`pinecall docs attach clinica-norte --k 4`) are the world's here. A class may declare them, and
+what it declares wins over those settings; this one declares none.
 
 ## What this example teaches
 

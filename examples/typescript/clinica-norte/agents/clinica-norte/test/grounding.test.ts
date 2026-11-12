@@ -1,6 +1,6 @@
 // La clase declara el contrato — las tools, el render() — y nada del entorno: la voz, el modelo,
-// el idioma, el saludo, las palabras, la memoria, lo sabido de memoria y la base son del mundo,
-// y una clase que todavía los declara es rechazada al cargar nombrando el verbo.
+// el idioma, el saludo, las palabras, la memoria, lo sabido de memoria y la base son del mundo.
+// Una clase puede declararlos en `@agent({ … })`; esta no declara ninguno.
 // Anillo 0: sin red, sin clave, sin modelo.
 
 import { fileURLToPath } from "node:url";
@@ -23,8 +23,8 @@ describe("la declaración que recibe el gateway", () => {
     }
   });
 
-  // La base es de la clase sólo como campo estático: en la instancia sería estado de la llamada, y
-  // el rechazo dice cómo declararla.
+  // La base es de la clase sólo en su `@agent({ … })`: en la instancia sería estado de la llamada,
+  // y el rechazo dice cómo declararla.
   it("rechaza una base nombrada en la instancia, y dice cómo declararla en la clase", () => {
     /** Un agente que nombra su base donde va el estado. */
     class EnLaInstancia extends Agent {
