@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator, model_validator
@@ -10,6 +11,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from runtime.enums import Env
 from runtime.exceptions import ConfigurationError
+
+LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
+NOT_LOOPBACK = (
+    "PINECALL_GATEWAY_URL binds {host}: a box's gateway listens on loopback, behind its proxy "
+    "(a pod's says PINECALL_GATEWAY_LISTEN)"
+)
 
 # Which of the box's processes this one is; `all` is a box of one.
 type ProcessRole = Literal["all", "gateway", "worker"]
@@ -172,6 +179,24 @@ class Settings(BaseSettings):
     def address(self) -> str | None:
         """The https address of the box's name, or None where it has none."""
         return None if self.domain is None else f"https://{self.domain}"
+
+    @property
+    def base_url(self) -> str:
+        """The address a link the box makes points at: its public name, else the gateway's URL."""
+        return self.address or self.gateway_url.rstrip("/")
+
+    # A box's gateway binds loopback and nothing else, its proxy being its one way in; a pod's binds
+    # what PINECALL_GATEWAY_LISTEN names, the cluster's load balancer being its way in.
+    def listening(self) -> tuple[str, int]:
+        """The host and port the gateway binds."""
+        if self.gateway_listen is not None:
+            host, _, port = self.gateway_listen.rpartition(":")
+            return host.strip("[]"), int(port)
+        bound = urlparse(self.gateway_url)
+        named = bound.hostname or "127.0.0.1"
+        if named not in LOOPBACK:
+            raise ConfigurationError(NOT_LOOPBACK.format(host=named))
+        return named, bound.port or 8080
 
     def livekit_url_of(self, env: Env) -> str:
         """The LiveKit that env's rooms live on, as this process reaches it."""

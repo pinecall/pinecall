@@ -66,6 +66,10 @@ voice = [
   "audioop-lts>=0.2.1; python_version >= '3.13'",
 ]
 
+[project.scripts]
+# The operator's terminal: the processes, the database, the tenants and the fleet (runtime/cli).
+pinecall-runtime = "runtime.cli:main"
+
 [project.urls]
 Homepage = "https://pinecall.io"
 Repository = "https://github.com/pinecall/pinecall"
