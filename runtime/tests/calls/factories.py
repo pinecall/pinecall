@@ -1,11 +1,19 @@
 """A call's entries as the calls engine's tests write them: one line each, the golden log beside them."""
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
+from runtime.calls.log.feeds import Feeds
+from runtime.calls.log.logs import Logs
+from runtime.calls.log.relay import Relay
+from runtime.calls.log.store import Store
+from runtime.calls.repository.heads import Claim
+from runtime.calls.service import lists
 from runtime.kit.text import Json, JsonObject
+from runtime.signal import LocalSignal, Signal
 from runtime.wire.base import Entry
 
 THE_GOLDEN = Path(__file__).resolve().parents[1] / "wire" / "golden"
@@ -89,3 +97,31 @@ def a_call_with_tools(call: str = CALL, agent: str = AGENT) -> list[Entry]:
         at(13, "tool.call", a_tool_call("tc_3", "book_slot", "s5")),
         at(14, "tool.result", a_tool_result("tc_3", "book_slot", error="book_slot did not answer within 10s")),
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class LogParts:
+    """What one gateway holds of the logs on a store: its relay, its feeds, and the logs by name."""
+
+    relay: Relay
+    feeds: Feeds
+    logs: Logs
+
+
+def logs_on(store: Store, signal: Signal | None = None) -> LogParts:
+    """One gateway's logs on the store, wired as the gateway wires them; on a signal of its own unless given one."""
+    relay = Relay(signal or LocalSignal(), store)
+    feeds = Feeds(relay, store)
+    return LogParts(relay, feeds, Logs(store, relay, feeds))
+
+
+async def claim_call(store: Store, call: str, agent: str, claim: Claim) -> None:
+    """Record whose the call is, as whoever opens a call does before its first entry."""
+    async with store.sessions.begin() as session:
+        await lists.claim_call(session, call, agent, claim)
+
+
+async def claim_agent_log(store: Store, agent: str, org: str) -> None:
+    """Record the org of the agent's own log, as an app holding the agent does."""
+    async with store.sessions.begin() as session:
+        await lists.claim_agent_log(session, agent, org)
