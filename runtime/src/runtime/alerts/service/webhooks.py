@@ -203,13 +203,14 @@ async def _take_posts(sessions: async_sessionmaker[AsyncSession], vault: Vault) 
                 return []
             operators = await operator_webhook_of(session, vault)
             theirs = {org: await webhook_of(session, vault, org) for org in {alert.org for alert in alerts}}
-    return [Post(alert.org, _payload_of(alert), _hearers_of(alert, theirs[alert.org], operators)) for alert in alerts]
+    return [post_of(alert, theirs[alert.org], operators) for alert in alerts]
 
 
 # An alert that is the operators' alone is never posted to the org's webhook either.
-def _hearers_of(alert: Alert, theirs: Webhook | None, operators: Webhook | None) -> tuple[Webhook, ...]:
+def post_of(alert: Alert, theirs: Webhook | None, operators: Webhook | None) -> Post:
+    """What is posted of a kept alert, and the webhooks that hear it: the org's own, then the operator's."""
     own = None if kinds.NAMED[alert.kind].operators_alone else theirs
-    return tuple(webhook for webhook in (own, operators) if webhook is not None)
+    return Post(alert.org, _payload_of(alert), tuple(webhook for webhook in (own, operators) if webhook is not None))
 
 
 # A URL the client cannot even read is said, and the webhooks after it and the alerts beside it are
