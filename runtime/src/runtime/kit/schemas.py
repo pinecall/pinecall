@@ -1,8 +1,9 @@
 """The pydantic bases: what a body is read as, and how a row is answered."""
 
+from datetime import datetime
 from typing import Annotated, Any, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, PlainSerializer
 from pydantic import ValidationError as PydanticValidationError
 
 from runtime.exceptions import ValidationError
@@ -11,6 +12,15 @@ from runtime.kit.text import parse_email
 # An address is read once, where it enters: trimmed, lowercased, refused when it is not one. Nothing
 # below a body parses an address again, so the same person is never two spellings of one address.
 EmailAddress = Annotated[str, AfterValidator(parse_email)]
+
+
+def _epoch_of(moment: datetime) -> float:
+    return moment.timestamp()
+
+
+# A moment the wire carries as seconds since the epoch: the field is declared `at: Epoch`, read off the
+# row as the datetime it is, and answered as a float. One type where each body had its own serializer.
+Epoch = Annotated[datetime, PlainSerializer(_epoch_of, return_type=float)]
 
 
 class Schema(BaseModel):

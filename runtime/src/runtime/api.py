@@ -4,8 +4,10 @@ from fastapi import FastAPI
 
 from runtime.accounts import endpoints as accounts
 from runtime.billing import endpoints as billing
+from runtime.compliance import endpoints as compliance
 from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
+from runtime.signin import endpoints as signin
 
 
 # A domain's router enters here in the commit that builds the domain. The box's pages go last: their
@@ -16,4 +18,6 @@ def mount(app: FastAPI) -> None:
     app.include_router(billing.router)
     app.include_router(mail.router)
     app.include_router(accounts.router)
+    app.include_router(signin.router)
+    app.include_router(compliance.router)
     app.include_router(platform.pages_router)

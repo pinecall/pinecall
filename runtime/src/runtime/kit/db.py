@@ -6,9 +6,10 @@ from enum import StrEnum
 from typing import Any, ClassVar, override
 
 from pgvector.sqlalchemy import HALFVEC
-from sqlalchemy import TIMESTAMP, Dialect, MetaData, String, Text
+from sqlalchemy import TIMESTAMP, Dialect, MetaData, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.types import TypeDecorator
 
 # Constraint names as the live schema has them: `<table>_pkey`, `<table>_<col>_key`.
@@ -23,6 +24,13 @@ NAMING = MetaData(
 )
 
 VECTOR_WIDTH = 1024
+
+
+# An index's column read newest first, as the live schema has it (`at DESC`). The one piece of SQL a
+# model declares, written here so that no `models.py` builds a statement.
+def descending(column: str) -> TextClause:
+    """The column of an index in descending order."""
+    return text(f"{column} DESC")
 
 
 def utc_now() -> datetime:

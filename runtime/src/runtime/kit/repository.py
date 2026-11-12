@@ -1,6 +1,6 @@
 """The repository base: a model's queries on a session, one subclass per aggregate."""
 
-from collections.abc import AsyncGenerator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import CursorResult, Select, func, select
@@ -12,6 +12,14 @@ from sqlalchemy.sql.dml import UpdateBase
 from runtime.kit.db import Model
 
 type Options = Sequence[ExecutableOption]
+
+
+# A page is asked for with one row more than it shows: the row past the limit says another page follows,
+# with no count, and a list that ends exactly on the limit hands out no cursor to an empty page.
+def page_of[T](rows: Sequence[T], limit: int, cursor_of: Callable[[T], str]) -> tuple[Sequence[T], str | None]:
+    """The page out of `limit + 1` rows read, and the cursor of its last row when more follow."""
+    page = rows[:limit]
+    return page, cursor_of(page[-1]) if len(rows) > limit else None
 
 
 class Repository[M: Model]:

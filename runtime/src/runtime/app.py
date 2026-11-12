@@ -28,8 +28,16 @@ from runtime.kit.middleware import AllowedOrigins, BodyCeiling
 from runtime.livekit import open_servers
 from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
 from runtime.mail.service.outbox import Outbox
+from runtime.platform.service.attempts import AttemptThrottle
 from runtime.postgres import STATEMENT_TIMEOUT_MS, busy, create_engine, session_maker
 from runtime.redis import open_signal
+from runtime.signin.service.codes import LoginCodes
+from runtime.signin.service.google import Newcomers
+from runtime.signin.service.oidc import Oidc
+from runtime.signin.service.pairings import Pairings
+from runtime.signin.service.passwords import SIGN_IN_TRIES, PasswordThrottle
+from runtime.signin.service.signup import SignUps
+from runtime.signin.service.turnstile import Turnstile
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +76,14 @@ class State(TypedDict):
     loops: Loops
     outbox: Outbox
     key_cache: KeyCache
+    login_codes: LoginCodes
+    pairings: Pairings
+    sign_ups: SignUps
+    newcomers: Newcomers
+    oidc: Oidc
+    password_throttle: PasswordThrottle
+    sign_in_attempts: AttemptThrottle
+    turnstile: Turnstile
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -82,7 +98,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         stack.push_async_callback(outbox.drain)
         key_cache = KeyCache(handles.sessions, handles.signal)
         loops.start(accounts_tasks.hear_revocations.bind(key_cache, handles.signal))
-        yield State(handles=handles, closing=app.state.closing, loops=loops, outbox=outbox, key_cache=key_cache)
+        sessions, vault = handles.sessions, handles.vault
+        yield State(
+            handles=handles,
+            closing=app.state.closing,
+            loops=loops,
+            outbox=outbox,
+            key_cache=key_cache,
+            login_codes=LoginCodes(sessions, vault),
+            pairings=Pairings(sessions, vault, handles.signal),
+            sign_ups=SignUps(sessions, vault, accepting=handles.settings.signup),
+            newcomers=Newcomers(sessions, vault),
+            oidc=Oidc(handles.http, sessions, vault),
+            password_throttle=PasswordThrottle(sessions),
+            sign_in_attempts=AttemptThrottle(sessions, SIGN_IN_TRIES),
+            turnstile=_turnstile(handles),
+        )
 
 
 async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
@@ -94,6 +125,12 @@ async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
     servers = await stack.enter_async_context(open_servers(settings))
     signal = await stack.enter_async_context(open_signal(settings))
     return Handles(settings, vault, http, servers, signal, engine, session_maker(engine))
+
+
+# With no secret set the verifier passes every token: a box with no Turnstile asks for none.
+def _turnstile(handles: Handles) -> Turnstile:
+    secret = handles.settings.turnstile_secret
+    return Turnstile(handles.http, None if secret is None else secret.get_secret_value(), handles.settings.domain)
 
 
 # A box without mail still starts: its emails are not sent, and /.well-known says so.

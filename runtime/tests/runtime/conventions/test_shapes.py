@@ -7,6 +7,7 @@ from tests.runtime.conventions.canon import Module
 ALLOWED: dict[str, str] = {
     "config": "the settings are read with pydantic-settings",
     "kit.schemas": "the bases every body is built on",
+    "signin.service.oidc": "the OpenID client parses a provider's discovery, grant and id_token",
 }
 
 
