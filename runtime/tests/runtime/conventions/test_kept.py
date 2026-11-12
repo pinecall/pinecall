@@ -69,6 +69,19 @@ def test_what_the_vault_seals_is_typed_as_sealed(modules: dict[str, Module]) -> 
     assert not wrong, "\n".join(wrong)
 
 
-def _goes_with_its_org(column: Column[Any]) -> bool:
-    # By the key's own words, not its resolved column: the org's table may be a domain not imported here.
-    return any(key.target_fullname == "orgs.id" and key.ondelete == "CASCADE" for key in column.foreign_keys)
+# A row goes with its org when a cascading key ties it to `orgs.id`, or to the `org` of a parent that
+# goes with its org (a file and a chunk go with their base, by a composite key, and the base with its
+# org). By the key's own words, not its resolved column: the org's table may be a domain not imported here.
+def _goes_with_its_org(column: Column[Any], seen: frozenset[str] = frozenset()) -> bool:
+    for key in column.foreign_keys:
+        if key.ondelete != "CASCADE":
+            continue
+        if key.target_fullname == "orgs.id":
+            return True
+        table, _, name = key.target_fullname.rpartition(".")
+        parent = Model.metadata.tables.get(table)
+        if name != "org" or parent is None or table in seen:
+            continue
+        if _goes_with_its_org(cast(Column[Any], cast(Any, parent).columns["org"]), seen | {table}):
+            return True
+    return False

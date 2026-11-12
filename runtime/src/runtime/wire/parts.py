@@ -222,6 +222,34 @@ class DocSource(WireModel):
     excerpt: str | None = None
 
 
+class FoundChunk(WireModel):
+    """One chunk a search found: the file it came from, the heading it sits under, its body."""
+
+    path: str
+    heading: str | None
+    text: str
+
+
+class SearchFound(WireModel):
+    """What search answers a call and an app's `this.knowledge.search`: the best chunks first."""
+
+    chunks: list[FoundChunk]
+
+
+class RecalledFact(WireModel):
+    """One fact a recall found, as the model reads it: what it says, the call that taught it, since which day."""
+
+    text: str
+    source: str | None
+    since: str
+
+
+class RecalledFacts(WireModel):
+    """What recall answers a call: the contact's best facts for the turn, the best first."""
+
+    facts: list[RecalledFact]
+
+
 class CostRow(WireModel):
     """One priced line: a model, what was counted, how much, and what it came to."""
 

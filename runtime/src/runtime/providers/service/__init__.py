@@ -3,7 +3,7 @@
 from runtime.providers.service.catalog import get_catalog
 from runtime.providers.service.credentials import box_credentials
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
-from runtime.providers.service.pipeline import build_pipeline, stage_on_its_key
+from runtime.providers.service.pipeline import build_pipeline, stage_on_its_key, thinking_of
 from runtime.providers.service.plugins import (
     NOT_REALTIME,
     hears_and_speaks,
@@ -11,6 +11,7 @@ from runtime.providers.service.plugins import (
     refuse_realtime_as_llm,
     vendor_doing,
 )
+from runtime.providers.service.prices import completion_usage
 from runtime.providers.service.readiness import Runnable, runnable_on
 from runtime.providers.service.signatures import refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
@@ -26,6 +27,7 @@ __all__ = [
     "TimedWord",
     "box_credentials",
     "build_pipeline",
+    "completion_usage",
     "get_catalog",
     "hears_and_speaks",
     "is_installed",
@@ -38,6 +40,7 @@ __all__ = [
     "speak",
     "stage_on_its_key",
     "telemetry_of",
+    "thinking_of",
     "thinking_outside_a_call",
     "try_realtime",
     "try_stage",

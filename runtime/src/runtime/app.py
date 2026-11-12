@@ -28,6 +28,7 @@ from runtime.handles import Handles
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling
+from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
 from runtime.livekit import open_servers
 from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
 from runtime.mail.service.outbox import Outbox
@@ -91,6 +92,7 @@ class State(TypedDict):
     turnstile: Turnstile
     samples: AttemptThrottle
     transcriptions: AttemptThrottle
+    extraction_runs: AttemptThrottle
     roster: Roster
     offering: Offering
 
@@ -125,6 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             turnstile=_turnstile(handles),
             samples=AttemptThrottle(sessions, SAMPLES_A_MINUTE),
             transcriptions=AttemptThrottle(sessions, TRANSCRIPTIONS_A_MINUTE),
+            extraction_runs=AttemptThrottle(sessions, EXTRACTION_RUNS_A_MINUTE),
             roster=roster,
             offering=offering,
         )

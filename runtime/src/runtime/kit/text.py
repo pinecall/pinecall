@@ -79,3 +79,13 @@ JWT_PARTS = 3
 def is_a_jwt(secret: str) -> bool:
     """Whether the secret is shaped as a signed token rather than an API key (which holds no dots)."""
     return secret.count(".") == JWT_PARTS - 1
+
+
+# What cuts a text into chunks and what batches the chunks for a vendor measure with the same estimate,
+# so a chunk that fits its cap fits a window.
+TOKENS_PER_WORD = 1.3
+
+
+def estimate_tokens(text: str) -> int:
+    """The tokens a text costs, estimated as its words times 1.3; no tokenizer is loaded."""
+    return round(len(text.split()) * TOKENS_PER_WORD)

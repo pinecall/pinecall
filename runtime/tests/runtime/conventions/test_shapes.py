@@ -10,6 +10,7 @@ ALLOWED: dict[str, str] = {
     "signin.service.oidc": "the OpenID client parses a provider's discovery, grant and id_token",
     "providers.catalog": "the providers row is a document the box keeps, and this module its one shape",
     "whatsapp.service": "Meta's client parses Meta's webhook bodies and its Graph answers",
+    "knowledge.service.embedder": "the embedder's client parses a vendor's rows and its refusal",
 }
 
 
