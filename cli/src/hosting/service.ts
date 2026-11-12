@@ -99,7 +99,7 @@ export async function uploadRelease(ctx: Context, name: string, note: string): P
   const files = projectFiles(ctx.cwd);
   if (files.length === 0) throw new UsageError(NOTHING_TO_SEND);
   // The app says whether it has a page; its built folder is one a .gitignore names, and rides with the release.
-  const app = languages[0] === "typescript" ? appFileOf(ctx.cwd) : undefined;
+  const app = languages[0] === undefined ? undefined : appFileOf(ctx.cwd, languages[0]);
   const page = app === undefined ? null : ((await describedApp(ctx.cwd, app, agents, ctx.processEnv))?.page ?? null);
   const built = page === null ? [] : folderFiles(ctx.cwd, page.dir);
   if (page !== null && !built.includes(`${page.dir}/index.html`)) throw new UsageError(PAGE_NOT_BUILT(page.dir));

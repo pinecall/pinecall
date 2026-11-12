@@ -61,8 +61,8 @@ export async function start(ctx: Context, input: StartInput): Promise<number> {
     throw new UsageError(`\`pinecall start\` will not guess who this key is: ${errorMessage(failed)}`);
   }
   const first = homes[0]!;
-  // The project's voice app rides with its agents; the serve entries of the other languages take none yet.
-  const app = languageOf(first.file) === "typescript" ? appFileOf(first.root) : undefined;
+  // The project's voice app rides with its agents, in their language.
+  const app = appFileOf(first.root, languageOf(first.file));
   const args = [...homes.flatMap((home) => ["--file", home.file, "--slug", home.name]), ...(app === undefined ? [] : ["--app", app]), "--events"];
   const spawned = (): Child => spawnServing(serveStart(ctx.gateway(), first.file, "start", args, { root: first.root, inspect: input.inspect }, ctx.processEnv), { other: ctx.io.stderr, signals: process });
   const child = spawned();

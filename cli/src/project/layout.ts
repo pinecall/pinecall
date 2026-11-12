@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { UsageError } from "../errors.js";
-import { AGENT_FILES, HARNESS_FILES, languageOf } from "./language.js";
+import { AGENT_FILES, HARNESS_FILES, type Language, languageOf } from "./language.js";
 
 /** Project folder holding one subfolder per agent. */
 export const PROJECT_AGENTS = "agents";
@@ -81,12 +81,12 @@ export function isDirectory(path: string): boolean {
   return existsSync(path) && statSync(path).isDirectory();
 }
 
-// A project's voice app, beside its agents/: the lines it answers and what its agents share. TypeScript's alone.
-const APP_FILES = ["app.ts", "app.tsx"];
+// A project's voice app, beside its agents/: the lines it answers and what its agents share, in their language.
+const APP_FILES: Record<Language, readonly string[]> = { typescript: ["app.ts", "app.tsx"], python: ["app.py"], ruby: ["app.rb"] };
 
-/** The project's voice app file, when it has one. */
-export function appFileOf(root: string): string | undefined {
-  return APP_FILES.map((name) => resolve(root, name)).find((path) => existsSync(path));
+/** The project's voice app file in the language of its agents, when it has one. */
+export function appFileOf(root: string, language: Language): string | undefined {
+  return APP_FILES[language].map((name) => resolve(root, name)).find((path) => existsSync(path));
 }
 
 /** Agent files of the project at `root`, sorted; folders without an agent file are skipped. */

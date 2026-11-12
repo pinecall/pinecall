@@ -4,6 +4,7 @@ import { existsSync, type FSWatcher, statSync, watch } from "node:fs";
 import { dirname, extname, join, sep } from "node:path";
 
 import { errorMessage } from "../errors.js";
+import { languageOf } from "../project/language.js";
 import { type AgentHome, appFileOf, SHARED } from "../project/layout.js";
 
 // A save is a burst of writes: one reload after it settles.
@@ -29,7 +30,7 @@ export function isASave(file: string): boolean {
 export function watchedFor(homes: readonly AgentHome[]): string[] {
   const roots = [...new Set(homes.map((home) => home.root))];
   const shared = roots.map((root) => join(root, SHARED)).filter((folder) => existsSync(folder));
-  const apps = roots.map((root) => appFileOf(root)).filter((file): file is string => file !== undefined);
+  const apps = homes.map((home) => appFileOf(home.root, languageOf(home.file))).filter((file): file is string => file !== undefined);
   return [...homes.map((home) => dirname(home.file)), ...shared, ...apps];
 }
 

@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **A voice app in every language:** `pinecall start` and `pinecall deploy` take the project's `app.py`
+  or `app.rb` as they take its `app.ts`, the one in its agents' language.
+
 - **`pinecall deploy` sends the app's page**: a project whose `app.ts` says `app.page("ui/dist")` is uploaded with
   that built folder, and the answer names where Pinecall serves it. `pinecall start` serves it on this machine.
 

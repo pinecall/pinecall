@@ -16,11 +16,14 @@ describe("the layout", () => {
     expect(agentFilesOf(root).map((file) => file.slice(root.length + 1))).toEqual(["agents/front-desk/agent.ts", "agents/sales/agent.rb"]);
   });
 
-  it("finds the project's voice app beside its agents, when it has one", () => {
+  it("finds the project's voice app beside its agents, in their language, when it has one", () => {
     const root = project(["front-desk"]);
-    expect(appFileOf(root)).toBeUndefined();
+    expect(appFileOf(root, "typescript")).toBeUndefined();
     write(root, "app.ts", "");
-    expect(appFileOf(root)).toBe(join(root, "app.ts"));
+    write(root, "app.py", "");
+    expect(appFileOf(root, "typescript")).toBe(join(root, "app.ts"));
+    expect(appFileOf(root, "python")).toBe(join(root, "app.py"));
+    expect(appFileOf(root, "ruby")).toBeUndefined();
   });
 
   it("names every path a verb reads, all of them in the agent's own folder", () => {

@@ -2628,7 +2628,8 @@ acme-support · release 4 sent · 38 KB · 3b507661b052
   → pinecall deploy logs reads its lines
 ```
 
-A project whose `app.ts` names a page (`app.page("ui/dist")`) is sent with it: the built folder rides
+A project whose voice app (`app.ts`, `app.py` or `app.rb`, in its agents' language) names a page
+(`app.page("ui/dist")`) is sent with it: the built folder rides
 with the release though a `.gitignore` names it, and the answer says where Pinecall serves it. A page
 that is not built is refused before anything is sent.
 
