@@ -11,8 +11,13 @@ from runtime.exceptions import ValidationError
 from runtime.wire.dispatch import Dispatch
 
 # A visitor's call waits this long for them to come back (a reload, a tab closed, a dropped line)
-# before it ends; their room outlives them as long. LiveKit's own 20 s would close it under a reload.
+# before it ends. LiveKit's own 20 s would close their room under a reload.
 A_VISITOR_RETURNS_S = 300
+# Their room outlives that wait, so the call's own clock is the one that ends it: its session says
+# the caller hung up, seals the call and deletes the room. With the two equal, LiveKit closed the
+# room first, the job ended as one whose room went away, and the call was sealed `drained` (8 web
+# calls on 2026-11-11).
+A_ROOM_OUTLIVES_THE_WAIT_S = 60
 
 OVERFLOW = "overflow"
 
@@ -30,12 +35,12 @@ def overflow_name(fleet: str) -> str:
 
 
 # livekit creates the dispatch from the token when the join creates the room, so the browser
-# cannot change the agent, the org or the env it reaches. The room outlives its visitor as long
-# as their call waits for them.
+# cannot change the agent, the org or the env it reaches. The room outlives its visitor for as
+# long as their call waits for them, and then for what the call takes to end.
 def room_dispatch(fleet: str, dispatch: Dispatch) -> RoomConfiguration:
     """The room configuration a visitor's token carries: one dispatch, to the env's fleet."""
     return RoomConfiguration(
-        departure_timeout=A_VISITOR_RETURNS_S,
+        departure_timeout=A_VISITOR_RETURNS_S + A_ROOM_OUTLIVES_THE_WAIT_S,
         agents=[RoomAgentDispatch(agent_name=fleet, metadata=dispatch.dump())],
     )
 

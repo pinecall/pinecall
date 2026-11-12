@@ -333,8 +333,9 @@ class CallRoom:
                 self.returning.cancel()
             self.returning = self._spawn(self._wait_for_the_caller(gone, text))
 
-    # A visitor's call waits for them as long as their room does; their widget's hang-up ends it
-    # at once (widget.py), a reload does not.
+    # A visitor's call waits for them for less than their room does (fleet's `room_dispatch`), so it
+    # ends here, as a caller who hung up, and never as a room LiveKit closed; their widget's hang-up
+    # ends it at once (widget.py), a reload does not.
     async def _wait_for_the_caller(self, hang_up: Callable[[], None], reason: str) -> None:
         is_a_visitor = self.call.context.channel is Channel.web
         wait_s = self.waits.visitor_returns_s if is_a_visitor else self.waits.caller_returns_s

@@ -6,6 +6,10 @@
   every agent with a greeting, which is what the console's Configure page reads: the greeting was
   the one part of the answer shaped by the wire, and it was handed over as the service holds it. A response
   body now reads what a service returns at every depth.
+- **A visitor who never came back hung up; their call was not drained.** A widget call waits five minutes
+  for a visitor who left, and their room was kept for the same five: LiveKit closed the room at the second
+  the wait ended, and the call was sealed `drained` by the platform. The room now outlives the wait, so
+  the call ends itself as `caller_hung_up`.
 - **`GET /v1/limits` shows an org's seats and budget as they are held.** Both are the org's, not an
   environment's: a key of the sandbox read them off the sandbox's row, where an operator who set them on
   production saw no limit at all. They are read off the org's own row now, the one a refusal reads.

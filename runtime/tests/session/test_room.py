@@ -397,11 +397,9 @@ async def test_a_caller_back_in_time_keeps_the_call_and_stopping_forgets_the_wai
     await where.call.writing.close(1.0)
 
 
-# A reload is a visitor leaving too: their call waits for them as long as their room does.
+# A reload is a visitor leaving too: their call waits for them the visitor's time, not a caller's.
 @needs_the_database
-async def test_a_visitor_who_left_is_waited_for_as_long_as_their_room_and_a_caller_is_not(
-    box: Box, server: Server
-) -> None:
+async def test_a_visitor_who_left_is_waited_for_a_visitors_time_and_not_a_callers(box: Box, server: Server) -> None:
     waits = Waits(caller_returns_s=10.0, visitor_returns_s=0.01)
     visitor = seat("web_visitor", attributes={"pinecall.scope": "chat"}, reason=DROPPED)
     where, offline, _ = _room(box, server, channel=Channel.web, waits=waits)
