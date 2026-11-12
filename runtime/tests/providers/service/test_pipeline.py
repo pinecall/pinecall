@@ -110,7 +110,8 @@ def test_a_test_room_that_sets_the_temperature_alone_runs_the_defaults_model() -
 
 def test_an_agents_own_fallbacks_take_the_place_of_the_stages_and_one_with_no_key_is_left_out() -> None:
     keys = Keyring(
-        box={acme.ACME: "box-key"}, lends=frozenset({f"{acme.ACME}/{acme.MODEL}", f"{acme.ACME}/{acme.EARS}"})
+        box={acme.ACME: "box-key"},
+        lends=frozenset({f"{acme.ACME}/{acme.MODEL}", f"{acme.ACME}/{acme.EARS}", f"{acme.ACME}/{acme.VOICE}"}),
     )
     unlent = Model(vendor=acme.ACME, model="acme-ears-nobody-lends")
     named = (unlent, Model(vendor=acme.ACME, model=acme.EARS))
