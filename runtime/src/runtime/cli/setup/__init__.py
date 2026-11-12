@@ -26,12 +26,12 @@ def _help_all(ctx: typer.Context, value: bool) -> None:
     formatter = ctx.make_formatter()
     scripted = [param for param in ctx.command.params if isinstance(param, TyperOption) and param.hidden]
     with formatter.section(SCRIPT):
-        formatter.write_dl([(_spelled(param, ctx), param.help or "") for param in scripted])
+        formatter.write_dl([(_spell(param, ctx), param.help or "") for param in scripted])
     typer.echo(ctx.get_help() + "\n" + formatter.getvalue().rstrip())
     raise typer.Exit
 
 
-def _spelled(param: TyperOption, ctx: typer.Context) -> str:
+def _spell(param: TyperOption, ctx: typer.Context) -> str:
     """`--email <str>` or `-y, --yes`, as the person's block spells its own."""
     names = ", ".join(sorted(param.opts, key=len))
     return names if param.is_flag else f"{names} {param.make_metavar(ctx)}"

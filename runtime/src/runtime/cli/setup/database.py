@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from runtime.accounts.models import BOX_ORG
 from runtime.accounts.service import actor, keys, orgs
+from runtime.cli.setup.choices import read_measured
 from runtime.cli.setup.env_file import EnvFile, settings_of
 from runtime.enums import Env, KeyScope
 from runtime.platform.service import schema
 from runtime.postgres import create_engine, session_maker
+from runtime.providers.service import machine
 from runtime.scoping import box_wide
 
 # A release deployed here runs as a process of this machine: the code is its owner's own.
@@ -40,6 +42,7 @@ async def prepare_database(env: EnvFile, *, production_fleet: bool = False) -> s
         history = await schema.apply_history(engine)
         await asyncio.to_thread(schema.upgrade_schema, tracked=history.tracked)
         runner = await _runner_key(engine, values.get(RUNNER_KEY))
+        await _seed_measured(engine)
     finally:
         await engine.dispose()
     drawn: dict[str, str | None] = {RUNNER_KEY: runner}
@@ -61,6 +64,14 @@ async def _runner_key(engine: AsyncEngine, kept: str | None) -> str:
             org = await orgs.find_org(session, BOX_ORG) or await orgs.create_org(session, BOX_ORG, BOX_ORG_NAME)
             issue = keys.Issue(org=org.id, env=Env.sandbox, scopes=frozenset({KeyScope.runner}), label=A_RUNNER_KEY)
             return (await keys.issue_key(session, issue)).key
+
+
+# What a machine can run, as the package measured it: the stack advice reads it on this box.
+async def _seed_measured(engine: AsyncEngine) -> None:
+    async with session_maker(engine).begin() as session:
+        with box_wide():
+            if await machine.find_measured(session) is None:
+                await machine.put_measured(session, read_measured())
 
 
 def _a_fleet_key() -> str:

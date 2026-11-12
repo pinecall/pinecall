@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from pydantic import TypeAdapter
 
 from runtime import builders
 from runtime.accounts.models import BOX_ORG
@@ -32,8 +31,6 @@ COLUMNS: tuple[Column[RouteRow], ...] = (
     ("env", lambda route: route.env),
     ("managed", lambda route: route.managed),
 )
-
-_ROUTES: TypeAdapter[list[RouteRequest]] = TypeAdapter(list[RouteRequest])
 
 
 @app.command("list")
@@ -84,7 +81,8 @@ async def routes_rm(ctx: typer.Context, number: str, org: Org = BOX_ORG) -> int:
 async def routes_seed(ctx: typer.Context, file: Annotated[Path, typer.Argument(help="A JSON list of routes.")]) -> int:
     """A file of routes, each added: how a box comes up from a checkout."""
     context = context_of(ctx)
-    await _add(context, _ROUTES.validate_python(json.loads(file.read_text(encoding="utf-8"))))
+    listed: list[object] = json.loads(file.read_text(encoding="utf-8"))
+    await _add(context, [RouteRequest.model_validate(route) for route in listed])
     return OK
 
 

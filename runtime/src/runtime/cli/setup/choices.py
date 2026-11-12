@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import Literal
 
-from runtime.cli.setup.files import shipped
+from runtime.cli.setup.files import find_shipped
 from runtime.enums import Stage
 from runtime.exceptions import ValidationError
 from runtime.providers.service import machine, plugins, signatures
@@ -129,7 +129,7 @@ def check_choices(choices: Choices) -> Choices:
     return choices
 
 
-def recommended(fits: machine.Recommendation) -> Choices:
+def recommend_choices(fits: machine.Recommendation) -> Choices:
     """The stack that fits this machine, as `setup --recommend` reads it; the judge and the caller follow it."""
     return Choices(
         stt=local_or_vendor(fits.stack["stt"]),
@@ -163,7 +163,7 @@ def choices_of(
         base = ALL_LOCAL
     else:
         measured = read_measured()
-        base = recommended(machine.recommend(machine.detect(measured.on_keys.values(), os.environ), measured))
+        base = recommend_choices(machine.recommend(machine.detect(measured.on_keys.values(), os.environ), measured))
     chosen = Choices(
         stt=local_or_vendor(stt or base.stt),
         turn=turn_of(turn or base.turn),
@@ -186,4 +186,4 @@ def choices_of(
 
 def read_measured() -> machine.Measured:
     """What a machine can run, as the package ships it measured."""
-    return machine.measured_from_csv(shipped("measured.csv").read_text(encoding="utf-8"))
+    return machine.parse_measured(find_shipped("measured.csv").read_text(encoding="utf-8"))

@@ -58,7 +58,7 @@ def keys_found(
     return given, found
 
 
-def said_keys(loaded: Mapping[str, str], found: Mapping[str, str], *, server: bool) -> str:
+def say_keys(loaded: Mapping[str, str], found: Mapping[str, str], *, server: bool) -> str:
     """The vendors whose keys were found, where, and that the runtime lends them; or how to add one."""
     if not loaded:
         return "  keys      none found — `pinecall providers add <vendor>` adds one"
@@ -67,7 +67,7 @@ def said_keys(loaded: Mapping[str, str], found: Mapping[str, str], *, server: bo
     return f"  keys      {' · '.join(sorted(loaded))} — found in {' and '.join(places)}, {lent}"
 
 
-def said_models(choices: Choices, *, card: bool = False) -> str:
+def say_models(choices: Choices, *, card: bool = False) -> str:
     """The open models this machine serves: an agent naming none runs on them."""
     served = [
         *choices.local_models,

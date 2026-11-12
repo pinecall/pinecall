@@ -1,0 +1,52 @@
+"""What `setup` runs a call on: a choice per stage, local or a vendor's, the judge, the caller, the turn."""
+
+import pytest
+
+from runtime.cli.setup import choices as models
+from runtime.exceptions import ValidationError
+
+
+def test_a_choice_is_local_a_local_model_or_a_vendor_with_or_without_its_model() -> None:
+    """`local`, `local/gemma4:12b`, `hf/Qwen/Qwen2.5-3B-Instruct` and a bare `anthropic` each read as what they name."""
+    assert models.is_local("local") and models.is_local("local/gemma4:12b") and not models.is_local("anthropic")
+    assert (models.vendor_of("hf/Qwen/Qwen2.5-3B-Instruct"), models.model_of("hf/Qwen/Qwen2.5-3B-Instruct")) == (
+        "hf",
+        "Qwen/Qwen2.5-3B-Instruct",
+    )
+    assert (models.vendor_of("anthropic"), models.model_of("anthropic")) == ("anthropic", None)
+    # A vendor's name is lowered; a model's case is the registry's.
+    assert models.local_or_vendor(" Local/Qwen3:8B ") == "local/Qwen3:8B"
+    assert models.local_or_vendor("Anthropic") == "anthropic"
+
+
+def test_the_judge_and_the_caller_follow_the_thinking_unless_named() -> None:
+    """Unnamed, both run on the thinking's model; named, each on its own; Ollama pulls each local model once."""
+    chosen = models.Choices(llm="local/gemma4:12b")
+    assert (chosen.judging, chosen.calling) == ("local/gemma4:12b", "local/gemma4:12b")
+    assert chosen.local_models == ("gemma4:12b",)
+    mixed = models.Choices(llm="anthropic", judge="local/gemma4:e4b", caller="local")
+    assert (mixed.judging, mixed.calling) == ("local/gemma4:e4b", "local")
+    assert mixed.local_models == ("gemma4:e4b", models.LOCAL_LLM)
+    assert mixed.vendors == frozenset({"anthropic"})
+    assert models.Choices(llm="local", judge="local/gemma4:e4b", caller="local/gemma4:e4b").local_models == (
+        models.LOCAL_LLM,
+        "gemma4:e4b",
+    )
+
+
+def test_the_turn_is_one_of_three_and_the_local_ears_cannot_end_it() -> None:
+    """Whisper has no endpointing of its own: `stt` as the turn is refused naming the two that work."""
+    with pytest.raises(ValidationError, match="--turn is one of stt, smart-turn, livekit"):
+        models.turn_of("vad")
+    assert models.turn_of(" Smart-Turn ") == "smart-turn"
+    with pytest.raises(ValidationError, match="the local ears \\(Whisper\\) end no turn themselves"):
+        models.check_choices(models.Choices(turn="stt"))
+
+
+def test_what_is_checked_a_vendor_installed_doing_its_stage_and_one_local_voice() -> None:
+    """A judge on a vendor nobody installed is refused as the thinking would be; the local voice takes no model."""
+    with pytest.raises(ValidationError, match="no vendor named 'nobody'"):
+        models.check_choices(models.Choices(judge="nobody"))
+    with pytest.raises(ValidationError, match="the local voice is Kokoro"):
+        models.check_choices(models.Choices(tts="local/piper"))
+    assert models.check_choices(models.Choices(llm="local/gemma4:12b", caller="acme")).calling == "acme"

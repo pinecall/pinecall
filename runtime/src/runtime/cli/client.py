@@ -46,15 +46,15 @@ class OpsClient:
         self, method: str, path: str, shape: type[T], *, body: object = None, params: Params | None = None
     ) -> T:
         """Ask, and read the answer as the shape: a schema, or `list[Schema]`."""
-        answer = await self._answered(method, path, body, params)
+        answer = await self._ask(method, path, body, params)
         return TypeAdapter(shape).validate_python(answer.json())
 
     async def send(self, method: str, path: str, *, body: object = None, params: Params | None = None) -> None:
         """Ask, and expect no body back."""
-        await self._answered(method, path, body, params)
+        await self._ask(method, path, body, params)
 
     # A refusal is the gateway's own sentence; a gateway that is not there is said as such.
-    async def _answered(self, method: str, path: str, body: object, params: Params | None) -> httpx.Response:
+    async def _ask(self, method: str, path: str, body: object, params: Params | None) -> httpx.Response:
         try:
             answer = await self.http.request(method, path, json=_plain(body), params=dict(params or {}))
         except httpx.HTTPError as unreachable:

@@ -6,6 +6,7 @@ import socket
 import sys
 import time
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
@@ -15,7 +16,7 @@ from livekit import api
 from livekit.protocol.room import ListRoomsRequest
 
 from runtime.cli.setup.compose import Compose
-from runtime.cli.setup.files import shipped
+from runtime.cli.setup.files import find_shipped
 from runtime.exceptions import ConfigurationError, UpstreamError, ValidationError
 
 # Where the machine's own public address is read, to say whether the name points here.
@@ -112,18 +113,29 @@ def linux_or_refuse() -> None:
         raise ConfigurationError(NOT_LINUX)
 
 
-def check_name(name: str, *, read_address: bool = True) -> str:
+# Resolves a name to its IPv4 addresses, as the box's DNS answers; a test hands in its own.
+type Resolve = Callable[[str], list[str]]
+# The address the internet sees this machine at, or None; a test hands in its own.
+type Here = Callable[[], str | None]
+
+
+def resolve_ipv4(name: str) -> list[str]:
+    """Every IPv4 address the name resolves to now; socket.gaierror when none."""
+    return sorted({str(info[4][0]) for info in socket.getaddrinfo(name, 443, socket.AF_INET)})
+
+
+def check_name(name: str, *, resolve: Resolve = resolve_ipv4, here: Here | None = None) -> str:
     """The line that says the name points at this machine; refused when it points elsewhere or nowhere."""
     try:
-        found = sorted({str(info[4][0]) for info in socket.getaddrinfo(name, 443, socket.AF_INET)})
+        found = resolve(name)
     except socket.gaierror:
         raise ValidationError(NOWHERE.format(name=name)) from None
-    here = this_machines_address() if read_address else None
-    if here is None:
+    address = (here or this_machines_address)()
+    if address is None:
         return f"  name      {name} → {', '.join(found)} — this machine's address could not be read: be sure it is here"
-    if here not in found:
-        raise ValidationError(NOT_HERE.format(name=name, found=", ".join(found), here=here))
-    return f"  name      {name} → {here} — this machine ✓"
+    if address not in found:
+        raise ValidationError(NOT_HERE.format(name=name, found=", ".join(found), here=address))
+    return f"  name      {name} → {address} — this machine ✓"
 
 
 def this_machines_address() -> str | None:
@@ -175,7 +187,7 @@ def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path
     for name in FILES:
         target = where / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(shipped(name).read_text(encoding="utf-8"), encoding="utf-8")
+        target.write_text(find_shipped(name).read_text(encoding="utf-8"), encoding="utf-8")
     wheels = where / "runtime" / "wheels"
     wheels.mkdir(exist_ok=True)
     for old in wheels.iterdir():

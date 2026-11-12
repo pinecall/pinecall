@@ -13,7 +13,7 @@ from runtime.cli.setup.choices import (
     model_of,
     vendor_of,
 )
-from runtime.cli.setup.files import shipped
+from runtime.cli.setup.files import find_shipped
 from runtime.providers.catalog import Catalog, Rate
 from runtime.providers.service import files
 
@@ -23,7 +23,7 @@ THINKING = "llm/openai"
 
 def row_of(choices: Choices) -> Catalog:
     """The providers row for the choices: each stage's default, the tuning, the judge, the caller, the rates."""
-    shipped = _shipped(choices)
+    shipped = _read_shipped_row(choices)
     # The list prices the package ships, so a call on a vendor's key is priced from the first; open models at nothing.
     rates: dict[str, Any] = {model: rate.model_dump(exclude_none=True) for model, rate in list_prices().items()}
     rates.update(shipped["rates"])
@@ -70,17 +70,17 @@ def row_of(choices: Choices) -> Catalog:
 
 def list_prices() -> dict[str, Rate]:
     """The vendors' list prices the package ships (`shipped/prices.csv`), by model."""
-    return files.rates_from_csv(shipped("prices.csv").read_text(encoding="utf-8"))
+    return files.rates_from_csv(find_shipped("prices.csv").read_text(encoding="utf-8"))
 
 
 def list_models() -> files.ModelsFile:
     """The models the package ships (`shipped/models.csv`): by stage and vendor, named, the recommended marked."""
-    return files.models_from_csv(shipped("models.csv").read_text(encoding="utf-8"))
+    return files.models_from_csv(find_shipped("models.csv").read_text(encoding="utf-8"))
 
 
 # The shipped row names the thinking and the ears by placeholders: the choices' own models go in.
-def _shipped(choices: Choices) -> dict[str, Any]:
-    text = shipped("providers.local.json").read_text(encoding="utf-8")
+def _read_shipped_row(choices: Choices) -> dict[str, Any]:
+    text = find_shipped("providers.local.json").read_text(encoding="utf-8")
     stt = (model_of(choices.stt) or LOCAL_STT) if is_local(choices.stt) else LOCAL_STT
     row: dict[str, Any] = json.loads(text.replace("LOCAL_LLM", _llm_model(choices)).replace("LOCAL_STT", stt))
     row["defaults"]["tts"] = {"vendor": "openai", "model": LOCAL_TTS}

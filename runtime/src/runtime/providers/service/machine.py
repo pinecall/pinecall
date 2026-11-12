@@ -212,7 +212,7 @@ def key_from_shell(variable: str, home: Path | None = None) -> str | None:
 
 # What a machine can run is data, measured once and shipped beside the package (`measured.csv`): a
 # model a line, a stage on keys a line, a server a line, `#` lines its notes.
-def measured_from_csv(text: str) -> Measured:
+def parse_measured(text: str) -> Measured:
     """What a measured file says: the models in its order, the vendor of each stage on keys, each server's card."""
     models: list[MeasuredModel] = []
     on_keys: dict[Stage, str] = {}

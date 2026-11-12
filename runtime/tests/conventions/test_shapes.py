@@ -17,6 +17,8 @@ ALLOWED: dict[str, str] = {
     "knowledge.service.embedder": "the embedder's client parses a vendor's rows and its refusal",
     "telephony.service.twilio": "Twilio's client parses Twilio's answers",
     "hosts.service.cluster": "the cluster's client parses what Kubernetes lists of a pod",
+    "cli.client": "the operator's client reads a gateway's answer as the schema its endpoint answers with",
+    "cli.output": "a verb prints a schema as JSON, as the endpoint that answers it would",
 }
 
 

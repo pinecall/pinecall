@@ -46,17 +46,17 @@ PINECALL_TOKEN_KEY={token}
 LISTEN_EVERYWHERE = "PINECALL_GATEWAY_LISTEN=0.0.0.0:8080\n" if sys.platform == "linux" else ""
 
 
-def shipped(name: str) -> Traversable:
+def find_shipped(name: str) -> Traversable:
     """One file the package ships for a machine's runtime."""
     return files("runtime.cli.setup").joinpath("shipped", name)
 
 
-def write_shipped(where: Path) -> EnvFile:
+def write_shipped(where: Path, *, listen: str = LISTEN_EVERYWHERE) -> EnvFile:
     """Write the files the package ships, changed or missing, and the settings once; the settings file."""
     for name in SHIPPED:
         target = where / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        content = shipped(name).read_text(encoding="utf-8")
+        content = find_shipped(name).read_text(encoding="utf-8")
         if not target.is_file() or target.read_text(encoding="utf-8") != content:
             target.write_text(content, encoding="utf-8")
     (where / "recordings").mkdir(exist_ok=True)
@@ -69,7 +69,7 @@ def write_shipped(where: Path) -> EnvFile:
                 vault=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
                 ops=secrets.token_hex(24),
                 token=secrets.token_hex(32),
-                listen=LISTEN_EVERYWHERE,
+                listen=listen,
             )
         )
     return env
