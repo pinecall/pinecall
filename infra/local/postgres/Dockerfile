@@ -14,13 +14,16 @@ RUN apt-get update \
 # pgvector builds with -march=native unless told otherwise, and that binary dies with SIGILL on
 # any other CPU.
 RUN git clone --depth 1 --branch ${PGVECTOR_TAG} https://github.com/pgvector/pgvector.git /build/pgvector \
- && make -C /build/pgvector OPTFLAGS="" && make -C /build/pgvector install
+ && make -C /build/pgvector OPTFLAGS="" && make -C /build/pgvector install DESTDIR=/out
 RUN git clone --depth 1 --branch ${PG_TEXTSEARCH_TAG} https://github.com/timescale/pg_textsearch.git /build/pg_textsearch \
- && make -C /build/pg_textsearch && make -C /build/pg_textsearch install
+ && make -C /build/pg_textsearch && make -C /build/pg_textsearch install DESTDIR=/out
 
+# Only what the two extensions installed. The build stage's apt brings the newest minor of Postgres
+# with the headers, whatever the base is pinned at: its whole lib directory, copied over the base,
+# put 17.12's plpgsql.so on a 17.11 server the day 17.12 came out, and initdb died on a symbol.
 FROM ${POSTGRES_IMAGE}
-COPY --from=build /usr/lib/postgresql/17/lib/ /usr/lib/postgresql/17/lib/
-COPY --from=build /usr/share/postgresql/17/extension/ /usr/share/postgresql/17/extension/
+COPY --from=build /out/usr/lib/postgresql/17/lib/ /usr/lib/postgresql/17/lib/
+COPY --from=build /out/usr/share/postgresql/17/extension/ /usr/share/postgresql/17/extension/
 # pg_textsearch keeps BM25 statistics in shared memory: CREATE EXTENSION fails unless preloaded.
 RUN echo "shared_preload_libraries = 'pg_textsearch'" >> /usr/share/postgresql/17/postgresql.conf.sample
 COPY extensions.sql /docker-entrypoint-initdb.d/10-extensions.sql
