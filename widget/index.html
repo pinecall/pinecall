@@ -7,9 +7,10 @@
   <style>body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fff; }</style>
 </head>
 <body>
-  <!-- Point token-url and log-url at your own endpoints: README.md, "Your two endpoints". -->
+  <!-- Point token-url, code-url and dictation-url at your own endpoints: README.md, "Your endpoints". -->
   <script type="module" src="./pinecall-widget.js"></script>
-  <pinecall-widget agent="your-agent" name="Assistant" token-url="/pinecall/token" log-url="/pinecall/log"
-                   code-url="/pinecall/code"></pinecall-widget>
+  <pinecall-widget agent="pip" name="Pip" company="Brightside Dental"
+                   greeting="Hi, I'm Pip. Shall I find you a time for a cleaning?"
+                   token-url="/pinecall/token" code-url="/pinecall/code" dictation-url="/pinecall/dictation"></pinecall-widget>
 </body>
 </html>

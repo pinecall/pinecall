@@ -14,7 +14,7 @@ import { face, tutor } from "https://cdn.jsdelivr.net/npm/@pinecall/dot@0.11/+es
 const LINGER_MS = 2600;
 
 const STYLE = `
-  .fab.dot { width: var(--_dot); height: var(--_dot); padding: 0; border: 0; border-radius: 50%; background: none;
+  .fab.dot { width: var(--_dot); min-width: 0; height: var(--_dot); padding: 0; border: 0; border-radius: 50%; background: none;
              box-shadow: none; --pc-face: var(--_accent); }
   .fab.dot .face { display: block; width: 100%; height: 100%; }
   :host { --_dot: var(--pc-dot-size, 64px); }
@@ -178,7 +178,7 @@ export class Dot {
     if (this.kept !== null) {
       for (; this.turns < state.log.turns.length; this.turns += 1) {
         const turn = state.log.turns[this.turns];
-        this.widget.kept_line(`turn_${this.turns}`, turn.role === "user" ? "user" : "agent", turn.text);
+        this.widget.keptLine(`turn_${this.turns}`, turn.role === "user" ? "user" : "agent", turn.text);
       }
     }
     if ((state.phase === "ended" || state.phase === "failed") && this.kept !== null) {

@@ -1,10 +1,23 @@
 {
   "name": "@pinecall/widget",
   "version": "0.0.0",
-  "description": "One Pinecall agent as one button on any page: the phone number with its live log, a voice call from the browser, and a chat",
+  "description": "One Pinecall agent as one button on any page: a chat, a voice call from the browser, and a call from the visitor's phone with its live log",
   "type": "module",
   "main": "pinecall-widget.js",
-  "files": ["pinecall-widget.js", "pinecall-dot.js", "README.md"],
+  "files": [
+    "pinecall-widget.js",
+    "pinecall-dot.js",
+    "call-us.js",
+    "cards.js",
+    "dictation.js",
+    "history.js",
+    "lines.js",
+    "markup.js",
+    "panel.js",
+    "styles.js",
+    "texts.js",
+    "README.md"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
