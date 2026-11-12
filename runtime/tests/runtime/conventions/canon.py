@@ -84,6 +84,61 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
     "providers": frozenset({"stage", "catalog"}),
     # Its two value objects (`VALUE_OBJECTS`).
     "agents": frozenset({"declaration", "settings"}),
+    # An engine: one call running for as long as it lasts, each module an object that holds its state, or
+    # the one noun those objects share. `service.py` beside them is what a host calls.
+    "session": frozenset(
+        {
+            # Call: the state that outlives a turn, and the Protocols of what it reaches (the context, the platform).
+            "call",
+            # Writing: the call's entries in order, sent to its log in batches by one task.
+            "writing",
+            # Session: the call on livekit's AgentSession, built on its place: opened, heard, re-staged, ended.
+            "session",
+            # The one table of what each command does to a call, the envelope a stream is read with, the refusal.
+            "commands",
+            # Line: who has the line, and the agent's ears and voice with it.
+            "line",
+            # HoldMusic: the melody, its grace, when it sounded.
+            "hold",
+            # CallAgent: livekit's Agent with the hooks of a turn.
+            "agent",
+            # The prompt's blocks, the request of each turn, the greeting, a supervisor's notes.
+            "prompt",
+            # The history: how it opens, how it is rebuilt from a log, a note added to it.
+            "history",
+            # Toolbox: the app's tools, the lookups, a voicemail reached, end_call.
+            "tools",
+            # Lookups: recall and search before each turn, within a budget.
+            "lookups",
+            # What the ears are told: the turn policy, agreement, the agent heard back, the keyterms.
+            "hearing",
+            # What the agent said since the caller last spoke.
+            "repeats",
+            # The agent's words as they play: the entry, the lexicon read back.
+            "transcript",
+            # Listener: what livekit says, written as entries; the turn's times.
+            "listener",
+            # livekit's metrics and usage as the wire's.
+            "metrics",
+            # The stages a call runs: what was built, whether it is spoken, a vendor lost or back.
+            "stages",
+            # A session built for a spoken call, and one for a written call.
+            "voice",
+            "text",
+            # CallRoom: who is in the room, the caller's codes, transfers, the room verbs.
+            "room",
+            # Widget: the DataChannel to a browser widget.
+            "widget",
+            # Recorder: the call's file and the other voices.
+            "recording",
+            # The caller's audio cleared of the agent's own voice.
+            "echo",
+            # A call's time: its ceiling, a chat's quiet, the idle lines.
+            "clock",
+            # The call.started entry.
+            "started",
+        }
+    ),
 }
 # A `service/` package may hold this many modules; past it the domain is cut, or CONTRIBUTING.md says in a
 # sentence why it is one context and the domain is named here with that sentence.

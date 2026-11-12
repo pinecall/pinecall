@@ -89,11 +89,40 @@ A module of a domain that is none of its seven files is named here, and in
 | `providers` | `catalog.py` | a value object: the providers row, the one shape of a document the box keeps and the one reader of its keys. It is pydantic, the document being JSON an operator edits |
 | `agents` | `declaration.py` | a value object: what an agent's class declares (its tools, its turns, its words), and the declaration whole |
 | `agents` | `settings.py` | a value object: what the org sets on an agent over its class (its settings, its lexicon), and the versions a call ran on |
+| `session` | `call.py` | `Call`: the state that outlives a turn, and the Protocols of what it reaches (the context, the platform) |
+| `session` | `writing.py` | `Writing`: the call's entries in order, sent to its log in batches by one task |
+| `session` | `session.py` | `Session`: the call on livekit's AgentSession, built on its place: opened, heard, re-staged, ended |
+| `session` | `commands.py` | the one table of what each command does to a call, the envelope a stream is read with, the refusal |
+| `session` | `line.py` | `Line`: who has the line, and the agent's ears and voice with it |
+| `session` | `hold.py` | `HoldMusic`: the melody, its grace, when it sounded |
+| `session` | `agent.py` | `CallAgent`: livekit's Agent with the hooks of a turn |
+| `session` | `prompt.py` | the prompt's blocks, the request of each turn, the greeting, a supervisor's notes |
+| `session` | `history.py` | the history: how it opens, how it is rebuilt from a log, a note added to it |
+| `session` | `tools.py` | `Toolbox`: the app's tools, the lookups, a voicemail reached, `end_call` |
+| `session` | `lookups.py` | `Lookups`: recall and search before each turn, within a budget |
+| `session` | `hearing.py` | what the ears are told: the turn policy, agreement, the agent heard back, the keyterms |
+| `session` | `repeats.py` | what the agent said since the caller last spoke |
+| `session` | `transcript.py` | the agent's words as they play: the entry, the lexicon read back |
+| `session` | `listener.py` | `Listener`: what livekit says, written as entries; the turn's times |
+| `session` | `metrics.py` | livekit's metrics and usage as the wire's |
+| `session` | `stages.py` | the stages a call runs: what was built, whether it is spoken, a vendor lost or back |
+| `session` | `voice.py` | a session built for a spoken call |
+| `session` | `text.py` | a session built for a written call |
+| `session` | `room.py` | `CallRoom`: who is in the room, the caller's codes, transfers, the room verbs |
+| `session` | `widget.py` | `Widget`: the DataChannel to a browser widget |
+| `session` | `recording.py` | `Recorder`: the call's file and the other voices |
+| `session` | `echo.py` | the caller's audio cleared of the agent's own voice |
+| `session` | `clock.py` | a call's time: its ceiling, a chat's quiet, the idle lines |
+| `session` | `started.py` | the `call.started` entry |
 
 `providers/service/` has more than sixteen modules and is one context: which vendor runs each
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
 registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
 this machine can run (`machine`) stand apart and were decided into it.
+
+`session` is an engine: one call running for as long as it lasts. Each of its modules above is an
+object that holds the call's state, or the one noun those objects share; `service.py` beside them
+is what a host (the gateway for a written call, a worker's job for a spoken one) calls.
 
 `telephony/service/` has more than sixteen modules and is one context: how a number reaches an
 agent and an agent a number. The account a number lives in (by its kind: a module each, behind

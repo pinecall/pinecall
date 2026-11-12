@@ -16,7 +16,13 @@ from runtime.providers.service.readiness import Runnable, runnable_on
 from runtime.providers.service.refusals import vendor_named_in
 from runtime.providers.service.signatures import refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
-from runtime.providers.service.stages import thinking_outside_a_call
+from runtime.providers.service.stages import (
+    build_ears,
+    build_realtime,
+    build_thinking,
+    build_voice,
+    thinking_outside_a_call,
+)
 from runtime.providers.service.telemetry import Telemetry, telemetry_of
 from runtime.providers.service.trials import try_realtime, try_stage
 
@@ -27,7 +33,11 @@ __all__ = [
     "Telemetry",
     "TimedWord",
     "box_credentials",
+    "build_ears",
     "build_pipeline",
+    "build_realtime",
+    "build_thinking",
+    "build_voice",
     "completion_usage",
     "get_catalog",
     "hears_and_speaks",

@@ -66,3 +66,29 @@ def replace_in_stream(says: Mapping[str, str]) -> Callable[[AsyncIterable[str]],
             yield replace_words(held, says)
 
     return transform
+
+
+class Unsaying:
+    """The spoken forms of a lexicon, matched as the written words were replaced, and read back as written."""
+
+    def __init__(self, says: Mapping[str, str]) -> None:
+        """Every spoken form, longest first, mapped back to the word written."""
+        self.written = {spoken.lower(): word for word, spoken in says.items() if spoken}
+        keys = sorted(self.written, key=len, reverse=True)
+        self.pattern = re.compile("|".join(re.escape(key) for key in keys), re.IGNORECASE)
+        prefixes = {key[:n] for key in keys for n in range(1, len(key))}
+        self.started = (
+            re.compile("(?:" + "|".join(re.escape(p) for p in prefixes) + r")\Z", re.IGNORECASE) if prefixes else None
+        )
+
+    def back(self, text: str) -> str:
+        """The text with every spoken form put back as the word written."""
+        return self.pattern.sub(lambda found: self.written[found.group(0).lower()], text)
+
+    def may_go_on(self, text: str) -> bool:
+        """Whether the text ends in what the next piece could complete into a spoken form."""
+        return self.started is not None and self.started.search(text) is not None
+
+    def found(self, text: str) -> bool:
+        """Whether the text holds a spoken form."""
+        return self.pattern.search(text) is not None

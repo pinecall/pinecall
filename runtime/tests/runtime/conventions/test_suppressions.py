@@ -18,7 +18,9 @@ ALLOWED_RULES = frozenset(
     }
 )
 # One file, one rule, one reason.
-ALLOWED_IN_A_FILE: dict[tuple[str, str], str] = {}
+ALLOWED_IN_A_FILE: dict[tuple[str, str], str] = {
+    ("session/voice.py", "reportMissingTypeStubs"): "smart_turn_livekit ships no stubs",
+}
 
 
 def test_every_suppression_is_allowed(modules: dict[str, Module]) -> None:

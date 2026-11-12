@@ -2,16 +2,19 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from runtime.agents import schemas
-from runtime.agents.auth import PipelineKey, TheAgent, TheMelody
+from runtime.agents.auth import KnownAgent, PipelineKey, TheAgent, TheMelody
 from runtime.agents.service import hold_audio
 from runtime.enums import HoldPlayed
 from runtime.postgres import Session
+from runtime.session import service as sessions
 from runtime.wire import worker
 
 router = APIRouter()
+
+OGG = "audio/ogg"
 
 
 # The melody is the agent's in an env, whoever holds it.
@@ -19,6 +22,14 @@ router = APIRouter()
 async def get_hold(agent: TheAgent, actor: PipelineKey, session: Session) -> worker.HoldAudio:
     """What the agent plays while a tool runs, and after how long: the runtime's melody, silence, or its own clip."""
     return worker.HoldAudio.model_validate(await hold_audio.get_hold(session, actor.scope, agent), from_attributes=True)
+
+
+# The runtime's own melody is the file a session plays, so the session says where it is.
+@router.get("/v1/agents/{slug}/pipeline/hold-audio/audio")
+async def get_heard_clip(slug: KnownAgent, actor: PipelineKey, session: Session) -> Response:
+    """The melody the agent plays, its own clip or the runtime's, Ogg, to hear before a caller does; 404 when off."""
+    melody = sessions.runtime_melody()
+    return Response(await hold_audio.get_heard_clip(session, actor.scope, slug, runtime_melody=melody), media_type=OGG)
 
 
 # The body is the file, no multipart; the name rides the query. An agent whose class declares its

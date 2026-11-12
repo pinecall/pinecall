@@ -1,10 +1,17 @@
 """The room's events: opened, who joined, left and spoke, what they published and sent."""
 
-from typing import Any
+from typing import Any, Literal
 
 from runtime.enums import Channel
 from runtime.wire.base import WireModel
 from runtime.wire.parts import ParticipantKind, TrackKind, TrackSource
+
+# What a room token lets its seat do, carried as an attribute of the participant: the gateway signs it
+# into the token, the worker reads it off the seat to tell a widget from a supervisor from a caller.
+type RoomScope = Literal["talk", "chat", "observe", "supervise", "read", "participate"]
+SCOPE_ATTRIBUTE = "pinecall.scope"
+# The scopes that read the log of their own call and no other: a widget's.
+READS_ITS_OWN_CALL: frozenset[RoomScope] = frozenset({"talk", "chat", "read", "participate"})
 
 
 class RoomOpened(WireModel):

@@ -341,6 +341,32 @@ COMMANDS: dict[str, type[WireModel]] = {
 }
 
 
+# The gateway's own words to whatever runs a call, sent on the call's command stream as a command is and
+# never an app's: neither is in COMMANDS, so a socket refuses them and no app can say them in the
+# gateway's name. The caller's own hang-up, said at the gateway; and the call taking its stages anew.
+class CallerHungUp(WireModel):
+    """The caller hung up: whatever runs the call ends it now."""
+
+
+class StagesChanged(WireModel):
+    """The call takes its model and its voice as its agent's settings name them now, or as `agent`'s do."""
+
+    agent: str | None = None
+
+
+type Signal = CallerHungUp | StagesChanged
+SIGNALS: dict[str, type[CallerHungUp] | type[StagesChanged]] = {
+    "caller.hung_up": CallerHungUp,
+    "stages.changed": StagesChanged,
+}
+
+
+def signal_of(command: Command) -> Signal | None:
+    """The gateway's own signal a command carries, as its model; None for a command of an app's."""
+    model = SIGNALS.get(command.type)
+    return None if model is None else model.parse(command.data, command.type)
+
+
 def name_of(command: WireModel) -> str:
     """The command as the wire names it: `call.mute`, or a supervisor's verb as `supervise <verb>`."""
     verb = getattr(command, "verb", None)

@@ -1,0 +1,245 @@
+"""What livekit tells a session about its call, written as entries: turns, states, usage, metrics, failures."""
+
+import asyncio
+import time
+from collections.abc import Callable, Iterable, Mapping
+
+from livekit.agents import (
+    AgentStateChangedEvent,
+    APIStatusError,
+    CloseEvent,
+    CloseReason,
+    ConversationItemAddedEvent,
+    SessionUsageUpdatedEvent,
+    SpeechCreatedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+    llm,
+    metrics,
+)
+from livekit.agents import ErrorEvent as ComponentFailed
+from livekit.agents.voice import AgentSession, SpeechHandle
+from livekit.agents.voice.events import EventTypes
+
+from runtime.session.call import Call
+from runtime.session.line import Line
+from runtime.session.lookups import Lookups
+from runtime.session.metrics import block_of, end_of_utterance, usage_of
+from runtime.session.stages import Built
+from runtime.wire import events as wire
+from runtime.wire import metrics as measured
+
+# Errors of the request itself; 408, 429 and 5xx are transient and livekit retries them.
+FOREVER = frozenset({400, 401, 402, 403, 404, 422})
+# The WebSocket close for a policy violation: a vendor that refuses a voice or a key sends it,
+# and livekit's 4xx check misses it.
+POLICY_VIOLATION = 1008
+# What the session listens to on livekit's AgentSession.
+LISTENED: tuple[EventTypes, ...] = (
+    "user_input_transcribed",
+    "user_state_changed",
+    "agent_state_changed",
+    "speech_created",
+    "conversation_item_added",
+    "session_usage_updated",
+    "error",
+    "close",
+)
+
+
+class Listener:
+    """One call's ear on its AgentSession and its components, writing what they say."""
+
+    # `closing` reads the session's own phase: the speeches its close cuts short are not the agent's
+    # turn over, and a line written then would land after call.ended and hold the seal.
+    def __init__(
+        self,
+        live: AgentSession[Call],
+        lookups: Lookups,
+        line: Line,
+        *,
+        dead_end: Callable[[], None],
+        closing: Callable[[], bool],
+    ) -> None:
+        """Listening to nothing yet."""
+        self.call = live.userdata
+        self.live = live
+        self.lookups = lookups
+        self.line = line
+        self.dead_end = dead_end
+        self.closing = closing
+        self.language: str | None = None
+        self.usage: list[measured.ModelUsage] = []
+        self.closed_for: CloseReason | None = None
+        # When the person last said something: what a written call in a room is kept alive by.
+        self.last_heard = time.monotonic()
+        self.ended_for_good = False
+        self.components: tuple[Built, ...] = ()
+        # When the caller last stopped speaking, until the agent's first turn after it is written.
+        self.heard_stopped_at: float | None = None
+        # When the caller last went quiet, as the session's state says it: what a realtime model's
+        # turn is timed from, since its caller's turn carries no `stopped_speaking_at`.
+        self.went_quiet_at: float | None = None
+
+    def listen(self, components: Iterable[Built]) -> None:
+        """Hear the session's events and its components' metrics."""
+        for name in LISTENED:
+            self.live.on(name, self.on_event)  # pyright: ignore[reportUnknownMemberType]
+        self.measure(components)
+
+    # A stage rebuilt in the middle of a call is measured from then on, and the one it replaced no more.
+    def measure(self, components: Iterable[Built]) -> None:
+        """Hear these components' metrics, and no other's."""
+        for component in self.components:
+            component.off("metrics_collected", self._on_metrics)  # pyright: ignore[reportUnknownMemberType]
+        self.components = tuple(components)
+        for component in self.components:
+            component.on("metrics_collected", self._on_metrics)  # pyright: ignore[reportUnknownMemberType]
+
+    def stop(self) -> None:
+        """Hear nothing more."""
+        for name in LISTENED:
+            self.live.off(name, self.on_event)  # pyright: ignore[reportUnknownMemberType]
+        for component in self.components:
+            component.off("metrics_collected", self._on_metrics)  # pyright: ignore[reportUnknownMemberType]
+
+    def on_event(self, event: object) -> None:
+        """One event of the session, written as the entry it is."""
+        writing = self.call.writing
+        match event:
+            case UserInputTranscribedEvent():
+                self._on_transcript(event)
+            case UserStateChangedEvent():
+                if event.old_state == "speaking" and event.new_state != "speaking":
+                    self.went_quiet_at = event.created_at
+                writing.write("user.state", wire.UserStateChanged(state=event.new_state))
+            case AgentStateChangedEvent():
+                if self.call.agent_speaking and event.new_state != "speaking":
+                    self.call.agent_words.stop()
+                self.call.agent_speaking = event.new_state == "speaking"
+                self.line.floor(speaking=self.call.agent_speaking)
+                writing.write("agent.state", wire.AgentStateChanged(state=event.new_state))
+            case SpeechCreatedEvent():
+                self._on_speech(event)
+            case ConversationItemAddedEvent():
+                self._on_item(event.item)
+            case SessionUsageUpdatedEvent():
+                self.usage = [usage_of(used) for used in event.usage.model_usage]
+            case ComponentFailed():
+                self._on_failure(event)
+            case CloseEvent():
+                self.closed_for = event.reason
+            case _:
+                return
+
+    # Every transcript starts the lookups, so recall and search run while the caller still talks or
+    # while the end of the turn is weighed. Ears that write no interims (Whisper) give the final
+    # alone, some 300 ms before the turn ends: left to the turn's end, the lookup spent its budget
+    # waiting on the embedder (gpu.pinecall.io, 2026-10-18).
+    def _on_transcript(self, event: UserInputTranscribedEvent) -> None:
+        self.language = event.language or self.language
+        text = wire.UserTranscript(text=event.transcript, final=event.is_final, language=event.language)
+        self.call.writing.write("user.transcript", text)
+        self.lookups.start_early(event.transcript)
+
+    # The agent's turn is over when its speech is done, and only then: a reply that calls a tool plays a
+    # sentence, runs the tool and says the rest on the same speech handle. livekit's state says
+    # "listening" between the sentence and a tool already done, and a page that went on at that word
+    # spoke over the agent (2026-10-27).
+    def _on_speech(self, event: SpeechCreatedEvent) -> None:
+        def over(speech: SpeechHandle) -> None:
+            if self.closing():
+                return
+            self.call.writing.write(
+                "agent.waiting", wire.AgentWaiting(speech_id=speech.id, interrupted=speech.interrupted)
+            )
+
+        event.speech_handle.add_done_callback(over)
+
+    # Metrics are whole by the time an item is added, so the turns are written here.
+    def _on_item(self, item: object) -> None:
+        if not isinstance(item, llm.ChatMessage) or item.role not in {"user", "assistant"}:
+            return
+        speech = self.live.current_speech.id if self.live.current_speech else item.id
+        text = item.text_content or ""
+        call = self.call
+        if item.role == "assistant":
+            call.turns += 1
+            call.last_said = text or call.last_said
+            replied = measured.AgentTurnMetrics.model_validate(self._time_the_reply(item.metrics))
+            agent = wire.AgentTurnEnded(
+                speech_id=speech, item_id=item.id, text=text, interrupted=item.interrupted, metrics=replied
+            )
+            call.writing.write("turn.agent", agent)
+            return
+        self.last_heard = time.monotonic()
+        self._note_the_turns_end(item.metrics)
+        eou = end_of_utterance(item.metrics, speech)
+        if eou is not None:
+            call.writing.write("metrics.eou", eou)
+        user = wire.UserTurnEnded(
+            speech_id=speech,
+            item_id=item.id,
+            text=text,
+            language=self.language,
+            transcript_confidence=item.transcript_confidence,
+            metrics=measured.UserTurnMetrics.model_validate(dict(item.metrics)),
+        )
+        call.writing.write("turn.user", user)
+
+    # The ears' own `stopped_speaking_at` when the turn has one; a realtime model's turn carries
+    # none, and the session's state saw the caller go quiet. The agent's next turn is the first
+    # sound the caller waits for.
+    def _note_the_turns_end(self, report: Mapping[str, object]) -> None:
+        stopped = report.get("stopped_speaking_at")
+        quiet, self.went_quiet_at = self.went_quiet_at, None
+        self.heard_stopped_at = float(stopped) if isinstance(stopped, int | float) else quiet
+
+    # livekit's e2e_latency runs from the caller's last word to the turn it rides on, so a preamble
+    # said before a tool ("let me look that up") left the tool's wait on the answer after it. The
+    # caller waits for the first sound: the first turn after theirs carries that, a later one none.
+    def _time_the_reply(self, report: Mapping[str, object]) -> dict[str, object]:
+        answer = dict(report)
+        stopped, self.heard_stopped_at = self.heard_stopped_at, None
+        started = answer.get("started_speaking_at")
+        if stopped is not None and isinstance(started, int | float) and started >= stopped:
+            answer["e2e_latency"] = float(started) - stopped
+        else:
+            answer.pop("e2e_latency", None)
+        return answer
+
+    # livekit closes only after three unrecoverable errors. A refusal that can never succeed (a
+    # bad key, a voice that does not exist) ends the call on the first.
+    def _on_failure(self, event: ComponentFailed) -> None:
+        if self.ended_for_good:
+            return
+        said = str(event.error)
+        wrapped = getattr(event.error, "error", None)
+        if not (isinstance(wrapped, APIStatusError) and fails_for_good(wrapped)):
+            recoverable = bool(getattr(event.error, "recoverable", False))
+            self.call.writing.write(
+                "error", wire.ErrorEvent(code="component_failed", message=said, recoverable=recoverable)
+            )
+            return
+        self.ended_for_good = True
+        self.call.writing.write("error", wire.ErrorEvent(code="component_dead_end", message=said, recoverable=False))
+        self.dead_end()
+
+    # Deferred a tick: livekit stamps the speech id on the same object from a listener of its
+    # own, and the order of listeners is not defined. Streaming ears report usage at their own
+    # cadence; those ticks ride the stream and the total reaches the summary.
+    def _on_metrics(self, block: metrics.AgentMetrics) -> None:
+        asyncio.get_running_loop().call_soon(self._write_block, block)
+
+    def _write_block(self, block: metrics.AgentMetrics) -> None:
+        written = block_of(block)
+        if written is None:
+            return
+        kind, model = written
+        tick = isinstance(block, metrics.STTMetrics) and block.streamed and not block.acquire_time
+        self.call.writing.write(kind, model, ephemeral=True if tick else None)
+
+
+def fails_for_good(error: APIStatusError) -> bool:
+    """Whether a vendor's HTTP error will fail the same way every time it is retried."""
+    return error.status_code == POLICY_VIOLATION or error.status_code in FOREVER

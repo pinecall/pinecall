@@ -16,6 +16,8 @@ AN_E164 = re.compile(r"^\+[1-9]\d{1,14}$")
 # Whitespace in an address would allow header injection (RFC 5322 §2.2).
 AN_EMAIL = re.compile(r"^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$")
 A_FUNCTION_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+# A word is letters and digits, with an apostrophe or a hyphen inside it kept: "d'acord", "uh-huh".
+A_WORD = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*")
 
 
 def a_mapping(value: object) -> TypeIs[Mapping[str, object]]:
@@ -26,6 +28,13 @@ def a_mapping(value: object) -> TypeIs[Mapping[str, object]]:
 def a_list(value: object) -> TypeIs[list[object]]:
     """Whether the value is a list."""
     return isinstance(value, list)
+
+
+# The one tokeniser: what tells agreement from a turn, an echo from a caller, and two transcripts apart
+# reads a text as these words. Until 2026-11 three modules each had their own, each a little different.
+def words_of(text: str) -> list[str]:
+    """The words of a text, in order, lowered, its punctuation dropped."""
+    return [found.group(0).lower() for found in A_WORD.finditer(text)]
 
 
 # What is kept under the hash of what it holds (a block of a prompt, a recorded line, an uploaded clip) is
