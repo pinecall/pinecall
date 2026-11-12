@@ -6,6 +6,7 @@
 # for applications that decide their own answers.
 
 require "json"
+require "time"
 require "timeout"
 require "pinecall/wire"
 

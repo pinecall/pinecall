@@ -110,14 +110,20 @@ module Pinecall
           serving = live[call.id]
           raise ToolFailed, "#{spec[:name]}: this call is no longer being served" if serving.nil?
 
+          # A write already synced through the state's listener: only what the tool moved outside the
+          # state (a question open, a scene) is sent here.
+          before = moved_outside_the_state(serving)
           begin
             dispatched(serving, spec[:name], arguments, call_id)
           ensure
-            sync(serving, call) if live[call.id].equal?(serving)
+            sync(serving, call) if live[call.id].equal?(serving) && moved_outside_the_state(serving) != before
           end
         end)
       end
     end
+
+    # What a tool may move that is no field of the state: the tool left open for a question, the scene.
+    def moved_outside_the_state(serving) = [serving.asking.open&.dig(:name), serving.world.scene]
 
     # A served call of `klass`, its asking and its team wired to its world.
     def served(klass, live, call, serve)

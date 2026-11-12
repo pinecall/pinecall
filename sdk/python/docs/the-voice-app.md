@@ -124,7 +124,9 @@ from pinecall import flow
 @flow("remind-visit")
 async def remind_visit(visit, step):
     await step.sleep_until(visit["at"], before="24h")
-    called = await step.call(visit["phone"], Reminder, instruction=f"Remind {visit['patient']} of the visit.")
+    called = await step.call(
+        visit["phone"], Reminder, instruction=f"Remind {visit['patient']} of the visit."
+    )
     if not called.answered:
         await step.sleep("2h")
         called = await step.call(visit["phone"], Reminder)
