@@ -27,6 +27,23 @@ class SpendByDay(Protocol):
         ...
 
 
+# What `/metrics` shows of the orgs that spend strangely, for as long as each does: what the last seal of
+# one of an org's calls found, in memory, on the gateway that sealed it.
+class UnusualSpend:
+    """The orgs whose spend is unusual today, by how many times their usual day it is."""
+
+    def __init__(self) -> None:
+        """Nobody found unusual yet."""
+        self.by_org: dict[str, float] = {}
+
+    def note(self, org: str, found: SpendUnusual | None) -> None:
+        """Keep what a seal found of the org's spend: unusual by this much, or usual again."""
+        if found is None:
+            self.by_org.pop(org, None)
+        else:
+            self.by_org[org] = found.multiple
+
+
 async def unusual_spend(session: AsyncSession, spend: SpendByDay, org: str, at: float) -> SpendUnusual | None:
     """Today's spend against the org's usual day, when it is over the line; None when usual."""
     day = _start_of_day(at)

@@ -5,8 +5,9 @@ from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Actor
+from runtime.actor import Actor, Scope
 from runtime.enums import Channel, Env, KeyScope
+from runtime.exceptions import ValidationError
 from runtime.kit.crypto import Vault
 from runtime.kit.time import now
 from runtime.livekit import Servers
@@ -14,9 +15,15 @@ from runtime.scoping import box_wide
 from runtime.telephony.models import Route
 from runtime.telephony.repository import RouteRepository
 from runtime.telephony.service import rebuild, sfu
+from runtime.wire import parts
 
 # A number rung all day is written once a minute, never once a call.
 CALLED_EVERY = timedelta(minutes=1)
+NOT_ROUTED = (
+    "{number} on {channel} is not a route of {slug} in {env}: a number reaches an agent once imported, "
+    "`pinecall numbers import {number} --agent {slug}`"
+)
+NO_NUMBER = "a {channel} route names its number: only web answers with none"
 
 
 async def list_routes(
@@ -25,6 +32,31 @@ async def list_routes(
     """The org's numbers in one env, oldest first; one agent's, or one channel's, when named."""
     found = await RouteRepository(session).list_of_org(org, env, agent=agent, channel=channel)
     return [numbered.route for numbered in found]
+
+
+# A number reaches an agent through the org's routes (`pinecall numbers import`), never through a
+# registration: what the app says it answers is checked against them, and agent.registered says what
+# the agent really answers, web always among it.
+async def list_answered_routes(
+    session: AsyncSession, scope: Scope, slug: str, wanted: Sequence[parts.Route]
+) -> list[parts.Route]:
+    """The routes the agent answers in the scope's env; one the app names and the org never routed is refused."""
+    rows = await list_routes(session, scope.org, scope.env, agent=slug)
+    labels = {(route.channel, route.number): route.label for route in wanted}
+    web = parts.Route(channel=Channel.web, number=None, label=labels.get((Channel.web, None)))
+    held = [web] + [
+        parts.Route(channel=row.channel, number=row.number, label=labels.get((row.channel, row.number))) for row in rows
+    ]
+    for route in wanted:
+        if route.channel is Channel.web:
+            continue
+        if route.number is None:
+            raise ValidationError(NO_NUMBER.format(channel=route.channel.value))
+        if not any(had.channel is route.channel and had.number == route.number for had in held):
+            raise ValidationError(
+                NOT_ROUTED.format(number=route.number, channel=route.channel.value, slug=slug, env=scope.env.value)
+            )
+    return held
 
 
 async def find_route_at(session: AsyncSession, channel: Channel, number: str) -> Route | None:

@@ -1,11 +1,12 @@
-"""What a worker and the gateway tell each other over HTTP: its heartbeat, a call's agent, stages, route and legs."""
+"""What a worker and the gateway tell each other over HTTP: its heartbeat, a call's agent, stages, route, legs, log."""
 
+from datetime import date
 from typing import Any, Literal
 
 from pydantic import AliasChoices, ConfigDict, Field
 
-from runtime.enums import Channel, Env, HoldPlayed
-from runtime.wire.base import WireModel
+from runtime.enums import Channel, Direction, Env, HoldPlayed
+from runtime.wire.base import BatchedEntry, Entry, WireModel
 from runtime.wire.declaration import (
     DocsConfig,
     GreetingConfig,
@@ -20,7 +21,8 @@ from runtime.wire.declaration import (
     VoicemailConfig,
     WidgetLook,
 )
-from runtime.wire.parts import EndOfTurn, EventSource, PromptRegion, SideEffect, Visibility
+from runtime.wire.metrics import ModelUsage
+from runtime.wire.parts import EndOfTurn, EventSource, PlatformTool, PromptRegion, SideEffect, Visibility
 
 # ── the heartbeat ──
 
@@ -310,3 +312,156 @@ class RingAtTestLine(WireModel):
     org: str | None = None
     agent: str | None = None
     holder: str | None = None
+
+
+# ── a call's log: what its worker opens it with, writes to it, asks of it and ends it with ──
+
+# The bodies of the worker's endpoints on its call (`POST /v1/calls` and what follows), as the release
+# before 2026-11 wrote them in `calls/schemas`: its workers, draining calls for up to an hour, send
+# these to the new gateways, and after a rollback these workers send them to its gateways. A field
+# is added with a default, never renamed, retyped or removed, until that release is gone.
+
+
+class _OfACall(WireModel):
+    # What a call is was a dataclass of that release, which read past a key it did not know.
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class CallRoute(_OfACall):
+    """Which agent answers on a channel and number, and which org owns it, as a worker says it of its call."""
+
+    org: str
+    agent: str
+    channel: Channel
+    number: str | None = None
+    label: str | None = None
+    env: Env = Env.production
+    managed: bool = False
+
+
+class CallContact(_OfACall):
+    """What a worker knows about the caller; a web visitor may be anonymous."""
+
+    id: str | None = None
+    phone: str | None = None
+    name: str | None = None
+    email: str | None = None
+    external_id: str | None = None
+
+
+# Field for field `calls.context.CallContext`, which reads it back (`read_context`) and holds it to its rules.
+class CallOpened(_OfACall):
+    """A call as its worker sees it when it starts: its id, who calls, the route it came in by, its day."""
+
+    call: str
+    channel: Channel
+    direction: Direction
+    caller: str
+    route: CallRoute
+    today: date
+    pinned_day: date | None = None
+    contact: CallContact | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict[str, Any])
+    run: str | None = None
+    persona: str | None = None
+    expects: tuple[str, ...] = ()
+    holder: str | None = None
+    state: dict[str, Any] = Field(default_factory=dict[str, Any])
+    continues: str | None = None
+
+
+class OpenCallRequest(WireModel):
+    """What a worker opens a call with, and says again to a gateway that forgot it."""
+
+    agent: str
+    context: CallOpened
+    # The app socket that must serve it (a spoken golden run); else the one the call reaches.
+    app: str | None = None
+    # The Twilio account an inbound leg says it came from (X-Twilio-AccountSid); None from any
+    # other carrier, or from a worker of an older release.
+    carrier_account: str | None = None
+    # The test room's own voice and models the worker runs this call on (its dispatch's test values), so
+    # the gateway opens the call as it runs: the platform's first words in that language. On the wire
+    # it is `tuning`, the word the release before 2026-11 sends.
+    test_values: dict[str, Any] | None = Field(default=None, alias="tuning")
+
+
+class OpenCallResponse(WireModel):
+    """What the org's minutes leave the call (null for no limit), and what it says first."""
+
+    seconds_left: int | None
+    minutes: int | None
+    # An outbound call's AI disclosure, and the notice a recorded call says; null for none.
+    disclosure: str | None = None
+    recording_notice: str | None = None
+    # The turns of the call this one continues, oldest first; empty for a call of its own.
+    history: list[Entry] = Field(default_factory=list[Entry])
+
+
+class AppendEntryRequest(WireModel):
+    """One entry a worker writes to its call's log."""
+
+    type: str
+    data: dict[str, Any]
+    ephemeral: bool | None = None
+
+
+# `after` makes a retry safe: the log answers a batch it already took with the seqs it gave it.
+class AppendEntriesRequest(WireModel):
+    """A worker's entries of its call, in order, after how many the log already took from it."""
+
+    after: int = Field(ge=0)
+    entries: list[BatchedEntry]
+
+
+class AppendEntriesResponse(WireModel):
+    """A worker's batch as the log numbered it, in the order it was sent."""
+
+    entries: list[Entry]
+
+
+# On the entries socket, where a refusal is a frame and not a status: the socket stays open.
+class AppendEntriesRefused(WireModel):
+    """A batch the gateway refused, with the sentence and the status a request would get."""
+
+    refused: str
+    status: int
+
+
+# `input` is whole and unread by the wire: what recall and search take is the runtime's shape.
+class LookupRequest(WireModel):
+    """Which platform tool to run for a call's turn, what to run it with, and the turn it joins."""
+
+    tool: PlatformTool
+    input: dict[str, Any]
+    speech_id: str | None = None
+
+
+class LookupResponse(WireModel):
+    """What the tool found, as the model reads it, and how long finding it took."""
+
+    output: dict[str, Any]
+    took_ms: float
+
+
+class RememberResponse(WireModel):
+    """How many memory operations a call produced, and how long remembering took."""
+
+    ops: int
+    took_ms: float
+
+
+class RecordingKeyResponse(WireModel):
+    """The key a call's recording is sealed under before it is stored: 32 bytes, base64url."""
+
+    key: str
+
+
+class SealCallRequest(WireModel):
+    """The end of a call as its worker hands it to the gateway, which prices, judges and seals."""
+
+    usage: list[ModelUsage]
+    outcome: str
+    recording: str | None = None
+    # The vendors that ran on the box's own key: the operator bills their usage.
+    lent: list[str] = Field(default_factory=list[str])

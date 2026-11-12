@@ -1,6 +1,6 @@
 """The metered feed over every log: a page of what was consumed after a cursor, its totals, and the feed followed."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -11,6 +11,7 @@ from runtime.calls.log.feeds import Feeds
 from runtime.calls.log.writer import METERED_TYPES
 from runtime.calls.repository.entries import A_PAGE, EntryRepository
 from runtime.calls.repository.facts import FactsRepository
+from runtime.calls.repository.spend import SpendRepository
 from runtime.scoping import box_wide
 
 SUMMARY = "call.summary"
@@ -118,3 +119,19 @@ async def _bill(session: AsyncSession, rows: list[UsageRow]) -> list[UsageRow]:
         else row
         for row in rows
     ]
+
+
+# ── what the seal keeps and asks of the dollars ──
+
+
+# No entry says it: the worker tells the seal which vendors ran on the box's own key, and the
+# operator bills their usage off the row.
+async def keep_lent(session: AsyncSession, call: str, vendors: Sequence[str]) -> None:
+    """Keep the vendors the call ran on the box's own key with its facts."""
+    await FactsRepository(session).keep(call, lent=list(vendors))
+
+
+# What alerts' watch of an org's spend is handed (`alerts.service.spend.SpendByDay`).
+async def sum_spend_by_day(session: AsyncSession, org: str, day: float, since: float) -> tuple[float, float]:
+    """The org's dollars since the day started, and those from `since` to its start."""
+    return await SpendRepository(session).sum_today_and_before(org, day, since)

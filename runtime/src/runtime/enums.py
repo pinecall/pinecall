@@ -223,3 +223,10 @@ class CaseSource(StrEnum):
     simulation = "simulation"
     # Written by hand, in the console or through the API: no call made it.
     person = "person"
+
+
+class CodeLog(StrEnum):
+    """Which log a caller code's page reads."""
+
+    public = "public"
+    tenant = "tenant"

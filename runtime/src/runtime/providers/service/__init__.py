@@ -2,8 +2,9 @@
 
 from runtime.providers.service.catalog import get_catalog, judge_ceiling
 from runtime.providers.service.credentials import box_credentials, put_box_credentials
+from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
-from runtime.providers.service.pipeline import build_pipeline, stage_on_its_key, thinking_of
+from runtime.providers.service.pipeline import build_pipeline, refuse_what_cannot_run, stage_on_its_key, thinking_of
 from runtime.providers.service.plugins import (
     NOT_REALTIME,
     hears_and_speaks,
@@ -37,6 +38,7 @@ __all__ = [
     "Runnable",
     "Telemetry",
     "TimedWord",
+    "VendorHealth",
     "ask",
     "box_credentials",
     "build_ears",
@@ -57,6 +59,7 @@ __all__ = [
     "put_box_credentials",
     "refuse_realtime_as_llm",
     "refuse_untaken_settings",
+    "refuse_what_cannot_run",
     "runnable_on",
     "running_on",
     "speak",

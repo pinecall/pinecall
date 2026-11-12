@@ -61,7 +61,7 @@ FOUNDATIONS = frozenset(
     }
 )
 # Above every domain: wiring only.
-ENTRYPOINTS = frozenset({"app", "lifespan", "api", "worker", "runner", "cli"})
+ENTRYPOINTS = frozenset({"app", "lifespan", "builders", "api", "worker", "runner", "cli"})
 # A domain's value objects, read by any domain as its models are. Each is named in CONTRIBUTING.md.
 VALUE_OBJECTS: frozenset[str] = frozenset(
     {
@@ -100,6 +100,26 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
     # a log, the logs, the feeds, the relay, the fanout, the private values); `folds/` is what is folded from
     # one, pure functions of its entries (the state, the facts, the usage, the latencies, the phone legs).
     "calls": frozenset({"context", "projection", "recordings", "log", "folds"}),
+    # An engine: the calls a gateway serves while they last, each module an object that lives for hours and
+    # holds what is open now, or the one value those objects share. `service/` beside them is the use cases.
+    "live": frozenset(
+        {
+            # Served, a call this gateway serves, and Calls: each one's socket, pump and commands, every org's count.
+            "served",
+            # Sockets: the app sockets open here and on the other gateways, their inboxes, the dev asks.
+            "sockets",
+            # Holders: who holds each agent on every gateway, the line of each, the developers' phones.
+            "holders",
+            # Every channel of the signal the gateways tell each other of a live call on, as a value; who runs what.
+            "peers",
+            # A bound call's pump: what any gateway writes to it, sent down its app socket in seq order.
+            "pump",
+            # ToolCalls: a call's tool calls to its app, through its log, each asked once and answered once.
+            "tool_calls",
+            # LiveParts: one of each thing a call served here reaches, the one value that carries them together (G-1).
+            "parts",
+        }
+    ),
     # An engine: one call running for as long as it lasts, each module an object that holds its state, or
     # the one noun those objects share. `service.py` beside them is what a host calls.
     "session": frozenset(
@@ -169,6 +189,11 @@ ONE_CONTEXT: dict[str, str] = {
         "how a number reaches an agent and an agent a number: the account it lives in, by its kind, its fence, its "
         "trunk and rule on the SFU and its row are one thing read and written together; the routes and the legs in a "
         "call's room were decided into it (channels-1, telephony-3), and a kind of account is a module each"
+    ),
+    "live": (
+        "a call while it is served: opened, bound to the app that holds its agent, commanded, ended once. Its "
+        "eighteen nouns read and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp "
+        "threads, the dial and a visitor's way in were decided into it (calls-service-1 B, calls-service-4 A)"
     ),
 }
 

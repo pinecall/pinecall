@@ -21,7 +21,7 @@ nor callbacks), ambient current-user state, and autoload.
 
 ```
 src/runtime/
-  app.py lifespan.py api.py worker.py runner.py cli/   the entrypoints: they build and wire, nothing else
+  app.py lifespan.py builders.py api.py worker.py runner.py cli/   the entrypoints: they build and wire, nothing else
   config.py enums.py exceptions.py         one process's words: its settings, the shared enums, the errors
   actor.py auth.py scoping.py              who a request is, how its key is resolved and required, the org it is scoped to
   postgres.py signal.py redis.py livekit.py one process's connections
@@ -119,6 +119,13 @@ A module of a domain that is none of its seven files is named here, and in
 | `session` | `echo.py` | the caller's audio cleared of the agent's own voice |
 | `session` | `clock.py` | a call's time: its ceiling, a chat's quiet, the idle lines |
 | `session` | `started.py` | the `call.started` entry |
+| `live` | `served.py` | `Served`, a call this gateway serves, and `Calls`: each one's socket, pump and commands, every org's count |
+| `live` | `sockets.py` | `Sockets`: the app sockets open here and on the other gateways, their inboxes, the dev asks |
+| `live` | `holders.py` | `Holders`: who holds each agent on every gateway, the line of each, the developers' phones |
+| `live` | `peers.py` | every channel of the signal the gateways tell each other of a live call on, as a value; who runs what |
+| `live` | `pump.py` | a bound call's pump: what any gateway writes to it, sent down its app socket in seq order |
+| `live` | `tool_calls.py` | `ToolCalls`: a call's tool calls to its app, through its log, each asked once and answered once |
+| `live` | `parts.py` | `LiveParts`: one of each thing a call served here reaches, the one value that carries them together |
 
 `providers/service/` has more than sixteen modules and is one context: which vendor runs each
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
@@ -130,6 +137,14 @@ this machine can run (`machine`) stand apart and were decided into it.
 object that holds the call's state, or the one noun those objects share; `service.py` beside them
 is what a host (the gateway for a written call, a worker's job for a spoken one) calls.
 
+`live` is an engine: the calls a gateway serves while they last. Each of its modules above is an
+object that lives for hours and holds what is open now (the calls served, the sockets, who holds
+each agent), or the one value those objects share; none is durable, the log is the record. What
+the gateways tell each other of them is read in one place, `peers.py`. `service/` beside them is
+the use cases, which take those objects by name; `LiveParts` is the one value of the package that
+carries collaborators together, for the end of a call, which needs nine of them, and it never
+leaves the domain: no facade exports it and no other domain is handed it.
+
 `calls` is an engine in two sub-packages that cannot exist without it and share its tables: `log/` is
 the machinery (one writer numbers every log, the store keeps it, the relay tells every gateway, a
 log's readers follow it live) and `folds/` is what is read out of a log, with no session and no I/O.
@@ -140,6 +155,11 @@ names exactly what others import, and never a module inside it.
 agent and an agent a number. The account a number lives in (by its kind: a module each, behind
 one `Protocol`), its fence, its trunk and rule on the SFU and its row are read and written
 together; the routes and the legs in a call's room were decided into it.
+
+`live/service/` has more than sixteen modules and is one context: a call while it is served:
+opened, bound to the app that holds its agent, commanded, ended once. Its eighteen nouns read and
+move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp threads, the dial
+and a visitor's way in were decided into it.
 
 ## The rules
 
@@ -193,8 +213,10 @@ together; the routes and the legs in a call's room were decided into it.
     its own in its service; endpoints never raise `HTTPException`; `app.py` has the one handler. A
     vendor's failure is an `UpstreamError` carrying `vendor`, `retryable` and `retry_after_s`,
     translated once where the vendor is called.
-14. **Entrypoints wire.** Only `app.py`, `lifespan.py`, `api.py`, `worker.py`, `runner.py` and `cli/` build
-    objects from settings. A CLI verb is a typed function that calls a service and prints; a module
+14. **Entrypoints wire.** Only `app.py`, `lifespan.py`, `builders.py`, `api.py`, `worker.py`, `runner.py` and
+    `cli/` build objects from settings. The lifespan is the state and the order it is built in; each
+    family of what it builds (the connections, the log's engine, the fleet, the live side) is a
+    function of `builders.py`. A CLI verb is a typed function that calls a service and prints; a module
     is named for the word typed.
 15. **Size.** A module is at most 500 lines; a module of shapes alone at most 800; a line at most
     120 characters, written by `ruff format`.

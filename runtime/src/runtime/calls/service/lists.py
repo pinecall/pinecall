@@ -12,17 +12,19 @@ from runtime.actor import THE_ORGS_OWN, Actor, Scope
 from runtime.agents import service as agents
 from runtime.agents.declaration import Declaration
 from runtime.agents.settings import Versions
+from runtime.calls.context import log_name
 from runtime.calls.folds.facts import LINE_FIELDS, CallFacts, facts_of, line_of
 from runtime.calls.folds.latencies import Median, medians
 from runtime.calls.log.logs import Logs
 from runtime.calls.models import CallLogHead
 from runtime.calls.projection import TENANT, project_state
-from runtime.calls.repository.entries import EntryRepository
+from runtime.calls.repository.entries import EntryRepository, ToolEntry
 from runtime.calls.repository.erasure import ErasureRepository
 from runtime.calls.repository.facts import AgentFacts, FactsRepository
-from runtime.calls.repository.heads import CallHead, HeadRepository
+from runtime.calls.repository.heads import CallHead, Claim, HeadRepository
 from runtime.calls.repository.search import ListFilters, PersonaRunFilters, PersonaRuns, SearchRepository
 from runtime.calls.repository.taught import Taught, TaughtRepository
+from runtime.calls.repository.unsealed import Unsealed, UnsealedRepository
 from runtime.exceptions import NotFound
 from runtime.kit.text import JsonObject
 from runtime.scoping import box_wide
@@ -152,6 +154,65 @@ async def list_entries(session: AsyncSession, call: str) -> list[Entry]:
 async def find_head(session: AsyncSession, call: str) -> CallHead | None:
     """Where the call was opened, or None for a call nobody wrote to or claimed."""
     return await HeadRepository(session).head_of_call(call)
+
+
+# ── what the live side asks of the heads and the entries ──
+
+
+# The first claim of a head stands: a call a dial placed, and one two workers open at once, is the
+# first one's, whatever the second says.
+async def claim_call(session: AsyncSession, call: str, agent: str, claim: Claim) -> None:
+    """Record the call's scope, the versions it was built on and who opened it."""
+    await HeadRepository(session).claim_call(call, agent, claim)
+
+
+# Claimed and then read, never read and then claimed: until 2026-11 two orgs registering one slug
+# nobody held in the same instant both passed the check, and the one that lost wrote
+# `agent.registered` on the other's log. Read box-wide: another org's log reads as that org's.
+async def claim_agent_log(session: AsyncSession, agent: str, org: str) -> str | None:
+    """Claim the agent's own log for the org, and answer whose it is: the first claim stands."""
+    heads = HeadRepository(session)
+    name = log_name(None, agent)
+    with box_wide():
+        owner = await heads.owner_of(name)
+    if owner is not None and owner != org:
+        return owner
+    await heads.claim_agent_log(agent, org)
+    with box_wide():
+        return await heads.owner_of(name)
+
+
+async def list_open(session: AsyncSession, calls: Sequence[str]) -> set[str]:
+    """Which of the calls have a log nobody sealed: one sealed, or erased with its head, is over."""
+    heads = await HeadRepository(session).heads_of(calls)
+    return {call for call, head in heads.items() if not head.sealed}
+
+
+# What alerts' sweep of the newborn orgs is handed (`alerts.service.newborns.EndedCalls`).
+async def list_ended_calls(session: AsyncSession, org: str) -> list[str]:
+    """The org's calls that ended, in either env."""
+    return await FactsRepository(session).list_ended_of_org(org)
+
+
+async def count_taken(session: AsyncSession, call: str) -> int:
+    """How many entries the call's log took from its writer's batches: where a writer that takes it over goes on."""
+    return await HeadRepository(session).count_taken(call)
+
+
+async def find_tool_entry(session: AsyncSession, call: str, kind: ToolEntry, call_id: str) -> Entry | None:
+    """The `tool.call` or the `tool.result` the call's log holds for a tool call id, or None."""
+    return await EntryRepository(session).find_of_tool(call, kind, call_id)
+
+
+# Across every org: the reaper's questions, asked by a loop of the box.
+async def list_quiet_spoken(session: AsyncSession, quiet_since: float, *, limit: int) -> list[Unsealed]:
+    """The spoken or never-started calls still open and quiet since then, oldest first."""
+    return await UnsealedRepository(session).list_spoken(quiet_since, limit=limit)
+
+
+async def list_quiet_written(session: AsyncSession, quiet_since: float, *, limit: int) -> list[Unsealed]:
+    """The written calls still open and quiet since then, with their channel."""
+    return await UnsealedRepository(session).list_written(quiet_since, limit=limit)
 
 
 @dataclass(frozen=True, slots=True)

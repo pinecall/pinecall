@@ -73,6 +73,11 @@ class Actor:
         """The id a row keeps of who asked: the person's, or the key's when no person is behind it."""
         return self.person.id if self.person else self.key_id
 
+    @property
+    def is_fleet(self) -> bool:
+        """Whether the key is an env's fleet, which serves every org of its env."""
+        return KeyScope.fleet in self.scopes
+
     def opens(self, *scopes: KeyScope) -> bool:
         """Whether the key holds any of the scopes."""
         return any(scope in self.scopes for scope in scopes)

@@ -92,6 +92,13 @@ async def list_calls_with(session: AsyncSession, scope: Scope, slug: str, contac
     return calls
 
 
+# What a conversation that comes back asks: a WhatsApp thread is taken up again on its newest call.
+async def find_newest_call_with(session: AsyncSession, scope: Scope, slug: str, contact: str) -> str | None:
+    """The contact's newest call with the agent, or None when they never spoke."""
+    newest = await InboxRepository(session).list_calls_with(scope, slug, contact, limit=1)
+    return newest[0] if newest else None
+
+
 # Each call's log is read on the session that read the thread: until 2026-11 each was asked of the
 # store, a second connection twenty times over.
 async def thread_of(session: AsyncSession, scope: Scope, slug: str, contact: str) -> ContactThread:

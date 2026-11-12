@@ -1,7 +1,10 @@
 """What the processes of a box tell each other outside the log: entries, sockets, jobs."""
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from typing import Any
 
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel
+
+from runtime.enums import Env
 from runtime.wire.base import Entry
 
 
@@ -115,3 +118,114 @@ class RosterShare(BaseModel):
         default=(), validation_alias=AliasChoices("workers", "seats"), serialization_alias="seats"
     )
     cordons: tuple[Assignment, ...] = ()
+
+
+# ── the live side: who holds what, on which gateway ──
+
+# Every shape below is read and said by the gateways of the release before 2026-11 too, for the hour a
+# rollout takes and after a rollback: its names, types and what may be left out are that release's own
+# (`calls/service/peers.py`, `agents/service/registry.py` there), and change by addition alone.
+
+
+class Scoped(BaseModel):
+    """A scope as the gateways tell it: an org, one of its envs, and the holder ("" for the org itself)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    org: str
+    env: Env = Env.production
+    holder: str = ""
+
+
+class SocketRow(BaseModel):
+    """An app socket a gateway holds, as the org's list of apps shows it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    app: str
+    scope: Scoped
+    address: str | None
+    connected_at: float
+    host: str | None = None
+
+
+class SocketsShare(RootModel[tuple[SocketRow, ...]]):
+    """One gateway's share of the sockets: every app socket open on it."""
+
+
+class RunningShare(RootModel[dict[str, list[str]]]):
+    """One gateway's share of the calls at once: the calls it opened, by `<org>|<env>`."""
+
+
+class OwnedShare(BaseModel):
+    """One gateway's share of what runs on it: the written calls whose sessions it runs, the threads it holds."""
+
+    model_config = ConfigDict(frozen=True)
+
+    texts: tuple[str, ...] = ()
+    threads: tuple[str, ...] = ()
+
+
+# `config` is the agent's declaration whole, as the release before 2026-11 says it and requires it of
+# every registration it hears: it builds a call on the declaration of a socket another gateway holds.
+# This release reads the declaration from its row and says it here for that one; it goes when that
+# release does (agents-5).
+class Registered(BaseModel):
+    """One agent as one app socket holds it, as its gateway tells the others."""
+
+    model_config = ConfigDict(frozen=True)
+
+    slug: str
+    scope: Scoped
+    owner: str
+    config: dict[str, Any]
+    sdk: str | None = None
+    takes_unclaimed: bool = True
+    answers_dev: bool = False
+    says_done: bool = False
+    claimed: float = 0.0
+    draining: bool = False
+
+
+class HeldShare(BaseModel):
+    """One gateway's share of the agents held: its sockets' agents, and the lines and phones it set."""
+
+    model_config = ConfigDict(frozen=True)
+
+    registrations: tuple[Registered, ...] = ()
+    lines: tuple[Assignment, ...] = ()
+    phones: tuple[Assignment, ...] = ()
+
+
+class Taking(BaseModel):
+    """A socket took an agent in a scope: the calls parked for it, on any gateway, are its to take."""
+
+    app: str
+    scope: Scoped
+    agent: str
+
+
+class Unbound(BaseModel):
+    """A socket let a call go on the gateway that held it: the gateway that opened the call hands it on."""
+
+    call: str
+    app: str
+
+
+class Handoff(BaseModel):
+    """One message of the handoff channel: a socket that took an agent, or a call a socket let go."""
+
+    taking: Taking | None = None
+    unbound: Unbound | None = None
+
+
+class HandedMessage(BaseModel):
+    """A WhatsApp message one gateway hands to the one holding its contact's thread."""
+
+    number: str
+    phone_number_id: str
+    wa_id: str
+    name: str | None
+    message_id: str
+    kind: str
+    text: str | None
