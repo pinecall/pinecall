@@ -2,7 +2,6 @@
 LLM on the Responses API in its `responses` module (xAI's Grok); its realtime model's class in its
 `realtime` module, and the models that class runs where the plugin names them."""
 
-import types
 from typing import Literal
 
 from runtime.enums import Stage
@@ -13,6 +12,7 @@ from runtime.providers.service.plugins import (
     realtime_models,
     realtime_path,
 )
+from tests.fakes.plugins import a_module
 
 
 class LLM:
@@ -55,7 +55,7 @@ class Flux:
 
 
 def test_the_models_a_class_lists_are_what_it_types_its_model_argument_with() -> None:
-    module = types.SimpleNamespace(STT=STT, STTv2=Flux, TTS=TTS)
+    module = a_module(STT=STT, STTv2=Flux, TTS=TTS)
     assert models_listed(module, "STTv2") == ("flux-en", "flux-multi")
     assert models_listed(module, "STT") == ()
     assert models_listed(module, "TTS") == ()
@@ -63,41 +63,41 @@ def test_the_models_a_class_lists_are_what_it_types_its_model_argument_with() ->
 
 
 def test_a_class_at_the_top_of_the_module_is_found_there() -> None:
-    module = types.SimpleNamespace(LLM=LLM, STT=STT)
+    module = a_module(LLM=LLM, STT=STT)
     assert class_path(module, Stage.llm) == "LLM"
     assert class_path(module, Stage.stt) == "STT"
     assert class_path(module, Stage.tts) is None
 
 
 def test_an_llm_kept_in_the_responses_module_is_found_there() -> None:
-    module = types.SimpleNamespace(STT=STT, responses=types.SimpleNamespace(LLM=LLM))
+    module = a_module(STT=STT, responses=a_module(LLM=LLM))
     assert class_path(module, Stage.llm) == "responses.LLM"
 
 
 def test_the_top_of_the_module_comes_first() -> None:
-    module = types.SimpleNamespace(LLM=LLM, responses=types.SimpleNamespace(LLM=STT))
+    module = a_module(LLM=LLM, responses=a_module(LLM=STT))
     assert class_path(module, Stage.llm) == "LLM"
 
 
 def test_a_stages_default_model_is_what_its_class_builds_when_none_is_named_and_none_where_it_decides_inside() -> None:
-    module = types.SimpleNamespace(LLM=LLM, STT=STT, TTS=TTS)
+    module = a_module(LLM=LLM, STT=STT, TTS=TTS)
     assert default_models(module, {Stage.llm, Stage.stt, Stage.tts}) == {Stage.stt: "ears-3"}
 
 
 def test_a_realtime_class_in_the_realtime_module_lists_the_models_its_model_argument_types() -> None:
-    module = types.SimpleNamespace(LLM=LLM, realtime=types.SimpleNamespace(RealtimeModel=Talks))
+    module = a_module(LLM=LLM, realtime=a_module(RealtimeModel=Talks))
     assert realtime_path(module) == "realtime.RealtimeModel"
     assert realtime_models(module) == ("voice-1", "voice-3")
 
 
 def test_a_realtime_class_typed_as_any_string_lists_the_models_its_plugin_names() -> None:
-    listed = types.SimpleNamespace(RealtimeModels=Literal["rt", "rt-2"])
-    module = types.SimpleNamespace(RealtimeModel=TalksAnything, models=listed)
+    listed = a_module(RealtimeModels=Literal["rt", "rt-2"])
+    module = a_module(RealtimeModel=TalksAnything, models=listed)
     assert realtime_path(module) == "RealtimeModel"
     assert realtime_models(module) == ("rt", "rt-2")
 
 
 def test_a_plugin_with_no_realtime_class_lists_no_realtime_model() -> None:
-    module = types.SimpleNamespace(LLM=LLM, STT=STT)
+    module = a_module(LLM=LLM, STT=STT)
     assert realtime_path(module) is None
     assert realtime_models(module) == ()

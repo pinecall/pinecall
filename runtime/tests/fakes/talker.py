@@ -1,12 +1,11 @@
 """The vendor `talker`: a plain model, and a realtime one that hears and speaks itself, installed as a plugin."""
 
 import dataclasses
-import types
 from typing import Literal, Never, override
 
 from livekit.agents import llm
 
-from tests.fakes.plugins import install_plugin
+from tests.fakes.plugins import a_module, install_plugin
 
 TALKER = "talker"
 # What its realtime class types its `model` argument as, as xAI's does.
@@ -60,9 +59,9 @@ class SayingRealtime(TalkerRealtime):
 
 def install_saying() -> str:
     """Put `livekit.plugins.talker-saying` where the runtime looks for vendors; its name."""
-    return install_plugin(SAYING, LLM=TalkerLLM, realtime=types.SimpleNamespace(RealtimeModel=SayingRealtime))
+    return install_plugin(SAYING, LLM=TalkerLLM, realtime=a_module(RealtimeModel=SayingRealtime))
 
 
 def install() -> str:
     """Put `livekit.plugins.talker` where the runtime looks for vendors; its name."""
-    return install_plugin(TALKER, LLM=TalkerLLM, realtime=types.SimpleNamespace(RealtimeModel=TalkerRealtime))
+    return install_plugin(TALKER, LLM=TalkerLLM, realtime=a_module(RealtimeModel=TalkerRealtime))

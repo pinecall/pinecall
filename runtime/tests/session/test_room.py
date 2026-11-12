@@ -21,7 +21,7 @@ from runtime.calls.log.store import Store
 from runtime.enums import Channel
 from runtime.exceptions import Forbidden
 from runtime.session.call import Call
-from runtime.session.room import LIVEKITS_WAITS, CallRoom, Waits
+from runtime.session.room import THE_USUAL_WAITS, CallRoom, Waits
 from runtime.telephony.service.legs import CALLER_NUMBER, Legs, Trunk
 from runtime.wire.commands import (
     CallDtmf,
@@ -79,7 +79,7 @@ def _room(
     *seats: rtc.RemoteParticipant,
     channel: Channel = Channel.phone,
     params: RoomAnswers | None = None,
-    waits: Waits = LIVEKITS_WAITS,
+    waits: Waits = THE_USUAL_WAITS,
 ) -> tuple[CallRoom, AnOfflineRoom, RoomAnswers]:
     assert box.log.call is not None
     call = Call(context_of(box.log.call, channel), AGENT, box)
@@ -108,7 +108,7 @@ async def test_a_caller_joining_speaking_and_leaving_is_four_facts_in_that_order
     offline.emit("participant_connected", caller)
     offline.emit("active_speakers_changed", [caller])
     offline.emit("active_speakers_changed", [])
-    offline.emit("participant_disconnected", seat("sip_caller", kind=SIP, reason=1))
+    offline.emit("participant_disconnected", seat("sip_caller", kind=SIP, reason=rtc.DisconnectReason.CLIENT_INITIATED))
     await where.call.writing.flush(5)
     written = [entry.type for entry in seen]
     assert written == [

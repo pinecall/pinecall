@@ -2,46 +2,46 @@
 
 import asyncio
 import contextlib
-import time
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from runtime.accounts.models import ApiKey
-from runtime.accounts.service.actor import Verified
-from runtime.accounts.service.key_cache import FORGET_CHANNEL, KeyCache, Remembered
+from runtime.accounts.service import keys
+from runtime.accounts.service.key_cache import FORGET_CHANNEL, REMEMBERED_FOR_S, KeyCache
 from runtime.accounts.tasks import hear_revocations
+from runtime.kit.crypto import fingerprint
 from runtime.signal import LocalSignal
-from tests.conftest import until
+from tests.conftest import Tenant, needs_the_database
+
+# Well inside what a cache keeps a key for: a key forgotten within it was forgotten because it was told.
+TOLD_WITHIN_S = REMEMBERED_FOR_S / 2
 
 
-def a_cache(signal: LocalSignal) -> KeyCache:
-    """A gateway's cache of keys, nothing behind it: only revocations are heard."""
-    return KeyCache(cast(async_sessionmaker[AsyncSession], None), signal)
+def test_the_revocations_are_heard_by_a_loop_the_process_starts() -> None:
+    assert hear_revocations.name == "revocations"
 
 
 # A revocation that raised ended the listener, and every key revoked afterwards on another gateway
-# stayed trusted here for as long as the cache kept it.
+# stayed trusted here for as long as the cache kept it. Two gateways' caches on one signal: the key
+# is the tenant's own, verified here, then revoked there, in the database, as an endpoint does it.
+@needs_the_database
 async def test_a_revocation_that_cannot_be_read_does_not_leave_a_revoked_key_trusted(
-    caplog: pytest.LogCaptureFixture,
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant, caplog: pytest.LogCaptureFixture
 ) -> None:
     signal = LocalSignal()
-    hearing, revoking = a_cache(signal), a_cache(signal)
-
-    async def listen() -> None:
-        await hear_revocations.each(hearing, signal)
-
-    listening = asyncio.create_task(listen())
+    hearing, revoking = KeyCache(sessions, signal), KeyCache(sessions, signal)
+    listening = asyncio.ensure_future(hear_revocations.each(hearing, signal))
     try:
-        await until(lambda: bool(signal._listening.get(FORGET_CHANNEL)))
-        key = cast(ApiKey, SimpleNamespace(subject="m_1", expires_at=None))
-        hearing._kept["a-fingerprint"] = Remembered(Verified(key), time.monotonic() + 60)
-        signal.publish(FORGET_CHANNEL, b"this is not a revocation")
+        # The listener is there once a message has somebody to hear it; neither of these can be read.
+        while await signal.publish_now(FORGET_CHANNEL, b"this is not a revocation") == 0:
+            await asyncio.sleep(0.01)
         signal.publish(FORGET_CHANNEL, b'{"fingerprint": 7}')
-        revoking.forget(fingerprint="a-fingerprint")
-        await until(lambda: "a-fingerprint" not in hearing._kept)
+        assert await hearing.verify(tenant.server_key) is not None
+        async with sessions.begin() as session:
+            await keys.revoke_fingerprint(session, revoking, fingerprint(tenant.server_key))
+        async with asyncio.timeout(TOLD_WITHIN_S):
+            while await hearing.verify(tenant.server_key) is not None:
+                await asyncio.sleep(0.02)
         assert "reading a revocation of another gateway failed" in caplog.text
     finally:
         listening.cancel()

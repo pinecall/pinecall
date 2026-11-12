@@ -5,7 +5,8 @@ import logging
 
 import pytest
 
-from runtime.kit.loops import survive
+from runtime.kit.loops import Loops, loop, survive
+from tests.conftest import until
 
 
 def test_what_an_item_raises_is_said_with_where_it_was_and_the_next_item_runs(caplog: pytest.LogCaptureFixture) -> None:
@@ -53,3 +54,38 @@ async def test_an_await_in_the_block_is_survived_too_and_a_cancellation_is_not()
     waiting.cancel()
     with pytest.raises(asyncio.CancelledError), survive("offering", "room_2"):
         await waiting
+
+
+# A loop once caught four classes of error, and a pydantic one out of something it could not read
+# ended it for good. The pass after a failure waits longer, which is why this takes two seconds.
+async def test_a_pass_that_raises_anything_is_counted_and_the_loop_goes_on() -> None:
+    passes: list[int] = []
+
+    @loop("a-loop", every_s=0.01)
+    async def fail_the_first_time(seen: list[int]) -> None:
+        seen.append(len(seen))
+        if len(seen) == 1:
+            raise ValueError("1 validation error for Dispatch\nagent\n  Field required")
+
+    running = Loops()
+    running.start(fail_the_first_time.bind(passes))
+    try:
+        await until(lambda: len(passes) >= 3)
+        [beat] = running.beats()
+        assert (beat.name, beat.alive, beat.failures) == ("a-loop", True, 1)
+    finally:
+        await running.stop()
+
+
+async def test_a_name_runs_once() -> None:
+    @loop("a-loop", every_s=60.0)
+    async def idle() -> None:
+        return None
+
+    running = Loops()
+    running.start(idle.bind())
+    try:
+        with pytest.raises(ValueError, match="a loop named a-loop runs already"):
+            running.start(idle.bind())
+    finally:
+        await running.stop()

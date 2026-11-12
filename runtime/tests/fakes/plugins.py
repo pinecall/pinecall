@@ -8,6 +8,13 @@ from runtime.providers.service import plugins
 
 # The runtime finds its vendors once, by walking livekit's plugins: a fake one is put among them for the
 # whole run, under a name of its own, and read the way the runtime reads every plugin.
+def a_module(name: str = "a_plugin", **exported: object) -> types.ModuleType:
+    """A module exporting these, as a plugin's own or one of its submodules (`realtime`, `responses`, `models`) is."""
+    module = types.ModuleType(name)
+    vars(module).update(exported)
+    return module
+
+
 def install_plugin(name: str, **exported: object) -> str:
     """Put `livekit.plugins.<name>` exporting these, where the runtime looks for vendors; the vendor's name."""
     module = types.ModuleType(f"{plugins.PLUGINS}.{name}")

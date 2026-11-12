@@ -34,8 +34,9 @@ async def signal() -> AsyncIterator[LocalSignal]:
 async def test_a_share_that_cannot_be_read_is_said_and_the_next_is_heard(signal: LocalSignal) -> None:
     mine, other = a_share(signal, 0), a_share(signal, 7)
     await mine.start()
-    await until(lambda: bool(signal._listening.get(CHANNEL)))
-    signal.publish(CHANNEL, b"this is not a share")
+    # The listener is there once a message has somebody to hear it; neither of these can be read.
+    while await signal.publish_now(CHANNEL, b"this is not a share") == 0:
+        await asyncio.sleep(0.01)
     signal.publish(CHANNEL, b'{"sender":"a-gateway","share":"not an integer"}')
     await other.start()
     try:

@@ -2,14 +2,42 @@
 
 from fastapi import APIRouter
 
-from runtime.accounts.auth import TheNamedOrg
+from runtime.accounts import service as accounts
+from runtime.accounts.auth import AnyKey, TheNamedOrg
 from runtime.auth import TheOperator
 from runtime.billing import schemas
-from runtime.billing.service import admission, quotas
+from runtime.billing.service import admission, limits, quotas
+from runtime.handles import TheSettings
+from runtime.hosting import service as hosting
+from runtime.knowledge import service as knowledge
+from runtime.live.auth import TheLive
 from runtime.postgres import Session, TheBoxSession
 from runtime.providers import service as providers
+from runtime.telephony import service as telephony
 
 router = APIRouter()
+
+
+# Any key of the org. What is held is counted by its owner, as each admission is asked with it; an
+# endpoint may ask every domain, which no service below them can.
+@router.get("/v1/limits")
+async def get_limits(actor: AnyKey, live: TheLive, settings: TheSettings, session: Session) -> schemas.Limits:
+    """Each quota of the key's env as {limit, used}, the lends, and where to buy more."""
+    org, env = actor.org, actor.env
+    held = limits.Held(
+        concurrent_calls=len(live.calls.holding(org, env)),
+        agents=len(live.holders.slugs_of(org)),
+        seats=await accounts.count_seated(session, org),
+        numbers=await telephony.count_managed(session, org, env),
+        memory_facts=await knowledge.count_facts(session, org, env),
+        knowledge_chunks=await knowledge.count_chunks(session, org, env),
+        hosted_apps=len(await hosting.list_standing(session, env, org)),
+    )
+    read = await limits.read_limits(session, org, env, held, at=live.store.clock())
+    said: dict[str, object] = dict(read.measures)
+    said |= {"lends": None if read.lends is None else sorted(read.lends)}
+    said |= {"billing_url": settings.billing_url, "world": env}
+    return schemas.Limits.model_validate(said, from_attributes=True)
 
 
 @router.get("/v1/ops/admission")

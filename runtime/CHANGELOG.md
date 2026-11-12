@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`GET /v1/limits` shows an org's seats and budget as they are held.** Both are the org's, not an
+  environment's: a key of the sandbox read them off the sandbox's row, where an operator who set them on
+  production saw no limit at all. They are read off the org's own row now, the one a refusal reads.
 - **A hosted app that keeps exiting is given up on a machine of one's own too.** The runner counts a
   process's own exits and stops running it again after five in ten minutes; where apps run as this
   machine's processes (`PINECALL_RUNNER_ENGINE=processes`, what `setup` writes for a laptop) the count was

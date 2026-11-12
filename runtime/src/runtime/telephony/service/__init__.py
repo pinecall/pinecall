@@ -25,6 +25,7 @@ from runtime.telephony.service.legs import (
 from runtime.telephony.service.numbers import get_number, release_numbers_of
 from runtime.telephony.service.outbound import get_carrier_for_number, list_phone_routes
 from runtime.telephony.service.routes import (
+    count_managed,
     find_route_at,
     list_answered_routes,
     list_routes,
@@ -43,6 +44,7 @@ __all__ = [
     "Trunk",
     "arrival_of",
     "caller_leg",
+    "count_managed",
     "dial_in",
     "end_reason_of",
     "find_route_at",

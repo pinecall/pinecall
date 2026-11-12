@@ -4,6 +4,8 @@ import hashlib
 import json
 import struct
 
+from websockets.asyncio.client import ClientConnection
+
 from runtime.actor import Scope
 from runtime.enums import Env, HoldPlayed
 from runtime.jobs.service.client import GatewayClient
@@ -72,9 +74,9 @@ async def test_a_person_hears_the_runtimes_melody_before_a_caller_does_and_nothi
     assert silent.status_code == 404 and "off" in silent.json()["detail"]
 
 
-# Two seconds of silence, 8 kHz mono 16-bit: the smallest file the converter takes.
-def a_wav() -> bytes:
-    samples = b"\x00\x00" * 16_000
+# Silence, 8 kHz mono 16-bit, two seconds unless said: a file the converter takes.
+def a_wav(seconds: float = 2.0) -> bytes:
+    samples = b"\x00\x00" * int(8000 * seconds)
     header = struct.pack(
         "<4sI4s4sIHHIIHH4sI",
         b"RIFF",
@@ -94,10 +96,21 @@ def a_wav() -> bytes:
     return header + samples
 
 
-async def declared(app: object, agent: str, hold: dict[str, object]) -> None:
-    from websockets.asyncio.client import ClientConnection
+# A melody loops: one shorter than a second would stutter, and what is no audio at all is no melody.
+async def test_what_is_no_audio_and_what_is_too_short_are_refused_in_the_persons_words(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    door = f"/v1/agents/{agent}/pipeline/hold-audio"
+    async with holding(gateway, tenant, agent):
+        unread = await gateway.http.put(door, content=b"not a melody", headers=tenant.person)
+        short = await gateway.http.put(door, content=a_wav(0.3), headers=tenant.person)
+        read = await gateway.http.get(door, headers=tenant.person)
+    assert unread.status_code == 400 and "no audio this box can read" in unread.json()["detail"]
+    assert short.status_code == 400 and "stutter" in short.json()["detail"]
+    assert read.json()["played"] == "default"
 
-    assert isinstance(app, ClientConnection)
+
+async def declared(app: ClientConnection, agent: str, hold: dict[str, object]) -> None:
     await app.send(
         json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": {"config": {"hold": hold}}})
     )

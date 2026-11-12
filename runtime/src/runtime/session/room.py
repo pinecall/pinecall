@@ -79,7 +79,7 @@ class Waits:
 
 
 # What a room waits when nothing says otherwise.
-LIVEKITS_WAITS = Waits()
+THE_USUAL_WAITS = Waits()
 
 
 ROOM_VERB_FAILED = "room_verb_failed"
@@ -107,7 +107,7 @@ class CallRoom:
         *,
         legs: telephony.Legs,
         claim: ClaimCode,
-        waits: Waits = LIVEKITS_WAITS,
+        waits: Waits = THE_USUAL_WAITS,
     ) -> None:
         """The room of a call not yet opened."""
         self.call = call
@@ -336,12 +336,11 @@ class CallRoom:
     # A visitor's call waits for them as long as their room does; their widget's hang-up ends it
     # at once (widget.py), a reload does not.
     async def _wait_for_the_caller(self, hang_up: Callable[[], None], reason: str) -> None:
-        waits = (
-            self.waits.visitor_returns_s if self.call.context.channel is Channel.web else self.waits.caller_returns_s
-        )
-        await asyncio.sleep(waits)
+        is_a_visitor = self.call.context.channel is Channel.web
+        wait_s = self.waits.visitor_returns_s if is_a_visitor else self.waits.caller_returns_s
+        await asyncio.sleep(wait_s)
         self.returning = None
-        logger.info(CALLER_GONE, self.room.name, reason, waits)
+        logger.info(CALLER_GONE, self.room.name, reason, wait_s)
         hang_up()
 
     def _on_track_published(self, publication: rtc.TrackPublication, participant: rtc.Participant) -> None:

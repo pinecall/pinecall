@@ -12,6 +12,7 @@ from runtime.calls.log import Feeds, Logs, Store
 from runtime.config import Settings
 from runtime.fleet import service as fleet
 from runtime.kit.crypto import Vault
+from runtime.knowledge import service as knowledge
 from runtime.live.holders import Holders
 from runtime.live.peers import Owners
 from runtime.live.served import Calls
@@ -48,6 +49,9 @@ class LiveParts:
     alerting: alerts.Alerting
     health: providers.VendorHealth
     spending: alerts.UnusualSpend
+    # What finds the embedder a lookup and a hang-up's memory run on: the box's, read off the providers
+    # row each time it is asked, so a row edited applies from the next turn.
+    find_embedder: knowledge.FindEmbedder
 
     @property
     def now(self) -> datetime:

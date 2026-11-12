@@ -1,70 +1,30 @@
-"""The fleet's loops go on after a pass that raised, whatever it raised, and say how many failed."""
+"""The fleet's two loops: declared under their names, and a pass of each on a real roster and offering."""
 
-import dataclasses
-from typing import cast
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.fleet import tasks
+from runtime.fleet.service import slots
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
-from runtime.kit.loops import Bound, Loops
-from tests.conftest import until
+from tests.conftest import needs_the_database
 
 
-class Sweeping:
-    """An offering whose first sweep raises what no list of classes would have caught."""
-
-    def __init__(self) -> None:
-        """No sweep yet."""
-        self.swept = 0
-
-    async def sweep(self) -> list[str]:
-        """Raise the first time, answer after."""
-        self.swept += 1
-        if self.swept == 1:
-            raise ValueError("1 validation error for Dispatch\nagent\n  Field required")
-        return []
+# What keeps a loop going after a pass that raised is the process's `Loops` (tests/kit/test_loops.py):
+# here, that the fleet's work is two of them, started by name.
+def test_the_fleets_loops_are_declared_with_how_often_each_passes() -> None:
+    assert (tasks.sweep_offers.name, tasks.sweep_offers.every_s) == ("offers", tasks.SWEPT_EVERY_S)
+    assert (tasks.watch_roster.name, tasks.watch_roster.every_s) == ("roster", slots.HEARTBEAT_S)
 
 
-class Looking:
-    """A roster whose first look for silent workers raises."""
-
-    def __init__(self) -> None:
-        """No look yet."""
-        self.looks: list[float] = []
-
-    def forget_silent(self, now: float) -> None:
-        """Raise the first time, look after."""
-        self.looks.append(now)
-        if len(self.looks) == 1:
-            raise RuntimeError("the feed could not be told")
+async def test_a_pass_of_the_roster_on_a_gateway_that_heard_nobody_changes_nothing() -> None:
+    changes: list[str] = []
+    roster = Roster(on_change=lambda changed: changes.append(changed.worker))
+    await tasks.watch_roster.each(roster)
+    assert changes == []
 
 
-def fast(bound: Bound) -> Bound:
-    """The loop passing as often as a test can wait for."""
-    return dataclasses.replace(bound, every_s=0.01)
-
-
-# The sweep once caught PinecallError, TwirpError, OSError and SQLAlchemyError, and a pydantic error
-# out of a room's dispatch ended it for good: no room was offered again on that gateway.
-async def test_a_sweep_that_raises_anything_does_not_end_the_loop() -> None:
-    offering = Sweeping()
-    running = Loops()
-    running.start(fast(tasks.sweep_offers.bind(cast(Offering, offering))))
-    try:
-        await until(lambda: offering.swept >= 3)
-        [beat] = running.beats()
-        assert (beat.name, beat.alive, beat.failures) == ("offers", True, 1)
-    finally:
-        await running.stop()
-
-
-async def test_a_look_for_silent_workers_that_raises_does_not_end_the_tick() -> None:
-    roster = Looking()
-    running = Loops()
-    running.start(fast(tasks.watch_roster.bind(cast(Roster, roster))))
-    try:
-        await until(lambda: len(roster.looks) >= 3)
-        [beat] = running.beats()
-        assert (beat.name, beat.alive, beat.failures) == ("roster", True, 1)
-    finally:
-        await running.stop()
+@needs_the_database
+async def test_a_pass_of_the_sweep_with_no_room_waiting_offers_none(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    await tasks.sweep_offers.each(Offering(sessions, servers={}, roster=Roster()))

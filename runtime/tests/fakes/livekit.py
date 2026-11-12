@@ -7,6 +7,7 @@ import time
 from collections.abc import Mapping
 from typing import Any, override
 
+import aiohttp
 import numpy as np
 from livekit import api, rtc
 from livekit.agents import AgentSession
@@ -63,6 +64,9 @@ from runtime.enums import Env
 
 # Long enough for the JWT livekit signs with it; a secret of nothing.
 A_SECRET = "a secret of thirty-two bytes or more"
+A_KEY = "key"
+# No LiveKit is ever asked: every door a test reaches answers here.
+NOWHERE = "http://127.0.0.1:9"
 
 
 # The gateway's own signing key in a test, as PINECALL_TOKEN_KEY.
@@ -80,7 +84,9 @@ class Seated(rtc.LocalParticipant):
 
     def __init__(self) -> None:
         """A seat that published nothing yet."""
-        info = participant_pb2.ParticipantInfo(sid="PA_agent", identity="agent", kind=4)  # pyright: ignore[reportArgumentType]
+        info = participant_pb2.ParticipantInfo(
+            sid="PA_agent", identity="agent", kind=rtc.ParticipantKind.PARTICIPANT_KIND_AGENT
+        )
         owned = participant_pb2.OwnedParticipant(handle=handle_pb2.FfiOwnedHandle(id=0), info=info)
         super().__init__(BroadcastQueue(), owned)
         self.published: list[tuple[str, bytes, list[str]]] = []
@@ -155,6 +161,13 @@ class Sip(SipService):
     # The SFU's inbound trunks and dispatch rules, by id, as Redis would hold them.
     trunks: dict[str, SIPInboundTrunkInfo]
     rules: dict[str, SIPDispatchRuleInfo]
+
+    def __init__(self, session: aiohttp.ClientSession, url: str, key: str, secret: str) -> None:
+        """A door nobody asked anything of, that answers a transfer went through."""
+        super().__init__(session, url, key, secret)
+        self.requests, self.refusal, self.starting = [], None, 0
+        self.trunks, self.rules = {}, {}
+        self.answer = TransferSIPParticipantResponse(status=SIPTransferStatus.STS_TRANSFER_SUCCESSFUL)
 
     @override
     async def list_inbound_trunk(self, list: ListSIPInboundTrunkRequest) -> ListSIPInboundTrunkResponse:
@@ -293,6 +306,11 @@ class Rooms(RoomService):
     # Anyone else a test seats in a room: a leg dialled from it.
     seated: dict[str, list[ParticipantInfo]]
 
+    def __init__(self, session: aiohttp.ClientSession, url: str, key: str, secret: str) -> None:
+        """A door with no room standing."""
+        super().__init__(session, url, key, secret)
+        self.requests, self.existing, self.people, self.seated = [], {}, set(), {}
+
     @override
     async def list_rooms(self, list: ListRoomsRequest) -> ListRoomsResponse:
         """The rooms asked for that stand."""
@@ -339,6 +357,11 @@ class Dispatcher(AgentDispatchService):
     seeded: list[AgentDispatch]
     refusal: api.TwirpError | None
 
+    def __init__(self, session: aiohttp.ClientSession, url: str, key: str, secret: str) -> None:
+        """A door that sent nobody anywhere yet."""
+        super().__init__(session, url, key, secret)
+        self.made, self.seeded, self.refusal = [], [], None
+
     @override
     async def create_dispatch(self, req: CreateAgentDispatchRequest) -> AgentDispatch:
         """Send the fleet into the room, or refuse."""
@@ -362,18 +385,18 @@ class Server(api.LiveKitAPI):
 
     def __init__(self) -> None:
         """Doors that answer yes until told otherwise."""
-        super().__init__(url="http://127.0.0.1:9", api_key="key", api_secret=A_SECRET)
-        self.dialled = Sip.__new__(Sip)
-        self.dialled.requests, self.dialled.refusal = [], None
-        self.dialled.trunks, self.dialled.rules = {}, {}
-        self.dialled.starting = 0
-        self.dialled.answer = TransferSIPParticipantResponse(status=SIPTransferStatus.STS_TRANSFER_SUCCESSFUL)
-        self.rooms = Rooms.__new__(Rooms)
-        self.rooms.requests, self.rooms.existing, self.rooms.people = [], {}, set()
-        self.rooms.seated = {}
-        self.dispatcher = Dispatcher.__new__(Dispatcher)
-        self.dispatcher.made, self.dispatcher.refusal = [], None
-        self.dispatcher.seeded = []
+        # Its own session, handed to livekit's client and to the three doors as livekit builds its own.
+        self.session = aiohttp.ClientSession()
+        super().__init__(url=NOWHERE, api_key=A_KEY, api_secret=A_SECRET, session=self.session)
+        self.dialled = Sip(self.session, NOWHERE, A_KEY, A_SECRET)
+        self.rooms = Rooms(self.session, NOWHERE, A_KEY, A_SECRET)
+        self.dispatcher = Dispatcher(self.session, NOWHERE, A_KEY, A_SECRET)
+
+    @override
+    async def aclose(self) -> None:
+        """Close livekit's client, and the session handed to it, which it leaves to whoever made it."""
+        await super().aclose()
+        await self.session.close()
 
     @property
     @override
@@ -534,18 +557,17 @@ def microphone(identity: str) -> rtc.RemoteParticipant:
 def seat(
     identity: str,
     *,
-    kind: int = rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD,
+    kind: rtc.ParticipantKind.ValueType = rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD,
     attributes: Mapping[str, str] | None = None,
-    reason: int | None = None,
+    reason: rtc.DisconnectReason.ValueType | None = None,
 ) -> rtc.RemoteParticipant:
     """A seat in a room, as livekit hands one to its listeners, built without a server."""
     info = participant_pb2.ParticipantInfo(
         sid=f"PA_{identity}",
         identity=identity,
-        kind=kind,  # pyright: ignore[reportArgumentType]
+        kind=kind,
         attributes=dict(attributes or {}),
+        disconnect_reason=reason,
     )
-    if reason is not None:
-        info.disconnect_reason = reason  # pyright: ignore[reportAttributeAccessIssue]
     owned = participant_pb2.OwnedParticipant(handle=handle_pb2.FfiOwnedHandle(id=0), info=info)
     return rtc.RemoteParticipant(owned)

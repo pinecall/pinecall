@@ -41,7 +41,6 @@ from runtime.exceptions import Conflict
 from runtime.jobs import service as jobs
 from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject
-from runtime.live.service import reaper
 from runtime.platform.service.schema import migrate_database
 from runtime.postgres import BoxSession, create_engine, session_maker
 from runtime.providers import service as providers
@@ -184,28 +183,19 @@ async def gateway(engine: AsyncEngine) -> AsyncIterator[Gateway]:
         pytest.skip("Redis")
     app = create_app()
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
-    # A test's store stamps its entries with a clock that starts at 1 (`ticking`), and every worker
-    # shares the database: this gateway's reaper, which reads the real clock, took those calls for
-    # ones quiet since 1970 and sealed them under the test that was playing them. A golden's call
-    # ended `timeout` by `platform`, or refused its own `call.ended`, in one run of two, a different
-    # test each time (2026-11-09). The reaper is tested on its own.
-    with pytest.MonkeyPatch.context() as patched:
-        patched.setattr(reaper, "reap", _reap_nothing)
-        serving = asyncio.create_task(server.serve())
-        while not server.started:
-            if serving.done():
-                serving.result()
-            await asyncio.sleep(0.01)
-        port = server.servers[0].sockets[0].getsockname()[1]
-        url = f"http://127.0.0.1:{port}"
-        async with httpx.AsyncClient(base_url=url, timeout=10.0) as http:
-            yield Gateway(url, http, app)
-        server.should_exit = True
-        await serving
-
-
-async def _reap_nothing(_live: object, _now: float) -> list[str]:
-    return []
+    # Every loop of the gateway runs as it does in production, its reaper too: a test's own clock
+    # (`ticking`) starts at the moment of its test, so a call it writes is as fresh as it is.
+    serving = asyncio.create_task(server.serve())
+    while not server.started:
+        if serving.done():
+            serving.result()
+        await asyncio.sleep(0.01)
+    port = server.servers[0].sockets[0].getsockname()[1]
+    url = f"http://127.0.0.1:{port}"
+    async with httpx.AsyncClient(base_url=url, timeout=10.0) as http:
+        yield Gateway(url, http, app)
+    server.should_exit = True
+    await serving
 
 
 async def received(socket: ClientConnection, kind: str) -> JsonObject:
@@ -238,20 +228,41 @@ async def a_finished_call(gateway: Gateway, tenant: Tenant, agent: str) -> str:
     raise AssertionError(f"call {call} was never sealed")
 
 
-# Tests read the clock, so it is one they can predict: 1.0, then half a second more each time.
-FIRST_TICK = 1.0
 A_TICK_S = 0.5
 
 
-@pytest.fixture
-def ticking() -> Callable[[], float]:
-    """A clock that starts at FIRST_TICK and moves A_TICK_S on every reading."""
-    readings = iter(FIRST_TICK + A_TICK_S * step for step in range(1_000_000))
-    return lambda: next(readings)
+# Tests read the clock, so it is one they can predict: where it started, then half a second more at
+# each reading. It starts at the second its test began, never at a fixed moment long gone: every
+# worker shares the database with the served gateway, whose reaper reads the real clock, and a call
+# stamped in 1970 is one quiet for ever, which it sealed under the test that was playing it
+# (2026-11-09: a golden's call ended `timeout` by `platform` in one run of two, a different test
+# each time). Until 2026-11 the clock started at 1 and the suite replaced the reaper to keep it off.
+class Ticking:
+    """A clock a test can predict: `first` at its first reading, `A_TICK_S` more at each one after."""
+
+    def __init__(self) -> None:
+        """Starts at this second, read nowhere yet."""
+        self.first = float(int(time.time()))
+        self.readings = 0
+
+    def __call__(self) -> float:
+        """The next reading."""
+        self.readings += 1
+        return self.at(self.readings - 1)
+
+    def at(self, reading: int) -> float:
+        """What reading number `reading` says, 0 the first."""
+        return self.first + A_TICK_S * reading
 
 
 @pytest.fixture
-async def store(sessions: async_sessionmaker[AsyncSession], ticking: Callable[[], float]) -> AsyncIterator[Store]:
+def ticking() -> Ticking:
+    """A clock that starts at the second its test began and moves A_TICK_S on every reading."""
+    return Ticking()
+
+
+@pytest.fixture
+async def store(sessions: async_sessionmaker[AsyncSession], ticking: Ticking) -> AsyncIterator[Store]:
     """The store on the test database, stamping entries with the ticking clock; drained after."""
     opened = Store(sessions, Writer(sessions), clock=ticking)
     yield opened

@@ -268,6 +268,8 @@ async def test_a_widget_that_cannot_be_sent_an_entry_does_not_end_the_tail_nor_s
     for step in (1, 2):
         await box.log.append("state.changed", {"state": {"step": step}, "changed": ["step"]})
     await _settled()
+    # The one that could not be sent is counted as sent too: it is not sent the same entry for ever.
+    assert widget.audience == {"web_gone": 2, "web_here": 2}
     widget.stop()
     to_here = [
         json.loads(packed)["seq"] for topic, packed, to in offline.me.published if topic == LOG and to == ["web_here"]

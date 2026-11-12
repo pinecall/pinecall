@@ -1,28 +1,24 @@
 """The actor is resolved before any endpoint, and a database that does not answer there is still a 503."""
 
-from types import SimpleNamespace
 from typing import Any
 
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection, Request
 from starlette.types import Message, Receive, Scope, Send
 
 from runtime.actor import Actor
 from runtime.auth import ActorMiddleware
+from runtime.config import load_settings
 from runtime.exceptions import PinecallError
+from runtime.postgres import create_engine, session_maker
+from tests.conftest import needs_the_database
 
 
-class _Starved:
-    """A session maker whose pool has no connection free."""
-
-    def __call__(self) -> AsyncSession:
-        raise PoolTimeout("QueuePool limit of size 1 overflow 0 reached, connection timed out, timeout 2.00")
-
-
-async def _never_resolves(_request: HTTPConnection, _session: AsyncSession) -> Actor | None:
-    raise AssertionError("no session was opened: nothing to resolve with")
+# A session takes its connection at its first statement: the key's lookup, here.
+async def _asks_the_database(_request: HTTPConnection, session: AsyncSession) -> Actor | None:
+    await session.connection()
+    raise AssertionError("a connection came free: the pool was not starved")
 
 
 async def _refusal(_request: Request, error: Exception) -> JSONResponse:
@@ -35,17 +31,16 @@ async def _not_reached(_scope: Scope, _receive: Receive, _send: Send) -> None:
 
 
 # The app's exception handlers never see a middleware's error: before 2026-10-21 this was
-# uvicorn's 500 and a traceback in the journal.
+# uvicorn's 500 and a traceback in the journal. The pool is a real one of one connection, held: the
+# middleware waits its turn for the pool's own two seconds and is told there is none.
+@needs_the_database
 async def test_a_pool_with_no_connection_free_is_answered_503_before_any_endpoint() -> None:
-    middleware = ActorMiddleware(_not_reached, resolve=_never_resolves, refuse=_refusal)
-    scope: dict[str, Any] = {
-        "type": "http",
-        "method": "GET",
-        "path": "/v1/agents",
-        "headers": [],
-        "query_string": b"",
-        "state": {"handles": SimpleNamespace(sessions=_Starved())},
-    }
+    engine = create_engine(load_settings(), pool_size=1)
+    starved = session_maker(engine)
+    middleware = ActorMiddleware(
+        _not_reached, resolve=_asks_the_database, refuse=_refusal, find_sessions=lambda _request: starved
+    )
+    scope: dict[str, Any] = {"type": "http", "method": "GET", "path": "/v1/agents", "headers": [], "query_string": b""}
     sent: list[Message] = []
 
     async def receive() -> Message:
@@ -54,7 +49,9 @@ async def test_a_pool_with_no_connection_free_is_answered_503_before_any_endpoin
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await middleware(scope, receive, send)
+    async with engine.connect():
+        await middleware(scope, receive, send)
+    await engine.dispose()
     start = next(message for message in sent if message["type"] == "http.response.start")
     assert start["status"] == 503
     body = b"".join(bytes(message.get("body", b"")) for message in sent if message["type"] == "http.response.body")

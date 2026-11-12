@@ -31,6 +31,7 @@ from runtime.handles import Handles
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
 from runtime.kit.s3 import Credentials, ObjectStore
+from runtime.knowledge.service.embedder import box_embedder
 from runtime.live.holders import Holders
 from runtime.live.parts import LiveParts
 from runtime.live.peers import Owners
@@ -148,6 +149,7 @@ async def build_live_side(
         alerting=alerting,
         health=VendorHealth(),
         spending=UnusualSpend(),
+        find_embedder=box_embedder(handles.vault, handles.http),
     )
 
 

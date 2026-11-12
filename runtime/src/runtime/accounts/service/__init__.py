@@ -16,6 +16,7 @@ from runtime.accounts.service.keys import (
     revoke_fingerprint,
 )
 from runtime.accounts.service.members import (
+    count_seated,
     drop_agent_from_members,
     find_member_by_test_phone,
     find_membership,
@@ -62,6 +63,7 @@ __all__ = [
     "card_link",
     "check_agent",
     "check_may_grant",
+    "count_seated",
     "create_org",
     "delete_keys",
     "delete_org",

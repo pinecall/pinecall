@@ -79,7 +79,7 @@ async def arrive(ctx: JobContext, gateway: GatewayClient, *, default_agent: str 
         return None
     if not may_be_a_testers(dispatch, arrival, route):
         return rung
-    route, dispatch = await _ring_the_tester(gateway, dispatch, arrival, route)
+    route, dispatch = await ring_the_tester(gateway, dispatch, arrival, route)
     return Arrived(dispatch, arrival, route, context_of(rung.context.call, dispatch, arrival, route, zone))
 
 
@@ -134,6 +134,40 @@ def may_be_a_developers(dispatch: Dispatch, arrival: telephony.Arrival, route: R
 def may_be_a_testers(dispatch: Dispatch, arrival: telephony.Arrival, route: Route) -> bool:
     """Whether to ask whose sandbox agent this ring is for."""
     return _is_an_undispatched_ring(dispatch, arrival, route) and route.env is Env.sandbox
+
+
+# A ring at the box's test line is the caller's own: the gateway says whose sandbox agent, and the
+# call goes on here as that org's, in the copy that takes a ring from that phone. A phone nobody
+# said was theirs, one whose person named no agent among several, or one whose agent nobody holds,
+# is answered by the agent the number is routed to, told which of them it is in the call's metadata
+# (`{{metadata.test_line}}` in a Studio agent): a caller hears what to fix, not every reason at once.
+async def ring_the_tester(
+    gateway: GatewayClient, dispatch: Dispatch, arrival: telephony.Arrival, route: Route
+) -> tuple[Route, Dispatch]:
+    """The route and the dispatch a ring at the test line goes on with: its caller's own agent, or the number's."""
+    try:
+        handed = await gateway.ring_at_test_line(str(route.number), arrival.caller)
+    except UpstreamError:
+        logger.warning("could not ask whose phone rings %s: the call stays with %s", route.number, route.agent)
+        return route, _tell(dispatch, TEST_LINE_UNAVAILABLE, None)
+    if handed.org is None:
+        return route, _tell(dispatch, PHONE_NOT_SAID, None)
+    if handed.agent is None:
+        return route, _tell(dispatch, NO_AGENT_NAMED, None)
+    if handed.holder is None:
+        return route, _tell(dispatch, AGENT_NOT_RUNNING, handed.agent)
+    moved = dispatch.model_copy(
+        update={
+            "agent": handed.agent,
+            "org": handed.org,
+            "env": Env.sandbox,
+            "holder": handed.holder,
+            "caller": arrival.caller,
+        }
+    )
+    # The route a test-line ring takes once its caller is known: their org's agent, at the number dialled.
+    taken = Route(org=handed.org, agent=handed.agent, channel=route.channel, number=arrival.number, env=Env.sandbox)
+    return taken, moved
 
 
 # ── private ──
@@ -200,39 +234,6 @@ async def _hand_over(
         return False
     ctx.shutdown(reason=f"handed to {handed.fleet}")
     return True
-
-
-# A ring at the box's test line is the caller's own: the gateway says whose sandbox agent, and the
-# call goes on here as that org's, in the copy that takes a ring from that phone. A phone nobody
-# said was theirs, one whose person named no agent among several, or one whose agent nobody holds,
-# is answered by the agent the number is routed to, told which of them it is in the call's metadata
-# (`{{metadata.test_line}}` in a Studio agent): a caller hears what to fix, not every reason at once.
-async def _ring_the_tester(
-    gateway: GatewayClient, dispatch: Dispatch, arrival: telephony.Arrival, route: Route
-) -> tuple[Route, Dispatch]:
-    try:
-        handed = await gateway.ring_at_test_line(str(route.number), arrival.caller)
-    except UpstreamError:
-        logger.warning("could not ask whose phone rings %s: the call stays with %s", route.number, route.agent)
-        return route, _tell(dispatch, TEST_LINE_UNAVAILABLE, None)
-    if handed.org is None:
-        return route, _tell(dispatch, PHONE_NOT_SAID, None)
-    if handed.agent is None:
-        return route, _tell(dispatch, NO_AGENT_NAMED, None)
-    if handed.holder is None:
-        return route, _tell(dispatch, AGENT_NOT_RUNNING, handed.agent)
-    moved = dispatch.model_copy(
-        update={
-            "agent": handed.agent,
-            "org": handed.org,
-            "env": Env.sandbox,
-            "holder": handed.holder,
-            "caller": arrival.caller,
-        }
-    )
-    # The route a test-line ring takes once its caller is known: their org's agent, at the number dialled.
-    taken = Route(org=handed.org, agent=handed.agent, channel=route.channel, number=arrival.number, env=Env.sandbox)
-    return taken, moved
 
 
 def _tell(dispatch: Dispatch, why: str, agent: str | None) -> Dispatch:

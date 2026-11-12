@@ -1,11 +1,11 @@
 """One more of something, admitted or refused: an org's quotas held against what it uses, before it uses more."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.billing.service.quotas import THE_ORGS_ROW, Quotas, get_quotas
+from runtime.billing.service.quotas import QUOTA_NAMES, THE_ORGS_ROW, Quotas, get_quotas
 from runtime.billing.service.usage import get_usage, sum_spent
 from runtime.enums import Env
 from runtime.exceptions import QuotaExceeded
@@ -167,3 +167,63 @@ def _refuse_past(quotas: Quotas, env: Env, quota: QuotaName, used: float) -> Non
     limit = quotas.limit_reached(quota, used)
     if limit is not None:
         raise LimitReached(env, quota, used, limit)
+
+
+# ── what an org reads of its limits ──
+
+
+@dataclass(frozen=True, slots=True)
+class Held:
+    """What an org holds now, each counted by the domain that owns it: the counts its admissions are asked with."""
+
+    concurrent_calls: int
+    agents: int
+    seats: int
+    numbers: int
+    memory_facts: int
+    knowledge_chunks: int
+    hosted_apps: int
+
+
+@dataclass(frozen=True, slots=True)
+class Measure:
+    """One quota as its org reads it: the limit it was given, none for no limit, and what is used of it."""
+
+    limit: int | None
+    used: float
+
+
+@dataclass(frozen=True, slots=True)
+class Limits:
+    """Every quota of an org in one env with what is used of each, and the box keys lent to it."""
+
+    measures: Mapping[QuotaName, Measure]
+    lends: frozenset[str] | None
+
+
+# `used` reads what an admission reads, so this page and a refusal agree: the month's totals by the
+# log's clock, what each owner counts now, and for the two that are the org's and not an env's (its
+# seats, its budget) the org's own row, whatever env the key is in.
+async def read_limits(session: AsyncSession, org: str, env: Env, held: Held, *, at: float) -> Limits:
+    """Each quota of the org in the env as its limit and what is used of it, and its lends."""
+    quotas = await get_quotas(session, org, env)
+    own = quotas if env is THE_ORGS_ROW else await get_quotas(session, org, THE_ORGS_ROW)
+    month = month_of(at)
+    spent = await get_usage(session, org, env, month)
+    limits: Mapping[QuotaName, int | None] = {**quotas.limits, "seats": own.seats, "budget_usd": own.budget_usd}
+    used: Mapping[QuotaName, float] = {
+        "minutes": spent.minutes,
+        "messages": spent.messages,
+        "llm_tokens": spent.llm_tokens,
+        "evals": spent.evals,
+        "simulations": spent.simulations,
+        "budget_usd": await sum_spent(session, org, month),
+        "concurrent_calls": held.concurrent_calls,
+        "agents": held.agents,
+        "seats": held.seats,
+        "numbers": held.numbers,
+        "memory_facts": held.memory_facts,
+        "knowledge_chunks": held.knowledge_chunks,
+        "hosted_apps": held.hosted_apps,
+    }
+    return Limits({name: Measure(limits[name], used[name]) for name in QUOTA_NAMES}, quotas.lends)

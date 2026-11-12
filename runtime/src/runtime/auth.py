@@ -48,6 +48,8 @@ def authorization_of(request: HTTPConnection) -> str | None:
 
 type Resolver = Callable[[HTTPConnection, AsyncSession], Awaitable[Actor | None]]
 type Refuser = Callable[[Request, Exception], Awaitable[Response]]
+# Where a request's database sessions are: on the process's handles, once the lifespan opened them.
+type FindSessions = Callable[[HTTPConnection], async_sessionmaker[AsyncSession]]
 
 
 # Built before the lifespan opens the engine, so the sessions are found on the request's state. A
@@ -57,10 +59,13 @@ type Refuser = Callable[[Request, Exception], Awaitable[Response]]
 class ActorMiddleware:
     """Resolves the request's actor once and keeps it on the request's state."""
 
-    def __init__(self, app: ASGIApp, *, resolve: Resolver, refuse: Refuser) -> None:
+    def __init__(
+        self, app: ASGIApp, *, resolve: Resolver, refuse: Refuser, find_sessions: FindSessions = sessions_of
+    ) -> None:
         self.app = app
         self.resolve = resolve
         self.refuse = refuse
+        self.find_sessions = find_sessions
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Resolve on http and websocket requests; pass everything else through."""
@@ -70,7 +75,7 @@ class ActorMiddleware:
         # A websocket's scope is no Request's (Starlette asserts http): both are connections.
         request = HTTPConnection(scope, receive)
         try:
-            await self._resolve_into(scope, request, sessions_of(request))
+            await self._resolve_into(scope, request, self.find_sessions(request))
         except PinecallError as refused:
             if scope["type"] == "websocket":
                 await refuse_socket(WebSocket(scope, receive, send), refused)
