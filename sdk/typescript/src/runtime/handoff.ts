@@ -104,3 +104,11 @@ export function teamTools(team: Team): ToolSpec[] {
 function transferName(mate: Function): string {
   return `${TRANSFER}${mate.name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()}`;
 }
+
+// What the model reads once the call is the teammate's. It called a tool named for a transfer, and a small
+// model goes on as whoever transfers ("one moment while I connect you") and then waits: measured on
+// gemini-3.5-flash-lite, half the passes ended that way under "go on as …, without saying it was passed",
+// and one in sixteen under this.
+/** The transfer tool's result: the call is the teammate's, and the caller waits for an answer. */
+export const passedTo = (slug: string): string =>
+  `Done: you are ${slug} now, and the caller is already talking to you. There is nobody left to connect them to, so never say "one moment" or that you are connecting or transferring them. Reply to their last message now, as ${slug}.`;
