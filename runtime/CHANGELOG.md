@@ -10,6 +10,8 @@
   for a visitor who left, and their room was kept for the same five: LiveKit closed the room at the second
   the wait ended, and the call was sealed `drained` by the platform. The room now outlives the wait, so
   the call ends itself as `caller_hung_up`.
+- `make deploy` asks the release at its name with its six requests (`tests/app/test_the_box.py`) and
+  starts no suite: `tests/live` is the live domain's tests now, not the checks of a deployment.
 - **`GET /v1/limits` shows an org's seats and budget as they are held.** Both are the org's, not an
   environment's: a key of the sandbox read them off the sandbox's row, where an operator who set them on
   production saw no limit at all. They are read off the org's own row now, the one a refusal reads.

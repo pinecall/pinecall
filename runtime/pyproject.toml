@@ -115,7 +115,6 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 xfail_strict = true
 filterwarnings = ["error"]
-markers = ["live: runs against a deployed gateway (never in CI's default run)"]
 
 # ---------- typing: both, both strict ----------
 [tool.pyright]

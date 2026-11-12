@@ -80,7 +80,7 @@ $ make edge CLUSTER=<cluster>       # the front door: charts/edge, when it or it
 $ make postgres CLUSTER=<cluster>   # Postgres: charts/postgres, when it or its values change (it may restart the instance)
 $ make image                        # the runtime at this commit
 $ make diff CLUSTER=<cluster>       # what releasing each chart would change, nothing touched
-$ make deploy CLUSTER=<cluster>     # the runtime at that image (charts/pinecall alone), then the live suite
+$ make deploy CLUSTER=<cluster>     # the runtime at that image (charts/pinecall alone), then asked at its name
 $ make rollback CLUSTER=<cluster>   # the runtime back to the release before this one
 $ make fleet CLUSTER=<cluster> ENV=sandbox MIN=1   # that env keeps one scaled worker warm (MIN=0 lets it go), no new image
 $ make suite CLUSTER=<cluster>      # every suite inside the cluster
