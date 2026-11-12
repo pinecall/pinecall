@@ -2,6 +2,7 @@
 language inside a single options object, a voice under its argument or as the model, a number as the
 type its parameter wants, and a realtime model by the plugin's realtime class or not at all."""
 
+import dataclasses
 from dataclasses import dataclass
 from typing import Never, override
 
@@ -15,6 +16,7 @@ from runtime.providers.service.llm_requests import LLMWithRequest
 from runtime.providers.stage import Running
 from tests.fakes import talker
 from tests.fakes.acme import ACME, AcmeLLM
+from tests.fakes.plugins import install_plugin
 
 HEAR = ("Brisa", "Médano")
 
@@ -92,59 +94,62 @@ class HintedEars(_Ears):
         super().__init__(api_key=api_key, language_hint=language_hint)
 
 
-def _built(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> dict[str, object]:
-    def the_class(_stage: Stage, _running: Running) -> type:
-        return made
+# Each kind of ears is a plugin of its own, its STT the class a vendor's would be.
+def ears_of(made: type) -> str:
+    """The vendor whose plugin's ears are this class."""
+    return install_plugin(f"ears-{made.__name__.lower()}", STT=made)
 
-    monkeypatch.setattr(signatures, "class_of", the_class)
-    ears = stages.stt_of(running, None, HEAR)
+
+def voice_of(made: type) -> str:
+    """The vendor whose plugin's voice is this class."""
+    return install_plugin(f"voice-{made.__name__.lower()}", TTS=made)
+
+
+def _built(made: type, running: Running) -> dict[str, object]:
+    ears = stages.stt_of(dataclasses.replace(running, vendor=ears_of(made)), None, HEAR)
     assert isinstance(ears, _Ears)
     return ears.given
 
 
-def test_ears_that_take_an_argument_for_them_get_the_words_there(monkeypatch: pytest.MonkeyPatch) -> None:
-    given = _built(monkeypatch, TermsAsAnArgument, Running(vendor="v", credentials="k", language="es"))
+def test_ears_that_take_an_argument_for_them_get_the_words_there() -> None:
+    given = _built(TermsAsAnArgument, Running(vendor="v", credentials="k", language="es"))
     assert given["keyterm"] == list(HEAR)
     assert given["language"] == "es"
 
 
-def test_ears_that_take_one_options_object_get_the_words_and_the_language_inside_it(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    given = _built(monkeypatch, TermsInsideItsOptions, Running(vendor="v", credentials="k", language="es-UY"))
+def test_ears_that_take_one_options_object_get_the_words_and_the_language_inside_it() -> None:
+    given = _built(TermsInsideItsOptions, Running(vendor="v", credentials="k", language="es-UY"))
     assert given["params"] == Options(language_hints=["es"], context=Context(terms=list(HEAR)))
 
 
-def test_what_the_row_put_in_the_options_object_stands(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_what_the_row_put_in_the_options_object_stands() -> None:
     row = {"params": {"model": "rt-pro", "language_hints": ["pt"]}}
-    given = _built(monkeypatch, TermsInsideItsOptions, Running(vendor="v", credentials="k", language="es", options=row))
+    given = _built(TermsInsideItsOptions, Running(vendor="v", credentials="k", language="es", options=row))
     assert given["params"] == Options(model="rt-pro", language_hints=["pt"], context=Context(terms=list(HEAR)))
 
 
-def test_the_model_named_goes_inside_the_options_object_of_ears_that_take_no_model_argument(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_the_model_named_goes_inside_the_options_object_of_ears_that_take_no_model_argument() -> None:
     """Soniox's `params=STTOptions(model=...)`: handed `model=`, it refused it and the call never started."""
-    given = _built(monkeypatch, TermsInsideItsOptions, Running(vendor="v", credentials="k", model="stt-rt-v5"))
+    given = _built(TermsInsideItsOptions, Running(vendor="v", credentials="k", model="stt-rt-v5"))
     assert given["params"] == Options(model="stt-rt-v5", context=Context(terms=list(HEAR)))
     assert "model" not in given
     row = {"params": {"language_hints": ["pt"]}}
     named = Running(vendor="v", credentials="k", model="stt-rt-v5", options=row)
-    kept = _built(monkeypatch, TermsInsideItsOptions, named)
+    kept = _built(TermsInsideItsOptions, named)
     assert kept["params"] == Options(model="stt-rt-v5", language_hints=["pt"], context=Context(terms=list(HEAR)))
 
 
-def test_ears_that_take_no_words_are_built_without_them(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert _built(monkeypatch, NoTerms, Running(vendor="v", credentials="k")) == {"api_key": "k"}
+def test_ears_that_take_no_words_are_built_without_them() -> None:
+    assert _built(NoTerms, Running(vendor="v", credentials="k")) == {"api_key": "k"}
 
 
-def test_a_model_that_refuses_the_words_is_built_without_them(monkeypatch: pytest.MonkeyPatch) -> None:
-    given = _built(monkeypatch, TermsOnSomeModels, Running(vendor="v", credentials="k"))
+def test_a_model_that_refuses_the_words_is_built_without_them() -> None:
+    given = _built(TermsOnSomeModels, Running(vendor="v", credentials="k"))
     assert given == {"api_key": "k", "model": "whisper", "keyterm": None}
 
 
-def test_a_model_that_takes_the_words_gets_them(monkeypatch: pytest.MonkeyPatch) -> None:
-    given = _built(monkeypatch, TermsOnSomeModels, Running(vendor="v", credentials="k", model="turns"))
+def test_a_model_that_takes_the_words_gets_them() -> None:
+    given = _built(TermsOnSomeModels, Running(vendor="v", credentials="k", model="turns"))
     assert given["keyterm"] == list(HEAR)
 
 
@@ -174,61 +179,46 @@ class VoiceAsAnArgument(_Voice):
         super().__init__(api_key=api_key, model=model, voice_name=voice_name)
 
 
-def _spoken(monkeypatch: pytest.MonkeyPatch, made: type, running: Running) -> dict[str, object]:
-    def the_class(_stage: Stage, _running: Running) -> type:
-        return made
-
-    monkeypatch.setattr(signatures, "class_of", the_class)
-    voice = stages.tts_of(running)
+def _spoken(made: type, running: Running) -> dict[str, object]:
+    voice = stages.tts_of(dataclasses.replace(running, vendor=voice_of(made)))
     assert isinstance(voice, _Voice)
     return voice.given
 
 
-def test_a_voice_whose_plugin_takes_no_voice_argument_is_the_model_it_speaks_with(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_a_voice_whose_plugin_takes_no_voice_argument_is_the_model_it_speaks_with() -> None:
     running = Running(vendor="v", credentials="k", model="aura-2", voice="aura-2-celeste-es")
-    assert _spoken(monkeypatch, VoiceIsTheModel, running) == {"api_key": "k", "model": "aura-2-celeste-es"}
+    assert _spoken(VoiceIsTheModel, running) == {"api_key": "k", "model": "aura-2-celeste-es"}
     plain = Running(vendor="v", credentials="k", model="aura-2-thalia-en")
-    assert _spoken(monkeypatch, VoiceIsTheModel, plain) == {"api_key": "k", "model": "aura-2-thalia-en"}
+    assert _spoken(VoiceIsTheModel, plain) == {"api_key": "k", "model": "aura-2-thalia-en"}
 
 
-def test_a_voice_whose_plugin_takes_one_goes_there_and_the_model_stays(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_voice_whose_plugin_takes_one_goes_there_and_the_model_stays() -> None:
     running = Running(vendor="v", credentials="k", model="flash-lite-tts", voice="Puck")
-    given = _spoken(monkeypatch, VoiceAsAnArgument, running)
+    given = _spoken(VoiceAsAnArgument, running)
     assert (given["model"], given["voice_name"]) == ("flash-lite-tts", "Puck")
 
 
-def test_a_voice_is_not_refused_by_a_tts_with_no_voice_argument(monkeypatch: pytest.MonkeyPatch) -> None:
-    def the_class(_stage: Stage, _running: Running) -> type:
-        return VoiceIsTheModel
-
-    monkeypatch.setattr(signatures, "class_of", the_class)
-    signatures.refuse_untaken(Stage.tts, Running(vendor="v", credentials="k"), ["voice"])
+def test_a_voice_is_not_refused_by_a_tts_with_no_voice_argument() -> None:
+    signatures.refuse_untaken(Stage.tts, Running(vendor=voice_of(VoiceIsTheModel), credentials="k"), ["voice"])
 
 
-def test_the_platforms_hints_reach_the_ears_unless_the_row_names_them(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_platforms_hints_reach_the_ears_unless_the_row_names_them() -> None:
     """Deepgram's `flux-general-en` refuses any `language_hint` at the socket: the row for it names none."""
-    hinted = _built(monkeypatch, HintedEars, Running(vendor="v", credentials="k", hints=("es", "en")))
+    hinted = _built(HintedEars, Running(vendor="v", credentials="k", hints=("es", "en")))
     assert hinted["language_hint"] == ["es", "en"]
     row: dict[str, list[str]] = {"language_hint": []}
-    told = _built(monkeypatch, HintedEars, Running(vendor="v", credentials="k", hints=("es", "en"), options=row))
+    told = _built(HintedEars, Running(vendor="v", credentials="k", hints=("es", "en"), options=row))
     assert told["language_hint"] == []
 
 
 # 2026-11-06: on Scribe `endpointing_ms` was refused as untaken, and the agent spoke over callers who paused.
-def test_the_silence_is_the_detectors_on_ears_that_leave_the_turn_open_and_the_ears_own_where_they_end_it(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def the_class(_stage: Stage, _running: Running) -> type:
-        return NoTerms
-
-    monkeypatch.setattr(signatures, "class_of", the_class)
+def test_the_silence_is_the_detectors_on_ears_that_leave_the_turn_open_and_the_ears_own_where_they_end_it() -> None:
     patient = Patient(endpointing_ms=800)
-    voice = Running(vendor="v", credentials="k")
-    signatures.refuse_untaken_settings(Running(vendor="v", credentials="k"), voice, patient, sets_a_voice=False)
+    vendor = ears_of(NoTerms)
+    voice = Running(vendor=vendor, credentials="k")
+    signatures.refuse_untaken_settings(Running(vendor=vendor, credentials="k"), voice, patient, sets_a_voice=False)
     with pytest.raises(ValidationError, match="takes no endpointing_ms"):
-        ears = Running(vendor="v", credentials="k", ends_the_turn=True)
+        ears = Running(vendor=vendor, credentials="k", ends_the_turn=True)
         signatures.refuse_untaken_settings(ears, voice, patient, sets_a_voice=False)
 
 
@@ -244,9 +234,9 @@ def test_an_option_written_as_a_whole_number_reaches_a_float_parameter_as_a_floa
 
 
 @pytest.fixture
-def vendor(monkeypatch: pytest.MonkeyPatch) -> str:
-    """The talker vendor, installed for this test alone."""
-    return talker.install(monkeypatch)
+def vendor() -> str:
+    """The talker vendor, installed as a plugin."""
+    return talker.install()
 
 
 def test_the_realtime_class_is_built_with_the_key_the_model_and_the_options(vendor: str) -> None:

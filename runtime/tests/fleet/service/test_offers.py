@@ -4,16 +4,20 @@ import time
 from uuid import uuid4
 
 import pytest
+from livekit import api
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.enums import Env
 from runtime.fleet.models import Offer
 from runtime.fleet.repository import OfferRepository
 from runtime.fleet.schemas import WorkerStatus
 from runtime.fleet.service.dispatches import agent_name
-from runtime.fleet.service.offers import Offering
+from runtime.fleet.service.envs import PRODUCTION, SANDBOX
+from runtime.fleet.service.offers import OFFERED_AGAIN_AFTER_S, Offering
 from runtime.fleet.service.roster import Roster
 from runtime.wire.dispatch import Dispatch
 from tests.conftest import needs_the_database
+from tests.fakes.livekit import per_world
 
 pytestmark = needs_the_database
 
@@ -38,42 +42,40 @@ async def _kept(sessions: async_sessionmaker[AsyncSession], room: str) -> Offer 
         return await session.get(Offer, room)
 
 
-def an_offer(room: str, seen_at: float) -> Offer:
-    """A room kept under a fleet, never offered."""
-    return Offer(
-        room=room, fleet="pinecall", dispatch=Dispatch(agent="recepcion").dump(), seen_at=seen_at, worker=None, offers=0
-    )
-
-
 # The sweep reads the rooms oldest first: one it could not offer again, and said nothing of, ended
 # the sweep at it on every pass, and no room behind it was offered again.
 async def test_a_room_that_cannot_be_offered_again_is_said_and_the_rooms_behind_it_are_offered(
-    monkeypatch: pytest.MonkeyPatch,
-    sessions: async_sessionmaker[AsyncSession],
-    caplog: pytest.LogCaptureFixture,
+    sessions: async_sessionmaker[AsyncSession], caplog: pytest.LogCaptureFixture
 ) -> None:
-    bad, good = an_offer("call_bad", 1.0), an_offer("call_good", 2.0)
+    bad, good = f"call_bad_{uuid4().hex}", f"call_good_{uuid4().hex}"
+    # Due to be offered again, the bad one the older, in the sandbox, whose LiveKit refuses every dispatch.
+    due = time.time() - OFFERED_AGAIN_AFTER_S - 1
+    async with sessions.begin() as session:
+        offers = OfferRepository(session)
+        assert await offers.open(bad, SANDBOX, Dispatch(agent="recepcion").dump(), due - 1)
+        assert await offers.open(good, PRODUCTION, Dispatch(agent="recepcion").dump(), due)
+    roster = Roster()
+    roster.workers[(SANDBOX, "w1")] = a_worker("w1", active=0, fleet=SANDBOX)
+    roster.workers[(PRODUCTION, "w2")] = a_worker("w2", active=0, fleet=PRODUCTION)
+    servers = per_world()
+    servers[Env.sandbox].dispatcher.refusal = api.TwirpError("unavailable", "the SFU is restarting", status=503)
+    try:
+        offered = await Offering(sessions, servers=servers, roster=roster).sweep()
+    finally:
+        for server in servers.values():
+            await server.aclose()
+    assert good in offered and bad not in offered
+    assert f"offering a room again failed on {bad}" in caplog.text
 
-    async def list_due(_repository: OfferRepository, _before: float, _most: int) -> list[Offer]:
-        return [bad, good]
 
-    async def offer_again(_offering: Offering, offer: Offer) -> str | None:
-        if offer.room == bad.room:
-            raise ValueError("1 validation error for Dispatch")
-        return "a worker"
-
-    monkeypatch.setattr(OfferRepository, "list_due", list_due)
-    monkeypatch.setattr(Offering, "offer_again", offer_again)
-    assert await Offering(sessions, servers={}, roster=Roster()).sweep() == ["call_good"]
-    assert "offering a room again failed on call_bad" in caplog.text
-
-
-def a_worker(name: str, *, active: int, max_jobs: int = 2, seen_at: float | None = None) -> WorkerStatus:
-    """A worker of the sandbox's fleet as its last heartbeat left it."""
+def a_worker(
+    name: str, *, active: int, max_jobs: int = 2, seen_at: float | None = None, fleet: str = "sandbox"
+) -> WorkerStatus:
+    """A worker of the fleet, the sandbox's unless named, as its last heartbeat left it."""
     return WorkerStatus(
-        fleet="sandbox",
+        fleet=fleet,
         worker=name,
-        agent_name=agent_name("sandbox", name),
+        agent_name=agent_name(fleet, name),
         active=active,
         max_jobs=max_jobs,
         load=0.1,

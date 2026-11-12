@@ -57,12 +57,14 @@ class SharedState[T]:
         empty: T,
         on_change: Callable[[], None],
         every_s: float = TOLD_EVERY_S,
+        silent_after_s: float = SILENT_AT_MOST_S,
         gathered: Callable[[], T] | None = None,
     ) -> None:
         self.signal = signal
         self.channel = channel
         self.id = uuid4().hex
         self.every_s = every_s
+        self.silent_after_s = silent_after_s
         self.mine = empty
         self.gathered = gathered
         self.theirs: dict[str, Heard[T]] = {}
@@ -100,7 +102,7 @@ class SharedState[T]:
             await asyncio.sleep(self.every_s)
             with survive("a share's forgetting of the silent", self.channel):
                 now = time.monotonic()
-                silent = [gw for gw, heard in self.theirs.items() if now - heard.at > SILENT_AT_MOST_S]
+                silent = [gw for gw, heard in self.theirs.items() if now - heard.at > self.silent_after_s]
                 for gateway in silent:
                     del self.theirs[gateway]
                 if silent:

@@ -3,7 +3,7 @@
 import asyncio
 import ipaddress
 import socket
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -72,6 +72,10 @@ class Resolved:
     def is_a_public_name(self) -> bool:
         """Whether the host is a name, none of the box's own and no address, that resolves to the internet alone."""
         return not is_local_name(self.host) and self.is_public
+
+
+# What finds where a URL's host resolves now: `resolve_url`, or what a test hands in its place.
+type ResolveUrl = Callable[[str], Awaitable[Resolved]]
 
 
 async def resolve_url(url: str) -> Resolved:

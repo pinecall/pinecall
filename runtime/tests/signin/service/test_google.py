@@ -5,8 +5,8 @@ import json
 import os
 import secrets
 import time
-from collections.abc import Iterator
-from typing import cast
+from collections.abc import AsyncIterator, Iterator
+from urllib.parse import urlsplit
 
 import httpx
 import jwt
@@ -34,23 +34,23 @@ SIGNING = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 BEGUN = Handshake(state="st_x", org=None, nonce="the-nonce", verifier="v" * 43, redirect_uri="https://voice.test/cb")
 
 
-# The exchange asks no database: the handshake was kept when the sign-in began.
-def an_oidc() -> Oidc:
-    """The gateway as an OpenID client, its handshakes nowhere."""
-    return Oidc(
-        httpx.AsyncClient(), cast(async_sessionmaker[AsyncSession], None), Vault(os.environ["PINECALL_VAULT_KEY"])
-    )
-
-
-def resolves_to_the_internet(_host: str) -> list[dns.Address]:
-    """Every name answers an address of Google's own, so the provider's endpoints read as public."""
-    return [ipaddress.ip_address("142.250.64.100")]
+# Google's names are faked here, so they are said to resolve to an address of Google's own: the
+# provider's endpoints read as public, as Google's do.
+async def resolves_to_the_internet(url: str) -> dns.Resolved:
+    """The URL's host, on an address of Google's own."""
+    return dns.Resolved(urlsplit(url).hostname or "", (ipaddress.ip_address("142.250.64.100"),))
 
 
 @pytest.fixture
-def at_google(monkeypatch: pytest.MonkeyPatch) -> Iterator[respx.MockRouter]:
-    """Google's discovery, token endpoint and keys, faked, at a name that resolves to the internet."""
-    monkeypatch.setattr(dns, "resolve", resolves_to_the_internet)
+async def oidc(sessions: async_sessionmaker[AsyncSession]) -> AsyncIterator[Oidc]:
+    """The gateway as an OpenID client, its names resolved onto the internet."""
+    async with httpx.AsyncClient() as http:
+        yield Oidc(http, sessions, Vault(os.environ["PINECALL_VAULT_KEY"]), resolve=resolves_to_the_internet)
+
+
+@pytest.fixture
+def at_google() -> Iterator[respx.MockRouter]:
+    """Google's discovery, token endpoint and keys, faked."""
     public: dict[str, object] = json.loads(RSAAlgorithm.to_jwk(SIGNING.public_key()))
     with respx.mock(assert_all_called=False) as router:
         router.get(DISCOVERY).respond(
@@ -85,29 +85,31 @@ def google_answers(router: respx.MockRouter, **claims: object) -> None:
     router.post(TOKEN).respond(json={"id_token": signed, "access_token": "unused"})
 
 
-async def test_a_verified_address_passes_under_either_spelling_of_googles_issuer(at_google: respx.MockRouter) -> None:
+async def test_a_verified_address_passes_under_either_spelling_of_googles_issuer(
+    at_google: respx.MockRouter, oidc: Oidc
+) -> None:
     """Google writes `iss` with or without https://; both are Google's, and the address comes back folded."""
     google_answers(at_google)
-    vouched = await google.exchange_code(an_oidc(), CLIENT, BEGUN, "a-code")
+    vouched = await google.exchange_code(oidc, CLIENT, BEGUN, "a-code")
     assert vouched == google.Vouched("ana@gmail.com", "Ana Pérez")
 
 
-async def test_an_address_google_has_not_verified_is_refused(at_google: respx.MockRouter) -> None:
+async def test_an_address_google_has_not_verified_is_refused(at_google: respx.MockRouter, oidc: Oidc) -> None:
     google_answers(at_google, email_verified=False)
     with pytest.raises(Unauthorized, match="not verified"):
-        await google.exchange_code(an_oidc(), CLIENT, BEGUN, "a-code")
+        await google.exchange_code(oidc, CLIENT, BEGUN, "a-code")
 
 
-async def test_an_id_token_of_another_sign_in_is_refused(at_google: respx.MockRouter) -> None:
+async def test_an_id_token_of_another_sign_in_is_refused(at_google: respx.MockRouter, oidc: Oidc) -> None:
     google_answers(at_google, nonce="somebody-elses")
     with pytest.raises(Unauthorized, match="nonce"):
-        await google.exchange_code(an_oidc(), CLIENT, BEGUN, "a-code")
+        await google.exchange_code(oidc, CLIENT, BEGUN, "a-code")
 
 
-async def test_an_id_token_for_another_client_is_refused(at_google: respx.MockRouter) -> None:
+async def test_an_id_token_for_another_client_is_refused(at_google: respx.MockRouter, oidc: Oidc) -> None:
     google_answers(at_google, aud="another.apps.googleusercontent.com")
     with pytest.raises(Unauthorized, match="did not check out"):
-        await google.exchange_code(an_oidc(), CLIENT, BEGUN, "a-code")
+        await google.exchange_code(oidc, CLIENT, BEGUN, "a-code")
 
 
 # ── whom the address opens ──

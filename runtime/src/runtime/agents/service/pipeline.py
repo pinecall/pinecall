@@ -192,7 +192,7 @@ async def report_on(session: AsyncSession, vault: Vault, scope: Scope, agent: Ag
         speaks=stages["speaks"],
         talks=None if talks is None else StagePlan(vendor=talks.vendor, model=talks.model or None),
         greeting=resolved.greeting,
-        runnable=providers.runnable_on(catalog, keys),
+        runnable=providers.runnable_on(catalog, keys, providers.list_vendors()),
         voice_defaults=dict(catalog.voices),
         measured=measured,
         unavailable_reasons=_list_unavailable(stages, keys),

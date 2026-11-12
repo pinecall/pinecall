@@ -155,13 +155,21 @@ class _IdToken(BaseModel):
 class Oidc:
     """The gateway as an OpenID Connect client: the handshakes in flight, and the HTTP it asks providers with."""
 
-    def __init__(self, http: httpx.AsyncClient, sessions: async_sessionmaker[AsyncSession], vault: Vault) -> None:
+    # `resolve` is where a provider's names are checked to resolve onto the internet: the DNS, or a test's.
+    def __init__(
+        self,
+        http: httpx.AsyncClient,
+        sessions: async_sessionmaker[AsyncSession],
+        vault: Vault,
+        resolve: dns.ResolveUrl = dns.resolve_url,
+    ) -> None:
         self.http = http
+        self.resolve = resolve
         self.handshakes = OneTimeSecrets(HANDSHAKE, sessions, vault, load=_load_handshake, dump=asdict)
 
     async def discover(self, issuer: str) -> Endpoints:
         """The provider's endpoints, from its own discovery document."""
-        url = f"{await _public_url(issuer, issuer=issuer, field='issuer')}{CONFIGURATION}"
+        url = f"{await _public_url(self.resolve, issuer, issuer=issuer, field='issuer')}{CONFIGURATION}"
         try:
             answer = await self.http.get(url, timeout=TIMEOUT_S)
             answer.raise_for_status()
@@ -216,8 +224,8 @@ class Oidc:
     async def claims_for_code(self, client: OidcClient, begun: Handshake, code: str) -> Claims:
         """The person the provider signed in, their address verified, from the code it returned."""
         endpoints = await self.discover(client.issuer)
-        id_token = await _exchange(self.http, endpoints, client, begun, code)
-        claims = await _claims(self.http, endpoints, id_token, client.client_id, begun.nonce)
+        id_token = await _exchange(self.http, self.resolve, endpoints, client, begun, code)
+        claims = await _claims(self.http, self.resolve, endpoints, id_token, client.client_id, begun.nonce)
         if not claims.email:
             raise Unauthorized(f"{client.issuer} vouched for somebody it gave no email address for")
         if not claims.email_verified:
@@ -255,8 +263,8 @@ def _reachable(url: str, *, issuer: str, field: str) -> str:
     return url
 
 
-async def _public_url(url: str, *, issuer: str, field: str) -> str:
-    if not (await dns.resolve_url(_reachable(url, issuer=issuer, field=field))).is_a_public_name:
+async def _public_url(resolve: dns.ResolveUrl, url: str, *, issuer: str, field: str) -> str:
+    if not (await resolve(_reachable(url, issuer=issuer, field=field))).is_a_public_name:
         raise Forbidden(f"{issuer}'s {field} is {url!r}: it resolves inside, not on the internet")
     return url
 
@@ -268,7 +276,12 @@ def _endpoint(found: str, issuer: str, field: str) -> str:
 
 
 async def _exchange(
-    http: httpx.AsyncClient, endpoints: Endpoints, client: OidcClient, begun: Handshake, code: str
+    http: httpx.AsyncClient,
+    resolve: dns.ResolveUrl,
+    endpoints: Endpoints,
+    client: OidcClient,
+    begun: Handshake,
+    code: str,
 ) -> str:
     form = {
         "grant_type": "authorization_code",
@@ -279,7 +292,7 @@ async def _exchange(
     }
     if not endpoints.basic_auth:
         form["client_secret"] = client.client_secret
-    await _public_url(endpoints.token_endpoint, issuer=endpoints.issuer, field="token_endpoint")
+    await _public_url(resolve, endpoints.token_endpoint, issuer=endpoints.issuer, field="token_endpoint")
     try:
         answer = await http.post(
             endpoints.token_endpoint,
@@ -304,8 +317,10 @@ async def _exchange(
     return granted.id_token
 
 
-async def _claims(http: httpx.AsyncClient, endpoints: Endpoints, id_token: str, client_id: str, nonce: str) -> Claims:
-    key = await _signing_key(http, endpoints, id_token)
+async def _claims(
+    http: httpx.AsyncClient, resolve: dns.ResolveUrl, endpoints: Endpoints, id_token: str, client_id: str, nonce: str
+) -> Claims:
+    key = await _signing_key(http, resolve, endpoints, id_token)
     try:
         decoded = jwt.decode(
             id_token,
@@ -335,8 +350,10 @@ async def _claims(http: httpx.AsyncClient, endpoints: Endpoints, id_token: str, 
     )
 
 
-async def _signing_key(http: httpx.AsyncClient, endpoints: Endpoints, id_token: str) -> jwt.PyJWK:
-    await _public_url(endpoints.jwks_uri, issuer=endpoints.issuer, field="jwks_uri")
+async def _signing_key(
+    http: httpx.AsyncClient, resolve: dns.ResolveUrl, endpoints: Endpoints, id_token: str
+) -> jwt.PyJWK:
+    await _public_url(resolve, endpoints.jwks_uri, issuer=endpoints.issuer, field="jwks_uri")
     try:
         answer = await http.get(endpoints.jwks_uri, timeout=TIMEOUT_S)
         answer.raise_for_status()

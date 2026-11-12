@@ -8,7 +8,6 @@ from runtime.agents.declaration import Declaration, Docs, Greeting, MemoryPolicy
 from runtime.agents.service.declaration import declaration_of, declare, put_declaration
 from runtime.enums import Env, Stage
 from runtime.exceptions import ValidationError
-from runtime.providers.service import plugins
 from runtime.providers.stage import Model, Voice
 from runtime.wire.declaration import AgentConfig as Declared
 from runtime.wire.declaration import (
@@ -29,7 +28,8 @@ from runtime.wire.declaration import (
 from runtime.wire.parts import PromptBlockSpec
 from tests.conftest import Tenant, needs_the_database
 from tests.fakes import talker
-from tests.fakes.acme import ACME
+from tests.fakes.acme import ACME, AcmeLLM, AcmeSTT
+from tests.fakes.plugins import install_plugin
 
 NOTHING = Declaration(slug="clinica-norte")
 # Vendors that do one stage alone, installed for the tests that need one.
@@ -38,17 +38,15 @@ LISTENER = "listener"
 
 
 @pytest.fixture
-def thinker(monkeypatch: pytest.MonkeyPatch) -> str:
-    """A vendor installed for this test alone, doing the llm stage and nothing else."""
-    monkeypatch.setitem(plugins.list_vendors(), THINKER, plugins.Vendor(THINKER, frozenset({Stage.llm})))
-    return THINKER
+def thinker() -> str:
+    """A vendor installed as a plugin, doing the llm stage and nothing else."""
+    return install_plugin(THINKER, LLM=AcmeLLM)
 
 
 @pytest.fixture
-def listener(monkeypatch: pytest.MonkeyPatch) -> str:
-    """A vendor installed for this test alone, doing the stt stage and nothing else."""
-    monkeypatch.setitem(plugins.list_vendors(), LISTENER, plugins.Vendor(LISTENER, frozenset({Stage.stt})))
-    return LISTENER
+def listener() -> str:
+    """A vendor installed as a plugin, doing the stt stage and nothing else."""
+    return install_plugin(LISTENER, STT=AcmeSTT)
 
 
 def test_each_field_the_class_sends_becomes_the_configs_and_is_fixed() -> None:
@@ -145,9 +143,9 @@ def test_who_ends_the_turn_is_the_ears_and_refused_on_the_model() -> None:
         declare(NOTHING, Declared(llm=ModelConfig(provider=ACME, model="acme-1", end_of_turn="stt")))
 
 
-def test_a_realtime_model_the_class_declares_is_fixed_beside_its_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_realtime_model_the_class_declares_is_fixed_beside_its_llm() -> None:
     """The voice calls' model and the written calls' are two settings, each fixed by the class."""
-    vendor = talker.install(monkeypatch)
+    vendor = talker.install()
     declared = Declared(
         llm=ModelConfig(provider=ACME, model="acme-1"),
         realtime=ModelConfig(provider=vendor, model="voice-3", options={"voice": "eve"}),
@@ -158,20 +156,18 @@ def test_a_realtime_model_the_class_declares_is_fixed_beside_its_llm(monkeypatch
     assert config.fixed == frozenset({"llm", "realtime"})
 
 
-def test_a_realtime_model_named_as_the_llm_is_refused_naming_the_realtime(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_realtime_model_named_as_the_llm_is_refused_naming_the_realtime() -> None:
     """The llm answers the written calls, which a model that hears and speaks itself cannot."""
-    vendor = talker.install(monkeypatch)
+    vendor = talker.install()
     with pytest.raises(ValidationError, match="it is the agent's realtime and not its llm"):
         declare(NOTHING, Declared(llm=ModelConfig(provider=vendor, model="voice-3")))
     with pytest.raises(ValidationError, match="it is the agent's realtime and not its llm"):
         declare(NOTHING, Declared(llm=ModelConfig(provider=vendor, model="x", builds="realtime.RealtimeModel")))
 
 
-def test_a_realtime_model_is_a_vendors_that_has_one_and_takes_no_class_of_its_own(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_a_realtime_model_is_a_vendors_that_has_one_and_takes_no_class_of_its_own() -> None:
     """A vendor with no realtime class is refused, and so is a class or a temperature named for one."""
-    vendor = talker.install(monkeypatch)
+    vendor = talker.install()
     with pytest.raises(ValidationError, match="acme has no model that hears and speaks itself"):
         declare(NOTHING, Declared(realtime=ModelConfig(provider=ACME, model="acme-1")))
     with pytest.raises(ValidationError, match=r"@realtime\('<vendor>/<model>'"):

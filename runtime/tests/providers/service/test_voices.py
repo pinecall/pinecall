@@ -4,11 +4,11 @@ import pytest
 
 from runtime.exceptions import ValidationError
 from runtime.providers.catalog import KeptVoice
-from runtime.providers.service import voices
 from runtime.providers.service.voices import ListedVoice, check_listed, check_narrowable
 from runtime.providers.stage import Running
 from tests.conftest import Gateway, Tenant, configured, needs_the_services
 from tests.fakes import acme
+from tests.fakes.plugins import install_plugin
 
 
 @needs_the_services
@@ -55,14 +55,12 @@ async def test_a_voice_neither_the_row_nor_the_vendor_lists_is_refused_naming_th
         await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz", options=own), row)
 
 
-async def test_a_vendor_that_lists_none_has_the_rows_voices_alone_and_with_none_there_is_left_to_its_trial(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    async def lists_none(running: Running) -> list[ListedVoice]:
-        raise voices.NotListed(running.vendor)
+# A voice whose plugin lists none of its voices, as Gemini's: livekit's streaming adapter has no list.
+UNLISTED = install_plugin("unlisted", TTS=acme.AcmeStreamedTTS)
 
-    monkeypatch.setattr(voices, "list_by_vendor", lists_none)
-    row = configured().model_copy(update={"listed": {f"{acme.ACME}/es": (KeptVoice(id="acme-row", name="Rosa"),)}})
+
+async def test_a_vendor_that_lists_none_has_the_rows_voices_alone_and_with_none_there_is_left_to_its_trial() -> None:
+    row = configured().model_copy(update={"listed": {f"{UNLISTED}/es": (KeptVoice(id="acme-row", name="Rosa"),)}})
     with pytest.raises(ValidationError, match="no voice called zzz"):
-        await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz"), row)
-    await check_listed(Running(vendor=acme.ACME, credentials="k", voice="zzz"), configured())
+        await check_listed(Running(vendor=UNLISTED, credentials="k", voice="zzz"), row)
+    await check_listed(Running(vendor=UNLISTED, credentials="k", voice="zzz"), configured())

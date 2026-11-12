@@ -8,7 +8,6 @@ from collections.abc import AsyncIterator
 import pytest
 from pydantic import TypeAdapter
 
-from runtime import shared_state
 from runtime.shared_state import Heard, SharedState
 from runtime.signal import LocalSignal
 from tests.conftest import until
@@ -66,10 +65,7 @@ async def test_a_beat_that_cannot_say_its_share_goes_on_to_the_next(signal: Loca
         await mine.close()
 
 
-async def test_a_change_the_silence_of_a_gateway_makes_that_raises_does_not_end_the_beat(
-    monkeypatch: pytest.MonkeyPatch, signal: LocalSignal
-) -> None:
-    monkeypatch.setattr(shared_state, "SILENT_AT_MOST_S", 0.0)
+async def test_a_change_the_silence_of_a_gateway_makes_that_raises_does_not_end_the_beat(signal: LocalSignal) -> None:
     changes = 0
 
     def changed() -> None:
@@ -79,7 +75,14 @@ async def test_a_change_the_silence_of_a_gateway_makes_that_raises_does_not_end_
             raise RuntimeError("the merge broke")
 
     mine = SharedState(
-        signal, CHANNEL, load=AN_INTEGER.validate_python, dump=int, empty=0, on_change=changed, every_s=0.01
+        signal,
+        CHANNEL,
+        load=AN_INTEGER.validate_python,
+        dump=int,
+        empty=0,
+        on_change=changed,
+        every_s=0.01,
+        silent_after_s=0.0,
     )
     await mine.start()
     try:

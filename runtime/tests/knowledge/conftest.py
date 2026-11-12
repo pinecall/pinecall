@@ -1,6 +1,5 @@
 """What the knowledge tests share: an embedder on a fake vendor, a tenant's scope, the models built."""
 
-import sys
 from collections.abc import AsyncIterator
 
 import httpx
@@ -10,9 +9,9 @@ from runtime.actor import Scope
 from runtime.enums import Env
 from runtime.knowledge.service.embedder import Embedder
 from runtime.providers.catalog import Embedding
-from runtime.providers.service import plugins
 from tests.conftest import Tenant
-from tests.fakes.acme import ACME, MODEL, AcmeLLM
+from tests.fakes import acme
+from tests.fakes.acme import AcmeLLM
 from tests.fakes.embeddings import Embeddings
 
 # Every vector the fake vendor answers is the same: the vectors tie, and the words decide (BM25).
@@ -39,22 +38,7 @@ def scope(tenant: Tenant) -> Scope:
 
 
 @pytest.fixture
-def models(monkeypatch: pytest.MonkeyPatch) -> list[AcmeLLM]:
+def models() -> list[AcmeLLM]:
     """Every acme model the runtime builds while the test runs, in order."""
-    built: list[AcmeLLM] = []
-
-    # The plugin is handed what its constructor names, so the signature is the plugin's own.
-    class Kept(AcmeLLM):
-        def __init__(
-            self,
-            *,
-            api_key: str,
-            model: str = MODEL,
-            temperature: float = 1.0,
-            replies: list[list[str | dict[str, object]]] | None = None,
-        ) -> None:
-            super().__init__(api_key=api_key, model=model, temperature=temperature, replies=replies)
-            built.append(self)
-
-    monkeypatch.setattr(sys.modules[f"{plugins.PLUGINS}.{ACME}"], "LLM", Kept)
-    return built
+    acme.BUILT.clear()
+    return acme.BUILT

@@ -2,8 +2,6 @@
 
 import asyncio
 import json
-import sys
-import types
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Never, override
@@ -21,9 +19,8 @@ from livekit.agents.llm import ChatContext, Tool, ToolChoice
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, NOT_GIVEN, NotGivenOr
 from livekit.agents.utils import AudioBuffer, is_given
 
-from runtime.enums import Stage
 from runtime.kit.text import a_mapping
-from runtime.providers.service import plugins
+from tests.fakes.plugins import install_plugin
 
 ACME = "acme"
 MODEL = "acme-1"
@@ -265,8 +262,12 @@ class ModelRequest:
     schemas: list[dict[str, object]] = field(default_factory=list[dict[str, object]])
 
 
+# Every model the runtime built in this process, in order: a test that reads them empties it first.
+BUILT: list["AcmeLLM"] = []
+
+
 class AcmeLLM(llm.LLM[Never]):
-    """A model that keeps what it was built with and answers each request with its script."""
+    """A model that keeps what it was built with, answers each request with its script, and is counted."""
 
     def __init__(
         self,
@@ -291,6 +292,7 @@ class AcmeLLM(llm.LLM[Never]):
         self.requests: list[ModelRequest] = []
         # How long it takes before its first token; a test makes it slow.
         self.thinks_s = 0.0
+        BUILT.append(self)
 
     @property
     @override
@@ -394,8 +396,4 @@ def _last_said(chat_ctx: ChatContext) -> str:
 # again under a name of its own.
 def install(name: str = ACME) -> str:
     """Put `livekit.plugins.<name>` where the runtime looks for vendors, as an installed plugin is; the name."""
-    module = types.ModuleType(f"{plugins.PLUGINS}.{name}")
-    vars(module).update(LLM=AcmeLLM, STT=AcmeSTT, TTS=AcmeTTS, OtherSTT=AcmeSTT, StreamedTTS=AcmeStreamedTTS)
-    sys.modules[module.__name__] = module
-    plugins.list_vendors()[name] = plugins.Vendor(name, frozenset(Stage))
-    return name
+    return install_plugin(name, LLM=AcmeLLM, STT=AcmeSTT, TTS=AcmeTTS, OtherSTT=AcmeSTT, StreamedTTS=AcmeStreamedTTS)

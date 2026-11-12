@@ -51,14 +51,15 @@ class _Heard:
 class RedisSignal:
     """The signal on Redis: one connection publishes in pipelines, one listens; both come back."""
 
-    def __init__(self, url: str, *, prefix: str = PREFIX) -> None:
-        self.id = f"gw_{uuid4().hex[:12]}"
+    # The two connections are handed in: `at` makes them for a URL, as a process opens its signal.
+    def __init__(self, client: Redis, listener: Redis, *, gateway: str, prefix: str = PREFIX) -> None:
+        self.id = gateway
         self.prefix = prefix
         self._up = False
         self._connected = asyncio.Event()
         self.dropped = 0
-        self._client = _client_of(url, self.id)
-        self._listener = _client_of(url, self.id)
+        self._client = client
+        self._listener = listener
         self._unsent: deque[tuple[str, bytes]] = deque()
         self._waiting = asyncio.Event()
         self._listening: dict[str, set[Listener]] = {}
@@ -67,6 +68,12 @@ class RedisSignal:
         self._pubsub: PubSub | None = None
         self._reconnected = False
         self._tasks: list[asyncio.Task[None]] = []
+
+    @classmethod
+    def at(cls, url: str, *, prefix: str = PREFIX) -> "RedisSignal":
+        """The signal on the Redis at this URL: a gateway of its own, each connection named after it."""
+        gateway = new_gateway_id()
+        return cls(_client_of(url, gateway), _client_of(url, gateway), gateway=gateway, prefix=prefix)
 
     @property
     def up(self) -> bool:
@@ -174,7 +181,7 @@ class RedisSignal:
             await asyncio.sleep(pause)
 
     async def _hear(self) -> None:
-        pubsub = self._pubsub = PubSub(self._listener.connection_pool)
+        pubsub = self._pubsub = self._listener.pubsub()  # pyright: ignore[reportUnknownMemberType]
         own = f"{self.prefix}signal:{self.id}"
         await pubsub.subscribe(own)  # pyright: ignore[reportUnknownMemberType]
         self._reconnected = False
@@ -248,6 +255,11 @@ class RedisSignal:
             self._leaving.add(name)
 
 
+def new_gateway_id() -> str:
+    """A gateway's id on the signal, its own for its life."""
+    return f"gw_{uuid4().hex[:12]}"
+
+
 def _client_of(url: str, name: str) -> Redis:
     try:
         client: Redis = Redis.from_url(  # pyright: ignore[reportUnknownMemberType]
@@ -287,7 +299,7 @@ async def open_signal(settings: Settings) -> AsyncGenerator[Signal]:
     if settings.redis_url is None:
         signal = LocalSignal()
     else:
-        redis = RedisSignal(settings.redis_url.get_secret_value())
+        redis = RedisSignal.at(settings.redis_url.get_secret_value())
         redis.start()
         signal = redis
     try:

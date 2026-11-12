@@ -3,26 +3,20 @@
 from dataclasses import replace
 from datetime import date
 
-import pytest
-
 from runtime.calls.context import Contact
 from runtime.enums import Channel, Medium
-from runtime.session import started as started_module
+from runtime.kit.time import today_in
 from runtime.session.started import start_of
 from tests.session.conftest import THE_CALLER, context_of
 
 AT = 1_790_000_000.0
 
 
-def test_a_call_of_an_agent_that_declares_its_zone_says_its_day_there(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_call_of_an_agent_that_declares_its_zone_says_its_day_there() -> None:
     """The app reads `today` off the entry instead of its own process's clock."""
-
-    def today_there(zone: str) -> date:
-        return date(2026, 9, 28)
-
-    monkeypatch.setattr(started_module, "today_in", today_there)
     context = context_of("call_1", Channel.web)
-    assert start_of(context, AT, None, medium=Medium.text, zone="America/Los_Angeles").dump()["today"] == "2026-09-28"
+    there = today_in("America/Los_Angeles").isoformat()
+    assert start_of(context, AT, None, medium=Medium.text, zone="America/Los_Angeles").dump()["today"] == there
     assert "today" not in start_of(context, AT, None, medium=Medium.text).dump()
     pinned = replace(context, today=date(2026, 1, 5), pinned_day=date(2026, 1, 5))
     assert start_of(pinned, AT, None, medium=Medium.text, zone="America/Los_Angeles").dump()["today"] == "2026-01-05"

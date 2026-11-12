@@ -1,14 +1,11 @@
 """The vendor `talker`: a plain model, and a realtime one that hears and speaks itself, installed as a plugin."""
 
-import sys
 import types
 from typing import Literal, Never, override
 
-import pytest
 from livekit.agents import llm
 
-from runtime.enums import Stage
-from runtime.providers.service import plugins
+from tests.fakes.plugins import install_plugin
 
 TALKER = "talker"
 # What its realtime class types its `model` argument as, as xAI's does.
@@ -47,11 +44,6 @@ class TalkerRealtime(llm.RealtimeModel):
         return None
 
 
-def install(monkeypatch: pytest.MonkeyPatch) -> str:
-    """Put `livekit.plugins.talker` where the runtime looks for vendors, for one test."""
-    module = types.ModuleType(f"{plugins.PLUGINS}.{TALKER}")
-    vars(module).update(LLM=TalkerLLM, realtime=types.SimpleNamespace(RealtimeModel=TalkerRealtime))
-    monkeypatch.setitem(sys.modules, module.__name__, module)
-    vendor = plugins.Vendor(TALKER, frozenset({Stage.llm}), realtime=REALTIME)
-    monkeypatch.setitem(plugins.list_vendors(), TALKER, vendor)
-    return TALKER
+def install() -> str:
+    """Put `livekit.plugins.talker` where the runtime looks for vendors; its name."""
+    return install_plugin(TALKER, LLM=TalkerLLM, realtime=types.SimpleNamespace(RealtimeModel=TalkerRealtime))

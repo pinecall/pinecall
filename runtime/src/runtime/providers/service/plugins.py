@@ -68,11 +68,11 @@ class Vendor:
 @cache
 def list_vendors() -> dict[str, Vendor]:
     """Every vendor of this process: each livekit plugin exporting an LLM, an STT or a TTS."""
-    found = {INFERENCE: _read_vendor(INFERENCE, INFERENCE_MODULE)}
+    found = {INFERENCE: read_vendor(INFERENCE, INFERENCE_MODULE)}
     spec = importlib.util.find_spec(PLUGINS)
     locations = spec.submodule_search_locations if spec is not None else None
     for module in pkgutil.iter_modules(locations or []):
-        vendor = _read_vendor(module.name, f"{PLUGINS}.{module.name}")
+        vendor = read_vendor(module.name, f"{PLUGINS}.{module.name}")
         if vendor.does or vendor.broken:
             found[vendor.name] = vendor
     return found
@@ -114,7 +114,7 @@ def plugin(vendor: str) -> ModuleType:
         )
     module = INFERENCE_MODULE if vendor == INFERENCE else f"{PLUGINS}.{vendor}"
     if found.broken is not None:
-        found = _read_vendor(vendor, module)
+        found = read_vendor(vendor, module)
         list_vendors()[vendor] = found
     if found.broken is not None:
         raise ServiceUnavailable(f"the {vendor} plugin is installed and does not import: {found.broken}")
@@ -199,7 +199,8 @@ def realtime_models(module: object) -> tuple[str, ...]:
 
 # A plugin's own imports warn about what only it would use (clova's pydub: "Couldn't find ffmpeg"),
 # on every command of the operator's CLI; what a plugin says while it is imported is not ours to say.
-def _read_vendor(name: str, module: str) -> Vendor:
+def read_vendor(name: str, module: str) -> Vendor:
+    """The vendor a plugin module is, as this process reads it: what it builds, or why it does not import."""
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", (RuntimeWarning, SyntaxWarning))

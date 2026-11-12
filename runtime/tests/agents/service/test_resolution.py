@@ -22,9 +22,9 @@ DECLARED = Declaration(slug="kala", llm=Model(ACME, "acme-1"), fixed=frozenset({
 
 
 @pytest.fixture
-def vendor(monkeypatch: pytest.MonkeyPatch) -> str:
-    """The talker vendor, installed for this test alone."""
-    return talker.install(monkeypatch)
+def vendor() -> str:
+    """The talker vendor, installed as a plugin."""
+    return talker.install()
 
 
 def _tuned(settings: AgentSettings, declared: Declaration = DECLARED) -> Declaration:

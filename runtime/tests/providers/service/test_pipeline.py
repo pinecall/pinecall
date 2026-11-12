@@ -14,6 +14,7 @@ from runtime.providers.service.keyring import Keyring
 from runtime.providers.stage import Model, Voice
 from tests.conftest import configured
 from tests.fakes import acme, talker
+from tests.fakes.plugins import install_plugin
 
 THE_ROWS_OPTIONS = {"max_tokens": 4096, "caching": "ephemeral"}
 THE_ROWS_REQUEST = {"output_config": {"effort": "low"}}
@@ -51,24 +52,28 @@ def test_the_boxs_key_runs_the_model_with_the_rows_options_as_the_orgs_own_does(
 
 # An open model run in this process (a livekit plugin whose classes take no key) needs no key of the
 # org's nor the box's: the keyring runs it on none instead of refusing the call.
-def test_a_vendor_whose_plugin_takes_no_key_runs_on_none(monkeypatch: pytest.MonkeyPatch) -> None:
+class OpenLLM:
+    """A model this process runs itself: its class takes a model and no key."""
+
+    def __init__(self, *, model: str = "open-1") -> None:
+        self.model = model
+
+
+OPEN = install_plugin("open", LLM=OpenLLM)
+
+
+def test_a_vendor_whose_plugin_takes_no_key_runs_on_none() -> None:
     assert keyring.takes_a_key("acme") is True
     with pytest.raises(ServiceUnavailable, match="acme has no key"):
         keyring.running_on(Keyring(), "acme", None)
-
-    def never(_vendor: str) -> bool:
-        return False
-
-    monkeypatch.setattr(keyring, "takes_a_key", never)
-    ran = keyring.running_on(Keyring(), "acme", "acme-1")
-    assert (ran.vendor, ran.credentials, ran.model, ran.lent) == ("acme", "", "acme-1", False)
+    assert keyring.takes_a_key(OPEN) is False
+    ran = keyring.running_on(Keyring(), OPEN, "open-1")
+    assert (ran.vendor, ran.credentials, ran.model, ran.lent) == (OPEN, "", "open-1", False)
 
 
 # A realtime model runs on the org's own key alone, as a plugin's own class does; told the agent's options.
-def test_a_realtime_model_runs_on_the_orgs_own_key_with_its_options_and_never_on_a_lent_one(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    vendor = talker.install(monkeypatch)
+def test_a_realtime_model_runs_on_the_orgs_own_key_with_its_options_and_never_on_a_lent_one() -> None:
+    vendor = talker.install()
     named = Model(vendor=vendor, model="voice-3", options={"voice": "eve"})
     own = pipeline.talking_of(named, Keyring(own={vendor: "own-key"}))
     assert (own.credentials, own.model, own.options, own.lent) == ("own-key", "voice-3", {"voice": "eve"}, False)
@@ -76,10 +81,8 @@ def test_a_realtime_model_runs_on_the_orgs_own_key_with_its_options_and_never_on
         pipeline.talking_of(named, Keyring(box={vendor: "box-key"}))
 
 
-def test_the_pipeline_carries_the_realtime_model_beside_the_llm_where_the_agent_names_one(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    vendor = talker.install(monkeypatch)
+def test_the_pipeline_carries_the_realtime_model_beside_the_llm_where_the_agent_names_one() -> None:
+    vendor = talker.install()
     keys = Keyring(own={acme.ACME: "acme-key", vendor: "own-key"})
     assert pipeline.build_pipeline(Stages(), configured(), keys).realtime is None
     built = pipeline.build_pipeline(Stages(realtime=Model(vendor=vendor, model="voice-3")), configured(), keys)

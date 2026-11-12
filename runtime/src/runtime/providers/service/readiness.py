@@ -96,12 +96,11 @@ class Runnable:
 # The same for every key of an org: what is installed, and whose key would run each vendor.
 async def runnable_by(session: AsyncSession, vault: Vault, scope: Scope) -> Runnable:
     """Every vendor this build runs and how the scope's org may run it, the defaults, the models named."""
-    return runnable_on(await get_catalog(session), await keys_of(session, vault, scope))
+    return runnable_on(await get_catalog(session), await keys_of(session, vault, scope), plugins.list_vendors())
 
 
-def runnable_on(catalog: Catalog, keys: Keyring) -> Runnable:
-    """Every installed vendor as these keys may run it, with the row's defaults and models."""
-    installed = plugins.list_vendors()
+def runnable_on(catalog: Catalog, keys: Keyring, installed: Mapping[str, Vendor]) -> Runnable:
+    """Every vendor installed as these keys may run it, with the row's defaults and models."""
     runs = runs_of(catalog, installed)
     return Runnable(
         providers=list_readiness(installed, catalog, keys),
