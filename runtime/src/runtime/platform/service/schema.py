@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,7 +10,9 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
+from alembic.util import CommandError
 from sqlalchemy import Connection
+from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from runtime.exceptions import ConfigurationError
@@ -143,6 +146,22 @@ async def migrate_database(engine: AsyncEngine) -> tuple[History, Standing]:
         finally:
             await schema.release_the_run()
     return history, await standing_of(engine)
+
+
+# Alembic's own comparison, in its own environment (`migrations/env.py`): a table, a column or an
+# index a model declares and no revision makes, or one a revision made and no model shows. Not run
+# on a loop: the environment runs one of its own.
+def find_drift() -> str | None:
+    """What Alembic would generate against the settings' database; None when the models are the schema."""
+    try:
+        # What SQLAlchemy says while it reflects a table (a check constraint's options it cannot
+        # place) is not a difference: a process that makes warnings errors would stop on it.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SAWarning)
+            command.check(_config())
+    except CommandError as differs:
+        return str(differs)
+    return None
 
 
 def list_steps() -> list[str]:
