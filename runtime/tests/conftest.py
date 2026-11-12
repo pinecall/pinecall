@@ -30,6 +30,8 @@ os.environ.setdefault("PINECALL_SANDBOX_FLEET_KEY", "the-suites-own-sandbox-flee
 os.environ.setdefault("PINECALL_PRODUCTION_FLEET_KEY", "the-suites-own-production-fleet-key")
 os.environ.setdefault("LIVEKIT_API_KEY", "devkey")
 os.environ.setdefault("LIVEKIT_API_SECRET", "a-suite-only-livekit-secret-0123456789")
+# The suite's box serves its apps' pages, each under a name of its own below this one.
+os.environ.setdefault("PINECALL_PAGES_DOMAIN", "pages.test")
 
 from runtime.accounts import service as accounts
 from runtime.accounts.service.key_cache import KeyCache
