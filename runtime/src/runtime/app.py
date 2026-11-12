@@ -1,13 +1,9 @@
-"""The gateway process: what it builds once and yields as its state, its app, and the one answer to a refusal."""
+"""The gateway's app: its endpoints and middleware on a new FastAPI app, and the one answer to a refusal."""
 
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator
-from contextlib import AsyncExitStack, asynccontextmanager
-from typing import TypedDict
 
-import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
@@ -15,40 +11,14 @@ from sqlalchemy.exc import TimeoutError as PoolTimeout
 from starlette.types import Scope
 
 from runtime import api
-from runtime.accounts import tasks as accounts_tasks
 from runtime.accounts.auth import resolve_actor
-from runtime.accounts.service.key_cache import KeyCache
-from runtime.alerts import tasks as alerts_tasks
 from runtime.auth import ActorMiddleware
-from runtime.config import Settings, load_settings
-from runtime.enums import Env
+from runtime.config import Settings
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
-from runtime.fleet import tasks as fleet_tasks
-from runtime.fleet.service.offers import Offering
-from runtime.fleet.service.roster import Roster
 from runtime.handles import Handles
-from runtime.kit.crypto import Vault
-from runtime.kit.loops import Loops
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling
-from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
-from runtime.livekit import open_servers
-from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
-from runtime.mail.service.outbox import Outbox
-from runtime.platform.service.attempts import AttemptThrottle
-from runtime.postgres import STATEMENT_TIMEOUT_MS, busy, create_engine, session_maker
-from runtime.providers.service.speech import SAMPLES_A_MINUTE
-from runtime.providers.service.transcription import TRANSCRIPTIONS_A_MINUTE
-from runtime.redis import open_signal
-from runtime.signin.service.codes import LoginCodes
-from runtime.signin.service.google import Newcomers
-from runtime.signin.service.oidc import Oidc
-from runtime.signin.service.pairings import Pairings
-from runtime.signin.service.passwords import SIGN_IN_TRIES, PasswordThrottle
-from runtime.signin.service.signup import SignUps
-from runtime.signin.service.turnstile import Turnstile
-from runtime.telephony import tasks as telephony_tasks
-from runtime.telephony.service.carrier import SipNames
-from runtime.telephony.service.rebuild import Owed
+from runtime.lifespan import lifespan
+from runtime.postgres import STATEMENT_TIMEOUT_MS, busy
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +27,6 @@ logger = logging.getLogger(__name__)
 TOO_SLOW = "the database took more than {took:g} s to answer; try again"
 QUERY_CANCELED = "57014"
 INTERNAL = "the gateway failed to answer this request"
-NO_BOX_MAIL = "PINECALL_SMTP_URL does not read (%s): the box sends no email of its own"
 
 # Capacitor's WebView origins: iOS serves from capacitor://localhost, Android from https://localhost.
 THE_APPS_WEBVIEWS = ("capacitor://localhost", "https://localhost")
@@ -74,123 +43,6 @@ A_PAGE_HANGS_UP = re.compile(r"^/v1/calls/[^/]+/hangup$")
 # The most any request carries, above every endpoint's own cap: a body past it is refused as it
 # streams in, never held whole in memory.
 LARGEST_BODY = 32 * 1024 * 1024
-
-
-# What the lifespan builds, once, and every request reads through a getter: each object has exactly
-# one getter, declared beside its type, and nothing else reads this. A domain's long-lived object
-# enters here in the commit that builds the domain.
-class State(TypedDict):
-    """The gateway's process state."""
-
-    handles: Handles
-    closing: asyncio.Event
-    loops: Loops
-    outbox: Outbox
-    key_cache: KeyCache
-    login_codes: LoginCodes
-    pairings: Pairings
-    sign_ups: SignUps
-    newcomers: Newcomers
-    oidc: Oidc
-    password_throttle: PasswordThrottle
-    sign_in_attempts: AttemptThrottle
-    turnstile: Turnstile
-    samples: AttemptThrottle
-    transcriptions: AttemptThrottle
-    extraction_runs: AttemptThrottle
-    roster: Roster
-    offering: Offering
-    sip_names: SipNames
-
-
-# Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
-    """Build the process's state once, run its loops, and close all of it after."""
-    async with AsyncExitStack() as stack:
-        handles = await _connections(load_settings(), stack)
-        loops = Loops()
-        stack.push_async_callback(loops.stop)
-        outbox = Outbox(handles.sessions, handles.vault, _box_mailbox(handles.settings))
-        stack.push_async_callback(outbox.drain)
-        key_cache = KeyCache(handles.sessions, handles.signal)
-        loops.start(accounts_tasks.hear_revocations.bind(key_cache, handles.signal))
-        roster, offering = await _fleet(handles, loops, stack)
-        sessions, vault = handles.sessions, handles.vault
-        sip_names = _sip_names(handles.settings)
-        loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))
-        loops.start(alerts_tasks.post_alerts.bind(sessions, vault, handles.http))
-        yield State(
-            handles=handles,
-            closing=app.state.closing,
-            loops=loops,
-            outbox=outbox,
-            key_cache=key_cache,
-            login_codes=LoginCodes(sessions, vault),
-            pairings=Pairings(sessions, vault, handles.signal),
-            sign_ups=SignUps(sessions, vault, accepting=handles.settings.signup),
-            newcomers=Newcomers(sessions, vault),
-            oidc=Oidc(handles.http, sessions, vault),
-            password_throttle=PasswordThrottle(sessions),
-            sign_in_attempts=AttemptThrottle(sessions, SIGN_IN_TRIES),
-            turnstile=_turnstile(handles),
-            samples=AttemptThrottle(sessions, SAMPLES_A_MINUTE),
-            transcriptions=AttemptThrottle(sessions, TRANSCRIPTIONS_A_MINUTE),
-            extraction_runs=AttemptThrottle(sessions, EXTRACTION_RUNS_A_MINUTE),
-            roster=roster,
-            offering=offering,
-            sip_names=sip_names,
-        )
-
-
-# The roster hears the other gateways' workers before the first request; the dispatcher offers on it.
-async def _fleet(handles: Handles, loops: Loops, stack: AsyncExitStack) -> tuple[Roster, Offering]:
-    """The roster and the dispatcher, the roster listening and the fleet's two loops started."""
-    roster = Roster(handles.signal)
-    await roster.start()
-    stack.push_async_callback(roster.close)
-    offering = Offering(handles.sessions, handles.servers, roster)
-    loops.start(fleet_tasks.sweep_offers.bind(offering))
-    loops.start(fleet_tasks.watch_roster.bind(roster))
-    return roster, offering
-
-
-# What the box is to a carrier, read from the settings once: no use case of telephony reads one itself.
-def _sip_names(settings: Settings) -> SipNames:
-    secret = settings.livekit_api_secret
-    return SipNames(
-        domain=settings.domain,
-        sip_domains={env: settings.sip_domain_of(env) for env in Env},
-        approve_hooked=settings.approve_hooked,
-        livekit_secret=None if secret is None else secret.get_secret_value(),
-    )
-
-
-async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:
-    """Open the process's connections; the stack closes them in reverse."""
-    vault = Vault(None if settings.vault_key is None else settings.vault_key.get_secret_value())
-    engine = create_engine(settings)
-    stack.push_async_callback(engine.dispose)
-    http = await stack.enter_async_context(httpx.AsyncClient())
-    servers = await stack.enter_async_context(open_servers(settings))
-    signal = await stack.enter_async_context(open_signal(settings))
-    return Handles(settings, vault, http, servers, signal, engine, session_maker(engine))
-
-
-# With no secret set the verifier passes every token: a box with no Turnstile asks for none.
-def _turnstile(handles: Handles) -> Turnstile:
-    secret = handles.settings.turnstile_secret
-    return Turnstile(handles.http, None if secret is None else secret.get_secret_value(), handles.settings.domain)
-
-
-# A box without mail still starts: its emails are not sent, and /.well-known says so.
-def _box_mailbox(settings: Settings) -> Mailbox | None:
-    url = None if settings.smtp_url is None else settings.smtp_url.get_secret_value()
-    try:
-        return read_environment_mailbox(url, settings.mail_from)
-    except PinecallError as unreadable:
-        logger.warning(NO_BOX_MAIL, unreadable)
-        return None
 
 
 # Set from the signal handler, through the loop: streams never end on their own, and a stop would

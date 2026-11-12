@@ -87,7 +87,7 @@ class Judging:
 class SpendLog(Protocol):
     """The log of the agent a request of the judge model was made for."""
 
-    async def append(self, type: str, data: JsonObject) -> object:
+    async def append(self, kind: str, data: JsonObject) -> object:
         """One entry on the agent's log."""
         ...
 

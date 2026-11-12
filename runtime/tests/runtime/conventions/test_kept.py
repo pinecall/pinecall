@@ -42,16 +42,21 @@ def test_every_table_declares_what_it_keeps(modules: dict[str, Module]) -> None:
 
 
 def test_a_row_can_be_found_by_whose_it_is(modules: dict[str, Module]) -> None:
-    """A column naming a call, an agent or a contact is named in `Kept`, an org's has the cascade, or the row stays."""
+    """A call, an agent or a contact a table names is named in `Kept`, an org's has the cascade, or the row stays."""
     wrong: list[str] = []
     for model in _mapped(modules):
         kept = model.__dict__.get("__kept__")
         if not isinstance(kept, Kept) or kept.outlives:
             continue
+        # A table may name its call by two columns (`call_log` has `call` and `log`): `Kept` names one of them.
+        named: dict[str, list[str]] = {}
         for column in _columns(model):
-            owner = OWNERS.get(column.name)
-            if owner is not None and getattr(kept, owner) != column.name:
-                wrong.append(f"{model.__name__}.{column.name}: names a {owner} that `Kept` does not")
+            if column.name in OWNERS:
+                named.setdefault(OWNERS[column.name], []).append(column.name)
+        for owner, names in named.items():
+            if getattr(kept, owner) not in names:
+                wrong.append(f"{model.__name__}: {', '.join(names)} name a {owner} that `Kept` does not")
+        for column in _columns(model):
             if column.name == "org" and not _goes_with_its_org(column) and not kept.erased_by:
                 wrong.append(
                     f"{model.__name__}.org: no cascade from orgs, no verb that erases it, no word that it stays"

@@ -21,10 +21,10 @@ def test_a_route_body_is_short(modules: dict[str, Module]) -> None:
 
 
 def test_process_state_is_read_in_getters_alone(modules: dict[str, Module]) -> None:
-    """`.state` is read where a getter is declared (an `auth` module, `handles.py`, `app.py`), nowhere else."""
+    """`.state` is read where a getter is declared (an `auth` module, `handles.py`), in `app.py` and `lifespan.py`."""
     wrong: list[str] = []
     for module in modules.values():
-        if module.kind == "auth" or module.parts[0] in ("handles", "app", "auth"):
+        if module.kind == "auth" or module.parts[0] in ("handles", "app", "lifespan", "auth"):
             continue
         for node in ast.walk(module.tree):
             if isinstance(node, ast.Attribute) and node.attr == "state" and _is_a_request(node.value):

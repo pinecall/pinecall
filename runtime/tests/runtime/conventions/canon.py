@@ -61,7 +61,7 @@ FOUNDATIONS = frozenset(
     }
 )
 # Above every domain: wiring only.
-ENTRYPOINTS = frozenset({"app", "api", "worker", "runner", "cli"})
+ENTRYPOINTS = frozenset({"app", "lifespan", "api", "worker", "runner", "cli"})
 # A domain's value objects, read by any domain as its models are. Each is named in CONTRIBUTING.md.
 VALUE_OBJECTS: frozenset[str] = frozenset(
     {
@@ -73,8 +73,16 @@ VALUE_OBJECTS: frozenset[str] = frozenset(
         "agents.declaration",
         # What the org sets on an agent over its class: its settings, its lexicon, the versions a call ran on.
         "agents.settings",
+        # What a call is: its id, who calls, the route it came in by, its day, and the name its log goes by.
+        "calls.context",
+        # What each audience reads of an entry and of the state: the tenant's, masked, and the public's.
+        "calls.projection",
+        # Where a call's audio is kept, the disk or a bucket, and a range of it as a player asks.
+        "calls.recordings",
     }
 )
+# A package inside a domain that other domains reach: by its `__init__`, which names exactly what they import.
+SUBPACKAGES: frozenset[str] = frozenset({"calls.log", "calls.folds"})
 # The files a domain folder holds, each a module or a package of the same name.
 CANON_FILES = frozenset({"models", "schemas", "repository", "service", "auth", "endpoints", "tasks"})
 # The modules a domain holds beside the canon's files: its long-lived objects and its value objects, each
@@ -87,6 +95,11 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
     # No module: the pages Pinecall's own judges and personas are written in, one `.md` each, shipped in
     # the wheel and read once a process by `service/library.py`.
     "judging": frozenset({"library"}),
+    # Its three value modules (`VALUE_OBJECTS`) and its engine, in two packages that cannot exist without it
+    # and share its tables (calls-engine-1): `log/` writes, keeps, tells and reads a log (the writer, the store,
+    # a log, the logs, the feeds, the relay, the fanout, the private values); `folds/` is what is folded from
+    # one, pure functions of its entries (the state, the facts, the usage, the latencies, the phone legs).
+    "calls": frozenset({"context", "projection", "recordings", "log", "folds"}),
     # An engine: one call running for as long as it lasts, each module an object that holds its state, or
     # the one noun those objects share. `service.py` beside them is what a host calls.
     "session": frozenset(

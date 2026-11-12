@@ -21,7 +21,7 @@ nor callbacks), ambient current-user state, and autoload.
 
 ```
 src/runtime/
-  app.py api.py worker.py runner.py cli/   the entrypoints: they build and wire, nothing else
+  app.py lifespan.py api.py worker.py runner.py cli/   the entrypoints: they build and wire, nothing else
   config.py enums.py exceptions.py         one process's words: its settings, the shared enums, the errors
   actor.py auth.py scoping.py              who a request is, how its key is resolved and required, the org it is scoped to
   postgres.py signal.py redis.py livekit.py one process's connections
@@ -89,6 +89,11 @@ A module of a domain that is none of its seven files is named here, and in
 | `providers` | `catalog.py` | a value object: the providers row, the one shape of a document the box keeps and the one reader of its keys. It is pydantic, the document being JSON an operator edits |
 | `agents` | `declaration.py` | a value object: what an agent's class declares (its tools, its turns, its words), and the declaration whole |
 | `agents` | `settings.py` | a value object: what the org sets on an agent over its class (its settings, its lexicon), and the versions a call ran on |
+| `calls` | `context.py` | a value object: what a call is: its id, who calls, the route it came in by, its day, and the name its log goes by |
+| `calls` | `projection.py` | a value object: what each audience reads of an entry and of the state: the tenant's, masked, and the public's |
+| `calls` | `recordings.py` | a value object: where a call's audio is kept, the disk or a bucket, and a range of it as a player asks |
+| `calls` | `log/` | what writes, keeps, tells and reads a log: the writer, the store, a log, the logs, the feeds, the relay, the fanout, the private values |
+| `calls` | `folds/` | what is folded from a log, pure functions of its entries: the state, the facts, the usage, the latencies, the phone legs |
 | `session` | `call.py` | `Call`: the state that outlives a turn, and the Protocols of what it reaches (the context, the platform) |
 | `session` | `writing.py` | `Writing`: the call's entries in order, sent to its log in batches by one task |
 | `session` | `session.py` | `Session`: the call on livekit's AgentSession, built on its place: opened, heard, re-staged, ended |
@@ -124,6 +129,12 @@ this machine can run (`machine`) stand apart and were decided into it.
 `session` is an engine: one call running for as long as it lasts. Each of its modules above is an
 object that holds the call's state, or the one noun those objects share; `service.py` beside them
 is what a host (the gateway for a written call, a worker's job for a spoken one) calls.
+
+`calls` is an engine in two sub-packages that cannot exist without it and share its tables: `log/` is
+the machinery (one writer numbers every log, the store keeps it, the relay tells every gateway, a
+log's readers follow it live) and `folds/` is what is read out of a log, with no session and no I/O.
+`log/` imports `folds/`, never the reverse. Another domain reaches each by its `__init__.py`, which
+names exactly what others import, and never a module inside it.
 
 `telephony/service/` has more than sixteen modules and is one context: how a number reaches an
 agent and an agent a number. The account a number lives in (by its kind: a module each, behind
@@ -182,7 +193,7 @@ together; the routes and the legs in a call's room were decided into it.
     its own in its service; endpoints never raise `HTTPException`; `app.py` has the one handler. A
     vendor's failure is an `UpstreamError` carrying `vendor`, `retryable` and `retry_after_s`,
     translated once where the vendor is called.
-14. **Entrypoints wire.** Only `app.py`, `api.py`, `worker.py`, `runner.py` and `cli/` build
+14. **Entrypoints wire.** Only `app.py`, `lifespan.py`, `api.py`, `worker.py`, `runner.py` and `cli/` build
     objects from settings. A CLI verb is a typed function that calls a service and prints; a module
     is named for the word typed.
 15. **Size.** A module is at most 500 lines; a module of shapes alone at most 800; a line at most
@@ -221,7 +232,7 @@ sentence is a comment. One word per concept, everywhere: code, schemas, pages, l
 | transcript | case (as a reading) | a finished call as a judge reads it |
 | case | — | one row of the dataset of calls to learn from |
 | seat | (as a worker's slot or a line's place) | a member's place in an org |
-| subscriber | reader (as a live follower) | who follows a log as it is written |
+| subscriber | — | who follows a log as it is written |
 | email | letter | a message the box sends |
 | phone_leg | leg | one side of a call on the phone network |
 | fence · entry · seal · dispatch · offer · lane | — | kept: the engine's and telephony's own terms |

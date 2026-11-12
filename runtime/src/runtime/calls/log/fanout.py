@@ -1,0 +1,164 @@
+"""The live readers of one log or feed: each a queue in seq order, dropped when it falls behind, and its filter."""
+
+import asyncio
+import re
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Self
+
+from runtime.exceptions import ValidationError
+from runtime.wire.base import Entry
+from runtime.wire.events import TERMINAL_EVENT
+
+# How far a reader may fall behind before it is dropped: about a minute of a busy call, and the
+# most a dead socket can pin.
+QUEUE_DEPTH = 256
+
+# A reader that filtered these out could wait forever on a log that already ended.
+ALWAYS_PASS = frozenset({"log.gap", "log.caught_up", "call.ended", TERMINAL_EVENT})
+
+MAX_TYPES = 32
+_A_TYPE_NAME = re.compile(r"^[a-z0-9_.]+$")
+
+
+@dataclass(frozen=True, slots=True)
+class Filter:
+    """One reader's filter: the types it wants (None for every one), whether only durable, and whether strictly so."""
+
+    types: frozenset[str] | None = None
+    durable: bool = False
+    # A call's reader is told the call ended whatever it asked for; the org's feed never ends, and a
+    # reader of one type there has no shape for another call's ending.
+    strict: bool = False
+
+    @classmethod
+    def parse(cls, types: str | None, *, durable: bool, strict: bool = False) -> Self:
+        """The filter a query string asks for (`types=a.b,c.d`), refusing a bad type name."""
+        if types is None:
+            return cls(durable=durable, strict=strict)
+        wanted = [name.strip() for name in types.split(",") if name.strip()]
+        if len(wanted) > MAX_TYPES:
+            raise ValidationError(f"a filter names at most {MAX_TYPES} types, not {len(wanted)}")
+        if bad := [name for name in wanted if not _A_TYPE_NAME.match(name)]:
+            raise ValidationError(f"an event type is lowercase words joined by dots: {bad}")
+        return cls(types=frozenset(wanted), durable=durable, strict=strict)
+
+    def passes(self, entry: Entry) -> bool:
+        """Whether the entry reaches this reader."""
+        if not self.strict and entry.type in ALWAYS_PASS:
+            return True
+        if self.durable and entry.ephemeral:
+            return False
+        return self.types is None or entry.type in self.types
+
+
+EVERYTHING = Filter()
+
+
+class Subscription:
+    """One live reader's queue; iteration ends when the log closes or the reader fell behind."""
+
+    def __init__(
+        self, only: Filter, leave: Callable[["Subscription"], None], after: Callable[[], None] | None = None
+    ) -> None:
+        """Keep the filter, the way out of the fanout, and what to do once out (unfollow)."""
+        self.only = only
+        self.dropped = False
+        self._leave = leave
+        self._after = after
+        self._ended = False
+        self._left = False
+        # One slot past the depth for the end marker, so closing a full queue never blocks.
+        self._queue: asyncio.Queue[Entry | None] = asyncio.Queue(maxsize=QUEUE_DEPTH + 1)
+
+    @property
+    def over(self) -> bool:
+        """Whether the reader was ended: its log closed, it fell behind, or it was closed."""
+        return self._ended
+
+    def offer(self, entry: Entry) -> bool:
+        """Queue the entry if the filter passes it; False once this reader is gone."""
+        if self._ended:
+            return False
+        if not self.only.passes(entry):
+            return True
+        if self._queue.qsize() >= QUEUE_DEPTH:
+            self.dropped = True
+            self._end()
+            return False
+        self._queue.put_nowait(entry)
+        return True
+
+    def close(self) -> None:
+        """End the iteration after what is queued, and leave the fanout."""
+        self._end()
+        self._leave(self)
+        if not self._left:
+            self._left = True
+            if self._after is not None:
+                self._after()
+
+    def _end(self) -> None:
+        if not self._ended:
+            self._ended = True
+            self._queue.put_nowait(None)
+
+    def __aiter__(self) -> Self:
+        return self
+
+    # Ended stays ended: a reader asking again after the marker would wait on an empty queue forever.
+    async def __anext__(self) -> Entry:
+        """The next entry in log order; the end marker ends the iteration, now and on every later ask."""
+        if self._ended and self._queue.empty():
+            raise StopAsyncIteration
+        entry = await self._queue.get()
+        if entry is None:
+            raise StopAsyncIteration
+        return entry
+
+
+class Fanout:
+    """The live readers of one log or feed; publishing never waits for any of them."""
+
+    def __init__(self) -> None:
+        """Start with no reader."""
+        self._readers: set[Subscription] = set()
+        self._closed = False
+
+    @property
+    def readers(self) -> int:
+        """How many readers are subscribed."""
+        return len(self._readers)
+
+    # A reader of a closed fanout never entered it, so it has nothing to leave: its `after` is not
+    # kept. Until 2026-11 it ran at once, before the caller had followed anything, and the follow
+    # that came next held a channel of the signal for as long as the process lived.
+    def subscribe(self, only: Filter = EVERYTHING, after: Callable[[], None] | None = None) -> Subscription:
+        """A reader of what is published from now on; on a closed fanout, an ended one that entered nothing."""
+        if self._closed:
+            ended = Subscription(only, self._readers.discard)
+            ended.close()
+            return ended
+        subscription = Subscription(only, self._readers.discard, after)
+        self._readers.add(subscription)
+        return subscription
+
+    def publish(self, entry: Entry) -> None:
+        """Offer the entry to every reader, dropping the ones that fell behind."""
+        for reader in tuple(self._readers):
+            if not reader.offer(entry):
+                reader.close()
+
+    def close(self) -> None:
+        """End every reader after what it was given; a later subscriber gets nothing."""
+        self._closed = True
+        for reader in tuple(self._readers):
+            reader.close()
+        self._readers.clear()
+
+    def drop(self) -> None:
+        """End every reader as one that fell behind: each resumes from the store."""
+        for reader in tuple(self._readers):
+            reader.dropped = True
+            reader.close()
+        self._readers.clear()
