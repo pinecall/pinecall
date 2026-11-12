@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from runtime.fleet.models import Offer
 from runtime.fleet.repository import OfferRepository
 from runtime.fleet.schemas import WorkerStatus
-from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.dispatches import agent_name
+from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.wire.dispatch import Dispatch
 from tests.conftest import needs_the_database

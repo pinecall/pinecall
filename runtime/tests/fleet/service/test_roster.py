@@ -1,9 +1,9 @@
 """A worker's silence is told for each worker: one the feed cannot be told of does not keep the others' from it."""
 
-from runtime.wire.worker import HeartbeatRequest
 from runtime.fleet.service.roster import Roster
 from runtime.fleet.service.slots import STALE_AFTER_S
 from runtime.wire.feed import WorkerChanged
+from runtime.wire.worker import HeartbeatRequest
 
 
 def beat(worker: str) -> HeartbeatRequest:

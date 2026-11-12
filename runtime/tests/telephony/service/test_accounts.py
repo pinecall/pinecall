@@ -14,7 +14,6 @@ from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from runtime.whatsapp.service import BOX_ACCOUNT
 from tests.conftest import Tenant, make_tenant, needs_the_database
 
-
 # The box's Meta app is sealed as providers seals a vendor's key; `drop_box_key` refuses a name that
 # is no vendor of a call, so the test forgets its row by its name.
 META_APP_ROW: platform.Setting[None] = platform.Setting(f"credentials/{BOX_ACCOUNT}", lambda _: None, lambda _: {})
