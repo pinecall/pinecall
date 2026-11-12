@@ -182,6 +182,8 @@ async def supervise(session: Session, command: SupervisorVerb) -> None:
             await writing.write("supervisor.ended", wire.SupervisorEnded(by=by, reason=verb.reason))
             session.hang_up("supervisor_ended", "supervisor", at_once=True)
         case TransferVerb():
+            # Refused as the supervisor asked it: converted first, a written call named the app's verb.
+            session.room_or_refuse(verb)
             await session.transfer(CallTransfer(to=verb.to, mode=verb.mode), by=by)
         case _:
             assert_never(verb)

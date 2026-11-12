@@ -33,7 +33,7 @@ from runtime.session.tools import Toolbox
 from runtime.session.writing import WRITTEN_WITHIN_S
 from runtime.wire import events as wire
 from runtime.wire import metrics as measured
-from runtime.wire.commands import AgentReply, AgentSay, CallTransfer, StateSet, name_of
+from runtime.wire.commands import AgentReply, AgentSay, CallTransfer, StateSet, TransferVerb, name_of
 from runtime.wire.parts import EndedBy, EndReason, Supervisor
 
 logger = logging.getLogger(__name__)
@@ -304,7 +304,7 @@ class Session:
         """A note of the platform's in the history, read by the agent's next turn."""
         await history.add_note(self.agent, note)
 
-    def room_or_refuse(self, command: RoomCommand | CallTransfer) -> CallRoom:
+    def room_or_refuse(self, command: RoomCommand | CallTransfer | TransferVerb) -> CallRoom:
         """The call's room, or the refusal of a verb that needs one on a written call."""
         if self.room is None:
             raise Forbidden(NOT_HERE.format(command=name_of(command)))
