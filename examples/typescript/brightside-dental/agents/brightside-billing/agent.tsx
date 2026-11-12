@@ -1,6 +1,6 @@
 // The billing agent of Brightside Dental: it takes a call the front desk passes, already knowing the patient.
 
-import { Agent, tool, type Call } from "@pinecall/agents";
+import { Agent, agent, tool, type Call } from "@pinecall/agents";
 
 import { clinic, type Invoice } from "../../lib/clinic.js";
 import { Invoices, Stage } from "../../lib/screen.js";
@@ -9,9 +9,8 @@ import { Invoices, Stage } from "../../lib/screen.js";
  * You are the billing desk of Brightside Dental. You explain charges and take refund requests.
  * Short sentences. Say amounts in dollars. You never promise a refund: a person at the office decides it.
  */
+@agent({ takes: "a question about a charge, an invoice, a payment or a refund" })
 export default class Billing extends Agent {
-  static takes = "a question about a charge, an invoice, a payment or a refund";
-
   /** The invoices of the patient on the call, found as the call arrives. */
   invoices: Invoice[] = [];
   /** The invoice a refund was asked for on this call. */

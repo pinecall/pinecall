@@ -28,7 +28,7 @@ describe("a new project", () => {
     for (const file of ["agents/sofia/agent.tsx", "agents/sofia/harness.ts", "agents/sofia/test/agent.test.ts", "agents/sofia/test/goldens/takes-the-message.json"]) {
       expect(existsSync(join(root, file)), file).toBe(true);
     }
-    expect(readFileSync(join(root, "agents/sofia/agent.tsx"), "utf8")).toContain("static judges = judges({ on: RECOMMENDED })");
+    expect(readFileSync(join(root, "agents/sofia/agent.tsx"), "utf8")).toContain("judges: RECOMMENDED,");
     expect(readFileSync(join(root, "agents/sofia/harness.ts"), "utf8")).toContain("The judges and the callers of Sofia's own");
     expect(readFileSync(join(root, "agents/sofia/agent.tsx"), "utf8")).not.toMatch(/\{\{\w+\}\}/);
     expect(readFileSync(join(root, "agents/sofia/test/agent.test.ts"), "utf8")).toContain('import Sofia from "../agent.js";');

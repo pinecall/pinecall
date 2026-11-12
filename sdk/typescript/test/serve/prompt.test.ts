@@ -63,6 +63,6 @@ describe("serve prompt", () => {
     writeFileSync(file, `import { Agent } from ${JSON.stringify(agent)};\n/** Una. */\nexport default class Una extends Agent {\n  language = "es";\n}\n`);
     const refused = await printed("--file", file, "--slug", "una");
     expect(refused.code).toBe(2);
-    expect(refused.err).toBe("`language` is the class's, not a call's state: declare it as static language = …\n");
+    expect(refused.err).toBe("`language` is the class's, not a call's state: declare it in @agent({ language: … }) above the class\n");
   });
 });

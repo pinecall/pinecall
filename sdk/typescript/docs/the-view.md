@@ -61,13 +61,13 @@ Imported from `@pinecall/agents`:
 | `<Section title="…">` | `## title`, a blank line, then its children as paragraphs |
 | `<Example>` | its children inside `<example>` … `</example>`, so the model reads an example and not an instruction |
 
-## `@render`: the view beside the class
+## The view beside the class
 
-A view that has grown past one screen can move out of the class. `@render(Prompt)` uses a function
-whose props are the instance itself:
+A view that has grown past one screen can move out of the class: a function whose props are the
+instance itself, which `render()` hands it.
 
 ```tsx
-import { Agent, render, type Stages } from "@pinecall/agents";
+import { Agent, type Stages } from "@pinecall/agents";
 
 const SupportPrompt = ({ stage, customer }: Support) => (
   <>
@@ -76,15 +76,17 @@ const SupportPrompt = ({ stage, customer }: Support) => (
   </>
 );
 
-@render(SupportPrompt)
 export default class Support extends Agent {
   stage: Stages<"identify" | "resolve"> = "identify";
   customer?: Customer | undefined;
+
+  override render() {
+    return SupportPrompt(this);
+  }
 }
 ```
 
-A getter destructures like a field; a method does not, so call it on the agent. A class writes one
-spelling or the other, never both.
+A getter destructures like a field; a method does not, so call it on the agent.
 
 ## What the agent already knows about this caller
 

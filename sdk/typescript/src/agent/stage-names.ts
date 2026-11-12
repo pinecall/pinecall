@@ -35,7 +35,7 @@ export function voiceOf(given: unknown): unknown {
   return { ...rest, ...named(voice) };
 }
 
-const NOT_A_VOICE = 'static voice is "vendor/voice", the vendor and its own id for the voice, or { voice: "vendor/voice", … } with its options';
+const NOT_A_VOICE = 'voice is "vendor/voice", the vendor and its own id for the voice, or { voice: "vendor/voice", … } with its options';
 
 function named(voice: string): { provider: string; voiceId: string } {
   const slash = voice.indexOf("/");

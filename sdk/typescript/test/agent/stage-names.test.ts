@@ -6,6 +6,7 @@ import { Agent } from "../../src/agent/agent.js";
 import { modelOf, stageOf, voiceOf } from "../../src/agent/stage-names.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { environmentOf } from "../../src/runtime/environment.js";
+import { agent } from "../../src/agent/declaring.js";
 
 it("reads a model as its vendor and its id, which keeps the slashes after the vendor's", () => {
   expect(modelOf("google/gemini-3.5-flash-lite")).toEqual({ provider: "google", model: "gemini-3.5-flash-lite" });
@@ -27,12 +28,9 @@ it("takes a voice as vendor/voice, alone or with its options, and refuses one wi
   expect(() => voiceOf("katie")).toThrow(/vendor\/voice/);
 });
 
-it("is what a class's static stages declare, with no decorator", () => {
-  class FrontDesk extends Agent {
-    static override stt = { model: "deepgram/flux", endOfTurn: "stt" };
-    static override llm = "google/gemini-3.5-flash-lite";
-    static override voice = "cartesia/f786b574";
-  }
+it("is what a class declares of its stages, each by its vendor and its model", () => {
+  @agent({ stt: { model: "deepgram/flux", endOfTurn: "stt" }, llm: "google/gemini-3.5-flash-lite", voice: "cartesia/f786b574" })
+  class FrontDesk extends Agent {}
   expect(environmentOf(FrontDesk)).toMatchObject({
     stt: { provider: "deepgram", model: "flux", endOfTurn: "stt" },
     llm: { provider: "google", model: "gemini-3.5-flash-lite" },

@@ -11,6 +11,7 @@ export * from "./agent/tools.js";
 // The zod `params` is checked against: a tenant imports it from here, and gets the instance the SDK reads.
 export { z } from "zod";
 export * from "./agent/decorators.js";
+export { agent, type AgentDeclaration } from "./agent/declaring.js";
 export * from "./agent/opening.js";
 export type { HoldDeclaration } from "./agent/melody.js";
 // Only the type; stage readers are internal.
@@ -37,7 +38,7 @@ export { VoiceApp, voiceApp, type AppOptions, type Heard, type Hearing, type Lin
 export type { Answering, Team } from "./runtime/handoff.js";
 export * from "./agent/visibility.js";
 export * from "./agent/accepts.js";
-export { judges, ownJudge, ownPersona, personas, type JudgeInput, type OwnJudge, type OwnPersona } from "./agent/harness.js";
+export { ownJudge, ownPersona, type JudgeInput, type OwnJudge, type OwnPersona } from "./agent/harness.js";
 export * from "./call/room.js";
 export * from "./call/history.js";
 export * from "./call/call.js";

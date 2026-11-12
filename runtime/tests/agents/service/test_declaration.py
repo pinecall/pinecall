@@ -108,7 +108,10 @@ def test_a_field_sent_null_keeps_no_value_of_the_class_and_every_field_takes_nul
 
 def test_a_voice_the_class_declares_names_its_vendor_and_the_voice() -> None:
     """A voice without its vendor, or without the voice, is refused naming the wire's fields and the decorator."""
-    with pytest.raises(ValidationError, match=r"`provider` and `voice_id` \(or `name`\) on the wire, @voice\("):
+    with pytest.raises(
+        ValidationError,
+        match=r"\(or `name`\) on the wire, voice: '<vendor>/<voice>' in what a class declares",
+    ):
         declare(NOTHING, Declared(voice=VoiceConfig(voice_id="v-1")))
     with pytest.raises(ValidationError, match="names its vendor and the voice"):
         declare(NOTHING, Declared(voice=VoiceConfig(provider=ACME)))
@@ -172,7 +175,7 @@ def test_a_realtime_model_is_a_vendors_that_has_one_and_takes_no_class_of_its_ow
     vendor = talker.install()
     with pytest.raises(ValidationError, match="acme has no model that hears and speaks itself"):
         declare(NOTHING, Declared(realtime=ModelConfig(provider=ACME, model="acme-1")))
-    with pytest.raises(ValidationError, match=r"@realtime\('<vendor>/<model>'"):
+    with pytest.raises(ValidationError, match=r"realtime: \{ model: '<vendor>/<model>', options \}"):
         declare(NOTHING, Declared(realtime=ModelConfig(provider=vendor, model="voice-3", builds="LLM")))
 
 

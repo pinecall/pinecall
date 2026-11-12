@@ -43,7 +43,7 @@ export function state(
 
 /**
  * Field visibilities from `@state` decorators up the chain (parents first), then
- * `static visibility`, which wins.
+ * `@agent({ visibility })`, which wins.
  */
 export function visibilityOf(ctor: Function): StateFieldSpec[] {
   const fields = new Map<string, Visibility | undefined>();
@@ -60,7 +60,7 @@ export function visibilityOf(ctor: Function): StateFieldSpec[] {
 /**
  * The `@state` fields of a class, or null when it decorates none (then every own field is state).
  * Once any field is decorated, undecorated fields are excluded from snapshots, prompt and
- * `state.changed`. `static visibility` does not declare state.
+ * `state.changed`. `@agent({ visibility })` does not declare state.
  */
 export function declaredStateOf(ctor: Function): ReadonlySet<string> | null {
   const known = merged.get(ctor);

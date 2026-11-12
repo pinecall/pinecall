@@ -182,10 +182,8 @@ describe("docstrings at runtime", () => {
 describe("a class that wears a decorator", () => {
   it("keeps the docstring written above the decorator", () => {
     const docs = parseClassSource(`
-      const P = () => null;
-
       /** Eres el mostrador de Tienda Sur. */
-      @render(P)
+      @agent({ language: "es" })
       export default class TiendaSur {}
     `);
 

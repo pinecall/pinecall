@@ -99,7 +99,7 @@ export class Asking {
   ask<T>(asked: Task<T>): Promise<T> {
     const frame = FRAME.getStore();
     if (frame === undefined) return Promise.reject(new Error(NOT_IN_A_TOOL));
-    if (!this.tasks.includes(asked as Task<unknown>)) return Promise.reject(new Error(`${asked.name} is not a task of this agent: name it in static tasks`));
+    if (!this.tasks.includes(asked as Task<unknown>)) return Promise.reject(new Error(`${asked.name} is not a task of this agent: name it in @agent({ tasks: [… ] })`));
     if (this.#waiting !== undefined) return Promise.reject(new Error(`${this.#waiting.task.name} is being asked for: one question at a time`));
     return new Promise<T>((give, drop) => {
       this.#waiting = { task: asked as Task<unknown>, frame, give: give as (value: unknown) => void, drop };

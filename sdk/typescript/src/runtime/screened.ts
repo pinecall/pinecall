@@ -72,7 +72,7 @@ export function sceneTools(classes: readonly Function[], taken: readonly string[
     // A probe, as mount makes one: the tools are read off an instance's prototype chain.
     for (const declared of toolsOf(new (ctor as new () => object)())) {
       const shows = declared.options.shows;
-      if (shows !== undefined && !(shows in scenesOf(ctor))) throw new DeclarationRefused(`${ctor.name}.${declared.name} shows ${shows}, which is none of its static scenes`);
+      if (shows !== undefined && !(shows in scenesOf(ctor))) throw new DeclarationRefused(`${ctor.name}.${declared.name} shows ${shows}, which is none of its scenes`);
     }
   }
   if (Object.keys(scenes).length === 0) return [];

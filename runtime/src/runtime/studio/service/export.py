@@ -57,29 +57,25 @@ def write_class(name: str, release: int, definition: Definition) -> str:
     title = _name_class(name)
     collect = definition.collect
     dynamic = A_PLACEHOLDER.search(definition.instructions) is not None
+    above = _list_above_class(definition)
     improvises = definition.greeting is not None and definition.greeting.reply is not None
+    names = ["Agent", *(["agent"] if above else []), *(["improvise"] if improvises else []), "tool"]
     lines = [
         f"// {name}: exported from Pinecall Studio, release {release}. The class is the agent now: edit it here.",
         *_say_left_empty(definition),
         "",
-        f'import {{ Agent, {"improvise, " if improvises else ""}tool }} from "@pinecall/agents";',
+        f'import {{ {", ".join(names)} }} from "@pinecall/agents";',
         "",
         _write_docstring(
             "The agent's instructions are its view below: they name the call's own values."
             if dynamic
             else definition.instructions
         ),
+        *(["@agent({", *(f"  {field}," for field in above), "})"] if above else []),
         f"export default class {title} extends Agent {{",
     ]
-    greeting = definition.greeting
-    if greeting is not None and greeting.say is not None:
-        lines.append(f"  static override greeting = {json.dumps(greeting.say, ensure_ascii=False)};")
-    elif greeting is not None and greeting.reply is not None:
-        lines.append(f"  static override greeting = improvise({json.dumps(greeting.reply, ensure_ascii=False)});")
     if collect is not None:
-        if collect.end_when_done:
-            lines.append(f"  static override hangup = {json.dumps(collecting.HANG_UP_WHEN)};")
-        lines += ["", "  /** What the caller gave, field by field. */", "  collected: Record<string, unknown> = {};"]
+        lines += ["  /** What the caller gave, field by field. */", "  collected: Record<string, unknown> = {};"]
     for http_tool in definition.tools:
         lines += ["", *_write_method(http_tool)]
     if collect is not None:
@@ -88,6 +84,19 @@ def write_class(name: str, release: int, definition: Definition) -> str:
             lines += ["", *_write_on_end(name, definition)]
     lines += ["", *_write_render(definition, dynamic), "}", "", _read("http.ts").rstrip("\n")]
     return "\n".join(lines) + "\n"
+
+
+# What the agent is goes above its class, in the framework's one declaration: how it opens, and when it hangs up.
+def _list_above_class(definition: Definition) -> list[str]:
+    above: list[str] = []
+    greeting, collect = definition.greeting, definition.collect
+    if greeting is not None and greeting.say is not None:
+        above.append(f"greeting: {json.dumps(greeting.say, ensure_ascii=False)}")
+    elif greeting is not None and greeting.reply is not None:
+        above.append(f"greeting: improvise({json.dumps(greeting.reply, ensure_ascii=False)})")
+    if collect is not None and collect.end_when_done:
+        above.append(f"hangup: {json.dumps(collecting.HANG_UP_WHEN)}")
+    return above
 
 
 # The `{{…}}` Studio filled that `this.call` cannot say: each is empty in the class, and the class says which.

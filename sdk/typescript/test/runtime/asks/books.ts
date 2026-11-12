@@ -1,11 +1,10 @@
 // Fixture: an agent whose booking tool asks the caller for an email before it finishes.
 
-import { Agent, GetEmail, tool } from "../../../src/index.js";
+import { Agent, GetEmail, agent, tool } from "../../../src/index.js";
 
 /** You book visits. */
+@agent({ tasks: [GetEmail] })
 export default class Books extends Agent {
-  static tasks = [GetEmail];
-
   /** Where the last confirmation was sent. */
   sentTo = "";
 

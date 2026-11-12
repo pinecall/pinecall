@@ -34,7 +34,7 @@ describe("la declaración que recibe el gateway", () => {
       }
     }
 
-    expect(() => optionsFor(EnLaInstancia, [], new EnLaInstancia(), AGENT)).toThrow("declare it as static docs = …");
+    expect(() => optionsFor(EnLaInstancia, [], new EnLaInstancia(), AGENT)).toThrow("declare it in @agent({ docs: … }) above the class");
   });
 });
 

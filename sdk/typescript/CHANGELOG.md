@@ -7,6 +7,15 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **`@agent({ … })` is the one way to say what an agent is.** Its stages, its language, how it opens, its
+  judges and personas, its tasks, scenes and events are declared once, above the class; the class holds what
+  the agent does: its state, its hooks, its `@tool` methods and its `render()`. **Breaking, in one cut**: the
+  `static` fields that said these are refused when the class loads, by a sentence naming the field and
+  `@agent`; the class decorators `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and `@render` are gone (a
+  stage with options is `llm: { model: "openai/gpt-5.4-mini", temperature: 0.3 }`, a prompt written beside
+  the class is `render() { return ThePrompt(this); }`); and `judges` and `personas` are each one list, a
+  name for one of Pinecall's and an `ownJudge` / `ownPersona` for the class's own, in place of
+  `judges({ on, own })` and `personas({ on, own })`. A class that extends another keeps what it declared.
 - **The screen follows the conversation**: `static scenes` names a screen's scenes, `@tool({ shows: "agenda" })` puts
   one up, and a turn the caller opened about something else takes it away. The model is told which scene is up
   and keeps it, or puts another up, with `show_screen`, a quiet tool that adds no wait.

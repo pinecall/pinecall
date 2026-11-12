@@ -3,21 +3,19 @@
 import { describe, expect, it } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
-import { judges, ownJudge } from "../../src/agent/harness.js";
+import { agent } from "../../src/agent/declaring.js";
+import { ownJudge } from "../../src/agent/harness.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { isVoiceApp, voiceApp } from "../../src/runtime/app.js";
 
 class FrontDesk extends Agent {}
 class Billing extends Agent {}
-class Takes extends Agent {
-  static takes = "a question about a charge";
-}
-class Judged extends Agent {
-  static override judges = judges({ on: ["grounded"], own: [ownJudge({ name: "offers-a-time", asks: "Did the agent offer a time?" })] });
-}
-class Greets extends Agent {
-  static override greeting = "Hello.";
-}
+@agent({ takes: "a question about a charge" })
+class Takes extends Agent {}
+@agent({ judges: ["grounded", ownJudge({ name: "offers-a-time", asks: "Did the agent offer a time?" })] })
+class Judged extends Agent {}
+@agent({ greeting: "Hello." })
+class Greets extends Agent {}
 
 describe("a line", () => {
   it("is a number and the agent that answers it, the number kept as the gateway writes it", () => {

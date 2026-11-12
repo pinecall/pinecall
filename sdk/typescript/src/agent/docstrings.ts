@@ -304,7 +304,7 @@ export function docsOf(ctor: Function): ClassDocs {
   return own;
 }
 
-/** The class docstring, read from its source or from an explicit `static doc`. */
+/** The class docstring, read from its source or from `@agent({ doc })`. */
 export function classDoc(ctor: Function): string | undefined {
   return docsOf(ctor).doc ?? (ctor as { doc?: string }).doc;
 }

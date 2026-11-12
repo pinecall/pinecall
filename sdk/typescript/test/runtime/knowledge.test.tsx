@@ -90,5 +90,5 @@ class DeMemoria extends ClinicaNorte {
 
 it("refuses a knowledge file carried on the instance, where it would shadow this.knowledge", () => {
   expect(() => optionsFor(DeMemoria, [], new DeMemoria(), FILE, SOURCE)).toThrow(declaredOnTheInstance("knowledge"));
-  expect(declaredOnTheInstance("knowledge")).toContain("static knowledge = …");
+  expect(declaredOnTheInstance("knowledge")).toContain("@agent({ knowledge: … })");
 });

@@ -258,7 +258,9 @@ def test_a_vendor_with_no_realtime_class_has_no_realtime_model() -> None:
 
 
 def test_an_llm_that_names_a_realtime_model_or_its_class_is_refused_naming_the_realtime(vendor: str) -> None:
-    with pytest.raises(ValidationError, match=r"talker/voice-3 hears and speaks itself.*@realtime"):
+    with pytest.raises(
+        ValidationError, match=r"talker/voice-3 hears and speaks itself.*realtime: 'talker/voice-3' in its class"
+    ):
         plugins.refuse_realtime_as_llm(vendor, "voice-3", None)
     with pytest.raises(ValidationError, match="hears and speaks itself"):
         plugins.refuse_realtime_as_llm(vendor, talker.PLAIN, "realtime.RealtimeModel")

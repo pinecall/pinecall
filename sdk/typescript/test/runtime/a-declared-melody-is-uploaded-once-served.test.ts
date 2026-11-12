@@ -12,20 +12,19 @@ import { FakeGateway } from "../../src/client/testing/index.js";
 import { Agent } from "../../src/index.js";
 import { mount, optionsFor } from "../../src/runtime/connect.js";
 import { holdConfigOf } from "../../src/runtime/declared-hold.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const KEY = "pc_test_hold";
 const MELODY = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4]);
 const SHA = createHash("sha256").update(MELODY).digest("hex");
 
 /** Plays its own file after a second and a half. */
-class Plays extends Agent {
-  static override hold = { file: "hold.mp3", afterS: 1.5 };
-}
+@agent({ hold: { file: "hold.mp3", afterS: 1.5 } })
+class Plays extends Agent {}
 
 /** Plays nothing. */
-class Quiet extends Agent {
-  static override hold = "off" as const;
-}
+@agent({ hold: "off" })
+class Quiet extends Agent {}
 
 let gateway: FakeGateway;
 let pc: Pinecall;

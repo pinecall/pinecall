@@ -117,10 +117,10 @@ one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/harness.ts`, 
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
-**The callers and the judges can be the class's, as code.** `static personas = personas({ on, own })`
-names which of Pinecall's callers `pinecall simulate` offers and the agent's own, each an
-`ownPersona({ name, goal, style, … })`; `static judges = judges({ on, own })` names which of
-Pinecall's judges score every call at hang-up (ring 4) and the agent's own, each an `ownJudge({
+**The callers and the judges can be the class's, as code.** `@agent({ personas: ["in-a-hurry", hurried] })`
+names which of Pinecall's callers `pinecall simulate` offers and holds the agent's own, each an
+`ownPersona({ name, goal, style, … })`; `judges: ["consent", offersNextSlot]` names which of
+Pinecall's judges score every call at hang-up (ring 4) and holds the agent's own, each an `ownJudge({
 name, asks, … })`. `pinecall new` writes both in `agents/<slug>/harness.ts`. They travel with the
 code, are reviewed in a pull request and deploy with it; the console shows them locked. A class
 that declares neither leaves them to the console and the CLI ([Writing an

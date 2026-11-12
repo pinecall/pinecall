@@ -285,8 +285,8 @@ pinecall voices --language en      # the voices, with their ids
 pinecall agent                     # what it runs on: voice, models, language, greeting…
 ```
 
-The voice, the models, the language and what it knows by heart are the class's: `@voice("<vendor>", "<id>")`
-on it, and the next `pinecall start` or deploy runs on it. What the class declares is the class's alone; what it
+The voice, the models, the language and what it knows by heart are the class's: `@agent({ voice: "<vendor>/<id>" })`
+above it, and the next `pinecall start` or deploy runs on it. What the class declares is the class's alone; what it
 leaves open can be set in the sandbox. `pinecall console` shows the same, with every call the agent has had.
 
 ### Go live

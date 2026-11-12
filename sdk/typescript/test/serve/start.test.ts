@@ -202,8 +202,8 @@ describe("what cannot be served", () => {
   it("is a class whose own slug is not the one it is served as", async () => {
     const folder = mkdtempSync(join(tmpdir(), "serve-"));
     const file = join(folder, "agent.ts");
-    const agent = fileURLToPath(new URL("../../src/agent/agent.js", import.meta.url)).replace(/\.js$/, ".ts");
-    writeFileSync(file, `import { Agent } from ${JSON.stringify(agent)};\n/** Una. */\nexport default class Otra extends Agent {\n  static slug = "otra";\n}\n`);
+    const from = (module: string): string => JSON.stringify(fileURLToPath(new URL(`../../src/agent/${module}.ts`, import.meta.url)));
+    writeFileSync(file, `import { Agent } from ${from("agent")};\nimport { agent } from ${from("declaring")};\n/** Una. */\n@agent({ slug: "otra" })\nexport default class Otra extends Agent {}\n`);
     const io = anIo({ PINECALL_URL: "http://127.0.0.1:1", PINECALL_KEY: KEY });
     expect(await main(["start", "--file", file, "--slug", "una"], io)).toBe(2);
     expect(io.said()).toContain("says its slug is otra, and it is served as una");

@@ -4,15 +4,15 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 
-import { Agent, mount, tool, type EventDeclarations } from "../../src/index.js";
+import { Agent, mount, tool } from "../../src/index.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const KEY = "pk_test";
 const SLUG = "desk";
 const CALL = "CA_1";
 
+@agent({ events: { "slot.released": { from: ["app"] } } })
 class Desk extends Agent {
-  static override events: EventDeclarations = { "slot.released": { from: ["app"] } };
-
   stage = "identify";
   patient = "";
   slot = "";

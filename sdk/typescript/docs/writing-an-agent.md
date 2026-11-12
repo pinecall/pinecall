@@ -17,19 +17,34 @@ export default class ClinicaNorte extends Agent {}
 That docstring is the `identity` block of the prompt — the first of the static blocks, which never
 change during a call and are what a provider caches. Write it as instructions to a person, not as
 documentation. It must be a `/** … */` comment directly above the class: the CLI hands the class
-its own source, so the comment survives compilation. `static doc = "…"` says it instead, for a
+its own source, so the comment survives compilation. `@agent({ doc: "…" })` says it instead, for a
 build that strips comments.
 
-## Config: what the agent *is*
+## `@agent`: what the agent *is*
 
-Written on the class, because it is not something the agent remembers. It never changes during a
-call and no view renders it.
+Declared once, above the class, because it is not something the agent remembers: it never changes
+during a call and no view renders it. The class under it holds what the agent *does*: its state, its
+hooks, its tools and its `render()`.
 
-| written | what it does |
-|---|---|
-| `channelRules = false` | leaves out the `<channel>` part of the prompt: how to write for a voice, a website's chat, WhatsApp |
-| `static slug = "front-desk"` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) under `mount`. A class served under another slug is refused |
-| `static events: EventDeclarations = { "slot.released": { from: ["app"] } }` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call. The type is there because TypeScript reads `["app"]` in a bare literal as `string[]` |
+```tsx
+import { Agent, agent, tool } from "@pinecall/agents";
+
+/** You are the front desk of Brightside Dental. Keep it short. */
+@agent({
+  stt: "deepgram/flux",
+  llm: "google/gemini-3.5-flash-lite",
+  voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02",
+  timezone: "America/Los_Angeles",
+  judges: ["consent", "grounded"],
+})
+export default class FrontDesk extends Agent {}
+```
+
+There is one way to say it. A class that writes one of these as a `static` field, or as an instance
+field, is refused when it loads, by a sentence that names the field and `@agent`. A class that
+extends another keeps what its parent declared, and its own `@agent` declares over it field by field.
+`channelRules = false`, on the instance, is the one setting written in the class: it leaves out the
+`<channel>` part of the prompt (how to write for a voice, a website's chat, WhatsApp).
 
 ### The environment: the settings', or the class's
 
@@ -41,103 +56,94 @@ the class leaves out runs on the org's default vendor for it and that vendor's d
 left out reads as the runtime's default. The settings those verbs write belong to an agent built in
 Studio, which has no code.
 
-The stages are named in short, each a `static` like the rest of what the class declares:
+A model is `"vendor/model"` or a vendor alone, and a voice is `"vendor/voice"`, the vendor and its own
+id for the voice. A stage that takes options is an object with them:
 
 ```tsx
-export default class FrontDesk extends Agent {
-  static stt = "deepgram/flux";
-  static llm = "google/gemini-3.5-flash-lite";
-  static voice = "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02";
-  static judges = judges({ on: ["consent", "grounded"] });
-  static timezone = "America/Los_Angeles";
-}
+@agent({
+  voice: { voice: "cartesia/a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2" },
+  llm: { model: "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true } },
+  stt: { model: "soniox/stt-rt-v3", endOfTurn: "smart-turn" },
+  language: "es",
+  greeting: "Clínica Norte, buenas, ¿en qué le ayudo?",
+  hangup: "the caller says goodbye or needs nothing else",
+})
+export default class ClinicaNorte extends Agent {}
 ```
 
-A model is `"vendor/model"` or a vendor alone, and a voice is `"vendor/voice"`, the vendor and its own id
-for the voice. A stage that takes options is written with them: `static llm = { model:
-"openai/gpt-5.4-mini", temperature: 0.3 }`, `static stt = { model: "soniox/stt-rt-v3", endOfTurn:
-"smart-turn" }`, `static voice = { voice: "cartesia/<id>", model: "sonic-2" }`. The decorators below say
-the same thing above the class, and a class uses one of the two spellings for a stage, never both:
-
-```tsx
-@voice("cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", { model: "sonic-2" })
-@llm("openai/gpt-5.4-mini", { temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true } })
-@stt("soniox/stt-rt-v3", { endOfTurn: "smart-turn" })
-export default class ClinicaNorte extends Agent {
-  static language = "es";
-  static greeting = "Clínica Norte, buenas, ¿en qué le ayudo?";
-  static hangup = "the caller says goodbye or needs nothing else";
-}
-```
-
-`static timezone = "America/Los_Angeles"` is the IANA zone the agent's day and clock are read in:
-the model is told the date, the weekday and the hour there as the call opens, and `this.call.today`
-is that day. Left out, the day is the gateway's own and the model is told no hour.
+`timezone` is the IANA zone the agent's day and clock are read in: the model is told the date, the
+weekday and the hour there as the call opens, and `this.call.today` is that day. Left out, the day is
+the gateway's own and the model is told no hour.
 
 `greeting` is the words, said as written — instant, and no model runs — or the model's own:
 `improvise` opens on the prompt alone, `improvise("Greet them by name if you know it")` with an
 instruction for the opening. The caller cannot cut it short unless it says so:
 `improvise("…", { interruptible: true })`, or `{ text: "…", interruptible: true }` for words.
 `hangup` is when the model may end the call, in your words, or `true` whenever it judges the call
-done. `@stt` also takes `endOfTurn`, who says the caller's turn is over: `"stt"` the ears
+done. `stt` also takes `endOfTurn`, who says the caller's turn is over: `"stt"` the ears
 themselves (Deepgram Flux; refused for ears that cannot), `"livekit"` or `"smart-turn"` (Smart Turn
 v3), a model on the worker that runs on any key. Left out, the ears end the turn where they can and Smart Turn v3 does everywhere else.
 
-`@judge` names the model the agent's calls are judged on, over the org's choice and the platform's:
+`judge` names the model the agent's calls are judged on, over the org's choice and the platform's:
 on a key of your org's own its evals are never billed, a local model included —
-`@judge("openai/qwen3-32b", { options: { base_url: "http://gpu:8000/v1" } })` — and it must call
+`judge: { model: "openai/qwen3-32b", options: { base_url: "http://gpu:8000/v1" } }` — and it must call
 tools, since every judge answers through one.
 
-`@llm`, `@stt` and `@judge` take `vendor/model` or a vendor alone; `@voice` the vendor and its own id for the
+`llm`, `stt` and `judge` take `vendor/model` or a vendor alone; `voice` the vendor and its own id for the
 voice. Each takes `builds`, a class of the vendor's livekit plugin other than its default (dotted
 names reach a module of it: `responses.LLM` is OpenAI's Responses API, and `use_websocket` its
 WebSocket), and `options`, that class's keyword arguments as the plugin names them, passed as given
 and over the operator's. **Both run only on your org's own key for that vendor**: on a key Pinecall
 lends they are refused at registration, naming `pinecall providers add <vendor>`, since an option
-can point the plugin at another server. `@llm` also takes `temperature`, which runs on any key. A
-model that hears and speaks itself is not an `@llm`: `@realtime("xai/grok-voice-3.0", { options: {
-voice: "eve" } })` runs the agent's voice calls — phone and web — on it alone, with no ears and its
-own voice, while the `@llm` keeps answering the written ones; `pinecall providers` lists the
-vendors' realtime models, its options run on your org's own key alone, and an `@llm` that names
-such a model is refused at registration. A realtime model that says given words itself (xAI's Grok does) is the call's only voice: the recording notice, a greeting given as words and a confirmation's read-back are said by it, in its own voice; one that cannot leaves them to the agent's voice, and the call then has two. A vendor that is not installed, or does not do the stage, is refused at registration. A decorator
-fixes the whole stage: with `@llm` in the class, `--temperature`, `--llm-builds` and `--llm-option`
-are refused too. A class that leaves the stage out runs it on the org's default vendor and that vendor's default model. The rest are `static` fields: an instance field is the call's state, so one of these
-declared there is refused when the class loads.
+can point the plugin at another server. `llm` also takes `temperature`, which runs on any key. A
+model that hears and speaks itself is not an `llm`: `realtime: { model: "xai/grok-voice-3.0", options: {
+voice: "eve" } }` runs the agent's voice calls — phone and web — on it alone, with no ears and its
+own voice, while the `llm` keeps answering the written ones; `pinecall providers` lists the
+vendors' realtime models, its options run on your org's own key alone, and an `llm` that names
+such a model is refused at registration. A realtime model that says given words itself (xAI's Grok does) is the call's only voice: the recording notice, a greeting given as words and a confirmation's read-back are said by it, in its own voice; one that cannot leaves them to the agent's voice, and the call then has two. A vendor that is not installed, or does not do the stage, is refused at registration. A stage
+the class declares is fixed whole: with `llm` in the class, `--temperature`, `--llm-builds` and `--llm-option`
+are refused too. A class that leaves the stage out runs it on the org's default vendor and that vendor's default model.
 
-| field | what it is | on the class |
+| field | what it is | in `@agent({ … })` |
 |---|---|---|
-| `voice` | the voice: its vendor and the vendor's id | `@voice("<vendor>", "<id>")` |
-| `llm` | the model that answers, and its temperature | `@llm("<vendor>/<model>", { temperature })` |
-| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `@realtime("<vendor>/<model>", { options })` |
-| `stt` | the ears, and who ends the caller's turn | `@stt("<vendor>/<model>", { endOfTurn })` |
-| `judge` | the model its calls are judged on | `@judge("<vendor>/<model>", { options })` |
-| `language` | the language the call is in | `static language = "es"` |
-| `greeting` | how the call opens: the words, or the model's own | `static greeting = "…"` · `improvise` · `improvise("…")` |
-| `hangup` | whether the model may end the call itself, and when, in your words | `static hangup = "…"` · `true` |
-| `turn` | when the caller has finished, and may interrupt | `static turn = { endpointingMs: 300 }` |
-| `says` | how a word the voice would misread is said | `static says = [{ word, spoken }]` |
-| `hears` | the words the ears must know: names, brands, the doctor's surname | `static hears = ["…"]` |
-| `memory` | what to remember about a caller across calls, and what never to | `static memory = { remember: […], forget: […] }` |
-| `record` | whether the call is recorded | `static record = false` |
-| `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `static maxDuration = 20` |
-| `llmTimeout` | how long a turn waits for the model's first word, in seconds | `static llmTimeout = 8` |
-| `silenceTimeout` | seconds of the caller saying nothing before a voice call ends, 5 to 3600 | `static silenceTimeout = 30` |
-| `idle` | what it says when the caller goes quiet | `static idle = { says: ["Are you there?"], afterS: 7.5, times: 3 }` |
-| `voicemail` | on a call it placed, the words left on a machine, or `true` to leave nothing | `static voicemail = "Please call us back."` |
-| `sttFallbacks` · `ttsFallbacks` | who takes over when the vendor fails, in order | `static ttsFallbacks = ["cartesia"]` |
-| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `static knowledge = { path, text }` |
-| `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `static docs = { base: "…", k: 4 }` |
-| `bases` | several bases, in place of `docs`; each pushed on its own (`pinecall docs push --base`) | `static bases = [{ base: "faq" }, { base: "prices", k: 2 }]` |
-| `monitors` | numbers of its calls it watches: each fires, once a day, on the agent's log and your webhook when it crosses its line | `static monitors = [{ name: "slow", metric: "e2e_median_s", above: true, threshold: 2 }]` |
-| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `static hold = { file: "hold.mp3", afterS: 1.5 }` · `"off"` |
-| `widget` | how the widget presents the agent | `static widget = { title, tagline, greeting, accent, autostart, theme }` |
-| `judges` | which of Pinecall's judges its calls meet, and its own | `static judges = judges({ on: ["consent", …], own: [offersNextSlot] })` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `static personas = personas({ on: ["in-a-hurry", …], own: [hurried] })` |
+| `slug` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) under `mount`. A class served under another slug is refused | `slug: "front-desk"` |
+| `voice` | the voice: its vendor and the vendor's id | `voice: "<vendor>/<id>"` · `{ voice, model }` |
+| `llm` | the model that answers, and its temperature | `llm: "<vendor>/<model>"` · `{ model, temperature }` |
+| `realtime` | the model a voice call runs on alone, hearing and speaking itself | `realtime: "<vendor>/<model>"` · `{ model, options }` |
+| `stt` | the ears, and who ends the caller's turn | `stt: "<vendor>/<model>"` · `{ model, endOfTurn }` |
+| `judge` | the model its calls are judged on | `judge: "<vendor>/<model>"` · `{ model, options }` |
+| `language` | the language the call is in | `language: "es"` |
+| `timezone` | the zone its day and its clock are read in | `timezone: "America/Los_Angeles"` |
+| `greeting` | how the call opens: the words, or the model's own | `greeting: "…"` · `improvise` · `improvise("…")` |
+| `hangup` | whether the model may end the call itself, and when, in your words | `hangup: "…"` · `true` |
+| `turn` | when the caller has finished, and may interrupt | `turn: { endpointingMs: 300 }` |
+| `says` | how a word the voice would misread is said | `says: [{ word, spoken }]` |
+| `hears` | the words the ears must know: names, brands, the doctor's surname | `hears: ["…"]` |
+| `memory` | what to remember about a caller across calls, and what never to | `memory: { remember: […], forget: […] }` |
+| `record` | whether the call is recorded | `record: false` |
+| `maxDuration` | the longest a voice call runs, in minutes, or `"off"` | `maxDuration: 20` |
+| `llmTimeout` | how long a turn waits for the model's first word, in seconds | `llmTimeout: 8` |
+| `silenceTimeout` | seconds of the caller saying nothing before a voice call ends, 5 to 3600 | `silenceTimeout: 30` |
+| `idle` | what it says when the caller goes quiet | `idle: { says: ["Are you there?"], afterS: 7.5, times: 3 }` |
+| `voicemail` | on a call it placed, the words left on a machine, or `true` to leave nothing | `voicemail: "Please call us back."` |
+| `sttFallbacks` · `ttsFallbacks` | who takes over when the vendor fails, in order | `ttsFallbacks: ["cartesia"]` |
+| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge: { path, text }` |
+| `docs` | the base the agent searches per turn; declared, the folder `agents/<slug>/docs/` is pushed into it when the agent registers | `docs: { base: "…", k: 4 }` |
+| `bases` | several bases, in place of `docs`; each pushed on its own (`pinecall docs push --base`) | `bases: [{ base: "faq" }, { base: "prices", k: 2 }]` |
+| `monitors` | numbers of its calls it watches: each fires, once a day, on the agent's log and your webhook when it crosses its line | `monitors: [{ name: "slow", metric: "e2e_median_s", above: true, threshold: 2 }]` |
+| `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold: { file: "hold.mp3", afterS: 1.5 }` · `"off"` |
+| `widget` | how the widget presents the agent | `widget: { title, tagline, greeting, accent, autostart, theme }` |
+| `judges` | which of Pinecall's judges its calls meet, and its own | `judges: ["consent", …, offersNextSlot]` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | `personas: ["in-a-hurry", …, hurried]` |
+| `takes` | what it takes when a teammate passes it a call, in words the model reads | `takes: "a question about a charge"` |
+| `tasks` | what a tool may stop to ask the caller for | `tasks: [GetEmail]` |
+| `scenes` | the scenes of the caller's screen, each with what it shows | `scenes: { agenda: "the open times you last read" }` |
+| `events` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call | `events: { "slot.released": { from: ["app"] } }` |
 
-**The judges and the callers are the class's the same way, and they are code.** `judges({ on, own })`
-names which of Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's own
-(`own`), each an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`: the question
-the judge model answers about a finished call, and how and when. `personas({ on, own })` is the
+**The judges and the callers are the class's the same way, and they are code.** `judges` is a list:
+a name is one of Pinecall's judges the agent's calls meet (every other off), an object is one of
+the agent's own, an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`: the question
+the judge model answers about a finished call, and how and when. `personas` is the
 same for the callers `pinecall simulate` plays, each of its own an `ownPersona({ name, goal, style,
 about, facts, expects, behavior, … })`, what `PUT …/personas/{name}` takes. `pinecall new` writes
 them in `agents/<slug>/harness.ts`, one file for both, imported by the class:
@@ -248,11 +254,10 @@ among the slots it was offered, is safer than `book(slot: Slot)`.
 ### A tool that asks: tasks
 
 ```ts
-import { Agent, GetEmail, tool } from "@pinecall/agents";
+import { Agent, GetEmail, agent, tool } from "@pinecall/agents";
 
+@agent({ tasks: [GetEmail] })
 export default class FrontDesk extends Agent {
-  static tasks = [GetEmail];
-
   /** Book a time, once the caller said yes to it. */
   @tool()
   async book(slot: string) {
@@ -290,7 +295,7 @@ export const GetPlate = task({
 
 `fields` is what the model gives, each a string with what it is; `check` returns what your tool is
 handed, and what it throws is told to the model. A class names the tasks its tools ask for in
-`static tasks`: each one's tool is declared with the agent, and `this.ask` of one that is not named
+`@agent({ tasks })`: each one's tool is declared with the agent, and `this.ask` of one that is not named
 is refused. A call that ends with a question open rejects the `await`, so the tool does not go on.
 
 ## The hooks
@@ -320,7 +325,7 @@ hook had written.
 `onCall` runs before the first prompt goes out, so the model never reads a state the call was not
 in; the state a golden or a persona opens the call in is applied after it, so the hook never
 overwrites it. An outside fact reaches `onEvent` only if the class declared the pair in
-`static events`: an event declared `from: ["app"]` that arrives from a browser is somebody else's
+`@agent({ events })`: an event declared `from: ["app"]` that arrives from a browser is somebody else's
 event with your name on it, and the hook never sees it.
 
 ### Before the first call: `static onServe`
@@ -364,10 +369,10 @@ export default app;
 ```
 
 `timezone` is the zone every agent of the app reads its day and its clock in, the same setting as a
-class's `static timezone`. `pinecall start` finds the file at the project's root and serves the agents with it; a save of it
+class's `timezone`. `pinecall start` finds the file at the project's root and serves the agents with it; a save of it
 reloads them. `app.line(number, FrontDesk)` is the short form, with no greeting. The greeting is said
 as written, by the agent, before any model runs: it is that agent's `greeting`, declared by the app,
-and `silence` is its `idle`. A class that declares `static greeting` or `static idle` itself and gets
+and `silence` is its `idle`. A class that declares `greeting` or `idle` itself and gets
 one from the app too is refused when the app loads, naming both, since a call runs on one of them.
 
 ### The app's page
@@ -477,7 +482,7 @@ A rule is read into the prompt of every agent of the app, and a judge asks of ea
 was kept: the call's score says so, as it does for the judges a class declares. The judges are named
 `app-rule-1`, `app-rule-2`, in the order the rules are written. An agent's declared judges are its
 whole list, so an app with rules owns the list of each of its agents: name the ones of Pinecall's you
-want beside them in the class, `static judges = judges({ on: ["grounded"] })`.
+want beside them in the class, `@agent({ judges: ["grounded"] })`.
 
 ### A team: the call passed from one agent to another
 
@@ -487,9 +492,8 @@ model reads to choose it:
 ```ts
 // agents/billing/agent.tsx
 /** You handle charges, invoices and refunds for Brightside Dental. */
-export default class Billing extends Agent {
-  static takes = "a question about a charge, an invoice or a refund";
-}
+@agent({ takes: "a question about a charge, an invoice or a refund" })
+export default class Billing extends Agent {}
 ```
 
 ```ts
@@ -519,8 +523,8 @@ Two things to know. The agents of a team give each tool a name of its own, or th
 when it loads. And the gateway still knows the call by the agent that answered it, which is where it is
 listed and judged.
 
-A spoken call takes the model and the voice of the agent it was passed to: `static llm` and
-`static voice` of that class, or what its settings say. The sentence being said ends in the voice it
+A spoken call takes the model and the voice of the agent it was passed to: the `llm` and
+the `voice` that class declares, or what its settings say. The sentence being said ends in the voice it
 began in, and the next one is the teammate's; each stage that changed is a `stage.changed` on the
 call's log. The ears stay the first agent's for the whole call. A written call keeps the model it opened on.
 
@@ -597,9 +601,8 @@ const Agenda = part<{ slots: Slot[]; picked: string }>("agenda");
 const Form = part<Asked>("form");
 const Ticket = part<{ visit: Visit }>("ticket");
 
+@agent({ events: { "slot.picked": { from: ["participant"] } } })
 export default class FrontDesk extends Agent {
-  static events = { "slot.picked": { from: ["participant" as const] } };
-
   slots: Slot[] = [];
   picked = "";
   visit: Visit | null = null;
@@ -629,14 +632,15 @@ A screen that only reads the state stays on what the state holds: the agenda rea
 still there while the caller asks who they are talking to. Scenes make it follow the conversation:
 
 ```tsx
-static scenes = { agenda: "the open times you last read", ticket: "the visit booked on this call" };
+@agent({ scenes: { agenda: "the open times you last read", ticket: "the visit booked on this call" } })
+export default class FrontDesk extends Agent {
+  @tool({ shows: "agenda" })
+  freeSlots(day: string) { … }
 
-@tool({ shows: "agenda" })
-freeSlots(day: string) { … }
-
-override screen() {
-  if (this.call.scene === "agenda") return <Agenda slots={this.slots} />;
-  return <Welcome />;
+  override screen() {
+    if (this.call.scene === "agenda") return <Agenda slots={this.slots} />;
+    return <Welcome />;
+  }
 }
 ```
 
@@ -653,7 +657,7 @@ to nobody else's, so a page that follows a phone call draws it too. `@pinecall/r
 `screenOf(state.log)` and draws it with `<Screen>`.
 
 What the caller does on the page reaches the class as an event it declares from `participant`
-(`static events`), in `onEvent`. One event is the package's own: a page that shows a task's form gives the
+(`@agent({ events })`), in `onEvent`. One event is the package's own: a page that shows a task's form gives the
 answer with `task.give` (`{ task: "phone", given: { number: "+14155550142" } }`), in the model's place.
 The task's `check` reads it as it reads the model's; the tool that asked goes on, and the model is told how
 it ended so it can say so. A value the check refuses comes back on `this.call.asking.refused`.
@@ -706,10 +710,10 @@ Every one of these is refused before any call, with a message that says what to 
 | `@tool` on something that is not a method | `@tool goes on a method; … is not one` |
 | a tool with an argument named `say`, which every tool carries for the model's own line | `bad_shape: tool echo: 'say' is the platform's argument, never a tool's own`, said by the gateway when `pinecall start` registers the agent |
 | `@state({ pii: true, visibility: "public" })` | `two different answers to one question; write one` |
-| both `@render(Prompt)` and a `render()` method | `ClinicaNorte declares both @render(Prompt) and a render() method; two ways to answer one question — keep one` |
 | two `@view` decorators | `ClinicaNorte declares two views (…); a class draws one panel` |
-| `language`, `greeting`, `says`, … as an instance field | `` `language` is the class's, not a call's state: declare it as static language = …`` |
-| both `@llm(…)` and a `static llm` | `ClinicaNorte declares both @llm(…) and a static llm; keep one` |
+| `language`, `greeting`, `says`, … as an instance field | `` `language` is the class's, not a call's state: declare it in @agent({ language: … }) above the class`` |
+| `static llm`, or any other field of `@agent`, written as a static | ``ClinicaNorte declares `static llm`: what an agent is goes in @agent({ llm: … }) above the class`` |
+| two `@agent({ … })` on one class | `ClinicaNorte has two @agent({ … }): one says what it is` |
 | an `ownJudge` with no `asks`, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers: a judge asks a question of a call: write it as asks`, `offers: a judge that answers one of several needs at least two choices`, … |
 | an `ownPersona` with no `goal` or `style`, or a key the wire does not know | `in-a-rush: a persona wants something: write its goal, in the first person` |
 | two judges or two personas of one name in `own` | `two judges called offers-next-slot: a name is declared once` |

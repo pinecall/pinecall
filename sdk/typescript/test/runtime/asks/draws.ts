@@ -1,6 +1,6 @@
 // Fixture: an agent that draws a screen: the times it read, the form of what a tool asks for, the visit once booked.
 
-import { Agent, GetEmail, part, tool } from "../../../src/index.js";
+import { Agent, GetEmail, agent, part, tool } from "../../../src/index.js";
 
 export const Times = part<{ times: string[]; picked: string }>("times");
 export const Form = part<{ task: string; refused?: string }>("form");
@@ -8,10 +8,8 @@ export const Booked = part<{ time: string; sentTo: string }>("booked");
 export const Banner = part<{ text: string }>("banner");
 
 /** You book visits. */
+@agent({ tasks: [GetEmail], events: { "time.picked": { from: ["participant"] } } })
 export default class Draws extends Agent {
-  static tasks = [GetEmail];
-  static override events = { "time.picked": { from: ["participant" as const] } };
-
   times: string[] = [];
   picked = "";
   sentTo = "";

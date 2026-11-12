@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
 import type { Agent } from "../agent/agent.js";
+import { declaredOf } from "../agent/declaring.js";
 import type { HoldDeclaration } from "../agent/melody.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { Pinecall } from "../client/index.js";
@@ -16,7 +17,7 @@ const NO_SUCH_FILE = (path: string): string => `hold names ${path}, and there is
 
 /** What the class declares of its melody, as the wire carries it: the file by hash, the wait, silence; undefined for none. */
 export function holdConfigOf(ctor: typeof Agent, file: string | undefined): Camel<AgentConfig>["hold"] | undefined {
-  const declared = ctor.hold;
+  const declared = declaredOf(ctor, "hold");
   if (declared === undefined) return undefined;
   if (declared === "off") return { off: true };
   if (typeof declared !== "object" || declared === null) throw new DeclarationRefused(NOT_A_HOLD);
@@ -46,7 +47,7 @@ export function melodyOf(declared: HoldDeclaration, file: string | undefined): {
  * yet: the door keeps the hash of what was uploaded, so a second start with the same file sends nothing.
  */
 export async function uploadDeclaredHold(pc: Pinecall, ctor: typeof Agent, file: string | undefined, slug: string, report: ((line: string) => void) | undefined): Promise<void> {
-  const declared = ctor.hold;
+  const declared = declaredOf(ctor, "hold");
   if (declared === undefined || declared === "off" || declared.file === undefined) return;
   const melody = melodyOf(declared, file);
   const held = await pc.holdAudio(slug);

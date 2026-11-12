@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import { Agent, DeclarationRefused, judges, optionsFor, ownJudge, ownPersona, personas } from "../../src/index.js";
-import { harnessOf } from "../../src/agent/harness.js";
+import { Agent, DeclarationRefused, agent, optionsFor, ownJudge, ownPersona } from "../../src/index.js";
+import { harnessOf, judges, personas } from "../../src/agent/harness.js";
 
 const OFFERS = ownJudge({ name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"] });
 
@@ -64,11 +64,9 @@ describe("a persona of the agent's own", () => {
 });
 
 describe("what the class owns", () => {
-  it("is its switches plus its own, as the declaration sends it", () => {
-    class Owns extends Agent {
-      static override judges = judges({ on: ["consent", "grounded"], own: [OFFERS] });
-      static override personas = personas({ on: ["in-a-hurry"], own: [RUSH] });
-    }
+  it("is a list, Pinecall's by their name and its own whole, sent as the two lists the declaration carries", () => {
+    @agent({ judges: ["consent", OFFERS, "grounded"], personas: ["in-a-hurry", RUSH] })
+    class Owns extends Agent {}
     const options = optionsFor(Owns, [], undefined, undefined, "class Owns {}");
     expect(options.judges).toEqual({ on: ["consent", "grounded"], own: [OFFERS] });
     expect(options.personas).toEqual({ on: ["in-a-hurry"], own: [RUSH] });
@@ -80,10 +78,13 @@ describe("what the class owns", () => {
   });
 
   it("is an empty list plus the switches for a class that declares them with none of its own", () => {
-    class Bare extends Agent {
-      static override judges = judges();
-    }
+    @agent({ judges: [] })
+    class Bare extends Agent {}
     expect(harnessOf(Bare)).toEqual({ judges: { on: [], own: [] } });
+  });
+
+  it("refuses a list that is no list, by its sentence", () => {
+    expect(() => agent({ judges: "consent" as never })(class Wrong extends Agent {})).toThrow("judges is a list: a name for one of Pinecall's, an object for one of your own");
   });
 
   it("refuses two of the same name, and an own judge written as a plain object that is wrong", () => {

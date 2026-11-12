@@ -13,7 +13,8 @@ def test_the_class_declares_the_greeting_a_method_per_tool_and_data_collection()
     written = export.write_class("clinica-norte", 3, clinic())
     assert "release 3" in written
     assert "export default class ClinicaNorte extends Agent {" in written
-    assert 'static override greeting = "Clínica Norte, buen día.";' in written
+    assert '@agent({\n  greeting: "Clínica Norte, buen día.",' in written
+    assert 'import { Agent, agent, tool } from "@pinecall/agents";' in written
     assert "async findPatient(phone: string): Promise<unknown> {" in written
     assert '`https://agenda.example.com/patients/${encodeURIComponent(String(phone ?? ""))}`' in written
     assert '"Authorization": `Bearer ${process.env.AGENDA_KEY ?? ""}`' in written

@@ -18,7 +18,7 @@ export interface LineOptions {
   fallback?: Ctor;
   /** Said as written when the call comes in, before any model runs. */
   greeting?: string;
-  /** The agents the call may pass to: each says what it takes with `static takes`. */
+  /** The agents the call may pass to: each says what it takes, `@agent({ takes: "…" })`. */
   team?: Ctor[];
 }
 
@@ -132,7 +132,7 @@ export class VoiceApp {
     const team = options.team ?? [];
     if (!Array.isArray(team) || team.some((mate) => typeof mate !== "function")) throw new DeclarationRefused(`the team of ${dialled} is a list of agent classes`);
     for (const mate of team) {
-      if (takenBy(mate) === undefined) throw new DeclarationRefused(`${mate.name} is of the team of ${dialled} and says nothing of what it takes: static takes = "…"`);
+      if (takenBy(mate) === undefined) throw new DeclarationRefused(`${mate.name} is of the team of ${dialled} and says nothing of what it takes: @agent({ takes: "…" })`);
     }
     if (chooses !== undefined && team.length === 0) throw new DeclarationRefused(`${dialled}: a function answers with one of the line's team, and this line names none`);
     this.#lines.push({ number: dialled, answers: bound, team, ...(greeting === undefined ? {} : { greeting }), ...(chooses === undefined ? {} : { chooses }) });

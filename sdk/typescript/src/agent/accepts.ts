@@ -1,4 +1,4 @@
-/** `static events`: the external events a class accepts, and from which senders. */
+/** `@agent({ events })`: the external events a class accepts, and from which senders. */
 
 /** Event sender: the tenant's backend (`app`) or a participant's browser. */
 export type EventSource = "app" | "participant";

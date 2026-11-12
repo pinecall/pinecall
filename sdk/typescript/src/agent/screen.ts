@@ -76,7 +76,7 @@ function plain(given: Props): Record<string, unknown> {
   return JSON.parse(JSON.stringify(given)) as Record<string, unknown>;
 }
 
-/** The tool the model moves the caller's screen with, offered to a class that declares `static scenes`. */
+/** The tool the model moves the caller's screen with, offered to a class that declares `scenes`. */
 export const SHOW_SCREEN = "show_screen";
 
 /** The scene that takes what a tool put up away: the screen with nothing chosen. */
@@ -88,7 +88,7 @@ const A_SCENE = /^[a-z][a-z0-9_-]*$/;
 export function scenesOf(ctor: Function): Record<string, string> {
   const declared = (ctor as { scenes?: unknown }).scenes;
   if (declared === undefined) return {};
-  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) throw new DeclarationRefused(`${ctor.name}: static scenes names each scene with what it shows: { agenda: "the open times you last read" }`);
+  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) throw new DeclarationRefused(`${ctor.name}: scenes names each scene with what it shows: { agenda: "the open times you last read" }`);
   const scenes = declared as Record<string, unknown>;
   for (const [name, what] of Object.entries(scenes)) {
     if (!A_SCENE.test(name) || name === NO_SCENE) throw new DeclarationRefused(`${ctor.name}: a scene is named in lowercase, and not "${NO_SCENE}": "${name}" is not one`);
@@ -103,7 +103,7 @@ export function shownBy(agent: object, tool: string): string | undefined {
   const scene = declared?.options.shows;
   if (scene === undefined) return undefined;
   const scenes = scenesOf(agent.constructor);
-  if (!(scene in scenes)) throw new DeclarationRefused(`${agent.constructor.name}.${tool} shows ${scene}, which is none of its static scenes`);
+  if (!(scene in scenes)) throw new DeclarationRefused(`${agent.constructor.name}.${tool} shows ${scene}, which is none of its scenes`);
   return scene;
 }
 

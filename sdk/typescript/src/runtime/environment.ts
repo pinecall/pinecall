@@ -1,4 +1,4 @@
-/** What a class declares of its environment: `@voice`, `@llm`, `@realtime`, `@stt`, `@judge` and its static fields. */
+/** What a class declares of its environment in `@agent({ … })`, as the declaration sends it. */
 
 import { improvise, type Ending, type Opening } from "../agent/opening.js";
 import { stageOf, voiceOf } from "../agent/stage-names.js";
@@ -49,18 +49,9 @@ const NOT_A_TIMEOUT = "llmTimeout is how long a turn waits for the model's first
 const NOT_AN_OPENING = "a greeting is the words, as a string, or improvise for the model's own: improvise(\"…\") gives it an instruction";
 const NOT_AN_ENDING = "hangup is when the model may end the call, in your words, or true whenever it judges the call done";
 
-const DECORATED: Readonly<Record<string, string>> = {
-  voice: "@voice('<vendor>', '<voice id>')",
-  llm: "@llm('<vendor>/<model>')",
-  realtime: "@realtime('<vendor>/<model>')",
-  stt: "@stt('<vendor>/<model>')",
-  judge: "@judge('<vendor>/<model>')",
-};
-
 /** The error message for an environment field declared on the instance. */
 export function declaredOnTheInstance(field: string): string {
-  const way = DECORATED[field] ?? `static ${field} = …`;
-  return `\`${field}\` is the class's, not a call's state: declare it as ${way}`;
+  return `\`${field}\` is the class's, not a call's state: declare it in @agent({ ${field}: … }) above the class`;
 }
 
 /** The environment the class declares, as the declaration sends it. */

@@ -213,7 +213,7 @@ lib/                                  what two or more agents share
 
 **The agent's slug is its folder's name.** `agents/sales/agent.tsx` is the agent `sales` on the
 gateway — its settings, its numbers, its callers and judges — whatever its class is called. A class
-whose `static slug` says another is refused when it is served, naming both: rename the folder.
+that declares another (`@agent({ slug })`) is refused when it is served, naming both: rename the folder.
 
 **The business is not in the repository.** What the agent knows by heart — hours, prices, what
 needs an authorisation — is one field of its settings, per environment and corner, written in the
@@ -884,8 +884,8 @@ pinecall personas rm <name> · pinecall personas pull
 **The callers are the AGENT's, kept by the gateway** — one list per agent, the same in both environments:
 the patient who cancels is the clinic's, and another agent of the org has callers of its own, even
 under the same name. So the console shows the same ones this verb does, and a caller written here
-needs no deploy. **Or the class's**: a class that declares `personas` (`personas({ on, own })`
-in TypeScript, `personas = personas(on=…, own=…)` in Python, `personas on:, own:` in Ruby) owns the
+needs no deploy. **Or the class's**: a class that declares `personas` (`@agent({ personas: ["in-a-hurry", hurried] })`
+in TypeScript, a name for one of Pinecall's and an object for its own; `personas = personas(on=…, own=…)` in Python, `personas on:, own:` in Ruby) owns the
 roster — which of Pinecall's its runs play is the class's `on`, its own callers are code, each an
 `ownPersona({ name, goal, style, … })` (`own_persona(...)`, `Pinecall.own_persona(...)`) in
 `agents/<agent>/harness.ts` (`.py`, `.rb`), listed in `own`, sent when `pinecall start` or the
@@ -993,8 +993,8 @@ prints what each saves you from, and `show` marks `recommended` the eight to swi
 `relevance`, `repetition` and `sentiment`, which grade a call rather than guard it; **the org's own**
 (`--org`), asked of every agent's calls; and **an agent's own**, about its job alone. The gateway
 keeps all of it for both environments: the console's Judges shows the same, and a change needs no
-deploy. **Or the class owns the agent's list**: a class that declares `judges` (`judges({ on, own })`
-in TypeScript, `judges = judges(on=…, own=…)` in Python, `judges on:, own:` in Ruby) says which of
+deploy. **Or the class owns the agent's list**: a class that declares `judges` (`@agent({ judges: ["consent", offersATime] })`
+in TypeScript, a name for one of Pinecall's and an object for its own; `judges = judges(on=…, own=…)` in Python, `judges on:, own:` in Ruby) says which of
 Pinecall's its calls meet (`on`; every other off) and owns the agent's own judges as code, each an
 `ownJudge({ name, asks, answer, choices, when, trigger, reads })` (`own_judge(...)`,
 `Pinecall.own_judge(...)`) in `agents/<agent>/harness.ts` (`.py`, `.rb`), listed in `own`, sent
@@ -1568,7 +1568,7 @@ and by `pinecall sessions`. `pinecall agent clear record` gives the answer back 
 **`--timezone <zone>` is the clock the agent's calls open on**, an IANA zone such as
 `America/Montevideo`: the model is told the day, the weekday and the hour there. Unset, it is told the
 gateway's day and no hour, so it cannot say what time it is. A class that declares its own
-(`static timezone`, or its app's) keeps it, and the flag is refused.
+(its `timezone`, or its app's) keeps it, and the flag is refused.
 
 **`--max-duration 1-60|off` is the longest a voice call of this agent runs**, in minutes; unset
 anywhere it is ten. A minute before it the agent is told to close and say goodbye, and at it the

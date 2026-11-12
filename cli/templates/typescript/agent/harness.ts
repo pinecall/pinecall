@@ -1,4 +1,4 @@
-// The judges and the callers of {{Title}}'s own, as code: imported by agent.tsx into judges({ own }) and personas({ own }).
+// The judges and the callers of {{Title}}'s own, as code: imported by agent.tsx into the `judges` and the `personas` of its @agent({ … }).
 
 import { ownPersona } from "@pinecall/agents";
 

@@ -40,7 +40,7 @@ export interface ToolOptions<T = unknown> {
   params?: z.ZodObject;
   /** A move on the caller's screen: it runs as the model calls it, while its words still play, and asks for no answer. */
   quiet?: boolean;
-  /** The scene of the caller's screen this tool puts up once it ran (`static scenes`): `@tool({ shows: "agenda" })`. */
+  /** The scene of the caller's screen this tool puts up once it ran (`@agent({ scenes })`): `@tool({ shows: "agenda" })`. */
   shows?: string;
 }
 

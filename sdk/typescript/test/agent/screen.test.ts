@@ -6,6 +6,7 @@ import { Agent } from "../../src/agent/agent.js";
 import { part, sceneLine, scenesOf, screenOf, showingTool } from "../../src/agent/screen.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 import { Fragment, jsx } from "../../src/views/jsx-runtime.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const Stage = part<{ desk: string }>("stage");
 const Slot = part<{ time: string; with?: string }>("slot");
@@ -44,20 +45,17 @@ describe("a screen", () => {
 
 describe("scenes", () => {
   it("are what the class declares, each with what it shows", () => {
-    class Desk extends Agent {
-      static override scenes = { agenda: "the open times you last read" };
-    }
+    @agent({ scenes: { agenda: "the open times you last read" } })
+    class Desk extends Agent {}
     expect(scenesOf(Desk)).toEqual({ agenda: "the open times you last read" });
     expect(scenesOf(Agent)).toEqual({});
   });
 
   it("are refused when one is named none, or says nothing", () => {
-    class Named extends Agent {
-      static override scenes = { none: "nothing" };
-    }
-    class Silent extends Agent {
-      static override scenes = { agenda: " " };
-    }
+    @agent({ scenes: { none: "nothing" } })
+    class Named extends Agent {}
+    @agent({ scenes: { agenda: " " } })
+    class Silent extends Agent {}
     expect(() => scenesOf(Named)).toThrow(DeclarationRefused);
     expect(() => scenesOf(Silent)).toThrow(DeclarationRefused);
   });

@@ -36,14 +36,14 @@ export function judges(owner: JudgeOwner, list: JudgeList, columns: number = A_S
     list.judges.map((row) => [row.name, row.owner, row.on ? "on" : "off", row.answer, whenLabel(row), textOf(row)]),
   ).map((line) => clipped(line, columns));
   const fixed = owner !== null && list.judges.some((row) => row.fixed === true);
-  rows.push(formatHint("pinecall judges show <name> reads one", ...(fixed ? [`set in agents/${owner}/harness.* · judges({ on, own }) in the class`] : [])));
+  rows.push(formatHint("pinecall judges show <name> reads one", ...(fixed ? [`set in agents/${owner}/harness.* · the class's judges name Pinecall's and hold its own`] : [])));
   return rows;
 }
 
 /** The rows written as code, one line each: the file and the name the class imports. */
 export function pulled(done: { written: { path: string; symbol: string }[] }): string[] {
   if (done.written.length === 0) return ["nothing to pull: the agent has no judges of its own as rows"];
-  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${count(done.written.length, "judge")} written as code`, formatHint("add them to judges({ own }) in the class", "the rows stay until pinecall judges rm")];
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${count(done.written.length, "judge")} written as code`, formatHint("add them to the class's judges", "the rows stay until pinecall judges rm")];
 }
 
 /** One judge whole: the line the list prints, then how and when it answers, what it reads, and its question. */

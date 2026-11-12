@@ -58,7 +58,7 @@ app.on("visit.booked", remindVisit);
 | `timezone` | every agent of the app is told the date, the weekday and the hour in Los Angeles, and `this.call.today` is that day |
 | `greeting` | said as written the moment the call comes in, before any model runs |
 | `answers` | the agent on the call when it starts |
-| `team` | the agents the call may pass to; each says what it takes with `static takes` |
+| `team` | the agents the call may pass to; each says what it takes, `@agent({ takes })` |
 | `rule` | read into the prompt of both agents, and a judge asks of every call whether it was kept |
 | `on` | what an agent logs by name (`visit.booked`) and what happens to a call (`call.ended`) reach the app: a function hears it, a flow is started by it |
 | `flow` | what outlives the call: the gateway keeps where the run stands and wakes it, so the reminder is made a day later whatever was deployed meanwhile |
@@ -73,7 +73,7 @@ app.on("visit.booked", remindVisit);
    with no number (the chat, the web) `book` stops to ask for one, `await this.ask(GetPhone)`, and books
    once the caller gave it.
 4. The caller asks about a charge instead: the model calls `transfer_to_billing`, a tool nobody wrote.
-   It exists because `Billing` says `static takes = "a question about a charge, …"`.
+   It exists because `Billing` says `@agent({ takes: "a question about a charge, …" })`.
 5. From there the call is `Billing`'s: its instructions, its tools, and its `onCall`, which reads the
    patient from `this.call.shared` and loads her invoices. It can take a refund request and never
    promises one.

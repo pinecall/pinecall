@@ -35,7 +35,7 @@ id (`input` and `output` per million tokens, `characters`, `audio_seconds`, `min
 row prices it nowhere. `realtime` is, by vendor,
 the models that hear and speak themselves, as the vendor's plugin names them (the `Literal` its
 realtime class types its `model` as, else the `RealtimeModels` it lists): named as an agent's
-`realtime` — `xai/grok-voice-3.0`, in the settings or in `@realtime` — a voice call runs on that model
+`realtime` — `xai/grok-voice-3.0`, in the settings or in a class's `realtime` — a voice call runs on that model
 alone, with no ears and no voice of its own, while a written call keeps the agent's `llm`
 ([settings-api.md](settings-api.md)).
 
@@ -58,7 +58,7 @@ parameters, read when it is built (the key, the voice and the language each land
 name the plugin gave them); what it can do is the class's capabilities (streaming, interim
 results, keyterms, an aligned transcript); whether its ears end the turn themselves
 (`ends_the_turn`), which of its classes runs (`builds`) and its options are the providers row's,
-under what an agent declares or sets for the stage: a class's `@llm(…, {builds, options})` or the
+under what an agent declares or sets for the stage: a class's `llm: { model, builds, options }` or the
 settings' `llm_builds`/`llm_options` (and the `stt` and `tts` twins) name the class instead and
 replace each option they name, the row's other options kept. Those two are the tenant's own and run
 only on the org's own key for the vendor: on a lent stage they are refused, at `agent.configure`,

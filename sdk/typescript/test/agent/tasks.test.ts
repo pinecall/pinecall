@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
+import { agent } from "../../src/agent/declaring.js";
 import { askingFor, GetEmail, GetName, GetPhone, givenWith, givingTool, task, tasksOf } from "../../src/agent/tasks.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
 
@@ -30,16 +31,14 @@ describe("a task", () => {
     expect(() => task({ ...whole, check: undefined as never })).toThrow(/has a check/);
   });
 
-  it("is declared by its class in static tasks", () => {
-    class Books extends Agent {
-      static tasks = [GetEmail, GetPhone];
-    }
-    class Wrong extends Agent {
-      static tasks = ["email"];
-    }
+  it("is declared by its class, in its tasks", () => {
+    @agent({ tasks: [GetEmail, GetPhone] })
+    class Books extends Agent {}
+    @agent({ tasks: ["email"] as never })
+    class Wrong extends Agent {}
     expect(tasksOf(Books)).toEqual([GetEmail, GetPhone]);
     expect(tasksOf(Agent)).toEqual([]);
-    expect(() => tasksOf(Wrong)).toThrow(/static tasks is a list of tasks/);
+    expect(() => tasksOf(Wrong)).toThrow(/tasks is a list of tasks/);
   });
 });
 

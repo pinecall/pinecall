@@ -9,7 +9,6 @@ import {
   CallWorld,
   describe as describeClass,
   recalled,
-  render,
   seal,
   setCall,
   tool,
@@ -192,8 +191,8 @@ describe("a class with one tool and no view", () => {
   });
 });
 
-// `@render` passes the instance itself as props, not a spread, so getters and `remembers()` work.
-describe("a prompt declared with @render", () => {
+// A prompt kept as a component is handed the instance itself, not a spread, so getters and `remembers()` work.
+describe("a prompt written as a component", () => {
   /** El prompt como función del agente: los props son la instancia. */
   const SoportePrompt = ({ stage, order }: Soporte) => (
     <>
@@ -203,14 +202,7 @@ describe("a prompt declared with @render", () => {
   );
 
   /** Soporte de Tienda Sur. */
-  @render(SoportePrompt)
   class Soporte extends Agent {
-    stage = "identify";
-    order?: string | undefined;
-  }
-
-  /** El mismo soporte, escrito como método. */
-  class ConMetodo extends Agent {
     stage = "identify";
     order?: string | undefined;
 
@@ -219,33 +211,13 @@ describe("a prompt declared with @render", () => {
     }
   }
 
-  it("renders the block the method spelling renders, byte for byte, on the same state", () => {
-    const declarado = seal(new Soporte());
-    const escrito = seal(new ConMetodo());
-    declarado.startIn({ stage: "resolve", order: "TS-8001" });
-    escrito.startIn({ stage: "resolve", order: "TS-8001" });
-
-    const text = block(promptOf(declarado), "view");
-    expect(text).toBe("Hablas del pedido TS-8001.");
-    expect(text).toBe(block(promptOf(escrito), "view"));
+  it("renders from the state the instance holds", () => {
+    const soporte = seal(new Soporte());
+    soporte.startIn({ stage: "resolve", order: "TS-8001" });
+    expect(block(promptOf(soporte), "view")).toBe("Hablas del pedido TS-8001.");
   });
 
-  it("is a render() like any other, so a class with neither still renders nothing", () => {
+  it("renders its first stage on a call nothing was set in", () => {
     expect(block(promptOf(seal(new Soporte())), "view")).toContain("Pide el número de pedido");
-  });
-
-  it("refuses a class that declares both spellings, naming it and both", () => {
-    const unPrompt = (): Child => <p>uno</p>;
-
-    expect(() => {
-      /** Una clase que contesta la misma pregunta dos veces. */
-      @render(unPrompt)
-      class Ambas extends Agent {
-        override render(): Child {
-          return <p>dos</p>;
-        }
-      }
-      return Ambas;
-    }).toThrow("Ambas declares both @render(unPrompt) and a render() method; two ways to answer one question — keep one");
   });
 });

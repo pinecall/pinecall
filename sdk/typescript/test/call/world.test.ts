@@ -4,7 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 
-import { Agent, changes, mount, state, type EventDeclarations, type EventMeta, type Mounted } from "../../src/index.js";
+import { Agent, changes, mount, state, type EventMeta, type Mounted } from "../../src/index.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const KEY = "pk_test";
 const SLUG = "front-desk";
@@ -12,12 +13,8 @@ const CALL = "CA_1";
 const CALLER = "sip_+34600000001";
 
 /** Accepts one app event and one browser event. */
+@agent({ events: { "slot.released": { from: ["app"] }, "ui.viewing": { from: ["participant"] } } })
 class FrontDesk extends Agent {
-  static override events: EventDeclarations = {
-    "slot.released": { from: ["app"] },
-    "ui.viewing": { from: ["participant"] },
-  };
-
   web = true;
 
   @state({ visibility: "public" })

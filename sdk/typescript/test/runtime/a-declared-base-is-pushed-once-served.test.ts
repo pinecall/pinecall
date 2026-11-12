@@ -11,14 +11,14 @@ import { FakeGateway } from "../../src/client/testing/index.js";
 import { Agent } from "../../src/index.js";
 import { mount } from "../../src/runtime/connect.js";
 import { markdownUnder } from "../../src/runtime/declared-docs.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const KEY = "pc_test_docs";
 const PUSHED = { base: "front-desk", chunks: 7, language: "es", took_ms: 12.5, kept: 2 };
 
 /** Reads its base per turn, and owns the folder beside it. */
-class Reads extends Agent {
-  static override docs = { base: "front-desk", k: 4 };
-}
+@agent({ docs: { base: "front-desk", k: 4 } })
+class Reads extends Agent {}
 
 /** Declares no base: nothing beside it is pushed. */
 class Silent extends Agent {}

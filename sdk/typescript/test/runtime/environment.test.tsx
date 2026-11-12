@@ -7,9 +7,8 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
-import { judge, llm, realtime, stt, voice } from "../../src/agent/decorators.js";
-import { improvise } from "../../src/agent/opening.js";
-import { judges, personas } from "../../src/agent/harness.js";
+import { agent, type AgentDeclaration } from "../../src/agent/declaring.js";
+import { improvise, type Opening } from "../../src/agent/opening.js";
 import ClinicaNorte from "../agent/clinica-norte.js";
 import { ENVIRONMENT, declaredOnTheInstance, environmentOf } from "../../src/runtime/environment.js";
 import { mount, optionsFor } from "../../src/runtime/connect.js";
@@ -33,14 +32,22 @@ afterEach(async () => {
 });
 
 /** Recepción que fija su voz, su modelo, sus oídos, su idioma y cómo abre. */
-@voice("cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", { model: "sonic-2" })
-@llm("openai/gpt-5.4-mini", { builds: "responses.LLM", options: { use_websocket: true } })
-@stt("soniox/stt-rt-v3", { endOfTurn: "smart-turn" })
-class Fijada extends ClinicaNorte {
-  static override language = "es";
-  static override greeting = "Clínica Norte, buenas.";
-  static override hangup = "the caller says goodbye";
-  static override says = [{ word: "GSA", spoken: "G S A" }];
+@agent({
+  voice: { voice: "cartesia/a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2" },
+  llm: { model: "openai/gpt-5.4-mini", builds: "responses.LLM", options: { use_websocket: true } },
+  stt: { model: "soniox/stt-rt-v3", endOfTurn: "smart-turn" },
+  language: "es",
+  greeting: "Clínica Norte, buenas.",
+  hangup: "the caller says goodbye",
+  says: [{ word: "GSA", spoken: "G S A" }],
+})
+class Fijada extends ClinicaNorte {}
+
+/** A class of the clinic's that declares this, for a test that reads one field of it. */
+function declaring(declaration: AgentDeclaration): typeof ClinicaNorte {
+  class Declarada extends ClinicaNorte {}
+  agent(declaration)(Declarada);
+  return Declarada;
 }
 
 it("sends what the class declares, the plugin's options under their own names", async () => {
@@ -74,40 +81,37 @@ it("sends none of the environment for a class that declares none", () => {
 });
 
 it("keeps every slash of a model id after the vendor's", () => {
-  @llm("livekit/openai/gpt-5-mini")
+  @agent({ llm: "livekit/openai/gpt-5-mini" })
   class PorInferencia extends ClinicaNorte {}
   expect(environmentOf(PorInferencia).llm).toEqual({ provider: "livekit", model: "openai/gpt-5-mini" });
 });
 
 it("sends the judge's model, a local one by its server, as the declaration names it", () => {
-  @judge("openai/qwen3-32b", { options: { base_url: "http://gpu:8000/v1" } })
+  @agent({ judge: { model: "openai/qwen3-32b", options: { base_url: "http://gpu:8000/v1" } } })
   class JuzgadaEnCasa extends ClinicaNorte {}
   expect(environmentOf(JuzgadaEnCasa).judge).toEqual({
     provider: "openai",
     model: "qwen3-32b",
     options: { base_url: "http://gpu:8000/v1" },
   });
-  expect(declaredOnTheInstance("judge")).toContain("@judge('<vendor>/<model>')");
 });
 
 it("sends the voice calls' realtime model beside the written calls' llm", () => {
-  @llm("openai/gpt-6-luna")
-  @realtime("xai/grok-voice-3.0", { options: { voice: "eve" } })
+  @agent({ llm: "openai/gpt-6-luna", realtime: { model: "xai/grok-voice-3.0", options: { voice: "eve" } } })
   class KalaVoz extends ClinicaNorte {}
   const declared = environmentOf(KalaVoz);
   expect(declared.llm).toEqual({ provider: "openai", model: "gpt-6-luna" });
   expect(declared.realtime).toEqual({ provider: "xai", model: "grok-voice-3.0", options: { voice: "eve" } });
-  expect(declaredOnTheInstance("realtime")).toContain("@realtime('<vendor>/<model>')");
 });
 
-it("refuses a class that declares a model twice, by decorator and static field", () => {
-  expect(() => {
-    @llm("openai/gpt-5.4-mini")
-    class DosVeces extends ClinicaNorte {
-      static override llm = { provider: "anthropic", model: "claude-haiku-5-5" };
-    }
-    return DosVeces;
-  }).toThrow(new DeclarationRefused("DosVeces declares both @llm(…) and a static llm; keep one"));
+it("refuses a class that says what it is in a static field, and names the way", () => {
+  /** Recepción que dice su modelo como antes. */
+  class PorStatic extends ClinicaNorte {
+    static llm = "openai/gpt-5.4-mini";
+  }
+  expect(() => optionsFor(PorStatic, [], new PorStatic(), FILE)).toThrow(
+    new DeclarationRefused("PorStatic declares `static llm`: what an agent is goes in @agent({ llm: … }) above the class"),
+  );
 });
 
 it("refuses an environment field on the instance, where it would be the call's state", () => {
@@ -116,17 +120,13 @@ it("refuses an environment field on the instance, where it would be the call's s
     language = "es";
   }
   expect(() => optionsFor(EnEspanol, [], new EnEspanol(), FILE)).toThrow(
-    "`language` is the class's, not a call's state: declare it as static language = …",
+    "`language` is the class's, not a call's state: declare it in @agent({ language: … }) above the class",
   );
-  expect(declaredOnTheInstance("voice")).toContain("@voice('<vendor>', '<voice id>')");
+  expect(declaredOnTheInstance("voice")).toContain("@agent({ voice: … })");
 });
 
 it("reads an opening as words said, or the model's own with or without an instruction", () => {
-  const greeted = (greeting: unknown) => {
-    class Abre extends ClinicaNorte {}
-    (Abre as unknown as { greeting: unknown }).greeting = greeting;
-    return environmentOf(Abre).greeting;
-  };
+  const greeted = (greeting: unknown) => environmentOf(declaring({ greeting: greeting as Opening })).greeting;
   expect(greeted(improvise)).toEqual({ reply: "" });
   expect(greeted(improvise("Saludá por el nombre"))).toEqual({ reply: "Saludá por el nombre" });
   expect(greeted(improvise("Saludá", { interruptible: true }))).toEqual({ reply: "Saludá", allowInterruptions: true });
@@ -135,16 +135,12 @@ it("reads an opening as words said, or the model's own with or without an instru
 });
 
 it("reads hangup as when, in words, or true for whenever the model judges", () => {
-  class Cuelga extends ClinicaNorte {
-    static override hangup = true as const;
-  }
-  expect(environmentOf(Cuelga).hangup).toEqual({ when: "" });
+  expect(environmentOf(declaring({ hangup: true })).hangup).toEqual({ when: "" });
 });
 
 /** Recepción que dibuja su widget. */
-class Dibujada extends ClinicaNorte {
-  static override widget = { title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto" as const };
-}
+@agent({ widget: { title: "Pip", tagline: "Brightside Dental", accent: "#0f766e", theme: "auto" } })
+class Dibujada extends ClinicaNorte {}
 
 it("sends how the widget looks, as the class declares it", async () => {
   mount(Dibujada, { pc, source: SOURCE, file: FILE, slug: "dibujada" });
@@ -155,22 +151,20 @@ it("sends how the widget looks, as the class declares it", async () => {
 });
 
 /** Recepción que fija cuánto dura una llamada y cuánto espera al modelo. */
-class Acotada extends ClinicaNorte {
-  static override maxDuration = 20;
-  static override llmTimeout = 8;
-}
+@agent({ maxDuration: 20, llmTimeout: 8 })
+class Acotada extends ClinicaNorte {}
 
 it("sends the longest call in seconds and the model's timeout, and refuses a duration outside its band", async () => {
   expect(environmentOf(Acotada)).toEqual({ maxDurationS: 1200, llmTimeoutS: 8 });
-  expect(environmentOf(class extends ClinicaNorte { static override maxDuration = "off" as const; })).toEqual({ maxDurationS: 0 });
-  expect(() => environmentOf(class extends ClinicaNorte { static override maxDuration = 90; })).toThrow("1 to 60 minutes");
-  expect(environmentOf(class extends ClinicaNorte { static override silenceTimeout = 30; static override voicemail = "Call us back" as const; })).toMatchObject({ silenceTimeoutS: 30, voicemail: { message: "Call us back" } });
-  expect(environmentOf(class extends ClinicaNorte { static override voicemail = true as const; })).toMatchObject({ voicemail: {} });
-  expect(() => environmentOf(class extends ClinicaNorte { static override silenceTimeout = 4; })).toThrow("5 to 3600");
+  expect(environmentOf(declaring({ maxDuration: "off" }))).toEqual({ maxDurationS: 0 });
+  expect(() => environmentOf(declaring({ maxDuration: 90 }))).toThrow("1 to 60 minutes");
+  expect(environmentOf(declaring({ silenceTimeout: 30, voicemail: "Call us back" }))).toMatchObject({ silenceTimeoutS: 30, voicemail: { message: "Call us back" } });
+  expect(environmentOf(declaring({ voicemail: true }))).toMatchObject({ voicemail: {} });
+  expect(() => environmentOf(declaring({ silenceTimeout: 4 }))).toThrow("5 to 3600");
   const watched = [{ name: "slow", metric: "e2e_median_s" as const, above: true, threshold: 2, windowDays: 7 as const }];
-  expect(environmentOf(class extends ClinicaNorte { static override monitors = watched; })).toMatchObject({ monitors: watched });
-  expect(environmentOf(class extends ClinicaNorte { static override bases = [{ base: "faq" }, { base: "prices", k: 2 }]; })).toMatchObject({ bases: [{ base: "faq" }, { base: "prices", k: 2 }] });
-  expect(() => environmentOf(class extends ClinicaNorte { static override llmTimeout = 0; })).toThrow("above 0");
+  expect(environmentOf(declaring({ monitors: watched }))).toMatchObject({ monitors: watched });
+  expect(environmentOf(declaring({ bases: [{ base: "faq" }, { base: "prices", k: 2 }] }))).toMatchObject({ bases: [{ base: "faq" }, { base: "prices", k: 2 }] });
+  expect(() => environmentOf(declaring({ llmTimeout: 0 }))).toThrow("above 0");
   mount(Acotada, { pc, source: SOURCE, file: FILE, slug: "acotada" });
   await pc.connect();
   for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
@@ -178,11 +172,9 @@ it("sends the longest call in seconds and the model's timeout, and refuses a dur
   expect([config["max_duration_s"], config["llm_timeout_s"]]).toEqual([1200, 8]);
 });
 
-/** Recepción que es dueña de sus jueces y sus personas: los interruptores en la clase, ninguno propio. */
-class Juzgada extends ClinicaNorte {
-  static override judges = judges({ on: ["consent"] });
-  static override personas = personas({ on: ["in-a-hurry", "interrupts"] });
-}
+/** Recepción que es dueña de sus jueces y sus personas: los de Pinecall por su nombre, ninguno propio. */
+@agent({ judges: ["consent"], personas: ["in-a-hurry", "interrupts"] })
+class Juzgada extends ClinicaNorte {}
 
 it("sends the judges and the personas the class owns, none of its own an empty own", async () => {
   mount(Juzgada, { pc, source: SOURCE, file: FILE, slug: "juzgada" });

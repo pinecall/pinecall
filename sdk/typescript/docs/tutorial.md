@@ -144,12 +144,12 @@ ever crosses the socket.
 ## 4. Knowledge: a page the agent knows by heart
 
 The voice, the model, the opening and everything else the agent runs on are the class's: declared
-on it (`@voice`, `@llm`, `static knowledge`, …), changed there and deployed. An app written as code is set by its
+above it (`@agent({ voice, llm, knowledge, … })`), changed there and deployed. An app written as code is set by its
 code and nothing else; the console's Setup shows what it runs on, read-only
 ([writing-an-agent.md](writing-an-agent.md)).
 
 What the agent knows by heart — hours, prices, what needs an authorisation — is a page of Markdown
-beside the class, `agents/clinica-norte/knowledge.md`, declared on it: `static knowledge = { path: "knowledge.md" }`.
+beside the class, `agents/clinica-norte/knowledge.md`, declared with it: `@agent({ knowledge: { path: "knowledge.md" } })`.
 The gateway writes the page into the prompt's second block, whole, once per call, in the cached
 prefix: the model has it in every turn and you pay for it once.
 
@@ -160,7 +160,7 @@ that is the next step.
 
 Put your Markdown under `agents/clinica-norte/docs/`, one file per subject, with headings, and push it.
 With no arguments the verb reads that folder and pushes it under the agent's slug. The agent searches it
-when the class declares the base, with its `k` and `min_score`: `static docs = { base: "clinica-norte", k: 4 }`; declared,
+when the class declares the base, with its `k` and `min_score`: `@agent({ docs: { base: "clinica-norte", k: 4 } })`; declared,
 the folder is also pushed when the agent registers, so the verb is for an edit in between.
 
 ```bash
@@ -178,7 +178,7 @@ A push replaces the base whole, so push again after every edit.
 ## 6. Memory: what it keeps between calls
 
 ```ts
-static memory = { remember: ["how they like to be addressed", "allergies", "their usual doctor"], forget: ["payments"] };
+@agent({ memory: { remember: ["how they like to be addressed", "allergies", "their usual doctor"], forget: ["payments"] } })
 ```
 
 The policy is the class's. `remember` is the vocabulary, **in your own words**, of

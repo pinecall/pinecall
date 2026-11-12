@@ -4,15 +4,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Pinecall } from "../../src/client/index.js";
 import { FakeGateway } from "../../src/client/testing/index.js";
 
-import { Agent, mount, type EventDeclarations, type Mounted } from "../../src/index.js";
+import { Agent, mount, type Mounted } from "../../src/index.js";
+import { agent } from "../../src/agent/declaring.js";
 
 const KEY = "pk_test";
 const SLUG = "fragile";
 
 /** Every hook throws, after writing what it had. */
+@agent({ events: { "slot.released": { from: ["app"] } } })
 class Fragile extends Agent {
-  static override events: EventDeclarations = { "slot.released": { from: ["app"] } };
-
   opened = "";
   slot = "";
 

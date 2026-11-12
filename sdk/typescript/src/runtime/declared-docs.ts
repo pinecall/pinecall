@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 import type { Agent } from "../agent/agent.js";
+import { declaredOf } from "../agent/declaring.js";
 import type { Pinecall } from "../client/index.js";
 import type { KnowledgeFile } from "../wire/agent-config.js";
 
@@ -32,7 +33,7 @@ export function markdownUnder(folder: string): KnowledgeFile[] {
  * Markdown in it. The line says what landed.
  */
 export async function pushDeclaredDocs(pc: Pinecall, ctor: typeof Agent, file: string | undefined, report: ((line: string) => void) | undefined): Promise<void> {
-  const base = ctor.docs?.base;
+  const base = declaredOf(ctor, "docs")?.base;
   if (base === undefined || file === undefined) return;
   const folder = join(dirname(resolve(file)), DOCS_FOLDER);
   const files = markdownUnder(folder);

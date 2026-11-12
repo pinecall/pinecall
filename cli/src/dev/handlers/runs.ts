@@ -49,7 +49,7 @@ export function personaHandlers(here: Here): Screen {
       "personas.write": async (asked) => {
         const persona = PersonaWrite.parse(asked) as PersonaWritten;
         const { path, symbol } = appendPersona(here.home, persona);
-        here.ctx.io.print(`${path}  ${symbol} written from the console: add it to personas({ own })`);
+        here.ctx.io.print(`${path}  ${symbol} written from the console: add it to the class's personas`);
         return { path, symbol, name: persona.name };
       },
     },

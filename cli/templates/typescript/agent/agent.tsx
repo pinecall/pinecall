@@ -1,6 +1,6 @@
 // {{Title}}: the class is the agent — its state, its tools, and render(), its prompt.
 
-import { Agent, judges, personas, tool, type Stages } from "@pinecall/agents";
+import { Agent, agent, tool, type Stages } from "@pinecall/agents";
 
 import { hurried } from "./harness.js";
 
@@ -17,11 +17,12 @@ const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|prov
  * calling and what it is about. You never promise when they will hear back, and you never say you
  * passed the message on: you wrote it down.
  */
-export default class {{Class}} extends Agent {
-  static judges = judges({ on: RECOMMENDED });
+@agent({
+  judges: RECOMMENDED,
   // Pinecall's callers this agent is tested with, and its own from harness.ts.
-  static personas = personas({ on: ["in-a-hurry", "wrong-number"], own: [hurried] });
-
+  personas: ["in-a-hurry", "wrong-number", hurried],
+})
+export default class {{Class}} extends Agent {
   stage: Stages<"ask" | "done"> = "ask";
   message?: { name: string; about: string } | undefined;
 

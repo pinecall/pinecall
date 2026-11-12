@@ -33,12 +33,12 @@ export function task<T, F extends string = string>(spec: TaskSpec<T, F>): Task<T
   return Object.freeze({ ...spec }) as unknown as Task<T>;
 }
 
-/** The tasks a class declares: `static tasks = [GetEmail]`. */
+/** The tasks a class declares: `@agent({ tasks: [GetEmail] })`. */
 export function tasksOf(ctor: Function): Task<unknown>[] {
   const declared = (ctor as { tasks?: unknown }).tasks;
   if (declared === undefined) return [];
   if (!Array.isArray(declared) || declared.some((one) => typeof (one as Task<unknown>)?.check !== "function")) {
-    throw new DeclarationRefused(`${ctor.name}: static tasks is a list of tasks, like [GetEmail, GetPhone]`);
+    throw new DeclarationRefused(`${ctor.name}: tasks is a list of tasks, like [GetEmail, GetPhone]`);
   }
   return declared as Task<unknown>[];
 }

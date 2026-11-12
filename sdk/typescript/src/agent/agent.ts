@@ -20,8 +20,8 @@ import type { Serve } from "./served.js";
 type Declared = Camel<AgentConfig>;
 
 // Fields that configure the agent instead of holding state: never diffed, never snapshotted.
-// The environment (voice, models, language, opening, memory) is declared on the class, static or
-// by decorator, and refused as an instance field.
+// The environment (voice, models, language, opening, memory) is declared above the class, in
+// `@agent({ … })`, and refused as an instance field.
 export const CONFIG_FIELDS = ["phone", "whatsapp", "web", "channelRules"] as const;
 
 // state.ts derives `ConfigName` from CONFIG_FIELDS, so a name added here is dropped from snapshots.
@@ -123,9 +123,6 @@ export class Agent {
     return proxy;
   }
 
-  /** The class description, as an alternative to a JSDoc comment. */
-  static doc?: string;
-
   /** `false` leaves the `<channel>` block out of the prompt: how to write for a voice, a website's chat or WhatsApp. A config field, never state. */
   declare channelRules?: boolean;
 
@@ -138,9 +135,6 @@ export class Agent {
     return { search: async (query, options) => await this.call.search(query, options) };
   }
 
-  /** External events this class accepts, and from whom. */
-  static events?: EventDeclarations;
-
   /**
    * Runs once the agent is registered, before its first call: what the class publishes for the
    * pages that show it, as lines recorded in its voice and documents any page reads with no key.
@@ -149,61 +143,6 @@ export class Agent {
   static onServe(_serve: Serve): unknown {
     return undefined;
   }
-
-  /** Field visibility as a map, as an alternative to `@state`. */
-  static visibility?: Record<string, Visibility>;
-
-  // The environment the class may declare: each one declared wins over the agent's settings, and the console
-  // shows it set by the class. `voice`, `llm`, `realtime`, `stt` and `judge` are what the decorators of those names set.
-  /** The language the agent speaks and expects, a BCP 47 tag: `"es"`, `"pt-BR"`. */
-  static language?: Declared["language"];
-  static timezone?: Declared["timezone"];
-  static voice?: Declared["voice"] | string | (Record<string, unknown> & { voice: string });
-  static llm?: Declared["llm"] | string | (Record<string, unknown> & { model: string });
-  /** The model a voice call runs on alone, hearing and speaking itself; a written call runs on `llm`. */
-  static realtime?: Declared["realtime"] | string | (Record<string, unknown> & { model: string });
-  static stt?: Declared["stt"] | string | (Record<string, unknown> & { model: string });
-  /** The model the agent's calls are judged on. */
-  static judge?: Declared["judge"] | string | (Record<string, unknown> & { model: string });
-  /** How a call opens: the words, as a string, or `improvise` for the model's own. */
-  static greeting?: Opening;
-  /** When the model may end the call: in your words, or `true` whenever it judges it done. */
-  static hangup?: Ending;
-  static turn?: Declared["turn"];
-  /** How the voice says a word: `[{ word: "GSA", spoken: "G S A" }]`. */
-  static says?: Declared["says"];
-  /** Words the ears must know. */
-  static hears?: Declared["hears"];
-  /** Markdown read whole into every call: `{ path, text }`. */
-  static knowledge?: Declared["knowledge"];
-  /** The knowledge base searched: `{ base: "clinica", k: 4 }`; `bases` for several, in place of it. */
-  static docs?: Declared["docs"];
-  static bases?: Declared["bases"];
-  static monitors?: Declared["monitors"];
-  /** What memory keeps of a contact and never keeps: `{ remember: […], forget: […] }`. */
-  static memory?: Declared["memory"];
-  /** Whether the calls keep their audio. */
-  static record?: Declared["record"];
-  /** The longest a voice call runs, in minutes (1 to 60), or `"off"` for no limit. */
-  static maxDuration?: number | "off";
-  /** How long a turn waits for the model's first word, in seconds. */
-  static llmTimeout?: number;
-  /** The caller quiet: seconds before a voice call ends (5 to 3600), `{ says: […], afterS, times }` said first; on a call it placed, the words left on a machine, or `true` for none. */
-  static silenceTimeout?: number;
-  static idle?: Declared["idle"];
-  static voicemail?: string | true;
-  static sttFallbacks?: Declared["sttFallbacks"];
-  static ttsFallbacks?: Declared["ttsFallbacks"];
-  /** The judges the class owns: `judges({ on: ["consent", …], own: [ownJudge({…})] })`. */
-  static judges?: Declared["judges"];
-  /** The personas the class owns: `personas({ on: ["in-a-hurry", …], own: [ownPersona({…})] })`. */
-  static personas?: Declared["personas"];
-  /** The hold melody: a file beside the class and the wait before it (`{ file: "hold.mp3", afterS: 1.5 }`), or `"off"`. */
-  static hold?: HoldDeclaration | "off";
-  /** The scenes of the caller's screen, each with what it shows: `{ agenda: "the open times you last read" }`. */
-  static scenes?: Record<string, string>;
-  /** How the widget presents the agent: `{ title, tagline, greeting, accent, autostart, theme }`. */
-  static widget?: Declared["widget"];
 
   /** The class docstring, as the model reads it. */
   doc(): string | undefined {
@@ -293,7 +232,7 @@ export class Agent {
     return this.call.reply(instructions, options);
   }
 
-  /** Ask the caller for one of the class's `static tasks` from inside a tool, and wait for it: `await this.ask(GetEmail)`. */
+  /** Ask the caller for one of the class's `tasks` from inside a tool, and wait for it: `await this.ask(GetEmail)`. */
   ask<T>(asked: Task<T>): Promise<T> {
     return this.call.ask(asked);
   }

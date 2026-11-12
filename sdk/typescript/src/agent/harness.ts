@@ -76,7 +76,7 @@ export function personas(options: { on?: string[] | undefined; own?: OwnPersona[
   return { on: [...(options.on ?? [])], own: eachOnce("persona", (options.own ?? []).map(ownPersona)) };
 }
 
-/** What `static judges` and `static personas` declare, as the declaration sends it; nothing for a class that declares neither. */
+/** The judges and the personas a class declares, as the declaration sends them; nothing for a class that declares neither. */
 export function harnessOf(ctor: Function): Harness {
   const declared = ctor as unknown as { judges?: Declared["judges"]; personas?: Declared["personas"] };
   const harness: Harness = {};

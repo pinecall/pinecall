@@ -173,7 +173,7 @@ export function personas(agent: string, found: Persona[]): string[] {
   const about = (one: Persona): string => (one.owner === "pinecall" ? (one.summary ?? one.goal) : one.about || one.goal);
   const rows = table(["name", "owner", "on", "about"], found.map((one) => [one.name, whose(one), one.on ? "on" : "off", clipped(about(one), ABOUT)]));
   const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, ...formatNotice(NO_PERSONAS_YET(agent))];
-  const steps = ["pinecall personas show <name> reads one", ...(found.some((one) => one.fixed === true) ? [`set in agents/${agent}/harness.* · personas({ on, own }) in the class`] : [])];
+  const steps = ["pinecall personas show <name> reads one", ...(found.some((one) => one.fixed === true) ? [`set in agents/${agent}/harness.* · the class's personas name Pinecall's and hold its own`] : [])];
   return [...lines, formatHint(...steps)];
 }
 
@@ -224,7 +224,7 @@ export function generated(written: GeneratedPersonas & Saved): string[] {
   const bill = written.evals === 0 ? "on your own judge key: not billed" : `${count(written.evals, "eval")} · $${written.cost_usd.toFixed(4)}`;
   const callers = written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line, at) => `  ${at === 0 ? "expects" : "       "}  ${line}`)]);
   const head = `${count(written.personas.length, "caller")} · ${bill}`;
-  if (written.written.length > 0) return [...callers, head, ...written.written.map((one) => `  written  ${one.path} · ${one.symbol}`), formatHint("add each to personas({ own }) in the class")];
+  if (written.written.length > 0) return [...callers, head, ...written.written.map((one) => `  written  ${one.path} · ${one.symbol}`), formatHint("add each to the class's personas")];
   return [...callers, head, ...(written.saved ? ["  saved"] : [formatHint("--save keeps them")])];
 }
 

@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Agent, ToolFailed, describe, tool, z, type Call, type Child, type EventDeclarations, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
+import { Agent, ToolFailed, agent, describe, tool, z, type Call, type Child, type EventMeta, type Serve, type ToolOptions } from "@pinecall/agents";
 
 import { A_REF, CLICKED, EXPLAIN, MISSING, MOVED, SEEN, UI, WALKED, filled, isAct, linesOf, onPage, taken, valuesFor, wordsOf, type Action, type ActStep, type Beat, type Line, type Macro, type Values } from "../wire/index.js";
 import { recordWalks, shownBy, walkLine, walkNamed, walkedLine } from "./walks.js";
@@ -67,15 +67,16 @@ function linesAt(page: string, ref: string): string {
   return lines.slice(at, after === -1 ? undefined : at + 1 + after).join("\n");
 }
 
-export class Tutor extends Agent {
-  static override events: EventDeclarations = {
+@agent({
+  events: {
     [SEEN]: { from: ["participant"] },
     [CLICKED]: { from: ["participant"] },
     [MISSING]: { from: ["participant"] },
     [EXPLAIN]: { from: ["participant"] },
     [WALKED]: { from: ["participant"] },
-  };
-
+  },
+})
+export class Tutor extends Agent {
   /** The guided walks this agent can give, by name. */
   static macros: Record<string, Macro> = {};
 

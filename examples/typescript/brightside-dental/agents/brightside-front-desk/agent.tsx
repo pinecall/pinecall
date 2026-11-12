@@ -1,6 +1,6 @@
 // The front desk of Brightside Dental: it answers the clinic's line, books visits, and passes a charge to billing.
 
-import { Agent, GetPhone, judges, personas, tool, type Call } from "@pinecall/agents";
+import { Agent, GetPhone, agent, tool, type Call } from "@pinecall/agents";
 
 import { clinic, startsAt, type Patient, type Slot, type Visit } from "../../lib/clinic.js";
 import { Agenda, Form, Stage, Ticket, Welcome } from "../../lib/screen.js";
@@ -12,19 +12,20 @@ import { hurried, offersARealTime } from "./harness.js";
  * Short sentences. Offer at most two times. Never say a time the agenda did not give you.
  * Read the day and the time back and wait for a yes before you book.
  */
-export default class FrontDesk extends Agent {
-  static stt = "deepgram/flux-general-en";
-  static llm = "google/gemini-3.5-flash-lite";
-  static voice = "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02";
-  static takes = "booking, moving or asking about a visit";
-  static judges = judges({ on: ["grounded", "promises"], own: [offersARealTime] });
-  static personas = personas({ own: [hurried] });
-  static tasks = [GetPhone];
+@agent({
+  stt: "deepgram/flux-general-en",
+  llm: "google/gemini-3.5-flash-lite",
+  voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02",
+  takes: "booking, moving or asking about a visit",
+  judges: ["grounded", "promises", offersARealTime],
+  personas: [hurried],
+  tasks: [GetPhone],
   // What the caller's screen can show. A tool that shows one puts it up; a turn about something else takes it away.
-  static scenes = { agenda: "the open times you last read", ticket: "the visit booked on this call" };
+  scenes: { agenda: "the open times you last read", ticket: "the visit booked on this call" },
   // What the caller's page may tell this agent: the time they tapped on its agenda, and the number they are known by.
-  static events = { "slot.picked": { from: ["participant" as const] }, "caller.known": { from: ["participant" as const] } };
-
+  events: { "slot.picked": { from: ["participant"] }, "caller.known": { from: ["participant"] } },
+})
+export default class FrontDesk extends Agent {
   /** The times last read from the agenda: the only ones the agent may offer. */
   slots: Slot[] = [];
   /** The time the caller tapped on their page, as `day time`. */

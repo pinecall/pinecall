@@ -296,14 +296,16 @@ def _check_voice(voice: Voice) -> None:
     if not voice.vendor or not voice.voice_id:
         raise ValidationError(
             "a voice names its vendor and the voice: `provider` and `voice_id` (or `name`) on the wire, "
-            "@voice('<vendor>', '<voice>') in a class"
+            "voice: '<vendor>/<voice>' in what a class declares"
         )
     providers.vendor_doing(voice.vendor, Stage.tts)
 
 
 def _check_model(named: Model, stage: Stage) -> Model:
     if named.end_of_turn is not None and stage is not Stage.stt:
-        raise ValidationError(f"end_of_turn is the ears': @stt('<vendor>', {{ endOfTurn: '{named.end_of_turn}' }})")
+        raise ValidationError(
+            f"end_of_turn is the ears': stt: {{ model: '<vendor>/<model>', endOfTurn: '{named.end_of_turn}' }}"
+        )
     providers.vendor_doing(named.vendor, stage)
     if stage is Stage.llm:
         providers.refuse_realtime_as_llm(named.vendor, named.model or None, named.builds)
@@ -315,6 +317,7 @@ def _check_model(named: Model, stage: Stage) -> Model:
 def _check_realtime(named: Model) -> None:
     if named.builds is not None or named.temperature is not None or named.end_of_turn is not None:
         raise ValidationError(
-            "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
+            "a realtime model takes its vendor and model, and its options: "
+            "realtime: { model: '<vendor>/<model>', options }"
         )
     check_realtime(named)

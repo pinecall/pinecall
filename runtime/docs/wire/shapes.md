@@ -382,7 +382,7 @@ What the call cost in provider fees, informational, in US dollars, the currency 
 
 ### `VoiceConfig`
 
-Which voice speaks for the agent: its vendor and the voice, by the id the vendor knows it by or the name the vendor gives it. A declaration names both, or is refused naming the two fields (`provider` and `voice_id` or `name`) and, for a class, `@voice('<vendor>', '<voice>')`; the platform keeps no list of voices of its own.
+Which voice speaks for the agent: its vendor and the voice, by the id the vendor knows it by or the name the vendor gives it. A declaration names both, or is refused naming the two fields (`provider` and `voice_id` or `name`) and, for a class, `voice: '<vendor>/<voice>'` in what it declares; the platform keeps no list of voices of its own.
 
 | field | type | required | meaning |
 |---|---|---|---|

@@ -1,10 +1,10 @@
 // Fixture: the teammate a call is passed to; it reads what it was handed and what the call's agents share.
 
-import { Agent, tool, type Call } from "../../../src/index.js";
+import { Agent, agent, tool, type Call } from "../../../src/index.js";
 
 /** You handle charges, invoices and refunds. */
+@agent({ takes: "a question about a charge, an invoice or a refund" })
 export default class Billing extends Agent {
-  static takes = "a question about a charge, an invoice or a refund";
   invoice = "";
 
   override onCall(_call: Call) {

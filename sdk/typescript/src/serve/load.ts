@@ -52,7 +52,7 @@ export async function loadAgent(file: string): Promise<Loaded> {
   return { ctor: ctor as new () => Agent, file: path, source };
 }
 
-/** Load the file served as `slug`; a class whose `static slug` says another is refused. */
+/** Load the file served as `slug`; a class that declares another slug is refused. */
 export async function loadServed(file: string, slug: string): Promise<Loaded> {
   const loaded = await loadAgent(file);
   const declared = (loaded.ctor as { slug?: unknown }).slug;

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A class exported from Studio declares itself with `@agent({ … })`**, as the TypeScript framework now takes
+  it: its greeting and when it hangs up sit above the class, not in `static` fields. The refusals of a
+  declared voice, of `end_of_turn` on a stage that is not the ears, and of a realtime model named as an llm
+  say the field as a class declares it, with no decorator.
 - **Hanging up in the console's Talk panel ends the call, however long it lasted.** The panel said its
   hang-up with the seat's token, which lives a minute: after the first minute of a call the gateway
   refused it as expired (`401`) and the call stayed live for the five minutes it waits for a visitor.

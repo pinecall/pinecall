@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **`pinecall new` writes an agent declared with `@agent({ … })`**, its judges and its callers each one list,
+  as the framework now takes them; the verbs that say where an agent's own judges and personas live say so.
+
 - **A voice app in every language:** `pinecall start` and `pinecall deploy` take the project's `app.py`
   or `app.rb` as they take its `app.ts`, the one in its agents' language.
 

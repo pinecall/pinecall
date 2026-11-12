@@ -7,7 +7,7 @@ export interface Improvised {
 }
 
 /**
- * Let the model open the call. `static greeting = improvise` opens on the prompt alone;
+ * Let the model open the call. `@agent({ greeting: improvise })` opens on the prompt alone;
  * `improvise("Greet them by name if you know it")` adds an instruction for the opening.
  * The caller cannot cut it short unless `{ interruptible: true }`.
  */

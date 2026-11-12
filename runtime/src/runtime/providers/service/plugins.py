@@ -163,7 +163,8 @@ def refuse_realtime_as_llm(vendor: str, model: str | None, builds: str | None) -
         said = f"{vendor}/{model}" if model else vendor
         raise ValidationError(
             f"{said} hears and speaks itself, so it is the agent's realtime and not its llm: "
-            f"@realtime('{said}') or --realtime {said}, and the llm stays the model a written call answers with"
+            f"realtime: '{said}' in its class, or --realtime {said}, and the llm stays the model a written call "
+            "answers with"
         )
 
 
