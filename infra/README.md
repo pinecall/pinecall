@@ -2,8 +2,9 @@
 
 The runtime on a Kubernetes cluster, from nothing, on Google Cloud. Terraform makes everything in
 the cloud (the cluster and its pools, the registry, the address, the firewall, the names, the
-secrets, the operators the chart relies on); one Helm chart runs the runtime on it. Nothing is
-made by hand and nothing is built on a laptop.
+secrets, the operators the charts rely on); three Helm charts run the runtime on it (the front
+door, Postgres, the runtime), each released by its own target. Nothing is made by hand and nothing
+is built on a laptop.
 
 | path | what |
 |---|---|
@@ -46,7 +47,7 @@ repository's checkout; a private repository is the place for it). The Makefile r
 |---|---|
 | `<cluster>.mk` | `PROJECT = <the Google Cloud project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<cluster>` |
 | `values/<cluster>.terraform.json` | what Terraform made, as the charts read it: the names, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses. Written by `make values CLUSTER=<cluster>` from the cluster root's `chart_values` output after an apply, never typed |
-| `values/<cluster>.yaml` | the decisions, read after it and winning where both speak: the registry's images, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
+| `values/<cluster>.yaml` | the decisions, read after it and winning where both speak: Postgres's image, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
 | `values/hosting-<cluster>.yaml` | `charts/hosting`'s (`infra/values/hosting-example.yaml`) |
 | `terraform/<cluster>.tfvars` | the root's variables: the project, the DNS zone, the names, the SIP names, the ranges, services of your own, the secrets you put, who alerts mail |
 | `terraform/<cluster>.backend.hcl` | the state bucket and prefix (`bucket = "…"`, `prefix = "cluster/<cluster>"`), given to `make tf-init` |
@@ -214,18 +215,18 @@ Ingress had served kept.
 
 ## The secrets the operator puts
 
-Terraform draws most of a cluster's secrets. The ones an environment names in `given`
+Terraform draws most of a cluster's secrets. The ones a cluster names in `given`
 (`terraform/modules/secrets`) are made empty, and the operator puts each once, piped, so that no
 state and no terminal holds it: `vault-key` is the key the database is sealed under (a database
 moved in from elsewhere, as production's was on 2026-10-04, keeps the key it was sealed under), `s3-access-key-id` with `s3-secret-access-key` are the object
 store's key, made by hand, and `turnstile-secret` is Cloudflare Turnstile's, where the values name
-its site key (`turnstile.siteKey`). The environment's `given_secrets` lists them.
+its site key (`turnstile.siteKey`). The cluster's `given_secrets` lists them.
 
 ```console
 $ <the value> | gcloud secrets versions add pinecall-<cluster>-<name> --data-file=-
 ```
 
-A recording moves to the object store `store` names in the environment's values (endpoint, region,
+A recording moves to the object store `store` names in the cluster's values (endpoint, region,
 bucket); unset, it stays on the pod's disk and goes with the pod. Proven on staging with the
 lab's store (moto on the generator): two calls, each recording in the bucket,
 sealed, under its org and call.
@@ -233,7 +234,7 @@ sealed, under its org and call.
 ## Hosting
 
 The orgs' hosted apps (`pinecall deploy`, `docs/protocol/hosting.md`) run on a cluster of their
-own, `terraform/modules/hosting`, made where the environment says `hosting = true`: a GKE
+own, `terraform/modules/hosting`, made where the cluster's variables say `hosting = true`: a GKE
 Autopilot cluster in a VPC of its own, so an org's code never shares a network with the platform's
 database, its gateways or its calls. Off, the runtime serves everything but hosted apps.
 
@@ -314,12 +315,13 @@ Drilled on staging on 2026-10-04: a base backup in 9 s, the restore ready in 106
 ## Alerts
 
 The alerts are written once, as a Prometheus rule file: `charts/pinecall/alerts.yaml`. Who
-collects the metrics and evaluates the rules is the environment's `monitoring.collector` in
-values file (`OPS/values/<cluster>.yaml`), which both charts read and neither guesses (unset, the release fails):
+collects the metrics and evaluates the rules is the cluster's `monitoring.collector` in its values
+(`OPS/values/<cluster>.terraform.json` on Google Cloud, where Terraform says it), which both charts
+read and neither guesses (unset, the release fails):
 
 | `monitoring.collector` | collects | evaluates and tells |
 |---|---|---|
-| `gmp` (Google Cloud) | Google's Managed Prometheus: a `PodMonitoring` for the gateways and one for Postgres | `terraform/modules/alerts`, a Cloud Monitoring policy for each rule (scoped to the cluster, as a project holds several), mailed to the environment's `emails`, and an uptime check of the name |
+| `gmp` (Google Cloud) | Google's Managed Prometheus: a `PodMonitoring` for the gateways and one for Postgres | `terraform/modules/alerts`, a Cloud Monitoring policy for each rule (scoped to the cluster, as a project holds several), mailed to the cluster's `alert_emails`, and an uptime check of the name |
 | `prometheus-operator` (any other cluster: EKS, AKS, your own) | the cluster's Prometheus: a `PodMonitor` for each | the cluster's Prometheus, `alerts.yaml` carried as the chart's `PrometheusRule`; Alertmanager tells whom it is told to, and the name's check from outside is that cloud's own (a Route 53 health check, a blackbox exporter) |
 | `none` | nothing | nothing |
 
@@ -338,7 +340,7 @@ mails it.
 ## Services of your own
 
 A service of the operator's own (a notifier, billing) runs on the same cluster as its own chart,
-released beside the runtime's and never part of it: its name (`services` in the environment) an
+released beside the runtime's and never part of it: its name (`services` in the cluster's variables) an
 `HTTPRoute` on this Gateway under `modules/edge`'s services certificate, its credentials the
 secret store's (`given_secrets`), the runtime reached at `http://pinecall-gateway:8080` with the
 ops key. A notifier that signs pushes does it as `modules/notify`'s identity
