@@ -59,7 +59,9 @@ def _find_orgs_table() -> Table | None:
 
 def _lines_of(table: Table, kept: Kept, org: str, env: Env) -> Select[str]:
     renamed = dict(kept.renamed)
-    pairs: list[object] = [literal(KIND), literal(kept.exported_as or table.name)]
+    # A table's name is SQLAlchemy's own kind of string, which it binds with no type: said as text, or
+    # Postgres cannot tell what the value of a JSON pair is.
+    pairs: list[object] = [literal(KIND), literal(str(kept.exported_as or table.name), Text)]
     for column in kept.exported:
         pairs += [literal(renamed.get(column, column)), table.c[column]]
     owner = _find_owner_column(table)
