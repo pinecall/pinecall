@@ -1,11 +1,15 @@
 """Tests for a ring handed to the sandbox by SIP: its pair, headers, dispatch and bridge."""
 
+import secrets
+
 from livekit import api
 from livekit.protocol.models import ParticipantInfo, Room
 from livekit.protocol.sip import CreateSIPParticipantRequest
 from livekit.protocol.webhook import WebhookEvent
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.enums import Env
+from runtime.jobs.service.client import GatewayClient
 from runtime.telephony.service.hand_over import (
     ATTRIBUTE_OF,
     HEADER_OF,
@@ -19,6 +23,7 @@ from runtime.telephony.service.hand_over import (
 )
 from runtime.wire.dispatch import AGENT_HEADER, HOLDER_HEADER, ORG_HEADER, Dispatch
 from runtime.wire.worker import LegTrunk, RingHandoff
+from tests.conftest import Gateway, Tenant, holding, make_tenant, needs_the_services
 from tests.fakes.livekit import A_SECRET, Server
 from tests.jobs.service.test_arrival import (
     CALLER,
@@ -141,3 +146,26 @@ async def test_a_hand_over_the_sandbox_does_not_answer_leaves_the_ring_here() ->
     handed = RingHandoff(holder="m_ana", fleet="pinecall-sandbox", trunk=TO_THE_SANDBOX)
     assert not await hand_on(server, "call_1", handed=handed, moved=HANDED, number=NUMBER)
     await server.aclose()
+
+
+# A Studio agent is held by the gateway in the org's own corner: a developer's phone at the
+# production number reached nothing of the sandbox's (2026-11-05), the hand-over wanted a person's.
+@needs_the_services
+async def test_a_production_ring_from_a_members_phone_is_handed_to_the_orgs_own_sandbox_copy_and_to_no_other_orgs(
+    gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    caller = a_number()
+    async with holding(gateway, tenant, agent):
+        assert (await fleet.ring_for(agent, tenant.org, caller)).holder is None, "a phone nobody said was theirs"
+        await gateway.http.put("/v1/line/from", json={"number": caller}, headers=tenant.person)
+        assert (await fleet.ring_for(agent, tenant.org, caller)).holder == ""
+        # Another org's member saying the phone is theirs takes it: it diverts nothing of this org's.
+        other = await make_tenant(sessions)
+        await gateway.http.put("/v1/line/from", json={"number": caller}, headers=other.person)
+        assert (await fleet.ring_for(agent, tenant.org, caller)).holder is None
+        await gateway.http.delete("/v1/line/from", headers=other.person)
+
+
+def a_number() -> str:
+    """A number of this test alone: a number is one org's on the whole box."""
+    return f"+1555{secrets.randbelow(10**7):07d}"

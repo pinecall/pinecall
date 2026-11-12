@@ -1,13 +1,18 @@
 """The route a call takes: the agent the job names, else the number dialled, else the worker's default."""
 
+from typing import cast
+
 import pytest
 
 from runtime.calls.context import Route
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound
-from runtime.jobs.service.arrival import may_be_a_developers, resolve_route
+from runtime.jobs.service import arrival
+from runtime.jobs.service.arrival import may_be_a_developers, may_be_a_testers, resolve_route
+from runtime.jobs.service.client import GatewayClient
 from runtime.telephony.service.legs import Arrival
 from runtime.wire.dispatch import Dispatch
+from runtime.wire.worker import RingAtTestLine
 
 NUMBER = "+15550100"
 CALLER = "+15550199"
@@ -69,3 +74,44 @@ def test_only_an_undispatched_ring_at_a_production_number_may_be_a_developers() 
     assert not may_be_a_developers(Dispatch(), A_PHONE, IN_THE_SANDBOX)
     assert not may_be_a_developers(Dispatch(agent="front"), A_PHONE, AT_THE_NUMBER)
     assert not may_be_a_developers(Dispatch(), A_PAGE, AT_THE_NUMBER)
+
+
+def test_only_an_undispatched_ring_at_a_sandbox_number_may_be_a_testers() -> None:
+    assert may_be_a_testers(Dispatch(org="org_box", env=Env.sandbox), A_PHONE, IN_THE_SANDBOX)
+    assert not may_be_a_testers(Dispatch(), A_PHONE, AT_THE_NUMBER), "production's rings are the hand-over's"
+    assert not may_be_a_testers(Dispatch(agent="front"), A_PHONE, IN_THE_SANDBOX), "a job told its agent"
+    assert not may_be_a_testers(Dispatch(), A_PAGE, IN_THE_SANDBOX), "a page dialled no number"
+
+
+A_TESTERS_RING = Dispatch(org="org_a", env=Env.sandbox)
+
+
+class Answering:
+    """The gateway saying whose sandbox agent a ring at the test line is for."""
+
+    def __init__(self, handed: RingAtTestLine) -> None:
+        """What it answers."""
+        self.handed = handed
+
+    async def ring_at_test_line(self, number: str, caller: str) -> RingAtTestLine:
+        """The same answer for every ring."""
+        del number, caller
+        return self.handed
+
+
+async def test_the_route_a_known_caller_takes_is_their_orgs_agent_at_the_number_dialled() -> None:
+    gateway = cast(GatewayClient, Answering(RingAtTestLine(org="org_b", agent="front", holder="m_x")))
+    taken, moved = await arrival._ring_the_tester(
+        gateway, Dispatch(org="org_a", env=Env.sandbox), A_PHONE, IN_THE_SANDBOX
+    )
+    assert taken == Route(org="org_b", agent="front", channel=Channel.phone, number=NUMBER, env=Env.sandbox)
+    assert (moved.org, moved.agent, moved.holder, moved.caller) == ("org_b", "front", "m_x", CALLER)
+
+
+async def test_a_phone_nobody_said_was_theirs_stays_with_the_numbers_agent_told_why() -> None:
+    gateway = cast(GatewayClient, Answering(RingAtTestLine()))
+    taken, moved = await arrival._ring_the_tester(
+        gateway, Dispatch(org="org_a", env=Env.sandbox), A_PHONE, IN_THE_SANDBOX
+    )
+    assert taken == IN_THE_SANDBOX
+    assert moved.metadata["test_line"] == arrival.PHONE_NOT_SAID
