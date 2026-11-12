@@ -116,6 +116,8 @@ class Box:
 
 type RunTool = Callable[[ToolUse, str | None], Awaitable[ToolResult]]
 type Seal = Callable[[list[ModelUsage], str], Awaitable[None]]
+type Release = Callable[[], Awaitable[None]]
+type LookUp = Callable[[PlatformTool, JsonObject, str | None], Awaitable[JsonObject]]
 
 
 @dataclass
@@ -125,6 +127,8 @@ class Through:
     box: Box
     run: RunTool | None = None
     sealing: Seal | None = None
+    releasing: Release | None = None
+    looking: LookUp | None = None
 
     async def append_many(self, entries: Sequence[BatchedEntry], *, after: int) -> list[Entry]:
         """The box's log."""
@@ -135,15 +139,16 @@ class Through:
         return await (self.run or self.box.run_tool)(use, speech)
 
     async def look_up(self, tool: PlatformTool, arguments: JsonObject, speech: str | None) -> JsonObject:
-        """The box's index."""
-        return await self.box.look_up(tool, arguments, speech)
+        """The test's index, else the box's."""
+        return await (self.looking or self.box.look_up)(tool, arguments, speech)
 
     async def seal(self, usage: list[ModelUsage], outcome: str) -> None:
         """The test's seal, else the box's."""
         await (self.sealing or self.box.seal)(usage, outcome)
 
     async def release_seal(self) -> None:
-        """Nothing waits for the app's end hook here."""
+        """The test's word that the app's end hook ran, else the box's."""
+        await (self.releasing or self.box.release_seal)()
 
 
 @pytest.fixture

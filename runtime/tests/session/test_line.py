@@ -306,3 +306,17 @@ async def test_a_transfer_is_written_here_and_finished_by_the_transfer_applier(
     assert found.data["mode"] == "cold"
     ended = next(entry for entry in entries if entry.type == "call.ended")
     assert ended.data["reason"] == "transferred"
+
+
+@needs_the_database
+async def test_the_agent_may_speak_until_a_person_has_the_line_or_is_being_waited_for(box: Box) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    assert session.line.agent_may_speak
+    await apply(session, CallAttention(reason="ayuda", wait_s=30))
+    assert not session.line.agent_may_speak
+    await apply(session, supervised(TakeoverVerb()))
+    assert not session.line.agent_may_speak
+    await apply(session, supervised(ReleaseVerb()))
+    assert session.line.agent_may_speak
+    await session.end("caller_hung_up", "caller")

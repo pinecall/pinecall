@@ -1,20 +1,30 @@
 """Tests for a live call taking its model and its voice anew, as the agent's settings name them now."""
 
+from collections.abc import Callable
+from typing import cast
+
 import pytest
 from livekit.agents import llm
+from livekit.agents.llm._provider_format import google as gemini_format
 
-from runtime.agents.declaration import Declaration
+from runtime.agents.declaration import Declaration, Docs
 from runtime.calls.log.store import Store
 from runtime.enums import Stage
 from runtime.exceptions import Conflict, PinecallError
+from runtime.kit.text import JsonObject
+from runtime.providers.service.stages import llm_of
 from runtime.providers.stage import Running
+from runtime.session.call import Call
+from runtime.session.lookups import Lookups
+from runtime.session.prompt import Blocks, request
 from runtime.session.service import take_stages
+from runtime.session.stages import INJECTED_SIGNATURE, sign_calls
 from runtime.session.writing import WRITTEN_WITHIN_S
 from runtime.wire.events import StageChanged
 from tests.conftest import needs_the_database
 from tests.fakes import talker
 from tests.fakes.acme import ACME
-from tests.session.conftest import Box, a_session, hear, kinds, settled, spoken_call
+from tests.session.conftest import Box, a_session, context_of, hear, kinds, settled, spoken_call
 
 NOBODY = Declaration(slug="clinica-norte")
 
@@ -105,3 +115,37 @@ async def test_a_stage_its_vendor_refuses_leaves_the_call_on_the_stages_it_had(b
     with pytest.raises(PinecallError):
         await take_stages(session, {**running, Stage.tts: Running("a-vendor-nobody-installed", "k")}, alone=False)
     assert (session.built, session.running, session.agent) == (built, running, agent)
+
+
+# Gemini 3 refuses a turn holding a function call it did not write and no thought signature: the
+# search the platform ran before the turn is one, and the model's own tool call after it was answered
+# "Function call is missing a thought_signature" (400), the call ended in an error.
+@needs_the_database
+async def test_a_lookup_put_in_a_gemini_turn_carries_the_signature_gemini_skips_and_no_other_model_is_touched(
+    box: Box,
+) -> None:
+    pytest.importorskip("livekit.plugins.google")
+    gemini = llm_of(Running("google", "k", model="gemini-3.5-flash-lite"))
+    box.found["search"] = {"chunks": [{"text": "las tortas se encargan con dos días"}]}
+    assert box.log.call is not None
+    asked = Call(context_of(box.log.call), Declaration(slug="a", bases=(Docs(base="encargos"),)), box)
+    lookups = Lookups(asked, 200)
+    assert await lookups.end_turn("quiero encargar una torta") == []
+    sign_calls((gemini,), [item.call_id for item in lookups.items if isinstance(item, llm.FunctionCall)])
+    history = llm.ChatContext.empty()
+    history.add_message(role="user", content="quiero encargar una torta")
+    sent = request(history, Blocks(), lookups.items)
+    signatures = cast(dict[str, bytes], vars(vars(gemini)["built"])["_thought_signatures"])
+    to_gemini: Callable[..., tuple[object, object]] = vars(gemini_format)["to_chat_ctx"]
+    turns = to_gemini(sent, thought_signatures=signatures)[0]
+    called = [
+        part
+        for turn in cast(list[JsonObject], turns)
+        for part in cast(list[JsonObject], turn["parts"])
+        if "function_call" in part
+    ]
+    assert called and all(part.get("thought_signature") == INJECTED_SIGNATURE for part in called)
+
+    claude = llm_of(Running("anthropic", "k", model="claude-haiku-5-5"))
+    sign_calls((claude,), ["lu_1_search"])
+    assert not hasattr(vars(claude).get("built", claude), "_thought_signatures")

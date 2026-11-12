@@ -85,6 +85,8 @@ class Seated(rtc.LocalParticipant):
         super().__init__(BroadcastQueue(), owned)
         self.published: list[tuple[str, bytes, list[str]]] = []
         self.tones: list[str] = []
+        # Who left as a packet went to them: sending to them fails, as livekit's does.
+        self.left: set[str] = set()
 
     @override
     async def publish_data(
@@ -95,7 +97,9 @@ class Seated(rtc.LocalParticipant):
         destination_identities: list[str] | None = None,
         topic: str = "",
     ) -> None:
-        """Keep the packet."""
+        """Keep the packet; one sent to somebody who left fails."""
+        if self.left.intersection(destination_identities or []):
+            raise RuntimeError("the participant left")
         packed = payload if isinstance(payload, bytes) else payload.encode()
         self.published.append((topic, packed, list(destination_identities or [])))
 

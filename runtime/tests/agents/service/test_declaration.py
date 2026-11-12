@@ -4,10 +4,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
-from runtime.agents.declaration import Declaration, Docs, Greeting, MemoryPolicy
-from runtime.agents.service.declaration import declaration_of, declare, put_declaration
+from runtime.agents.declaration import Declaration, Docs, Greeting, MemoryPolicy, ToolSpec
+from runtime.agents.service.declaration import apply_declaration, declaration_of, declare, list_changes, put_declaration
 from runtime.enums import Env, Stage
 from runtime.exceptions import ValidationError
+from runtime.kit.text import JsonObject
 from runtime.providers.stage import Model, Voice
 from runtime.wire.declaration import AgentConfig as Declared
 from runtime.wire.declaration import (
@@ -26,6 +27,7 @@ from runtime.wire.declaration import (
     WidgetLook,
 )
 from runtime.wire.parts import PromptBlockSpec
+from runtime.wire.parts import ToolSpec as WiredTool
 from tests.conftest import Tenant, needs_the_database
 from tests.fakes import talker
 from tests.fakes.acme import ACME, AcmeLLM, AcmeSTT
@@ -281,3 +283,21 @@ async def test_a_scope_reads_its_own_declaration_else_the_orgs_own_never_another
         mine = await declaration_of(session, ana, SLUG)
     assert theirs is not None and theirs.fixed == frozenset({"record"})
     assert mine is not None and mine.fixed == frozenset({"language"})
+
+
+def test_a_declaration_a_call_is_sent_changes_only_the_fields_the_app_sent() -> None:
+    """A configure keeps what it does not name, and a tool it sends keeps the timeout tools have."""
+    book = ToolSpec("book", "Book.", {"type": "object"})
+    current = Declaration(slug="a", language="es-ES", tools=(book,))
+    parameters: JsonObject = {"type": "object", "properties": {"phone": {"type": "string"}}}
+    wired = WiredTool(name="cancel", description="d", parameters=parameters, pii=["phone"])
+    patched = apply_declaration(current, Declared(tools=[wired], uses_knowledge=True))
+    assert patched.language == "es-ES"
+    assert patched.uses_knowledge
+    assert [(tool.name, tool.pii) for tool in patched.tools] == [("cancel", frozenset({"phone"}))]
+    assert patched.tools[0].timeout_s == book.timeout_s
+
+
+def test_the_fields_a_declaration_changed_are_named_sorted() -> None:
+    """What agent.configured says changed, in order."""
+    assert list_changes(Declared(view=None, language="en")) == ["language", "view"]

@@ -2,7 +2,12 @@
 
 from dataclasses import dataclass, field
 
-from runtime.providers.service.llm_requests import count_unreported_cache_as_none
+from livekit.agents import llm
+
+from runtime.providers.service import stages
+from runtime.providers.service.llm_requests import LLMWithRequest, count_unreported_cache_as_none
+from runtime.providers.stage import Running
+from tests.fakes.acme import ACME, AcmeLLM
 
 
 @dataclass
@@ -55,3 +60,21 @@ def test_counts_the_vendor_gives_are_left_as_given() -> None:
 def test_a_stream_with_no_such_events_is_left_as_it_is() -> None:
     plain = object()
     assert count_unreported_cache_as_none(plain) is plain  # pyright: ignore[reportArgumentType]
+
+
+# livekit's own intent judge (`run_result.py`) asks every model for temperature 0; the operator
+# chose the model's own, and a vendor's SDK may take no such argument at all.
+async def test_a_callers_sampling_never_rides_a_request_and_the_rows_fields_always_do() -> None:
+    staged = stages.llm_of(Running(ACME, "k", request={"thinking": {"effort": "low"}}))
+    history = llm.ChatContext.empty()
+    history.add_message(role="user", content="¿Abren el sábado?")
+    async with staged.chat(chat_ctx=history, extra_kwargs={"temperature": 0.0, "top_p": 0.1, "seed": 7}):
+        pass
+    assert isinstance(staged, LLMWithRequest) and isinstance(staged.built, AcmeLLM)
+    assert staged.built.requests[0].extra == {"thinking": {"effort": "low"}, "seed": 7}
+
+    bare = stages.llm_of(Running(ACME, "k"))
+    async with bare.chat(chat_ctx=history, extra_kwargs={"temperature": 0.0}):
+        pass
+    assert isinstance(bare, LLMWithRequest) and isinstance(bare.built, AcmeLLM)
+    assert bare.built.requests[0].extra == {}
