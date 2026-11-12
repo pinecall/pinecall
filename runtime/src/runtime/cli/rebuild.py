@@ -5,8 +5,7 @@ from typing import Annotated
 import typer
 
 from runtime.billing.service import usage
-from runtime.calls.repository.rebuild import Refolding
-from runtime.calls.service import refold
+from runtime.calls.service import Refolding, refold
 from runtime.cli.command import OK, context_of, verb
 from runtime.cli.terminal import day_of
 from runtime.insights.service import drift

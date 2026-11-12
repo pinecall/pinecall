@@ -9,8 +9,7 @@ import typer
 from runtime import builders
 from runtime.calls.folds.facts import CallFacts
 from runtime.calls.folds.state import reduce
-from runtime.calls.repository.heads import CallHead
-from runtime.calls.service import lists
+from runtime.calls.service import CallHead, lists
 from runtime.cli.command import FOUND_WRONG, OK, Context, context_of, verb
 from runtime.cli.output import when
 from runtime.compliance.service import reads

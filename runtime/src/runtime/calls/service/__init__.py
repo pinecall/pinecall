@@ -2,6 +2,7 @@
 
 from runtime.calls.context import call_id_of
 from runtime.calls.repository.heads import CallHead, Claim
+from runtime.calls.repository.rebuild import Refolding
 from runtime.calls.repository.search import PersonaRun, PersonaRunFilters
 from runtime.calls.repository.unsealed import Unsealed
 from runtime.calls.service.days import DaysKept, keep_days
@@ -62,6 +63,7 @@ __all__ = [
     "PersonaRunFilters",
     "Prompts",
     "Reader",
+    "Refolding",
     "Unsealed",
     "add_caller_cost",
     "call_id_of",
