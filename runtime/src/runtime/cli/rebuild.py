@@ -15,10 +15,6 @@ facts_app = typer.Typer(help="each call's facts, folded from its log", no_args_i
 drift_app = typer.Typer(help="each day's drift, counted at the seal", no_args_is_help=True)
 usage_app = typer.Typer(help="each org's usage totals, from its log", no_args_is_help=True)
 
-FACTS_REBUILT = (
-    "{calls} calls refolded, {rewritten} facts rows rewritten, {left} left as they were:"
-    " their log holds an entry this release cannot read"
-)
 
 Org = Annotated[str | None, typer.Option("--org", help="An org's calls, by its id.")]
 Since = Annotated[str | None, typer.Option("--since", help="A day, YYYY-MM-DD.")]
@@ -39,7 +35,10 @@ async def facts_rebuild(
     if context.out.as_json:
         context.out.data(done)
     else:
-        context.out.line(FACTS_REBUILT.format(calls=done.calls, rewritten=done.rewritten, left=done.left))
+        context.out.line(
+            f"{done.calls} calls refolded, {done.rewritten} facts rows rewritten, {done.left} left as they "
+            "were: their log holds an entry this release cannot read"
+        )
     return OK
 
 

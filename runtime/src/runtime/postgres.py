@@ -43,14 +43,12 @@ POOL_WAIT_S = 2.0
 # answer when Postgres does not.
 DatabaseError = SQLAlchemyError
 
-# What a request is told when every connection was taken for POOL_WAIT_S: the same sentence from
-# an endpoint, the middleware that resolves its actor, and an app's socket. A worker retries a 503.
-NO_CONNECTION = "the database is busy: no connection came free within {wait:g} s; try again"
-
 
 def busy() -> ServiceUnavailable:
     """The refusal of a request that found no connection free in time."""
-    return ServiceUnavailable(NO_CONNECTION.format(wait=POOL_WAIT_S))
+    # What a request is told when every connection was taken for POOL_WAIT_S: the same sentence from
+    # an endpoint, the middleware that resolves its actor, and an app's socket. A worker retries a 503.
+    return ServiceUnavailable(f"the database is busy: no connection came free within {POOL_WAIT_S:g} s; try again")
 
 
 def is_pool_timeout(error: BaseException) -> bool:

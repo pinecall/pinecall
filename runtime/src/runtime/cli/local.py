@@ -16,9 +16,6 @@ from runtime.enums import Role
 
 app = typer.Typer(help="the runtime whole on this machine, for developing an agent", no_args_is_help=True)
 
-UP = "local · Postgres :55433 · Redis :56380 · LiveKit :7880 · settings in {env}\nconsole   {gateway}/sandbox/"
-FIRST = "  a runtime nobody set up yet: `pinecall-runtime setup` makes its admin and signs this machine in"
-SERVING = "{name}: up, kept up by Docker across reboots · logs: pinecall-runtime local logs"
 # Every profile the two compose files name, so `down` stops a server's services too.
 ALL_PROFILES = ("phone", "server", "server-livekit", "server-phone")
 DOWN = "local: the services stopped; the database and {env} are kept"
@@ -55,11 +52,18 @@ async def local_up(
     if serving is not None:
         server.bring_up(where, serving, env.read(), None, build=False)
         server.wait_for_https(serving.name)
-        context.out.line(SERVING.format(name=f"https://{serving.name}"))
+        context.out.line(
+            f"https://{serving.name}: up, kept up by Docker across reboots · logs: pinecall-runtime local logs"
+        )
         return OK
-    context.out.line(UP.format(env=env.path, gateway=GATEWAY_URL))
+    context.out.line(
+        f"local · Postgres :55433 · Redis :56380 · LiveKit :7880 · settings in {env.path}\nconsole   "
+        f"{GATEWAY_URL}/sandbox/"
+    )
     if history.applied:
-        context.out.line(FIRST)
+        context.out.line(
+            "  a runtime nobody set up yet: `pinecall-runtime setup` makes its admin and signs this machine in"
+        )
     if services_only:
         return OK
     return children.run_children(context.out, env.read(), children.GATEWAY, children.WORKER, children.RUNNER)

@@ -10,7 +10,6 @@ from typing import IO
 from runtime.cli.command import FOUND_WRONG, OK
 from runtime.cli.output import Printer
 
-RUNNING = "Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again."
 # The runner of what `pinecall deploy` sends a runtime of one's own.
 RUNNER = ["runner", "start"]
 GATEWAY = ["gateway"]
@@ -35,7 +34,7 @@ def run_children(out: Printer, values: dict[str, str], *verbs: list[str]) -> int
     ]
     for reader in readers:
         reader.start()
-    out.line(RUNNING)
+    out.line("Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again.")
 
     def stop(_signal: int, _frame: object) -> None:
         for child in children:

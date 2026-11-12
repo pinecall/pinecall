@@ -22,11 +22,6 @@ ENV_HEADER = "pinecall-env"
 # An admin, in the sandbox, looking into a colleague's scope.
 HOLDER_HEADER = "pinecall-corner"
 
-TAKES_A_KEY = "this endpoint takes an API key"
-NOT_A_LIVE_KEY = (
-    "this key opens nothing here: revoked, mistyped or another deployment's. "
-    "Sign in again with `pinecall login`, or mint a new one"
-)
 # What every key of ours starts with, by the env it acts in.
 KEY_PREFIX: dict[Env, str] = {Env.production: "pc_live_", Env.sandbox: "pc_test_"}
 
@@ -37,7 +32,14 @@ def no_actor(connection: HTTPConnection) -> Unauthorized:
     """The 401 for a request that reached a key's endpoint with no live key."""
     secret = authorization_of(connection)
     sent = secret is not None and secret.startswith(tuple(KEY_PREFIX.values()))
-    return Unauthorized(NOT_A_LIVE_KEY if sent else TAKES_A_KEY)
+    return Unauthorized(
+        (
+            "this key opens nothing here: revoked, mistyped or another deployment's. Sign in again with `pinecall "
+            "login`, or mint a new one"
+        )
+        if sent
+        else "this endpoint takes an API key"
+    )
 
 
 def authorization_of(request: HTTPConnection) -> str | None:

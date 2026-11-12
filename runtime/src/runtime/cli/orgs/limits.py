@@ -20,7 +20,6 @@ from runtime.wire.parts import QuotaName
 EnvOption = Annotated[Env, typer.Option("--env")]
 Limit = Annotated[int | None, typer.Option()]
 Lends = Annotated[str, typer.Argument(help="vendor[/model],… | all | none", metavar="<lends>")]
-NO_SSO = "org {slug} signs in with no identity provider"
 
 
 # What the box lends is `orgs lends`'s: the quota written here keeps what it lends and its simulations' shape.
@@ -150,7 +149,7 @@ async def orgs_sso(ctx: typer.Context, org: str, off: Annotated[bool, typer.Opti
     if context.out.as_json:
         context.out.data(row)
     elif not row.configured:
-        context.out.line(NO_SSO.format(slug=found.slug))
+        context.out.line(f"org {found.slug} signs in with no identity provider")
     else:
         required = "required" if row.required else "a password opens it too"
         context.out.line(f"{row.issuer}  client {row.client_id}  {required}")

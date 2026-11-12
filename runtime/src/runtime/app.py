@@ -23,9 +23,6 @@ from runtime.postgres import STATEMENT_TIMEOUT_MS, busy
 
 logger = logging.getLogger(__name__)
 
-# The second way a database too busy to answer now shows (the first is the pool's, `busy`); a
-# worker outlasts a 503 and retries.
-TOO_SLOW = "the database took more than {took:g} s to answer; try again"
 QUERY_CANCELED = "57014"
 INTERNAL = "the gateway failed to answer this request"
 
@@ -68,7 +65,12 @@ async def answer_busy(request: Request, error: Exception) -> Response:
     if isinstance(error, PoolTimeout):
         return await answer_refusal(request, busy())
     if isinstance(error, DBAPIError) and getattr(error.orig, "sqlstate", None) == QUERY_CANCELED:
-        return await answer_refusal(request, ServiceUnavailable(TOO_SLOW.format(took=STATEMENT_TIMEOUT_MS / 1000)))
+        # The second way a database too busy to answer now shows (the first is the pool's, `busy`); a
+        # worker outlasts a 503 and retries.
+        return await answer_refusal(
+            request,
+            ServiceUnavailable(f"the database took more than {STATEMENT_TIMEOUT_MS / 1000:g} s to answer; try again"),
+        )
     logger.error("the database refused a request", exc_info=error)
     return JSONResponse({"detail": INTERNAL}, status_code=500)
 

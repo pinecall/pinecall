@@ -15,7 +15,6 @@ from runtime.cli.setup.files import GATEWAY_URL, write_shipped
 from runtime.cli.terminal import read_secret_line
 from runtime.exceptions import ValidationError
 
-FIRST_RUN = "  starting  the first run downloads the services and the models: some minutes"
 NEXT_HERE = """  ✓ ready   {gateway}/sandbox/
   ✓ this machine is signed in — no `pinecall login` needed
 
@@ -92,7 +91,7 @@ async def carry_out(flags: Flags, out: Printer) -> int:
         flags.email, flags.person, before, asking=flags.asking, password_stdin=flags.password_stdin, server=bool(wanted)
     )
     if first_run:
-        out.line(f"\n{FIRST_RUN}")
+        out.line("\n  starting  the first run downloads the services and the models: some minutes")
     env = write_shipped(flags.where)
     started = ("postgres", "redis") if flags.chat_only or wanted else compose.SERVICES
     compose.services_up(flags.where, started)

@@ -13,7 +13,6 @@ from runtime.scoping import box_wide
 
 app = typer.Typer(help="the operator's URL, where every org's alerts are posted too", no_args_is_help=True)
 
-REACHES = "every org's alerts reach the operator at {url} · {signed}"
 A_SECRET = "the signing secret, from stdin"
 
 
@@ -27,7 +26,9 @@ async def box_alerts_show(ctx: typer.Context) -> int:
             found = await webhooks.operator_webhook_of(session, context.vault)
     if found is None:
         raise NotFound("the box posts its orgs' alerts nowhere: `pinecall-runtime box alerts set <url>` names a URL")
-    context.out.line(REACHES.format(url=found.url, signed="signed" if found.signed else "unsigned"))
+    context.out.line(
+        f"every org's alerts reach the operator at {found.url} · {'signed' if found.signed else 'unsigned'}"
+    )
     return OK
 
 
@@ -44,7 +45,9 @@ async def box_alerts_set(
     async with context.sessions.begin() as session:
         with box_wide():
             await webhooks.put_operator_webhook(session, context.vault, webhook)
-    context.out.line(REACHES.format(url=webhook.url, signed="signed" if webhook.signed else "unsigned"))
+    context.out.line(
+        f"every org's alerts reach the operator at {webhook.url} · {'signed' if webhook.signed else 'unsigned'}"
+    )
     return OK
 
 

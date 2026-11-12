@@ -18,8 +18,6 @@ MOST_A_BATCH = 64
 # Past this many waiting, an ephemeral entry is shed: no store keeps it. A durable one is always
 # queued, so a gateway that was away never leaves a hole in the log.
 MOST_QUEUED = 4096
-SHED = "call {call}: {queued} entries wait for the log, so {kind} was shed"
-CLOSED = "call {call}: its log is sealed and its writer closed, so {kind} was refused"
 # What a call waits for its log to take what it wrote; past it, at the end, the gateway's reaper
 # seals what the call could not.
 WRITTEN_WITHIN_S = 20.0
@@ -66,7 +64,9 @@ class Writing:
         waiting = self.queued.qsize()
         if forgettable and waiting >= MOST_QUEUED:
             self.shed.append(kind)
-            _refuse(written, ServiceUnavailable(SHED.format(call=self.call, queued=waiting, kind=kind)))
+            _refuse(
+                written, ServiceUnavailable(f"call {self.call}: {waiting} entries wait for the log, so {kind} was shed")
+            )
             return written
         entry = BatchedEntry(type=kind, data=event.dump(), ephemeral=ephemeral, ts=time.time())
         if self.closed:
@@ -74,7 +74,12 @@ class Writing:
             named = _name_of(entry)
             logger.warning("call %s: the log refused a batch of %d (%s): the writer is closed", self.call, 1, named)
             self.refused.append(named)
-            _refuse(written, ServiceUnavailable(CLOSED.format(call=self.call, kind=named)))
+            _refuse(
+                written,
+                ServiceUnavailable(
+                    f"call {self.call}: its log is sealed and its writer closed, so {named} was refused"
+                ),
+            )
             return written
         self.queued.put_nowait((entry, written))
         return written

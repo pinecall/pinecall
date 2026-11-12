@@ -21,8 +21,6 @@ from runtime.wire.events import TERMINAL_EVENT, CallSummary
 
 app = typer.Typer(help="the log, off Postgres", no_args_is_help=True)
 
-NOT_RECORDED = "call {call} was not recorded: its call.summary carries no path"
-
 
 @dataclass(frozen=True, slots=True)
 class Listed:
@@ -111,7 +109,7 @@ async def sessions_recording(ctx: typer.Context, call: str) -> int:
     summary = next((entry for entry in reversed(entries) if entry.type == "call.summary"), None)
     path = None if summary is None else CallSummary.model_validate(summary.data).recording
     if path is None:
-        context.out.warn(NOT_RECORDED.format(call=call))
+        context.out.warn(f"call {call} was not recorded: its call.summary carries no path")
         return FOUND_WRONG
     context.out.secret(path)
     return OK
