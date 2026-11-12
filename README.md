@@ -135,7 +135,8 @@ app.line("+1 415 555 0134", { greeting: "Brightside Dental. How can I help?", an
 app.rule("Never say an amount of money that a tool did not give you.");
 
 // A flow outlives the call that started it: the day before the visit, the agent calls the patient.
-const remindVisit = flow("remind-visit", async (visit, step) => {
+const remindVisit = flow("remind-visit", async (booked, step) => {
+  const visit = booked as unknown as Visit & { phone: string };
   await step.sleepUntil(startsAt(visit), { before: "24h" });
   await step.call(visit.phone, FrontDesk, { instruction: `Remind ${visit.patient} of the visit.` });
 });
