@@ -2,11 +2,13 @@
 
 import asyncio
 import contextlib
+import logging
+import time
 from collections.abc import Iterable
 
 from pinecall_runtime.agents.service import registry as agents_registry
 from pinecall_runtime.calls.reducer import reduce, unanswered_tools
-from pinecall_runtime.calls.service.live import Live, Served
+from pinecall_runtime.calls.service.live import OPENER_SILENT_S, Live, Served
 from pinecall_runtime.calls.service.peers import HANDOFF_CHANNEL, Handoff, Unbound, heard_handoff, tell_handoff
 from pinecall_runtime.exceptions import ServiceUnavailable
 from pinecall_runtime.kit.auth import Scope
@@ -14,6 +16,8 @@ from pinecall_runtime.kit.loops import survived
 from pinecall_runtime.postgres import box_task
 from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.events import CallAttached, CallStarted
+
+logger = logging.getLogger(__name__)
 
 # Entries a taking-over socket is rebuilt from; the prompt is not, the log keeps its hash alone.
 STARTED = "call.started"
@@ -23,6 +27,8 @@ CLAIMED = "call.claimed"
 # to be asked at all: the signal answers or says it is down within two seconds.
 HEARD_RETRY_S = 1.0
 ASKED_WITHIN_S = 5.0
+# How often the calls whose opener is gone are looked for: a caller is on the line, and each tool it calls waits.
+ADOPTED_EVERY_S = 1.0
 
 
 async def attach(live: Live, call: str, app: agents_registry.SocketId) -> Entry | None:
@@ -106,27 +112,63 @@ async def hand_parked(live: Live, registry: agents_registry.AgentRegistry) -> li
     return handed
 
 
+# A spoken call outlives the gateway that opened it: its worker goes on and reads its commands from
+# another, which held it as a copy alone. So no socket that took its agent was handed it, its tools
+# waited out their deadline, and after its opener was forgotten it held no seat of its org. The
+# gateway its worker reads from adopts it. Two gateways that adopted one call, each deaf to the other
+# for a moment, settle it when they hear each other: the one of the greater id leaves it.
+async def adopt_orphans(live: Live, registry: agents_registry.AgentRegistry, now: float) -> list[str]:
+    """Take as this gateway's the calls whose opener is gone and whose worker reads here; hand them on; which."""
+    if now - live.heard_since < OPENER_SILENT_S:
+        return []
+    elsewhere = live.opened_elsewhere(now)
+    mine = live.counted.id
+    for call, served in list(live.calls.items()):
+        if served.opened_here and served.running is None and elsewhere.get(call, mine) < mine:
+            live.disown(call)
+    adopted = [
+        call
+        for call in live.followed
+        if call in live.calls and not live.calls[call].opened_here and call not in elsewhere
+    ]
+    for call in adopted:
+        live.adopt(call)
+    if adopted:
+        await hand_parked(live, registry)
+    return adopted
+
+
 class Handoffs:
-    """What the other gateways say of the sockets: one that took an agent, a call one let go."""
+    """What the other gateways say of the sockets, one that took an agent, a call one let go; and a call one left."""
 
     def __init__(self, live: Live, registry: agents_registry.AgentRegistry) -> None:
         """Listening to nobody until `start`."""
         self.live = live
         self.registry = registry
         self._listening: asyncio.Task[None] | None = None
+        self._adopting: asyncio.Task[None] | None = None
         self._asked = asyncio.Event()
 
     async def start(self) -> None:
-        """Hear the handoffs of every gateway, this one's included, once the signal was asked for them."""
+        """Hear the handoffs of every gateway, this one's included, once the signal was asked for them; adopt."""
         self._listening = box_task(self._listen())
+        self._adopting = box_task(self._adopt())
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(self._asked.wait(), ASKED_WITHIN_S)
 
     async def close(self) -> None:
-        """Stop hearing."""
-        if self._listening is not None:
-            self._listening.cancel()
-            await asyncio.gather(self._listening, return_exceptions=True)
+        """Stop hearing and adopting."""
+        tasks = [task for task in (self._listening, self._adopting) if task is not None]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _adopt(self) -> None:
+        while True:
+            with survived("the adopting of the calls whose gateway left"):
+                for call in await adopt_orphans(self.live, self.registry, time.monotonic()):
+                    logger.warning("adopted %s: the gateway that opened it is gone, and its worker reads here", call)
+            await asyncio.sleep(ADOPTED_EVERY_S)
 
     async def _listen(self) -> None:
         while True:

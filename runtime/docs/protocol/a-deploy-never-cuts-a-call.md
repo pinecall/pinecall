@@ -20,6 +20,14 @@ the one that parks it, told by the gateway the socket was on, and every gateway 
 the agent: the one holding a parked call of it hands the call over, and the tools waiting on it
 reach the new socket.
 
+A spoken call outlives the gateway that opened it: its worker goes on, and reads its commands from
+another gateway. Each gateway says the calls it opened every second; once the one that opened a call
+has said nothing for five seconds, the gateway the call's worker reads its commands from **adopts**
+it. From then on the call is that gateway's as if it had opened it: it counts in `concurrent_calls`
+there, and it is parked and handed to the socket that holds its agent from there, which hears
+`call.attached`. Two gateways that adopted one call, each deaf to the other for a moment, settle it
+when they hear each other again: the one of the greater id leaves it.
+
 ## A process that leaves on purpose
 
 `agent.drain` on the socket: it is handed no new call, each call it served goes to another socket
@@ -46,6 +54,11 @@ the app a second time. The log is the channel both ways: a `tool.call` reaches t
 whichever gateway holds its socket, its `tool.result` is written there, once per call id, and a
 retry that lands on another gateway waits for that answer, out of what is left of the tool's
 deadline, counted from its `tool.call`.
+
+A command reaches its call once. Every gateway that serves a spoken call keeps the app's commands for
+its worker's stream (`GET /v1/calls/{call}/commands`), each under the id it was sent with, which the
+stream carries as its `id:`. A worker whose stream moved to another gateway is sent again what the
+first one sent, and drops every id it applied already.
 
 A retried entry is written once when it travels in a batch, `{after, entries}` down the call's socket
 `WS /v1/calls/{call}/entries` (or, to a gateway that has no such socket, `POST

@@ -1,6 +1,7 @@
 """A call parked by a process that left is handed to the socket that takes its agent next, on any gateway."""
 
 import asyncio
+import time
 from collections.abc import AsyncIterator
 
 import pytest
@@ -8,7 +9,7 @@ import pytest
 from pinecall_runtime.agents.declaration import AgentConfig
 from pinecall_runtime.agents.service.registry import AgentRegistry
 from pinecall_runtime.calls.logs import Log, Logs
-from pinecall_runtime.calls.service.binding import Handoffs, attach_parked, hand_on, hand_parked
+from pinecall_runtime.calls.service.binding import Handoffs, adopt_orphans, attach_parked, hand_on, hand_parked
 from pinecall_runtime.calls.service.live import Live, Served
 from pinecall_runtime.calls.service.peers import HANDOFF_CHANNEL, Handoff, Taking, tell_handoff
 from pinecall_runtime.calls.service.tool_calls import ToolCalls
@@ -26,6 +27,8 @@ pytestmark = needs_the_database
 SCOPE = Scope("org_1", Env.sandbox)
 THE_OLD_ONE = "app_old"
 THE_NEW_ONE = "app_new"
+# Longer than a gateway may say nothing of its calls and still be taken for there.
+LONG_AGO_S = 60.0
 
 
 async def nothing_before(_call_id: str) -> None:
@@ -232,3 +235,93 @@ async def test_a_socket_that_left_a_call_already_handed_on_does_not_park_it(
     assert opener.calls[call].app == THE_NEW_ONE
     opener.close_call(call)
     holder.close_call(call)
+
+
+@pytest.fixture
+async def heard(
+    gateways: tuple[Live, Live, AgentRegistry, Handoffs],
+) -> AsyncIterator[tuple[Live, Live, AgentRegistry]]:
+    """The two gateways saying their calls to each other, each having heard the other for a while."""
+    opener, other, registry, _ = gateways
+    await opener.start()
+    await other.start()
+    await until(lambda: opener.counted.id in other.counted.theirs and other.counted.id in opener.counted.theirs)
+    opener.heard_since = other.heard_since = time.monotonic() - LONG_AGO_S
+    yield opener, other, registry
+    await opener.close()
+    await other.close()
+
+
+async def left(gone: Live, heard_by: Live) -> None:
+    """The gateway stops saying its calls, and the other heard it last a while ago: as one that died."""
+    await gone.counted.close()
+    heard_by.counted.theirs[gone.counted.id].at -= LONG_AGO_S
+
+
+# Production runs two gateways and a deploy replaces both: a spoken call the replaced one had opened
+# went on in its worker, served by the other as a copy that no socket was ever handed. Its app heard
+# no call.attached, each tool it called waited out its deadline, and it held no seat of its org.
+async def test_a_call_whose_opener_is_gone_is_adopted_where_its_worker_reads_and_handed_to_its_agents_socket(
+    heard: tuple[Live, Live, AgentRegistry], store: Store, call: str, agent: str
+) -> None:
+    opener, other, registry = heard
+    await served_on(opener, store, call, agent)
+    await served_on(other, store, call, agent, opened_here=False)
+    sent = socket_of(other, THE_NEW_ONE)
+    await took(registry, THE_NEW_ONE, agent)
+    await until(lambda: call in other.opened_elsewhere(time.monotonic()))
+    with other.following(call):
+        assert await adopt_orphans(other, registry, time.monotonic()) == [], "its opener still says it"
+        await left(opener, heard_by=other)
+        assert await adopt_orphans(other, registry, time.monotonic()) == [call]
+        assert other.calls[call].opened_here
+        assert other.calls[call].app == THE_NEW_ONE
+        await until(lambda: attached_to(sent) == [THE_NEW_ONE])
+        assert other.holding(SCOPE.org, SCOPE.env) == [call], "one seat, though its opener's last word names it too"
+        assert await adopt_orphans(other, registry, time.monotonic()) == []
+    assert call not in other.followed
+    opener.close_call(call)
+    other.close_call(call)
+
+
+# A copy is held by every gateway that was asked for the call: the one its worker reads from adopts it.
+async def test_a_call_whose_worker_reads_from_another_gateway_is_not_adopted_here(
+    heard: tuple[Live, Live, AgentRegistry], store: Store, call: str, agent: str
+) -> None:
+    _, other, registry = heard
+    await served_on(other, store, call, agent, opened_here=False)
+    assert await adopt_orphans(other, registry, time.monotonic()) == []
+    assert not other.calls[call].opened_here
+    other.close_call(call)
+
+
+# A gateway that just started has heard nobody: every call it is asked for would look like an orphan.
+async def test_a_gateway_that_just_started_adopts_nothing_until_it_has_heard_the_others(
+    heard: tuple[Live, Live, AgentRegistry], store: Store, call: str, agent: str
+) -> None:
+    _, other, registry = heard
+    await served_on(other, store, call, agent, opened_here=False)
+    other.heard_since = time.monotonic()
+    with other.following(call):
+        assert await adopt_orphans(other, registry, time.monotonic()) == []
+    other.close_call(call)
+
+
+# The signal away for a while, each gateway takes the other for gone and both may adopt one call: it
+# would hold two seats of its org and be handed on twice for as long as it lasts.
+async def test_two_gateways_that_say_they_opened_one_call_settle_it_and_the_greater_id_leaves_it(
+    heard: tuple[Live, Live, AgentRegistry], store: Store, call: str, agent: str
+) -> None:
+    opener, other, registry = heard
+    await served_on(opener, store, call, agent)
+    await served_on(other, store, call, agent)
+    await until(lambda: call in other.opened_elsewhere(time.monotonic()))
+    await until(lambda: call in opener.opened_elsewhere(time.monotonic()))
+    for live in (opener, other):
+        assert await adopt_orphans(live, registry, time.monotonic()) == []
+    lesser, greater = sorted((opener, other), key=lambda live: live.counted.id)
+    assert lesser.calls[call].opened_here
+    assert not greater.calls[call].opened_here
+    assert call in greater.seen, "a copy again: let go of once idle"
+    opener.close_call(call)
+    other.close_call(call)

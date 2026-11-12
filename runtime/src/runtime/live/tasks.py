@@ -1,12 +1,16 @@
-"""The live side's loop: the reaper, which ends what nothing runs any more and lets go of what is over."""
+"""The live side's loops: the reaper, which ends what nothing runs any more, and the adopting of an orphaned call."""
 
+import logging
 import time
 
 from runtime.kit.loops import loop, survive
 from runtime.live.parts import LiveParts
 from runtime.live.service import handoff, reaper
 
+logger = logging.getLogger(__name__)
+
 REAPED_EVERY_S = 60.0
+ADOPTED_EVERY_S = 1.0
 
 
 # Every part of a pass stands alone, whatever it raises: a call the reaper cannot end (a log it
@@ -25,3 +29,10 @@ async def reap(live: LiveParts) -> None:
         reaper.end_parked(live, time.monotonic())
     with survive("the reaper's letting go of the calls that are over"):
         await reaper.let_go(live, time.monotonic())
+
+
+@loop("adoption", every_s=ADOPTED_EVERY_S)
+async def adopt(live: LiveParts) -> None:
+    """One pass: the calls whose opener is gone and whose worker reads its commands here are this gateway's."""
+    for call in await handoff.adopt_orphans(live.calls, live.holders, time.monotonic()):
+        logger.warning("adopted %s: the gateway that opened it is gone, and its worker reads here", call)

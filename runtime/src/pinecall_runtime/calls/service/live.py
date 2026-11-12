@@ -1,9 +1,11 @@
 """The calls this gateway serves: handed to an app socket, parked, told their commands, counted."""
 
 import asyncio
+import contextlib
 import logging
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections import Counter
+from collections.abc import Awaitable, Callable, Generator, Sequence
 from dataclasses import dataclass, field, replace
 
 from pydantic import TypeAdapter
@@ -38,7 +40,7 @@ from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.base import Command, Entry, WireModel
 from pinecall_runtime.wire.commands import DevAnswer, SessionConfigure, SupervisorVerb, command_of
 from pinecall_runtime.wire.events import ErrorEvent
-from pinecall_runtime.wire.signal import Bound, ForApp, Killed
+from pinecall_runtime.wire.signal import Bound, Commanded, ForApp, Killed
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,9 @@ logger = logging.getLogger(__name__)
 RUNNING_CHANNEL = "running"
 RUNNING_EVERY_S = 1.0
 _RUNNING: TypeAdapter[dict[str, list[str]]] = TypeAdapter(dict[str, list[str]])
+# A gateway that said nothing of its calls for this long, five of its beats, is taken for gone: the
+# calls it opened are another's to adopt.
+OPENER_SILENT_S = 5.0
 
 # How long a call another gateway opened stays served here with no endpoint asking for it.
 FIRST_SEEN_IDLE_S = 600.0
@@ -64,8 +69,8 @@ class Served:
     scope: Scope
     app: registry.SocketId | None
     log: Log
-    # A None ends the worker's command stream.
-    commands: asyncio.Queue[Command | None]
+    # Each with the id it was sent under. A None ends the worker's command stream.
+    commands: asyncio.Queue[Commanded | None]
     context: CallContext
     config: AgentConfig
     tools: ToolCalls
@@ -109,6 +114,10 @@ class Live:
         self.calls: dict[str, Served] = {}
         # The calls first seen here, by when an endpoint last asked for one: let go once idle.
         self.seen: dict[str, float] = {}
+        # The calls whose worker reads its commands from this gateway now, by how many streams of it.
+        self.followed: Counter[str] = Counter()
+        # Since when this gateway hears what the others say they opened.
+        self.heard_since = time.monotonic()
         # When each parked call lost its socket: a call nobody takes back is ended, not kept for ever.
         self.parked_since: dict[str, float] = {}
         self.pending_answers: dict[str, asyncio.Future[DevAnswer]] = {}
@@ -122,6 +131,7 @@ class Live:
         await self.owners.start()
         await self.elsewhere.start()
         await self.counted.start()
+        self.heard_since = time.monotonic()
 
     async def close(self) -> None:
         """Stop hearing and saying."""
@@ -291,11 +301,49 @@ class Live:
         """How many of the org's calls are open in the env, on every gateway of the box."""
         return len(self.holding(org, env))
 
+    # Once each: a call adopted here is still in the share of the gateway that opened it, until that
+    # gateway is forgotten.
     def holding(self, org: str, env: Env) -> list[str]:
         """The org's calls open in the env, on every gateway of the box: what holds its seats."""
         named = f"{org}|{env.value}"
         theirs = [call for heard in self.counted.theirs.values() for call in heard.share.get(named, ())]
-        return [*self._running_here().get(named, ()), *theirs]
+        return list(dict.fromkeys([*self._running_here().get(named, ()), *theirs]))
+
+    # ── a call whose opener is gone ──
+
+    @contextlib.contextmanager
+    def following(self, call: str) -> Generator[None]:
+        """The call's worker reads its commands from this gateway for as long as this is entered."""
+        self.followed[call] += 1
+        try:
+            yield
+        finally:
+            self.followed[call] -= 1
+            if not self.followed[call]:
+                del self.followed[call]
+
+    def opened_elsewhere(self, now: float) -> dict[str, str]:
+        """Each call a gateway other than this one says it opened, and which: the gateways heard of late."""
+        return {
+            call: gateway
+            for gateway, heard in self.counted.theirs.items()
+            if now - heard.at <= OPENER_SILENT_S
+            for calls in heard.share.values()
+            for call in calls
+        }
+
+    # Its seat and its parking are this gateway's from here on, and it is no longer let go of as idle.
+    def adopt(self, call: str) -> None:
+        """Take a call another gateway opened as this one's own, and say so to the others at once."""
+        self.calls[call] = replace(self.calls[call], opened_here=True)
+        self.seen.pop(call, None)
+        self.counted.put(self._running_here())
+
+    def disown(self, call: str) -> None:
+        """Leave a call to the other gateway that says it opened it: served here as a copy from now on."""
+        self.calls[call] = replace(self.calls[call], opened_here=False)
+        self.seen[call] = time.monotonic()
+        self.counted.put(self._running_here())
 
     def in_use(self, call: str, now: float) -> None:
         """An endpoint asked for a call first seen here: it stays while it is asked for."""
@@ -339,19 +387,20 @@ class Live:
         try:
             async for data in listener:
                 with survived("a command of the call", call):
-                    await self._apply(call, Command.model_validate_json(data))
+                    await self._apply(call, Commanded.model_validate_json(data))
         finally:
             listener.close()
 
     # A command the session refuses (a room.send on a written call, a bad shape) is answered to the
     # app as the socket answers one it applies itself, and the stream goes on: an exception out of
     # this loop would end the listener, and every command after it would be lost in silence.
-    async def _apply(self, call: str, command: Command) -> None:
+    async def _apply(self, call: str, said: Commanded) -> None:
+        command = said.command
         served = self.calls.get(call)
         if served is None or served.agent != command.agent:
             return
         if served.running is None:
-            served.commands.put_nowait(command)
+            served.commands.put_nowait(said)
             return
         try:
             if command.type == SUPERVISOR_VERB:

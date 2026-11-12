@@ -112,6 +112,15 @@ async def hand_parked(calls: Calls, holders: Holders) -> list[str]:
     return handed
 
 
+# Every second (`tasks.adopt`): a call whose gateway left has a caller on the line, and each tool it calls waits.
+async def adopt_orphans(calls: Calls, holders: Holders, now: float) -> list[str]:
+    """Adopt the calls whose opener is gone and whose worker reads here, and hand each to its agent's socket; which."""
+    adopted = calls.adopt_orphans(now)
+    if adopted:
+        await hand_parked(calls, holders)
+    return [served.call for served in adopted]
+
+
 class Handoffs:
     """What the other gateways say of the sockets: one that took an agent, a call one let go."""
 

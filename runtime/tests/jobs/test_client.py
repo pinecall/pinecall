@@ -15,8 +15,10 @@ from pinecall_runtime.enums import Channel, Direction, Env
 from pinecall_runtime.exceptions import GatewayUnavailable
 from pinecall_runtime.fleet.schemas import HeartbeatRequest
 from pinecall_runtime.jobs.service.client import GatewayClient, _command_of, gateway_at
+from pinecall_runtime.kit import sse
 from pinecall_runtime.kit.auth import Scope
 from pinecall_runtime.session.writing import Writing
+from pinecall_runtime.wire.base import Command
 from pinecall_runtime.wire.events import Custom
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
@@ -250,3 +252,24 @@ async def test_the_leg_and_cold_transfer_doors_take_the_workers_scope_in_their_q
             except GatewayUnavailable as refused:
                 assert refused.answered != 422, str(refused)
                 assert "Extra inputs" not in str(refused)
+
+
+# Every gateway that serves a call keeps its commands for the worker: when the stream moved to a
+# second gateway (the first was replaced by a deploy), the worker applied again all the first had sent.
+async def test_a_command_a_second_gateway_sends_again_is_handed_to_the_call_once() -> None:
+    def kept(*ids: str) -> str:
+        said = (Command(type="state.set", agent="a", call="call_1", id=None, data={"state": {"n": n}}) for n in ids)
+        return "".join(sse.frame(one.dump_json(), event=one.type, id_=one.data["state"]["n"]) for one in said)
+
+    streams = iter([kept("c1", "c2"), kept("c1", "c2", "c3")])
+
+    def answer(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=next(streams), headers={"content-type": sse.EVENT_STREAM})
+
+    client = GatewayClient(httpx.AsyncClient(transport=httpx.MockTransport(answer), base_url="http://gateway"))
+    try:
+        first = [command.data["state"]["n"] async for command in client.commands("call_1")]
+        second = [command.data["state"]["n"] async for command in client.commands("call_1")]
+    finally:
+        await client.aclose()
+    assert (first, second) == (["c1", "c2"], ["c3"])

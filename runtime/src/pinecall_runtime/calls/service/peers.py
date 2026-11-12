@@ -1,6 +1,7 @@
 """What the gateways tell each other: a call's commands, a socket's messages, who holds what."""
 
 from dataclasses import dataclass
+from uuid import uuid4
 
 from pydantic import TypeAdapter
 
@@ -10,7 +11,7 @@ from pinecall_runtime.kit.shared_state import SharedState
 from pinecall_runtime.redis import Signal
 from pinecall_runtime.wire.base import Command
 from pinecall_runtime.wire.commands import DevAnswer
-from pinecall_runtime.wire.signal import Bound, ForApp
+from pinecall_runtime.wire.signal import Bound, Commanded, ForApp
 
 # One channel per call: every gateway that serves the call listens on it while it does.
 COMMANDS_CHANNEL = "cmd:{call}"
@@ -172,9 +173,12 @@ class Owners:
 
 # Lossy, as the signal is: nobody hearing it is the refusal the sender gives, and a Redis that is
 # away is a ServiceUnavailable the app can try again after.
+# Under an id of its own, which the worker's stream carries: every gateway that serves the call keeps
+# the command for its worker, and a worker that reads them from a second gateway drops what it applied.
 async def send_command(signal: Signal, command: Command) -> bool:
     """Tell the gateways that serve the call; False when none does."""
-    return await signal.published(COMMANDS_CHANNEL.format(call=command.call), command.model_dump_json().encode()) > 0
+    said = Commanded(id=uuid4().hex, command=command)
+    return await signal.published(COMMANDS_CHANNEL.format(call=command.call), said.model_dump_json().encode()) > 0
 
 
 # Lossy, as the signal is: a bound call whose notice was lost is told again when its worker asks

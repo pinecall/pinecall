@@ -10,14 +10,15 @@ from runtime.exceptions import ServiceUnavailable
 from runtime.kit.loops import survive
 from runtime.shared_state import SharedState
 from runtime.signal import Listener, Signal
-from runtime.wire.base import Command
 from runtime.wire.commands import DevAnswer
-from runtime.wire.signal import ForApp, HandedMessage, Handoff, OwnedShare
+from runtime.wire.signal import Commanded, ForApp, HandedMessage, Handoff, OwnedShare
 
 # The model, in one place. The log (Postgres) is the durable channel and the signal (Redis) loses
 # messages. A call is its opener's: the gateway that opened it (`Served.opened_here`) is the only one
 # that counts it against its org, parks it and hands it on; every other gateway serves a copy, built from the
-# opening that was kept, the first time it is asked for the call. An app's socket lives on one
+# opening that was kept, the first time it is asked for the call. A spoken call outlives its opener: once
+# that gateway has said nothing for `OPENER_SILENT_S`, the gateway its worker reads its commands from
+# adopts it (`Calls.adopt_orphans`). An app's socket lives on one
 # gateway and has an inbox there (`app:{app}`): what another gateway has for it goes through it. A
 # written call's session and a WhatsApp thread run on one gateway, which says so (`owned`), and
 # another takes one up only once that gateway fell silent. What the signal loses, the next pass of
@@ -82,9 +83,11 @@ class Channel[T]:
             await asyncio.sleep(RETRY_S)
 
 
-# One channel per call: every gateway that serves the call listens on it while it does.
-COMMANDS: Channel[Command] = Channel(
-    "cmd:{call}", Command.model_validate_json, lambda said: said.model_dump_json().encode()
+# One channel per call: every gateway that serves the call listens on it while it does. Each command
+# under an id of its own, which the worker's stream carries: every gateway keeps a spoken call's
+# commands for its worker, and a worker that reads them from a second gateway drops what it applied.
+COMMANDS: Channel[Commanded] = Channel(
+    "cmd:{call}", Commanded.model_validate_json, lambda said: said.model_dump_json().encode()
 )
 # Each app socket's inbox, listened to by the gateway holding it while it is open.
 APP_INBOX: Channel[ForApp] = Channel(

@@ -21,6 +21,7 @@ from pinecall_runtime.jobs.service.stream import (
     STREAMED,
     TIMEOUT_S,
     EntriesStream,
+    Sent,
     affine,
     again,
     server_sent,
@@ -63,6 +64,8 @@ class GatewayClient:
         self.opened: dict[str, calls.OpenCallRequest] = {}
         # Each unsealed call's socket for its batches; none once a gateway had no such endpoint.
         self.streams: dict[str, EntriesStream] = {}
+        # The ids of the commands each unsealed call was handed: one a gateway sends again is dropped.
+        self.heard: dict[str, set[str]] = {}
         self.unserved = False
 
     # ── an agent, before its call ──
@@ -182,6 +185,7 @@ class GatewayClient:
             if refused.answered != ALREADY_OVER:
                 raise
         self.opened.pop(call, None)
+        self.heard.pop(call, None)
         await self._stream_closed(call)
 
     # A call sealed already has nothing waiting for it: the same answer a seal asked twice gets.
@@ -250,24 +254,21 @@ class GatewayClient:
     async def tail(self, call: str, after: int) -> AsyncIterator[Entry]:
         """The entries above the cursor, then the live ones, until the call ends."""
         async for frame in self._streamed(f"/v1/calls/{call}/events?after={after}"):
-            yield Entry.model_validate(frame)
+            yield Entry.model_validate(frame.data)
 
     # A stream that ends means the gateway went away; a 404 means it forgot the call.
     async def commands(self, call: str) -> AsyncGenerator[Command]:
-        """The app's commands for the call, in the order it sent them, until the call is sealed."""
-        path = f"/v1/calls/{call}/commands"
+        """The app's commands for the call, each once, in the order it sent them, until the call is sealed."""
         try:
-            async for frame in self._streamed(path):
-                if (command := _command_of(frame, call)) is not None:
-                    yield command
+            async for command in self._commanded(call):
+                yield command
         except GatewayUnavailable as refused:
             if not await self._reopened(call, refused):
                 raise
         else:
             return
-        async for frame in self._streamed(path):
-            if (command := _command_of(frame, call)) is not None:
-                yield command
+        async for command in self._commanded(call):
+            yield command
 
     # ── the fleet ──
 
@@ -366,7 +367,19 @@ class GatewayClient:
         await self._read("POST", f"/v1/calls/{call}/reopened", opening.dump())
         return True
 
-    async def _streamed(self, path: str) -> AsyncIterator[JsonObject]:
+    # Every gateway that serves the call keeps its commands for this stream: one that takes the
+    # stream after another sends again what the first sent, under the same ids.
+    async def _commanded(self, call: str) -> AsyncIterator[Command]:
+        heard = self.heard.setdefault(call, set())
+        async for frame in self._streamed(f"/v1/calls/{call}/commands"):
+            if frame.id is not None and frame.id in heard:
+                continue
+            if frame.id is not None:
+                heard.add(frame.id)
+            if (command := _command_of(frame.data, call)) is not None:
+                yield command
+
+    async def _streamed(self, path: str) -> AsyncIterator[Sent]:
         try:
             async with self.http.stream(
                 "GET", path, headers={"Accept": EVENT_STREAM, **affine(path)}, timeout=STREAMED

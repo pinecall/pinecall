@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from pinecall_runtime.wire.base import Entry
+from pinecall_runtime.wire.base import Command, Entry
 
 
 class Stored(BaseModel):
@@ -27,6 +27,13 @@ class Bound(BaseModel):
 
     call: str
     after: int
+
+
+class Commanded(BaseModel):
+    """One command of a call as the gateways tell it to each other: the id it was sent under, and the command."""
+
+    id: str
+    command: Command
 
 
 class Killed(BaseModel):

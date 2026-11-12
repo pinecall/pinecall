@@ -1,13 +1,14 @@
 """How a worker asks its gateway: the waits between tries, what counts as away, the trace, the balancer's name."""
 
 import asyncio
+from collections.abc import AsyncIterator
 
 import pytest
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 
 from pinecall_runtime.exceptions import GatewayUnavailable
-from pinecall_runtime.jobs.service.stream import affine, again, away, traced, waits
+from pinecall_runtime.jobs.service.stream import affine, again, away, server_sent, traced, waits
 
 
 def test_the_waits_double_to_the_cap() -> None:
@@ -80,3 +81,16 @@ def test_a_calls_doors_name_the_call_for_the_balancer_and_the_others_do_not() ->
     assert affine("/v1/calls/CA_1") == {"Pinecall-Call": "CA_1"}
     assert affine("/v1/calls") == {}
     assert affine("/v1/fleet/heartbeat") == {}
+
+
+async def test_a_message_of_a_stream_comes_with_the_id_it_was_sent_under() -> None:
+    """A command comes under its id, an entry under none, and a ping is no message."""
+
+    async def lines() -> AsyncIterator[str]:
+        for line in ("id: c1", "event: say", 'data: {"type": "say"}', "", ": ping", "", 'data: {"seq": 3}', ""):
+            yield line
+
+    assert [(sent.id, sent.data) async for sent in server_sent(lines())] == [
+        ("c1", {"type": "say"}),
+        (None, {"seq": 3}),
+    ]

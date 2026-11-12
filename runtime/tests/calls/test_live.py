@@ -12,6 +12,7 @@ from pinecall_runtime.calls.store import Store
 from pinecall_runtime.enums import Channel, Env
 from pinecall_runtime.exceptions import PinecallError
 from pinecall_runtime.kit.auth import Scope
+from pinecall_runtime.redis import LocalSignal
 from pinecall_runtime.session import service as session
 from pinecall_runtime.wire.base import Command, Entry, WireModel
 from pinecall_runtime.wire.commands import RoomSend
@@ -46,8 +47,8 @@ async def nothing_before(_call_id: str) -> None:
     return None
 
 
-async def served_here(live: Live, store: Store, call: str, running: Written) -> list[Entry]:
-    """The call served on `live`, its socket here collecting what it is sent."""
+async def served_here(live: Live, store: Store, call: str, running: Written | None) -> list[Entry]:
+    """The call served on `live`, its socket here collecting what it is sent; with no session, a worker's call."""
     sent: list[Entry] = []
 
     async def send(entry: Entry) -> None:
@@ -65,7 +66,7 @@ async def served_here(live: Live, store: Store, call: str, running: Written) -> 
         context=context_of(call, Channel.web),
         config=config,
         tools=ToolCalls(config, log, nothing_before, nothing_before),
-        running=cast(session.Session, running),
+        running=None if running is None else cast(session.Session, running),
     )
     live.serve(served)
     await live.commands_heard(call)
@@ -157,3 +158,24 @@ async def test_a_command_the_stream_cannot_read_or_the_session_breaks_on_does_no
         await asyncio.sleep(0.01)
     assert [type(applied).__name__ for applied in running.applied] == ["StateSet"]
     live.close_call(call)
+
+
+# Every gateway that serves a spoken call keeps its commands for the worker's stream, and a worker
+# whose stream moved to a second gateway was sent again all the first had sent: an app's say, said twice.
+@needs_the_database
+async def test_a_spoken_calls_command_waits_on_every_gateway_under_the_one_id_it_was_sent_with(
+    store: Store, call: str
+) -> None:
+    signal = LocalSignal()
+    gateways = (Live(signal), Live(signal))
+    for live in gateways:
+        await served_here(live, store, call, None)
+    said = Command(type="state.set", agent=AGENT, call=call, id="c1", data={"state": {"cart": []}})
+    assert await send_command(signal, said) and await send_command(signal, said)
+    waiting = [[await asyncio.wait_for(live.calls[call].commands.get(), 5.0) for _ in range(2)] for live in gateways]
+    here, there = ([None if one is None else one.id for one in kept] for kept in waiting)
+    assert here == there
+    assert here[0] != here[1], "the id an app gives names the command to the app: two commands may carry one"
+    assert [None if one is None else one.command for one in waiting[0]] == [said, said]
+    for live in gateways:
+        live.close_call(call)

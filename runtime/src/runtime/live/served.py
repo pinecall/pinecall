@@ -1,9 +1,10 @@
 """A call this gateway serves, and all of them: bound to an app socket, parked, told its commands, counted."""
 
 import asyncio
+import contextlib
 import logging
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Generator, Sequence
 from dataclasses import dataclass, field
 
 from runtime.actor import Scope
@@ -21,8 +22,8 @@ from runtime.scoping import box_task
 from runtime.session import service as session
 from runtime.shared_state import SharedState
 from runtime.signal import Signal
-from runtime.wire.base import Command, Entry
-from runtime.wire.signal import Bound, RunningShare
+from runtime.wire.base import Entry
+from runtime.wire.signal import Bound, Commanded, RunningShare
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,12 @@ logger = logging.getLogger(__name__)
 RUNNING_EVERY_S = 1.0
 # How long a call another gateway opened stays served here with no endpoint asking for it.
 FIRST_SEEN_IDLE_S = 600.0
+# A gateway that said nothing of its calls for this long, five of its beats, is taken for gone: the
+# calls it opened are another's to adopt.
+OPENER_SILENT_S = 5.0
 
 # What a command heard for a call does to it here: given by whoever builds the calls (`commands.hear`).
-type HearCommand = Callable[["Served", Command], Awaitable[None]]
+type HearCommand = Callable[["Served", Commanded], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,8 +76,8 @@ class Served:
         self.running: session.Session | None = None
         self.log = log
         self.tools = tools
-        # A None ends the worker's command stream.
-        self.commands: asyncio.Queue[Command | None] = asyncio.Queue()
+        # Each with the id it was sent under. A None ends the worker's command stream.
+        self.commands: asyncio.Queue[Commanded | None] = asyncio.Queue()
         # Held while the call is sealed, so its seal runs once however many times it is asked for.
         self.sealing = asyncio.Lock()
         # Set once the app bound to the call said its end hook ran (call.done): its seal waits for it.
@@ -102,6 +106,8 @@ class _Kept:
     seen_at: float | None = None
     # When it lost its socket: a call nobody takes back is ended, not kept for ever.
     parked_at: float | None = None
+    # How many streams of its worker read its commands from this gateway now.
+    streams: int = 0
 
 
 # Not durable on purpose: it says which calls are served now; the log is the record. The one writer
@@ -116,6 +122,8 @@ class Calls:
         self._owners = owners
         self._hear = hear
         self._kept: dict[str, _Kept] = {}
+        # Since when this gateway hears what the others say they opened.
+        self._heard_since = time.monotonic()
         # Each org's calls at once in each env, as every gateway counts its own each second.
         self._counted = SharedState(
             signal,
@@ -131,6 +139,7 @@ class Calls:
     async def start(self) -> None:
         """Hear the other gateways' counts, and say this one's."""
         await self._counted.start()
+        self._heard_since = time.monotonic()
 
     async def close(self) -> None:
         """Stop hearing and saying."""
@@ -246,11 +255,52 @@ class Calls:
     # for ever. Per env, as every quota is: the sandbox's calls never close production. Every
     # gateway's count, the others' a second old at most, so two gateways admitting at once may go
     # past the limit by what they opened that second.
+    # Once each: a call adopted here is still in the share of the gateway that opened it, until that
+    # gateway is forgotten.
     def holding(self, org: str, env: Env) -> list[str]:
         """The org's calls open in the env, on every gateway of the box: what its quota of calls at once counts."""
         named = str(CallsAtOnce(org, env))
         theirs = [call for heard in self._counted.theirs.values() for call in heard.share.root.get(named, ())]
-        return [*self._count_here().root.get(named, ()), *theirs]
+        return list(dict.fromkeys([*self._count_here().root.get(named, ()), *theirs]))
+
+    # ── adopted ──
+
+    @contextlib.contextmanager
+    def follow(self, call: str) -> Generator[None]:
+        """The call's worker reads its commands from this gateway for as long as this is entered."""
+        kept = self._kept.get(call)
+        if kept is not None:
+            kept.streams += 1
+        try:
+            yield
+        finally:
+            if kept is not None:
+                kept.streams -= 1
+
+    # A spoken call outlives the gateway that opened it: its worker goes on and reads its commands from
+    # another, which held it as a copy alone. So no socket that took its agent was handed it, its tools
+    # waited out their deadline, and once its opener was forgotten it counted against nobody. The gateway
+    # its worker reads from adopts it: it counts here, and parks and is handed on from here. Two gateways
+    # that adopted one call, each deaf to the other for a moment, settle it when they hear each other: the
+    # one of the greater id leaves it and serves a copy again.
+    def adopt_orphans(self, now: float) -> list[Served]:
+        """Take as opened here the calls whose opener is gone and whose worker reads here, and say so; which."""
+        if now - self._heard_since < OPENER_SILENT_S:
+            return []
+        elsewhere = self._find_opened_elsewhere(now)
+        mine = self._counted.id
+        adopted: list[Served] = []
+        left = False
+        for kept in self._kept.values():
+            served = kept.served
+            if served.opened_here and served.running is None and elsewhere.get(served.call, mine) < mine:
+                served.opened_here, kept.seen_at, left = False, now, True
+            elif not served.opened_here and kept.streams and served.call not in elsewhere:
+                served.opened_here, kept.seen_at = True, None
+                adopted.append(served)
+        if adopted or left:
+            self._counted.put(self._count_here())
+        return adopted
 
     # ── let go ──
 
@@ -283,13 +333,23 @@ class Calls:
     # not be applied is said with its call and the next is heard: a listener that ended on it would
     # lose every command after it in silence.
     async def _listen(self, call: str, heard: asyncio.Event) -> None:
-        async def take(command: Command) -> None:
+        async def take(said: Commanded) -> None:
             kept = self._kept.get(call)
-            if kept is not None and kept.served.agent == command.agent:
+            if kept is not None and kept.served.agent == said.command.agent:
                 with survive("a command of the call", call):
-                    await self._hear(kept.served, command)
+                    await self._hear(kept.served, said)
 
         await COMMANDS.listen(self.signal, take, asked=heard, call=call)
+
+    # A gateway that said nothing for OPENER_SILENT_S is not among them: it beats every second.
+    def _find_opened_elsewhere(self, now: float) -> dict[str, str]:
+        return {
+            call: gateway
+            for gateway, heard in self._counted.theirs.items()
+            if now - heard.at <= OPENER_SILENT_S
+            for calls in heard.share.root.values()
+            for call in calls
+        }
 
     def _count_here(self) -> RunningShare:
         open_here: dict[str, list[str]] = {}

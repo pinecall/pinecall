@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A spoken call outlives the gateway that opened it.** On a box of several gateways a call whose gateway
+  was replaced (every deploy) went on in its worker, and no other gateway took it: the app that held its
+  agent heard no `call.attached`, each tool it called waited out its deadline, and the call stopped counting
+  in `concurrent_calls`. The gateway its worker reads its commands from adopts it five seconds after the one
+  that opened it fell silent.
+- **A command reaches its call once.** Every gateway that serves a spoken call kept the app's commands for
+  its worker, and a worker whose stream moved to another gateway applied again all the first had sent. Each
+  command travels under an id (the stream's `id:`), and the worker drops the ones it applied.
 - **An app has a page of its own.** A release may name the folder of its built page and the agent its visitors
   reach (`page_dir`, `page_agent` on `POST /v1/hosted/{name}/releases`); the gateway serves it at
   `<app>--<org>.<PINECALL_PAGES_DOMAIN>` from the release that runs, and answers `/pinecall/token` and

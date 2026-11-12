@@ -1,6 +1,5 @@
 """The worker's endpoints on its call: open it, write it, run its tools, hear its commands, seal it."""
 
-import asyncio
 import base64
 import logging
 from collections.abc import AsyncIterator
@@ -26,9 +25,10 @@ from runtime.live.auth import (
     WorkerKey,
     get_socket_actor,
 )
+from runtime.live.served import Calls, Served
 from runtime.live.service import codes, ending, entries, lookups, openings, seal, tools
 from runtime.postgres import Session
-from runtime.wire.base import Command, Entry
+from runtime.wire.base import Entry
 from runtime.wire.commands import CallClaim
 from runtime.wire.events import ToolCall
 from runtime.wire.parts import ToolResult
@@ -153,12 +153,13 @@ async def mint_recording_key(served: TheServedCall, vault: TheVault, session: Se
     return RecordingKeyResponse(key=base64.urlsafe_b64encode(found).decode())
 
 
-# No id: commands have no seq, and a worker that loses the stream asks again.
+# Each under the id it was sent with, not a seq: a worker that loses the stream asks again, of this
+# gateway or another, and drops what it applied already.
 @router.get("/v1/calls/{call}/commands")
 async def stream_commands(served: TheServedCall, live: TheLive, closing: TheClosing) -> StreamingResponse:
     """The app's commands for the call, in order, until it is sealed."""
     await live.calls.wait_until_heard(served.call)
-    return sse.stream(sse.pace(_frames(served.commands), closing=closing))
+    return sse.stream(sse.pace(_frames(live.calls, served), closing=closing))
 
 
 # What the worker reads is whether to judge and what a judge may spend; the model is the gateway's to
@@ -203,6 +204,7 @@ def _arrival_of(body: OpenCallRequest) -> openings.Arrival:
     )
 
 
-async def _frames(waiting: asyncio.Queue[Command | None]) -> AsyncIterator[str]:
-    while (command := await waiting.get()) is not None:
-        yield sse.frame(command.dump_json(), event=command.type)
+async def _frames(calls: Calls, served: Served) -> AsyncIterator[str]:
+    with calls.follow(served.call):
+        while (said := await served.commands.get()) is not None:
+            yield sse.frame(said.command.dump_json(), event=said.command.type, id_=said.id)

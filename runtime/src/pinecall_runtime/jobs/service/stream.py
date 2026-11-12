@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping, Sequence
+from dataclasses import dataclass
 
 import httpx
 from opentelemetry import propagate
@@ -13,7 +14,7 @@ from websockets.exceptions import ConnectionClosed, InvalidHandshake
 
 from pinecall_runtime.calls import service as calls
 from pinecall_runtime.exceptions import GatewayUnavailable
-from pinecall_runtime.kit.text import JsonObject
+from pinecall_runtime.kit.text import JsonObject, a_mapping
 from pinecall_runtime.wire.base import BatchedEntry, Entry
 
 logger = logging.getLogger(__name__)
@@ -90,20 +91,31 @@ class EntriesStream:
         return self.socket
 
 
-# `data:` holds the whole entry, its seq and type included: `id:`, `event:` and comments are
-# not read.
-async def server_sent(lines: AsyncIterator[str]) -> AsyncIterator[JsonObject]:
-    """Each JSON message of a server-sent event stream."""
+@dataclass(frozen=True, slots=True)
+class Sent:
+    """One event of a stream: the id it was sent under, when it has one, and its JSON."""
+
+    id: str | None
+    data: JsonObject
+
+
+# `data:` holds the whole message (an entry with its seq and type, a command); `id:` is what a
+# command was sent under. `event:` and comments are not read.
+async def server_sent(lines: AsyncIterator[str]) -> AsyncIterator[Sent]:
+    """Each JSON message of a server-sent event stream, with the id it came under."""
     data: list[str] = []
+    sent_under: str | None = None
     async for raw in lines:
         line = raw.rstrip("\r\n")
         if line.startswith("data:"):
             data.append(line[5:].lstrip(" "))
+        elif line.startswith("id:"):
+            sent_under = line[3:].strip()
         elif not line and data:
-            text = json.loads("\n".join(data))
-            data = []
-            if isinstance(text, dict):
-                yield text
+            text: object = json.loads("\n".join(data))
+            if a_mapping(text):
+                yield Sent(sent_under, dict(text))
+            data, sent_under = [], None
 
 
 def waits() -> Iterator[float]:

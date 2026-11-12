@@ -1,6 +1,5 @@
 """The worker's endpoints on its call: open it, write it, run its tools, hear its commands, seal it."""
 
-import asyncio
 import time
 from collections.abc import AsyncIterator
 from typing import Annotated
@@ -12,11 +11,12 @@ from pinecall_runtime.agents import service as agents
 from pinecall_runtime.calls import schemas
 from pinecall_runtime.calls.auth import AnyonesServedCall, TheServedCall, TheServing, WorkerKey
 from pinecall_runtime.calls.service import seal, worker
+from pinecall_runtime.calls.service.live import Live, Served
 from pinecall_runtime.calls.service.serving import check_entry, claim_code, count_append, look_up
 from pinecall_runtime.exceptions import NotFound
 from pinecall_runtime.kit import sse
 from pinecall_runtime.postgres import Session
-from pinecall_runtime.wire.base import Command, Entry
+from pinecall_runtime.wire.base import Entry
 from pinecall_runtime.wire.commands import CallClaim
 from pinecall_runtime.wire.events import ToolCall
 from pinecall_runtime.wire.parts import ToolResult
@@ -94,12 +94,13 @@ async def recording_key(served: TheServedCall, serving: TheServing, session: Ses
     return await worker.recording_key_of(session, serving, served)
 
 
-# No id: commands have no seq, and a worker that loses the stream asks again.
+# Each under the id it was sent with, not a seq: a worker that loses the stream asks again, of this
+# gateway or another, and drops what it applied already.
 @router.get("/v1/calls/{call}/commands")
 async def stream_commands(served: TheServedCall, serving: TheServing, request: Request) -> StreamingResponse:
     """The app's commands for the call, in order, until it is sealed."""
     await serving.live.commands_heard(served.call)
-    return sse.streamed(sse.paced(_commanded(served.commands), closing=request.app.state.closing))
+    return sse.streamed(sse.paced(_commanded(serving.live, served), closing=request.app.state.closing))
 
 
 @router.get("/v1/calls/{call}/judging")
@@ -138,6 +139,7 @@ async def claim_keypad_code(
         raise NotFound(NOBODY_ISSUED.format(code=call_claim.code, agent=served.agent))
 
 
-async def _commanded(waiting: asyncio.Queue[Command | None]) -> AsyncIterator[str]:
-    while (command := await waiting.get()) is not None:
-        yield sse.frame(command.dump_json(), event=command.type)
+async def _commanded(live: Live, served: Served) -> AsyncIterator[str]:
+    with live.following(served.call):
+        while (said := await served.commands.get()) is not None:
+            yield sse.frame(said.command.dump_json(), event=said.command.type, id_=said.id)

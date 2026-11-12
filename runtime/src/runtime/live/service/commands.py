@@ -1,6 +1,7 @@
 """A command for a live call: handed to whatever runs it, here or on another gateway, its refusal said one way."""
 
 from dataclasses import dataclass
+from uuid import uuid4
 
 from runtime.actor import Scope
 from runtime.agents import service as agents
@@ -15,6 +16,7 @@ from runtime.signal import Signal
 from runtime.wire.base import Command, Entry
 from runtime.wire.commands import SessionConfigure
 from runtime.wire.events import ErrorEvent
+from runtime.wire.signal import Commanded
 
 # The gateway's own words to whatever runs a call (`wire.commands`): the one verb a desk sends, which a
 # call takes as a supervisor's; the caller's own hang-up, said at the gateway; the call taking its
@@ -62,7 +64,8 @@ async def deliver(calls: Calls, signal: Signal, command: Command) -> Delivery:
     if command.call is None:
         return Delivery(reached=False)
     # Whichever gateway runs the call's worker stream or its session takes it.
-    return Delivery(reached=await COMMANDS.reach(signal, command, call=command.call))
+    said = Commanded(id=uuid4().hex, command=command)
+    return Delivery(reached=await COMMANDS.reach(signal, said, call=command.call))
 
 
 # A verb the call cannot take is said on the call's log, as a worker says it on a spoken call: the
@@ -80,11 +83,12 @@ async def take_here(served: Served, running: session.Session, command: Command) 
 # commands wait here for its worker's stream; a written call's session takes them at once. The sender
 # is on another gateway, which answered it already: the refusal is on the call's log, and told to the
 # socket the call is bound to, which is the app that sent it when an app did.
-async def hear(sockets: Sockets, served: Served, command: Command) -> None:
+async def hear(sockets: Sockets, served: Served, said: Commanded) -> None:
     """One command heard for a call served here: queued for its worker, or taken by its session."""
     if served.running is None:
-        served.commands.put_nowait(command)
+        served.commands.put_nowait(said)
         return
+    command = said.command
     refusal = await take_here(served, served.running, command)
     if refusal is not None and served.app is not None:
         await sockets.tell(served.app, Entry.make_unstored(command.agent, "error", refusal.dump()))
