@@ -5,7 +5,7 @@ import pytest
 from runtime.calls.context import Route
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound
-from runtime.jobs.service.arrival import resolve_route
+from runtime.jobs.service.arrival import may_be_a_developers, resolve_route
 from runtime.telephony.service.legs import Arrival
 from runtime.wire.dispatch import Dispatch
 
@@ -62,3 +62,10 @@ def test_a_ring_handed_over_whose_leg_named_nobody_is_refused_rather_than_run_he
     """A handed-over ring that lost its agent on the way is refused, never answered by the number."""
     with pytest.raises(NotFound, match="names no agent"):
         resolve_route(Dispatch(env=Env.sandbox, diverted_from=Env.production), A_PHONE, [AT_THE_NUMBER], None)
+
+
+def test_only_an_undispatched_ring_at_a_production_number_may_be_a_developers() -> None:
+    assert may_be_a_developers(Dispatch(), A_PHONE, AT_THE_NUMBER)
+    assert not may_be_a_developers(Dispatch(), A_PHONE, IN_THE_SANDBOX)
+    assert not may_be_a_developers(Dispatch(agent="front"), A_PHONE, AT_THE_NUMBER)
+    assert not may_be_a_developers(Dispatch(), A_PAGE, AT_THE_NUMBER)
