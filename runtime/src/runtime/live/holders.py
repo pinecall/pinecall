@@ -267,6 +267,10 @@ class Holders:
         """Whether a process holds the agent in the org now, in either env."""
         return any(scope.org == org and name == slug and kept for (scope, name), kept in self._holders.items())
 
+    def is_held_by_anyone(self, slug: str) -> bool:
+        """Whether a process holds the agent now, in any org of the box and either env."""
+        return any(name == slug and kept for (_, name), kept in self._holders.items())
+
     # ── the line ──
 
     def line_of(self, env: Env, slug: str) -> str | None:

@@ -7,25 +7,27 @@ from dataclasses import dataclass, field
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Scope
+from runtime.actor import Actor, Scope
 from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
 from runtime.calls.log import Logs, Store
 from runtime.enums import Channel, Direction, Env
-from runtime.exceptions import PinecallError, UpstreamError
+from runtime.exceptions import Conflict, PinecallError, UpstreamError
 from runtime.kit.loops import survive
 from runtime.kit.time import today_in
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
-from runtime.live.service import written
+from runtime.live.service import desk, written
 from runtime.scoping import box_task
 from runtime.session import service as session
 from runtime.telephony import service as telephony
 from runtime.telephony.models import Route as RouteRow
 from runtime.whatsapp import service as whatsapp
 from runtime.wire.base import Entry
+from runtime.wire.commands import SayVerb
 from runtime.wire.events import ErrorEvent, MessageTaken, MessageWaiting
+from runtime.wire.parts import Supervisor
 from runtime.wire.signal import HandedMessage
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,12 @@ IDLE_S = 2 * 60 * 60
 # Meta lets a business write freely only this long after the contact's last message
 # (developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages).
 WINDOW_S = 24 * 60 * 60
+
+ONLY_WHATSAPP = "a message is written on a WhatsApp thread, and {contact}'s newest call is {channel}"
+WINDOW_CLOSED = (
+    "WhatsApp's window with {contact} closed 24 h after their last message: only a template reaches them now"
+)
+NOTHING_OPEN = "{contact}'s conversation went quiet and is sealed: their next message opens a new one"
 
 # However the call ends, the conversation is over with it: a written call a supervisor ends
 # only says so, and its session is closed here.
@@ -348,6 +356,29 @@ async def list_waiting(store: Store) -> list[Waiting]:
             waiting[message.message_id] = Waiting(entry.agent, Env(message.env), inbound, message.received_at)
         after = page[-1].position
     return list(waiting.values())
+
+
+# A supervisor's `say` on the open conversation, sent to the contact by its reply tap. It goes the way
+# every verb of the desk goes: to whichever gateway runs the conversation. Until 2026-11 it was said
+# to the session of this gateway alone, and with more than one gateway an open conversation was
+# answered as one that "went quiet and is sealed" whenever the request landed on another.
+async def say_as_agent(
+    session_: AsyncSession, live: LiveParts, actor: Actor, slug: str, contact: str, text: str
+) -> str:
+    """Say something as the agent on the contact's open WhatsApp conversation; the call it was said on."""
+    newest = (await calls.list_calls_with(session_, actor.scope, slug, contact))[0]
+    facts = (await calls.facts_of_calls(session_, [newest])).get(newest)
+    channel = None if facts is None else facts.channel
+    if facts is None or channel != Channel.whatsapp:
+        raise Conflict(ONLY_WHATSAPP.format(contact=contact, channel=channel))
+    # The log's own clock, which stamped when the contact last wrote.
+    if live.store.clock() - max(facts.heard_at, default=0.0) > WINDOW_S:
+        raise Conflict(WINDOW_CLOSED.format(contact=contact))
+    if await live.store.is_sealed(newest):
+        raise Conflict(NOTHING_OPEN.format(contact=contact))
+    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
+    await desk.send_verb(live, desk.Supervising(newest, by), SayVerb(text=text))
+    return newest
 
 
 def _thread_key(scope: Scope, inbound: whatsapp.Inbound) -> ThreadKey:

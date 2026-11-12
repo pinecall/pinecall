@@ -23,6 +23,7 @@ from runtime.providers.service.refusals import refusing
 from runtime.providers.service.stages import A_RATE, ears_outside_a_call, silence
 from runtime.providers.service.transcription import FRAME_MS, TAIL_MS, Asked, ears_for, hear_out
 from runtime.providers.stage import Running
+from runtime.wire.tokens import OUR_KEY_ID
 
 # A dictation token opens one stream, within the minute it was minted in, for the org it names.
 DICTATION_TOKEN_TTL_S = 60
@@ -30,10 +31,10 @@ DICTATION_TOKEN_TTL_S = 60
 LONGEST_DICTATION_S = 120
 # Where a page opens the stream its token is for.
 STREAM_PATH = "/v1/transcriptions/stream"
-# The claim that says a token is a dictation's, and the header of a token the gateway signs with a key
-# of its own: a LiveKit token names no key id, so a dictation token is never tried as one.
+# The claim that says a token is a dictation's. Its header names the key id of every token the gateway
+# signs with a key of its own (`wire.tokens.OUR_KEY_ID`): a LiveKit token names no key id, so a
+# dictation token is never tried as one.
 CLAIM = "dictates"
-OUR_KEY_ID = "pinecall"
 
 # What the stream is told once the words are settled, and what ends the audio.
 DONE = "done"

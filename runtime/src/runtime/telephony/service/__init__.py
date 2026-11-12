@@ -18,7 +18,14 @@ from runtime.telephony.service.legs import (
 )
 from runtime.telephony.service.numbers import get_number
 from runtime.telephony.service.outbound import get_carrier_for_number, list_phone_routes
-from runtime.telephony.service.routes import find_route_at, list_answered_routes, note_call
+from runtime.telephony.service.routes import (
+    find_route_at,
+    list_answered_routes,
+    list_routes,
+    move_routes_with_agent,
+    note_call,
+)
+from runtime.telephony.service.test_line import find_test_line
 
 __all__ = [
     "CALLER_NUMBER",
@@ -29,6 +36,7 @@ __all__ = [
     "caller_leg",
     "dial_in",
     "find_route_at",
+    "find_test_line",
     "find_wrong_tone",
     "get_carrier_for_number",
     "get_number",
@@ -36,7 +44,9 @@ __all__ = [
     "leg_to",
     "list_answered_routes",
     "list_phone_routes",
+    "list_routes",
     "meta_token_for",
+    "move_routes_with_agent",
     "note_call",
     "send_on",
     "send_tones",

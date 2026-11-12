@@ -157,9 +157,10 @@ one `Protocol`), its fence, its trunk and rule on the SFU and its row are read a
 together; the routes and the legs in a call's room were decided into it.
 
 `live/service/` has more than sixteen modules and is one context: a call while it is served:
-opened, bound to the app that holds its agent, commanded, ended once. Its eighteen nouns read and
-move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp threads, the dial
-and a visitor's way in were decided into it.
+opened, bound to the app that holds its agent, commanded, ended once. Its twenty-one nouns read
+and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp threads, the
+dial, a visitor's way in with its tokens and codes, the supervisor's desk, the console's asks of a
+running app, the apps and the line were decided into it.
 
 ## The rules
 

@@ -192,8 +192,9 @@ ONE_CONTEXT: dict[str, str] = {
     ),
     "live": (
         "a call while it is served: opened, bound to the app that holds its agent, commanded, ended once. Its "
-        "eighteen nouns read and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp "
-        "threads, the dial and a visitor's way in were decided into it (calls-service-1 B, calls-service-4 A)"
+        "twenty-one nouns read and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp "
+        "threads, the dial, a visitor's way in with its tokens and codes, the supervisor's desk, the console's "
+        "asks of a running app, the apps and the line were decided into it (calls-service-1 B, calls-service-4 A)"
     ),
 }
 

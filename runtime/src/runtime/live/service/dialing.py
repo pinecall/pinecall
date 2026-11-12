@@ -7,20 +7,23 @@ from datetime import datetime
 from livekit import api
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Scope
+from runtime.actor import Actor, Scope
 from runtime.calls import service as calls
 from runtime.calls.context import new_call_id
 from runtime.compliance import service as compliance
 from runtime.enums import Channel, Direction
-from runtime.exceptions import NotFound, UpstreamError, ValidationError
+from runtime.exceptions import Conflict, NotFound, UpstreamError, ValidationError
 from runtime.fleet import service as fleet
 from runtime.kit.text import Json
+from runtime.kit.time import now
+from runtime.live.holders import NoApp
 from runtime.live.parts import LiveParts
-from runtime.live.service import openings, seal
+from runtime.live.service import openings, seal, tokens
 from runtime.live.service.ending import End, Sealing
 from runtime.telephony import service as telephony
 from runtime.wire.dispatch import Dialling, Dispatch
 from runtime.wire.events import CallDialing
+from runtime.wire.parts import Projection
 
 # The key of a call's metadata that says what the call is for.
 INSTRUCTION = "instruction"
@@ -28,6 +31,7 @@ INSTRUCTION = "instruction"
 THE_MEDIA_PLANE = "livekit"
 NOTHING_RANG = "nothing rang"
 NOT_JUDGED_UNPLACED = "the media plane refused the call before anything rang: there was nothing to judge"
+NO_APP_TO_SERVE_IT = "{nobody}: a phone would ring with no app to serve it"
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +62,56 @@ class PlacedCall:
     call: str
     to: str
     shown: str
+
+
+@dataclass(frozen=True, slots=True)
+class Dial:
+    """What a key asks a dial with: the far end, the number shown, the consent, and what the call opens with."""
+
+    to: str
+    shown: str | None = None
+    consent: compliance.Consent | None = None
+    state: Mapping[str, Json] = field(default_factory=dict[str, Json])
+    metadata: Mapping[str, Json] = field(default_factory=dict[str, Json])
+    greeting: str | None = None
+    instruction: str | None = None
+    # What the log token handed back reads the call through.
+    log: Projection = "tenant"
+
+
+@dataclass(frozen=True, slots=True)
+class Dialled:
+    """A dial a key asked for, placed: the call it became, and a token that reads its log."""
+
+    placed: PlacedCall
+    log_token: str
+
+
+# Asked with a key, for one of its agents: refused while no app serves the agent, and held to no
+# caller's hours when the far end is the asker's own phone.
+async def dial_as_agent(
+    session: AsyncSession, live: LiveParts, signer: tokens.Signer, actor: Actor, slug: str, dial: Dial
+) -> Dialled:
+    """Place a call as the agent for whoever holds the key, after its guards; the call it became."""
+    if live.holders.find_serving(actor.scope, slug) is None:
+        raise Conflict(NO_APP_TO_SERVE_IT.format(nobody=NoApp(slug)))
+    who = actor.asked_by
+    placement = Placement(
+        scope=actor.scope,
+        agent=slug,
+        to=dial.to,
+        shown=dial.shown,
+        asked_by=who,
+        at=now(),
+        own_phone=dial.to in live.holders.phones_of(actor.env, who),
+        consent=dial.consent,
+        state=dial.state,
+        metadata=dial.metadata,
+        greeting=dial.greeting,
+        instruction=dial.instruction,
+    )
+    placed = await place_call(session, live, placement)
+    return Dialled(placed, tokens.sign_log_token(signer, placed.call, dial.log))
 
 
 # The log opens on call.dialing before anything rings: the one record of who placed the call,

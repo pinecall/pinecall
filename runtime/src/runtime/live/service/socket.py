@@ -26,6 +26,7 @@ from runtime.live.parts import LiveParts
 from runtime.live.peers import APP_INBOX
 from runtime.live.served import Served
 from runtime.live.service import commands, handoff, openings
+from runtime.live.service.codes import NoSuchCode
 from runtime.live.service.whatsapp import Threads
 from runtime.live.sockets import SocketId, Sockets
 from runtime.postgres import DatabaseError, busy
@@ -59,7 +60,7 @@ logger = logging.getLogger(__name__)
 type SendFrame = Callable[[JsonObject], Awaitable[None]]
 type Close = Callable[[str], Awaitable[None]]
 # Ties a call to the page showing a code, as its agent heard it: False when no page waits on it. Given
-# by whoever builds the socket (`codes.claim_code`).
+# by whoever builds the socket (`Codes.claim_heard`).
 type ClaimCode = Callable[[AsyncSession, Served, str], Awaitable[bool]]
 
 # Sent on a stop: the SDK exits instead of reconnecting.
@@ -86,7 +87,6 @@ NOBODY_WAITING = (
     "no tool call {call_id} is waiting on call {call!r}: it lapsed, it was answered, or the call is not here"
 )
 NOBODY_ASKED = "no dev.request {id} is waiting: it lapsed, it was answered, or another gateway asked it"
-NO_CODE = "no code {code} is waiting for agent {agent}: nobody issued it, it expired, or a call took it"
 SEARCHES_WITH_NOTHING = (
     "{slug} searches its bases, and none is attached to it in {env}: pinecall docs attach <base> --agent {slug}"
 )
@@ -393,7 +393,7 @@ class AppSocket:
             await served.log.append("error", _refusal(command, commands.REFUSED, str(refused)).dump())
             raise
         if not claimed:
-            why = NO_CODE.format(code=wanted.code, agent=command.agent)
+            why = str(NoSuchCode(wanted.code, command.agent))
             await served.log.append("error", _refusal(command, "no_code", why).dump())
             await self.refuse(command.agent, "no_code", why, command.dump())
 

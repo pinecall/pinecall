@@ -23,13 +23,16 @@ from runtime.calls.service.prompts import Prompts
 from runtime.config import load_settings
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
+from runtime.flows import tasks as flows_tasks
 from runtime.handles import Handles
 from runtime.kit.loops import Loops
 from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
 from runtime.live import tasks as live_tasks
 from runtime.live.holders import Holders
 from runtime.live.parts import LiveParts
+from runtime.live.service.codes import Codes
 from runtime.live.service.entries import Appends
+from runtime.live.service.tokens import Signer
 from runtime.live.service.whatsapp import Threads
 from runtime.mail.service.outbox import Outbox
 from runtime.platform.service.attempts import AttemptThrottle
@@ -93,6 +96,11 @@ class State(TypedDict):
     whatsapp_threads: Threads
     alerting: Alerting
     vendor_health: VendorHealth
+    # What signs a call's tokens is what reads them back: the live side signs with it (`signer`), and the
+    # record reads a call's token through it (calls' `visits`). And every agent's caller codes.
+    signer: Signer
+    visits: Signer
+    codes: Codes
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -101,6 +109,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
     """Build the process's state once, run its loops, and close all of it after."""
     async with AsyncExitStack() as stack:
         handles = await builders.open_connections(load_settings(), stack)
+        signer = builders.build_signer(handles.settings)
         writer, log_store, relay, feeds, logs = builders.build_log_engine(handles, stack)
         loops = Loops()
         stack.push_async_callback(loops.stop)
@@ -119,6 +128,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         sip_names = builders.read_sip_names(handles.settings)
         loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))
         loops.start(alerts_tasks.post_alerts.bind(sessions, vault, handles.http))
+        loops.start(flows_tasks.wake_runs.bind(sessions))
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -155,4 +165,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             whatsapp_threads=threads,
             alerting=alerting,
             vendor_health=live.health,
+            signer=signer,
+            visits=signer,
+            codes=builders.build_codes(handles, logs),
         )

@@ -230,3 +230,31 @@ class CodeLog(StrEnum):
 
     public = "public"
     tenant = "tenant"
+
+
+# Until 2026-11 the seven were strings in four files of flows.
+class RunStatus(StrEnum):
+    """Where a flow's run stands: in its process's hands, waiting for something, or over."""
+
+    ready = "ready"
+    sleeping = "sleeping"
+    waiting = "waiting"
+    calling = "calling"
+    done = "done"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+# What a run waits in, each woken by the clock, an event or a call's end; and what a run is over in.
+PARKED: frozenset[RunStatus] = frozenset({RunStatus.sleeping, RunStatus.waiting, RunStatus.calling})
+OVER: frozenset[RunStatus] = frozenset({RunStatus.done, RunStatus.failed, RunStatus.cancelled})
+
+
+class StepKind(StrEnum):
+    """What a step of a run's journal is: a wait for the clock, a call or an event, or something that ran."""
+
+    sleep = "sleep"
+    call = "call"
+    wait = "wait"
+    run = "run"
+    emit = "emit"

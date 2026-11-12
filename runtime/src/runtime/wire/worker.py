@@ -15,6 +15,7 @@ from runtime.wire.declaration import (
     IdleConfig,
     JudgesDeclared,
     MemoryConfig,
+    ModelConfig,
     MonitorDeclared,
     PersonasDeclared,
     TurnConfig,
@@ -455,6 +456,17 @@ class RecordingKeyResponse(WireModel):
     """The key a call's recording is sealed under before it is stored: 32 bytes, base64url."""
 
     key: str
+
+
+# Read by a worker of either release: the release before 2026-11 declared it among its agents' bodies,
+# with these three fields.
+class JudgingSettings(WireModel):
+    """GET /v1/calls/{call}/judging: whether the call's org judges at hang-up, and the ceiling a judge may spend."""
+
+    on: bool
+    ceiling_usd: float | None
+    # The model the org's calls are judged on; null: the platform's. This answer has always left it null.
+    model: ModelConfig | None = None
 
 
 class SealCallRequest(WireModel):

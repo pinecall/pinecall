@@ -2,7 +2,7 @@
 
 from runtime.calls.repository.heads import CallHead, Claim
 from runtime.calls.repository.unsealed import Unsealed
-from runtime.calls.service.inbox import find_newest_call_with, has_reached
+from runtime.calls.service.inbox import find_newest_call_with, has_reached, list_calls_with
 from runtime.calls.service.lists import (
     claim_agent_log,
     claim_call,
@@ -16,11 +16,13 @@ from runtime.calls.service.lists import (
     list_quiet_written,
     list_taught,
     measure_latencies,
+    move_logs,
 )
 from runtime.calls.service.metered import keep_lent, sum_spend_by_day
 from runtime.calls.service.openings import dump_declaration, keep_opening, list_carried, opening_of, read_whole
 from runtime.calls.service.prompts import Prompts
 from runtime.calls.service.reading import read_finished
+from runtime.calls.service.simulated import keep_caller_played
 
 __all__ = [
     "CallHead",
@@ -36,8 +38,10 @@ __all__ = [
     "find_newest_call_with",
     "find_tool_entry",
     "has_reached",
+    "keep_caller_played",
     "keep_lent",
     "keep_opening",
+    "list_calls_with",
     "list_carried",
     "list_entries",
     "list_open",
@@ -45,6 +49,7 @@ __all__ = [
     "list_quiet_written",
     "list_taught",
     "measure_latencies",
+    "move_logs",
     "opening_of",
     "read_finished",
     "read_whole",

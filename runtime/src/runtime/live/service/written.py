@@ -3,27 +3,30 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Scope
+from runtime.accounts import service as accounts
+from runtime.actor import Actor, Scope
 from runtime.agents import service as agents
 from runtime.agents.declaration import Declaration
 from runtime.agents.settings import Versions
 from runtime.billing import service as billing
 from runtime.calls import service as calls
-from runtime.calls.context import CallContext, Contact, Route
+from runtime.calls.context import CallContext, Contact, Route, new_call_id
+from runtime.calls.log import Subscription
 from runtime.calls.models import Opener
 from runtime.enums import Channel, Direction
-from runtime.exceptions import Conflict, QuotaExceeded, ValidationError
-from runtime.kit.text import JsonObject
+from runtime.exceptions import Conflict, NotFound, QuotaExceeded, ValidationError
+from runtime.kit.text import Json, JsonObject
 from runtime.kit.time import today_in
-from runtime.live.holders import Registration
+from runtime.live.holders import NoApp, Registration
 from runtime.live.parts import LiveParts
 from runtime.live.served import Opening, Served
 from runtime.live.service import handoff, lookups, openings, seal
 from runtime.live.service.ending import Sealing
+from runtime.live.sockets import SocketId
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
 from runtime.session import service as session
@@ -38,6 +41,10 @@ RUNS_ELSEWHERE = "call {call} runs on another gateway: it is taken up there"
 # Where a fact a golden's recall answers is said to come from.
 A_GOLDEN = "golden"
 RECALL: PlatformTool = "recall"
+NOT_TAKEN_UP = "call {call} cannot be taken up: it is over, or not this agent's; open a new one"
+PLAYED_BY_NEEDS_A_PERSONA = "?played_by= says who plays a persona: name it with ?persona="
+NOT_THAT_APPS = "app {app} does not hold agent {slug}"
+NAMED_ALONE = "every app holding agent {slug} takes only the calls that name it"
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,6 +224,120 @@ def start_session(
     )
     live.calls.run(served, running)
     return running
+
+
+# ── a chat: a written call opened over a socket, with a key ──
+
+
+@dataclass(frozen=True, slots=True)
+class ChatAsk:
+    """What a chat is opened with: the agent, the app that must serve it, a call taken up, who writes and as whom."""
+
+    agent: str
+    app: SocketId | None = None
+    # A call to take up again, where the chat was cut; None opens a new one.
+    call: str | None = None
+    # One of the agent's synthetic callers, and who plays it this run over the persona's own.
+    persona: str | None = None
+    played_by: Mapping[str, str] | None = None
+    contact: str | None = None
+    caller: str | None = None
+    # The state the call opens in: the class's own fields.
+    state: Mapping[str, Json] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Simulated:
+    """A simulated caller admitted: what its persona expects of the agent, and the model that plays it."""
+
+    expects: tuple[str, ...]
+    played_by: str | None
+
+
+# Simulations are evals', above this domain: whatever admits one is handed in. A persona on a chat makes
+# it a simulation, which is admitted before anything opens, as the gateway's own simulations are: past
+# the org's simulations, or a caller on a vendor nobody keyed, is the refusal of the socket, never a
+# call opened and left open.
+class Simulations(Protocol):
+    """What admits a simulated caller before its call opens."""
+
+    async def admit(
+        self, session_: AsyncSession, scope: Scope, agent: str, persona: str, played_by: Mapping[str, str] | None
+    ) -> Simulated:
+        """Admit one simulation of the agent's persona, played as named; refused for no such persona or no room."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class Chat:
+    """A chat's call on this gateway: its session, and whether it is to be started or was taken up."""
+
+    running: session.Session
+    resumed: bool
+
+
+# The org's key, never a room token (`pinecall chat`, `test`, `simulate`). Until 2026-11 the endpoint
+# held all of this, and looked the persona up twice with two answers for one that is not there.
+async def open_chat(live: LiveParts, simulations: Simulations, actor: Actor, ask: ChatAsk) -> Chat:
+    """A written call for the key's chat: a new one admitted and unstarted, or the one named taken up again."""
+    accounts.check_agent(actor, ask.agent)
+    held = live.holders.find_serving(actor.scope, ask.agent, ask.app)
+    if held is None:
+        raise NotFound(_explain_nobody(live, actor.scope, ask.agent, ask.app))
+    registration = registration_for(held, actor.scope)
+    if ask.played_by is not None and ask.persona is None:
+        raise ValidationError(PLAYED_BY_NEEDS_A_PERSONA)
+    async with live.sessions.begin() as session_:
+        if ask.call is not None:
+            running = await resume_written(session_, live, registration, ask.call)
+            if running is None:
+                raise Conflict(NOT_TAKEN_UP.format(call=ask.call))
+            return Chat(running, resumed=True)
+        simulated = None
+        if ask.persona is not None:
+            simulated = await simulations.admit(session_, registration.scope, ask.agent, ask.persona, ask.played_by)
+        context = _chat_context(live, registration, ask, simulated)
+        running = await open_written(session_, live, registration, context)
+        # The model that plays the caller is kept with the call.
+        if simulated is not None and simulated.played_by is not None:
+            await calls.keep_caller_played(session_, context.call, llm=simulated.played_by, tts=None, voice=None)
+    return Chat(running, resumed=False)
+
+
+async def follow_chat(live: LiveParts, running: session.Session) -> Subscription | None:
+    """Every entry of the chat's call from now on, for its socket; None when the call is not served here."""
+    served = live.calls.find(running.call.context.call)
+    return None if served is None else await served.log.follow()
+
+
+# A web caller is a visitor id; the org's own key may name who it is (`?contact=`) and which of
+# the agent's synthetic callers plays it (`?persona=`), its own or Pinecall's, whose expectations
+# are frozen into the call here.
+def _chat_context(
+    live: LiveParts, registration: Registration, ask: ChatAsk, simulated: Simulated | None
+) -> CallContext:
+    scope = registration.scope
+    return CallContext(
+        call=new_call_id(),
+        channel=Channel.web,
+        direction=Direction.inbound,
+        caller=ask.caller or f"web_{new_call_id()[5:17]}",
+        contact=Contact(id=ask.contact) if ask.contact else None,
+        persona=ask.persona,
+        expects=() if simulated is None else simulated.expects,
+        route=Route(org=scope.org, agent=registration.slug, channel=Channel.web, env=scope.env),
+        today=today_in(live.settings.timezone),
+        holder=scope.holder or None,
+        state=dict(ask.state or {}),
+    )
+
+
+def _explain_nobody(live: LiveParts, scope: Scope, slug: str, app: SocketId | None) -> str:
+    if app is not None:
+        return NOT_THAT_APPS.format(app=app, slug=slug)
+    if live.holders.find_holder(scope, slug) is not None:
+        return NAMED_ALONE.format(slug=slug)
+    return str(NoApp(slug))
 
 
 # ── heard ──

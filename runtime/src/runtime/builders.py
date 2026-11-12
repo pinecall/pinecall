@@ -19,7 +19,7 @@ from runtime.calls.recordings import Bucket, Disk, Recordings
 from runtime.calls.service.prompts import Prompts
 from runtime.config import Settings
 from runtime.enums import Env
-from runtime.exceptions import PinecallError
+from runtime.exceptions import ConfigurationError, PinecallError
 from runtime.fleet import tasks as fleet_tasks
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
@@ -32,10 +32,12 @@ from runtime.live.parts import LiveParts
 from runtime.live.peers import Owners
 from runtime.live.served import Calls
 from runtime.live.service import commands
+from runtime.live.service.codes import Codes
 from runtime.live.service.handoff import Handoffs
+from runtime.live.service.tokens import Signer
 from runtime.live.service.whatsapp import Threads
 from runtime.live.sockets import Sockets
-from runtime.livekit import open_servers
+from runtime.livekit import key_pair, open_servers
 from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
 from runtime.postgres import create_engine, session_maker
 from runtime.providers.service.health import VendorHealth
@@ -46,6 +48,7 @@ from runtime.telephony.service.carrier import SipNames
 logger = logging.getLogger(__name__)
 
 NO_BOX_MAIL = "PINECALL_SMTP_URL does not read (%s): the box sends no email of its own"
+NO_SIGNING = "PINECALL_TOKEN_KEY: the gateway signs its log and code tokens with it"
 
 
 # Until the live side landed these were private to `lifespan.py`, which then passed the three hundred
@@ -141,6 +144,22 @@ async def build_live_side(
         health=VendorHealth(),
         spending=UnusualSpend(),
     )
+
+
+# A room's token is signed with LiveKit's pair, which opens the room; every other token of a call (its
+# log's, a code's, a resume) with the gateway's own key. A gateway given no key of its own never starts:
+# it would hand out tokens nothing could read back.
+def build_signer(settings: Settings) -> Signer:
+    """What signs and reads the tokens of a call, on the box's LiveKit pair and its own key."""
+    if settings.token_key is None:
+        raise ConfigurationError(NO_SIGNING)
+    api_key, secret = key_pair(settings)
+    return Signer(api_key, secret, settings.token_key.get_secret_value())
+
+
+def build_codes(handles: Handles, logs: Logs) -> Codes:
+    """Every agent's caller codes: written on the logs, a waiting page woken on the signal."""
+    return Codes(handles.sessions, logs, handles.signal)
 
 
 # What waited on WhatsApp when this process started is read back off the agents' logs before the first

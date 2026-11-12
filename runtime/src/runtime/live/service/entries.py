@@ -3,11 +3,14 @@
 import time
 from collections.abc import Sequence
 
+from runtime.actor import Actor
 from runtime.alerts import service as alerts
 from runtime.exceptions import Forbidden, ValidationError
 from runtime.kit.prometheus import Histogram
 from runtime.kit.text import JsonObject
+from runtime.live.parts import LiveParts
 from runtime.live.served import Calls, Served
+from runtime.live.service import openings
 from runtime.providers import service as providers
 from runtime.wire.base import BatchedEntry, Entry
 from runtime.wire.events import EVENTS, GATEWAY_WRITES
@@ -51,6 +54,14 @@ def check_entry(kind: str, data: JsonObject) -> None:
     check_kind(kind)
     if kind in LIFECYCLE:
         EVENTS[kind].parse(data, kind)
+
+
+# A socket has no request to borrow a session from: the call is found on one of its own, given back
+# before the first batch is read, so a worker's socket holds no connection for the call's life.
+async def get_written_call(live: LiveParts, actor: Actor, call: str) -> Served:
+    """The call a worker's socket of batches writes, served here, as its opener's key may reach it."""
+    async with live.sessions.begin() as session:
+        return await openings.get_served(session, live, actor, call)
 
 
 # The one rule of an append: each entry checked, the write timed, what it says counted. Until 2026-11

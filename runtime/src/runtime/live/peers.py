@@ -103,6 +103,11 @@ THREADS: Channel[HandedMessage] = Channel(
     "thread:{gateway}", HandedMessage.model_validate_json, lambda said: said.model_dump_json().encode()
 )
 
+# Where a claim wakes the page waiting on a caller's code, whichever gateway it waits on. The word carries
+# nothing: it says "read the code again". Both are the bytes the release before 2026-11 says and hears.
+CODE_TAKEN: Channel[bytes] = Channel("code:{agent}:{code}", bytes, bytes)
+TAKEN = b"taken"
+
 # The shares each gateway says whole, again and again (`shared_state.SharedState`): the app sockets it
 # holds, the agents they hold, the written calls and threads it runs, and the calls it opened.
 SOCKETS_CHANNEL = "sockets"

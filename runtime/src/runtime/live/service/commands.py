@@ -32,6 +32,15 @@ NOT_HELD = "nobody holds {agent} here: a call takes the stages of an agent an ap
 
 
 @dataclass(frozen=True, slots=True)
+class Restaging:
+    """A live call asked to take its stages anew: in whose scope, and the teammate whose stages it takes."""
+
+    call: str
+    scope: Scope
+    passed_to: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Delivery:
     """What came of a command: whether anything runs its call, and the refusal of the call that runs here."""
 

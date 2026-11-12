@@ -9,9 +9,11 @@ from runtime.billing import endpoints as billing
 from runtime.calls import endpoints as calls
 from runtime.compliance import endpoints as compliance
 from runtime.fleet import endpoints as fleet
+from runtime.flows import endpoints as flows
 from runtime.insights import endpoints as insights
 from runtime.judging import endpoints as judging
 from runtime.knowledge import endpoints as knowledge
+from runtime.live import endpoints as live
 from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 from runtime.providers import endpoints as providers
@@ -40,4 +42,6 @@ def mount(app: FastAPI) -> None:
     app.include_router(alerts.router)
     app.include_router(calls.router)
     app.include_router(insights.router)
+    app.include_router(live.router)
+    app.include_router(flows.router)
     app.include_router(platform.pages_router)
