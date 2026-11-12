@@ -10,26 +10,26 @@ what is now true (`git log --oneline` shows the style).
 
 ## Where the package stands
 
-The package is being written, bottom up, domain by domain. Built: the foundations, the toolkit, the
-wire, and every domain of the canon's order: the gateway's side, the worker's (`jobs`, `worker.py`)
-and the runner's (`hosts`, `runner.py`). Not built yet: the operator's terminal (`cli/`), which is
-what starts a process. So **nothing runs from this tree yet**: no
-image is built from it, `pinecall-runtime` is no command, and the `local*`, `image` and `deploy`
-targets of the Makefile wait for the processes. The package it replaces, `pinecall_runtime`, left
-the repository on 2026-11-12 (its last commit is `8c76bf0e`); production runs an image built before
-that.
+This package is the runtime: it has run production since 2026-11-12. One wheel holds the three
+processes, each a verb of the operator's terminal (`pinecall-runtime gateway`, `worker start`,
+`worker overflow`, `runner start`; `docs/the-runtime-cli.md`), and the image is built whole from a
+commit of this repository. The package it replaced, `pinecall_runtime`, left the repository on
+2026-11-12 (its last commit is `8c76bf0e`).
 
-What is held meanwhile: `ruff`, `pyright` strict and `mypy` clean on the whole tree, and the
-convention tests. A domain's behaviour tests are written when the processes exist.
+What is held on every change: `ruff`, `pyright` strict and `mypy` clean on the whole tree, the
+convention tests, and the behaviour suites, which mirror the tree under `tests/`.
 
 ## Commands
 
 ```
 uv sync                           the venv and every dev tool (Python 3.13)
 make check                        ruff (lint and format), pyright strict, mypy, the convention tests
+make image TAG=<commit>           the image of that commit, built and checked by Cloud Build
+make deploy CLUSTER=<cluster> TAG=<commit>   charts/pinecall released at that image, then asked at its name
 ```
 
-No suite runs on a laptop here: the tests run on the project's test machine.
+No suite runs on a laptop here: the tests run on the project's test machine. A deployment is
+`../infra/README.md`'s to describe.
 
 ## The map
 
