@@ -1,6 +1,7 @@
 """The DataChannel to a browser widget: the public log of its call, its events and its hang-up."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -67,6 +68,16 @@ class Widget:
     def when_hung_up(self, hang_up: Callable[[], None]) -> None:
         """Call `hang_up` when a widget in the room says its caller hung up."""
         self.hung_up = hang_up
+
+    # The gateway ends the tail after the call's last entry. A host that ends its call while the room
+    # is still up waits for that a moment, so a widget reads `call.ended` on its own channel; until
+    # 2026-11 the room was left first, and the page learned the end from the room closing.
+    async def finish(self, within_s: float) -> None:
+        """Send what the tail still brings, the call's end with it, for a moment; then let go."""
+        if self.tailing is not None:
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(self.tailing), within_s)
+        self.stop()
 
     def stop(self) -> None:
         """Let go of the room and of the tail."""

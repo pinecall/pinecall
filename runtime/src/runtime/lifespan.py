@@ -183,7 +183,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             feeds=feeds,
             logs=logs,
             agent_owners=log_store,
-            recordings=builders.build_recordings(handles),
+            recordings=builders.build_recordings(handles.settings, handles.http),
             prompts=prompts,
             live=live,
             appends=Appends(),

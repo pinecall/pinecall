@@ -34,7 +34,14 @@ from runtime.calls.service.lists import (
     move_logs,
 )
 from runtime.calls.service.metered import keep_lent, sum_spend_by_day
-from runtime.calls.service.openings import dump_declaration, keep_opening, list_carried, opening_of, read_whole
+from runtime.calls.service.openings import (
+    dump_declaration,
+    keep_opening,
+    list_carried,
+    opening_of,
+    read_declaration,
+    read_whole,
+)
 from runtime.calls.service.prompts import Prompts
 from runtime.calls.service.reading import Reader, get_readable, read_finished, read_for_key
 from runtime.calls.service.simulated import (
@@ -94,6 +101,7 @@ __all__ = [
     "measure_latencies",
     "move_logs",
     "opening_of",
+    "read_declaration",
     "read_finished",
     "read_for_key",
     "read_whole",

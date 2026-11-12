@@ -68,7 +68,7 @@ machine, and one that counts its calls (`PINECALL_MAX_JOBS`) reports `0.7 × cal
 LiveKit's full is its last slot. To the gateway the same worker reports `calls ÷ slots`, full at
 1.0, which is where the roster opens overflow. Neither of LiveKit's lines is overridden: they
 are its contract, the same on LiveKit Cloud. The worker's 0.7 is its own constant
-(`REFUSED_AT` in `fleet/service/roster.py`, read by `jobs/service/heartbeat.py`); no test reads the installed
+(`REFUSED_AT` in `fleet/service/slots.py`, read by `jobs/service/load.py`); no test reads the installed
 framework's line to hold the two equal, so a livekit release that moved it would go unnoticed.
 
 (Until 2026-10-03 a counting worker reported `calls ÷ slots` to LiveKit too, and both of
@@ -299,10 +299,12 @@ in that environment and held at the endpoint, never mid-call: sandbox calls neve
 
 ## Deploys drain, cordons shrink
 
-A worker told to stop takes no new call and drains what it holds for up to ten minutes, then seals
-what is left in sixty seconds; Kubernetes waits fifteen (the pod's `terminationGracePeriodSeconds`,
-900). A **cordon** (`fleet cordon`, `POST /v1/ops/fleet/{worker}/cordon`) is told on the worker's
-next heartbeat: it takes no new call, finishes what it holds, and exits **3**. In a cluster its
+A worker told to stop takes no new call and drains what it holds for up to ten minutes, then ends
+what is left: each call's job has two and a half minutes to write the call's end, seal it and let
+its room go, in that order (`A_JOB_ENDS_WITHIN_S` in `jobs/service/job.py`, livekit's
+`session_end_timeout`). Kubernetes waits fifteen (the pod's `terminationGracePeriodSeconds`, 900).
+It beats to the gateway all the while, so the roster goes on counting the calls it holds. A **cordon** (`fleet cordon`, `POST /v1/ops/fleet/{worker}/cordon`) is told on the worker's
+next heartbeat: it takes no new call, finishes what it holds, beating until it has, and exits **3**. In a cluster its
 Deployment starts the container again under the same name, which is still cordoned, so a cordon
 there is for looking, not for taking a worker out: a pod is taken out by deleting it
 (`kubectl delete pod`), which stops its worker the same way, drained.

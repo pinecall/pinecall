@@ -1,5 +1,9 @@
 """Shapes at home: pydantic is imported by the wire and the bodies, and by nothing else that is not named here."""
 
+import dataclasses
+
+from runtime.providers.stage import Running
+from runtime.wire.worker import RunningStage
 from tests.conventions.canon import Module
 
 # Where pydantic is imported outside `wire/` and a `schemas` module, each for one reason. A vendor's
@@ -25,3 +29,10 @@ def test_pydantic_lives_in_the_wire_and_the_bodies(modules: dict[str, Module]) -
             if target.split(".")[0] in ("pydantic", "pydantic_settings"):
                 wrong.append(f"{module.shown}:{line}: imports {target} outside the wire and the bodies")
     assert not wrong, "\n".join(wrong)
+
+
+# The gateway fills the wire's stage from the value by its attributes, and a worker reads the value
+# back by its field names (`Running.read`): neither maps a field by hand, so the two lists are one.
+def test_a_stage_is_one_shape_on_the_wire_and_in_the_package() -> None:
+    """`wire.worker.RunningStage` carries the fields of `providers.stage.Running`, under the same names."""
+    assert set(RunningStage.model_fields) == {one.name for one in dataclasses.fields(Running)}

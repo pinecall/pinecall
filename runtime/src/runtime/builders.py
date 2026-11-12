@@ -81,9 +81,8 @@ def build_log_engine(handles: Handles, stack: AsyncExitStack) -> tuple[Writer, S
 
 # Built once, from the settings: until 2026-11 each request of a recording built it again. A bucket
 # named with no store beside it never starts (`Settings` refuses it), so one named here has all four.
-def build_recordings(handles: Handles) -> Recordings:
+def build_recordings(settings: Settings, http: httpx.AsyncClient) -> Recordings:
     """Where the box keeps its calls' audio: the bucket PINECALL_RECORDINGS_BUCKET names, else the disk."""
-    settings = handles.settings
     root = Path(settings.recordings_root)
     secret = settings.s3_secret_access_key
     named = (settings.recordings_bucket, settings.s3_endpoint, settings.s3_region, settings.s3_access_key_id)
@@ -91,7 +90,7 @@ def build_recordings(handles: Handles) -> Recordings:
     if bucket is None or endpoint is None or region is None or key_id is None or secret is None:
         return Disk(root)
     credentials = Credentials(region, key_id, secret.get_secret_value())
-    return Bucket(root, bucket, ObjectStore(endpoint, credentials, handles.http))
+    return Bucket(root, bucket, ObjectStore(endpoint, credentials, http))
 
 
 # The roster hears the other gateways' workers before the first request; the dispatcher offers on it.

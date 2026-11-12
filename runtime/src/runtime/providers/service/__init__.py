@@ -9,6 +9,7 @@ from runtime.providers.service.plugins import (
     NOT_REALTIME,
     hears_and_speaks,
     is_installed,
+    list_vendors,
     refuse_realtime_as_llm,
     vendor_doing,
 )
@@ -24,9 +25,10 @@ from runtime.providers.service.stages import (
     build_thinking,
     build_voice,
     thinking_outside_a_call,
+    tts_of,
     voice_outside_a_call,
 )
-from runtime.providers.service.telemetry import Telemetry, forget_telemetry, telemetry_of
+from runtime.providers.service.telemetry import Telemetry, check_public, forget_telemetry, telemetry_of
 from runtime.providers.service.trials import try_realtime, try_stage
 from runtime.providers.service.voices import list_by_vendor, list_in_catalog
 
@@ -47,6 +49,7 @@ __all__ = [
     "build_realtime",
     "build_thinking",
     "build_voice",
+    "check_public",
     "completion_usage",
     "cost_of",
     "default_voice",
@@ -58,6 +61,7 @@ __all__ = [
     "keys_of",
     "list_by_vendor",
     "list_in_catalog",
+    "list_vendors",
     "open_answerer",
     "parse_lending",
     "put_box_credentials",
@@ -74,6 +78,7 @@ __all__ = [
     "thinking_outside_a_call",
     "try_realtime",
     "try_stage",
+    "tts_of",
     "vendor_doing",
     "vendor_named_in",
     "voice_outside_a_call",

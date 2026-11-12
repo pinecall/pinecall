@@ -55,16 +55,6 @@ class ForApp(BaseModel):
     kill: Killed | None = None
 
 
-class JobReport(BaseModel):
-    """One thing a job tells its worker: a turn's first audio, an error, or how its call ended."""
-
-    model_config = ConfigDict(frozen=True, extra="ignore")
-
-    first_audio_s: float | None = None
-    error: bool = False
-    ended: str | None = None
-
-
 class Forgotten(BaseModel):
     """A revocation one gateway tells the others: one key by its fingerprint, or every key of a member."""
 

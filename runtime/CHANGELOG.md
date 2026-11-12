@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **A spoken call hears its app again after a deploy.** A worker follows its call's commands on a stream
+  the gateway ends when it is told to stop, and it never opened that stream again: from the first deploy
+  on, the call was deaf to `state.set`, `prompt.set`, a hang-up, a supervisor and its caller's own hang-up
+  until it ended. The stream is opened again for as long as the call is not over.
+- **A widget reads `call.ended`.** A job ends its call before it leaves the room, in order: the end written,
+  the call sealed, the room let go. The three ran together after the room was left, so the widget's own
+  channel never carried the end and the page learned it from the room closing.
+- **A worker that drains goes on beating.** A cordoned worker stopped its heartbeat as it was told to leave,
+  and the gateway forgot it while it still held calls.
+- **A call whose session cannot be built ends at once, whatever failed.** Only a vendor's refusal was caught;
+  anything else left the call open for the reaper's ten minutes with nothing of why on its log.
+- **The org's collector is asked again before a call's spans leave for it.** A name that no longer resolves
+  to the internet gets no span, and the worker says so.
+- An inbound phone call asks the gateway for its route once, not twice.
 - **An export carries everything the org wrote or configured.** `GET /v1/org/export` keeps every line it
   had, with its `kind` and its keys, and adds a line a row for what it left out: the org and its members,
   its policy, its own judges and personas with their switches, judge labels, runs and comparisons,

@@ -1,10 +1,14 @@
-"""Server-sent events: a frame, the ping that keeps a stream alive, and a stream's end."""
+"""Server-sent events: a frame, the ping that keeps a stream alive, a stream's end, and a stream read."""
 
 import asyncio
+import json
 from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import dataclass
 
 from fastapi.responses import StreamingResponse
 from starlette.requests import Request
+
+from runtime.kit.text import JsonObject, a_mapping
 
 EVENT_STREAM = "text/event-stream"
 PING_EVERY_S = 25.0
@@ -60,3 +64,31 @@ def stream(frames: AsyncIterator[str]) -> StreamingResponse:
 
 
 type Producer = Callable[[], Awaitable[AsyncIterator[str]]]
+
+
+@dataclass(frozen=True, slots=True)
+class Sent:
+    """One event read off a stream: the id it came under, when it had one, and its JSON."""
+
+    id: str | None
+    data: JsonObject
+
+
+# The reading half, for a process of ours that follows a stream of ours. `data:` holds the whole
+# message (an entry with its seq and type, a command) and `id:` what it was sent under; `event:` and
+# the pings are not read.
+async def read_sse(lines: AsyncIterator[str]) -> AsyncIterator[Sent]:
+    """Each JSON message of a server-sent event stream, with the id it came under."""
+    data: list[str] = []
+    sent_under: str | None = None
+    async for raw in lines:
+        line = raw.rstrip("\r\n")
+        if line.startswith("data:"):
+            data.append(line[5:].lstrip(" "))
+        elif line.startswith("id:"):
+            sent_under = line[3:].strip()
+        elif not line and data:
+            text: object = json.loads("\n".join(data))
+            if a_mapping(text):
+                yield Sent(sent_under, dict(text))
+            data, sent_under = [], None

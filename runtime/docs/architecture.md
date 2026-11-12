@@ -8,9 +8,9 @@ through them. Every fact of a call is an entry appended to the call's log, and e
 app socket, the console, the fold of its state, the usage feed) reads entries. The media side is
 LiveKit's `AgentSession`, used as is.
 
-The package is being written bottom up. The gateway's domains are all in the tree, up to
-`retention/`; the worker's side (`jobs/`, `worker.py`), the runner's (`hosts/`, `runner.py`) and the
-operator's terminal (`cli/`) are named here as the canon lays them out and are not in the tree yet.
+The package is being written bottom up. The gateway's domains and the worker's side (`jobs/`,
+`worker.py`) are in the tree; the runner's (`hosts/`, `runner.py`) and the operator's terminal
+(`cli/`) are named here as the canon lays them out and are not in the tree yet.
 
 ## If you know Rails
 
@@ -101,7 +101,7 @@ domain's service; nothing imports an `endpoints` module but `api.py`.
 | `hosting/` | the apps the box runs for an org, the gateway's side: releases, secrets, the runner's beats, an app's page, and the time each served |
 | `studio/` | an agent built in the console: its definition checked and declared as an SDK would, its tools' requests held to the public internet, the gateway holding it on an app socket of its own, its export as a class |
 | `retention/` | what the box keeps and forgets across every domain: the nightly run, erasure (a call, a contact, an org, an agent) and its trail, the export |
-| `jobs/` | the worker's side of the box: its client to the gateway (every endpoint it calls, its batches down one socket per call), its heartbeat and the last minute it carries, the job that runs one call, the overflow's sentence, the recorder, the traces |
+| `jobs/` | the worker's side of the box: its client to the gateway and the call it opened there (its batches down one socket, its tools, its commands, its seal), whose call a job is, the job that runs it and ends it, the overflow's sentence, a recording sealed and kept, the hold clip, the heartbeat and the last minute it carries, the load livekit reads, the traces, and the load lab |
 | `hosts/` | the runner's side: its client to the gateway, the plan of each beat, and the two places it runs an app's process, a pod on the hosting cluster or a process of this machine |
 
 Below them, `kit/` holds what has no business noun (the vault, the repository's base, a commit's
@@ -160,7 +160,7 @@ is an answer and is never retried.
 | a tool call | while the gateway is away, up to the tool's `timeout_s` (30 s unless declared) plus 5 s | the gateway runs one round trip per call id: a retry joins the one still running, and one already finished is answered with the `tool.result` the log holds and never sent to the app again, since a tool may book or charge | `jobs/` (the worker's client), `session/tools.py`, `live/service/tools.py`, `live/tool_calls.py` |
 | the seal | within 30 s | a call is sealed once: the gateway that takes the head's lease seals it, a second request on any gateway waits for the head to say sealed | `jobs/` (the worker's client), `live/service/seal.py` |
 | a call nothing sealed | every 60 s: a spoken call silent 5 min with no agent in its room, a written one quiet 5 min (2 h on WhatsApp), a written one parked by a process that drained and taken by no other within 2 min (`app_detached`), after being handed to any process that took its agent since; a call another gateway sealed, or one erased, is let go of | a worker that dies writes no `call.ended`; a process that left promised the next one, which never came; a call counts against its org's `concurrent_calls` on the gateway that opened it until then | `live/tasks.py`, `live/service/reaper.py`, `live/service/handoff.py` |
-| the commands stream | reopened without limit; a `4xx` ends it | each command travels under an id of its own: a worker that loses the stream asks again, of any gateway, and drops what it applied | `live/endpoints/worker.py`, `jobs/` |
+| the commands stream | reopened until the call is over, half a second after the gateway ended it (it ends it at every deploy); a `4xx` ends it | each command travels under an id of its own: a worker that loses the stream asks again, of any gateway, and drops what it applied | `live/endpoints/worker.py`, `jobs/` |
 | the heartbeat | every 5 s, whatever the last one answered | the worker keeps its calls while the gateway is away | `jobs/` |
 | a tool call whose app's socket went | sent again to the socket that takes the call over | the model is still waiting on that call id | `live/service/handoff.py`, `session/tools.py` |
 | an embedding | two more tries on a transport error, `408`, `409`, `429` or `5xx`, 0.5 s doubling to 8 s or the server's `retry-after` up to 60 s; a batch too big is split in halves | an embedding is the same vector however often it is asked | `knowledge/service/embedder.py` |
@@ -173,7 +173,7 @@ is an answer and is never retried.
 | a dial | a dispatch LiveKit refuses ends the call `dial_failed`; a far end that does not answer ends and seals it; each dial is one row of the ledger, counted against the org's pace and the number's day | a person is never dialled twice by a retry | `live/service/dialing.py`, `jobs/`, `compliance/service/dial_guards.py` |
 | a ring handed to the sandbox by SIP | the leg rings 10 s at most; one the sandbox does not answer leaves the ring with production's agent | the caller is never left with nobody | `telephony/service/hand_over.py` |
 | a lookup (recall, search) | the turn waits 250 ms spoken, 3 s written, and goes on without what did not come back | a turn is waiting | `session/lookups.py`, `knowledge/service/lookups.py` |
-| opening a call | once; a gateway away fails the job | opening writes `call.ringing` and counts the call against the quota | `jobs/` (the worker's client), `live/service/openings.py` |
+| opening a call | asked again for 15 s while the gateway is away; then the job fails | opening writes `call.ringing` and counts the call against the quota | `jobs/` (the worker's client), `live/service/openings.py` |
 | the tenant's app | a tool unanswered by its `timeout_s` is an error the model reads in the same turn; a console's verb waits 120 s | the app's side effects are the app's: the platform never sends a call twice | `session/tools.py`, `live/service/dev.py` |
 | a reply to a WhatsApp contact | Meta's refusal is an `error` entry `whatsapp_not_sent` on the call | a send whose answer was lost may have reached the contact | `live/service/whatsapp.py` |
 | a judge | a judge whose model broke is skipped and says why; the call seals all the same | the seal never fails on a judge | `judging/service/judges.py`, `live/service/seal.py` |

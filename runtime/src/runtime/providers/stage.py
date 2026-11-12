@@ -77,6 +77,19 @@ class Running:
     # Who takes over, in order, each on its own key: the stage is livekit's FallbackAdapter.
     fallbacks: tuple["Running", ...] = ()
 
+    # One shape: the wire's stage carries these fields under these names (`wire.worker.RunningStage`,
+    # filled from this class by its attributes), and this reads them back. A field is added here and
+    # there, and mapped by hand nowhere.
+    @classmethod
+    def read(cls, said: Mapping[str, Any]) -> "Running":
+        """The stage a mapping says under this class's own field names, as the wire carries it."""
+        named = {one.name for one in dataclasses.fields(cls)} - {"hints", "fallbacks"}
+        return cls(
+            **{name: value for name, value in said.items() if name in named},
+            hints=tuple(said.get("hints") or ()),
+            fallbacks=tuple(cls.read(one) for one in said.get("fallbacks") or ()),
+        )
+
     def over(self, *fallbacks: "Running") -> "Running":
         """The same stage with these vendors taking over behind it, in order."""
         return dataclasses.replace(self, fallbacks=fallbacks)
@@ -99,6 +112,17 @@ class Pipeline:
     tts: Running
     # The model a voice call runs on alone, hearing and speaking itself, where the agent names one.
     realtime: Running | None = None
+
+    @classmethod
+    def read(cls, said: Mapping[str, Any]) -> "Pipeline":
+        """The stages a mapping says, each under its name, as the wire carries them."""
+        alone = said.get("realtime")
+        return cls(
+            llm=Running.read(said["llm"]),
+            stt=Running.read(said["stt"]),
+            tts=Running.read(said["tts"]),
+            realtime=None if alone is None else Running.read(alone),
+        )
 
     # The gateway keeps these with the call's facts: their usage is the operator's to bill.
     @property

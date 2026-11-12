@@ -1,4 +1,4 @@
-"""What a worker and the gateway tell each other over HTTP: its heartbeat, a call's agent, stages, route, legs, log."""
+"""What a worker and the gateway tell each other: its heartbeat, a call's agent, stages, route, legs and log."""
 
 from datetime import date
 from typing import Any, Literal
@@ -24,6 +24,21 @@ from runtime.wire.declaration import (
 )
 from runtime.wire.metrics import ModelUsage
 from runtime.wire.parts import EndOfTurn, EventSource, PlatformTool, PromptRegion, SideEffect, Visibility
+
+# ── a job to its worker ──
+
+
+# A datagram on the worker's own machine, from a call's process to the process that beats: lossy on
+# purpose, and never on the call's path.
+class JobReport(WireModel):
+    """One thing a job tells its worker: a turn's first audio, an error, or how its call ended."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    first_audio_s: float | None = None
+    error: bool = False
+    ended: str | None = None
+
 
 # ── the heartbeat ──
 
