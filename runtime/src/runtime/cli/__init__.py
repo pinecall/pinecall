@@ -7,7 +7,25 @@ from typing import Annotated
 
 import typer
 
-from runtime.cli import doctor, keys, load, migrate, orgs, processes, rebuild, retention, routes, sessions, traceback
+from runtime.cli import (
+    box,
+    doctor,
+    fleet,
+    keys,
+    load,
+    memory,
+    migrate,
+    orgs,
+    processes,
+    providers,
+    rebuild,
+    retention,
+    routes,
+    sessions,
+    telephony,
+    traceback,
+    vault,
+)
 from runtime.cli.command import MISCONFIGURED, Context
 from runtime.cli.output import Printer
 from runtime.config import load_settings
@@ -30,6 +48,9 @@ app.add_typer(processes.worker_app, name="worker")
 app.add_typer(processes.runner_app, name="runner")
 app.add_typer(migrate.app, name="migrate")
 app.command("doctor")(doctor.doctor)
+app.add_typer(providers.app, name="providers")
+app.add_typer(memory.app, name="memory")
+app.add_typer(vault.app, name="vault")
 app.add_typer(retention.app, name="retention")
 app.add_typer(sessions.app, name="sessions")
 app.add_typer(rebuild.facts_app, name="facts")
@@ -40,7 +61,11 @@ app.command("init")(orgs.init)
 app.command("kill")(orgs.kill)
 app.add_typer(orgs.app, name="orgs")
 app.add_typer(keys.app, name="keys")
+app.add_typer(box.app, name="box")
 app.add_typer(routes.app, name="routes")
+app.add_typer(fleet.app, name="fleet")
+app.add_typer(telephony.fence_app, name="fence")
+app.add_typer(telephony.sip_app, name="sip")
 app.command("load")(load.load)
 
 
