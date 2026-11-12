@@ -8,6 +8,7 @@ from runtime.alerts import endpoints as alerts
 from runtime.billing import endpoints as billing
 from runtime.compliance import endpoints as compliance
 from runtime.fleet import endpoints as fleet
+from runtime.judging import endpoints as judging
 from runtime.knowledge import endpoints as knowledge
 from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
@@ -33,5 +34,6 @@ def mount(app: FastAPI) -> None:
     app.include_router(whatsapp.router)
     app.include_router(fleet.router)
     app.include_router(telephony.router)
+    app.include_router(judging.router)
     app.include_router(alerts.router)
     app.include_router(platform.pages_router)

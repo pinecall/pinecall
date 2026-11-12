@@ -119,6 +119,7 @@ A module of a domain that is none of its seven files is named here, and in
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
 registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
 this machine can run (`machine`) stand apart and were decided into it.
+| `judging` | `library/` | the judges and personas the box ships: pages a person can read, read by `service/library.py` and by no other module |
 
 `session` is an engine: one call running for as long as it lasts. Each of its modules above is an
 object that holds the call's state, or the one noun those objects share; `service.py` beside them

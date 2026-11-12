@@ -4,7 +4,6 @@ import json
 import re
 from dataclasses import dataclass
 
-from livekit.agents import llm
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
@@ -33,6 +32,7 @@ INSTRUCTIONS = (
     "matter, a result, an error, a warning, a value, and skip the noise. Say nothing that is not in the output."
 )
 THE_OUTPUT = "The command: {command}\n\nIts output:\n{output}"
+THE_EXPLAINING = "the output it was asked to explain"
 A_FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.S)
 
 
@@ -100,17 +100,17 @@ async def explain_output(
     return await ask(thinking, output=asked.output, command=asked.command, language=language, most=asked.most)
 
 
+# The vendor's no is said in our words by `providers.ask`: its refusal the request's, its silence the vendor's.
 async def ask(running: Running, *, output: str, command: str, language: str, most: int) -> list[Note]:
     """The notes the agent's model gives on `output`, asked once; none when it answers nothing it can read."""
-    asking = llm.ChatContext.empty()
     spoken = LANGUAGES.get(language.split("-")[0].lower(), language)
-    asking.add_message(role="system", content=INSTRUCTIONS.format(most=most, language=spoken))
-    asking.add_message(
-        role="user", content=THE_OUTPUT.format(command=command or "(not given)", output=output[:LONGEST_OUTPUT])
+    answered = await providers.ask(
+        running,
+        system=INSTRUCTIONS.format(most=most, language=spoken),
+        user=THE_OUTPUT.format(command=command or "(not given)", output=output[:LONGEST_OUTPUT]),
+        what=THE_EXPLAINING,
     )
-    async with providers.thinking_outside_a_call(running) as thinking:
-        answered = await thinking.chat(chat_ctx=asking).collect()
-    return notes_of(answered.text, output, most)
+    return notes_of(answered, output, most)
 
 
 def _flatten(text: str) -> str:

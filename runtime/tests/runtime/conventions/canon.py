@@ -84,6 +84,9 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
     "providers": frozenset({"stage", "catalog"}),
     # Its two value objects (`VALUE_OBJECTS`).
     "agents": frozenset({"declaration", "settings"}),
+    # No module: the pages Pinecall's own judges and personas are written in, one `.md` each, shipped in
+    # the wheel and read once a process by `service/library.py`.
+    "judging": frozenset({"library"}),
     # An engine: one call running for as long as it lasts, each module an object that holds its state, or
     # the one noun those objects share. `service.py` beside them is what a host calls.
     "session": frozenset(
