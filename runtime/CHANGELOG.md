@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An agent that greets has its pipeline read again.** `GET /v1/agents/{slug}/pipeline` answered 500 for
+  every agent with a greeting, which is what the console's Configure page reads: the greeting was
+  the one part of the answer shaped by the wire, and it was handed over as the service holds it. A response
+  body now reads what a service returns at every depth.
 - **`GET /v1/limits` shows an org's seats and budget as they are held.** Both are the org's, not an
   environment's: a key of the sandbox read them off the sandbox's row, where an operator who set them on
   production saw no limit at all. They are read off the org's own row now, the one a refusal reads.

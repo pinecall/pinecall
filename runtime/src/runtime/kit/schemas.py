@@ -46,7 +46,10 @@ class Row(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # Asked at the call, attributes are read at every depth: the class's own setting reads the row's
+    # and leaves a nested shape of the wire, which sets none, refusing whatever is not its own class.
+    # Until 2026-11-12 an agent with a greeting answered 500 at GET /v1/agents/{slug}/pipeline.
     @classmethod
     def of(cls, row: Any, /) -> Self:
         """The body the row answers as."""
-        return cls.model_validate(row)
+        return cls.model_validate(row, from_attributes=True)
