@@ -1,5 +1,7 @@
 """The bodies of judging's endpoints: the org's switch, judges, personas, cases and their groups."""
 
+from collections.abc import Sequence
+from dataclasses import asdict
 from typing import Any, Literal, Self
 
 from pydantic import Field
@@ -108,6 +110,12 @@ class JudgeTried(Row):
     cost_usd: float
 
 
+class JudgeQuery(Schema):
+    """Whether a call judged already is judged again, and paid for again."""
+
+    again: bool = False
+
+
 # ── an agent's personas ──
 
 
@@ -197,6 +205,12 @@ class GeneratedPersonas(Row):
     personas: list[ProposedPersona]
     evals: int
     cost_usd: float
+
+    @classmethod
+    def of_written(cls, personas: Sequence[Any], *, evals: int, cost_usd: float) -> Self:
+        """The body the callers a model wrote answer as, each by its own fields."""
+        rows = [ProposedPersona.model_validate(asdict(persona)) for persona in personas]
+        return cls(personas=rows, evals=evals, cost_usd=cost_usd)
 
 
 # ── the org's dataset: real calls kept as goldens ──

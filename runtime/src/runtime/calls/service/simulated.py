@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.calls.repository.facts import FactsRepository
 from runtime.enums import Env
-from runtime.judging.service import transcript
+from runtime.wire.room import A_SIMULATED_CALLER
 
 # A simulated call plays a quarter of an hour at most, and is summed up a moment after it ends.
 A_SIMULATION_MAY_BE_ON_THE_LINE_S = 60 * 60.0
@@ -16,7 +16,7 @@ A_SIMULATION_MAY_BE_ON_THE_LINE_S = 60 * 60.0
 async def count_simulating(session: AsyncSession, org: str, env: Env, *, at: float) -> int:
     """The simulated calls of the org in the env that began and are not yet summed up: not in its usage yet."""
     since = at - A_SIMULATION_MAY_BE_ON_THE_LINE_S
-    return await FactsRepository(session).count_simulating(org, env, since, transcript.A_SIMULATED_CALLER)
+    return await FactsRepository(session).count_simulating(org, env, since, A_SIMULATED_CALLER)
 
 
 async def add_caller_cost(session: AsyncSession, call: str, usd: float) -> None:

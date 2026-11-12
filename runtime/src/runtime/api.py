@@ -8,6 +8,7 @@ from runtime.alerts import endpoints as alerts
 from runtime.billing import endpoints as billing
 from runtime.calls import endpoints as calls
 from runtime.compliance import endpoints as compliance
+from runtime.evals import endpoints as evals
 from runtime.fleet import endpoints as fleet
 from runtime.flows import endpoints as flows
 from runtime.insights import endpoints as insights
@@ -44,4 +45,5 @@ def mount(app: FastAPI) -> None:
     app.include_router(insights.router)
     app.include_router(live.router)
     app.include_router(flows.router)
+    app.include_router(evals.router)
     app.include_router(platform.pages_router)

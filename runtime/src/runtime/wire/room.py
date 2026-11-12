@@ -10,6 +10,9 @@ from runtime.wire.parts import ParticipantKind, TrackKind, TrackSource
 # into the token, the worker reads it off the seat to tell a widget from a supervisor from a caller.
 type RoomScope = Literal["talk", "chat", "observe", "supervise", "read", "participate"]
 SCOPE_ATTRIBUTE = "pinecall.scope"
+# The caller's leg a spoken simulation publishes under, and the `from` a written one carries: what
+# tells a simulated caller from a person on call.started, to whichever release reads it.
+A_SIMULATED_CALLER = "simulated_caller"
 # The scopes that read the log of their own call and no other: a widget's.
 READS_ITS_OWN_CALL: frozenset[RoomScope] = frozenset({"talk", "chat", "read", "participate"})
 

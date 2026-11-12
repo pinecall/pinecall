@@ -301,6 +301,28 @@ async def read_finished(session: AsyncSession, actor: Actor, call: str) -> Finis
     return FinishedCall(entries=entries, agent=head.agent, env=head.scope.env, version=head.versions.settings)
 
 
+@dataclass(frozen=True, slots=True)
+class ReadCall:
+    """A call a key reads, whole: its log, its agent, the declaration it is read by, and the env it was opened in."""
+
+    entries: list[Entry]
+    agent: str
+    declaration: Declaration | None
+    env: Env
+
+
+# What a replay checks, a judge is tried on and a panel is run again over: the reading a log's
+# endpoints make, then the log whole. Another org's call and one nobody wrote are the same 404.
+async def read_for_key(session: AsyncSession, actor: Actor, call: str) -> ReadCall:
+    """A call the key reads, with its whole log; refused for another's call, and for one with no log."""
+    readable = await get_readable(session, Reader(actor=actor), call)
+    entries = await EntryRepository(session).whole_of(call)
+    head = readable.head
+    if head is None or head.scope is None or not entries:
+        raise NotFound(NO_SUCH_CALL.format(call=call))
+    return ReadCall(entries, head.agent, readable.declaration, head.scope.env)
+
+
 # ── the feeds ──
 
 

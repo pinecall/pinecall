@@ -2,14 +2,18 @@
 
 from collections.abc import Sequence
 from dataclasses import asdict
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
-from runtime.agents.auth import TheAgent
+from runtime.agents.auth import KnownAgent, TheAgent
+from runtime.evals.auth import TheHarness
+from runtime.evals.service import trials
 from runtime.judging import schemas
 from runtime.judging.auth import EvalsKey
 from runtime.judging.service import judges
 from runtime.postgres import Session
+from runtime.wire.scores import CallScore
 
 router = APIRouter()
 
@@ -55,8 +59,28 @@ async def delete_judge(agent: TheAgent, name: str, actor: EvalsKey, session: Ses
     return _list(await judges.delete_judge(session, actor.org, agent, name))
 
 
+# Asked as the seal asks it, on the model the seal would judge the call on, and written on no log. The
+# use case is evals': it reads finished calls, which stand above this domain.
+@router.post("/v1/agents/{slug}/judges/try")
+async def try_judge(slug: KnownAgent, body: schemas.JudgeTry, actor: EvalsKey, parts: TheHarness) -> schemas.JudgeTried:
+    """Ask one judge, written or only in the body, of finished calls of the agent."""
+    written = _read_body(body) if body.question.strip() else None
+    trial = await trials.try_judge(parts, actor, slug, body.name, written, last=body.last, named=body.calls)
+    return schemas.JudgeTried.of(trial)
+
+
+# Hang-up judging run later: the org judged nothing then, the judge failed, or a judge again.
+@router.post("/v1/evals/judge/{call}", response_model_exclude_unset=True)
+async def judge_call(
+    call: str, actor: EvalsKey, parts: TheHarness, query: Annotated[schemas.JudgeQuery, Query()]
+) -> CallScore:
+    """Judge a finished call, write the verdict on its log, and answer it."""
+    return await trials.judge_again(parts, actor, call, again=query.again)
+
+
 def _read_body(body: schemas.JudgeRequest) -> judges.Wanted:
-    return judges.Wanted(**body.model_dump(), named=frozenset(body.model_fields_set))
+    said = body.model_dump(include=set(schemas.JudgeRequest.model_fields))
+    return judges.Wanted(**said, named=frozenset(body.model_fields_set))
 
 
 # A judge of the roster is its row by the same names: its question's fields beside whose it is.

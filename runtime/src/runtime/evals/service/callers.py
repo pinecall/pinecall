@@ -106,10 +106,12 @@ class Spending:
         caller = self.catalog.caller
         return caller is not None and self.usd >= caller.ceiling_usd
 
-    # What the voice cost is the line's to say (`Line.voiced`): nothing on a written call.
-    def count(self, line: Improvised, voiced: ModelUsage | None) -> None:
-        """The line's model by its answer, and its voice by what the line it was said on says it cost."""
-        self.used.extend(used for used in (line.usage, voiced) if used is not None)
+    # A line's model is counted as it is improvised, its voice as it is said: what saying it cost is
+    # the line's to answer (`Line.say`), and a written line answers nothing.
+    def count(self, used: ModelUsage | None) -> None:
+        """One more thing the caller used: the model of a line, or the voice that said it."""
+        if used is not None:
+            self.used.append(used)
 
 
 @dataclass(frozen=True, slots=True)

@@ -60,3 +60,18 @@ async def the_group(group: Annotated[str, Path(alias="id")], actor: EvalsKey, se
 
 
 TheGroup = Annotated[GroupCounted, Depends(the_group)]
+
+# A group's proposed setting is written by who edits the agent's settings: the pipeline's key, or the words'.
+WordsKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline, KeyScope.words))]
+
+
+async def the_group_to_apply(
+    group: Annotated[str, Path(alias="id")], actor: WordsKey, session: Session
+) -> GroupCounted:
+    """The path's group, one of the org's, of an agent the settings key's person may touch."""
+    found = await groups.get_group(session, actor.org, group)
+    accounts.check_agent(actor, found.group.agent)
+    return found
+
+
+TheGroupToApply = Annotated[GroupCounted, Depends(the_group_to_apply)]

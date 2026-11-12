@@ -29,6 +29,7 @@ from runtime.wire.events import (
     event_of,
 )
 from runtime.wire.parts import EndedBy, SideEffect, ToolResult
+from runtime.wire.room import A_SIMULATED_CALLER
 from runtime.wire.scores import CallScore
 
 # livekit's two speakers.
@@ -40,8 +41,6 @@ type GateKind = Literal["tool.call", "confirm.request", "confirm.granted", "conf
 logger = logging.getLogger(__name__)
 
 METRICS = "metrics."
-# The caller's leg a spoken simulation publishes under, and the `from` a written one carries.
-A_SIMULATED_CALLER = "simulated_caller"
 
 AGENT: Role = "assistant"
 CALLER: Role = "user"

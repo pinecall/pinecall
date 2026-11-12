@@ -10,6 +10,7 @@ from runtime.billing.service.limits import (
     admit_number,
     admit_push,
     admit_seat,
+    admit_simulation,
     admit_turn,
 )
 from runtime.billing.service.quotas import Quotas, get_quotas, hold_stock
@@ -25,6 +26,7 @@ __all__ = [
     "admit_number",
     "admit_push",
     "admit_seat",
+    "admit_simulation",
     "admit_turn",
     "get_quotas",
     "give_first_quotas",

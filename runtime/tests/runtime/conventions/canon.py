@@ -120,6 +120,9 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "parts",
         }
     ),
+    # Harness: one of each thing a test call reaches, the one value of evals that carries them together, as
+    # `LiveParts` is the live side's (G-1).
+    "evals": frozenset({"parts"}),
     # An engine: one call running for as long as it lasts, each module an object that holds its state, or
     # the one noun those objects share. `service.py` beside them is what a host calls.
     "session": frozenset(
@@ -195,6 +198,12 @@ ONE_CONTEXT: dict[str, str] = {
         "twenty-one nouns read and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp "
         "threads, the dial, a visitor's way in with its tokens and codes, the supervisor's desk, the console's "
         "asks of a running app, the apps and the line were decided into it (calls-service-1 B, calls-service-4 A)"
+    ),
+    "evals": (
+        "a test call placed against an agent and read after it: a golden run, a caller simulated, setups compared, "
+        "a finished call checked again. Its twenty-four nouns stand on one seam (`Line`: written or spoken) and one "
+        "skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group "
+        "diagnosed, callers written, the calibration) was decided into it (judging-1 A, judging-3 A, evals-1 A)"
     ),
 }
 

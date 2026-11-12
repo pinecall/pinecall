@@ -5,7 +5,9 @@ from dataclasses import asdict
 
 from fastapi import APIRouter
 
-from runtime.agents.auth import TheAgent
+from runtime.agents.auth import KnownAgent, TheAgent
+from runtime.evals.auth import TheHarness
+from runtime.evals.service import personas as written
 from runtime.handles import TheVault
 from runtime.judging import schemas
 from runtime.judging.auth import EvalsKey
@@ -47,6 +49,20 @@ async def put_persona(
 async def delete_persona(agent: TheAgent, name: str, actor: EvalsKey, session: Session) -> schemas.PersonaList:
     """Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's or the class's."""
     return _list(await personas.delete_persona(session, actor.org, agent, name))
+
+
+# Written on the model the agent's calls are judged on: one eval a persona written, none on the
+# org's own key. Nothing is saved; a person keeps the ones worth keeping with PUT. The use case is
+# evals': it reads the agent's calls, which stand above this domain.
+@router.post("/v1/agents/{slug}/personas/generate")
+async def generate_personas(
+    slug: KnownAgent, body: schemas.GeneratePersonas, actor: EvalsKey, parts: TheHarness
+) -> schemas.GeneratedPersonas:
+    """Callers written for the agent from its prompt, tools, knowledge, a call or a template."""
+    made = await written.generate_personas(
+        parts, actor, slug, n=body.n, about=body.about, from_call=body.from_call, template=body.template
+    )
+    return schemas.GeneratedPersonas.of_written(made.personas, evals=made.evals, cost_usd=made.cost_usd)
 
 
 # A caller of the roster is its row by the same names: the persona's fields beside whose it is.

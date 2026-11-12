@@ -126,6 +126,7 @@ A module of a domain that is none of its seven files is named here, and in
 | `live` | `pump.py` | a bound call's pump: what any gateway writes to it, sent down its app socket in seq order |
 | `live` | `tool_calls.py` | `ToolCalls`: a call's tool calls to its app, through its log, each asked once and answered once |
 | `live` | `parts.py` | `LiveParts`: one of each thing a call served here reaches, the one value that carries them together |
+| `evals` | `parts.py` | `Harness`: one of each thing a test call reaches, the one value of evals that carries them together |
 
 `providers/service/` has more than sixteen modules and is one context: which vendor runs each
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
@@ -161,6 +162,16 @@ opened, bound to the app that holds its agent, commanded, ended once. Its twenty
 and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsApp threads, the
 dial, a visitor's way in with its tokens and codes, the supervisor's desk, the console's asks of a
 running app, the apps and the line were decided into it.
+
+`evals/service/` has more than sixteen modules and is one context: a test call placed against an
+agent and read after it: a golden run, a caller simulated, setups compared, a finished call checked
+again. Its twenty-four nouns stand on one seam (`Line`: written or spoken, decided once) and one
+skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group
+diagnosed, callers written, the calibration) was decided into it. `evals/parts.py` is `Harness`, one
+of each thing a test call reaches: the one value of the domain that carries collaborators together,
+under the rule `LiveParts` is under: it never leaves evals, and a use case that needs two or three of
+them takes them by name. Evals reaches the live side through one object the live side exports
+(`ServingApps`: which app takes an agent's calls, a written call opened on it), never its parts.
 
 `evals/tasks.py` holds, beside its one loop, the two objects that keep the work a request starts and
 does not await: `Runner` (the runs this gateway plays, and the agent each holds by a lease) and

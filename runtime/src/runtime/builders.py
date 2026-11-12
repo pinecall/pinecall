@@ -19,6 +19,10 @@ from runtime.calls.recordings import Bucket, Disk, Recordings
 from runtime.calls.service.prompts import Prompts
 from runtime.config import Settings
 from runtime.enums import Env
+from runtime.evals.parts import Harness
+from runtime.evals.service.briefs import Describers
+from runtime.evals.service.simulations import LINES_A_MINUTE as CALLER_LINES_A_MINUTE
+from runtime.evals.tasks import Runner, Simulations
 from runtime.exceptions import ConfigurationError, PinecallError
 from runtime.fleet import tasks as fleet_tasks
 from runtime.fleet.service.offers import Offering
@@ -36,9 +40,11 @@ from runtime.live.service.codes import Codes
 from runtime.live.service.handoff import Handoffs
 from runtime.live.service.tokens import Signer
 from runtime.live.service.whatsapp import Threads
+from runtime.live.service.written import ServingApps
 from runtime.live.sockets import Sockets
 from runtime.livekit import key_pair, open_servers
 from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
+from runtime.platform.service.attempts import AttemptThrottle
 from runtime.postgres import create_engine, session_maker
 from runtime.providers.service.health import VendorHealth
 from runtime.redis import open_signal
@@ -160,6 +166,39 @@ def build_signer(settings: Settings) -> Signer:
 def build_codes(handles: Handles, logs: Logs) -> Codes:
     """Every agent's caller codes: written on the logs, a waiting page woken on the signal."""
     return Codes(handles.sessions, logs, handles.signal)
+
+
+# The harness plays callers against the agents this gateway serves: it is handed the live side's own
+# object for that (`ServingApps`), never its parts. Its two keepers of work started and not awaited
+# are stopped with the process, the simulated calls first: each one's caller hangs up as it is cancelled.
+async def build_harness(
+    handles: Handles, live: LiveParts, signer: Signer, roster: Roster, stack: AsyncExitStack
+) -> Harness:
+    """What places and plays a test call on this gateway, its count of simulations heard and said."""
+    runner = Runner(handles.sessions)
+    simulations = Simulations(handles.signal)
+    await simulations.start()
+    stack.push_async_callback(runner.stop)
+    stack.push_async_callback(simulations.stop)
+    return Harness(
+        settings=handles.settings,
+        vault=handles.vault,
+        servers=handles.servers,
+        sessions=handles.sessions,
+        store=live.store,
+        logs=live.logs,
+        feeds=live.feeds,
+        prompts=live.prompts,
+        apps=ServingApps(live),
+        signer=signer,
+        offering=live.offering,
+        roster=roster,
+        alerting=live.alerting,
+        describers=Describers(),
+        runner=runner,
+        simulations=simulations,
+        caller_lines=AttemptThrottle(handles.sessions, CALLER_LINES_A_MINUTE),
+    )
 
 
 # What waited on WhatsApp when this process started is read back off the agents' logs before the first

@@ -1,6 +1,6 @@
 """16-bit PCM and floats at a rate: samples written as PCM, and sounds laid on a recorded stereo file at their time."""
 
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -93,3 +93,52 @@ def _lay(stretch: np.ndarray, cursor: int, sounds: Sequence[Sound]) -> np.ndarra
             stretch[1, low - cursor : high - cursor] += sound.stretch(low - sound.start, high - low)
     np.clip(stretch, -FULL_SCALE, FULL_SCALE, out=stretch)
     return stretch
+
+
+# ── 16-bit mono as bytes, a frame at a time ──
+
+# One sample of silence: what a track carries when nobody speaks, and what a jitter buffer plays for a lost packet.
+QUIET = b"\x00\x00"
+
+
+def rms_of(pcm: bytes) -> float:
+    """The level of 16-bit audio."""
+    samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float64)
+    if not samples.size:
+        return 0.0
+    return float(np.sqrt(np.mean(samples * samples)))
+
+
+def frames_of(pcm: bytes, rate: int, ms: int) -> list[bytes]:
+    """The audio cut in frames of `ms`, the last padded with silence: a room refuses a short one."""
+    size = (rate * ms // 1000) * SAMPLE_WIDTH
+    frames = [pcm[start : start + size] for start in range(0, len(pcm), size)]
+    if frames and len(frames[-1]) < size:
+        frames[-1] += QUIET * ((size - len(frames[-1])) // SAMPLE_WIDTH)
+    return frames
+
+
+# A piece ends where its sender cut it, not on a frame: the rest waits for the next piece, and only
+# the end is padded.
+async def in_frames(pieces: AsyncIterable[bytes], rate: int, ms: int) -> AsyncIterator[bytes]:
+    """The audio in frames of `ms`, as the pieces arrive."""
+    size = (rate * ms // 1000) * SAMPLE_WIDTH
+    rest = b""
+    async for piece in pieces:
+        whole = rest + piece
+        cut = len(whole) - len(whole) % size
+        for frame in frames_of(whole[:cut], rate, ms):
+            yield frame
+        rest = whole[cut:]
+    for frame in frames_of(rest, rate, ms):
+        yield frame
+
+
+# What goes under loops, so a few seconds of it last as long as the voice does; `start` is the sample
+# it goes on from, so a line hears one room from its first frame to its last.
+def mix_under(frame: bytes, under: bytes, start: int, gain: float) -> bytes:
+    """The frame with the other sound under it, from sample `start` of it on, multiplied by `gain`; clipped."""
+    voice = np.frombuffer(frame, dtype=np.int16).astype(np.int64)
+    room = np.take(np.frombuffer(under, dtype=np.int16), np.arange(start, start + voice.size), mode="wrap")
+    mixed = voice + (room * gain).astype(np.int64)
+    return np.clip(mixed, QUIETEST, LOUDEST).astype(np.int16).tobytes()

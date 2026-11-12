@@ -6,6 +6,7 @@ from fastapi import APIRouter, Path, Query
 
 from runtime.calls import service as calls
 from runtime.enums import CaseStatus
+from runtime.evals.service import diagnoses
 from runtime.judging import schemas
 from runtime.judging.auth import EvalsKey, TheAllowedAgent, TheAllowedFilter, TheCase
 from runtime.judging.service import cases
@@ -74,3 +75,11 @@ async def list_cases(
 async def delete_case(case: TheCase, session: Session) -> None:
     """Forget one of the org's cases; another org's, or nobody's, is the same 404."""
     await cases.delete_case(session, case)
+
+
+# A judge called wrong is a calibration label of the call the case came from, which is evals' to write.
+@router.patch("/v1/evals/cases/{id}", response_model_exclude_unset=True)
+async def decide_case(case: TheCase, body: schemas.CaseDecision, actor: EvalsKey, session: Session) -> schemas.CaseRow:
+    """Approve, dismiss, hold out or mark a case as kept in the repository."""
+    decision = cases.Decision(**body.model_dump())
+    return schemas.CaseRow.of(await diagnoses.decide_case(session, actor, case, decision))

@@ -21,6 +21,9 @@ from runtime.calls.recordings import Recordings
 from runtime.calls.service.lists import list_ended_calls
 from runtime.calls.service.prompts import Prompts
 from runtime.config import load_settings
+from runtime.evals import tasks as evals_tasks
+from runtime.evals.parts import Harness
+from runtime.evals.service.simulations import ChatSimulations
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.flows import tasks as flows_tasks
@@ -101,6 +104,9 @@ class State(TypedDict):
     signer: Signer
     visits: Signer
     codes: Codes
+    # What places and plays a test call here, and what admits a chat that names a persona (live's `simulations`).
+    harness: Harness
+    simulations: ChatSimulations
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -129,6 +135,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))
         loops.start(alerts_tasks.post_alerts.bind(sessions, vault, handles.http))
         loops.start(flows_tasks.wake_runs.bind(sessions))
+        harness = await builders.build_harness(handles, live, signer, roster, stack)
+        loops.start(evals_tasks.renew_leases.bind(harness.runner))
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -168,4 +176,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             signer=signer,
             visits=signer,
             codes=builders.build_codes(handles, logs),
+            harness=harness,
+            simulations=ChatSimulations(harness),
         )

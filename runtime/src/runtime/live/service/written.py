@@ -340,6 +340,51 @@ def _explain_nobody(live: LiveParts, scope: Scope, slug: str, app: SocketId | No
     return str(NoApp(slug))
 
 
+# ── for a domain above the live side ──
+
+
+# What a domain above this one is handed to reach an agent's app (`evals`, which plays callers against
+# it): one object of the live side's own, built once in the lifespan. `LiveParts` stays inside it.
+class ServingApps:
+    """The apps that serve agents here, as a domain above reaches them: which takes a call, a call opened on it."""
+
+    def __init__(self, live: LiveParts) -> None:
+        self._live = live
+
+    def find(self, scope: Scope, slug: str, app: SocketId | None = None) -> Registration | None:
+        """The socket a call opened in the scope goes to: the one named, else the newest that takes it; or None."""
+        return self._live.holders.find_serving(scope, slug, app)
+
+    def get(self, scope: Scope, slug: str, app: SocketId | None = None) -> Registration:
+        """The socket a call opened in the scope goes to; refused, saying why, when no app takes it."""
+        found = self.find(scope, slug, app)
+        if found is None:
+            raise NotFound(_explain_nobody(self._live, scope, slug, app))
+        return found
+
+    def still_holds(self, registration: Registration) -> bool:
+        """Whether the socket still holds the agent it was found holding."""
+        holders = self._live.holders
+        return holders.find_on_socket(registration.owner, registration.scope.env, registration.slug) is not None
+
+    async def open_written(
+        self,
+        session_: AsyncSession,
+        registration: Registration,
+        context: CallContext,
+        *,
+        test: Mapping[str, Any] | None = None,
+    ) -> session.Session:
+        """A new written call on the socket, as the scope's settings run the agent; admitted and unstarted."""
+        return await open_written(session_, self._live, registration, context, test=test)
+
+    async def open_written_as(
+        self, session_: AsyncSession, registration: Registration, context: CallContext, setup: WrittenSetup
+    ) -> session.Session:
+        """A new written call on the socket, on the setup given; admitted and unstarted."""
+        return await open_written_as(session_, self._live, registration, context, setup)
+
+
 # ── heard ──
 
 

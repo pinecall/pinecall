@@ -146,6 +146,16 @@ async def persona_named(
     return {listed.persona.name: listed.persona for listed in roster}.get(name)
 
 
+async def get_persona(
+    session: AsyncSession, org: str, agent: str, name: str, class_personas: PersonasDeclared | None = None
+) -> Persona:
+    """The persona of that name an agent's calls may be played by; refused when there is none."""
+    found = await persona_named(session, org, agent, name, class_personas)
+    if found is None:
+        raise NotFound(NOBODY.format(name=name, agent=agent))
+    return found
+
+
 # A model or a vendor this box lacks, or that nobody keyed, is refused when written, not on the call
 # that plays it; while the agent's class declares its personas, nothing is written here (409 naming
 # the class). One of Pinecall's is switched and told how it is played; one of the agent's own is

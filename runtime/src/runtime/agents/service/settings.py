@@ -172,6 +172,13 @@ async def declaration_for_call(
     return (await resolve_for_call(session, declaration, scope, catalog, picked, test)).declaration
 
 
+async def find_settings_version(
+    session: AsyncSession, scope: Scope, agent: str, version: int
+) -> Version[AgentSettings] | None:
+    """One version of the agent's settings, the scope's own or the org's it fell through to; None when there is none."""
+    return await versions.find_version(session, versions.SETTINGS, scope, agent, version)
+
+
 async def list_settings(session: AsyncSession, scope: Scope) -> dict[str, AgentSettings]:
     """Every agent's settings as they stand in the scope."""
     chains: dict[str, list[Version[AgentSettings]]] = {}

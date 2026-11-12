@@ -15,7 +15,7 @@ from runtime.providers.service.plugins import (
 from runtime.providers.service.prices import completion_usage, cost_of
 from runtime.providers.service.questions import Answerer, Line, Patience, ask, open_answerer
 from runtime.providers.service.readiness import Runnable, runnable_on
-from runtime.providers.service.refusals import vendor_named_in
+from runtime.providers.service.refusals import sentence_of, vendor_named_in
 from runtime.providers.service.signatures import default_voice, refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import (
@@ -24,6 +24,7 @@ from runtime.providers.service.stages import (
     build_thinking,
     build_voice,
     thinking_outside_a_call,
+    voice_outside_a_call,
 )
 from runtime.providers.service.telemetry import Telemetry, telemetry_of
 from runtime.providers.service.trials import try_realtime, try_stage
@@ -64,6 +65,7 @@ __all__ = [
     "refuse_what_cannot_run",
     "runnable_on",
     "running_on",
+    "sentence_of",
     "speak",
     "stage_on_its_key",
     "telemetry_of",
@@ -73,4 +75,5 @@ __all__ = [
     "try_stage",
     "vendor_doing",
     "vendor_named_in",
+    "voice_outside_a_call",
 ]

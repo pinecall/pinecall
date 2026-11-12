@@ -138,6 +138,21 @@ async def find_newest_call_of(session: AsyncSession, scope: Scope, agent: str) -
     return found.calls[0] if found.calls else None
 
 
+# A page of the list at a time, the calls still going left out.
+async def list_newest_sealed(session: AsyncSession, scope: Scope, agent: str, most: int) -> list[str]:
+    """The scope's newest finished calls of the agent, newest first, `most` at most."""
+    finished: list[str] = []
+    before: str | None = None
+    while len(finished) < most:
+        found = await SearchRepository(session).list_calls(scope, ListFilters(agent=agent, before=before), limit=most)
+        sealed = await list_sealed(session, found.calls)
+        finished += [call for call in found.calls if call in sealed]
+        if found.next is None:
+            break
+        before = found.next
+    return finished[:most]
+
+
 async def list_newest_calls(session: AsyncSession, limit: int, *, agent: str | None = None) -> list[str]:
     """The newest calls of the box, or of one agent, across every org."""
     with box_wide():
