@@ -31,6 +31,7 @@ os.environ.setdefault("LIVEKIT_API_KEY", "devkey")
 os.environ.setdefault("LIVEKIT_API_SECRET", "a-suite-only-livekit-secret-0123456789")
 
 from runtime.accounts import service as accounts
+from runtime.accounts.service.key_cache import KeyCache
 from runtime.app import create_app
 from runtime.calls.log.store import Store
 from runtime.calls.log.writer import Writer
@@ -46,6 +47,7 @@ from runtime.postgres import BoxSession, create_engine, session_maker
 from runtime.providers import service as providers
 from runtime.providers.catalog import Catalog
 from runtime.providers.service.catalog import seed_catalog
+from runtime.signal import LocalSignal
 from runtime.wire.commands import AgentRegister
 from tests.fakes import acme as fake_acme
 
@@ -145,6 +147,13 @@ async def make_tenant(sessions: async_sessionmaker[AsyncSession]) -> Tenant:
 async def tenant(sessions: async_sessionmaker[AsyncSession]) -> Tenant:
     """An org of this test alone."""
     return await make_tenant(sessions)
+
+
+# A revocation is said on the signal for every gateway to forget the key: in-process here.
+@pytest.fixture
+def key_cache(sessions: async_sessionmaker[AsyncSession]) -> KeyCache:
+    """The keys a gateway verified lately, told on a signal of this process alone."""
+    return KeyCache(sessions, LocalSignal())
 
 
 @dataclass(frozen=True)

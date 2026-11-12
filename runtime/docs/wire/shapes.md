@@ -311,6 +311,42 @@ One chunk of the knowledge base that retrieval put in front of the model for thi
 | `score` | `number` | yes | The fused rank score (vector and BM25 through RRF), higher is better. |
 | `excerpt` | `string` | no | The chunk's text as the model read it, the body under its heading: the log carries the evidence an answer had to come from, so a judge reading it afterwards can find it. |
 
+### `FoundChunk`
+
+One chunk a search found, as the model reads it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `path` | `string` | yes | The document the chunk came from, as the tenant pushed it: 'faq/horarios.md'. |
+| `heading` | `string | null` | yes | The heading the chunk sits under; null for text above the document's first heading. |
+| `text` | `string` | yes | The chunk's body. |
+
+### `SearchFound`
+
+What the platform's `search` answers a call and an app's `this.knowledge.search`: the best chunks first. The same turn's `docs.sources` entry carries them with their ids and scores.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `chunks` | `FoundChunk[]` | yes | The chunks found, the best first; empty when nothing matched. |
+
+### `RecalledFact`
+
+One fact a recall found about the contact, as the model reads it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `text` | `string` | yes | What the fact says, its whitespace folded. |
+| `source` | `string | null` | yes | The call that taught it; null when no call taught it. |
+| `since` | `string` | yes | The day the fact holds from, as `YYYY-MM-DD`. |
+
+### `RecalledFacts`
+
+What the platform's `recall` answers a call: the contact's best facts for the turn, the best first. The same turn's `memory.ops` entry carries the operation.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `facts` | `RecalledFact[]` | yes | The facts recalled, the best first; empty when the contact has none that match. |
+
 ### `CostRow`
 
 One priced line: a model, what was counted, how much, and what it came to.
