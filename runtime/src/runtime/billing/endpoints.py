@@ -34,7 +34,7 @@ async def get_limits(actor: AnyKey, live: TheLive, settings: TheSettings, sessio
         hosted_apps=len(await hosting.list_standing(session, env, org)),
     )
     read = await limits.read_limits(session, org, env, held, at=live.store.clock())
-    said: dict[str, object] = dict(read.measures)
+    said: dict[str, object] = {str(name): measure for name, measure in read.measures.items()}
     said |= {"lends": None if read.lends is None else sorted(read.lends)}
     said |= {"billing_url": settings.billing_url, "world": env}
     return schemas.Limits.model_validate(said, from_attributes=True)
