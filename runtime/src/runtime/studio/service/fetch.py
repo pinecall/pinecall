@@ -3,14 +3,14 @@
 import asyncio
 import json
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
 
-from runtime.kit.dns import Address, all_public, is_local_name, resolve
+from runtime.kit.dns import Resolve, all_public, is_local_name, resolve
 from runtime.studio.service.definition import A_PATH_PARAM, A_PLACEHOLDER, SECRETS
 from runtime.studio.service.prompt import fill
 from runtime.wire.studio import Header, HttpTool, Scalar
@@ -24,9 +24,6 @@ REFUSED = "{tool} answered {status}"
 CUT = "[the answer was cut at {limit} KB]"
 # What stands where an answer repeated a secret's value.
 MASK = "***"
-
-# Resolving is the box's DNS: a test hands its own, so a fake API on loopback is reachable there.
-type Resolve = Callable[[str], list[Address]]
 
 
 @dataclass(frozen=True, slots=True)

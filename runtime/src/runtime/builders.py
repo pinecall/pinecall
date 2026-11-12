@@ -27,7 +27,7 @@ from runtime.exceptions import ConfigurationError, PinecallError
 from runtime.fleet import tasks as fleet_tasks
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
-from runtime.handles import Handles
+from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
 from runtime.kit.s3 import Credentials, ObjectStore
@@ -225,15 +225,15 @@ def read_sip_names(settings: Settings) -> SipNames:
     )
 
 
-async def open_connections(settings: Settings, stack: AsyncExitStack) -> Handles:
-    """Open the process's connections; the stack closes them in reverse."""
+async def open_connections(settings: Settings, stack: AsyncExitStack, outside: Outside = THE_INTERNET) -> Handles:
+    """Open the process's connections, out by the outside given; the stack closes them in reverse."""
     vault = Vault(None if settings.vault_key is None else settings.vault_key.get_secret_value())
     engine = create_engine(settings, pool_size=settings.db_pool - len(LANES))
     stack.push_async_callback(engine.dispose)
-    http = await stack.enter_async_context(httpx.AsyncClient())
+    http = await stack.enter_async_context(httpx.AsyncClient(transport=outside.transport))
     servers = await stack.enter_async_context(open_servers(settings))
     signal = await stack.enter_async_context(open_signal(settings))
-    return Handles(settings, vault, http, servers, signal, engine, session_maker(engine))
+    return Handles(settings, vault, http, servers, signal, engine, session_maker(engine), outside.resolve)
 
 
 # With no secret set the verifier passes every token: a box with no Turnstile asks for none.

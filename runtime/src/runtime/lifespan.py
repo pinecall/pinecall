@@ -27,7 +27,7 @@ from runtime.evals.service.simulations import ChatSimulations
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.flows import tasks as flows_tasks
-from runtime.handles import Handles
+from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.hosting import service as hosting
 from runtime.hosting import tasks as hosting_tasks
 from runtime.kit.loops import Loops
@@ -120,10 +120,10 @@ class State(TypedDict):
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
-    """Build the process's state once, run its loops, and close all of it after."""
+async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenerator[State]:
+    """Build the process's state once, out by the outside given, run its loops, and close all of it after."""
     async with AsyncExitStack() as stack:
-        handles = await builders.open_connections(load_settings(), stack)
+        handles = await builders.open_connections(load_settings(), stack, outside)
         signer = builders.build_signer(handles.settings)
         writer, log_store, relay, feeds, logs = builders.build_log_engine(handles, stack)
         loops = Loops()
@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         # The agents built in Studio: held off the lifespan, by the loop's first look, so the gateway answers
         # before a box's worth of them is registered. What one says of itself is asked by the harness.
         app_sockets = live_service.AppSockets(live, threads, codes.claim_heard)
-        holder = studio.Holder(app_sockets, sessions, vault, studio.Fetcher(handles.http))
+        holder = studio.Holder(app_sockets, sessions, vault, studio.Fetcher(handles.http, handles.resolve))
         stack.push_async_callback(holder.close)
         loops.start(studio_tasks.follow_changes.bind(holder, handles.signal))
         loops.start(studio_tasks.look_at_agents.bind(holder))

@@ -52,6 +52,7 @@ from runtime.providers.service.catalog import seed_catalog
 from runtime.signal import LocalSignal
 from runtime.wire.commands import AgentRegister
 from tests.fakes import acme as fake_acme
+from tests.fakes.internet import Internet
 
 fake_acme.install()
 
@@ -179,6 +180,16 @@ class Gateway:
         return connect(f"ws{self.url.removeprefix('http')}{path}", additional_headers=dict(headers), max_queue=None)
 
 
+# The internet every gateway of a worker reaches: a test serves a business's API on it under a name of its own.
+INTERNET = Internet()
+
+
+@pytest.fixture
+def internet() -> Internet:
+    """The internet the suite's gateways reach, where a test serves a host for as long as it runs."""
+    return INTERNET
+
+
 # Served by uvicorn, as production serves it: an in-process transport cancels a socket's handler
 # when the client lets go, and the seal that runs after a hang-up would never run.
 @pytest.fixture(scope="session")
@@ -187,7 +198,7 @@ async def gateway(engine: AsyncEngine) -> AsyncIterator[Gateway]:
     del engine
     if "PINECALL_REDIS_URL" not in os.environ:
         pytest.skip("Redis")
-    app = create_app()
+    app = create_app(INTERNET.outside)
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
     # Every loop of the gateway runs as it does in production, its reaper too: a test's own clock
     # (`ticking`) starts at the moment of its test, so a call it writes is as fresh as it is.

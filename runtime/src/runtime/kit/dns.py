@@ -15,6 +15,9 @@ import httpx
 
 type Address = ipaddress.IPv4Address | ipaddress.IPv6Address
 
+# Every address a name resolves to now: the box's DNS, or what a test hands in for a name of its own.
+type Resolve = Callable[[str], list[Address]]
+
 # `.svc`: a cluster's own services.
 LOCAL_SUFFIXES = (".localhost", ".local", ".internal", ".arpa", ".home", ".lan", ".svc")
 # A TXT lookup waits this long in all, over every nameserver tried.

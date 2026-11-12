@@ -7,6 +7,7 @@ from runtime.live.service.openings import delete_tokens
 from runtime.live.service.tokens import Signer, Visitor, sign_room_token
 from runtime.live.service.visitors import Mint, issue_code, mint_room_token
 from runtime.live.service.written import ServingApps, Simulated, WrittenSetup
+from runtime.live.sockets import SocketId
 
 __all__ = [
     "AppSockets",
@@ -17,6 +18,7 @@ __all__ = [
     "ServingApps",
     "Signer",
     "Simulated",
+    "SocketId",
     "Visitor",
     "WrittenSetup",
     "delete_tokens",

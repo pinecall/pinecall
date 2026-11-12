@@ -8,7 +8,7 @@ import httpx
 import uvicorn
 
 from runtime.app import create_app
-from tests.conftest import Gateway
+from tests.conftest import INTERNET, Gateway
 
 
 # On the same database and the same Redis, as production's two gateways are one box: a call
@@ -16,7 +16,7 @@ from tests.conftest import Gateway
 @asynccontextmanager
 async def a_second_gateway() -> AsyncGenerator[Gateway]:
     """Another gateway of this run's box, on a free port, stopped when the block ends."""
-    app = create_app()
+    app = create_app(INTERNET.outside)
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
     serving = asyncio.create_task(server.serve())
     while not server.started:

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+from functools import partial
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -15,7 +16,7 @@ from runtime.accounts.auth import resolve_actor
 from runtime.auth import ActorMiddleware
 from runtime.config import Settings
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
-from runtime.handles import Handles
+from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling, NamesUnder
 from runtime.lifespan import lifespan
 from runtime.postgres import STATEMENT_TIMEOUT_MS, busy
@@ -81,9 +82,14 @@ def list_allowed_origins(settings: Settings) -> tuple[str, ...]:
 # One gateway's app: a test serves two, each with its own state. `closing` is made here and not in
 # the lifespan because uvicorn's signal handler reaches it outside any request: it is the one thing
 # kept on `app.state`, and the lifespan yields it with the rest.
-def create_app() -> FastAPI:
-    """The gateway's endpoints and its refusals, on a new app."""
-    app = FastAPI(title="Pinecall gateway", lifespan=lifespan, docs_url="/v1/docs", redoc_url="/v1/redoc")
+def create_app(outside: Outside = THE_INTERNET) -> FastAPI:
+    """The gateway's endpoints and its refusals, on a new app that reaches the outside given."""
+    app = FastAPI(
+        title="Pinecall gateway",
+        lifespan=partial(lifespan, outside=outside),
+        docs_url="/v1/docs",
+        redoc_url="/v1/redoc",
+    )
     app.state.closing = asyncio.Event()
     app.add_middleware(ActorMiddleware, resolve=resolve_actor, refuse=answer_refusal)
     app.add_middleware(

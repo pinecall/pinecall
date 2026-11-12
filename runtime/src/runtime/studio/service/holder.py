@@ -68,6 +68,10 @@ class Holder:
                 self._held[(org, env)] = socket
             await self._hold(socket, wanted)
 
+    def socket_of(self, org: str, env: Env) -> StudioSocket | None:
+        """The socket that holds the org's Studio agents in the env; None while it holds none."""
+        return self._held.get((org, env))
+
     async def close(self) -> None:
         """Let every socket go."""
         for socket in list(self._held.values()):

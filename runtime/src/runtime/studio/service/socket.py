@@ -73,6 +73,11 @@ class StudioSocket:
         self._secrets: dict[str, str] | None = None
         self._closed = False
 
+    @property
+    def id(self) -> live.SocketId:
+        """The app socket the gateway knows these agents' calls by."""
+        return self._socket.id
+
     async def open(self) -> None:
         """Say the socket is open and start reading what the gateway sends it."""
         await self._life.enter_async_context(self._socket.open())

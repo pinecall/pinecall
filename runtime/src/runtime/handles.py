@@ -10,9 +10,23 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.requests import HTTPConnection
 
 from runtime.config import Settings
+from runtime.kit import dns
 from runtime.kit.crypto import Vault
 from runtime.livekit import Servers
 from runtime.signal import Signal
+
+
+# The internet as the process reaches it. A box's is the network and its DNS; the suite hands its gateway
+# one where a test serves a business's API under a name of its own.
+@dataclass(frozen=True, slots=True)
+class Outside:
+    """What the process reaches beyond itself: the transport its HTTP client goes out by, and how a name resolves."""
+
+    transport: httpx.AsyncBaseTransport | None = None
+    resolve: dns.Resolve = dns.resolve
+
+
+THE_INTERNET = Outside()
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +40,8 @@ class Handles:
     signal: Signal
     engine: AsyncEngine
     sessions: async_sessionmaker[AsyncSession]
+    # How a name a tenant wrote is resolved before the box reaches it.
+    resolve: dns.Resolve = dns.resolve
 
 
 def handles_of(connection: HTTPConnection) -> Handles:

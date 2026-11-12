@@ -1,15 +1,21 @@
-"""A written call taken up again: the context it is rebuilt on is the one it opened with."""
+"""A written call: taken up again on the context it opened with, and a golden's recall answered with its facts."""
 
 from dataclasses import replace
 from datetime import date
 
 from runtime.actor import Scope
+from runtime.agents.declaration import Declaration, Docs, MemoryPolicy
 from runtime.agents.service.kinds import BUILT_IN_STUDIO
 from runtime.calls.context import Contact
-from runtime.enums import Env
+from runtime.enums import Channel, Env
 from runtime.live.holders import Registration
-from runtime.live.service.written import context_as_started, registration_for
+from runtime.live.parts import LiveParts
+from runtime.live.served import Opening
+from runtime.live.service import openings
+from runtime.live.service.written import A_GOLDEN, GatewayPlatform, context_as_started, registration_for
 from tests.calls.factories import AGENT, CALL, CALLER, LINE, entry
+from tests.conftest import needs_the_database
+from tests.session.conftest import context_of
 
 SCOPE = Scope("org_1", Env.sandbox)
 THEIR_SCOPE = Scope("org_1", Env.sandbox, "mem_1")
@@ -45,3 +51,38 @@ def test_a_class_keeps_the_scope_it_is_held_in_and_nobodys_key_changes_a_studio_
     """An app written as a class is untouched; a server's key and production name no holder."""
     assert registration_for(REGISTRATION, THEIR_SCOPE) is REGISTRATION
     assert registration_for(replace(REGISTRATION, sdk=BUILT_IN_STUDIO), SCOPE).scope == SCOPE
+
+
+# ── a golden's recall ──
+
+A_FACT = "Ana prefiere los martes por la mañana"
+
+
+def golden_call(live: LiveParts, call: str, declaration: Declaration) -> GatewayPlatform:
+    """A written call of a golden that seeds one fact, as the gateway serves it."""
+    opening = Opening(context_of(call, Channel.web), declaration, SCOPE, None)
+    served = openings.serve(live, opening, opened_here=True)
+    return GatewayPlatform(live, served, (A_FACT,))
+
+
+@needs_the_database
+async def test_a_goldens_recall_is_its_own_facts_written_as_a_real_one_so_the_app_learns_them(
+    live: LiveParts, call: str
+) -> None:
+    platform = golden_call(live, call, Declaration(slug=AGENT, memory=MemoryPolicy()))
+    found = await platform.look_up("recall", {"query": "martes"}, "s1")
+    assert found == {"facts": [{"text": A_FACT, "source": A_GOLDEN}]}
+    (written,) = [entry for entry in await live.store.whole_of(call) if entry.type == "memory.ops"]
+    facts = [{"text": A_FACT, "source": A_GOLDEN}]
+    assert written.data["ops"] == [{"op": "recall", "query": "martes", "facts": facts, "took_ms": 0.0}]
+    assert written.data["speech_id"] == "s1"
+    live.calls.close_call(call)
+
+
+# A golden asks what the index finds: its search is the real one, never its seeded facts.
+@needs_the_database
+async def test_a_goldens_search_is_the_real_index(live: LiveParts, call: str) -> None:
+    platform = golden_call(live, call, Declaration(slug=AGENT, bases=(Docs(base="precios"),)))
+    found = await platform.look_up("search", {"query": "precio"}, None)
+    assert "facts" not in found and A_FACT not in str(found)
+    live.calls.close_call(call)
