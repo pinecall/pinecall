@@ -15,6 +15,7 @@ from livekit.agents import (
     tts,
     utils,
 )
+from livekit.agents.language import LanguageCode
 from livekit.agents.llm import ChatContext, Tool, ToolChoice
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, NOT_GIVEN, NotGivenOr
 from livekit.agents.utils import AudioBuffer, is_given
@@ -181,8 +182,9 @@ class AcmeSTT(stt.STT[Never]):
         params: AcmeOptions | None = None,
         keyterms: bool = False,
         streams: bool = True,
+        hears: list[str] | None = None,
     ) -> None:
-        """Keep the arguments; `keyterms` and `streams` say what livekit may ask of it."""
+        """Keep the arguments; `keyterms` and `streams` say what livekit may ask of it; `hears` what it hears."""
         super().__init__(capabilities=stt.STTCapabilities(streaming=streams, interim_results=True, keyterms=keyterms))
         self.given: dict[str, object] = {
             "api_key": api_key,
@@ -193,6 +195,8 @@ class AcmeSTT(stt.STT[Never]):
             "eot_timeout_ms": eot_timeout_ms,
             "params": params,
         }
+        # What it hears in whatever audio it is given: a final transcript each, and nothing after.
+        self.hears = list(hears or [])
 
     @override
     def stream(
@@ -223,6 +227,7 @@ class _Listened(stt.RecognizeStream):
         self.model = ears.given["model"]
         self.silence_ms = ears.given["eot_timeout_ms"]
         self.key = ears.given["api_key"]
+        self.hears = ears.hears
 
     @override
     async def _run(self) -> None:
@@ -232,6 +237,13 @@ class _Listened(stt.RecognizeStream):
             raise APIStatusError("no such model", status_code=404)
         if isinstance(self.silence_ms, int) and self.silence_ms < SHORTEST_SILENCE_MS:
             raise APIStatusError("eot_timeout_ms is out of range", status_code=400)
+        # Ears told what they hear say it, a final transcript each, and their stream ends.
+        if self.hears:
+            for text in self.hears:
+                heard = stt.SpeechData(language=LanguageCode("es"), text=text)
+                final = stt.SpeechEvent(type=stt.SpeechEventType.FINAL_TRANSCRIPT, alternatives=[heard])
+                self._event_ch.send_nowait(final)
+            return
         async for _ in self._input_ch:
             continue
 
