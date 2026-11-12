@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Hanging up in the console's Talk panel ends the call, however long it lasted.** The panel said its
+  hang-up with the seat's token, which lives a minute: after the first minute of a call the gateway
+  refused it as expired (`401`) and the call stayed live for the five minutes it waits for a visitor.
+  It is said with the token that reads the call, as `@pinecall/room` says it.
 - **An agent that greets has its pipeline read again.** `GET /v1/agents/{slug}/pipeline` answered 500 for
   every agent with a greeting, which is what the console's Configure page reads: the greeting was
   the one part of the answer shaped by the wire, and it was handed over as the service holds it. A response

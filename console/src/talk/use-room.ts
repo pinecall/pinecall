@@ -65,8 +65,9 @@ export interface Talking {
   heard: (entry: Entry) => void;
 }
 
-// What `POST /v1/tokens` answers: LiveKit's two fields, and the call the token opens.
-const MintedSchema = z.object({ server_url: z.string(), participant_token: z.string(), call: z.string() });
+// What `POST /v1/tokens` answers: LiveKit's two fields, the call the token opens, and the token that reads that call
+// for as long as it lasts. The seat's token lives a minute, the time to join.
+const MintedSchema = z.object({ server_url: z.string(), participant_token: z.string(), call: z.string(), log_token: z.string() });
 
 /**
  * Speak with one agent from this tab.
@@ -244,8 +245,10 @@ export function useRoom(agent: string): Talking {
     try {
       const minted = MintedSchema.parse(await post(credentials, "/v1/tokens", { agent, scope: joining }));
       // Said at the gateway before the seat leaves the room, with the call's own token: left unsaid, the call waits
-      // five minutes for a caller who is not coming back. `keepalive`, so a closing tab still completes it.
-      const door = doorUrl(credentials, `/v1/calls/${encodeURIComponent(minted.call)}/hangup`, { token: minted.participant_token });
+      // five minutes for a caller who is not coming back. `keepalive`, so a closing tab still completes it. The token
+      // is the one that reads the call: said with the seat's, a hang-up after the first minute was refused as expired,
+      // and the call waited those five minutes all the same (2026-11-12).
+      const door = doorUrl(credentials, `/v1/calls/${encodeURIComponent(minted.call)}/hangup`, { token: minted.log_token });
       hangUp.current = () => void fetch(door, { method: "POST", keepalive: true }).catch(() => undefined);
       const joined = new Room();
       room.current = joined;

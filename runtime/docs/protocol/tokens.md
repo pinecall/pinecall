@@ -78,11 +78,14 @@ gets a new session that opens on the old one's history
 
 - **The call waits for its visitor.** A widget call does not end when the visitor's seat leaves: a
   reload, a closed tab and a dropped line look alike to LiveKit (`CLIENT_INITIATED`). It waits five
-  minutes (`A_VISITOR_RETURNS_S`), and the visitor's room outlives them as long
-  (`departure_timeout`, LiveKit's own 20 s otherwise). A phone caller's call still ends with the leg.
+  minutes (`A_VISITOR_RETURNS_S`) and then ends itself, as `caller_hung_up`; the visitor's room
+  outlives that wait by a minute (`departure_timeout`, LiveKit's own 20 s otherwise), so the room
+  is never the one that goes first. A phone caller's call still ends with the leg.
 - **A hang-up is said.** Since a hang-up disconnects the seat as a reload does, the page says it
-  first: `POST /v1/calls/{call}/hangup?token=` with the call's own token (`log_token` or
-  `participant_token`), from any page, `202`, and the call ends at once as `caller_hung_up`. Over
+  first: `POST /v1/calls/{call}/hangup?token=` with the call's `log_token`, which reads the call
+  for as long as it lasts, from any page, `202`, and the call ends at once as `caller_hung_up`. A
+  `participant_token` says it too while it lives, which is a minute unless the mint asked for
+  more: a page that hangs up with it after that is refused `401`, and its call waits. Over
   HTTP, with `fetch`'s `keepalive`, so a tab that closes the same instant still completes it. The
   DataChannel topic `pinecall.hangup` from a seat of the call's own (`talk` or `chat`) says the
   same, for a page that has no token at hand — but a seat that leaves the room as it publishes
