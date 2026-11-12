@@ -13,6 +13,7 @@ from runtime.cli import (
     fleet,
     keys,
     load,
+    local,
     memory,
     migrate,
     orgs,
@@ -22,6 +23,7 @@ from runtime.cli import (
     retention,
     routes,
     sessions,
+    setup,
     telephony,
     traceback,
     vault,
@@ -57,6 +59,7 @@ app.add_typer(rebuild.facts_app, name="facts")
 app.add_typer(rebuild.drift_app, name="drift")
 app.add_typer(rebuild.usage_app, name="usage")
 app.command("traceback")(traceback.traceback)
+app.command("setup")(setup.setup)
 app.command("init")(orgs.init)
 app.command("kill")(orgs.kill)
 app.add_typer(orgs.app, name="orgs")
@@ -67,6 +70,7 @@ app.add_typer(fleet.app, name="fleet")
 app.add_typer(telephony.fence_app, name="fence")
 app.add_typer(telephony.sip_app, name="sip")
 app.command("load")(load.load)
+app.add_typer(local.app, name="local")
 
 
 def _show_version(shown: bool) -> None:

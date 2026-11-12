@@ -1,0 +1,22 @@
+# What a machine can run, as it was measured: the best open model first, what it holds on a card,
+# how soon it speaks, what it did. The 30B on an A100 (2026-10-18) against the real voice turns of
+# the clinic's agent: the tool called, the written goldens, the spoken ones. The two Gemmas on an L4
+# (2026-10-17) with front-desk's prompt, three turns three times each: a message left, a question the
+# documents answer, small talk.
+# Not recommended, and why: qwen3:30b-a3b-2507 called the tool 1/18 on the real voice turns (it says
+# "Let me check…" and stops); qwen3.8:27b called it 18/18 but took 1.5-2.8 s to its first token;
+# qwen3:8b and 14b never called it; qwen3:4b thought aloud with thinking off; llama3.1:8b,
+# llama3.2:3b and gpt-oss:20b called it on a greeting; gemma4:26b took 3 s to its first token, part
+# of it on the CPU.
+# kind,name,value,first_token_s,did,note
+model,nemotron-3.5-lightning:30b-a3b,25.0,0.45,tool called 18/18 on voice turns · written goldens 5/5 · spoken 2/3,"30B of knowledge, 3B active per token: the fastest that did everything; whole on a card only with 40 GB beside the voice"
+model,gemma4:12b,9.0,0.9,message 3/3 · documents 3/3 · talk 3/3,"did everything on 24 GB; reads the whole prompt every turn (no prefix cache), so 1.3-1.7 s to the first token on a call"
+model,gemma4:e4b,7.5,0.8,message 2/3 · documents 3/3 · talk 3/3,the model the Pipecat local stack ships; missed the message once in three
+# The vendor each stage runs on where a machine has no GPU.
+keys,stt,deepgram
+keys,llm,anthropic
+keys,tts,cartesia
+# What each local server holds on a card, measured on an NVIDIA L4 (2026-10-17).
+server,whisper,2.3
+server,kokoro,1.1
+server,embedder,0.9

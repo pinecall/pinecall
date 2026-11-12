@@ -1,0 +1,96 @@
+# Open models on this machine, with no GPU: the same three servers `infra/models/compose.yaml` runs
+# on a card, in their CPU images, so the runtime reaches them through the `openai` plugin it
+# already has and names no vendor in code.
+#   ollama   the LLM (LOCAL_LLM) and the embedder (bge-m3), :11434 — profile `ollama`, skipped when
+#            Ollama already runs on this machine (a Mac runs it on Metal, which Docker cannot)
+#   whisper  the ears (LOCAL_STT on Speaches), /v1/audio/transcriptions, :8000 — profile `voice`
+#   kokoro   the voice (Kokoro-82M), /v1/audio/speech, :8880 — profile `voice`
+# `pinecall-runtime setup --models local` writes this file beside the services' compose and brings
+# it up; the one-shot services pull the models once into the volumes. Every port is loopback.
+
+name: pinecall-models-local
+
+services:
+  ollama:
+    profiles: [ollama]
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      OLLAMA_KEEP_ALIVE: "-1"
+    volumes: [ollama:/root/.ollama]
+    ports: ["127.0.0.1:11434:11434"]
+    restart: unless-stopped
+    # Healthy is the thinking's model answering a prompt as long as a call's: the first answer after
+    # a start builds the card's kernels (30-46 s on an L4, 2026-10-20), and a prompt past one batch
+    # (512 tokens) builds the ones a short prompt never reaches — a call's first turn waited for those
+    # too. So this is also what warms it, at every start of the machine, before `up --wait` says the
+    # server is ready; every ten minutes after, the same.
+    healthcheck:
+      test: ["CMD-SHELL", "ollama run --think=false ${LOCAL_LLM} \"$(seq -s ' ' 1 400) Reply: ok\" >/dev/null"]
+      interval: 10m
+      timeout: 5m
+      start_period: 15m
+      start_interval: 10s
+      retries: 3
+
+  # Pulls the two models once and loads the LLM, then exits.
+  ollama-models:
+    profiles: [ollama]
+    image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
+    environment: {OLLAMA_HOST: "ollama:11434"}
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 2; done
+        ollama pull ${LOCAL_LLM}
+        ollama pull bge-m3
+        ollama run ${LOCAL_LLM} "" >/dev/null
+    depends_on: [ollama]
+    restart: "no"
+
+  kokoro:
+    profiles: [voice]
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c
+    ports: ["127.0.0.1:8880:8880"]
+    restart: unless-stopped
+
+  # Healthy is the ears' model loaded and one second heard: it is downloaded into the volume the first
+  # time, and loaded on the card at every start of the machine (8.6 s on an L4 after a reboot,
+  # 2026-10-20), before `up --wait` says the server is ready rather than in a caller's first turn.
+  whisper:
+    profiles: [voice]
+    image: ghcr.io/speaches-ai/speaches:latest-cpu@sha256:21e3df06d842fb7802ab470dd77c25f0e8c0d22950e8d8c6ae886e851af53ef8
+    environment:
+      WHISPER__TTL: "-1"
+    volumes: [whisper:/home/ubuntu/.cache/huggingface/hub]
+    ports: ["127.0.0.1:8000:8000"]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import random, urllib.request
+          urllib.request.urlopen(urllib.request.Request(
+              "http://localhost:8000/v1/models/${LOCAL_STT}", method="POST"), timeout=1200)
+          wav = b"RIFF" + (36 + 32000).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+          wav += (1).to_bytes(2, "little") * 2 + (16000).to_bytes(4, "little") + (32000).to_bytes(4, "little")
+          wav += (2).to_bytes(2, "little") + (16).to_bytes(2, "little") + b"data" + (32000).to_bytes(4, "little")
+          wav += bytes(random.getrandbits(8) for _ in range(32000))
+          body = (b"--x\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\n"
+                  b"${LOCAL_STT}\r\n--x\r\nContent-Disposition: form-data; "
+                  b"name=\"file\"; filename=\"warm.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + wav + b"\r\n--x--\r\n")
+          urllib.request.urlopen(urllib.request.Request(
+              "http://localhost:8000/v1/audio/transcriptions", body,
+              {"Content-Type": "multipart/form-data; boundary=x"}), timeout=300)
+      interval: 10m
+      timeout: 20m
+      start_period: 30m
+      start_interval: 10s
+      retries: 3
+
+volumes:
+  ollama:
+  whisper:

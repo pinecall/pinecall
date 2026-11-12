@@ -1,5 +1,6 @@
 """What this machine can run: its card, memory and cores read, and the stack that fits them, from what was measured."""
 
+import csv
 import json
 import os
 import platform as host
@@ -34,6 +35,9 @@ SMART_TURN = "smart-turn"
 SHELL_FILES = (".zshrc", ".zprofile", ".bashrc", ".bash_profile", ".profile")
 THE_ENVIRONMENT = "the environment"
 A_SHELL_LINE = re.compile(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)=(.*?)\s*$")
+# A value that is itself an expansion (`$OTHER`, `$(…)`) is left to the shell.
+EXPANDS = ("$", "`")
+NOT_A_MEASURED_ROW = "line {number} of the measured file is not a model, a stage on keys or a server: {line!r}"
 
 # A GPU's memory is the whole budget; a Mac's unified memory is shared with everything else running.
 A_MACS_SHARE = 0.75
@@ -195,6 +199,38 @@ def where_is_key(variable: str, environ: Mapping[str, str] = os.environ, home: P
 
 
 # Every line of the shell's files that sets the variable, as (file name, value), in file order.
+def key_from_shell(variable: str, home: Path | None = None) -> str | None:
+    """A variable's value as a shell file sets it, when the line is plain text; None when it is nowhere or expands."""
+    for _, value in shell_lines_of(variable, home):
+        plain = value.strip()
+        if len(plain) >= 2 and plain[0] == plain[-1] and plain[0] in "\"'":
+            plain = plain[1:-1]
+        if plain and not any(mark in plain for mark in EXPANDS):
+            return plain
+    return None
+
+
+# What a machine can run is data, measured once and shipped beside the package (`measured.csv`): a
+# model a line, a stage on keys a line, a server a line, `#` lines its notes.
+def measured_from_csv(text: str) -> Measured:
+    """What a measured file says: the models in its order, the vendor of each stage on keys, each server's card."""
+    models: list[MeasuredModel] = []
+    on_keys: dict[Stage, str] = {}
+    servers: dict[str, float] = {}
+    lines = [line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    for number, row in enumerate(csv.reader(lines), start=1):
+        match row:
+            case ["model", model, needs_gib, first_token_s, did, note]:
+                models.append(MeasuredModel(model, float(needs_gib), float(first_token_s), did, note))
+            case ["keys", stage, vendor]:
+                on_keys[Stage(stage)] = vendor
+            case ["server", name, gib]:
+                servers[name] = float(gib)
+            case _:
+                raise ValidationError(NOT_A_MEASURED_ROW.format(number=number, line=",".join(row)))
+    return Measured(tuple(models), on_keys, servers)
+
+
 def shell_lines_of(variable: str, home: Path | None = None) -> list[tuple[str, str]]:
     """The lines of the shell's own files that set a variable, each with the file it is in."""
     lines: list[tuple[str, str]] = []
