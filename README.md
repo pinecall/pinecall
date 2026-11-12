@@ -318,19 +318,23 @@ Signs this machine in through the browser, once. Or
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/how-it-works-dark-f48f3042.png">
-    <img src=".github/assets/how-it-works-light-4aba1490.png" alt="Phone, browser, chat and WhatsApp reach the Pinecall runtime. Its worker runs LiveKit's AgentSession, speech to text, the model and text to speech; its gateway asks your agent.tsx to run a tool; every step is an entry in the call's log, kept in Postgres, with Redis as the signal; the console, the CLI and the MCP server read the log live" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/how-it-works-dark-48cb2f40.svg">
+    <img src=".github/assets/how-it-works-light-7a44a7ad.svg" alt="Phone, browser, chat and WhatsApp reach the Pinecall runtime. Its worker runs LiveKit's AgentSession, speech to text, the model and text to speech; its gateway asks the agent's class to run a tool and tells app.ts what happened on the call; a booked visit, an entry in the call's log, starts a flow that outlives the call; the log is kept in Postgres, with Redis as the signal; the console, the CLI and the MCP server read the log live" width="100%">
   </picture>
 </p>
 
-1. **A caller comes in** by a carrier, the browser widget, a written chat or WhatsApp.
+1. **A caller comes in** by a carrier, the browser widget, a written chat or WhatsApp. The app's line
+   says which agent answers the number and who it may pass the call to.
 2. **A worker takes the call.** It runs LiveKit's `AgentSession`, with speech-to-text, the model
-   and text-to-speech built from the org's providers.
+   and text-to-speech built from what the agent declares, or from the org's providers.
 3. **The agent acts.** A class's tool runs in your own process, asked over its app socket. A Studio
    tool is an HTTP request the gateway makes to your API.
 4. **Everything is an entry in the call's log.** Turns, tool calls, latencies, costs and scores are
    appended, never rewritten. The console, the CLI, the MCP server, the bill and the judges all read
    that log.
+5. **The app hears the log.** `app.on("visit.booked", …)` runs your code on an entry, or starts a
+   flow: steps the gateway keeps in a journal, so a reminder a day later outlives the call and a
+   deploy.
 
 The runtime is one Python package shaped like a Rails app.
 [The architecture page](https://docs.pinecall.io/self-hosting/architecture/) walks every folder.
