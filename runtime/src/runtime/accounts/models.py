@@ -19,6 +19,10 @@ class InvitationPurpose(StrEnum):
     reset = "reset"
 
 
+# The box's own org: what a runner's key is minted in, and what an operator's verb that names no org acts on.
+BOX_ORG = "default"
+
+
 class Org(Model):
     """An organisation: immutable id, editable slug, display name, and whether its calls are judged."""
 

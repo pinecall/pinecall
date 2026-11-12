@@ -7,7 +7,7 @@ from typing import Annotated
 
 import typer
 
-from runtime.cli import doctor, migrate, processes
+from runtime.cli import doctor, keys, load, migrate, orgs, processes, rebuild, retention, routes, sessions, traceback
 from runtime.cli.command import MISCONFIGURED, Context
 from runtime.cli.output import Printer
 from runtime.config import load_settings
@@ -30,6 +30,18 @@ app.add_typer(processes.worker_app, name="worker")
 app.add_typer(processes.runner_app, name="runner")
 app.add_typer(migrate.app, name="migrate")
 app.command("doctor")(doctor.doctor)
+app.add_typer(retention.app, name="retention")
+app.add_typer(sessions.app, name="sessions")
+app.add_typer(rebuild.facts_app, name="facts")
+app.add_typer(rebuild.drift_app, name="drift")
+app.add_typer(rebuild.usage_app, name="usage")
+app.command("traceback")(traceback.traceback)
+app.command("init")(orgs.init)
+app.command("kill")(orgs.kill)
+app.add_typer(orgs.app, name="orgs")
+app.add_typer(keys.app, name="keys")
+app.add_typer(routes.app, name="routes")
+app.command("load")(load.load)
 
 
 def _show_version(shown: bool) -> None:
