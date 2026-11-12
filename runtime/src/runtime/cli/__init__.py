@@ -19,6 +19,7 @@ from runtime.cli import (
     orgs,
     processes,
     providers,
+    reach,
     rebuild,
     retention,
     routes,
@@ -50,6 +51,7 @@ app.add_typer(processes.worker_app, name="worker")
 app.add_typer(processes.runner_app, name="runner")
 app.add_typer(migrate.app, name="migrate")
 app.command("doctor")(doctor.doctor)
+app.command("reach")(reach.reach)
 app.add_typer(providers.app, name="providers")
 app.add_typer(memory.app, name="memory")
 app.add_typer(vault.app, name="vault")

@@ -105,9 +105,13 @@ Postgres goes out when somebody means it to, after `make diff` showed it. Before
 cluster `make deploy` checks three things and says what to do when one fails: `infra/charts` is what
 the commit `TAG` holds, the image of `TAG` exists in the registry, and no release of the chart was
 left half-way. It runs the migrations before anything new starts (a pre-upgrade hook), waits for every
-workload, and knocks at the production name,
-which it asks of the cluster. When the upgrade fails or is cut, Helm goes back to the release that
-ran, by itself (`--rollback-on-failure`).
+workload, and then has the new gateway ask itself at its public name, through the front door
+(`pinecall-runtime reach`, run in its pod): the console's page and that no browser keeps it, the
+widget for any site, a request with no key and one with an unknown key refused, a path of the API
+nobody declared answered by the API, the OpenAPI document. Nothing runs on the machine that
+deploys. When the upgrade fails or is cut, Helm goes back to the release that ran, by itself
+(`--rollback-on-failure`); a `NO` from `reach` is said after the release stands, and going back is
+`make rollback`.
 
 **Going back.** `make rollback CLUSTER=<cluster>` returns charts/pinecall to the release before this one
 (`REV=<n>` names another; the target prints the last five). It brings back the image and the

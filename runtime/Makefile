@@ -224,13 +224,13 @@ deploy-guards:
 
 # Helm goes back to the release that ran, by itself, when the upgrade fails or is cut. The migrations
 # it ran are not undone: a revision is written so the release before it still runs on its schema.
-# The release is then asked at its name, which the cluster says since it is where it is served: six
-# requests in one process (tests/app/test_the_box.py), which need no database and start no suite.
+# The release is then asked at its name, through the front door, by its own gateway: the verb
+# `reach` in the new pod (the operator's terminal, docs/the-runtime-cli.md). Nothing runs on the
+# machine that deploys: until 2026-11-12 it was pytest, started there with the suite's own tools.
 deploy: deploy-guards  ## CLUSTER=staging: charts/pinecall released at TAG=<commit> (make image first), then asked at its name
 	$(HELM) upgrade --install pinecall $(CHARTS)/pinecall $(CHART_VALUES) \
 	  $(IMAGE) --rollback-on-failure --timeout 20m
-	PINECALL_URL=https://$$(kubectl --context $(CONTEXT) get httproute pinecall -o jsonpath='{.spec.hostnames[0]}') \
-	  uv run pytest -q -n 0 tests/app/test_the_box.py
+	kubectl --context $(CONTEXT) exec deploy/pinecall-gateway -- pinecall-runtime reach
 
 rollback:         ## CLUSTER=… [REV=<n>]: charts/pinecall back to the release before this one, or to revision REV
 	$(HELM) history pinecall --max 5

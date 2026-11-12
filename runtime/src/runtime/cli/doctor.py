@@ -45,6 +45,11 @@ async def doctor(ctx: typer.Context) -> int:
         Finding("livekit", await _livekit(context)),
         Finding("gateway", await _gateway(context)),
     ]
+    return say_findings(context, findings)
+
+
+def say_findings(context: Context, findings: list[Finding]) -> int:
+    """Print a line a finding, `ok` or `NO` and why; the exit is 1 when one found something wrong."""
     if context.out.as_json:
         context.out.data(findings)
     else:

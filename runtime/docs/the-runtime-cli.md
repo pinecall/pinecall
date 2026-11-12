@@ -10,7 +10,7 @@ writes an agent, nothing there issues a key.
 
 | group | speaks to |
 |---|---|
-| `gateway` · `worker` · `runner` · `doctor` · `providers` · `local` | this machine: its settings, its database, its LiveKit; `local` brings all three up in Docker |
+| `gateway` · `worker` · `runner` · `doctor` · `reach` · `providers` · `local` | this machine: its settings, its database, its LiveKit; `reach` asks its gateway from outside, at its name; `local` brings all three up in Docker |
 | `migrate` · `sessions` · `memory` · `retention` · `traceback` · `facts` · `drift` · `usage` · `vault` · `init` · `orgs` · `keys` · `box` · `routes` · `fence` · `sip` | the services themselves, over `DATABASE_URL` (with `PINECALL_VAULT_KEY` for what is sealed, LiveKit for what a route admits, Redis to tell every gateway a key was revoked) |
 | `fleet` · `orgs move` · `kill` | a running gateway, over `/v1/ops/*` with `PINECALL_OPS_KEY` ([protocol/operator-api.md](protocol/operator-api.md)): the roster, its cordons and which app holds which agent live in the gateways' memory |
 | `load` | a running gateway's sandbox, over the worker's own call endpoints with the sandbox fleet's key (`PINECALL_WORKER_KEY`) |
@@ -412,7 +412,7 @@ judge model. Each call at once has a client and a connection of its own, as a wo
 | `logs verified` · `logs found wrong` · `logs unread` | each sealed call's log read back: every durable entry sent, once each, in order, and seqs that rose; `unread` counts the reads refused, by status |
 | `loop lag ms` | the p99 lag of the generator's own event loop; over 50 ms a `warning:` line follows, since a saturated generator measures itself |
 
-## `sessions` · `memory` · `retention` · `traceback` · `facts` · `usage` · `drift` · `migrate` · `providers` · `doctor`
+## `sessions` · `memory` · `retention` · `traceback` · `facts` · `usage` · `drift` · `migrate` · `providers` · `doctor` · `reach`
 
 `sessions list [--agent] [--limit]`, `sessions show <call> [--folded]`, `sessions tail [<call>]`,
 `sessions recording <call>`: the log read back off Postgres, every tenant's; each read of a call is a row of its org's access log (`reader: operator`), and so is each org a `traceback` showed. `memory reembed`
@@ -457,7 +457,13 @@ and refolds 20 sealed calls from a random point of the call ids, naming each who
 differ and the columns that do: `facts rebuild
 --call` mends one. Its `offers` line names the rooms a caller joined over a minute ago that are
 still kept: three offers 12 s apart let every room go before then, so one still kept is a room no
-gateway is sweeping. `drift rebuild [--org <org id>] [--since YYYY-MM-DD]` forgets the drift of
+gateway is sweeping. `reach [<url>]` is what `doctor` cannot see from inside: it asks a gateway
+at its address (the box's own name, unset) what a browser and a server ask it first, a line each,
+`ok` or `NO` and why, and exits 1 when one is wrong: the console's page at any path and that it
+is served `no-store`, the widget with `access-control-allow-origin: *`, `401` and the `Bearer`
+challenge with no key, `401` for a key nobody issued, the API's own JSON `404` under `/v1`, and
+the OpenAPI document naming the calls' endpoints. It opens no database and reads no key, and
+`make deploy` ends in it, run in the new release's pod. `drift rebuild [--org <org id>] [--since YYYY-MM-DD]` forgets the drift of
 the days the flags name (every org's and every day's when none), each stage's histogram, each
 judge's count, each tool's day and each call's slowest turns that `/v1/insights`, `/v1/insights/drift`,
 `/v1/insights/tools` and `/v1/insights/slow` read, and counts every sealed call of

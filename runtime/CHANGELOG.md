@@ -14,8 +14,10 @@
   for a visitor who left, and their room was kept for the same five: LiveKit closed the room at the second
   the wait ended, and the call was sealed `drained` by the platform. The room now outlives the wait, so
   the call ends itself as `caller_hung_up`.
-- `make deploy` asks the release at its name with its six requests (`tests/app/test_the_box.py`) and
-  starts no suite: `tests/live` is the live domain's tests now, not the checks of a deployment.
+- **`pinecall-runtime reach [<url>]`**: a gateway asked at its name what a browser and a server ask it
+  first, a line each, exit 1 when one is wrong. `make deploy` ends in it, run in the new release's own
+  pod through the front door; it ran pytest on the machine that deploys, and since the rewrite that
+  was the live domain's whole suite.
 - **`GET /v1/limits` shows an org's seats and budget as they are held.** Both are the org's, not an
   environment's: a key of the sandbox read them off the sandbox's row, where an operator who set them on
   production saw no limit at all. They are read off the org's own row now, the one a refusal reads.
