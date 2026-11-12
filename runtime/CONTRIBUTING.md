@@ -130,6 +130,7 @@ stage of a call, on whose key, told what, at what price. One row, one table of k
 registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
 this machine can run (`machine`) stand apart and were decided into it.
 | `judging` | `library/` | the judges and personas the box ships: pages a person can read, read by `service/library.py` and by no other module |
+| `studio` | `export/` | the files of an exported project that are the same for every agent (the request helper, the package and its tsconfig, the README, AGENTS.md), read by `service/export.py` and by no other module |
 
 `session` is an engine: one call running for as long as it lasts. Each of its modules above is an
 object that holds the call's state, or the one noun those objects share; `service.py` beside them

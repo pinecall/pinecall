@@ -5,6 +5,7 @@ from tests.conventions.canon import (
     DOMAINS,
     ENGINE_MODULES,
     ENTRYPOINTS,
+    FOLDERS_OF_FILES,
     FOUNDATIONS,
     MOST_SERVICE_MODULES,
     ONE_CONTEXT,
@@ -29,7 +30,8 @@ def test_every_domain_folder_holds_the_canon_files() -> None:
             stem = child.name.removesuffix(".py")
             if stem not in allowed:
                 wrong.append(f"{domain}/{child.name}: not one of the canon's files")
-            if child.is_dir() and not (child / "__init__.py").is_file() and stem != "library":
+            holds_files = f"{domain}.{stem}" in FOLDERS_OF_FILES
+            if child.is_dir() and not (child / "__init__.py").is_file() and not holds_files:
                 wrong.append(f"{domain}/{child.name}: a package names what others use in its __init__.py")
     assert not wrong, "\n".join(wrong)
 

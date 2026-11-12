@@ -1,4 +1,4 @@
-"""The apps an org has connected and the agents they hold: listed, one stopped, an agent killed in all of them."""
+"""The apps an org has connected and the agents they hold: listed, stopped, killed; and one opened in this process."""
 
 from dataclasses import dataclass
 
@@ -12,7 +12,10 @@ from runtime.enums import Channel, Env, KeyScope
 from runtime.exceptions import Conflict, Forbidden, NotFound
 from runtime.kit.crypto import Vault
 from runtime.live.holders import Holders
+from runtime.live.parts import LiveParts
 from runtime.live.service import socket
+from runtime.live.service.socket import AppSocket, ClaimCode, Close, SendFrame
+from runtime.live.service.whatsapp import Threads
 from runtime.live.sockets import SocketId, Sockets
 from runtime.livekit import Servers
 from runtime.scoping import box_wide
@@ -190,3 +193,22 @@ async def list_agents(session: AsyncSession, holders: Holders, actor: Actor) -> 
         )
         for held in holders.list_holding(actor.scope, every_scope=sees_every_holder(actor))
     ]
+
+
+# ── for a domain above the live side ──
+
+
+# What a domain above this one opens an app socket of its own with (`studio`, whose agents the gateway
+# holds itself): its frames never leave the process, and nothing else tells the socket from an SDK's.
+# `LiveParts` stays inside it.
+class AppSockets:
+    """An app socket opened inside this process, by a domain that holds agents itself."""
+
+    def __init__(self, live: LiveParts, threads: Threads, claim_code: ClaimCode) -> None:
+        self._live = live
+        self._threads = threads
+        self._claim_code = claim_code
+
+    def make(self, actor: Actor, send: SendFrame, close: Close, host: str) -> AppSocket:
+        """A socket for the actor: what the gateway sends it goes to `send`; `host` is where it says it runs."""
+        return AppSocket(self._live, self._threads, self._claim_code, actor, send, close, host)

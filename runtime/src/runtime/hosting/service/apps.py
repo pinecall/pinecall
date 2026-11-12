@@ -117,15 +117,10 @@ async def find_kind(session: AsyncSession, app: App) -> AppKind | None:
     return None if found is None else found.kind
 
 
-# The token is the org's and the env's, a server's: what `pinecall start` would be given by hand. An
-# app with no process of its own is given none: nothing would run on it.
-async def open_app(
-    session: AsyncSession, vault: Vault, cache: accounts.KeyCache, app: App, kind: AppKind, *, created_by: str
-) -> None:
-    """Start hosting the app: for one with a process, a server's token minted for it, kept sealed."""
-    if not kind.has_process:
-        await _open(session, app, kind, created_by=created_by)
-        return
+# The token is the org's and the env's, a server's: what `pinecall start` would be given by hand.
+async def open_app(session: AsyncSession, vault: Vault, cache: accounts.KeyCache, app: App, *, created_by: str) -> None:
+    """Start hosting an app of code: a server's token minted for its process, kept sealed."""
+    kind = AppKind.code
     issue = accounts.Issue(
         org=app.org, env=app.env, scopes=SERVER_SCOPES, label=LABEL.format(name=app.name), created_by=created_by
     )
@@ -133,6 +128,12 @@ async def open_app(
     marked, sealed = fingerprint(secret), vault.seal(secret)
     if not await _open(session, app, kind, created_by=created_by, key_fingerprint=marked, sealed_key=sealed):
         await accounts.revoke_fingerprint(session, cache, marked)
+
+
+# No token is minted: no process of its own would run on it.
+async def open_held_app(session: AsyncSession, app: App, kind: AppKind, *, created_by: str) -> None:
+    """Start hosting an app the gateway holds itself, with no process of its own."""
+    await _open(session, app, kind, created_by=created_by)
 
 
 async def stop_app(session: AsyncSession, signal: Signal, app: App, *, by: str) -> None:

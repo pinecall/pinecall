@@ -119,7 +119,7 @@ async def deploy_release(
     if kind is None:
         hosting = len(await apps.list_standing(session, app.env, app.org))
         await billing.admit_hosted_app(session, app.org, app.env, hosting=hosting)
-        await apps.open_app(session, vault, cache, app, AppKind.code, created_by=author)
+        await apps.open_app(session, vault, cache, app, created_by=author)
     kept = await keep_release(session, app, source, author=author, note=upload.note.strip(), page=page)
     _announce(session, feeds, by, kept)
     return Released(kept, pages.url_of(label, pages_domain) if page is not None else None)

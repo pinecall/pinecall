@@ -1,0 +1,16 @@
+{
+  "name": "$name",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pinecall/agents": "$framework"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  }
+}

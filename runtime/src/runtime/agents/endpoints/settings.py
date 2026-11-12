@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query
 
 from runtime.agents import schemas
 from runtime.agents.auth import KnownAgent, PipelineKey, WordsKey
-from runtime.agents.service import canaries, settings
+from runtime.agents.service import canaries, setting_writes, settings
 from runtime.agents.service.versions import Written
 from runtime.calls.auth import TheOrgsCall
 from runtime.handles import TheSessions, TheVault
@@ -33,7 +33,7 @@ async def put_settings(
     """The agent's next version in this scope or the team's, checked as a call would build it."""
     wanted = settings.parse_settings(body.config.dump())
     written = Written(author=actor.name, note=body.note, if_version=body.if_version)
-    shown = await settings.put_settings(sessions, vault, actor, slug, wanted, written, team=body.team)
+    shown = await setting_writes.put_settings(sessions, vault, actor, slug, wanted, written, team=body.team)
     return schemas.SettingsResponse.of(shown)
 
 
@@ -65,7 +65,7 @@ async def roll_back_settings(
     slug: KnownAgent, body: schemas.RollbackSettingsRequest, actor: PipelineKey, session: Session
 ) -> schemas.SettingsResponse:
     """An old version brought back as the scope's next one."""
-    shown = await settings.roll_back_settings(
+    shown = await setting_writes.roll_back_settings(
         session, actor.scope, slug, body.version, author=actor.name, team=body.team
     )
     return schemas.SettingsResponse.of(shown)

@@ -83,6 +83,8 @@ VALUE_OBJECTS: frozenset[str] = frozenset(
 )
 # A package inside a domain that other domains reach: by its `__init__`, which names exactly what they import.
 SUBPACKAGES: frozenset[str] = frozenset({"calls.log", "calls.folds"})
+# A folder of a domain that holds files a module reads, and no module: shipped in the wheel beside the package.
+FOLDERS_OF_FILES: frozenset[str] = frozenset({"judging.library", "studio.export"})
 # The files a domain folder holds, each a module or a package of the same name.
 CANON_FILES = frozenset({"models", "schemas", "repository", "service", "auth", "endpoints", "tasks"})
 # The modules a domain holds beside the canon's files: its long-lived objects and its value objects, each
@@ -123,6 +125,9 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
     # Harness: one of each thing a test call reaches, the one value of evals that carries them together, as
     # `LiveParts` is the live side's (G-1).
     "evals": frozenset({"parts"}),
+    # No module: the files of an exported project that are the same for every agent (the request helper, the
+    # package and its tsconfig, the README, AGENTS.md), shipped in the wheel and read by `service/export.py`.
+    "studio": frozenset({"export"}),
     # An engine: one call running for as long as it lasts, each module an object that holds its state, or
     # the one noun those objects share. `service.py` beside them is what a host calls.
     "session": frozenset(

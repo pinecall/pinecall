@@ -32,6 +32,7 @@ from runtime.hosting import service as hosting
 from runtime.hosting import tasks as hosting_tasks
 from runtime.kit.loops import Loops
 from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
+from runtime.live import service as live_service
 from runtime.live import tasks as live_tasks
 from runtime.live.holders import Holders
 from runtime.live.parts import LiveParts
@@ -51,6 +52,8 @@ from runtime.signin.service.pairings import Pairings
 from runtime.signin.service.passwords import SIGN_IN_TRIES, PasswordThrottle
 from runtime.signin.service.signup import SignUps
 from runtime.signin.service.turnstile import Turnstile
+from runtime.studio import service as studio
+from runtime.studio import tasks as studio_tasks
 from runtime.telephony import tasks as telephony_tasks
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.rebuild import Owed
@@ -111,6 +114,8 @@ class State(TypedDict):
     simulations: ChatSimulations
     # The apps' pages this process keeps unpacked.
     pages: hosting.Pages
+    # Every Studio agent of the box, held by this gateway on app sockets of its own.
+    studio: studio.Holder
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -143,6 +148,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         harness = await builders.build_harness(handles, live, signer, roster, stack)
         loops.start(evals_tasks.renew_leases.bind(harness.runner))
         loops.start(hosting_tasks.count_serving.bind(sessions, live.sockets))
+        codes = builders.build_codes(handles, logs)
+        # The agents built in Studio: held off the lifespan, by the loop's first look, so the gateway answers
+        # before a box's worth of them is registered. What one says of itself is asked by the harness.
+        app_sockets = live_service.AppSockets(live, threads, codes.claim_heard)
+        holder = studio.Holder(app_sockets, sessions, vault, studio.Fetcher(handles.http))
+        stack.push_async_callback(holder.close)
+        loops.start(studio_tasks.follow_changes.bind(holder, handles.signal))
+        loops.start(studio_tasks.look_at_agents.bind(holder))
+        harness.describers.add(studio.StudioAgents())
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -181,8 +195,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             vendor_health=live.health,
             signer=signer,
             visits=signer,
-            codes=builders.build_codes(handles, logs),
+            codes=codes,
             harness=harness,
             simulations=ChatSimulations(harness),
             pages=hosting.Pages(),
+            studio=holder,
         )

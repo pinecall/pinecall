@@ -20,6 +20,7 @@ from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 from runtime.providers import endpoints as providers
 from runtime.signin import endpoints as signin
+from runtime.studio import endpoints as studio
 from runtime.telephony import endpoints as telephony
 from runtime.whatsapp import endpoints as whatsapp
 
@@ -48,4 +49,5 @@ def mount(app: FastAPI) -> None:
     app.include_router(flows.router)
     app.include_router(evals.router)
     app.include_router(hosting.router)
+    app.include_router(studio.router)
     app.include_router(platform.pages_router)

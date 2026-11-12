@@ -10,7 +10,7 @@ from runtime.session import commands, text, voice
 from runtime.session.call import Call, CallContext, Platform, ToolUse
 from runtime.session.clock import end_when_quiet, keep_time, watch_the_quiet
 from runtime.session.commands import Restage
-from runtime.session.history import Resumption, history_of
+from runtime.session.history import CLOCK_TOOL, Resumption, history_of
 from runtime.session.hold import HoldMusic, runtime_melody
 from runtime.session.room import CallRoom
 from runtime.session.session import Heard, OnEnded, Place, Session
@@ -24,6 +24,7 @@ from runtime.wire.parts import EndedBy, EndReason
 # What a host builds a call on and reads of it, named once: a higher domain reaches this module and
 # no other of the session's.
 __all__ = [
+    "CLOCK_TOOL",
     "END_CALL",
     "HANGUP",
     "WRITTEN_WITHIN_S",

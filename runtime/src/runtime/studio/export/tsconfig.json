@@ -1,0 +1,12 @@
+{
+  "extends": "@pinecall/agents/tsconfig.tenant.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "agents"
+  ]
+}
