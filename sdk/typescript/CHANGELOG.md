@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **`@agent({ … })` is the one way to say what an agent is.** Its stages, its language, how it opens, its
   judges and personas, its tasks, scenes and events are declared once, above the class; the class holds what

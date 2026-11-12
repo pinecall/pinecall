@@ -31,7 +31,7 @@ import { Agent, agent, tool } from "@pinecall/agents";
 
 /** You are the front desk of Brightside Dental. Keep it short. */
 @agent({
-  stt: "deepgram/flux",
+  stt: "deepgram/flux-general-en",
   llm: "google/gemini-3.5-flash-lite",
   voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02",
   timezone: "America/Los_Angeles",

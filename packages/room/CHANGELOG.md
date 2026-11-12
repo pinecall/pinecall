@@ -4,7 +4,7 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **`hosted()`**: the `tokens` and `expect` of a page Pinecall serves for an app, asked of the page's own name
   (`/pinecall/token`, `/pinecall/code`), the captcha solved first where the gateway asks for one.

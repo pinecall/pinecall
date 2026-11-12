@@ -89,9 +89,9 @@ import { Agent, agent, tool, type Call } from "@pinecall/agents";
  * Short sentences. Offer at most two times. Never say a time the agenda did not give you.
  */
 @agent({
-  stt: "deepgram/flux",                              // what it hears, thinks and speaks with
+  stt: "deepgram/flux-general-en",                    // what it hears, thinks and speaks with
   llm: "google/gemini-3.5-flash-lite",
-  voice: "cartesia/katie",
+  voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02",  // Katie
   takes: "booking, moving or asking about a visit",   // what a teammate may pass it
   judges: ["consent", "grounded", offersARealTime],   // who reads every call: Pinecall's, and its own
   personas: [hurried, chargedTwice],                  // the test callers that phone it

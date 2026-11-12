@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **A voice app, as in TypeScript:** `app.py` holds `voice_app(…)`: lines with a greeting, a team
   (`takes`) the call passes between, a line that chooses who answers, rules every agent keeps,

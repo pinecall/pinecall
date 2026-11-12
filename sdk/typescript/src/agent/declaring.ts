@@ -99,7 +99,7 @@ const FIELDS: ReadonlySet<string> = new Set<Field>([
 const DECLARED = new WeakMap<Function, ReadonlySet<string>>();
 
 /**
- * Say what the agent is: `@agent({ stt: "deepgram/flux", llm: "google/gemini-3.5-flash-lite", voice: "cartesia/<id>" })`.
+ * Say what the agent is: `@agent({ stt: "deepgram/flux-general-en", llm: "google/gemini-3.5-flash-lite", voice: "cartesia/<id>" })`.
  * A subclass keeps what its parent declared and declares over it, field by field.
  */
 export function agent(declaration: AgentDeclaration) {

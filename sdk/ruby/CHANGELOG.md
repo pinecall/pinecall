@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## [Unreleased]
+## [0.11.31] — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **A voice app, as in TypeScript and Python:** `app.rb` makes `Pinecall.voice_app(…)`: lines with a
   greeting, a team (`takes`) the call passes between, a line that chooses who answers, rules, `silence`,

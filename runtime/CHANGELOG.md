@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **A class exported from Studio declares itself with `@agent({ … })`**, as the TypeScript framework now takes
   it: its greeting and when it hangs up sit above the class, not in `static` fields. The refusals of a

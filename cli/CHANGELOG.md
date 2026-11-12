@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.11.31] — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **`pinecall new` writes an agent declared with `@agent({ … })`**, its judges and its callers each one list,
   as the framework now takes them; the verbs that say where an agent's own judges and personas live say so.
