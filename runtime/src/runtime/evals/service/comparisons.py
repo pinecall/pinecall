@@ -27,10 +27,6 @@ from runtime.wire.parts import ScoreVerdict
 from runtime.wire.scores import CallScore
 from runtime.wire.state import AgentTurn
 
-TOO_MANY_COMPARED = (
-    "a comparison of this org places {most} calls at most: {personas} callers against {configs} "
-    "configurations, {repeats} times each, is {calls}"
-)
 # The most rows a comparison's table reads: past any org's `comparison_calls`.
 ROWS_READ_AT_MOST = 500
 # A call that waits for a place on the line asks again this often, and the comparison says it is
@@ -44,7 +40,6 @@ NEVER_GOT_A_PLACE = (
     "no place on the line in {minutes:.0f} minutes: the org's simulated calls never went under its most at once"
 )
 COMPARISON_PREFIX = "cmp_"
-NO_SUCH_COMPARISON = "no comparison {comparison} in this key's org and env"
 # The turn measures a row carries, each its median over the call (`calls.folds`).
 MEASURES = ("e2e_latency", "llm_node_ttft", "tts_node_ttfb", "transcription_delay", "end_of_turn_delay")
 # The judge that holds a call to what its caller expected of the agent: a comparison's task is done by it.
@@ -198,9 +193,8 @@ async def start_comparison(
     asked = len(personas) * len(against) * repeats
     if asked > quotas.compared_at_most:
         raise ValidationError(
-            TOO_MANY_COMPARED.format(
-                most=quotas.compared_at_most, personas=len(personas), configs=len(against), repeats=repeats, calls=asked
-            )
+            f"a comparison of this org places {quotas.compared_at_most} calls at most: {len(personas)} callers "
+            f"against {len(against)} configurations, {repeats} times each, is {asked}"
         )
     plan = Plan(
         comparison=random_id(COMPARISON_PREFIX, 6),
@@ -313,7 +307,7 @@ async def plan_of(
     if kept is not None:
         return _read(kept, scope)
     if not runs:
-        raise NotFound(NO_SUCH_COMPARISON.format(comparison=comparison))
+        raise NotFound(f"no comparison {comparison} in this key's org and env")
     return Plan(
         comparison=comparison,
         agent=runs[0].agent,

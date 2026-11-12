@@ -51,8 +51,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UNOPENED_KEY = "the key of call {call}'s recording is sealed under a key the vault no longer lists"
-
 
 @router.post("/v1/calls")
 async def open_call(body: OpenCallRequest, actor: WorkerKey, live: TheLive, session: Session) -> OpenCallResponse:
@@ -149,7 +147,7 @@ async def mint_recording_key(served: TheServedCall, vault: TheVault, session: Se
     """The key the call's recording is sealed under, made once for the call."""
     found = await recordings.mint_recording_key(session, vault, served.scope.org, served.call)
     if found is None:
-        raise Conflict(UNOPENED_KEY.format(call=served.call))
+        raise Conflict(f"the key of call {served.call}'s recording is sealed under a key the vault no longer lists")
     return RecordingKeyResponse(key=base64.urlsafe_b64encode(found).decode())
 
 

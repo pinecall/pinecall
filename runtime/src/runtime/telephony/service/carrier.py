@@ -14,7 +14,6 @@ from runtime.telephony.service.fence import Fenced
 from runtime.telephony.service.networks import NOTHING_ASKED, Standing
 from runtime.wire.worker import LegTrunk
 
-NO_DOMAIN = "this box has no PINECALL_DOMAIN: a carrier has nowhere to send a call"
 # livekit-sip listens here, and the fence opens it to the carrier alone.
 SIP_PORT = 5060
 
@@ -34,14 +33,14 @@ class SipNames:
     def get_domain(self) -> str:
         """The box's name, or ServiceUnavailable: a carrier has nowhere to send a call."""
         if not self.domain:
-            raise ServiceUnavailable(NO_DOMAIN)
+            raise ServiceUnavailable("this box has no PINECALL_DOMAIN: a carrier has nowhere to send a call")
         return self.domain
 
     def get_sip_domain(self, env: Env) -> str:
         """The name a carrier sends that env's calls to, or ServiceUnavailable: it has none."""
         name = self.sip_domains.get(env)
         if not name:
-            raise ServiceUnavailable(NO_DOMAIN)
+            raise ServiceUnavailable("this box has no PINECALL_DOMAIN: a carrier has nowhere to send a call")
         return name
 
     def origination_of(self, env: Env) -> str:
@@ -52,14 +51,6 @@ class SipNames:
 def origination_uri(domain: str) -> str:
     """The SIP URI a carrier's trunk sends this box's calls to."""
     return f"sip:{domain}:{SIP_PORT};transport=udp"
-
-
-# A WhatsApp route is Meta's: through an account, the number is the one the org's WhatsApp Business
-# account is, as Meta names it, never a phone number typed with `--channel whatsapp`.
-NOT_A_WHATSAPP_ACCOUNT = (
-    "a WhatsApp number comes through the org's WhatsApp Business account: `pinecall carriers add whatsapp` first, "
-    "then import the number that account is"
-)
 
 
 # A row is read as strictly as it is written: a field that is not there, or not text, is no account.

@@ -27,7 +27,6 @@ from runtime.wire.worker import LegTrunk
 logger = logging.getLogger(__name__)
 
 KIND = "whatsapp"
-NOT_THIS_ACCOUNTS_NUMBER = "{number} is not the number the WhatsApp Business account is: Meta says it is {display}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,7 +126,9 @@ class WhatsappNumber(Carrier):
             return
         display = (await whatsapp.number_of(http, self.access_token, self.phone_number_id)).number
         if display != number:
-            raise ValidationError(NOT_THIS_ACCOUNTS_NUMBER.format(number=number, display=display))
+            raise ValidationError(
+                f"{number} is not the number the WhatsApp Business account is: Meta says it is {display}"
+            )
 
     @override
     async def survey_hook(

@@ -13,8 +13,6 @@ from runtime.signin.service import codes, passwords
 
 router = APIRouter()
 
-ONE_OR_THE_OTHER = "log in with org, email and password, or with a code: one of the two"
-
 
 # One route, two ways in, as every client of the box spells it: which one is read off the body.
 @router.post("/v1/login")
@@ -24,10 +22,10 @@ async def sign_in(
     """A key for a person and a device, from a password, or from a one-time code."""
     if body.code is not None:
         if body.org is not None or body.email is not None or body.password is not None:
-            raise ValidationError(ONE_OR_THE_OTHER)
+            raise ValidationError("log in with org, email and password, or with a code: one of the two")
         return KeyIssued.of(await codes.sign_in_with_code(session, login_codes, body.code, device=body.device))
     if body.email is None or body.password is None:
-        raise ValidationError(ONE_OR_THE_OTHER)
+        raise ValidationError("log in with org, email and password, or with a code: one of the two")
     asking = passwords.PasswordSignIn(body.email, body.password, body.org, body.device)
     return KeyIssued.of(await passwords.sign_in_with_password(session, throttle, asking, client=client))
 

@@ -40,13 +40,10 @@ NO_FACTS = "  (you were given none: do not make any up)"
 # The last turn is announced, so the caller says goodbye instead of being cut mid-sentence.
 TURNS_LEFT = "You have {left} turn(s) left in this call."
 THE_LAST_TURN = "This is your last turn: finish what you are saying and hang up."
-NOTHING_SAID = "the model playing the caller answered without calling say_next_line: it said {said!r}"
 # Asked once more, its words in front of it, as a judge is: a small model now and then answers in words.
 ONLY_THE_LINE = "Answer by calling say_next_line, and nothing else."
 SAID_AT_MOST = 200
 THE_CALLERS_LINE = "the caller's next line"
-# A vendor that would not list its voices: the caller speaks in its plugin's own, the agent's too.
-NONE_LISTED = "%s listed no voice for a simulated caller to speak in: it speaks in the plugin's own"
 
 # The line is read off the call's arguments; the tool itself never runs.
 SAY_NEXT_LINE: JsonObject = {
@@ -151,7 +148,10 @@ async def improvise_line(
         patience=judging.ASKED_WITHIN,
     )
     if answer.arguments is None:
-        raise UpstreamError(NOTHING_SAID.format(said=answer.text.strip()[:SAID_AT_MOST]))
+        raise UpstreamError(
+            "the model playing the caller answered without calling say_next_line: it said "
+            f"{answer.text.strip()[:SAID_AT_MOST]!r}"
+        )
     line = str(answer.arguments.get("line", "")).strip()
     # An empty line is a caller who has hung up.
     return Improvised(say=line, hangup=bool(answer.arguments.get("hanging_up", False)) or not line, usage=answer.usage)
@@ -268,7 +268,12 @@ async def _find_another_listed(
             dataclasses.replace(unnamed, language=spoken_in)
         )
     except PinecallError:
-        logger.warning(NONE_LISTED, unnamed.vendor, exc_info=True)
+        # A vendor that would not list its voices: the caller speaks in its plugin's own, the agent's too.
+        logger.warning(
+            "%s listed no voice for a simulated caller to speak in: it speaks in the plugin's own",
+            unnamed.vendor,
+            exc_info=True,
+        )
         return None
     others = [voice for voice in listed if voice.id != agents_voice]
     same_language = [voice for voice in others if _speaks(voice.detail, spoken_in)]

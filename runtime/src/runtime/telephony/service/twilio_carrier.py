@@ -12,7 +12,6 @@ from runtime.exceptions import Conflict, NotFound, UpstreamError, ValidationErro
 from runtime.telephony.models import CarrierKind
 from runtime.telephony.service import twilio
 from runtime.telephony.service.carrier import (
-    NOT_A_WHATSAPP_ACCOUNT,
     Carrier,
     Outbound,
     Owned,
@@ -196,7 +195,10 @@ class TwilioCarrier(Carrier):
     async def check_number(self, http: httpx.AsyncClient, channel: Channel, number: str) -> None:
         """A Twilio number answers the phone; whether the account owns it is asked when it is hooked."""
         if channel is Channel.whatsapp:
-            raise ValidationError(NOT_A_WHATSAPP_ACCOUNT)
+            raise ValidationError(
+                "a WhatsApp number comes through the org's WhatsApp Business account: `pinecall carriers add "
+                "whatsapp` first, then import the number that account is"
+            )
 
     @override
     async def survey_hook(

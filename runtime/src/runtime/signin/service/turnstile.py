@@ -16,7 +16,6 @@ LONGEST_TOKEN = 2048
 # Each endpoint sends its own action and Cloudflare answers it back, so a token solved for one
 # does not open another (Cloudflare: 32 characters of letters, digits, `_` and `-`).
 type Action = Literal["signup", "signup_resend", "password_reset", "page"]
-REFUSED = "the captcha was not passed: complete it and try again"
 
 
 @dataclass(frozen=True)
@@ -34,7 +33,7 @@ class Turnstile:
             return
         if not token or len(token) > LONGEST_TOKEN:
             logger.warning("turnstile: %s from %s carried no token", action, client)
-            raise Forbidden(REFUSED)
+            raise Forbidden("the captcha was not passed: complete it and try again")
         asked = {"secret": self.secret, "response": token, "remoteip": client}
         try:
             answer = await self.http.post(SITEVERIFY, data=asked, timeout=10.0)
@@ -43,11 +42,11 @@ class Turnstile:
         except (httpx.HTTPError, ValueError) as failed:
             # Cloudflare not answering refuses too: an endpoint that opens when the shield is down has no shield.
             logger.warning("turnstile: siteverify did not answer for %s: %s", action, failed)
-            raise Forbidden(REFUSED) from None
+            raise Forbidden("the captcha was not passed: complete it and try again") from None
         if said.get("success") is not True or said.get("action") != action:
             logger.warning("turnstile: token refused for %s: %s", action, said.get("error-codes", said.get("action")))
-            raise Forbidden(REFUSED)
+            raise Forbidden("the captcha was not passed: complete it and try again")
         solved_on = on or self.hostname
         if solved_on is not None and str(said.get("hostname", "")).lower() != solved_on:
             logger.warning("turnstile: token for %s solved on %r, not this box", action, said.get("hostname"))
-            raise Forbidden(REFUSED)
+            raise Forbidden("the captcha was not passed: complete it and try again")

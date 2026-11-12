@@ -9,8 +9,6 @@ from runtime.cli.command import OK, context_of, verb
 from runtime.exceptions import ConfigurationError
 from runtime.jobs.service import lab
 
-NO_KEY = "PINECALL_WORKER_KEY is unset: the load opens its calls with the sandbox fleet's key"
-
 
 @verb
 async def load(
@@ -26,7 +24,7 @@ async def load(
     context = context_of(ctx)
     key = context.settings.worker_key
     if key is None:
-        raise ConfigurationError(NO_KEY)
+        raise ConfigurationError("PINECALL_WORKER_KEY is unset: the load opens its calls with the sandbox fleet's key")
     plan = lab.Plan(org=org, agent=agent, script=lab.read_script(script), calls=calls, ramp_s=ramp, hold_s=minutes * 60)
     tally = await lab.measure_load(context.settings.gateway_url, key.get_secret_value(), plan)
     if context.out.as_json:

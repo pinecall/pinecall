@@ -17,7 +17,6 @@ from runtime.wire.events import FleetFull
 # a sandbox of two slots were refused eight times before the node came (2026-11-04).
 WAITED_S = 180.0
 ASKED_EVERY_S = 2.0
-NO_SEAT_IN_TIME = "every seat of the {env}'s fleet held a call for {waited:.0f} s: the simulation did not start"
 
 
 async def wait_for_fleet_slot(
@@ -62,5 +61,7 @@ async def wait_for_slot(
 
     if await until(probe, every_s=every_s, within_s=within_s) is None:
         waited = time.monotonic() - began
-        raise ServiceUnavailable(NO_SEAT_IN_TIME.format(env=env.value, waited=waited))
+        raise ServiceUnavailable(
+            f"every seat of the {env.value}'s fleet held a call for {waited:.0f} s: the simulation did not start"
+        )
     return time.monotonic() - began

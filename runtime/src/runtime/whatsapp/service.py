@@ -35,8 +35,6 @@ LONGEST_WEBHOOK = 1024 * 1024
 # release before 2026-11 reads the same row, so it stays under that name until that release is gone.
 BOX_ACCOUNT = "whatsapp"
 META_APP_FIELDS = frozenset({"app_secret", "verify_token", "access_token"})
-NO_META = "this box has no Meta app (credentials/whatsapp): its WhatsApp endpoint is closed"
-NOT_THE_WORD = "the verify token is not this box's"
 # Meta retries a webhook not answered 200 with decreasing frequency for up to 7 days
 # (developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks): an id is kept as long.
 SEEN_KEPT = timedelta(days=7)
@@ -167,7 +165,7 @@ async def box_meta_app(session: AsyncSession, vault: Vault) -> MetaApp:
     """The box's Meta app; ServiceUnavailable when it has none."""
     app = _meta_app_in((await providers.box_credentials(session, vault)).get(BOX_ACCOUNT))
     if app is None:
-        raise ServiceUnavailable(NO_META)
+        raise ServiceUnavailable("this box has no Meta app (credentials/whatsapp): its WhatsApp endpoint is closed")
     return app
 
 
@@ -175,9 +173,9 @@ async def box_meta_app(session: AsyncSession, vault: Vault) -> MetaApp:
 def handshake(app: MetaApp, mode: str | None, word: str | None, challenge: str | None) -> str:
     """The challenge to echo back, when Meta subscribes with this box's word."""
     if mode != "subscribe" or word is None or challenge is None:
-        raise Forbidden(NOT_THE_WORD)
+        raise Forbidden("the verify token is not this box's")
     if not hmac.compare_digest(word.encode(), app.verify_token.encode()):
-        raise Forbidden(NOT_THE_WORD)
+        raise Forbidden("the verify token is not this box's")
     return challenge
 
 

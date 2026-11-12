@@ -65,7 +65,6 @@ type ClaimCode = Callable[[AsyncSession, Served, str], Awaitable[bool]]
 
 # Sent on a stop: the SDK exits instead of reconnecting.
 STOPPED = "stopped"
-STUDIOS = "{slug} is a Studio agent of this org: Studio holds it, so give your app's agent another name"
 # `error` code on one agent killed by an admin (`POST /v1/agents/{slug}/kill`): the app keeps the others.
 KILLED = "killed"
 # `error` code on a frame the database did not answer in time: the app sends it again.
@@ -82,14 +81,10 @@ THE_DESKS = (
 NO_SESSION = "{kind} names call {call!r}, which is not running here"
 # Where an opt-out the agent heard came from, as the do-not-call list says it.
 ASKED_THE_AGENT = "the caller asked the agent"
-NO_NUMBER_TO_LIST = "call {call} has no phone number at its far end: nothing to put on the list"
 NOBODY_WAITING = (
     "no tool call {call_id} is waiting on call {call!r}: it lapsed, it was answered, or the call is not here"
 )
 NOBODY_ASKED = "no dev.request {id} is waiting: it lapsed, it was answered, or another gateway asked it"
-SEARCHES_WITH_NOTHING = (
-    "{slug} searches its bases, and none is attached to it in {env}: pinecall docs attach <base> --agent {slug}"
-)
 PLATFORMS_OWN = "{name} is the platform's own tool and the session answers it: an app answers none"
 # How long the socket's first frame waits for its inbox to be asked of the signal.
 INBOX_HEARD_WITHIN_S = 5.0
@@ -283,7 +278,9 @@ class AppSocket:
         if not agents.is_studio_key(self.actor.key_id) and self.holders.is_held_as(
             self.scope, slug, agents.BUILT_IN_STUDIO
         ):
-            raise Conflict(STUDIOS.format(slug=slug))
+            raise Conflict(
+                f"{slug} is a Studio agent of this org: Studio holds it, so give your app's agent another name"
+            )
         self.sockets.name(self.id, wanted.host)
         scope = self.scope
         try:
@@ -327,7 +324,10 @@ class AppSocket:
             catalog = await providers.get_catalog(session_)
             running = (await agents.resolve_for_call(session_, declaration, self.scope, catalog)).declaration
             if declaration.uses_knowledge and not running.bases:
-                raise ValidationError(SEARCHES_WITH_NOTHING.format(slug=slug, env=self.scope.env))
+                raise ValidationError(
+                    f"{slug} searches its bases, and none is attached to it in {self.scope.env}: pinecall docs "
+                    f"attach <base> --agent {slug}"
+                )
             keyring = await providers.keys_of(session_, self.live.vault, self.scope)
             providers.refuse_what_cannot_run(running, catalog, keyring)
             await judging.check_declaration(session_, catalog, keyring, self.scope.org, slug, declaration)
@@ -478,7 +478,7 @@ def _refusal(command: Command, code: str, why: str) -> ErrorEvent:
 # command would refuse to read an entry it has no shape for.
 async def _opt_out(session_: AsyncSession, served: Served, agent: str, wanted: CallOptOut) -> None:
     if served.context.channel is not Channel.phone:
-        raise ValidationError(NO_NUMBER_TO_LIST.format(call=served.call))
+        raise ValidationError(f"call {served.call} has no phone number at its far end: nothing to put on the list")
     given = compliance.Given(
         kind=ConsentKind.opt_out, source=ASKED_THE_AGENT, given_by=f"agent:{agent}", text=wanted.note, call=served.call
     )

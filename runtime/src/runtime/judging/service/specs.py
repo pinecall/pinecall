@@ -16,11 +16,6 @@ FEWEST_CHOICES = 2
 # What a judge may read beyond the call, in the order the wire and the store list them.
 READS: tuple[JudgeRead, ...] = ("prompt", "evidence", "facts")
 
-NOT_A_JUDGE_NAME = "{name!r} is not a judge's name: lower-case words joined by hyphens, like offers-next-slot"
-NO_QUESTION = "a judge asks a question of a call: write one"
-NO_CHOICES = "a judge that answers one of several needs at least two choices"
-NO_TRIGGER = "a judge that runs on a trigger needs the trigger's question"
-CHOICES_ONLY = "only a judge that answers one of several takes choices"
 
 # Each line is one demand a judge reads; past this a persona is a script, not a caller.
 MOST_EXPECTS = 20
@@ -35,18 +30,6 @@ AMBIENCES = ("television", "cafe", "office", "street")
 # A voice slower than half or faster than double is a tape effect, not a caller.
 SLOWEST = 0.5
 FASTEST = 2.0
-
-NOT_A_PERSONA_NAME = "{name!r} is not a persona's name: lower-case words joined by hyphens, like price-shopper"
-NO_GOAL = "a persona wants something: write its goal, in the first person"
-NO_STYLE = "a persona talks some way: write its style"
-BLANK_EXPECT = "an expectation is one line the agent is held to, and this one is blank"
-TOO_MANY_EXPECTS = "a persona expects at most {most} things of the agent"
-NOT_A_SHARE = "interrupts is a share of the agent's answers, from 0 to 1, not {value}"
-NOT_A_PAUSE = "pause_s is seconds of silence before each line, from 0 to {most}, not {value}"
-NOT_A_LOSS = "packet_loss is a share of the caller's packets, from 0 to {most}, not {value}"
-NOT_A_MURMUR_SHARE = "backchannels is a share of the agent's answers, from 0 to 1, not {value}"
-NOT_A_SPEED = "speed is how fast the caller speaks, from {slowest} to {fastest}, not {value}"
-NOT_AN_AMBIENCE = "ambience is what plays behind the caller, one of {allowed}, not {value!r}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,15 +48,17 @@ class JudgeSpec:
 
     def __post_init__(self) -> None:
         if not A_NAME.match(self.name):
-            raise ValidationError(NOT_A_JUDGE_NAME.format(name=self.name))
+            raise ValidationError(
+                f"{self.name!r} is not a judge's name: lower-case words joined by hyphens, like offers-next-slot"
+            )
         if not self.question.strip():
-            raise ValidationError(NO_QUESTION)
+            raise ValidationError("a judge asks a question of a call: write one")
         if self.answer is JudgeAnswer.choice and len(self.choices) < FEWEST_CHOICES:
-            raise ValidationError(NO_CHOICES)
+            raise ValidationError("a judge that answers one of several needs at least two choices")
         if self.answer is not JudgeAnswer.choice and self.choices:
-            raise ValidationError(CHOICES_ONLY)
+            raise ValidationError("only a judge that answers one of several takes choices")
         if self.when is JudgeRunsWhen.trigger and not self.trigger.strip():
-            raise ValidationError(NO_TRIGGER)
+            raise ValidationError("a judge that runs on a trigger needs the trigger's question")
 
     def list_reads(self) -> list[JudgeRead]:
         """What the judge reads beyond the call, in the order the wire and the store list it."""
@@ -101,17 +86,25 @@ class Behavior:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.interrupts <= 1.0:
-            raise ValidationError(NOT_A_SHARE.format(value=self.interrupts))
+            raise ValidationError(f"interrupts is a share of the agent's answers, from 0 to 1, not {self.interrupts}")
         if not 0.0 <= self.backchannels <= 1.0:
-            raise ValidationError(NOT_A_MURMUR_SHARE.format(value=self.backchannels))
+            raise ValidationError(
+                f"backchannels is a share of the agent's answers, from 0 to 1, not {self.backchannels}"
+            )
         if not SLOWEST <= self.speed <= FASTEST:
-            raise ValidationError(NOT_A_SPEED.format(slowest=SLOWEST, fastest=FASTEST, value=self.speed))
+            raise ValidationError(f"speed is how fast the caller speaks, from {SLOWEST} to {FASTEST}, not {self.speed}")
         if self.ambience not in AMBIENCES:
-            raise ValidationError(NOT_AN_AMBIENCE.format(allowed=", ".join(AMBIENCES), value=self.ambience))
+            raise ValidationError(
+                f"ambience is what plays behind the caller, one of {', '.join(AMBIENCES)}, not {self.ambience!r}"
+            )
         if not 0.0 <= self.pause_s <= LONGEST_PAUSE_S:
-            raise ValidationError(NOT_A_PAUSE.format(most=LONGEST_PAUSE_S, value=self.pause_s))
+            raise ValidationError(
+                f"pause_s is seconds of silence before each line, from 0 to {LONGEST_PAUSE_S}, not {self.pause_s}"
+            )
         if not 0.0 <= self.packet_loss <= MOST_PACKET_LOSS:
-            raise ValidationError(NOT_A_LOSS.format(most=MOST_PACKET_LOSS, value=self.packet_loss))
+            raise ValidationError(
+                f"packet_loss is a share of the caller's packets, from 0 to {MOST_PACKET_LOSS}, not {self.packet_loss}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,16 +129,18 @@ class Persona:
 
     def __post_init__(self) -> None:
         if not self.goal.strip():
-            raise ValidationError(NO_GOAL)
+            raise ValidationError("a persona wants something: write its goal, in the first person")
         if not self.style.strip():
-            raise ValidationError(NO_STYLE)
+            raise ValidationError("a persona talks some way: write its style")
         if len(self.expects) > MOST_EXPECTS:
-            raise ValidationError(TOO_MANY_EXPECTS.format(most=MOST_EXPECTS))
+            raise ValidationError(f"a persona expects at most {MOST_EXPECTS} things of the agent")
         if any(not line.strip() for line in self.expects):
-            raise ValidationError(BLANK_EXPECT)
+            raise ValidationError("an expectation is one line the agent is held to, and this one is blank")
 
 
 def check_persona_name(name: str) -> None:
     """Refuse a persona's name that is not lower-case words joined by hyphens."""
     if not A_NAME.match(name):
-        raise ValidationError(NOT_A_PERSONA_NAME.format(name=name))
+        raise ValidationError(
+            f"{name!r} is not a persona's name: lower-case words joined by hyphens, like price-shopper"
+        )

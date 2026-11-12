@@ -33,14 +33,6 @@ FIRST = Definition(
     ),
     greeting=None,
 )
-NOT_STUDIO = "{name} is code, not a Studio agent: `pinecall deploy` uploads it, and its class is what to edit"
-NO_AGENT = "there is no Studio agent called {name} in {env}"
-HELD_BY_CODE = "{name} is held by an app of yours already: a slug is one agent, so give this one another name"
-TAKEN = "{name} is the name of a hosted app already: give this agent another name"
-ANOTHER_ORGS = "{name} is another organization's agent already: a name is one org's, so give this agent another"
-NO_TOOL = "this agent has no tool called {name}"
-DEPLOYS_FROM_THE_SANDBOX = "an agent is deployed from the sandbox: ask with the sandbox, and it lands in production"
-NOT_IN_PRODUCTION = "a deploy writes production: it takes a person who may act there, signed in"
 DEPLOYED = "deployed from the sandbox's release {release}"
 
 
@@ -103,8 +95,10 @@ async def read_agent(session: AsyncSession, org: str, env: Env, name: str) -> St
         return _read(kept[0], env)
     kind = await hosting.find_kind(session, hosting.App(org=org, env=env, name=name))
     if kind is not None and kind is not AppKind.studio:
-        raise ValidationError(NOT_STUDIO.format(name=name))
-    raise NotFound(NO_AGENT.format(name=name, env=env.value))
+        raise ValidationError(
+            f"{name} is code, not a Studio agent: `pinecall deploy` uploads it, and its class is what to edit"
+        )
+    raise NotFound(f"there is no Studio agent called {name} in {env.value}")
 
 
 # A Studio agent is a hosted app: the org's quota of them counts it, the first release makes it. Made
@@ -123,12 +117,14 @@ async def create_agent(
     """Make the agent and keep its first release; refused for a name an app of the org has, or another org's agent."""
     app = hosting.App(org=actor.org, env=actor.env, name=hosting.check_name(name))
     if await hosting.find_kind(session, app) is not None:
-        raise Conflict(TAKEN.format(name=name))
+        raise Conflict(f"{name} is the name of a hosted app already: give this agent another name")
     owner = await owners.owner(name)
     if owner is not None and owner != actor.org:
-        raise Conflict(ANOTHER_ORGS.format(name=name))
+        raise Conflict(
+            f"{name} is another organization's agent already: a name is one org's, so give this agent another"
+        )
     if holders.is_held(actor.org, name):
-        raise Conflict(HELD_BY_CODE.format(name=name))
+        raise Conflict(f"{name} is held by an app of yours already: a slug is one agent, so give this one another name")
     first = definition or FIRST
     definitions.check(first, await _list_secret_names(session, app.org, app.env), app.env)
     by = actor.asked_by
@@ -176,16 +172,16 @@ async def deploy_agent(
 ) -> StudioAgent:
     """The sandbox's release, its newest unless named, kept as production's next, the deployer's settings with it."""
     if actor.person is None or not actor.person.opens_production:
-        raise Forbidden(NOT_IN_PRODUCTION)
+        raise Forbidden("a deploy writes production: it takes a person who may act there, signed in")
     if actor.env is not Env.sandbox:
-        raise ValidationError(DEPLOYS_FROM_THE_SANDBOX)
+        raise ValidationError("an agent is deployed from the sandbox: ask with the sandbox, and it lands in production")
     production = hosting.App(org=actor.org, env=Env.production, name=name)
     async with sessions.begin() as session:
         chosen, deployed = await _choose(session, actor.org, name, release)
         definitions.check(chosen, await _list_secret_names(session, actor.org, Env.production), Env.production)
         kind = await hosting.find_kind(session, production)
         if kind is not None and kind is not AppKind.studio:
-            raise Conflict(TAKEN.format(name=name))
+            raise Conflict(f"{name} is the name of a hosted app already: give this agent another name")
         carried = await _plan_carry(session, vault, actor, name, chosen)
     for one in carried:
         await agents.try_settings(one.plan)
@@ -215,7 +211,7 @@ async def try_tool(
     """Send one tool's request once, as a call would, and say what came back."""
     tool = next((item for item in definition.tools if item.name == name), None)
     if tool is None:
-        raise NotFound(NO_TOOL.format(name=name))
+        raise NotFound(f"this agent has no tool called {name}")
     definitions.check(definition, await _list_secret_names(session, actor.org, actor.env), actor.env)
     secrets = await hosting.environment_of(session, vault, actor.org, actor.env)
     filled = {**values.sample_values(datetime.now(UTC).date().isoformat()), "secrets": secrets}

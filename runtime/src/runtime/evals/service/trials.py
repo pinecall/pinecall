@@ -18,12 +18,8 @@ from runtime.judging import service as judging
 from runtime.wire.base import Entry
 from runtime.wire.scores import CallScore, EvalsSpent, Judgment
 
-ONE_OR_THE_OTHER = "a try names the agent's last calls or the calls themselves, never both"
-NOTHING_TO_TRY = "a try names the agent's last calls (last) or the calls themselves (calls)"
 NOT_FINISHED = "the call has not finished"
 ON_SIMULATIONS = "{name} runs on calls a simulated caller played, and a person made this one"
-STILL_GOING = "call {call} is still going: it is judged when it hangs up"
-ALREADY_JUDGED = "call {call} was judged at hang-up: ?again=true judges it again, and pays for it again"
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +55,7 @@ async def try_judge(
 ) -> Trial:
     """Ask one judge, kept or only said, of finished calls of the agent."""
     if last is not None and named:
-        raise ValidationError(ONE_OR_THE_OTHER)
+        raise ValidationError("a try names the agent's last calls or the calls themselves, never both")
     async with parts.sessions.begin() as session_:
         if written is not None:
             spec = judging.spec_of(name, written)
@@ -69,7 +65,7 @@ async def try_judge(
             spec = await judging.judge_named(session_, actor.org, slug, name, class_judges)
         if not named:
             if last is None:
-                raise ValidationError(NOTHING_TO_TRY)
+                raise ValidationError("a try names the agent's last calls (last) or the calls themselves (calls)")
             named = await calls.list_newest_sealed(session_, actor.scope, slug, last)
     tried = [await _try_on(parts, actor, call, spec) for call in named]
     scores = [score for _, score in tried]
@@ -96,9 +92,9 @@ async def judge_again(parts: Harness, actor: Actor, call: str, *, again: bool) -
     async with parts.sessions.begin() as session_:
         read = await calls.read_for_key(session_, actor, call)
     if not is_call_over(read.entries):
-        raise Conflict(STILL_GOING.format(call=call))
+        raise Conflict(f"call {call} is still going: it is judged when it hangs up")
     if not again and any(entry.type == "call.score" and entry.data.get("passed") is not None for entry in read.entries):
-        raise Conflict(ALREADY_JUDGED.format(call=call))
+        raise Conflict(f"call {call} was judged at hang-up: ?again=true judges it again, and pays for it again")
     judged = await judging.judge_call(
         parts.sessions, parts.vault, parts.prompts, read.entries, read.declaration, actor.scope
     )

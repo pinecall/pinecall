@@ -26,7 +26,6 @@ IDLE_TIMES = 3
 RATES = frozenset({MonitorMetric.held_rate, MonitorMetric.escalated_rate, MonitorMetric.tool_failure_rate})
 # The windows a monitor reads its number over, in days.
 WINDOWS = frozenset({1, 7, 30})
-A_SHARE = "{metric} is a share between 0 and 1, not {said}"
 
 
 class IdleConfig(WireModel):
@@ -57,7 +56,7 @@ class MonitorDeclared(WireModel):
         if self.window_days not in WINDOWS:
             raise ValueError(f"window_days is one of {sorted(WINDOWS)}, not {self.window_days}")
         if self.metric in RATES and not 0 <= self.threshold <= 1:
-            raise ValueError(A_SHARE.format(metric=self.metric, said=self.threshold))
+            raise ValueError(f"{self.metric} is a share between 0 and 1, not {self.threshold}")
         return self
 
 

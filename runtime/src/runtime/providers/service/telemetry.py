@@ -12,14 +12,6 @@ from runtime.kit.crypto import Vault
 from runtime.kit.text import a_mapping
 from runtime.providers.repository import TelemetryRepository
 
-NOT_AN_ENDPOINT = "a telemetry endpoint is an http(s) URL an OTLP exporter can post to, not {said!r}"
-NOT_A_HEADER_NAME = "a telemetry header has a name"
-NOT_PUBLIC = (
-    "a telemetry endpoint is a collector on the internet, by its name: {host!r} is an address, a name of the "
-    "box's own network, or resolves to one"
-)
-TRACES_GO_NOWHERE = "this org sends its traces nowhere: `pinecall telemetry set <url>` names a collector"
-
 
 @dataclass(frozen=True, slots=True)
 class Telemetry:
@@ -32,9 +24,11 @@ class Telemetry:
 
     def __post_init__(self) -> None:
         if not self.endpoint.startswith(("http://", "https://")):
-            raise ValidationError(NOT_AN_ENDPOINT.format(said=self.endpoint))
+            raise ValidationError(
+                f"a telemetry endpoint is an http(s) URL an OTLP exporter can post to, not {self.endpoint!r}"
+            )
         if any(not name.strip() for name in self.headers):
-            raise ValidationError(NOT_A_HEADER_NAME)
+            raise ValidationError("a telemetry header has a name")
 
     @property
     def header_names(self) -> list[str]:
@@ -62,7 +56,7 @@ async def put_telemetry(session: AsyncSession, vault: Vault, org: str, telemetry
 async def delete_telemetry(session: AsyncSession, org: str) -> None:
     """Forget where the org's traces went; NotFound when they went nowhere."""
     if not await TelemetryRepository(session).delete_of_org(org):
-        raise NotFound(TRACES_GO_NOWHERE)
+        raise NotFound("this org sends its traces nowhere: `pinecall telemetry set <url>` names a collector")
 
 
 # No foreign key reaches the row from its org (`org_telemetry.org` is text): the org's erasure calls this.
@@ -79,4 +73,7 @@ async def check_public(endpoint: str) -> None:
     """Refuse a collector whose host is an address, a local name, or a name that resolves anywhere but the internet."""
     found = await dns.resolve_url(endpoint)
     if not found.is_a_public_name:
-        raise ValidationError(NOT_PUBLIC.format(host=found.host))
+        raise ValidationError(
+            f"a telemetry endpoint is a collector on the internet, by its name: {found.host!r} is an address, "
+            "a name of the box's own network, or resolves to one"
+        )

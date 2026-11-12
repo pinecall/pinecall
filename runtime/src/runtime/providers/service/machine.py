@@ -37,7 +37,6 @@ THE_ENVIRONMENT = "the environment"
 A_SHELL_LINE = re.compile(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)=(.*?)\s*$")
 # A value that is itself an expansion (`$OTHER`, `$(…)`) is left to the shell.
 EXPANDS = ("$", "`")
-NOT_A_MEASURED_ROW = "line {number} of the measured file is not a model, a stage on keys or a server: {line!r}"
 
 # A GPU's memory is the whole budget; a Mac's unified memory is shared with everything else running.
 A_MACS_SHARE = 0.75
@@ -227,7 +226,9 @@ def parse_measured(text: str) -> Measured:
             case ["server", name, gib]:
                 servers[name] = float(gib)
             case _:
-                raise ValidationError(NOT_A_MEASURED_ROW.format(number=number, line=",".join(row)))
+                raise ValidationError(
+                    f"line {number} of the measured file is not a model, a stage on keys or a server: {','.join(row)!r}"
+                )
     return Measured(tuple(models), on_keys, servers)
 
 

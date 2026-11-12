@@ -11,7 +11,6 @@ from runtime.wire.runner import AppEnvironment, RunnerHeartbeatRequest, RunnerHe
 # A release's sources are a few megabytes, read whole.
 A_REQUEST_S = 30.0
 REFUSED = "{what}: the gateway answered {status}: {text}"
-UNREACHABLE = "{what}: the gateway did not answer: {why}"
 
 
 # One method an endpoint, each answer read as its shape of the wire, a refusal said as the failure it
@@ -49,7 +48,7 @@ class GatewayClient:
         try:
             answer = await self.http.request(method, path, json=data)
         except httpx.HTTPError as unreachable:
-            raise UpstreamError(UNREACHABLE.format(what=what, why=unreachable), retryable=True) from unreachable
+            raise UpstreamError(f"{what}: the gateway did not answer: {unreachable}", retryable=True) from unreachable
         if not answer.is_success:
             is_away = answer.status_code >= httpx.codes.INTERNAL_SERVER_ERROR
             said = REFUSED.format(what=what, status=answer.status_code, text=answer.text)

@@ -52,11 +52,6 @@ LONGEST_ASKED_S = 60.0
 # query keeps the client's own, and the turn's budget bounds it.
 PUSH_TIMEOUT = httpx.Timeout(connect=5.0, read=120.0, write=5.0, pool=5.0)
 
-NO_EMBEDDER = (
-    "this box has no embedder: the providers row names none under `embedding`, so nothing can be "
-    "pushed, searched or remembered"
-)
-
 
 # The sentence reaches a tenant (a lookup's error on its call's log): it names the vendor and never
 # where the box asked it, which is the operator's to read in the process's log.

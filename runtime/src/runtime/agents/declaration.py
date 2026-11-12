@@ -43,15 +43,6 @@ LONGEST_SILENCE_S = 3600
 SHORTEST_IDLE_S = 5.0
 LONGEST_IDLE_S = 60.0
 MOST_IDLE_TIMES = 10
-NOT_A_TIMEOUT = "llm_timeout_s is a positive number of seconds"
-OUT_OF_ORDER = "the prompt is every static block, then every dynamic one: static {block} comes after a dynamic one"
-
-# An unset field is None, never "": an empty string reaches the vendor as a value (an empty voice once
-# made every call silent).
-BLANK = (
-    "a blank {field} is not a change: an empty value once silenced a whole line of calls. "
-    "Leave the field out to go back to what the app declared."
-)
 
 
 # A value here is built free and checked where it is written. Until 2026-11 each refused in its own
@@ -286,7 +277,12 @@ def check_idle(idle: Idle) -> None:
 def check_voicemail(voicemail: Voicemail) -> None:
     """Refuse a voicemail whose message is blank."""
     if voicemail.message is not None and not voicemail.message.strip():
-        raise ValidationError(BLANK.format(field="voicemail message"))
+        # An unset field is None, never "": an empty string reaches the vendor as a value (an empty voice once
+        # made every call silent).
+        raise ValidationError(
+            "a blank voicemail message is not a change: an empty value once silenced a whole line of calls. "
+            "Leave the field out to go back to what the app declared."
+        )
 
 
 def check_tool(tool: ToolSpec) -> None:
@@ -385,7 +381,9 @@ def check_layout(slug: str, layout: tuple[PromptBlock, ...]) -> None:
     regions = [block.region for block in layout]
     if "dynamic" in regions and "static" in regions[regions.index("dynamic") :]:
         late = next(block.name for block in layout[regions.index("dynamic") :] if block.region == "static")
-        raise ValidationError(OUT_OF_ORDER.format(block=late))
+        raise ValidationError(
+            f"the prompt is every static block, then every dynamic one: static {late} comes after a dynamic one"
+        )
 
 
 def check_words(declaration: Declaration) -> None:
@@ -405,7 +403,7 @@ def check_words(declaration: Declaration) -> None:
     if declaration.silence_timeout_s is not None:
         check_silence(declaration.silence_timeout_s)
     if declaration.llm_timeout_s is not None and declaration.llm_timeout_s <= 0:
-        raise ValidationError(NOT_A_TIMEOUT)
+        raise ValidationError("llm_timeout_s is a positive number of seconds")
     for event, sources in declaration.events.items():
         if not event or not sources:
             raise ValidationError(f"agent {slug}: event {event!r} names who may send it: app, participant")

@@ -39,7 +39,6 @@ MODEL_LATE = {
     "en": "Sorry, that took me too long. Could you say that again?",
     "pt": "Desculpe, demorei. Pode repetir, por favor?",
 }
-NOT_A_CALLS_AGENT = "a call's session runs a CallAgent and no other agent, and this one is a {kind}"
 
 
 class CallAgent(Agent):
@@ -233,7 +232,9 @@ def agent_of(live: AgentSession[Call]) -> CallAgent:
     """The agent that has the call now, as livekit says: the one before it until a hand-over is made."""
     agent = live.current_agent
     if not isinstance(agent, CallAgent):
-        raise TypeError(NOT_A_CALLS_AGENT.format(kind=type(agent).__name__))
+        raise TypeError(
+            f"a call's session runs a CallAgent and no other agent, and this one is a {type(agent).__name__}"
+        )
     return agent
 
 

@@ -16,7 +16,7 @@ from runtime.kit.text import a_mapping
 from runtime.providers.service import signatures
 from runtime.providers.service.committed_ears import CommittedByVAD
 from runtime.providers.service.llm_requests import LLMWithRequest
-from runtime.providers.service.plugins import A_TTS, AN_LLM, AN_STT, CLASS_OF, NOT_REALTIME, plugin, realtime_path
+from runtime.providers.service.plugins import A_TTS, AN_LLM, AN_STT, CLASS_OF, plugin, realtime_path
 from runtime.providers.service.signatures import (
     A_CONTEXT,
     THE_HINTS,
@@ -67,7 +67,10 @@ def build_realtime(running: Running) -> llm.RealtimeModel:
     """The realtime model a voice call runs on alone."""
     path = realtime_path(plugin(running.vendor))
     if path is None:
-        raise ValidationError(f"{running.vendor} has no model that hears and speaks itself: {NOT_REALTIME}")
+        raise ValidationError(
+            f"{running.vendor} has no model that hears and speaks itself: "
+            "`pinecall providers` lists, by vendor, the models that do"
+        )
     return _build(Stage.llm, llm.RealtimeModel, dataclasses.replace(running, builds=path), {})
 
 

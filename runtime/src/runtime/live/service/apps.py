@@ -21,16 +21,9 @@ from runtime.livekit import Servers
 from runtime.scoping import box_wide
 from runtime.telephony import service as telephony
 
-# Every holder's process is cut, so it is an admin's: a key that opens both team and app.
-ONLY_AN_ADMIN = "killing an agent is an admin's: it cuts every holder's app, and this key does not open team and app"
-HELD_BY_NOBODY = "no app holds {slug} in {env}: there is nothing to kill"
 KILLED_BY = "{slug} was killed by {name}"
-NOBODY_OF_THE_ORG_HOLDS = "no app of {org} holds {slug}: there is nothing to kill"
 OPERATOR_KILLED = "{slug} was killed by this box's operator"
-NO_SUCH_APP = "no app {app} is connected to this box that this key may stop"
 STOPPED_BY = "stopped by {name}"
-HELD_NOW = "agent {slug} is held right now: stop it, move it, and start it again"
-NO_SUCH_AGENT = "no agent named {slug} has ever written a log here"
 ON_THE_WEB: frozenset[Channel] = frozenset({Channel.web})
 
 
@@ -131,7 +124,7 @@ async def stop_app(sockets: Sockets, actor: Actor, app: SocketId) -> None:
     """Tell the app it was stopped, and close its socket, on whichever gateway holds it."""
     found = next((row for row in sockets.apps_of(actor.org, actor.env) if row.app == app), None)
     if found is None or (not sees_every_holder(actor) and found.scope.holder not in ("", actor.holder)):
-        raise NotFound(NO_SUCH_APP.format(app=app))
+        raise NotFound(f"no app {app} is connected to this box that this key may stop")
     await sockets.stop(app, STOPPED_BY.format(name=actor.name))
 
 
@@ -140,11 +133,14 @@ async def stop_app(sockets: Sockets, actor: Actor, app: SocketId) -> None:
 async def kill_agent_as_admin(sockets: Sockets, holders: Holders, actor: Actor, slug: str) -> Killed:
     """Let go of the agent in every app that holds it in the env, whoever's; an admin's."""
     if not sees_every_holder(actor):
-        raise Forbidden(ONLY_AN_ADMIN)
+        # Every holder's process is cut, so it is an admin's: a key that opens both team and app.
+        raise Forbidden(
+            "killing an agent is an admin's: it cuts every holder's app, and this key does not open team and app"
+        )
     why = KILLED_BY.format(slug=slug, name=actor.name)
     killed = await socket.kill_agent(sockets, holders, actor.org, actor.env, slug, why)
     if not killed:
-        raise NotFound(HELD_BY_NOBODY.format(slug=slug, env=actor.env))
+        raise NotFound(f"no app holds {slug} in {actor.env}: there is nothing to kill")
     return Killed(agent=slug, envs=[actor.env], apps=killed)
 
 
@@ -159,7 +155,7 @@ async def kill_agent_of_org(sockets: Sockets, holders: Holders, org: str, named:
         envs += [env] if killed else []
         apps += killed
     if not apps:
-        raise NotFound(NOBODY_OF_THE_ORG_HOLDS.format(slug=slug, org=named))
+        raise NotFound(f"no app of {named} holds {slug}: there is nothing to kill")
     return Killed(agent=slug, envs=envs, apps=apps)
 
 
@@ -170,11 +166,11 @@ async def move_agent(
 ) -> Moved:
     """An agent's logs and numbers moved into the org; refused while somebody holds it."""
     if holders.is_held_by_anyone(slug):
-        raise Conflict(HELD_NOW.format(slug=slug))
+        raise Conflict(f"agent {slug} is held right now: stop it, move it, and start it again")
     with box_wide():
         logs = await calls.move_logs(session, slug, org)
     if logs == 0:
-        raise NotFound(NO_SUCH_AGENT.format(slug=slug))
+        raise NotFound(f"no agent named {slug} has ever written a log here")
     numbers, stayed = await telephony.move_routes_with_agent(session, vault, servers, slug, org)
     return Moved(agent=slug, org=named, logs=logs, numbers=numbers, stayed=stayed)
 

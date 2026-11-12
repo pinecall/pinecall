@@ -13,7 +13,6 @@ from runtime.kit.sealed_file import seal_file
 
 logger = logging.getLogger(__name__)
 
-DROPPED = "the recording of %s is dropped, never kept unsealed: %s"
 
 # How long a gateway that is away is asked again for the key; one that answered a refusal is not asked twice.
 KEY_WITHIN_S = 13.0
@@ -55,13 +54,17 @@ async def _seal_recording(link: CallClient, audio: Path, within_s: float) -> Pat
             longest_s=LONGEST_WAIT_S,
         )
     except UpstreamError as refused:
-        logger.error(DROPPED, link.call, f"the gateway gave no key: {refused}")
+        logger.error(
+            "the recording of %s is dropped, never kept unsealed: %s", link.call, f"the gateway gave no key: {refused}"
+        )
         await asyncio.to_thread(_remove_files, audio, sealed)
         return None
     try:
         await asyncio.to_thread(seal_file, audio, sealed, key)
     except OSError:
-        logger.exception(DROPPED, link.call, "the sealed file could not be written")
+        logger.exception(
+            "the recording of %s is dropped, never kept unsealed: %s", link.call, "the sealed file could not be written"
+        )
         await asyncio.to_thread(_remove_files, audio, sealed)
         return None
     return sealed

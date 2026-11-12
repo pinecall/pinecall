@@ -36,8 +36,6 @@ logger = logging.getLogger(__name__)
 RATE = 24000
 # Who in the room speaks into the recording besides the session's own two.
 OTHERS = frozenset({"supervisor", "sip"})
-LOST = "a voice in the room of %s is not in its recording"
-NOT_LAID_IN = "the other voices and the melody of %s are not in its recording: the file stays as it was recorded"
 
 # Who a participant of the room is to the call, as the room tells it.
 type KindOf = Callable[[rtc.Participant], ParticipantKind]
@@ -87,7 +85,11 @@ class Recorder:
         try:
             await asyncio.to_thread(lay_in, self.audio, self.others, (clip, spans))
         except Exception:
-            logger.warning(NOT_LAID_IN, self.audio.parent.name, exc_info=True)
+            logger.warning(
+                "the other voices and the melody of %s are not in its recording: the file stays as it was recorded",
+                self.audio.parent.name,
+                exc_info=True,
+            )
 
     def _on_track_subscribed(
         self, track: rtc.Track, _publication: rtc.TrackPublication, participant: rtc.RemoteParticipant
@@ -112,7 +114,7 @@ class Recorder:
                         self.others.append((time.time() - event.frame.duration - began, spool))
                     sink.write(event.frame.data)
         except Exception:
-            logger.warning(LOST, self.audio.parent.name, exc_info=True)
+            logger.warning("a voice in the room of %s is not in its recording", self.audio.parent.name, exc_info=True)
         finally:
             await stream.aclose()
 

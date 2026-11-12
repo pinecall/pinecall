@@ -11,12 +11,6 @@ from shutil import which
 
 from runtime.exceptions import ConfigurationError, UpstreamError
 
-NO_DOCKER = (
-    "Docker is not here: install Docker Desktop (macOS, Windows) or Docker Engine with the compose "
-    "plugin, start it, and run this again"
-)
-NO_COMPOSE = "docker compose did not answer: start Docker and run this again"
-NOT_ANSWERING = "{service} did not answer on 127.0.0.1:{port} within {seconds:.0f} s: `docker compose ps`"
 # Docker says a container is healthy before the host's side of its port answers: a moment, on a Mac.
 PORTS_WITHIN_S = 60.0
 # What a failure keeps of compose's own words: its last lines, where the reason is.
@@ -26,10 +20,13 @@ SAID_AT_MOST = 2000
 def docker_or_refuse() -> None:
     """Docker on PATH, and its compose plugin answering; or the sentence that says what to do."""
     if which("docker") is None:
-        raise ConfigurationError(NO_DOCKER)
+        raise ConfigurationError(
+            "Docker is not here: install Docker Desktop (macOS, Windows) or Docker Engine with the compose "
+            "plugin, start it, and run this again"
+        )
     version = subprocess.run(["docker", "compose", "version", "--short"], capture_output=True, text=True, check=False)
     if version.returncode != 0:
-        raise UpstreamError(NO_COMPOSE)
+        raise UpstreamError("docker compose did not answer: start Docker and run this again")
 
 
 # Until 2026-11 eleven calls built the command six ways and cut the error five times.
@@ -80,7 +77,9 @@ def wait_for_ports(ports: Sequence[tuple[str, int]], within_s: float = PORTS_WIT
                     break
             except OSError:
                 if time.monotonic() > deadline:
-                    raise UpstreamError(NOT_ANSWERING.format(service=service, port=port, seconds=within_s)) from None
+                    raise UpstreamError(
+                        f"{service} did not answer on 127.0.0.1:{port} within {within_s:.0f} s: `docker compose ps`"
+                    ) from None
                 time.sleep(0.5)
 
 

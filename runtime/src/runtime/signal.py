@@ -9,8 +9,6 @@ from uuid import uuid4
 # How far a listener may fall behind before it is dropped.
 LISTENING_DEPTH = 256
 
-DOWN = "the live signal between gateways is down: no Redis answers at PINECALL_REDIS_URL"
-
 
 class Listener:
     """One listener of one channel, in order; ended when closed, dropped when it fell behind."""

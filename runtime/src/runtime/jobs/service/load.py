@@ -12,9 +12,6 @@ from runtime.fleet import service as fleet
 
 logger = logging.getLogger(__name__)
 
-NO_MEASURE = "livekit's load_fnc option no longer carries a measure of its own"
-NOT_A_SLOT = "a worker holds at least one call: PINECALL_MAX_JOBS={max_jobs}"
-
 
 # livekit's AgentServer is the one there is; the worker reads these three things of it and nothing else.
 class Server(Protocol):
@@ -46,7 +43,7 @@ class Load:
     def __init__(self, max_jobs: int | None, measure: Callable[[Server], float] | None = None) -> None:
         """A worker nobody has dispatched to yet."""
         if max_jobs is not None and max_jobs < 1:
-            raise ConfigurationError(NOT_A_SLOT.format(max_jobs=max_jobs))
+            raise ConfigurationError(f"a worker holds at least one call: PINECALL_MAX_JOBS={max_jobs}")
         self.max_jobs = max_jobs
         self.measure = measure or livekits_measure()
         self.refused = False
@@ -83,12 +80,12 @@ def livekits_measure() -> Callable[[Server], float]:
     (option,) = (one for one in fields(ServerOptions) if one.name == "load_fnc")
     measure = option.default
     if not callable(measure):
-        raise ConfigurationError(NO_MEASURE)
+        raise ConfigurationError("livekit's load_fnc option no longer carries a measure of its own")
 
     def measure_now(server: Server) -> float:
         load = measure(server)
         if not isinstance(load, int | float):
-            raise ConfigurationError(NO_MEASURE)
+            raise ConfigurationError("livekit's load_fnc option no longer carries a measure of its own")
         return float(load)
 
     return measure_now

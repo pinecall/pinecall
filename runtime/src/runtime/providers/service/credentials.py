@@ -18,7 +18,6 @@ from runtime.providers.stage import Credentials
 
 logger = logging.getLogger(__name__)
 
-NOT_ONE_OF_THE_TWO = "a key, or the credentials object the vendor's plugin takes, and not both"
 
 # What an org's credentials object may carry: the fields the vendor's constructors take, none of
 # them an address, a file or a session. Where a vendor is reached is the operator's, in the
@@ -126,10 +125,10 @@ async def _list_copies_of_the_boxs(session: BoxSession, vault: Vault, vendor: st
 def read_credentials(key: str | None, credentials: Mapping[str, Any] | None) -> Credentials:
     """One key, or the object the plugin takes; refused when neither or both."""
     if (key is None) == (credentials is None):
-        raise ValidationError(NOT_ONE_OF_THE_TWO)
+        raise ValidationError("a key, or the credentials object the vendor's plugin takes, and not both")
     if key is not None:
         if not key.strip():
-            raise ValidationError(NOT_ONE_OF_THE_TWO)
+            raise ValidationError("a key, or the credentials object the vendor's plugin takes, and not both")
         return key.strip()
     return credentials or {}
 

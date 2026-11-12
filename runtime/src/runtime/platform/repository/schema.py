@@ -17,8 +17,6 @@ APPLIED = text("select name, sha256 from schema_migrations order by name")
 RECORD = text("insert into schema_migrations (name, sha256) values (:name, :sha256)")
 A_TABLE = text("select to_regclass(:name) is not null")
 A_ROLE = text("select 1 from pg_roles where rolname = :role")
-# Serializes concurrent runs; any constant no other code in the database uses.
-NO_DRIVER = "the connection to Postgres closed while the schema was migrated"
 SCHEMA_LOCK = text("select pg_advisory_xact_lock(2654190609)")
 # Held on a connection of its own for a whole `migrate up`, history and revisions both.
 RUN_LOCK = text("select pg_advisory_lock(2654190610)")
@@ -72,7 +70,8 @@ class SchemaRepository:
         """Run one file of the history whole, and record it."""
         driver = (await self.connection.get_raw_connection()).driver_connection
         if driver is None:
-            raise ServiceUnavailable(NO_DRIVER)
+            # Serializes concurrent runs; any constant no other code in the database uses.
+            raise ServiceUnavailable("the connection to Postgres closed while the schema was migrated")
         # asyncpg's simple protocol, the one that takes several statements at once.
         await driver.execute(statements)
         await self.connection.execute(RECORD, {"name": name, "sha256": sha256})

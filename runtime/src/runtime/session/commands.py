@@ -106,8 +106,6 @@ type Restage = Callable[[str | None], Awaitable[None]]
 # `error` entry codes for a command the call did not take: its shape, or what it asked.
 BAD_SHAPE = "bad_shape"
 REFUSED = "refused"
-NOT_A_CALLS = "{command} is not a command of a running call"
-RUN_BY_THE_GATEWAY = "a written call the gateway runs keeps the model it opened on: its settings run on the next one"
 
 
 # One table: a command is decoded once and each arm is one call to whoever owns what it changes (the
@@ -201,7 +199,9 @@ async def take(session: Session, command: Command, *, restage: Restage | None = 
                 session.caller_hung_up()
             case StagesChanged(agent=agent):
                 if restage is None:
-                    raise Conflict(RUN_BY_THE_GATEWAY)
+                    raise Conflict(
+                        "a written call the gateway runs keeps the model it opened on: its settings run on the next one"
+                    )
                 await restage(agent)
             case None:
                 await apply(session, command_of_a_call(command))
@@ -215,7 +215,7 @@ def command_of_a_call(command: Command) -> CallCommand:
     """The command's data as the model its type names; one that is not a running call's is refused."""
     model = command_of(command)
     if not isinstance(model, OF_A_CALL):
-        raise ValidationError(NOT_A_CALLS.format(command=command.type))
+        raise ValidationError(f"{command.type} is not a command of a running call")
     return model
 
 

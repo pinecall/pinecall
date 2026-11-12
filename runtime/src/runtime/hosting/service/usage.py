@@ -15,7 +15,6 @@ from runtime.hosting.service.apps import Processes, Standing
 
 # A gap between two counts longer than this is a gateway that was away: it counts this much.
 LONGEST_GAP_S = 30.0
-NOT_A_MONTH = "{month!r} is not a month: YYYY-MM, like 2026-09"
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +53,7 @@ def read_month(month: str | None) -> tuple[date, date]:
         try:
             first = datetime.strptime(month, "%Y-%m").replace(tzinfo=UTC).date()
         except ValueError:
-            raise ValidationError(NOT_A_MONTH.format(month=month)) from None
+            raise ValidationError(f"{month!r} is not a month: YYYY-MM, like 2026-09") from None
     after = (first.replace(day=28) + timedelta(days=4)).replace(day=1)
     return first, after
 

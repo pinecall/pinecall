@@ -31,7 +31,6 @@ from runtime.wire.room import A_SIMULATED_CALLER
 
 logger = logging.getLogger(__name__)
 
-NO_LINE = "the simulated call could not be held: {broke}"
 # Longer than any run, so the caller's token never ends a call first.
 A_CALL_MAY_LAST_S = 15 * 60.0
 # The caller leaving ends the call as a hang-up, which the worker writes; the room is deleted after,
@@ -40,7 +39,6 @@ HANGS_UP_WITHIN_S = 10.0
 # A cold worker has been measured at 15 s before it publishes its audio. Past the fleet's last offer and
 # the overflow's joining: a caller that gave up before them heard nobody.
 THE_AGENT_MAY_TAKE_S = fleet.AN_AGENT_JOINS_WITHIN_S
-NOBODY_ANSWERED = "no agent joined room {call} in {seconds:.0f}s: is the env's fleet up?"
 # The background voice a noisy line carries.
 A_TELEVISION = (
     "A continuación, el resumen deportivo de la jornada. El equipo local venció por dos goles a "
@@ -158,7 +156,9 @@ class SpokenLine:
             return True if listens else None
 
         if await until(probe, every_s=turns.A_BEAT_S, within_s=THE_AGENT_MAY_TAKE_S) is None:
-            raise TimeoutError(NOBODY_ANSWERED.format(call=self._spoken.call, seconds=THE_AGENT_MAY_TAKE_S))
+            raise TimeoutError(
+                f"no agent joined room {self._spoken.call} in {THE_AGENT_MAY_TAKE_S:.0f}s: is the env's fleet up?"
+            )
 
     # Only a call that was hung up waits for its end: one that broke has its room deleted at once.
     async def _wait_for_the_end(
@@ -180,10 +180,10 @@ class SpokenLine:
 
     def _on_the_line(self) -> CallerLeg:
         if self._leg is None:
-            raise ServiceUnavailable(NO_LINE.format(broke="the caller's leg was never opened"))
+            raise ServiceUnavailable("the simulated call could not be held: the caller's leg was never opened")
         return self._leg
 
 
 def _refuse_a_line_that_broke(broke: BaseException) -> None:
     if isinstance(broke, TimeoutError | rtc.ConnectError):
-        raise ServiceUnavailable(NO_LINE.format(broke=broke)) from broke
+        raise ServiceUnavailable(f"the simulated call could not be held: {broke}") from broke

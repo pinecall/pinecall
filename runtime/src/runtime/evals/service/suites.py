@@ -51,25 +51,6 @@ THE_APP_LEFT = (
     "the app detached after {done} of {total} goldens ({slug}): the socket holding the agent "
     "closed, and a conversation with no app behind it drives a model with no view and no tools"
 )
-# The worker builds a spoken session from the declaration: a column per model cannot hold.
-ONE_MODEL_OUT_LOUD = (
-    "--voice runs the model the agent declares: the worker builds the session, so a run cannot "
-    "put a golden through a second model out loud. Drop --model, or drop --voice."
-)
-# A dispatch carries no date: the worker's clock is the real day's. A spoken caller says lines;
-# the app's facts reach a written call alone. A turn's steps are asserted on livekit's test run,
-# which only a written line has.
-NO_EVENT_OUT_LOUD = (
-    "golden {name} sends {event} at turn {number}, and a spoken call takes lines only: run this golden without --voice"
-)
-NO_STEPS_OUT_LOUD = (
-    "golden {name} holds turn {number} to steps, and a spoken call is judged on its final expect "
-    "only: run this golden without --voice"
-)
-NO_PINNED_DAY_OUT_LOUD = (
-    "golden {name} pins today={day}, and a spoken call runs on the real day: the worker seeds its "
-    "clock when the room opens. Run this golden without --voice."
-)
 # A golden's facts are answered to recall, which runs only on an agent that keeps memory: the
 # golden breaks on that alone, and the rest of the run plays.
 NOT_REMEMBERED = (
@@ -79,22 +60,11 @@ NOT_REMEMBERED = (
 KEEPS_MEMORY = "the agent keeps memory, so the golden's facts can be recalled"
 GATEWAY_STOPPED = "the gateway stopped mid-run"
 RUN_BROKE = "the run broke on the gateway: {error}"
-CASES_IN_THE_SANDBOX = (
-    "cases are real callers' words played again: they run in the sandbox, against the app a "
-    "developer holds there, never through production's, whose tools act for real"
-)
-CASES_WRITTEN = "cases are played as written calls: drop --voice, or play only goldens out loud"
 # Every call of a run is a simulated caller and an agent the box may pay for: goldens and cases,
 # each played once under every model.
 CALLS_A_RUN = 200
-TOO_MANY_CALLS = (
-    "a run plays 200 calls at most, and {played} goldens and cases under {models} models are "
-    "{total}: run fewer, or fewer models"
-)
-NO_SUCH_VERSION = "no version {version} of {slug} in the scope of the app that holds it"
 # The worker writes call.summary and call.score after the caller leaves.
 A_SEAL_MAY_TAKE_S = 25.0
-NEVER_SEALED = "the spoken call {call} never sealed within {seconds:.0f}s: there is nothing to judge"
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +171,7 @@ async def _suite_of(session_: AsyncSession, parts: Harness, asked: Asked, regist
     if asked.version is not None:
         candidate = await agents.find_settings_version(session_, where, asked.agent, asked.version)
         if candidate is None or candidate.holder != where.holder:
-            raise NotFound(NO_SUCH_VERSION.format(version=asked.version, slug=asked.agent))
+            raise NotFound(f"no version {asked.version} of {asked.agent} in the scope of the app that holds it")
     of_its_class = (await agents.agent_of(session_, where, asked.agent)).whole
     picked = agents.Picked(version=asked.version)
     resolved = await agents.resolve_for_call(session_, of_its_class, where, catalog, picked)
@@ -215,9 +185,12 @@ async def _suite_of(session_: AsyncSession, parts: Harness, asked: Asked, regist
 # whose tools act for real, and never out loud.
 async def _add_cases(session_: AsyncSession, asked: Asked, scope: Scope) -> Asked:
     if scope.env is Env.production:
-        raise Forbidden(CASES_IN_THE_SANDBOX)
+        raise Forbidden(
+            "cases are real callers' words played again: they run in the sandbox, against the app a developer "
+            "holds there, never through production's, whose tools act for real"
+        )
     if asked.spoken:
-        raise ValidationError(CASES_WRITTEN)
+        raise ValidationError("cases are played as written calls: drop --voice, or play only goldens out loud")
     played = await judging.pick_cases(session_, scope.org, asked.agent, asked.cases, every=asked.dataset)
     return replace(asked, goldens=(*asked.goldens, *played))
 
@@ -417,7 +390,9 @@ async def _wait_for_the_seal(parts: Harness, call: str) -> None:
             while not await parts.store.is_sealed(call):
                 await turns.wait_for_entry_or_beat(subscription)
     except TimeoutError as never:
-        raise ServiceUnavailable(NEVER_SEALED.format(call=call, seconds=A_SEAL_MAY_TAKE_S)) from never
+        raise ServiceUnavailable(
+            f"the spoken call {call} never sealed within {A_SEAL_MAY_TAKE_S:.0f}s: there is nothing to judge"
+        ) from never
     finally:
         subscription.close()
 
@@ -426,20 +401,39 @@ def _refuse_past_the_ceiling(asked: Asked) -> None:
     models = max(len(asked.models), 1)
     total = len(asked.goldens) * models
     if total > CALLS_A_RUN:
-        raise ValidationError(TOO_MANY_CALLS.format(played=len(asked.goldens), models=models, total=total))
+        raise ValidationError(
+            f"a run plays 200 calls at most, and {len(asked.goldens)} goldens and cases under {models} models "
+            f"are {total}: run fewer, or fewer models"
+        )
 
 
 def _refuse_out_loud(asked: Asked) -> None:
     if asked.models:
-        raise ValidationError(ONE_MODEL_OUT_LOUD)
+        # The worker builds a spoken session from the declaration: a column per model cannot hold.
+        raise ValidationError(
+            "--voice runs the model the agent declares: the worker builds the session, so a run cannot put a "
+            "golden through a second model out loud. Drop --model, or drop --voice."
+        )
     for golden in asked.goldens:
         if golden.today is not None:
-            raise ValidationError(NO_PINNED_DAY_OUT_LOUD.format(name=golden.name, day=golden.today))
+            raise ValidationError(
+                f"golden {golden.name} pins today={golden.today}, and a spoken call runs on the real day: the "
+                "worker seeds its clock when the room opens. Run this golden without --voice."
+            )
         for number, turn in enumerate(golden.turns, 1):
             if turn.event is not None:
-                raise ValidationError(NO_EVENT_OUT_LOUD.format(name=golden.name, event=turn.event.name, number=number))
+                # A dispatch carries no date: the worker's clock is the real day's. A spoken caller says lines;
+                # the app's facts reach a written call alone. A turn's steps are asserted on livekit's test run,
+                # which only a written line has.
+                raise ValidationError(
+                    f"golden {golden.name} sends {turn.event.name} at turn {number}, and a spoken call takes "
+                    "lines only: run this golden without --voice"
+                )
             if turn.then:
-                raise ValidationError(NO_STEPS_OUT_LOUD.format(name=golden.name, number=number))
+                raise ValidationError(
+                    f"golden {golden.name} holds turn {number} to steps, and a spoken call is judged on its "
+                    "final expect only: run this golden without --voice"
+                )
 
 
 # A vendor's refusal is read in its words; anything else says what it is.

@@ -18,11 +18,6 @@ A_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 RESERVED = "PINECALL_"
 LONGEST_VALUE = 16 * 1024
 
-NOT_A_NAME = "{name!r} is not a secret's name: capitals, digits and underscores, like CRM_TOKEN"
-IS_THE_BOXS = "{name} is the box's to set: a name starting with PINECALL_ is never an org's secret"
-TOO_LONG = "a secret is {limit} KB at most"
-NOT_SET = "the org has no secret called {name} in {env}"
-
 
 @dataclass(frozen=True, slots=True)
 class Secret:
@@ -34,11 +29,15 @@ class Secret:
 
     def __post_init__(self) -> None:
         if not A_NAME.match(self.name):
-            raise ValidationError(NOT_A_NAME.format(name=self.name))
+            raise ValidationError(
+                f"{self.name!r} is not a secret's name: capitals, digits and underscores, like CRM_TOKEN"
+            )
         if self.name.startswith(RESERVED):
-            raise ValidationError(IS_THE_BOXS.format(name=self.name))
+            raise ValidationError(
+                f"{self.name} is the box's to set: a name starting with PINECALL_ is never an org's secret"
+            )
         if len(self.value.encode()) > LONGEST_VALUE:
-            raise ValidationError(TOO_LONG.format(limit=LONGEST_VALUE >> 10))
+            raise ValidationError(f"a secret is {LONGEST_VALUE >> 10} KB at most")
 
 
 async def put_secret(session: AsyncSession, vault: Vault, org: str, secret: Secret, *, by: str) -> None:
@@ -66,4 +65,4 @@ async def environment_of(session: AsyncSession, vault: Vault, org: str, env: Env
 async def delete_secret(session: AsyncSession, org: str, env: Env, name: str) -> None:
     """Forget one of the org's secrets; NotFound for a name nobody set."""
     if not await SecretRepository(session).delete_named(org, env, name):
-        raise NotFound(NOT_SET.format(name=name, env=env.value))
+        raise NotFound(f"the org has no secret called {name} in {env.value}")

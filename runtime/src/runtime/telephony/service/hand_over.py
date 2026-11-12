@@ -30,7 +30,7 @@ from runtime.actor import Scope
 from runtime.enums import Env
 from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
-from runtime.livekit import NO_LIVEKIT, Servers, close_room, participants_in
+from runtime.livekit import Servers, close_room, participants_in
 from runtime.telephony.service import sfu
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.legs import sip_config
@@ -225,7 +225,7 @@ async def unbridge(server: api.LiveKitAPI, event: WebhookEvent) -> bool:
 
 def _password(names: SipNames) -> str:
     if names.livekit_secret is None:
-        raise ServiceUnavailable(NO_LIVEKIT)
+        raise ServiceUnavailable("LIVEKIT_API_KEY and LIVEKIT_API_SECRET are unset: this process cannot reach the SFU")
     return password_of(names.livekit_secret)
 
 

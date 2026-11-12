@@ -12,11 +12,6 @@ from runtime.judging.repository.groups import GroupCounted, GroupRepository
 from runtime.kit.crypto import random_id
 
 A_GROUP = "grp_"
-NO_SUCH_GROUP = "no case group {id} in this key's org"
-WRONG_ONLY_WHEN_DISMISSED = (
-    "judge_was_wrong says the group's judge broke where it should have held, so it dismisses the "
-    "group: send it with status dismissed"
-)
 
 
 async def join_group(session: AsyncSession, org: str, agent: str, judge: str, case: str, *, cause: str) -> str | None:
@@ -34,7 +29,7 @@ async def get_group(session: AsyncSession, org: str, group: str) -> GroupCounted
     """One of the org's groups; another org's, or nobody's, is a 404."""
     found = await GroupRepository(session).list_counted(org, group=group)
     if not found:
-        raise NotFound(NO_SUCH_GROUP.format(id=group))
+        raise NotFound(f"no case group {group} in this key's org")
     return found[0]
 
 
@@ -42,7 +37,7 @@ async def propose_for_group(session: AsyncSession, org: str, group: str, proposa
     """Keep a diagnosis on its group: its cause line, and the proposal whole; the group after."""
     cause = str(proposal.get("cause") or "")
     if not await GroupRepository(session).propose(org, group, cause=cause, proposal=proposal):
-        raise NotFound(NO_SUCH_GROUP.format(id=group))
+        raise NotFound(f"no case group {group} in this key's org")
     return await get_group(session, org, group)
 
 
@@ -53,9 +48,12 @@ async def decide_group(
 ) -> GroupCounted:
     """Approve or dismiss a group and every case in it still waiting; the group after."""
     if judge_was_wrong and status is not CaseStatus.dismissed:
-        raise ValidationError(WRONG_ONLY_WHEN_DISMISSED)
+        raise ValidationError(
+            "judge_was_wrong says the group's judge broke where it should have held, so it dismisses the "
+            "group: send it with status dismissed"
+        )
     if not await GroupRepository(session).set_status(org, group, status):
-        raise NotFound(NO_SUCH_GROUP.format(id=group))
+        raise NotFound(f"no case group {group} in this key's org")
     await CaseRepository(session).decide_pending_in(org, group, status=status, by=by)
     return await get_group(session, org, group)
 

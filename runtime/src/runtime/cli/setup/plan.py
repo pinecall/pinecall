@@ -131,7 +131,10 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
     name = flags.domain or (kept.name if kept else None)
     if name is None:
         if flags.livekit is not None:
-            raise ValidationError(server.LIVEKIT_ON_A_LAPTOP)
+            raise ValidationError(
+                "LiveKit must reach this runtime, and a laptop has no public address.\n    Run it on a server: "
+                "pinecall-runtime setup --domain <name> --livekit <url>"
+            )
         if flags.phone:
             raise ValidationError("--phone is a server's: --domain <name> --phone")
         return None
@@ -144,7 +147,10 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
         theirs = server.TheirLiveKit(flags.livekit, typed_key, typed_secret)
     with_phone = flags.phone or (kept.phone if kept else False)
     if theirs is not None and with_phone:
-        raise ValidationError(server.PHONE_ON_THEIR_LIVEKIT)
+        raise ValidationError(
+            "--phone runs LiveKit's SIP beside the LiveKit setup starts; with your own LiveKit, phone calls go "
+            "through that LiveKit's SIP"
+        )
     if theirs is not None:
         # Tried every run, a kept pair too: the ✓ setup prints says the pair works today.
         await server.check_their_livekit(theirs)

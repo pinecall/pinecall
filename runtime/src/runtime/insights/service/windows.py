@@ -20,7 +20,6 @@ from runtime.wire.declaration import WINDOWS
 
 # An org carries no timezone, so a day is cut in UTC and the answer says so.
 TIMEZONE = "UTC"
-NOT_A_WINDOW = "days={days} is not a window: one of 1, 7 or 30"
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,7 +166,7 @@ class Series:
 def read_days(scope: Scope, last: date | None, count: int, agent: str | None) -> Days:
     """The window of so many whole UTC days of the scope ending on the day named, today when none is."""
     if count not in WINDOWS:
-        raise ValidationError(NOT_A_WINDOW.format(days=count))
+        raise ValidationError(f"days={count} is not a window: one of 1, 7 or 30")
     end = last or now().date()
     return Days(scope, end - timedelta(days=count - 1), end, agent)
 

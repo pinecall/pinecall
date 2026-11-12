@@ -28,24 +28,6 @@ LIVEKIT_KEY = "pinecall"
 HERE = "here"
 FILES = ("server.yaml", "runtime/Dockerfile")
 
-NOT_LINUX = "a server runs on Linux, which shares the host's network with Docker: on this machine, `setup` alone"
-NOT_HERE = (
-    "{name} points at {found}, and this machine is {here}: give {name} an A record to {here}, then run this again"
-)
-NOWHERE = "{name} resolves to no address: give it an A record to this machine's address, then run this again"
-LIVEKIT_REFUSED = "LiveKit at {url} refused that key and secret: {why}"
-LIVEKIT_ON_A_LAPTOP = (
-    "LiveKit must reach this runtime, and a laptop has no public address.\n"
-    "    Run it on a server: pinecall-runtime setup --domain <name> --livekit <url>"
-)
-PHONE_ON_THEIR_LIVEKIT = (
-    "--phone runs LiveKit's SIP beside the LiveKit setup starts; with your own LiveKit, phone calls go "
-    "through that LiveKit's SIP"
-)
-NOT_ANSWERING = (
-    "https://{name} did not answer within {seconds:.0f} s: open :80 and :443 to this machine "
-    "(Let's Encrypt proves the name on :80), then `pinecall-runtime local up`"
-)
 BUILD_FAILED = "the runtime's image did not build:\n{output}"
 UP_FAILED = "docker compose could not bring the server up:\n{output}"
 
@@ -110,7 +92,9 @@ class Server:
 def linux_or_refuse() -> None:
     """A server form runs on Linux alone."""
     if sys.platform != "linux":
-        raise ConfigurationError(NOT_LINUX)
+        raise ConfigurationError(
+            "a server runs on Linux, which shares the host's network with Docker: on this machine, `setup` alone"
+        )
 
 
 # Resolves a name to its IPv4 addresses, as the box's DNS answers; a test hands in its own.
@@ -129,12 +113,17 @@ def check_name(name: str, *, resolve: Resolve = resolve_ipv4, here: Here | None 
     try:
         found = resolve(name)
     except socket.gaierror:
-        raise ValidationError(NOWHERE.format(name=name)) from None
+        raise ValidationError(
+            f"{name} resolves to no address: give it an A record to this machine's address, then run this again"
+        ) from None
     address = (here or this_machines_address)()
     if address is None:
         return f"  name      {name} → {', '.join(found)} — this machine's address could not be read: be sure it is here"
     if address not in found:
-        raise ValidationError(NOT_HERE.format(name=name, found=", ".join(found), here=address))
+        raise ValidationError(
+            f"{name} points at {', '.join(found)}, and this machine is {address}: give {name} an A record to "
+            f"{address}, then run this again"
+        )
     return f"  name      {name} → {address} — this machine ✓"
 
 
@@ -154,7 +143,7 @@ async def check_their_livekit(theirs: TheirLiveKit) -> None:
     try:
         await server.room.list_rooms(ListRoomsRequest())
     except (api.TwirpError, OSError) as refused:
-        raise ValidationError(LIVEKIT_REFUSED.format(url=theirs.url, why=refused)) from refused
+        raise ValidationError(f"LiveKit at {theirs.url} refused that key and secret: {refused}") from refused
     finally:
         await server.aclose()
 
@@ -241,7 +230,10 @@ def wait_for_https(name: str, within_s: float = HTTPS_WITHIN_S) -> None:
                 return
         except (OSError, ValueError):
             if time.monotonic() > deadline:
-                raise UpstreamError(NOT_ANSWERING.format(name=name, seconds=within_s)) from None
+                raise UpstreamError(
+                    f"https://{name} did not answer within {within_s:.0f} s: open :80 and :443 to this machine "
+                    "(Let's Encrypt proves the name on :80), then `pinecall-runtime local up`"
+                ) from None
             time.sleep(3)
 
 

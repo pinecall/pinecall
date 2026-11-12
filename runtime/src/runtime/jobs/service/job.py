@@ -57,7 +57,6 @@ A_WIDGET_READS_THE_END_S = 2.0
 # constants in four files each sat under a budget of 60 s they exceeded together.
 A_JOB_ENDS_WITHIN_S = 150.0
 
-ANSWERED_IN = "the pipeline is live %.2fs after the job arrived"
 SESSION_FAILED = "session_failed"
 NOT_BUILT = "the session could not be built: {why}"
 
@@ -249,7 +248,7 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         # The session exists: its own end says it, closed and sealed by `end_job` as any call.
         setup.running.hang_up("error", "platform", at_once=True)
         raise
-    logger.info(ANSWERED_IN, time.monotonic() - began)
+    logger.info("the pipeline is live %.2fs after the job arrived", time.monotonic() - began)
 
 
 # livekit's `on_session_end`: the one place a job's call ends, whatever ended it.

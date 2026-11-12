@@ -9,30 +9,30 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 from runtime.exceptions import ConfigurationError, ServiceUnavailable
 
-UNSET = (
-    "PINECALL_VAULT_KEY is unset: every vendor key, mailbox and sign-in secret is sealed under "
-    "it, so the gateway does not start without it. `Fernet.generate_key()` makes one"
-)
-NOT_A_KEY = (
-    "PINECALL_VAULT_KEY holds something that is not a Fernet key: a comma-separated list of "
-    "32-byte url-safe base64 keys, the newest first"
-)
-
 
 class Vault:
     """Fernet over the configured keys: the first seals, any listed opens."""
 
     def __init__(self, keys: str | None) -> None:
         if keys is None:
-            raise ConfigurationError(UNSET)
+            raise ConfigurationError(
+                "PINECALL_VAULT_KEY is unset: every vendor key, mailbox and sign-in secret is sealed under it, "
+                "so the gateway does not start without it. `Fernet.generate_key()` makes one"
+            )
         listed = [item.strip() for item in keys.split(",") if item.strip()]
         if not listed:
-            raise ConfigurationError(NOT_A_KEY)
+            raise ConfigurationError(
+                "PINECALL_VAULT_KEY holds something that is not a Fernet key: a comma-separated list of "
+                "32-byte url-safe base64 keys, the newest first"
+            )
         try:
             self._fernet = MultiFernet([Fernet(key) for key in listed])
             self._newest = Fernet(listed[0])
         except ValueError:
-            raise ConfigurationError(NOT_A_KEY) from None
+            raise ConfigurationError(
+                "PINECALL_VAULT_KEY holds something that is not a Fernet key: a comma-separated list of "
+                "32-byte url-safe base64 keys, the newest first"
+            ) from None
 
     def seal(self, plain: str) -> str:
         """The text sealed under the newest key."""

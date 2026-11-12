@@ -147,8 +147,6 @@ class ThreadMessageResponse(Row):
 
 # ── a chat ──
 
-NOT_A_STATE = "?state= is the state the call opens in: a JSON object of the class's fields"
-NOT_PLAYED_BY = "?played_by= is who plays the persona this run: a JSON object of llm, tts and voice, each a string"
 A_STATE_AT_MOST = 16 * 1024
 _A_STATE: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
 
@@ -190,7 +188,9 @@ class ChatQuery(Schema):
         try:
             return _A_STATE.validate_json(self.state)
         except PydanticValidationError:
-            raise ValidationError(NOT_A_STATE) from None
+            raise ValidationError(
+                "?state= is the state the call opens in: a JSON object of the class's fields"
+            ) from None
 
     def read_played_by(self) -> dict[str, str] | None:
         """Who plays the persona this run, as named; None when the query names nobody."""
@@ -199,7 +199,9 @@ class ChatQuery(Schema):
         try:
             return PlayedBy.model_validate_json(self.played_by).model_dump(exclude_none=True)
         except PydanticValidationError:
-            raise ValidationError(NOT_PLAYED_BY) from None
+            raise ValidationError(
+                "?played_by= is who plays the persona this run: a JSON object of llm, tts and voice, each a string"
+            ) from None
 
 
 # ── apps, and the agents they hold ──

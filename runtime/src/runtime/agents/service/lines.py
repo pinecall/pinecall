@@ -34,7 +34,6 @@ MOST_LINES = 64
 LONGEST_LINE = 600
 AT_ONCE = 4
 
-NO_LINE = "no line {id} is recorded here"
 A_LINES_PATH = "/v1/lines/{id}.mp3"
 
 
@@ -188,7 +187,7 @@ async def get_audio(session: AsyncSession, id_: str) -> bytes:
     """A recorded line's MP3 by its id; NotFound for one never recorded."""
     audio = await AgentLineRepository(session).find_audio(id_)
     if audio is None:
-        raise NotFound(NO_LINE.format(id=id_))
+        raise NotFound(f"no line {id_} is recorded here")
     return audio
 
 

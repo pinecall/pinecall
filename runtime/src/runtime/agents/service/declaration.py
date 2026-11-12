@@ -35,15 +35,6 @@ from runtime.providers import service as providers
 from runtime.providers.stage import Model, Voice
 from runtime.wire import declaration as wire
 
-NO_VENDOR = (
-    "a voice names its vendor and the voice: `provider` and `voice_id` (or `name`) on the wire, "
-    "@voice('<vendor>', '<voice>') in a class"
-)
-REALTIME_TAKES = (
-    "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
-)
-ONE_OF_DOCS = "docs is one base and bases is several: declare one of them"
-
 
 # A slug typed wrong and another org's slug are the same refusal: an agent's existence does not leak.
 class NoSuchAgent(NotFound):
@@ -128,7 +119,7 @@ def check_declaration(declaration: Declaration) -> Declaration:
 def declare(current: Declaration, sent: wire.AgentConfig, *, first: bool = False) -> Declaration:
     """What an app's agent.configure makes of the declaration it held: the fields sent in place, checked whole."""
     if sent.docs is not None and sent.bases is not None:
-        raise ValidationError(ONE_OF_DOCS)
+        raise ValidationError("docs is one base and bases is several: declare one of them")
     return check_declaration(apply_declaration(current, sent, first=first))
 
 
@@ -303,7 +294,10 @@ VALUE_OF: Mapping[str, Callable[[wire.AgentConfig], object]] = {
 
 def _check_voice(voice: Voice) -> None:
     if not voice.vendor or not voice.voice_id:
-        raise ValidationError(NO_VENDOR)
+        raise ValidationError(
+            "a voice names its vendor and the voice: `provider` and `voice_id` (or `name`) on the wire, "
+            "@voice('<vendor>', '<voice>') in a class"
+        )
     providers.vendor_doing(voice.vendor, Stage.tts)
 
 
@@ -320,5 +314,7 @@ def _check_model(named: Model, stage: Stage) -> Model:
 # realtime one, never named, and its temperature is the vendor's.
 def _check_realtime(named: Model) -> None:
     if named.builds is not None or named.temperature is not None or named.end_of_turn is not None:
-        raise ValidationError(REALTIME_TAKES)
+        raise ValidationError(
+            "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
+        )
     check_realtime(named)

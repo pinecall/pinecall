@@ -23,8 +23,6 @@ LOGS_FOR_S = 60.0
 # the apps with no process of their own read them again. The name is the one the release before says it by.
 APPS_CHANGED = "studio"
 
-NOT_HOSTED = "the box hosts no app called {name} for this org in {env}"
-
 
 @dataclass(frozen=True, slots=True)
 class App:
@@ -133,7 +131,7 @@ async def open_held_app(session: AsyncSession, app: App, kind: AppKind, *, creat
 async def stop_app(session: AsyncSession, signal: Signal, app: App, *, by: str) -> None:
     """Stop running the app: the runner drains it, and its releases and token stay."""
     if not await HostedAppRepository(session).stop(app.org, app.env, app.name, by=by):
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     tell_changed(session, signal, app)
 
 
@@ -141,7 +139,7 @@ async def stop_app(session: AsyncSession, signal: Signal, app: App, *, by: str) 
 async def start_app(session: AsyncSession, signal: Signal, app: App) -> None:
     """Run a stopped app again, its newest release."""
     if not await HostedAppRepository(session).start(app.org, app.env, app.name):
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     tell_changed(session, signal, app)
 
 
@@ -150,7 +148,7 @@ async def delete_app(session: AsyncSession, cache: accounts.KeyCache, signal: Si
     repository = HostedAppRepository(session)
     found = await repository.find(app.org, app.env, app.name)
     if found is None:
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     await repository.delete(found)
     if found.key_fingerprint:
         await accounts.revoke_fingerprint(session, cache, found.key_fingerprint)
@@ -163,7 +161,7 @@ async def environment_for(session: AsyncSession, vault: Vault, address: str | No
     """What the app's process is started with: the org's secrets, its token, the gateway's address."""
     found = await HostedAppRepository(session).find(app.org, app.env, app.name)
     if found is None:
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     opened = await secrets.environment_of(session, vault, app.org, app.env)
     named = {} if address is None else {"PINECALL_URL": address}
     return {**opened, "PINECALL_KEY": vault.open(found.sealed_key), **named}

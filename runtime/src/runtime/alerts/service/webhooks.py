@@ -27,17 +27,6 @@ from runtime.scoping import box_wide
 
 logger = logging.getLogger(__name__)
 
-NOT_A_URL = "a webhook is an http(s) URL an alert can be posted to, not {said!r}"
-NOT_ON_THE_INTERNET = (
-    "a webhook is posted to the public internet: {host} is a private, local or link-local address, "
-    "which the box must not reach on an org's word"
-)
-NOT_RESOLVED = "a webhook is posted to a host that resolves: {host} does not"
-ALERTS_GO_NOWHERE = "this org posts its alerts nowhere: `pinecall webhook set <url>` names a URL"
-THE_OPERATOR_HEARS_NOTHING = (
-    "the box posts its orgs' alerts nowhere: `pinecall-runtime box alerts set <url>` names a URL"
-)
-NOT_DELIVERED = "org %s: %s was not delivered to %s: %s"
 
 # Once, and once again on a connection error or a 5xx: an alert is said once a day, so a URL that
 # is down for a minute is told twice and then the log holds it alone.
@@ -65,7 +54,7 @@ class Webhook:
 
     def __post_init__(self) -> None:
         if not self.url.startswith(("http://", "https://")):
-            raise ValidationError(NOT_A_URL.format(said=self.url))
+            raise ValidationError(f"a webhook is an http(s) URL an alert can be posted to, not {self.url!r}")
 
     @property
     def signed(self) -> bool:
@@ -122,11 +111,17 @@ async def addresses_of(webhook: Webhook) -> tuple[dns.Address, ...]:
     found = await dns.resolve_url(webhook.url)
     host = found.host
     if not host or host == "localhost" or host.endswith(dns.LOCAL_SUFFIXES):
-        raise ValidationError(NOT_ON_THE_INTERNET.format(host=host or webhook.url))
+        raise ValidationError(
+            f"a webhook is posted to the public internet: {host or webhook.url} is a private, local or "
+            "link-local address, which the box must not reach on an org's word"
+        )
     if not found.addresses:
-        raise ValidationError(NOT_RESOLVED.format(host=host))
+        raise ValidationError(f"a webhook is posted to a host that resolves: {host} does not")
     if not found.is_public:
-        raise ValidationError(NOT_ON_THE_INTERNET.format(host=host))
+        raise ValidationError(
+            f"a webhook is posted to the public internet: {host} is a private, local or link-local address, "
+            "which the box must not reach on an org's word"
+        )
     return found.addresses
 
 
@@ -140,7 +135,7 @@ async def put_webhook(session: AsyncSession, vault: Vault, org: str, webhook: We
 async def delete_webhook(session: AsyncSession, org: str) -> None:
     """Forget where the org's alerts went; NotFound when they went nowhere."""
     if not await WebhookRepository(session).delete_of_org(org):
-        raise NotFound(ALERTS_GO_NOWHERE)
+        raise NotFound("this org posts its alerts nowhere: `pinecall webhook set <url>` names a URL")
 
 
 # No foreign key reaches the row from its org (`org_webhooks.org` is text): the org's erasure calls this.
@@ -170,7 +165,7 @@ async def put_operator_webhook(session: AsyncSession, vault: Vault, webhook: Web
 async def delete_operator_webhook(session: AsyncSession) -> None:
     """Forget where the operator heard the alerts; NotFound when it heard them nowhere."""
     if not await platform.delete_setting(session, OPERATOR_ALERTS):
-        raise NotFound(THE_OPERATOR_HEARS_NOTHING)
+        raise NotFound("the box posts its orgs' alerts nowhere: `pinecall-runtime box alerts set <url>` names a URL")
 
 
 # ── the post ──
@@ -220,7 +215,9 @@ async def _deliver(http: httpx.AsyncClient, post: Post) -> None:
         with survive("posting an alert", webhook.url):
             error = await post_alert(http, webhook, post.sent)
             if error is not None:
-                logger.warning(NOT_DELIVERED, post.org, post.sent["type"], webhook.url, error)
+                logger.warning(
+                    "org %s: %s was not delivered to %s: %s", post.org, post.sent["type"], webhook.url, error
+                )
 
 
 async def post_alert(http: httpx.AsyncClient, webhook: Webhook, sent: JsonObject) -> str | None:
@@ -280,6 +277,6 @@ async def test_webhook(
     async with sessions() as session:
         found = await webhook_of(session, vault, scope.org)
     if found is None:
-        raise NotFound(ALERTS_GO_NOWHERE)
+        raise NotFound("this org posts its alerts nowhere: `pinecall webhook set <url>` names a URL")
     error = await post_alert(http, found, _payload(scope, None, A_TEST, epoch(), dict(A_TEST_SAYS)))
     return Delivery(sent=error is None, error=error)

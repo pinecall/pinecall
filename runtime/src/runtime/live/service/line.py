@@ -14,8 +14,6 @@ from runtime.live.holders import Holders
 from runtime.live.service.apps import Holder, holder_of
 from runtime.telephony import service as telephony
 
-NOT_IN_PRODUCTION = "production has one scope and the org holds it: there is nothing to route"
-NOBODY_TO_ROUTE_TO = "a phone reaches a person's own scope, and this key names no person"
 NOBODY = Holder(holder=None, name=None)
 
 
@@ -120,7 +118,7 @@ async def list_test_numbers(session: AsyncSession, actor: Actor) -> TestNumbers:
 
 def _get_person(actor: Actor) -> str:
     if actor.env is not Env.sandbox:
-        raise Conflict(NOT_IN_PRODUCTION)
+        raise Conflict("production has one scope and the org holds it: there is nothing to route")
     if actor.person is None:
-        raise Forbidden(NOBODY_TO_ROUTE_TO)
+        raise Forbidden("a phone reaches a person's own scope, and this key names no person")
     return actor.person.id

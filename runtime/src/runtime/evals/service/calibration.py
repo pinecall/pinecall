@@ -16,10 +16,6 @@ from runtime.judging import service as judging
 # agrees with at least this share of them; under its line it is reported, never dropped silently.
 LABELS_TO_JUDGE = 10
 AGREES_AT_LEAST = 0.8
-NOT_A_VERDICT = (
-    "{judge} answers a {answer}, not held or broken: a label says whether a judge should have held, "
-    "so only a judge that answers a verdict takes one"
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +67,10 @@ async def check_labellable(session: AsyncSession, where: Where, judge: str) -> N
     class_judges = None if declaration is None else declaration.judges
     spec = await judging.judge_named(session, where.org, where.agent, judge, class_judges)
     if spec.answer is not JudgeAnswer.verdict:
-        raise Conflict(NOT_A_VERDICT.format(judge=judge, answer=spec.answer.value))
+        raise Conflict(
+            f"{judge} answers a {spec.answer.value}, not held or broken: a label says whether a judge should "
+            "have held, so only a judge that answers a verdict takes one"
+        )
 
 
 async def label_call(session: AsyncSession, where: Where, label: Label) -> None:

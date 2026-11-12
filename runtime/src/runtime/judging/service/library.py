@@ -10,12 +10,6 @@ from runtime.enums import JudgeAnswer, JudgeRunsWhen
 from runtime.exceptions import ValidationError
 from runtime.judging.service.specs import READS, Behavior, JudgeSpec, Persona
 
-NONE_OF_PINECALLS = "{name} is none of Pinecall's {kind}: `pinecall {kind} list` names them"
-ONE_OF_PINECALLS = (
-    "{name} is one of Pinecall's {kind}: switch it on in the class's `{kind}`, or write your own under another name"
-)
-TWICE = "the class declares two {kind} called {name}"
-
 JUDGES = Path(__file__).parent.parent / "library" / "judges"
 PERSONAS = Path(__file__).parent.parent / "library" / "personas"
 
@@ -27,9 +21,6 @@ EXPECTS = "Expects:"
 # never answers the question.
 type Gate = Literal["none", "irreversible-tools", "outbound", "expectations"]
 GATES: tuple[Gate, ...] = ("none", "irreversible-tools", "outbound", "expectations")
-
-NOT_A_PAGE = "{path}: a judge of the library opens with its front matter between two --- lines"
-NOT_A_FIELD = "{path}: {field} is {value!r}, not one of {allowed}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +67,7 @@ def switches_of_class(on: Sequence[str], library: Mapping[str, object], kind: st
     """The library's switches as a class declares them: the names on, every other off; a stranger refused."""
     for name in on:
         if name not in library:
-            raise ValidationError(NONE_OF_PINECALLS.format(name=name, kind=kind))
+            raise ValidationError(f"{name} is none of Pinecall's {kind}: `pinecall {kind} list` names them")
     return {name: name in on for name in library}
 
 
@@ -84,9 +75,12 @@ def check_own_names(names: Sequence[str], library: Mapping[str, object], kind: s
     """Refuse a name of the class's own that is the library's, or declared twice."""
     for name in names:
         if name in library:
-            raise ValidationError(ONE_OF_PINECALLS.format(name=name, kind=kind))
+            raise ValidationError(
+                f"{name} is one of Pinecall's {kind}: switch it on in the class's `{kind}`, or write your own "
+                "under another name"
+            )
         if names.count(name) > 1:
-            raise ValidationError(TWICE.format(name=name, kind=kind))
+            raise ValidationError(f"the class declares two {kind} called {name}")
 
 
 # The front matter is `key: value` lines; `reads` and `choices` are comma lists. A page says when its
@@ -154,7 +148,7 @@ def _one_of[T: str](path: Path, field: str, value: str, allowed: tuple[T, ...]) 
     for each in allowed:
         if value == each:
             return each
-    raise ValidationError(NOT_A_FIELD.format(path=path.name, field=field, value=value, allowed=allowed))
+    raise ValidationError(f"{path.name}: {field} is {value!r}, not one of {allowed}")
 
 
 def _list_items(text: str) -> list[str]:
@@ -166,6 +160,6 @@ def _page(path: Path) -> tuple[dict[str, str], str]:
     _, separator, rest = text.partition("---\n")
     head, closing, body = rest.partition("\n---\n")
     if not separator or not closing:
-        raise ValidationError(NOT_A_PAGE.format(path=path.name))
+        raise ValidationError(f"{path.name}: a judge of the library opens with its front matter between two --- lines")
     pairs = (line.partition(":") for line in head.splitlines())
     return {key.strip(): value.strip() for key, _, value in pairs}, body.strip()

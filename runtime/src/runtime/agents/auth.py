@@ -18,8 +18,6 @@ from runtime.exceptions import NotFound
 from runtime.kit.http import read_capped_body
 from runtime.postgres import Session
 
-NO_AGENT_HERE = "no agent {slug} here"
-
 # A supervisor's key opens the words of an agent; the pipeline's key opens everything of it.
 WordsKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline, KeyScope.words))]
 PipelineKey = Annotated[Actor, Depends(Authenticator(KeyScope.pipeline))]
@@ -127,7 +125,7 @@ async def owner_of_agent(slug: str, owners: TheOwners) -> str:
     """The org a published agent belongs to, for a page that reads it with no key."""
     org = await owners.owner(slug)
     if org is None:
-        raise NotFound(NO_AGENT_HERE.format(slug=slug))
+        raise NotFound(f"no agent {slug} here")
     return org
 
 

@@ -16,7 +16,6 @@ RATE = 48_000
 OPUS_FRAME = 960
 BIT_RATE = 64_000
 
-NOT_AUDIO = "that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a"
 
 # The containers an upload comes in, each by the bytes it starts with: FFmpeg is told which and
 # probes nothing, so no playlist, script or path a file could carry is followed (an `m3u8` fetches
@@ -78,18 +77,24 @@ def encode_upload(data: bytes, *, longest_s: int) -> Encoded:
     """Audio in a container this box names, as Ogg Opus; refused in words, RunsLonger past the ceiling."""
     container = container_of(data)
     if container is None:
-        raise ValidationError(NOT_AUDIO)
+        raise ValidationError("that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a")
     try:
         source = av.open(io.BytesIO(data), mode="r", format=container)
     except (FFmpegError, OSError, ValueError) as unreadable:
-        raise ValidationError(NOT_AUDIO) from unreadable
+        raise ValidationError(
+            "that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a"
+        ) from unreadable
     with source:
         if not source.streams.audio:
-            raise ValidationError(NOT_AUDIO)
+            raise ValidationError(
+                "that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a"
+            )
         try:
             audio, samples = _encode(source, longest_s=longest_s)
         except (FFmpegError, OSError, ValueError) as unreadable:
-            raise ValidationError(NOT_AUDIO) from unreadable
+            raise ValidationError(
+                "that file is no audio this box can read: send a wav, an mp3, an ogg, a flac or an m4a"
+            ) from unreadable
     return Encoded(audio=audio, seconds=samples / RATE)
 
 

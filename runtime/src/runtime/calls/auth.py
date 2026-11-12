@@ -23,7 +23,6 @@ from runtime.exceptions import Forbidden, Unauthorized
 from runtime.kit.text import is_a_jwt
 from runtime.postgres import Session
 
-READ_WITH_A_KEY = "a log is read with a key, or with a token of that call"
 A_LIST_TAKES_A_KEY = "a list of calls is read with a key, not a call's token"
 
 CallsKey = Annotated[Actor, Depends(Authenticator(KeyScope.calls))]
@@ -118,15 +117,15 @@ def reading(*opens: KeyScope) -> Callable[[Request], Awaitable[Reader]]:
     async def read(request: Request) -> Reader:
         data = authorization_of(request) or request.query_params.get("token")
         if data is None:
-            raise Unauthorized(READ_WITH_A_KEY)
+            raise Unauthorized("a log is read with a key, or with a token of that call")
         if is_a_jwt(data):
             visit = visits_of(request).read(data)
             if visit is None:
-                raise Unauthorized(READ_WITH_A_KEY)
+                raise Unauthorized("a log is read with a key, or with a token of that call")
             return Reader(visit=visit)
         actor = actor_of(request)
         if actor is None:
-            raise Unauthorized(READ_WITH_A_KEY)
+            raise Unauthorized("a log is read with a key, or with a token of that call")
         if opens and not actor.opens(*opens):
             raise Forbidden(f"this key does not open {' or '.join(sorted(opens))}")
         _check_agent_named(request, actor)

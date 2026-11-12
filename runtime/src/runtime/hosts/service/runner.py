@@ -35,7 +35,6 @@ PRINTED_NOTHING = "(the process printed nothing)"
 SENT_LINES = 300
 LONGEST_WHY = 2000
 START = ("start",)
-NOT_THE_RELEASE = "release {release}'s sources are not the ones uploaded: sha256 differs"
 START_FAILED = "the release could not be started; it said:\n{output}"
 
 
@@ -160,7 +159,7 @@ class Runner:
     async def _fetch(self, app: WantedApp, release: int) -> bytes:
         source = await self.gateway.get_source(app, release)
         if release == app.release and hashlib.sha256(source).hexdigest() != app.sha256:
-            raise UpstreamError(NOT_THE_RELEASE.format(release=release))
+            raise UpstreamError(f"release {release}'s sources are not the ones uploaded: sha256 differs")
         return source
 
     # The host asked for, else the one still serving while it installs.

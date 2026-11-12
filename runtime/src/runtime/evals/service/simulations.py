@@ -26,7 +26,6 @@ from runtime.evals.service.callers import (
 )
 from runtime.evals.service.leg import describe
 from runtime.evals.service.simulated_calls import Simulation, keep_against, play_spoken, play_written
-from runtime.evals.tasks import NOT_A_NEW_CALL
 from runtime.exceptions import Conflict, QuotaExceeded, TooManyRequests
 from runtime.fleet import service as fleet
 from runtime.judging import service as judging
@@ -40,9 +39,6 @@ from runtime.wire.room import A_SIMULATED_CALLER
 
 logger = logging.getLogger(__name__)
 
-# Placed with every seat of the fleet taken, a spoken call waits through three offers and is answered by
-# the overflow's sentence: refused at once instead, which costs nothing and says why.
-NO_SEAT = "every seat of the {env}'s fleet holds a call now: ask again in a few seconds, when one ends"
 A_SEAT_FREES_S = 10
 THE_CALLERS_MODEL = "the caller's model"
 LINES_A_MINUTE = 120
@@ -164,7 +160,12 @@ async def admit_simulation(
     as its run would be.
     """
     if spoken and not waits and not await parts.offering.has_a_slot(await fleet.fleet_of_env(session_, scope.env)):
-        raise TooManyRequests(NO_SEAT.format(env=scope.env.value), retry_after_s=A_SEAT_FREES_S)
+        # Placed with every seat of the fleet taken, a spoken call waits through three offers and is answered by
+        # the overflow's sentence: refused at once instead, which costs nothing and says why.
+        raise TooManyRequests(
+            f"every seat of the {scope.env.value}'s fleet holds a call now: ask again in a few seconds, when one ends",
+            retry_after_s=A_SEAT_FREES_S,
+        )
     try:
         playing = await calls.count_simulating(session_, scope.org, scope.env, at=epoch())
         await billing.admit_simulation(session_, scope.org, scope.env, at=epoch(), playing=playing)
@@ -259,7 +260,7 @@ async def claim_new_call(session_: AsyncSession, call: str, agent: str, scope: S
 async def refuse_an_opened_call(session_: AsyncSession, call: str) -> None:
     """Refuse a call id somebody already opened: a simulated caller is put on a new one alone."""
     if await calls.find_head(session_, call) is not None:
-        raise Conflict(NOT_A_NEW_CALL.format(call=call))
+        raise Conflict(f"call {call} exists already: a simulated caller is placed on a call id nobody opened")
 
 
 # Opened at once, so a refusal (the org's limits, nobody holding the agent) is the request's; the

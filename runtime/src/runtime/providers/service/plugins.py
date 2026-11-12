@@ -40,8 +40,6 @@ CLASS_PATHS: dict[Stage, tuple[str, ...]] = {
 # name ending so, at its top or in its `models` module (OpenAI's `RealtimeModels`).
 REALTIME_PATHS: tuple[str, ...] = ("realtime.RealtimeModel", "RealtimeModel")
 REALTIME_MODELS = "RealtimeModels"
-# Where a refused realtime model points the person: the ones the catalogue lists.
-NOT_REALTIME = "`pinecall providers` lists, by vendor, the models that do"
 
 # livekit's three bases are generic in the extra events a subclass may emit; a plugin adds none.
 AN_LLM: type[llm.LLM[Never]] = llm.LLM

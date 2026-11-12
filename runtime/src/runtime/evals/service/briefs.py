@@ -18,7 +18,6 @@ from runtime.judging import service as judging
 from runtime.kit.crypto import Vault
 
 logger = logging.getLogger(__name__)
-NOT_BRIEFED = "caller %s not briefed on %s, played as written: %s"
 
 
 class Describer(Protocol):
@@ -114,6 +113,6 @@ async def brief_persona(
     except QuotaExceeded:
         raise
     except PinecallError as failed:
-        logger.warning(NOT_BRIEFED, caller.name, slug, failed)
+        logger.warning("caller %s not briefed on %s, played as written: %s", caller.name, slug, failed)
         return caller
     return replace(caller, goal=written.goal, facts=dict(written.facts))

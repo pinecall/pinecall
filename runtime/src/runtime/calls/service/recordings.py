@@ -10,8 +10,6 @@ from runtime.exceptions import NotFound
 from runtime.kit.crypto import Vault
 
 SUMMARY = "call.summary"
-NOT_RECORDED = "call {call} kept no recording"
-NOT_HERE = "the recording of {call} is at {path} on the box that took the call, not on this one"
 
 
 # From the bucket once the worker moved it there, else the file the recorder wrote on this disk;
@@ -27,10 +25,10 @@ async def recording_of(
     pointer = None if summary is None else summary.data.get("recording")
     name = name_of(pointer) if isinstance(pointer, str) and pointer else None
     if name is None or pointer is None or head is None or head.scope is None:
-        raise NotFound(NOT_RECORDED.format(call=call))
+        raise NotFound(f"call {call} kept no recording")
     found = await _fetch(session, recordings, vault, head.scope.org, call, name, byte_range)
     if found is None:
-        raise NotFound(NOT_HERE.format(call=call, path=pointer))
+        raise NotFound(f"the recording of {call} is at {pointer} on the box that took the call, not on this one")
     return found
 
 

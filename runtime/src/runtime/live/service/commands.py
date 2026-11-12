@@ -28,9 +28,6 @@ SESSION_CONFIGURE = "session.configure"
 # How a refused command is said, on the call's log and down a socket.
 BAD_SHAPE = "bad_shape"
 REFUSED = "refused"
-NO_SUCH_CALL = "no call {call} in this key's org and env"
-IS_OVER = "call {call} is over: read its log or its recording instead"
-NOT_HELD = "nobody holds {agent} here: a call takes the stages of an agent an app is serving"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,14 +119,14 @@ async def send_to_live_call(live: LiveParts, call: str, kind: str, data: JsonObj
     """One of the gateway's own commands to a live call; refused when the call is unknown, over, or refuses it."""
     state = await live.logs.reading(call).snapshot()
     if state.seq == 0:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     if await live.store.is_sealed(call):
-        raise Conflict(IS_OVER.format(call=call))
+        raise Conflict(f"call {call} is over: read its log or its recording instead")
     delivered = await deliver(live.calls, live.signal, Command(type=kind, agent=state.agent, call=call, data=data))
     if delivered.refusal is not None:
         raise refusal_error(delivered.refusal)
     if not delivered.reached:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
 
 
 # A hang-up said on the room's data channel is lost when the page leaves the room the same instant,
@@ -143,5 +140,5 @@ async def hang_up_for_caller(live: LiveParts, call: str) -> None:
 async def restage(live: LiveParts, scope: Scope, call: str, passed_to: str | None = None) -> None:
     """The live call takes its model and its voice as its agent's settings name them now, or as `passed_to`'s do."""
     if passed_to is not None and live.holders.find_serving(scope, passed_to) is None:
-        raise NotFound(NOT_HELD.format(agent=passed_to))
+        raise NotFound(f"nobody holds {passed_to} here: a call takes the stages of an agent an app is serving")
     await send_to_live_call(live, call, STAGES_CHANGED, {"agent": passed_to} if passed_to else {})

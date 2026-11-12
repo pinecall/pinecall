@@ -32,9 +32,6 @@ from runtime.kit.text import a_mapping
 from runtime.providers import service as providers
 from runtime.providers.catalog import Catalog
 
-NOT_FOR_A_TEST = "a test room changes only the voice and the models, so {names} {are} not its to set"
-NOT_AN_OBJECT = "test is the test room's values as a JSON object"
-NOT_THAT_KIND = "a test room's {name} is {kind}"
 END_OF_TURNS = ("stt", "livekit", "smart-turn")
 
 
@@ -225,9 +222,9 @@ def parse_test_values(text: str | None, *, env: Env) -> dict[str, Any]:
     try:
         body: object = json.loads(text)
     except ValueError as bad:
-        raise ValidationError(NOT_AN_OBJECT) from bad
+        raise ValidationError("test is the test room's values as a JSON object") from bad
     if not a_mapping(body):
-        raise ValidationError(NOT_AN_OBJECT)
+        raise ValidationError("test is the test room's values as a JSON object")
     return check_test_values(body, env=env)
 
 
@@ -239,7 +236,10 @@ def check_test_values(body: Mapping[str, Any] | None, *, env: Env) -> dict[str, 
         raise Forbidden("a test room's own voice and models are the sandbox's: production runs the settings it has")
     stray = sorted(set(body) - TEST_FIELDS)
     if stray:
-        raise ValidationError(NOT_FOR_A_TEST.format(names=", ".join(stray), are="is" if len(stray) == 1 else "are"))
+        raise ValidationError(
+            f"a test room changes only the voice and the models, so {', '.join(stray)} "
+            f"{'is' if len(stray) == 1 else 'are'} not its to set"
+        )
     for name, value in body.items():
         _check_test_kind(name, value)
     return dump_settings(parse_settings(body))
@@ -294,9 +294,9 @@ def _check_test_kind(name: str, value: object) -> None:
         return
     if name == "temperature":
         if isinstance(value, bool) or not isinstance(value, int | float):
-            raise ValidationError(NOT_THAT_KIND.format(name=name, kind="a number"))
+            raise ValidationError(f"a test room's {name} is a number")
     elif name == "end_of_turn":
         if value not in END_OF_TURNS:
-            raise ValidationError(NOT_THAT_KIND.format(name=name, kind=f"one of {', '.join(END_OF_TURNS)}"))
+            raise ValidationError(f"a test room's {name} is one of {', '.join(END_OF_TURNS)}")
     elif not isinstance(value, str):
-        raise ValidationError(NOT_THAT_KIND.format(name=name, kind="text"))
+        raise ValidationError(f"a test room's {name} is text")

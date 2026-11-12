@@ -19,7 +19,7 @@ from runtime.config import Settings
 from runtime.exceptions import ConfigurationError, ServiceUnavailable
 from runtime.kit.loops import survive
 from runtime.scoping import box_task
-from runtime.signal import DOWN, Listener, LocalSignal, Signal
+from runtime.signal import Listener, LocalSignal, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,9 @@ class RedisSignal:
             async with asyncio.timeout(ANSWER_S):
                 heard = await self._client.publish(self.prefix + channel, data)  # pyright: ignore[reportUnknownMemberType]
         except (RedisError, OSError, TimeoutError) as away:
-            raise ServiceUnavailable(DOWN) from away
+            raise ServiceUnavailable(
+                "the live signal between gateways is down: no Redis answers at PINECALL_REDIS_URL"
+            ) from away
         return int(heard)
 
     def publish(self, channel: str, data: bytes) -> None:
@@ -109,7 +111,7 @@ class RedisSignal:
         """A listener, returned once Redis confirmed the subscription."""
         pubsub = self._pubsub
         if not self._up or pubsub is None:
-            raise ServiceUnavailable(DOWN)
+            raise ServiceUnavailable("the live signal between gateways is down: no Redis answers at PINECALL_REDIS_URL")
         name = self.prefix + channel
         listener = Listener(channel, self._leave)
         self._listening.setdefault(name, set()).add(listener)
@@ -127,7 +129,7 @@ class RedisSignal:
             raise
         if not is_confirmed:
             listener.close()
-            raise ServiceUnavailable(DOWN)
+            raise ServiceUnavailable("the live signal between gateways is down: no Redis answers at PINECALL_REDIS_URL")
         return listener
 
     async def close(self) -> None:

@@ -26,7 +26,7 @@ async def box_alerts_show(ctx: typer.Context) -> int:
         with box_wide():
             found = await webhooks.operator_webhook_of(session, context.vault)
     if found is None:
-        raise NotFound(webhooks.THE_OPERATOR_HEARS_NOTHING)
+        raise NotFound("the box posts its orgs' alerts nowhere: `pinecall-runtime box alerts set <url>` names a URL")
     context.out.line(REACHES.format(url=found.url, signed="signed" if found.signed else "unsigned"))
     return OK
 

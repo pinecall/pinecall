@@ -13,8 +13,6 @@ from runtime.config import Settings
 from runtime.enums import Env
 from runtime.exceptions import ConfigurationError, Unauthorized
 
-NO_LIVEKIT = "LIVEKIT_API_KEY and LIVEKIT_API_SECRET are unset: this process cannot reach the SFU"
-
 # Room names ride one request's query, so they are asked for in batches.
 ROOMS_A_REQUEST = 100
 
@@ -30,7 +28,7 @@ type Servers = Mapping[Env, api.LiveKitAPI]
 def key_pair(settings: Settings) -> tuple[str, str]:
     """The box's LiveKit key and secret; ConfigurationError when unset."""
     if not settings.livekit_api_key or not settings.livekit_api_secret:
-        raise ConfigurationError(NO_LIVEKIT)
+        raise ConfigurationError("LIVEKIT_API_KEY and LIVEKIT_API_SECRET are unset: this process cannot reach the SFU")
     return settings.livekit_api_key, settings.livekit_api_secret.get_secret_value()
 
 

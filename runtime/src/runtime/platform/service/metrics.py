@@ -12,10 +12,6 @@ from runtime.kit.prometheus import family
 from runtime.platform.repository.database import DatabaseRepository, ReplicaLag
 from runtime.postgres import DatabaseError, pool_measures
 
-NOT_HERE = (
-    "/metrics answers the addresses PINECALL_METRICS_FROM names (the box's loopback unless said), "
-    "never a forwarded request: curl http://127.0.0.1:8080/metrics from inside"
-)
 TEXT_FORMAT = "text/plain; version=0.0.4; charset=utf-8"
 
 
@@ -34,7 +30,10 @@ class Collector(Protocol):
 def check_reader(client: str, forwarded: bool, networks: str) -> None:
     """Refuse a reader that is not one of the addresses the box names, or that came through a proxy."""
     if forwarded or not is_from_any(client, networks):
-        raise Forbidden(NOT_HERE)
+        raise Forbidden(
+            "/metrics answers the addresses PINECALL_METRICS_FROM names (the box's loopback unless said), "
+            "never a forwarded request: curl http://127.0.0.1:8080/metrics from inside"
+        )
 
 
 def is_from_any(client: str, networks: str) -> bool:

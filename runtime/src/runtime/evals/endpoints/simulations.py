@@ -21,8 +21,6 @@ from runtime.postgres import Session
 
 router = APIRouter()
 
-A_PIPELINE_KEY = "a key that opens `pipeline` runs the agent on another voice or model for a simulation"
-
 
 # What can be refused is refused before the answer; the conversation is played after it, and watched
 # as any call is. A spoken one with no slot free waits for the fleet to grow, `fleet.full` on the
@@ -102,7 +100,7 @@ def check_agent_values(actor: Actor, against: schemas.AgentValues | None) -> Jso
     if not named:
         return {}
     if KeyScope.pipeline not in actor.scopes:
-        raise Forbidden(A_PIPELINE_KEY)
+        raise Forbidden("a key that opens `pipeline` runs the agent on another voice or model for a simulation")
     return agents.check_test_values(named, env=actor.env)
 
 

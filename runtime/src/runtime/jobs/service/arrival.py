@@ -25,8 +25,6 @@ NO_AGENT_NAMED = "no_agent_named"
 AGENT_NOT_RUNNING = "agent_not_running"
 TEST_LINE_UNAVAILABLE = "unavailable"
 
-HANDED_WITH_NO_AGENT = "a ring handed over from production names no agent: its leg carried no X-Pinecall-*"
-NOTHING_TO_GO_BY = "the job names no agent, no number was dialled, and this worker has no default agent"
 TEST_VALUES_ON_THE_WIRE = "tuning"
 
 
@@ -109,12 +107,12 @@ def resolve_route(
 ) -> Route:
     """The route the call takes."""
     if dispatch.diverted_from is not None and dispatch.agent is None:
-        raise NotFound(HANDED_WITH_NO_AGENT)
+        raise NotFound("a ring handed over from production names no agent: its leg carried no X-Pinecall-*")
     agent = dispatch.agent or (None if arrival.number else default)
     if agent is not None:
         return _route_of_agent(agent, dispatch, arrival, routes)
     if arrival.number is None:
-        raise NotFound(NOTHING_TO_GO_BY)
+        raise NotFound("the job names no agent, no number was dialled, and this worker has no default agent")
     found = next(
         (route for route in routes if route.channel == arrival.channel and route.number == arrival.number), None
     )

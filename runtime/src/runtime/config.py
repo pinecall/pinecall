@@ -13,10 +13,6 @@ from runtime.enums import Env
 from runtime.exceptions import ConfigurationError
 
 LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
-NOT_LOOPBACK = (
-    "PINECALL_GATEWAY_URL binds {host}: a box's gateway listens on loopback, behind its proxy "
-    "(a pod's says PINECALL_GATEWAY_LISTEN)"
-)
 
 # Which of the box's processes this one is; `all` is a box of one.
 type ProcessRole = Literal["all", "gateway", "worker"]
@@ -195,7 +191,10 @@ class Settings(BaseSettings):
         bound = urlparse(self.gateway_url)
         named = bound.hostname or "127.0.0.1"
         if named not in LOOPBACK:
-            raise ConfigurationError(NOT_LOOPBACK.format(host=named))
+            raise ConfigurationError(
+                f"PINECALL_GATEWAY_URL binds {named}: a box's gateway listens on loopback, behind its proxy (a "
+                "pod's says PINECALL_GATEWAY_LISTEN)"
+            )
         return named, bound.port or 8080
 
     def livekit_url_of(self, env: Env) -> str:

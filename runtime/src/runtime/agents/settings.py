@@ -6,9 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, TypeIs
 
 from runtime.agents.declaration import (
-    BLANK,
     DEFAULT_CHUNKS_PER_TURN,
-    NOT_A_TIMEOUT,
     Docs,
     Greeting,
     Hangup,
@@ -104,7 +102,10 @@ def check_settings(settings: AgentSettings) -> AgentSettings:
     for name in TEXT_FIELDS:
         value: str | None = getattr(settings, name)
         if value is not None and not value.strip():
-            raise ValidationError(BLANK.format(field=name))
+            raise ValidationError(
+                f"a blank {name} is not a change: an empty value once silenced a whole line of calls. Leave "
+                "the field out to go back to what the app declared."
+            )
     if settings.timezone is not None:
         parse_zone(settings.timezone)
     if settings.max_duration_s is not None:
@@ -112,9 +113,12 @@ def check_settings(settings: AgentSettings) -> AgentSettings:
     if settings.silence_timeout_s is not None:
         check_silence(settings.silence_timeout_s)
     if any(not word.strip() for word in (*(settings.stt_fallbacks or ()), *(settings.tts_fallbacks or ()))):
-        raise ValidationError(BLANK.format(field="fallback"))
+        raise ValidationError(
+            "a blank fallback is not a change: an empty value once silenced a whole line of calls. Leave the "
+            "field out to go back to what the app declared."
+        )
     if settings.llm_timeout_s is not None and settings.llm_timeout_s <= 0:
-        raise ValidationError(NOT_A_TIMEOUT)
+        raise ValidationError("llm_timeout_s is a positive number of seconds")
     if settings.temperature is not None and settings.temperature < 0:
         raise ValidationError("temperature is a number from 0, in the model vendor's range")
     check_parts(

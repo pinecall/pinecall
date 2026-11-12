@@ -23,16 +23,9 @@ from runtime.providers.service.signatures import lists_voices
 from runtime.providers.service.stages import voice_outside_a_call
 from runtime.providers.stage import Running, Voice, primary_language
 
-NOT_LISTED = "it has no voice called {voice}: `pinecall voices list --tts {vendor}` lists the ones it has"
 # Plugins name a voice's id and name differently; the first a row carries is it.
 THE_ID = ("id", "voice_id", "voice")
 THE_NAME = ("name", "voice_name", "display_name")
-# A plugin that lists its voices with no language cannot be narrowed by one: every voice would pass
-# the filter, and a person asking for Spanish would read 150 voices in every tongue. ElevenLabs'
-# plugin lists 150 voices with no language, and `--language en` passed every one of them (2026-10-23).
-NO_LANGUAGE_LISTED = (
-    "{vendor} lists its voices with no language, so --language {language} cannot narrow them: drop it and pick by name"
-)
 
 
 class NotListed(NotFound):
@@ -139,7 +132,10 @@ async def check_listed(running: Running, catalog: Catalog) -> None:
         listed = []
     known = listed or in_the_row
     if known and not _names(known, running.voice):
-        raise ValidationError(NOT_LISTED.format(vendor=running.vendor, voice=running.voice))
+        raise ValidationError(
+            f"it has no voice called {running.voice}: `pinecall voices list --tts {running.vendor}` lists the "
+            "ones it has"
+        )
 
 
 def list_in_catalog(catalog: Catalog, vendor: str, language: str | None) -> list[ListedVoice]:
@@ -153,7 +149,13 @@ def list_in_catalog(catalog: Catalog, vendor: str, language: str | None) -> list
 def check_narrowable(vendor: str, listed: Sequence[ListedVoice], language: str | None) -> None:
     """Refuse a language on a listing that carries none; nothing on a listing that does, or on no language."""
     if language is not None and listed and not any(item.detail.get("language") for item in listed):
-        raise ValidationError(NO_LANGUAGE_LISTED.format(vendor=vendor, language=language))
+        # A plugin that lists its voices with no language cannot be narrowed by one: every voice would pass
+        # the filter, and a person asking for Spanish would read 150 voices in every tongue. ElevenLabs'
+        # plugin lists 150 voices with no language, and `--language en` passed every one of them (2026-10-23).
+        raise ValidationError(
+            f"{vendor} lists its voices with no language, so --language {language} cannot narrow them: drop it "
+            "and pick by name"
+        )
 
 
 def _names(listed: Sequence[ListedVoice], voice: str) -> bool:

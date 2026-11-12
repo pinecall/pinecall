@@ -32,8 +32,6 @@ JUDGE = (
     "other line."
 )
 
-# Its words are kept in the refusal: what a model says instead of calling is what fixes the prompt.
-NO_ANSWER = "the judge model answered without calling {tool}: it said {said!r}"
 SAID_AT_MOST = 200
 # A forced answer is given longer than livekit's 10 s: a local model asked for a whole verdict or a
 # whole line takes it (gemma4:12b on an L4 took 16.6 s once, and the simulated call broke on it).
@@ -114,7 +112,10 @@ async def force_tool(
         lines, tool, insist=ONLY_THE_TOOL.format(tool=tool["name"]), what=THE_QUESTION, patience=ASKED_WITHIN
     )
     if answer.arguments is None:
-        raise UpstreamError(NO_ANSWER.format(tool=tool["name"], said=answer.text.strip()[:SAID_AT_MOST]))
+        # Its words are kept in the refusal: what a model says instead of calling is what fixes the prompt.
+        raise UpstreamError(
+            f"the judge model answered without calling {tool['name']}: it said {answer.text.strip()[:SAID_AT_MOST]!r}"
+        )
     return answer.arguments, answer.usage
 
 

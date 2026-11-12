@@ -27,8 +27,6 @@ logger = logging.getLogger(__name__)
 A_CALLER_MAY_TAKE_S = 15.0
 
 THE_ONE_SENTENCE = "sp_1"
-NOT_TOLD = "call %s: the caller its worker left was not told all of it; the room closes anyway"
-NOT_SEALED = "call %s: the gateway did not take the seal; its reaper seals the call"
 
 # How a job's call is answered: run (`job.answer_job`), or its caller told the fleet is full.
 type Answer = Callable[[JobContext, Warmed], Awaitable[None]]
@@ -84,14 +82,16 @@ async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -
             stages = await gateway.get_stages(dispatch.agent, scope)
             await _say_once(ctx, writing, stages.pipeline.tts, says)
     except UpstreamError:
-        logger.warning(NOT_TOLD, call, exc_info=True)
+        logger.warning(
+            "call %s: the caller its worker left was not told all of it; the room closes anyway", call, exc_info=True
+        )
     finally:
         await close_room(ctx.api, call)
     await writing.close(session.WRITTEN_WITHIN_S)
     try:
         await link.seal([], says)
     except UpstreamError:
-        logger.warning(NOT_SEALED, call, exc_info=True)
+        logger.warning("call %s: the gateway did not take the seal; its reaper seals the call", call, exc_info=True)
 
 
 def sentence_entry(says: str) -> AgentTranscript:

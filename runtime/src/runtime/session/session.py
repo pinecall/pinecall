@@ -52,10 +52,7 @@ HOW_IT_ENDED: dict[CloseReason, tuple[EndReason, EndedBy]] = {
 }
 A_PLATFORM_ERROR: tuple[EndReason, EndedBy] = ("error", "platform")
 NOTHING_SAID = "no reply"
-NOT_HERE = "{command} acts on a call's line, and this call is written: it has no audio and no room"
 NO_LINE = "a written conversation has no line to transfer"
-NOT_SEALED = "call %s: its last entries did not reach the log within %gs, so it is left for the gateway to seal"
-ONE_MODEL_ALONE = "this call runs on one model that hears and speaks: what its settings name now runs on the next call"
 # The ears are built once a call, with the turn they end: theirs is said and waits for the next call.
 REBUILT = (Stage.llm, Stage.tts)
 
@@ -220,7 +217,11 @@ class Session:
             try:
                 await call.writing.flush(WRITTEN_WITHIN_S)
             except TimeoutError:
-                logger.warning(NOT_SEALED, name, WRITTEN_WITHIN_S)
+                logger.warning(
+                    "call %s: its last entries did not reach the log within %gs, so it is left for the gateway to seal",
+                    name,
+                    WRITTEN_WITHIN_S,
+                )
             else:
                 await call.platform.seal(self.usage, call.last_said or NOTHING_SAID)
         finally:
@@ -307,7 +308,9 @@ class Session:
     def room_or_refuse(self, command: RoomCommand | CallTransfer | TransferVerb) -> CallRoom:
         """The call's room, or the refusal of a verb that needs one on a written call."""
         if self.room is None:
-            raise Forbidden(NOT_HERE.format(command=name_of(command)))
+            raise Forbidden(
+                f"{name_of(command)} acts on a call's line, and this call is written: it has no audio and no room"
+            )
         return self.room
 
     # A transfer however it was asked has one outcome entry; a supervisor's is written first, with
@@ -346,7 +349,9 @@ class Session:
     async def take_stages(self, wanted: Mapping[Stage, Running], *, alone: bool) -> list[Stage]:
         """Rebuild the model and the voice that differ, and say every stage that changed; the stages rebuilt."""
         if alone or not self.running:
-            raise Conflict(ONE_MODEL_ALONE)
+            raise Conflict(
+                "this call runs on one model that hears and speaks: what its settings name now runs on the next call"
+            )
         differs = [stage for stage, running in self.running.items() if stage in wanted and wanted[stage] != running]
         changed = [stage for stage in differs if stage in REBUILT]
         if changed:

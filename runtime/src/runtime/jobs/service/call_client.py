@@ -40,7 +40,6 @@ A_TOOL_S = 30.0
 
 ALREADY_OVER = 409
 NOT_SERVED = 404
-NOT_THIS_WORKERS = "call {call} was opened by another worker: this one writes to it and seals it, nothing else"
 
 # The call's recording kept as the seal names it; None when the call has none.
 type KeepRecording = Callable[[], Awaitable[str | None]]
@@ -216,7 +215,9 @@ class CallClient:
 
     def _opening(self) -> OpenCallRequest:
         if self.opening is None:
-            raise Conflict(NOT_THIS_WORKERS.format(call=self.call))
+            raise Conflict(
+                f"call {self.call} was opened by another worker: this one writes to it and seals it, nothing else"
+            )
         return self.opening
 
     async def _ask_again[T](self, ask: Callable[[], Awaitable[T]], within_s: float | None, what: str) -> T:

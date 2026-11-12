@@ -10,8 +10,6 @@ from runtime.scoping import box_wide
 
 app = typer.Typer(help="contact memory", no_args_is_help=True)
 
-NO_EMBEDDER = "this box embeds nothing: no embedding in its providers row"
-
 
 # A batch at a time, each in transactions of its own: a run cut short leaves what it did, and the next
 # run skips it. The box's own terminal names no org: every org's and env's facts.
@@ -25,7 +23,7 @@ async def memory_reembed(ctx: typer.Context) -> int:
         async with handles.sessions() as session:
             embedder = await embedder_of(session, handles.vault, handles.http)
         if embedder is None:
-            raise ServiceUnavailable(NO_EMBEDDER)
+            raise ServiceUnavailable("this box embeds nothing: no embedding in its providers row")
         count = 0
         while done := await memory.embed_stale(handles.sessions, embedder):
             count += done

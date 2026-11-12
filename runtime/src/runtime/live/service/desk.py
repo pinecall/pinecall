@@ -51,10 +51,10 @@ async def take_seat(
     """A seat in the live call for the person behind the key: hidden to listen, heard to supervise."""
     kept = await calls.find_head(session, call)
     if kept is None or kept.scope is None or kept.scope.org != actor.org:
-        raise NotFound(commands.NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     accounts.check_agent(actor, kept.agent)
     if await live.store.is_sealed(call):
-        raise Conflict(commands.IS_OVER.format(call=call))
+        raise Conflict(f"call {call} is over: read its log or its recording instead")
     seat = tokens.sign_seat(signer, call, scope, actor)
     await compliance.record_read(session, kept.scope, call, what, by=actor.asked_by)
     return Seated(

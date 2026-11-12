@@ -26,16 +26,6 @@ from runtime.wire.declaration import CallerBehavior, PersonaDeclaration, Persona
 
 PINECALL = "pinecall"
 THE_CLASS = "class"
-NOBODY = "no persona called {name} for {agent}"
-TAKEN = "{agent} has a persona called {name} already"
-ONLY_ON = (
-    "{name} is one of Pinecall's personas: only whether the agent's runs play it and how it is "
-    "played are written (on or off, the model, the voice's vendor and the voice); a caller of your "
-    "own takes a name of your own"
-)
-NOT_A_SWITCH = "{name} is a persona of the agent's own: it is played while it is written"
-NOT_YOURS = "{name} is one of Pinecall's personas and is never deleted: `pinecall personas off {name}` turns it off"
-NO_SUCH_VOICE = "{vendor} lists no voice {voice}: `pinecall voices list --tts {vendor}` names the ones it has"
 
 # What a write may say of one of Pinecall's: its switch, and how it is played.
 PLAYED_FIELDS = frozenset({"llm", "tts", "voice"})
@@ -152,7 +142,7 @@ async def get_persona(
     """The persona of that name an agent's calls may be played by; refused when there is none."""
     found = await persona_named(session, org, agent, name, class_personas)
     if found is None:
-        raise NotFound(NOBODY.format(name=name, agent=agent))
+        raise NotFound(f"no persona called {name} for {agent}")
     return found
 
 
@@ -171,7 +161,7 @@ async def write_persona(
     if name in library.library_personas():
         await _write_pinecalls(session, scope.org, agent.slug, name, wanted, by=by)
     elif wanted.on is not None:
-        raise Conflict(NOT_A_SWITCH.format(name=name))
+        raise Conflict(f"{name} is a persona of the agent's own: it is played while it is written")
     else:
         await put_persona(session, scope.org, agent.slug, persona_of(name, wanted), by=by, was=wanted.was)
     return await roster_of(session, scope.org, agent.slug)
@@ -185,9 +175,9 @@ async def put_persona(
     repository = PersonaRepository(session)
     if was is not None and was != persona.name:
         if await repository.find(org, agent, was) is None:
-            raise NotFound(NOBODY.format(name=was, agent=agent))
+            raise NotFound(f"no persona called {was} for {agent}")
         if await repository.find(org, agent, persona.name) is not None:
-            raise Conflict(TAKEN.format(name=persona.name, agent=agent))
+            raise Conflict(f"{agent} has a persona called {persona.name} already")
         await repository.delete_named(org, agent, was)
     await repository.put(org, agent, name=persona.name, author=by, **_columns_of(persona))
 
@@ -196,9 +186,11 @@ async def delete_persona(session: AsyncSession, org: str, agent: Agent, name: st
     """Forget one of the agent's callers; 404 for a name nobody wrote, 409 for Pinecall's or the class's."""
     agents.refuse_what_the_class_sets(agent, ("personas",))
     if name in library.library_personas():
-        raise Conflict(NOT_YOURS.format(name=name))
+        raise Conflict(
+            f"{name} is one of Pinecall's personas and is never deleted: `pinecall personas off {name}` turns it off"
+        )
     if not await PersonaRepository(session).delete_named(org, agent.slug, name):
-        raise NotFound(NOBODY.format(name=name, agent=agent.slug))
+        raise NotFound(f"no persona called {name} for {agent.slug}")
     return await roster_of(session, org, agent.slug)
 
 
@@ -211,7 +203,9 @@ def check_persona_models(catalog: Catalog, llm: str | None, tts: str | None, voi
     # for (every voice is the vendor's own) takes the id as given.
     listed = providers.list_in_catalog(catalog, vendor, None)
     if voice and listed and all(one.id != voice for one in listed):
-        raise ValidationError(NO_SUCH_VOICE.format(vendor=vendor, voice=voice))
+        raise ValidationError(
+            f"{vendor} lists no voice {voice}: `pinecall voices list --tts {vendor}` names the ones it has"
+        )
 
 
 # The run says it the same way when no key stands behind the vendor, so the writer hears it first.
@@ -266,7 +260,11 @@ def as_played(persona: Persona, chosen: Played) -> Persona:
 # What a write names of how it is played is written; what it leaves out stays as it was.
 async def _write_pinecalls(session: AsyncSession, org: str, agent: str, name: str, wanted: Wanted, *, by: str) -> None:
     if not wanted.named & LIBRARY_FIELDS or wanted.named - LIBRARY_FIELDS:
-        raise Conflict(ONLY_ON.format(name=name))
+        raise Conflict(
+            f"{name} is one of Pinecall's personas: only whether the agent's runs play it and how it is played "
+            "are written (on or off, the model, the voice's vendor and the voice); a caller of your own takes "
+            "a name of your own"
+        )
     repository = PersonaSwitchRepository(session)
     if wanted.on is not None:
         await repository.switch(org, agent, (name,), on=wanted.on, author=by)

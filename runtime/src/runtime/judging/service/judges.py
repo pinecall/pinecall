@@ -23,14 +23,6 @@ from runtime.wire.parts import JudgeRead
 PINECALL = "pinecall"
 THE_ORG = "org"
 THE_CLASS = "class"
-NOBODY = "{whose} has no judge called {name}"
-TAKEN = "{name} is {whose} judge already: one name asks one question of a call"
-ONLY_ON = (
-    "{name} is one of Pinecall's judges: it is switched on or off (`pinecall judges on|off {name}`), "
-    "never rewritten; a question of your own takes a name of your own"
-)
-NOT_A_SWITCH = "{name} is a judge of your own: it runs while it is written, and `pinecall judges rm {name}` stops it"
-NOT_YOURS = "{name} is one of Pinecall's judges and is never deleted: `pinecall judges off {name}` turns it off"
 
 
 # The question "which judges does a call of this agent meet" was answered three times until 2026-11
@@ -113,7 +105,7 @@ async def judge_named(
     roster = await roster_of(session, org, agent, class_judges)
     found = next((judge.spec for judge in roster if judge.spec.name == name), None)
     if found is None:
-        raise NotFound(NOBODY.format(whose=agent, name=name))
+        raise NotFound(f"{agent} has no judge called {name}")
     return found
 
 
@@ -135,12 +127,17 @@ async def write_judge(
     level = _level_of(agent)
     if name in library.library_judges():
         if wanted.on is None or wanted.named - {"on"}:
-            raise Conflict(ONLY_ON.format(name=name))
+            raise Conflict(
+                f"{name} is one of Pinecall's judges: it is switched on or off (`pinecall judges on|off {name}"
+                "`), never rewritten; a question of your own takes a name of your own"
+            )
         await JudgeSwitchRepository(session).switch(org, level, (name,), on=wanted.on, author=by)
     elif wanted.on is not None:
         # A switch of a name nobody wrote is a name typed wrong, not a judge of the org's.
         await judge_named(session, org, level, name)
-        raise Conflict(NOT_A_SWITCH.format(name=name))
+        raise Conflict(
+            f"{name} is a judge of your own: it runs while it is written, and `pinecall judges rm {name}` stops it"
+        )
     else:
         await put_judge(session, org, level, spec_of(name, wanted), by=by)
     return await roster_of(session, org, level)
@@ -154,11 +151,13 @@ async def put_judge(session: AsyncSession, org: str, agent: str, spec: JudgeSpec
     repository = JudgeRepository(session)
     clash = await repository.find_clash(org, agent, spec.name)
     if clash is not None:
-        raise Conflict(TAKEN.format(name=spec.name, whose=_owner(clash)))
+        raise Conflict(f"{spec.name} is {_owner(clash)} judge already: one name asks one question of a call")
     if agent == THE_ORGS_OWN:
         holding = await repository.find_class_holding(org, spec.name)
         if holding is not None:
-            raise Conflict(TAKEN.format(name=spec.name, whose=f"the class of {holding}'s"))
+            raise Conflict(
+                f"{spec.name} is the class of {holding}'s judge already: one name asks one question of a call"
+            )
     await repository.put(
         org,
         agent,
@@ -177,9 +176,11 @@ async def delete_judge(session: AsyncSession, org: str, agent: Agent | None, nam
     """Forget one of the org's own judges (no agent) or the agent's; 404 for a name nobody wrote, 409 for Pinecall's."""
     level = _level_of(agent)
     if name in library.library_judges():
-        raise Conflict(NOT_YOURS.format(name=name))
+        raise Conflict(
+            f"{name} is one of Pinecall's judges and is never deleted: `pinecall judges off {name}` turns it off"
+        )
     if not await JudgeRepository(session).delete_named(org, level, name):
-        raise NotFound(NOBODY.format(whose=_owner(level), name=name))
+        raise NotFound(f"{_owner(level)} has no judge called {name}")
     return await roster_of(session, org, level)
 
 

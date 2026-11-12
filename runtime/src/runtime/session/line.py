@@ -29,12 +29,8 @@ WHY: dict[Reason, str] = {
     "supervisor": "a supervisor has it",
     "bridge": "the person the caller was transferred to has it",
 }
-ALREADY_HELD = "{id} already holds the line; they release it, or nobody does"
-NOBODY_HOLDS = "nobody holds the line, so there is nothing to give back"
-ALREADY_WAITING = "the caller is already waiting for a person"
 # The app's tool timeout must outlast the wait it asks for; the runtime does not extend it.
 NOBODY_TOOK_IT = "nobody took the line within {wait_s:g}s"
-NOT_THE_AGENTS = "{what}: the agent does not have the line ({why}), so nothing it said would be heard"
 
 
 class Line:
@@ -59,7 +55,7 @@ class Line:
         """Refuse words the app would have the agent say while the line is not its own."""
         if self.reasons:
             why = ", ".join(WHY[reason] for reason in sorted(self.reasons))
-            raise Conflict(NOT_THE_AGENTS.format(what=what, why=why))
+            raise Conflict(f"{what}: the agent does not have the line ({why}), so nothing it said would be heard")
 
     # ── its life ──
 
@@ -111,7 +107,7 @@ class Line:
     async def await_a_person(self, wanted: CallAttention) -> None:
         """Hold the caller for a supervisor, for as long as the app asked, once at a time."""
         if "attention" in self.reasons:
-            raise ValidationError(ALREADY_WAITING)
+            raise ValidationError("the caller is already waiting for a person")
         requested = wire.AttentionRequested(reason=wanted.reason, wait_s=wanted.wait_s)
         asked = self.call.writing.write("attention.requested", requested)
         await self._set(self._with("attention"))
@@ -122,7 +118,7 @@ class Line:
     async def take(self, by: Supervisor) -> None:
         """A supervisor takes the line: the agent goes quiet until they release it."""
         if self.taken_by is not None:
-            raise ValidationError(ALREADY_HELD.format(id=self.taken_by.id))
+            raise ValidationError(f"{self.taken_by.id} already holds the line; they release it, or nobody does")
         took = self.call.writing.write("supervisor.took_over", wire.SupervisorTookOver(by=by))
         if "attention" in self.reasons:
             self._stop_awaiting()
@@ -134,7 +130,7 @@ class Line:
     async def release(self, by: Supervisor) -> None:
         """The supervisor gives the line back; the agent has it again unless another reason holds it."""
         if self.taken_by is None:
-            raise ValidationError(NOBODY_HOLDS)
+            raise ValidationError("nobody holds the line, so there is nothing to give back")
         released = self.call.writing.write("supervisor.released", wire.SupervisorReleased(by=by))
         self.taken_by = None
         await self._set(self._without("supervisor"))

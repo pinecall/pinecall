@@ -42,11 +42,6 @@ KnowledgeKey = Annotated[Actor, Depends(Authenticator(KeyScope.knowledge))]
 MemoryKey = Annotated[Actor, Depends(Authenticator(KeyScope.memory))]
 EvalsKey = Annotated[Actor, Depends(Authenticator(KeyScope.evals))]
 
-READS_ONLY = "this token reads the call and sends no verb: steering it takes a supervise token"
-A_KEY_ENDS_WITH_A_VERB = (
-    "a hang-up is the caller's own, said with the call's token: a key ends a call with the verb end"
-)
-NOT_SIGNED = "the event carries no Authorization: LiveKit signs every event it sends"
 # The most a room event of LiveKit's weighs.
 LARGEST_WEBHOOK = 4 * 1024 * 1024
 
@@ -148,7 +143,7 @@ async def load_supervised_call(
     """The path's call as whoever asks may steer it, and who its verbs are sent as."""
     visit = _visit_of(reader)
     if visit is not None and visit.scope != "supervise":
-        raise Forbidden(READS_ONLY)
+        raise Forbidden("this token reads the call and sends no verb: steering it takes a supervise token")
     await get_readable(session, reader, call)
     return desk.Supervising(call, desk.supervisor_of(reader.actor, visit))
 
@@ -159,7 +154,9 @@ async def load_callers_call(
 ) -> str:
     """The path's call, for the caller's own hang-up, said with its token."""
     if reader.visit is None:
-        raise Forbidden(A_KEY_ENDS_WITH_A_VERB)
+        raise Forbidden(
+            "a hang-up is the caller's own, said with the call's token: a key ends a call with the verb end"
+        )
     await get_readable(session, reader, call)
     return call
 
@@ -204,7 +201,7 @@ async def read_room_event(request: Request, settings: TheSettings) -> WebhookEve
     """The room event of a body LiveKit signed with the box's key; 401 for any other."""
     token = request.headers.get("Authorization")
     if not token:
-        raise Unauthorized(NOT_SIGNED)
+        raise Unauthorized("the event carries no Authorization: LiveKit signs every event it sends")
     body = (await read_capped_body(request, LARGEST_WEBHOOK, "a webhook's body")).decode()
     return verify_event(settings, body, token)
 

@@ -30,7 +30,6 @@ LOCAL_EMBEDDER = "bge-m3"
 MODEL_PORTS = {"Ollama": 11434, "Whisper": 8000, "Kokoro": 8880}
 # The vendors `--models keys` means when no stage is named.
 KEYS_DEFAULTS = {"stt": "deepgram", "llm": "anthropic", "tts": "cartesia"}
-ONE_LOCAL_VOICE = "the local voice is Kokoro: --tts local, with no model after it"
 
 
 @dataclass(frozen=True)
@@ -120,7 +119,7 @@ def check_choices(choices: Choices) -> Choices:
         if not is_local(choice):
             plugins.vendor_doing(vendor_of(choice), stage)
     if is_local(choices.tts) and model_of(choices.tts) is not None:
-        raise ValidationError(ONE_LOCAL_VOICE)
+        raise ValidationError("the local voice is Kokoro: --tts local, with no model after it")
     if choices.turn not in TURNS:
         raise ValidationError(f"--turn is one of {', '.join(TURNS)}, not {choices.turn!r}")
     if choices.turn == "stt" and (is_local(choices.stt) or not signatures.ends_turns(vendor_of(choices.stt))):

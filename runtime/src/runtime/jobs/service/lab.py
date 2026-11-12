@@ -46,8 +46,6 @@ GRACE_S = 2 * A_SEAL_S
 LET_GO_S = 0.1
 UNREACHABLE = "unreachable"
 A_CALL_IN_A_PATH = re.compile(r"call_[0-9a-f]+")
-NOT_A_SCRIPT = "--script {path}: {why}"
-NOT_ENOUGH = "--calls {calls}: at least one"
 
 type Connect = Callable[[], GatewayClient]
 
@@ -128,9 +126,9 @@ def read_script(path: Path) -> Script:
         read: object = json.loads(path.read_bytes())
         entries = [Entry.model_validate(one) for one in (read if a_list(read) else [])]
     except (OSError, ValueError) as unread:
-        raise ValidationError(NOT_A_SCRIPT.format(path=path, why=unread)) from None
+        raise ValidationError(f"--script {path}: {unread}") from None
     if not entries:
-        raise ValidationError(NOT_A_SCRIPT.format(path=path, why="the log holds no entry"))
+        raise ValidationError(f"--script {path}: the log holds no entry")
     return script_of(entries)
 
 
@@ -184,7 +182,7 @@ def log_holds(sent: Sequence[Entry], read: Sequence[Entry]) -> bool:
 async def measure_load(url: str, key: str, plan: Plan) -> Tally:
     """Hold the plan's calls against the gateway at the URL, on the fleet's key, and count."""
     if plan.calls < 1:
-        raise ValidationError(NOT_ENOUGH.format(calls=plan.calls))
+        raise ValidationError(f"--calls {plan.calls}: at least one")
     headers = {"Authorization": f"Bearer {key}"}
     # Built once: every client would otherwise load the machine's certificates for itself.
     trusted = httpx.create_ssl_context()

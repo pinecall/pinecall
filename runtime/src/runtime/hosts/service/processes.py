@@ -29,7 +29,6 @@ STARTED_FIELD = 19
 # runner's settings hold the vault's key, the database's address and its own key.
 LENT = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "SSL_CERT_FILE")
 INSTALL_TIMED_OUT = f"the install did not end within {INSTALL_WITHIN_S}s"
-NOT_LAID_DOWN = "the release could not be laid down on this machine: {why}"
 # The shell's own word for a command it could not run.
 NOT_STARTED = 127
 # A process of a runner that died is no child of this one: whether it left is asked this often.
@@ -101,7 +100,7 @@ class Processes:
         try:
             await asyncio.to_thread(_lay_down, launch.source, folder)
         except (OSError, tarfile.TarError) as failed:
-            raise UpstreamError(NOT_LAID_DOWN.format(why=failed)) from failed
+            raise UpstreamError(f"the release could not be laid down on this machine: {failed}") from failed
         started = time.time() + INSTALL_WITHIN_S
         host = _Host(launch.app, launch.env, launch.release, folder, started, exits=tuple(launch.exits))
         self.hosts[launch.host] = host

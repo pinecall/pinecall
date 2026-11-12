@@ -40,8 +40,6 @@ CLAIM = "dictates"
 DONE = "done"
 END = "end"
 
-NOT_OURS = "the token is no dictation token of this gateway's, or it expired: ask for a new one"
-SIGNS_NO_TOKENS = "this gateway signs no tokens: PINECALL_TOKEN_KEY is unset"
 
 type Said = Callable[[str, str], Awaitable[None]]
 
@@ -89,7 +87,7 @@ async def open_with(
     """What a token asks for and the ears that will hear it; Unauthorized for any other token, or one expired."""
     dictation = read_token(own_key, token)
     if dictation is None:
-        raise Unauthorized(NOT_OURS)
+        raise Unauthorized("the token is no dictation token of this gateway's, or it expired: ask for a new one")
     async with sessions.begin() as session:
         catalog = await get_catalog(session)
         keys = await keys_of(session, vault, dictation.scope)
@@ -162,7 +160,7 @@ async def _frames_of(heard: AsyncIterator[bytes | None]) -> AsyncIterator[rtc.Au
 # another of the gateway's tokens, nor another as one, and the key is always 32 bytes.
 def _signing_key(own_key: str | None) -> bytes:
     if own_key is None:
-        raise ServiceUnavailable(SIGNS_NO_TOKENS)
+        raise ServiceUnavailable("this gateway signs no tokens: PINECALL_TOKEN_KEY is unset")
     return hmac.new(own_key.encode(), b"pinecall dictation", hashlib.sha256).digest()
 
 

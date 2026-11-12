@@ -16,11 +16,6 @@ from runtime.telephony.repository import RouteRepository
 from runtime.telephony.service.hand_over import AgentsHeld
 from runtime.wire.worker import RingAtTestLine
 
-NOT_A_SANDBOX_NUMBER = (
-    "{number} is not a number of this box in the sandbox: the test line is one of the box's own numbers, "
-    "routed in the sandbox to the agent that answers a caller it does not know"
-)
-
 
 def _load(value: Mapping[str, Any]) -> str | None:
     number = value.get("number")
@@ -49,7 +44,10 @@ async def put_test_line(session: AsyncSession, number: str | None) -> str | None
     with box_wide():
         route = await RouteRepository(session).find_at(Channel.phone, wanted)
     if route is None or route.env is not Env.sandbox:
-        raise ValidationError(NOT_A_SANDBOX_NUMBER.format(number=wanted))
+        raise ValidationError(
+            f"{wanted} is not a number of this box in the sandbox: the test line is one of the box's own "
+            "numbers, routed in the sandbox to the agent that answers a caller it does not know"
+        )
     await platform.put_setting(session, TEST_LINE, wanted)
     return wanted
 

@@ -177,7 +177,7 @@ async def list_owned(
     else:
         carriers = [await accounts.get_carrier(session, vault, scope.org, account)]
     if not carriers:
-        raise NotFound(accounts.NO_CARRIER)
+        raise NotFound("the org has no carrier account: PUT /v1/carrier brings a Twilio account or a SIP peer")
     repository = RouteRepository(session)
     imported = {numbered.route.number for numbered in await repository.list_of_org(scope.org, scope.env)}
     with box_wide():

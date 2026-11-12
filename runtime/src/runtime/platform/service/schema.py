@@ -29,16 +29,6 @@ ALEMBIC_TABLE = "alembic_version"
 ROLE_WAITED_S = 120.0
 ROLE_ASKED_EVERY_S = 2.0
 
-EDITED = (
-    "migration {name} changed after it was applied: this database ran a different file "
-    "(applied sha256 {was}, on disk {now}). The history is never edited: restore the file"
-)
-MISSING = "migration {name} is recorded as applied and is not in this distribution: it is older than the database"
-NO_ROLE = (
-    "role {role} does not exist after {waited:g} s: its secret (charts/postgres, the managed role) "
-    "is not synced yet, or the role is named wrong; nothing was granted"
-)
-
 
 @dataclass(frozen=True, slots=True)
 class History:
@@ -60,10 +50,16 @@ async def apply_history(engine: AsyncEngine) -> History:
         files = {path.name: path for path in sorted(HISTORY.glob("*.sql"))}
         for name, was in ran.items():
             if name not in files:
-                raise ConfigurationError(MISSING.format(name=name))
+                raise ConfigurationError(
+                    f"migration {name} is recorded as applied and is not in this distribution: it is older "
+                    "than the database"
+                )
             now = _sha256(await asyncio.to_thread(files[name].read_bytes))
             if was is not None and was != now:
-                raise ConfigurationError(EDITED.format(name=name, was=was, now=now))
+                raise ConfigurationError(
+                    f"migration {name} changed after it was applied: this database ran a different file "
+                    f"(applied sha256 {was}, on disk {now}). The history is never edited: restore the file"
+                )
         applied: list[str] = []
         for name, path in files.items():
             if name in ran:
@@ -98,7 +94,10 @@ async def grant_rows(engine: AsyncEngine, role: str) -> None:
             return True
 
     if await until(grant, every_s=ROLE_ASKED_EVERY_S, within_s=ROLE_WAITED_S) is None:
-        raise ConfigurationError(NO_ROLE.format(role=role, waited=ROLE_WAITED_S))
+        raise ConfigurationError(
+            f"role {role} does not exist after {ROLE_WAITED_S:g} s: its secret (charts/postgres, the managed "
+            "role) is not synced yet, or the role is named wrong; nothing was granted"
+        )
 
 
 def _sha256(content: bytes) -> str:

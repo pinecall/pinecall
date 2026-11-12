@@ -28,7 +28,6 @@ OK = 0
 FOUND_WRONG = 1
 MISCONFIGURED = 2
 
-NO_OPS_KEY = "PINECALL_OPS_KEY is not set: the operator's endpoints are closed, and this verb speaks nothing else"
 # A verb that reads the database alone holds a pool this small.
 A_VERBS_POOL = 3
 
@@ -77,7 +76,9 @@ class Context:
     async def ops(self) -> OpsClient:
         """The gateway's operator endpoints, opened with PINECALL_OPS_KEY; refused without one."""
         if self.settings.ops_key is None:
-            raise ConfigurationError(NO_OPS_KEY)
+            raise ConfigurationError(
+                "PINECALL_OPS_KEY is not set: the operator's endpoints are closed, and this verb speaks nothing else"
+            )
         client = OpsClient(self.settings.gateway_url, self.settings.ops_key.get_secret_value())
         return await self.stack.enter_async_context(client)
 

@@ -14,8 +14,6 @@ from runtime.telephony.service import fence, outbound
 fence_app = typer.Typer(help="the networks 5060 opens to", no_args_is_help=True)
 sip_app = typer.Typer(help="where the carriers send each env's calls", no_args_is_help=True)
 
-NOT_AN_ENV_NAME = "--from takes ENV=NAME, like production=box.example.com; {given!r} is not"
-
 
 # The orgs' addresses: written to the operator's own repository (ops/terraform/<env>.fence.tfvars.json),
 # which the plan requires, never to this one.
@@ -46,7 +44,7 @@ async def sip_repoint(
     for given in former or []:
         env, equals, name = given.partition("=")
         if not equals or env not in Env.__members__.values() or not name:
-            raise ValidationError(NOT_AN_ENV_NAME.format(given=given))
+            raise ValidationError(f"--from takes ENV=NAME, like production=box.example.com; {given!r} is not")
         before.setdefault(Env(env), []).append(name)
     handles = await context.handles()
     names = builders.read_sip_names(context.settings)

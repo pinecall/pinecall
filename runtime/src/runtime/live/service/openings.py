@@ -36,19 +36,8 @@ from runtime.wire.parts import Route, ToolResult
 
 logger = logging.getLogger(__name__)
 
-NOT_OPEN = "this gateway is not writing call {call!r}: open it with POST /v1/calls first"
-SEALED = "call {call!r} is over: nothing more can be written to it"
-NO_SUCH_CALL = "no call {call} in this key's org and env"
-NOT_ITS_ACCOUNT = "{number} lives in another Twilio account than the one this call came from: refused"
-NOT_APPROVED = (
-    "{number} was hooked by the org and waits for the box's operator to approve it: no call to it opens until then"
-)
 SPENT = "token_spent"
 ALREADY_SPENT = "call {call} was opened by its token already: a token opens one call, once"
-ELSEWHERE = "call %s was opened in org %s, %s, agent %s: its token was minted for another"
-NOT_CARRIED = "call {call} carries on {earlier}, which is not its org's and agent's call"
-NOT_THIS_ENV = "this key opens {env}, and that call's route answers in {asked}"
-NOT_ITS_CONTEXT = "the context is call {named!r}, not {call!r}"
 
 # What spending a call's token answers: spent now, never minted (a phone, a dial, a run), minted for
 # another org, env or agent, or spent before.
@@ -231,13 +220,13 @@ async def get_served(
         return served
     kept = await calls.find_head(session, call)
     if kept is None or kept.scope is None:
-        raise NotFound(NOT_OPEN.format(call=call))
+        raise NotFound(f"this gateway is not writing call {call!r}: open it with POST /v1/calls first")
     _check_yours(actor, kept.scope, kept.opened_by if openers else None, call)
     if kept.sealed:
-        raise Conflict(SEALED.format(call=call))
+        raise Conflict(f"call {call!r} is over: nothing more can be written to it")
     served = await serve_again(session, live, call, kept, adopt=False)
     if served is None:
-        raise NotFound(NOT_OPEN.format(call=call))
+        raise NotFound(f"this gateway is not writing call {call!r}: open it with POST /v1/calls first")
     return served
 
 
@@ -286,17 +275,17 @@ async def open_call(session: AsyncSession, live: LiveParts, actor: Actor, arriva
 async def reopen_call(session: AsyncSession, live: LiveParts, actor: Actor, call: str, arrival: Arrival) -> None:
     """Serve again a call the gateway forgot."""
     if call != arrival.context.call:
-        raise ValidationError(NOT_ITS_CONTEXT.format(named=arrival.context.call, call=call))
+        raise ValidationError(f"the context is call {arrival.context.call!r}, not {call!r}")
     if live.calls.find(call) is not None:
         return
     scope = scope_of_call(actor, arrival.context)
     kept = await calls.find_head(session, call)
     if kept is None or kept.scope is None:
-        raise NotFound(NOT_OPEN.format(call=call))
+        raise NotFound(f"this gateway is not writing call {call!r}: open it with POST /v1/calls first")
     if kept.scope != scope:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     if kept.sealed:
-        raise Conflict(SEALED.format(call=call))
+        raise Conflict(f"call {call!r} is over: nothing more can be written to it")
     await serve_again(session, live, call, kept, adopt=True, known=arrival.context, test_values=arrival.test_values)
     registration = live.holders.find_serving(scope, arrival.agent)
     if registration is not None:
@@ -332,12 +321,12 @@ def scope_of_call(actor: Actor, context: CallContext) -> Scope:
     if actor.is_fleet:
         # A fleet serves one env: a unit holding the other env's key is refused here too.
         if named.env is not actor.env:
-            raise Forbidden(NOT_THIS_ENV.format(env=actor.env, asked=named.env))
+            raise Forbidden(f"this key opens {actor.env}, and that call's route answers in {named.env}")
         return named
     if context.route.org != actor.org:
-        raise NotFound(NO_SUCH_CALL.format(call=context.call))
+        raise NotFound(f"no call {context.call} in this key's org and env")
     if context.env is not actor.env:
-        raise Forbidden(NOT_THIS_ENV.format(env=actor.env, asked=context.env))
+        raise Forbidden(f"this key opens {actor.env}, and that call's route answers in {context.env}")
     return actor.scope
 
 
@@ -356,9 +345,9 @@ async def delete_tokens(session: AsyncSession, org: str) -> int:
 # said who is served as before.
 def _check_yours(actor: Actor, scope: Scope, opened_by: Opener | None, call: str) -> None:
     if scope.env != actor.env or (not actor.is_fleet and scope.org != actor.org):
-        raise NotFound(NOT_OPEN.format(call=call))
+        raise NotFound(f"this gateway is not writing call {call!r}: open it with POST /v1/calls first")
     if opened_by is Opener.gateway or (opened_by is Opener.fleet and not actor.is_fleet):
-        raise NotFound(NOT_OPEN.format(call=call))
+        raise NotFound(f"this gateway is not writing call {call!r}: open it with POST /v1/calls first")
 
 
 # The carrier, the fence and the env rule worked, whatever is refused here. A number the org
@@ -371,12 +360,15 @@ async def _check_arrival(session: AsyncSession, vault: Vault, scope: Scope, numb
     except NotFound:
         route = None
     if route is not None and not route.approved:
-        raise Forbidden(NOT_APPROVED.format(number=number))
+        raise Forbidden(
+            f"{number} was hooked by the org and waits for the box's operator to approve it: no call to it "
+            "opens until then"
+        )
     if came_from is None:
         return
     expected = await telephony.twilio_account_of(session, vault, scope.org, number)
     if expected is not None and expected != came_from:
-        raise Forbidden(NOT_ITS_ACCOUNT.format(number=number))
+        raise Forbidden(f"{number} lives in another Twilio account than the one this call came from: refused")
 
 
 # A call a dial placed already has its head: the worker opens it in the scope the head keeps, or
@@ -384,7 +376,7 @@ async def _check_arrival(session: AsyncSession, vault: Vault, scope: Scope, numb
 async def _check_unclaimed_or_in(session: AsyncSession, call: str, scope: Scope) -> None:
     kept = await calls.find_head(session, call)
     if kept is not None and kept.scope is not None and kept.scope != scope:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
 
 
 # A web call opens by the token its room was minted with: once, and only in the org, the env
@@ -395,8 +387,14 @@ async def _spend_token(session: AsyncSession, live: LiveParts, context: CallCont
     if spending in {"spent", "never_minted"}:
         return
     if spending == "minted_elsewhere":
-        logger.warning(ELSEWHERE, context.call, scope.org, scope.env, agent)
-        raise NotFound(NO_SUCH_CALL.format(call=context.call))
+        logger.warning(
+            "call %s was opened in org %s, %s, agent %s: its token was minted for another",
+            context.call,
+            scope.org,
+            scope.env,
+            agent,
+        )
+        raise NotFound(f"no call {context.call} in this key's org and env")
     sentence = ALREADY_SPENT.format(call=context.call)
     refused = ErrorEvent(code=SPENT, message=sentence, recoverable=True)
     await live.logs.agent(agent).append("error", refused.dump())
@@ -441,5 +439,5 @@ async def _list_carried(session: AsyncSession, vault: Vault, scope: Scope, arriv
         return []
     kept = await calls.find_head(session, earlier)
     if kept is None or kept.scope != scope or kept.agent != arrival.agent:
-        raise NotFound(NOT_CARRIED.format(call=arrival.context.call, earlier=earlier))
+        raise NotFound(f"call {arrival.context.call} carries on {earlier}, which is not its org's and agent's call")
     return await calls.list_carried(session, vault, earlier)

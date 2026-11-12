@@ -29,10 +29,6 @@ from runtime.wire.parts import Projection
 from runtime.wire.room import RoomScope
 
 NOT_YOURS = "this token reads another call"
-NEVER_OPENED = "no call {call} was opened: the fleet's key reads and acts for a call once it is"
-NO_SUCH_CALL = "no call {call} in this key's org and env"
-STILL_GOING = "call {call} is still going: a case is made of a call that ended"
-PROMPT_TAKES_A_KEY = "a call's prompt is read with a key: a token of the call reads its log, never its prompt"
 
 # What the box says of itself belongs to no org and is sent whole; any other entry whose log
 # nobody claimed yet carries no org, and is left out.
@@ -111,11 +107,11 @@ async def get_readable(session: AsyncSession, reader: Reader, call: str) -> Read
     kept = await HeadRepository(session).head_of_call(call)
     fleet = reader.actor is not None and reader.actor.opens(KeyScope.fleet)
     if fleet and (kept is None or kept.scope is None):
-        raise NotFound(NEVER_OPENED.format(call=call))
+        raise NotFound(f"no call {call} was opened: the fleet's key reads and acts for a call once it is")
     if kept is None:
         return Readable(reader, call)
     if not _sees(reader, kept.scope):
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     if reader.actor is not None:
         accounts.check_agent(reader.actor, kept.agent)
     return Readable(reader, call, kept, await _declaration_of(session, kept, call))
@@ -226,7 +222,7 @@ async def state_of(session: AsyncSession, logs: Logs, readable: Readable) -> Cal
     """The call's folded state as this reader may see it, and the seq a stream resumes from."""
     state = await logs.reading(readable.call).snapshot(session)
     if state.seq == 0:
-        raise NotFound(NO_SUCH_CALL.format(call=readable.call))
+        raise NotFound(f"no call {readable.call} in this key's org and env")
     return CallState(
         state=project_state(state, readable.reader.audience, readable.declaration),
         last_seq=state.seq,
@@ -258,11 +254,11 @@ class CallPrompt:
 async def prompt_of(session: AsyncSession, readable: Readable) -> CallPrompt:
     """Every block of prompt the call was told, in order, each with its words when kept."""
     if readable.reader.visit is not None:
-        raise Forbidden(PROMPT_TAKES_A_KEY)
+        raise Forbidden("a call's prompt is read with a key: a token of the call reads its log, never its prompt")
     head = readable.head
     entries = await EntryRepository(session).whole_of(readable.call)
     if head is None or head.scope is None or not entries:
-        raise NotFound(NO_SUCH_CALL.format(call=readable.call))
+        raise NotFound(f"no call {readable.call} in this key's org and env")
     changes = [
         (entry.seq, PromptChanged.model_validate(entry.data)) for entry in entries if entry.type == "prompt.changed"
     ]
@@ -295,9 +291,9 @@ async def read_finished(session: AsyncSession, actor: Actor, call: str) -> Finis
     entries = await EntryRepository(session).whole_of(call)
     head = readable.head
     if head is None or head.scope is None or not entries:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     if not any(entry.type == "call.ended" for entry in entries):
-        raise Conflict(STILL_GOING.format(call=call))
+        raise Conflict(f"call {call} is still going: a case is made of a call that ended")
     return FinishedCall(entries=entries, agent=head.agent, env=head.scope.env, version=head.versions.settings)
 
 
@@ -319,7 +315,7 @@ async def read_for_key(session: AsyncSession, actor: Actor, call: str) -> ReadCa
     entries = await EntryRepository(session).whole_of(call)
     head = readable.head
     if head is None or head.scope is None or not entries:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     return ReadCall(entries, head.agent, readable.declaration, head.scope.env)
 
 

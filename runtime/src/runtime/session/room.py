@@ -60,7 +60,6 @@ KIND_OF_SCOPE: dict[str, ParticipantKind] = {"supervise": "supervisor", "observe
 # 20 s after its last person left, LiveKit's departure timeout. A supervisor watching keeps the
 # room up, so the call is ended here: the caller gone as long as LiveKit waits for a last person.
 CALLER_RETURNS_S = 20.0
-CALLER_GONE = "call %s: the caller left (%s) and did not come back in %.0f s: the call ends"
 # The longest a transfer asked outside a tool waits for the agent to finish its sentence.
 THE_ANNOUNCEMENT_S = 12.0
 # A code is four digits keyed within eight seconds (docs/protocol/codes.md); answers to a menu
@@ -341,7 +340,12 @@ class CallRoom:
         wait_s = self.waits.visitor_returns_s if is_a_visitor else self.waits.caller_returns_s
         await asyncio.sleep(wait_s)
         self.returning = None
-        logger.info(CALLER_GONE, self.room.name, reason, wait_s)
+        logger.info(
+            "call %s: the caller left (%s) and did not come back in %.0f s: the call ends",
+            self.room.name,
+            reason,
+            wait_s,
+        )
         hang_up()
 
     def _on_track_published(self, publication: rtc.TrackPublication, participant: rtc.Participant) -> None:

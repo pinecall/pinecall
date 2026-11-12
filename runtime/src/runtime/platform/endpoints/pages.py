@@ -13,7 +13,6 @@ router = APIRouter(include_in_schema=False)
 BUILT = Path(__file__).resolve().parents[2] / "public"
 THE_PAGE = "index.html"
 API_PREFIXES = ("v1/", ".well-known/")
-NOT_BUILT = "the console is not built into this gateway: `make deploy` builds it in"
 NO_SUCH_FILE = "Not Found"
 WIDGET_HEADERS = {"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"}
 
@@ -49,7 +48,7 @@ async def console_page(path: str) -> Response:
         raise NotFound(NO_SUCH_FILE)
     root = (BUILT / "console").resolve()
     if not (root / THE_PAGE).is_file():
-        raise NotFound(NOT_BUILT)
+        raise NotFound("the console is not built into this gateway: `make deploy` builds it in")
     found = (root / path).resolve()
     if path and root in found.parents and found.is_file() and found.name != THE_PAGE:
         return FileResponse(found, headers=PAGE_HEADERS)

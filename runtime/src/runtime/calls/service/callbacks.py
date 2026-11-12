@@ -10,7 +10,6 @@ from runtime.calls.context import log_name
 from runtime.calls.log.logs import Logs
 from runtime.calls.repository.entries import A_PAGE, EntryRepository
 from runtime.calls.repository.heads import HeadRepository
-from runtime.calls.service.reading import NEVER_OPENED, NO_SUCH_CALL
 from runtime.enums import Channel, KeyScope
 from runtime.exceptions import NotFound, ValidationError
 from runtime.kit.text import JsonObject
@@ -18,8 +17,6 @@ from runtime.scoping import box_wide
 from runtime.wire.events import CallbackRequested
 
 CALLBACK = "callback.requested"
-NOT_THIS_ORGS = "agent {agent} is not this org's"
-NAME_THE_CALL = "the fleet's key asks a call back for the call it serves: name the call"
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +46,7 @@ async def request_callback(session: AsyncSession, logs: Logs, actor: Actor, aske
         owner = await HeadRepository(session).owner_of(log_name(None, asked.agent))
     wanted = await _org_of_the_call(session, actor, asked.call) if actor.opens(KeyScope.fleet) else actor.org
     if owner is None or owner != wanted:
-        raise NotFound(NOT_THIS_ORGS.format(agent=asked.agent))
+        raise NotFound(f"agent {asked.agent} is not this org's")
     said = CallbackRequested(channel=asked.channel, number=asked.number, via="overflow", call=asked.call, contact=None)
     await logs.agent(asked.agent).append(CALLBACK, said.dump())
 
@@ -77,10 +74,10 @@ async def list_callbacks(session: AsyncSession, actor: Actor, *, after: int, age
 
 async def _org_of_the_call(session: AsyncSession, actor: Actor, call: str | None) -> str:
     if call is None:
-        raise ValidationError(NAME_THE_CALL)
+        raise ValidationError("the fleet's key asks a call back for the call it serves: name the call")
     kept = await HeadRepository(session).head_of_call(call)
     if kept is None or kept.scope is None:
-        raise NotFound(NEVER_OPENED.format(call=call))
+        raise NotFound(f"no call {call} was opened: the fleet's key reads and acts for a call once it is")
     if kept.scope.env is not actor.env:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     return kept.scope.org

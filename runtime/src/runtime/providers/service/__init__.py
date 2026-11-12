@@ -6,7 +6,6 @@ from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
 from runtime.providers.service.pipeline import build_pipeline, refuse_what_cannot_run, stage_on_its_key, thinking_of
 from runtime.providers.service.plugins import (
-    NOT_REALTIME,
     hears_and_speaks,
     is_installed,
     list_vendors,
@@ -33,7 +32,6 @@ from runtime.providers.service.trials import try_realtime, try_stage
 from runtime.providers.service.voices import list_by_vendor, list_in_catalog
 
 __all__ = [
-    "NOT_REALTIME",
     "Answerer",
     "Keyring",
     "Line",

@@ -30,13 +30,6 @@ from runtime.retention.repository.erasures import ErasureRepository
 from runtime.signin import service as signin
 from runtime.telephony import service as telephony
 
-NO_SUCH_CALL = "no call {call} in this key's org and env"
-STILL_LIVE = "call {call} is still live: erase it once it has ended"
-STILL_ON_A_CALL = "{contact} is on call {call} right now: erase them once it has ended"
-STILL_ON_A_CALL_AS = "{agent} is on call {call} right now: erase it once the call has ended"
-STILL_IN_USE = "org {slug} still has {what}: revoke its keys and remove its routes first"
-NOT_HELD = "agent {slug} is held right now: stop it, move it, and start it again"
-
 
 class Holders(Protocol):
     """The apps holding each agent now, as the live side keeps them."""
@@ -76,10 +69,10 @@ async def erase_own_call(session: AsyncSession, erasing: Erasing, actor: Actor, 
     """Erase one call the key may erase: its log, facts, tokens, the memories it taught and its recording."""
     kept = await calls.find_head(session, call)
     if kept is None or kept.scope is None or not _sees_to_erase(actor.scope, kept.scope):
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} in this key's org and env")
     accounts.check_agent(actor, kept.agent)
     if not kept.sealed:
-        raise Conflict(STILL_LIVE.format(call=call))
+        raise Conflict(f"call {call} is still live: erase it once it has ended")
     return await erase_call(session, erasing, kept.scope, call, by=actor.asked_by)
 
 
@@ -102,7 +95,7 @@ async def erase_contact(session: AsyncSession, erasing: Erasing, scope: Scope, c
         owned = await calls.list_logs_of_contact(session, scope.org, scope.env, contact)
         live_now = next((log.call for log in owned if not log.sealed), None)
         if live_now is not None:
-            raise Conflict(STILL_ON_A_CALL.format(contact=contact, call=live_now))
+            raise Conflict(f"{contact} is on call {live_now} right now: erase them once it has ended")
         entries, taught = await _erase_logs(session, owned)
         kept = await knowledge.forget(session, Scope(scope.org, scope.env), contact)
         await ErasureRepository(session).delete_of_contact(scope.org, scope.env, contact)
@@ -123,12 +116,12 @@ async def erase_agent(
     """Erase one agent of the org, both envs: its logs and recordings, and every row it owns."""
     org = (await accounts.get_org(session, named)).id
     if holders.is_held(org, agent):
-        raise Conflict(NOT_HELD.format(slug=agent))
+        raise Conflict(f"agent {agent} is held right now: stop it, move it, and start it again")
     async with without_timeouts(session):
         owned = await calls.list_logs_of_agent(session, org, agent)
         live_now = next((log.call for log in owned if log.call is not None and not log.sealed), None)
         if live_now is not None:
-            raise Conflict(STILL_ON_A_CALL_AS.format(agent=agent, call=live_now))
+            raise Conflict(f"{agent} is on call {live_now} right now: erase it once the call has ended")
         entries, memories = await _erase_logs(session, owned)
         await telephony.release_numbers_of(session, servers, org, agent=agent)
         await evals.delete_runs(session, org, agent)
@@ -143,10 +136,10 @@ async def erase_unused_org(session: AsyncSession, erasing: Erasing, named: str, 
     """Erase the org the slug or id names, whole; Conflict while a key of it lives or a route names it."""
     org = await accounts.get_org(session, named)
     if any(key.revoked_at is None for key in await accounts.list_keys(session, org.id)):
-        raise Conflict(STILL_IN_USE.format(slug=org.slug, what="live keys"))
+        raise Conflict(f"org {org.slug} still has live keys: revoke its keys and remove its routes first")
     for env in Env:
         if await telephony.list_routes(session, org.id, env):
-            raise Conflict(STILL_IN_USE.format(slug=org.slug, what="routes"))
+            raise Conflict(f"org {org.slug} still has routes: revoke its keys and remove its routes first")
     return await erase_org(session, erasing, org.id, by=by)
 
 

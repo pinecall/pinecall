@@ -14,12 +14,6 @@ from runtime.wire.parts import EndOfTurn
 
 # Model ids carry slashes of their own (`openai/gpt-5` on LiveKit Inference): the first ends the vendor.
 SEPARATOR = "/"
-# A vendor has no model of its own to think with: ears and a voice have a default, a model is named.
-NAME_THE_MODEL = "{vendor} alone names no model: name it, `--llm {vendor}/<model>`"
-REALTIME_NAMES = (
-    "a realtime model is named as vendor/model, or a vendor alone for its own: xai/grok-voice-3.0, "
-    "as `pinecall providers` lists them; its options go with it"
-)
 
 
 # One row per setting the org may set, by the name its class declares it under (`setting_names.SETTINGS`):
@@ -81,10 +75,12 @@ def name_model(text: str | None, stage: Stage, *, in_use: str) -> Model | None:
     vendor, slash, model = word.partition(SEPARATOR)
     if slash:
         return Model(vendor=providers.vendor_doing(vendor.lower(), stage), model=model)
-    if providers.is_installed(word.lower()):
+    named = word.lower()
+    if providers.is_installed(named):
         if stage is Stage.llm:
-            raise ValidationError(NAME_THE_MODEL.format(vendor=word.lower()))
-        return Model(vendor=providers.vendor_doing(word.lower(), stage), model="")
+            # A vendor has no model of its own to think with: ears and a voice have a default, a model is named.
+            raise ValidationError(f"{named} alone names no model: name it, `--llm {named}/<model>`")
+        return Model(vendor=providers.vendor_doing(named, stage), model="")
     return Model(vendor=providers.vendor_doing(in_use, stage), model=word)
 
 
@@ -92,7 +88,10 @@ def check_realtime(named: Model) -> Model:
     """A realtime model on a vendor that has one that hears and speaks itself; refused on any other."""
     vendor = providers.vendor_doing(named.vendor, Stage.llm)
     if not providers.hears_and_speaks(vendor):
-        raise ValidationError(f"{vendor} has no model that hears and speaks itself: {providers.NOT_REALTIME}")
+        raise ValidationError(
+            f"{vendor} has no model that hears and speaks itself: "
+            "`pinecall providers` lists, by vendor, the models that do"
+        )
     return dataclasses.replace(named, vendor=vendor)
 
 
@@ -174,7 +173,10 @@ def _ears(declaration: Declaration, settings: AgentSettings, defaults: Mapping[S
 def _talking(settings: AgentSettings) -> Model | None:
     if settings.realtime is None:
         if settings.realtime_options is not None:
-            raise ValidationError(REALTIME_NAMES)
+            raise ValidationError(
+                "a realtime model is named as vendor/model, or a vendor alone for its own: xai/grok-voice-3.0, "
+                "as `pinecall providers` lists them; its options go with it"
+            )
         return None
     vendor, _, model = settings.realtime.strip().partition(SEPARATOR)
     return check_realtime(Model(vendor=vendor.lower(), model=model, options=dict(settings.realtime_options or {})))

@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 SERVICE = "pinecall-worker"
 FLEET_ATTRIBUTE = "pinecall.fleet"
-NOT_A_HEADER = "an OTLP header is name=value, comma separated; {said!r} is not"
 
 # A call id of the gateway's own making: its 32 hex digits are the trace id as they stand.
 A_HEX_CALL = re.compile(r"^call_([0-9a-f]{32})$")
@@ -155,7 +154,7 @@ def parse_otlp_headers(text: str | None) -> dict[str, str]:
             continue
         name, equals, value = pair.partition("=")
         if not equals or not name.strip():
-            raise ConfigurationError(NOT_A_HEADER.format(said=pair))
+            raise ConfigurationError(f"an OTLP header is name=value, comma separated; {pair!r} is not")
         headers[name.strip()] = value.strip()
     return headers
 

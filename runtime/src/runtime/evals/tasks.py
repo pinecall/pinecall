@@ -20,10 +20,6 @@ from runtime.wire.signal import SimulatingShare
 LEASED_S = 60.0
 RENEWED_EVERY_S = LEASED_S / 3
 
-ALREADY_RUNNING = (
-    "eval run {id} is running on agent {agent}: a run drives the app that also answers that "
-    "agent's real calls, so there is one per agent at a time"
-)
 
 # The channel each gateway says its simulated calls on, and how often; a change is said at once.
 SIMULATING_CHANNEL = "simulating"
@@ -31,8 +27,6 @@ SIMULATING_EVERY_S = 1.0
 TOO_MANY_AT_ONCE = "the org has {playing} simulated calls on the line in {env}, the most at once: wait for one to end"
 # How long a caller is told to wait before asking again: about a turn of a call.
 ASK_AGAIN_IN_S = 15
-# A call id names a room, a log and a recording: a simulated caller is put on a new one alone.
-NOT_A_NEW_CALL = "call {call} exists already: a simulated caller is placed on a call id nobody opened"
 
 
 class TooManyAtOnce(TooManyRequests):
@@ -59,7 +53,10 @@ class Runner:
         if not await self._lease(run, agent):
             async with self.sessions.begin() as session:
                 holding = await RunLeaseRepository(session).holder_of(agent)
-            raise Conflict(ALREADY_RUNNING.format(id=holding or "another run", agent=agent))
+            raise Conflict(
+                f"eval run {holding or 'another run'} is running on agent {agent}: a run drives the app that "
+                "also answers that agent's real calls, so there is one per agent at a time"
+            )
         self._holding[run] = agent
 
     async def let_go(self, run: str, agent: str) -> None:
@@ -139,7 +136,8 @@ class Simulations:
     def take_place(self, call: str, scope: Scope, at_most: int) -> None:
         """Give the call its place on the line now, or refuse it: the org has its `at_most` there already."""
         if call in self._on_the_line:
-            raise Conflict(NOT_A_NEW_CALL.format(call=call))
+            # A call id names a room, a log and a recording: a simulated caller is put on a new one alone.
+            raise Conflict(f"call {call} exists already: a simulated caller is placed on a call id nobody opened")
         playing = self.count(scope.org, scope.env)
         if playing >= at_most:
             raise TooManyAtOnce(scope.env, playing)

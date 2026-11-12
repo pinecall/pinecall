@@ -30,8 +30,6 @@ from runtime.scoping import box_wide
 from runtime.wire.base import Entry
 from runtime.wire.state import State, Turn
 
-NO_CALL_IN_ORG = "no call {call} in this org"
-
 
 @dataclass(frozen=True, slots=True)
 class CallPage:
@@ -250,7 +248,7 @@ async def get_call_of_org(session: AsyncSession, org: str, call: str) -> OrgsCal
     """The org's call by its id, as its head says it; another org's, or nobody's, is the same refusal."""
     head = await HeadRepository(session).head_of_call(call)
     if head is None or head.scope is None or head.scope.org != org:
-        raise NotFound(NO_CALL_IN_ORG.format(call=call))
+        raise NotFound(f"no call {call} in this org")
     return OrgsCall(call, head.scope, head.agent, head.versions, head.started_at)
 
 

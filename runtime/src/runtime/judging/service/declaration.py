@@ -6,7 +6,7 @@ from runtime.actor import THE_ORGS_OWN
 from runtime.agents.declaration import Declaration
 from runtime.exceptions import Conflict
 from runtime.judging.repository.judges import JudgeRepository
-from runtime.judging.service.judges import TAKEN, judges_of_class
+from runtime.judging.service.judges import judges_of_class
 from runtime.judging.service.personas import check_persona_keys, check_persona_models, personas_of_class
 from runtime.providers import service as providers
 from runtime.providers.catalog import Catalog
@@ -32,7 +32,7 @@ async def check_judges_of_class(session: AsyncSession, org: str, agent: str, cla
     repository = JudgeRepository(session)
     for spec in judges:
         if await repository.find_clash(org, agent, spec.name) == THE_ORGS_OWN:
-            raise Conflict(TAKEN.format(name=spec.name, whose="the org's"))
+            raise Conflict(f"{spec.name} is the org's judge already: one name asks one question of a call")
 
 
 def check_personas_of_class(catalog: Catalog, keyring: providers.Keyring, class_personas: PersonasDeclared) -> None:

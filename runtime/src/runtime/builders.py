@@ -54,9 +54,6 @@ from runtime.telephony.service.carrier import SipNames
 
 logger = logging.getLogger(__name__)
 
-NO_BOX_MAIL = "PINECALL_SMTP_URL does not read (%s): the box sends no email of its own"
-NO_SIGNING = "PINECALL_TOKEN_KEY: the gateway signs its log and code tokens with it"
-
 
 # Until the live side landed these were private to `lifespan.py`, which then passed the three hundred
 # lines an entrypoint keeps to: the lifespan is the state and the order it is built in, and each
@@ -159,7 +156,7 @@ async def build_live_side(
 def build_signer(settings: Settings) -> Signer:
     """What signs and reads the tokens of a call, on the box's LiveKit pair and its own key."""
     if settings.token_key is None:
-        raise ConfigurationError(NO_SIGNING)
+        raise ConfigurationError("PINECALL_TOKEN_KEY: the gateway signs its log and code tokens with it")
     api_key, secret = key_pair(settings)
     return Signer(api_key, secret, settings.token_key.get_secret_value())
 
@@ -250,5 +247,5 @@ def read_box_mailbox(settings: Settings) -> Mailbox | None:
     try:
         return read_environment_mailbox(url, settings.mail_from)
     except PinecallError as unreadable:
-        logger.warning(NO_BOX_MAIL, unreadable)
+        logger.warning("PINECALL_SMTP_URL does not read (%s): the box sends no email of its own", unreadable)
         return None

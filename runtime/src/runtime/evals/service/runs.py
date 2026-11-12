@@ -19,7 +19,6 @@ A_RUN_MAY_TAKE_S = 15 * 60
 # The column of the agent's own model, when the run named none.
 THE_AGENTS_OWN = "declared"
 TOOK_TOO_LONG = "the run passed its {minutes} minute deadline and was stopped"
-NO_SUCH_RUN = "no eval run {id} in this key's org and env"
 
 
 def new_run(agent: str) -> Run:
@@ -78,7 +77,7 @@ async def get_run(session: AsyncSession, scope: Scope, run: str) -> Run:
     """One run of the org in the env; another org's, or one nobody ran, is the same 404."""
     found = await RunRepository(session).find(scope.org, scope.env, run)
     if found is None:
-        raise NotFound(NO_SUCH_RUN.format(id=run))
+        raise NotFound(f"no eval run {run} in this key's org and env")
     return Run.model_validate(found.document)
 
 

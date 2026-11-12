@@ -26,17 +26,6 @@ from runtime.telephony.service.fence import Fenced
 from runtime.telephony.service.networks import NOTHING_ASKED, Standing
 from runtime.telephony.service.sfu import EnvRule
 
-# Whose it is stays theirs: the sentence names no org and no trunk.
-HELD_ELSEWHERE = (
-    "{number} is held by another org on this box, so nothing was written: if it is yours, ask the box's operator"
-)
-NOT_A_NUMBERS_CHANNEL = "a number is imported to answer phone or whatsapp, not {channel}"
-VIA_IS_FOR_A_HOOKED_PHONE = (
-    "a number comes via a carrier of the box's catalog when the org hooks it, on the phone, with no "
-    "networks of its own: "
-    "that carrier's are its fence"
-)
-
 
 @dataclass(frozen=True, slots=True)
 class NumberImport:
@@ -204,7 +193,7 @@ async def survey_import(
     """Everything importing a number needs, read before anything is written."""
     number = parse_e164(wanted.number)
     if wanted.channel not in {Channel.phone, Channel.whatsapp}:
-        raise ValidationError(NOT_A_NUMBERS_CHANNEL.format(channel=wanted.channel))
+        raise ValidationError(f"a number is imported to answer phone or whatsapp, not {wanted.channel}")
     org, env = wanted.scope.org, wanted.scope.env
     # A box with no name cannot be pointed at.
     names.get_domain()
@@ -212,7 +201,11 @@ async def survey_import(
     repository = RouteRepository(session)
     with box_wide():
         if await repository.is_held_elsewhere(org, number):
-            raise Conflict(HELD_ELSEWHERE.format(number=number))
+            # Whose it is stays theirs: the sentence names no org and no trunk.
+            raise Conflict(
+                f"{number} is held by another org on this box, so nothing was written: if it is yours, ask the "
+                "box's operator"
+            )
     fleets = await fleet.get_fleets(session)
     await _check_via(session, wanted)
     account = None if wanted.hooked else await accounts.get_carrier(session, vault, org, wanted.account)
@@ -297,7 +290,10 @@ async def _check_via(session: AsyncSession, wanted: NumberImport) -> None:
     if wanted.via is None:
         return
     if not wanted.hooked or wanted.networks or wanted.channel is not Channel.phone:
-        raise ValidationError(VIA_IS_FOR_A_HOOKED_PHONE)
+        raise ValidationError(
+            "a number comes via a carrier of the box's catalog when the org hooks it, on the phone, with no "
+            "networks of its own: that carrier's are its fence"
+        )
     carrier = catalog.get_known(wanted.via)
     if wanted.via not in await catalog.list_admitted(session):
         raise Conflict(f"this box does not admit {carrier.name}: its operator turns it on under Carriers")
@@ -310,7 +306,10 @@ async def _survey_sfu(servers: Servers, route: RouteToWrite, fenced: Fenced) -> 
     server, other = servers[route.env], sfu.other_server(servers, route.env)
     listing = await sfu.list_trunks_admitting(server, number)
     if any(not sfu.belongs_to(trunk.name, org) for trunk in listing):
-        raise Conflict(HELD_ELSEWHERE.format(number=number))
+        raise Conflict(
+            f"{number} is held by another org on this box, so nothing was written: if it is yours, ask the "
+            "box's operator"
+        )
     leaving = tuple(trunk for trunk in listing if fence is None or trunk.name != fence.trunk)
     elsewhere = () if other is None else await _list_elsewhere(other, org, number)
     if fence is None:

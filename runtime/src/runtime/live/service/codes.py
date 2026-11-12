@@ -32,7 +32,6 @@ LIVE_PER_AGENT = 50
 TRIES_PER_CALL = 3
 A_DAY_S = 24 * 60 * 60.0
 MOST_DRAWS = 20
-NO_FREE_CODE = "no free code was drawn for agent {agent} in {draws} draws: ask again"
 
 
 class TooManyCodes(QuotaExceeded):
@@ -153,7 +152,7 @@ class Codes:
             code = _draw()
             if await codes.keep(CallerCode(agent=agent, code=code, env=env, log=log, expires_at=expires_at)):
                 return code
-        raise ServiceUnavailable(NO_FREE_CODE.format(agent=agent, draws=MOST_DRAWS))
+        raise ServiceUnavailable(f"no free code was drawn for agent {agent} in {MOST_DRAWS} draws: ask again")
 
     async def _find(self, agent: str, code: str) -> IssuedCode | None:
         async with self.sessions() as session:

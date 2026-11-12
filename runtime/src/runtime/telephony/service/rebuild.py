@@ -22,8 +22,6 @@ from runtime.telephony.service.sfu import EnvRule
 
 logger = logging.getLogger(__name__)
 
-NOT_WHOLE = "SIP is not rebuilt whole: LiveKit refused {orgs} orgs, or cannot be reached; they are tried again"
-
 
 @dataclass(frozen=True, slots=True)
 class Fencing:
@@ -74,7 +72,10 @@ class Owed:
         """Keep what a pass left undone; NotWhole while an org is owed."""
         self.orgs = list(rebuilt.refused)
         if self.orgs:
-            raise NotWhole(NOT_WHOLE.format(orgs=len(self.orgs)))
+            raise NotWhole(
+                f"SIP is not rebuilt whole: LiveKit refused {len(self.orgs)} orgs, or cannot be reached; they "
+                "are tried again"
+            )
 
 
 async def list_orgs_with_phones(session: AsyncSession) -> list[str]:

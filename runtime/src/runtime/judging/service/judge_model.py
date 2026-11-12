@@ -31,13 +31,6 @@ from runtime.wire.declaration import ModelConfig
 from runtime.wire.metrics import LLMModelUsage
 from runtime.wire.scores import EvalsSpent, SpentOn
 
-NO_JUDGE = "this box's providers configuration names no judge model"
-NO_CEILING = "the providers row gives the judge a ceiling of zero, so no judge model may be asked"
-NO_LENT_CEILING = (
-    "the judge model named runs on a key the platform lends, and the providers row gives the "
-    "platform's judging no ceiling: name a model on a key of the org's own"
-)
-IN_THE_ENV = "{env} judges its calls on this model, and it cannot run there: {refused}"
 # What the agent's log is written when a model is asked outside a call's score.
 EVALS_SPENT = "evals.spent"
 
@@ -112,12 +105,15 @@ async def judge_model_of(
         if not chosen.lent:
             return JudgeModel(chosen, math.inf)
         if catalog.judge is None or catalog.judge.ceiling_usd <= 0:
-            raise Unjudged(NO_LENT_CEILING)
+            raise Unjudged(
+                "the judge model named runs on a key the platform lends, and the providers row gives the "
+                "platform's judging no ceiling: name a model on a key of the org's own"
+            )
         return await _on_a_lent_key(session, scope, chosen, catalog.judge.ceiling_usd)
     if catalog.judge is None:
-        raise Unjudged(NO_JUDGE)
+        raise Unjudged("this box's providers configuration names no judge model")
     if catalog.judge.ceiling_usd <= 0:
-        raise Unjudged(NO_CEILING)
+        raise Unjudged("the providers row gives the judge a ceiling of zero, so no judge model may be asked")
     box = await providers.box_credentials(session, vault)
     row = catalog.judge.llm
     # On the box's key as any stage is: with the row's options and request for that model, not bare.
@@ -222,7 +218,9 @@ async def put_judging(
                     await providers.try_stage(Stage.llm, stage, what=f"the judge model {_name_of(named)}")
                     tried.append(stage)
             except (Forbidden, ServiceUnavailable, Conflict, ValidationError, UpstreamError) as refused:
-                raise type(refused)(IN_THE_ENV.format(env=env.value, refused=refused)) from refused
+                raise type(refused)(
+                    f"{env.value} judges its calls on this model, and it cannot run there: {refused}"
+                ) from refused
     async with sessions.begin() as session:
         await accounts.set_judging(session, org, on=on)
         await accounts.set_judge_model(session, org, model)

@@ -11,11 +11,6 @@ from runtime.platform import service as platform
 from runtime.providers.catalog import Catalog, StageChoice, StageOptions, read_stage_key
 from runtime.providers.service.plugins import STAGES, class_path, models_listed, plugin, vendor_doing
 
-UNSET = (
-    "this box has no providers configuration yet: the operator writes it from the console, or "
-    "`pinecall-runtime providers seed` writes the one it starts from"
-)
-
 
 def _dump(catalog: Catalog) -> dict[str, Any]:
     return catalog.model_dump(mode="json")
@@ -28,7 +23,10 @@ async def get_catalog(session: AsyncSession) -> Catalog:
     """The box's configuration; ServiceUnavailable until it was written."""
     catalog = await platform.find_setting(session, CATALOG)
     if catalog is None:
-        raise ServiceUnavailable(UNSET)
+        raise ServiceUnavailable(
+            "this box has no providers configuration yet: the operator writes it from the console, or "
+            "`pinecall-runtime providers seed` writes the one it starts from"
+        )
     return catalog
 
 

@@ -34,7 +34,6 @@ from runtime.wire.parts import EndedBy, EndReason, EventSource, PlatformTool, St
 SPEECH = "sp_"
 # A callback the agent took during a call; others come from the widget or an overflow.
 BY_THE_AGENT = "agent"
-UNDECLARED = "event {name!r} is not one this agent declared the {source} may send"
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,7 +277,7 @@ class Call:
     async def receive(self, name: str, data: JsonObject, *, source: EventSource, identity: str | None = None) -> None:
         """An event the agent says this sender may send, the cause of the next state.set."""
         if not self.declaration.accepts(name, source):
-            raise ValidationError(UNDECLARED.format(name=name, source=source))
+            raise ValidationError(f"event {name!r} is not one this agent declared the {source} may send")
         received = EventReceived(name=name, data=data, source=source, identity=identity)
         entry = await self.writing.write("event.received", received)
         self.cause = StateCauseEvent(kind="event", name=name, seq=entry.seq)

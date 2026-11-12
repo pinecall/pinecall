@@ -30,7 +30,6 @@ NO_PASSWORD_YET = (
     "  console   {email} has no password yet: `pinecall-runtime orgs password default {email}` sets one; "
     "`pinecall console` opens the console signed in"
 )
-NO_PASSWORD_ON_A_SERVER = "a server's console needs a password: --password-stdin with --yes, or answer when asked"
 
 
 @dataclass(frozen=True)
@@ -54,7 +53,9 @@ def ask_person(
         return Answers(address, person or address.split("@", 1)[0], read_secret_line())
     if not asking:
         if server:
-            raise ValidationError(NO_PASSWORD_ON_A_SERVER)
+            raise ValidationError(
+                "a server's console needs a password: --password-stdin with --yes, or answer when asked"
+            )
         address = email or NOBODY_ASKED
         return Answers(address, person or address.split("@", 1)[0], None)
     address = email or ask.email()

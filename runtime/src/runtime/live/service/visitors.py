@@ -26,17 +26,12 @@ from runtime.wire.events import FleetFull
 from runtime.wire.parts import Projection
 from runtime.wire.room import RoomScope
 
-NO_AGENT_NAMED = "name the agent: `agent` in the body, or agentName as a livekit client sends it"
-NO_AGENT = "no app holds agent {slug}: start one, or deploy it"
 OURS_TO_SET = {
     "room_name": "the room is the call id this endpoint mints",
     "participant_name": "a name is PII, and the log would carry it",
     "participant_metadata": "it carries the contact id: send `contact`",
 }
 OUR_ATTRIBUTES = "pinecall."
-NOT_A_RESUME = "resume is not a resume token of this gateway's, or it expired: start a new conversation"
-ANOTHER_CODES = "this token reads another code"
-TESTS_WITH_PIPELINE = "a key that opens `pipeline` tries another voice or model in a test room"
 
 # A key may seat a visitor for a day at most.
 LONGEST_VISIT_TTL_S = 24 * 60 * 60
@@ -140,10 +135,10 @@ async def mint_room_token(
     named = wanted.agent or (None if earlier is None else earlier.agent)
     agent = named or fleet.client_named_agent(wanted.room_config)
     if agent is None:
-        raise ValidationError(NO_AGENT_NAMED)
+        raise ValidationError("name the agent: `agent` in the body, or agentName as a livekit client sends it")
     accounts.check_agent(actor, agent)
     if live.holders.find_serving(org_scope, agent) is None:
-        raise NotFound(NO_AGENT.format(slug=agent))
+        raise NotFound(f"no app holds agent {agent}: start one, or deploy it")
     the_fleet = await fleet.fleet_of_env(session, org_scope.env)
     await _check_room_for_one_more(session, live, roster, the_fleet, agent)
     await openings.admit(session, live, org_scope, agent)
@@ -204,7 +199,7 @@ async def get_code_status(
 ) -> CodeStatus:
     """How the code stands; with wait, held up to 25 s for a call to key it."""
     if visit is None or visit.code != code or visit.agent is None or visit.env is None:
-        raise Forbidden(ANOTHER_CODES)
+        raise Forbidden("this token reads another code")
     issued = await codes.find_status(visit.env, visit.agent, code)
     if issued is None:
         raise NoSuchCode(code, visit.agent)
@@ -222,7 +217,7 @@ def _check_test_values(wanted: Mint, actor: Actor) -> dict[str, Any]:
     if not wanted.test_values:
         return {}
     if KeyScope.pipeline not in actor.scopes:
-        raise Forbidden(TESTS_WITH_PIPELINE)
+        raise Forbidden("a key that opens `pipeline` tries another voice or model in a test room")
     return agents.check_test_values(wanted.test_values, env=actor.env)
 
 
@@ -265,7 +260,7 @@ async def _get_earlier(
 ) -> Earlier:
     call = None if wanted.resume is None else tokens.read_resume_token(signer, wanted.resume)
     if call is None:
-        raise Forbidden(NOT_A_RESUME)
+        raise Forbidden("resume is not a resume token of this gateway's, or it expired: start a new conversation")
     kept = await calls.find_head(session, call)
     opening = await calls.opening_of(session, call)
     if kept is None or kept.scope != org_scope or opening is None:

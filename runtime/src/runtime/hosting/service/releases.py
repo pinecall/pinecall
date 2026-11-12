@@ -18,7 +18,7 @@ from runtime.exceptions import NotFound, ValidationError
 from runtime.hosting.models import HostedRelease
 from runtime.hosting.repository import HostedAppRepository, ReleaseRepository
 from runtime.hosting.service import apps, pages
-from runtime.hosting.service.apps import NOT_HOSTED, App
+from runtime.hosting.service.apps import App
 from runtime.kit.commit import run_after_commit
 from runtime.kit.crypto import Vault
 from runtime.kit.text import parse_slug
@@ -35,16 +35,6 @@ LONGEST_NAME = 40
 # while a newer one starts, never more.
 KEPT_RELEASES = 10
 ROLLED_BACK = "rollback to release {release}"
-
-TOO_BIG = "a release's sources are {limit} MB at most packed"
-TOO_LONG_A_NAME = "an app's name is {limit} characters at most, and {name} is {length}"
-NOT_A_TARBALL = "a release is a gzipped tarball of the project's sources, and this is not one"
-UNPACKS_TOO_BIG = "a release unpacks to {limit} MB at most, and this one passes it"
-TOO_MANY_FILES = "a release holds {limit} files at most: leave node_modules and build output out"
-NOT_A_FILE = "{path} is a link or a device: a release holds files and folders only"
-LEAVES_THE_PROJECT = "{path} leaves the project's folder: every path of a release stays inside it"
-NOT_CODE = "{name} is a Studio agent: it is edited in the console's Studio, never uploaded as sources"
-NO_RELEASE = "{name} has no release {release}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +66,7 @@ class Released:
 def check_name(name: str) -> str:
     """The name as an app's: a slug short enough to be part of a host name."""
     if len(parse_slug(name)) > LONGEST_NAME:
-        raise ValidationError(TOO_LONG_A_NAME.format(limit=LONGEST_NAME, name=name, length=len(name)))
+        raise ValidationError(f"an app's name is {LONGEST_NAME} characters at most, and {name} is {len(name)}")
     return name
 
 
@@ -85,12 +75,14 @@ def check_name(name: str) -> str:
 def check_source(data: bytes) -> Source:
     """The upload as a release's sources; refused for anything but a safe tarball."""
     if len(data) > LARGEST_SOURCE:
-        raise ValidationError(TOO_BIG.format(limit=LARGEST_SOURCE >> 20))
+        raise ValidationError(f"a release's sources are {LARGEST_SOURCE >> 20} MB at most packed")
     try:
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tarball:
             _check_members(tarball)
     except (tarfile.TarError, OSError, EOFError) as unreadable:
-        raise ValidationError(NOT_A_TARBALL) from unreadable
+        raise ValidationError(
+            "a release is a gzipped tarball of the project's sources, and this is not one"
+        ) from unreadable
     return Source(data=data, sha256=hashlib.sha256(data).hexdigest())
 
 
@@ -111,7 +103,9 @@ async def deploy_release(
     """The project's sources as the app's next release, its page with them when it has one."""
     kind = await apps.find_kind(session, app)
     if kind is not None and kind is not AppKind.code:
-        raise ValidationError(NOT_CODE.format(name=app.name))
+        raise ValidationError(
+            f"{app.name} is a Studio agent: it is edited in the console's Studio, never uploaded as sources"
+        )
     source = await asyncio.to_thread(check_source, upload.data)
     label = pages.label_page(await accounts.slug_of(session, app.org), app)
     page = await asyncio.to_thread(pages.check_page, source.data, upload.page_dir, upload.page_agent, label)
@@ -148,7 +142,7 @@ async def keep_release(
     """Keep the upload as the next release, the oldest past ten let go; NotFound if not hosted."""
     locked = await HostedAppRepository(session).lock(app.org, app.env, app.name)
     if locked is None:
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     releases = ReleaseRepository(session)
     kept = await releases.keep(
         app.org,
@@ -168,7 +162,7 @@ async def keep_release(
 async def list_releases(session: AsyncSession, pages_domain: str | None, app: App) -> list[Released]:
     """The app's releases, newest first; NotFound for an app the box does not host."""
     if await apps.find_kind(session, app) is None:
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     kept = await ReleaseRepository(session).list_of_app(app.org, app.env, app.name)
     return await _read(session, pages_domain, app, kept)
 
@@ -183,7 +177,7 @@ async def source_of(session: AsyncSession, app: App, release: int) -> Source:
 async def _get(session: AsyncSession, app: App, release: int) -> HostedRelease:
     found = await ReleaseRepository(session).find(app.org, app.env, app.name, release)
     if found is None:
-        raise NotFound(NO_RELEASE.format(name=app.name, release=release))
+        raise NotFound(f"{app.name} has no release {release}")
     return found
 
 
@@ -204,11 +198,13 @@ def _check_members(tarball: tarfile.TarFile) -> None:
     for files, member in enumerate(tarball, start=1):
         path = member.name
         if not (member.isfile() or member.isdir()):
-            raise ValidationError(NOT_A_FILE.format(path=path))
+            raise ValidationError(f"{path} is a link or a device: a release holds files and folders only")
         if path.startswith("/") or ".." in path.split("/"):
-            raise ValidationError(LEAVES_THE_PROJECT.format(path=path))
+            raise ValidationError(f"{path} leaves the project's folder: every path of a release stays inside it")
         unpacked += member.size
         if files > MOST_FILES:
-            raise ValidationError(TOO_MANY_FILES.format(limit=MOST_FILES))
+            raise ValidationError(
+                f"a release holds {MOST_FILES} files at most: leave node_modules and build output out"
+            )
         if unpacked > LARGEST_UNPACKED:
-            raise ValidationError(UNPACKS_TOO_BIG.format(limit=LARGEST_UNPACKED >> 20))
+            raise ValidationError(f"a release unpacks to {LARGEST_UNPACKED >> 20} MB at most, and this one passes it")

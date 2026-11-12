@@ -42,15 +42,8 @@ UNANSWERED = frozenset({"no_answer", "busy", "dial_failed"})
 # What a call step comes to when its call showed no end within LONGEST_CALL.
 NEVER_ENDED = "never_ended"
 
-NO_SUCH_RUN = "no run {run} of the app {app}"
-NOT_ITS_TURN = "run {run} is {status}: a step is written by the process that holds a ready run"
-OUT_OF_ORDER = "run {run} has {have} steps and step {seq} was sent: the journal is written in order"
-ANOTHER_STEP = (
-    "step {seq} of run {run} was written as a {was}, and a {now} was sent: the flow's code changed under a run"
-)
 TOO_MANY_PARKED = f"this org has {MOST_PARKED} runs waiting already: let some end, or cancel them"
 TOO_FAR = f"a run sleeps or waits {LONGEST_WAIT.days} days at most"
-NOT_A_MOVE = "run {run} is {was} and cannot be {to}: a run is ended by the process that holds it ready"
 
 # The refusal that is flows' own: no app holds the agent, so nothing was asked of the dial.
 NO_APP = "no_app"
@@ -169,7 +162,9 @@ def _move(
     call: str | None = None,
 ) -> None:
     if to not in MOVES.get(run.status, frozenset()):
-        raise Conflict(NOT_A_MOVE.format(run=run.id, was=run.status, to=to))
+        raise Conflict(
+            f"run {run.id} is {run.status} and cannot be {to}: a run is ended by the process that holds it ready"
+        )
     run.status, run.leased_until, run.moved_at = to, None, now()
     run.wake_at, run.waits_for, run.waits_match, run.call = wake_at, waits_for, waits_match, call
 
@@ -278,13 +273,16 @@ async def write_step(
     written = await steps.find_at(found.id, sent.seq)
     if written is not None:
         if written.kind != sent.kind:
-            raise Conflict(ANOTHER_STEP.format(seq=sent.seq, run=run, was=written.kind, now=sent.kind))
+            raise Conflict(
+                f"step {sent.seq} of run {run} was written as a {written.kind}, and a {sent.kind} was sent: "
+                "the flow's code changed under a run"
+            )
         return found
     if found.status != RunStatus.ready:
-        raise Conflict(NOT_ITS_TURN.format(run=run, status=found.status))
+        raise Conflict(f"run {run} is {found.status}: a step is written by the process that holds a ready run")
     have = await steps.count_of_run(found.id)
     if sent.seq != have + 1:
-        raise Conflict(OUT_OF_ORDER.format(run=run, have=have, seq=sent.seq))
+        raise Conflict(f"run {run} has {have} steps and step {sent.seq} was sent: the journal is written in order")
     row = FlowStep(run=found.id, seq=sent.seq, org=found.org, kind=sent.kind, asked=dict(sent.asked))
     match sent.read():
         case RunStep(result=result):
@@ -401,7 +399,7 @@ def _end_of(called: CalledRun) -> JsonObject:
 async def _get(session: AsyncSession, app: App, run: str, *, locked: bool = False) -> FlowRun:
     found = await RunRepository(session).find(app, run, locked=locked)
     if found is None:
-        raise NotFound(NO_SUCH_RUN.format(run=run, app=app.name))
+        raise NotFound(f"no run {run} of the app {app.name}")
     return found
 
 

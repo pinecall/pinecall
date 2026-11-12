@@ -17,15 +17,13 @@ A_NAME = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
 # Read by every visitor of a page, so small: a short list, not a database.
 LARGEST = 64 * 1024
 
-BAD_NAME = "a document's name is lower case letters, digits and dashes, 40 at most, from a letter: not {name!r}"
-NONE_PUBLISHED = "agent {agent} published no document {name} in {env}"
-NOT_AN_OBJECT = "a document is one JSON object"
-
 
 def check_name(name: str) -> str:
     """The name, when it is one a document may have."""
     if not A_NAME.match(name):
-        raise ValidationError(BAD_NAME.format(name=name))
+        raise ValidationError(
+            f"a document's name is lower case letters, digits and dashes, 40 at most, from a letter: not {name!r}"
+        )
     return name
 
 
@@ -34,9 +32,9 @@ async def publish_document(session: AsyncSession, scope: Scope, agent: str, name
     try:
         body: object = json.loads(raw)
     except ValueError as bad:
-        raise ValidationError(NOT_AN_OBJECT) from bad
+        raise ValidationError("a document is one JSON object") from bad
     if not a_mapping(body):
-        raise ValidationError(NOT_AN_OBJECT)
+        raise ValidationError("a document is one JSON object")
     row = await AgentDocumentRepository(session).put(scope.org, scope.env, agent, check_name(name), dict(body))
     return row.body
 
@@ -45,5 +43,5 @@ async def get_document(session: AsyncSession, *, org: str, env: Env, agent: str,
     """The document the app published; NotFound while there is none."""
     row = await AgentDocumentRepository(session).find(org, env, agent, check_name(name))
     if row is None:
-        raise NotFound(NONE_PUBLISHED.format(agent=agent, name=name, env=env))
+        raise NotFound(f"agent {agent} published no document {name} in {env}")
     return row.body

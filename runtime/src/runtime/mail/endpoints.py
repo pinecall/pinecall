@@ -13,9 +13,6 @@ from runtime.postgres import Session
 
 router = APIRouter()
 
-NO_ORG_MAILBOX = "this org sends its emails through the box's own mail"
-NOTHING_STORED = "this box has no stored mail server: what it sends through, if anything, is PINECALL_SMTP_URL"
-
 
 @router.get("/v1/org/mail")
 async def get_mail(actor: TeamKey, vault: TheVault, session: Session) -> schemas.MailRow:
@@ -34,7 +31,7 @@ async def put_mail(body: schemas.PutMail, actor: TeamKey, vault: TheVault, sessi
 async def delete_mail(actor: TeamKey, session: Session) -> None:
     """Forget the org's own mailbox: its emails go through the box's again."""
     if not await mailboxes.delete_org_mailbox(session, actor.org):
-        raise NotFound(NO_ORG_MAILBOX)
+        raise NotFound("this org sends its emails through the box's own mail")
 
 
 @router.post("/v1/org/mail/test")
@@ -65,7 +62,7 @@ async def put_box_mail(
 async def delete_box_mail(_actor: TheOperator, session: Session) -> None:
     """Forget the stored mailbox, back to the environment's; 404 when none was stored."""
     if not await mailboxes.delete_box_mailbox(session):
-        raise NotFound(NOTHING_STORED)
+        raise NotFound("this box has no stored mail server: what it sends through, if anything, is PINECALL_SMTP_URL")
 
 
 # The one box endpoint that waits on SMTP: a person is watching.

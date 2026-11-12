@@ -19,11 +19,6 @@ from runtime.wire import parts
 
 # A number rung all day is written once a minute, never once a call.
 CALLED_EVERY = timedelta(minutes=1)
-NOT_ROUTED = (
-    "{number} on {channel} is not a route of {slug} in {env}: a number reaches an agent once imported, "
-    "`pinecall numbers import {number} --agent {slug}`"
-)
-NO_NUMBER = "a {channel} route names its number: only web answers with none"
 
 
 async def list_routes(
@@ -51,10 +46,12 @@ async def list_answered_routes(
         if route.channel is Channel.web:
             continue
         if route.number is None:
-            raise ValidationError(NO_NUMBER.format(channel=route.channel.value))
+            raise ValidationError(f"a {route.channel.value} route names its number: only web answers with none")
         if not any(had.channel is route.channel and had.number == route.number for had in held):
             raise ValidationError(
-                NOT_ROUTED.format(number=route.number, channel=route.channel.value, slug=slug, env=scope.env.value)
+                f"{route.number} on {route.channel.value} is not a route of {slug} in {scope.env.value}: a "
+                f"number reaches an agent once imported, `pinecall numbers import {route.number} --agent {slug}"
+                "`"
             )
     return held
 

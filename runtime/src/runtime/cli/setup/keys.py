@@ -10,7 +10,6 @@ from runtime.providers.service import machine, plugins, signatures
 
 # What the local servers ask for a key: nothing; the plugin wants one, so the org holds this word.
 NO_KEY_NEEDED = "local"
-NO_KEY_FOR = "{vendor} needs a key: set {variable}, or answer when asked at a terminal"
 # Where a key came from, when it was neither in the environment nor in a shell file.
 TYPED = "typed"
 # How a missing key is asked for at a terminal: the variable's name in, the secret out.
@@ -35,7 +34,7 @@ def keys_for(
         if not secret and ask is not None:
             secret, where = ask(variable).strip(), TYPED
         if not secret or where is None:
-            raise ValidationError(NO_KEY_FOR.format(vendor=vendor, variable=variable))
+            raise ValidationError(f"{vendor} needs a key: set {variable}, or answer when asked at a terminal")
         given[vendor], found[variable] = secret, where
     # The embedder is local, on the openai plugin, whatever the stages: the plugin wants a key.
     given.setdefault("openai", NO_KEY_NEEDED)

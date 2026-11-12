@@ -8,9 +8,6 @@ from runtime.session import service as session
 from runtime.wire.events import ToolCall
 from runtime.wire.parts import ToolResult
 
-NOT_OPEN = "this gateway is not writing call {call!r}: open it with POST /v1/calls first"
-NO_APP_FOR_THE_TOOL = "no app holds agent {slug}: its tools cannot run until one does"
-
 
 # The gateway writes tool.call and tool.result: appending the call is what reaches the app.
 async def run_tool(
@@ -18,10 +15,10 @@ async def run_tool(
 ) -> ToolResult:
     """Run a worker's tool call through the app that holds its agent, and answer its result."""
     if agent != served.agent:
-        raise NotFound(NOT_OPEN.format(call=served.call))
+        raise NotFound(f"this gateway is not writing call {served.call!r}: open it with POST /v1/calls first")
     # Parked because nobody holds the agent: a refusal now, not a wait until the tool's deadline.
     if served.app is None and holders.find_holder(served.scope, agent) is None:
-        raise Conflict(NO_APP_FOR_THE_TOOL.format(slug=agent))
+        raise Conflict(f"no app holds agent {agent}: its tools cannot run until one does")
     # Its socket is on another gateway, which may never have heard the call was bound to it.
     if served.app is not None and not sockets.is_here(served.app):
         calls.start_pump(served.call, after=0)

@@ -33,15 +33,6 @@ _NO_CLIP: dict[str, Any] = {"audio": None, "sha256": None, "source_sha256": None
 
 TOO_LONG = f"a hold melody loops, so {LONGEST_S // 60} minutes at most: this one runs longer"
 TOO_SHORT = f"a hold melody of less than {SHORTEST_S} second would stutter as it loops"
-AFTER_OUT_OF_RANGE = (
-    "after_s {after:g}: the melody starts after {soonest:g} to {latest:g} seconds of quiet, or null for the runtime's"
-)
-NOT_THE_CLASSS_FILE = (
-    "{slug} takes no melody here: this endpoint takes the file its class declares as `hold`, by the hash it "
-    "declared, from the process that holds the agent; a file of the org's goes through PUT …/pipeline/hold-audio"
-)
-NO_CLIP = "agent {slug} plays no clip of its own"
-OFF = "agent {slug} plays nothing while a tool runs: its melody is off"
 
 
 # Until 2026-11 this precedence was a classmethod of the response's schema, and the store was the widget's.
@@ -88,7 +79,10 @@ def hold_of(row: HoldAudio | None, of_the_class: HoldConfig | None = None) -> Ho
 def check_wait(after_s: float) -> None:
     """Refuse a wait outside the band the melody starts in."""
     if not SOONEST_AFTER_S <= after_s <= LATEST_AFTER_S:
-        raise ValidationError(AFTER_OUT_OF_RANGE.format(after=after_s, soonest=SOONEST_AFTER_S, latest=LATEST_AFTER_S))
+        raise ValidationError(
+            f"after_s {after_s:g}: the melody starts after {SOONEST_AFTER_S:g} to {LATEST_AFTER_S:g} seconds "
+            "of quiet, or null for the runtime's"
+        )
 
 
 # ── reading ──
@@ -105,7 +99,7 @@ async def get_clip(session: AsyncSession, scope: Scope, slug: str) -> bytes:
     """The agent's own clip, Ogg Opus; NotFound when it plays none of its own."""
     audio = await HoldAudioRepository(session).find_clip(scope.org, scope.env, slug)
     if audio is None:
-        raise NotFound(NO_CLIP.format(slug=slug))
+        raise NotFound(f"agent {slug} plays no clip of its own")
     return audio
 
 
@@ -120,7 +114,7 @@ async def get_heard_clip(session: AsyncSession, scope: Scope, slug: str, *, runt
     row = await repository.find(scope.org, scope.env, slug)
     if row is None or row.played is HoldPlayed.default:
         return await asyncio.to_thread(runtime_melody.read_bytes)
-    raise NotFound(OFF.format(slug=slug))
+    raise NotFound(f"agent {slug} plays nothing while a tool runs: its melody is off")
 
 
 # ── writing ──
@@ -140,7 +134,11 @@ async def ship_clip(session: AsyncSession, scope: Scope, agent: Agent, data: byt
     """The file the agent's class declares as its melody, uploaded by the process that holds it."""
     of_the_class = _its_class_holds(agent)
     if of_the_class is None or of_the_class.clip != sha256_of(data):
-        raise Conflict(NOT_THE_CLASSS_FILE.format(slug=agent.slug))
+        raise Conflict(
+            f"{agent.slug} takes no melody here: this endpoint takes the file its class declares as `hold`, by "
+            "the hash it declared, from the process that holds the agent; a file of the org's goes through PUT "
+            "…/pipeline/hold-audio"
+        )
     return hold_of(await _keep_clip(session, scope, agent.slug, data, name), of_the_class)
 
 

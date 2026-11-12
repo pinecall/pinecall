@@ -11,7 +11,7 @@ from runtime.auth import Authenticator
 from runtime.enums import KeyScope
 from runtime.exceptions import ServiceUnavailable
 from runtime.handles import TheHttp, TheSessions, TheVault
-from runtime.knowledge.service.embedder import NO_EMBEDDER, Embedder, embedder_of
+from runtime.knowledge.service.embedder import Embedder, embedder_of
 from runtime.platform import service as platform
 
 KnowledgeKey = Annotated[Actor, Depends(Authenticator(KeyScope.knowledge))]
@@ -25,7 +25,10 @@ async def the_embedder(sessions: TheSessions, vault: TheVault, http: TheHttp) ->
     async with sessions.begin() as session:
         embedder = await embedder_of(session, vault, http)
     if embedder is None:
-        raise ServiceUnavailable(NO_EMBEDDER)
+        raise ServiceUnavailable(
+            "this box has no embedder: the providers row names none under `embedding`, so nothing can be "
+            "pushed, searched or remembered"
+        )
     return embedder
 
 

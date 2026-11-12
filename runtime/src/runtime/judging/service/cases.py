@@ -39,24 +39,6 @@ NAMED_BY_WORDS = 4
 # The entries a golden is made of.
 GOLDEN_READS = frozenset({"turn.user", "state.changed", "event.received", "memory.ops"})
 
-TAKEN = "agent {agent} has a case named {name} already: forget it first, or promote under another"
-NOT_WRITTEN_BY_HAND = (
-    "agent {agent}'s case {name} was kept from {source} {call}, not written by hand: "
-    "forget it first, or write another name"
-)
-NOTHING_SAID = "call {call} has no line of the caller's to play again"
-NO_SUCH_CASE = "no case {id} in this key's org"
-UNKNOWN_CASES = "agent {agent} has no case named {names}"
-WRONG_ONLY_WHEN_DISMISSED = (
-    "judge_was_wrong says a judge broke where it should have held, so it dismisses the case: "
-    "send it with status dismissed"
-)
-NOT_WHAT_BROKE = "case {name} did not break on {judge}: it broke on {broke}"
-# The note is kept on the judge's calibration label: with no judge it would be dropped unsaid.
-A_NOTE_ALONE = "note is kept on the calibration label of the judge that was wrong: send judge_was_wrong"
-# A decision that moves nothing is said so, as a settings write that changes nothing is.
-ALREADY = "case {name} is already {status}"
-
 
 @dataclass(frozen=True, slots=True)
 class BrokeOn:
@@ -131,7 +113,7 @@ def golden_of(entries: Sequence[Entry], name: str, expect: Expect) -> Golden:
                 continue
     call = call_of(entries)
     if not any(turn.say is not None for turn in turns):
-        raise Conflict(NOTHING_SAID.format(call=call))
+        raise Conflict(f"call {call} has no line of the caller's to play again")
     started = entries[0].ts if entries else 0.0
     # A field the call gave nothing for is left out, as a golden written by hand leaves it out.
     given = {"state": state, "memory": recalled}
@@ -302,7 +284,8 @@ async def write_case(session: AsyncSession, golden: Golden, agent: str, writing:
         return await _add_case(session, row)
     if had.source is not CaseSource.person:
         raise Conflict(
-            NOT_WRITTEN_BY_HAND.format(agent=agent, name=writing.name, source=had.source, call=had.source_call)
+            f"agent {agent}'s case {writing.name} was kept from {had.source} {had.source_call}, not written by "
+            "hand: forget it first, or write another name"
         )
     return await repository.update(had, golden=named.dump(), held_out=writing.held_out)
 
@@ -324,7 +307,7 @@ async def pick_cases(session: AsyncSession, org: str, agent: str, names: Sequenc
     found = await CaseRepository(session).list_for_run(org, agent, names, every=every)
     missing = sorted(set(names) - {case.name for case in found})
     if missing:
-        raise NotFound(UNKNOWN_CASES.format(agent=agent, names=", ".join(missing)))
+        raise NotFound(f"agent {agent} has no case named {', '.join(missing)}")
     return [Golden.model_validate(case.golden) for case in found]
 
 
@@ -332,7 +315,7 @@ async def get_case(session: AsyncSession, org: str, case: str) -> EvalCase:
     """One of the org's cases; another org's, or nobody's, is a 404."""
     row = await CaseRepository(session).find(org, case)
     if row is None:
-        raise NotFound(NO_SUCH_CASE.format(id=case))
+        raise NotFound(f"no case {case} in this key's org")
     return row
 
 
@@ -341,16 +324,23 @@ def check_decision(case: EvalCase, decision: Decision) -> None:
     wrong = decision.judge_was_wrong
     if wrong is None:
         if decision.note is not None:
-            raise ValidationError(A_NOTE_ALONE)
+            # The note is kept on the judge's calibration label: with no judge it would be dropped unsaid.
+            raise ValidationError(
+                "note is kept on the calibration label of the judge that was wrong: send judge_was_wrong"
+            )
         if _moves_nothing(case, decision):
-            raise Conflict(ALREADY.format(name=case.name, status=case.status))
+            # A decision that moves nothing is said so, as a settings write that changes nothing is.
+            raise Conflict(f"case {case.name} is already {case.status}")
         return
     if decision.status is not CaseStatus.dismissed:
-        raise ValidationError(WRONG_ONLY_WHEN_DISMISSED)
+        raise ValidationError(
+            "judge_was_wrong says a judge broke where it should have held, so it dismisses the case: send it "
+            "with status dismissed"
+        )
     broke = [str(judgment.get("judge", "")) for judgment in case.broke]
     if wrong not in broke:
         named = ", ".join(broke) or "no judge (a person kept it)"
-        raise ValidationError(NOT_WHAT_BROKE.format(name=case.name, judge=wrong, broke=named))
+        raise ValidationError(f"case {case.name} did not break on {wrong}: it broke on {named}")
 
 
 # Checked and written in one call. Until 2026-11 an endpoint had to know the three steps (check,
@@ -381,7 +371,9 @@ async def _add_case(session: AsyncSession, row: EvalCase) -> EvalCase:
         async with session.begin_nested():
             return await CaseRepository(session).add(row)
     except IntegrityError as taken:
-        raise Conflict(TAKEN.format(agent=row.agent, name=row.name)) from taken
+        raise Conflict(
+            f"agent {row.agent} has a case named {row.name} already: forget it first, or promote under another"
+        ) from taken
 
 
 def _moves_nothing(case: EvalCase, decision: Decision) -> bool:

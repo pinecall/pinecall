@@ -20,11 +20,9 @@ from runtime.kit.time import day_of
 from runtime.wire.declaration import MonitorDeclared
 from runtime.wire.events import MonitorFired
 
-NO_SUCH_MONITOR = "no monitor {id} in this env: `pinecall monitors` lists them"
 ID_PREFIX = "mon_"
 # Who set a monitor its agent's class declares: the class keeps it, so no endpoint takes it out.
 THE_CLASS = "class"
-ITS_CLASS_WATCHES = "{name} is declared by the class of {agent}: take it out of the class, and the next call drops it"
 
 
 # Whose a slug is, is whose its own log is, and the logs are calls', above alerts: what keeps the
@@ -149,9 +147,12 @@ async def delete_monitor(session: AsyncSession, scope: Scope, monitor_id: str) -
     repository = MonitorRepository(session)
     found = await repository.find(scope.org, scope.env, monitor_id)
     if found is None:
-        raise NotFound(NO_SUCH_MONITOR.format(id=monitor_id))
+        raise NotFound(f"no monitor {monitor_id} in this env: `pinecall monitors` lists them")
     if found.created_by == THE_CLASS:
-        raise Conflict(ITS_CLASS_WATCHES.format(name=found.name, agent=found.agent))
+        raise Conflict(
+            f"{found.name} is declared by the class of {found.agent}: take it out of the class, and the next "
+            "call drops it"
+        )
     await repository.delete(found)
 
 

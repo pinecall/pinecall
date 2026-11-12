@@ -5,15 +5,12 @@ from datetime import UTC, datetime
 
 from runtime.exceptions import ValidationError
 
-NOTHING_ON_STDIN = "the key is read from stdin, one line, and nothing came"
-NOT_A_DAY = "{day}: a day, like 2026-09-01"
-
 
 def read_secret_line() -> str:
     """One line of stdin, a secret; refused when nothing came."""
     line = sys.stdin.readline().strip()
     if not line:
-        raise ValidationError(NOTHING_ON_STDIN)
+        raise ValidationError("the key is read from stdin, one line, and nothing came")
     return line
 
 
@@ -24,4 +21,4 @@ def day_of(day: str | None) -> float | None:
     try:
         return datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=UTC).timestamp()
     except ValueError:
-        raise ValidationError(NOT_A_DAY.format(day=day)) from None
+        raise ValidationError(f"{day}: a day, like 2026-09-01") from None

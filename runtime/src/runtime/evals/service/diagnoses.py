@@ -35,17 +35,10 @@ DOCTOR = (
     "knowledge (what the agent must be told), or none when the calls show no fault of the "
     "agent's. Say how sure you are, 0 to 1. Then call the tool."
 )
-NO_DIAGNOSIS = "the model handed in no diagnosis it could read: {why}"
 MOST_CHARS = 6000
 # A diagnosis reads this many of a group's newest calls: enough to see what they share.
 CALLS_READ = 5
 KINDS = ("setting", "code", "knowledge", "none")
-NOT_A_SETTING = (
-    "group {id} proposes {kind}, and only a setting is applied here: a code change goes to your "
-    "assistant (`pinecall mcp`, the cases tool), knowledge to the agent's base"
-)
-NO_SUCH_SETTING = "group {id} proposes changing {where}, which is not one of the agent's settings"
-NOT_DIAGNOSED = "group {id} has no proposal yet: `pinecall cases propose {id}` writes one first"
 
 TOOL: JsonObject = {
     "name": "propose_fix",
@@ -93,11 +86,11 @@ async def diagnose(model: providers.Answerer, dossier: Dossier) -> tuple[JsonObj
     fields, usage = await judging.force_tool(model, DOCTOR, _question_of(dossier), TOOL)
     cause, kind, where, sure = fields.get("cause"), fields.get("kind"), fields.get("where"), fields.get("confidence")
     if not isinstance(cause, str) or not isinstance(where, str):
-        raise UpstreamError(NO_DIAGNOSIS.format(why="cause and where are sentences"))
+        raise UpstreamError("the model handed in no diagnosis it could read: cause and where are sentences")
     if kind not in KINDS:
-        raise UpstreamError(NO_DIAGNOSIS.format(why=f"kind is one of {', '.join(KINDS)}"))
+        raise UpstreamError(f"the model handed in no diagnosis it could read: kind is one of {', '.join(KINDS)}")
     if isinstance(sure, bool) or not isinstance(sure, int | float) or not 0.0 <= sure <= 1.0:
-        raise UpstreamError(NO_DIAGNOSIS.format(why="confidence is a number from 0 to 1"))
+        raise UpstreamError("the model handed in no diagnosis it could read: confidence is a number from 0 to 1")
     return {"cause": cause, "kind": kind, "where": where, "change": fields.get("change"), "confidence": sure}, usage
 
 
@@ -123,12 +116,15 @@ async def apply_fix(parts: Harness, actor: Actor, found: judging.GroupCounted) -
     group, scope = found.group, actor.scope
     proposal = group.proposal
     if proposal is None:
-        raise Conflict(NOT_DIAGNOSED.format(id=group.id))
+        raise Conflict(f"group {group.id} has no proposal yet: `pinecall cases propose {group.id}` writes one first")
     kind, where = str(proposal.get("kind")), str(proposal.get("where"))
     if kind != "setting":
-        raise Conflict(NOT_A_SETTING.format(id=group.id, kind=kind))
+        raise Conflict(
+            f"group {group.id} proposes {kind}, and only a setting is applied here: a code change goes to your "
+            "assistant (`pinecall mcp`, the cases tool), knowledge to the agent's base"
+        )
     if where not in FIELDS:
-        raise Conflict(NO_SUCH_SETTING.format(id=group.id, where=where))
+        raise Conflict(f"group {group.id} proposes changing {where}, which is not one of the agent's settings")
     async with parts.sessions.begin() as session_:
         kept = await agents.show_settings(session_, scope, group.agent)
     newest = kept.yours if scope.holder else kept.team

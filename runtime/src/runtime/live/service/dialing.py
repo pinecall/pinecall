@@ -31,7 +31,6 @@ INSTRUCTION = "instruction"
 THE_MEDIA_PLANE = "livekit"
 NOTHING_RANG = "nothing rang"
 NOT_JUDGED_UNPLACED = "the media plane refused the call before anything rang: there was nothing to judge"
-NO_APP_TO_SERVE_IT = "{nobody}: a phone would ring with no app to serve it"
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,7 +96,7 @@ async def dial_as_agent(
 ) -> Dialled:
     """Place a call as the agent for whoever holds the key, after its guards; the call it became."""
     if live.holders.find_serving(actor.scope, slug) is None:
-        raise Conflict(NO_APP_TO_SERVE_IT.format(nobody=NoApp(slug)))
+        raise Conflict(f"{NoApp(slug)}: a phone would ring with no app to serve it")
     who = actor.asked_by
     placement = Placement(
         scope=actor.scope,

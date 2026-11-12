@@ -10,8 +10,6 @@ from runtime.handles import TheSessions, TheVault
 from runtime.kit.http import read_capped_body
 from runtime.whatsapp import service
 
-NOT_SIGNED = "the body carries no signature of this box's Meta app"
-
 
 # Read in a transaction of its own, over before a message is read: each claim of a message is a
 # transaction too, and a request that held one connection while it waited for another is how a pool
@@ -30,7 +28,7 @@ async def read_signed_messages(request: Request, app: TheMetaApp) -> list[servic
     """The messages of a body Meta signed with the box's app; 403 for a body it did not sign."""
     body = await read_capped_body(request, service.LONGEST_WEBHOOK, "a webhook's body")
     if not service.is_signed(app.app_secret, body, request.headers.get(service.SIGNATURE_HEADER)):
-        raise Forbidden(NOT_SIGNED)
+        raise Forbidden("the body carries no signature of this box's Meta app")
     return service.messages_in(body)
 
 

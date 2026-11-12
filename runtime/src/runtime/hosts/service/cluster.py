@@ -51,13 +51,11 @@ ENVIRONMENT = "/run/pinecall"
 # The user every container of an org's code runs as: never root, the same in both containers.
 APP_USER = 1000
 IN_CLUSTER = "https://kubernetes.default.svc"
-NOT_A_VARIABLE = "{name!r} is not an environment variable's name"
 # What deleting a pod or a secret already gone answers: it is gone, as asked.
 NOT_THERE = 404
 # What creating a host's secret answers when its pod went with a node and the secret stayed.
 ALREADY_THERE = 409
 REFUSED = "the cluster {verb}: {status} {detail}"
-NO_ANSWER = "the cluster {verb}: no answer in {seconds:.0f}s"
 # Where the platform's `pinecall` is installed, on a volume of its own: the project's folder holds the project.
 CLI_HOME = "/opt/pinecall"
 # Where a pod's service account finds what it calls the cluster's API with.
@@ -246,7 +244,7 @@ class Cluster:
                 timeout=A_VERB_WITHIN_S,
             )
         except httpx.TimeoutException:
-            raise UpstreamError(NO_ANSWER.format(verb=request.verb, seconds=A_VERB_WITHIN_S)) from None
+            raise UpstreamError(f"the cluster {request.verb}: no answer in {A_VERB_WITHIN_S:.0f}s") from None
         except httpx.HTTPError as failed:
             raise UpstreamError(f"the cluster {request.verb}: {failed}") from failed
 
@@ -283,7 +281,7 @@ def export_lines(environment: Mapping[str, str]) -> str:
     lines: list[str] = []
     for name, value in sorted(environment.items()):
         if not A_VARIABLE.match(name):
-            raise UpstreamError(NOT_A_VARIABLE.format(name=name))
+            raise UpstreamError(f"{name!r} is not an environment variable's name")
         quoted = value.replace("'", "'\\''")
         lines.append(f"export {name}='{quoted}'")
     return "\n".join(lines) + "\n"

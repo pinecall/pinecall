@@ -19,8 +19,6 @@ from runtime.wire.parts import ThreadKind
 # The calls merged into one thread, newest first: each costs a log read.
 CALLS_IN_A_THREAD = 20
 
-NO_THREAD = "no thread with {contact} on agent {agent} in this scope"
-
 
 @dataclass(frozen=True, slots=True)
 class ThreadLast:
@@ -88,7 +86,7 @@ async def list_calls_with(session: AsyncSession, scope: Scope, slug: str, contac
     """The contact's newest calls with the agent, newest first; refused when there is no thread."""
     calls = await InboxRepository(session).list_calls_with(scope, slug, contact, limit=CALLS_IN_A_THREAD)
     if not calls:
-        raise NotFound(NO_THREAD.format(contact=contact, agent=slug))
+        raise NotFound(f"no thread with {contact} on agent {slug} in this scope")
     return calls
 
 

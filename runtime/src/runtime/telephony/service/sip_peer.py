@@ -12,7 +12,6 @@ from runtime.exceptions import Conflict, ValidationError
 from runtime.kit.text import a_list
 from runtime.telephony.models import CarrierKind
 from runtime.telephony.service.carrier import (
-    NOT_A_WHATSAPP_ACCOUNT,
     Carrier,
     Outbound,
     Owned,
@@ -152,7 +151,12 @@ class SipPeer(Carrier):
     async def check_number(self, http: httpx.AsyncClient, channel: Channel, number: str) -> None:
         """A peer's number answers the phone."""
         if channel is Channel.whatsapp:
-            raise ValidationError(NOT_A_WHATSAPP_ACCOUNT)
+            # A WhatsApp route is Meta's: through an account, the number is the one the org's WhatsApp Business
+            # account is, as Meta names it, never a phone number typed with `--channel whatsapp`.
+            raise ValidationError(
+                "a WhatsApp number comes through the org's WhatsApp Business account: `pinecall carriers add "
+                "whatsapp` first, then import the number that account is"
+            )
 
     @override
     async def survey_hook(

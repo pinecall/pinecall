@@ -33,10 +33,6 @@ logger = logging.getLogger(__name__)
 # The box's own Twilio account, sealed in box_settings as credentials/twilio, beside the vendors' keys:
 # the release before 2026-11 reads the same row, so it stays under that name until that release is gone.
 BOX_ACCOUNT = "twilio"
-NO_CARRIER = "the org has no carrier account: PUT /v1/carrier brings a Twilio account or a SIP peer"
-NO_BOX_TWILIO = "this box buys no numbers: it has no Twilio account of its own. Bring a carrier and import one"
-NO_NUMBERS_ACCOUNT = "this box holds no Twilio account to buy numbers on: PUT one here"
-NOT_AN_ACCOUNT = "this is no {kind} account: {why}"
 
 # The one place that reads which kind an account is: a new kind is a module, and a line here.
 CARRIERS: dict[CarrierKind, type[Carrier]] = {
@@ -84,7 +80,7 @@ def read_carrier(org: str, brought: Mapping[str, Any]) -> Carrier:
     try:
         return CARRIERS[CarrierKind(kind)].read(org, brought, None)
     except ValueError as wrong:
-        raise ValidationError(NOT_AN_ACCOUNT.format(kind=kind, why=wrong)) from None
+        raise ValidationError(f"this is no {kind} account: {wrong}") from None
 
 
 async def list_carriers(session: AsyncSession, vault: Vault, org: str) -> list[Carrier]:
@@ -103,7 +99,7 @@ async def get_carrier(session: AsyncSession, vault: Vault, org: str, account: st
         return found
     carriers = await list_carriers(session, vault, org)
     if not carriers:
-        raise NotFound(NO_CARRIER)
+        raise NotFound("the org has no carrier account: PUT /v1/carrier brings a Twilio account or a SIP peer")
     if len(carriers) > 1:
         named = ", ".join(carrier.id for carrier in carriers)
         raise Conflict(f"the org has {len(carriers)} carrier accounts ({named}): name one of them")
@@ -198,7 +194,9 @@ async def box_twilio(session: AsyncSession, vault: Vault) -> TwilioAccount:
     """The box's own Twilio account, or ServiceUnavailable when it holds none."""
     account = await find_box_twilio(session, vault)
     if account is None:
-        raise ServiceUnavailable(NO_BOX_TWILIO)
+        raise ServiceUnavailable(
+            "this box buys no numbers: it has no Twilio account of its own. Bring a carrier and import one"
+        )
     return account
 
 
@@ -211,7 +209,7 @@ async def get_numbers_account(session: AsyncSession, vault: Vault) -> TwilioAcco
     """The account the box buys numbers on, for its operator; NotFound when it holds none."""
     account = await find_box_twilio(session, vault)
     if account is None:
-        raise NotFound(NO_NUMBERS_ACCOUNT)
+        raise NotFound("this box holds no Twilio account to buy numbers on: PUT one here")
     return account
 
 
@@ -242,7 +240,7 @@ BOX_TWILIO_ROW: platform.Setting[None] = platform.Setting(f"credentials/{BOX_ACC
 async def delete_box_twilio(session: BoxSession) -> None:
     """Forget it: the box buys no numbers from now on, and the ones it bought keep ringing."""
     if not await platform.delete_setting(session, BOX_TWILIO_ROW):
-        raise NotFound(NO_NUMBERS_ACCOUNT)
+        raise NotFound("this box holds no Twilio account to buy numbers on: PUT one here")
 
 
 # The box's own account, then each org's, an account two orgs brought counted once.

@@ -28,8 +28,6 @@ A_TABLE_STARTS_AFTER = 0.618
 DISTANCES = 3
 FURTHER_BY = 0.5
 
-NOT_AN_AMBIENCE = "{ambience} is no ambience: one of {allowed}"
-
 
 def _television(chatter: bytes) -> bytes:
     return chatter
@@ -80,7 +78,7 @@ def sound_of(ambience: str, chatter: bytes) -> bytes:
     """The ambience as 16-bit mono at the room's rate; `chatter` is a voice, for the voiced ones."""
     made = SOUNDS.get(ambience)
     if made is None:
-        raise ValueError(NOT_AN_AMBIENCE.format(ambience=ambience, allowed=", ".join(SOUNDS)))
+        raise ValueError(f"{ambience} is no ambience: one of {', '.join(SOUNDS)}")
     return made(chatter)
 
 

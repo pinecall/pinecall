@@ -21,9 +21,7 @@ from runtime.wire.events import TERMINAL_EVENT, CallSummary
 
 app = typer.Typer(help="the log, off Postgres", no_args_is_help=True)
 
-NO_SUCH_CALL = "no call {call} was ever written here"
 NOT_RECORDED = "call {call} was not recorded: its call.summary carries no path"
-NO_LIVE_CALL = "no call is open right now"
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +93,7 @@ async def sessions_tail(
     async with handles.sessions() as session:
         named = call or await lists.find_newest_live_call(session)
     if named is None:
-        raise NotFound(NO_LIVE_CALL)
+        raise NotFound("no call is open right now")
     await _read_by_the_operator(context, named, ReadKind.log)
     async for entry in logs.stream(named):
         context.out.line(json.dumps(entry.dump()) if context.out.as_json else _line(entry))
@@ -124,7 +122,7 @@ async def _whole(context: Context, call: str, what: ReadKind) -> list[Entry]:
         with box_wide():
             entries = await lists.list_entries(session, call)
     if not entries:
-        raise NotFound(NO_SUCH_CALL.format(call=call))
+        raise NotFound(f"no call {call} was ever written here")
     await _read_by_the_operator(context, call, what)
     return entries
 

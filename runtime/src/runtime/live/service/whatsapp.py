@@ -43,11 +43,6 @@ IDLE_S = 2 * 60 * 60
 # (developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages).
 WINDOW_S = 24 * 60 * 60
 
-ONLY_WHATSAPP = "a message is written on a WhatsApp thread, and {contact}'s newest call is {channel}"
-WINDOW_CLOSED = (
-    "WhatsApp's window with {contact} closed 24 h after their last message: only a template reaches them now"
-)
-NOTHING_OPEN = "{contact}'s conversation went quiet and is sealed: their next message opens a new one"
 
 # However the call ends, the conversation is over with it: a written call a supervisor ends
 # only says so, and its session is closed here.
@@ -370,12 +365,14 @@ async def say_as_agent(
     facts = (await calls.facts_of_calls(session_, [newest])).get(newest)
     channel = None if facts is None else facts.channel
     if facts is None or channel != Channel.whatsapp:
-        raise Conflict(ONLY_WHATSAPP.format(contact=contact, channel=channel))
+        raise Conflict(f"a message is written on a WhatsApp thread, and {contact}'s newest call is {channel}")
     # The log's own clock, which stamped when the contact last wrote.
     if live.store.clock() - max(facts.heard_at, default=0.0) > WINDOW_S:
-        raise Conflict(WINDOW_CLOSED.format(contact=contact))
+        raise Conflict(
+            f"WhatsApp's window with {contact} closed 24 h after their last message: only a template reaches them now"
+        )
     if await live.store.is_sealed(newest):
-        raise Conflict(NOTHING_OPEN.format(contact=contact))
+        raise Conflict(f"{contact}'s conversation went quiet and is sealed: their next message opens a new one")
     by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
     await desk.send_verb(live, desk.Supervising(newest, by), SayVerb(text=text))
     return newest

@@ -40,8 +40,6 @@ SETTLED = frozenset({"held", "broken"})
 # Calls named per read of the heads while rebuilding.
 A_PAGE = 500
 A_VERSION = re.compile(r"v(\d+)")
-NOT_A_SIDE = "{text!r} is neither a day (YYYY-MM-DD) nor a version (v3)"
-BOTH_SIDES = "a drift between versions names both: before=v3&after=v4"
 # No day on either side: no version was set "between" them.
 NEVER = datetime.fromtimestamp(0, UTC)
 
@@ -309,7 +307,7 @@ def _sides(before: str | None, after: str | None) -> tuple[Side, Side]:
     if before is not None:
         return _side_of(before), second
     if second.day is None:
-        raise ValidationError(BOTH_SIDES)
+        raise ValidationError("a drift between versions names both: before=v3&after=v4")
     return Side(day=second.day - timedelta(days=1)), second
 
 
@@ -321,7 +319,7 @@ def _side_of(text: str) -> Side:
     try:
         return Side(day=date.fromisoformat(text))
     except ValueError as refused:
-        raise ValidationError(NOT_A_SIDE.format(text=text)) from refused
+        raise ValidationError(f"{text!r} is neither a day (YYYY-MM-DD) nor a version (v3)") from refused
 
 
 def _samples_of(entries: Iterable[Entry]) -> dict[StageKey, StageSample]:

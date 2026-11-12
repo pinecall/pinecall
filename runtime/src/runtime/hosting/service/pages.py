@@ -32,16 +32,6 @@ PAGES_KEPT_BYTES = 64 * 1024 * 1024
 # How many tickets and codes one address is given in a minute.
 TICKETS_A_MINUTE = 6
 
-NO_INDEX = "the page's folder {dir} has no index.html in what was sent: build the page, then deploy"
-NOT_A_FOLDER = "a page's folder is inside the project, like ui/dist, and {dir!r} is not"
-NOT_BOTH = "a page is sent with both its folder and its agent: page_dir and page_agent"
-PAGE_TOO_BIG = "the page's folder {dir} unpacks to more than {limit} MiB"
-NAME_TOO_LONG = (
-    "{label} is too long a name for a page: an app's name and its org's make one of {limit} characters at most"
-)
-NO_PAGE = "no page is served at this name"
-NO_FILE = "the page has no file {path}"
-
 
 @dataclass(frozen=True, slots=True)
 class Page:
@@ -100,14 +90,19 @@ def check_page(source: bytes, folder: str | None, agent: str | None, label: str)
     if folder is None and agent is None:
         return None
     if not folder or not agent:
-        raise ValidationError(NOT_BOTH)
+        raise ValidationError("a page is sent with both its folder and its agent: page_dir and page_agent")
     named = folder.strip("/")
     if named == "" or folder.startswith("/") or ".." in named.split("/"):
-        raise ValidationError(NOT_A_FOLDER.format(dir=folder))
+        raise ValidationError(f"a page's folder is inside the project, like ui/dist, and {folder!r} is not")
     if len(label) > LONGEST_LABEL:
-        raise ValidationError(NAME_TOO_LONG.format(label=label, limit=LONGEST_LABEL))
+        raise ValidationError(
+            f"{label} is too long a name for a page: an app's name and its org's make one of {LONGEST_LABEL} "
+            "characters at most"
+        )
     if INDEX not in _unpack_folder(source, named):
-        raise ValidationError(NO_INDEX.format(dir=named))
+        raise ValidationError(
+            f"the page's folder {named} has no index.html in what was sent: build the page, then deploy"
+        )
     return Page(dir=named, agent=parse_slug(agent))
 
 
@@ -118,11 +113,11 @@ async def resolve_page(session: AsyncSession, domain: str | None, host: str, cam
     """The page a request by an app's own name reaches; NotFound for any other name."""
     named = None if domain is None else read_page_name(host, domain)
     if named is None or came_in_by.split(":")[0].lower() != host.lower():
-        raise NotFound(NO_PAGE)
+        raise NotFound("no page is served at this name")
     slug, name, env = named
     org = await accounts.find_org(session, slug)
     if org is None or org.slug != slug:
-        raise NotFound(NO_PAGE)
+        raise NotFound("no page is served at this name")
     scope_to(org.id)
     return await find_page(session, App(org=org.id, env=env, name=name))
 
@@ -131,10 +126,10 @@ async def find_page(session: AsyncSession, app: App) -> Paged:
     """The page the app serves now, from the release that runs; NotFound for an app with none."""
     hosted = await HostedAppRepository(session).find(app.org, app.env, app.name)
     if hosted is None:
-        raise NotFound(NO_PAGE)
+        raise NotFound("no page is served at this name")
     release = await ReleaseRepository(session).find_serving_page(app.org, app.env, app.name, hosted.live_release)
     if release is None or release.page_dir is None or release.page_agent is None:
-        raise NotFound(NO_PAGE)
+        raise NotFound("no page is served at this name")
     page = Page(dir=release.page_dir, agent=release.page_agent)
     return Paged(app=app, release=release.release, sha256=release.sha256, page=page)
 
@@ -172,7 +167,7 @@ class Pages:
         name = asked if asked in files else INDEX
         # A file asked for by its extension and not there is missing; a route of the page's own is the page.
         if name != asked and "." in asked.rsplit("/", 1)[-1]:
-            raise NotFound(NO_FILE.format(path=asked))
+            raise NotFound(f"the page has no file {asked}")
         media_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
         return PageFile(body=files[name], media_type=media_type, is_the_page=name == INDEX)
 
@@ -207,7 +202,7 @@ async def _read_sources(session: AsyncSession, paged: Paged) -> bytes:
     app = paged.app
     found = await ReleaseRepository(session).find(app.org, app.env, app.name, paged.release)
     if found is None:
-        raise NotFound(NO_PAGE)
+        raise NotFound("no page is served at this name")
     return bytes(found.source)
 
 
@@ -227,7 +222,7 @@ def _unpack_folder(data: bytes, folder: str) -> dict[str, bytes]:
                 continue
             unpacked += member.size
             if unpacked > LARGEST_PAGE:
-                raise ValidationError(PAGE_TOO_BIG.format(dir=folder, limit=LARGEST_PAGE >> 20))
+                raise ValidationError(f"the page's folder {folder} unpacks to more than {LARGEST_PAGE >> 20} MiB")
             read = tarball.extractfile(member)
             if read is not None:
                 files[name.removeprefix(inside)] = read.read()

@@ -12,8 +12,6 @@ from runtime.evals.service.writers import write_personas
 from runtime.exceptions import NotFound
 from runtime.judging import service as judging
 
-NO_SUCH_TEMPLATE = "no persona called {name} in Pinecall's library to write callers for {agent} from"
-
 
 @dataclass(frozen=True, slots=True)
 class Generated:
@@ -42,7 +40,7 @@ async def generate_personas(
     if template is not None:
         found = judging.library_personas().get(template)
         if found is None:
-            raise NotFound(NO_SUCH_TEMPLATE.format(name=template, agent=slug))
+            raise NotFound(f"no persona called {template} in Pinecall's library to write callers for {slug} from")
         like = found.persona
     brief = replace(read, about=about, call=said, template=like)
     run = judging.JudgeRun("generate", "personas", scope.env, evals=n, calls=(from_call,) if from_call else ())

@@ -14,9 +14,6 @@ from runtime.wire.base import Entry
 from runtime.wire.events import DevRequest
 from runtime.wire.parts import DevVerb
 
-NO_SUCH_VERB = "no dev verb {verb} in {family}: the verbs are {verbs}"
-NO_ANSWER = "the app holding agent {slug} did not answer {verb} within {seconds:.0f}s"
-APP_LEFT = "the app holding agent {slug} disconnected before it answered {verb}"
 # Longer than any verb takes: a suite waits 20 s on the app's side.
 ANSWERED_WITHIN_S = 120.0
 ASK_PREFIX = "dev_"
@@ -60,19 +57,21 @@ class Relay:
 async def relay(sockets: Sockets, holders: Holders, scope: Scope, asked: Relay, said: JsonObject) -> JsonObject:
     """Ask the process answering the console for the agent, and hand its answer back."""
     if asked.verb not in FAMILIES[asked.family]:
-        raise NotFound(NO_SUCH_VERB.format(verb=asked.verb, family=asked.family, verbs=sorted(FAMILIES[asked.family])))
+        raise NotFound(f"no dev verb {asked.verb} in {asked.family}: the verbs are {sorted(FAMILIES[asked.family])}")
     registration = _find_answering(holders, scope, asked)
     ask_id = f"{ASK_PREFIX}{uuid4().hex[:12]}"
     request = DevRequest.parse({"id": ask_id, "verb": asked.verb, "data": said}, "dev.request")
     waiting = await sockets.ask(ask_id)
     if not await sockets.tell(registration.owner, Entry.make_unstored(asked.slug, "dev.request", request.dump())):
         waiting.cancel()
-        raise AppRefused(502, APP_LEFT.format(slug=asked.slug, verb=asked.verb))
+        raise AppRefused(502, f"the app holding agent {asked.slug} disconnected before it answered {asked.verb}")
     try:
         answer = await asyncio.wait_for(waiting, ANSWERED_WITHIN_S)
     except TimeoutError:
         waiting.cancel()
-        raise AppRefused(504, NO_ANSWER.format(slug=asked.slug, verb=asked.verb, seconds=ANSWERED_WITHIN_S)) from None
+        raise AppRefused(
+            504, f"the app holding agent {asked.slug} did not answer {asked.verb} within {ANSWERED_WITHIN_S:.0f}s"
+        ) from None
     if answer.refused is not None:
         raise AppRefused(answer.refused.status, answer.refused.detail)
     return answer.result or {}

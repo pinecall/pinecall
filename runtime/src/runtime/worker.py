@@ -34,8 +34,6 @@ OPEN = 0.0
 # The one name a process's readied state is kept under, in livekit's dictionary for it.
 WARMED = "warmed"
 
-STILL_UP = "%d calls outlived the drain of %.0f s: shut down and sealed as drained"
-
 
 # Module-level: livekit pickles an entrypoint by module and name, so what it reaches is built in
 # the job's own process, by `prewarm`.
@@ -151,7 +149,9 @@ async def run_worker(settings: Settings) -> int:
         await server.drain(DRAIN_S)
     except TimeoutError:
         # livekit raises when the drain runs out; the close is what shuts and seals the calls left.
-        logger.warning(STILL_UP, len(server.active_jobs), DRAIN_S)
+        logger.warning(
+            "%d calls outlived the drain of %.0f s: shut down and sealed as drained", len(server.active_jobs), DRAIN_S
+        )
     await server.aclose()
     await loops.stop()
     for task in (*waits, ready):

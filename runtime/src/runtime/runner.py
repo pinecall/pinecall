@@ -9,15 +9,13 @@ from runtime.hosts import tasks as hosts_tasks
 from runtime.kit.loops import Loops
 from runtime.kit.signals import stop_on_a_signal
 
-NO_KEY = "PINECALL_RUNNER_KEY: a runner signs in to its gateway with its env's runner key"
-
 
 # The first beat goes out as the loop starts. On the way out the steps under way are cut short and
 # the place decides what becomes of its hosts: a cluster's pods go on, this machine's processes stop.
 async def run_runner(settings: Settings) -> int:
     """Keep the env's hosted apps running until told to stop; the exit it leaves with."""
     if settings.runner_key is None:
-        raise ConfigurationError(NO_KEY)
+        raise ConfigurationError("PINECALL_RUNNER_KEY: a runner signs in to its gateway with its env's runner key")
     stopping = stop_on_a_signal()
     gateway = hosts.open_gateway(settings.gateway_url, settings.runner_key.get_secret_value())
     runner = hosts.Runner(

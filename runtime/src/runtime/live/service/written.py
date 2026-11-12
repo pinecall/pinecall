@@ -35,14 +35,9 @@ from runtime.wire.events import TERMINAL_EVENT, CallStarted, MemoryOps
 from runtime.wire.metrics import LLMModelUsage, ModelUsage
 from runtime.wire.parts import MemoryFact, MemoryOp, PlatformTool, ToolResult
 
-# A written call's session runs on one gateway, which says so: another takes it up only once
-# that gateway fell silent.
-RUNS_ELSEWHERE = "call {call} runs on another gateway: it is taken up there"
 # Where a fact a golden's recall answers is said to come from.
 A_GOLDEN = "golden"
 RECALL: PlatformTool = "recall"
-NOT_TAKEN_UP = "call {call} cannot be taken up: it is over, or not this agent's; open a new one"
-PLAYED_BY_NEEDS_A_PERSONA = "?played_by= says who plays a persona: name it with ?persona="
 NOT_THAT_APPS = "app {app} does not hold agent {slug}"
 NAMED_ALONE = "every app holding agent {slug} takes only the calls that name it"
 
@@ -160,7 +155,9 @@ async def resume_written(
     if kept is None or kept.sealed or kept.scope is None or kept.agent != registration.slug:
         return None
     if live.owners.runs_elsewhere(call):
-        raise Conflict(RUNS_ELSEWHERE.format(call=call))
+        # A written call's session runs on one gateway, which says so: another takes it up only once
+        # that gateway fell silent.
+        raise Conflict(f"call {call} runs on another gateway: it is taken up there")
     if kept.scope.org != registration.scope.org:
         return None
     # The model reads the tools' arguments as they were sent: the private ones opened.
@@ -286,12 +283,12 @@ async def open_chat(live: LiveParts, simulations: Simulations, actor: Actor, ask
         raise NotFound(_explain_nobody(live, actor.scope, ask.agent, ask.app))
     registration = registration_for(held, actor.scope)
     if ask.played_by is not None and ask.persona is None:
-        raise ValidationError(PLAYED_BY_NEEDS_A_PERSONA)
+        raise ValidationError("?played_by= says who plays a persona: name it with ?persona=")
     async with live.sessions.begin() as session_:
         if ask.call is not None:
             running = await resume_written(session_, live, registration, ask.call)
             if running is None:
-                raise Conflict(NOT_TAKEN_UP.format(call=ask.call))
+                raise Conflict(f"call {ask.call} cannot be taken up: it is over, or not this agent's; open a new one")
             return Chat(running, resumed=True)
         simulated = None
         if ask.persona is not None:

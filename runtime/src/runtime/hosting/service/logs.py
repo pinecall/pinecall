@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.exceptions import NotFound
 from runtime.hosting.repository import HostedAppRepository
-from runtime.hosting.service.apps import NOT_HOSTED, App
+from runtime.hosting.service.apps import App
 from runtime.kit.commit import run_after_commit
 from runtime.signal import Signal
 
@@ -33,7 +33,7 @@ async def ask_for_logs(session: AsyncSession, app: App) -> Logs:
     """What the runner last sent of the app's output; the runner is told to send it again."""
     found = await HostedAppRepository(session).ask_for_logs(app.org, app.env, app.name)
     if found is None:
-        raise NotFound(NOT_HOSTED.format(name=app.name, env=app.env.value))
+        raise NotFound(f"the box hosts no app called {app.name} for this org in {app.env.value}")
     return Logs(name=app.name, host=found.logs_host, lines=found.logs, at=found.logs_at)
 
 
