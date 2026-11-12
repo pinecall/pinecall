@@ -58,11 +58,12 @@ class Dispatch(BaseModel):
     continues: str | None = None
     # The voice and the models a test room asked for, over the agent's own for this call alone
     # (agents/service/settings.py: test_values); the gateway signs it, the browser cannot change it.
-    tuning: dict[str, Any] = Field(default_factory=dict[str, Any])
+    # On the wire the field is `tuning`, as the release before 2026-11 wrote it and its jobs read it.
+    test_values: dict[str, Any] = Field(default_factory=dict[str, Any], alias="tuning")
 
     def dump(self) -> str:
         """As a job's metadata: compact JSON, absent fields absent."""
-        data = self.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+        data = self.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_defaults=True)
         return json.dumps(data, separators=(",", ":"))
 
     @classmethod

@@ -178,14 +178,15 @@ class DeclarationRepository(Repository[AgentDeclaration]):
         """The scope's own declaration, none falling through."""
         return await self.one_or_none(self.statement().where(*_in_scope(AgentDeclaration, scope, agent)))
 
-    async def put(self, scope: Scope, agent: str, declared: dict[str, Any], sdk: str | None) -> AgentDeclaration:
+    # Written by the columns' own names, which the table keeps: `declared`, `declared_at`.
+    async def put(self, scope: Scope, agent: str, declaration: dict[str, Any], sdk: str | None) -> AgentDeclaration:
         """Keep the declaration as the scope's, over the one before it."""
         values = {
             "org": scope.org,
             "env": scope.env,
             "holder": scope.holder,
             "agent": agent,
-            "declared": declared,
+            "declared": declaration,
             "sdk": sdk,
             "declared_at": now(),
         }

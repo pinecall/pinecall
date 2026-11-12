@@ -35,7 +35,7 @@ THE_MODEL = "model"
 ENDPOINTING = "endpointing_ms"
 EOT_TIMEOUT = "eot_timeout_ms"
 VOICE = "voice"
-KNOB_NAMES: dict[str, tuple[str, ...]] = {
+SETTING_NAMES: dict[str, tuple[str, ...]] = {
     ENDPOINTING: (ENDPOINTING, EOT_TIMEOUT),
     "eot_threshold": ("eot_threshold",),
     "eager_eot_threshold": ("eager_eot_threshold",),
@@ -45,7 +45,7 @@ KNOB_NAMES: dict[str, tuple[str, ...]] = {
 
 # What an agent says about turns belongs to `agents`, above this domain: the five knobs the ears may
 # take are read through this, and whatever declares them is handed in.
-class TurnKnobs(Protocol):
+class TurnSettings(Protocol):
     """How the session decides the caller has finished, as far as a plugin's ears may be told."""
 
     @property
@@ -74,18 +74,18 @@ class TurnKnobs(Protocol):
         ...
 
 
-def knobs_of(turn: TurnKnobs | None) -> dict[str, object]:
+def options_of(turn: TurnSettings | None) -> dict[str, object]:
     """The turn's knobs that are set, by name, the endpointing also under the name some ears call it."""
     if turn is None:
         return {}
-    knobs: dict[str, object] = {
+    options: dict[str, object] = {
         "min_interruption_words": turn.min_interruption_words,
         ENDPOINTING: turn.endpointing_ms,
         "eot_threshold": turn.eot_threshold,
         "eager_eot_threshold": turn.eager_eot_threshold,
         "min_interruption_ms": turn.min_interruption_ms,
     }
-    given = {knob: value for knob, value in knobs.items() if value is not None}
+    given = {name: value for name, value in options.items() if value is not None}
     # The agent's endpointing is the silence that closes a turn: the ears that take it call it so.
     if turn.endpointing_ms is not None:
         given[EOT_TIMEOUT] = turn.endpointing_ms
@@ -139,10 +139,10 @@ def first_of(accepts: frozenset[str], names: tuple[str, ...], value: object) -> 
 def options_object(made: type) -> tuple[str, frozenset[str]] | None:
     """The argument whose declared type is a dataclass, and that dataclass's fields; None when it takes none."""
     try:
-        declared = inspect.signature(made, eval_str=True).parameters
+        parameters = inspect.signature(made, eval_str=True).parameters
     except (NameError, TypeError, ValueError):
         return None
-    for name, parameter in declared.items():
+    for name, parameter in parameters.items():
         shape = dataclass_in(parameter.annotation)
         if shape is not None:
             return name, frozenset(each.name for each in dataclasses.fields(shape))
@@ -154,36 +154,36 @@ def options_object(made: type) -> tuple[str, frozenset[str]] | None:
 def shape_arguments(made: type, given: Mapping[str, object]) -> dict[str, object]:
     """The arguments with each mapping built into the dataclass the plugin declares for it, however deep."""
     try:
-        declared = {
+        annotations = {
             name: parameter.annotation for name, parameter in inspect.signature(made, eval_str=True).parameters.items()
         }
     except (NameError, TypeError):
         return dict(given)
-    return {name: _as_declared(declared.get(name), value) for name, value in given.items()}
+    return {name: _as_annotated(annotations.get(name), value) for name, value in given.items()}
 
 
-def dataclass_in(declared: object) -> type | None:
+def dataclass_in(annotation: object) -> type | None:
     """The dataclass a declared type is, or holds in a union; None for any other."""
-    if isinstance(declared, type) and dataclasses.is_dataclass(declared):
-        return declared
-    if isinstance(declared, types.UnionType):
-        return next((one for one in typing.get_args(declared) if dataclass_in(one)), None)
+    if isinstance(annotation, type) and dataclasses.is_dataclass(annotation):
+        return annotation
+    if isinstance(annotation, types.UnionType):
+        return next((one for one in typing.get_args(annotation) if dataclass_in(one)), None)
     return None
 
 
-def _as_declared(declared: object, value: object) -> object:
-    shape = dataclass_in(declared)
+def _as_annotated(annotation: object, value: object) -> object:
+    shape = dataclass_in(annotation)
     if shape is None:
         # JSON has one number: `speed=1.0` arrives as 1, and a parameter typed float alone takes 1.0.
-        return float(value) if type(value) is int and _takes_a_float(declared) else value
+        return float(value) if type(value) is int and _takes_a_float(annotation) else value
     if not a_mapping(value):
         return value
     typed = typing.get_type_hints(shape)
-    return shape(**{name: _as_declared(typed.get(name), given) for name, given in value.items()})
+    return shape(**{name: _as_annotated(typed.get(name), given) for name, given in value.items()})
 
 
-def _takes_a_float(declared: object) -> bool:
-    options = typing.get_args(declared) or (declared,)
+def _takes_a_float(annotation: object) -> bool:
+    options = typing.get_args(annotation) or (annotation,)
     return float in options and int not in options
 
 
@@ -202,7 +202,7 @@ def takes_a_key(vendor: str) -> bool:
 def ends_turns(vendor: str) -> bool:
     """Whether the vendor's ears take an endpointing of their own."""
     made = getattr(plugin(vendor), CLASS_OF[Stage.stt], None)
-    return isinstance(made, type) and bool(parameters_of(made) & set(KNOB_NAMES[ENDPOINTING]))
+    return isinstance(made, type) and bool(parameters_of(made) & set(SETTING_NAMES[ENDPOINTING]))
 
 
 # What a plugin's constructor declares as its voice's default is the voice a stage that names none
@@ -210,10 +210,10 @@ def ends_turns(vendor: str) -> bool:
 def default_voice(running: Running) -> str | None:
     """The voice the stage's plugin speaks with when it is handed none."""
     try:
-        declared = inspect.signature(class_of(Stage.tts, running)).parameters
+        parameters = inspect.signature(class_of(Stage.tts, running)).parameters
     except (TypeError, ValueError):
         return None
-    named = next((declared[name] for name in THE_VOICE if name in declared), None)
+    named = next((parameters[name] for name in THE_VOICE if name in parameters), None)
     default = None if named is None else named.default
     return default if isinstance(default, str) and default != "" else None
 
@@ -235,8 +235,8 @@ def lists_voices(vendor: str, does: Collection[Stage]) -> bool:
 
 # Only what the org set: the key, the language and the hints are the runtime's, and a plugin
 # that takes none of them is the operator's to configure in the providers row.
-def refuse_untaken_knobs(ears: Running, voice: Running, turn: TurnKnobs | None, *, sets_a_voice: bool) -> None:
-    """Refuse the org's turn and voice knobs that its ears or its voice take under no name."""
+def refuse_untaken_settings(ears: Running, voice: Running, turn: TurnSettings | None, *, sets_a_voice: bool) -> None:
+    """Refuse the org's turn and voice settings that its ears or its voice take under no name."""
     heard: dict[str, object] = {
         ENDPOINTING: None if turn is None else turn.endpointing_ms,
         "eot_threshold": None if turn is None else turn.eot_threshold,
@@ -246,20 +246,20 @@ def refuse_untaken_knobs(ears: Running, voice: Running, turn: TurnKnobs | None, 
     # `endpointing_ms` was refused as untaken, and the agent spoke over callers who paused (2026-11-06).
     if not ears.ends_the_turn:
         heard.pop(ENDPOINTING)
-    refuse_untaken(Stage.stt, ears, [knob for knob, value in heard.items() if value is not None])
+    refuse_untaken(Stage.stt, ears, [name for name, value in heard.items() if value is not None])
     refuse_untaken(Stage.tts, voice, [VOICE] if sets_a_voice else [])
 
 
 # A voice is never untaken by a tts: a plugin with no voice argument speaks it as its model.
-def refuse_untaken(stage: Stage, running: Running, knobs: list[str]) -> None:
-    """Refuse the knobs the stage's class takes under none of their names."""
-    if not knobs:
+def refuse_untaken(stage: Stage, running: Running, settings: list[str]) -> None:
+    """Refuse the settings the stage's class takes under none of their names."""
+    if not settings:
         return
     accepts = parameters_of(class_of(stage, running))
     untaken = [
-        knob
-        for knob in knobs
-        if not any(name in accepts for name in KNOB_NAMES[knob]) and not (stage is Stage.tts and knob == VOICE)
+        setting
+        for setting in settings
+        if not any(name in accepts for name in SETTING_NAMES[setting]) and not (stage is Stage.tts and setting == VOICE)
     ]
     if untaken:
         raise ValidationError(

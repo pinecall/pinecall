@@ -7,11 +7,15 @@ from tests.runtime.conventions.canon import PACKAGE, Module
 # The vocabulary's `never` column (CONTRIBUTING.md), as whole words of an identifier.
 BANNED = frozenset(
     {"door", "doors", "world", "worlds", "corner", "bearer", "acting", "knock", "knocks", "letter", "letters"}
+    | {"tuning", "knob", "knobs", "declared", "declarations"}
 )
-# Identifiers that carry a banned word on purpose, and why; each goes when its reason does.
+# Identifiers that carry a banned word on purpose, and why; each goes when its reason does. An identifier is
+# named whole: `tuning` the field is kept, `tuning_of` a function is not.
 ALLOWED: dict[str, str] = {
     # The console and the SDKs read `world` off the wire; the field follows them when they move to `env`.
     "world": "a wire field the console still reads",
+    # The providers row is a document the box keeps, and the release before 2026-11 reads this key of it.
+    "tuning": "a key of the stored providers row, read by the release that runs beside this one",
 }
 
 
@@ -22,7 +26,7 @@ def test_no_banned_word_in_an_identifier(modules: dict[str, Module]) -> None:
         for node in ast.walk(module.tree):
             for name, line in _identifiers(node):
                 for word in name.lower().split("_"):
-                    if word in BANNED and word not in ALLOWED:
+                    if word in BANNED and name not in ALLOWED:
                         wrong.append(f"{module.shown}:{line}: `{name}` says {word}")
     assert not wrong, "\n".join(wrong)
 

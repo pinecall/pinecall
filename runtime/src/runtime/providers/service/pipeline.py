@@ -8,7 +8,7 @@ from typing import Protocol
 from runtime.enums import Stage
 from runtime.exceptions import Conflict, Forbidden, ServiceUnavailable, ValidationError
 from runtime.providers.catalog import Catalog
-from runtime.providers.service.catalog import tuning_of
+from runtime.providers.service.catalog import stage_options_of
 from runtime.providers.service.keyring import Keyring, running_on
 from runtime.providers.stage import TURN_MODEL_OF, Credentials, Model, Pipeline, Running, Voice, primary_language
 from runtime.wire.parts import EndOfTurn
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # An agent's declaration is `agents`', above this domain. What resolving its stages reads of it is
 # this much, and whatever carries it is handed in.
-class Declared(Protocol):
+class AgentStages(Protocol):
     """What a resolved declaration says of an agent's stages: the vendors it names, its language, who takes over."""
 
     @property
@@ -62,18 +62,22 @@ class Declared(Protocol):
         ...
 
 
-def build_pipeline(declared: Declared, catalog: Catalog, keys: Keyring) -> Pipeline:
+def build_pipeline(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> Pipeline:
     """The stages an agent runs: its vendors or the defaults, each with its key and options."""
-    language = primary_language(declared.language)
-    llm = thinking_of(declared, catalog, keys)
+    language = primary_language(declaration.language)
+    llm = thinking_of(declaration, catalog, keys)
     stt = _back_by(
-        stage_on_its_key(Stage.stt, declared.stt, catalog, keys), Stage.stt, declared.stt_fallbacks, catalog, keys
+        stage_on_its_key(Stage.stt, declaration.stt, catalog, keys), Stage.stt, declaration.stt_fallbacks, catalog, keys
     )
     tts = _back_by(
-        stage_on_its_key(Stage.tts, declared.voice, catalog, keys), Stage.tts, declared.tts_fallbacks, catalog, keys
+        stage_on_its_key(Stage.tts, declaration.voice, catalog, keys),
+        Stage.tts,
+        declaration.tts_fallbacks,
+        catalog,
+        keys,
     )
     heard = dict.fromkeys(item for item in (language, *catalog.hints) if item)
-    voice = declared.voice.voice_id if declared.voice else None
+    voice = declaration.voice.voice_id if declaration.voice else None
     ears = [dataclasses.replace(item, language=language, hints=tuple(heard)) for item in (stt, *stt.fallbacks)]
     # The agent's voice is its vendor's; a vendor that takes over speaks the row's for the language.
     voices = [
@@ -82,7 +86,7 @@ def build_pipeline(declared: Declared, catalog: Catalog, keys: Keyring) -> Pipel
         )
         for item in (tts, *tts.fallbacks)
     ]
-    realtime = None if declared.realtime is None else talking_of(declared.realtime, keys)
+    realtime = None if declaration.realtime is None else talking_of(declaration.realtime, keys)
     return Pipeline(llm=llm, stt=ears[0].over(*ears[1:]), tts=voices[0].over(*voices[1:]), realtime=realtime)
 
 
@@ -100,12 +104,12 @@ def talking_of(named: Model, keys: Keyring) -> Running:
 
 
 # A written call runs this stage alone: a call with no voice is not refused for want of one.
-def thinking_of(declared: Declared, catalog: Catalog, keys: Keyring) -> Running:
+def thinking_of(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> Running:
     """The model an agent thinks with, on its key, at the temperature it declared."""
-    llm = stage_on_its_key(Stage.llm, declared.llm, catalog, keys)
-    if declared.llm is None or declared.llm.temperature is None:
+    llm = stage_on_its_key(Stage.llm, declaration.llm, catalog, keys)
+    if declaration.llm is None or declaration.llm.temperature is None:
         return llm
-    return dataclasses.replace(llm, options={**llm.options, "temperature": declared.llm.temperature})
+    return dataclasses.replace(llm, options={**llm.options, "temperature": declaration.llm.temperature})
 
 
 # An agent that names its vendor runs it alone; one on the row's default runs the default's
@@ -129,19 +133,19 @@ def vendor_on(stage: Stage, vendor: str, credentials: Credentials, catalog: Cata
 # Checked where an agent declares itself and where its settings are set, not first on a call.
 # Every stage the agent names is tried on its key here, when it is declared: a vendor nobody keyed is
 # refused at agent.configure in the sentence a call would have closed with, never on the first call.
-def refuse_what_cannot_run(declared: Declared, catalog: Catalog, keys: Keyring) -> None:
+def refuse_what_cannot_run(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> None:
     """Refuse a stage with no key, its own plugin or a realtime model on a lent key, or an end of turn it lacks."""
     stages: tuple[tuple[Stage, Model | Voice | None], ...] = (
-        (Stage.llm, declared.llm),
-        (Stage.stt, declared.stt),
-        (Stage.tts, declared.voice),
-        (Stage.llm, declared.judge),
+        (Stage.llm, declaration.llm),
+        (Stage.stt, declaration.stt),
+        (Stage.tts, declaration.voice),
+        (Stage.llm, declaration.judge),
     )
     for stage, named in stages:
         if named is not None:
             stage_on_its_key(stage, named, catalog, keys)
-    if declared.realtime is not None:
-        talking_of(declared.realtime, keys)
+    if declaration.realtime is not None:
+        talking_of(declaration.realtime, keys)
 
 
 # ── private ──
@@ -182,7 +186,7 @@ def _end_turns_by(chosen: Running, end_of_turn: EndOfTurn) -> Running:
 def _run_on_its_key(stage: Stage, vendor: str, named: str | None, catalog: Catalog, keys: Keyring) -> Running:
     model = named or catalog.model_for(stage, vendor)
     chosen = running_on(keys, vendor, model)
-    options = tuning_of(catalog, stage, vendor, model)
+    options = stage_options_of(catalog, stage, vendor, model)
     if options is None:
         return chosen
     return dataclasses.replace(

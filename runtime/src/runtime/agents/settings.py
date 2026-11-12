@@ -24,7 +24,7 @@ from runtime.agents.declaration import (
 from runtime.exceptions import ValidationError
 from runtime.kit.text import a_mapping
 from runtime.kit.time import parse_zone
-from runtime.wire.declared import IDLE_AFTER_S, IDLE_TIMES
+from runtime.wire.declaration import IDLE_AFTER_S, IDLE_TIMES
 from runtime.wire.parts import EndOfTurn
 
 

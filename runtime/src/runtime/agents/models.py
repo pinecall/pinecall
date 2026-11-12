@@ -80,10 +80,11 @@ class AgentDeclaration(Model):
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
     holder: Mapped[str] = mapped_column(Text, primary_key=True)
     agent: Mapped[str] = mapped_column(Text, primary_key=True)
-    # The wire's AgentConfig as the app sent it, every configure of one socket merged into the first.
-    declared: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # The wire's AgentConfig as the app sent it, every configure of one socket merged into the first. The
+    # columns keep the names the table was made with (`declared`, `declared_at`).
+    declaration: Mapped[dict[str, Any]] = mapped_column("declared", JSONB, nullable=False)
     sdk: Mapped[str | None] = mapped_column(Text)
-    declared_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
+    set_at: Mapped[datetime] = mapped_column("declared_at", TIMESTAMP(timezone=True), nullable=False, default=utc_now)
 
 
 class AgentDocument(Model):

@@ -11,7 +11,7 @@ from runtime.agents.models import AgentWidget
 from runtime.agents.repository import WidgetRepository
 from runtime.agents.service.setting_names import refuse_what_the_class_sets
 from runtime.exceptions import ValidationError
-from runtime.wire.declared import WidgetLook
+from runtime.wire.declaration import WidgetLook
 from runtime.wire.parts import WidgetTheme
 
 LONGEST = {"title": 80, "tagline": 160, "greeting": 500, "accent": 40}
@@ -44,15 +44,15 @@ def check_look(look: Look) -> Look:
     return look
 
 
-def look_of(declared: WidgetLook) -> Look:
+def look_of(of_the_class: WidgetLook) -> Look:
     """The look as a class declares it."""
     return Look(
-        title=declared.title,
-        tagline=declared.tagline,
-        greeting=declared.greeting,
-        accent=declared.accent,
-        autostart=declared.autostart,
-        theme=declared.theme,
+        title=of_the_class.title,
+        tagline=of_the_class.tagline,
+        greeting=of_the_class.greeting,
+        accent=of_the_class.accent,
+        autostart=of_the_class.autostart,
+        theme=of_the_class.theme,
         fixed=True,
     )
 

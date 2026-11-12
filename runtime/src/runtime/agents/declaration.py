@@ -8,7 +8,7 @@ from runtime.exceptions import ValidationError
 from runtime.kit.text import A_FUNCTION_NAME, a_mapping, parse_slug
 from runtime.kit.time import parse_zone
 from runtime.providers.stage import Model, Voice
-from runtime.wire.declared import (
+from runtime.wire.declaration import (
     IDLE_AFTER_S,
     IDLE_TIMES,
     HoldConfig,

@@ -148,7 +148,7 @@ def _name(vendor: str, stage: Stage, catalog: Catalog) -> str:
 def _base_url(catalog: Catalog, stage: Stage, vendor: str | None = None) -> str | None:
     default = catalog.defaults.get(stage)
     named = vendor or (default.vendor if default is not None else None)
-    tuned = catalog.tuning_for(stage, named) if named else None
+    tuned = catalog.options_for(stage, named) if named else None
     url = tuned.options.get(BASE_URL) if tuned is not None else None
     return url if isinstance(url, str) and url else None
 

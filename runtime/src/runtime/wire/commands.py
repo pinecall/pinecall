@@ -6,7 +6,7 @@ from pydantic import Field
 
 from runtime.exceptions import ValidationError
 from runtime.wire.base import Command, WireModel
-from runtime.wire.declared import AgentConfig
+from runtime.wire.declaration import AgentConfig
 from runtime.wire.parts import Contact, Route, StateCause, Supervisor, ToolResult, ToolSpec, TransferMode
 
 # Which events a command lands in the log as, so a caller knows what to wait for.

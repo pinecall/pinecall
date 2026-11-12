@@ -16,7 +16,7 @@ from runtime.enums import HoldPlayed
 from runtime.exceptions import Conflict, NotFound, ValidationError
 from runtime.kit.opus import RunsLonger, encode_upload
 from runtime.kit.text import sha256_of
-from runtime.wire.declared import HoldConfig
+from runtime.wire.declaration import HoldConfig
 from runtime.wire.worker import HOLD_AFTER_S
 
 # The org's own wait is held between these two; unset, the runtime's (`HOLD_AFTER_S`).
@@ -61,7 +61,7 @@ class Hold:
     fixed: bool = False
 
 
-def hold_of(row: HoldAudio | None, declared: HoldConfig | None = None) -> Hold:
+def hold_of(row: HoldAudio | None, of_the_class: HoldConfig | None = None) -> Hold:
     """What the agent plays, from its row and its class; the runtime's melody after its wait when neither says."""
     read = Hold()
     if row is not None:
@@ -73,14 +73,14 @@ def hold_of(row: HoldAudio | None, declared: HoldConfig | None = None) -> Hold:
             name=row.name,
             after_s=HOLD_AFTER_S if row.after_s is None else row.after_s,
         )
-    if declared is None:
+    if of_the_class is None:
         return read
     # The class's wait and its silence win; its clip is the row's once its process uploaded it.
     unsilenced = HoldPlayed.default if read.played is HoldPlayed.off else read.played
     return replace(
         read,
-        played=HoldPlayed.off if declared.off else unsilenced,
-        after_s=read.after_s if declared.after_s is None else declared.after_s,
+        played=HoldPlayed.off if of_the_class.off else unsilenced,
+        after_s=read.after_s if of_the_class.after_s is None else of_the_class.after_s,
         fixed=True,
     )
 
@@ -138,10 +138,10 @@ async def put_clip(session: AsyncSession, scope: Scope, agent: Agent, data: byte
 # nothing for an agent whose class declares none.
 async def ship_clip(session: AsyncSession, scope: Scope, agent: Agent, data: bytes, name: str | None) -> Hold:
     """The file the agent's class declares as its melody, uploaded by the process that holds it."""
-    declared = _its_class_holds(agent)
-    if declared is None or declared.clip != sha256_of(data):
+    of_the_class = _its_class_holds(agent)
+    if of_the_class is None or of_the_class.clip != sha256_of(data):
         raise Conflict(NOT_THE_CLASSS_FILE.format(slug=agent.slug))
-    return hold_of(await _keep_clip(session, scope, agent.slug, data, name), declared)
+    return hold_of(await _keep_clip(session, scope, agent.slug, data, name), of_the_class)
 
 
 # Choosing what plays keeps the wait the org set: the two are set apart.

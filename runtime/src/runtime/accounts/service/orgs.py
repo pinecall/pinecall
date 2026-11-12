@@ -12,7 +12,7 @@ from runtime.exceptions import Conflict, NotFound
 from runtime.kit.crypto import random_id
 from runtime.kit.text import parse_slug
 from runtime.scoping import box_wide
-from runtime.wire.declared import ModelConfig
+from runtime.wire.declaration import ModelConfig
 
 ID_PREFIX = "org_"
 

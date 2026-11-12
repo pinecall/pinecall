@@ -399,7 +399,7 @@ async def _plan(
             trials.append(_Trial(Stage.llm, judge, moved, what=THE_JUDGE))
     if not opens_the_pipeline:
         return _Plan(wanted, catalog, tuple(trials))
-    providers.refuse_untaken_knobs(stages.stt, stages.tts, wanted.turn, sets_a_voice=wanted.voice is not None)
+    providers.refuse_untaken_settings(stages.stt, stages.tts, wanted.turn, sets_a_voice=wanted.voice is not None)
     running = {Stage.tts: stages.tts, Stage.llm: stages.llm, Stage.stt: stages.stt}
     for stage, names in STAGE_FIELDS.items():
         moved = _fields_moved(wanted, newest, names)

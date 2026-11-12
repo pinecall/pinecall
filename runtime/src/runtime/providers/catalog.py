@@ -187,7 +187,7 @@ class Catalog(Schema):
         named = self.models.get(stage_key(stage, vendor))
         return named or (default.model if default is not None and default.vendor == vendor else None)
 
-    def tuning_for(self, stage: Stage, vendor: str, model: str | None = None) -> StageOptions | None:
+    def options_for(self, stage: Stage, vendor: str, model: str | None = None) -> StageOptions | None:
         """What a vendor is told for a stage: the longest key naming the model's id, else the vendor's own."""
         own = stage_key(stage, vendor)
         under = f"{own}{_SEPARATOR}"

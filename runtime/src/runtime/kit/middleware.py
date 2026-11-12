@@ -100,8 +100,8 @@ class BodyCeiling:
             await self.app(scope, receive, send)
             return
         too_large = JSONResponse({"detail": TOO_LARGE.format(most=self.most // (1024 * 1024))}, status_code=413)
-        declared = Headers(scope=scope).get("content-length")
-        if declared is not None and declared.isdigit() and int(declared) > self.most:
+        announced = Headers(scope=scope).get("content-length")
+        if announced is not None and announced.isdigit() and int(announced) > self.most:
             await too_large(scope, receive, send)
             return
         counted = 0

@@ -33,7 +33,7 @@ from runtime.enums import Stage
 from runtime.exceptions import ValidationError
 from runtime.providers import service as providers
 from runtime.providers.stage import Model, Voice
-from runtime.wire import declared as wire
+from runtime.wire import declaration as wire
 
 NO_VENDOR = (
     "a voice names its vendor and the voice: `provider` and `voice_id` (or `name`) on the wire, "
@@ -143,11 +143,11 @@ async def put_declaration(
     session: AsyncSession, scope: Scope, slug: str, sent: wire.AgentConfig, *, sdk: str | None, first: bool
 ) -> dict[str, Any]:
     """Keep what the app declared of the agent as the scope's, merged into what it declared before; the row's body."""
-    declarations = DeclarationRepository(session)
+    repository = DeclarationRepository(session)
     body = sent.dump()
-    before = None if first else await declarations.find_own(scope, slug)
-    merged = body if before is None else {**before.declared, **body}
-    await declarations.put(scope, slug, merged, sdk)
+    before = None if first else await repository.find_own(scope, slug)
+    merged = body if before is None else {**before.declaration, **body}
+    await repository.put(scope, slug, merged, sdk)
     return merged
 
 
@@ -160,7 +160,7 @@ async def declaration_of(session: AsyncSession, scope: Scope, slug: str) -> Decl
     row = await DeclarationRepository(session).find(scope, slug)
     if row is None:
         return None
-    return apply_declaration(Declaration(slug=slug), wire.AgentConfig.model_validate(row.declared), first=True)
+    return apply_declaration(Declaration(slug=slug), wire.AgentConfig.model_validate(row.declaration), first=True)
 
 
 async def agent_of(session: AsyncSession, scope: Scope, slug: str) -> Agent:
@@ -176,7 +176,7 @@ async def agent_of(session: AsyncSession, scope: Scope, slug: str) -> Agent:
 def _fix_settings(current: Declaration, sent: wire.AgentConfig, *, first: bool) -> dict[str, Any]:
     changed: dict[str, Any] = {}
     fixed = set(current.fixed)
-    named = _names_sent(sent) & DECLARED.keys()
+    named = _names_sent(sent) & VALUE_OF.keys()
     let_go = (fixed - named) if first else set[str]()
     for name in sorted(named | let_go):
         field = FIELD_OF[name]
@@ -186,7 +186,7 @@ def _fix_settings(current: Declaration, sent: wire.AgentConfig, *, first: bool) 
             changed[field] = _default_of(field)
             continue
         fixed.add(name)
-        changed[field] = DECLARED[name](sent)
+        changed[field] = VALUE_OF[name](sent)
     changed["fixed"] = frozenset(fixed)
     return changed
 
@@ -258,7 +258,7 @@ def _idle_of(wanted: wire.IdleConfig | None) -> Idle | None:
 
 # Each setting a class may declare, by the declaration's name, as the value its field holds; the names
 # are `setting_names.SETTINGS`', and a test holds the two alike.
-DECLARED: Mapping[str, Callable[[wire.AgentConfig], object]] = {
+VALUE_OF: Mapping[str, Callable[[wire.AgentConfig], object]] = {
     "language": lambda sent: sent.language,
     "timezone": lambda sent: sent.timezone,
     "voice": lambda sent: _voice_of(sent.voice),

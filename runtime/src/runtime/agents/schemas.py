@@ -9,7 +9,7 @@ from runtime.enums import Env, Stage
 from runtime.kit.schemas import Epoch, Row, Schema
 from runtime.providers.schemas import ModelChoice, ProviderRow
 from runtime.wire.base import WireModel
-from runtime.wire.declared import (
+from runtime.wire.declaration import (
     DocsConfig,
     GreetingConfig,
     HangupConfig,

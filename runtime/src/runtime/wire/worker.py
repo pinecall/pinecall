@@ -6,7 +6,7 @@ from pydantic import AliasChoices, Field
 
 from runtime.enums import HoldPlayed
 from runtime.wire.base import WireModel
-from runtime.wire.declared import (
+from runtime.wire.declaration import (
     DocsConfig,
     GreetingConfig,
     HangupConfig,

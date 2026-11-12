@@ -28,7 +28,7 @@ from runtime.providers.stage import Running
 type OptionKind = Literal["text", "number", "integer", "boolean", "choice", "list", "json"]
 
 # What the settings set elsewhere, or the call fills itself: never an option of its own.
-THE_KNOBS = frozenset({*THE_KEY, *THE_VOICE, *THE_LANGUAGE, *THE_HINTS, *THE_TERMS, THE_MODEL, "temperature"})
+THE_SETTINGS = frozenset({*THE_KEY, *THE_VOICE, *THE_LANGUAGE, *THE_HINTS, *THE_TERMS, THE_MODEL, "temperature"})
 # Arguments no form can fill: the plugin's own plumbing.
 PLUMBING = frozenset({"self", "args", "kwargs", "http_session", "client", "credentials", "session"})
 SCALARS: dict[type, OptionKind] = {str: "text", bool: "boolean", int: "integer", float: "number"}
@@ -79,12 +79,12 @@ def _parameters_of(made: type) -> list[inspect.Parameter]:
 # settings set elsewhere, or that no form can type, is left out; one that is a dataclass is its fields.
 def _draw(parameter: inspect.Parameter, inside: str | None) -> Iterator[Option]:
     name = parameter.name
-    if name.startswith("_") or name in PLUMBING or name in THE_KNOBS or name in SAMPLING - {"top_p", "top_k"}:
+    if name.startswith("_") or name in PLUMBING or name in THE_SETTINGS or name in SAMPLING - {"top_p", "top_k"}:
         return
     if parameter.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
         return
-    declared = parameter.annotation
-    shape = dataclass_in(declared)
+    annotation = parameter.annotation
+    shape = dataclass_in(annotation)
     if shape is not None and inside is None:
         hints = typing.get_type_hints(shape)
         # A field with no default would make the whole object required: an object is drawn by what it defaults.
@@ -99,7 +99,7 @@ def _draw(parameter: inspect.Parameter, inside: str | None) -> Iterator[Option]:
                 name,
             )
         return
-    kind, choices, is_open = _kind_of(declared)
+    kind, choices, is_open = _kind_of(annotation)
     if kind is None:
         return
     default = parameter.default
@@ -115,8 +115,8 @@ def _draw(parameter: inspect.Parameter, inside: str | None) -> Iterator[Option]:
     )
 
 
-def _kind_of(declared: object) -> tuple[OptionKind | None, list[str], bool]:
-    members = [one for one in _members_of(declared) if one is not type(None) and one is not NotGiven]
+def _kind_of(annotation: object) -> tuple[OptionKind | None, list[str], bool]:
+    members = [one for one in _members_of(annotation) if one is not type(None) and one is not NotGiven]
     choices = [
         str(value) for member in members if typing.get_origin(member) is Literal for value in typing.get_args(member)
     ]
@@ -138,12 +138,12 @@ def _kind_of(declared: object) -> tuple[OptionKind | None, list[str], bool]:
     return scalars[0], [], False
 
 
-def _members_of(declared: object) -> list[object]:
-    if declared is inspect.Parameter.empty or declared is Any:
+def _members_of(annotation: object) -> list[object]:
+    if annotation is inspect.Parameter.empty or annotation is Any:
         return []
-    if isinstance(declared, types.UnionType) or typing.get_origin(declared) is typing.Union:
-        return [member for one in typing.get_args(declared) for member in _members_of(one)]
-    return [declared]
+    if isinstance(annotation, types.UnionType) or typing.get_origin(annotation) is typing.Union:
+        return [member for one in typing.get_args(annotation) for member in _members_of(one)]
+    return [annotation]
 
 
 def _plain(value: object) -> Any:

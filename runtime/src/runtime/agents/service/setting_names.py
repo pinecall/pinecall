@@ -19,7 +19,7 @@ class SettingNames:
     """One setting an agent has: how its class declares it, and how the org sets it underneath."""
 
     # In the declaration, as the wire names it: what `Declaration.fixed` holds.
-    declared: str
+    name: str
     # The `Declaration`'s field it becomes.
     field: str
     # The `AgentSettings` fields that feed it; none: the class's alone, or the lexicon's.
@@ -85,16 +85,16 @@ SETTINGS: tuple[SettingNames, ...] = (
 )
 
 # The declaration's field of each setting a class may declare.
-FIELD_OF: dict[str, str] = {one.declared: one.field for one in SETTINGS}
+FIELD_OF: dict[str, str] = {one.name: one.field for one in SETTINGS}
 # Every field of the org's settings by its name in the declaration.
-DECLARED_AS: dict[str, str] = {name: one.declared for one in SETTINGS for name in one.set_by}
+NAME_IN_DECLARATION: dict[str, str] = {name: one.name for one in SETTINGS for name in one.set_by}
 # A write that changes one of a stage's fields has the stage tried before it is kept.
 STAGE_FIELDS: dict[Stage, tuple[str, ...]] = {
     stage: tuple(name for one in SETTINGS if stage in one.tries for name in one.set_by)
     for stage in (Stage.tts, Stage.llm, Stage.stt)
 }
-REALTIME_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.declared == "realtime")
-JUDGE_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.declared == "judge")
+REALTIME_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.name == "realtime")
+JUDGE_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.name == "judge")
 # A `words` key sets the opening's words, what is remembered and the knowledge; the rest is the pipeline's.
 WORDS_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS if one.words for name in one.set_by)
 PIPELINE_ONLY: tuple[str, ...] = tuple(name for name in FIELDS if name not in WORDS_FIELDS)
@@ -116,6 +116,6 @@ class SetByTheClass(Conflict):
 # alone or the lexicon's by its own name (`hold`, `widget`, `says`).
 def refuse_what_the_class_sets(agent: Agent, fields: Sequence[str]) -> None:
     """Refuse a write that changes what the class of the agent declares."""
-    taken = {DECLARED_AS.get(name, name) for name in fields} & agent.fixed
+    taken = {NAME_IN_DECLARATION.get(name, name) for name in fields} & agent.fixed
     if taken:
         raise SetByTheClass(taken, agent.slug)

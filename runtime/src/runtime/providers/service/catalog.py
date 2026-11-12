@@ -44,9 +44,9 @@ async def seed_catalog(session: AsyncSession, seeded: Catalog) -> None:
         raise Conflict("this box is configured already: the console edits what is there")
 
 
-def tuning_of(catalog: Catalog, stage: Stage, vendor: str, model: str | None) -> StageOptions | None:
+def stage_options_of(catalog: Catalog, stage: Stage, vendor: str, model: str | None) -> StageOptions | None:
     """What a vendor is told for a stage and model: the row's word, on the class that runs that model."""
-    options = catalog.tuning_for(stage, vendor, model)
+    options = catalog.options_for(stage, vendor, model)
     if options is None or options.builds is None or model is None or _its_class_runs(vendor, stage, options, model):
         return options
     return options.model_copy(update={"builds": None, "ends_the_turn": False})
@@ -131,5 +131,5 @@ def _check_fallback(written: Catalog, stage: Stage, primary: StageChoice, fallba
 
 
 def _ends_the_turn(written: Catalog, choice: StageChoice) -> bool:
-    options = tuning_of(written, Stage.stt, choice.vendor, choice.model)
+    options = stage_options_of(written, Stage.stt, choice.vendor, choice.model)
     return options is not None and options.ends_the_turn

@@ -227,7 +227,7 @@ def _at(module: object, path: str) -> object:
 
 
 # The strings of a Literal, through the unions a plugin wraps it in (`NotGivenOr[Models | str]`).
-def _literal_in(declared: object) -> tuple[str, ...]:
-    if typing.get_origin(declared) is typing.Literal:
-        return tuple(one for one in typing.get_args(declared) if isinstance(one, str))
-    return tuple(name for inner in typing.get_args(declared) for name in _literal_in(inner))
+def _literal_in(annotation: object) -> tuple[str, ...]:
+    if typing.get_origin(annotation) is typing.Literal:
+        return tuple(one for one in typing.get_args(annotation) if isinstance(one, str))
+    return tuple(name for inner in typing.get_args(annotation) for name in _literal_in(inner))

@@ -11,7 +11,7 @@ from runtime.providers.service.plugins import (
     vendor_doing,
 )
 from runtime.providers.service.readiness import Runnable, runnable_on
-from runtime.providers.service.signatures import refuse_untaken_knobs
+from runtime.providers.service.signatures import refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import thinking_outside_a_call
 from runtime.providers.service.telemetry import Telemetry, telemetry_of
@@ -30,7 +30,7 @@ __all__ = [
     "keys_of",
     "parse_lending",
     "refuse_realtime_as_llm",
-    "refuse_untaken_knobs",
+    "refuse_untaken_settings",
     "runnable_on",
     "running_on",
     "speak",

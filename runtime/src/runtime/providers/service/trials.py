@@ -21,7 +21,7 @@ from runtime.providers.service.catalog import get_catalog
 from runtime.providers.service.pipeline import vendor_on
 from runtime.providers.service.plugins import Vendor
 from runtime.providers.service.refusals import refusing
-from runtime.providers.service.signatures import TurnKnobs
+from runtime.providers.service.signatures import TurnSettings
 from runtime.providers.service.stages import (
     build_realtime,
     ears_outside_a_call,
@@ -47,7 +47,7 @@ ONCE = APIConnectOptions(max_retry=0, timeout=10.0)
 async def try_stage(
     stage: Stage,
     running: Running,
-    turn: TurnKnobs | None = None,
+    turn: TurnSettings | None = None,
     *,
     what: str | None = None,
     tried: Mapping[str, object] | None = None,
@@ -60,7 +60,7 @@ async def try_stage(
     """
     named = what or f"the {STAGE_NAMES[stage]} this sets"
     if tried:
-        named += " (" + ", ".join(f"{knob} {_as_typed(value)}" for knob, value in tried.items()) + ")"
+        named += " (" + ", ".join(f"{name} {_as_typed(value)}" for name, value in tried.items()) + ")"
 
     def say_unanswered(why: str) -> str:
         return f"{running.vendor} did not answer while {named} was tried: {why}; nothing was kept, try again"
@@ -133,7 +133,7 @@ async def bring_box_key(
 # ── private ──
 
 
-async def _ask(stage: Stage, running: Running, turn: TurnKnobs | None, listing: Catalog | None) -> None:
+async def _ask(stage: Stage, running: Running, turn: TurnSettings | None, listing: Catalog | None) -> None:
     match stage:
         case Stage.tts:
             await speech.say(running, LINE, speech.hear_sample)
@@ -155,7 +155,7 @@ async def _ask_the_model(running: Running) -> None:
 
 # Ears that only take a whole utterance have nothing to open: they are tried by the first call.
 # The turn's knobs are the call's, so a silence or a bar the vendor does not take is its no here.
-async def _open_the_ears(running: Running, turn: TurnKnobs | None) -> None:
+async def _open_the_ears(running: Running, turn: TurnSettings | None) -> None:
     async with ears_outside_a_call(running, turn) as ears:
         if not ears.capabilities.streaming:
             return

@@ -25,7 +25,7 @@ from runtime.providers.service.signatures import (
     THE_MODEL,
     THE_TERMS,
     THE_VOICE,
-    TurnKnobs,
+    TurnSettings,
     first_of,
     options_object,
     parameters_of,
@@ -55,9 +55,9 @@ def tts_of(running: Running) -> tts.TTS[Never]:
     return _build(Stage.tts, A_TTS, running, {})
 
 
-def stt_of(running: Running, turn: TurnKnobs | None, hear: Sequence[str] = ()) -> stt.STT[Never]:
+def stt_of(running: Running, turn: TurnSettings | None, hear: Sequence[str] = ()) -> stt.STT[Never]:
     """The ears a stage hears with: the turn's knobs where they take them, the words to expect as they name them."""
-    return _build(Stage.stt, AN_STT, running, signatures.knobs_of(turn), tuple(hear))
+    return _build(Stage.stt, AN_STT, running, signatures.options_of(turn), tuple(hear))
 
 
 # A model that hears and speaks itself (xAI's Grok Voice, OpenAI's Realtime API) stands for the whole
@@ -88,7 +88,7 @@ def build_thinking(running: Running) -> Thinking:
 # livekit's adapter wraps ears that do not stream with a VAD the session does not hold, and refuses
 # voices of another channel count: such a fallback is left out and the call runs on the rest.
 def build_ears(
-    running: Running, turn: TurnKnobs | None, hear: Sequence[str] = (), hearing: vad.VAD | None = None
+    running: Running, turn: TurnSettings | None, hear: Sequence[str] = (), hearing: vad.VAD | None = None
 ) -> Ears:
     """The ears a call hears with, over the fallbacks that stream; where they wait to be told, the VAD tells them."""
     primary = stt_of(running, turn, hear)
@@ -139,7 +139,7 @@ async def thinking_outside_a_call(running: Running) -> AsyncGenerator[llm.LLM[Ne
 
 @asynccontextmanager
 async def ears_outside_a_call(
-    running: Running, turn: TurnKnobs | None = None, hear: Sequence[str] = ()
+    running: Running, turn: TurnSettings | None = None, hear: Sequence[str] = ()
 ) -> AsyncGenerator[stt.STT[Never]]:
     """The stage's ears built as a call builds them, on an HTTP session of their own, and closed after."""
     async with http_context.open():
@@ -170,14 +170,14 @@ def silence(ms: int, rate: int = A_RATE, channels: int = 1) -> rtc.AudioFrame:
 # ── private: the constructor called ──
 
 
-def _build[T](stage: Stage, base: type[T], running: Running, knobs: Arguments, hear: tuple[str, ...] = ()) -> T:
+def _build[T](stage: Stage, base: type[T], running: Running, turn_options: Arguments, hear: tuple[str, ...] = ()) -> T:
     made = signatures.class_of(stage, running)
     named = running.builds or made.__name__
     if not issubclass(made, base):
         raise ValidationError(f"{running.vendor} exports no {CLASS_OF[stage]} named {named!r}")
     constructor: Callable[..., T] = made
     accepts = parameters_of(made)
-    plain = _with_model(stage, made, accepts, _name_arguments(running, accepts, knobs), running)
+    plain = _with_model(stage, made, accepts, _name_arguments(running, accepts, turn_options), running)
     told = _with_terms(made, accepts, plain, running, hear)
     without = None if told == plain else {**plain, **_inside_its_options(made, accepts, plain, running, ())}
     return _construct(constructor, made, told, without, f"{running.vendor} refused its {named}")
@@ -185,9 +185,9 @@ def _build[T](stage: Stage, base: type[T], running: Running, knobs: Arguments, h
 
 # What the runtime knows, under the name this plugin takes each: the row's options, the turn's knobs,
 # the key, the voice, the language and the hints.
-def _name_arguments(running: Running, accepts: frozenset[str], knobs: Arguments) -> dict[str, object]:
+def _name_arguments(running: Running, accepts: frozenset[str], turn_options: Arguments) -> dict[str, object]:
     given: dict[str, object] = {**running.options}
-    given |= {knob: value for knob, value in knobs.items() if knob in accepts}
+    given |= {name: value for name, value in turn_options.items() if name in accepts}
     given |= _credentials(running.credentials, accepts)
     given |= first_of(accepts, THE_VOICE, running.voice)
     # A row that names the language wins: a vendor may want the full tag the call cuts to its base.
