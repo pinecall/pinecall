@@ -1,8 +1,10 @@
 """The reaper: it ends the calls nothing runs any more, a dead worker's and a silent chat's, and lets go of the rest."""
 
 import logging
+from typing import Protocol
 
 from livekit import api
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.calls import service as calls
 from runtime.enums import Channel
@@ -32,14 +34,30 @@ A_THREAD_WAITS_S = 2 * 60 * 60.0
 PARKED_WAITS_S = 120.0
 
 
+# What a pass asks first. The box's reaper asks it of every org (`calls.list_quiet_spoken`,
+# `calls.list_quiet_written`); a pass over fewer calls than the box's is handed what lists them.
+class ListQuiet(Protocol):
+    """The calls still open that said nothing since a moment, oldest first, at most so many."""
+
+    async def __call__(self, session: AsyncSession, quiet_since: float, *, limit: int) -> list[calls.Unsealed]:
+        """The quiet calls."""
+        ...
+
+
 # A killed job writes no call.ended, and nothing else would close its log. A call's room is
 # asked of its env's LiveKit; a call no scope claimed, of every one.
-async def reap(live: LiveParts, now: float) -> list[str]:
+async def reap(
+    live: LiveParts,
+    now: float,
+    *,
+    spoken: ListQuiet = calls.list_quiet_spoken,
+    written: ListQuiet = calls.list_quiet_written,
+) -> list[str]:
     """End the quiet calls nothing runs any more, and say which."""
     ended: list[str] = []
     async with live.sessions() as session:
-        quiet = await calls.list_quiet_spoken(session, now - QUIET_S, limit=AT_MOST)
-        written = await calls.list_quiet_written(session, now - QUIET_S, limit=AT_MOST)
+        quiet = await spoken(session, now - QUIET_S, limit=AT_MOST)
+        quiet_written = await written(session, now - QUIET_S, limit=AT_MOST)
     existing: set[str] = set()
     for server, named in _rooms_by_livekit(live.servers, quiet).items():
         existing |= await rooms_with_an_agent(server, named)
@@ -55,7 +73,7 @@ async def reap(live: LiveParts, now: float) -> list[str]:
                 now - orphan.last_at,
             )
             ended.append(orphan.call)
-    for orphan in written:
+    for orphan in quiet_written:
         # A written call waits for its caller as long as its channel would.
         patience = A_THREAD_WAITS_S if orphan.channel == Channel.whatsapp else QUIET_S
         # Its session may run on another gateway, which says so: it is that gateway's to end. One

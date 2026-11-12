@@ -9,6 +9,7 @@ import time
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 import httpx
@@ -163,6 +164,9 @@ class Gateway:
     http: httpx.AsyncClient
     # The app served, for a test that plays the gateway losing what it held in memory.
     app: FastAPI
+    # What the app's lifespan built, as every request of it reads it: for a test that waits on, or looks
+    # at, what the gateway holds in memory (who holds an agent, which calls it serves).
+    state: Mapping[str, Any]
 
     # No ceiling on frames unread: a test holds an app socket it never reads while a call writes
     # entries down it, and websockets pauses reading the TCP connection at sixteen unread, so the
@@ -193,7 +197,7 @@ async def gateway(engine: AsyncEngine) -> AsyncIterator[Gateway]:
     port = server.servers[0].sockets[0].getsockname()[1]
     url = f"http://127.0.0.1:{port}"
     async with httpx.AsyncClient(base_url=url, timeout=10.0) as http:
-        yield Gateway(url, http, app)
+        yield Gateway(url, http, app, server.lifespan.state)
     server.should_exit = True
     await serving
 
