@@ -107,9 +107,9 @@ async def judge_call(
             try:
                 judge = await judge_model_of(session, vault, panel.catalog, scope, declaration)
             except Unjudged as none:
-                return _skip_unjudged(panel, entries, str(none))
+                return skip_unjudged(panel, entries, str(none))
         async with providers.open_answerer(judge.running) as model:
-            return await _ask_panel(panel, judge, entries, model)
+            return await ask_panel(panel, judge, entries, model)
     except PinecallError as broke:
         logger.warning("call %s: nothing judged it", call_of(entries), exc_info=True)
         return Judged(CallScore(judges=[], judge_calls=0, not_judged=NOT_JUDGED.format(broke=broke)))
@@ -227,14 +227,15 @@ async def _read_panel(
         class_judges = None if declaration is None else declaration.judges
         roster = await judges.roster_of(session, scope.org, transcript.agent, class_judges)
     else:
-        roster = _alone(only)
+        roster = alone(only)
     around = await surroundings_of(session, scope.org, transcript.call, declaration)
     context = context_of(transcript, around, await prompt_of(session, prompts, scope.org, entries))
     return Panel(transcript, panel_of(roster, transcript), context, await providers.get_catalog(session))
 
 
 # A question written under a library judge's name is asked as written, without the library's gate.
-def _alone(spec: JudgeSpec) -> tuple[RosterJudge, ...]:
+def alone(spec: JudgeSpec) -> tuple[RosterJudge, ...]:
+    """The roster of one judge asked alone: Pinecall's, gate and all, when the question is its own; else the org's."""
     found = library.library_judges().get(spec.name)
     if found is not None and found.spec == spec:
         return (RosterJudge(spec, owner=judges.PINECALL, on=True, gate=found.gate, version=found.version),)
@@ -242,7 +243,8 @@ def _alone(spec: JudgeSpec) -> tuple[RosterJudge, ...]:
 
 
 # With no judge model, a judge is settled by its gate or skipped, saying why there is none.
-def _skip_unjudged(panel: Panel, entries: Sequence[Entry], why: str) -> Judged:
+def skip_unjudged(panel: Panel, entries: Sequence[Entry], why: str) -> Judged:
+    """The score of a call no model may judge: each judge settled by its gate, or skipped saying why."""
     judged: list[Judgment] = []
     for judge in panel.judges:
         gate = gate_of(judge, panel.transcript)
@@ -253,7 +255,8 @@ def _skip_unjudged(panel: Panel, entries: Sequence[Entry], why: str) -> Judged:
 
 # Each judge in the panel's order: settled by its gate, else held to the ceiling and the evals, else
 # asked. A judge whose model fails is skipped, saying so, and the others are still asked.
-async def _ask_panel(panel: Panel, judge: JudgeModel, entries: Sequence[Entry], model: providers.Answerer) -> Judged:
+async def ask_panel(panel: Panel, judge: JudgeModel, entries: Sequence[Entry], model: providers.Answerer) -> Judged:
+    """The score of a call: each judge of its panel settled by its gate, held to the ceiling and the evals, or asked."""
     judged: list[Judgment] = []
     spent: list[LLMModelUsage] = []
     evals = 0

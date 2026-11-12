@@ -60,14 +60,14 @@ class WrittenPersona:
 @cache
 def library_judges() -> dict[str, Written]:
     """Every judge of the library, by name."""
-    read = [_read_judge(path) for path in sorted(JUDGES.glob("*.md"))]
+    read = [read_judge(path) for path in sorted(JUDGES.glob("*.md"))]
     return {judge.spec.name: judge for judge in read}
 
 
 @cache
 def library_personas() -> dict[str, WrittenPersona]:
     """Every persona of the library, by name."""
-    read = [_read_persona(path) for path in sorted(PERSONAS.glob("*.md"))]
+    read = [read_persona(path) for path in sorted(PERSONAS.glob("*.md"))]
     return {written.persona.name: written for written in read}
 
 
@@ -91,7 +91,8 @@ def check_own_names(names: Sequence[str], library: Mapping[str, object], kind: s
 
 # The front matter is `key: value` lines; `reads` and `choices` are comma lists. A page says when its
 # judge runs under `on`, the word it was written with.
-def _read_judge(path: Path) -> Written:
+def read_judge(path: Path) -> Written:
+    """One page of the library read into its judge; a field it does not know the value of is refused."""
     fields, body = _page(path)
     reads = _list_items(fields.get("reads", ""))
     spec = JudgeSpec(
@@ -114,7 +115,8 @@ def _read_judge(path: Path) -> Written:
     )
 
 
-def _read_persona(path: Path) -> WrittenPersona:
+def read_persona(path: Path) -> WrittenPersona:
+    """One page of the library read into its persona: its goal, what it expects, how it acts on the line."""
     fields, body = _page(path)
     goal, _, expected = body.partition(EXPECTS)
     persona = Persona(
