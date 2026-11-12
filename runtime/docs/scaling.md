@@ -259,7 +259,7 @@ holds, so LiveKit starts no job and keeps the dispatch on the room with the call
 person is alone in a room, LiveKit's webhook says so (`participant_joined`, or an agent's
 `participant_left` after a hand-over), and the gateway reads the room's newest dispatch: one to a
 fleet that nobody took is the call to place. The room is kept in `offers` until a worker opens its
-call, an agent joins the room or the room ends, whichever LiveKit says first (`fleet/service/offers.py`, `fleet/service/rooms.py`): a caller who hangs up before any worker took the call leaves nothing to
+call, an agent joins the room or the room ends, whichever LiveKit says first (`fleet/service/offers.py`, `fleet/service/arrivals.py`): a caller who hangs up before any worker took the call leaves nothing to
 offer, and a dispatch on a room that is gone would make the room again. An outbound call, a
 simulated caller and the sentence of a worker gone are offered the same way, by the endpoint that
 makes them. So **the

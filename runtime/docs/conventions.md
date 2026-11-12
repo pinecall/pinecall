@@ -1,6 +1,6 @@
 # Conventions — how a file of this runtime is written
 
-`CONTRIBUTING.md` is the canon: the layout, the twelve rules and the vocabulary, each held by a
+`CONTRIBUTING.md` is the canon: the layout, the rules and the vocabulary, each held by a
 test under `tests/conventions/` that fails the commit. These are the choices a test cannot check,
 and the reader is owed them in one place.
 
@@ -69,9 +69,10 @@ and the reader is owed them in one place.
   it raises (`postgres.Session`). A task of the box's opens its own (`sessions.begin()`), as the
   box (`box_task`) or as an org (`scope_to`).
 - Every transaction of a tenant's request acts for the key's org (row-level security); an
-  endpoint that reads across orgs on purpose says so with `box_wide()`.
+  endpoint that reads across orgs on purpose asks for the box's session in its signature
+  (`postgres.TheBoxSession`), and a service that does says so with `box_wide()`.
 - A statement past 30 s is cancelled; what is long on purpose (an erasure, an export, a rebuild)
-  runs in `unbounded(session)`.
+  runs in `without_timeouts(session)`.
 - The models mirror the live tables column for column (`org`, not `org_id`; `env`, not
   `environment`); `alembic check` is empty. An applied revision is never edited: the fix is a new
   one.

@@ -92,7 +92,7 @@ a WhatsApp message (Meta charges for templates only, and the runtime answers ins
 person opens), a number's monthly rental, the embeddings of a lookup or a push.
 
 The rates are the operator's, and a model or a leg without one is listed `unpriced` on the call,
-never priced at zero. The package ships list prices, `pinecall_runtime/cli/local/prices.csv`, one
+never priced at zero. The package ships list prices, `prices.csv` beside its installer, one
 row per model and unit (`vendor,model,unit,usd,as_of,source`: tokens per million; characters,
 seconds and minutes each), the models taken from [voice-prices](https://github.com/mahimailabs/voice-prices)
 (MIT, its notice in `prices.LICENSE` beside the file), Twilio's Elastic SIP Trunking from its US

@@ -8,7 +8,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 
 | folder | what it is | its page |
 |---|---|---|
-| `runtime/` | the gateway and the worker (PyPI `pinecall-runtime`), the wire's source (`pinecall/wire/`) | `runtime/CLAUDE.md` |
+| `runtime/` | the gateway and the worker (PyPI `pinecall-runtime`, import `runtime`), the wire's source (`runtime/src/runtime/wire/`) | `runtime/CLAUDE.md` |
 | `cli/` | the `pinecall` CLI (npm `pinecall`), never imports the framework but through `client` and `wire` | `cli/CLAUDE.md` |
 | `console/` | the page the gateway serves, both envs in it; built into the runtime's wheel | `console/CLAUDE.md` |
 | `widget/` | one agent as one button on any page; served by the gateway | `widget/README.md` |
@@ -30,8 +30,8 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 - **A change that crosses folders lands in one commit**: the runtime's wire, the SDKs that read it,
   their tests and the pages that describe them.
 - **The toolchains stay apart.** The TypeScript packages are one pnpm workspace (the root's
-  `pnpm-workspace.yaml`, one lockfile); install from the root. `runtime/` and `sdk/python/` both
-  ship the module `pinecall`, so each is its own uv project with its own `uv.lock`. `sdk/ruby/`
+  `pnpm-workspace.yaml`, one lockfile); install from the root. `runtime/` and `sdk/python/` are
+  each a uv project of its own, with its own `uv.lock`. `sdk/ruby/`
   has its Gemfile. A `pnpm -r` run from a folder reaches every package of the workspace: filter it
   (`--filter @pinecall/example-clinica-norte`).
 - **CI** is `.github/workflows/check.yml`: each package's own check, run when its folder or a root

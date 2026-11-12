@@ -129,7 +129,7 @@ gateway keeps, for the last two minutes, how many calls it handed each vendor fi
 how many calls saw that vendor fail (an `error` whose message names its plugin, or a
 `vendor.switched` away from it, counted once per call however often it failed). A vendor handed at
 least five calls, half or more of which saw it fail, goes behind every vendor that is not, when the
-next call's stages are resolved (`providers/credentials.py` `stage`, at the worker's endpoint); among
+next call's stages are resolved (`providers/service/health.py`, read at the worker's endpoint); among
 themselves the ones over the line keep the row's order. It stays last until its failures leave the
 two minutes: then it is back in its place, and the next calls try it again. With no fallbacks, or
 no failures, the order is exactly the row's; an agent that names its own vendor runs it whatever

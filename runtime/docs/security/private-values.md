@@ -81,7 +81,7 @@ When the recorder's file is written, the worker asks the gateway for the call's 
 it, removes the plain `audio.ogg`, and only then stores it. The worker holds that one key for a
 moment; it never holds the vault's.
 
-The file is AES-256-GCM a chunk at a time (`process/sealed_audio.py`): a header of 16 bytes (the
+The file is AES-256-GCM a chunk at a time (`kit/sealed_file.py`): a header of 16 bytes (the
 format's name and 8 random bytes), then each 64 KiB of the recording sealed on its own, its nonce
 the random bytes and the chunk's number, the last chunk marked as the last. A player seeks: the
 gateway answers a range by opening only the chunks it covers, one at a time, read from the disk

@@ -52,7 +52,7 @@ TF_PLAN   = $(TF_ROOT)/$(TF_STATE).plan
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
 TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/terraform/cluster
 
-check:           ## ruff (lint, format), pyright and mypy strict, alembic check, the suites with no database; terraform's form
+check:           ## ruff (lint, format), pyright and mypy strict, the convention tests; terraform's form
 	uv run ruff check . && uv run ruff format --check .
 	uv run pyright && uv run mypy src
 	uv run pytest -q -n auto tests/conventions

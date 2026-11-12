@@ -19,11 +19,11 @@
 | **hooked number** | a number the org points at the deployment itself, from its own carrier, admitted by its networks; as opposed to one imported from an account the deployment can configure |
 | **app socket** | the WebSocket a tenant's agent process holds open on `/v1/apps`; tool calls cross it |
 | **signal** | what the gateway processes tell each other as it happens: an entry just written, who holds an agent. Lossy on purpose and never a record, since every reader resumes from the store; on Redis when `PINECALL_REDIS_URL` is set, inside the one process when it is not (`redis.py`: `RedisSignal`, `LocalSignal`) |
-| **desk** | a supervisor's place in a live call: listening in, whispering to the agent, taking the line, ending the call (`calls/endpoints/desk.py`) |
-| **line** | a developer's terminal holding an agent: a call to a production number from one of their own phones lands there (`agents/endpoints/apps.py`) |
-| **relay** | the console asking a running app to do something — chat, render the view, run an eval — forwarded over the app socket and answered (`calls/endpoints/dev.py`) |
-| **visitor** | somebody in a browser: the room token that lets them into a call, and the four-digit code a caller keys to tie a page to a phone call (`calls/endpoints/visitors.py`) |
-| **thread** | one WhatsApp conversation with one contact: the gateway keeps it open (`calls/service/threads.py`) and the org reads it (`calls/endpoints/threads.py`) |
+| **desk** | a supervisor's place in a live call: listening in, whispering to the agent, taking the line, ending the call (`live/endpoints/desk.py`) |
+| **line** | a developer's terminal holding an agent: a call to a production number from one of their own phones lands there (`live/endpoints/line.py`) |
+| **relay** | the console asking a running app to do something — chat, render the view, run an eval — forwarded over the app socket and answered (`live/endpoints/dev.py`) |
+| **visitor** | somebody in a browser: the room token that lets them into a call, and the four-digit code a caller keys to tie a page to a phone call (`live/endpoints/visitors.py`) |
+| **thread** | one WhatsApp conversation with one contact: the gateway keeps it open (`live/service/whatsapp.py`) and the org reads it (`calls/endpoints/inbox.py`) |
 | **keyring** | the vendor credentials a call may run on: the org's own, the deployment's, and what the runtime lends (`providers/service/keyring.py`) |
 | **golden** | a scripted conversation an agent is tested on: the state it opens in, the caller's lines, the facts injected, what is expected (`docs/protocol/evals.md`) |
 | **persona** | a synthetic caller a model plays one line at a time, with what it expects of the agent and how it acts on a spoken line: Pinecall's library (`judging/library/personas/`, switched per agent) or the agent's own |
@@ -33,6 +33,6 @@
 | **hosted app** | an org's agent process that the deployment runs itself, from sources the org uploaded, on a server's token minted for it (`hosting/service/apps.py`, `docs/protocol/hosting.md`) |
 | **release** | one upload of a hosted app's sources, numbered from 1 and never edited |
 | **secret** | a value of the org's, per environment, that its hosted apps are started with as an environment variable; kept sealed and never read back by an endpoint (`hosting/service/secrets.py`) |
-| **runner** | the deployment's own process that builds and runs every org's hosted apps in one environment, on a key that opens `runner` and nothing of an org's (`hosting/endpoints.py`) |
+| **runner** | the deployment's own process that builds and runs every org's hosted apps in one environment, on a key that opens `runner` and nothing of an org's (`hosting/endpoints/runner.py`) |
 | **host** | the name a hosted app's process runs under, one release under one set of the org's secrets; the app socket says it when it registers, which is how the gateway knows a release is serving |
 | **time served** | how long a hosted app's process ran under one of its hosts, counted by the runner's beats per UTC day (`hosted_usage`): what hosting is billed on |

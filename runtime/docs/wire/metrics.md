@@ -184,9 +184,9 @@ stage, the median and the 95th percentile in seconds, so "the ears are 500 ms sl
 yesterday" is two rows of two days, and "the ears are wrong" is the confidence falling. The vendor
 is `model_provider` as the plugin reports it, and absent when the report named none.
 
-They are counted once per call, when it is sealed, from the call's own log (`calls/service/drift.py`), never
+They are counted once per call, when it is sealed, from the call's own log (`insights/service/drift.py`), never
 read off the log at the endpoint: a day holds the calls sealed in it, not those still going. Each
-stage's seconds are kept as a fixed histogram (`calls/histogram.py`: under 10 ms, 92 buckets each
+stage's seconds are kept as a fixed histogram (`kit/histogram.py`: under 10 ms, 92 buckets each
 10 % wider than the one below it up to 63 s, and one for anything slower), so the calls of a day,
 of an agent and of a version add bucket by bucket, and a median or p95 read off the buckets is
 within 5 % of the exact one. The same fold counts each judge's settled verdicts of the call, by
