@@ -282,6 +282,13 @@ function serve(
 
 // One agent of a team takes the call from another: the instance, its listeners and its tools change, and the
 // call itself stays, with what its agents share. The blocks already sent are compared, so only the ones that differ go.
+// What the model reads once the call is the teammate's. It called a tool named for a transfer, and a small
+// model goes on as whoever transfers ("one moment while I connect you") and then waits: measured on
+// gemini-3.5-flash-lite, half the passes ended that way under "go on as …, without saying it was passed",
+// and one in sixteen under this.
+const passedTo = (slug: string): string =>
+  `Done: you are ${slug} now, and the caller is already talking to you. There is nobody left to connect them to, so never say "one moment" or that you are connecting or transferring them. Reply to their last message now, as ${slug}.`;
+
 async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Record<string, unknown>): Promise<string> {
   const slug = team.get(to);
   if (slug === undefined) throw new ToolFailed(`${to.name} is not of this call's team`);
@@ -299,7 +306,7 @@ async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Recor
   call.setState(stateWith(agent, link.screened));
   sync(link, call);
   follow(link, call);
-  return `The call is ${slug}'s now: go on as ${slug}, without saying it was passed.`;
+  return passedTo(slug);
 }
 
 function follow(link: Live, call: SdkCall): void {

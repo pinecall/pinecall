@@ -42,6 +42,16 @@ describe("what is watched", () => {
     expect(watchedFor(homes)).toEqual([join(root, "agents", "sales"), join(root, "agents", "desk"), join(root, "lib")]);
   });
 
+  // A flow written in its own file under flows/ reloaded nothing: the app that starts it kept the one it had loaded.
+  it("and the project's flows/, beside its lib/", () => {
+    const root = mkdtempSync(join(tmpdir(), "watched-"));
+    const homes = [homeOf(join(root, "agents", "desk", "agent.ts"))];
+    mkdirSync(join(root, "flows"));
+    expect(watchedFor(homes)).toEqual([join(root, "agents", "desk"), join(root, "flows")]);
+    mkdirSync(join(root, "lib"));
+    expect(watchedFor(homes)).toEqual([join(root, "agents", "desk"), join(root, "lib"), join(root, "flows")]);
+  });
+
   it("and the project's voice app, the file alone", () => {
     const root = mkdtempSync(join(tmpdir(), "watched-"));
     const homes = [homeOf(join(root, "agents", "desk", "agent.ts"))];

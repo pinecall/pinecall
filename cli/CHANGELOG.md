@@ -4,6 +4,12 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.32] — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
+
+- **`pinecall start` reloads on a save in `flows/`.** A voice app whose flows are files of their own
+  (`flows/remind-visit.ts`, imported by `app.ts`) kept the flow it had loaded: `start` watched each agent's
+  folder, `lib/` and the app's file. The project's `flows/` is watched beside its `lib/`.
+
 ## [0.11.31] — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **`pinecall new` writes an agent declared with `@agent({ … })`**, its judges and its callers each one list,

@@ -81,7 +81,12 @@ async def test_a_teammate_takes_the_call_with_its_own_tools_and_the_pass_on_the_
     gateway: FakeGateway, mounted: Mounted
 ) -> None:
     said = await called(gateway, "transfer_to_billing", {"reason": "a bill"}, 1)
-    assert said == "The call is billing's now: go on as billing, without saying it was passed."
+    assert said == (
+        "Done: you are billing now, and the caller is already talking to you. "
+        'There is nobody left to connect them to, so never say "one moment" '
+        "or that you are connecting or transferring them. "
+        "Reply to their last message now, as billing."
+    )
     assert isinstance(mounted.instance_of("CA_1"), Billing)
     logged = [one for one in sent(gateway, "call.log") if one.get("name") == "handoff"]
     assert logged[0]["data"] == {"from": "front-desk", "to": "billing", "reason": "a bill"}

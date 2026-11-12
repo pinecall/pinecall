@@ -16,6 +16,9 @@ export const AGENT_TESTS = "test";
 /** The project's folder of code two or more agents share: `start` reloads on a save there too. */
 export const SHARED = "lib";
 
+/** The project's folder of flows its voice app starts, when they are not written in the app's file: a save there reloads too. */
+export const FLOWS = "flows";
+
 /** File names of the retrieval and recall goldens inside the goldens folder. */
 export const DOCS_GOLDEN = "docs.json";
 export const MEMORY_GOLDEN = "memory.json";

@@ -57,7 +57,16 @@ module Pinecall
       call.set_state(state_of(serving))
       sync(serving, call)
       listen(serving, call)
-      "The call is #{slug}'s now: go on as #{slug}, without saying it was passed."
+      passed_to(slug)
+    end
+
+    # What the model reads once the call is the teammate's. It called a tool named for a transfer, and a
+    # small model goes on as whoever transfers ("one moment while I connect you") and then waits: so the
+    # words say there is nobody left to connect the caller to, and to answer them now.
+    def passed_to(slug)
+      "Done: you are #{slug} now, and the caller is already talking to you. There is nobody left to connect " \
+        'them to, so never say "one moment" or that you are connecting or transferring them. ' \
+        "Reply to their last message now, as #{slug}."
     end
 
     # The line chooses while the caller hears its greeting; a choice it could not make is said on the log.

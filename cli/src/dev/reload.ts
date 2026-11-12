@@ -5,7 +5,7 @@ import { dirname, extname, join, sep } from "node:path";
 
 import { errorMessage } from "../errors.js";
 import { languageOf } from "../project/language.js";
-import { type AgentHome, appFileOf, SHARED } from "../project/layout.js";
+import { type AgentHome, appFileOf, FLOWS, SHARED } from "../project/layout.js";
 
 // A save is a burst of writes: one reload after it settles.
 export const SETTLES_MS = 300;
@@ -25,11 +25,12 @@ export function isASave(file: string): boolean {
 
 /**
  * What a save of these agents is a save in: each agent's own folder, the project's `lib/` they
- * share, and its voice app's file. A script, a note or a pulled settings file elsewhere in the project reloads nothing.
+ * share, its voice app's file and the `flows/` that app starts. A script, a note or a pulled settings
+ * file elsewhere in the project reloads nothing.
  */
 export function watchedFor(homes: readonly AgentHome[]): string[] {
   const roots = [...new Set(homes.map((home) => home.root))];
-  const shared = roots.map((root) => join(root, SHARED)).filter((folder) => existsSync(folder));
+  const shared = roots.flatMap((root) => [join(root, SHARED), join(root, FLOWS)]).filter((folder) => existsSync(folder));
   const apps = homes.map((home) => appFileOf(home.root, languageOf(home.file))).filter((file): file is string => file !== undefined);
   return [...homes.map((home) => dirname(home.file)), ...shared, ...apps];
 }

@@ -40,7 +40,9 @@ class TeamTest < Minitest::Test
   def test_a_teammate_takes_the_call_with_its_own_tools_and_the_pass_on_the_log
     said = @call.tool("transfer_to_billing", reason: "a bill")
 
-    assert_equal "The call is billing's now: go on as billing, without saying it was passed.", said[:output]
+    assert_equal "Done: you are billing now, and the caller is already talking to you. There is nobody left to connect " \
+                 'them to, so never say "one moment" or that you are connecting or transferring them. ' \
+                 "Reply to their last message now, as billing.", said[:output]
     assert_instance_of Billing, @mounted.serving(@call.id)
     logged = @call.commands.select { |sent| sent.type == "call.log" && sent.data[:name] == "handoff" }
 

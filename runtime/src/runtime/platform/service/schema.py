@@ -46,6 +46,7 @@ async def apply_history(engine: AsyncEngine) -> History:
         schema = SchemaRepository(connection)
         await schema.lock()
         tracked = await schema.has_table(ALEMBIC_TABLE)
+        await schema.keep_history()
         ran = await schema.history()
         files = {path.name: path for path in sorted(HISTORY.glob("*.sql"))}
         for name, was in ran.items():

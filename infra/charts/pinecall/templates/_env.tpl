@@ -32,6 +32,10 @@
 {{- end }}
 - name: PINECALL_GATEWAY_URL
   value: http://pinecall-gateway:8080
+{{- /* A cluster's Postgres archives through its operator and keeps no spool: named empty, the doctor's
+       `archive` line reads the archiver alone instead of listing a directory the app's role may not. */}}
+- name: PINECALL_WAL_SPOOL
+  value: ""
 {{- with .Values.envs }}{{ if .production.sipDomain }}
 - name: PINECALL_SIP_DOMAIN
   value: {{ .production.sipDomain | quote }}

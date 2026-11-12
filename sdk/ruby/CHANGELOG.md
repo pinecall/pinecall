@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.32] — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
+
+- **A call passed to a teammate is answered by the teammate, at once**, as in TypeScript: what the transfer
+  tool answers says the call is the teammate's, that nobody is left to connect the caller to, and to reply to
+  what they last said. Under the words before, a small model said "one moment while I connect you" and waited.
+
 ## [0.11.31] — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **A voice app, as in TypeScript and Python:** `app.rb` makes `Pinecall.voice_app(…)`: lines with a

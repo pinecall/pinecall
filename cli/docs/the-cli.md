@@ -209,6 +209,8 @@ agents/<name>/test/memory/            the extraction cases `remember` runs
 agents/<name>/harness.ts              its own judges and callers, as code (harness.py, harness.rb)
 agents/<name>/test/candidates/        real calls `runs promote` wrote, before a person keeps them
 lib/                                  what two or more agents share
+app.ts                                the voice app: its lines, its team, its rules (app.py, app.rb)
+flows/                                the flows the app starts, when they are not written in app.ts
 ```
 
 **The agent's slug is its folder's name.** `agents/sales/agent.tsx` is the agent `sales` on the
@@ -412,8 +414,8 @@ restarted learns it back at once instead of sending your test call to production
 goes away is one line — `gateway  … — reconnecting`, then `gateway  back` — and never a stack per
 redial.
 
-**A save reloads the class.** `start` watches each agent's folder, `agents/<name>/`, and the project's
-`lib/` the agents share — not `node_modules`, `dist`, `.venv`, `test/` (the goldens', which
+**A save reloads the class.** `start` watches each agent's folder, `agents/<name>/`, the project's
+`lib/` the agents share, its voice app's file and its `flows/` — not `node_modules`, `dist`, `.venv`, `test/` (the goldens', which
 `pinecall test --watch` follows), `docs/`, or a log written beside the agent; a script, a note or a
 pulled settings file elsewhere in the project reloads nothing. A burst of writes settled is one reload:
 the next process is started, every agent registers there and the gateway takes what it declares

@@ -1,4 +1,4 @@
-"""Row-level security as production meets it: a tenant's transaction reads and writes its own org alone."""
+"""Postgres as the gateway's role meets it, owning nothing: a tenant's transaction reads and writes its org alone."""
 
 from collections.abc import AsyncIterator, Generator
 from contextlib import contextmanager
@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from runtime.accounts.models import Org
 from runtime.platform.service import schema
@@ -127,3 +127,14 @@ async def test_a_write_after_box_wide_in_the_same_transaction_is_held_to_the_org
                 await seen_now(session, tenant.org, other.org)
             session.add(ProviderKey(org=other.org, vendor="acme", ciphertext="sealed"))
             await session.flush()
+
+
+# The doctor in a gateway's pod reads the database's standing as the app's role, which may create
+# nothing in the schema: reading the SQL history made its table first, and the line said NO (2026-11-12).
+async def test_a_databases_standing_is_read_by_a_role_that_owns_nothing(engine: AsyncEngine, as_the_app: str) -> None:
+    acting = create_async_engine(engine.url, connect_args={"server_settings": {"role": as_the_app}})
+    try:
+        standing = await schema.standing_of(acting)
+    finally:
+        await acting.dispose()
+    assert not standing.behind

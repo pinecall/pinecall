@@ -1,6 +1,6 @@
 # The schema before anything new runs: a hook, so no pod of the release starts on an old one.
-# The doctor is not a hook yet: its `archive` line reads the box's WAL spool through Postgres, which
-# a cluster's Postgres (CloudNativePG, no superuser) has not; that line is a decision of v1's.
+# The doctor is not a hook: whether a release waits on it is not decided. It is asked by hand, in a
+# gateway's pod (`kubectl exec deploy/pinecall-gateway -- pinecall-runtime doctor`).
 apiVersion: batch/v1
 kind: Job
 metadata:

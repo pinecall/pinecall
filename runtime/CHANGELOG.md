@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
+
+- **`pinecall-runtime doctor` reads a cluster.** In a gateway's pod it said `NO database` and `NO archive` of a
+  database that was neither behind nor unarchived. Reading the SQL history made its table first, which the
+  app's role, owning nothing, may not: the table is made by `migrate up` alone, and a read reads. And the
+  chart names the WAL spool empty (`PINECALL_WAL_SPOOL`), since a cluster's Postgres archives through its
+  operator and the app's role may not list a directory: the `archive` line reads the archiver alone.
+
 ## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **A class exported from Studio declares itself with `@agent({ … })`**, as the TypeScript framework now takes

@@ -4,6 +4,10 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
+
+- Released with the runtime, the CLI and the SDKs.
+
 ## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - Released with the runtime, the CLI and the SDKs.

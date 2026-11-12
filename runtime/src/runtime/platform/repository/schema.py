@@ -60,9 +60,14 @@ class SchemaRepository:
         """Whether the table exists."""
         return bool((await self.connection.execute(A_TABLE, {"name": name})).scalar_one())
 
+    # Making the table is the run's, never a read's: the role that reads a database's standing (the
+    # doctor, in a gateway's pod) owns nothing and may not create in the schema.
+    async def keep_history(self) -> None:
+        """Make the table the SQL history is recorded in, where there is none."""
+        await self.connection.execute(HISTORY_TABLE)
+
     async def history(self) -> dict[str, str | None]:
         """Each file of the SQL history the database ran, and the sha256 it ran."""
-        await self.connection.execute(HISTORY_TABLE)
         rows = (await self.connection.execute(APPLIED)).all()
         return {str(name): None if sha256 is None else str(sha256) for name, sha256 in rows}
 

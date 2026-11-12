@@ -5,6 +5,14 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
+
+- **A call passed to a teammate is answered by the teammate, at once.** The model had called a tool named for a
+  transfer, and a small one went on as whoever transfers ("one moment while I connect you") and then waited
+  for the caller to speak again: on `gemini-3.5-flash-lite`, half the passes measured. What the tool answers
+  now says the call is the teammate's, that nobody is left to connect the caller to, and to reply to what
+  they last said: one pass in sixteen still stalls.
+
 ## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
 - **`@agent({ … })` is the one way to say what an agent is.** Its stages, its language, how it opens, its
@@ -16,7 +24,7 @@ maintainer's call, so everything sits under Unreleased until one is cut.
   the class is `render() { return ThePrompt(this); }`); and `judges` and `personas` are each one list, a
   name for one of Pinecall's and an `ownJudge` / `ownPersona` for the class's own, in place of
   `judges({ on, own })` and `personas({ on, own })`. A class that extends another keeps what it declared.
-- **The screen follows the conversation**: `static scenes` names a screen's scenes, `@tool({ shows: "agenda" })` puts
+- **The screen follows the conversation**: `scenes` in `@agent` names a screen's scenes, `@tool({ shows: "agenda" })` puts
   one up, and a turn the caller opened about something else takes it away. The model is told which scene is up
   and keeps it, or puts another up, with `show_screen`, a quiet tool that adds no wait.
 - **An app has a page of its own**: `app.page("ui/dist")` names the folder its build writes. `pinecall deploy`
@@ -29,7 +37,7 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 - **A call passed to a teammate takes that agent's model and voice**, from its next sentence, when it is
   spoken. It kept the first agent's until now.
 - **A tool may stop to ask the caller for something**: `const email = await this.ask(GetEmail)` inside a
-  tool, with `static tasks = [GetEmail]` on the class. `GetEmail`, `GetPhone` and `GetName` come with the
+  tool, with `tasks: [GetEmail]` in the class's `@agent`. `GetEmail`, `GetPhone` and `GetName` come with the
   package; `task({ name, asks, fields, check })` makes one of your own.
 - **A voice app has flows, which outlive a call**: `flow("remind-visit", async (visit, step) => { … })` with
   `step.sleep`, `step.sleepUntil`, `step.call`, `step.waitFor`, `step.run` and `step.emit`, started by
@@ -40,9 +48,8 @@ maintainer's call, so everything sits under Unreleased until one is cut.
   what every agent of the app says to a caller who went quiet. `pinecall start` serves the agents with it.
 - **A call knows what it is for**: a dial's `instruction` is `this.call.instruction`, and the prompt carries it
   for the whole call as `<this_call>`.
-- **The stages are statics too**: `static stt = "deepgram/flux"`, `static llm = "google/gemini-3.5-flash-lite"`,
-  `static voice = "cartesia/<id>"`, or with options, `static llm = { model: "openai/gpt-5.4-mini", temperature: 0.3 }`.
-  `@stt`, `@llm` and `@voice` say the same above the class and stay.
+- **A stage is a name, or a name with its options**: `stt: "deepgram/flux-general-en"`,
+  `llm: "google/gemini-3.5-flash-lite"`, `voice: "cartesia/<id>"`, or `llm: { model: "openai/gpt-5.4-mini", temperature: 0.3 }`.
 - **An app hears its calls**: `app.on("call.ended", handler)` for an entry of a call's log by its type, and
   `app.on("visit.booked", handler)` for a line an agent logs by its name (`this.log("visit.booked", visit)`).
 - **A line chooses who answers**: `answers` may be a function that returns the agent of the team for each
@@ -50,10 +57,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 - **An app has rules**: `app.rule("…")` is read into the prompt of every agent of the app, and adds a judge
   that asks of each call whether the rule was kept.
 - **A line has a team**: `app.line(number, { answers, team: [Billing] })`. Each teammate says what it takes
-  (`static takes = "…"`), the agent on the call is offered a `transfer_to_<slug>` tool for it, and a tool
+  (`takes: "…"` in its `@agent`), the agent on the call is offered a `transfer_to_<slug>` tool for it, and a tool
   passes the call itself with `this.call.handoff(Billing, { invoice })`. The next agent reads
   `this.call.handed`, the agents of a call share `this.call.shared`, and a call is passed three times at most.
-- **An agent has a timezone**: `static timezone = "America/Los_Angeles"`, or `voiceApp(name, { timezone })` for
+- **An agent has a timezone**: `timezone: "America/Los_Angeles"` in `@agent`, or `voiceApp(name, { timezone })` for
   every agent of an app. The model is told the date, the weekday and the hour there, and `this.call.today` is
   that day instead of the day of the process serving it.
 - **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a
