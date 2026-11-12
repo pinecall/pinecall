@@ -7,7 +7,10 @@ from runtime.calls.context import Route
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound
 from runtime.jobs.service.arrival import (
+    AGENT_NOT_RUNNING,
+    NO_AGENT_NAMED,
     PHONE_NOT_SAID,
+    TEST_LINE_UNAVAILABLE,
     may_be_a_developers,
     may_be_a_testers,
     resolve_route,
@@ -115,3 +118,35 @@ async def test_a_phone_nobody_said_was_theirs_stays_with_the_numbers_agent_told_
     await gateway.aclose()
     assert taken == IN_THE_SANDBOX
     assert moved.metadata["test_line"] == PHONE_NOT_SAID
+
+
+# 2026-11-06: a person whose phone was not registered heard "or your agent is not running" and
+# went looking for the wrong thing; the number's own agent is told which reason it is.
+@pytest.mark.parametrize(
+    ("handed", "why", "agent"),
+    [
+        (RingAtTestLine(org="org_b"), NO_AGENT_NAMED, ""),
+        (RingAtTestLine(org="org_b", agent="front"), AGENT_NOT_RUNNING, "front"),
+    ],
+    ids=["no agent named among several", "nobody holds the agent"],
+)
+async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_agent_told_why(
+    handed: RingAtTestLine, why: str, agent: str
+) -> None:
+    gateway = answering(handed)
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    await gateway.aclose()
+    assert taken == IN_THE_SANDBOX
+    assert (moved.org, moved.agent, moved.holder) == (A_TESTERS_RING.org, A_TESTERS_RING.agent, A_TESTERS_RING.holder)
+    assert moved.metadata == {"test_line": why, "test_line_agent": agent}
+
+
+async def test_a_ring_at_the_test_line_while_the_gateway_is_away_stays_with_the_numbers_own_agent() -> None:
+    def away(_asked: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="away")
+
+    gateway = GatewayClient(httpx.AsyncClient(base_url="http://gateway.test", transport=httpx.MockTransport(away)))
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    await gateway.aclose()
+    assert taken == IN_THE_SANDBOX
+    assert moved.metadata["test_line"] == TEST_LINE_UNAVAILABLE

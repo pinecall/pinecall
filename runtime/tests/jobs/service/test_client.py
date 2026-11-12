@@ -17,7 +17,7 @@ from runtime.jobs.service.client import (
     unavailable,
 )
 from runtime.wire.worker import HeartbeatRequest
-from tests.conftest import Tenant, needs_the_services
+from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
 
 def test_away_is_unreachable_or_a_5xx_and_a_4xx_is_an_answer() -> None:
@@ -81,3 +81,18 @@ async def test_a_gateway_that_is_not_there_is_a_refusal_and_never_a_traceback() 
         )
     assert refused.value.answered is None
     await client.aclose()
+
+
+# A test room's own voice and models: asked for at the token, carried to the worker, over the agent for that call.
+@needs_the_services
+async def test_a_worker_asking_for_a_calls_config_with_a_test_rooms_values_gets_the_agent_under_them(
+    gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient
+) -> None:
+    """The values ride the call's reads and are checked again there; the agent's own settings do not move."""
+    scope = Scope(tenant.org, Env.sandbox, "")
+    async with holding(gateway, tenant, agent):
+        plain = await fleet.get_agent(agent, scope, call="call_a")
+        tried = await fleet.get_agent(agent, scope, call="call_b", test={"voice": "a-voice-of-the-test-room"})
+        again = await fleet.get_agent(agent, scope, call="call_c")
+    assert tried.voice != plain.voice and "a-voice-of-the-test-room" in str(tried.voice)
+    assert again.voice == plain.voice

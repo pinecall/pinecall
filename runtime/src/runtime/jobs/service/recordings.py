@@ -21,11 +21,13 @@ KEY_WITHIN_S = 13.0
 
 # The session closed its recorder before it seals: the seal points at a whole file. A call that
 # ended before its session started recording has no file, and the seal names none.
-async def keep_recording(store: Recordings, link: CallClient, org: str, audio: Path) -> str | None:
+async def keep_recording(
+    store: Recordings, link: CallClient, org: str, audio: Path, *, key_within_s: float = KEY_WITHIN_S
+) -> str | None:
     """Seal the call's written recording and move it where the box keeps it; the file the seal names, or None."""
     if not await asyncio.to_thread(has_audio, audio):
         return None
-    sealed = await _seal_recording(link, audio)
+    sealed = await _seal_recording(link, audio, key_within_s)
     if sealed is None:
         return None
     try:
@@ -43,12 +45,12 @@ def has_audio(audio: Path) -> bool:
 # Sealed on this disk before it goes anywhere, under a key the gateway keeps sealed for the call.
 # No recording is ever kept as it was written: one the worker cannot seal is removed and the seal
 # names none, as a call nobody recorded (docs/security/private-values.md).
-async def _seal_recording(link: CallClient, audio: Path) -> Path | None:
+async def _seal_recording(link: CallClient, audio: Path, within_s: float) -> Path | None:
     sealed = audio.with_name(SEALED_FILE)
     try:
         key = await keep_asking(
             link.recording_key,
-            within_s=KEY_WITHIN_S,
+            within_s=within_s,
             what=f"the recording key of {link.call}",
             longest_s=LONGEST_WAIT_S,
         )

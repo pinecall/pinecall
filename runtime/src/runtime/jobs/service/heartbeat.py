@@ -5,12 +5,10 @@ import logging
 import socket
 import time
 
-from livekit.agents import AgentServer
-
 from runtime.exceptions import UpstreamError
 from runtime.fleet import service as fleet
 from runtime.jobs.service.client import GatewayClient
-from runtime.jobs.service.load import Load
+from runtime.jobs.service.load import Load, Server
 from runtime.jobs.service.measures import LastMinute
 from runtime.wire.worker import HeartbeatRequest
 
@@ -34,7 +32,7 @@ class Heartbeats:
 
     def __init__(
         self,
-        server: AgentServer,
+        server: Server,
         gateway: GatewayClient,
         minute: LastMinute,
         load: Load,

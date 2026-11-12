@@ -1,8 +1,11 @@
 """A page's tokens: seated with the attributes it asked for and its contact, and reading its log as itself."""
 
+import json
+
 import jwt
 
 from runtime.kit.text import JsonObject
+from runtime.wire.dispatch import Dispatch
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
 
@@ -30,3 +33,26 @@ async def test_a_page_is_seated_with_its_own_attributes_and_its_contact_and_read
     assert seat["attributes"]["plan"] == "pro"
     assert seat["metadata"] == "c_1"
     assert reading["sub"] == seat["sub"]
+
+
+# A test room's own voice is asked for at the token and carried to the worker in its dispatch.
+@needs_the_services
+async def test_a_room_token_carries_the_values_in_its_dispatch_and_asks_for_nothing_it_may_not(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The sandbox's token takes a voice; another knob is refused with the reason."""
+    async with holding(gateway, tenant, agent):
+        taken = await gateway.http.post(
+            "/v1/tokens",
+            json={"agent": agent, "scope": "talk", "tuning": {"voice": "lucia"}},
+            headers=tenant.person,
+        )
+        assert taken.status_code == 201, taken.text
+        refused = await gateway.http.post(
+            "/v1/tokens",
+            json={"agent": agent, "scope": "talk", "tuning": {"record": False}},
+            headers=tenant.person,
+        )
+        assert refused.status_code == 400, refused.text
+    assert "record" in json.dumps(refused.json())
+    assert Dispatch(tuning={"voice": "lucia"}).dump() == '{"tuning":{"voice":"lucia"}}'

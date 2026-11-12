@@ -4,7 +4,8 @@ import pytest
 
 from runtime.calls.log.store import Store
 from runtime.exceptions import Forbidden, ValidationError
-from runtime.session.commands import apply
+from runtime.session.commands import apply, take
+from runtime.wire.base import Command
 from runtime.wire.commands import (
     AgentReply,
     AgentSay,
@@ -196,3 +197,36 @@ async def test_a_supervisors_transfer_on_a_call_with_no_room_is_refused_by_name(
     with pytest.raises(Forbidden, match="supervise transfer acts on a call's line, and this call is written"):
         await apply(session, supervised(TransferVerb(to="+59829000000")))
     await session.end("caller_hung_up", "caller")
+
+
+# ── the gateway's own words on a call's stream ──
+
+
+def _said(kind: str, **data: object) -> Command:
+    return Command(type=kind, agent="clinica-norte", call="call_1", id=None, data=dict(data))
+
+
+@needs_the_database
+async def test_the_callers_hang_up_on_the_stream_ends_the_call_as_the_callers_and_is_no_apps_command(box: Box) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    assert await take(session, _said("caller.hung_up")) is None
+    assert session.ended == ("caller_hung_up", "caller")
+    await session.close()
+
+
+@needs_the_database
+async def test_the_gateways_word_that_the_stages_changed_takes_them_anew_for_the_agent_it_names(box: Box) -> None:
+    session = a_session(box, NOBODY)
+    taken: list[str | None] = []
+
+    async def restage(passed_to: str | None) -> None:
+        taken.append(passed_to)
+
+    assert await take(session, _said("stages.changed"), restage=restage) is None
+    # A call passed to a teammate takes that agent's stages.
+    assert await take(session, _said("stages.changed", agent="billing"), restage=restage) is None
+    assert taken == [None, "billing"]
+    # Only what runs a call at the gateway's word takes its stages: anywhere else, the word is refused.
+    refused = await take(session, _said("stages.changed"))
+    assert refused is not None and refused.code

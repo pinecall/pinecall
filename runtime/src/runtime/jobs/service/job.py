@@ -234,7 +234,8 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         build = set_up_typed if dispatch.scope == CHAT else set_up_spoken
         setup = await build(ctx, warmed, arrived, link, declaration, stages, held)
     except Exception as failed:
-        await fail_call(ctx, link, failed)
+        await fail_call(link, failed)
+        ctx.shutdown(reason=SESSION_FAILED)
         if not isinstance(failed, PinecallError):
             raise
         return
@@ -351,15 +352,14 @@ def open_as_dialled(declaration: Declaration, dispatch: Dispatch) -> Declaration
 # A call no session runs ends at once, the failure on its log: a Soniox model handed as an argument
 # its plugin does not take left a call ringing for the reaper's ten minutes, sealed `drained` with
 # nothing of why (2026-11-05).
-async def fail_call(ctx: JobContext, link: CallClient, failed: Exception) -> None:
-    """End the call that has no session with the failure written on its log, and let the job go."""
+async def fail_call(link: CallClient, failed: Exception) -> None:
+    """End the call that has no session with the failure written on its log."""
     logger.warning("call %s: the session could not be built: %s", link.call, failed)
     writing = open_writer(link)
     writing.write("error", ErrorEvent(code=SESSION_FAILED, message=str(failed), recoverable=False))
     ended = CallEnded(reason="error", ended_by="platform", ended_at=time.time(), duration_s=0.0)
     with survive("sealing a call that has no session", link.call):
         await end_and_seal(link, writing, ended, NOT_BUILT.format(why=failed))
-    ctx.shutdown(reason=SESSION_FAILED)
 
 
 # ── private ──
