@@ -1,6 +1,7 @@
 """A worker's endpoints on its call: what they take, and what the seal does with it."""
 
 import asyncio
+import json
 import time
 from datetime import date
 
@@ -16,9 +17,10 @@ from runtime.jobs.service.client import GatewayClient, open_gateway
 from runtime.kit.text import JsonObject
 from runtime.live.parts import LiveParts
 from runtime.live.service import reaper
+from runtime.session.service import ToolUse
 from runtime.wire.base import BatchedEntry
 from runtime.wire.worker import OpenCallRequest, SealCallRequest
-from tests.conftest import THE_FLEET_KEY, Gateway, Tenant, holding, needs_the_services, used_of
+from tests.conftest import THE_FLEET_KEY, Gateway, Tenant, holding, needs_the_services, received, used_of
 from tests.live.gateways import a_second_gateway
 
 pytestmark = needs_the_services
@@ -174,3 +176,36 @@ async def test_the_apps_word_for_a_call_sealed_already_is_taken_without_an_error
     worker = await opened(fleet, tenant, agent)
     await worker.seal([], "done")
     await worker.release_seal()
+
+
+# A tool's answer came back on the worker's own request while the commands its app had sent before it
+# were still crossing Redis to the worker's stream: the model's next step read the prompt and the tools
+# of before the tool ran, and a call passed to a teammate answered as the agent it had left (2026-11-13).
+async def test_a_tools_answer_reaches_the_worker_after_the_commands_its_app_sent_before_it(
+    fleet: GatewayClient, gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    async with holding(gateway, tenant, agent) as app:
+        worker = await opened(fleet, tenant, agent)
+        applied: list[str] = []
+
+        async def follow() -> None:
+            async for command in worker.commands():
+                # A command takes a moment to apply: a prompt rendered, a stage built.
+                await asyncio.sleep(0.05)
+                applied.append(str(command.data["name"]))
+
+        following = asyncio.create_task(follow())
+        asking = asyncio.create_task(worker.run_tool(ToolUse("t1", "pass", {}), None))
+        await received(app, "tool.call")
+        for block in ("identity", "tools", "view"):
+            said = {"type": "prompt.set", "agent": agent, "call": worker.call, "data": {"name": block, "text": "…"}}
+            await app.send(json.dumps(said))
+        answer = {"call_id": "t1", "name": "pass", "output": "passed"}
+        await app.send(json.dumps({"type": "tool.result", "agent": agent, "call": worker.call, "data": answer}))
+        result = await asyncio.wait_for(asking, 10)
+        taken_before_the_answer = list(applied)
+        following.cancel()
+        await worker.seal([], "done")
+        await worker.aclose()
+    assert result.output == "passed"
+    assert taken_before_the_answer == ["identity", "tools", "view"]

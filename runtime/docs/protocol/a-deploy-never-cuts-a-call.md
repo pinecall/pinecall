@@ -60,6 +60,13 @@ its worker's stream (`GET /v1/calls/{call}/commands`), each under the id it was 
 stream carries as its `id:`. A worker whose stream moved to another gateway is sent again what the
 first one sent, and drops every id it applied already.
 
+A tool's answer follows what its app said before it. The answer goes back on the worker's own request
+and the app's commands come down that stream, so the two could cross: when the app answers a tool, the
+gateway holding its socket says `tool.settled {call_id}` down the stream, after every command the app
+sent first, and the worker hands the answer to the model once it has read it (it waits a second at
+most, for a gateway that says nothing). `tool.settled` is the gateway's own word, as `caller.hung_up`
+and `stages.changed` are: an app's socket refuses it.
+
 A retried entry is written once when it travels in a batch, `{after, entries}` down the call's socket
 `WS /v1/calls/{call}/entries` (or, to a gateway that has no such socket, `POST
 /v1/calls/{call}/entries` with the same body): a call's log has one writer, which sends its entries in order and says how many

@@ -135,6 +135,8 @@ signup: false
 turnstile:
   siteKey: ""
 
+# The overflow's one sentence, said to every call it answers (PINECALL_OVERFLOW_SAYS). Empty, it
+# says its own in the agent's language: English or Spanish, English for any other.
 overflow:
   says: ""
 

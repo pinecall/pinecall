@@ -73,7 +73,7 @@ class JobSettings:
     voice_lookup_budget_ms: int | None
     text_lookup_budget_ms: int | None
     tool_steps: int | None
-    overflow_says: str
+    overflow_says: str | None
     # The worker's name, as its heartbeat says it, and where its jobs tell it their measures.
     worker: str
     measures: Path

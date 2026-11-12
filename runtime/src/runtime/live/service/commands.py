@@ -20,10 +20,11 @@ from runtime.wire.signal import Commanded
 
 # The gateway's own words to whatever runs a call (`wire.commands`): the one verb a desk sends, which a
 # call takes as a supervisor's; the caller's own hang-up, said at the gateway; the call taking its
-# stages anew. None is an app's to say: an app's socket refuses each.
+# stages anew; a tool's answer sent. None is an app's to say: an app's socket refuses each.
 SUPERVISOR_VERB = "supervisor.verb"
 CALLER_HUNG_UP = "caller.hung_up"
 STAGES_CHANGED = "stages.changed"
+TOOL_SETTLED = "tool.settled"
 SESSION_CONFIGURE = "session.configure"
 # How a refused command is said, on the call's log and down a socket.
 BAD_SHAPE = "bad_shape"
@@ -142,3 +143,16 @@ async def restage(live: LiveParts, scope: Scope, call: str, passed_to: str | Non
     if passed_to is not None and live.holders.find_serving(scope, passed_to) is None:
         raise NotFound(f"nobody holds {passed_to} here: a call takes the stages of an agent an app is serving")
     await send_to_live_call(live, call, STAGES_CHANGED, {"agent": passed_to} if passed_to else {})
+
+
+# A tool's answer goes back on the request that asked for it, and the app's commands down the call's
+# stream, through Redis: the answer of a tool that moved the prompt or the tools was read by the model
+# on the ones before it (seen 2026-10 in every SDK; a call passed to a teammate answered as the agent
+# it had left). Said down the same stream, after them: the worker holds the answer until it reads this.
+# A call that runs here took each command as it came, and needs none.
+async def settle_tool(signal: Signal, served: Served, agent: str, call_id: str) -> None:
+    """Tell a call's worker that everything its app said before this tool's answer has been sent."""
+    if served.running is not None:
+        return
+    settled = Command(type=TOOL_SETTLED, agent=agent, call=served.call, data={"call_id": call_id})
+    await COMMANDS.reach(signal, Commanded(id=uuid4().hex, command=settled), call=served.call)

@@ -291,8 +291,9 @@ When every worker of a fleet is at the line, the token endpoint answers `503`, w
 the agent's log, and names `POST /v1/callbacks`, so a page offers a call back before any room is
 made. A phone caller arriving at a full production fleet is answered by the **overflow**
 (the Deployment `overflow-production`), registered as `<fleet>/overflow` and offered a call by the
-gateway alone, when no worker has a seat or a room ran out of offers: one sentence,
-`PINECALL_OVERFLOW_SAYS`, the caller's number onto the agent's log as `callback.requested`, and it
+gateway alone, when no worker has a seat or a room ran out of offers: one sentence, in the
+agent's language (English or Spanish, English for any other) unless `PINECALL_OVERFLOW_SAYS` names one
+for every call, the caller's number onto the agent's log as `callback.requested`, and it
 hangs up. No ears, no model.
 An org's own concurrency is its `concurrent_calls` quota, counted on the calls this gateway serves
 in that environment and held at the endpoint, never mid-call: sandbox calls never use up production's.

@@ -361,6 +361,8 @@ class AppSocket:
             return
         served = self.live.calls.find(command.call)
         ours = served is not None and served.scope.org == self.scope.org and served.agent == command.agent
+        if served is not None and ours:
+            await commands.settle_tool(self.live.signal, served, command.agent, result.call_id)
         if (
             served is not None
             and ours

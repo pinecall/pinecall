@@ -16,7 +16,7 @@ from runtime.jobs.service.ending import end_and_seal, open_writer
 from runtime.jobs.service.job import Warmed
 from runtime.livekit import close_room
 from runtime.providers import service as providers
-from runtime.providers.stage import Running
+from runtime.providers.stage import Running, primary_language
 from runtime.session import service as session
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.events import AgentTranscript, CallEnded
@@ -27,6 +27,20 @@ logger = logging.getLogger(__name__)
 A_CALLER_MAY_TAKE_S = 15.0
 
 THE_ONE_SENTENCE = "sp_1"
+
+# What the overflow says where the operator named no sentence of its own (PINECALL_OVERFLOW_SAYS): the
+# agent's language when it is one of these, English for any other. Until 2026-11 it was the Spanish one
+# for every call, and a caller of an English agent was told the lines were busy in Spanish.
+ALL_LINES_BUSY = {
+    "en": (
+        "All our lines are busy right now. We have noted your number and will call you back as soon as "
+        "one is free. Thank you for your patience."
+    ),
+    "es": (
+        "En este momento todas nuestras líneas están ocupadas. Hemos tomado nota de su número "
+        "y le devolveremos la llamada en cuanto se libere una. Gracias por su paciencia."
+    ),
+}
 
 # How a job's call is answered: run (`job.answer_job`), or its caller told the fleet is full.
 type Answer = Callable[[JobContext, Warmed], Awaitable[None]]
@@ -48,10 +62,11 @@ async def answer_overflow(ctx: JobContext, warmed: Warmed) -> None:
     """One call the fleet had no place for: one sentence, a call back offered, the room closed."""
     began = time.monotonic()
     ctx.log_context_fields = {"room": ctx.job.room.name}
-    gateway, says = warmed.gateway, warmed.told.overflow_says
+    gateway = warmed.gateway
     arrived = await arrive_as_rung(ctx, gateway, default_agent=warmed.told.agent, zone=warmed.told.zone)
     route, caller = arrived.route, arrived.arrival.caller
     stages = await gateway.get_stages(route.agent, arrived.scope)
+    says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says)
     link = await open_call(gateway, arrived.open_with(None))
     writing = open_writer(link)
     try:
@@ -73,13 +88,15 @@ async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -
     """Tell the caller of a call whose worker went away the overflow's sentence, then seal it."""
     call = ctx.job.room.name
     ctx.log_context_fields = {"room": call}
-    gateway, says, scope = warmed.gateway, warmed.told.overflow_says, dispatch.named_scope
+    gateway, scope = warmed.gateway, dispatch.named_scope
+    says = sentence_in(None, warmed.told.overflow_says)
     await ctx.connect()
     link = CallClient(gateway, call)
     writing = open_writer(link, after=dispatch.entries_written)
     try:
         if scope is not None and dispatch.agent is not None:
             stages = await gateway.get_stages(dispatch.agent, scope)
+            says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says)
             await _say_once(ctx, writing, stages.pipeline.tts, says)
     except UpstreamError:
         logger.warning(
@@ -92,6 +109,13 @@ async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -
         await link.seal([], says)
     except UpstreamError:
         logger.warning("call %s: the gateway did not take the seal; its reaper seals the call", call, exc_info=True)
+
+
+def sentence_in(language: str | None, operators: str | None) -> str:
+    """The overflow's one sentence: the operator's where it named one, else its own in the agent's language."""
+    if operators:
+        return operators
+    return ALL_LINES_BUSY.get(primary_language(language) or "en", ALL_LINES_BUSY["en"])
 
 
 def sentence_entry(says: str) -> AgentTranscript:

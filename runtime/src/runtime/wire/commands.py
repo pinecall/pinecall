@@ -343,7 +343,8 @@ COMMANDS: dict[str, type[WireModel]] = {
 
 # The gateway's own words to whatever runs a call, sent on the call's command stream as a command is and
 # never an app's: neither is in COMMANDS, so a socket refuses them and no app can say them in the
-# gateway's name. The caller's own hang-up, said at the gateway; and the call taking its stages anew.
+# gateway's name. The caller's own hang-up, said at the gateway; the call taking its stages anew; and a
+# tool's answer sent, said after every command the app sent before it.
 class CallerHungUp(WireModel):
     """The caller hung up: whatever runs the call ends it now."""
 
@@ -354,10 +355,17 @@ class StagesChanged(WireModel):
     agent: str | None = None
 
 
-type Signal = CallerHungUp | StagesChanged
-SIGNALS: dict[str, type[CallerHungUp] | type[StagesChanged]] = {
+class ToolSettled(WireModel):
+    """The app answered this tool call: every command it sent before the answer came down the stream first."""
+
+    call_id: str
+
+
+type Signal = CallerHungUp | StagesChanged | ToolSettled
+SIGNALS: dict[str, type[CallerHungUp] | type[StagesChanged] | type[ToolSettled]] = {
     "caller.hung_up": CallerHungUp,
     "stages.changed": StagesChanged,
+    "tool.settled": ToolSettled,
 }
 
 

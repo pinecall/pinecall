@@ -1,18 +1,23 @@
 """A worker's call open at a served gateway: written, sealed, each batch landing once, its commands each once."""
 
+import asyncio
+import json
+
 import httpx
 import pytest
 
 from runtime.calls.log.store import Store
 from runtime.calls.service import lists
 from runtime.exceptions import UpstreamError
+from runtime.jobs.service import call_client
 from runtime.jobs.service.call_client import CallClient, open_call
 from runtime.jobs.service.client import GatewayClient
 from runtime.kit import sse
+from runtime.session.service import ToolUse
 from runtime.session.writing import Writing
 from runtime.wire.base import Command
 from runtime.wire.events import Custom
-from tests.conftest import Gateway, Tenant, holding, needs_the_services
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
 from tests.jobs.factories import opened, opening_of
 
 
@@ -189,3 +194,29 @@ async def test_a_command_frame_this_worker_cannot_read_is_skipped_and_the_next_i
         await worker.gateway.aclose()
     assert heard == ["state.set"]
     assert "reading a command of the app failed on call_1" in caplog.text
+
+
+# A gateway older than the worker never says a tool settled: its answer is held a moment, said so, and
+# given to the model all the same, as before the worker waited at all.
+@needs_the_services
+async def test_a_tools_answer_from_a_gateway_that_says_nothing_goes_on_after_the_wait(
+    fleet: GatewayClient,
+    gateway: Gateway,
+    tenant: Tenant,
+    agent: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(call_client, "SETTLED_WITHIN_S", 0.2)
+    async with holding(gateway, tenant, agent) as app:
+        worker = await opened(fleet, tenant, agent)
+        # Nobody follows the call's stream: what it says of the tool is never read.
+        asking = asyncio.create_task(worker.run_tool(ToolUse("t1", "book", {}), None))
+        await received(app, "tool.call")
+        answer = {"call_id": "t1", "name": "book", "output": "booked"}
+        await app.send(json.dumps({"type": "tool.result", "agent": agent, "call": worker.call, "data": answer}))
+        result = await asyncio.wait_for(asking, 10)
+        await worker.seal([], "done")
+        await worker.aclose()
+    assert result.output == "booked"
+    assert "the stream never said the commands before book's answer came" in caplog.text

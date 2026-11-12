@@ -38,6 +38,7 @@ from runtime.wire.commands import (
     StateSet,
     SupervisorVerb,
     TakeoverVerb,
+    ToolSettled,
     ToolsSet,
     TransferVerb,
     WhisperVerb,
@@ -203,6 +204,10 @@ async def take(session: Session, command: Command, *, restage: Restage | None = 
                         "a written call the gateway runs keeps the model it opened on: its settings run on the next one"
                     )
                 await restage(agent)
+            # A worker's client keeps it (`jobs.call_client`): by the time a session reads one, what it
+            # says is true already, since the commands before it were taken in order.
+            case ToolSettled():
+                pass
             case None:
                 await apply(session, command_of_a_call(command))
     except PinecallError as refused:

@@ -20,12 +20,6 @@ type ProcessRole = Literal["all", "gateway", "worker"]
 # Slug-shaped, never empty: an empty agent_name makes LiveKit dispatch to every room.
 A_FLEET_NAME = r"^[a-z0-9][a-z0-9-]{0,62}$"
 
-# Spoken by the overflow agent when every worker is full, before hanging up.
-OVERFLOW_SAYS = (
-    "En este momento todas nuestras líneas están ocupadas. Hemos tomado nota de su número "
-    "y le devolveremos la llamada en cuanto se libere una. Gracias por su paciencia."
-)
-
 
 class Settings(BaseSettings):
     """The process's configuration, from systemd credentials, a .env and the environment."""
@@ -99,7 +93,8 @@ class Settings(BaseSettings):
     worker_http_port: int = Field(8082, alias="PINECALL_WORKER_HTTP_PORT")
     worker_name: str | None = Field(None, alias="PINECALL_WORKER_NAME")
     notify_socket: str | None = Field(None, alias="NOTIFY_SOCKET")
-    overflow_says: str = Field(OVERFLOW_SAYS, alias="PINECALL_OVERFLOW_SAYS")
+    # The overflow's one sentence, for every call it answers; unset, it says its own in the agent's language.
+    overflow_says: str | None = Field(None, alias="PINECALL_OVERFLOW_SAYS")
 
     # ── the runner of hosted apps ──
     runner_key: SecretStr | None = Field(None, alias="PINECALL_RUNNER_KEY")

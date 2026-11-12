@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **A tool's answer reaches the model after what its app said before it.** The answer went back on the
+  worker's own request while the app's commands (the prompt it rendered, the tools it opened, the state it
+  moved) crossed Redis to the worker's stream: the model's next step often read the prompt and the tools of
+  before the tool ran. A call passed to a teammate answered as the agent it had left ("One moment while I
+  connect you"), or called the transfer again; a view that follows the state lagged a step. The gateway now
+  says `tool.settled` down the call's stream when the app answers, after everything it sent first, and the
+  worker holds the answer until it reads it (a second at most, for a gateway that says nothing).
+- **The overflow speaks the agent's language.** A caller of a full fleet heard its one sentence in Spanish
+  whatever the agent spoke. It is said in the agent's language where that is English or Spanish and in
+  English for any other; `PINECALL_OVERFLOW_SAYS`, once set, is still the sentence of every call.
+
 ## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
 
 - **`pinecall-runtime doctor` reads a cluster.** In a gateway's pod it said `NO database` and `NO archive` of a

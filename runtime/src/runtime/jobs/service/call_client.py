@@ -1,6 +1,8 @@
 """A call open at the gateway, as its worker reaches it: its log, its tools, its lookups, its commands, its seal."""
 
+import asyncio
 import base64
+import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
@@ -17,6 +19,7 @@ from runtime.kit.text import Json, JsonObject, a_list, a_mapping
 from runtime.session import service as session
 from runtime.telephony import service as telephony
 from runtime.wire.base import BatchedEntry, Command, Entry
+from runtime.wire.commands import ToolSettled, signal_of
 from runtime.wire.events import ToolCall
 from runtime.wire.metrics import ModelUsage
 from runtime.wire.parts import PlatformTool, ToolResult
@@ -37,6 +40,11 @@ OPENED_WITHIN_S = 15.0
 A_SEAL_S = 30.0
 # A tool whose declaration names no wait.
 A_TOOL_S = 30.0
+# How long a tool's answer is held for the stream to say the commands before it came: they cross Redis
+# in milliseconds. A gateway older than this worker says nothing, and the answer goes on after the wait.
+SETTLED_WITHIN_S = 1.0
+
+logger = logging.getLogger(__name__)
 
 ALREADY_OVER = 409
 NOT_SERVED = 404
@@ -69,6 +77,8 @@ class CallClient:
         self.entries = EntriesStream(*gateway.socket_at(f"/v1/calls/{call}/entries"))
         # The ids of the commands the call was handed: one a gateway sends again is dropped.
         self.heard: set[str] = set()
+        # The tool calls out at the app, each set once the stream said the commands before its answer came.
+        self.settling: dict[str, asyncio.Event] = {}
         self.measures: Path | None = None
         self.lent: list[str] = []
         self.keep_recording: KeepRecording | None = None
@@ -97,8 +107,31 @@ class CallClient:
         waiting = (A_TOOL_S if spec is None else spec.timeout_s) + TIMEOUT_S
         called = ToolCall(call_id=use.call_id, name=use.name, arguments=use.arguments, speech_id=speech)
         path = f"/v1/calls/{self.call}/tools?agent={self._opening().agent}"
-        answer = await self._ask_again(lambda: self._on_the_call("POST", path, called.dump(), waiting), waiting, path)
-        return ToolResult.model_validate(answer)
+        settled = self.settling.setdefault(use.call_id, asyncio.Event())
+        try:
+            answer = await self._ask_again(
+                lambda: self._on_the_call("POST", path, called.dump(), waiting), waiting, path
+            )
+            result = ToolResult.model_validate(answer)
+            # The app's own answer only: one the gateway wrote (a tool that lapsed) follows no command.
+            if result.error is None:
+                await self._hold_until_settled(use, settled)
+            return result
+        finally:
+            self.settling.pop(use.call_id, None)
+
+    # The answer came on this request and the app's commands come down the stream: a tool that moved
+    # the prompt or the tools would be read by the model on the ones before it.
+    async def _hold_until_settled(self, use: session.ToolUse, settled: asyncio.Event) -> None:
+        try:
+            async with asyncio.timeout(SETTLED_WITHIN_S):
+                await settled.wait()
+        except TimeoutError:
+            logger.warning(
+                "call %s: the stream never said the commands before %s's answer came: answered without waiting more",
+                self.call,
+                use.name,
+            )
 
     async def look_up(self, tool: PlatformTool, arguments: JsonObject, speech: str | None) -> JsonObject:
         """Recall or search, run by the gateway, which writes what it found on the log."""
@@ -254,8 +287,15 @@ class CallClient:
                 continue
             if sent.id is not None:
                 self.heard.add(sent.id)
-            if (command := _command_of(sent.data, self.call)) is not None:
-                yield command
+            if (command := _command_of(sent.data, self.call)) is None:
+                continue
+            # Reached only once the commands before it were taken: whoever follows the stream asks for the
+            # next one after applying the last. It is the client's own, and no session's.
+            if (settled := _read_settled(command)) is not None:
+                if (waiting := self.settling.get(settled.call_id)) is not None:
+                    waiting.set()
+                continue
+            yield command
 
 
 # Asked again while the gateway is away: an open is the same call by its id (one claim, one
@@ -279,3 +319,11 @@ def _command_of(frame: Mapping[str, object], call: str) -> Command | None:
     with survive("reading a command of the app", call):
         command = Command.model_validate(frame)
     return command
+
+
+def _read_settled(command: Command) -> ToolSettled | None:
+    found: ToolSettled | None = None
+    with survive("reading a command of the app", command.call or ""):
+        signal = signal_of(command)
+        found = signal if isinstance(signal, ToolSettled) else None
+    return found
