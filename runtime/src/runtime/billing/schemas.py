@@ -1,5 +1,7 @@
 """The bodies of the billing endpoints: an org's quotas, what a newborn org is given, a quota against its use."""
 
+from typing import Any, Self
+
 from pydantic import Field
 
 from runtime.enums import Env
@@ -18,6 +20,19 @@ class OrgQuotas(Schema):
     # `PUT …/simulating`: a quotas body leaves them as they stand.
     simulations_at_once: int | None = None
     comparison_calls: int | None = None
+
+    # Read off billing's `Quotas` by its attributes: a schema never imports its domain's service.
+    @classmethod
+    def of(cls, kept: Any, /) -> Self:
+        """An org's quotas in one env as they are answered: `lends` sorted."""
+        lends = kept.lends
+        return cls(
+            limits=dict(kept.limits),
+            budget_usd=kept.budget_usd,
+            lends=None if lends is None else sorted(lends),
+            simulations_at_once=kept.simulations_at_once,
+            comparison_calls=kept.comparison_calls,
+        )
 
     def limits_named(self) -> dict[QuotaName, int | None]:
         """Every limit the body names, the budget among them."""

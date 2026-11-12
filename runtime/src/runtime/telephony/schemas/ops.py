@@ -4,6 +4,8 @@ from typing import Any, Literal, Self, override
 
 from pydantic import Field
 
+from runtime.billing.schemas import OrgQuotas
+from runtime.compliance.schemas import DialGuards
 from runtime.enums import Channel, Env
 from runtime.kit.schemas import Epoch, Row, Schema
 
@@ -171,3 +173,26 @@ class RouteRequest(Schema):
     agent: str
     channel: Channel
     env: Env = Env.production
+
+
+# ── an org as it stands ──
+
+
+class OrgHolding(Schema):
+    """What the org holds right now, across both envs, against its stock quotas."""
+
+    memory_facts: int
+    knowledge_chunks: int
+    numbers: int
+    seats: int
+
+
+class OrgProfile(Schema):
+    """GET /v1/ops/orgs/{named}: one org, its quotas per env, its dial guards, what it holds."""
+
+    id: str
+    slug: str
+    name: str
+    quotas: dict[Env, OrgQuotas]
+    dialling: DialGuards
+    holding: OrgHolding

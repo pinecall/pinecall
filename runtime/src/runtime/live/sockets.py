@@ -86,6 +86,10 @@ class Sockets:
             self._rows[app] = found.model_copy(update={"host": host})
             self._say()
 
+    def count_here(self) -> int:
+        """How many app sockets are open on this gateway."""
+        return len(self._open)
+
     def is_here(self, app: SocketId) -> bool:
         """Whether the socket is open on this gateway."""
         return app in self._open

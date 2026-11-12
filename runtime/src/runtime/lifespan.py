@@ -24,6 +24,7 @@ from runtime.config import load_settings
 from runtime.evals import tasks as evals_tasks
 from runtime.evals.parts import Harness
 from runtime.evals.service.simulations import ChatSimulations
+from runtime.fleet import service as fleet
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.flows import tasks as flows_tasks
@@ -41,6 +42,7 @@ from runtime.live.service.entries import Appends
 from runtime.live.service.tokens import Signer
 from runtime.live.service.whatsapp import Threads
 from runtime.mail.service.outbox import Outbox
+from runtime.platform import service as platform
 from runtime.platform.service.attempts import AttemptThrottle
 from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.speech import SAMPLES_A_MINUTE
@@ -116,6 +118,8 @@ class State(TypedDict):
     pages: hosting.Pages
     # Every Studio agent of the box, held by this gateway on app sockets of its own.
     studio: studio.Holder
+    # What each owner says of itself on `/metrics` (platform's `collectors`).
+    collectors: tuple[platform.Collector, ...]
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -157,6 +161,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         loops.start(studio_tasks.follow_changes.bind(holder, handles.signal))
         loops.start(studio_tasks.look_at_agents.bind(holder))
         harness.describers.add(studio.StudioAgents())
+        appends = Appends()
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -186,7 +191,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
             recordings=builders.build_recordings(handles.settings, handles.http),
             prompts=prompts,
             live=live,
-            appends=Appends(),
+            appends=appends,
             holders=live.holders,
             agents_held=live.holders,
             threads=threads,
@@ -200,4 +205,9 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
             simulations=ChatSimulations(harness),
             pages=hosting.Pages(),
             studio=holder,
+            collectors=(
+                platform.ProcessMetrics(handles.engine, sessions, loops),
+                live_service.LiveMetrics(live, appends),
+                fleet.FleetMetrics(roster, sessions),
+            ),
         )

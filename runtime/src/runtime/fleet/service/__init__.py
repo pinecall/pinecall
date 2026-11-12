@@ -10,6 +10,7 @@ from runtime.fleet.service.dispatches import (
     room_dispatch,
 )
 from runtime.fleet.service.envs import Fleets, fleet_of, fleet_of_env, get_fleets
+from runtime.fleet.service.metrics import FleetMetrics
 from runtime.fleet.service.offers import AN_AGENT_JOINS_WITHIN_S, Offering
 from runtime.fleet.service.roster import Roster
 from runtime.fleet.service.slots import HEARTBEAT_S, REFUSED_AT
@@ -20,6 +21,7 @@ __all__ = [
     "A_VISITOR_RETURNS_S",
     "HEARTBEAT_S",
     "REFUSED_AT",
+    "FleetMetrics",
     "Fleets",
     "Offering",
     "Roster",

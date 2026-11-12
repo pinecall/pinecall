@@ -60,7 +60,7 @@ async def put_quotas(org: TheNamedOrg, body: schemas.PutQuotasRequest, session: 
     """The org's limits in one env, replaced whole; they bite the next call and register."""
     wanted = body.quotas
     lends = None if wanted.lends is None else providers.parse_lending(wanted.lends)
-    return _body_of(await quotas.put_limits(session, org.id, body.env, wanted.limits_named(), lends))
+    return schemas.OrgQuotas.of(await quotas.put_limits(session, org.id, body.env, wanted.limits_named(), lends))
 
 
 # Not a month's count but a shape: a ceiling on the fleet's seats the org's simulated callers take at
@@ -73,15 +73,4 @@ async def put_simulating(
     kept = await quotas.put_simulating(
         session, org.id, body.env, simulations_at_once=body.simulations_at_once, comparison_calls=body.comparison_calls
     )
-    return _body_of(kept)
-
-
-# The same shape read and written: `lends` comes back sorted.
-def _body_of(kept: quotas.Quotas) -> schemas.OrgQuotas:
-    return schemas.OrgQuotas(
-        limits=dict(kept.limits),
-        budget_usd=kept.budget_usd,
-        lends=None if kept.lends is None else sorted(kept.lends),
-        simulations_at_once=kept.simulations_at_once,
-        comparison_calls=kept.comparison_calls,
-    )
+    return schemas.OrgQuotas.of(kept)

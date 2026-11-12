@@ -4,22 +4,46 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from runtime.accounts.service import orgs
+from runtime.accounts.auth import TheNamedOrg
+from runtime.accounts.service import members, orgs
 from runtime.actor import Scope
 from runtime.auth import TheOperator
+from runtime.billing import service as billing
+from runtime.billing.schemas import OrgQuotas
+from runtime.compliance import service as compliance
+from runtime.compliance.schemas import DialGuards
 from runtime.enums import Env
 from runtime.handles import TheHttp, TheServers, TheVault
 from runtime.kit.text import parse_e164
+from runtime.knowledge import service as knowledge
 from runtime.postgres import TheBoxSession
 from runtime.telephony.auth import TheAgentsHeld, TheOrgAsked, TheSipNames
 from runtime.telephony.schemas import carriers
 from runtime.telephony.schemas import ops as schemas
-from runtime.telephony.service import accounts, networks, number_hook, numbers, outbound, rebuild, test_line
+from runtime.telephony.service import accounts, networks, number_hook, numbers, outbound, rebuild, routes, test_line
 from runtime.telephony.service.number_hook import NumberImport
 from runtime.telephony.service.twilio import TwilioAccount
 from runtime.wire.worker import RouteRow
 
 router = APIRouter()
+
+
+# ── an org as it stands ──
+
+
+# `holding` is what the org has now, never a fold of the log: usage is /v1/ops/usage.
+@router.get("/v1/ops/orgs/{named}")
+async def get_org_profile(org: TheNamedOrg, session: TheBoxSession) -> schemas.OrgProfile:
+    """One org as it stands: its quotas per env, its dial guards, and what it holds."""
+    held = schemas.OrgHolding(
+        memory_facts=sum([await knowledge.count_facts(session, org.id, env) for env in Env]),
+        knowledge_chunks=sum([await knowledge.count_chunks(session, org.id, env) for env in Env]),
+        numbers=sum([await routes.count_managed(session, org.id, env) for env in Env]),
+        seats=await members.count_seated(session, org.id),
+    )
+    quotas = {env: OrgQuotas.of(await billing.get_quotas(session, org.id, env)) for env in Env}
+    guards = DialGuards.of(await compliance.guards_of(session, org.id))
+    return schemas.OrgProfile(id=org.id, slug=org.slug, name=org.name, quotas=quotas, dialling=guards, holding=held)
 
 
 # ── the account the box buys numbers on ──

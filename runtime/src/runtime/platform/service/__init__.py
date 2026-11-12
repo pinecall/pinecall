@@ -2,6 +2,7 @@
 
 from runtime.platform.service.attempts import AttemptThrottle
 from runtime.platform.service.brand import Brand, get_brand
+from runtime.platform.service.metrics import Collector, ProcessMetrics
 from runtime.platform.service.settings import (
     Setting,
     delete_setting,
@@ -14,6 +15,8 @@ from runtime.platform.service.settings import (
 __all__ = [
     "AttemptThrottle",
     "Brand",
+    "Collector",
+    "ProcessMetrics",
     "Setting",
     "delete_setting",
     "find_sealed_setting",
