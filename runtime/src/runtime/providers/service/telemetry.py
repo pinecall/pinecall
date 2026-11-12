@@ -1,10 +1,8 @@
 """Where an org's traces go: its own OTLP collector, the headers each export carries, sealed, and whether PII rides."""
 
-import asyncio
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,6 +77,6 @@ async def forget_telemetry(session: AsyncSession, org: str) -> bool:
 # resolve elsewhere tomorrow, so whoever exports to it checks again, with this.
 async def check_public(endpoint: str) -> None:
     """Refuse a collector whose host is an address, a local name, or a name that resolves anywhere but the internet."""
-    host = urlsplit(endpoint).hostname or ""
-    if not await asyncio.to_thread(dns.public_addresses, host):
-        raise ValidationError(NOT_PUBLIC.format(host=host))
+    found = await dns.resolve_url(endpoint)
+    if not found.is_a_public_name:
+        raise ValidationError(NOT_PUBLIC.format(host=found.host))

@@ -1,6 +1,5 @@
 """The OpenID Connect client: a sign-in begun at a provider, kept until its callback, and the answer checked."""
 
-import asyncio
 import base64
 import hashlib
 import secrets
@@ -257,8 +256,7 @@ def _reachable(url: str, *, issuer: str, field: str) -> str:
 
 
 async def _public_url(url: str, *, issuer: str, field: str) -> str:
-    host = httpx.URL(_reachable(url, issuer=issuer, field=field)).host
-    if not await asyncio.to_thread(dns.public_addresses, host):
+    if not (await dns.resolve_url(_reachable(url, issuer=issuer, field=field))).is_a_public_name:
         raise Forbidden(f"{issuer}'s {field} is {url!r}: it resolves inside, not on the internet")
     return url
 

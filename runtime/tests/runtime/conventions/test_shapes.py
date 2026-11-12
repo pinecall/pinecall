@@ -11,6 +11,7 @@ ALLOWED: dict[str, str] = {
     "providers.catalog": "the providers row is a document the box keeps, and this module its one shape",
     "whatsapp.service": "Meta's client parses Meta's webhook bodies and its Graph answers",
     "knowledge.service.embedder": "the embedder's client parses a vendor's rows and its refusal",
+    "telephony.service.twilio": "Twilio's client parses Twilio's answers",
 }
 
 

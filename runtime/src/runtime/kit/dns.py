@@ -1,12 +1,17 @@
 """Names resolved, so what the box reaches on a tenant's word is held to the public internet."""
 
+import asyncio
 import ipaddress
 import socket
+from collections.abc import Mapping
+from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import dns.exception
 import dns.rdatatype
 import dns.rdtypes.ANY.TXT
 import dns.resolver
+import httpx
 
 type Address = ipaddress.IPv4Address | ipaddress.IPv6Address
 
@@ -47,17 +52,54 @@ def is_local_name(host: str) -> bool:
     return folded in {"localhost", ""} or folded.endswith(LOCAL_SUFFIXES) or is_an_address(folded)
 
 
-# The one check before the box reaches a host on a tenant's word: the caller connects to an address this
-# returned, never to the name again, or a second resolution could answer with the inside.
-def public_addresses(host: str) -> list[Address]:
-    """The addresses a name resolves to when every one is public; none for a local name or no answer."""
-    if is_local_name(host):
-        return []
+# The one resolution before the box reaches a URL on a tenant's word (a webhook, a collector, a sign-in
+# provider). Whoever asked decides on what this answers and refuses in its own sentence; and whoever
+# then connects, connects to an address this returned (`post_at`), never to the name again, or a
+# second resolution could answer with the inside.
+@dataclass(frozen=True, slots=True)
+class Resolved:
+    """A URL's host, and every address it resolves to now: none when it resolves to nothing."""
+
+    host: str
+    addresses: tuple[Address, ...]
+
+    @property
+    def is_public(self) -> bool:
+        """Whether the host resolves, and to the public internet alone."""
+        return all_public(list(self.addresses))
+
+    @property
+    def is_a_public_name(self) -> bool:
+        """Whether the host is a name, none of the box's own and no address, that resolves to the internet alone."""
+        return not is_local_name(self.host) and self.is_public
+
+
+async def resolve_url(url: str) -> Resolved:
+    """The host a URL names and what it resolves to now, resolved off the event loop."""
+    host = (urlsplit(url).hostname or "").lower()
     try:
-        found = resolve(host)
+        found = await asyncio.to_thread(resolve, host) if host else []
     except OSError:
-        return []
-    return found if all_public(found) else []
+        found = []
+    return Resolved(host, tuple(found))
+
+
+# The address was checked; the name was not asked again. The name rides the Host header, and TLS is
+# still asked for it and verified against it (`sni_hostname`). The connection is closed after the
+# answer, so one verified for a name is never reused for another name at the same address. A client
+# that follows no redirect is the caller's to bring.
+async def post_at(
+    http: httpx.AsyncClient, url: str, address: Address, *, content: bytes, headers: Mapping[str, str], timeout: float
+) -> httpx.Response:
+    """POST to the URL at the address its host was checked to resolve to, never at the name again."""
+    named = httpx.URL(url)
+    return await http.post(
+        named.copy_with(host=str(address)),
+        content=content,
+        headers={**headers, "host": named.netloc.decode("ascii"), "connection": "close"},
+        extensions={"sni_hostname": named.raw_host.decode("ascii")},
+        timeout=timeout,
+    )
 
 
 # A record of several strings is one text, as the RFC reads it.

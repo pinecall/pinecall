@@ -18,8 +18,10 @@ from runtime import api
 from runtime.accounts import tasks as accounts_tasks
 from runtime.accounts.auth import resolve_actor
 from runtime.accounts.service.key_cache import KeyCache
+from runtime.alerts import tasks as alerts_tasks
 from runtime.auth import ActorMiddleware
 from runtime.config import Settings, load_settings
+from runtime.enums import Env
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
 from runtime.fleet import tasks as fleet_tasks
 from runtime.fleet.service.offers import Offering
@@ -44,6 +46,9 @@ from runtime.signin.service.pairings import Pairings
 from runtime.signin.service.passwords import SIGN_IN_TRIES, PasswordThrottle
 from runtime.signin.service.signup import SignUps
 from runtime.signin.service.turnstile import Turnstile
+from runtime.telephony import tasks as telephony_tasks
+from runtime.telephony.service.carrier import SipNames
+from runtime.telephony.service.rebuild import Owed
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,7 @@ class State(TypedDict):
     extraction_runs: AttemptThrottle
     roster: Roster
     offering: Offering
+    sip_names: SipNames
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -111,6 +117,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         loops.start(accounts_tasks.hear_revocations.bind(key_cache, handles.signal))
         roster, offering = await _fleet(handles, loops, stack)
         sessions, vault = handles.sessions, handles.vault
+        sip_names = _sip_names(handles.settings)
+        loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))
+        loops.start(alerts_tasks.post_alerts.bind(sessions, vault, handles.http))
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -130,6 +139,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             extraction_runs=AttemptThrottle(sessions, EXTRACTION_RUNS_A_MINUTE),
             roster=roster,
             offering=offering,
+            sip_names=sip_names,
         )
 
 
@@ -143,6 +153,17 @@ async def _fleet(handles: Handles, loops: Loops, stack: AsyncExitStack) -> tuple
     loops.start(fleet_tasks.sweep_offers.bind(offering))
     loops.start(fleet_tasks.watch_roster.bind(roster))
     return roster, offering
+
+
+# What the box is to a carrier, read from the settings once: no use case of telephony reads one itself.
+def _sip_names(settings: Settings) -> SipNames:
+    secret = settings.livekit_api_secret
+    return SipNames(
+        domain=settings.domain,
+        sip_domains={env: settings.sip_domain_of(env) for env in Env},
+        approve_hooked=settings.approve_hooked,
+        livekit_secret=None if secret is None else secret.get_secret_value(),
+    )
 
 
 async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:

@@ -94,6 +94,11 @@ ONE_CONTEXT: dict[str, str] = {
         "and one registry of plugins, read by twenty of its modules; where an org's traces go and what this machine "
         "can run stand apart and were decided into it (compliance-1, providers-6)"
     ),
+    "telephony": (
+        "how a number reaches an agent and an agent a number: the account it lives in, by its kind, its fence, its "
+        "trunk and rule on the SFU and its row are one thing read and written together; the routes and the legs in a "
+        "call's room were decided into it (channels-1, telephony-3), and a kind of account is a module each"
+    ),
 }
 
 

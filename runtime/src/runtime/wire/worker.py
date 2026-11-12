@@ -1,10 +1,10 @@
-"""What a worker and the gateway tell each other over HTTP: its heartbeat, and a call's agent, stages and melody."""
+"""What a worker and the gateway tell each other over HTTP: its heartbeat, a call's agent, stages, route and legs."""
 
 from typing import Any, Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
-from runtime.enums import HoldPlayed
+from runtime.enums import Channel, Env, HoldPlayed
 from runtime.wire.base import WireModel
 from runtime.wire.declaration import (
     DocsConfig,
@@ -223,3 +223,90 @@ class HoldAudio(WireModel):
     after_s: float = HOLD_AFTER_S
     # True when the agent's class declares its melody: the endpoints write nothing but the class's own file.
     fixed: bool = False
+
+
+# ── a call's route, its legs and whose ring it is: what a worker asks of telephony ──
+
+type Transport = Literal["auto", "udp", "tcp", "tls"]
+
+
+# The worker's scope rides the query of every endpoint it asks (`?org=&env=&holder=`), read by its key's
+# resolution; a query model that refused the three answered 422 to every dial (2026-11-05).
+class WorkerQuery(WireModel):
+    """What every question of a worker carries: the scope its dispatch named, read where its key is resolved."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
+
+    org: str | None = None
+    env: Env | None = None
+    holder: str | None = None
+
+
+class RouteQuery(WorkerQuery):
+    """GET /v1/routes: the number a call rang, or nothing for the routes of the scope its dispatch named."""
+
+    number: str | None = None
+    channel: Channel = Channel.phone
+
+
+# Read by a worker of either release, which refuses a field it does not know: nothing is added until
+# the release before 2026-11 is gone.
+class RouteRow(WireModel):
+    """One route as a worker and the operator read it: which org's agent answers a number, on a channel, in an env."""
+
+    org: str
+    number: str
+    agent: str
+    channel: Channel
+    env: Env
+    managed: bool
+
+
+class LegTrunkQuery(WorkerQuery):
+    """A worker asking how to dial a leg of a call: to whom, from which of the org's numbers."""
+
+    to: str
+    call: str
+    shown: str | None = Field(None, alias="from")
+
+
+class ColdTransferQuery(WorkerQuery):
+    """A worker asking whether the caller may be sent on: to whom, from which call."""
+
+    to: str
+    call: str
+
+
+class LegTrunk(WireModel):
+    """How the worker dials a leg: the host, its transport, the pair, the number shown."""
+
+    hostname: str
+    transport: Transport
+    username: str
+    password: str
+    shown: str
+
+
+class LegTrunkResponse(WireModel):
+    """GET /v1/agents/{slug}/outbound-trunk: the leg's trunk, inline, after the guards."""
+
+    trunk: LegTrunk
+
+
+class RingHandoff(WireModel):
+    """Where a production ring goes: a developer's scope and its fleet, or nowhere (null)."""
+
+    holder: str | None = None
+    fleet: str | None = None
+    # Where the sandbox has a LiveKit of its own: the ring is dialled to its SIP through this.
+    trunk: LegTrunk | None = None
+
+
+# The org alone: the phone is a member's, but they named no agent and the org holds several. The org
+# and the agent, no holder: nobody holds that agent in the sandbox right now.
+class RingAtTestLine(WireModel):
+    """GET /v1/test-line/rings-for: whose sandbox agent a ring at the test line is for; nulls for nobody's."""
+
+    org: str | None = None
+    agent: str | None = None
+    holder: str | None = None

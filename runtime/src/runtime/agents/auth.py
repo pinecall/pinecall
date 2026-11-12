@@ -9,7 +9,7 @@ from runtime.accounts.auth import AnyKey
 from runtime.actor import Actor, Scope
 from runtime.agents.declaration import Agent
 from runtime.agents.service import documents, hold_audio
-from runtime.agents.service.declaration import agent_of
+from runtime.agents.service.declaration import NoSuchAgent, agent_of
 from runtime.agents.service.pipeline import VendorHealth
 from runtime.agents.service.settings import Picked, parse_test_values
 from runtime.auth import Authenticator, actor_of
@@ -18,7 +18,6 @@ from runtime.exceptions import NotFound
 from runtime.kit.http import read_capped_body
 from runtime.postgres import Session
 
-NO_SUCH_AGENT = "no agent {slug} in this org: `pinecall agent list` names the ones there are"
 NO_AGENT_HERE = "no agent {slug} here"
 
 # A supervisor's key opens the words of an agent; the pipeline's key opens everything of it.
@@ -88,7 +87,7 @@ async def the_known_agent(slug: str, request: Request, owners: TheOwners) -> str
     actor = actor_of(request)
     if actor is None or await owners.owner(slug) == actor.org:
         return slug
-    raise NotFound(NO_SUCH_AGENT.format(slug=slug))
+    raise NoSuchAgent(slug)
 
 
 KnownAgent = Annotated[str, Depends(the_known_agent)]

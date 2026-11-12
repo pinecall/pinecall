@@ -30,7 +30,7 @@ from runtime.agents.service.resolution import SEPARATOR, check_realtime
 from runtime.agents.service.setting_names import FIELD_OF
 from runtime.agents.service.widgets import check_look, look_of
 from runtime.enums import Stage
-from runtime.exceptions import ValidationError
+from runtime.exceptions import NotFound, ValidationError
 from runtime.providers import service as providers
 from runtime.providers.stage import Model, Voice
 from runtime.wire import declaration as wire
@@ -43,6 +43,14 @@ REALTIME_TAKES = (
     "a realtime model takes its vendor and model, and its options: @realtime('<vendor>/<model>', { options })"
 )
 ONE_OF_DOCS = "docs is one base and bases is several: declare one of them"
+
+
+# A slug typed wrong and another org's slug are the same refusal: an agent's existence does not leak.
+class NoSuchAgent(NotFound):
+    """No agent by that slug in the org."""
+
+    def __init__(self, slug: str) -> None:
+        super().__init__(f"no agent {slug} in this org: `pinecall agent list` names the ones there are")
 
 
 # ── what an app declares, as a value ──

@@ -200,12 +200,25 @@ async def resolve(session: AsyncSession, verified: Verified, asked: Asked) -> Ac
     return serve_dispatched(resolved, asked.dispatched)
 
 
-# A fleet serves every org of its env: a worker names the one a job is for in the request's query.
+class NotTheFleetsEnv(Forbidden):
+    """A fleet's key asks in its own env."""
+
+    def __init__(self, own: Env, asked: Env) -> None:
+        super().__init__(
+            f"a fleet's key asks in its own env: this one is the {own} fleet's, and it asked in the {asked}"
+        )
+
+
+# A fleet serves every org of its env: a worker names the one a job is for in the request's query. The
+# env it names is its key's own. Until 2026-11 nothing held it to that, so the sandbox's fleet key read
+# the production numbers and agents of any org it named.
 def serve_dispatched(actor: Actor, dispatched: Scope | None) -> Actor:
-    """A fleet's actor in the org, env and holder its dispatch names; any other actor, or none named, as it is."""
+    """A fleet's actor in the org and holder its dispatch names, in its own env; any other actor as it is."""
     if dispatched is None or not actor.opens(KeyScope.fleet):
         return actor
-    return replace(actor, org=dispatched.org, env=dispatched.env, holder=dispatched.holder)
+    if dispatched.env is not actor.env:
+        raise NotTheFleetsEnv(actor.env, dispatched.env)
+    return replace(actor, org=dispatched.org, holder=dispatched.holder)
 
 
 async def identify(session: AsyncSession, actor: Actor) -> Identity:

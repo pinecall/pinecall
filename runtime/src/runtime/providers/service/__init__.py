@@ -1,7 +1,7 @@
 """The providers' rules, one module per noun; what another domain uses is named here, and nothing else."""
 
 from runtime.providers.service.catalog import get_catalog
-from runtime.providers.service.credentials import box_credentials
+from runtime.providers.service.credentials import box_credentials, put_box_credentials
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
 from runtime.providers.service.pipeline import build_pipeline, stage_on_its_key, thinking_of
 from runtime.providers.service.plugins import (
@@ -13,6 +13,7 @@ from runtime.providers.service.plugins import (
 )
 from runtime.providers.service.prices import completion_usage
 from runtime.providers.service.readiness import Runnable, runnable_on
+from runtime.providers.service.refusals import vendor_named_in
 from runtime.providers.service.signatures import refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import thinking_outside_a_call
@@ -33,6 +34,7 @@ __all__ = [
     "is_installed",
     "keys_of",
     "parse_lending",
+    "put_box_credentials",
     "refuse_realtime_as_llm",
     "refuse_untaken_settings",
     "runnable_on",
@@ -45,4 +47,5 @@ __all__ = [
     "try_realtime",
     "try_stage",
     "vendor_doing",
+    "vendor_named_in",
 ]

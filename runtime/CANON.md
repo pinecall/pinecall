@@ -95,6 +95,11 @@ stage of a call, on whose key, told what, at what price. One row, one table of k
 registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
 this machine can run (`machine`) stand apart and were decided into it.
 
+`telephony/service/` has more than sixteen modules and is one context: how a number reaches an
+agent and an agent a number. The account a number lives in (by its kind: a module each, behind
+one `Protocol`), its fence, its trunk and rule on the SFU and its row are read and written
+together; the routes and the legs in a call's room were decided into it.
+
 ## The rules
 
 1. **One noun, one file.** A module's one-line docstring names one thing, and the filename is

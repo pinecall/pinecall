@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from runtime.accounts import endpoints as accounts
 from runtime.agents import endpoints as agents
+from runtime.alerts import endpoints as alerts
 from runtime.billing import endpoints as billing
 from runtime.compliance import endpoints as compliance
 from runtime.fleet import endpoints as fleet
@@ -12,6 +13,7 @@ from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 from runtime.providers import endpoints as providers
 from runtime.signin import endpoints as signin
+from runtime.telephony import endpoints as telephony
 from runtime.whatsapp import endpoints as whatsapp
 
 
@@ -30,4 +32,6 @@ def mount(app: FastAPI) -> None:
     app.include_router(knowledge.router)
     app.include_router(whatsapp.router)
     app.include_router(fleet.router)
+    app.include_router(telephony.router)
+    app.include_router(alerts.router)
     app.include_router(platform.pages_router)
