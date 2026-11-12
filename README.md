@@ -76,39 +76,76 @@ $ pinecall studio deploy front-desk
 
 ## ▸ A voice app: all the code you want
 
-A voice app is code in your repository. Its agent is a class: the class's fields are the call's state, its `@tool` methods are what the model may do, and its
-docstrings and `render()` are the prompt.
+A voice app is code in your repository: an `app.ts` that says which number is answered by whom, and a class per
+agent. `@agent({ … })` says what the agent is; the class's fields are the call's state, its `@tool` methods are
+what the model may do, and its docstrings and `render()` are the prompt.
 
 ```tsx
-import { Agent, tool, type Stages } from "@pinecall/agents";
+// agents/front-desk/agent.tsx
+import { Agent, agent, tool, type Call } from "@pinecall/agents";
 
 /**
- * You answer the phone for the business as its automated assistant, and your first sentence says so.
- * Short sentences: everything you say is read aloud. For anything the documents do not answer you
- * say so and take a message: who is calling and what about.
+ * You are the front desk of Brightside Dental. You book, move and explain visits.
+ * Short sentences. Offer at most two times. Never say a time the agenda did not give you.
  */
+@agent({
+  stt: "deepgram/flux",                              // what it hears, thinks and speaks with
+  llm: "google/gemini-3.5-flash-lite",
+  voice: "cartesia/katie",
+  takes: "booking, moving or asking about a visit",   // what a teammate may pass it
+  judges: ["consent", "grounded", offersARealTime],   // who reads every call: Pinecall's, and its own
+  personas: [hurried, chargedTwice],                  // the test callers that phone it
+})
 export default class FrontDesk extends Agent {
-  stage: Stages<"ask" | "done"> = "ask";          // state: plain fields, kept per call
-  message?: { name: string; about: string } | undefined;
+  slots: Slot[] = [];                                 // state: plain fields, kept per call
 
-  /** Writes down the caller's message, once they have said their name and what it is about. */
-  @tool({ stage: "ask", pii: ["name"] })           // a verb the model may call, in this stage
-  async takeMessage(name: string, about: string) {
-    this.message = { name, about };
-    this.stage = "done";
-    return this.message;
+  override onCall(call: Call) {
+    this.call.shared["patient"] = clinic.patientByPhone(call.contact);
   }
 
-  override render() {                               // the prompt's last block, a function of state
-    return this.message
-      ? <p>The message is written down: {this.message.name}. Say goodbye and hang up.</p>
-      : <p>Greet the caller, and ask for their name and what the call is about.</p>;
+  /** The open times of one day. `day` is YYYY-MM-DD. */
+  @tool({ announce: "Let me check the agenda." })     // a verb the model may call
+  freeSlots(day: string) {
+    return (this.slots = clinic.free(day));
+  }
+
+  /** Book one of the times freeSlots returned, once the caller said yes to it. */
+  @tool()
+  book(day: string, time: string, name: string) {
+    const visit = clinic.book(day, time, name);
+    this.log("visit.booked", { ...visit, phone: this.call.contact });   // the app hears it, below
+    return visit;
+  }
+
+  override render() {                                 // the prompt's last block, a function of state
+    if (this.slots.length === 0) return null;
+    return <p>Offer only these times: {this.slots.map((slot) => slot.time).join(", ")}.</p>;
   }
 }
 ```
 
+```ts
+// app.ts
+import { flow, voiceApp } from "@pinecall/agents";
+
+const app = voiceApp("brightside", { timezone: "America/Los_Angeles" });
+
+// One number and a team behind it: the front desk answers, and the call may pass to billing.
+app.line("+1 415 555 0134", { greeting: "Brightside Dental. How can I help?", answers: FrontDesk, team: [Billing] });
+app.rule("Never say an amount of money that a tool did not give you.");
+
+// A flow outlives the call that started it: the day before the visit, the agent calls the patient.
+const remindVisit = flow("remind-visit", async (visit, step) => {
+  await step.sleepUntil(startsAt(visit), { before: "24h" });
+  await step.call(visit.phone, FrontDesk, { instruction: `Remind ${visit.patient} of the visit.` });
+});
+app.on("visit.booked", remindVisit);
+
+export default app;
+```
+
 <details>
-<summary><b>The same agent in Python</b></summary>
+<summary><b>An agent in Python</b></summary>
 
 ```python
 from typing import Literal
@@ -135,7 +172,7 @@ class FrontDesk(Agent):
 </details>
 
 <details>
-<summary><b>The same agent in Ruby</b></summary>
+<summary><b>An agent in Ruby</b></summary>
 
 ```ruby
 require "pinecall"
@@ -158,9 +195,9 @@ end
 
 </details>
 
-The voice, the model, the greeting, the words it must pronounce and the documents it searches are
-not in the class. They are settings of the agent, per environment and versioned, so someone who
-does not write code can tune them in the console.
+What the agent runs on — its voice, its models, its greeting, the documents it searches — is declared with
+the class, and an app written as code is set by its code: the console shows it, read-only. An agent built in
+Studio has no code, and there the same settings are tuned in the console, per environment and versioned.
 
 From an empty folder to a call:
 
