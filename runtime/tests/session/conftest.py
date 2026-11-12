@@ -47,13 +47,14 @@ def context_of(
     *,
     contact: Contact | None = None,
     run: str | None = None,
+    direction: Direction = Direction.inbound,
 ) -> CallContext:
     """A call of the agent's through its number, on the channel."""
     route = Route(org="org_1", agent=AGENT, channel=channel, number=None if channel == "web" else A_NUMBER)
     return CallContext(
         call=call,
         channel=channel,
-        direction=Direction.inbound,
+        direction=direction,
         caller=THE_CALLER,
         route=route,
         today=MONDAY,
@@ -158,10 +159,11 @@ def a_session(
     contact: Contact | None = None,
     run: str | None = None,
     place_of: Callable[[Call], Place] | None = None,
+    direction: Direction = Direction.inbound,
 ) -> Session:
     """A written session whose model answers with the replies, in order; in the place made for its call, if any."""
     assert box.log.call is not None
-    call = Call(context_of(box.log.call, contact=contact, run=run), declaration, box)
+    call = Call(context_of(box.log.call, contact=contact, run=run, direction=direction), declaration, box)
     scripted: list[Json] = list(replies)
     script: JsonObject = {"replies": scripted}
     return text_session(call, Running(ACME, "a-key", options=script), Place() if place_of is None else place_of(call))
@@ -230,7 +232,7 @@ def spoken_call(
     ends_the_turn: bool = False,
     keyterms: bool = False,
     turn_model: TurnModel = "v1-mini",
-    realtime: bool = False,
+    realtime: str | None = None,
     server: Server | None = None,
     hears: tuple[str, ...] = (),
 ) -> Session:
@@ -244,7 +246,7 @@ def spoken_call(
         llm=Running(ACME, "k"),
         stt=Running(ACME, "k", ends_the_turn=ends_the_turn, options=ears, turn_model=turn_model),
         tts=Running(ACME, "k"),
-        realtime=Running(ACME, "k") if realtime else None,
+        realtime=None if realtime is None else Running(realtime, "k", model="voice-1"),
     )
     return voice_session(call, stages, Place() if server is None else Place(room=a_room(box, call, server)))
 

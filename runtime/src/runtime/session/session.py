@@ -399,24 +399,27 @@ class Session:
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit. No
     # session host: it hands every participant the raw turns, the tools and the prompt (projections.md).
-    async def _open(self, opens_on: llm.ChatContext) -> None:
+    def room_options(self) -> RoomOptions:
+        """How livekit takes the room: the one participant heard, its audio, and who leaving ends it."""
         spoken = is_spoken(self.live, self.built)
-        channel = self.call.context.channel
-        options = RoomOptions(
+        return RoomOptions(
             participant_identity=or_not_given(self.participant),
-            close_on_disconnect=channel is not Channel.web,
+            close_on_disconnect=self.call.context.channel is not Channel.web,
             audio_input=NOT_GIVEN if spoken else False,
             audio_output=NOT_GIVEN if spoken else False,
             text_input=TextInputOptions(text_input_cb=self._on_text_input),
         )
+
+    async def _open(self, opens_on: llm.ChatContext) -> None:
+        options = self.room_options()
         room = NOT_GIVEN if self.room is None else self.room.room
         self.listener.listen(self.built)
         await self.live.start(self.agent, room=room, room_options=options, record=False, session_host=False)  # pyright: ignore[reportUnknownMemberType]
-        echo.cancel(self.live, channel)
+        echo.cancel(self.live, self.call.context.channel)
         if self.room is not None:
             self.recorder = await recording.record(self.live, self.call.recording, self.room.room, self.room.kind_of)
         given = opens_on.copy()
-        given.items[:0] = history.opening_of(self.call, self.built)
+        given.items[:0] = history.opening_of(self.call.declaration, self.call.context, self.built)
         await self.agent.update_chat_ctx(given, exclude_invalid_function_calls=False)
 
     # What is being said is cut first, as livekit's own handler does for a typed message.

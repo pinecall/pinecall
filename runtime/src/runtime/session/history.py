@@ -1,7 +1,7 @@
 """A call's history: the clock's pair it opens with, how it is rebuilt from a log, and a note added to it."""
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -9,9 +9,10 @@ from livekit.agents import llm
 from livekit.agents.llm import FunctionCall, FunctionCallOutput
 from livekit.agents.voice import Agent
 
+from runtime.agents.declaration import Declaration
 from runtime.kit.time import now_in
 from runtime.session import stages
-from runtime.session.call import SPEECH, Call
+from runtime.session.call import SPEECH, CallContext
 from runtime.session.tools import output_text
 from runtime.wire import events as wire
 from runtime.wire.base import Entry
@@ -57,12 +58,14 @@ def opening(today: date, built: Sequence[object], clock: datetime | None = None)
 
 
 # An agent that says its zone reads its day and its hour there; a day a golden pinned has no hour.
-def opening_of(call: Call, built: Sequence[object]) -> list[llm.ChatItem]:
+def opening_of(
+    declaration: Declaration, context: CallContext, built: Sequence[object], *, now: Callable[[str], datetime] = now_in
+) -> list[llm.ChatItem]:
     """A call's opening on its agent's own clock, when the agent says its zone."""
-    zone, context = call.declaration.timezone, call.context
+    zone = declaration.timezone
     if zone is None or context.pinned_day is not None:
         return opening(context.today, built)
-    clock = now_in(zone)
+    clock = now(zone)
     return opening(clock.date(), built, clock)
 
 

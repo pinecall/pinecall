@@ -7,6 +7,7 @@ import logging
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import assert_never
 
 from livekit import api, rtc
@@ -66,6 +67,21 @@ THE_ANNOUNCEMENT_S = 12.0
 # are slower.
 CODE_LENGTH = 4
 CODE_WITHIN_S = 8.0
+
+
+@dataclass(frozen=True, slots=True)
+class Waits:
+    """How long a room waits: for a caller who dropped, for a visitor who left, for a code's four tones."""
+
+    caller_returns_s: float = CALLER_RETURNS_S
+    visitor_returns_s: float = fleet.A_VISITOR_RETURNS_S
+    code_within_s: float = CODE_WITHIN_S
+
+
+# What a room waits when nothing says otherwise.
+LIVEKITS_WAITS = Waits()
+
+
 ROOM_VERB_FAILED = "room_verb_failed"
 NOT_DIALLED = "room.invite: a participant joins with a token; the room dials only kind sip"
 NOT_IN_THE_ROOM = "participant.mute: {identity} is not in the room"
@@ -84,10 +100,18 @@ class CallRoom:
     """One voice call's room, the server's API over it, and what it writes about both."""
 
     def __init__(
-        self, call: Call, room: rtc.Room, server: api.LiveKitAPI, *, legs: telephony.Legs, claim: ClaimCode
+        self,
+        call: Call,
+        room: rtc.Room,
+        server: api.LiveKitAPI,
+        *,
+        legs: telephony.Legs,
+        claim: ClaimCode,
+        waits: Waits = LIVEKITS_WAITS,
     ) -> None:
         """The room of a call not yet opened."""
         self.call = call
+        self.waits = waits
         self.room = room
         self.server = server
         self.legs = legs
@@ -312,7 +336,9 @@ class CallRoom:
     # A visitor's call waits for them as long as their room does; their widget's hang-up ends it
     # at once (widget.py), a reload does not.
     async def _wait_for_the_caller(self, hang_up: Callable[[], None], reason: str) -> None:
-        waits = fleet.A_VISITOR_RETURNS_S if self.call.context.channel is Channel.web else CALLER_RETURNS_S
+        waits = (
+            self.waits.visitor_returns_s if self.call.context.channel is Channel.web else self.waits.caller_returns_s
+        )
         await asyncio.sleep(waits)
         self.returning = None
         logger.info(CALLER_GONE, self.room.name, reason, waits)
@@ -360,7 +386,7 @@ class CallRoom:
             self.tones.clear()
             return
         self.tones.append((digit, at))
-        if len(self.tones) < CODE_LENGTH or at - self.tones[0][1] > CODE_WITHIN_S:
+        if len(self.tones) < CODE_LENGTH or at - self.tones[0][1] > self.waits.code_within_s:
             return
         code = "".join(pressed for pressed, _ in self.tones)
         self.tones.clear()

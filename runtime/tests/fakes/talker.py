@@ -1,5 +1,6 @@
 """The vendor `talker`: a plain model, and a realtime one that hears and speaks itself, installed as a plugin."""
 
+import dataclasses
 import types
 from typing import Literal, Never, override
 
@@ -29,10 +30,13 @@ class TalkerLLM:
 class TalkerRealtime(llm.RealtimeModel):
     """Its realtime model: built with its key, its model and its options, and kept what it was given."""
 
+    # What it can do, as its vendor's class declares it.
+    able: llm.RealtimeCapabilities = ABLE
+
     def __init__(
         self, *, api_key: str, model: Literal["voice-1", "voice-3"] | str = "voice-1", voice: str | None = "Ara"
     ) -> None:
-        super().__init__(capabilities=ABLE)
+        super().__init__(capabilities=self.able)
         self.given = {"api_key": api_key, "model": model, "voice": voice}
 
     @override
@@ -42,6 +46,21 @@ class TalkerRealtime(llm.RealtimeModel):
     @override
     async def aclose(self) -> None:
         return None
+
+
+SAYING = "talker-saying"
+ABLE_TO_SAY = dataclasses.replace(ABLE, supports_say=True)
+
+
+class SayingRealtime(TalkerRealtime):
+    """A realtime model that says given words itself, as xAI's does: the call has its one voice."""
+
+    able = ABLE_TO_SAY
+
+
+def install_saying() -> str:
+    """Put `livekit.plugins.talker-saying` where the runtime looks for vendors; its name."""
+    return install_plugin(SAYING, LLM=TalkerLLM, realtime=types.SimpleNamespace(RealtimeModel=SayingRealtime))
 
 
 def install() -> str:
