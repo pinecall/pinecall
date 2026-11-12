@@ -26,7 +26,6 @@ import { inOrder, type Serving } from "./dispatch.js";
 import { harnessOf } from "../agent/harness.js";
 import { holdConfigOf } from "./declared-hold.js";
 import { environmentOf, refuseTheEnvironment } from "./environment.js";
-import { refuseStatics } from "../agent/declaring.js";
 import { answeredBy, mateNamed, MOST_PASSES, PASSED, ROUTED, teamTools, transfersOf, type Answering, type Team } from "./handoff.js";
 import { served } from "./once-served.js";
 import { wordsRecalled } from "./recall.js";
@@ -124,7 +123,6 @@ function stateFieldsOf(ctor: Function): AgentOptions["stateFields"] {
 export function optionsFor(ctor: Ctor, tools: Tool[], instance: Agent = new ctor(), file?: string, source?: string): AgentOptions {
   const probe = instance as unknown as Record<string, unknown>;
   refuseTheEnvironment(probe);
-  refuseStatics(ctor);
   // Phone numbers are org rows managed with `pinecall numbers`, so a `phone` field is never sent.
   const options: AgentOptions = { tools, ...environmentOf(ctor), ...harnessOf(ctor) };
   const hold = holdConfigOf(ctor as unknown as typeof Agent, file);

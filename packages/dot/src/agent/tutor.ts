@@ -67,15 +67,6 @@ function linesAt(page: string, ref: string): string {
   return lines.slice(at, after === -1 ? undefined : at + 1 + after).join("\n");
 }
 
-@agent({
-  events: {
-    [SEEN]: { from: ["participant"] },
-    [CLICKED]: { from: ["participant"] },
-    [MISSING]: { from: ["participant"] },
-    [EXPLAIN]: { from: ["participant"] },
-    [WALKED]: { from: ["participant"] },
-  },
-})
 export class Tutor extends Agent {
   /** The guided walks this agent can give, by name. */
   static macros: Record<string, Macro> = {};
@@ -383,4 +374,14 @@ for (const [name, options] of Object.entries(TOOLS)) {
 // A tool's description is its JSDoc, read from the class's source: tsx strips comments from what
 // `Tutor.toString()` returns, so the class is handed this file itself, compiled or not.
 const here = fileURLToPath(import.meta.url);
+// What the page tells the tutor. Said as a call, not as a decorator: this package compiles none.
+agent({
+  events: {
+    [SEEN]: { from: ["participant"] },
+    [CLICKED]: { from: ["participant"] },
+    [MISSING]: { from: ["participant"] },
+    [EXPLAIN]: { from: ["participant"] },
+    [WALKED]: { from: ["participant"] },
+  },
+})(Tutor);
 describe(Tutor, readFileSync(here, "utf8"), basename(here));

@@ -1,5 +1,6 @@
 /** What a class declares of its environment in `@agent({ … })`, as the declaration sends it. */
 
+import { refuseStatics } from "../agent/declaring.js";
 import { improvise, type Ending, type Opening } from "../agent/opening.js";
 import { stageOf, voiceOf } from "../agent/stage-names.js";
 import { DeclarationRefused } from "../agent/tools.js";
@@ -54,8 +55,9 @@ export function declaredOnTheInstance(field: string): string {
   return `\`${field}\` is the class's, not a call's state: declare it in @agent({ ${field}: … }) above the class`;
 }
 
-/** The environment the class declares, as the declaration sends it. */
+/** The environment the class declares, as the declaration sends it; a class that says it in a `static` field is refused. */
 export function environmentOf(ctor: Function): Environment {
+  refuseStatics(ctor);
   const declared = ctor as unknown as Record<string, unknown>;
   const environment: Record<string, unknown> = {};
   for (const field of ENVIRONMENT) {
