@@ -95,18 +95,37 @@ async def resolve_url(url: str) -> Resolved:
 # still asked for it and verified against it (`sni_hostname`). The connection is closed after the
 # answer, so one verified for a name is never reused for another name at the same address. A client
 # that follows no redirect is the caller's to bring.
-async def post_at(
-    http: httpx.AsyncClient, url: str, address: Address, *, content: bytes, headers: Mapping[str, str], timeout: float
+async def ask_at(
+    http: httpx.AsyncClient,
+    method: str,
+    url: str,
+    address: Address,
+    *,
+    timeout: float,
+    headers: Mapping[str, str] | None = None,
+    content: bytes | None = None,
+    data: Mapping[str, str] | None = None,
+    auth: tuple[str, str] | None = None,
 ) -> httpx.Response:
-    """POST to the URL at the address its host was checked to resolve to, never at the name again."""
+    """Ask the URL at the address its host was checked to resolve to, never at the name again."""
     named = httpx.URL(url)
-    return await http.post(
+    return await http.request(
+        method,
         named.copy_with(host=str(address)),
         content=content,
-        headers={**headers, "host": named.netloc.decode("ascii"), "connection": "close"},
+        data=data,
+        auth=httpx.USE_CLIENT_DEFAULT if auth is None else auth,
+        headers={**(headers or {}), "host": named.netloc.decode("ascii"), "connection": "close"},
         extensions={"sni_hostname": named.raw_host.decode("ascii")},
         timeout=timeout,
     )
+
+
+async def post_at(
+    http: httpx.AsyncClient, url: str, address: Address, *, content: bytes, headers: Mapping[str, str], timeout: float
+) -> httpx.Response:
+    """POST to the URL at the address its host was checked to resolve to."""
+    return await ask_at(http, "POST", url, address, timeout=timeout, headers=headers, content=content)
 
 
 # A record of several strings is one text, as the RFC reads it.

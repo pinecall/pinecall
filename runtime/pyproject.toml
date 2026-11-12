@@ -80,8 +80,6 @@ dev = [
   "ruff>=0.13",
   "pyright>=1.1.405",
   "mypy>=1.17",
-  "respx>=0.22",
-  "time-machine>=2.19",
   "sqlacodegen>=3.0",
 ]
 

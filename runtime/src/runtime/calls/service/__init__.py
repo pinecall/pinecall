@@ -1,5 +1,6 @@
 """The record's rules, one module per noun; what another domain uses is named here, and nothing else."""
 
+from runtime.calls.context import call_id_of
 from runtime.calls.repository.heads import CallHead, Claim
 from runtime.calls.repository.search import PersonaRun, PersonaRunFilters
 from runtime.calls.repository.unsealed import Unsealed
@@ -63,6 +64,7 @@ __all__ = [
     "Reader",
     "Unsealed",
     "add_caller_cost",
+    "call_id_of",
     "claim_agent_log",
     "claim_call",
     "count_simulating",

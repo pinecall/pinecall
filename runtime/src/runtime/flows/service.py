@@ -8,6 +8,7 @@ from typing import Any, Protocol
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
+from runtime.calls import service as calls
 from runtime.enums import OVER, PARKED, RunStatus
 from runtime.exceptions import Conflict, NotFound, PinecallError, ValidationError
 from runtime.flows.models import AppEvent, FlowRun, FlowStep
@@ -309,8 +310,8 @@ async def write_step(
 # Every refusal of flows' own comes before the dial: until 2026-11 the call was placed and then the
 # ceiling of parked runs could refuse the step, so the request rolled back with a phone ringing, the
 # journal held no step, and the flow's next stretch placed the call again. What is left of that is the
-# moment between the dial and this transaction's commit: the call's metadata names the run and the step
-# that placed it, for the dial to find a call it already placed once it looks one up by them.
+# moment between the dial and this transaction's commit: the call's id is the run's and the step's, and
+# a dial asked again for them finds the call it placed and places none.
 async def _call(
     session: AsyncSession,
     holders: Holders,
@@ -336,6 +337,7 @@ async def _call(
         metadata=asked.metadata | {"flow_run": run.id, "flow_step": seq},
         greeting=asked.greeting,
         instruction=asked.instruction,
+        call=calls.call_id_of(f"{run.id}/{seq}"),
     )
     # `refused` is the name of the class that was raised, as it always was, and a flow branches on it: an
     # exception renamed changes what every flow reads. Which words it should be instead is not decided.

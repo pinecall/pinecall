@@ -1,10 +1,9 @@
 """Turnstile: no secret passes everything; with one, only Cloudflare's yes for this action on this box opens."""
 
-from collections.abc import Iterator
+from dataclasses import dataclass, field
 
 import httpx
 import pytest
-import respx
 
 from runtime.exceptions import Forbidden
 from runtime.signin.service.turnstile import SITEVERIFY, Turnstile
@@ -12,61 +11,69 @@ from runtime.signin.service.turnstile import SITEVERIFY, Turnstile
 A_TOKEN = "0.solved-by-a-browser"
 
 
-@pytest.fixture
-def cloudflare() -> Iterator[respx.MockRouter]:
-    """Cloudflare's siteverify, faked."""
-    with respx.mock(assert_all_called=False) as router:
-        yield router
+@dataclass
+class Cloudflare:
+    """Cloudflare's siteverify, answering what the test tells it; None does not answer at all."""
+
+    says: dict[str, object] | None = None
+    asked: list[httpx.Request] = field(default_factory=list[httpx.Request])
+
+    def answer(self, request: httpx.Request) -> httpx.Response:
+        """What it was told to say, at siteverify alone."""
+        self.asked.append(request)
+        assert str(request.url) == SITEVERIFY
+        if self.says is None:
+            raise httpx.ConnectError("down", request=request)
+        return httpx.Response(200, json=self.says)
+
+    def verifier(self, secret: str | None = "a-secret", hostname: str | None = "voice.example.com") -> Turnstile:
+        """A verifier the operator gave this secret, on a box with that name, reaching this Cloudflare."""
+        return Turnstile(httpx.AsyncClient(transport=httpx.MockTransport(self.answer)), secret, hostname)
 
 
-async def with_secret(hostname: str | None = "voice.example.com") -> Turnstile:
-    """A verifier the operator gave a secret, on a box with that name."""
-    return Turnstile(httpx.AsyncClient(), "a-secret", hostname)
-
-
-async def test_a_box_with_no_turnstile_asks_for_no_token(cloudflare: respx.MockRouter) -> None:
+async def test_a_box_with_no_turnstile_asks_for_no_token() -> None:
     """Without a secret every request passes, token or not, and Cloudflare is never asked."""
-    await Turnstile(httpx.AsyncClient(), None, "voice.example.com").check(None, "signup", "203.0.113.9")
-    assert not cloudflare.calls
+    cloudflare = Cloudflare()
+    await cloudflare.verifier(secret=None).check(None, "signup", "203.0.113.9")
+    assert not cloudflare.asked
 
 
-async def test_a_missing_token_is_refused_before_cloudflare_is_asked(cloudflare: respx.MockRouter) -> None:
+async def test_a_missing_token_is_refused_before_cloudflare_is_asked() -> None:
     """With a secret, a request carrying no token is refused without a round trip."""
+    cloudflare = Cloudflare()
     with pytest.raises(Forbidden, match="captcha"):
-        await (await with_secret()).check(None, "signup", "203.0.113.9")
-    assert not cloudflare.calls
+        await cloudflare.verifier().check(None, "signup", "203.0.113.9")
+    assert not cloudflare.asked
 
 
-async def test_cloudflares_yes_for_this_action_on_this_box_passes(cloudflare: respx.MockRouter) -> None:
+async def test_cloudflares_yes_for_this_action_on_this_box_passes() -> None:
     """A token Cloudflare says was solved for this action on the box's page opens the door."""
-    asked = cloudflare.post(SITEVERIFY).respond(
-        json={"success": True, "action": "signup", "hostname": "voice.example.com"}
-    )
-    await (await with_secret()).check(A_TOKEN, "signup", "203.0.113.9")
-    sent = asked.calls.last.request.content.decode()
+    cloudflare = Cloudflare({"success": True, "action": "signup", "hostname": "voice.example.com"})
+    await cloudflare.verifier().check(A_TOKEN, "signup", "203.0.113.9")
+    sent = cloudflare.asked[-1].content.decode()
     assert "secret=a-secret" in sent and f"response={A_TOKEN}" in sent and "remoteip=203.0.113.9" in sent
 
 
-async def test_a_token_solved_for_another_door_is_refused(cloudflare: respx.MockRouter) -> None:
+async def test_a_token_solved_for_another_door_is_refused() -> None:
     """A sign-up's token does not mail a code again: the action Cloudflare answers must be this door's."""
-    cloudflare.post(SITEVERIFY).respond(json={"success": True, "action": "signup", "hostname": "voice.example.com"})
+    cloudflare = Cloudflare({"success": True, "action": "signup", "hostname": "voice.example.com"})
     with pytest.raises(Forbidden, match="captcha"):
-        await (await with_secret()).check(A_TOKEN, "signup_resend", "203.0.113.9")
+        await cloudflare.verifier().check(A_TOKEN, "signup_resend", "203.0.113.9")
 
 
-async def test_a_token_solved_on_another_page_is_refused(cloudflare: respx.MockRouter) -> None:
+async def test_a_token_solved_on_another_page_is_refused() -> None:
     """Where the box has a name, a token solved elsewhere is refused; a box with none cannot tell."""
-    cloudflare.post(SITEVERIFY).respond(json={"success": True, "action": "signup", "hostname": "evil.example.net"})
+    cloudflare = Cloudflare({"success": True, "action": "signup", "hostname": "evil.example.net"})
     with pytest.raises(Forbidden, match="captcha"):
-        await (await with_secret()).check(A_TOKEN, "signup", "203.0.113.9")
-    await (await with_secret(hostname=None)).check(A_TOKEN, "signup", "203.0.113.9")
+        await cloudflare.verifier().check(A_TOKEN, "signup", "203.0.113.9")
+    await cloudflare.verifier(hostname=None).check(A_TOKEN, "signup", "203.0.113.9")
 
 
-async def test_cloudflare_saying_no_or_nothing_refuses(cloudflare: respx.MockRouter) -> None:
+async def test_cloudflare_saying_no_or_nothing_refuses() -> None:
     """A failed verification, and Cloudflare not answering at all, both refuse: a shield that is down is no shield."""
-    cloudflare.post(SITEVERIFY).respond(json={"success": False, "error-codes": ["invalid-input-response"]})
+    cloudflare = Cloudflare({"success": False, "error-codes": ["invalid-input-response"]})
     with pytest.raises(Forbidden, match="captcha"):
-        await (await with_secret()).check(A_TOKEN, "signup", "203.0.113.9")
-    cloudflare.post(SITEVERIFY).mock(side_effect=httpx.ConnectError("down"))
+        await cloudflare.verifier().check(A_TOKEN, "signup", "203.0.113.9")
+    cloudflare.says = None
     with pytest.raises(Forbidden, match="captcha"):
-        await (await with_secret()).check(A_TOKEN, "signup", "203.0.113.9")
+        await cloudflare.verifier().check(A_TOKEN, "signup", "203.0.113.9")

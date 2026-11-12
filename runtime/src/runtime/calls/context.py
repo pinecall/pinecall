@@ -1,6 +1,7 @@
 """What a call is: its id, direction, who is calling, the route it came in by, its day, and the name its log goes by."""
 
 import dataclasses
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
@@ -21,6 +22,12 @@ AGENT_LOG_PREFIX = "@"
 def new_call_id() -> str:
     """A call id nobody holds yet."""
     return f"{A_CALL}{uuid4().hex}"
+
+
+# The same shape as a new one, so its 32 hex digits are still the call's trace id.
+def call_id_of(key: str) -> str:
+    """The id of the one call a key names: the same each time it is asked."""
+    return f"{A_CALL}{hashlib.sha256(key.encode()).hexdigest()[:32]}"
 
 
 # Every fact of a call is an entry of its log, and what is of no call (an agent registered, an

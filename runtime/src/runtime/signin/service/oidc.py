@@ -169,9 +169,9 @@ class Oidc:
 
     async def discover(self, issuer: str) -> Endpoints:
         """The provider's endpoints, from its own discovery document."""
-        url = f"{await _public_url(self.resolve, issuer, issuer=issuer, field='issuer')}{CONFIGURATION}"
+        address = await _public_address(self.resolve, issuer, issuer=issuer, field="issuer")
         try:
-            answer = await self.http.get(url, timeout=TIMEOUT_S)
+            answer = await dns.ask_at(self.http, "GET", f"{issuer}{CONFIGURATION}", address, timeout=TIMEOUT_S)
             answer.raise_for_status()
             payload = _Discovery.model_validate(answer.json())
         except (httpx.HTTPError, ValueError, PydanticValidationError):
@@ -263,10 +263,13 @@ def _reachable(url: str, *, issuer: str, field: str) -> str:
     return url
 
 
-async def _public_url(resolve: dns.ResolveUrl, url: str, *, issuer: str, field: str) -> str:
-    if not (await resolve(_reachable(url, issuer=issuer, field=field))).is_a_public_name:
+# A provider's name is resolved once, here, and asked at the address checked: until 2026-11 it was
+# checked and then connected to by name, which a second answer of its DNS could point inside.
+async def _public_address(resolve: dns.ResolveUrl, url: str, *, issuer: str, field: str) -> dns.Address:
+    resolved = await resolve(_reachable(url, issuer=issuer, field=field))
+    if not resolved.is_a_public_name:
         raise Forbidden(f"{issuer}'s {field} is {url!r}: it resolves inside, not on the internet")
-    return url
+    return resolved.addresses[0]
 
 
 def _endpoint(found: str, issuer: str, field: str) -> str:
@@ -292,13 +295,17 @@ async def _exchange(
     }
     if not endpoints.basic_auth:
         form["client_secret"] = client.client_secret
-    await _public_url(resolve, endpoints.token_endpoint, issuer=endpoints.issuer, field="token_endpoint")
+    token = endpoints.token_endpoint
+    address = await _public_address(resolve, token, issuer=endpoints.issuer, field="token_endpoint")
     try:
-        answer = await http.post(
-            endpoints.token_endpoint,
+        answer = await dns.ask_at(
+            http,
+            "POST",
+            token,
+            address,
             data=form,
             timeout=TIMEOUT_S,
-            auth=(client.client_id, client.client_secret) if endpoints.basic_auth else httpx.USE_CLIENT_DEFAULT,
+            auth=(client.client_id, client.client_secret) if endpoints.basic_auth else None,
         )
     except httpx.HTTPError as unreachable:
         raise UpstreamError(
@@ -353,9 +360,9 @@ async def _claims(
 async def _signing_key(
     http: httpx.AsyncClient, resolve: dns.ResolveUrl, endpoints: Endpoints, id_token: str
 ) -> jwt.PyJWK:
-    await _public_url(resolve, endpoints.jwks_uri, issuer=endpoints.issuer, field="jwks_uri")
+    address = await _public_address(resolve, endpoints.jwks_uri, issuer=endpoints.issuer, field="jwks_uri")
     try:
-        answer = await http.get(endpoints.jwks_uri, timeout=TIMEOUT_S)
+        answer = await dns.ask_at(http, "GET", endpoints.jwks_uri, address, timeout=TIMEOUT_S)
         answer.raise_for_status()
         published = jwt.PyJWKSet.from_dict(answer.json())
         kid = jwt.get_unverified_header(id_token).get("kid")

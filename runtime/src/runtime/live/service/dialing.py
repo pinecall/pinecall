@@ -53,6 +53,9 @@ class Placement:
     # This call's own opening words, and what it is for.
     greeting: str | None = None
     instruction: str | None = None
+    # The call's id, when the asker names it so a dial asked again is placed once: a call it names
+    # that was placed already is answered, never dialled a second time.
+    call: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,8 +124,10 @@ async def place_call(session: AsyncSession, live: LiveParts, placement: Placemen
     """Place the call: number shown, account, guards, minutes, the log, then the dispatch."""
     scope = placement.scope
     shown = await _find_number_shown(session, placement)
+    if placement.call is not None and await calls.find_head(session, placement.call) is not None:
+        return PlacedCall(call=placement.call, to=placement.to, shown=shown)
     carrier = await telephony.get_carrier_for_number(session, live.vault, scope, shown)
-    call = new_call_id()
+    call = placement.call or new_call_id()
     dial = compliance.DialAsk(
         scope,
         placement.agent,
